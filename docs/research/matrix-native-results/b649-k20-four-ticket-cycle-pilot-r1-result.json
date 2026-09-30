@@ -1,0 +1,9411 @@
+{
+  "BASE_COMMIT": "3655b0f4bc43450748b4fc87c641d0acd11a8509",
+  "BEST_CANONICAL_RECOUNT_STATUS": "PASS",
+  "BEST_COUNT": 313239661,
+  "BEST_DELTA": 0,
+  "BEST_EXACT_PROBABILITY": "44748523/85900584",
+  "BEST_MOVE": {
+    "ADDED": [
+      [
+        2,
+        33,
+        35,
+        37,
+        40,
+        48
+      ],
+      [
+        5,
+        6,
+        14,
+        20,
+        31,
+        39
+      ],
+      [
+        5,
+        12,
+        13,
+        15,
+        19,
+        24
+      ],
+      [
+        17,
+        25,
+        32,
+        37,
+        41,
+        47
+      ]
+    ],
+    "NUMBERS": [
+      5,
+      5,
+      37,
+      37
+    ],
+    "ORIENTATION": "(0 2 1 3)",
+    "REMOVED": [
+      [
+        2,
+        5,
+        33,
+        35,
+        40,
+        48
+      ],
+      [
+        5,
+        17,
+        25,
+        32,
+        41,
+        47
+      ],
+      [
+        6,
+        14,
+        20,
+        31,
+        37,
+        39
+      ],
+      [
+        12,
+        13,
+        15,
+        19,
+        24,
+        37
+      ]
+    ]
+  },
+  "BEST_QUADRUPLE": [
+    2,
+    8,
+    11,
+    15
+  ],
+  "BEST_SHA256": "292db85d03715ca7c66b37888b1a4d180284bec1d915b4d2cd744c57dcf27081",
+  "BEST_TIE_COUNT": 1,
+  "CANDIDATES_PER_SECOND": 579.28,
+  "CONTROL": "NOT_RUN",
+  "CONTROL_POLICY": "v6 control disabled by --control-wall-budget-seconds 0",
+  "CYCLE_ORIENTATIONS": 6,
+  "DECISION": "NO_IMPROVEMENT_IN_BOUNDED_FOUR_TICKET_CYCLE_PILOT",
+  "DEDUPLICATED": 129532,
+  "EXACT_SCORED": 129532,
+  "FAMILY_NAME": "FOUR_TICKET_SINGLE_NUMBER_4_CYCLE",
+  "FINAL_SOURCE_MODULE_SHA256": "6229a7695ea247729bf36e3464847d80a4ea6d0214def773ba0fea57d3235c9b",
+  "FULL_FAMILY_ESTIMATE": {
+    "CAVEAT": "host load, per-quadruple legality and |W| vary; the full family was not started",
+    "DEFINITION": "mean measured per-quadruple worker CPU (precompute + exact scoring) over the 24 pilot quadruples * 4845 quadruples / 2 workers",
+    "FULL_FAMILY_ESTIMATED_WALL_SECONDS": 44777,
+    "MEAN_QUADRUPLE_CPU_SECONDS": 18.484,
+    "PILOT_WALL_SCALED_SECONDS": 45141,
+    "RAW_FULL_FAMILY_SIZE": 37674720,
+    "SINGLE_CORE_CPU_SECONDS": 89554,
+    "STATUS": "ESTIMATE_NOT_MEASURED_EXECUTION",
+    "WORKERS_ASSUMED": 2
+  },
+  "FULL_FAMILY_ESTIMATED_WALL_SECONDS": 44777,
+  "FULL_FOUR_TICKET_FAMILY_STARTED": "NO",
+  "GAIN_VS_PROTECTED_LANE_3": "NOT_EVALUATED",
+  "LEGAL": 129538,
+  "NEW_STABLE_NON_LANE3_GAIN": "NO",
+  "NOT_CLAIMED": [
+    "complete N4",
+    "complete four-ticket joint replacement",
+    "four-ticket cycle-family local optimality",
+    "full four-ticket cycle-family no-improvement",
+    "overall current-best K20",
+    "gain versus protected Lane 3"
+  ],
+  "PARITY_MISMATCHES": 0,
+  "PARITY_SAMPLE_COUNT": 72,
+  "PEAK_MEMORY_BYTES": 431964160,
+  "PEAK_MEMORY_DEFINITION": "max per-process peak RSS over main and workers",
+  "PERMUTATION_FAMILY": {
+    "CYCLE_ORIENTATIONS": 6,
+    "DEFINITION": "every permutation of four slots that is a single 4-cycle",
+    "EXCLUDED_DOUBLE_TRANSPOSITIONS": [
+      {
+        "NAME": "(0 1)(2 3)",
+        "SUCCESSOR": [
+          1,
+          0,
+          3,
+          2
+        ]
+      },
+      {
+        "NAME": "(0 2)(1 3)",
+        "SUCCESSOR": [
+          2,
+          3,
+          0,
+          1
+        ]
+      },
+      {
+        "NAME": "(0 3)(1 2)",
+        "SUCCESSOR": [
+          3,
+          2,
+          1,
+          0
+        ]
+      }
+    ],
+    "EXCLUDED_NOTE": "double transpositions are two independent two-ticket swaps; classified separately and never generated",
+    "FORWARD": "(0 1 2 3)",
+    "IMAGE_RULE": "slot p becomes T_p - x_p + x_q where successor[q] == p",
+    "ORIENTATIONS": [
+      {
+        "NAME": "(0 1 2 3)",
+        "SUCCESSOR": [
+          1,
+          2,
+          3,
+          0
+        ]
+      },
+      {
+        "NAME": "(0 3 2 1)",
+        "SUCCESSOR": [
+          3,
+          0,
+          1,
+          2
+        ]
+      },
+      {
+        "NAME": "(0 1 3 2)",
+        "SUCCESSOR": [
+          1,
+          3,
+          0,
+          2
+        ]
+      },
+      {
+        "NAME": "(0 2 3 1)",
+        "SUCCESSOR": [
+          2,
+          0,
+          3,
+          1
+        ]
+      },
+      {
+        "NAME": "(0 2 1 3)",
+        "SUCCESSOR": [
+          2,
+          3,
+          1,
+          0
+        ]
+      },
+      {
+        "NAME": "(0 3 1 2)",
+        "SUCCESSOR": [
+          3,
+          2,
+          0,
+          1
+        ]
+      }
+    ],
+    "REVERSE": "(0 3 2 1)",
+    "SLOTS": "0,1,2,3 = quadruple positions i<j<k<l of the start's normalized portfolio"
+  },
+  "PILOT_QUADRUPLES": [
+    [
+      5,
+      12,
+      13,
+      17
+    ],
+    [
+      4,
+      9,
+      10,
+      17
+    ],
+    [
+      2,
+      3,
+      6,
+      14
+    ],
+    [
+      3,
+      4,
+      9,
+      15
+    ],
+    [
+      6,
+      14,
+      15,
+      17
+    ],
+    [
+      4,
+      12,
+      13,
+      19
+    ],
+    [
+      0,
+      2,
+      4,
+      17
+    ],
+    [
+      0,
+      3,
+      18,
+      19
+    ],
+    [
+      10,
+      11,
+      12,
+      19
+    ],
+    [
+      2,
+      8,
+      11,
+      15
+    ],
+    [
+      5,
+      14,
+      15,
+      17
+    ],
+    [
+      12,
+      13,
+      16,
+      19
+    ],
+    [
+      5,
+      6,
+      10,
+      18
+    ],
+    [
+      0,
+      2,
+      7,
+      16
+    ],
+    [
+      0,
+      3,
+      6,
+      15
+    ],
+    [
+      6,
+      12,
+      13,
+      14
+    ],
+    [
+      0,
+      7,
+      8,
+      18
+    ],
+    [
+      1,
+      6,
+      9,
+      18
+    ],
+    [
+      8,
+      9,
+      11,
+      18
+    ],
+    [
+      3,
+      9,
+      10,
+      11
+    ],
+    [
+      0,
+      6,
+      9,
+      10
+    ],
+    [
+      4,
+      5,
+      10,
+      17
+    ],
+    [
+      3,
+      5,
+      12,
+      19
+    ],
+    [
+      0,
+      5,
+      7,
+      10
+    ]
+  ],
+  "PILOT_RAW_ATTEMPT_CEILING": 186624,
+  "PILOT_SEED": 20260930,
+  "PRIMARY": {
+    "ACCOUNTING": {
+      "GENERATOR_LEGAL": 129538,
+      "GENERATOR_RAW": 186624,
+      "GENERATOR_REJECTED": {
+        "DUPLICATE_TICKET": 0,
+        "FEWER_THAN_FOUR_CHANGED": 0,
+        "ILLEGAL_TICKET": 48418,
+        "UNCHANGED_TICKET": 8668
+      },
+      "GENERATOR_UNIQUE": 129532,
+      "GENERATOR_UNIQUE_ORDER_SHA256": "3ca236e38ae5e0d263e705481edaf51c91343f1c7392828cc88a9419ab9e65a6",
+      "SCAN_UNIQUE_ORDER_SHA256": "3ca236e38ae5e0d263e705481edaf51c91343f1c7392828cc88a9419ab9e65a6"
+    },
+    "BEST": {
+      "ADDED": [
+        [
+          2,
+          33,
+          35,
+          37,
+          40,
+          48
+        ],
+        [
+          5,
+          6,
+          14,
+          20,
+          31,
+          39
+        ],
+        [
+          5,
+          12,
+          13,
+          15,
+          19,
+          24
+        ],
+        [
+          17,
+          25,
+          32,
+          37,
+          41,
+          47
+        ]
+      ],
+      "COUNT": 313239661,
+      "DELTA_VS_START": 0,
+      "EXACT_PROBABILITY": "44748523/85900584",
+      "NUMBERS": [
+        5,
+        5,
+        37,
+        37
+      ],
+      "ORIENTATION": "(0 2 1 3)",
+      "PORTFOLIO": [
+        [
+          1,
+          2,
+          34,
+          41,
+          42,
+          45
+        ],
+        [
+          1,
+          17,
+          22,
+          30,
+          33,
+          43
+        ],
+        [
+          2,
+          33,
+          35,
+          37,
+          40,
+          48
+        ],
+        [
+          3,
+          4,
+          10,
+          15,
+          26,
+          27
+        ],
+        [
+          3,
+          8,
+          13,
+          28,
+          31,
+          36
+        ],
+        [
+          3,
+          9,
+          16,
+          23,
+          29,
+          39
+        ],
+        [
+          4,
+          7,
+          12,
+          36,
+          39,
+          46
+        ],
+        [
+          4,
+          18,
+          20,
+          24,
+          28,
+          29
+        ],
+        [
+          5,
+          6,
+          14,
+          20,
+          31,
+          39
+        ],
+        [
+          5,
+          12,
+          13,
+          15,
+          19,
+          24
+        ],
+        [
+          6,
+          7,
+          9,
+          13,
+          18,
+          26
+        ],
+        [
+          6,
+          10,
+          11,
+          16,
+          24,
+          36
+        ],
+        [
+          7,
+          8,
+          10,
+          14,
+          19,
+          29
+        ],
+        [
+          8,
+          9,
+          11,
+          15,
+          20,
+          46
+        ],
+        [
+          11,
+          12,
+          18,
+          23,
+          27,
+          49
+        ],
+        [
+          16,
+          19,
+          26,
+          28,
+          46,
+          49
+        ],
+        [
+          17,
+          25,
+          32,
+          37,
+          41,
+          47
+        ],
+        [
+          21,
+          25,
+          30,
+          38,
+          45,
+          48
+        ],
+        [
+          21,
+          32,
+          40,
+          42,
+          43,
+          44
+        ],
+        [
+          22,
+          34,
+          35,
+          38,
+          44,
+          47
+        ]
+      ],
+      "QUADRUPLE": [
+        2,
+        8,
+        11,
+        15
+      ],
+      "QUADRUPLE_TICKETS": [
+        [
+          2,
+          5,
+          33,
+          35,
+          40,
+          48
+        ],
+        [
+          5,
+          17,
+          25,
+          32,
+          41,
+          47
+        ],
+        [
+          6,
+          14,
+          20,
+          31,
+          37,
+          39
+        ],
+        [
+          12,
+          13,
+          15,
+          19,
+          24,
+          37
+        ]
+      ],
+      "REMOVED": [
+        [
+          2,
+          5,
+          33,
+          35,
+          40,
+          48
+        ],
+        [
+          5,
+          17,
+          25,
+          32,
+          41,
+          47
+        ],
+        [
+          6,
+          14,
+          20,
+          31,
+          37,
+          39
+        ],
+        [
+          12,
+          13,
+          15,
+          19,
+          24,
+          37
+        ]
+      ],
+      "SHA256": "292db85d03715ca7c66b37888b1a4d180284bec1d915b4d2cd744c57dcf27081"
+    },
+    "BEST_CANONICAL_RECOUNT": [
+      {
+        "CANONICAL_COUNT": 313239661,
+        "MATCH": true,
+        "RESIDUAL_COUNT": 313239661,
+        "SHA256": "292db85d03715ca7c66b37888b1a4d180284bec1d915b4d2cd744c57dcf27081"
+      }
+    ],
+    "BEST_CANONICAL_RECOUNT_STATUS": "PASS",
+    "BEST_TIE_COUNT": 1,
+    "CANDIDATES_EQUAL_TO_START": 1,
+    "CANDIDATES_PER_SECOND": 579.28,
+    "CHECKS": {
+      "BEST_CANONICAL_RECOUNT": true,
+      "LEGAL_EQUALS_GENERATOR": true,
+      "LEGAL_EQUALS_UNIQUE_PLUS_DUPLICATES": true,
+      "PER_QUADRUPLE_RAW_7776": true,
+      "PER_QUADRUPLE_START_REBIND": true,
+      "QUADRUPLES_COMPLETE": true,
+      "RAW_EQUALS_CEILING": true,
+      "RAW_EQUALS_GENERATOR": true,
+      "RAW_EQUALS_LEGAL_PLUS_REJECTED": true,
+      "REJECTED_EQUALS_GENERATOR": true,
+      "SCORED_EQUALS_LEGAL_MINUS_LOCAL_DUPLICATES": true,
+      "UNIQUE_EQUALS_GENERATOR": true,
+      "UNIQUE_ORDER_EQUALS_GENERATOR": true
+    },
+    "CROSS_QUADRUPLE_DUPLICATES": 0,
+    "DEDUPLICATED": 129532,
+    "EXACT_SCORED": 129532,
+    "INNER_SAMPLING": "NONE",
+    "LEDGER": ".task-data/B649_K20_FOUR_TICKET_CYCLE_PILOT_R1/primary-candidates.jsonl",
+    "LEDGER_SHA256": "19b2b5c34525227cf969fa689958ed383b153e8f77be9c7d8533fcdecb4022c8",
+    "LEGAL": 129538,
+    "PARITY": {
+      "MIN_SAMPLE": 60,
+      "MISMATCHES": 0,
+      "PER_QUADRUPLE": 3,
+      "SAMPLES": [
+        {
+          "ADDED": [
+            [
+              3,
+              8,
+              16,
+              23,
+              29,
+              39
+            ],
+            [
+              7,
+              8,
+              9,
+              10,
+              14,
+              29
+            ],
+            [
+              9,
+              11,
+              15,
+              20,
+              38,
+              46
+            ],
+            [
+              19,
+              21,
+              25,
+              30,
+              45,
+              48
+            ]
+          ],
+          "CANONICAL_COUNT": 311487554,
+          "CANONICAL_DELTA": -1752107,
+          "MATCH": true,
+          "NUMBERS": [
+            9,
+            19,
+            8,
+            38
+          ],
+          "ORIENTATION": "(0 1 3 2)",
+          "QUADRUPLE": [
+            5,
+            12,
+            13,
+            17
+          ],
+          "REMOVED": [
+            [
+              3,
+              9,
+              16,
+              23,
+              29,
+              39
+            ],
+            [
+              7,
+              8,
+              10,
+              14,
+              19,
+              29
+            ],
+            [
+              8,
+              9,
+              11,
+              15,
+              20,
+              46
+            ],
+            [
+              21,
+              25,
+              30,
+              38,
+              45,
+              48
+            ]
+          ],
+          "RESIDUAL_COUNT": 311487554,
+          "RESIDUAL_DELTA": -1752107,
+          "SHA256": "b55279b7685c0ce4f17bafd38bd77e221f66cc97a3081988c00763d100548b3b"
+        },
+        {
+          "ADDED": [
+            [
+              3,
+              9,
+              11,
+              16,
+              29,
+              39
+            ],
+            [
+              7,
+              10,
+              14,
+              19,
+              23,
+              29
+            ],
+            [
+              8,
+              9,
+              15,
+              20,
+              46,
+              48
+            ],
+            [
+              8,
+              21,
+              25,
+              30,
+              38,
+              45
+            ]
+          ],
+          "CANONICAL_COUNT": 312526578,
+          "CANONICAL_DELTA": -713083,
+          "MATCH": true,
+          "NUMBERS": [
+            23,
+            8,
+            11,
+            48
+          ],
+          "ORIENTATION": "(0 1 3 2)",
+          "QUADRUPLE": [
+            5,
+            12,
+            13,
+            17
+          ],
+          "REMOVED": [
+            [
+              3,
+              9,
+              16,
+              23,
+              29,
+              39
+            ],
+            [
+              7,
+              8,
+              10,
+              14,
+              19,
+              29
+            ],
+            [
+              8,
+              9,
+              11,
+              15,
+              20,
+              46
+            ],
+            [
+              21,
+              25,
+              30,
+              38,
+              45,
+              48
+            ]
+          ],
+          "RESIDUAL_COUNT": 312526578,
+          "RESIDUAL_DELTA": -713083,
+          "SHA256": "b68b9397f8f6d4a0b745cec2ed81e22b37ec49b06bfe1f2af3120166fe544c9b"
+        },
+        {
+          "ADDED": [
+            [
+              3,
+              8,
+              9,
+              15,
+              20,
+              46
+            ],
+            [
+              7,
+              9,
+              16,
+              23,
+              29,
+              39
+            ],
+            [
+              8,
+              10,
+              14,
+              19,
+              25,
+              29
+            ],
+            [
+              11,
+              21,
+              30,
+              38,
+              45,
+              48
+            ]
+          ],
+          "CANONICAL_COUNT": 311054877,
+          "CANONICAL_DELTA": -2184784,
+          "MATCH": true,
+          "NUMBERS": [
+            3,
+            7,
+            11,
+            25
+          ],
+          "ORIENTATION": "(0 2 3 1)",
+          "QUADRUPLE": [
+            5,
+            12,
+            13,
+            17
+          ],
+          "REMOVED": [
+            [
+              3,
+              9,
+              16,
+              23,
+              29,
+              39
+            ],
+            [
+              7,
+              8,
+              10,
+              14,
+              19,
+              29
+            ],
+            [
+              8,
+              9,
+              11,
+              15,
+              20,
+              46
+            ],
+            [
+              21,
+              25,
+              30,
+              38,
+              45,
+              48
+            ]
+          ],
+          "RESIDUAL_COUNT": 311054877,
+          "RESIDUAL_DELTA": -2184784,
+          "SHA256": "01dbde22cbffbf10f10235c309919423e425ab63ec0ee1082d259fb3f2e3cd06"
+        },
+        {
+          "ADDED": [
+            [
+              3,
+              8,
+              13,
+              28,
+              31,
+              45
+            ],
+            [
+              6,
+              7,
+              9,
+              13,
+              26,
+              36
+            ],
+            [
+              6,
+              10,
+              11,
+              16,
+              18,
+              36
+            ],
+            [
+              21,
+              24,
+              25,
+              30,
+              38,
+              48
+            ]
+          ],
+          "CANONICAL_COUNT": 311503500,
+          "CANONICAL_DELTA": -1736161,
+          "MATCH": true,
+          "NUMBERS": [
+            36,
+            18,
+            24,
+            45
+          ],
+          "ORIENTATION": "(0 1 2 3)",
+          "QUADRUPLE": [
+            4,
+            9,
+            10,
+            17
+          ],
+          "REMOVED": [
+            [
+              3,
+              8,
+              13,
+              28,
+              31,
+              36
+            ],
+            [
+              6,
+              7,
+              9,
+              13,
+              18,
+              26
+            ],
+            [
+              6,
+              10,
+              11,
+              16,
+              24,
+              36
+            ],
+            [
+              21,
+              25,
+              30,
+              38,
+              45,
+              48
+            ]
+          ],
+          "RESIDUAL_COUNT": 311503500,
+          "RESIDUAL_DELTA": -1736161,
+          "SHA256": "c531e7fb60c46490a058822f0c6721185b700eab1eaee67de77f3cfbd932d3a6"
+        },
+        {
+          "ADDED": [
+            [
+              3,
+              10,
+              13,
+              28,
+              31,
+              36
+            ],
+            [
+              6,
+              7,
+              8,
+              9,
+              13,
+              26
+            ],
+            [
+              6,
+              11,
+              16,
+              24,
+              25,
+              36
+            ],
+            [
+              18,
+              21,
+              30,
+              38,
+              45,
+              48
+            ]
+          ],
+          "CANONICAL_COUNT": 311525060,
+          "CANONICAL_DELTA": -1714601,
+          "MATCH": true,
+          "NUMBERS": [
+            8,
+            18,
+            10,
+            25
+          ],
+          "ORIENTATION": "(0 1 3 2)",
+          "QUADRUPLE": [
+            4,
+            9,
+            10,
+            17
+          ],
+          "REMOVED": [
+            [
+              3,
+              8,
+              13,
+              28,
+              31,
+              36
+            ],
+            [
+              6,
+              7,
+              9,
+              13,
+              18,
+              26
+            ],
+            [
+              6,
+              10,
+              11,
+              16,
+              24,
+              36
+            ],
+            [
+              21,
+              25,
+              30,
+              38,
+              45,
+              48
+            ]
+          ],
+          "RESIDUAL_COUNT": 311525060,
+          "RESIDUAL_DELTA": -1714601,
+          "SHA256": "f2a9f08e08bb9d88ea7dad3919f917b4e3c5382fba531de19f551ef7f2502a06"
+        },
+        {
+          "ADDED": [
+            [
+              3,
+              8,
+              13,
+              25,
+              28,
+              31
+            ],
+            [
+              6,
+              7,
+              13,
+              18,
+              26,
+              36
+            ],
+            [
+              6,
+              21,
+              30,
+              38,
+              45,
+              48
+            ],
+            [
+              9,
+              10,
+              11,
+              16,
+              24,
+              36
+            ]
+          ],
+          "CANONICAL_COUNT": 311545773,
+          "CANONICAL_DELTA": -1693888,
+          "MATCH": true,
+          "NUMBERS": [
+            36,
+            9,
+            6,
+            25
+          ],
+          "ORIENTATION": "(0 1 2 3)",
+          "QUADRUPLE": [
+            4,
+            9,
+            10,
+            17
+          ],
+          "REMOVED": [
+            [
+              3,
+              8,
+              13,
+              28,
+              31,
+              36
+            ],
+            [
+              6,
+              7,
+              9,
+              13,
+              18,
+              26
+            ],
+            [
+              6,
+              10,
+              11,
+              16,
+              24,
+              36
+            ],
+            [
+              21,
+              25,
+              30,
+              38,
+              45,
+              48
+            ]
+          ],
+          "RESIDUAL_COUNT": 311545773,
+          "RESIDUAL_DELTA": -1693888,
+          "SHA256": "e4d27ea67ce0732f8cf91ed1642cc0bf30d7a6aa953dce0f1a81081856982446"
+        },
+        {
+          "ADDED": [
+            [
+              2,
+              4,
+              12,
+              36,
+              39,
+              46
+            ],
+            [
+              3,
+              4,
+              7,
+              15,
+              26,
+              27
+            ],
+            [
+              5,
+              18,
+              33,
+              35,
+              40,
+              48
+            ],
+            [
+              10,
+              11,
+              12,
+              23,
+              27,
+              49
+            ]
+          ],
+          "CANONICAL_COUNT": 311956050,
+          "CANONICAL_DELTA": -1283611,
+          "MATCH": true,
+          "NUMBERS": [
+            2,
+            10,
+            7,
+            18
+          ],
+          "ORIENTATION": "(0 2 1 3)",
+          "QUADRUPLE": [
+            2,
+            3,
+            6,
+            14
+          ],
+          "REMOVED": [
+            [
+              2,
+              5,
+              33,
+              35,
+              40,
+              48
+            ],
+            [
+              3,
+              4,
+              10,
+              15,
+              26,
+              27
+            ],
+            [
+              4,
+              7,
+              12,
+              36,
+              39,
+              46
+            ],
+            [
+              11,
+              12,
+              18,
+              23,
+              27,
+              49
+            ]
+          ],
+          "RESIDUAL_COUNT": 311956050,
+          "RESIDUAL_DELTA": -1283611,
+          "SHA256": "bce1348e950a6c2b9eeff599811da884b77084dd424079f4f910a88cb702516e"
+        },
+        {
+          "ADDED": [
+            [
+              2,
+              5,
+              7,
+              33,
+              35,
+              48
+            ],
+            [
+              3,
+              4,
+              10,
+              26,
+              27,
+              40
+            ],
+            [
+              4,
+              11,
+              12,
+              36,
+              39,
+              46
+            ],
+            [
+              12,
+              15,
+              18,
+              23,
+              27,
+              49
+            ]
+          ],
+          "CANONICAL_COUNT": 311502646,
+          "CANONICAL_DELTA": -1737015,
+          "MATCH": true,
+          "NUMBERS": [
+            40,
+            15,
+            7,
+            11
+          ],
+          "ORIENTATION": "(0 1 3 2)",
+          "QUADRUPLE": [
+            2,
+            3,
+            6,
+            14
+          ],
+          "REMOVED": [
+            [
+              2,
+              5,
+              33,
+              35,
+              40,
+              48
+            ],
+            [
+              3,
+              4,
+              10,
+              15,
+              26,
+              27
+            ],
+            [
+              4,
+              7,
+              12,
+              36,
+              39,
+              46
+            ],
+            [
+              11,
+              12,
+              18,
+              23,
+              27,
+              49
+            ]
+          ],
+          "RESIDUAL_COUNT": 311502646,
+          "RESIDUAL_DELTA": -1737015,
+          "SHA256": "fe4ed400eb4ec9668c73db7e5c2b673db2fe1a3d98d21a0fcd86765ba20581bd"
+        },
+        {
+          "ADDED": [
+            [
+              2,
+              5,
+              12,
+              35,
+              40,
+              48
+            ],
+            [
+              3,
+              11,
+              12,
+              18,
+              23,
+              27
+            ],
+            [
+              4,
+              7,
+              36,
+              39,
+              46,
+              49
+            ],
+            [
+              4,
+              10,
+              15,
+              26,
+              27,
+              33
+            ]
+          ],
+          "CANONICAL_COUNT": 311976854,
+          "CANONICAL_DELTA": -1262807,
+          "MATCH": true,
+          "NUMBERS": [
+            33,
+            3,
+            12,
+            49
+          ],
+          "ORIENTATION": "(0 1 3 2)",
+          "QUADRUPLE": [
+            2,
+            3,
+            6,
+            14
+          ],
+          "REMOVED": [
+            [
+              2,
+              5,
+              33,
+              35,
+              40,
+              48
+            ],
+            [
+              3,
+              4,
+              10,
+              15,
+              26,
+              27
+            ],
+            [
+              4,
+              7,
+              12,
+              36,
+              39,
+              46
+            ],
+            [
+              11,
+              12,
+              18,
+              23,
+              27,
+              49
+            ]
+          ],
+          "RESIDUAL_COUNT": 311976854,
+          "RESIDUAL_DELTA": -1262807,
+          "SHA256": "f94c7a2ff95bdcffdba43869fafca0f9b5dd85103eabb522149b8b8312e93341"
+        },
+        {
+          "ADDED": [
+            [
+              3,
+              6,
+              7,
+              13,
+              18,
+              26
+            ],
+            [
+              3,
+              12,
+              13,
+              15,
+              24,
+              37
+            ],
+            [
+              4,
+              9,
+              10,
+              15,
+              26,
+              27
+            ],
+            [
+              8,
+              13,
+              19,
+              28,
+              31,
+              36
+            ]
+          ],
+          "CANONICAL_COUNT": 311235995,
+          "CANONICAL_DELTA": -2003666,
+          "MATCH": true,
+          "NUMBERS": [
+            3,
+            3,
+            9,
+            19
+          ],
+          "ORIENTATION": "(0 3 1 2)",
+          "QUADRUPLE": [
+            3,
+            4,
+            9,
+            15
+          ],
+          "REMOVED": [
+            [
+              3,
+              4,
+              10,
+              15,
+              26,
+              27
+            ],
+            [
+              3,
+              8,
+              13,
+              28,
+              31,
+              36
+            ],
+            [
+              6,
+              7,
+              9,
+              13,
+              18,
+              26
+            ],
+            [
+              12,
+              13,
+              15,
+              19,
+              24,
+              37
+            ]
+          ],
+          "RESIDUAL_COUNT": 311235995,
+          "RESIDUAL_DELTA": -2003666,
+          "SHA256": "b554ce422cb0d73292a7be2307acaac091943158f1bc0e15ebfab299c75a46a6"
+        },
+        {
+          "ADDED": [
+            [
+              3,
+              4,
+              13,
+              28,
+              31,
+              36
+            ],
+            [
+              3,
+              10,
+              12,
+              15,
+              26,
+              27
+            ],
+            [
+              6,
+              7,
+              8,
+              9,
+              13,
+              18
+            ],
+            [
+              13,
+              15,
+              19,
+              24,
+              26,
+              37
+            ]
+          ],
+          "CANONICAL_COUNT": 309697122,
+          "CANONICAL_DELTA": -3542539,
+          "MATCH": true,
+          "NUMBERS": [
+            4,
+            8,
+            26,
+            12
+          ],
+          "ORIENTATION": "(0 1 2 3)",
+          "QUADRUPLE": [
+            3,
+            4,
+            9,
+            15
+          ],
+          "REMOVED": [
+            [
+              3,
+              4,
+              10,
+              15,
+              26,
+              27
+            ],
+            [
+              3,
+              8,
+              13,
+              28,
+              31,
+              36
+            ],
+            [
+              6,
+              7,
+              9,
+              13,
+              18,
+              26
+            ],
+            [
+              12,
+              13,
+              15,
+              19,
+              24,
+              37
+            ]
+          ],
+          "RESIDUAL_COUNT": 309697122,
+          "RESIDUAL_DELTA": -3542539,
+          "SHA256": "6e5f3ee76f06da0ccbfc2b792c2a5b3d514956961df45bf93c456abc609bf053"
+        },
+        {
+          "ADDED": [
+            [
+              3,
+              6,
+              9,
+              13,
+              18,
+              26
+            ],
+            [
+              3,
+              13,
+              19,
+              28,
+              31,
+              36
+            ],
+            [
+              4,
+              8,
+              10,
+              15,
+              26,
+              27
+            ],
+            [
+              7,
+              12,
+              13,
+              15,
+              24,
+              37
+            ]
+          ],
+          "CANONICAL_COUNT": 310234589,
+          "CANONICAL_DELTA": -3005072,
+          "MATCH": true,
+          "NUMBERS": [
+            3,
+            8,
+            7,
+            19
+          ],
+          "ORIENTATION": "(0 2 3 1)",
+          "QUADRUPLE": [
+            3,
+            4,
+            9,
+            15
+          ],
+          "REMOVED": [
+            [
+              3,
+              4,
+              10,
+              15,
+              26,
+              27
+            ],
+            [
+              3,
+              8,
+              13,
+              28,
+              31,
+              36
+            ],
+            [
+              6,
+              7,
+              9,
+              13,
+              18,
+              26
+            ],
+            [
+              12,
+              13,
+              15,
+              19,
+              24,
+              37
+            ]
+          ],
+          "RESIDUAL_COUNT": 310234589,
+          "RESIDUAL_DELTA": -3005072,
+          "SHA256": "0fa3cb83fb479e583a942836bd39410f61cd6b60f0d1f9c49c16d8a184961c03"
+        },
+        {
+          "ADDED": [
+            [
+              4,
+              7,
+              12,
+              19,
+              36,
+              46
+            ],
+            [
+              11,
+              12,
+              13,
+              15,
+              24,
+              37
+            ],
+            [
+              12,
+              18,
+              23,
+              27,
+              30,
+              49
+            ],
+            [
+              21,
+              25,
+              38,
+              39,
+              45,
+              48
+            ]
+          ],
+          "CANONICAL_COUNT": 311101756,
+          "CANONICAL_DELTA": -2137905,
+          "MATCH": true,
+          "NUMBERS": [
+            39,
+            11,
+            19,
+            30
+          ],
+          "ORIENTATION": "(0 3 1 2)",
+          "QUADRUPLE": [
+            6,
+            14,
+            15,
+            17
+          ],
+          "REMOVED": [
+            [
+              4,
+              7,
+              12,
+              36,
+              39,
+              46
+            ],
+            [
+              11,
+              12,
+              18,
+              23,
+              27,
+              49
+            ],
+            [
+              12,
+              13,
+              15,
+              19,
+              24,
+              37
+            ],
+            [
+              21,
+              25,
+              30,
+              38,
+              45,
+              48
+            ]
+          ],
+          "RESIDUAL_COUNT": 311101756,
+          "RESIDUAL_DELTA": -2137905,
+          "SHA256": "48ad90cb344546f54e432fb91eadf06c8c59a28181b1d6a891d94823dc27dc4c"
+        },
+        {
+          "ADDED": [
+            [
+              4,
+              7,
+              18,
+              36,
+              39,
+              46
+            ],
+            [
+              11,
+              12,
+              15,
+              23,
+              27,
+              49
+            ],
+            [
+              12,
+              13,
+              19,
+              24,
+              37,
+              38
+            ],
+            [
+              12,
+              21,
+              25,
+              30,
+              45,
+              48
+            ]
+          ],
+          "CANONICAL_COUNT": 311070200,
+          "CANONICAL_DELTA": -2169461,
+          "MATCH": true,
+          "NUMBERS": [
+            12,
+            18,
+            15,
+            38
+          ],
+          "ORIENTATION": "(0 3 2 1)",
+          "QUADRUPLE": [
+            6,
+            14,
+            15,
+            17
+          ],
+          "REMOVED": [
+            [
+              4,
+              7,
+              12,
+              36,
+              39,
+              46
+            ],
+            [
+              11,
+              12,
+              18,
+              23,
+              27,
+              49
+            ],
+            [
+              12,
+              13,
+              15,
+              19,
+              24,
+              37
+            ],
+            [
+              21,
+              25,
+              30,
+              38,
+              45,
+              48
+            ]
+          ],
+          "RESIDUAL_COUNT": 311070200,
+          "RESIDUAL_DELTA": -2169461,
+          "SHA256": "ee60943df409b1e5e1175faead2cd87ba578bcefb5b086631f9aa5ae23e7b522"
+        },
+        {
+          "ADDED": [
+            [
+              4,
+              7,
+              24,
+              36,
+              39,
+              46
+            ],
+            [
+              11,
+              12,
+              13,
+              15,
+              19,
+              37
+            ],
+            [
+              12,
+              18,
+              23,
+              27,
+              45,
+              49
+            ],
+            [
+              12,
+              21,
+              25,
+              30,
+              38,
+              48
+            ]
+          ],
+          "CANONICAL_COUNT": 311637249,
+          "CANONICAL_DELTA": -1602412,
+          "MATCH": true,
+          "NUMBERS": [
+            12,
+            11,
+            24,
+            45
+          ],
+          "ORIENTATION": "(0 3 1 2)",
+          "QUADRUPLE": [
+            6,
+            14,
+            15,
+            17
+          ],
+          "REMOVED": [
+            [
+              4,
+              7,
+              12,
+              36,
+              39,
+              46
+            ],
+            [
+              11,
+              12,
+              18,
+              23,
+              27,
+              49
+            ],
+            [
+              12,
+              13,
+              15,
+              19,
+              24,
+              37
+            ],
+            [
+              21,
+              25,
+              30,
+              38,
+              45,
+              48
+            ]
+          ],
+          "RESIDUAL_COUNT": 311637249,
+          "RESIDUAL_DELTA": -1602412,
+          "SHA256": "08fcd6f69814d7d5ae5dd34250bb95ea440dbb4f3525ab66dedf0bc1b3ff9c06"
+        },
+        {
+          "ADDED": [
+            [
+              3,
+              7,
+              8,
+              10,
+              19,
+              29
+            ],
+            [
+              8,
+              9,
+              11,
+              20,
+              34,
+              46
+            ],
+            [
+              8,
+              13,
+              15,
+              28,
+              31,
+              36
+            ],
+            [
+              14,
+              22,
+              35,
+              38,
+              44,
+              47
+            ]
+          ],
+          "CANONICAL_COUNT": 311626238,
+          "CANONICAL_DELTA": -1613423,
+          "MATCH": true,
+          "NUMBERS": [
+            3,
+            14,
+            15,
+            34
+          ],
+          "ORIENTATION": "(0 1 3 2)",
+          "QUADRUPLE": [
+            4,
+            12,
+            13,
+            19
+          ],
+          "REMOVED": [
+            [
+              3,
+              8,
+              13,
+              28,
+              31,
+              36
+            ],
+            [
+              7,
+              8,
+              10,
+              14,
+              19,
+              29
+            ],
+            [
+              8,
+              9,
+              11,
+              15,
+              20,
+              46
+            ],
+            [
+              22,
+              34,
+              35,
+              38,
+              44,
+              47
+            ]
+          ],
+          "RESIDUAL_COUNT": 311626238,
+          "RESIDUAL_DELTA": -1613423,
+          "SHA256": "e531a5184becff6a4aa275ce99be7a3d95c062034bd025764f19c67b1652e4b5"
+        },
+        {
+          "ADDED": [
+            [
+              3,
+              8,
+              28,
+              31,
+              35,
+              36
+            ],
+            [
+              7,
+              8,
+              9,
+              11,
+              15,
+              20
+            ],
+            [
+              8,
+              10,
+              13,
+              14,
+              19,
+              29
+            ],
+            [
+              22,
+              34,
+              38,
+              44,
+              46,
+              47
+            ]
+          ],
+          "CANONICAL_COUNT": 312005155,
+          "CANONICAL_DELTA": -1234506,
+          "MATCH": true,
+          "NUMBERS": [
+            13,
+            7,
+            46,
+            35
+          ],
+          "ORIENTATION": "(0 1 2 3)",
+          "QUADRUPLE": [
+            4,
+            12,
+            13,
+            19
+          ],
+          "REMOVED": [
+            [
+              3,
+              8,
+              13,
+              28,
+              31,
+              36
+            ],
+            [
+              7,
+              8,
+              10,
+              14,
+              19,
+              29
+            ],
+            [
+              8,
+              9,
+              11,
+              15,
+              20,
+              46
+            ],
+            [
+              22,
+              34,
+              35,
+              38,
+              44,
+              47
+            ]
+          ],
+          "RESIDUAL_COUNT": 312005155,
+          "RESIDUAL_DELTA": -1234506,
+          "SHA256": "5d92c01831e1feac4d5daaae3541ccbab2f8b8ef314db00ef15fb34a5cf297d4"
+        },
+        {
+          "ADDED": [
+            [
+              3,
+              8,
+              11,
+              15,
+              20,
+              46
+            ],
+            [
+              7,
+              8,
+              9,
+              10,
+              14,
+              29
+            ],
+            [
+              8,
+              13,
+              28,
+              31,
+              36,
+              44
+            ],
+            [
+              19,
+              22,
+              34,
+              35,
+              38,
+              47
+            ]
+          ],
+          "CANONICAL_COUNT": 311526495,
+          "CANONICAL_DELTA": -1713166,
+          "MATCH": true,
+          "NUMBERS": [
+            3,
+            19,
+            9,
+            44
+          ],
+          "ORIENTATION": "(0 2 1 3)",
+          "QUADRUPLE": [
+            4,
+            12,
+            13,
+            19
+          ],
+          "REMOVED": [
+            [
+              3,
+              8,
+              13,
+              28,
+              31,
+              36
+            ],
+            [
+              7,
+              8,
+              10,
+              14,
+              19,
+              29
+            ],
+            [
+              8,
+              9,
+              11,
+              15,
+              20,
+              46
+            ],
+            [
+              22,
+              34,
+              35,
+              38,
+              44,
+              47
+            ]
+          ],
+          "RESIDUAL_COUNT": 311526495,
+          "RESIDUAL_DELTA": -1713166,
+          "SHA256": "9a2eca6df83fa91bd8db33b67da44ef6065fba55142060290f0116c2641bbc1a"
+        },
+        {
+          "ADDED": [
+            [
+              1,
+              2,
+              34,
+              36,
+              41,
+              45
+            ],
+            [
+              2,
+              5,
+              33,
+              40,
+              42,
+              48
+            ],
+            [
+              3,
+              8,
+              13,
+              28,
+              31,
+              45
+            ],
+            [
+              21,
+              25,
+              30,
+              35,
+              38,
+              48
+            ]
+          ],
+          "CANONICAL_COUNT": 311848488,
+          "CANONICAL_DELTA": -1391173,
+          "MATCH": true,
+          "NUMBERS": [
+            42,
+            35,
+            36,
+            45
+          ],
+          "ORIENTATION": "(0 1 3 2)",
+          "QUADRUPLE": [
+            0,
+            2,
+            4,
+            17
+          ],
+          "REMOVED": [
+            [
+              1,
+              2,
+              34,
+              41,
+              42,
+              45
+            ],
+            [
+              2,
+              5,
+              33,
+              35,
+              40,
+              48
+            ],
+            [
+              3,
+              8,
+              13,
+              28,
+              31,
+              36
+            ],
+            [
+              21,
+              25,
+              30,
+              38,
+              45,
+              48
+            ]
+          ],
+          "RESIDUAL_COUNT": 311848488,
+          "RESIDUAL_DELTA": -1391173,
+          "SHA256": "3208fd865c1d412886e6c4d48ac6232afcf38ba3c5c1f6eb7d4310db90a29a04"
+        },
+        {
+          "ADDED": [
+            [
+              1,
+              2,
+              30,
+              34,
+              41,
+              42
+            ],
+            [
+              2,
+              3,
+              8,
+              13,
+              31,
+              36
+            ],
+            [
+              5,
+              33,
+              35,
+              40,
+              45,
+              48
+            ],
+            [
+              21,
+              25,
+              28,
+              38,
+              45,
+              48
+            ]
+          ],
+          "CANONICAL_COUNT": 311876166,
+          "CANONICAL_DELTA": -1363495,
+          "MATCH": true,
+          "NUMBERS": [
+            45,
+            2,
+            28,
+            30
+          ],
+          "ORIENTATION": "(0 1 2 3)",
+          "QUADRUPLE": [
+            0,
+            2,
+            4,
+            17
+          ],
+          "REMOVED": [
+            [
+              1,
+              2,
+              34,
+              41,
+              42,
+              45
+            ],
+            [
+              2,
+              5,
+              33,
+              35,
+              40,
+              48
+            ],
+            [
+              3,
+              8,
+              13,
+              28,
+              31,
+              36
+            ],
+            [
+              21,
+              25,
+              30,
+              38,
+              45,
+              48
+            ]
+          ],
+          "RESIDUAL_COUNT": 311876166,
+          "RESIDUAL_DELTA": -1363495,
+          "SHA256": "2d682db587a17d3fd97e3062db5771030f17bb030c09a0de3639abb3b7d6eaeb"
+        },
+        {
+          "ADDED": [
+            [
+              1,
+              2,
+              34,
+              35,
+              42,
+              45
+            ],
+            [
+              2,
+              5,
+              21,
+              33,
+              40,
+              48
+            ],
+            [
+              3,
+              8,
+              13,
+              28,
+              36,
+              41
+            ],
+            [
+              25,
+              30,
+              31,
+              38,
+              45,
+              48
+            ]
+          ],
+          "CANONICAL_COUNT": 311944171,
+          "CANONICAL_DELTA": -1295490,
+          "MATCH": true,
+          "NUMBERS": [
+            41,
+            35,
+            31,
+            21
+          ],
+          "ORIENTATION": "(0 2 3 1)",
+          "QUADRUPLE": [
+            0,
+            2,
+            4,
+            17
+          ],
+          "REMOVED": [
+            [
+              1,
+              2,
+              34,
+              41,
+              42,
+              45
+            ],
+            [
+              2,
+              5,
+              33,
+              35,
+              40,
+              48
+            ],
+            [
+              3,
+              8,
+              13,
+              28,
+              31,
+              36
+            ],
+            [
+              21,
+              25,
+              30,
+              38,
+              45,
+              48
+            ]
+          ],
+          "RESIDUAL_COUNT": 311944171,
+          "RESIDUAL_DELTA": -1295490,
+          "SHA256": "726439b746a4ec3d58dd8642df140a72db3cb75dcd673e903be06ae09dada88a"
+        },
+        {
+          "ADDED": [
+            [
+              1,
+              34,
+              41,
+              42,
+              44,
+              45
+            ],
+            [
+              2,
+              21,
+              32,
+              40,
+              42,
+              44
+            ],
+            [
+              3,
+              10,
+              15,
+              26,
+              27,
+              43
+            ],
+            [
+              4,
+              22,
+              34,
+              35,
+              38,
+              47
+            ]
+          ],
+          "CANONICAL_COUNT": 311812032,
+          "CANONICAL_DELTA": -1427629,
+          "MATCH": true,
+          "NUMBERS": [
+            2,
+            4,
+            43,
+            44
+          ],
+          "ORIENTATION": "(0 2 1 3)",
+          "QUADRUPLE": [
+            0,
+            3,
+            18,
+            19
+          ],
+          "REMOVED": [
+            [
+              1,
+              2,
+              34,
+              41,
+              42,
+              45
+            ],
+            [
+              3,
+              4,
+              10,
+              15,
+              26,
+              27
+            ],
+            [
+              21,
+              32,
+              40,
+              42,
+              43,
+              44
+            ],
+            [
+              22,
+              34,
+              35,
+              38,
+              44,
+              47
+            ]
+          ],
+          "RESIDUAL_COUNT": 311812032,
+          "RESIDUAL_DELTA": -1427629,
+          "SHA256": "22e633d289850081bf8a9c93de5fd325e3d965bb6cf6580585d0abd34bdf5a0f"
+        },
+        {
+          "ADDED": [
+            [
+              1,
+              4,
+              10,
+              15,
+              26,
+              27
+            ],
+            [
+              2,
+              34,
+              38,
+              41,
+              42,
+              45
+            ],
+            [
+              3,
+              21,
+              40,
+              42,
+              43,
+              44
+            ],
+            [
+              22,
+              32,
+              34,
+              35,
+              44,
+              47
+            ]
+          ],
+          "CANONICAL_COUNT": 311856496,
+          "CANONICAL_DELTA": -1383165,
+          "MATCH": true,
+          "NUMBERS": [
+            1,
+            3,
+            32,
+            38
+          ],
+          "ORIENTATION": "(0 1 2 3)",
+          "QUADRUPLE": [
+            0,
+            3,
+            18,
+            19
+          ],
+          "REMOVED": [
+            [
+              1,
+              2,
+              34,
+              41,
+              42,
+              45
+            ],
+            [
+              3,
+              4,
+              10,
+              15,
+              26,
+              27
+            ],
+            [
+              21,
+              32,
+              40,
+              42,
+              43,
+              44
+            ],
+            [
+              22,
+              34,
+              35,
+              38,
+              44,
+              47
+            ]
+          ],
+          "RESIDUAL_COUNT": 311856496,
+          "RESIDUAL_DELTA": -1383165,
+          "SHA256": "4f1d5061e5f61f95bca70dfbe217624b05c633a528a21657aa17afa73dce335c"
+        },
+        {
+          "ADDED": [
+            [
+              1,
+              34,
+              41,
+              42,
+              44,
+              45
+            ],
+            [
+              2,
+              22,
+              34,
+              35,
+              38,
+              47
+            ],
+            [
+              3,
+              21,
+              32,
+              40,
+              42,
+              43
+            ],
+            [
+              4,
+              10,
+              15,
+              26,
+              27,
+              44
+            ]
+          ],
+          "CANONICAL_COUNT": 312437972,
+          "CANONICAL_DELTA": -801689,
+          "MATCH": true,
+          "NUMBERS": [
+            2,
+            3,
+            44,
+            44
+          ],
+          "ORIENTATION": "(0 3 1 2)",
+          "QUADRUPLE": [
+            0,
+            3,
+            18,
+            19
+          ],
+          "REMOVED": [
+            [
+              1,
+              2,
+              34,
+              41,
+              42,
+              45
+            ],
+            [
+              3,
+              4,
+              10,
+              15,
+              26,
+              27
+            ],
+            [
+              21,
+              32,
+              40,
+              42,
+              43,
+              44
+            ],
+            [
+              22,
+              34,
+              35,
+              38,
+              44,
+              47
+            ]
+          ],
+          "RESIDUAL_COUNT": 312437972,
+          "RESIDUAL_DELTA": -801689,
+          "SHA256": "3b9c493a70b2893265d427cf0873ba3136ee24ba640e592af10f7c6fd655b5a0"
+        },
+        {
+          "ADDED": [
+            [
+              6,
+              10,
+              14,
+              16,
+              24,
+              36
+            ],
+            [
+              6,
+              20,
+              29,
+              31,
+              37,
+              39
+            ],
+            [
+              7,
+              8,
+              10,
+              14,
+              19,
+              35
+            ],
+            [
+              11,
+              22,
+              34,
+              38,
+              44,
+              47
+            ]
+          ],
+          "CANONICAL_COUNT": 311492517,
+          "CANONICAL_DELTA": -1747144,
+          "MATCH": true,
+          "NUMBERS": [
+            11,
+            14,
+            29,
+            35
+          ],
+          "ORIENTATION": "(0 3 2 1)",
+          "QUADRUPLE": [
+            10,
+            11,
+            12,
+            19
+          ],
+          "REMOVED": [
+            [
+              6,
+              10,
+              11,
+              16,
+              24,
+              36
+            ],
+            [
+              6,
+              14,
+              20,
+              31,
+              37,
+              39
+            ],
+            [
+              7,
+              8,
+              10,
+              14,
+              19,
+              29
+            ],
+            [
+              22,
+              34,
+              35,
+              38,
+              44,
+              47
+            ]
+          ],
+          "RESIDUAL_COUNT": 311492517,
+          "RESIDUAL_DELTA": -1747144,
+          "SHA256": "c7a760ee928d45444237e0f59e805f884be9bdbe001f4b8a0a3e3c5060dc28a1"
+        },
+        {
+          "ADDED": [
+            [
+              6,
+              10,
+              11,
+              14,
+              16,
+              24
+            ],
+            [
+              6,
+              14,
+              20,
+              36,
+              37,
+              39
+            ],
+            [
+              7,
+              8,
+              10,
+              19,
+              29,
+              47
+            ],
+            [
+              22,
+              31,
+              34,
+              35,
+              38,
+              44
+            ]
+          ],
+          "CANONICAL_COUNT": 312013324,
+          "CANONICAL_DELTA": -1226337,
+          "MATCH": true,
+          "NUMBERS": [
+            36,
+            31,
+            14,
+            47
+          ],
+          "ORIENTATION": "(0 1 3 2)",
+          "QUADRUPLE": [
+            10,
+            11,
+            12,
+            19
+          ],
+          "REMOVED": [
+            [
+              6,
+              10,
+              11,
+              16,
+              24,
+              36
+            ],
+            [
+              6,
+              14,
+              20,
+              31,
+              37,
+              39
+            ],
+            [
+              7,
+              8,
+              10,
+              14,
+              19,
+              29
+            ],
+            [
+              22,
+              34,
+              35,
+              38,
+              44,
+              47
+            ]
+          ],
+          "RESIDUAL_COUNT": 312013324,
+          "RESIDUAL_DELTA": -1226337,
+          "SHA256": "358ed702458035436d3a95da9ebf04b47a492cbca8a5e199b4e6ff214c69038b"
+        },
+        {
+          "ADDED": [
+            [
+              6,
+              7,
+              10,
+              14,
+              19,
+              29
+            ],
+            [
+              6,
+              8,
+              14,
+              20,
+              31,
+              39
+            ],
+            [
+              10,
+              11,
+              16,
+              22,
+              24,
+              36
+            ],
+            [
+              34,
+              35,
+              37,
+              38,
+              44,
+              47
+            ]
+          ],
+          "CANONICAL_COUNT": 311017833,
+          "CANONICAL_DELTA": -2221828,
+          "MATCH": true,
+          "NUMBERS": [
+            6,
+            37,
+            8,
+            22
+          ],
+          "ORIENTATION": "(0 2 1 3)",
+          "QUADRUPLE": [
+            10,
+            11,
+            12,
+            19
+          ],
+          "REMOVED": [
+            [
+              6,
+              10,
+              11,
+              16,
+              24,
+              36
+            ],
+            [
+              6,
+              14,
+              20,
+              31,
+              37,
+              39
+            ],
+            [
+              7,
+              8,
+              10,
+              14,
+              19,
+              29
+            ],
+            [
+              22,
+              34,
+              35,
+              38,
+              44,
+              47
+            ]
+          ],
+          "RESIDUAL_COUNT": 311017833,
+          "RESIDUAL_DELTA": -2221828,
+          "SHA256": "30ff1cc0d29e27ae8bd2b489f490780b0dfd916d81daea5faf0a39110c8374d9"
+        },
+        {
+          "ADDED": [
+            [
+              2,
+              12,
+              13,
+              15,
+              19,
+              37
+            ],
+            [
+              5,
+              17,
+              24,
+              25,
+              32,
+              47
+            ],
+            [
+              5,
+              20,
+              33,
+              35,
+              40,
+              48
+            ],
+            [
+              6,
+              14,
+              31,
+              37,
+              39,
+              41
+            ]
+          ],
+          "CANONICAL_COUNT": 312843818,
+          "CANONICAL_DELTA": -395843,
+          "MATCH": true,
+          "NUMBERS": [
+            2,
+            41,
+            20,
+            24
+          ],
+          "ORIENTATION": "(0 3 1 2)",
+          "QUADRUPLE": [
+            2,
+            8,
+            11,
+            15
+          ],
+          "REMOVED": [
+            [
+              2,
+              5,
+              33,
+              35,
+              40,
+              48
+            ],
+            [
+              5,
+              17,
+              25,
+              32,
+              41,
+              47
+            ],
+            [
+              6,
+              14,
+              20,
+              31,
+              37,
+              39
+            ],
+            [
+              12,
+              13,
+              15,
+              19,
+              24,
+              37
+            ]
+          ],
+          "RESIDUAL_COUNT": 312843818,
+          "RESIDUAL_DELTA": -395843,
+          "SHA256": "af2204298b20569593ac288ae3db38b2ba956416ac29f1124eebdaef6d891f20"
+        },
+        {
+          "ADDED": [
+            [
+              2,
+              6,
+              14,
+              31,
+              37,
+              39
+            ],
+            [
+              5,
+              20,
+              25,
+              32,
+              41,
+              47
+            ],
+            [
+              5,
+              33,
+              35,
+              37,
+              40,
+              48
+            ],
+            [
+              12,
+              13,
+              15,
+              17,
+              19,
+              24
+            ]
+          ],
+          "CANONICAL_COUNT": 312936715,
+          "CANONICAL_DELTA": -302946,
+          "MATCH": true,
+          "NUMBERS": [
+            2,
+            17,
+            20,
+            37
+          ],
+          "ORIENTATION": "(0 2 1 3)",
+          "QUADRUPLE": [
+            2,
+            8,
+            11,
+            15
+          ],
+          "REMOVED": [
+            [
+              2,
+              5,
+              33,
+              35,
+              40,
+              48
+            ],
+            [
+              5,
+              17,
+              25,
+              32,
+              41,
+              47
+            ],
+            [
+              6,
+              14,
+              20,
+              31,
+              37,
+              39
+            ],
+            [
+              12,
+              13,
+              15,
+              19,
+              24,
+              37
+            ]
+          ],
+          "RESIDUAL_COUNT": 312936715,
+          "RESIDUAL_DELTA": -302946,
+          "SHA256": "4f72b698870f2c3801316d11854584ce2c06aeefd7a27349243304c901d554ad"
+        },
+        {
+          "ADDED": [
+            [
+              2,
+              5,
+              32,
+              35,
+              40,
+              48
+            ],
+            [
+              5,
+              15,
+              17,
+              25,
+              41,
+              47
+            ],
+            [
+              6,
+              14,
+              31,
+              33,
+              37,
+              39
+            ],
+            [
+              12,
+              13,
+              19,
+              20,
+              24,
+              37
+            ]
+          ],
+          "CANONICAL_COUNT": 311966816,
+          "CANONICAL_DELTA": -1272845,
+          "MATCH": true,
+          "NUMBERS": [
+            33,
+            32,
+            20,
+            15
+          ],
+          "ORIENTATION": "(0 2 3 1)",
+          "QUADRUPLE": [
+            2,
+            8,
+            11,
+            15
+          ],
+          "REMOVED": [
+            [
+              2,
+              5,
+              33,
+              35,
+              40,
+              48
+            ],
+            [
+              5,
+              17,
+              25,
+              32,
+              41,
+              47
+            ],
+            [
+              6,
+              14,
+              20,
+              31,
+              37,
+              39
+            ],
+            [
+              12,
+              13,
+              15,
+              19,
+              24,
+              37
+            ]
+          ],
+          "RESIDUAL_COUNT": 311966816,
+          "RESIDUAL_DELTA": -1272845,
+          "SHA256": "d439db8c860022665f390fa8410bfd2c66a950306def3f2e2cf68c816a22c668"
+        },
+        {
+          "ADDED": [
+            [
+              3,
+              9,
+              16,
+              27,
+              29,
+              39
+            ],
+            [
+              11,
+              12,
+              18,
+              23,
+              48,
+              49
+            ],
+            [
+              12,
+              13,
+              15,
+              23,
+              24,
+              37
+            ],
+            [
+              19,
+              21,
+              25,
+              30,
+              38,
+              45
+            ]
+          ],
+          "CANONICAL_COUNT": 312006940,
+          "CANONICAL_DELTA": -1232721,
+          "MATCH": true,
+          "NUMBERS": [
+            23,
+            27,
+            19,
+            48
+          ],
+          "ORIENTATION": "(0 2 3 1)",
+          "QUADRUPLE": [
+            5,
+            14,
+            15,
+            17
+          ],
+          "REMOVED": [
+            [
+              3,
+              9,
+              16,
+              23,
+              29,
+              39
+            ],
+            [
+              11,
+              12,
+              18,
+              23,
+              27,
+              49
+            ],
+            [
+              12,
+              13,
+              15,
+              19,
+              24,
+              37
+            ],
+            [
+              21,
+              25,
+              30,
+              38,
+              45,
+              48
+            ]
+          ],
+          "RESIDUAL_COUNT": 312006940,
+          "RESIDUAL_DELTA": -1232721,
+          "SHA256": "9e9b0dcb26055236ebb6e3851cee11bdd5e7182024f0b95cc823349bacd34459"
+        },
+        {
+          "ADDED": [
+            [
+              3,
+              16,
+              21,
+              23,
+              29,
+              39
+            ],
+            [
+              9,
+              11,
+              12,
+              23,
+              27,
+              49
+            ],
+            [
+              12,
+              15,
+              18,
+              19,
+              24,
+              37
+            ],
+            [
+              13,
+              25,
+              30,
+              38,
+              45,
+              48
+            ]
+          ],
+          "CANONICAL_COUNT": 311985387,
+          "CANONICAL_DELTA": -1254274,
+          "MATCH": true,
+          "NUMBERS": [
+            9,
+            18,
+            13,
+            21
+          ],
+          "ORIENTATION": "(0 1 2 3)",
+          "QUADRUPLE": [
+            5,
+            14,
+            15,
+            17
+          ],
+          "REMOVED": [
+            [
+              3,
+              9,
+              16,
+              23,
+              29,
+              39
+            ],
+            [
+              11,
+              12,
+              18,
+              23,
+              27,
+              49
+            ],
+            [
+              12,
+              13,
+              15,
+              19,
+              24,
+              37
+            ],
+            [
+              21,
+              25,
+              30,
+              38,
+              45,
+              48
+            ]
+          ],
+          "RESIDUAL_COUNT": 311985387,
+          "RESIDUAL_DELTA": -1254274,
+          "SHA256": "9173f696c0795d1d44fa783e14d98a86d66f043369de289d7189cf0f6b36e9a3"
+        },
+        {
+          "ADDED": [
+            [
+              3,
+              9,
+              23,
+              29,
+              37,
+              39
+            ],
+            [
+              11,
+              16,
+              18,
+              23,
+              27,
+              49
+            ],
+            [
+              12,
+              13,
+              15,
+              19,
+              24,
+              25
+            ],
+            [
+              12,
+              21,
+              30,
+              38,
+              45,
+              48
+            ]
+          ],
+          "CANONICAL_COUNT": 311466064,
+          "CANONICAL_DELTA": -1773597,
+          "MATCH": true,
+          "NUMBERS": [
+            16,
+            12,
+            37,
+            25
+          ],
+          "ORIENTATION": "(0 1 3 2)",
+          "QUADRUPLE": [
+            5,
+            14,
+            15,
+            17
+          ],
+          "REMOVED": [
+            [
+              3,
+              9,
+              16,
+              23,
+              29,
+              39
+            ],
+            [
+              11,
+              12,
+              18,
+              23,
+              27,
+              49
+            ],
+            [
+              12,
+              13,
+              15,
+              19,
+              24,
+              37
+            ],
+            [
+              21,
+              25,
+              30,
+              38,
+              45,
+              48
+            ]
+          ],
+          "RESIDUAL_COUNT": 311466064,
+          "RESIDUAL_DELTA": -1773597,
+          "SHA256": "b7cc330ebab1c69066172bac8b29b981929554bc0ded4ccd25ba7c43e7d3c8d8"
+        },
+        {
+          "ADDED": [
+            [
+              7,
+              16,
+              19,
+              26,
+              28,
+              46
+            ],
+            [
+              8,
+              10,
+              14,
+              19,
+              29,
+              35
+            ],
+            [
+              8,
+              22,
+              34,
+              38,
+              44,
+              47
+            ],
+            [
+              9,
+              11,
+              15,
+              20,
+              46,
+              49
+            ]
+          ],
+          "CANONICAL_COUNT": 311546200,
+          "CANONICAL_DELTA": -1693461,
+          "MATCH": true,
+          "NUMBERS": [
+            7,
+            8,
+            49,
+            35
+          ],
+          "ORIENTATION": "(0 2 1 3)",
+          "QUADRUPLE": [
+            12,
+            13,
+            16,
+            19
+          ],
+          "REMOVED": [
+            [
+              7,
+              8,
+              10,
+              14,
+              19,
+              29
+            ],
+            [
+              8,
+              9,
+              11,
+              15,
+              20,
+              46
+            ],
+            [
+              16,
+              19,
+              26,
+              28,
+              46,
+              49
+            ],
+            [
+              22,
+              34,
+              35,
+              38,
+              44,
+              47
+            ]
+          ],
+          "RESIDUAL_COUNT": 311546200,
+          "RESIDUAL_DELTA": -1693461,
+          "SHA256": "2092cd663fa497c88815e7c4e5a8b08d0d1e4684f14f3cca9d70f7f201016907"
+        },
+        {
+          "ADDED": [
+            [
+              7,
+              10,
+              14,
+              19,
+              20,
+              29
+            ],
+            [
+              8,
+              9,
+              11,
+              15,
+              34,
+              46
+            ],
+            [
+              8,
+              16,
+              19,
+              26,
+              46,
+              49
+            ],
+            [
+              22,
+              28,
+              35,
+              38,
+              44,
+              47
+            ]
+          ],
+          "CANONICAL_COUNT": 311512551,
+          "CANONICAL_DELTA": -1727110,
+          "MATCH": true,
+          "NUMBERS": [
+            8,
+            20,
+            28,
+            34
+          ],
+          "ORIENTATION": "(0 2 3 1)",
+          "QUADRUPLE": [
+            12,
+            13,
+            16,
+            19
+          ],
+          "REMOVED": [
+            [
+              7,
+              8,
+              10,
+              14,
+              19,
+              29
+            ],
+            [
+              8,
+              9,
+              11,
+              15,
+              20,
+              46
+            ],
+            [
+              16,
+              19,
+              26,
+              28,
+              46,
+              49
+            ],
+            [
+              22,
+              34,
+              35,
+              38,
+              44,
+              47
+            ]
+          ],
+          "RESIDUAL_COUNT": 311512551,
+          "RESIDUAL_DELTA": -1727110,
+          "SHA256": "5c901660c8b8d44abc033b24cb3cc0ac4ea4f9783fa1925c18046a4d9283f8dc"
+        },
+        {
+          "ADDED": [
+            [
+              7,
+              10,
+              14,
+              16,
+              19,
+              29
+            ],
+            [
+              8,
+              9,
+              15,
+              20,
+              44,
+              46
+            ],
+            [
+              8,
+              22,
+              34,
+              35,
+              38,
+              47
+            ],
+            [
+              11,
+              19,
+              26,
+              28,
+              46,
+              49
+            ]
+          ],
+          "CANONICAL_COUNT": 311482899,
+          "CANONICAL_DELTA": -1756762,
+          "MATCH": true,
+          "NUMBERS": [
+            8,
+            11,
+            16,
+            44
+          ],
+          "ORIENTATION": "(0 3 1 2)",
+          "QUADRUPLE": [
+            12,
+            13,
+            16,
+            19
+          ],
+          "REMOVED": [
+            [
+              7,
+              8,
+              10,
+              14,
+              19,
+              29
+            ],
+            [
+              8,
+              9,
+              11,
+              15,
+              20,
+              46
+            ],
+            [
+              16,
+              19,
+              26,
+              28,
+              46,
+              49
+            ],
+            [
+              22,
+              34,
+              35,
+              38,
+              44,
+              47
+            ]
+          ],
+          "RESIDUAL_COUNT": 311482899,
+          "RESIDUAL_DELTA": -1756762,
+          "SHA256": "a40c3ac8232d3c39dc38296cbc1bfe3ca28ce7c541a8383c845ff1af9483d2af"
+        },
+        {
+          "ADDED": [
+            [
+              3,
+              7,
+              9,
+              16,
+              23,
+              29
+            ],
+            [
+              4,
+              6,
+              12,
+              36,
+              39,
+              46
+            ],
+            [
+              10,
+              11,
+              16,
+              24,
+              36,
+              42
+            ],
+            [
+              21,
+              32,
+              39,
+              40,
+              43,
+              44
+            ]
+          ],
+          "CANONICAL_COUNT": 311524108,
+          "CANONICAL_DELTA": -1715553,
+          "MATCH": true,
+          "NUMBERS": [
+            39,
+            7,
+            6,
+            42
+          ],
+          "ORIENTATION": "(0 3 2 1)",
+          "QUADRUPLE": [
+            5,
+            6,
+            10,
+            18
+          ],
+          "REMOVED": [
+            [
+              3,
+              9,
+              16,
+              23,
+              29,
+              39
+            ],
+            [
+              4,
+              7,
+              12,
+              36,
+              39,
+              46
+            ],
+            [
+              6,
+              10,
+              11,
+              16,
+              24,
+              36
+            ],
+            [
+              21,
+              32,
+              40,
+              42,
+              43,
+              44
+            ]
+          ],
+          "RESIDUAL_COUNT": 311524108,
+          "RESIDUAL_DELTA": -1715553,
+          "SHA256": "13ad9fab911e66a5955192a488e4c569542d574de0d3ddb8154dd3a7ccebc985"
+        },
+        {
+          "ADDED": [
+            [
+              3,
+              4,
+              7,
+              12,
+              39,
+              46
+            ],
+            [
+              6,
+              9,
+              16,
+              23,
+              29,
+              39
+            ],
+            [
+              10,
+              11,
+              16,
+              21,
+              24,
+              36
+            ],
+            [
+              32,
+              36,
+              40,
+              42,
+              43,
+              44
+            ]
+          ],
+          "CANONICAL_COUNT": 311498866,
+          "CANONICAL_DELTA": -1740795,
+          "MATCH": true,
+          "NUMBERS": [
+            3,
+            36,
+            6,
+            21
+          ],
+          "ORIENTATION": "(0 1 3 2)",
+          "QUADRUPLE": [
+            5,
+            6,
+            10,
+            18
+          ],
+          "REMOVED": [
+            [
+              3,
+              9,
+              16,
+              23,
+              29,
+              39
+            ],
+            [
+              4,
+              7,
+              12,
+              36,
+              39,
+              46
+            ],
+            [
+              6,
+              10,
+              11,
+              16,
+              24,
+              36
+            ],
+            [
+              21,
+              32,
+              40,
+              42,
+              43,
+              44
+            ]
+          ],
+          "RESIDUAL_COUNT": 311498866,
+          "RESIDUAL_DELTA": -1740795,
+          "SHA256": "771eefc2df9ba5a391423a004078326eebe15243bbad0f3ab440f00041e0ac37"
+        },
+        {
+          "ADDED": [
+            [
+              3,
+              4,
+              9,
+              16,
+              29,
+              39
+            ],
+            [
+              6,
+              10,
+              11,
+              24,
+              36,
+              44
+            ],
+            [
+              7,
+              12,
+              16,
+              36,
+              39,
+              46
+            ],
+            [
+              21,
+              23,
+              32,
+              40,
+              42,
+              43
+            ]
+          ],
+          "CANONICAL_COUNT": 311102015,
+          "CANONICAL_DELTA": -2137646,
+          "MATCH": true,
+          "NUMBERS": [
+            23,
+            4,
+            16,
+            44
+          ],
+          "ORIENTATION": "(0 3 2 1)",
+          "QUADRUPLE": [
+            5,
+            6,
+            10,
+            18
+          ],
+          "REMOVED": [
+            [
+              3,
+              9,
+              16,
+              23,
+              29,
+              39
+            ],
+            [
+              4,
+              7,
+              12,
+              36,
+              39,
+              46
+            ],
+            [
+              6,
+              10,
+              11,
+              16,
+              24,
+              36
+            ],
+            [
+              21,
+              32,
+              40,
+              42,
+              43,
+              44
+            ]
+          ],
+          "RESIDUAL_COUNT": 311102015,
+          "RESIDUAL_DELTA": -2137646,
+          "SHA256": "3491e2d081c56266613cb9b6d6fe2fc5cf9341cdcdd377db44a1adadea083bf5"
+        },
+        {
+          "ADDED": [
+            [
+              1,
+              4,
+              18,
+              20,
+              24,
+              28
+            ],
+            [
+              2,
+              19,
+              34,
+              41,
+              42,
+              45
+            ],
+            [
+              2,
+              29,
+              33,
+              35,
+              40,
+              48
+            ],
+            [
+              5,
+              16,
+              26,
+              28,
+              46,
+              49
+            ]
+          ],
+          "CANONICAL_COUNT": 312797205,
+          "CANONICAL_DELTA": -442456,
+          "MATCH": true,
+          "NUMBERS": [
+            1,
+            5,
+            29,
+            19
+          ],
+          "ORIENTATION": "(0 2 1 3)",
+          "QUADRUPLE": [
+            0,
+            2,
+            7,
+            16
+          ],
+          "REMOVED": [
+            [
+              1,
+              2,
+              34,
+              41,
+              42,
+              45
+            ],
+            [
+              2,
+              5,
+              33,
+              35,
+              40,
+              48
+            ],
+            [
+              4,
+              18,
+              20,
+              24,
+              28,
+              29
+            ],
+            [
+              16,
+              19,
+              26,
+              28,
+              46,
+              49
+            ]
+          ],
+          "RESIDUAL_COUNT": 312797205,
+          "RESIDUAL_DELTA": -442456,
+          "SHA256": "899f86e6292a0e7e415aa8013cb197200bf2b7d7560b07274d440ff993c5715d"
+        },
+        {
+          "ADDED": [
+            [
+              1,
+              2,
+              34,
+              42,
+              45,
+              46
+            ],
+            [
+              2,
+              5,
+              29,
+              33,
+              35,
+              48
+            ],
+            [
+              4,
+              18,
+              20,
+              24,
+              28,
+              41
+            ],
+            [
+              16,
+              19,
+              26,
+              28,
+              40,
+              49
+            ]
+          ],
+          "CANONICAL_COUNT": 312757781,
+          "CANONICAL_DELTA": -481880,
+          "MATCH": true,
+          "NUMBERS": [
+            41,
+            40,
+            29,
+            46
+          ],
+          "ORIENTATION": "(0 2 1 3)",
+          "QUADRUPLE": [
+            0,
+            2,
+            7,
+            16
+          ],
+          "REMOVED": [
+            [
+              1,
+              2,
+              34,
+              41,
+              42,
+              45
+            ],
+            [
+              2,
+              5,
+              33,
+              35,
+              40,
+              48
+            ],
+            [
+              4,
+              18,
+              20,
+              24,
+              28,
+              29
+            ],
+            [
+              16,
+              19,
+              26,
+              28,
+              46,
+              49
+            ]
+          ],
+          "RESIDUAL_COUNT": 312757781,
+          "RESIDUAL_DELTA": -481880,
+          "SHA256": "51fabc60e4ac55b3c0dd23ddbb6dfdaa413056fdca4103b4306128c627d45862"
+        },
+        {
+          "ADDED": [
+            [
+              1,
+              2,
+              35,
+              41,
+              42,
+              45
+            ],
+            [
+              2,
+              5,
+              29,
+              33,
+              40,
+              48
+            ],
+            [
+              4,
+              18,
+              20,
+              24,
+              26,
+              28
+            ],
+            [
+              16,
+              19,
+              28,
+              34,
+              46,
+              49
+            ]
+          ],
+          "CANONICAL_COUNT": 312024804,
+          "CANONICAL_DELTA": -1214857,
+          "MATCH": true,
+          "NUMBERS": [
+            34,
+            35,
+            29,
+            26
+          ],
+          "ORIENTATION": "(0 3 2 1)",
+          "QUADRUPLE": [
+            0,
+            2,
+            7,
+            16
+          ],
+          "REMOVED": [
+            [
+              1,
+              2,
+              34,
+              41,
+              42,
+              45
+            ],
+            [
+              2,
+              5,
+              33,
+              35,
+              40,
+              48
+            ],
+            [
+              4,
+              18,
+              20,
+              24,
+              28,
+              29
+            ],
+            [
+              16,
+              19,
+              26,
+              28,
+              46,
+              49
+            ]
+          ],
+          "RESIDUAL_COUNT": 312024804,
+          "RESIDUAL_DELTA": -1214857,
+          "SHA256": "96da9d81fb4762fb555c2950f32ff895f5d6ca181c16c976e509f5fc550bfbb1"
+        },
+        {
+          "ADDED": [
+            [
+              1,
+              2,
+              24,
+              34,
+              42,
+              45
+            ],
+            [
+              3,
+              4,
+              10,
+              15,
+              26,
+              39
+            ],
+            [
+              4,
+              7,
+              12,
+              36,
+              41,
+              46
+            ],
+            [
+              12,
+              13,
+              15,
+              19,
+              27,
+              37
+            ]
+          ],
+          "CANONICAL_COUNT": 311951164,
+          "CANONICAL_DELTA": -1288497,
+          "MATCH": true,
+          "NUMBERS": [
+            41,
+            27,
+            39,
+            24
+          ],
+          "ORIENTATION": "(0 2 1 3)",
+          "QUADRUPLE": [
+            0,
+            3,
+            6,
+            15
+          ],
+          "REMOVED": [
+            [
+              1,
+              2,
+              34,
+              41,
+              42,
+              45
+            ],
+            [
+              3,
+              4,
+              10,
+              15,
+              26,
+              27
+            ],
+            [
+              4,
+              7,
+              12,
+              36,
+              39,
+              46
+            ],
+            [
+              12,
+              13,
+              15,
+              19,
+              24,
+              37
+            ]
+          ],
+          "RESIDUAL_COUNT": 311951164,
+          "RESIDUAL_DELTA": -1288497,
+          "SHA256": "fc682bd3778cce07107157833ba52ed193fe9eb8f6257632bd44d06bd8c54d9e"
+        },
+        {
+          "ADDED": [
+            [
+              1,
+              2,
+              12,
+              41,
+              42,
+              45
+            ],
+            [
+              3,
+              4,
+              7,
+              15,
+              26,
+              27
+            ],
+            [
+              4,
+              12,
+              34,
+              36,
+              39,
+              46
+            ],
+            [
+              10,
+              13,
+              15,
+              19,
+              24,
+              37
+            ]
+          ],
+          "CANONICAL_COUNT": 311544590,
+          "CANONICAL_DELTA": -1695071,
+          "MATCH": true,
+          "NUMBERS": [
+            34,
+            10,
+            7,
+            12
+          ],
+          "ORIENTATION": "(0 2 1 3)",
+          "QUADRUPLE": [
+            0,
+            3,
+            6,
+            15
+          ],
+          "REMOVED": [
+            [
+              1,
+              2,
+              34,
+              41,
+              42,
+              45
+            ],
+            [
+              3,
+              4,
+              10,
+              15,
+              26,
+              27
+            ],
+            [
+              4,
+              7,
+              12,
+              36,
+              39,
+              46
+            ],
+            [
+              12,
+              13,
+              15,
+              19,
+              24,
+              37
+            ]
+          ],
+          "RESIDUAL_COUNT": 311544590,
+          "RESIDUAL_DELTA": -1695071,
+          "SHA256": "7009ed4038770a279ac67b7b3a3883d44eba7e72499188de8881e425e650762d"
+        },
+        {
+          "ADDED": [
+            [
+              1,
+              2,
+              12,
+              41,
+              42,
+              45
+            ],
+            [
+              3,
+              4,
+              15,
+              26,
+              27,
+              34
+            ],
+            [
+              4,
+              7,
+              15,
+              36,
+              39,
+              46
+            ],
+            [
+              10,
+              12,
+              13,
+              19,
+              24,
+              37
+            ]
+          ],
+          "CANONICAL_COUNT": 311085915,
+          "CANONICAL_DELTA": -2153746,
+          "MATCH": true,
+          "NUMBERS": [
+            34,
+            10,
+            12,
+            15
+          ],
+          "ORIENTATION": "(0 1 3 2)",
+          "QUADRUPLE": [
+            0,
+            3,
+            6,
+            15
+          ],
+          "REMOVED": [
+            [
+              1,
+              2,
+              34,
+              41,
+              42,
+              45
+            ],
+            [
+              3,
+              4,
+              10,
+              15,
+              26,
+              27
+            ],
+            [
+              4,
+              7,
+              12,
+              36,
+              39,
+              46
+            ],
+            [
+              12,
+              13,
+              15,
+              19,
+              24,
+              37
+            ]
+          ],
+          "RESIDUAL_COUNT": 311085915,
+          "RESIDUAL_DELTA": -2153746,
+          "SHA256": "6642df86680ee2749030c8ca17ba1be4f74bb1433efcab581332c4f41e698a13"
+        },
+        {
+          "ADDED": [
+            [
+              4,
+              7,
+              11,
+              36,
+              39,
+              46
+            ],
+            [
+              7,
+              8,
+              9,
+              11,
+              20,
+              46
+            ],
+            [
+              8,
+              10,
+              12,
+              14,
+              19,
+              29
+            ],
+            [
+              12,
+              15,
+              18,
+              23,
+              27,
+              49
+            ]
+          ],
+          "CANONICAL_COUNT": 309341872,
+          "CANONICAL_DELTA": -3897789,
+          "MATCH": true,
+          "NUMBERS": [
+            12,
+            7,
+            15,
+            11
+          ],
+          "ORIENTATION": "(0 1 2 3)",
+          "QUADRUPLE": [
+            6,
+            12,
+            13,
+            14
+          ],
+          "REMOVED": [
+            [
+              4,
+              7,
+              12,
+              36,
+              39,
+              46
+            ],
+            [
+              7,
+              8,
+              10,
+              14,
+              19,
+              29
+            ],
+            [
+              8,
+              9,
+              11,
+              15,
+              20,
+              46
+            ],
+            [
+              11,
+              12,
+              18,
+              23,
+              27,
+              49
+            ]
+          ],
+          "RESIDUAL_COUNT": 309341872,
+          "RESIDUAL_DELTA": -3897789,
+          "SHA256": "1dd13f7cb2c87b0067ec24718442c04578dc926de6ed4380cc1bf6b2cd9da80e"
+        },
+        {
+          "ADDED": [
+            [
+              4,
+              7,
+              8,
+              12,
+              36,
+              39
+            ],
+            [
+              7,
+              8,
+              12,
+              14,
+              19,
+              29
+            ],
+            [
+              9,
+              10,
+              11,
+              15,
+              20,
+              46
+            ],
+            [
+              11,
+              18,
+              23,
+              27,
+              46,
+              49
+            ]
+          ],
+          "CANONICAL_COUNT": 308872060,
+          "CANONICAL_DELTA": -4367601,
+          "MATCH": true,
+          "NUMBERS": [
+            46,
+            10,
+            8,
+            12
+          ],
+          "ORIENTATION": "(0 3 1 2)",
+          "QUADRUPLE": [
+            6,
+            12,
+            13,
+            14
+          ],
+          "REMOVED": [
+            [
+              4,
+              7,
+              12,
+              36,
+              39,
+              46
+            ],
+            [
+              7,
+              8,
+              10,
+              14,
+              19,
+              29
+            ],
+            [
+              8,
+              9,
+              11,
+              15,
+              20,
+              46
+            ],
+            [
+              11,
+              12,
+              18,
+              23,
+              27,
+              49
+            ]
+          ],
+          "RESIDUAL_COUNT": 308872060,
+          "RESIDUAL_DELTA": -4367601,
+          "SHA256": "b8b026568010ab6bf9efa238c3c4d5b9f7349966bd4280d32aabea727251febb"
+        },
+        {
+          "ADDED": [
+            [
+              4,
+              7,
+              12,
+              20,
+              36,
+              46
+            ],
+            [
+              7,
+              8,
+              14,
+              19,
+              29,
+              39
+            ],
+            [
+              8,
+              9,
+              11,
+              12,
+              15,
+              46
+            ],
+            [
+              10,
+              11,
+              18,
+              23,
+              27,
+              49
+            ]
+          ],
+          "CANONICAL_COUNT": 309739570,
+          "CANONICAL_DELTA": -3500091,
+          "MATCH": true,
+          "NUMBERS": [
+            39,
+            10,
+            20,
+            12
+          ],
+          "ORIENTATION": "(0 1 3 2)",
+          "QUADRUPLE": [
+            6,
+            12,
+            13,
+            14
+          ],
+          "REMOVED": [
+            [
+              4,
+              7,
+              12,
+              36,
+              39,
+              46
+            ],
+            [
+              7,
+              8,
+              10,
+              14,
+              19,
+              29
+            ],
+            [
+              8,
+              9,
+              11,
+              15,
+              20,
+              46
+            ],
+            [
+              11,
+              12,
+              18,
+              23,
+              27,
+              49
+            ]
+          ],
+          "RESIDUAL_COUNT": 309739570,
+          "RESIDUAL_DELTA": -3500091,
+          "SHA256": "cfa6b6a7e41718fa6df46abdb9eed6900b48e9bbf2f22dc795be06c70967b29b"
+        },
+        {
+          "ADDED": [
+            [
+              1,
+              4,
+              18,
+              20,
+              24,
+              28
+            ],
+            [
+              2,
+              34,
+              41,
+              42,
+              45,
+              47
+            ],
+            [
+              5,
+              17,
+              25,
+              32,
+              41,
+              43
+            ],
+            [
+              21,
+              29,
+              32,
+              40,
+              42,
+              44
+            ]
+          ],
+          "CANONICAL_COUNT": 311831646,
+          "CANONICAL_DELTA": -1408015,
+          "MATCH": true,
+          "NUMBERS": [
+            1,
+            29,
+            47,
+            43
+          ],
+          "ORIENTATION": "(0 1 3 2)",
+          "QUADRUPLE": [
+            0,
+            7,
+            8,
+            18
+          ],
+          "REMOVED": [
+            [
+              1,
+              2,
+              34,
+              41,
+              42,
+              45
+            ],
+            [
+              4,
+              18,
+              20,
+              24,
+              28,
+              29
+            ],
+            [
+              5,
+              17,
+              25,
+              32,
+              41,
+              47
+            ],
+            [
+              21,
+              32,
+              40,
+              42,
+              43,
+              44
+            ]
+          ],
+          "RESIDUAL_COUNT": 311831646,
+          "RESIDUAL_DELTA": -1408015,
+          "SHA256": "df20f9090e106e9cba02b7510c28b8308d31759cf173d54466f60be3b677bfde"
+        },
+        {
+          "ADDED": [
+            [
+              1,
+              18,
+              34,
+              41,
+              42,
+              45
+            ],
+            [
+              2,
+              5,
+              17,
+              25,
+              32,
+              47
+            ],
+            [
+              4,
+              20,
+              24,
+              28,
+              29,
+              40
+            ],
+            [
+              21,
+              32,
+              41,
+              42,
+              43,
+              44
+            ]
+          ],
+          "CANONICAL_COUNT": 311873632,
+          "CANONICAL_DELTA": -1366029,
+          "MATCH": true,
+          "NUMBERS": [
+            2,
+            18,
+            41,
+            40
+          ],
+          "ORIENTATION": "(0 2 3 1)",
+          "QUADRUPLE": [
+            0,
+            7,
+            8,
+            18
+          ],
+          "REMOVED": [
+            [
+              1,
+              2,
+              34,
+              41,
+              42,
+              45
+            ],
+            [
+              4,
+              18,
+              20,
+              24,
+              28,
+              29
+            ],
+            [
+              5,
+              17,
+              25,
+              32,
+              41,
+              47
+            ],
+            [
+              21,
+              32,
+              40,
+              42,
+              43,
+              44
+            ]
+          ],
+          "RESIDUAL_COUNT": 311873632,
+          "RESIDUAL_DELTA": -1366029,
+          "SHA256": "07cb005f456a10928ba370c0c127d2956a0387e7427890eecf7abb15c47cfa96"
+        },
+        {
+          "ADDED": [
+            [
+              1,
+              2,
+              18,
+              34,
+              42,
+              45
+            ],
+            [
+              4,
+              17,
+              20,
+              24,
+              28,
+              29
+            ],
+            [
+              5,
+              25,
+              32,
+              41,
+              42,
+              47
+            ],
+            [
+              21,
+              32,
+              40,
+              41,
+              43,
+              44
+            ]
+          ],
+          "CANONICAL_COUNT": 312426555,
+          "CANONICAL_DELTA": -813106,
+          "MATCH": true,
+          "NUMBERS": [
+            41,
+            18,
+            17,
+            42
+          ],
+          "ORIENTATION": "(0 3 2 1)",
+          "QUADRUPLE": [
+            0,
+            7,
+            8,
+            18
+          ],
+          "REMOVED": [
+            [
+              1,
+              2,
+              34,
+              41,
+              42,
+              45
+            ],
+            [
+              4,
+              18,
+              20,
+              24,
+              28,
+              29
+            ],
+            [
+              5,
+              17,
+              25,
+              32,
+              41,
+              47
+            ],
+            [
+              21,
+              32,
+              40,
+              42,
+              43,
+              44
+            ]
+          ],
+          "RESIDUAL_COUNT": 312426555,
+          "RESIDUAL_DELTA": -813106,
+          "SHA256": "0a71edb9f8e2d70ed8b950cd31c94679f28b4987bb527c053bd909fa5676193d"
+        },
+        {
+          "ADDED": [
+            [
+              1,
+              17,
+              22,
+              30,
+              33,
+              36
+            ],
+            [
+              4,
+              7,
+              12,
+              39,
+              42,
+              46
+            ],
+            [
+              6,
+              7,
+              9,
+              13,
+              18,
+              43
+            ],
+            [
+              21,
+              26,
+              32,
+              40,
+              43,
+              44
+            ]
+          ],
+          "CANONICAL_COUNT": 312757179,
+          "CANONICAL_DELTA": -482482,
+          "MATCH": true,
+          "NUMBERS": [
+            43,
+            36,
+            26,
+            42
+          ],
+          "ORIENTATION": "(0 2 3 1)",
+          "QUADRUPLE": [
+            1,
+            6,
+            9,
+            18
+          ],
+          "REMOVED": [
+            [
+              1,
+              17,
+              22,
+              30,
+              33,
+              43
+            ],
+            [
+              4,
+              7,
+              12,
+              36,
+              39,
+              46
+            ],
+            [
+              6,
+              7,
+              9,
+              13,
+              18,
+              26
+            ],
+            [
+              21,
+              32,
+              40,
+              42,
+              43,
+              44
+            ]
+          ],
+          "RESIDUAL_COUNT": 312757179,
+          "RESIDUAL_DELTA": -482482,
+          "SHA256": "48f65089d54dc17d52d229fccecbee51ae3eec4678b9ff7ffd5323b0c9244546"
+        },
+        {
+          "ADDED": [
+            [
+              1,
+              17,
+              18,
+              22,
+              30,
+              43
+            ],
+            [
+              4,
+              7,
+              12,
+              33,
+              39,
+              46
+            ],
+            [
+              6,
+              7,
+              9,
+              13,
+              26,
+              43
+            ],
+            [
+              21,
+              32,
+              36,
+              40,
+              42,
+              44
+            ]
+          ],
+          "CANONICAL_COUNT": 312766699,
+          "CANONICAL_DELTA": -472962,
+          "MATCH": true,
+          "NUMBERS": [
+            33,
+            36,
+            18,
+            43
+          ],
+          "ORIENTATION": "(0 1 3 2)",
+          "QUADRUPLE": [
+            1,
+            6,
+            9,
+            18
+          ],
+          "REMOVED": [
+            [
+              1,
+              17,
+              22,
+              30,
+              33,
+              43
+            ],
+            [
+              4,
+              7,
+              12,
+              36,
+              39,
+              46
+            ],
+            [
+              6,
+              7,
+              9,
+              13,
+              18,
+              26
+            ],
+            [
+              21,
+              32,
+              40,
+              42,
+              43,
+              44
+            ]
+          ],
+          "RESIDUAL_COUNT": 312766699,
+          "RESIDUAL_DELTA": -472962,
+          "SHA256": "df58520c93b128d298cce1c6e31977ab4c90dc50e9f53fbd163646fd53f473c3"
+        },
+        {
+          "ADDED": [
+            [
+              1,
+              17,
+              22,
+              33,
+              36,
+              43
+            ],
+            [
+              4,
+              6,
+              7,
+              12,
+              39,
+              46
+            ],
+            [
+              7,
+              9,
+              13,
+              18,
+              26,
+              44
+            ],
+            [
+              21,
+              30,
+              32,
+              40,
+              42,
+              43
+            ]
+          ],
+          "CANONICAL_COUNT": 311889403,
+          "CANONICAL_DELTA": -1350258,
+          "MATCH": true,
+          "NUMBERS": [
+            30,
+            36,
+            6,
+            44
+          ],
+          "ORIENTATION": "(0 3 2 1)",
+          "QUADRUPLE": [
+            1,
+            6,
+            9,
+            18
+          ],
+          "REMOVED": [
+            [
+              1,
+              17,
+              22,
+              30,
+              33,
+              43
+            ],
+            [
+              4,
+              7,
+              12,
+              36,
+              39,
+              46
+            ],
+            [
+              6,
+              7,
+              9,
+              13,
+              18,
+              26
+            ],
+            [
+              21,
+              32,
+              40,
+              42,
+              43,
+              44
+            ]
+          ],
+          "RESIDUAL_COUNT": 311889403,
+          "RESIDUAL_DELTA": -1350258,
+          "SHA256": "db4e29312cd57dc788fce04d36c0bfb6a405337498b83890a9383910dc2bae62"
+        },
+        {
+          "ADDED": [
+            [
+              5,
+              6,
+              25,
+              32,
+              41,
+              47
+            ],
+            [
+              6,
+              17,
+              20,
+              31,
+              37,
+              39
+            ],
+            [
+              7,
+              9,
+              13,
+              18,
+              26,
+              40
+            ],
+            [
+              14,
+              21,
+              32,
+              42,
+              43,
+              44
+            ]
+          ],
+          "CANONICAL_COUNT": 312883382,
+          "CANONICAL_DELTA": -356279,
+          "MATCH": true,
+          "NUMBERS": [
+            17,
+            6,
+            14,
+            40
+          ],
+          "ORIENTATION": "(0 2 3 1)",
+          "QUADRUPLE": [
+            8,
+            9,
+            11,
+            18
+          ],
+          "REMOVED": [
+            [
+              5,
+              17,
+              25,
+              32,
+              41,
+              47
+            ],
+            [
+              6,
+              7,
+              9,
+              13,
+              18,
+              26
+            ],
+            [
+              6,
+              14,
+              20,
+              31,
+              37,
+              39
+            ],
+            [
+              21,
+              32,
+              40,
+              42,
+              43,
+              44
+            ]
+          ],
+          "RESIDUAL_COUNT": 312883382,
+          "RESIDUAL_DELTA": -356279,
+          "SHA256": "ae57bd1cfc8d59b480eb706edc39bbd05e98167bda08efec872b7e9bb949ed1a"
+        },
+        {
+          "ADDED": [
+            [
+              5,
+              7,
+              17,
+              32,
+              41,
+              47
+            ],
+            [
+              6,
+              9,
+              13,
+              18,
+              20,
+              26
+            ],
+            [
+              6,
+              14,
+              31,
+              32,
+              37,
+              39
+            ],
+            [
+              21,
+              25,
+              40,
+              42,
+              43,
+              44
+            ]
+          ],
+          "CANONICAL_COUNT": 311539928,
+          "CANONICAL_DELTA": -1699733,
+          "MATCH": true,
+          "NUMBERS": [
+            25,
+            7,
+            20,
+            32
+          ],
+          "ORIENTATION": "(0 3 2 1)",
+          "QUADRUPLE": [
+            8,
+            9,
+            11,
+            18
+          ],
+          "REMOVED": [
+            [
+              5,
+              17,
+              25,
+              32,
+              41,
+              47
+            ],
+            [
+              6,
+              7,
+              9,
+              13,
+              18,
+              26
+            ],
+            [
+              6,
+              14,
+              20,
+              31,
+              37,
+              39
+            ],
+            [
+              21,
+              32,
+              40,
+              42,
+              43,
+              44
+            ]
+          ],
+          "RESIDUAL_COUNT": 311539928,
+          "RESIDUAL_DELTA": -1699733,
+          "SHA256": "573fd05731999c86acc8895cbfa0fcc10fef6e2af0bef513429d1ca70fc7ca71"
+        },
+        {
+          "ADDED": [
+            [
+              5,
+              9,
+              17,
+              32,
+              41,
+              47
+            ],
+            [
+              6,
+              7,
+              13,
+              18,
+              26,
+              31
+            ],
+            [
+              6,
+              14,
+              20,
+              37,
+              39,
+              43
+            ],
+            [
+              21,
+              25,
+              32,
+              40,
+              42,
+              44
+            ]
+          ],
+          "CANONICAL_COUNT": 311906105,
+          "CANONICAL_DELTA": -1333556,
+          "MATCH": true,
+          "NUMBERS": [
+            25,
+            9,
+            31,
+            43
+          ],
+          "ORIENTATION": "(0 3 2 1)",
+          "QUADRUPLE": [
+            8,
+            9,
+            11,
+            18
+          ],
+          "REMOVED": [
+            [
+              5,
+              17,
+              25,
+              32,
+              41,
+              47
+            ],
+            [
+              6,
+              7,
+              9,
+              13,
+              18,
+              26
+            ],
+            [
+              6,
+              14,
+              20,
+              31,
+              37,
+              39
+            ],
+            [
+              21,
+              32,
+              40,
+              42,
+              43,
+              44
+            ]
+          ],
+          "RESIDUAL_COUNT": 311906105,
+          "RESIDUAL_DELTA": -1333556,
+          "SHA256": "e6c80d74f84094473a327406290ba0144e6b9b4fbb4d0551b0cb1bffde9799fe"
+        },
+        {
+          "ADDED": [
+            [
+              3,
+              4,
+              6,
+              10,
+              15,
+              26
+            ],
+            [
+              6,
+              10,
+              16,
+              24,
+              27,
+              36
+            ],
+            [
+              6,
+              11,
+              14,
+              20,
+              31,
+              39
+            ],
+            [
+              7,
+              9,
+              13,
+              18,
+              26,
+              37
+            ]
+          ],
+          "CANONICAL_COUNT": 311708089,
+          "CANONICAL_DELTA": -1531572,
+          "MATCH": true,
+          "NUMBERS": [
+            27,
+            6,
+            11,
+            37
+          ],
+          "ORIENTATION": "(0 2 3 1)",
+          "QUADRUPLE": [
+            3,
+            9,
+            10,
+            11
+          ],
+          "REMOVED": [
+            [
+              3,
+              4,
+              10,
+              15,
+              26,
+              27
+            ],
+            [
+              6,
+              7,
+              9,
+              13,
+              18,
+              26
+            ],
+            [
+              6,
+              10,
+              11,
+              16,
+              24,
+              36
+            ],
+            [
+              6,
+              14,
+              20,
+              31,
+              37,
+              39
+            ]
+          ],
+          "RESIDUAL_COUNT": 311708089,
+          "RESIDUAL_DELTA": -1531572,
+          "SHA256": "16c2f8c1f8e3ae68c29c7072bdcd180b9ce228441ec0eb832177eda8c86e08d2"
+        },
+        {
+          "ADDED": [
+            [
+              3,
+              4,
+              6,
+              10,
+              26,
+              27
+            ],
+            [
+              6,
+              7,
+              9,
+              13,
+              24,
+              26
+            ],
+            [
+              6,
+              10,
+              11,
+              15,
+              16,
+              36
+            ],
+            [
+              14,
+              18,
+              20,
+              31,
+              37,
+              39
+            ]
+          ],
+          "CANONICAL_COUNT": 310720781,
+          "CANONICAL_DELTA": -2518880,
+          "MATCH": true,
+          "NUMBERS": [
+            15,
+            18,
+            24,
+            6
+          ],
+          "ORIENTATION": "(0 2 1 3)",
+          "QUADRUPLE": [
+            3,
+            9,
+            10,
+            11
+          ],
+          "REMOVED": [
+            [
+              3,
+              4,
+              10,
+              15,
+              26,
+              27
+            ],
+            [
+              6,
+              7,
+              9,
+              13,
+              18,
+              26
+            ],
+            [
+              6,
+              10,
+              11,
+              16,
+              24,
+              36
+            ],
+            [
+              6,
+              14,
+              20,
+              31,
+              37,
+              39
+            ]
+          ],
+          "RESIDUAL_COUNT": 310720781,
+          "RESIDUAL_DELTA": -2518880,
+          "SHA256": "781a1b2c4f9c8e7881ca6c26830151e8940cd2abec217b69caa659d66087a44c"
+        },
+        {
+          "ADDED": [
+            [
+              3,
+              6,
+              10,
+              15,
+              26,
+              27
+            ],
+            [
+              4,
+              6,
+              7,
+              13,
+              18,
+              26
+            ],
+            [
+              6,
+              9,
+              14,
+              20,
+              31,
+              37
+            ],
+            [
+              10,
+              11,
+              16,
+              24,
+              36,
+              39
+            ]
+          ],
+          "CANONICAL_COUNT": 310215248,
+          "CANONICAL_DELTA": -3024413,
+          "MATCH": true,
+          "NUMBERS": [
+            4,
+            9,
+            6,
+            39
+          ],
+          "ORIENTATION": "(0 1 3 2)",
+          "QUADRUPLE": [
+            3,
+            9,
+            10,
+            11
+          ],
+          "REMOVED": [
+            [
+              3,
+              4,
+              10,
+              15,
+              26,
+              27
+            ],
+            [
+              6,
+              7,
+              9,
+              13,
+              18,
+              26
+            ],
+            [
+              6,
+              10,
+              11,
+              16,
+              24,
+              36
+            ],
+            [
+              6,
+              14,
+              20,
+              31,
+              37,
+              39
+            ]
+          ],
+          "RESIDUAL_COUNT": 310215248,
+          "RESIDUAL_DELTA": -3024413,
+          "SHA256": "3e81e3afd132421503f023ba5812661e0898391a3a581150cda0589c59ec6c10"
+        },
+        {
+          "ADDED": [
+            [
+              1,
+              2,
+              36,
+              41,
+              42,
+              45
+            ],
+            [
+              4,
+              7,
+              12,
+              26,
+              39,
+              46
+            ],
+            [
+              6,
+              7,
+              9,
+              13,
+              16,
+              18
+            ],
+            [
+              6,
+              10,
+              11,
+              24,
+              34,
+              36
+            ]
+          ],
+          "CANONICAL_COUNT": 311522337,
+          "CANONICAL_DELTA": -1717324,
+          "MATCH": true,
+          "NUMBERS": [
+            34,
+            36,
+            26,
+            16
+          ],
+          "ORIENTATION": "(0 3 2 1)",
+          "QUADRUPLE": [
+            0,
+            6,
+            9,
+            10
+          ],
+          "REMOVED": [
+            [
+              1,
+              2,
+              34,
+              41,
+              42,
+              45
+            ],
+            [
+              4,
+              7,
+              12,
+              36,
+              39,
+              46
+            ],
+            [
+              6,
+              7,
+              9,
+              13,
+              18,
+              26
+            ],
+            [
+              6,
+              10,
+              11,
+              16,
+              24,
+              36
+            ]
+          ],
+          "RESIDUAL_COUNT": 311522337,
+          "RESIDUAL_DELTA": -1717324,
+          "SHA256": "a9382a52fdb6f9d40ff62ab4c019c66d82046c44ea0a58b16c12b8604a3d8db6"
+        },
+        {
+          "ADDED": [
+            [
+              1,
+              2,
+              18,
+              41,
+              42,
+              45
+            ],
+            [
+              4,
+              7,
+              10,
+              12,
+              36,
+              39
+            ],
+            [
+              6,
+              7,
+              9,
+              13,
+              26,
+              46
+            ],
+            [
+              6,
+              11,
+              16,
+              24,
+              34,
+              36
+            ]
+          ],
+          "CANONICAL_COUNT": 311030895,
+          "CANONICAL_DELTA": -2208766,
+          "MATCH": true,
+          "NUMBERS": [
+            34,
+            46,
+            18,
+            10
+          ],
+          "ORIENTATION": "(0 3 1 2)",
+          "QUADRUPLE": [
+            0,
+            6,
+            9,
+            10
+          ],
+          "REMOVED": [
+            [
+              1,
+              2,
+              34,
+              41,
+              42,
+              45
+            ],
+            [
+              4,
+              7,
+              12,
+              36,
+              39,
+              46
+            ],
+            [
+              6,
+              7,
+              9,
+              13,
+              18,
+              26
+            ],
+            [
+              6,
+              10,
+              11,
+              16,
+              24,
+              36
+            ]
+          ],
+          "RESIDUAL_COUNT": 311030895,
+          "RESIDUAL_DELTA": -2208766,
+          "SHA256": "99fda795ffb66fa6126a664cc5a8f91c99a6b9941cc35a2fd3e3192eabf7f916"
+        },
+        {
+          "ADDED": [
+            [
+              1,
+              2,
+              34,
+              39,
+              41,
+              42
+            ],
+            [
+              4,
+              7,
+              12,
+              18,
+              36,
+              46
+            ],
+            [
+              6,
+              7,
+              9,
+              13,
+              26,
+              36
+            ],
+            [
+              6,
+              10,
+              11,
+              16,
+              24,
+              45
+            ]
+          ],
+          "CANONICAL_COUNT": 311010931,
+          "CANONICAL_DELTA": -2228730,
+          "MATCH": true,
+          "NUMBERS": [
+            45,
+            39,
+            18,
+            36
+          ],
+          "ORIENTATION": "(0 3 2 1)",
+          "QUADRUPLE": [
+            0,
+            6,
+            9,
+            10
+          ],
+          "REMOVED": [
+            [
+              1,
+              2,
+              34,
+              41,
+              42,
+              45
+            ],
+            [
+              4,
+              7,
+              12,
+              36,
+              39,
+              46
+            ],
+            [
+              6,
+              7,
+              9,
+              13,
+              18,
+              26
+            ],
+            [
+              6,
+              10,
+              11,
+              16,
+              24,
+              36
+            ]
+          ],
+          "RESIDUAL_COUNT": 311010931,
+          "RESIDUAL_DELTA": -2228730,
+          "SHA256": "76417d5aff4ffcb261fd6b801a1e95e367e11b7dabcb0e761d275df76a07623a"
+        },
+        {
+          "ADDED": [
+            [
+              3,
+              8,
+              13,
+              28,
+              31,
+              39
+            ],
+            [
+              3,
+              9,
+              10,
+              16,
+              23,
+              29
+            ],
+            [
+              6,
+              11,
+              16,
+              24,
+              36,
+              48
+            ],
+            [
+              21,
+              25,
+              30,
+              36,
+              38,
+              45
+            ]
+          ],
+          "CANONICAL_COUNT": 311485286,
+          "CANONICAL_DELTA": -1754375,
+          "MATCH": true,
+          "NUMBERS": [
+            36,
+            39,
+            10,
+            48
+          ],
+          "ORIENTATION": "(0 3 2 1)",
+          "QUADRUPLE": [
+            4,
+            5,
+            10,
+            17
+          ],
+          "REMOVED": [
+            [
+              3,
+              8,
+              13,
+              28,
+              31,
+              36
+            ],
+            [
+              3,
+              9,
+              16,
+              23,
+              29,
+              39
+            ],
+            [
+              6,
+              10,
+              11,
+              16,
+              24,
+              36
+            ],
+            [
+              21,
+              25,
+              30,
+              38,
+              45,
+              48
+            ]
+          ],
+          "RESIDUAL_COUNT": 311485286,
+          "RESIDUAL_DELTA": -1754375,
+          "SHA256": "c7a945d183822d92b3fc322577ff6da3e45aaf4bd5187dbd45eaae224f4ba283"
+        },
+        {
+          "ADDED": [
+            [
+              3,
+              6,
+              8,
+              13,
+              28,
+              36
+            ],
+            [
+              3,
+              16,
+              23,
+              25,
+              29,
+              39
+            ],
+            [
+              9,
+              10,
+              11,
+              16,
+              24,
+              36
+            ],
+            [
+              21,
+              30,
+              31,
+              38,
+              45,
+              48
+            ]
+          ],
+          "CANONICAL_COUNT": 312146982,
+          "CANONICAL_DELTA": -1092679,
+          "MATCH": true,
+          "NUMBERS": [
+            31,
+            9,
+            6,
+            25
+          ],
+          "ORIENTATION": "(0 3 1 2)",
+          "QUADRUPLE": [
+            4,
+            5,
+            10,
+            17
+          ],
+          "REMOVED": [
+            [
+              3,
+              8,
+              13,
+              28,
+              31,
+              36
+            ],
+            [
+              3,
+              9,
+              16,
+              23,
+              29,
+              39
+            ],
+            [
+              6,
+              10,
+              11,
+              16,
+              24,
+              36
+            ],
+            [
+              21,
+              25,
+              30,
+              38,
+              45,
+              48
+            ]
+          ],
+          "RESIDUAL_COUNT": 312146982,
+          "RESIDUAL_DELTA": -1092679,
+          "SHA256": "6bb3eebe499d73d10ff4304a1ded94599cae2a4fcb28d9d731ca48a32f91b4bd"
+        },
+        {
+          "ADDED": [
+            [
+              3,
+              9,
+              16,
+              23,
+              38,
+              39
+            ],
+            [
+              3,
+              13,
+              28,
+              29,
+              31,
+              36
+            ],
+            [
+              6,
+              8,
+              11,
+              16,
+              24,
+              36
+            ],
+            [
+              10,
+              21,
+              25,
+              30,
+              45,
+              48
+            ]
+          ],
+          "CANONICAL_COUNT": 312023621,
+          "CANONICAL_DELTA": -1216040,
+          "MATCH": true,
+          "NUMBERS": [
+            8,
+            29,
+            10,
+            38
+          ],
+          "ORIENTATION": "(0 2 3 1)",
+          "QUADRUPLE": [
+            4,
+            5,
+            10,
+            17
+          ],
+          "REMOVED": [
+            [
+              3,
+              8,
+              13,
+              28,
+              31,
+              36
+            ],
+            [
+              3,
+              9,
+              16,
+              23,
+              29,
+              39
+            ],
+            [
+              6,
+              10,
+              11,
+              16,
+              24,
+              36
+            ],
+            [
+              21,
+              25,
+              30,
+              38,
+              45,
+              48
+            ]
+          ],
+          "RESIDUAL_COUNT": 312023621,
+          "RESIDUAL_DELTA": -1216040,
+          "SHA256": "0c8a3f0f50b864484d342f4bbec0069a9408c3b2edccac22a8913e8422583274"
+        },
+        {
+          "ADDED": [
+            [
+              3,
+              4,
+              14,
+              15,
+              26,
+              27
+            ],
+            [
+              3,
+              7,
+              8,
+              10,
+              19,
+              29
+            ],
+            [
+              9,
+              16,
+              22,
+              23,
+              29,
+              39
+            ],
+            [
+              10,
+              34,
+              35,
+              38,
+              44,
+              47
+            ]
+          ],
+          "CANONICAL_COUNT": 312510135,
+          "CANONICAL_DELTA": -729526,
+          "MATCH": true,
+          "NUMBERS": [
+            10,
+            3,
+            14,
+            22
+          ],
+          "ORIENTATION": "(0 3 1 2)",
+          "QUADRUPLE": [
+            3,
+            5,
+            12,
+            19
+          ],
+          "REMOVED": [
+            [
+              3,
+              4,
+              10,
+              15,
+              26,
+              27
+            ],
+            [
+              3,
+              9,
+              16,
+              23,
+              29,
+              39
+            ],
+            [
+              7,
+              8,
+              10,
+              14,
+              19,
+              29
+            ],
+            [
+              22,
+              34,
+              35,
+              38,
+              44,
+              47
+            ]
+          ],
+          "RESIDUAL_COUNT": 312510135,
+          "RESIDUAL_DELTA": -729526,
+          "SHA256": "2953549d52727f1d2ac997891310ef29dfd26195796dcf5b911d45d9bbb19dc2"
+        },
+        {
+          "ADDED": [
+            [
+              3,
+              4,
+              9,
+              16,
+              23,
+              29
+            ],
+            [
+              3,
+              10,
+              15,
+              19,
+              26,
+              27
+            ],
+            [
+              7,
+              8,
+              10,
+              14,
+              29,
+              35
+            ],
+            [
+              22,
+              34,
+              38,
+              39,
+              44,
+              47
+            ]
+          ],
+          "CANONICAL_COUNT": 311527951,
+          "CANONICAL_DELTA": -1711710,
+          "MATCH": true,
+          "NUMBERS": [
+            4,
+            39,
+            19,
+            35
+          ],
+          "ORIENTATION": "(0 1 3 2)",
+          "QUADRUPLE": [
+            3,
+            5,
+            12,
+            19
+          ],
+          "REMOVED": [
+            [
+              3,
+              4,
+              10,
+              15,
+              26,
+              27
+            ],
+            [
+              3,
+              9,
+              16,
+              23,
+              29,
+              39
+            ],
+            [
+              7,
+              8,
+              10,
+              14,
+              19,
+              29
+            ],
+            [
+              22,
+              34,
+              35,
+              38,
+              44,
+              47
+            ]
+          ],
+          "RESIDUAL_COUNT": 311527951,
+          "RESIDUAL_DELTA": -1711710,
+          "SHA256": "f226dea3eb827716b6e988392d6e161532754041df9a3274996d3f02194eb13a"
+        },
+        {
+          "ADDED": [
+            [
+              3,
+              4,
+              10,
+              15,
+              26,
+              29
+            ],
+            [
+              3,
+              9,
+              23,
+              27,
+              29,
+              39
+            ],
+            [
+              7,
+              8,
+              10,
+              14,
+              19,
+              34
+            ],
+            [
+              16,
+              22,
+              35,
+              38,
+              44,
+              47
+            ]
+          ],
+          "CANONICAL_COUNT": 311471692,
+          "CANONICAL_DELTA": -1767969,
+          "MATCH": true,
+          "NUMBERS": [
+            27,
+            16,
+            29,
+            34
+          ],
+          "ORIENTATION": "(0 1 3 2)",
+          "QUADRUPLE": [
+            3,
+            5,
+            12,
+            19
+          ],
+          "REMOVED": [
+            [
+              3,
+              4,
+              10,
+              15,
+              26,
+              27
+            ],
+            [
+              3,
+              9,
+              16,
+              23,
+              29,
+              39
+            ],
+            [
+              7,
+              8,
+              10,
+              14,
+              19,
+              29
+            ],
+            [
+              22,
+              34,
+              35,
+              38,
+              44,
+              47
+            ]
+          ],
+          "RESIDUAL_COUNT": 311471692,
+          "RESIDUAL_DELTA": -1767969,
+          "SHA256": "3d0b74592b0976691557ca81f5c955cc6d8776a5dd16047c59072579b0f59e6f"
+        },
+        {
+          "ADDED": [
+            [
+              1,
+              2,
+              16,
+              34,
+              41,
+              42
+            ],
+            [
+              3,
+              4,
+              9,
+              23,
+              29,
+              39
+            ],
+            [
+              6,
+              18,
+              20,
+              24,
+              28,
+              29
+            ],
+            [
+              10,
+              11,
+              16,
+              24,
+              36,
+              45
+            ]
+          ],
+          "CANONICAL_COUNT": 311021732,
+          "CANONICAL_DELTA": -2217929,
+          "MATCH": true,
+          "NUMBERS": [
+            45,
+            16,
+            4,
+            6
+          ],
+          "ORIENTATION": "(0 3 2 1)",
+          "QUADRUPLE": [
+            0,
+            5,
+            7,
+            10
+          ],
+          "REMOVED": [
+            [
+              1,
+              2,
+              34,
+              41,
+              42,
+              45
+            ],
+            [
+              3,
+              9,
+              16,
+              23,
+              29,
+              39
+            ],
+            [
+              4,
+              18,
+              20,
+              24,
+              28,
+              29
+            ],
+            [
+              6,
+              10,
+              11,
+              16,
+              24,
+              36
+            ]
+          ],
+          "RESIDUAL_COUNT": 311021732,
+          "RESIDUAL_DELTA": -2217929,
+          "SHA256": "b80446200ecfb4c8f924152f7f32c4545ca5b0a19f94aad2e015b57f5c4742c2"
+        },
+        {
+          "ADDED": [
+            [
+              1,
+              34,
+              39,
+              41,
+              42,
+              45
+            ],
+            [
+              2,
+              6,
+              10,
+              11,
+              24,
+              36
+            ],
+            [
+              3,
+              4,
+              9,
+              16,
+              23,
+              29
+            ],
+            [
+              16,
+              18,
+              20,
+              24,
+              28,
+              29
+            ]
+          ],
+          "CANONICAL_COUNT": 311493861,
+          "CANONICAL_DELTA": -1745800,
+          "MATCH": true,
+          "NUMBERS": [
+            2,
+            39,
+            4,
+            16
+          ],
+          "ORIENTATION": "(0 3 2 1)",
+          "QUADRUPLE": [
+            0,
+            5,
+            7,
+            10
+          ],
+          "REMOVED": [
+            [
+              1,
+              2,
+              34,
+              41,
+              42,
+              45
+            ],
+            [
+              3,
+              9,
+              16,
+              23,
+              29,
+              39
+            ],
+            [
+              4,
+              18,
+              20,
+              24,
+              28,
+              29
+            ],
+            [
+              6,
+              10,
+              11,
+              16,
+              24,
+              36
+            ]
+          ],
+          "RESIDUAL_COUNT": 311493861,
+          "RESIDUAL_DELTA": -1745800,
+          "SHA256": "1413bc3abcfaa8222eed82f143ca84a909305b4caae3b235badc743addecd07b"
+        },
+        {
+          "ADDED": [
+            [
+              1,
+              2,
+              3,
+              34,
+              41,
+              42
+            ],
+            [
+              4,
+              6,
+              10,
+              11,
+              16,
+              24
+            ],
+            [
+              9,
+              16,
+              23,
+              29,
+              36,
+              39
+            ],
+            [
+              18,
+              20,
+              24,
+              28,
+              29,
+              45
+            ]
+          ],
+          "CANONICAL_COUNT": 311993514,
+          "CANONICAL_DELTA": -1246147,
+          "MATCH": true,
+          "NUMBERS": [
+            45,
+            3,
+            4,
+            36
+          ],
+          "ORIENTATION": "(0 2 3 1)",
+          "QUADRUPLE": [
+            0,
+            5,
+            7,
+            10
+          ],
+          "REMOVED": [
+            [
+              1,
+              2,
+              34,
+              41,
+              42,
+              45
+            ],
+            [
+              3,
+              9,
+              16,
+              23,
+              29,
+              39
+            ],
+            [
+              4,
+              18,
+              20,
+              24,
+              28,
+              29
+            ],
+            [
+              6,
+              10,
+              11,
+              16,
+              24,
+              36
+            ]
+          ],
+          "RESIDUAL_COUNT": 311993514,
+          "RESIDUAL_DELTA": -1246147,
+          "SHA256": "c5fc2826cfe368e478be618a6f03266a3e7c3a263503082198692786e3e33b92"
+        }
+      ],
+      "SAMPLE_COUNT": 72,
+      "SEED": 20260930,
+      "START_REPRODUCTION": [
+        {
+          "MATCH": true,
+          "QUADRUPLE": [
+            5,
+            12,
+            13,
+            17
+          ],
+          "RESIDUAL_COUNT": 313239661
+        },
+        {
+          "MATCH": true,
+          "QUADRUPLE": [
+            4,
+            9,
+            10,
+            17
+          ],
+          "RESIDUAL_COUNT": 313239661
+        },
+        {
+          "MATCH": true,
+          "QUADRUPLE": [
+            2,
+            3,
+            6,
+            14
+          ],
+          "RESIDUAL_COUNT": 313239661
+        },
+        {
+          "MATCH": true,
+          "QUADRUPLE": [
+            3,
+            4,
+            9,
+            15
+          ],
+          "RESIDUAL_COUNT": 313239661
+        },
+        {
+          "MATCH": true,
+          "QUADRUPLE": [
+            6,
+            14,
+            15,
+            17
+          ],
+          "RESIDUAL_COUNT": 313239661
+        },
+        {
+          "MATCH": true,
+          "QUADRUPLE": [
+            4,
+            12,
+            13,
+            19
+          ],
+          "RESIDUAL_COUNT": 313239661
+        },
+        {
+          "MATCH": true,
+          "QUADRUPLE": [
+            0,
+            2,
+            4,
+            17
+          ],
+          "RESIDUAL_COUNT": 313239661
+        },
+        {
+          "MATCH": true,
+          "QUADRUPLE": [
+            0,
+            3,
+            18,
+            19
+          ],
+          "RESIDUAL_COUNT": 313239661
+        },
+        {
+          "MATCH": true,
+          "QUADRUPLE": [
+            10,
+            11,
+            12,
+            19
+          ],
+          "RESIDUAL_COUNT": 313239661
+        },
+        {
+          "MATCH": true,
+          "QUADRUPLE": [
+            2,
+            8,
+            11,
+            15
+          ],
+          "RESIDUAL_COUNT": 313239661
+        },
+        {
+          "MATCH": true,
+          "QUADRUPLE": [
+            5,
+            14,
+            15,
+            17
+          ],
+          "RESIDUAL_COUNT": 313239661
+        },
+        {
+          "MATCH": true,
+          "QUADRUPLE": [
+            12,
+            13,
+            16,
+            19
+          ],
+          "RESIDUAL_COUNT": 313239661
+        },
+        {
+          "MATCH": true,
+          "QUADRUPLE": [
+            5,
+            6,
+            10,
+            18
+          ],
+          "RESIDUAL_COUNT": 313239661
+        },
+        {
+          "MATCH": true,
+          "QUADRUPLE": [
+            0,
+            2,
+            7,
+            16
+          ],
+          "RESIDUAL_COUNT": 313239661
+        },
+        {
+          "MATCH": true,
+          "QUADRUPLE": [
+            0,
+            3,
+            6,
+            15
+          ],
+          "RESIDUAL_COUNT": 313239661
+        },
+        {
+          "MATCH": true,
+          "QUADRUPLE": [
+            6,
+            12,
+            13,
+            14
+          ],
+          "RESIDUAL_COUNT": 313239661
+        },
+        {
+          "MATCH": true,
+          "QUADRUPLE": [
+            0,
+            7,
+            8,
+            18
+          ],
+          "RESIDUAL_COUNT": 313239661
+        },
+        {
+          "MATCH": true,
+          "QUADRUPLE": [
+            1,
+            6,
+            9,
+            18
+          ],
+          "RESIDUAL_COUNT": 313239661
+        },
+        {
+          "MATCH": true,
+          "QUADRUPLE": [
+            8,
+            9,
+            11,
+            18
+          ],
+          "RESIDUAL_COUNT": 313239661
+        },
+        {
+          "MATCH": true,
+          "QUADRUPLE": [
+            3,
+            9,
+            10,
+            11
+          ],
+          "RESIDUAL_COUNT": 313239661
+        },
+        {
+          "MATCH": true,
+          "QUADRUPLE": [
+            0,
+            6,
+            9,
+            10
+          ],
+          "RESIDUAL_COUNT": 313239661
+        },
+        {
+          "MATCH": true,
+          "QUADRUPLE": [
+            4,
+            5,
+            10,
+            17
+          ],
+          "RESIDUAL_COUNT": 313239661
+        },
+        {
+          "MATCH": true,
+          "QUADRUPLE": [
+            3,
+            5,
+            12,
+            19
+          ],
+          "RESIDUAL_COUNT": 313239661
+        },
+        {
+          "MATCH": true,
+          "QUADRUPLE": [
+            0,
+            5,
+            7,
+            10
+          ],
+          "RESIDUAL_COUNT": 313239661
+        }
+      ],
+      "START_REPRODUCTION_CHECKS": 24,
+      "START_REPRODUCTION_MISMATCHES": 0,
+      "STREAM": "random.Random('parity:<seed>:<i>:<j>:<k>:<l>').sample(unique legal, 3)"
+    },
+    "PARITY_SECONDS": 65.993,
+    "PER_QUADRUPLE": [
+      {
+        "BEST_COUNT": 313007660,
+        "LEGAL": 5400,
+        "PATTERNS": 77294,
+        "PRECOMPUTE_SECONDS": 2.313,
+        "QUADRUPLE": [
+          5,
+          12,
+          13,
+          17
+        ],
+        "RAW": 7776,
+        "REBIND_MATCH": true,
+        "REJECTED": {
+          "DUPLICATE_TICKET": 0,
+          "FEWER_THAN_FOUR_CHANGED": 0,
+          "ILLEGAL_TICKET": 1980,
+          "UNCHANGED_TICKET": 396
+        },
+        "SCORING_SECONDS": 14.593,
+        "STRICT_IMPROVEMENTS": 0,
+        "TICKETS": [
+          [
+            3,
+            9,
+            16,
+            23,
+            29,
+            39
+          ],
+          [
+            7,
+            8,
+            10,
+            14,
+            19,
+            29
+          ],
+          [
+            8,
+            9,
+            11,
+            15,
+            20,
+            46
+          ],
+          [
+            21,
+            25,
+            30,
+            38,
+            45,
+            48
+          ]
+        ],
+        "UNIQUE": 5400,
+        "UNIVERSE_SIZE": 21
+      },
+      {
+        "BEST_COUNT": 313007961,
+        "LEGAL": 5400,
+        "PATTERNS": 76358,
+        "PRECOMPUTE_SECONDS": 2.351,
+        "QUADRUPLE": [
+          4,
+          9,
+          10,
+          17
+        ],
+        "RAW": 7776,
+        "REBIND_MATCH": true,
+        "REJECTED": {
+          "DUPLICATE_TICKET": 0,
+          "FEWER_THAN_FOUR_CHANGED": 0,
+          "ILLEGAL_TICKET": 1980,
+          "UNCHANGED_TICKET": 396
+        },
+        "SCORING_SECONDS": 14.232,
+        "STRICT_IMPROVEMENTS": 0,
+        "TICKETS": [
+          [
+            3,
+            8,
+            13,
+            28,
+            31,
+            36
+          ],
+          [
+            6,
+            7,
+            9,
+            13,
+            18,
+            26
+          ],
+          [
+            6,
+            10,
+            11,
+            16,
+            24,
+            36
+          ],
+          [
+            21,
+            25,
+            30,
+            38,
+            45,
+            48
+          ]
+        ],
+        "UNIQUE": 5400,
+        "UNIVERSE_SIZE": 21
+      },
+      {
+        "BEST_COUNT": 313075777,
+        "LEGAL": 5400,
+        "PATTERNS": 77278,
+        "PRECOMPUTE_SECONDS": 1.922,
+        "QUADRUPLE": [
+          2,
+          3,
+          6,
+          14
+        ],
+        "RAW": 7776,
+        "REBIND_MATCH": true,
+        "REJECTED": {
+          "DUPLICATE_TICKET": 0,
+          "FEWER_THAN_FOUR_CHANGED": 0,
+          "ILLEGAL_TICKET": 1980,
+          "UNCHANGED_TICKET": 396
+        },
+        "SCORING_SECONDS": 13.351,
+        "STRICT_IMPROVEMENTS": 0,
+        "TICKETS": [
+          [
+            2,
+            5,
+            33,
+            35,
+            40,
+            48
+          ],
+          [
+            3,
+            4,
+            10,
+            15,
+            26,
+            27
+          ],
+          [
+            4,
+            7,
+            12,
+            36,
+            39,
+            46
+          ],
+          [
+            11,
+            12,
+            18,
+            23,
+            27,
+            49
+          ]
+        ],
+        "UNIQUE": 5400,
+        "UNIVERSE_SIZE": 21
+      },
+      {
+        "BEST_COUNT": 312747631,
+        "LEGAL": 3750,
+        "PATTERNS": 32228,
+        "PRECOMPUTE_SECONDS": 1.868,
+        "QUADRUPLE": [
+          3,
+          4,
+          9,
+          15
+        ],
+        "RAW": 7776,
+        "REBIND_MATCH": true,
+        "REJECTED": {
+          "DUPLICATE_TICKET": 0,
+          "FEWER_THAN_FOUR_CHANGED": 0,
+          "ILLEGAL_TICKET": 3540,
+          "UNCHANGED_TICKET": 486
+        },
+        "SCORING_SECONDS": 3.689,
+        "STRICT_IMPROVEMENTS": 0,
+        "TICKETS": [
+          [
+            3,
+            4,
+            10,
+            15,
+            26,
+            27
+          ],
+          [
+            3,
+            8,
+            13,
+            28,
+            31,
+            36
+          ],
+          [
+            6,
+            7,
+            9,
+            13,
+            18,
+            26
+          ],
+          [
+            12,
+            13,
+            15,
+            19,
+            24,
+            37
+          ]
+        ],
+        "UNIQUE": 3750,
+        "UNIVERSE_SIZE": 19
+      },
+      {
+        "BEST_COUNT": 313133674,
+        "LEGAL": 5400,
+        "PATTERNS": 103213,
+        "PRECOMPUTE_SECONDS": 1.905,
+        "QUADRUPLE": [
+          6,
+          14,
+          15,
+          17
+        ],
+        "RAW": 7776,
+        "REBIND_MATCH": true,
+        "REJECTED": {
+          "DUPLICATE_TICKET": 0,
+          "FEWER_THAN_FOUR_CHANGED": 0,
+          "ILLEGAL_TICKET": 2160,
+          "UNCHANGED_TICKET": 216
+        },
+        "SCORING_SECONDS": 19.519,
+        "STRICT_IMPROVEMENTS": 0,
+        "TICKETS": [
+          [
+            4,
+            7,
+            12,
+            36,
+            39,
+            46
+          ],
+          [
+            11,
+            12,
+            18,
+            23,
+            27,
+            49
+          ],
+          [
+            12,
+            13,
+            15,
+            19,
+            24,
+            37
+          ],
+          [
+            21,
+            25,
+            30,
+            38,
+            45,
+            48
+          ]
+        ],
+        "UNIQUE": 5400,
+        "UNIVERSE_SIZE": 22
+      },
+      {
+        "BEST_COUNT": 312998378,
+        "LEGAL": 5400,
+        "PATTERNS": 99856,
+        "PRECOMPUTE_SECONDS": 2.074,
+        "QUADRUPLE": [
+          4,
+          12,
+          13,
+          19
+        ],
+        "RAW": 7776,
+        "REBIND_MATCH": true,
+        "REJECTED": {
+          "DUPLICATE_TICKET": 0,
+          "FEWER_THAN_FOUR_CHANGED": 0,
+          "ILLEGAL_TICKET": 2160,
+          "UNCHANGED_TICKET": 216
+        },
+        "SCORING_SECONDS": 19.99,
+        "STRICT_IMPROVEMENTS": 0,
+        "TICKETS": [
+          [
+            3,
+            8,
+            13,
+            28,
+            31,
+            36
+          ],
+          [
+            7,
+            8,
+            10,
+            14,
+            19,
+            29
+          ],
+          [
+            8,
+            9,
+            11,
+            15,
+            20,
+            46
+          ],
+          [
+            22,
+            34,
+            35,
+            38,
+            44,
+            47
+          ]
+        ],
+        "UNIQUE": 5400,
+        "UNIVERSE_SIZE": 22
+      },
+      {
+        "BEST_COUNT": 313106934,
+        "LEGAL": 5400,
+        "PATTERNS": 78214,
+        "PRECOMPUTE_SECONDS": 2.12,
+        "QUADRUPLE": [
+          0,
+          2,
+          4,
+          17
+        ],
+        "RAW": 7776,
+        "REBIND_MATCH": true,
+        "REJECTED": {
+          "DUPLICATE_TICKET": 0,
+          "FEWER_THAN_FOUR_CHANGED": 0,
+          "ILLEGAL_TICKET": 1980,
+          "UNCHANGED_TICKET": 396
+        },
+        "SCORING_SECONDS": 16.718,
+        "STRICT_IMPROVEMENTS": 0,
+        "TICKETS": [
+          [
+            1,
+            2,
+            34,
+            41,
+            42,
+            45
+          ],
+          [
+            2,
+            5,
+            33,
+            35,
+            40,
+            48
+          ],
+          [
+            3,
+            8,
+            13,
+            28,
+            31,
+            36
+          ],
+          [
+            21,
+            25,
+            30,
+            38,
+            45,
+            48
+          ]
+        ],
+        "UNIQUE": 5400,
+        "UNIVERSE_SIZE": 21
+      },
+      {
+        "BEST_COUNT": 313106920,
+        "LEGAL": 5400,
+        "PATTERNS": 78214,
+        "PRECOMPUTE_SECONDS": 2.098,
+        "QUADRUPLE": [
+          0,
+          3,
+          18,
+          19
+        ],
+        "RAW": 7776,
+        "REBIND_MATCH": true,
+        "REJECTED": {
+          "DUPLICATE_TICKET": 0,
+          "FEWER_THAN_FOUR_CHANGED": 0,
+          "ILLEGAL_TICKET": 1980,
+          "UNCHANGED_TICKET": 396
+        },
+        "SCORING_SECONDS": 17.656,
+        "STRICT_IMPROVEMENTS": 0,
+        "TICKETS": [
+          [
+            1,
+            2,
+            34,
+            41,
+            42,
+            45
+          ],
+          [
+            3,
+            4,
+            10,
+            15,
+            26,
+            27
+          ],
+          [
+            21,
+            32,
+            40,
+            42,
+            43,
+            44
+          ],
+          [
+            22,
+            34,
+            35,
+            38,
+            44,
+            47
+          ]
+        ],
+        "UNIQUE": 5400,
+        "UNIVERSE_SIZE": 21
+      },
+      {
+        "BEST_COUNT": 313075819,
+        "LEGAL": 5400,
+        "PATTERNS": 76343,
+        "PRECOMPUTE_SECONDS": 2.416,
+        "QUADRUPLE": [
+          10,
+          11,
+          12,
+          19
+        ],
+        "RAW": 7776,
+        "REBIND_MATCH": true,
+        "REJECTED": {
+          "DUPLICATE_TICKET": 0,
+          "FEWER_THAN_FOUR_CHANGED": 0,
+          "ILLEGAL_TICKET": 1980,
+          "UNCHANGED_TICKET": 396
+        },
+        "SCORING_SECONDS": 15.097,
+        "STRICT_IMPROVEMENTS": 0,
+        "TICKETS": [
+          [
+            6,
+            10,
+            11,
+            16,
+            24,
+            36
+          ],
+          [
+            6,
+            14,
+            20,
+            31,
+            37,
+            39
+          ],
+          [
+            7,
+            8,
+            10,
+            14,
+            19,
+            29
+          ],
+          [
+            22,
+            34,
+            35,
+            38,
+            44,
+            47
+          ]
+        ],
+        "UNIQUE": 5400,
+        "UNIVERSE_SIZE": 21
+      },
+      {
+        "BEST_COUNT": 313239661,
+        "LEGAL": 6192,
+        "PATTERNS": 110056,
+        "PRECOMPUTE_SECONDS": 1.682,
+        "QUADRUPLE": [
+          2,
+          8,
+          11,
+          15
+        ],
+        "RAW": 7776,
+        "REBIND_MATCH": true,
+        "REJECTED": {
+          "DUPLICATE_TICKET": 0,
+          "FEWER_THAN_FOUR_CHANGED": 0,
+          "ILLEGAL_TICKET": 1340,
+          "UNCHANGED_TICKET": 244
+        },
+        "SCORING_SECONDS": 25.243,
+        "STRICT_IMPROVEMENTS": 0,
+        "TICKETS": [
+          [
+            2,
+            5,
+            33,
+            35,
+            40,
+            48
+          ],
+          [
+            5,
+            17,
+            25,
+            32,
+            41,
+            47
+          ],
+          [
+            6,
+            14,
+            20,
+            31,
+            37,
+            39
+          ],
+          [
+            12,
+            13,
+            15,
+            19,
+            24,
+            37
+          ]
+        ],
+        "UNIQUE": 6191,
+        "UNIVERSE_SIZE": 22
+      },
+      {
+        "BEST_COUNT": 313098338,
+        "LEGAL": 6120,
+        "PATTERNS": 103213,
+        "PRECOMPUTE_SECONDS": 2.278,
+        "QUADRUPLE": [
+          5,
+          14,
+          15,
+          17
+        ],
+        "RAW": 7776,
+        "REBIND_MATCH": true,
+        "REJECTED": {
+          "DUPLICATE_TICKET": 0,
+          "FEWER_THAN_FOUR_CHANGED": 0,
+          "ILLEGAL_TICKET": 1380,
+          "UNCHANGED_TICKET": 276
+        },
+        "SCORING_SECONDS": 23.747,
+        "STRICT_IMPROVEMENTS": 0,
+        "TICKETS": [
+          [
+            3,
+            9,
+            16,
+            23,
+            29,
+            39
+          ],
+          [
+            11,
+            12,
+            18,
+            23,
+            27,
+            49
+          ],
+          [
+            12,
+            13,
+            15,
+            19,
+            24,
+            37
+          ],
+          [
+            21,
+            25,
+            30,
+            38,
+            45,
+            48
+          ]
+        ],
+        "UNIQUE": 6120,
+        "UNIVERSE_SIZE": 22
+      },
+      {
+        "BEST_COUNT": 312998378,
+        "LEGAL": 5400,
+        "PATTERNS": 77310,
+        "PRECOMPUTE_SECONDS": 1.721,
+        "QUADRUPLE": [
+          12,
+          13,
+          16,
+          19
+        ],
+        "RAW": 7776,
+        "REBIND_MATCH": true,
+        "REJECTED": {
+          "DUPLICATE_TICKET": 0,
+          "FEWER_THAN_FOUR_CHANGED": 0,
+          "ILLEGAL_TICKET": 1980,
+          "UNCHANGED_TICKET": 396
+        },
+        "SCORING_SECONDS": 15.442,
+        "STRICT_IMPROVEMENTS": 0,
+        "TICKETS": [
+          [
+            7,
+            8,
+            10,
+            14,
+            19,
+            29
+          ],
+          [
+            8,
+            9,
+            11,
+            15,
+            20,
+            46
+          ],
+          [
+            16,
+            19,
+            26,
+            28,
+            46,
+            49
+          ],
+          [
+            22,
+            34,
+            35,
+            38,
+            44,
+            47
+          ]
+        ],
+        "UNIQUE": 5400,
+        "UNIVERSE_SIZE": 21
+      },
+      {
+        "BEST_COUNT": 313007961,
+        "LEGAL": 5400,
+        "PATTERNS": 76342,
+        "PRECOMPUTE_SECONDS": 1.794,
+        "QUADRUPLE": [
+          5,
+          6,
+          10,
+          18
+        ],
+        "RAW": 7776,
+        "REBIND_MATCH": true,
+        "REJECTED": {
+          "DUPLICATE_TICKET": 0,
+          "FEWER_THAN_FOUR_CHANGED": 0,
+          "ILLEGAL_TICKET": 1980,
+          "UNCHANGED_TICKET": 396
+        },
+        "SCORING_SECONDS": 16.056,
+        "STRICT_IMPROVEMENTS": 0,
+        "TICKETS": [
+          [
+            3,
+            9,
+            16,
+            23,
+            29,
+            39
+          ],
+          [
+            4,
+            7,
+            12,
+            36,
+            39,
+            46
+          ],
+          [
+            6,
+            10,
+            11,
+            16,
+            24,
+            36
+          ],
+          [
+            21,
+            32,
+            40,
+            42,
+            43,
+            44
+          ]
+        ],
+        "UNIQUE": 5400,
+        "UNIVERSE_SIZE": 21
+      },
+      {
+        "BEST_COUNT": 313050136,
+        "LEGAL": 6192,
+        "PATTERNS": 110056,
+        "PRECOMPUTE_SECONDS": 2.332,
+        "QUADRUPLE": [
+          0,
+          2,
+          7,
+          16
+        ],
+        "RAW": 7776,
+        "REBIND_MATCH": true,
+        "REJECTED": {
+          "DUPLICATE_TICKET": 0,
+          "FEWER_THAN_FOUR_CHANGED": 0,
+          "ILLEGAL_TICKET": 1340,
+          "UNCHANGED_TICKET": 244
+        },
+        "SCORING_SECONDS": 26.907,
+        "STRICT_IMPROVEMENTS": 0,
+        "TICKETS": [
+          [
+            1,
+            2,
+            34,
+            41,
+            42,
+            45
+          ],
+          [
+            2,
+            5,
+            33,
+            35,
+            40,
+            48
+          ],
+          [
+            4,
+            18,
+            20,
+            24,
+            28,
+            29
+          ],
+          [
+            16,
+            19,
+            26,
+            28,
+            46,
+            49
+          ]
+        ],
+        "UNIQUE": 6191,
+        "UNIVERSE_SIZE": 22
+      },
+      {
+        "BEST_COUNT": 313116188,
+        "LEGAL": 5400,
+        "PATTERNS": 77325,
+        "PRECOMPUTE_SECONDS": 2.386,
+        "QUADRUPLE": [
+          0,
+          3,
+          6,
+          15
+        ],
+        "RAW": 7776,
+        "REBIND_MATCH": true,
+        "REJECTED": {
+          "DUPLICATE_TICKET": 0,
+          "FEWER_THAN_FOUR_CHANGED": 0,
+          "ILLEGAL_TICKET": 1980,
+          "UNCHANGED_TICKET": 396
+        },
+        "SCORING_SECONDS": 16.396,
+        "STRICT_IMPROVEMENTS": 0,
+        "TICKETS": [
+          [
+            1,
+            2,
+            34,
+            41,
+            42,
+            45
+          ],
+          [
+            3,
+            4,
+            10,
+            15,
+            26,
+            27
+          ],
+          [
+            4,
+            7,
+            12,
+            36,
+            39,
+            46
+          ],
+          [
+            12,
+            13,
+            15,
+            19,
+            24,
+            37
+          ]
+        ],
+        "UNIQUE": 5400,
+        "UNIVERSE_SIZE": 21
+      },
+      {
+        "BEST_COUNT": 312715802,
+        "LEGAL": 4250,
+        "PATTERNS": 33610,
+        "PRECOMPUTE_SECONDS": 2.043,
+        "QUADRUPLE": [
+          6,
+          12,
+          13,
+          14
+        ],
+        "RAW": 7776,
+        "REBIND_MATCH": true,
+        "REJECTED": {
+          "DUPLICATE_TICKET": 0,
+          "FEWER_THAN_FOUR_CHANGED": 0,
+          "ILLEGAL_TICKET": 2978,
+          "UNCHANGED_TICKET": 548
+        },
+        "SCORING_SECONDS": 5.203,
+        "STRICT_IMPROVEMENTS": 0,
+        "TICKETS": [
+          [
+            4,
+            7,
+            12,
+            36,
+            39,
+            46
+          ],
+          [
+            7,
+            8,
+            10,
+            14,
+            19,
+            29
+          ],
+          [
+            8,
+            9,
+            11,
+            15,
+            20,
+            46
+          ],
+          [
+            11,
+            12,
+            18,
+            23,
+            27,
+            49
+          ]
+        ],
+        "UNIQUE": 4248,
+        "UNIVERSE_SIZE": 19
+      },
+      {
+        "BEST_COUNT": 313007933,
+        "LEGAL": 5400,
+        "PATTERNS": 78214,
+        "PRECOMPUTE_SECONDS": 1.812,
+        "QUADRUPLE": [
+          0,
+          7,
+          8,
+          18
+        ],
+        "RAW": 7776,
+        "REBIND_MATCH": true,
+        "REJECTED": {
+          "DUPLICATE_TICKET": 0,
+          "FEWER_THAN_FOUR_CHANGED": 0,
+          "ILLEGAL_TICKET": 1980,
+          "UNCHANGED_TICKET": 396
+        },
+        "SCORING_SECONDS": 16.359,
+        "STRICT_IMPROVEMENTS": 0,
+        "TICKETS": [
+          [
+            1,
+            2,
+            34,
+            41,
+            42,
+            45
+          ],
+          [
+            4,
+            18,
+            20,
+            24,
+            28,
+            29
+          ],
+          [
+            5,
+            17,
+            25,
+            32,
+            41,
+            47
+          ],
+          [
+            21,
+            32,
+            40,
+            42,
+            43,
+            44
+          ]
+        ],
+        "UNIQUE": 5400,
+        "UNIVERSE_SIZE": 21
+      },
+      {
+        "BEST_COUNT": 313038159,
+        "LEGAL": 6192,
+        "PATTERNS": 110056,
+        "PRECOMPUTE_SECONDS": 2.134,
+        "QUADRUPLE": [
+          1,
+          6,
+          9,
+          18
+        ],
+        "RAW": 7776,
+        "REBIND_MATCH": true,
+        "REJECTED": {
+          "DUPLICATE_TICKET": 0,
+          "FEWER_THAN_FOUR_CHANGED": 0,
+          "ILLEGAL_TICKET": 1340,
+          "UNCHANGED_TICKET": 244
+        },
+        "SCORING_SECONDS": 26.182,
+        "STRICT_IMPROVEMENTS": 0,
+        "TICKETS": [
+          [
+            1,
+            17,
+            22,
+            30,
+            33,
+            43
+          ],
+          [
+            4,
+            7,
+            12,
+            36,
+            39,
+            46
+          ],
+          [
+            6,
+            7,
+            9,
+            13,
+            18,
+            26
+          ],
+          [
+            21,
+            32,
+            40,
+            42,
+            43,
+            44
+          ]
+        ],
+        "UNIQUE": 6191,
+        "UNIVERSE_SIZE": 22
+      },
+      {
+        "BEST_COUNT": 313075168,
+        "LEGAL": 6192,
+        "PATTERNS": 110056,
+        "PRECOMPUTE_SECONDS": 2.053,
+        "QUADRUPLE": [
+          8,
+          9,
+          11,
+          18
+        ],
+        "RAW": 7776,
+        "REBIND_MATCH": true,
+        "REJECTED": {
+          "DUPLICATE_TICKET": 0,
+          "FEWER_THAN_FOUR_CHANGED": 0,
+          "ILLEGAL_TICKET": 1340,
+          "UNCHANGED_TICKET": 244
+        },
+        "SCORING_SECONDS": 27.781,
+        "STRICT_IMPROVEMENTS": 0,
+        "TICKETS": [
+          [
+            5,
+            17,
+            25,
+            32,
+            41,
+            47
+          ],
+          [
+            6,
+            7,
+            9,
+            13,
+            18,
+            26
+          ],
+          [
+            6,
+            14,
+            20,
+            31,
+            37,
+            39
+          ],
+          [
+            21,
+            32,
+            40,
+            42,
+            43,
+            44
+          ]
+        ],
+        "UNIQUE": 6191,
+        "UNIVERSE_SIZE": 22
+      },
+      {
+        "BEST_COUNT": 312714682,
+        "LEGAL": 4250,
+        "PATTERNS": 42690,
+        "PRECOMPUTE_SECONDS": 2.211,
+        "QUADRUPLE": [
+          3,
+          9,
+          10,
+          11
+        ],
+        "RAW": 7776,
+        "REBIND_MATCH": true,
+        "REJECTED": {
+          "DUPLICATE_TICKET": 0,
+          "FEWER_THAN_FOUR_CHANGED": 0,
+          "ILLEGAL_TICKET": 3120,
+          "UNCHANGED_TICKET": 406
+        },
+        "SCORING_SECONDS": 7.426,
+        "STRICT_IMPROVEMENTS": 0,
+        "TICKETS": [
+          [
+            3,
+            4,
+            10,
+            15,
+            26,
+            27
+          ],
+          [
+            6,
+            7,
+            9,
+            13,
+            18,
+            26
+          ],
+          [
+            6,
+            10,
+            11,
+            16,
+            24,
+            36
+          ],
+          [
+            6,
+            14,
+            20,
+            31,
+            37,
+            39
+          ]
+        ],
+        "UNIQUE": 4250,
+        "UNIVERSE_SIZE": 20
+      },
+      {
+        "BEST_COUNT": 312507048,
+        "LEGAL": 5400,
+        "PATTERNS": 75407,
+        "PRECOMPUTE_SECONDS": 2.761,
+        "QUADRUPLE": [
+          0,
+          6,
+          9,
+          10
+        ],
+        "RAW": 7776,
+        "REBIND_MATCH": true,
+        "REJECTED": {
+          "DUPLICATE_TICKET": 0,
+          "FEWER_THAN_FOUR_CHANGED": 0,
+          "ILLEGAL_TICKET": 1980,
+          "UNCHANGED_TICKET": 396
+        },
+        "SCORING_SECONDS": 14.538,
+        "STRICT_IMPROVEMENTS": 0,
+        "TICKETS": [
+          [
+            1,
+            2,
+            34,
+            41,
+            42,
+            45
+          ],
+          [
+            4,
+            7,
+            12,
+            36,
+            39,
+            46
+          ],
+          [
+            6,
+            7,
+            9,
+            13,
+            18,
+            26
+          ],
+          [
+            6,
+            10,
+            11,
+            16,
+            24,
+            36
+          ]
+        ],
+        "UNIQUE": 5400,
+        "UNIVERSE_SIZE": 21
+      },
+      {
+        "BEST_COUNT": 313007667,
+        "LEGAL": 5400,
+        "PATTERNS": 77294,
+        "PRECOMPUTE_SECONDS": 1.95,
+        "QUADRUPLE": [
+          4,
+          5,
+          10,
+          17
+        ],
+        "RAW": 7776,
+        "REBIND_MATCH": true,
+        "REJECTED": {
+          "DUPLICATE_TICKET": 0,
+          "FEWER_THAN_FOUR_CHANGED": 0,
+          "ILLEGAL_TICKET": 1980,
+          "UNCHANGED_TICKET": 396
+        },
+        "SCORING_SECONDS": 12.561,
+        "STRICT_IMPROVEMENTS": 0,
+        "TICKETS": [
+          [
+            3,
+            8,
+            13,
+            28,
+            31,
+            36
+          ],
+          [
+            3,
+            9,
+            16,
+            23,
+            29,
+            39
+          ],
+          [
+            6,
+            10,
+            11,
+            16,
+            24,
+            36
+          ],
+          [
+            21,
+            25,
+            30,
+            38,
+            45,
+            48
+          ]
+        ],
+        "UNIQUE": 5400,
+        "UNIVERSE_SIZE": 21
+      },
+      {
+        "BEST_COUNT": 313116531,
+        "LEGAL": 5400,
+        "PATTERNS": 78262,
+        "PRECOMPUTE_SECONDS": 1.795,
+        "QUADRUPLE": [
+          3,
+          5,
+          12,
+          19
+        ],
+        "RAW": 7776,
+        "REBIND_MATCH": true,
+        "REJECTED": {
+          "DUPLICATE_TICKET": 0,
+          "FEWER_THAN_FOUR_CHANGED": 0,
+          "ILLEGAL_TICKET": 1980,
+          "UNCHANGED_TICKET": 396
+        },
+        "SCORING_SECONDS": 12.873,
+        "STRICT_IMPROVEMENTS": 0,
+        "TICKETS": [
+          [
+            3,
+            4,
+            10,
+            15,
+            26,
+            27
+          ],
+          [
+            3,
+            9,
+            16,
+            23,
+            29,
+            39
+          ],
+          [
+            7,
+            8,
+            10,
+            14,
+            19,
+            29
+          ],
+          [
+            22,
+            34,
+            35,
+            38,
+            44,
+            47
+          ]
+        ],
+        "UNIQUE": 5400,
+        "UNIVERSE_SIZE": 21
+      },
+      {
+        "BEST_COUNT": 312518038,
+        "LEGAL": 5400,
+        "PATTERNS": 75406,
+        "PRECOMPUTE_SECONDS": 1.753,
+        "QUADRUPLE": [
+          0,
+          5,
+          7,
+          10
+        ],
+        "RAW": 7776,
+        "REBIND_MATCH": true,
+        "REJECTED": {
+          "DUPLICATE_TICKET": 0,
+          "FEWER_THAN_FOUR_CHANGED": 0,
+          "ILLEGAL_TICKET": 1980,
+          "UNCHANGED_TICKET": 396
+        },
+        "SCORING_SECONDS": 12.276,
+        "STRICT_IMPROVEMENTS": 0,
+        "TICKETS": [
+          [
+            1,
+            2,
+            34,
+            41,
+            42,
+            45
+          ],
+          [
+            3,
+            9,
+            16,
+            23,
+            29,
+            39
+          ],
+          [
+            4,
+            18,
+            20,
+            24,
+            28,
+            29
+          ],
+          [
+            6,
+            10,
+            11,
+            16,
+            24,
+            36
+          ]
+        ],
+        "UNIQUE": 5400,
+        "UNIVERSE_SIZE": 21
+      }
+    ],
+    "PILOT_WALL_DEFINITION": "2-worker wall of 24 quadruple precomputes + exact scoring of every unique legal candidate (worker start-up and parity excluded)",
+    "PILOT_WALL_SECONDS": 223.608,
+    "PRECOMPUTE_CPU_SECONDS": 49.773,
+    "PRUNING": "NONE",
+    "RAW_ATTEMPTS": 186624,
+    "REJECTED": {
+      "DUPLICATE_TICKET": 0,
+      "FEWER_THAN_FOUR_CHANGED": 0,
+      "ILLEGAL_TICKET": 48418,
+      "UNCHANGED_TICKET": 8668
+    },
+    "SCORING_CPU_SECONDS": 393.836,
+    "START_CANONICAL_REPRODUCTION": "PASS",
+    "START_COUNT": 313239661,
+    "START_EXACT_PROBABILITY": "44748523/85900584",
+    "START_LABEL": "PRIMARY",
+    "START_PORTFOLIO": [
+      [
+        1,
+        2,
+        34,
+        41,
+        42,
+        45
+      ],
+      [
+        1,
+        17,
+        22,
+        30,
+        33,
+        43
+      ],
+      [
+        2,
+        5,
+        33,
+        35,
+        40,
+        48
+      ],
+      [
+        3,
+        4,
+        10,
+        15,
+        26,
+        27
+      ],
+      [
+        3,
+        8,
+        13,
+        28,
+        31,
+        36
+      ],
+      [
+        3,
+        9,
+        16,
+        23,
+        29,
+        39
+      ],
+      [
+        4,
+        7,
+        12,
+        36,
+        39,
+        46
+      ],
+      [
+        4,
+        18,
+        20,
+        24,
+        28,
+        29
+      ],
+      [
+        5,
+        17,
+        25,
+        32,
+        41,
+        47
+      ],
+      [
+        6,
+        7,
+        9,
+        13,
+        18,
+        26
+      ],
+      [
+        6,
+        10,
+        11,
+        16,
+        24,
+        36
+      ],
+      [
+        6,
+        14,
+        20,
+        31,
+        37,
+        39
+      ],
+      [
+        7,
+        8,
+        10,
+        14,
+        19,
+        29
+      ],
+      [
+        8,
+        9,
+        11,
+        15,
+        20,
+        46
+      ],
+      [
+        11,
+        12,
+        18,
+        23,
+        27,
+        49
+      ],
+      [
+        12,
+        13,
+        15,
+        19,
+        24,
+        37
+      ],
+      [
+        16,
+        19,
+        26,
+        28,
+        46,
+        49
+      ],
+      [
+        21,
+        25,
+        30,
+        38,
+        45,
+        48
+      ],
+      [
+        21,
+        32,
+        40,
+        42,
+        43,
+        44
+      ],
+      [
+        22,
+        34,
+        35,
+        38,
+        44,
+        47
+      ]
+    ],
+    "START_SHA256": "7ce41ff21d5c0821f1d5dda683e23114086f5024fc6d98d4e574df5306659b1e",
+    "STATUS": "COMPLETE",
+    "STRICT_IMPROVEMENTS_VS_START": 0,
+    "TIE_BREAK": "max exact count, then lowest normalized portfolio sha256",
+    "TOP_CANDIDATES": [
+      {
+        "COUNT": 313239661,
+        "NUMBERS": [
+          5,
+          5,
+          37,
+          37
+        ],
+        "ORIENTATION": "(0 2 1 3)",
+        "QUADRUPLE": [
+          2,
+          8,
+          11,
+          15
+        ],
+        "SHA256": "292db85d03715ca7c66b37888b1a4d180284bec1d915b4d2cd744c57dcf27081"
+      },
+      {
+        "COUNT": 313133674,
+        "NUMBERS": [
+          39,
+          23,
+          37,
+          38
+        ],
+        "ORIENTATION": "(0 2 3 1)",
+        "QUADRUPLE": [
+          6,
+          14,
+          15,
+          17
+        ],
+        "SHA256": "21a67262452cda00af4c96a59a71cb1acf91b3f82e4deafb2e0ec69f9b59c96f"
+      },
+      {
+        "COUNT": 313133674,
+        "NUMBERS": [
+          39,
+          23,
+          37,
+          45
+        ],
+        "ORIENTATION": "(0 2 3 1)",
+        "QUADRUPLE": [
+          6,
+          14,
+          15,
+          17
+        ],
+        "SHA256": "2b25fb11f007c3f5d189e968d48f8a37aa6428ebf5d9578860ee85706b389b33"
+      },
+      {
+        "COUNT": 313133674,
+        "NUMBERS": [
+          39,
+          23,
+          37,
+          21
+        ],
+        "ORIENTATION": "(0 2 3 1)",
+        "QUADRUPLE": [
+          6,
+          14,
+          15,
+          17
+        ],
+        "SHA256": "4973c34a6f525c21ba02ee6cfc12d037fdabcec75870e8dd939f56114d1678b6"
+      },
+      {
+        "COUNT": 313133674,
+        "NUMBERS": [
+          39,
+          23,
+          37,
+          25
+        ],
+        "ORIENTATION": "(0 2 3 1)",
+        "QUADRUPLE": [
+          6,
+          14,
+          15,
+          17
+        ],
+        "SHA256": "9e8e1e38740c8a2fbe57c6872a60d4659a2f1db51c49372218fcc8d68af7d73b"
+      },
+      {
+        "COUNT": 313133674,
+        "NUMBERS": [
+          39,
+          23,
+          37,
+          48
+        ],
+        "ORIENTATION": "(0 2 3 1)",
+        "QUADRUPLE": [
+          6,
+          14,
+          15,
+          17
+        ],
+        "SHA256": "a3f15887df13b9596a82e3b250c535e2a26ece772be08e0d13201d0406726f2d"
+      },
+      {
+        "COUNT": 313133674,
+        "NUMBERS": [
+          39,
+          23,
+          37,
+          30
+        ],
+        "ORIENTATION": "(0 2 3 1)",
+        "QUADRUPLE": [
+          6,
+          14,
+          15,
+          17
+        ],
+        "SHA256": "da6b783ddf2680b1ad3a8612a98f4d5c392b590196b4ff01c57c557348876842"
+      },
+      {
+        "COUNT": 313116531,
+        "NUMBERS": [
+          35,
+          5,
+          37,
+          37
+        ],
+        "ORIENTATION": "(0 3 1 2)",
+        "QUADRUPLE": [
+          2,
+          8,
+          11,
+          15
+        ],
+        "SHA256": "04fb7af920d101ea0a70da6dbaac3addb04c952a94d6c23570fee03612ce4e62"
+      },
+      {
+        "COUNT": 313116531,
+        "NUMBERS": [
+          5,
+          17,
+          37,
+          37
+        ],
+        "ORIENTATION": "(0 2 1 3)",
+        "QUADRUPLE": [
+          2,
+          8,
+          11,
+          15
+        ],
+        "SHA256": "091d6ae9253b949f2a376c19aef571f6f0203fc166e19195a965f4edbc364e69"
+      },
+      {
+        "COUNT": 313116531,
+        "NUMBERS": [
+          33,
+          5,
+          37,
+          37
+        ],
+        "ORIENTATION": "(0 2 1 3)",
+        "QUADRUPLE": [
+          2,
+          8,
+          11,
+          15
+        ],
+        "SHA256": "1fd10b320980eaa6a8e96ddf25fcc6030f2d177650fada3591918292e93ca361"
+      },
+      {
+        "COUNT": 313116531,
+        "NUMBERS": [
+          5,
+          17,
+          37,
+          37
+        ],
+        "ORIENTATION": "(0 3 1 2)",
+        "QUADRUPLE": [
+          2,
+          8,
+          11,
+          15
+        ],
+        "SHA256": "21775f8e1ea48c8c18f0ccb949c6e27e5d8684239eb043c2f2eb600491e47268"
+      },
+      {
+        "COUNT": 313116531,
+        "NUMBERS": [
+          5,
+          32,
+          37,
+          37
+        ],
+        "ORIENTATION": "(0 3 1 2)",
+        "QUADRUPLE": [
+          2,
+          8,
+          11,
+          15
+        ],
+        "SHA256": "22dfd4af7462b04061e1152fd98edef2e4788cc38ab168ceb9e7121218bf00e3"
+      },
+      {
+        "COUNT": 313116531,
+        "NUMBERS": [
+          33,
+          5,
+          37,
+          37
+        ],
+        "ORIENTATION": "(0 3 1 2)",
+        "QUADRUPLE": [
+          2,
+          8,
+          11,
+          15
+        ],
+        "SHA256": "3458b94d668c2f90093871fdeac418db3c2bd7979d492f5d9a1a2f5fa10a750a"
+      },
+      {
+        "COUNT": 313116531,
+        "NUMBERS": [
+          27,
+          23,
+          14,
+          44
+        ],
+        "ORIENTATION": "(0 3 1 2)",
+        "QUADRUPLE": [
+          3,
+          5,
+          12,
+          19
+        ],
+        "SHA256": "3ffdab79621b28e14b0424ce569864aabb1ce975e1cd48b7fabad9303e137cc2"
+      },
+      {
+        "COUNT": 313116531,
+        "NUMBERS": [
+          5,
+          25,
+          37,
+          37
+        ],
+        "ORIENTATION": "(0 3 1 2)",
+        "QUADRUPLE": [
+          2,
+          8,
+          11,
+          15
+        ],
+        "SHA256": "409b29b0662051c221f03d3592add8c6ad9cb17f9ab3b6677e8631e1405fe2cb"
+      },
+      {
+        "COUNT": 313116531,
+        "NUMBERS": [
+          27,
+          23,
+          14,
+          47
+        ],
+        "ORIENTATION": "(0 3 1 2)",
+        "QUADRUPLE": [
+          3,
+          5,
+          12,
+          19
+        ],
+        "SHA256": "4367d418a22df3b2892af8a8571fb6e66e354743e7f23772e139ad90a451e794"
+      },
+      {
+        "COUNT": 313116531,
+        "NUMBERS": [
+          5,
+          47,
+          37,
+          37
+        ],
+        "ORIENTATION": "(0 2 1 3)",
+        "QUADRUPLE": [
+          2,
+          8,
+          11,
+          15
+        ],
+        "SHA256": "52a2e1b80ab434ee6353086657180e23b160d732bf5d7886a401122212ea8a31"
+      },
+      {
+        "COUNT": 313116531,
+        "NUMBERS": [
+          5,
+          25,
+          37,
+          37
+        ],
+        "ORIENTATION": "(0 2 1 3)",
+        "QUADRUPLE": [
+          2,
+          8,
+          11,
+          15
+        ],
+        "SHA256": "54a9056633816c7efc6111946d965a191d48ad979080a4b1c6e9dddb5779e01d"
+      },
+      {
+        "COUNT": 313116531,
+        "NUMBERS": [
+          27,
+          23,
+          14,
+          22
+        ],
+        "ORIENTATION": "(0 3 1 2)",
+        "QUADRUPLE": [
+          3,
+          5,
+          12,
+          19
+        ],
+        "SHA256": "5f3931d72068ffdf53ef5a21f175dfaaa84be90a025956f38f27d9138e30cf35"
+      },
+      {
+        "COUNT": 313116531,
+        "NUMBERS": [
+          5,
+          47,
+          37,
+          37
+        ],
+        "ORIENTATION": "(0 3 1 2)",
+        "QUADRUPLE": [
+          2,
+          8,
+          11,
+          15
+        ],
+        "SHA256": "5f7da45853aa5bd3f03ea7f34622b4cdee0a0674b3c17496eba65118e07d0f54"
+      },
+      {
+        "COUNT": 313116531,
+        "NUMBERS": [
+          5,
+          41,
+          37,
+          37
+        ],
+        "ORIENTATION": "(0 3 1 2)",
+        "QUADRUPLE": [
+          2,
+          8,
+          11,
+          15
+        ],
+        "SHA256": "641dbd1c5c710bf7c8c7c223261835b930cfd3ceabd092a828737e1c4f40fc0e"
+      },
+      {
+        "COUNT": 313116531,
+        "NUMBERS": [
+          35,
+          5,
+          37,
+          37
+        ],
+        "ORIENTATION": "(0 2 1 3)",
+        "QUADRUPLE": [
+          2,
+          8,
+          11,
+          15
+        ],
+        "SHA256": "6472ba5dd0811415a772777a940f6b848d2a4e2c6ba53828c0c83fa6dc178281"
+      },
+      {
+        "COUNT": 313116531,
+        "NUMBERS": [
+          27,
+          23,
+          14,
+          34
+        ],
+        "ORIENTATION": "(0 3 1 2)",
+        "QUADRUPLE": [
+          3,
+          5,
+          12,
+          19
+        ],
+        "SHA256": "681bbc61c058909508936c78db8a88536a432d6206b05b9b663fde7421698270"
+      },
+      {
+        "COUNT": 313116531,
+        "NUMBERS": [
+          27,
+          23,
+          14,
+          38
+        ],
+        "ORIENTATION": "(0 3 1 2)",
+        "QUADRUPLE": [
+          3,
+          5,
+          12,
+          19
+        ],
+        "SHA256": "6f8799a8c19f316b8c2c7ec0400f0053602bfff66cf471bc051cd2d0b8028cad"
+      },
+      {
+        "COUNT": 313116531,
+        "NUMBERS": [
+          5,
+          32,
+          37,
+          37
+        ],
+        "ORIENTATION": "(0 2 1 3)",
+        "QUADRUPLE": [
+          2,
+          8,
+          11,
+          15
+        ],
+        "SHA256": "77ae439b973ac553ba7c92dccc2f0ff5a8c916d9aefda3ff7266c4f1eae70b34"
+      }
+    ],
+    "TOP_L": "NONE",
+    "WITHIN_QUADRUPLE_DUPLICATES": 6,
+    "WORKER_PEAK_RSS_BYTES": 431964160
+  },
+  "PROTECTED_LANE_3_TOUCHED": "NO",
+  "QUADRUPLES_COMPLETED": 24,
+  "QUADRUPLE_SAMPLE_COUNT": 24,
+  "QUADRUPLE_SELECTION": "random.Random(seed).sample(all C(20,4) position quadruples, 24), sampled order",
+  "RAW_ATTEMPTS": 186624,
+  "RECONCILIATION": {
+    "CAUSE": "zero-count rejection categories appeared in one Counter before dict comparison",
+    "FINAL_SOURCE_MODULE_SHA256": "6229a7695ea247729bf36e3464847d80a4ea6d0214def773ba0fea57d3235c9b",
+    "LEDGER_SHA256": "19b2b5c34525227cf969fa689958ed383b153e8f77be9c7d8533fcdecb4022c8",
+    "ORIGINAL_RESULT_SHA256": "e3d688b86aea070a14654a19b54344cdc47d47c399e2cbdf1e4825b52738b13a",
+    "RUN_SOURCE_MODULE_SHA256": "94a7121fdf549e33c66e2e62e5c585ef95e635e5959a16d1fce24eb9d3cf220b",
+    "SCIENTIFIC_RERUN": "NO",
+    "TYPE": "POST_RUN_ACCOUNTING_CHECK_CORRECTION",
+    "VALIDATION": "all 24 quadruples, parity, ledger rows, accounting, best, and recount checked"
+  },
+  "RUN_HEAD": "3655b0f4bc43450748b4fc87c641d0acd11a8509",
+  "RUN_TREE": "faa67081c8dd77563d1d8f1aba95a30b19d2f543",
+  "SCIENTIFIC_RESULT": "NO_IMPROVEMENT_IN_BOUNDED_FOUR_TICKET_CYCLE_PILOT",
+  "SCIENTIFIC_SCOPE": "BOUNDED_FOUR_TICKET_CYCLE_PILOT",
+  "SEARCH_SCOPE": {
+    "CYCLE_ORIENTATIONS": 6,
+    "IS_COMPLETE_N4": false,
+    "IS_FULL_FOUR_TICKET_JOINT_REPLACEMENT": false,
+    "NOTE": "the declared four-ticket single-number 4-cycle family only",
+    "NUMBER_SELECTIONS_PER_QUADRUPLE": 1296,
+    "RAW_ATTEMPTS_PER_QUADRUPLE": 7776,
+    "RAW_FULL_FAMILY_SIZE": 37674720,
+    "TICKET_QUADRUPLES": 4845
+  },
+  "SOURCE_MODULE_PATH": "src/lottolab/research/b649_k20_four_ticket_cycle_r1.py",
+  "SOURCE_MODULE_SHA256": "94a7121fdf549e33c66e2e62e5c585ef95e635e5959a16d1fce24eb9d3cf220b",
+  "START_COUNT": 313239661,
+  "START_SHA256": "7ce41ff21d5c0821f1d5dda683e23114086f5024fc6d98d4e574df5306659b1e",
+  "TASK_ID": "B649_K20_FOUR_TICKET_CYCLE_PILOT_R1",
+  "TASK_STATUS": "COMPLETE",
+  "TOTAL_RUN_SECONDS": 298.765,
+  "V6_REFERENCE_HEAD": "76085ccc8f226c8752cc7df28390e27009d21746",
+  "WALL_SECONDS": 223.608,
+  "WORKERS": 2
+}

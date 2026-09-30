@@ -1,0 +1,899 @@
+{
+  "schema_version": "b649-direct-exact-success-coverage-oos-result-v1",
+  "task_id": "B649_DIRECT_EXACT_SUCCESS_COVERAGE_VS_SEALED_V6_OOS_R1",
+  "scored_at_utc": "2026-09-30T14:50:58+00:00",
+  "evaluation_cutoff_date": "2026-09-30",
+  "frozen_portfolios_artifact": "docs/research/matrix-native-results/b649-direct-exact-success-coverage-oos-r1/frozen-portfolios.json",
+  "frozen_artifact_sha256": "1aa85daa9cfdcebe4c4de45275388fa858869c6821fa19205b4d7ade226f7013",
+  "outcome_database_path": "/Users/kelvin/Library/Application Support/LottoLab/lottolab.db",
+  "outcome_database_sha256_before": "beb7ed32e5f395be6d60fdd4f2836c774cb60a28c0d17b18673630d349110c0c",
+  "outcome_database_sha256_after": "beb7ed32e5f395be6d60fdd4f2836c774cb60a28c0d17b18673630d349110c0c",
+  "outcome_source_required": "TAIWAN_LOTTERY_OFFICIAL_API",
+  "official_outcome_url": "https://apislb.taiwanlottery.com/lotto/result/lotto649/",
+  "candidate": {
+    "method_id": "B649_DIRECT_EXACT_SUCCESS_COVERAGE_SELECTOR",
+    "version": "1.0.0",
+    "head": "ff5b6006df61dc6df4e58fe77cbc93c4b8fda4d1",
+    "tree": "42dad2614cc3a43ec76599d44178251a38274700"
+  },
+  "baseline": {
+    "method_id": "B649_SEALED_GEOMETRY_PORTFOLIO",
+    "version": "6.0.0",
+    "origin_main_head": "87f2462558f5c5d5e0487d2230816b8f7bf8b386",
+    "source_blob": "46cf088e255b08b79beca22d6c2bb07e4b7a56ad"
+  },
+  "primary_k": 10,
+  "secondary_k_role": "DESCRIPTIVE_ONLY_CANNOT_RESCUE_K10",
+  "paired_comparison_rule": "same target draw, same K, same official outcome",
+  "k_results": {
+    "10": {
+      "k": 10,
+      "eligible_paired_draws": 10,
+      "candidate_wins": 3,
+      "sealed_v6_wins": 3,
+      "candidate_only": 2,
+      "sealed_only": 2,
+      "both_win": 1,
+      "both_lose": 5,
+      "discordant_count": 4,
+      "absolute_delta_fraction": "0/1",
+      "absolute_delta_rate": 0.0,
+      "absolute_delta_percentage_points": 0.0,
+      "relative_lift_fraction": "0/1",
+      "relative_lift_percent": 0.0,
+      "relative_lift_meaningful": true,
+      "paired_statistical_evidence": {
+        "test": "Exact two-sided McNemar test (conditional binomial test on discordant pairs)",
+        "null": "candidate-only and sealed-only are equally likely among discordant draws",
+        "alpha": 0.05,
+        "exact_p_value_fraction": "1/1",
+        "exact_p_value": 1.0,
+        "discordant_pairs": 4
+      },
+      "verdict": "INSUFFICIENT_EVIDENCE",
+      "excluded_draws": [
+        {
+          "draw_number": "115000079",
+          "excluded_for_k": [
+            10,
+            20
+          ],
+          "reason": "INCOMPLETE_PRE_DRAW_STREAM_SET",
+          "available_stream_count": 1,
+          "expected_stream_count": 11,
+          "candidate_pool_count": 2,
+          "pool_below_k": {
+            "10": true,
+            "20": true
+          }
+        },
+        {
+          "draw_number": "115000080",
+          "excluded_for_k": [
+            10,
+            20
+          ],
+          "reason": "INCOMPLETE_PRE_DRAW_STREAM_SET",
+          "available_stream_count": 6,
+          "expected_stream_count": 11,
+          "candidate_pool_count": 7,
+          "pool_below_k": {
+            "10": true,
+            "20": true
+          }
+        },
+        {
+          "draw_number": "115000084",
+          "excluded_for_k": [
+            10,
+            20
+          ],
+          "reason": "NO_SAVED_PREDRAW_STREAMS",
+          "available_stream_count": 0,
+          "candidate_pool_count": 0
+        },
+        {
+          "draw_number": "115000085",
+          "excluded_for_k": [
+            10,
+            20
+          ],
+          "reason": "NO_SAVED_PREDRAW_STREAMS",
+          "available_stream_count": 0,
+          "candidate_pool_count": 0
+        },
+        {
+          "draw_number": "115000093",
+          "draw_date": "2026-10-02",
+          "excluded_for_k": [
+            10,
+            20
+          ],
+          "reason": "TARGET_AFTER_EVALUATION_CUTOFF",
+          "evaluation_cutoff": "2026-09-30",
+          "available_stream_count": 11,
+          "candidate_pool_count": 21
+        }
+      ],
+      "per_draw": [
+        {
+          "draw_number": "115000081",
+          "draw_date": "2026-08-21",
+          "candidate_win": false,
+          "sealed_v6_win": false,
+          "candidate_portfolio_sha256": "ebe3929c70223653ee86cd99727742f9598186f2fdab0f41a5b72a829c38f433",
+          "sealed_v6_portfolio_sha256": "13b1126d5b26ce44c9aba24670142eeab49f4a4b51aaf3bbabe7a7f1659ac673",
+          "candidate_fair_geometry_k10": "23491925/85900584",
+          "sealed_v6_fair_geometry_k10": "536005/1827672",
+          "official_outcome": {
+            "draw_date": "2026-08-21",
+            "main_numbers": [
+              8,
+              14,
+              23,
+              24,
+              26,
+              47
+            ],
+            "special_number": 30,
+            "source_name": "TAIWAN_LOTTERY_OFFICIAL_API",
+            "source_reference": "taiwanlottery:/Lottery/Lotto649Result:115000081",
+            "normalized_record_hash": "eb1253abfb20db467195a567a40e17d4f84f4650603441ef05c315a2fda32588"
+          }
+        },
+        {
+          "draw_number": "115000082",
+          "draw_date": "2026-08-25",
+          "candidate_win": true,
+          "sealed_v6_win": false,
+          "candidate_portfolio_sha256": "b7f55a95bc00490970d261c688f88e14e8c0f6b394a8101ba2379731fe57e968",
+          "sealed_v6_portfolio_sha256": "13b1126d5b26ce44c9aba24670142eeab49f4a4b51aaf3bbabe7a7f1659ac673",
+          "candidate_fair_geometry_k10": "23682823/85900584",
+          "sealed_v6_fair_geometry_k10": "536005/1827672",
+          "official_outcome": {
+            "draw_date": "2026-08-25",
+            "main_numbers": [
+              12,
+              24,
+              26,
+              32,
+              35,
+              40
+            ],
+            "special_number": 6,
+            "source_name": "TAIWAN_LOTTERY_OFFICIAL_API",
+            "source_reference": "taiwanlottery:/Lottery/Lotto649Result:115000082",
+            "normalized_record_hash": "e92f3df409d1344d8e471246dd78011dd057cffe69a27dcb926b5070b88ad80b"
+          }
+        },
+        {
+          "draw_number": "115000083",
+          "draw_date": "2026-08-28",
+          "candidate_win": true,
+          "sealed_v6_win": true,
+          "candidate_portfolio_sha256": "1fdae33b4d3ca39d99e43e0318ab00880cae71152545c64e1c2318f1d9debe69",
+          "sealed_v6_portfolio_sha256": "13b1126d5b26ce44c9aba24670142eeab49f4a4b51aaf3bbabe7a7f1659ac673",
+          "candidate_fair_geometry_k10": "11891657/42950292",
+          "sealed_v6_fair_geometry_k10": "536005/1827672",
+          "official_outcome": {
+            "draw_date": "2026-08-28",
+            "main_numbers": [
+              9,
+              20,
+              23,
+              26,
+              36,
+              44
+            ],
+            "special_number": 4,
+            "source_name": "TAIWAN_LOTTERY_OFFICIAL_API",
+            "source_reference": "taiwanlottery:/Lottery/Lotto649Result:115000083",
+            "normalized_record_hash": "82c4ee4e87a72f5bc4e07922bab87a7247cf8013ed6308114fd052287e857953"
+          }
+        },
+        {
+          "draw_number": "115000086",
+          "draw_date": "2026-09-08",
+          "candidate_win": false,
+          "sealed_v6_win": false,
+          "candidate_portfolio_sha256": "dfc8f668bcc88a198a0abb9e501a2570c1b822a141238ba5ebd9ba3cc23bcb7a",
+          "sealed_v6_portfolio_sha256": "13b1126d5b26ce44c9aba24670142eeab49f4a4b51aaf3bbabe7a7f1659ac673",
+          "candidate_fair_geometry_k10": "7790093/28633528",
+          "sealed_v6_fair_geometry_k10": "536005/1827672",
+          "official_outcome": {
+            "draw_date": "2026-09-08",
+            "main_numbers": [
+              3,
+              15,
+              28,
+              35,
+              47,
+              49
+            ],
+            "special_number": 27,
+            "source_name": "TAIWAN_LOTTERY_OFFICIAL_API",
+            "source_reference": "taiwanlottery:/Lottery/Lotto649Result:115000086",
+            "normalized_record_hash": "e1b82b852314869b1c54cd94e53ea901d87f6b8389fd5ee346950829cf1b3aae"
+          }
+        },
+        {
+          "draw_number": "115000087",
+          "draw_date": "2026-09-11",
+          "candidate_win": false,
+          "sealed_v6_win": true,
+          "candidate_portfolio_sha256": "352997dec51aaf3b358da1b838e522989cf8277b684a7c83b5cd84aed5d49cfc",
+          "sealed_v6_portfolio_sha256": "13b1126d5b26ce44c9aba24670142eeab49f4a4b51aaf3bbabe7a7f1659ac673",
+          "candidate_fair_geometry_k10": "23799499/85900584",
+          "sealed_v6_fair_geometry_k10": "536005/1827672",
+          "official_outcome": {
+            "draw_date": "2026-09-11",
+            "main_numbers": [
+              12,
+              15,
+              19,
+              27,
+              43,
+              48
+            ],
+            "special_number": 25,
+            "source_name": "TAIWAN_LOTTERY_OFFICIAL_API",
+            "source_reference": "taiwanlottery:/Lottery/Lotto649Result:115000087",
+            "normalized_record_hash": "5eb60cb25122d44cb533680f63db218ea5be40c11678308d2b94397032596e86"
+          }
+        },
+        {
+          "draw_number": "115000088",
+          "draw_date": "2026-09-15",
+          "candidate_win": true,
+          "sealed_v6_win": false,
+          "candidate_portfolio_sha256": "abe24a20d2c476bd339ff287df88051b3eadf0df4572ee01bcad6aa93a9ef143",
+          "sealed_v6_portfolio_sha256": "13b1126d5b26ce44c9aba24670142eeab49f4a4b51aaf3bbabe7a7f1659ac673",
+          "candidate_fair_geometry_k10": "2097793/7809144",
+          "sealed_v6_fair_geometry_k10": "536005/1827672",
+          "official_outcome": {
+            "draw_date": "2026-09-15",
+            "main_numbers": [
+              2,
+              3,
+              18,
+              21,
+              22,
+              39
+            ],
+            "special_number": 7,
+            "source_name": "TAIWAN_LOTTERY_OFFICIAL_API",
+            "source_reference": "taiwanlottery:/Lottery/Lotto649Result:115000088",
+            "normalized_record_hash": "37e7847ac773ceb039cfe22921b73839ee9159eac4ca4d073db5a3dadf0b1d47"
+          }
+        },
+        {
+          "draw_number": "115000089",
+          "draw_date": "2026-09-18",
+          "candidate_win": false,
+          "sealed_v6_win": false,
+          "candidate_portfolio_sha256": "5e7a4540c86fc0135131c8b8bf5b907d94e4a1883c677f028f265a1bf5857694",
+          "sealed_v6_portfolio_sha256": "13b1126d5b26ce44c9aba24670142eeab49f4a4b51aaf3bbabe7a7f1659ac673",
+          "candidate_fair_geometry_k10": "7792581/28633528",
+          "sealed_v6_fair_geometry_k10": "536005/1827672",
+          "official_outcome": {
+            "draw_date": "2026-09-18",
+            "main_numbers": [
+              1,
+              6,
+              14,
+              21,
+              31,
+              35
+            ],
+            "special_number": 16,
+            "source_name": "TAIWAN_LOTTERY_OFFICIAL_API",
+            "source_reference": "taiwanlottery:/Lottery/Lotto649Result:115000089",
+            "normalized_record_hash": "3acfeafe6aed512658eb8d440b461de52d2e4ded0c3b4e450137291a368ab952"
+          }
+        },
+        {
+          "draw_number": "115000090",
+          "draw_date": "2026-09-22",
+          "candidate_win": false,
+          "sealed_v6_win": false,
+          "candidate_portfolio_sha256": "e21e177cc041f4f11823b8d7f5bdb8eb7192f15bf79246adafaaab1ff035ad73",
+          "sealed_v6_portfolio_sha256": "13b1126d5b26ce44c9aba24670142eeab49f4a4b51aaf3bbabe7a7f1659ac673",
+          "candidate_fair_geometry_k10": "509545/1867404",
+          "sealed_v6_fair_geometry_k10": "536005/1827672",
+          "official_outcome": {
+            "draw_date": "2026-09-22",
+            "main_numbers": [
+              14,
+              15,
+              18,
+              30,
+              35,
+              45
+            ],
+            "special_number": 10,
+            "source_name": "TAIWAN_LOTTERY_OFFICIAL_API",
+            "source_reference": "taiwanlottery:/Lottery/Lotto649Result:115000090",
+            "normalized_record_hash": "888cba7bc7a5422406a3e4b0af4587f870d23f721838001b0159275662571313"
+          }
+        },
+        {
+          "draw_number": "115000091",
+          "draw_date": "2026-09-25",
+          "candidate_win": false,
+          "sealed_v6_win": false,
+          "candidate_portfolio_sha256": "40a1e7fc2c84cb8694554d4b9a74670c84a9d25be21c693068de5667f64e3545",
+          "sealed_v6_portfolio_sha256": "13b1126d5b26ce44c9aba24670142eeab49f4a4b51aaf3bbabe7a7f1659ac673",
+          "candidate_fair_geometry_k10": "23590727/85900584",
+          "sealed_v6_fair_geometry_k10": "536005/1827672",
+          "official_outcome": {
+            "draw_date": "2026-09-25",
+            "main_numbers": [
+              5,
+              13,
+              24,
+              25,
+              28,
+              33
+            ],
+            "special_number": 40,
+            "source_name": "TAIWAN_LOTTERY_OFFICIAL_API",
+            "source_reference": "taiwanlottery:/Lottery/Lotto649Result:115000091",
+            "normalized_record_hash": "3d246746f0008480bf04ce6b24be55bd6deec7c8238b104950fbc2bbf705d283"
+          }
+        },
+        {
+          "draw_number": "115000092",
+          "draw_date": "2026-09-29",
+          "candidate_win": false,
+          "sealed_v6_win": true,
+          "candidate_portfolio_sha256": "ee81996dc626433af6c29ff8e869da43709e3c042d05bdfc88fe1efe0bd1f555",
+          "sealed_v6_portfolio_sha256": "13b1126d5b26ce44c9aba24670142eeab49f4a4b51aaf3bbabe7a7f1659ac673",
+          "candidate_fair_geometry_k10": "3865621/14316764",
+          "sealed_v6_fair_geometry_k10": "536005/1827672",
+          "official_outcome": {
+            "draw_date": "2026-09-29",
+            "main_numbers": [
+              1,
+              2,
+              4,
+              13,
+              30,
+              38
+            ],
+            "special_number": 27,
+            "source_name": "TAIWAN_LOTTERY_OFFICIAL_API",
+            "source_reference": "taiwanlottery:/Lottery/Lotto649Result:115000092",
+            "normalized_record_hash": "34b15de16e5831a012a6d65e92ab45ac7a58025689a7abc9b905e587f11e8122"
+          }
+        }
+      ],
+      "fair_draw_geometry_diagnostic": {
+        "interpretation": "fair-draw structural diagnostic only; not realized OOS lift",
+        "shared_outcome_space": "C(49,6) main draws x 43 eligible special balls = 601,304,088 outcomes",
+        "candidate_per_draw_probabilities": [
+          {
+            "draw_number": "115000081",
+            "probability": "23491925/85900584"
+          },
+          {
+            "draw_number": "115000082",
+            "probability": "23682823/85900584"
+          },
+          {
+            "draw_number": "115000083",
+            "probability": "11891657/42950292"
+          },
+          {
+            "draw_number": "115000086",
+            "probability": "7790093/28633528"
+          },
+          {
+            "draw_number": "115000087",
+            "probability": "23799499/85900584"
+          },
+          {
+            "draw_number": "115000088",
+            "probability": "2097793/7809144"
+          },
+          {
+            "draw_number": "115000089",
+            "probability": "7792581/28633528"
+          },
+          {
+            "draw_number": "115000090",
+            "probability": "509545/1867404"
+          },
+          {
+            "draw_number": "115000091",
+            "probability": "23590727/85900584"
+          },
+          {
+            "draw_number": "115000092",
+            "probability": "3865621/14316764"
+          }
+        ],
+        "candidate_mean_probability_fraction": "33543547/122715120",
+        "candidate_mean_probability": 0.2733448575856015,
+        "candidate_min_probability_fraction": "2097793/7809144",
+        "candidate_max_probability_fraction": "23799499/85900584",
+        "sealed_v6_probability_fraction": "536005/1827672",
+        "sealed_v6_probability": 0.29327198753386824,
+        "candidate_mean_minus_sealed_v6_fraction": "-17117521/859005840",
+        "candidate_mean_minus_sealed_v6_percentage_points": -1.9927129948266709
+      },
+      "assessment_role": "PRIMARY_K10"
+    },
+    "20": {
+      "k": 20,
+      "eligible_paired_draws": 10,
+      "candidate_wins": 4,
+      "sealed_v6_wins": 4,
+      "candidate_only": 4,
+      "sealed_only": 4,
+      "both_win": 0,
+      "both_lose": 2,
+      "discordant_count": 8,
+      "absolute_delta_fraction": "0/1",
+      "absolute_delta_rate": 0.0,
+      "absolute_delta_percentage_points": 0.0,
+      "relative_lift_fraction": "0/1",
+      "relative_lift_percent": 0.0,
+      "relative_lift_meaningful": true,
+      "paired_statistical_evidence": {
+        "test": "Exact two-sided McNemar test (conditional binomial test on discordant pairs)",
+        "null": "candidate-only and sealed-only are equally likely among discordant draws",
+        "alpha": 0.05,
+        "exact_p_value_fraction": "1/1",
+        "exact_p_value": 1.0,
+        "discordant_pairs": 8
+      },
+      "excluded_draws": [
+        {
+          "draw_number": "115000079",
+          "excluded_for_k": [
+            10,
+            20
+          ],
+          "reason": "INCOMPLETE_PRE_DRAW_STREAM_SET",
+          "available_stream_count": 1,
+          "expected_stream_count": 11,
+          "candidate_pool_count": 2,
+          "pool_below_k": {
+            "10": true,
+            "20": true
+          }
+        },
+        {
+          "draw_number": "115000080",
+          "excluded_for_k": [
+            10,
+            20
+          ],
+          "reason": "INCOMPLETE_PRE_DRAW_STREAM_SET",
+          "available_stream_count": 6,
+          "expected_stream_count": 11,
+          "candidate_pool_count": 7,
+          "pool_below_k": {
+            "10": true,
+            "20": true
+          }
+        },
+        {
+          "draw_number": "115000084",
+          "excluded_for_k": [
+            10,
+            20
+          ],
+          "reason": "NO_SAVED_PREDRAW_STREAMS",
+          "available_stream_count": 0,
+          "candidate_pool_count": 0
+        },
+        {
+          "draw_number": "115000085",
+          "excluded_for_k": [
+            10,
+            20
+          ],
+          "reason": "NO_SAVED_PREDRAW_STREAMS",
+          "available_stream_count": 0,
+          "candidate_pool_count": 0
+        },
+        {
+          "draw_number": "115000093",
+          "draw_date": "2026-10-02",
+          "excluded_for_k": [
+            10,
+            20
+          ],
+          "reason": "TARGET_AFTER_EVALUATION_CUTOFF",
+          "evaluation_cutoff": "2026-09-30",
+          "available_stream_count": 11,
+          "candidate_pool_count": 21
+        }
+      ],
+      "per_draw": [
+        {
+          "draw_number": "115000081",
+          "draw_date": "2026-08-21",
+          "candidate_win": true,
+          "sealed_v6_win": false,
+          "candidate_portfolio_sha256": "2ce393bc2d7d7413d4d9c6fe449f6c4b5c332fd6e6d11b488f8d15bf5f6508b8",
+          "sealed_v6_portfolio_sha256": "0c52a1f0bed90cd47d08bb031b13c9bf693317493f88e45da8e087bd4a0ab65b",
+          "candidate_fair_geometry_k20": "16797103/42950292",
+          "sealed_v6_fair_geometry_k20": "44748521/85900584",
+          "official_outcome": {
+            "draw_date": "2026-08-21",
+            "main_numbers": [
+              8,
+              14,
+              23,
+              24,
+              26,
+              47
+            ],
+            "special_number": 30,
+            "source_name": "TAIWAN_LOTTERY_OFFICIAL_API",
+            "source_reference": "taiwanlottery:/Lottery/Lotto649Result:115000081",
+            "normalized_record_hash": "eb1253abfb20db467195a567a40e17d4f84f4650603441ef05c315a2fda32588"
+          }
+        },
+        {
+          "draw_number": "115000082",
+          "draw_date": "2026-08-25",
+          "candidate_win": true,
+          "sealed_v6_win": false,
+          "candidate_portfolio_sha256": "ffac7f2707c1193efb3ac14509880ec84b81b382ffac200210b85a68f4327db2",
+          "sealed_v6_portfolio_sha256": "0c52a1f0bed90cd47d08bb031b13c9bf693317493f88e45da8e087bd4a0ab65b",
+          "candidate_fair_geometry_k20": "8471273/21475146",
+          "sealed_v6_fair_geometry_k20": "44748521/85900584",
+          "official_outcome": {
+            "draw_date": "2026-08-25",
+            "main_numbers": [
+              12,
+              24,
+              26,
+              32,
+              35,
+              40
+            ],
+            "special_number": 6,
+            "source_name": "TAIWAN_LOTTERY_OFFICIAL_API",
+            "source_reference": "taiwanlottery:/Lottery/Lotto649Result:115000082",
+            "normalized_record_hash": "e92f3df409d1344d8e471246dd78011dd057cffe69a27dcb926b5070b88ad80b"
+          }
+        },
+        {
+          "draw_number": "115000083",
+          "draw_date": "2026-08-28",
+          "candidate_win": true,
+          "sealed_v6_win": false,
+          "candidate_portfolio_sha256": "c67b46fbec932dc3b691e6654b7453b71a639ac4bec1d661a0a6c052bd37f2a0",
+          "sealed_v6_portfolio_sha256": "0c52a1f0bed90cd47d08bb031b13c9bf693317493f88e45da8e087bd4a0ab65b",
+          "candidate_fair_geometry_k20": "33899879/85900584",
+          "sealed_v6_fair_geometry_k20": "44748521/85900584",
+          "official_outcome": {
+            "draw_date": "2026-08-28",
+            "main_numbers": [
+              9,
+              20,
+              23,
+              26,
+              36,
+              44
+            ],
+            "special_number": 4,
+            "source_name": "TAIWAN_LOTTERY_OFFICIAL_API",
+            "source_reference": "taiwanlottery:/Lottery/Lotto649Result:115000083",
+            "normalized_record_hash": "82c4ee4e87a72f5bc4e07922bab87a7247cf8013ed6308114fd052287e857953"
+          }
+        },
+        {
+          "draw_number": "115000086",
+          "draw_date": "2026-09-08",
+          "candidate_win": false,
+          "sealed_v6_win": true,
+          "candidate_portfolio_sha256": "509cc2be01fa8354fef0bd4724a3ad0193f1ac1f0e5f153f72befe63f596f9e9",
+          "sealed_v6_portfolio_sha256": "0c52a1f0bed90cd47d08bb031b13c9bf693317493f88e45da8e087bd4a0ab65b",
+          "candidate_fair_geometry_k20": "34619677/85900584",
+          "sealed_v6_fair_geometry_k20": "44748521/85900584",
+          "official_outcome": {
+            "draw_date": "2026-09-08",
+            "main_numbers": [
+              3,
+              15,
+              28,
+              35,
+              47,
+              49
+            ],
+            "special_number": 27,
+            "source_name": "TAIWAN_LOTTERY_OFFICIAL_API",
+            "source_reference": "taiwanlottery:/Lottery/Lotto649Result:115000086",
+            "normalized_record_hash": "e1b82b852314869b1c54cd94e53ea901d87f6b8389fd5ee346950829cf1b3aae"
+          }
+        },
+        {
+          "draw_number": "115000087",
+          "draw_date": "2026-09-11",
+          "candidate_win": false,
+          "sealed_v6_win": true,
+          "candidate_portfolio_sha256": "5aa025be480e22e15c808f42456714948889d1e8b369f1c5031d1ac91db2d904",
+          "sealed_v6_portfolio_sha256": "0c52a1f0bed90cd47d08bb031b13c9bf693317493f88e45da8e087bd4a0ab65b",
+          "candidate_fair_geometry_k20": "34932263/85900584",
+          "sealed_v6_fair_geometry_k20": "44748521/85900584",
+          "official_outcome": {
+            "draw_date": "2026-09-11",
+            "main_numbers": [
+              12,
+              15,
+              19,
+              27,
+              43,
+              48
+            ],
+            "special_number": 25,
+            "source_name": "TAIWAN_LOTTERY_OFFICIAL_API",
+            "source_reference": "taiwanlottery:/Lottery/Lotto649Result:115000087",
+            "normalized_record_hash": "5eb60cb25122d44cb533680f63db218ea5be40c11678308d2b94397032596e86"
+          }
+        },
+        {
+          "draw_number": "115000088",
+          "draw_date": "2026-09-15",
+          "candidate_win": true,
+          "sealed_v6_win": false,
+          "candidate_portfolio_sha256": "d4ef7801790b443d30540e7c28f54f6eb644f5a1f0074c255b7e78b0fe564280",
+          "sealed_v6_portfolio_sha256": "0c52a1f0bed90cd47d08bb031b13c9bf693317493f88e45da8e087bd4a0ab65b",
+          "candidate_fair_geometry_k20": "5532831/14316764",
+          "sealed_v6_fair_geometry_k20": "44748521/85900584",
+          "official_outcome": {
+            "draw_date": "2026-09-15",
+            "main_numbers": [
+              2,
+              3,
+              18,
+              21,
+              22,
+              39
+            ],
+            "special_number": 7,
+            "source_name": "TAIWAN_LOTTERY_OFFICIAL_API",
+            "source_reference": "taiwanlottery:/Lottery/Lotto649Result:115000088",
+            "normalized_record_hash": "37e7847ac773ceb039cfe22921b73839ee9159eac4ca4d073db5a3dadf0b1d47"
+          }
+        },
+        {
+          "draw_number": "115000089",
+          "draw_date": "2026-09-18",
+          "candidate_win": false,
+          "sealed_v6_win": true,
+          "candidate_portfolio_sha256": "2a21febe0f86fe7448d5da0873ddff4e031864d3cf90ea45a7e564c9e0f66770",
+          "sealed_v6_portfolio_sha256": "0c52a1f0bed90cd47d08bb031b13c9bf693317493f88e45da8e087bd4a0ab65b",
+          "candidate_fair_geometry_k20": "34949219/85900584",
+          "sealed_v6_fair_geometry_k20": "44748521/85900584",
+          "official_outcome": {
+            "draw_date": "2026-09-18",
+            "main_numbers": [
+              1,
+              6,
+              14,
+              21,
+              31,
+              35
+            ],
+            "special_number": 16,
+            "source_name": "TAIWAN_LOTTERY_OFFICIAL_API",
+            "source_reference": "taiwanlottery:/Lottery/Lotto649Result:115000089",
+            "normalized_record_hash": "3acfeafe6aed512658eb8d440b461de52d2e4ded0c3b4e450137291a368ab952"
+          }
+        },
+        {
+          "draw_number": "115000090",
+          "draw_date": "2026-09-22",
+          "candidate_win": false,
+          "sealed_v6_win": false,
+          "candidate_portfolio_sha256": "505586633c9e28409bd6a661a635104614b8e20bba1d7ac94a3c27956b389c85",
+          "sealed_v6_portfolio_sha256": "0c52a1f0bed90cd47d08bb031b13c9bf693317493f88e45da8e087bd4a0ab65b",
+          "candidate_fair_geometry_k20": "34922383/85900584",
+          "sealed_v6_fair_geometry_k20": "44748521/85900584",
+          "official_outcome": {
+            "draw_date": "2026-09-22",
+            "main_numbers": [
+              14,
+              15,
+              18,
+              30,
+              35,
+              45
+            ],
+            "special_number": 10,
+            "source_name": "TAIWAN_LOTTERY_OFFICIAL_API",
+            "source_reference": "taiwanlottery:/Lottery/Lotto649Result:115000090",
+            "normalized_record_hash": "888cba7bc7a5422406a3e4b0af4587f870d23f721838001b0159275662571313"
+          }
+        },
+        {
+          "draw_number": "115000091",
+          "draw_date": "2026-09-25",
+          "candidate_win": false,
+          "sealed_v6_win": true,
+          "candidate_portfolio_sha256": "865e0fea6714a61c74a834e13dbcba0ccd3db34f9f679c2f4219fa9b5ec835d8",
+          "sealed_v6_portfolio_sha256": "0c52a1f0bed90cd47d08bb031b13c9bf693317493f88e45da8e087bd4a0ab65b",
+          "candidate_fair_geometry_k20": "11362223/28633528",
+          "sealed_v6_fair_geometry_k20": "44748521/85900584",
+          "official_outcome": {
+            "draw_date": "2026-09-25",
+            "main_numbers": [
+              5,
+              13,
+              24,
+              25,
+              28,
+              33
+            ],
+            "special_number": 40,
+            "source_name": "TAIWAN_LOTTERY_OFFICIAL_API",
+            "source_reference": "taiwanlottery:/Lottery/Lotto649Result:115000091",
+            "normalized_record_hash": "3d246746f0008480bf04ce6b24be55bd6deec7c8238b104950fbc2bbf705d283"
+          }
+        },
+        {
+          "draw_number": "115000092",
+          "draw_date": "2026-09-29",
+          "candidate_win": false,
+          "sealed_v6_win": false,
+          "candidate_portfolio_sha256": "febd034c33f577c0498a3e2298f3b361f44aa99b4124d5c5307ba0fdb733108a",
+          "sealed_v6_portfolio_sha256": "0c52a1f0bed90cd47d08bb031b13c9bf693317493f88e45da8e087bd4a0ab65b",
+          "candidate_fair_geometry_k20": "33889241/85900584",
+          "sealed_v6_fair_geometry_k20": "44748521/85900584",
+          "official_outcome": {
+            "draw_date": "2026-09-29",
+            "main_numbers": [
+              1,
+              2,
+              4,
+              13,
+              30,
+              38
+            ],
+            "special_number": 27,
+            "source_name": "TAIWAN_LOTTERY_OFFICIAL_API",
+            "source_reference": "taiwanlottery:/Lottery/Lotto649Result:115000092",
+            "normalized_record_hash": "34b15de16e5831a012a6d65e92ab45ac7a58025689a7abc9b905e587f11e8122"
+          }
+        }
+      ],
+      "fair_draw_geometry_diagnostic": {
+        "interpretation": "fair-draw structural diagnostic only; not realized OOS lift",
+        "shared_outcome_space": "C(49,6) main draws x 43 eligible special balls = 601,304,088 outcomes",
+        "candidate_per_draw_probabilities": [
+          {
+            "draw_number": "115000081",
+            "probability": "16797103/42950292"
+          },
+          {
+            "draw_number": "115000082",
+            "probability": "8471273/21475146"
+          },
+          {
+            "draw_number": "115000083",
+            "probability": "33899879/85900584"
+          },
+          {
+            "draw_number": "115000086",
+            "probability": "34619677/85900584"
+          },
+          {
+            "draw_number": "115000087",
+            "probability": "34932263/85900584"
+          },
+          {
+            "draw_number": "115000088",
+            "probability": "5532831/14316764"
+          },
+          {
+            "draw_number": "115000089",
+            "probability": "34949219/85900584"
+          },
+          {
+            "draw_number": "115000090",
+            "probability": "34922383/85900584"
+          },
+          {
+            "draw_number": "115000091",
+            "probability": "11362223/28633528"
+          },
+          {
+            "draw_number": "115000092",
+            "probability": "33889241/85900584"
+          }
+        ],
+        "candidate_mean_probability_fraction": "2973701/7469616",
+        "candidate_mean_probability": 0.39810627480716543,
+        "candidate_min_probability_fraction": "5532831/14316764",
+        "candidate_max_probability_fraction": "34949219/85900584",
+        "sealed_v6_probability_fraction": "44748521/85900584",
+        "sealed_v6_probability": 0.5209338390528288,
+        "candidate_mean_minus_sealed_v6_fraction": "-149659/1218448",
+        "candidate_mean_minus_sealed_v6_percentage_points": -12.282756424566333
+      },
+      "assessment_role": "SECONDARY_DESCRIPTIVE_ONLY"
+    }
+  },
+  "excluded_draws": [
+    {
+      "draw_number": "115000079",
+      "excluded_for_k": [
+        10,
+        20
+      ],
+      "reason": "INCOMPLETE_PRE_DRAW_STREAM_SET",
+      "available_stream_count": 1,
+      "expected_stream_count": 11,
+      "candidate_pool_count": 2,
+      "pool_below_k": {
+        "10": true,
+        "20": true
+      }
+    },
+    {
+      "draw_number": "115000080",
+      "excluded_for_k": [
+        10,
+        20
+      ],
+      "reason": "INCOMPLETE_PRE_DRAW_STREAM_SET",
+      "available_stream_count": 6,
+      "expected_stream_count": 11,
+      "candidate_pool_count": 7,
+      "pool_below_k": {
+        "10": true,
+        "20": true
+      }
+    },
+    {
+      "draw_number": "115000084",
+      "excluded_for_k": [
+        10,
+        20
+      ],
+      "reason": "NO_SAVED_PREDRAW_STREAMS",
+      "available_stream_count": 0,
+      "candidate_pool_count": 0
+    },
+    {
+      "draw_number": "115000085",
+      "excluded_for_k": [
+        10,
+        20
+      ],
+      "reason": "NO_SAVED_PREDRAW_STREAMS",
+      "available_stream_count": 0,
+      "candidate_pool_count": 0
+    },
+    {
+      "draw_number": "115000093",
+      "draw_date": "2026-10-02",
+      "excluded_for_k": [
+        10,
+        20
+      ],
+      "reason": "TARGET_AFTER_EVALUATION_CUTOFF",
+      "evaluation_cutoff": "2026-09-30",
+      "available_stream_count": 11,
+      "candidate_pool_count": 21
+    }
+  ],
+  "primary_verdict": "INSUFFICIENT_EVIDENCE",
+  "ready_for_branch6_adoption": "NO",
+  "mutation_boundaries": {
+    "candidate_tuned": false,
+    "sealed_v6_modified": false,
+    "production_mutation": "NONE",
+    "lane3_mutation": false,
+    "push": false,
+    "pull_request": false,
+    "merge": false
+  },
+  "report_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.claude/worktrees/B649_DIRECT_EXACT_SUCCESS_COVERAGE_SELECTOR_R1/docs/research/matrix-native-results/b649-direct-exact-success-coverage-oos-r1/report.md"
+}

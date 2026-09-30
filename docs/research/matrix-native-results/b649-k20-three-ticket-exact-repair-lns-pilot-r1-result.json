@@ -1,0 +1,5891 @@
+{
+  "BEST_CANONICAL_RECOUNT_FAILURES": 0,
+  "BEST_CANONICAL_RECOUNT_STATUS": "PASS",
+  "BEST_DELTA": 0,
+  "BEST_FINAL_COUNT": 313239661,
+  "BEST_PORTFOLIO_SHA256": "03a2cf96358657bf31ecdf99c829ffa0bf1be17293006c7d535596dedb6f056f",
+  "BEST_START_COUNT": 313239661,
+  "DESTROY": {
+    "DESTROY_SIZE": 3,
+    "INDEX_BASIS": "positions in each start's normalized (sorted) portfolio",
+    "SAMPLE_COUNT": 24,
+    "SEED": 20260930,
+    "SELECTION": "random.Random(seed).sample(all C(20,3) index triples, 24), sampled order",
+    "TRIPLES": [
+      [
+        8,
+        12,
+        13
+      ],
+      [
+        6,
+        12,
+        17
+      ],
+      [
+        2,
+        16,
+        18
+      ],
+      [
+        4,
+        9,
+        10
+      ],
+      [
+        10,
+        11,
+        19
+      ],
+      [
+        7,
+        8,
+        12
+      ],
+      [
+        0,
+        3,
+        14
+      ],
+      [
+        0,
+        7,
+        17
+      ],
+      [
+        3,
+        14,
+        16
+      ],
+      [
+        8,
+        13,
+        16
+      ],
+      [
+        7,
+        10,
+        16
+      ],
+      [
+        0,
+        4,
+        8
+      ],
+      [
+        0,
+        6,
+        8
+      ],
+      [
+        9,
+        17,
+        19
+      ],
+      [
+        1,
+        2,
+        5
+      ],
+      [
+        2,
+        5,
+        14
+      ],
+      [
+        12,
+        14,
+        16
+      ],
+      [
+        5,
+        8,
+        14
+      ],
+      [
+        0,
+        14,
+        16
+      ],
+      [
+        5,
+        15,
+        19
+      ],
+      [
+        4,
+        12,
+        15
+      ],
+      [
+        0,
+        10,
+        17
+      ],
+      [
+        6,
+        11,
+        19
+      ],
+      [
+        0,
+        7,
+        9
+      ]
+    ]
+  },
+  "ELITE_SOURCES": {
+    "DISTINCT_ELITE_TICKETS": 28,
+    "three_ticket_cycle": {
+      "PORTFOLIO_SHA256": "7ce41ff21d5c0821f1d5dda683e23114086f5024fc6d98d4e574df5306659b1e"
+    },
+    "v5": {
+      "CANONICAL_COUNT": 312986016,
+      "FILE_SHA256": "2deb616dc0c69dc0d6d41bc3d815f834f065c056b668a2e8db07b3a5064c05ea",
+      "LOCATOR": "docs/research/matrix-native-results/b649-k20-cross-swap-champion-r1.json",
+      "PORTFOLIO_SHA256": "bc755e9b674e2ff37dac0fc8b52bb9f01bfd5a2bf90fc5f9f245dbb049c0ae86"
+    },
+    "v6": {
+      "PORTFOLIO_SHA256": "0c52a1f0bed90cd47d08bb031b13c9bf693317493f88e45da8e087bd4a0ab65b"
+    }
+  },
+  "EXACT_CANDIDATES_SCORED": 6858240,
+  "EXACT_CANDIDATES_SCORED_DEFINITION": "repaired K20 portfolios (in-pool 3-subsets) scored with an exact integer count",
+  "EXACT_MARGINALS_SCORED": 145218,
+  "FULL_N3_OPTIMUM": "NOT_CLAIMED",
+  "GAIN_VS_PROTECTED_LANE_3": "NOT_EVALUATED",
+  "GAIN_VS_THREE_TICKET_CYCLE_CANDIDATE": 0,
+  "GAIN_VS_V6": 14,
+  "NEW_BEST_STABLE_NON_LANE3_CANDIDATE": "NO",
+  "NOT_CLAIMED": [
+    "complete N3 optimality",
+    "no gain in complete N3 when the pool has none",
+    "gain versus protected Lane 3",
+    "overall current-best K20"
+  ],
+  "OVERALL_BEST": {
+    "BEST_CANONICAL_RECOUNT_STATUS": "PASS",
+    "BEST_DELTA": 0,
+    "BEST_DESTROY_INDICES": [
+      9,
+      17,
+      19
+    ],
+    "BEST_EXACT_PROBABILITY": "44748523/85900584",
+    "BEST_FINAL_COUNT": 313239661,
+    "BEST_PORTFOLIO": [
+      [
+        1,
+        2,
+        34,
+        41,
+        42,
+        45
+      ],
+      [
+        1,
+        17,
+        22,
+        30,
+        33,
+        43
+      ],
+      [
+        2,
+        5,
+        33,
+        35,
+        40,
+        48
+      ],
+      [
+        3,
+        4,
+        10,
+        15,
+        26,
+        27
+      ],
+      [
+        3,
+        8,
+        13,
+        28,
+        31,
+        36
+      ],
+      [
+        3,
+        9,
+        16,
+        23,
+        29,
+        39
+      ],
+      [
+        4,
+        7,
+        12,
+        36,
+        39,
+        46
+      ],
+      [
+        4,
+        18,
+        20,
+        24,
+        28,
+        29
+      ],
+      [
+        5,
+        17,
+        25,
+        32,
+        41,
+        47
+      ],
+      [
+        6,
+        7,
+        9,
+        13,
+        18,
+        26
+      ],
+      [
+        6,
+        10,
+        11,
+        16,
+        24,
+        36
+      ],
+      [
+        6,
+        14,
+        20,
+        31,
+        37,
+        39
+      ],
+      [
+        7,
+        8,
+        10,
+        14,
+        19,
+        29
+      ],
+      [
+        8,
+        9,
+        11,
+        15,
+        20,
+        46
+      ],
+      [
+        11,
+        12,
+        18,
+        23,
+        27,
+        49
+      ],
+      [
+        12,
+        13,
+        15,
+        19,
+        24,
+        37
+      ],
+      [
+        16,
+        19,
+        26,
+        28,
+        46,
+        49
+      ],
+      [
+        21,
+        22,
+        25,
+        38,
+        45,
+        48
+      ],
+      [
+        21,
+        32,
+        40,
+        42,
+        43,
+        44
+      ],
+      [
+        30,
+        34,
+        35,
+        38,
+        44,
+        47
+      ]
+    ],
+    "BEST_PORTFOLIO_SHA256": "03a2cf96358657bf31ecdf99c829ffa0bf1be17293006c7d535596dedb6f056f",
+    "GAIN_ESTABLISHED_VS_START": "NO",
+    "PEAK_RSS_BYTES": 617119744,
+    "START": "three_ticket_cycle",
+    "START_COUNT": 313239661,
+    "START_SHA256": "7ce41ff21d5c0821f1d5dda683e23114086f5024fc6d98d4e574df5306659b1e",
+    "TRIPLES_TESTED": 24,
+    "TRIPLES_WITH_STRICT_GAIN": 0,
+    "WALL_SECONDS": 957.665
+  },
+  "PARITY_49_20": {
+    "MISMATCHES": 0,
+    "SAMPLE_COUNT": 48,
+    "STREAM": "random.Random('parity:<seed>:<start>:<i>:<j>:<k>').sample(non-start in-pool triples, 1)"
+  },
+  "PEAK_RSS_BYTES": 644907008,
+  "PEAK_RSS_DEFINITION": "max per-process peak RSS over the main process and workers",
+  "PER_START": {
+    "three_ticket_cycle": {
+      "BEST_CANONICAL_RECOUNT_STATUS": "PASS",
+      "BEST_DELTA": 0,
+      "BEST_DESTROY_INDICES": [
+        9,
+        17,
+        19
+      ],
+      "BEST_EXACT_PROBABILITY": "44748523/85900584",
+      "BEST_FINAL_COUNT": 313239661,
+      "BEST_PORTFOLIO": [
+        [
+          1,
+          2,
+          34,
+          41,
+          42,
+          45
+        ],
+        [
+          1,
+          17,
+          22,
+          30,
+          33,
+          43
+        ],
+        [
+          2,
+          5,
+          33,
+          35,
+          40,
+          48
+        ],
+        [
+          3,
+          4,
+          10,
+          15,
+          26,
+          27
+        ],
+        [
+          3,
+          8,
+          13,
+          28,
+          31,
+          36
+        ],
+        [
+          3,
+          9,
+          16,
+          23,
+          29,
+          39
+        ],
+        [
+          4,
+          7,
+          12,
+          36,
+          39,
+          46
+        ],
+        [
+          4,
+          18,
+          20,
+          24,
+          28,
+          29
+        ],
+        [
+          5,
+          17,
+          25,
+          32,
+          41,
+          47
+        ],
+        [
+          6,
+          7,
+          9,
+          13,
+          18,
+          26
+        ],
+        [
+          6,
+          10,
+          11,
+          16,
+          24,
+          36
+        ],
+        [
+          6,
+          14,
+          20,
+          31,
+          37,
+          39
+        ],
+        [
+          7,
+          8,
+          10,
+          14,
+          19,
+          29
+        ],
+        [
+          8,
+          9,
+          11,
+          15,
+          20,
+          46
+        ],
+        [
+          11,
+          12,
+          18,
+          23,
+          27,
+          49
+        ],
+        [
+          12,
+          13,
+          15,
+          19,
+          24,
+          37
+        ],
+        [
+          16,
+          19,
+          26,
+          28,
+          46,
+          49
+        ],
+        [
+          21,
+          22,
+          25,
+          38,
+          45,
+          48
+        ],
+        [
+          21,
+          32,
+          40,
+          42,
+          43,
+          44
+        ],
+        [
+          30,
+          34,
+          35,
+          38,
+          44,
+          47
+        ]
+      ],
+      "BEST_PORTFOLIO_SHA256": "03a2cf96358657bf31ecdf99c829ffa0bf1be17293006c7d535596dedb6f056f",
+      "GAIN_ESTABLISHED_VS_START": "NO",
+      "PEAK_RSS_BYTES": 617119744,
+      "START_COUNT": 313239661,
+      "START_SHA256": "7ce41ff21d5c0821f1d5dda683e23114086f5024fc6d98d4e574df5306659b1e",
+      "TRIPLES_TESTED": 24,
+      "TRIPLES_WITH_STRICT_GAIN": 0,
+      "WALL_SECONDS": 957.665
+    },
+    "v6": {
+      "BEST_CANONICAL_RECOUNT_STATUS": "PASS",
+      "BEST_DELTA": 0,
+      "BEST_DESTROY_INDICES": [
+        1,
+        2,
+        5
+      ],
+      "BEST_EXACT_PROBABILITY": "44748521/85900584",
+      "BEST_FINAL_COUNT": 313239647,
+      "BEST_PORTFOLIO": [
+        [
+          1,
+          2,
+          34,
+          41,
+          42,
+          45
+        ],
+        [
+          1,
+          5,
+          30,
+          33,
+          35,
+          40
+        ],
+        [
+          2,
+          17,
+          22,
+          33,
+          43,
+          48
+        ],
+        [
+          3,
+          4,
+          10,
+          15,
+          26,
+          27
+        ],
+        [
+          3,
+          8,
+          13,
+          28,
+          31,
+          36
+        ],
+        [
+          3,
+          9,
+          12,
+          16,
+          29,
+          39
+        ],
+        [
+          4,
+          7,
+          36,
+          39,
+          46,
+          49
+        ],
+        [
+          4,
+          18,
+          20,
+          24,
+          28,
+          29
+        ],
+        [
+          5,
+          17,
+          25,
+          32,
+          41,
+          47
+        ],
+        [
+          6,
+          7,
+          9,
+          13,
+          18,
+          26
+        ],
+        [
+          6,
+          10,
+          11,
+          16,
+          24,
+          36
+        ],
+        [
+          6,
+          14,
+          20,
+          31,
+          37,
+          39
+        ],
+        [
+          7,
+          8,
+          10,
+          14,
+          19,
+          29
+        ],
+        [
+          8,
+          9,
+          11,
+          15,
+          20,
+          46
+        ],
+        [
+          11,
+          12,
+          18,
+          23,
+          27,
+          49
+        ],
+        [
+          12,
+          13,
+          15,
+          19,
+          24,
+          37
+        ],
+        [
+          16,
+          19,
+          23,
+          26,
+          28,
+          46
+        ],
+        [
+          21,
+          25,
+          30,
+          38,
+          45,
+          48
+        ],
+        [
+          21,
+          32,
+          40,
+          42,
+          43,
+          44
+        ],
+        [
+          22,
+          34,
+          35,
+          38,
+          44,
+          47
+        ]
+      ],
+      "BEST_PORTFOLIO_SHA256": "01b10e151d22a13bebe008192dd4894fd52d340184980cac20dbf812f3db55a3",
+      "GAIN_ESTABLISHED_VS_START": "NO",
+      "PEAK_RSS_BYTES": 644907008,
+      "START_COUNT": 313239647,
+      "START_SHA256": "0c52a1f0bed90cd47d08bb031b13c9bf693317493f88e45da8e087bd4a0ab65b",
+      "TRIPLES_TESTED": 24,
+      "TRIPLES_WITH_STRICT_GAIN": 0,
+      "WALL_SECONDS": 957.362
+    }
+  },
+  "POOL_OPTIMALITY_STATUS": "EXACT_IN_POOL",
+  "POOL_POLICY": {
+    "CANDIDATE_POOL_MAX": 96,
+    "EXCLUDED": "tickets of R",
+    "MANDATORY": "removed incumbent tickets + distinct elite tickets not in R",
+    "ONE_NUMBER_REPLACEMENTS": "all 6*43 per removed ticket",
+    "RANKING": "exact residual marginal |B(t)| vs R descending, then lowest ticket",
+    "RESTRICTION": "HEURISTIC_SEARCH_RESTRICTION",
+    "TWO_NUMBER_REPLACEMENTS": "BOUNDED_GUIDED_SUBSET: one-number replacements of each removed ticket's top 4 one-number replacements by exact residual marginal; the full 15*903 two-number family per ticket is not generated"
+  },
+  "POOL_SIZE_MAX": 96,
+  "POOL_SIZE_MEAN": 96.0,
+  "POOL_SIZE_MIN": 96,
+  "PROTECTED_LANE_3_TOUCHED": "NO",
+  "RECORDS": [
+    {
+      "BEST_CANONICAL_COUNT": 313239647,
+      "BEST_CANONICAL_RECOUNT": "PASS",
+      "BEST_COUNT": 313239647,
+      "BEST_DELTA": 0,
+      "BEST_REPLACEMENT_SOURCES": [
+        "REMOVED_INCUMBENT",
+        "REMOVED_INCUMBENT",
+        "REMOVED_INCUMBENT"
+      ],
+      "BEST_SHA256": "0c52a1f0bed90cd47d08bb031b13c9bf693317493f88e45da8e087bd4a0ab65b",
+      "BEST_TICKETS_ADDED": [],
+      "BEST_TICKETS_DROPPED": [],
+      "BEST_TIE_COUNT": 1,
+      "BEST_UNION": 5581899,
+      "COMBINATIONS_CONSIDERED": 142880,
+      "DESTROY_INDICES": [
+        8,
+        12,
+        13
+      ],
+      "EXACT_TRIPLES_SCORED": 142880,
+      "PARITY": [
+        {
+          "CANONICAL_COUNT": 300964629,
+          "MATCH": true,
+          "POOL_INDICES": [
+            23,
+            28,
+            61
+          ],
+          "RESIDUAL_COUNT": 300964629,
+          "SHA256": "257e57dc11532ce322159f9df4bcb2826620c2524aedc083c619603444026692"
+        }
+      ],
+      "POOL_ACCOUNTING": {
+        "CANDIDATES_DISTINCT": 2993,
+        "DUPLICATES_MERGED": 888,
+        "ELITE_DISTINCT": 28,
+        "ELITE_IN_REST_EXCLUDED": 17,
+        "EXACT_MARGINALS_SCORED": 2993,
+        "GUIDED_GENERATED": 3096,
+        "IN_REST_EXCLUDED": 0,
+        "MANDATORY": 11,
+        "ONE_NUMBER_GENERATED": 774,
+        "OPTIONAL_DISTINCT": 2982,
+        "OPTIONAL_RETAINED": 85,
+        "POOL_SIZE": 96
+      },
+      "POOL_MARGINAL_MAX": 2038876,
+      "POOL_MARGINAL_MIN": 655650,
+      "POOL_OPTIMALITY_STATUS": "EXACT_IN_POOL",
+      "POOL_SHA256": "d71d616e39262711d79a46a2a3eaab139a9bfc5cd2bca18cedcbb64c5a88f84c",
+      "POOL_SIZE": 96,
+      "POOL_SOURCES": {
+        "ONE_NUMBER_REPLACEMENT": 57,
+        "REMOVED_INCUMBENT": 3,
+        "RESIDUAL_GUIDED_TWO_NUMBER_REPLACEMENT": 28,
+        "STABLE_ELITE": 8
+      },
+      "REMOVED_TICKETS": [
+        [
+          5,
+          17,
+          25,
+          32,
+          41,
+          47
+        ],
+        [
+          7,
+          8,
+          10,
+          14,
+          19,
+          29
+        ],
+        [
+          8,
+          9,
+          11,
+          15,
+          20,
+          46
+        ]
+      ],
+      "REST_COVERED_SEVEN_SETS": 39166622,
+      "SECONDS": {
+        "CANONICAL_CHECKS": 0.955,
+        "EXACT_REPAIR": 11.861,
+        "POOL": 12.757,
+        "TOTAL": 25.573
+      },
+      "START": "v6",
+      "START_REPRODUCTION": "PASS",
+      "START_UNION": 5581899,
+      "STRICT_IMPROVEMENTS_IN_POOL": 0
+    },
+    {
+      "BEST_CANONICAL_COUNT": 313239647,
+      "BEST_CANONICAL_RECOUNT": "PASS",
+      "BEST_COUNT": 313239647,
+      "BEST_DELTA": 0,
+      "BEST_REPLACEMENT_SOURCES": [
+        "REMOVED_INCUMBENT",
+        "REMOVED_INCUMBENT",
+        "REMOVED_INCUMBENT"
+      ],
+      "BEST_SHA256": "0c52a1f0bed90cd47d08bb031b13c9bf693317493f88e45da8e087bd4a0ab65b",
+      "BEST_TICKETS_ADDED": [],
+      "BEST_TICKETS_DROPPED": [],
+      "BEST_TIE_COUNT": 1,
+      "BEST_UNION": 5630161,
+      "COMBINATIONS_CONSIDERED": 142880,
+      "DESTROY_INDICES": [
+        6,
+        12,
+        17
+      ],
+      "EXACT_TRIPLES_SCORED": 142880,
+      "PARITY": [
+        {
+          "CANONICAL_COUNT": 303966761,
+          "MATCH": true,
+          "POOL_INDICES": [
+            51,
+            54,
+            64
+          ],
+          "RESIDUAL_COUNT": 303966761,
+          "SHA256": "73e5b63ec694500614828cb74a4026fcca4469f17f0a4aa80ef530d18b080482"
+        }
+      ],
+      "POOL_ACCOUNTING": {
+        "CANDIDATES_DISTINCT": 2770,
+        "DUPLICATES_MERGED": 1111,
+        "ELITE_DISTINCT": 28,
+        "ELITE_IN_REST_EXCLUDED": 17,
+        "EXACT_MARGINALS_SCORED": 2770,
+        "GUIDED_GENERATED": 3096,
+        "IN_REST_EXCLUDED": 0,
+        "MANDATORY": 11,
+        "ONE_NUMBER_GENERATED": 774,
+        "OPTIONAL_DISTINCT": 2759,
+        "OPTIONAL_RETAINED": 85,
+        "POOL_SIZE": 96
+      },
+      "POOL_MARGINAL_MAX": 2038876,
+      "POOL_MARGINAL_MIN": 699430,
+      "POOL_OPTIMALITY_STATUS": "EXACT_IN_POOL",
+      "POOL_SHA256": "b699c9cf189ae93c6d0dfd9be4b500beab7be60f7c56a2230521ed79a9f7032b",
+      "POOL_SIZE": 96,
+      "POOL_SOURCES": {
+        "ONE_NUMBER_REPLACEMENT": 43,
+        "REMOVED_INCUMBENT": 3,
+        "RESIDUAL_GUIDED_TWO_NUMBER_REPLACEMENT": 42,
+        "STABLE_ELITE": 8
+      },
+      "REMOVED_TICKETS": [
+        [
+          4,
+          7,
+          36,
+          39,
+          46,
+          49
+        ],
+        [
+          7,
+          8,
+          10,
+          14,
+          19,
+          29
+        ],
+        [
+          21,
+          25,
+          30,
+          38,
+          45,
+          48
+        ]
+      ],
+      "REST_COVERED_SEVEN_SETS": 39118360,
+      "SECONDS": {
+        "CANONICAL_CHECKS": 1.378,
+        "EXACT_REPAIR": 14.121,
+        "POOL": 13.182,
+        "TOTAL": 28.681
+      },
+      "START": "v6",
+      "START_REPRODUCTION": "PASS",
+      "START_UNION": 5630161,
+      "STRICT_IMPROVEMENTS_IN_POOL": 0
+    },
+    {
+      "BEST_CANONICAL_COUNT": 313239647,
+      "BEST_CANONICAL_RECOUNT": "PASS",
+      "BEST_COUNT": 313239647,
+      "BEST_DELTA": 0,
+      "BEST_REPLACEMENT_SOURCES": [
+        "REMOVED_INCUMBENT",
+        "REMOVED_INCUMBENT",
+        "REMOVED_INCUMBENT"
+      ],
+      "BEST_SHA256": "0c52a1f0bed90cd47d08bb031b13c9bf693317493f88e45da8e087bd4a0ab65b",
+      "BEST_TICKETS_ADDED": [],
+      "BEST_TICKETS_DROPPED": [],
+      "BEST_TIE_COUNT": 16,
+      "BEST_UNION": 5882813,
+      "COMBINATIONS_CONSIDERED": 142880,
+      "DESTROY_INDICES": [
+        2,
+        16,
+        18
+      ],
+      "EXACT_TRIPLES_SCORED": 142880,
+      "PARITY": [
+        {
+          "CANONICAL_COUNT": 303082073,
+          "MATCH": true,
+          "POOL_INDICES": [
+            9,
+            75,
+            91
+          ],
+          "RESIDUAL_COUNT": 303082073,
+          "SHA256": "263ed77b4e7fbb2c1613ce77fafbcd5e3f1f2fa1c4fadab84c3e66a17c7bbfd2"
+        }
+      ],
+      "POOL_ACCOUNTING": {
+        "CANDIDATES_DISTINCT": 3039,
+        "DUPLICATES_MERGED": 842,
+        "ELITE_DISTINCT": 28,
+        "ELITE_IN_REST_EXCLUDED": 17,
+        "EXACT_MARGINALS_SCORED": 3039,
+        "GUIDED_GENERATED": 3096,
+        "IN_REST_EXCLUDED": 0,
+        "MANDATORY": 11,
+        "ONE_NUMBER_GENERATED": 774,
+        "OPTIONAL_DISTINCT": 3028,
+        "OPTIONAL_RETAINED": 85,
+        "POOL_SIZE": 96
+      },
+      "POOL_MARGINAL_MAX": 2091966,
+      "POOL_MARGINAL_MIN": 644248,
+      "POOL_OPTIMALITY_STATUS": "EXACT_IN_POOL",
+      "POOL_SHA256": "0e43fb07c33d0fbbe2cbb5f814fd668f71153f590bb95c7595d34890a7a78994",
+      "POOL_SIZE": 96,
+      "POOL_SOURCES": {
+        "ONE_NUMBER_REPLACEMENT": 23,
+        "REMOVED_INCUMBENT": 3,
+        "RESIDUAL_GUIDED_TWO_NUMBER_REPLACEMENT": 62,
+        "STABLE_ELITE": 8
+      },
+      "REMOVED_TICKETS": [
+        [
+          2,
+          5,
+          33,
+          35,
+          40,
+          48
+        ],
+        [
+          16,
+          19,
+          23,
+          26,
+          28,
+          46
+        ],
+        [
+          21,
+          32,
+          40,
+          42,
+          43,
+          44
+        ]
+      ],
+      "REST_COVERED_SEVEN_SETS": 38865708,
+      "SECONDS": {
+        "CANONICAL_CHECKS": 1.023,
+        "EXACT_REPAIR": 20.881,
+        "POOL": 18.409,
+        "TOTAL": 40.313
+      },
+      "START": "v6",
+      "START_REPRODUCTION": "PASS",
+      "START_UNION": 5882813,
+      "STRICT_IMPROVEMENTS_IN_POOL": 0
+    },
+    {
+      "BEST_CANONICAL_COUNT": 313239647,
+      "BEST_CANONICAL_RECOUNT": "PASS",
+      "BEST_COUNT": 313239647,
+      "BEST_DELTA": 0,
+      "BEST_REPLACEMENT_SOURCES": [
+        "REMOVED_INCUMBENT",
+        "REMOVED_INCUMBENT",
+        "REMOVED_INCUMBENT"
+      ],
+      "BEST_SHA256": "0c52a1f0bed90cd47d08bb031b13c9bf693317493f88e45da8e087bd4a0ab65b",
+      "BEST_TICKETS_ADDED": [],
+      "BEST_TICKETS_DROPPED": [],
+      "BEST_TIE_COUNT": 1,
+      "BEST_UNION": 5376971,
+      "COMBINATIONS_CONSIDERED": 142880,
+      "DESTROY_INDICES": [
+        4,
+        9,
+        10
+      ],
+      "EXACT_TRIPLES_SCORED": 142880,
+      "PARITY": [
+        {
+          "CANONICAL_COUNT": 308156702,
+          "MATCH": true,
+          "POOL_INDICES": [
+            10,
+            18,
+            89
+          ],
+          "RESIDUAL_COUNT": 308156702,
+          "SHA256": "9606ca21bcbf307e3e6de9ae4bb8e725140779f3ae995f1d532abee70f3839d5"
+        }
+      ],
+      "POOL_ACCOUNTING": {
+        "CANDIDATES_DISTINCT": 3279,
+        "DUPLICATES_MERGED": 602,
+        "ELITE_DISTINCT": 28,
+        "ELITE_IN_REST_EXCLUDED": 17,
+        "EXACT_MARGINALS_SCORED": 3279,
+        "GUIDED_GENERATED": 3096,
+        "IN_REST_EXCLUDED": 0,
+        "MANDATORY": 11,
+        "ONE_NUMBER_GENERATED": 774,
+        "OPTIONAL_DISTINCT": 3268,
+        "OPTIONAL_RETAINED": 85,
+        "POOL_SIZE": 96
+      },
+      "POOL_MARGINAL_MAX": 1885675,
+      "POOL_MARGINAL_MIN": 666410,
+      "POOL_OPTIMALITY_STATUS": "EXACT_IN_POOL",
+      "POOL_SHA256": "ed38128817d425f257cdcd2539564a4aff695692afe4a220e000475a9794fa9f",
+      "POOL_SIZE": 96,
+      "POOL_SOURCES": {
+        "ONE_NUMBER_REPLACEMENT": 28,
+        "REMOVED_INCUMBENT": 3,
+        "RESIDUAL_GUIDED_TWO_NUMBER_REPLACEMENT": 57,
+        "STABLE_ELITE": 8
+      },
+      "REMOVED_TICKETS": [
+        [
+          3,
+          8,
+          13,
+          28,
+          31,
+          36
+        ],
+        [
+          6,
+          7,
+          9,
+          13,
+          18,
+          26
+        ],
+        [
+          6,
+          10,
+          11,
+          16,
+          24,
+          36
+        ]
+      ],
+      "REST_COVERED_SEVEN_SETS": 39371550,
+      "SECONDS": {
+        "CANONICAL_CHECKS": 2.663,
+        "EXACT_REPAIR": 31.23,
+        "POOL": 50.954,
+        "TOTAL": 84.847
+      },
+      "START": "v6",
+      "START_REPRODUCTION": "PASS",
+      "START_UNION": 5376971,
+      "STRICT_IMPROVEMENTS_IN_POOL": 0
+    },
+    {
+      "BEST_CANONICAL_COUNT": 313239647,
+      "BEST_CANONICAL_RECOUNT": "PASS",
+      "BEST_COUNT": 313239647,
+      "BEST_DELTA": 0,
+      "BEST_REPLACEMENT_SOURCES": [
+        "REMOVED_INCUMBENT",
+        "REMOVED_INCUMBENT",
+        "REMOVED_INCUMBENT"
+      ],
+      "BEST_SHA256": "0c52a1f0bed90cd47d08bb031b13c9bf693317493f88e45da8e087bd4a0ab65b",
+      "BEST_TICKETS_ADDED": [],
+      "BEST_TICKETS_DROPPED": [],
+      "BEST_TIE_COUNT": 1,
+      "BEST_UNION": 5683632,
+      "COMBINATIONS_CONSIDERED": 142880,
+      "DESTROY_INDICES": [
+        10,
+        11,
+        19
+      ],
+      "EXACT_TRIPLES_SCORED": 142880,
+      "PARITY": [
+        {
+          "CANONICAL_COUNT": 302009288,
+          "MATCH": true,
+          "POOL_INDICES": [
+            16,
+            54,
+            64
+          ],
+          "RESIDUAL_COUNT": 302009288,
+          "SHA256": "18a3e60edabe6d6e898818f700e509697ba658b1baefcb1e433c831fb6eb180d"
+        }
+      ],
+      "POOL_ACCOUNTING": {
+        "CANDIDATES_DISTINCT": 3017,
+        "DUPLICATES_MERGED": 864,
+        "ELITE_DISTINCT": 28,
+        "ELITE_IN_REST_EXCLUDED": 17,
+        "EXACT_MARGINALS_SCORED": 3017,
+        "GUIDED_GENERATED": 3096,
+        "IN_REST_EXCLUDED": 0,
+        "MANDATORY": 11,
+        "ONE_NUMBER_GENERATED": 774,
+        "OPTIONAL_DISTINCT": 3006,
+        "OPTIONAL_RETAINED": 85,
+        "POOL_SIZE": 96
+      },
+      "POOL_MARGINAL_MAX": 2038876,
+      "POOL_MARGINAL_MIN": 656753,
+      "POOL_OPTIMALITY_STATUS": "EXACT_IN_POOL",
+      "POOL_SHA256": "29ab426c85e510c599e73d3663ebb1000b60670e945c817b18a1a0868e3b2d02",
+      "POOL_SIZE": 96,
+      "POOL_SOURCES": {
+        "ONE_NUMBER_REPLACEMENT": 25,
+        "REMOVED_INCUMBENT": 3,
+        "RESIDUAL_GUIDED_TWO_NUMBER_REPLACEMENT": 60,
+        "STABLE_ELITE": 8
+      },
+      "REMOVED_TICKETS": [
+        [
+          6,
+          10,
+          11,
+          16,
+          24,
+          36
+        ],
+        [
+          6,
+          14,
+          20,
+          31,
+          37,
+          39
+        ],
+        [
+          22,
+          34,
+          35,
+          38,
+          44,
+          47
+        ]
+      ],
+      "REST_COVERED_SEVEN_SETS": 39064889,
+      "SECONDS": {
+        "CANONICAL_CHECKS": 1.403,
+        "EXACT_REPAIR": 37.715,
+        "POOL": 29.012,
+        "TOTAL": 68.13
+      },
+      "START": "v6",
+      "START_REPRODUCTION": "PASS",
+      "START_UNION": 5683632,
+      "STRICT_IMPROVEMENTS_IN_POOL": 0
+    },
+    {
+      "BEST_CANONICAL_COUNT": 313239647,
+      "BEST_CANONICAL_RECOUNT": "PASS",
+      "BEST_COUNT": 313239647,
+      "BEST_DELTA": 0,
+      "BEST_REPLACEMENT_SOURCES": [
+        "REMOVED_INCUMBENT",
+        "REMOVED_INCUMBENT",
+        "REMOVED_INCUMBENT"
+      ],
+      "BEST_SHA256": "0c52a1f0bed90cd47d08bb031b13c9bf693317493f88e45da8e087bd4a0ab65b",
+      "BEST_TICKETS_ADDED": [],
+      "BEST_TICKETS_DROPPED": [],
+      "BEST_TIE_COUNT": 1,
+      "BEST_UNION": 5581870,
+      "COMBINATIONS_CONSIDERED": 142880,
+      "DESTROY_INDICES": [
+        7,
+        8,
+        12
+      ],
+      "EXACT_TRIPLES_SCORED": 142880,
+      "PARITY": [
+        {
+          "CANONICAL_COUNT": 303310973,
+          "MATCH": true,
+          "POOL_INDICES": [
+            6,
+            17,
+            73
+          ],
+          "RESIDUAL_COUNT": 303310973,
+          "SHA256": "b864107f92e2f212193c39a3813f7c04064e2dfcbd5d7d1ba0b26321d1b3eacd"
+        }
+      ],
+      "POOL_ACCOUNTING": {
+        "CANDIDATES_DISTINCT": 2993,
+        "DUPLICATES_MERGED": 888,
+        "ELITE_DISTINCT": 28,
+        "ELITE_IN_REST_EXCLUDED": 17,
+        "EXACT_MARGINALS_SCORED": 2993,
+        "GUIDED_GENERATED": 3096,
+        "IN_REST_EXCLUDED": 0,
+        "MANDATORY": 11,
+        "ONE_NUMBER_GENERATED": 774,
+        "OPTIONAL_DISTINCT": 2982,
+        "OPTIONAL_RETAINED": 85,
+        "POOL_SIZE": 96
+      },
+      "POOL_MARGINAL_MAX": 2038876,
+      "POOL_MARGINAL_MIN": 655665,
+      "POOL_OPTIMALITY_STATUS": "EXACT_IN_POOL",
+      "POOL_SHA256": "8a73f08c946c9a07ad71e21ca7dc2e396a477b0521f1c02f5774bb14db180814",
+      "POOL_SIZE": 96,
+      "POOL_SOURCES": {
+        "ONE_NUMBER_REPLACEMENT": 57,
+        "REMOVED_INCUMBENT": 3,
+        "RESIDUAL_GUIDED_TWO_NUMBER_REPLACEMENT": 28,
+        "STABLE_ELITE": 8
+      },
+      "REMOVED_TICKETS": [
+        [
+          4,
+          18,
+          20,
+          24,
+          28,
+          29
+        ],
+        [
+          5,
+          17,
+          25,
+          32,
+          41,
+          47
+        ],
+        [
+          7,
+          8,
+          10,
+          14,
+          19,
+          29
+        ]
+      ],
+      "REST_COVERED_SEVEN_SETS": 39166651,
+      "SECONDS": {
+        "CANONICAL_CHECKS": 1.129,
+        "EXACT_REPAIR": 25.042,
+        "POOL": 38.507,
+        "TOTAL": 64.683
+      },
+      "START": "v6",
+      "START_REPRODUCTION": "PASS",
+      "START_UNION": 5581870,
+      "STRICT_IMPROVEMENTS_IN_POOL": 0
+    },
+    {
+      "BEST_CANONICAL_COUNT": 313239647,
+      "BEST_CANONICAL_RECOUNT": "PASS",
+      "BEST_COUNT": 313239647,
+      "BEST_DELTA": 0,
+      "BEST_REPLACEMENT_SOURCES": [
+        "REMOVED_INCUMBENT",
+        "REMOVED_INCUMBENT",
+        "REMOVED_INCUMBENT"
+      ],
+      "BEST_SHA256": "0c52a1f0bed90cd47d08bb031b13c9bf693317493f88e45da8e087bd4a0ab65b",
+      "BEST_TICKETS_ADDED": [],
+      "BEST_TICKETS_DROPPED": [],
+      "BEST_TIE_COUNT": 1,
+      "BEST_UNION": 5732085,
+      "COMBINATIONS_CONSIDERED": 142880,
+      "DESTROY_INDICES": [
+        0,
+        3,
+        14
+      ],
+      "EXACT_TRIPLES_SCORED": 142880,
+      "PARITY": [
+        {
+          "CANONICAL_COUNT": 302446410,
+          "MATCH": true,
+          "POOL_INDICES": [
+            17,
+            50,
+            87
+          ],
+          "RESIDUAL_COUNT": 302446410,
+          "SHA256": "7d13c50cfbf3e5d9e239ff1adb64f3d5790da8a8af9a0ff33f75d918fe171f93"
+        }
+      ],
+      "POOL_ACCOUNTING": {
+        "CANDIDATES_DISTINCT": 3013,
+        "DUPLICATES_MERGED": 868,
+        "ELITE_DISTINCT": 28,
+        "ELITE_IN_REST_EXCLUDED": 17,
+        "EXACT_MARGINALS_SCORED": 3013,
+        "GUIDED_GENERATED": 3096,
+        "IN_REST_EXCLUDED": 0,
+        "MANDATORY": 11,
+        "ONE_NUMBER_GENERATED": 774,
+        "OPTIONAL_DISTINCT": 3002,
+        "OPTIONAL_RETAINED": 85,
+        "POOL_SIZE": 96
+      },
+      "POOL_MARGINAL_MAX": 2093806,
+      "POOL_MARGINAL_MIN": 668339,
+      "POOL_OPTIMALITY_STATUS": "EXACT_IN_POOL",
+      "POOL_SHA256": "d325981e609cbf2f064cae9e43ac7f359963c67acf4aedd5948d8d1416af06cd",
+      "POOL_SIZE": 96,
+      "POOL_SOURCES": {
+        "ONE_NUMBER_REPLACEMENT": 18,
+        "REMOVED_INCUMBENT": 3,
+        "RESIDUAL_GUIDED_TWO_NUMBER_REPLACEMENT": 67,
+        "STABLE_ELITE": 8
+      },
+      "REMOVED_TICKETS": [
+        [
+          1,
+          2,
+          34,
+          41,
+          42,
+          45
+        ],
+        [
+          3,
+          4,
+          10,
+          15,
+          26,
+          27
+        ],
+        [
+          11,
+          12,
+          18,
+          23,
+          27,
+          49
+        ]
+      ],
+      "REST_COVERED_SEVEN_SETS": 39016436,
+      "SECONDS": {
+        "CANONICAL_CHECKS": 26.954,
+        "EXACT_REPAIR": 17.26,
+        "POOL": 41.159,
+        "TOTAL": 85.374
+      },
+      "START": "v6",
+      "START_REPRODUCTION": "PASS",
+      "START_UNION": 5732085,
+      "STRICT_IMPROVEMENTS_IN_POOL": 0
+    },
+    {
+      "BEST_CANONICAL_COUNT": 313239647,
+      "BEST_CANONICAL_RECOUNT": "PASS",
+      "BEST_COUNT": 313239647,
+      "BEST_DELTA": 0,
+      "BEST_REPLACEMENT_SOURCES": [
+        "REMOVED_INCUMBENT",
+        "RESIDUAL_GUIDED_TWO_NUMBER_REPLACEMENT",
+        "RESIDUAL_GUIDED_TWO_NUMBER_REPLACEMENT"
+      ],
+      "BEST_SHA256": "058ef651e521bba263f338ac0352095b9d9442ad37f7e3deb34d68fc557abaa9",
+      "BEST_TICKETS_ADDED": [
+        [
+          1,
+          2,
+          21,
+          25,
+          38,
+          45
+        ],
+        [
+          30,
+          34,
+          41,
+          42,
+          45,
+          48
+        ]
+      ],
+      "BEST_TICKETS_DROPPED": [
+        [
+          1,
+          2,
+          34,
+          41,
+          42,
+          45
+        ],
+        [
+          21,
+          25,
+          30,
+          38,
+          45,
+          48
+        ]
+      ],
+      "BEST_TIE_COUNT": 16,
+      "BEST_UNION": 5833009,
+      "COMBINATIONS_CONSIDERED": 142880,
+      "DESTROY_INDICES": [
+        0,
+        7,
+        17
+      ],
+      "EXACT_TRIPLES_SCORED": 142880,
+      "PARITY": [
+        {
+          "CANONICAL_COUNT": 307025229,
+          "MATCH": true,
+          "POOL_INDICES": [
+            19,
+            44,
+            48
+          ],
+          "RESIDUAL_COUNT": 307025229,
+          "SHA256": "ee258aa86f7f31c06d070efb5cd2ad2ee97999b439ecae4d48311fa478d347c3"
+        }
+      ],
+      "POOL_ACCOUNTING": {
+        "CANDIDATES_DISTINCT": 3041,
+        "DUPLICATES_MERGED": 840,
+        "ELITE_DISTINCT": 28,
+        "ELITE_IN_REST_EXCLUDED": 17,
+        "EXACT_MARGINALS_SCORED": 3041,
+        "GUIDED_GENERATED": 3096,
+        "IN_REST_EXCLUDED": 0,
+        "MANDATORY": 11,
+        "ONE_NUMBER_GENERATED": 774,
+        "OPTIONAL_DISTINCT": 3030,
+        "OPTIONAL_RETAINED": 85,
+        "POOL_SIZE": 96
+      },
+      "POOL_MARGINAL_MAX": 2091966,
+      "POOL_MARGINAL_MIN": 643862,
+      "POOL_OPTIMALITY_STATUS": "EXACT_IN_POOL",
+      "POOL_SHA256": "05962dff6463b3e855dba654acd9f1c32063ef7be86bb8e12792cbc50d7b4493",
+      "POOL_SIZE": 96,
+      "POOL_SOURCES": {
+        "ONE_NUMBER_REPLACEMENT": 20,
+        "REMOVED_INCUMBENT": 3,
+        "RESIDUAL_GUIDED_TWO_NUMBER_REPLACEMENT": 65,
+        "STABLE_ELITE": 8
+      },
+      "REMOVED_TICKETS": [
+        [
+          1,
+          2,
+          34,
+          41,
+          42,
+          45
+        ],
+        [
+          4,
+          18,
+          20,
+          24,
+          28,
+          29
+        ],
+        [
+          21,
+          25,
+          30,
+          38,
+          45,
+          48
+        ]
+      ],
+      "REST_COVERED_SEVEN_SETS": 38915512,
+      "SECONDS": {
+        "CANONICAL_CHECKS": 1.044,
+        "EXACT_REPAIR": 40.14,
+        "POOL": 24.059,
+        "TOTAL": 65.244
+      },
+      "START": "v6",
+      "START_REPRODUCTION": "PASS",
+      "START_UNION": 5833009,
+      "STRICT_IMPROVEMENTS_IN_POOL": 0
+    },
+    {
+      "BEST_CANONICAL_COUNT": 313239647,
+      "BEST_CANONICAL_RECOUNT": "PASS",
+      "BEST_COUNT": 313239647,
+      "BEST_DELTA": 0,
+      "BEST_REPLACEMENT_SOURCES": [
+        "REMOVED_INCUMBENT",
+        "REMOVED_INCUMBENT",
+        "REMOVED_INCUMBENT"
+      ],
+      "BEST_SHA256": "0c52a1f0bed90cd47d08bb031b13c9bf693317493f88e45da8e087bd4a0ab65b",
+      "BEST_TICKETS_ADDED": [],
+      "BEST_TICKETS_DROPPED": [],
+      "BEST_TIE_COUNT": 1,
+      "BEST_UNION": 5581813,
+      "COMBINATIONS_CONSIDERED": 142880,
+      "DESTROY_INDICES": [
+        3,
+        14,
+        16
+      ],
+      "EXACT_TRIPLES_SCORED": 142880,
+      "PARITY": [
+        {
+          "CANONICAL_COUNT": 302604638,
+          "MATCH": true,
+          "POOL_INDICES": [
+            3,
+            13,
+            32
+          ],
+          "RESIDUAL_COUNT": 302604638,
+          "SHA256": "cd409dbeec1c81471a2d333689c9f6fdda32640d7caba81f29d473e091e18629"
+        }
+      ],
+      "POOL_ACCOUNTING": {
+        "CANDIDATES_DISTINCT": 2782,
+        "DUPLICATES_MERGED": 1099,
+        "ELITE_DISTINCT": 28,
+        "ELITE_IN_REST_EXCLUDED": 17,
+        "EXACT_MARGINALS_SCORED": 2782,
+        "GUIDED_GENERATED": 3096,
+        "IN_REST_EXCLUDED": 0,
+        "MANDATORY": 11,
+        "ONE_NUMBER_GENERATED": 774,
+        "OPTIONAL_DISTINCT": 2771,
+        "OPTIONAL_RETAINED": 85,
+        "POOL_SIZE": 96
+      },
+      "POOL_MARGINAL_MAX": 2043993,
+      "POOL_MARGINAL_MIN": 680670,
+      "POOL_OPTIMALITY_STATUS": "EXACT_IN_POOL",
+      "POOL_SHA256": "b9b8e81483e36eb07e68649fddb03d444cddad199cc76ccf7fd1a401d5a30c3a",
+      "POOL_SIZE": 96,
+      "POOL_SOURCES": {
+        "ONE_NUMBER_REPLACEMENT": 8,
+        "REMOVED_INCUMBENT": 3,
+        "RESIDUAL_GUIDED_TWO_NUMBER_REPLACEMENT": 77,
+        "STABLE_ELITE": 8
+      },
+      "REMOVED_TICKETS": [
+        [
+          3,
+          4,
+          10,
+          15,
+          26,
+          27
+        ],
+        [
+          11,
+          12,
+          18,
+          23,
+          27,
+          49
+        ],
+        [
+          16,
+          19,
+          23,
+          26,
+          28,
+          46
+        ]
+      ],
+      "REST_COVERED_SEVEN_SETS": 39166708,
+      "SECONDS": {
+        "CANONICAL_CHECKS": 0.993,
+        "EXACT_REPAIR": 28.944,
+        "POOL": 25.972,
+        "TOTAL": 55.91
+      },
+      "START": "v6",
+      "START_REPRODUCTION": "PASS",
+      "START_UNION": 5581813,
+      "STRICT_IMPROVEMENTS_IN_POOL": 0
+    },
+    {
+      "BEST_CANONICAL_COUNT": 313239647,
+      "BEST_CANONICAL_RECOUNT": "PASS",
+      "BEST_COUNT": 313239647,
+      "BEST_DELTA": 0,
+      "BEST_REPLACEMENT_SOURCES": [
+        "REMOVED_INCUMBENT",
+        "REMOVED_INCUMBENT",
+        "REMOVED_INCUMBENT"
+      ],
+      "BEST_SHA256": "0c52a1f0bed90cd47d08bb031b13c9bf693317493f88e45da8e087bd4a0ab65b",
+      "BEST_TICKETS_ADDED": [],
+      "BEST_TICKETS_DROPPED": [],
+      "BEST_TIE_COUNT": 1,
+      "BEST_UNION": 5581908,
+      "COMBINATIONS_CONSIDERED": 142880,
+      "DESTROY_INDICES": [
+        8,
+        13,
+        16
+      ],
+      "EXACT_TRIPLES_SCORED": 142880,
+      "PARITY": [
+        {
+          "CANONICAL_COUNT": 306384365,
+          "MATCH": true,
+          "POOL_INDICES": [
+            6,
+            62,
+            95
+          ],
+          "RESIDUAL_COUNT": 306384365,
+          "SHA256": "f642a9a23e19f7d8117cf865df81fedaa4fbb384f9854797b838b418e5a2b31b"
+        }
+      ],
+      "POOL_ACCOUNTING": {
+        "CANDIDATES_DISTINCT": 2992,
+        "DUPLICATES_MERGED": 889,
+        "ELITE_DISTINCT": 28,
+        "ELITE_IN_REST_EXCLUDED": 17,
+        "EXACT_MARGINALS_SCORED": 2992,
+        "GUIDED_GENERATED": 3096,
+        "IN_REST_EXCLUDED": 0,
+        "MANDATORY": 11,
+        "ONE_NUMBER_GENERATED": 774,
+        "OPTIONAL_DISTINCT": 2981,
+        "OPTIONAL_RETAINED": 85,
+        "POOL_SIZE": 96
+      },
+      "POOL_MARGINAL_MAX": 2038876,
+      "POOL_MARGINAL_MIN": 654461,
+      "POOL_OPTIMALITY_STATUS": "EXACT_IN_POOL",
+      "POOL_SHA256": "6dfb21f9498eb633b78a840765af1e5498388165b6b53bda2b25ab02edde8975",
+      "POOL_SIZE": 96,
+      "POOL_SOURCES": {
+        "ONE_NUMBER_REPLACEMENT": 57,
+        "REMOVED_INCUMBENT": 3,
+        "RESIDUAL_GUIDED_TWO_NUMBER_REPLACEMENT": 28,
+        "STABLE_ELITE": 8
+      },
+      "REMOVED_TICKETS": [
+        [
+          5,
+          17,
+          25,
+          32,
+          41,
+          47
+        ],
+        [
+          8,
+          9,
+          11,
+          15,
+          20,
+          46
+        ],
+        [
+          16,
+          19,
+          23,
+          26,
+          28,
+          46
+        ]
+      ],
+      "REST_COVERED_SEVEN_SETS": 39166613,
+      "SECONDS": {
+        "CANONICAL_CHECKS": 1.305,
+        "EXACT_REPAIR": 15.949,
+        "POOL": 16.601,
+        "TOTAL": 33.856
+      },
+      "START": "v6",
+      "START_REPRODUCTION": "PASS",
+      "START_UNION": 5581908,
+      "STRICT_IMPROVEMENTS_IN_POOL": 0
+    },
+    {
+      "BEST_CANONICAL_COUNT": 313239647,
+      "BEST_CANONICAL_RECOUNT": "PASS",
+      "BEST_COUNT": 313239647,
+      "BEST_DELTA": 0,
+      "BEST_REPLACEMENT_SOURCES": [
+        "REMOVED_INCUMBENT",
+        "REMOVED_INCUMBENT",
+        "REMOVED_INCUMBENT"
+      ],
+      "BEST_SHA256": "0c52a1f0bed90cd47d08bb031b13c9bf693317493f88e45da8e087bd4a0ab65b",
+      "BEST_TICKETS_ADDED": [],
+      "BEST_TICKETS_DROPPED": [],
+      "BEST_TIE_COUNT": 1,
+      "BEST_UNION": 5376885,
+      "COMBINATIONS_CONSIDERED": 142880,
+      "DESTROY_INDICES": [
+        7,
+        10,
+        16
+      ],
+      "EXACT_TRIPLES_SCORED": 142880,
+      "PARITY": [
+        {
+          "CANONICAL_COUNT": 302273895,
+          "MATCH": true,
+          "POOL_INDICES": [
+            20,
+            57,
+            87
+          ],
+          "RESIDUAL_COUNT": 302273895,
+          "SHA256": "401a67000ef80ea4e5195a4ed84b928ac2d24eb234a5c540c68d6adc21b1b520"
+        }
+      ],
+      "POOL_ACCOUNTING": {
+        "CANDIDATES_DISTINCT": 3219,
+        "DUPLICATES_MERGED": 662,
+        "ELITE_DISTINCT": 28,
+        "ELITE_IN_REST_EXCLUDED": 17,
+        "EXACT_MARGINALS_SCORED": 3219,
+        "GUIDED_GENERATED": 3096,
+        "IN_REST_EXCLUDED": 0,
+        "MANDATORY": 11,
+        "ONE_NUMBER_GENERATED": 774,
+        "OPTIONAL_DISTINCT": 3208,
+        "OPTIONAL_RETAINED": 85,
+        "POOL_SIZE": 96
+      },
+      "POOL_MARGINAL_MAX": 1937378,
+      "POOL_MARGINAL_MIN": 665850,
+      "POOL_OPTIMALITY_STATUS": "EXACT_IN_POOL",
+      "POOL_SHA256": "08d2ffaed81a0e2c00ab3d7abf10313c55fe6953419566fa547078addadd8601",
+      "POOL_SIZE": 96,
+      "POOL_SOURCES": {
+        "ONE_NUMBER_REPLACEMENT": 9,
+        "REMOVED_INCUMBENT": 3,
+        "RESIDUAL_GUIDED_TWO_NUMBER_REPLACEMENT": 76,
+        "STABLE_ELITE": 8
+      },
+      "REMOVED_TICKETS": [
+        [
+          4,
+          18,
+          20,
+          24,
+          28,
+          29
+        ],
+        [
+          6,
+          10,
+          11,
+          16,
+          24,
+          36
+        ],
+        [
+          16,
+          19,
+          23,
+          26,
+          28,
+          46
+        ]
+      ],
+      "REST_COVERED_SEVEN_SETS": 39371636,
+      "SECONDS": {
+        "CANONICAL_CHECKS": 0.806,
+        "EXACT_REPAIR": 13.738,
+        "POOL": 16.401,
+        "TOTAL": 30.946
+      },
+      "START": "v6",
+      "START_REPRODUCTION": "PASS",
+      "START_UNION": 5376885,
+      "STRICT_IMPROVEMENTS_IN_POOL": 0
+    },
+    {
+      "BEST_CANONICAL_COUNT": 313239647,
+      "BEST_CANONICAL_RECOUNT": "PASS",
+      "BEST_COUNT": 313239647,
+      "BEST_DELTA": 0,
+      "BEST_REPLACEMENT_SOURCES": [
+        "ONE_NUMBER_REPLACEMENT",
+        "ONE_NUMBER_REPLACEMENT",
+        "REMOVED_INCUMBENT"
+      ],
+      "BEST_SHA256": "029f75fdf87192493e981d6b007da4b8e6475e451ec0a35eee39cf429e5f90d3",
+      "BEST_TICKETS_ADDED": [
+        [
+          1,
+          5,
+          25,
+          32,
+          41,
+          47
+        ],
+        [
+          2,
+          17,
+          34,
+          41,
+          42,
+          45
+        ]
+      ],
+      "BEST_TICKETS_DROPPED": [
+        [
+          1,
+          2,
+          34,
+          41,
+          42,
+          45
+        ],
+        [
+          5,
+          17,
+          25,
+          32,
+          41,
+          47
+        ]
+      ],
+      "BEST_TIE_COUNT": 16,
+      "BEST_UNION": 5882812,
+      "COMBINATIONS_CONSIDERED": 142880,
+      "DESTROY_INDICES": [
+        0,
+        4,
+        8
+      ],
+      "EXACT_TRIPLES_SCORED": 142880,
+      "PARITY": [
+        {
+          "CANONICAL_COUNT": 306556131,
+          "MATCH": true,
+          "POOL_INDICES": [
+            8,
+            30,
+            73
+          ],
+          "RESIDUAL_COUNT": 306556131,
+          "SHA256": "8fd42a9102e4227da74713b80064fb2e6a52de726b52962d7e1e030c5d325102"
+        }
+      ],
+      "POOL_ACCOUNTING": {
+        "CANDIDATES_DISTINCT": 3041,
+        "DUPLICATES_MERGED": 840,
+        "ELITE_DISTINCT": 28,
+        "ELITE_IN_REST_EXCLUDED": 17,
+        "EXACT_MARGINALS_SCORED": 3041,
+        "GUIDED_GENERATED": 3096,
+        "IN_REST_EXCLUDED": 0,
+        "MANDATORY": 11,
+        "ONE_NUMBER_GENERATED": 774,
+        "OPTIONAL_DISTINCT": 3030,
+        "OPTIONAL_RETAINED": 85,
+        "POOL_SIZE": 96
+      },
+      "POOL_MARGINAL_MAX": 2091966,
+      "POOL_MARGINAL_MIN": 645054,
+      "POOL_OPTIMALITY_STATUS": "EXACT_IN_POOL",
+      "POOL_SHA256": "eb2679c49c3066ebd9fa92a7fb15e603bd76e4e11e200a72da7c6ffb5c165ade",
+      "POOL_SIZE": 96,
+      "POOL_SOURCES": {
+        "ONE_NUMBER_REPLACEMENT": 22,
+        "REMOVED_INCUMBENT": 3,
+        "RESIDUAL_GUIDED_TWO_NUMBER_REPLACEMENT": 63,
+        "STABLE_ELITE": 8
+      },
+      "REMOVED_TICKETS": [
+        [
+          1,
+          2,
+          34,
+          41,
+          42,
+          45
+        ],
+        [
+          3,
+          8,
+          13,
+          28,
+          31,
+          36
+        ],
+        [
+          5,
+          17,
+          25,
+          32,
+          41,
+          47
+        ]
+      ],
+      "REST_COVERED_SEVEN_SETS": 38865709,
+      "SECONDS": {
+        "CANONICAL_CHECKS": 0.815,
+        "EXACT_REPAIR": 12.686,
+        "POOL": 13.611,
+        "TOTAL": 27.112
+      },
+      "START": "v6",
+      "START_REPRODUCTION": "PASS",
+      "START_UNION": 5882812,
+      "STRICT_IMPROVEMENTS_IN_POOL": 0
+    },
+    {
+      "BEST_CANONICAL_COUNT": 313239647,
+      "BEST_CANONICAL_RECOUNT": "PASS",
+      "BEST_COUNT": 313239647,
+      "BEST_DELTA": 0,
+      "BEST_REPLACEMENT_SOURCES": [
+        "ONE_NUMBER_REPLACEMENT",
+        "ONE_NUMBER_REPLACEMENT",
+        "REMOVED_INCUMBENT"
+      ],
+      "BEST_SHA256": "029f75fdf87192493e981d6b007da4b8e6475e451ec0a35eee39cf429e5f90d3",
+      "BEST_TICKETS_ADDED": [
+        [
+          1,
+          5,
+          25,
+          32,
+          41,
+          47
+        ],
+        [
+          2,
+          17,
+          34,
+          41,
+          42,
+          45
+        ]
+      ],
+      "BEST_TICKETS_DROPPED": [
+        [
+          1,
+          2,
+          34,
+          41,
+          42,
+          45
+        ],
+        [
+          5,
+          17,
+          25,
+          32,
+          41,
+          47
+        ]
+      ],
+      "BEST_TIE_COUNT": 16,
+      "BEST_UNION": 5879395,
+      "COMBINATIONS_CONSIDERED": 142880,
+      "DESTROY_INDICES": [
+        0,
+        6,
+        8
+      ],
+      "EXACT_TRIPLES_SCORED": 142880,
+      "PARITY": [
+        {
+          "CANONICAL_COUNT": 307622056,
+          "MATCH": true,
+          "POOL_INDICES": [
+            6,
+            18,
+            66
+          ],
+          "RESIDUAL_COUNT": 307622056,
+          "SHA256": "383a9473d89ad80bef5c79c3413a9f2d27d2f63c1d9e9abdc32a4bfad5a0b10a"
+        }
+      ],
+      "POOL_ACCOUNTING": {
+        "CANDIDATES_DISTINCT": 3040,
+        "DUPLICATES_MERGED": 841,
+        "ELITE_DISTINCT": 28,
+        "ELITE_IN_REST_EXCLUDED": 17,
+        "EXACT_MARGINALS_SCORED": 3040,
+        "GUIDED_GENERATED": 3096,
+        "IN_REST_EXCLUDED": 0,
+        "MANDATORY": 11,
+        "ONE_NUMBER_GENERATED": 774,
+        "OPTIONAL_DISTINCT": 3029,
+        "OPTIONAL_RETAINED": 85,
+        "POOL_SIZE": 96
+      },
+      "POOL_MARGINAL_MAX": 2091966,
+      "POOL_MARGINAL_MIN": 685922,
+      "POOL_OPTIMALITY_STATUS": "EXACT_IN_POOL",
+      "POOL_SHA256": "8deb58bc0a2513943abadc95ce50c11a14877166b75c787b0ac33afa572816b1",
+      "POOL_SIZE": 96,
+      "POOL_SOURCES": {
+        "ONE_NUMBER_REPLACEMENT": 22,
+        "REMOVED_INCUMBENT": 3,
+        "RESIDUAL_GUIDED_TWO_NUMBER_REPLACEMENT": 63,
+        "STABLE_ELITE": 8
+      },
+      "REMOVED_TICKETS": [
+        [
+          1,
+          2,
+          34,
+          41,
+          42,
+          45
+        ],
+        [
+          4,
+          7,
+          36,
+          39,
+          46,
+          49
+        ],
+        [
+          5,
+          17,
+          25,
+          32,
+          41,
+          47
+        ]
+      ],
+      "REST_COVERED_SEVEN_SETS": 38869126,
+      "SECONDS": {
+        "CANONICAL_CHECKS": 0.931,
+        "EXACT_REPAIR": 14.125,
+        "POOL": 14.273,
+        "TOTAL": 29.329
+      },
+      "START": "v6",
+      "START_REPRODUCTION": "PASS",
+      "START_UNION": 5879395,
+      "STRICT_IMPROVEMENTS_IN_POOL": 0
+    },
+    {
+      "BEST_CANONICAL_COUNT": 313239647,
+      "BEST_CANONICAL_RECOUNT": "PASS",
+      "BEST_COUNT": 313239647,
+      "BEST_DELTA": 0,
+      "BEST_REPLACEMENT_SOURCES": [
+        "REMOVED_INCUMBENT",
+        "REMOVED_INCUMBENT",
+        "REMOVED_INCUMBENT"
+      ],
+      "BEST_SHA256": "0c52a1f0bed90cd47d08bb031b13c9bf693317493f88e45da8e087bd4a0ab65b",
+      "BEST_TICKETS_ADDED": [],
+      "BEST_TICKETS_DROPPED": [],
+      "BEST_TIE_COUNT": 16,
+      "BEST_UNION": 5833022,
+      "COMBINATIONS_CONSIDERED": 142880,
+      "DESTROY_INDICES": [
+        9,
+        17,
+        19
+      ],
+      "EXACT_TRIPLES_SCORED": 142880,
+      "PARITY": [
+        {
+          "CANONICAL_COUNT": 305249623,
+          "MATCH": true,
+          "POOL_INDICES": [
+            50,
+            57,
+            83
+          ],
+          "RESIDUAL_COUNT": 305249623,
+          "SHA256": "b275d9b31e60a672463c764ccb6171c55eb0839407a84531750bfd1747432476"
+        }
+      ],
+      "POOL_ACCOUNTING": {
+        "CANDIDATES_DISTINCT": 3041,
+        "DUPLICATES_MERGED": 840,
+        "ELITE_DISTINCT": 28,
+        "ELITE_IN_REST_EXCLUDED": 17,
+        "EXACT_MARGINALS_SCORED": 3041,
+        "GUIDED_GENERATED": 3096,
+        "IN_REST_EXCLUDED": 0,
+        "MANDATORY": 11,
+        "ONE_NUMBER_GENERATED": 774,
+        "OPTIONAL_DISTINCT": 3030,
+        "OPTIONAL_RETAINED": 85,
+        "POOL_SIZE": 96
+      },
+      "POOL_MARGINAL_MAX": 2091966,
+      "POOL_MARGINAL_MIN": 643877,
+      "POOL_OPTIMALITY_STATUS": "EXACT_IN_POOL",
+      "POOL_SHA256": "75c848dfd33628a6ceea209b0d80a47181d4e60070476126eb34a62467892c8e",
+      "POOL_SIZE": 96,
+      "POOL_SOURCES": {
+        "ONE_NUMBER_REPLACEMENT": 23,
+        "REMOVED_INCUMBENT": 3,
+        "RESIDUAL_GUIDED_TWO_NUMBER_REPLACEMENT": 62,
+        "STABLE_ELITE": 8
+      },
+      "REMOVED_TICKETS": [
+        [
+          6,
+          7,
+          9,
+          13,
+          18,
+          26
+        ],
+        [
+          21,
+          25,
+          30,
+          38,
+          45,
+          48
+        ],
+        [
+          22,
+          34,
+          35,
+          38,
+          44,
+          47
+        ]
+      ],
+      "REST_COVERED_SEVEN_SETS": 38915499,
+      "SECONDS": {
+        "CANONICAL_CHECKS": 0.837,
+        "EXACT_REPAIR": 12.189,
+        "POOL": 13.543,
+        "TOTAL": 26.568
+      },
+      "START": "v6",
+      "START_REPRODUCTION": "PASS",
+      "START_UNION": 5833022,
+      "STRICT_IMPROVEMENTS_IN_POOL": 0
+    },
+    {
+      "BEST_CANONICAL_COUNT": 313239647,
+      "BEST_CANONICAL_RECOUNT": "PASS",
+      "BEST_COUNT": 313239647,
+      "BEST_DELTA": 0,
+      "BEST_REPLACEMENT_SOURCES": [
+        "REMOVED_INCUMBENT",
+        "RESIDUAL_GUIDED_TWO_NUMBER_REPLACEMENT",
+        "RESIDUAL_GUIDED_TWO_NUMBER_REPLACEMENT"
+      ],
+      "BEST_SHA256": "01b10e151d22a13bebe008192dd4894fd52d340184980cac20dbf812f3db55a3",
+      "BEST_TICKETS_ADDED": [
+        [
+          1,
+          5,
+          30,
+          33,
+          35,
+          40
+        ],
+        [
+          2,
+          17,
+          22,
+          33,
+          43,
+          48
+        ]
+      ],
+      "BEST_TICKETS_DROPPED": [
+        [
+          1,
+          17,
+          22,
+          30,
+          33,
+          43
+        ],
+        [
+          2,
+          5,
+          33,
+          35,
+          40,
+          48
+        ]
+      ],
+      "BEST_TIE_COUNT": 16,
+      "BEST_UNION": 5833023,
+      "COMBINATIONS_CONSIDERED": 142880,
+      "DESTROY_INDICES": [
+        1,
+        2,
+        5
+      ],
+      "EXACT_TRIPLES_SCORED": 142880,
+      "PARITY": [
+        {
+          "CANONICAL_COUNT": 309316616,
+          "MATCH": true,
+          "POOL_INDICES": [
+            30,
+            68,
+            78
+          ],
+          "RESIDUAL_COUNT": 309316616,
+          "SHA256": "4b22e961bdc6dfe9925c3f4db7d0b8686962d09c8981c779da934def29010499"
+        }
+      ],
+      "POOL_ACCOUNTING": {
+        "CANDIDATES_DISTINCT": 3040,
+        "DUPLICATES_MERGED": 841,
+        "ELITE_DISTINCT": 28,
+        "ELITE_IN_REST_EXCLUDED": 17,
+        "EXACT_MARGINALS_SCORED": 3040,
+        "GUIDED_GENERATED": 3096,
+        "IN_REST_EXCLUDED": 0,
+        "MANDATORY": 11,
+        "ONE_NUMBER_GENERATED": 774,
+        "OPTIONAL_DISTINCT": 3029,
+        "OPTIONAL_RETAINED": 85,
+        "POOL_SIZE": 96
+      },
+      "POOL_MARGINAL_MAX": 2091966,
+      "POOL_MARGINAL_MIN": 685209,
+      "POOL_OPTIMALITY_STATUS": "EXACT_IN_POOL",
+      "POOL_SHA256": "26e18b21b400f7ec4bd6c251906ec6c8a4ebda5e5268b7f8f7ca83849f1b0f07",
+      "POOL_SIZE": 96,
+      "POOL_SOURCES": {
+        "ONE_NUMBER_REPLACEMENT": 21,
+        "REMOVED_INCUMBENT": 3,
+        "RESIDUAL_GUIDED_TWO_NUMBER_REPLACEMENT": 64,
+        "STABLE_ELITE": 8
+      },
+      "REMOVED_TICKETS": [
+        [
+          1,
+          17,
+          22,
+          30,
+          33,
+          43
+        ],
+        [
+          2,
+          5,
+          33,
+          35,
+          40,
+          48
+        ],
+        [
+          3,
+          9,
+          12,
+          16,
+          29,
+          39
+        ]
+      ],
+      "REST_COVERED_SEVEN_SETS": 38915498,
+      "SECONDS": {
+        "CANONICAL_CHECKS": 0.883,
+        "EXACT_REPAIR": 14.324,
+        "POOL": 14.478,
+        "TOTAL": 29.685
+      },
+      "START": "v6",
+      "START_REPRODUCTION": "PASS",
+      "START_UNION": 5833023,
+      "STRICT_IMPROVEMENTS_IN_POOL": 0
+    },
+    {
+      "BEST_CANONICAL_COUNT": 313239647,
+      "BEST_CANONICAL_RECOUNT": "PASS",
+      "BEST_COUNT": 313239647,
+      "BEST_DELTA": 0,
+      "BEST_REPLACEMENT_SOURCES": [
+        "REMOVED_INCUMBENT",
+        "REMOVED_INCUMBENT",
+        "REMOVED_INCUMBENT"
+      ],
+      "BEST_SHA256": "0c52a1f0bed90cd47d08bb031b13c9bf693317493f88e45da8e087bd4a0ab65b",
+      "BEST_TICKETS_ADDED": [],
+      "BEST_TICKETS_DROPPED": [],
+      "BEST_TIE_COUNT": 1,
+      "BEST_UNION": 5683660,
+      "COMBINATIONS_CONSIDERED": 142880,
+      "DESTROY_INDICES": [
+        2,
+        5,
+        14
+      ],
+      "EXACT_TRIPLES_SCORED": 142880,
+      "PARITY": [
+        {
+          "CANONICAL_COUNT": 304579023,
+          "MATCH": true,
+          "POOL_INDICES": [
+            0,
+            24,
+            94
+          ],
+          "RESIDUAL_COUNT": 304579023,
+          "SHA256": "dcc05af4d6adcc1996c44b6da52fcc66590c0f932e852ab9a724b891721c931d"
+        }
+      ],
+      "POOL_ACCOUNTING": {
+        "CANDIDATES_DISTINCT": 3012,
+        "DUPLICATES_MERGED": 869,
+        "ELITE_DISTINCT": 28,
+        "ELITE_IN_REST_EXCLUDED": 17,
+        "EXACT_MARGINALS_SCORED": 3012,
+        "GUIDED_GENERATED": 3096,
+        "IN_REST_EXCLUDED": 0,
+        "MANDATORY": 11,
+        "ONE_NUMBER_GENERATED": 774,
+        "OPTIONAL_DISTINCT": 3001,
+        "OPTIONAL_RETAINED": 85,
+        "POOL_SIZE": 96
+      },
+      "POOL_MARGINAL_MAX": 2038876,
+      "POOL_MARGINAL_MIN": 708341,
+      "POOL_OPTIMALITY_STATUS": "EXACT_IN_POOL",
+      "POOL_SHA256": "931f5ea164d3fde96abe4d0f7c183fde81ff20fa56dc38617da4cc101abd7c81",
+      "POOL_SIZE": 96,
+      "POOL_SOURCES": {
+        "ONE_NUMBER_REPLACEMENT": 29,
+        "REMOVED_INCUMBENT": 3,
+        "RESIDUAL_GUIDED_TWO_NUMBER_REPLACEMENT": 56,
+        "STABLE_ELITE": 8
+      },
+      "REMOVED_TICKETS": [
+        [
+          2,
+          5,
+          33,
+          35,
+          40,
+          48
+        ],
+        [
+          3,
+          9,
+          12,
+          16,
+          29,
+          39
+        ],
+        [
+          11,
+          12,
+          18,
+          23,
+          27,
+          49
+        ]
+      ],
+      "REST_COVERED_SEVEN_SETS": 39064861,
+      "SECONDS": {
+        "CANONICAL_CHECKS": 0.79,
+        "EXACT_REPAIR": 13.065,
+        "POOL": 15.135,
+        "TOTAL": 28.99
+      },
+      "START": "v6",
+      "START_REPRODUCTION": "PASS",
+      "START_UNION": 5683660,
+      "STRICT_IMPROVEMENTS_IN_POOL": 0
+    },
+    {
+      "BEST_CANONICAL_COUNT": 313239647,
+      "BEST_CANONICAL_RECOUNT": "PASS",
+      "BEST_COUNT": 313239647,
+      "BEST_DELTA": 0,
+      "BEST_REPLACEMENT_SOURCES": [
+        "REMOVED_INCUMBENT",
+        "REMOVED_INCUMBENT",
+        "REMOVED_INCUMBENT"
+      ],
+      "BEST_SHA256": "0c52a1f0bed90cd47d08bb031b13c9bf693317493f88e45da8e087bd4a0ab65b",
+      "BEST_TICKETS_ADDED": [],
+      "BEST_TICKETS_DROPPED": [],
+      "BEST_TIE_COUNT": 1,
+      "BEST_UNION": 5533149,
+      "COMBINATIONS_CONSIDERED": 142880,
+      "DESTROY_INDICES": [
+        12,
+        14,
+        16
+      ],
+      "EXACT_TRIPLES_SCORED": 142880,
+      "PARITY": [
+        {
+          "CANONICAL_COUNT": 303619337,
+          "MATCH": true,
+          "POOL_INDICES": [
+            13,
+            34,
+            54
+          ],
+          "RESIDUAL_COUNT": 303619337,
+          "SHA256": "741de82e9d8ab948fe1882e0e7b49887d18c1afb7b4f5a1481cf7a8afceaedea"
+        }
+      ],
+      "POOL_ACCOUNTING": {
+        "CANDIDATES_DISTINCT": 2868,
+        "DUPLICATES_MERGED": 1013,
+        "ELITE_DISTINCT": 28,
+        "ELITE_IN_REST_EXCLUDED": 17,
+        "EXACT_MARGINALS_SCORED": 2868,
+        "GUIDED_GENERATED": 3096,
+        "IN_REST_EXCLUDED": 0,
+        "MANDATORY": 11,
+        "ONE_NUMBER_GENERATED": 774,
+        "OPTIONAL_DISTINCT": 2857,
+        "OPTIONAL_RETAINED": 85,
+        "POOL_SIZE": 96
+      },
+      "POOL_MARGINAL_MAX": 2041742,
+      "POOL_MARGINAL_MIN": 680323,
+      "POOL_OPTIMALITY_STATUS": "EXACT_IN_POOL",
+      "POOL_SHA256": "93f481972dda16a1f6b2fe6249fda94e5cc36ac753336661bd46a38e9e09d018",
+      "POOL_SIZE": 96,
+      "POOL_SOURCES": {
+        "ONE_NUMBER_REPLACEMENT": 4,
+        "REMOVED_INCUMBENT": 3,
+        "RESIDUAL_GUIDED_TWO_NUMBER_REPLACEMENT": 81,
+        "STABLE_ELITE": 8
+      },
+      "REMOVED_TICKETS": [
+        [
+          7,
+          8,
+          10,
+          14,
+          19,
+          29
+        ],
+        [
+          11,
+          12,
+          18,
+          23,
+          27,
+          49
+        ],
+        [
+          16,
+          19,
+          23,
+          26,
+          28,
+          46
+        ]
+      ],
+      "REST_COVERED_SEVEN_SETS": 39215372,
+      "SECONDS": {
+        "CANONICAL_CHECKS": 1.085,
+        "EXACT_REPAIR": 15.652,
+        "POOL": 13.883,
+        "TOTAL": 30.62
+      },
+      "START": "v6",
+      "START_REPRODUCTION": "PASS",
+      "START_UNION": 5533149,
+      "STRICT_IMPROVEMENTS_IN_POOL": 0
+    },
+    {
+      "BEST_CANONICAL_COUNT": 313239647,
+      "BEST_CANONICAL_RECOUNT": "PASS",
+      "BEST_COUNT": 313239647,
+      "BEST_DELTA": 0,
+      "BEST_REPLACEMENT_SOURCES": [
+        "REMOVED_INCUMBENT",
+        "REMOVED_INCUMBENT",
+        "REMOVED_INCUMBENT"
+      ],
+      "BEST_SHA256": "0c52a1f0bed90cd47d08bb031b13c9bf693317493f88e45da8e087bd4a0ab65b",
+      "BEST_TICKETS_ADDED": [],
+      "BEST_TICKETS_DROPPED": [],
+      "BEST_TIE_COUNT": 1,
+      "BEST_UNION": 5683660,
+      "COMBINATIONS_CONSIDERED": 142880,
+      "DESTROY_INDICES": [
+        5,
+        8,
+        14
+      ],
+      "EXACT_TRIPLES_SCORED": 142880,
+      "PARITY": [
+        {
+          "CANONICAL_COUNT": 308842163,
+          "MATCH": true,
+          "POOL_INDICES": [
+            16,
+            80,
+            95
+          ],
+          "RESIDUAL_COUNT": 308842163,
+          "SHA256": "d932f1817d477842df7630d62f072463692feb00126c4b5e41b41ad298855931"
+        }
+      ],
+      "POOL_ACCOUNTING": {
+        "CANDIDATES_DISTINCT": 3012,
+        "DUPLICATES_MERGED": 869,
+        "ELITE_DISTINCT": 28,
+        "ELITE_IN_REST_EXCLUDED": 17,
+        "EXACT_MARGINALS_SCORED": 3012,
+        "GUIDED_GENERATED": 3096,
+        "IN_REST_EXCLUDED": 0,
+        "MANDATORY": 11,
+        "ONE_NUMBER_GENERATED": 774,
+        "OPTIONAL_DISTINCT": 3001,
+        "OPTIONAL_RETAINED": 85,
+        "POOL_SIZE": 96
+      },
+      "POOL_MARGINAL_MAX": 2038876,
+      "POOL_MARGINAL_MIN": 708341,
+      "POOL_OPTIMALITY_STATUS": "EXACT_IN_POOL",
+      "POOL_SHA256": "11ab4feb76ef67cfa43ba366500347f27a823c7c934bbefea4279d07384f640c",
+      "POOL_SIZE": 96,
+      "POOL_SOURCES": {
+        "ONE_NUMBER_REPLACEMENT": 29,
+        "REMOVED_INCUMBENT": 3,
+        "RESIDUAL_GUIDED_TWO_NUMBER_REPLACEMENT": 56,
+        "STABLE_ELITE": 8
+      },
+      "REMOVED_TICKETS": [
+        [
+          3,
+          9,
+          12,
+          16,
+          29,
+          39
+        ],
+        [
+          5,
+          17,
+          25,
+          32,
+          41,
+          47
+        ],
+        [
+          11,
+          12,
+          18,
+          23,
+          27,
+          49
+        ]
+      ],
+      "REST_COVERED_SEVEN_SETS": 39064861,
+      "SECONDS": {
+        "CANONICAL_CHECKS": 0.789,
+        "EXACT_REPAIR": 13.105,
+        "POOL": 15.347,
+        "TOTAL": 29.241
+      },
+      "START": "v6",
+      "START_REPRODUCTION": "PASS",
+      "START_UNION": 5683660,
+      "STRICT_IMPROVEMENTS_IN_POOL": 0
+    },
+    {
+      "BEST_CANONICAL_COUNT": 313239647,
+      "BEST_CANONICAL_RECOUNT": "PASS",
+      "BEST_COUNT": 313239647,
+      "BEST_DELTA": 0,
+      "BEST_REPLACEMENT_SOURCES": [
+        "REMOVED_INCUMBENT",
+        "REMOVED_INCUMBENT",
+        "REMOVED_INCUMBENT"
+      ],
+      "BEST_SHA256": "0c52a1f0bed90cd47d08bb031b13c9bf693317493f88e45da8e087bd4a0ab65b",
+      "BEST_TICKETS_ADDED": [],
+      "BEST_TICKETS_DROPPED": [],
+      "BEST_TIE_COUNT": 1,
+      "BEST_UNION": 5732085,
+      "COMBINATIONS_CONSIDERED": 142880,
+      "DESTROY_INDICES": [
+        0,
+        14,
+        16
+      ],
+      "EXACT_TRIPLES_SCORED": 142880,
+      "PARITY": [
+        {
+          "CANONICAL_COUNT": 308494235,
+          "MATCH": true,
+          "POOL_INDICES": [
+            4,
+            22,
+            55
+          ],
+          "RESIDUAL_COUNT": 308494235,
+          "SHA256": "751ea15c84f5dc0678095ab266ab917f665fc8cb1cd764d3e6851207f798028b"
+        }
+      ],
+      "POOL_ACCOUNTING": {
+        "CANDIDATES_DISTINCT": 3012,
+        "DUPLICATES_MERGED": 869,
+        "ELITE_DISTINCT": 28,
+        "ELITE_IN_REST_EXCLUDED": 17,
+        "EXACT_MARGINALS_SCORED": 3012,
+        "GUIDED_GENERATED": 3096,
+        "IN_REST_EXCLUDED": 0,
+        "MANDATORY": 11,
+        "ONE_NUMBER_GENERATED": 774,
+        "OPTIONAL_DISTINCT": 3001,
+        "OPTIONAL_RETAINED": 85,
+        "POOL_SIZE": 96
+      },
+      "POOL_MARGINAL_MAX": 2093806,
+      "POOL_MARGINAL_MIN": 668339,
+      "POOL_OPTIMALITY_STATUS": "EXACT_IN_POOL",
+      "POOL_SHA256": "b91418c778469b939c9f609b4009a969fe67ac51f04e2b880d2a6029b96bf9c2",
+      "POOL_SIZE": 96,
+      "POOL_SOURCES": {
+        "ONE_NUMBER_REPLACEMENT": 18,
+        "REMOVED_INCUMBENT": 3,
+        "RESIDUAL_GUIDED_TWO_NUMBER_REPLACEMENT": 67,
+        "STABLE_ELITE": 8
+      },
+      "REMOVED_TICKETS": [
+        [
+          1,
+          2,
+          34,
+          41,
+          42,
+          45
+        ],
+        [
+          11,
+          12,
+          18,
+          23,
+          27,
+          49
+        ],
+        [
+          16,
+          19,
+          23,
+          26,
+          28,
+          46
+        ]
+      ],
+      "REST_COVERED_SEVEN_SETS": 39016436,
+      "SECONDS": {
+        "CANONICAL_CHECKS": 0.731,
+        "EXACT_REPAIR": 12.62,
+        "POOL": 13.724,
+        "TOTAL": 27.076
+      },
+      "START": "v6",
+      "START_REPRODUCTION": "PASS",
+      "START_UNION": 5732085,
+      "STRICT_IMPROVEMENTS_IN_POOL": 0
+    },
+    {
+      "BEST_CANONICAL_COUNT": 313239647,
+      "BEST_CANONICAL_RECOUNT": "PASS",
+      "BEST_COUNT": 313239647,
+      "BEST_DELTA": 0,
+      "BEST_REPLACEMENT_SOURCES": [
+        "REMOVED_INCUMBENT",
+        "REMOVED_INCUMBENT",
+        "REMOVED_INCUMBENT"
+      ],
+      "BEST_SHA256": "0c52a1f0bed90cd47d08bb031b13c9bf693317493f88e45da8e087bd4a0ab65b",
+      "BEST_TICKETS_ADDED": [],
+      "BEST_TICKETS_DROPPED": [],
+      "BEST_TIE_COUNT": 1,
+      "BEST_UNION": 5578418,
+      "COMBINATIONS_CONSIDERED": 142880,
+      "DESTROY_INDICES": [
+        5,
+        15,
+        19
+      ],
+      "EXACT_TRIPLES_SCORED": 142880,
+      "PARITY": [
+        {
+          "CANONICAL_COUNT": 298952325,
+          "MATCH": true,
+          "POOL_INDICES": [
+            68,
+            78,
+            80
+          ],
+          "RESIDUAL_COUNT": 298952325,
+          "SHA256": "9228bdc14a7939b42dd19682a820e1627a0075340a8317ca4f242c5865fbbc55"
+        }
+      ],
+      "POOL_ACCOUNTING": {
+        "CANDIDATES_DISTINCT": 2992,
+        "DUPLICATES_MERGED": 889,
+        "ELITE_DISTINCT": 28,
+        "ELITE_IN_REST_EXCLUDED": 17,
+        "EXACT_MARGINALS_SCORED": 2992,
+        "GUIDED_GENERATED": 3096,
+        "IN_REST_EXCLUDED": 0,
+        "MANDATORY": 11,
+        "ONE_NUMBER_GENERATED": 774,
+        "OPTIONAL_DISTINCT": 2981,
+        "OPTIONAL_RETAINED": 85,
+        "POOL_SIZE": 96
+      },
+      "POOL_MARGINAL_MAX": 2038876,
+      "POOL_MARGINAL_MIN": 700755,
+      "POOL_OPTIMALITY_STATUS": "EXACT_IN_POOL",
+      "POOL_SHA256": "8d2fea29b799ee504176fc9d4ab0f2682efe2491913303dbac6ce9868bac4f03",
+      "POOL_SIZE": 96,
+      "POOL_SOURCES": {
+        "ONE_NUMBER_REPLACEMENT": 57,
+        "REMOVED_INCUMBENT": 3,
+        "RESIDUAL_GUIDED_TWO_NUMBER_REPLACEMENT": 28,
+        "STABLE_ELITE": 8
+      },
+      "REMOVED_TICKETS": [
+        [
+          3,
+          9,
+          12,
+          16,
+          29,
+          39
+        ],
+        [
+          12,
+          13,
+          15,
+          19,
+          24,
+          37
+        ],
+        [
+          22,
+          34,
+          35,
+          38,
+          44,
+          47
+        ]
+      ],
+      "REST_COVERED_SEVEN_SETS": 39170103,
+      "SECONDS": {
+        "CANONICAL_CHECKS": 0.865,
+        "EXACT_REPAIR": 14.677,
+        "POOL": 14.202,
+        "TOTAL": 29.744
+      },
+      "START": "v6",
+      "START_REPRODUCTION": "PASS",
+      "START_UNION": 5578418,
+      "STRICT_IMPROVEMENTS_IN_POOL": 0
+    },
+    {
+      "BEST_CANONICAL_COUNT": 313239647,
+      "BEST_CANONICAL_RECOUNT": "PASS",
+      "BEST_COUNT": 313239647,
+      "BEST_DELTA": 0,
+      "BEST_REPLACEMENT_SOURCES": [
+        "REMOVED_INCUMBENT",
+        "REMOVED_INCUMBENT",
+        "REMOVED_INCUMBENT"
+      ],
+      "BEST_SHA256": "0c52a1f0bed90cd47d08bb031b13c9bf693317493f88e45da8e087bd4a0ab65b",
+      "BEST_TICKETS_ADDED": [],
+      "BEST_TICKETS_DROPPED": [],
+      "BEST_TIE_COUNT": 1,
+      "BEST_UNION": 5479292,
+      "COMBINATIONS_CONSIDERED": 142880,
+      "DESTROY_INDICES": [
+        4,
+        12,
+        15
+      ],
+      "EXACT_TRIPLES_SCORED": 142880,
+      "PARITY": [
+        {
+          "CANONICAL_COUNT": 306966590,
+          "MATCH": true,
+          "POOL_INDICES": [
+            9,
+            49,
+            72
+          ],
+          "RESIDUAL_COUNT": 306966590,
+          "SHA256": "242e99366d833ba26352048dc3f7868b98b0835c4cd21097f314531019cb51a2"
+        }
+      ],
+      "POOL_ACCOUNTING": {
+        "CANDIDATES_DISTINCT": 3275,
+        "DUPLICATES_MERGED": 606,
+        "ELITE_DISTINCT": 28,
+        "ELITE_IN_REST_EXCLUDED": 17,
+        "EXACT_MARGINALS_SCORED": 3275,
+        "GUIDED_GENERATED": 3096,
+        "IN_REST_EXCLUDED": 0,
+        "MANDATORY": 11,
+        "ONE_NUMBER_GENERATED": 774,
+        "OPTIONAL_DISTINCT": 3264,
+        "OPTIONAL_RETAINED": 85,
+        "POOL_SIZE": 96
+      },
+      "POOL_MARGINAL_MAX": 1939759,
+      "POOL_MARGINAL_MIN": 695836,
+      "POOL_OPTIMALITY_STATUS": "EXACT_IN_POOL",
+      "POOL_SHA256": "d86a4ba6a1ab46515bca0affde17f282dc43dde7ff1e924e34a20ba4773023d6",
+      "POOL_SIZE": 96,
+      "POOL_SOURCES": {
+        "ONE_NUMBER_REPLACEMENT": 3,
+        "REMOVED_INCUMBENT": 3,
+        "RESIDUAL_GUIDED_TWO_NUMBER_REPLACEMENT": 82,
+        "STABLE_ELITE": 8
+      },
+      "REMOVED_TICKETS": [
+        [
+          3,
+          8,
+          13,
+          28,
+          31,
+          36
+        ],
+        [
+          7,
+          8,
+          10,
+          14,
+          19,
+          29
+        ],
+        [
+          12,
+          13,
+          15,
+          19,
+          24,
+          37
+        ]
+      ],
+      "REST_COVERED_SEVEN_SETS": 39269229,
+      "SECONDS": {
+        "CANONICAL_CHECKS": 0.908,
+        "EXACT_REPAIR": 13.328,
+        "POOL": 17.809,
+        "TOTAL": 32.045
+      },
+      "START": "v6",
+      "START_REPRODUCTION": "PASS",
+      "START_UNION": 5479292,
+      "STRICT_IMPROVEMENTS_IN_POOL": 0
+    },
+    {
+      "BEST_CANONICAL_COUNT": 313239647,
+      "BEST_CANONICAL_RECOUNT": "PASS",
+      "BEST_COUNT": 313239647,
+      "BEST_DELTA": 0,
+      "BEST_REPLACEMENT_SOURCES": [
+        "REMOVED_INCUMBENT",
+        "RESIDUAL_GUIDED_TWO_NUMBER_REPLACEMENT",
+        "RESIDUAL_GUIDED_TWO_NUMBER_REPLACEMENT"
+      ],
+      "BEST_SHA256": "058ef651e521bba263f338ac0352095b9d9442ad37f7e3deb34d68fc557abaa9",
+      "BEST_TICKETS_ADDED": [
+        [
+          1,
+          2,
+          21,
+          25,
+          38,
+          45
+        ],
+        [
+          30,
+          34,
+          41,
+          42,
+          45,
+          48
+        ]
+      ],
+      "BEST_TICKETS_DROPPED": [
+        [
+          1,
+          2,
+          34,
+          41,
+          42,
+          45
+        ],
+        [
+          21,
+          25,
+          30,
+          38,
+          45,
+          48
+        ]
+      ],
+      "BEST_TIE_COUNT": 16,
+      "BEST_UNION": 5833015,
+      "COMBINATIONS_CONSIDERED": 142880,
+      "DESTROY_INDICES": [
+        0,
+        10,
+        17
+      ],
+      "EXACT_TRIPLES_SCORED": 142880,
+      "PARITY": [
+        {
+          "CANONICAL_COUNT": 308057729,
+          "MATCH": true,
+          "POOL_INDICES": [
+            21,
+            31,
+            78
+          ],
+          "RESIDUAL_COUNT": 308057729,
+          "SHA256": "a3691f1e805c96545da8b3454dc14622dbf0327433d04a2a145c898328b489ec"
+        }
+      ],
+      "POOL_ACCOUNTING": {
+        "CANDIDATES_DISTINCT": 3041,
+        "DUPLICATES_MERGED": 840,
+        "ELITE_DISTINCT": 28,
+        "ELITE_IN_REST_EXCLUDED": 17,
+        "EXACT_MARGINALS_SCORED": 3041,
+        "GUIDED_GENERATED": 3096,
+        "IN_REST_EXCLUDED": 0,
+        "MANDATORY": 11,
+        "ONE_NUMBER_GENERATED": 774,
+        "OPTIONAL_DISTINCT": 3030,
+        "OPTIONAL_RETAINED": 85,
+        "POOL_SIZE": 96
+      },
+      "POOL_MARGINAL_MAX": 2091966,
+      "POOL_MARGINAL_MIN": 643879,
+      "POOL_OPTIMALITY_STATUS": "EXACT_IN_POOL",
+      "POOL_SHA256": "be04fb2d8c04b0e89b4c6e6d329a7c88e325c700bd9eb785ca1247809231984e",
+      "POOL_SIZE": 96,
+      "POOL_SOURCES": {
+        "ONE_NUMBER_REPLACEMENT": 20,
+        "REMOVED_INCUMBENT": 3,
+        "RESIDUAL_GUIDED_TWO_NUMBER_REPLACEMENT": 65,
+        "STABLE_ELITE": 8
+      },
+      "REMOVED_TICKETS": [
+        [
+          1,
+          2,
+          34,
+          41,
+          42,
+          45
+        ],
+        [
+          6,
+          10,
+          11,
+          16,
+          24,
+          36
+        ],
+        [
+          21,
+          25,
+          30,
+          38,
+          45,
+          48
+        ]
+      ],
+      "REST_COVERED_SEVEN_SETS": 38915506,
+      "SECONDS": {
+        "CANONICAL_CHECKS": 0.76,
+        "EXACT_REPAIR": 12.947,
+        "POOL": 15.088,
+        "TOTAL": 28.795
+      },
+      "START": "v6",
+      "START_REPRODUCTION": "PASS",
+      "START_UNION": 5833015,
+      "STRICT_IMPROVEMENTS_IN_POOL": 0
+    },
+    {
+      "BEST_CANONICAL_COUNT": 313239647,
+      "BEST_CANONICAL_RECOUNT": "PASS",
+      "BEST_COUNT": 313239647,
+      "BEST_DELTA": 0,
+      "BEST_REPLACEMENT_SOURCES": [
+        "REMOVED_INCUMBENT",
+        "REMOVED_INCUMBENT",
+        "REMOVED_INCUMBENT"
+      ],
+      "BEST_SHA256": "0c52a1f0bed90cd47d08bb031b13c9bf693317493f88e45da8e087bd4a0ab65b",
+      "BEST_TICKETS_ADDED": [],
+      "BEST_TICKETS_DROPPED": [],
+      "BEST_TIE_COUNT": 1,
+      "BEST_UNION": 5732017,
+      "COMBINATIONS_CONSIDERED": 142880,
+      "DESTROY_INDICES": [
+        6,
+        11,
+        19
+      ],
+      "EXACT_TRIPLES_SCORED": 142880,
+      "PARITY": [
+        {
+          "CANONICAL_COUNT": 308505771,
+          "MATCH": true,
+          "POOL_INDICES": [
+            4,
+            42,
+            79
+          ],
+          "RESIDUAL_COUNT": 308505771,
+          "SHA256": "8459f1cc3eaeb1dcf24b33de321b52ffbf1be457e2d729791b0b14ac614e34ae"
+        }
+      ],
+      "POOL_ACCOUNTING": {
+        "CANDIDATES_DISTINCT": 3063,
+        "DUPLICATES_MERGED": 818,
+        "ELITE_DISTINCT": 28,
+        "ELITE_IN_REST_EXCLUDED": 17,
+        "EXACT_MARGINALS_SCORED": 3063,
+        "GUIDED_GENERATED": 3096,
+        "IN_REST_EXCLUDED": 0,
+        "MANDATORY": 11,
+        "ONE_NUMBER_GENERATED": 774,
+        "OPTIONAL_DISTINCT": 3052,
+        "OPTIONAL_RETAINED": 85,
+        "POOL_SIZE": 96
+      },
+      "POOL_MARGINAL_MAX": 2038876,
+      "POOL_MARGINAL_MIN": 703005,
+      "POOL_OPTIMALITY_STATUS": "EXACT_IN_POOL",
+      "POOL_SHA256": "fe680e57c4c343ad40739ba4568ab7717b2dd2494dc3456dc377bee5a10b3f85",
+      "POOL_SIZE": 96,
+      "POOL_SOURCES": {
+        "ONE_NUMBER_REPLACEMENT": 30,
+        "REMOVED_INCUMBENT": 3,
+        "RESIDUAL_GUIDED_TWO_NUMBER_REPLACEMENT": 55,
+        "STABLE_ELITE": 8
+      },
+      "REMOVED_TICKETS": [
+        [
+          4,
+          7,
+          36,
+          39,
+          46,
+          49
+        ],
+        [
+          6,
+          14,
+          20,
+          31,
+          37,
+          39
+        ],
+        [
+          22,
+          34,
+          35,
+          38,
+          44,
+          47
+        ]
+      ],
+      "REST_COVERED_SEVEN_SETS": 39016504,
+      "SECONDS": {
+        "CANONICAL_CHECKS": 0.817,
+        "EXACT_REPAIR": 12.474,
+        "POOL": 14.089,
+        "TOTAL": 27.381
+      },
+      "START": "v6",
+      "START_REPRODUCTION": "PASS",
+      "START_UNION": 5732017,
+      "STRICT_IMPROVEMENTS_IN_POOL": 0
+    },
+    {
+      "BEST_CANONICAL_COUNT": 313239647,
+      "BEST_CANONICAL_RECOUNT": "PASS",
+      "BEST_COUNT": 313239647,
+      "BEST_DELTA": 0,
+      "BEST_REPLACEMENT_SOURCES": [
+        "REMOVED_INCUMBENT",
+        "REMOVED_INCUMBENT",
+        "REMOVED_INCUMBENT"
+      ],
+      "BEST_SHA256": "0c52a1f0bed90cd47d08bb031b13c9bf693317493f88e45da8e087bd4a0ab65b",
+      "BEST_TICKETS_ADDED": [],
+      "BEST_TICKETS_DROPPED": [],
+      "BEST_TIE_COUNT": 1,
+      "BEST_UNION": 5530166,
+      "COMBINATIONS_CONSIDERED": 142880,
+      "DESTROY_INDICES": [
+        0,
+        7,
+        9
+      ],
+      "EXACT_TRIPLES_SCORED": 142880,
+      "PARITY": [
+        {
+          "CANONICAL_COUNT": 305470851,
+          "MATCH": true,
+          "POOL_INDICES": [
+            41,
+            78,
+            84
+          ],
+          "RESIDUAL_COUNT": 305470851,
+          "SHA256": "0f5654f9f0a73ba686170ca5728a5f8ed0a92f31145237cd91f917696f5a2a58"
+        }
+      ],
+      "POOL_ACCOUNTING": {
+        "CANDIDATES_DISTINCT": 2993,
+        "DUPLICATES_MERGED": 888,
+        "ELITE_DISTINCT": 28,
+        "ELITE_IN_REST_EXCLUDED": 17,
+        "EXACT_MARGINALS_SCORED": 2993,
+        "GUIDED_GENERATED": 3096,
+        "IN_REST_EXCLUDED": 0,
+        "MANDATORY": 11,
+        "ONE_NUMBER_GENERATED": 774,
+        "OPTIONAL_DISTINCT": 2982,
+        "OPTIONAL_RETAINED": 85,
+        "POOL_SIZE": 96
+      },
+      "POOL_MARGINAL_MAX": 2038876,
+      "POOL_MARGINAL_MIN": 654445,
+      "POOL_OPTIMALITY_STATUS": "EXACT_IN_POOL",
+      "POOL_SHA256": "ad5747dac844feaace3de70376c89f7b3dab75daec6e327c2f6057caa123c157",
+      "POOL_SIZE": 96,
+      "POOL_SOURCES": {
+        "ONE_NUMBER_REPLACEMENT": 71,
+        "REMOVED_INCUMBENT": 3,
+        "RESIDUAL_GUIDED_TWO_NUMBER_REPLACEMENT": 14,
+        "STABLE_ELITE": 8
+      },
+      "REMOVED_TICKETS": [
+        [
+          1,
+          2,
+          34,
+          41,
+          42,
+          45
+        ],
+        [
+          4,
+          18,
+          20,
+          24,
+          28,
+          29
+        ],
+        [
+          6,
+          7,
+          9,
+          13,
+          18,
+          26
+        ]
+      ],
+      "REST_COVERED_SEVEN_SETS": 39218355,
+      "SECONDS": {
+        "CANONICAL_CHECKS": 0.849,
+        "EXACT_REPAIR": 12.567,
+        "POOL": 13.685,
+        "TOTAL": 27.101
+      },
+      "START": "v6",
+      "START_REPRODUCTION": "PASS",
+      "START_UNION": 5530166,
+      "STRICT_IMPROVEMENTS_IN_POOL": 0
+    },
+    {
+      "BEST_CANONICAL_COUNT": 313239661,
+      "BEST_CANONICAL_RECOUNT": "PASS",
+      "BEST_COUNT": 313239661,
+      "BEST_DELTA": 0,
+      "BEST_REPLACEMENT_SOURCES": [
+        "REMOVED_INCUMBENT",
+        "REMOVED_INCUMBENT",
+        "REMOVED_INCUMBENT"
+      ],
+      "BEST_SHA256": "7ce41ff21d5c0821f1d5dda683e23114086f5024fc6d98d4e574df5306659b1e",
+      "BEST_TICKETS_ADDED": [],
+      "BEST_TICKETS_DROPPED": [],
+      "BEST_TIE_COUNT": 1,
+      "BEST_UNION": 5581898,
+      "COMBINATIONS_CONSIDERED": 142880,
+      "DESTROY_INDICES": [
+        8,
+        12,
+        13
+      ],
+      "EXACT_TRIPLES_SCORED": 142880,
+      "PARITY": [
+        {
+          "CANONICAL_COUNT": 304297560,
+          "MATCH": true,
+          "POOL_INDICES": [
+            12,
+            26,
+            37
+          ],
+          "RESIDUAL_COUNT": 304297560,
+          "SHA256": "4e5287ace1ff768d08831726c4fb2cc9a6f404674ce813a1a749e862b6c92cd9"
+        }
+      ],
+      "POOL_ACCOUNTING": {
+        "CANDIDATES_DISTINCT": 2993,
+        "DUPLICATES_MERGED": 888,
+        "ELITE_DISTINCT": 28,
+        "ELITE_IN_REST_EXCLUDED": 17,
+        "EXACT_MARGINALS_SCORED": 2993,
+        "GUIDED_GENERATED": 3096,
+        "IN_REST_EXCLUDED": 0,
+        "MANDATORY": 11,
+        "ONE_NUMBER_GENERATED": 774,
+        "OPTIONAL_DISTINCT": 2982,
+        "OPTIONAL_RETAINED": 85,
+        "POOL_SIZE": 96
+      },
+      "POOL_MARGINAL_MAX": 2038876,
+      "POOL_MARGINAL_MIN": 655651,
+      "POOL_OPTIMALITY_STATUS": "EXACT_IN_POOL",
+      "POOL_SHA256": "49e965f8b38f2fa8c1d104ab7fedfb6e707d94dafb7c71aec86e77faa7aeb0a0",
+      "POOL_SIZE": 96,
+      "POOL_SOURCES": {
+        "ONE_NUMBER_REPLACEMENT": 57,
+        "REMOVED_INCUMBENT": 3,
+        "RESIDUAL_GUIDED_TWO_NUMBER_REPLACEMENT": 28,
+        "STABLE_ELITE": 8
+      },
+      "REMOVED_TICKETS": [
+        [
+          5,
+          17,
+          25,
+          32,
+          41,
+          47
+        ],
+        [
+          7,
+          8,
+          10,
+          14,
+          19,
+          29
+        ],
+        [
+          8,
+          9,
+          11,
+          15,
+          20,
+          46
+        ]
+      ],
+      "REST_COVERED_SEVEN_SETS": 39166625,
+      "SECONDS": {
+        "CANONICAL_CHECKS": 0.948,
+        "EXACT_REPAIR": 11.872,
+        "POOL": 12.761,
+        "TOTAL": 25.581
+      },
+      "START": "three_ticket_cycle",
+      "START_REPRODUCTION": "PASS",
+      "START_UNION": 5581898,
+      "STRICT_IMPROVEMENTS_IN_POOL": 0
+    },
+    {
+      "BEST_CANONICAL_COUNT": 313239661,
+      "BEST_CANONICAL_RECOUNT": "PASS",
+      "BEST_COUNT": 313239661,
+      "BEST_DELTA": 0,
+      "BEST_REPLACEMENT_SOURCES": [
+        "REMOVED_INCUMBENT",
+        "REMOVED_INCUMBENT",
+        "REMOVED_INCUMBENT"
+      ],
+      "BEST_SHA256": "7ce41ff21d5c0821f1d5dda683e23114086f5024fc6d98d4e574df5306659b1e",
+      "BEST_TICKETS_ADDED": [],
+      "BEST_TICKETS_DROPPED": [],
+      "BEST_TIE_COUNT": 1,
+      "BEST_UNION": 5581880,
+      "COMBINATIONS_CONSIDERED": 142880,
+      "DESTROY_INDICES": [
+        6,
+        12,
+        17
+      ],
+      "EXACT_TRIPLES_SCORED": 142880,
+      "PARITY": [
+        {
+          "CANONICAL_COUNT": 302330567,
+          "MATCH": true,
+          "POOL_INDICES": [
+            11,
+            88,
+            91
+          ],
+          "RESIDUAL_COUNT": 302330567,
+          "SHA256": "b4d03ad6a395c631eea63df0f8d081cdfad80f14505e7e89da711de779ae53df"
+        }
+      ],
+      "POOL_ACCOUNTING": {
+        "CANDIDATES_DISTINCT": 2992,
+        "DUPLICATES_MERGED": 889,
+        "ELITE_DISTINCT": 28,
+        "ELITE_IN_REST_EXCLUDED": 17,
+        "EXACT_MARGINALS_SCORED": 2992,
+        "GUIDED_GENERATED": 3096,
+        "IN_REST_EXCLUDED": 0,
+        "MANDATORY": 11,
+        "ONE_NUMBER_GENERATED": 774,
+        "OPTIONAL_DISTINCT": 2981,
+        "OPTIONAL_RETAINED": 85,
+        "POOL_SIZE": 96
+      },
+      "POOL_MARGINAL_MAX": 2038876,
+      "POOL_MARGINAL_MIN": 698680,
+      "POOL_OPTIMALITY_STATUS": "EXACT_IN_POOL",
+      "POOL_SHA256": "d168fb3691bc3bcc9dc2f9b0a9fc3589180a15fdc95742ba3f98973a15b433ed",
+      "POOL_SIZE": 96,
+      "POOL_SOURCES": {
+        "ONE_NUMBER_REPLACEMENT": 57,
+        "REMOVED_INCUMBENT": 3,
+        "RESIDUAL_GUIDED_TWO_NUMBER_REPLACEMENT": 28,
+        "STABLE_ELITE": 8
+      },
+      "REMOVED_TICKETS": [
+        [
+          4,
+          7,
+          12,
+          36,
+          39,
+          46
+        ],
+        [
+          7,
+          8,
+          10,
+          14,
+          19,
+          29
+        ],
+        [
+          21,
+          25,
+          30,
+          38,
+          45,
+          48
+        ]
+      ],
+      "REST_COVERED_SEVEN_SETS": 39166643,
+      "SECONDS": {
+        "CANONICAL_CHECKS": 1.553,
+        "EXACT_REPAIR": 14.344,
+        "POOL": 14.506,
+        "TOTAL": 30.403
+      },
+      "START": "three_ticket_cycle",
+      "START_REPRODUCTION": "PASS",
+      "START_UNION": 5581880,
+      "STRICT_IMPROVEMENTS_IN_POOL": 0
+    },
+    {
+      "BEST_CANONICAL_COUNT": 313239661,
+      "BEST_CANONICAL_RECOUNT": "PASS",
+      "BEST_COUNT": 313239661,
+      "BEST_DELTA": 0,
+      "BEST_REPLACEMENT_SOURCES": [
+        "REMOVED_INCUMBENT",
+        "RESIDUAL_GUIDED_TWO_NUMBER_REPLACEMENT",
+        "RESIDUAL_GUIDED_TWO_NUMBER_REPLACEMENT"
+      ],
+      "BEST_SHA256": "042961e9233be2aaaab2ebf1ef3be458141fd6fd6c9ecc96e105496e08345d09",
+      "BEST_TICKETS_ADDED": [
+        [
+          2,
+          32,
+          40,
+          43,
+          44,
+          48
+        ],
+        [
+          5,
+          21,
+          33,
+          35,
+          40,
+          42
+        ]
+      ],
+      "BEST_TICKETS_DROPPED": [
+        [
+          2,
+          5,
+          33,
+          35,
+          40,
+          48
+        ],
+        [
+          21,
+          32,
+          40,
+          42,
+          43,
+          44
+        ]
+      ],
+      "BEST_TIE_COUNT": 16,
+      "BEST_UNION": 5882814,
+      "COMBINATIONS_CONSIDERED": 142880,
+      "DESTROY_INDICES": [
+        2,
+        16,
+        18
+      ],
+      "EXACT_TRIPLES_SCORED": 142880,
+      "PARITY": [
+        {
+          "CANONICAL_COUNT": 308526218,
+          "MATCH": true,
+          "POOL_INDICES": [
+            59,
+            82,
+            88
+          ],
+          "RESIDUAL_COUNT": 308526218,
+          "SHA256": "c88d25de4a9b71ea6e6f98c049b54e43cfd2573b2d68536fe6f0d23bec86bba4"
+        }
+      ],
+      "POOL_ACCOUNTING": {
+        "CANDIDATES_DISTINCT": 3039,
+        "DUPLICATES_MERGED": 842,
+        "ELITE_DISTINCT": 28,
+        "ELITE_IN_REST_EXCLUDED": 17,
+        "EXACT_MARGINALS_SCORED": 3039,
+        "GUIDED_GENERATED": 3096,
+        "IN_REST_EXCLUDED": 0,
+        "MANDATORY": 11,
+        "ONE_NUMBER_GENERATED": 774,
+        "OPTIONAL_DISTINCT": 3028,
+        "OPTIONAL_RETAINED": 85,
+        "POOL_SIZE": 96
+      },
+      "POOL_MARGINAL_MAX": 2091966,
+      "POOL_MARGINAL_MIN": 644250,
+      "POOL_OPTIMALITY_STATUS": "EXACT_IN_POOL",
+      "POOL_SHA256": "09d6ab7c335a0aec5d8738c3b1a6ef4705f5cec2fad8bdfedae4d8b969079dd3",
+      "POOL_SIZE": 96,
+      "POOL_SOURCES": {
+        "ONE_NUMBER_REPLACEMENT": 22,
+        "REMOVED_INCUMBENT": 3,
+        "RESIDUAL_GUIDED_TWO_NUMBER_REPLACEMENT": 63,
+        "STABLE_ELITE": 8
+      },
+      "REMOVED_TICKETS": [
+        [
+          2,
+          5,
+          33,
+          35,
+          40,
+          48
+        ],
+        [
+          16,
+          19,
+          26,
+          28,
+          46,
+          49
+        ],
+        [
+          21,
+          32,
+          40,
+          42,
+          43,
+          44
+        ]
+      ],
+      "REST_COVERED_SEVEN_SETS": 38865709,
+      "SECONDS": {
+        "CANONICAL_CHECKS": 0.928,
+        "EXACT_REPAIR": 20.752,
+        "POOL": 18.044,
+        "TOTAL": 39.724
+      },
+      "START": "three_ticket_cycle",
+      "START_REPRODUCTION": "PASS",
+      "START_UNION": 5882814,
+      "STRICT_IMPROVEMENTS_IN_POOL": 0
+    },
+    {
+      "BEST_CANONICAL_COUNT": 313239661,
+      "BEST_CANONICAL_RECOUNT": "PASS",
+      "BEST_COUNT": 313239661,
+      "BEST_DELTA": 0,
+      "BEST_REPLACEMENT_SOURCES": [
+        "REMOVED_INCUMBENT",
+        "REMOVED_INCUMBENT",
+        "REMOVED_INCUMBENT"
+      ],
+      "BEST_SHA256": "7ce41ff21d5c0821f1d5dda683e23114086f5024fc6d98d4e574df5306659b1e",
+      "BEST_TICKETS_ADDED": [],
+      "BEST_TICKETS_DROPPED": [],
+      "BEST_TIE_COUNT": 1,
+      "BEST_UNION": 5376943,
+      "COMBINATIONS_CONSIDERED": 142880,
+      "DESTROY_INDICES": [
+        4,
+        9,
+        10
+      ],
+      "EXACT_TRIPLES_SCORED": 142880,
+      "PARITY": [
+        {
+          "CANONICAL_COUNT": 305017097,
+          "MATCH": true,
+          "POOL_INDICES": [
+            26,
+            78,
+            92
+          ],
+          "RESIDUAL_COUNT": 305017097,
+          "SHA256": "b5d25da95adb9026662b4c1e0cb561001a160f7a0f497a16749b1eeabcda39aa"
+        }
+      ],
+      "POOL_ACCOUNTING": {
+        "CANDIDATES_DISTINCT": 3160,
+        "DUPLICATES_MERGED": 721,
+        "ELITE_DISTINCT": 28,
+        "ELITE_IN_REST_EXCLUDED": 17,
+        "EXACT_MARGINALS_SCORED": 3160,
+        "GUIDED_GENERATED": 3096,
+        "IN_REST_EXCLUDED": 0,
+        "MANDATORY": 11,
+        "ONE_NUMBER_GENERATED": 774,
+        "OPTIONAL_DISTINCT": 3149,
+        "OPTIONAL_RETAINED": 85,
+        "POOL_SIZE": 96
+      },
+      "POOL_MARGINAL_MAX": 1885652,
+      "POOL_MARGINAL_MIN": 666739,
+      "POOL_OPTIMALITY_STATUS": "EXACT_IN_POOL",
+      "POOL_SHA256": "6e811b980a91cd83fc5f6c14339a1981fbbf9e902123009293c6281dc85c74eb",
+      "POOL_SIZE": 96,
+      "POOL_SOURCES": {
+        "ONE_NUMBER_REPLACEMENT": 29,
+        "REMOVED_INCUMBENT": 3,
+        "RESIDUAL_GUIDED_TWO_NUMBER_REPLACEMENT": 56,
+        "STABLE_ELITE": 8
+      },
+      "REMOVED_TICKETS": [
+        [
+          3,
+          8,
+          13,
+          28,
+          31,
+          36
+        ],
+        [
+          6,
+          7,
+          9,
+          13,
+          18,
+          26
+        ],
+        [
+          6,
+          10,
+          11,
+          16,
+          24,
+          36
+        ]
+      ],
+      "REST_COVERED_SEVEN_SETS": 39371580,
+      "SECONDS": {
+        "CANONICAL_CHECKS": 2.81,
+        "EXACT_REPAIR": 31.419,
+        "POOL": 50.78,
+        "TOTAL": 85.009
+      },
+      "START": "three_ticket_cycle",
+      "START_REPRODUCTION": "PASS",
+      "START_UNION": 5376943,
+      "STRICT_IMPROVEMENTS_IN_POOL": 0
+    },
+    {
+      "BEST_CANONICAL_COUNT": 313239661,
+      "BEST_CANONICAL_RECOUNT": "PASS",
+      "BEST_COUNT": 313239661,
+      "BEST_DELTA": 0,
+      "BEST_REPLACEMENT_SOURCES": [
+        "REMOVED_INCUMBENT",
+        "REMOVED_INCUMBENT",
+        "REMOVED_INCUMBENT"
+      ],
+      "BEST_SHA256": "7ce41ff21d5c0821f1d5dda683e23114086f5024fc6d98d4e574df5306659b1e",
+      "BEST_TICKETS_ADDED": [],
+      "BEST_TICKETS_DROPPED": [],
+      "BEST_TIE_COUNT": 1,
+      "BEST_UNION": 5683630,
+      "COMBINATIONS_CONSIDERED": 142880,
+      "DESTROY_INDICES": [
+        10,
+        11,
+        19
+      ],
+      "EXACT_TRIPLES_SCORED": 142880,
+      "PARITY": [
+        {
+          "CANONICAL_COUNT": 303692305,
+          "MATCH": true,
+          "POOL_INDICES": [
+            18,
+            80,
+            87
+          ],
+          "RESIDUAL_COUNT": 303692305,
+          "SHA256": "a84290d923c7465c1b32b33753455561833b91aaf5d04adb210438f719480573"
+        }
+      ],
+      "POOL_ACCOUNTING": {
+        "CANDIDATES_DISTINCT": 3017,
+        "DUPLICATES_MERGED": 864,
+        "ELITE_DISTINCT": 28,
+        "ELITE_IN_REST_EXCLUDED": 17,
+        "EXACT_MARGINALS_SCORED": 3017,
+        "GUIDED_GENERATED": 3096,
+        "IN_REST_EXCLUDED": 0,
+        "MANDATORY": 11,
+        "ONE_NUMBER_GENERATED": 774,
+        "OPTIONAL_DISTINCT": 3006,
+        "OPTIONAL_RETAINED": 85,
+        "POOL_SIZE": 96
+      },
+      "POOL_MARGINAL_MAX": 2038876,
+      "POOL_MARGINAL_MIN": 656741,
+      "POOL_OPTIMALITY_STATUS": "EXACT_IN_POOL",
+      "POOL_SHA256": "e69eb57eb413d49b20b5020b449725601d0acca27f48aa085d977debac13d6fa",
+      "POOL_SIZE": 96,
+      "POOL_SOURCES": {
+        "ONE_NUMBER_REPLACEMENT": 29,
+        "REMOVED_INCUMBENT": 3,
+        "RESIDUAL_GUIDED_TWO_NUMBER_REPLACEMENT": 56,
+        "STABLE_ELITE": 8
+      },
+      "REMOVED_TICKETS": [
+        [
+          6,
+          10,
+          11,
+          16,
+          24,
+          36
+        ],
+        [
+          6,
+          14,
+          20,
+          31,
+          37,
+          39
+        ],
+        [
+          22,
+          34,
+          35,
+          38,
+          44,
+          47
+        ]
+      ],
+      "REST_COVERED_SEVEN_SETS": 39064893,
+      "SECONDS": {
+        "CANONICAL_CHECKS": 1.684,
+        "EXACT_REPAIR": 37.157,
+        "POOL": 28.794,
+        "TOTAL": 67.635
+      },
+      "START": "three_ticket_cycle",
+      "START_REPRODUCTION": "PASS",
+      "START_UNION": 5683630,
+      "STRICT_IMPROVEMENTS_IN_POOL": 0
+    },
+    {
+      "BEST_CANONICAL_COUNT": 313239661,
+      "BEST_CANONICAL_RECOUNT": "PASS",
+      "BEST_COUNT": 313239661,
+      "BEST_DELTA": 0,
+      "BEST_REPLACEMENT_SOURCES": [
+        "REMOVED_INCUMBENT",
+        "REMOVED_INCUMBENT",
+        "REMOVED_INCUMBENT"
+      ],
+      "BEST_SHA256": "7ce41ff21d5c0821f1d5dda683e23114086f5024fc6d98d4e574df5306659b1e",
+      "BEST_TICKETS_ADDED": [],
+      "BEST_TICKETS_DROPPED": [],
+      "BEST_TIE_COUNT": 1,
+      "BEST_UNION": 5581900,
+      "COMBINATIONS_CONSIDERED": 142880,
+      "DESTROY_INDICES": [
+        7,
+        8,
+        12
+      ],
+      "EXACT_TRIPLES_SCORED": 142880,
+      "PARITY": [
+        {
+          "CANONICAL_COUNT": 311259732,
+          "MATCH": true,
+          "POOL_INDICES": [
+            11,
+            20,
+            28
+          ],
+          "RESIDUAL_COUNT": 311259732,
+          "SHA256": "61f2528077d67b4ff65d29fcc4caed32e530e376cd7155a4d9906564eff8cb70"
+        }
+      ],
+      "POOL_ACCOUNTING": {
+        "CANDIDATES_DISTINCT": 2993,
+        "DUPLICATES_MERGED": 888,
+        "ELITE_DISTINCT": 28,
+        "ELITE_IN_REST_EXCLUDED": 17,
+        "EXACT_MARGINALS_SCORED": 2993,
+        "GUIDED_GENERATED": 3096,
+        "IN_REST_EXCLUDED": 0,
+        "MANDATORY": 11,
+        "ONE_NUMBER_GENERATED": 774,
+        "OPTIONAL_DISTINCT": 2982,
+        "OPTIONAL_RETAINED": 85,
+        "POOL_SIZE": 96
+      },
+      "POOL_MARGINAL_MAX": 2038876,
+      "POOL_MARGINAL_MIN": 655320,
+      "POOL_OPTIMALITY_STATUS": "EXACT_IN_POOL",
+      "POOL_SHA256": "78587570129775d2cf7fbf1470086d2ffea42f7f1a5013da1e3a9617ed0e9082",
+      "POOL_SIZE": 96,
+      "POOL_SOURCES": {
+        "ONE_NUMBER_REPLACEMENT": 57,
+        "REMOVED_INCUMBENT": 3,
+        "RESIDUAL_GUIDED_TWO_NUMBER_REPLACEMENT": 28,
+        "STABLE_ELITE": 8
+      },
+      "REMOVED_TICKETS": [
+        [
+          4,
+          18,
+          20,
+          24,
+          28,
+          29
+        ],
+        [
+          5,
+          17,
+          25,
+          32,
+          41,
+          47
+        ],
+        [
+          7,
+          8,
+          10,
+          14,
+          19,
+          29
+        ]
+      ],
+      "REST_COVERED_SEVEN_SETS": 39166623,
+      "SECONDS": {
+        "CANONICAL_CHECKS": 1.801,
+        "EXACT_REPAIR": 25.03,
+        "POOL": 38.187,
+        "TOTAL": 65.019
+      },
+      "START": "three_ticket_cycle",
+      "START_REPRODUCTION": "PASS",
+      "START_UNION": 5581900,
+      "STRICT_IMPROVEMENTS_IN_POOL": 0
+    },
+    {
+      "BEST_CANONICAL_COUNT": 313239661,
+      "BEST_CANONICAL_RECOUNT": "PASS",
+      "BEST_COUNT": 313239661,
+      "BEST_DELTA": 0,
+      "BEST_REPLACEMENT_SOURCES": [
+        "REMOVED_INCUMBENT",
+        "REMOVED_INCUMBENT",
+        "REMOVED_INCUMBENT"
+      ],
+      "BEST_SHA256": "7ce41ff21d5c0821f1d5dda683e23114086f5024fc6d98d4e574df5306659b1e",
+      "BEST_TICKETS_ADDED": [],
+      "BEST_TICKETS_DROPPED": [],
+      "BEST_TIE_COUNT": 1,
+      "BEST_UNION": 5732086,
+      "COMBINATIONS_CONSIDERED": 142880,
+      "DESTROY_INDICES": [
+        0,
+        3,
+        14
+      ],
+      "EXACT_TRIPLES_SCORED": 142880,
+      "PARITY": [
+        {
+          "CANONICAL_COUNT": 308366975,
+          "MATCH": true,
+          "POOL_INDICES": [
+            23,
+            79,
+            83
+          ],
+          "RESIDUAL_COUNT": 308366975,
+          "SHA256": "dc7b1d0ecafaa3c26fa691f81182f23294cf157aa5207997a9402a9d40efc33d"
+        }
+      ],
+      "POOL_ACCOUNTING": {
+        "CANDIDATES_DISTINCT": 3013,
+        "DUPLICATES_MERGED": 868,
+        "ELITE_DISTINCT": 28,
+        "ELITE_IN_REST_EXCLUDED": 17,
+        "EXACT_MARGINALS_SCORED": 3013,
+        "GUIDED_GENERATED": 3096,
+        "IN_REST_EXCLUDED": 0,
+        "MANDATORY": 11,
+        "ONE_NUMBER_GENERATED": 774,
+        "OPTIONAL_DISTINCT": 3002,
+        "OPTIONAL_RETAINED": 85,
+        "POOL_SIZE": 96
+      },
+      "POOL_MARGINAL_MAX": 2093806,
+      "POOL_MARGINAL_MIN": 668338,
+      "POOL_OPTIMALITY_STATUS": "EXACT_IN_POOL",
+      "POOL_SHA256": "0a1455215aa00384727abfb05097ecbf0d8540863bf2a23f5e9a3f33f0a91d95",
+      "POOL_SIZE": 96,
+      "POOL_SOURCES": {
+        "ONE_NUMBER_REPLACEMENT": 18,
+        "REMOVED_INCUMBENT": 3,
+        "RESIDUAL_GUIDED_TWO_NUMBER_REPLACEMENT": 67,
+        "STABLE_ELITE": 8
+      },
+      "REMOVED_TICKETS": [
+        [
+          1,
+          2,
+          34,
+          41,
+          42,
+          45
+        ],
+        [
+          3,
+          4,
+          10,
+          15,
+          26,
+          27
+        ],
+        [
+          11,
+          12,
+          18,
+          23,
+          27,
+          49
+        ]
+      ],
+      "REST_COVERED_SEVEN_SETS": 39016437,
+      "SECONDS": {
+        "CANONICAL_CHECKS": 28.156,
+        "EXACT_REPAIR": 17.883,
+        "POOL": 41.336,
+        "TOTAL": 87.376
+      },
+      "START": "three_ticket_cycle",
+      "START_REPRODUCTION": "PASS",
+      "START_UNION": 5732086,
+      "STRICT_IMPROVEMENTS_IN_POOL": 0
+    },
+    {
+      "BEST_CANONICAL_COUNT": 313239661,
+      "BEST_CANONICAL_RECOUNT": "PASS",
+      "BEST_COUNT": 313239661,
+      "BEST_DELTA": 0,
+      "BEST_REPLACEMENT_SOURCES": [
+        "ONE_NUMBER_REPLACEMENT",
+        "ONE_NUMBER_REPLACEMENT",
+        "REMOVED_INCUMBENT"
+      ],
+      "BEST_SHA256": "1a292e1a0e406ac6534b6643faf697fd0f5021a0f816dd7fd092934494fd9744",
+      "BEST_TICKETS_ADDED": [
+        [
+          1,
+          21,
+          25,
+          38,
+          45,
+          48
+        ],
+        [
+          2,
+          30,
+          34,
+          41,
+          42,
+          45
+        ]
+      ],
+      "BEST_TICKETS_DROPPED": [
+        [
+          1,
+          2,
+          34,
+          41,
+          42,
+          45
+        ],
+        [
+          21,
+          25,
+          30,
+          38,
+          45,
+          48
+        ]
+      ],
+      "BEST_TIE_COUNT": 16,
+      "BEST_UNION": 5833012,
+      "COMBINATIONS_CONSIDERED": 142880,
+      "DESTROY_INDICES": [
+        0,
+        7,
+        17
+      ],
+      "EXACT_TRIPLES_SCORED": 142880,
+      "PARITY": [
+        {
+          "CANONICAL_COUNT": 303681602,
+          "MATCH": true,
+          "POOL_INDICES": [
+            1,
+            8,
+            38
+          ],
+          "RESIDUAL_COUNT": 303681602,
+          "SHA256": "ca7897ae9e4d930effa5fa0dc63965fd04f9ac51f5efaa373d0e6aa214cac381"
+        }
+      ],
+      "POOL_ACCOUNTING": {
+        "CANDIDATES_DISTINCT": 3041,
+        "DUPLICATES_MERGED": 840,
+        "ELITE_DISTINCT": 28,
+        "ELITE_IN_REST_EXCLUDED": 17,
+        "EXACT_MARGINALS_SCORED": 3041,
+        "GUIDED_GENERATED": 3096,
+        "IN_REST_EXCLUDED": 0,
+        "MANDATORY": 11,
+        "ONE_NUMBER_GENERATED": 774,
+        "OPTIONAL_DISTINCT": 3030,
+        "OPTIONAL_RETAINED": 85,
+        "POOL_SIZE": 96
+      },
+      "POOL_MARGINAL_MAX": 2091966,
+      "POOL_MARGINAL_MIN": 643880,
+      "POOL_OPTIMALITY_STATUS": "EXACT_IN_POOL",
+      "POOL_SHA256": "66eb75a41d711d322c5d9ce2b75d2c2821e1c046269d59de9085d46939a5b0f5",
+      "POOL_SIZE": 96,
+      "POOL_SOURCES": {
+        "ONE_NUMBER_REPLACEMENT": 20,
+        "REMOVED_INCUMBENT": 3,
+        "RESIDUAL_GUIDED_TWO_NUMBER_REPLACEMENT": 65,
+        "STABLE_ELITE": 8
+      },
+      "REMOVED_TICKETS": [
+        [
+          1,
+          2,
+          34,
+          41,
+          42,
+          45
+        ],
+        [
+          4,
+          18,
+          20,
+          24,
+          28,
+          29
+        ],
+        [
+          21,
+          25,
+          30,
+          38,
+          45,
+          48
+        ]
+      ],
+      "REST_COVERED_SEVEN_SETS": 38915511,
+      "SECONDS": {
+        "CANONICAL_CHECKS": 0.851,
+        "EXACT_REPAIR": 40.217,
+        "POOL": 21.452,
+        "TOTAL": 62.519
+      },
+      "START": "three_ticket_cycle",
+      "START_REPRODUCTION": "PASS",
+      "START_UNION": 5833012,
+      "STRICT_IMPROVEMENTS_IN_POOL": 0
+    },
+    {
+      "BEST_CANONICAL_COUNT": 313239661,
+      "BEST_CANONICAL_RECOUNT": "PASS",
+      "BEST_COUNT": 313239661,
+      "BEST_DELTA": 0,
+      "BEST_REPLACEMENT_SOURCES": [
+        "REMOVED_INCUMBENT",
+        "REMOVED_INCUMBENT",
+        "REMOVED_INCUMBENT"
+      ],
+      "BEST_SHA256": "7ce41ff21d5c0821f1d5dda683e23114086f5024fc6d98d4e574df5306659b1e",
+      "BEST_TICKETS_ADDED": [],
+      "BEST_TICKETS_DROPPED": [],
+      "BEST_TIE_COUNT": 1,
+      "BEST_UNION": 5581813,
+      "COMBINATIONS_CONSIDERED": 142880,
+      "DESTROY_INDICES": [
+        3,
+        14,
+        16
+      ],
+      "EXACT_TRIPLES_SCORED": 142880,
+      "PARITY": [
+        {
+          "CANONICAL_COUNT": 305887680,
+          "MATCH": true,
+          "POOL_INDICES": [
+            13,
+            38,
+            67
+          ],
+          "RESIDUAL_COUNT": 305887680,
+          "SHA256": "a61a5bf023138cfb7d98bfc1f2a86b03560593796676c1288dbf240da57ad312"
+        }
+      ],
+      "POOL_ACCOUNTING": {
+        "CANDIDATES_DISTINCT": 2782,
+        "DUPLICATES_MERGED": 1099,
+        "ELITE_DISTINCT": 28,
+        "ELITE_IN_REST_EXCLUDED": 17,
+        "EXACT_MARGINALS_SCORED": 2782,
+        "GUIDED_GENERATED": 3096,
+        "IN_REST_EXCLUDED": 0,
+        "MANDATORY": 11,
+        "ONE_NUMBER_GENERATED": 774,
+        "OPTIONAL_DISTINCT": 2771,
+        "OPTIONAL_RETAINED": 85,
+        "POOL_SIZE": 96
+      },
+      "POOL_MARGINAL_MAX": 2043977,
+      "POOL_MARGINAL_MIN": 680668,
+      "POOL_OPTIMALITY_STATUS": "EXACT_IN_POOL",
+      "POOL_SHA256": "122a548ab3e6047861bf49bb41855d3bf4d74c21404073f2f1fadc6322c086b0",
+      "POOL_SIZE": 96,
+      "POOL_SOURCES": {
+        "ONE_NUMBER_REPLACEMENT": 6,
+        "REMOVED_INCUMBENT": 3,
+        "RESIDUAL_GUIDED_TWO_NUMBER_REPLACEMENT": 79,
+        "STABLE_ELITE": 8
+      },
+      "REMOVED_TICKETS": [
+        [
+          3,
+          4,
+          10,
+          15,
+          26,
+          27
+        ],
+        [
+          11,
+          12,
+          18,
+          23,
+          27,
+          49
+        ],
+        [
+          16,
+          19,
+          26,
+          28,
+          46,
+          49
+        ]
+      ],
+      "REST_COVERED_SEVEN_SETS": 39166710,
+      "SECONDS": {
+        "CANONICAL_CHECKS": 1.111,
+        "EXACT_REPAIR": 28.374,
+        "POOL": 26.514,
+        "TOTAL": 55.999
+      },
+      "START": "three_ticket_cycle",
+      "START_REPRODUCTION": "PASS",
+      "START_UNION": 5581813,
+      "STRICT_IMPROVEMENTS_IN_POOL": 0
+    },
+    {
+      "BEST_CANONICAL_COUNT": 313239661,
+      "BEST_CANONICAL_RECOUNT": "PASS",
+      "BEST_COUNT": 313239661,
+      "BEST_DELTA": 0,
+      "BEST_REPLACEMENT_SOURCES": [
+        "REMOVED_INCUMBENT",
+        "REMOVED_INCUMBENT",
+        "REMOVED_INCUMBENT"
+      ],
+      "BEST_SHA256": "7ce41ff21d5c0821f1d5dda683e23114086f5024fc6d98d4e574df5306659b1e",
+      "BEST_TICKETS_ADDED": [],
+      "BEST_TICKETS_DROPPED": [],
+      "BEST_TIE_COUNT": 1,
+      "BEST_UNION": 5581880,
+      "COMBINATIONS_CONSIDERED": 142880,
+      "DESTROY_INDICES": [
+        8,
+        13,
+        16
+      ],
+      "EXACT_TRIPLES_SCORED": 142880,
+      "PARITY": [
+        {
+          "CANONICAL_COUNT": 306583900,
+          "MATCH": true,
+          "POOL_INDICES": [
+            5,
+            21,
+            93
+          ],
+          "RESIDUAL_COUNT": 306583900,
+          "SHA256": "9aae2b4a873f217b099b31061b0cc3d4b34f5d50008a80cdcf9a7a59d065fd0a"
+        }
+      ],
+      "POOL_ACCOUNTING": {
+        "CANDIDATES_DISTINCT": 2992,
+        "DUPLICATES_MERGED": 889,
+        "ELITE_DISTINCT": 28,
+        "ELITE_IN_REST_EXCLUDED": 17,
+        "EXACT_MARGINALS_SCORED": 2992,
+        "GUIDED_GENERATED": 3096,
+        "IN_REST_EXCLUDED": 0,
+        "MANDATORY": 11,
+        "ONE_NUMBER_GENERATED": 774,
+        "OPTIONAL_DISTINCT": 2981,
+        "OPTIONAL_RETAINED": 85,
+        "POOL_SIZE": 96
+      },
+      "POOL_MARGINAL_MAX": 2038876,
+      "POOL_MARGINAL_MIN": 654811,
+      "POOL_OPTIMALITY_STATUS": "EXACT_IN_POOL",
+      "POOL_SHA256": "d20bac557df186bc021bfa74a62e7afbce25d8550feed1c4d25fc34f351589ec",
+      "POOL_SIZE": 96,
+      "POOL_SOURCES": {
+        "ONE_NUMBER_REPLACEMENT": 57,
+        "REMOVED_INCUMBENT": 3,
+        "RESIDUAL_GUIDED_TWO_NUMBER_REPLACEMENT": 28,
+        "STABLE_ELITE": 8
+      },
+      "REMOVED_TICKETS": [
+        [
+          5,
+          17,
+          25,
+          32,
+          41,
+          47
+        ],
+        [
+          8,
+          9,
+          11,
+          15,
+          20,
+          46
+        ],
+        [
+          16,
+          19,
+          26,
+          28,
+          46,
+          49
+        ]
+      ],
+      "REST_COVERED_SEVEN_SETS": 39166643,
+      "SECONDS": {
+        "CANONICAL_CHECKS": 1.546,
+        "EXACT_REPAIR": 15.807,
+        "POOL": 16.671,
+        "TOTAL": 34.024
+      },
+      "START": "three_ticket_cycle",
+      "START_REPRODUCTION": "PASS",
+      "START_UNION": 5581880,
+      "STRICT_IMPROVEMENTS_IN_POOL": 0
+    },
+    {
+      "BEST_CANONICAL_COUNT": 313239661,
+      "BEST_CANONICAL_RECOUNT": "PASS",
+      "BEST_COUNT": 313239661,
+      "BEST_DELTA": 0,
+      "BEST_REPLACEMENT_SOURCES": [
+        "REMOVED_INCUMBENT",
+        "REMOVED_INCUMBENT",
+        "REMOVED_INCUMBENT"
+      ],
+      "BEST_SHA256": "7ce41ff21d5c0821f1d5dda683e23114086f5024fc6d98d4e574df5306659b1e",
+      "BEST_TICKETS_ADDED": [],
+      "BEST_TICKETS_DROPPED": [],
+      "BEST_TIE_COUNT": 1,
+      "BEST_UNION": 5376916,
+      "COMBINATIONS_CONSIDERED": 142880,
+      "DESTROY_INDICES": [
+        7,
+        10,
+        16
+      ],
+      "EXACT_TRIPLES_SCORED": 142880,
+      "PARITY": [
+        {
+          "CANONICAL_COUNT": 303018296,
+          "MATCH": true,
+          "POOL_INDICES": [
+            45,
+            72,
+            88
+          ],
+          "RESIDUAL_COUNT": 303018296,
+          "SHA256": "07c6da6349babf8dfa4743e2f8f6cfad48f47af941ec8c66d33a739c77c284e1"
+        }
+      ],
+      "POOL_ACCOUNTING": {
+        "CANDIDATES_DISTINCT": 3250,
+        "DUPLICATES_MERGED": 631,
+        "ELITE_DISTINCT": 28,
+        "ELITE_IN_REST_EXCLUDED": 17,
+        "EXACT_MARGINALS_SCORED": 3250,
+        "GUIDED_GENERATED": 3096,
+        "IN_REST_EXCLUDED": 0,
+        "MANDATORY": 11,
+        "ONE_NUMBER_GENERATED": 774,
+        "OPTIONAL_DISTINCT": 3239,
+        "OPTIONAL_RETAINED": 85,
+        "POOL_SIZE": 96
+      },
+      "POOL_MARGINAL_MAX": 1937402,
+      "POOL_MARGINAL_MIN": 665509,
+      "POOL_OPTIMALITY_STATUS": "EXACT_IN_POOL",
+      "POOL_SHA256": "cb097a0da19c931c6732f363fbe56a92a8aea44b6b41b43b897c6750c23160fd",
+      "POOL_SIZE": 96,
+      "POOL_SOURCES": {
+        "ONE_NUMBER_REPLACEMENT": 9,
+        "REMOVED_INCUMBENT": 3,
+        "RESIDUAL_GUIDED_TWO_NUMBER_REPLACEMENT": 76,
+        "STABLE_ELITE": 8
+      },
+      "REMOVED_TICKETS": [
+        [
+          4,
+          18,
+          20,
+          24,
+          28,
+          29
+        ],
+        [
+          6,
+          10,
+          11,
+          16,
+          24,
+          36
+        ],
+        [
+          16,
+          19,
+          26,
+          28,
+          46,
+          49
+        ]
+      ],
+      "REST_COVERED_SEVEN_SETS": 39371607,
+      "SECONDS": {
+        "CANONICAL_CHECKS": 0.918,
+        "EXACT_REPAIR": 13.34,
+        "POOL": 16.554,
+        "TOTAL": 30.813
+      },
+      "START": "three_ticket_cycle",
+      "START_REPRODUCTION": "PASS",
+      "START_UNION": 5376916,
+      "STRICT_IMPROVEMENTS_IN_POOL": 0
+    },
+    {
+      "BEST_CANONICAL_COUNT": 313239661,
+      "BEST_CANONICAL_RECOUNT": "PASS",
+      "BEST_COUNT": 313239661,
+      "BEST_DELTA": 0,
+      "BEST_REPLACEMENT_SOURCES": [
+        "REMOVED_INCUMBENT",
+        "RESIDUAL_GUIDED_TWO_NUMBER_REPLACEMENT",
+        "RESIDUAL_GUIDED_TWO_NUMBER_REPLACEMENT"
+      ],
+      "BEST_SHA256": "1897a2d04df157b30dc61f598663227855a981c766dc5a10326813cfcb51a9f3",
+      "BEST_TICKETS_ADDED": [
+        [
+          1,
+          5,
+          25,
+          34,
+          41,
+          42
+        ],
+        [
+          2,
+          17,
+          32,
+          41,
+          45,
+          47
+        ]
+      ],
+      "BEST_TICKETS_DROPPED": [
+        [
+          1,
+          2,
+          34,
+          41,
+          42,
+          45
+        ],
+        [
+          5,
+          17,
+          25,
+          32,
+          41,
+          47
+        ]
+      ],
+      "BEST_TIE_COUNT": 16,
+      "BEST_UNION": 5882814,
+      "COMBINATIONS_CONSIDERED": 142880,
+      "DESTROY_INDICES": [
+        0,
+        4,
+        8
+      ],
+      "EXACT_TRIPLES_SCORED": 142880,
+      "PARITY": [
+        {
+          "CANONICAL_COUNT": 305217255,
+          "MATCH": true,
+          "POOL_INDICES": [
+            2,
+            68,
+            86
+          ],
+          "RESIDUAL_COUNT": 305217255,
+          "SHA256": "bf2891eeceadb0c20af4762761d54ef6c2010e84459ba8e11fbbf7c2c367fb16"
+        }
+      ],
+      "POOL_ACCOUNTING": {
+        "CANDIDATES_DISTINCT": 3041,
+        "DUPLICATES_MERGED": 840,
+        "ELITE_DISTINCT": 28,
+        "ELITE_IN_REST_EXCLUDED": 17,
+        "EXACT_MARGINALS_SCORED": 3041,
+        "GUIDED_GENERATED": 3096,
+        "IN_REST_EXCLUDED": 0,
+        "MANDATORY": 11,
+        "ONE_NUMBER_GENERATED": 774,
+        "OPTIONAL_DISTINCT": 3030,
+        "OPTIONAL_RETAINED": 85,
+        "POOL_SIZE": 96
+      },
+      "POOL_MARGINAL_MAX": 2091966,
+      "POOL_MARGINAL_MIN": 645051,
+      "POOL_OPTIMALITY_STATUS": "EXACT_IN_POOL",
+      "POOL_SHA256": "61fbbba09bf0812658d4fe65ab5e6ea253992a08622d7906fe17109227965152",
+      "POOL_SIZE": 96,
+      "POOL_SOURCES": {
+        "ONE_NUMBER_REPLACEMENT": 22,
+        "REMOVED_INCUMBENT": 3,
+        "RESIDUAL_GUIDED_TWO_NUMBER_REPLACEMENT": 63,
+        "STABLE_ELITE": 8
+      },
+      "REMOVED_TICKETS": [
+        [
+          1,
+          2,
+          34,
+          41,
+          42,
+          45
+        ],
+        [
+          3,
+          8,
+          13,
+          28,
+          31,
+          36
+        ],
+        [
+          5,
+          17,
+          25,
+          32,
+          41,
+          47
+        ]
+      ],
+      "REST_COVERED_SEVEN_SETS": 38865709,
+      "SECONDS": {
+        "CANONICAL_CHECKS": 0.947,
+        "EXACT_REPAIR": 12.653,
+        "POOL": 13.509,
+        "TOTAL": 27.108
+      },
+      "START": "three_ticket_cycle",
+      "START_REPRODUCTION": "PASS",
+      "START_UNION": 5882814,
+      "STRICT_IMPROVEMENTS_IN_POOL": 0
+    },
+    {
+      "BEST_CANONICAL_COUNT": 313239661,
+      "BEST_CANONICAL_RECOUNT": "PASS",
+      "BEST_COUNT": 313239661,
+      "BEST_DELTA": 0,
+      "BEST_REPLACEMENT_SOURCES": [
+        "REMOVED_INCUMBENT",
+        "RESIDUAL_GUIDED_TWO_NUMBER_REPLACEMENT",
+        "RESIDUAL_GUIDED_TWO_NUMBER_REPLACEMENT"
+      ],
+      "BEST_SHA256": "1897a2d04df157b30dc61f598663227855a981c766dc5a10326813cfcb51a9f3",
+      "BEST_TICKETS_ADDED": [
+        [
+          1,
+          5,
+          25,
+          34,
+          41,
+          42
+        ],
+        [
+          2,
+          17,
+          32,
+          41,
+          45,
+          47
+        ]
+      ],
+      "BEST_TICKETS_DROPPED": [
+        [
+          1,
+          2,
+          34,
+          41,
+          42,
+          45
+        ],
+        [
+          5,
+          17,
+          25,
+          32,
+          41,
+          47
+        ]
+      ],
+      "BEST_TIE_COUNT": 16,
+      "BEST_UNION": 5833020,
+      "COMBINATIONS_CONSIDERED": 142880,
+      "DESTROY_INDICES": [
+        0,
+        6,
+        8
+      ],
+      "EXACT_TRIPLES_SCORED": 142880,
+      "PARITY": [
+        {
+          "CANONICAL_COUNT": 303213939,
+          "MATCH": true,
+          "POOL_INDICES": [
+            0,
+            22,
+            81
+          ],
+          "RESIDUAL_COUNT": 303213939,
+          "SHA256": "74dc807d650ba191d96a182a9bf8e240ebd30e5b0539ec2e39a91c9e6b49ec77"
+        }
+      ],
+      "POOL_ACCOUNTING": {
+        "CANDIDATES_DISTINCT": 3040,
+        "DUPLICATES_MERGED": 841,
+        "ELITE_DISTINCT": 28,
+        "ELITE_IN_REST_EXCLUDED": 17,
+        "EXACT_MARGINALS_SCORED": 3040,
+        "GUIDED_GENERATED": 3096,
+        "IN_REST_EXCLUDED": 0,
+        "MANDATORY": 11,
+        "ONE_NUMBER_GENERATED": 774,
+        "OPTIONAL_DISTINCT": 3029,
+        "OPTIONAL_RETAINED": 85,
+        "POOL_SIZE": 96
+      },
+      "POOL_MARGINAL_MAX": 2091966,
+      "POOL_MARGINAL_MIN": 685209,
+      "POOL_OPTIMALITY_STATUS": "EXACT_IN_POOL",
+      "POOL_SHA256": "71662e067c4436e89fa82fee46357b514a179725469bad277643d4dee3de4653",
+      "POOL_SIZE": 96,
+      "POOL_SOURCES": {
+        "ONE_NUMBER_REPLACEMENT": 23,
+        "REMOVED_INCUMBENT": 3,
+        "RESIDUAL_GUIDED_TWO_NUMBER_REPLACEMENT": 62,
+        "STABLE_ELITE": 8
+      },
+      "REMOVED_TICKETS": [
+        [
+          1,
+          2,
+          34,
+          41,
+          42,
+          45
+        ],
+        [
+          4,
+          7,
+          12,
+          36,
+          39,
+          46
+        ],
+        [
+          5,
+          17,
+          25,
+          32,
+          41,
+          47
+        ]
+      ],
+      "REST_COVERED_SEVEN_SETS": 38915503,
+      "SECONDS": {
+        "CANONICAL_CHECKS": 1.027,
+        "EXACT_REPAIR": 13.96,
+        "POOL": 14.165,
+        "TOTAL": 29.152
+      },
+      "START": "three_ticket_cycle",
+      "START_REPRODUCTION": "PASS",
+      "START_UNION": 5833020,
+      "STRICT_IMPROVEMENTS_IN_POOL": 0
+    },
+    {
+      "BEST_CANONICAL_COUNT": 313239661,
+      "BEST_CANONICAL_RECOUNT": "PASS",
+      "BEST_COUNT": 313239661,
+      "BEST_DELTA": 0,
+      "BEST_REPLACEMENT_SOURCES": [
+        "ONE_NUMBER_REPLACEMENT",
+        "ONE_NUMBER_REPLACEMENT",
+        "REMOVED_INCUMBENT"
+      ],
+      "BEST_SHA256": "03a2cf96358657bf31ecdf99c829ffa0bf1be17293006c7d535596dedb6f056f",
+      "BEST_TICKETS_ADDED": [
+        [
+          21,
+          22,
+          25,
+          38,
+          45,
+          48
+        ],
+        [
+          30,
+          34,
+          35,
+          38,
+          44,
+          47
+        ]
+      ],
+      "BEST_TICKETS_DROPPED": [
+        [
+          21,
+          25,
+          30,
+          38,
+          45,
+          48
+        ],
+        [
+          22,
+          34,
+          35,
+          38,
+          44,
+          47
+        ]
+      ],
+      "BEST_TIE_COUNT": 16,
+      "BEST_UNION": 5833020,
+      "COMBINATIONS_CONSIDERED": 142880,
+      "DESTROY_INDICES": [
+        9,
+        17,
+        19
+      ],
+      "EXACT_TRIPLES_SCORED": 142880,
+      "PARITY": [
+        {
+          "CANONICAL_COUNT": 305275985,
+          "MATCH": true,
+          "POOL_INDICES": [
+            47,
+            53,
+            68
+          ],
+          "RESIDUAL_COUNT": 305275985,
+          "SHA256": "d066d21d25113db8df176748835714e2097145210810bbd1d703e903ec379673"
+        }
+      ],
+      "POOL_ACCOUNTING": {
+        "CANDIDATES_DISTINCT": 3041,
+        "DUPLICATES_MERGED": 840,
+        "ELITE_DISTINCT": 28,
+        "ELITE_IN_REST_EXCLUDED": 17,
+        "EXACT_MARGINALS_SCORED": 3041,
+        "GUIDED_GENERATED": 3096,
+        "IN_REST_EXCLUDED": 0,
+        "MANDATORY": 11,
+        "ONE_NUMBER_GENERATED": 774,
+        "OPTIONAL_DISTINCT": 3030,
+        "OPTIONAL_RETAINED": 85,
+        "POOL_SIZE": 96
+      },
+      "POOL_MARGINAL_MAX": 2091966,
+      "POOL_MARGINAL_MIN": 643865,
+      "POOL_OPTIMALITY_STATUS": "EXACT_IN_POOL",
+      "POOL_SHA256": "2f4a927086e2ec0ef37517c79c931aa8e08b6b60ee0cc4e0229414cdced17c5b",
+      "POOL_SIZE": 96,
+      "POOL_SOURCES": {
+        "ONE_NUMBER_REPLACEMENT": 23,
+        "REMOVED_INCUMBENT": 3,
+        "RESIDUAL_GUIDED_TWO_NUMBER_REPLACEMENT": 62,
+        "STABLE_ELITE": 8
+      },
+      "REMOVED_TICKETS": [
+        [
+          6,
+          7,
+          9,
+          13,
+          18,
+          26
+        ],
+        [
+          21,
+          25,
+          30,
+          38,
+          45,
+          48
+        ],
+        [
+          22,
+          34,
+          35,
+          38,
+          44,
+          47
+        ]
+      ],
+      "REST_COVERED_SEVEN_SETS": 38915503,
+      "SECONDS": {
+        "CANONICAL_CHECKS": 0.975,
+        "EXACT_REPAIR": 12.179,
+        "POOL": 13.478,
+        "TOTAL": 26.632
+      },
+      "START": "three_ticket_cycle",
+      "START_REPRODUCTION": "PASS",
+      "START_UNION": 5833020,
+      "STRICT_IMPROVEMENTS_IN_POOL": 0
+    },
+    {
+      "BEST_CANONICAL_COUNT": 313239661,
+      "BEST_CANONICAL_RECOUNT": "PASS",
+      "BEST_COUNT": 313239661,
+      "BEST_DELTA": 0,
+      "BEST_REPLACEMENT_SOURCES": [
+        "REMOVED_INCUMBENT",
+        "RESIDUAL_GUIDED_TWO_NUMBER_REPLACEMENT",
+        "RESIDUAL_GUIDED_TWO_NUMBER_REPLACEMENT"
+      ],
+      "BEST_SHA256": "2d402c4205fbceeb5fcd9174dcb480de8f78880dbebd36257d6348c94d91b367",
+      "BEST_TICKETS_ADDED": [
+        [
+          1,
+          17,
+          22,
+          33,
+          40,
+          48
+        ],
+        [
+          2,
+          5,
+          30,
+          33,
+          35,
+          43
+        ]
+      ],
+      "BEST_TICKETS_DROPPED": [
+        [
+          1,
+          17,
+          22,
+          30,
+          33,
+          43
+        ],
+        [
+          2,
+          5,
+          33,
+          35,
+          40,
+          48
+        ]
+      ],
+      "BEST_TIE_COUNT": 16,
+      "BEST_UNION": 5879400,
+      "COMBINATIONS_CONSIDERED": 142880,
+      "DESTROY_INDICES": [
+        1,
+        2,
+        5
+      ],
+      "EXACT_TRIPLES_SCORED": 142880,
+      "PARITY": [
+        {
+          "CANONICAL_COUNT": 307235075,
+          "MATCH": true,
+          "POOL_INDICES": [
+            21,
+            46,
+            90
+          ],
+          "RESIDUAL_COUNT": 307235075,
+          "SHA256": "c4ba4e5b736f75d473447cd14daec20aa24b13d2679bddbc85110eccafbaa714"
+        }
+      ],
+      "POOL_ACCOUNTING": {
+        "CANDIDATES_DISTINCT": 3040,
+        "DUPLICATES_MERGED": 841,
+        "ELITE_DISTINCT": 28,
+        "ELITE_IN_REST_EXCLUDED": 17,
+        "EXACT_MARGINALS_SCORED": 3040,
+        "GUIDED_GENERATED": 3096,
+        "IN_REST_EXCLUDED": 0,
+        "MANDATORY": 11,
+        "ONE_NUMBER_GENERATED": 774,
+        "OPTIONAL_DISTINCT": 3029,
+        "OPTIONAL_RETAINED": 85,
+        "POOL_SIZE": 96
+      },
+      "POOL_MARGINAL_MAX": 2091966,
+      "POOL_MARGINAL_MIN": 685919,
+      "POOL_OPTIMALITY_STATUS": "EXACT_IN_POOL",
+      "POOL_SHA256": "d63fa3e8100b768e14847f4b39de6df061f784858572370e988644d53c6b2566",
+      "POOL_SIZE": 96,
+      "POOL_SOURCES": {
+        "ONE_NUMBER_REPLACEMENT": 22,
+        "REMOVED_INCUMBENT": 3,
+        "RESIDUAL_GUIDED_TWO_NUMBER_REPLACEMENT": 63,
+        "STABLE_ELITE": 8
+      },
+      "REMOVED_TICKETS": [
+        [
+          1,
+          17,
+          22,
+          30,
+          33,
+          43
+        ],
+        [
+          2,
+          5,
+          33,
+          35,
+          40,
+          48
+        ],
+        [
+          3,
+          9,
+          16,
+          23,
+          29,
+          39
+        ]
+      ],
+      "REST_COVERED_SEVEN_SETS": 38869123,
+      "SECONDS": {
+        "CANONICAL_CHECKS": 1.044,
+        "EXACT_REPAIR": 14.403,
+        "POOL": 14.415,
+        "TOTAL": 29.862
+      },
+      "START": "three_ticket_cycle",
+      "START_REPRODUCTION": "PASS",
+      "START_UNION": 5879400,
+      "STRICT_IMPROVEMENTS_IN_POOL": 0
+    },
+    {
+      "BEST_CANONICAL_COUNT": 313239661,
+      "BEST_CANONICAL_RECOUNT": "PASS",
+      "BEST_COUNT": 313239661,
+      "BEST_DELTA": 0,
+      "BEST_REPLACEMENT_SOURCES": [
+        "REMOVED_INCUMBENT",
+        "REMOVED_INCUMBENT",
+        "REMOVED_INCUMBENT"
+      ],
+      "BEST_SHA256": "7ce41ff21d5c0821f1d5dda683e23114086f5024fc6d98d4e574df5306659b1e",
+      "BEST_TICKETS_ADDED": [],
+      "BEST_TICKETS_DROPPED": [],
+      "BEST_TIE_COUNT": 1,
+      "BEST_UNION": 5730380,
+      "COMBINATIONS_CONSIDERED": 142880,
+      "DESTROY_INDICES": [
+        2,
+        5,
+        14
+      ],
+      "EXACT_TRIPLES_SCORED": 142880,
+      "PARITY": [
+        {
+          "CANONICAL_COUNT": 308500248,
+          "MATCH": true,
+          "POOL_INDICES": [
+            22,
+            37,
+            71
+          ],
+          "RESIDUAL_COUNT": 308500248,
+          "SHA256": "5a77c55bda6f84d6b7d80ce857e477bd80218c537314ea5a4273a6c0d95fddd7"
+        }
+      ],
+      "POOL_ACCOUNTING": {
+        "CANDIDATES_DISTINCT": 3012,
+        "DUPLICATES_MERGED": 869,
+        "ELITE_DISTINCT": 28,
+        "ELITE_IN_REST_EXCLUDED": 17,
+        "EXACT_MARGINALS_SCORED": 3012,
+        "GUIDED_GENERATED": 3096,
+        "IN_REST_EXCLUDED": 0,
+        "MANDATORY": 11,
+        "ONE_NUMBER_GENERATED": 774,
+        "OPTIONAL_DISTINCT": 3001,
+        "OPTIONAL_RETAINED": 85,
+        "POOL_SIZE": 96
+      },
+      "POOL_MARGINAL_MAX": 2093806,
+      "POOL_MARGINAL_MIN": 710340,
+      "POOL_OPTIMALITY_STATUS": "EXACT_IN_POOL",
+      "POOL_SHA256": "7ed648e48164e1c8323096ff618226c1182819abc439fe84af057387b05df7a2",
+      "POOL_SIZE": 96,
+      "POOL_SOURCES": {
+        "ONE_NUMBER_REPLACEMENT": 18,
+        "REMOVED_INCUMBENT": 3,
+        "RESIDUAL_GUIDED_TWO_NUMBER_REPLACEMENT": 67,
+        "STABLE_ELITE": 8
+      },
+      "REMOVED_TICKETS": [
+        [
+          2,
+          5,
+          33,
+          35,
+          40,
+          48
+        ],
+        [
+          3,
+          9,
+          16,
+          23,
+          29,
+          39
+        ],
+        [
+          11,
+          12,
+          18,
+          23,
+          27,
+          49
+        ]
+      ],
+      "REST_COVERED_SEVEN_SETS": 39018143,
+      "SECONDS": {
+        "CANONICAL_CHECKS": 0.906,
+        "EXACT_REPAIR": 13.168,
+        "POOL": 14.952,
+        "TOTAL": 29.026
+      },
+      "START": "three_ticket_cycle",
+      "START_REPRODUCTION": "PASS",
+      "START_UNION": 5730380,
+      "STRICT_IMPROVEMENTS_IN_POOL": 0
+    },
+    {
+      "BEST_CANONICAL_COUNT": 313239661,
+      "BEST_CANONICAL_RECOUNT": "PASS",
+      "BEST_COUNT": 313239661,
+      "BEST_DELTA": 0,
+      "BEST_REPLACEMENT_SOURCES": [
+        "REMOVED_INCUMBENT",
+        "REMOVED_INCUMBENT",
+        "REMOVED_INCUMBENT"
+      ],
+      "BEST_SHA256": "7ce41ff21d5c0821f1d5dda683e23114086f5024fc6d98d4e574df5306659b1e",
+      "BEST_TICKETS_ADDED": [],
+      "BEST_TICKETS_DROPPED": [],
+      "BEST_TIE_COUNT": 1,
+      "BEST_UNION": 5533150,
+      "COMBINATIONS_CONSIDERED": 142880,
+      "DESTROY_INDICES": [
+        12,
+        14,
+        16
+      ],
+      "EXACT_TRIPLES_SCORED": 142880,
+      "PARITY": [
+        {
+          "CANONICAL_COUNT": 304258409,
+          "MATCH": true,
+          "POOL_INDICES": [
+            24,
+            38,
+            88
+          ],
+          "RESIDUAL_COUNT": 304258409,
+          "SHA256": "78a9d6d959e70daed280005097f9c72cb10d80b36a63ee2b13b107780a35c5ff"
+        }
+      ],
+      "POOL_ACCOUNTING": {
+        "CANDIDATES_DISTINCT": 2868,
+        "DUPLICATES_MERGED": 1013,
+        "ELITE_DISTINCT": 28,
+        "ELITE_IN_REST_EXCLUDED": 17,
+        "EXACT_MARGINALS_SCORED": 2868,
+        "GUIDED_GENERATED": 3096,
+        "IN_REST_EXCLUDED": 0,
+        "MANDATORY": 11,
+        "ONE_NUMBER_GENERATED": 774,
+        "OPTIONAL_DISTINCT": 2857,
+        "OPTIONAL_RETAINED": 85,
+        "POOL_SIZE": 96
+      },
+      "POOL_MARGINAL_MAX": 2041750,
+      "POOL_MARGINAL_MIN": 680322,
+      "POOL_OPTIMALITY_STATUS": "EXACT_IN_POOL",
+      "POOL_SHA256": "abd318623b74cdfcffa7c289d8bbf33c65f05e23f4ccbba8b203cbd462d6fdca",
+      "POOL_SIZE": 96,
+      "POOL_SOURCES": {
+        "ONE_NUMBER_REPLACEMENT": 4,
+        "REMOVED_INCUMBENT": 3,
+        "RESIDUAL_GUIDED_TWO_NUMBER_REPLACEMENT": 81,
+        "STABLE_ELITE": 8
+      },
+      "REMOVED_TICKETS": [
+        [
+          7,
+          8,
+          10,
+          14,
+          19,
+          29
+        ],
+        [
+          11,
+          12,
+          18,
+          23,
+          27,
+          49
+        ],
+        [
+          16,
+          19,
+          26,
+          28,
+          46,
+          49
+        ]
+      ],
+      "REST_COVERED_SEVEN_SETS": 39215373,
+      "SECONDS": {
+        "CANONICAL_CHECKS": 1.123,
+        "EXACT_REPAIR": 15.438,
+        "POOL": 14.144,
+        "TOTAL": 30.706
+      },
+      "START": "three_ticket_cycle",
+      "START_REPRODUCTION": "PASS",
+      "START_UNION": 5533150,
+      "STRICT_IMPROVEMENTS_IN_POOL": 0
+    },
+    {
+      "BEST_CANONICAL_COUNT": 313239661,
+      "BEST_CANONICAL_RECOUNT": "PASS",
+      "BEST_COUNT": 313239661,
+      "BEST_DELTA": 0,
+      "BEST_REPLACEMENT_SOURCES": [
+        "REMOVED_INCUMBENT",
+        "REMOVED_INCUMBENT",
+        "REMOVED_INCUMBENT"
+      ],
+      "BEST_SHA256": "7ce41ff21d5c0821f1d5dda683e23114086f5024fc6d98d4e574df5306659b1e",
+      "BEST_TICKETS_ADDED": [],
+      "BEST_TICKETS_DROPPED": [],
+      "BEST_TIE_COUNT": 1,
+      "BEST_UNION": 5730380,
+      "COMBINATIONS_CONSIDERED": 142880,
+      "DESTROY_INDICES": [
+        5,
+        8,
+        14
+      ],
+      "EXACT_TRIPLES_SCORED": 142880,
+      "PARITY": [
+        {
+          "CANONICAL_COUNT": 309529675,
+          "MATCH": true,
+          "POOL_INDICES": [
+            58,
+            70,
+            81
+          ],
+          "RESIDUAL_COUNT": 309529675,
+          "SHA256": "d1d293ab044e6cc5608075f270243b316ae1c813f2e9e2048046148a432e4ae4"
+        }
+      ],
+      "POOL_ACCOUNTING": {
+        "CANDIDATES_DISTINCT": 3012,
+        "DUPLICATES_MERGED": 869,
+        "ELITE_DISTINCT": 28,
+        "ELITE_IN_REST_EXCLUDED": 17,
+        "EXACT_MARGINALS_SCORED": 3012,
+        "GUIDED_GENERATED": 3096,
+        "IN_REST_EXCLUDED": 0,
+        "MANDATORY": 11,
+        "ONE_NUMBER_GENERATED": 774,
+        "OPTIONAL_DISTINCT": 3001,
+        "OPTIONAL_RETAINED": 85,
+        "POOL_SIZE": 96
+      },
+      "POOL_MARGINAL_MAX": 2093806,
+      "POOL_MARGINAL_MIN": 710340,
+      "POOL_OPTIMALITY_STATUS": "EXACT_IN_POOL",
+      "POOL_SHA256": "0fa8f071d56b45f55318d7e897ece433a6766748b57157899aa037dea6631487",
+      "POOL_SIZE": 96,
+      "POOL_SOURCES": {
+        "ONE_NUMBER_REPLACEMENT": 18,
+        "REMOVED_INCUMBENT": 3,
+        "RESIDUAL_GUIDED_TWO_NUMBER_REPLACEMENT": 67,
+        "STABLE_ELITE": 8
+      },
+      "REMOVED_TICKETS": [
+        [
+          3,
+          9,
+          16,
+          23,
+          29,
+          39
+        ],
+        [
+          5,
+          17,
+          25,
+          32,
+          41,
+          47
+        ],
+        [
+          11,
+          12,
+          18,
+          23,
+          27,
+          49
+        ]
+      ],
+      "REST_COVERED_SEVEN_SETS": 39018143,
+      "SECONDS": {
+        "CANONICAL_CHECKS": 0.927,
+        "EXACT_REPAIR": 13.275,
+        "POOL": 15.157,
+        "TOTAL": 29.36
+      },
+      "START": "three_ticket_cycle",
+      "START_REPRODUCTION": "PASS",
+      "START_UNION": 5730380,
+      "STRICT_IMPROVEMENTS_IN_POOL": 0
+    },
+    {
+      "BEST_CANONICAL_COUNT": 313239661,
+      "BEST_CANONICAL_RECOUNT": "PASS",
+      "BEST_COUNT": 313239661,
+      "BEST_DELTA": 0,
+      "BEST_REPLACEMENT_SOURCES": [
+        "REMOVED_INCUMBENT",
+        "REMOVED_INCUMBENT",
+        "REMOVED_INCUMBENT"
+      ],
+      "BEST_SHA256": "7ce41ff21d5c0821f1d5dda683e23114086f5024fc6d98d4e574df5306659b1e",
+      "BEST_TICKETS_ADDED": [],
+      "BEST_TICKETS_DROPPED": [],
+      "BEST_TIE_COUNT": 1,
+      "BEST_UNION": 5732086,
+      "COMBINATIONS_CONSIDERED": 142880,
+      "DESTROY_INDICES": [
+        0,
+        14,
+        16
+      ],
+      "EXACT_TRIPLES_SCORED": 142880,
+      "PARITY": [
+        {
+          "CANONICAL_COUNT": 308098462,
+          "MATCH": true,
+          "POOL_INDICES": [
+            39,
+            60,
+            72
+          ],
+          "RESIDUAL_COUNT": 308098462,
+          "SHA256": "8c53e91466f613934c0a9287fb9eaadda014410c25fe5c6a8f37569b4be43889"
+        }
+      ],
+      "POOL_ACCOUNTING": {
+        "CANDIDATES_DISTINCT": 3012,
+        "DUPLICATES_MERGED": 869,
+        "ELITE_DISTINCT": 28,
+        "ELITE_IN_REST_EXCLUDED": 17,
+        "EXACT_MARGINALS_SCORED": 3012,
+        "GUIDED_GENERATED": 3096,
+        "IN_REST_EXCLUDED": 0,
+        "MANDATORY": 11,
+        "ONE_NUMBER_GENERATED": 774,
+        "OPTIONAL_DISTINCT": 3001,
+        "OPTIONAL_RETAINED": 85,
+        "POOL_SIZE": 96
+      },
+      "POOL_MARGINAL_MAX": 2093806,
+      "POOL_MARGINAL_MIN": 668338,
+      "POOL_OPTIMALITY_STATUS": "EXACT_IN_POOL",
+      "POOL_SHA256": "22db46f63bb05c404e482ceac97d2254bffa2d76760a69bae87d872586784086",
+      "POOL_SIZE": 96,
+      "POOL_SOURCES": {
+        "ONE_NUMBER_REPLACEMENT": 18,
+        "REMOVED_INCUMBENT": 3,
+        "RESIDUAL_GUIDED_TWO_NUMBER_REPLACEMENT": 67,
+        "STABLE_ELITE": 8
+      },
+      "REMOVED_TICKETS": [
+        [
+          1,
+          2,
+          34,
+          41,
+          42,
+          45
+        ],
+        [
+          11,
+          12,
+          18,
+          23,
+          27,
+          49
+        ],
+        [
+          16,
+          19,
+          26,
+          28,
+          46,
+          49
+        ]
+      ],
+      "REST_COVERED_SEVEN_SETS": 39016437,
+      "SECONDS": {
+        "CANONICAL_CHECKS": 0.835,
+        "EXACT_REPAIR": 12.67,
+        "POOL": 13.516,
+        "TOTAL": 27.022
+      },
+      "START": "three_ticket_cycle",
+      "START_REPRODUCTION": "PASS",
+      "START_UNION": 5732086,
+      "STRICT_IMPROVEMENTS_IN_POOL": 0
+    },
+    {
+      "BEST_CANONICAL_COUNT": 313239661,
+      "BEST_CANONICAL_RECOUNT": "PASS",
+      "BEST_COUNT": 313239661,
+      "BEST_DELTA": 0,
+      "BEST_REPLACEMENT_SOURCES": [
+        "REMOVED_INCUMBENT",
+        "REMOVED_INCUMBENT",
+        "REMOVED_INCUMBENT"
+      ],
+      "BEST_SHA256": "7ce41ff21d5c0821f1d5dda683e23114086f5024fc6d98d4e574df5306659b1e",
+      "BEST_TICKETS_ADDED": [],
+      "BEST_TICKETS_DROPPED": [],
+      "BEST_TIE_COUNT": 1,
+      "BEST_UNION": 5578420,
+      "COMBINATIONS_CONSIDERED": 142880,
+      "DESTROY_INDICES": [
+        5,
+        15,
+        19
+      ],
+      "EXACT_TRIPLES_SCORED": 142880,
+      "PARITY": [
+        {
+          "CANONICAL_COUNT": 305215043,
+          "MATCH": true,
+          "POOL_INDICES": [
+            7,
+            24,
+            57
+          ],
+          "RESIDUAL_COUNT": 305215043,
+          "SHA256": "cea4488b8993279e03e2e590373e85dce766d6feab3b6111193346fbc36637e0"
+        }
+      ],
+      "POOL_ACCOUNTING": {
+        "CANDIDATES_DISTINCT": 2992,
+        "DUPLICATES_MERGED": 889,
+        "ELITE_DISTINCT": 28,
+        "ELITE_IN_REST_EXCLUDED": 17,
+        "EXACT_MARGINALS_SCORED": 2992,
+        "GUIDED_GENERATED": 3096,
+        "IN_REST_EXCLUDED": 0,
+        "MANDATORY": 11,
+        "ONE_NUMBER_GENERATED": 774,
+        "OPTIONAL_DISTINCT": 2981,
+        "OPTIONAL_RETAINED": 85,
+        "POOL_SIZE": 96
+      },
+      "POOL_MARGINAL_MAX": 2038876,
+      "POOL_MARGINAL_MIN": 681068,
+      "POOL_OPTIMALITY_STATUS": "EXACT_IN_POOL",
+      "POOL_SHA256": "088bfb768110797061ebecf2dfb01eedc8b42d2e15c0b30c4854068c20c86cd9",
+      "POOL_SIZE": 96,
+      "POOL_SOURCES": {
+        "ONE_NUMBER_REPLACEMENT": 57,
+        "REMOVED_INCUMBENT": 3,
+        "RESIDUAL_GUIDED_TWO_NUMBER_REPLACEMENT": 28,
+        "STABLE_ELITE": 8
+      },
+      "REMOVED_TICKETS": [
+        [
+          3,
+          9,
+          16,
+          23,
+          29,
+          39
+        ],
+        [
+          12,
+          13,
+          15,
+          19,
+          24,
+          37
+        ],
+        [
+          22,
+          34,
+          35,
+          38,
+          44,
+          47
+        ]
+      ],
+      "REST_COVERED_SEVEN_SETS": 39170103,
+      "SECONDS": {
+        "CANONICAL_CHECKS": 0.957,
+        "EXACT_REPAIR": 14.684,
+        "POOL": 14.141,
+        "TOTAL": 29.783
+      },
+      "START": "three_ticket_cycle",
+      "START_REPRODUCTION": "PASS",
+      "START_UNION": 5578420,
+      "STRICT_IMPROVEMENTS_IN_POOL": 0
+    },
+    {
+      "BEST_CANONICAL_COUNT": 313239661,
+      "BEST_CANONICAL_RECOUNT": "PASS",
+      "BEST_COUNT": 313239661,
+      "BEST_DELTA": 0,
+      "BEST_REPLACEMENT_SOURCES": [
+        "REMOVED_INCUMBENT",
+        "REMOVED_INCUMBENT",
+        "REMOVED_INCUMBENT"
+      ],
+      "BEST_SHA256": "7ce41ff21d5c0821f1d5dda683e23114086f5024fc6d98d4e574df5306659b1e",
+      "BEST_TICKETS_ADDED": [],
+      "BEST_TICKETS_DROPPED": [],
+      "BEST_TIE_COUNT": 1,
+      "BEST_UNION": 5479294,
+      "COMBINATIONS_CONSIDERED": 142880,
+      "DESTROY_INDICES": [
+        4,
+        12,
+        15
+      ],
+      "EXACT_TRIPLES_SCORED": 142880,
+      "PARITY": [
+        {
+          "CANONICAL_COUNT": 303951459,
+          "MATCH": true,
+          "POOL_INDICES": [
+            37,
+            49,
+            55
+          ],
+          "RESIDUAL_COUNT": 303951459,
+          "SHA256": "1ebaf22844fc7df6acbd915ca2d398de509162e52923c32d45d0cb2489dc5941"
+        }
+      ],
+      "POOL_ACCOUNTING": {
+        "CANDIDATES_DISTINCT": 3275,
+        "DUPLICATES_MERGED": 606,
+        "ELITE_DISTINCT": 28,
+        "ELITE_IN_REST_EXCLUDED": 17,
+        "EXACT_MARGINALS_SCORED": 3275,
+        "GUIDED_GENERATED": 3096,
+        "IN_REST_EXCLUDED": 0,
+        "MANDATORY": 11,
+        "ONE_NUMBER_GENERATED": 774,
+        "OPTIONAL_DISTINCT": 3264,
+        "OPTIONAL_RETAINED": 85,
+        "POOL_SIZE": 96
+      },
+      "POOL_MARGINAL_MAX": 1939759,
+      "POOL_MARGINAL_MIN": 695834,
+      "POOL_OPTIMALITY_STATUS": "EXACT_IN_POOL",
+      "POOL_SHA256": "46bb4f388ac993ca0ee1c7f6d57dd8bf6d26eeea86d67021334ed0f5d72d978a",
+      "POOL_SIZE": 96,
+      "POOL_SOURCES": {
+        "ONE_NUMBER_REPLACEMENT": 3,
+        "REMOVED_INCUMBENT": 3,
+        "RESIDUAL_GUIDED_TWO_NUMBER_REPLACEMENT": 82,
+        "STABLE_ELITE": 8
+      },
+      "REMOVED_TICKETS": [
+        [
+          3,
+          8,
+          13,
+          28,
+          31,
+          36
+        ],
+        [
+          7,
+          8,
+          10,
+          14,
+          19,
+          29
+        ],
+        [
+          12,
+          13,
+          15,
+          19,
+          24,
+          37
+        ]
+      ],
+      "REST_COVERED_SEVEN_SETS": 39269229,
+      "SECONDS": {
+        "CANONICAL_CHECKS": 0.952,
+        "EXACT_REPAIR": 13.395,
+        "POOL": 17.732,
+        "TOTAL": 32.078
+      },
+      "START": "three_ticket_cycle",
+      "START_REPRODUCTION": "PASS",
+      "START_UNION": 5479294,
+      "STRICT_IMPROVEMENTS_IN_POOL": 0
+    },
+    {
+      "BEST_CANONICAL_COUNT": 313239661,
+      "BEST_CANONICAL_RECOUNT": "PASS",
+      "BEST_COUNT": 313239661,
+      "BEST_DELTA": 0,
+      "BEST_REPLACEMENT_SOURCES": [
+        "ONE_NUMBER_REPLACEMENT",
+        "ONE_NUMBER_REPLACEMENT",
+        "REMOVED_INCUMBENT"
+      ],
+      "BEST_SHA256": "1a292e1a0e406ac6534b6643faf697fd0f5021a0f816dd7fd092934494fd9744",
+      "BEST_TICKETS_ADDED": [
+        [
+          1,
+          21,
+          25,
+          38,
+          45,
+          48
+        ],
+        [
+          2,
+          30,
+          34,
+          41,
+          42,
+          45
+        ]
+      ],
+      "BEST_TICKETS_DROPPED": [
+        [
+          1,
+          2,
+          34,
+          41,
+          42,
+          45
+        ],
+        [
+          21,
+          25,
+          30,
+          38,
+          45,
+          48
+        ]
+      ],
+      "BEST_TIE_COUNT": 16,
+      "BEST_UNION": 5833014,
+      "COMBINATIONS_CONSIDERED": 142880,
+      "DESTROY_INDICES": [
+        0,
+        10,
+        17
+      ],
+      "EXACT_TRIPLES_SCORED": 142880,
+      "PARITY": [
+        {
+          "CANONICAL_COUNT": 303924712,
+          "MATCH": true,
+          "POOL_INDICES": [
+            22,
+            69,
+            81
+          ],
+          "RESIDUAL_COUNT": 303924712,
+          "SHA256": "e59a46682072be6b5677fb625904c2ace79351dd9cc7ba114ef1c4d6f1eceb2f"
+        }
+      ],
+      "POOL_ACCOUNTING": {
+        "CANDIDATES_DISTINCT": 3041,
+        "DUPLICATES_MERGED": 840,
+        "ELITE_DISTINCT": 28,
+        "ELITE_IN_REST_EXCLUDED": 17,
+        "EXACT_MARGINALS_SCORED": 3041,
+        "GUIDED_GENERATED": 3096,
+        "IN_REST_EXCLUDED": 0,
+        "MANDATORY": 11,
+        "ONE_NUMBER_GENERATED": 774,
+        "OPTIONAL_DISTINCT": 3030,
+        "OPTIONAL_RETAINED": 85,
+        "POOL_SIZE": 96
+      },
+      "POOL_MARGINAL_MAX": 2091966,
+      "POOL_MARGINAL_MIN": 643863,
+      "POOL_OPTIMALITY_STATUS": "EXACT_IN_POOL",
+      "POOL_SHA256": "b9183e7631c7ef03ff6021107afe993ffba4e84e0b472e1f737da200e5b28824",
+      "POOL_SIZE": 96,
+      "POOL_SOURCES": {
+        "ONE_NUMBER_REPLACEMENT": 20,
+        "REMOVED_INCUMBENT": 3,
+        "RESIDUAL_GUIDED_TWO_NUMBER_REPLACEMENT": 65,
+        "STABLE_ELITE": 8
+      },
+      "REMOVED_TICKETS": [
+        [
+          1,
+          2,
+          34,
+          41,
+          42,
+          45
+        ],
+        [
+          6,
+          10,
+          11,
+          16,
+          24,
+          36
+        ],
+        [
+          21,
+          25,
+          30,
+          38,
+          45,
+          48
+        ]
+      ],
+      "REST_COVERED_SEVEN_SETS": 38915509,
+      "SECONDS": {
+        "CANONICAL_CHECKS": 0.864,
+        "EXACT_REPAIR": 12.894,
+        "POOL": 14.879,
+        "TOTAL": 28.637
+      },
+      "START": "three_ticket_cycle",
+      "START_REPRODUCTION": "PASS",
+      "START_UNION": 5833014,
+      "STRICT_IMPROVEMENTS_IN_POOL": 0
+    },
+    {
+      "BEST_CANONICAL_COUNT": 313239661,
+      "BEST_CANONICAL_RECOUNT": "PASS",
+      "BEST_COUNT": 313239661,
+      "BEST_DELTA": 0,
+      "BEST_REPLACEMENT_SOURCES": [
+        "REMOVED_INCUMBENT",
+        "REMOVED_INCUMBENT",
+        "REMOVED_INCUMBENT"
+      ],
+      "BEST_SHA256": "7ce41ff21d5c0821f1d5dda683e23114086f5024fc6d98d4e574df5306659b1e",
+      "BEST_TICKETS_ADDED": [],
+      "BEST_TICKETS_DROPPED": [],
+      "BEST_TIE_COUNT": 1,
+      "BEST_UNION": 5683660,
+      "COMBINATIONS_CONSIDERED": 142880,
+      "DESTROY_INDICES": [
+        6,
+        11,
+        19
+      ],
+      "EXACT_TRIPLES_SCORED": 142880,
+      "PARITY": [
+        {
+          "CANONICAL_COUNT": 302356201,
+          "MATCH": true,
+          "POOL_INDICES": [
+            31,
+            38,
+            46
+          ],
+          "RESIDUAL_COUNT": 302356201,
+          "SHA256": "1772842e4c2a81d31ba85c003ae07d2a0fdb636fb44c556715290bdf9b5dd000"
+        }
+      ],
+      "POOL_ACCOUNTING": {
+        "CANDIDATES_DISTINCT": 3011,
+        "DUPLICATES_MERGED": 870,
+        "ELITE_DISTINCT": 28,
+        "ELITE_IN_REST_EXCLUDED": 17,
+        "EXACT_MARGINALS_SCORED": 3011,
+        "GUIDED_GENERATED": 3096,
+        "IN_REST_EXCLUDED": 0,
+        "MANDATORY": 11,
+        "ONE_NUMBER_GENERATED": 774,
+        "OPTIONAL_DISTINCT": 3000,
+        "OPTIONAL_RETAINED": 85,
+        "POOL_SIZE": 96
+      },
+      "POOL_MARGINAL_MAX": 2038876,
+      "POOL_MARGINAL_MIN": 682940,
+      "POOL_OPTIMALITY_STATUS": "EXACT_IN_POOL",
+      "POOL_SHA256": "e61f8de55c31efe6b02cb853e6e0536886fe2eef24ad79f75437081a9bbbc6c3",
+      "POOL_SIZE": 96,
+      "POOL_SOURCES": {
+        "ONE_NUMBER_REPLACEMENT": 29,
+        "REMOVED_INCUMBENT": 3,
+        "RESIDUAL_GUIDED_TWO_NUMBER_REPLACEMENT": 56,
+        "STABLE_ELITE": 8
+      },
+      "REMOVED_TICKETS": [
+        [
+          4,
+          7,
+          12,
+          36,
+          39,
+          46
+        ],
+        [
+          6,
+          14,
+          20,
+          31,
+          37,
+          39
+        ],
+        [
+          22,
+          34,
+          35,
+          38,
+          44,
+          47
+        ]
+      ],
+      "REST_COVERED_SEVEN_SETS": 39064863,
+      "SECONDS": {
+        "CANONICAL_CHECKS": 0.931,
+        "EXACT_REPAIR": 12.475,
+        "POOL": 13.761,
+        "TOTAL": 27.167
+      },
+      "START": "three_ticket_cycle",
+      "START_REPRODUCTION": "PASS",
+      "START_UNION": 5683660,
+      "STRICT_IMPROVEMENTS_IN_POOL": 0
+    },
+    {
+      "BEST_CANONICAL_COUNT": 313239661,
+      "BEST_CANONICAL_RECOUNT": "PASS",
+      "BEST_COUNT": 313239661,
+      "BEST_DELTA": 0,
+      "BEST_REPLACEMENT_SOURCES": [
+        "REMOVED_INCUMBENT",
+        "REMOVED_INCUMBENT",
+        "REMOVED_INCUMBENT"
+      ],
+      "BEST_SHA256": "7ce41ff21d5c0821f1d5dda683e23114086f5024fc6d98d4e574df5306659b1e",
+      "BEST_TICKETS_ADDED": [],
+      "BEST_TICKETS_DROPPED": [],
+      "BEST_TIE_COUNT": 1,
+      "BEST_UNION": 5530167,
+      "COMBINATIONS_CONSIDERED": 142880,
+      "DESTROY_INDICES": [
+        0,
+        7,
+        9
+      ],
+      "EXACT_TRIPLES_SCORED": 142880,
+      "PARITY": [
+        {
+          "CANONICAL_COUNT": 303961742,
+          "MATCH": true,
+          "POOL_INDICES": [
+            29,
+            43,
+            82
+          ],
+          "RESIDUAL_COUNT": 303961742,
+          "SHA256": "da9ddf05816f2e331d27e5748487d1dd82b2369a962af309a62563dda29925ef"
+        }
+      ],
+      "POOL_ACCOUNTING": {
+        "CANDIDATES_DISTINCT": 2993,
+        "DUPLICATES_MERGED": 888,
+        "ELITE_DISTINCT": 28,
+        "ELITE_IN_REST_EXCLUDED": 17,
+        "EXACT_MARGINALS_SCORED": 2993,
+        "GUIDED_GENERATED": 3096,
+        "IN_REST_EXCLUDED": 0,
+        "MANDATORY": 11,
+        "ONE_NUMBER_GENERATED": 774,
+        "OPTIONAL_DISTINCT": 2982,
+        "OPTIONAL_RETAINED": 85,
+        "POOL_SIZE": 96
+      },
+      "POOL_MARGINAL_MAX": 2038876,
+      "POOL_MARGINAL_MIN": 654450,
+      "POOL_OPTIMALITY_STATUS": "EXACT_IN_POOL",
+      "POOL_SHA256": "fbfc5711113715b8f0ab287d47c73baf2afec452042f22c5d1424300fe72bd23",
+      "POOL_SIZE": 96,
+      "POOL_SOURCES": {
+        "ONE_NUMBER_REPLACEMENT": 71,
+        "REMOVED_INCUMBENT": 3,
+        "RESIDUAL_GUIDED_TWO_NUMBER_REPLACEMENT": 14,
+        "STABLE_ELITE": 8
+      },
+      "REMOVED_TICKETS": [
+        [
+          1,
+          2,
+          34,
+          41,
+          42,
+          45
+        ],
+        [
+          4,
+          18,
+          20,
+          24,
+          28,
+          29
+        ],
+        [
+          6,
+          7,
+          9,
+          13,
+          18,
+          26
+        ]
+      ],
+      "REST_COVERED_SEVEN_SETS": 39218356,
+      "SECONDS": {
+        "CANONICAL_CHECKS": 0.84,
+        "EXACT_REPAIR": 12.511,
+        "POOL": 13.56,
+        "TOTAL": 26.912
+      },
+      "START": "three_ticket_cycle",
+      "START_REPRODUCTION": "PASS",
+      "START_UNION": 5530167,
+      "STRICT_IMPROVEMENTS_IN_POOL": 0
+    }
+  ],
+  "REFERENCE_MAIN_HEAD": "76085ccc8f226c8752cc7df28390e27009d21746",
+  "REFERENCE_MAIN_TREE": "a2bd43ed9019e4cf2f330eb7d0dfa498d7904b43",
+  "REPAIR_SOLVER": "DIRECT_ENUMERATION_EXACT_INCLUSION_EXCLUSION",
+  "RUN_HEAD": "510aa60fdf557130baed1691b9ca421aea807bf6",
+  "RUN_TREE": "90a460d677bb93f5d132990529e25b720d118c9d",
+  "SCIENTIFIC_SCOPE": "BOUNDED_24_TRIPLE_THREE_TICKET_EXACT_REPAIR_WITHIN_CANDIDATE_POOL",
+  "SOURCE_MODULE_PATH": "src/lottolab/research/b649_k20_three_ticket_exact_repair_lns_r1.py",
+  "SOURCE_MODULE_SHA256": "b8c730c9f31e521b85cfd23e4e3024ccab90697af6de371f8805b5a1d76af1c1",
+  "STARTS": {
+    "three_ticket_cycle": {
+      "CANONICAL_COUNT": 313239661,
+      "CANONICAL_REPRODUCTION": "PASS",
+      "EXACT_PROBABILITY": "44748523/85900584",
+      "PORTFOLIO_SHA256": "7ce41ff21d5c0821f1d5dda683e23114086f5024fc6d98d4e574df5306659b1e",
+      "PROVENANCE": {
+        "BLOB_BINDING": "PASS",
+        "RESULT_BLOB": "69155cc61d67f5890573b4113773dbd3c8ee83a4",
+        "RESULT_COMMIT": "3655b0f4bc43450748b4fc87c641d0acd11a8509",
+        "RESULT_FILE_SHA256": "2ba9308faa96518b8a75bb1ee8b1ddcf62e7cd66258c8f36999e48f68c676266",
+        "RESULT_LOCATOR": "docs/research/matrix-native-results/b649-k20-three-ticket-cycle-full-family-r1-result.json",
+        "RESULT_TREE": "faa67081c8dd77563d1d8f1aba95a30b19d2f543"
+      }
+    },
+    "v6": {
+      "CANONICAL_COUNT": 313239647,
+      "CANONICAL_REPRODUCTION": "PASS",
+      "EXACT_PROBABILITY": "44748521/85900584",
+      "PORTFOLIO_SHA256": "0c52a1f0bed90cd47d08bb031b13c9bf693317493f88e45da8e087bd4a0ab65b",
+      "PROVENANCE": {
+        "FILE_SHA256": "14f070a764a48a09007e18db212d491867a7c8dc59e775115391a02c8840f632",
+        "LOCATOR": "docs/research/matrix-native-results/b649-k20-two-ticket-joint-replacement-incumbent-r1.json"
+      }
+    }
+  },
+  "START_REPRODUCTION_CHECKS": 48,
+  "TASK_ID": "B649_K20_THREE_TICKET_EXACT_REPAIR_LNS_PILOT_R1",
+  "TASK_STATUS": "COMPLETE",
+  "TIMING": {
+    "BINDING_SECONDS": 1.225,
+    "REPAIR_WALL_SECONDS": 957.884,
+    "TOTAL_RUN_SECONDS": 959.192,
+    "VECLIB_MAXIMUM_THREADS": "1",
+    "WORKERS": 2
+  }
+}

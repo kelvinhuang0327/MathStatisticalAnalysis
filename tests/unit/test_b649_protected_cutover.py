@@ -26,12 +26,16 @@ from contextlib import redirect_stderr, redirect_stdout
 from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime, timedelta
 from multiprocessing.connection import Connection
+from multiprocessing.process import BaseProcess
+from multiprocessing.synchronize import Barrier
 from pathlib import Path
 from typing import cast
 from uuid import uuid4
 
 import pytest
 from tests.unit.test_b649_production_cutover import (
+    NEW_HEAD,
+    NEW_TREE,
     OLD_HEAD,
     OLD_TREE,
     UID,
@@ -65,6 +69,8 @@ class Harness:
     exec_failed: bool = False
     observed_started: protected.Record | None = None
     existing_plan: Path | None = None
+    legacy_head: str = OLD_HEAD
+    legacy_tree: str = OLD_TREE
 
     def __post_init__(self) -> None:
         self.launchd = FakeLaunchd(self.fixture)
@@ -106,8 +112,8 @@ class Harness:
             self.request = protected.make_request(
                 self.fixture.config,
                 self.fixture.old,
-                OLD_HEAD,
-                OLD_TREE,
+                self.legacy_head,
+                self.legacy_tree,
                 path,
                 self.fixture.root / "claims",
             )
@@ -322,6 +328,18 @@ class FakeChild:
         if harness.after_child:
             harness.after_child()
         return code if harness.exit_override is None else harness.exit_override
+
+
+@pytest.fixture(autouse=True)
+def no_real_launchctl(monkeypatch: pytest.MonkeyPatch) -> None:
+    """No test here may reach the real launchd; each must inject its fake runner."""
+    real = cutover.run_command
+
+    def guarded(argv: Sequence[str]) -> subprocess.CompletedProcess[str]:
+        assert Path(argv[0]).name != "launchctl", f"real launchctl reached: {list(argv)}"
+        return real(argv)
+
+    monkeypatch.setattr(cutover, "run_command", guarded)
 
 
 @pytest.fixture
@@ -2096,6 +2114,9 @@ def _fresh_cli_session(
     plan_path: Path,
     argv: list[str],
     channel: Connection,
+    identities: dict[Path, tuple[str, str, bool]] | None = None,
+    legacy: tuple[str, str] | None = None,
+    barrier: Barrier | None = None,
 ) -> None:
     """Spawned interpreter: only disk state, CLI argv and hermetic OS seams survive."""
     output, errors = io.StringIO(), io.StringIO()
@@ -2105,7 +2126,18 @@ def _fresh_cli_session(
             redirect_stdout(output),
             redirect_stderr(errors),
         ):
-            harness = Harness(fixture, patches, existing_plan=plan_path)
+            harness = Harness(
+                fixture,
+                patches,
+                existing_plan=plan_path,
+                legacy_head=legacy[0] if legacy else OLD_HEAD,
+                legacy_tree=legacy[1] if legacy else OLD_TREE,
+            )
+            if identities is not None:
+                # Current-success supersession reconciles live launchd state in the
+                # supervising process; that must observe the fake, never launchctl.
+                harness.launchd.worktree_identities.update(identities)
+                patches.setattr(cutover, "run_command", harness.runner)
             patches.setattr(
                 protected, "build_reservation_config", _fixed_reservation_config(harness)
             )
@@ -2119,6 +2151,8 @@ def _fresh_cli_session(
                 return original_launch(request)
 
             patches.setattr(protected, "launch", launch)
+            if barrier is not None:
+                barrier.wait(30)
             code = protected.main(argv)
             owner = cutover.inspect_control_owner(fixture.config)
             channel.send(
@@ -2137,10 +2171,20 @@ def _fresh_cli_session(
         channel.close()
 
 
-def _invoke_fresh_cli(fixture: Fixture, plan_path: Path, argv: list[str]) -> protected.Record:
+def _invoke_fresh_cli(
+    fixture: Fixture,
+    plan_path: Path,
+    argv: list[str],
+    *,
+    identities: dict[Path, tuple[str, str, bool]] | None = None,
+    legacy: tuple[str, str] | None = None,
+) -> protected.Record:
     context = multiprocessing.get_context("spawn")
     receiver, sender = context.Pipe(duplex=False)
-    process = context.Process(target=_fresh_cli_session, args=(fixture, plan_path, argv, sender))
+    process = context.Process(
+        target=_fresh_cli_session,
+        args=(fixture, plan_path, argv, sender, identities, legacy),
+    )
     process.start()
     sender.close()
     try:
@@ -2155,6 +2199,45 @@ def _invoke_fresh_cli(fixture: Fixture, plan_path: Path, argv: list[str]) -> pro
             process.terminate()
             process.join(10)
         process.close()
+
+
+def _invoke_fresh_cli_concurrently(
+    fixture: Fixture,
+    plan_path: Path,
+    argv: list[str],
+    *,
+    count: int,
+    identities: dict[Path, tuple[str, str, bool]],
+    legacy: tuple[str, str],
+) -> list[protected.Record]:
+    """Start ``count`` real interpreters against one authorization at the same instant."""
+    context = multiprocessing.get_context("spawn")
+    barrier = context.Barrier(count)
+    started: list[tuple[Connection, BaseProcess]] = []
+    for _ in range(count):
+        receiver, sender = context.Pipe(duplex=False)
+        process = context.Process(
+            target=_fresh_cli_session,
+            args=(fixture, plan_path, argv, sender, identities, legacy, barrier),
+        )
+        process.start()
+        sender.close()
+        started.append((receiver, process))
+    results: list[protected.Record] = []
+    try:
+        for receiver, process in started:
+            assert receiver.poll(60), "concurrent fresh CLI timed out"
+            results.append(protected.record(receiver.recv()))
+            process.join(10)
+            assert process.exitcode == 0
+        return results
+    finally:
+        for receiver, process in started:
+            receiver.close()
+            if process.is_alive():
+                process.terminate()
+                process.join(10)
+            process.close()
 
 
 def test_fresh_process_cli_plan_reserve_authorize_apply_and_terminal_replay(
@@ -2404,3 +2487,1027 @@ def test_fresh_process_resume_after_completed_archive_preserves_frozen_prior_sha
     replay = _invoke_fresh_cli(harness.fixture, _apply_plan_file(harness), argv)
     assert replay["code"] == 0 and replay["launches"] == replay["mutations"] == 0
     assert archive.read_bytes() == raw
+
+
+SUCCESSOR_HEAD = "7" * 40
+SUCCESSOR_TREE = "8" * 40
+THIRD_HEAD = "a" * 40
+THIRD_TREE = "b" * 40
+
+
+def _advance_to_successor(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    legacy_head: str,
+    legacy_tree: str,
+    head: str,
+    tree: str,
+    name: str | None = None,
+) -> None:
+    """Point the fixture at the next chain link.
+
+    What the last apply left live becomes the legacy side and ``head`` becomes the
+    new target. The harness request is rebuilt eagerly from the resulting plan.
+    """
+    live = harness.fixture.new
+    successor = harness.fixture.worktree_parent / (name or f"B649_PRODUCTION_{head}")
+    Fixture.make_source(successor)
+    harness.launchd.worktree_identities[successor] = (head, tree, True)
+    harness.fixture.old = live
+    harness.fixture.new = successor
+    harness.fixture.config = replace(
+        harness.fixture.config,
+        source_worktree=successor,
+        expected_head=head,
+        expected_tree=tree,
+        durable_ref=f"refs/heads/runtime/b649/{head}",
+    )
+    harness.launchd.process_rows = [f"424242 1 {UID} S /usr/bin/fixture-shell"]
+    harness.launchd.file_rows = ["p424242", "fcwd", "n/tmp"]
+    plan = cutover.build_plan(harness.fixture.config, runner=harness.launchd)
+    assert plan["status"] == "PASS", plan.get("failures")
+    plan_path = harness.fixture.root / f"plan-{head}.json"
+    plan_path.write_text(protected.canonical(plan))
+    plan_path.chmod(0o600)
+    harness.request = protected.make_request(
+        harness.fixture.config,
+        live,
+        legacy_head,
+        legacy_tree,
+        plan_path,
+        harness.request.claim_root,
+    )
+    harness.chain()
+    # The pre-archive live reconciliation runs in the supervising process, so it
+    # must observe the fake launchd and never the real one.
+    monkeypatch.setattr(cutover, "run_command", harness.runner)
+
+
+def _current_success_cycle(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    head: str = SUCCESSOR_HEAD,
+    tree: str = SUCCESSOR_TREE,
+    name: str | None = None,
+) -> tuple[Path, bytes]:
+    """OLD -> NEW succeeds and stays live; request NEW -> successor from that state."""
+    assert harness.launch()["status"] == "SUCCESS"
+    path = harness.request.receipt_path
+    raw = path.read_bytes()
+    _advance_to_successor(
+        harness,
+        monkeypatch,
+        legacy_head=NEW_HEAD,
+        legacy_tree=NEW_TREE,
+        head=head,
+        tree=tree,
+        name=name,
+    )
+    return path, raw
+
+
+def _reserve_and_authorize(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> tuple[list[str], dict[str, object]]:
+    """The real reserve then authorize CLI, which is what freezes the release proof."""
+    capsys.readouterr()
+    argv, authorization = _drive_reserve_authorize(harness, monkeypatch, capsys)
+    assert protected.main(_authorize_argv(authorization)) == 0
+    capsys.readouterr()
+    return argv, authorization
+
+
+def _archive_path(path: Path, raw: bytes) -> Path:
+    return path.with_name(f"{path.stem}.{json.loads(raw)['execution_id']}.superseded.json")
+
+
+def test_current_success_receipt_is_superseded_by_next_authorized_apply(
+    harness: Harness, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    path, raw = _current_success_cycle(harness, monkeypatch)
+    raw_sha = hashlib.sha256(raw).hexdigest()
+    managed_before = harness.fixture.receipt_path.read_bytes()
+    prior_owner = cutover.inspect_control_owner(harness.fixture.config)
+    assert prior_owner is not None and prior_owner["phase"] == "RELEASED"
+    assert "predecessor_release_evidence" not in prior_owner
+    capsys.readouterr()
+    argv, authorization = _drive_reserve_authorize(harness, monkeypatch, capsys)
+    assert authorization["operation_id"] == protected.apply_operation_id(
+        str(authorization["reservation_id"]),
+        hashlib.sha256(_apply_plan_file(harness).read_bytes()).hexdigest(),
+        raw_sha,
+    )
+    assert authorization["managed_receipt_sha256"] == hashlib.sha256(managed_before).hexdigest()
+    assert path.read_bytes() == raw
+    # The RELEASED owner is gone after reserve; its release proof now lives in the
+    # durable reservation, bound to this exact reservation and operation.
+    reserved = cutover.inspect_control_owner(harness.fixture.config)
+    assert reserved is not None and reserved["phase"] == "AUTHORIZATION_PENDING"
+    assert reserved["reservation_id"] != prior_owner["reservation_id"]
+    proof = protected.record(reserved["predecessor_release_evidence"])
+    assert proof["prior_reservation_id"] == prior_owner["reservation_id"]
+    assert proof["prior_operation_id"] == prior_owner["operation_id"]
+    assert proof["prior_release_evidence"] == prior_owner["release_evidence"]
+    assert proof["prior_protected_receipt_sha256"] == raw_sha
+    assert proof["prior_managed_receipt_sha256"] == hashlib.sha256(managed_before).hexdigest()
+    assert proof["new_reservation_id"] == authorization["reservation_id"]
+    assert proof["new_operation_id"] == authorization["operation_id"]
+    assert protected.main(_authorize_argv(authorization)) == 0
+    capsys.readouterr()
+    # Neither reserve nor authorize retires the prior receipt.
+    assert path.read_bytes() == raw
+    assert not list(path.parent.glob("*.superseded.json"))
+    assert harness.launches == 1
+
+    assert protected.main(argv) == 0
+    result = _last_json_line(capsys)
+    prior_id = json.loads(raw)["execution_id"]
+    archive = _archive_path(path, raw)
+    assert result["status"] == "SUCCESS"
+    assert archive.read_bytes() == raw
+    assert archive.stat().st_nlink == 1
+    assert result["superseded_execution_receipt"] == {
+        "path": str(archive),
+        "execution_id": prior_id,
+        "sha256": raw_sha,
+    }
+    assert protected.record(result["identity"])["prior_execution_receipt_sha256"] == raw_sha
+    assert harness.launches == 2
+    assert harness.launchd.loaded_source == harness.fixture.new
+    managed = protected.record(json.loads(harness.fixture.receipt_path.read_bytes()))
+    assert managed["status"] == "SUCCESS"
+    assert managed["operation_id"] == authorization["operation_id"]
+    owner = cutover.inspect_control_owner(harness.fixture.config)
+    assert owner is not None and owner["phase"] == "RELEASED"
+    assert owner["predecessor_release_evidence"] == proof
+    assert (
+        protected.record(owner["release_evidence"])["protected_receipt_sha256"]
+        == hashlib.sha256(path.read_bytes()).hexdigest()
+    )
+
+    assert protected.main(argv) == 0
+    replay = _last_json_line(capsys)
+    assert replay["reused"] is True
+    assert replay["execution_id"] == result["execution_id"]
+    assert harness.launches == 2
+    assert archive.read_bytes() == raw
+    # The successor's rollback binds its own managed receipt, not the archive.
+    rollback = protected.make_rollback_request(
+        harness.fixture.config,
+        harness.fixture.old,
+        NEW_HEAD,
+        NEW_TREE,
+        harness.request.claim_root,
+    )
+    assert (
+        rollback.managed_receipt_sha256
+        == hashlib.sha256(harness.fixture.receipt_path.read_bytes()).hexdigest()
+    )
+    assert rollback.old_durable_ref == f"refs/heads/runtime/b649/{NEW_HEAD}"
+
+
+def test_current_success_chain_retires_each_predecessor_exactly_once(
+    harness: Harness, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """old success -> new success -> another new success, in the real fixture."""
+    path, first_raw = _current_success_cycle(harness, monkeypatch)
+    argv, authorization = _reserve_and_authorize(harness, monkeypatch, capsys)
+    assert protected.main(argv) == 0
+    second = _last_json_line(capsys)
+    assert second["status"] == "SUCCESS" and harness.launches == 2
+    second_raw = path.read_bytes()
+    assert second_raw != first_raw
+    first_archive = _archive_path(path, first_raw)
+    assert first_archive.read_bytes() == first_raw
+
+    _advance_to_successor(
+        harness,
+        monkeypatch,
+        legacy_head=SUCCESSOR_HEAD,
+        legacy_tree=SUCCESSOR_TREE,
+        head=THIRD_HEAD,
+        tree=THIRD_TREE,
+    )
+    second_owner = cutover.inspect_control_owner(harness.fixture.config)
+    assert second_owner is not None and second_owner["phase"] == "RELEASED"
+    argv, authorization = _reserve_and_authorize(harness, monkeypatch, capsys)
+    assert path.read_bytes() == second_raw
+    assert protected.main(argv) == 0
+    third = _last_json_line(capsys)
+
+    second_archive = _archive_path(path, second_raw)
+    assert third["status"] == "SUCCESS" and harness.launches == 3
+    assert second_archive.read_bytes() == second_raw
+    assert first_archive.read_bytes() == first_raw
+    assert first_archive != second_archive
+    assert second_archive.stat().st_nlink == first_archive.stat().st_nlink == 1
+    assert {second_archive, first_archive} == set(path.parent.glob("*.superseded.json"))
+    assert protected.record(third["identity"])["prior_execution_receipt_sha256"] == (
+        hashlib.sha256(second_raw).hexdigest()
+    )
+    assert protected.record(second["identity"])["prior_execution_receipt_sha256"] == (
+        hashlib.sha256(first_raw).hexdigest()
+    )
+    assert harness.launchd.loaded_source == harness.fixture.new
+    owner = cutover.inspect_control_owner(harness.fixture.config)
+    assert owner is not None and owner["phase"] == "RELEASED"
+    proof = protected.record(owner["predecessor_release_evidence"])
+    assert proof["prior_reservation_id"] == second_owner["reservation_id"]
+    assert proof["new_reservation_id"] == authorization["reservation_id"]
+    assert protected.main(argv) == 0
+    assert _last_json_line(capsys)["reused"] is True
+    assert harness.launches == 3
+
+
+def _reseal_managed_link(path: Path, prior: protected.Record, sha256: str) -> None:
+    prior["managed_receipt"] = {**protected.record(prior["managed_receipt"]), "sha256": sha256}
+    protected.ReceiptFile(path).write(prior, expected=protected.ReceiptFile(path).read())
+
+
+def _tamper_successor_old_source(plan_path: Path) -> None:
+    plan = protected.record(json.loads(plan_path.read_bytes()))
+    prestate = protected.record(plan["prestate"])
+    source = protected.record(plan["source"])
+    old = {
+        **protected.record(prestate["old_source"]),
+        "durable_ref": f"refs/heads/runtime/b649/{'e' * 40}",
+    }
+    prestate["old_source"] = old
+    source["old"] = old
+    plan["prestate_digest"] = cutover._prestate_digest(prestate)
+    plan["plan_digest"] = cutover._sha256_json(
+        {
+            "schema_version": cutover.PLAN_SCHEMA_VERSION,
+            "target": plan["target"],
+            "prestate_digest": plan["prestate_digest"],
+            "new_source": source["new"],
+            "new_plist_sha256": prestate["new_plist_sha256"],
+        }
+    )
+    plan_path.write_text(protected.canonical(plan))
+
+
+_RESERVE_REFUSALS = {
+    "legacy": "plan/legacy identity changed",
+    "old_source": "not eligible for successor reservation",
+    "same_target_head": "not eligible for successor reservation",
+    "managed_link": "released owner evidence does not bind",
+    "managed_operation": "released owner evidence does not bind",
+    "managed_plan": "released owner evidence does not bind",
+    "after_role": "released owner evidence does not bind",
+    "missing_owner": "no matching RELEASED owner",
+}
+
+
+@pytest.mark.parametrize("defect", [None, *_RESERVE_REFUSALS])
+def test_reserve_classifies_current_success_before_replacing_the_released_owner(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    defect: str | None,
+) -> None:
+    same_head = defect == "same_target_head"
+    path, raw = _current_success_cycle(
+        harness,
+        monkeypatch,
+        head=NEW_HEAD if same_head else SUCCESSOR_HEAD,
+        tree=NEW_TREE if same_head else SUCCESSOR_TREE,
+        name="B649_SAME_HEAD_SUCCESSOR" if same_head else None,
+    )
+    prior = protected.record(json.loads(raw))
+    managed_path = harness.fixture.receipt_path
+    owner_path = cutover._control_owner_path(harness.fixture.config)
+    if defect == "managed_link":
+        _reseal_managed_link(path, prior, "f" * 64)
+    elif defect in {"managed_operation", "managed_plan", "after_role"}:
+        managed = protected.record(json.loads(managed_path.read_bytes()))
+        if defect == "managed_operation":
+            managed["operation_id"] = "f" * 32
+        elif defect == "managed_plan":
+            managed["plan_digest"] = "f" * 64
+        else:
+            after = protected.record(managed["after"])
+            after["source"] = {**protected.record(after["source"]), "role": "old"}
+        managed_path.write_text(protected.canonical(managed))
+        _reseal_managed_link(path, prior, hashlib.sha256(managed_path.read_bytes()).hexdigest())
+    elif defect == "old_source":
+        _tamper_successor_old_source(_apply_plan_file(harness))
+    elif defect == "missing_owner":
+        owner_path.unlink()
+    harness.request = protected.make_request(
+        harness.fixture.config,
+        harness.fixture.old,
+        NEW_HEAD,
+        NEW_TREE,
+        _apply_plan_file(harness),
+        harness.request.claim_root,
+    )
+    if defect == "legacy":
+        harness.request = replace(
+            harness.request,
+            legacy_worktree=harness.fixture.worktree_parent / f"B649_PRODUCTION_{OLD_HEAD}",
+            legacy_head=OLD_HEAD,
+            legacy_tree=OLD_TREE,
+        )
+    monkeypatch.setattr(protected, "build_reservation_config", _fixed_reservation_config(harness))
+    owner_before = owner_path.read_bytes() if owner_path.exists() else None
+    receipt_before, managed_before = path.read_bytes(), managed_path.read_bytes()
+    mutations = len(harness.launchd.mutation_calls)
+    capsys.readouterr()
+    code = protected.main(list(harness.request.owner_argv()[2:]))
+    refused = _last_json_line(capsys)
+    if defect is None:
+        # The untampered control proves each variant below isolates its one defect.
+        assert code == claims.REFUSED and refused["status"] == "AUTHORIZATION_PENDING"
+        assert cutover.inspect_control_owner(harness.fixture.config) is not None
+    else:
+        assert code == claims.UNVERIFIABLE
+        assert _RESERVE_REFUSALS[defect] in str(refused["error"])
+        # The RELEASED owner was not replaced, so no proof was lost and nothing spawned.
+        assert (owner_path.read_bytes() if owner_path.exists() else None) == owner_before
+    assert path.read_bytes() == receipt_before
+    assert managed_path.read_bytes() == managed_before
+    assert not list(path.parent.glob("*.superseded.json"))
+    assert len(harness.launchd.mutation_calls) == mutations
+    assert harness.launches == 1
+
+
+@pytest.mark.parametrize(
+    "field",
+    ["reservation_id", "operation_id", "protected_receipt_sha256", "managed_receipt_sha256"],
+)
+def test_reserve_refuses_a_successor_when_the_released_owner_does_not_bind_the_receipts(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    field: str,
+) -> None:
+    path, raw = _current_success_cycle(harness, monkeypatch)
+    stored = cutover._read_control_owner(harness.fixture.config)
+    assert stored is not None
+    value, identity = stored
+    assert value["phase"] == "RELEASED"
+    if field in {"reservation_id", "operation_id"}:
+        replacement = str(uuid4()) if field == "reservation_id" else "f" * 32
+        changed = {
+            **value,
+            field: replacement,
+            "authorization": {**protected.record(value["authorization"]), field: replacement},
+        }
+    else:
+        changed = {
+            **value,
+            "release_evidence": {**protected.record(value["release_evidence"]), field: "f" * 64},
+        }
+    cutover._save_control_owner(harness.fixture.config, changed, expected=identity)
+    owner_path = cutover._control_owner_path(harness.fixture.config)
+    owner_before = owner_path.read_bytes()
+    monkeypatch.setattr(protected, "build_reservation_config", _fixed_reservation_config(harness))
+    capsys.readouterr()
+    assert protected.main(list(harness.request.owner_argv()[2:])) == claims.UNVERIFIABLE
+    refused = _last_json_line(capsys)
+    assert "released owner evidence does not bind" in str(refused["error"])
+    # No reservation replaced the prior owner, and nothing was archived or spawned.
+    assert owner_path.read_bytes() == owner_before
+    assert path.read_bytes() == raw
+    assert not list(path.parent.glob("*.superseded.json"))
+    assert harness.launches == 1
+
+
+# The plist identity binds inode/mtime/ctime, so restoring bytes cannot restore an
+# authorized identity: those two stay refused and need a fresh plan, not a resume.
+_UNRECOVERABLE_DRIFT = {"plist_drift", "plist_metadata_drift"}
+_LAUNCH_REFUSALS = {
+    "plist_drift": "completed receipt",
+    "plist_metadata_drift": "plist identity differs",
+    "loaded_runtime_drift": "completed receipt",
+    "enabled_drift": "completed receipt",
+    "active_claim": "execution identity mismatch",
+    "rollback_receipt": "execution identity mismatch",
+    "archive_conflict": "conflicting bytes",
+}
+
+
+@pytest.mark.parametrize("defect", list(_LAUNCH_REFUSALS))
+def test_current_success_fresh_revalidation_refuses_then_the_same_authorization_resumes(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    defect: str,
+) -> None:
+    path, raw = _current_success_cycle(harness, monkeypatch)
+    prior = protected.record(json.loads(raw))
+    argv, authorization = _reserve_and_authorize(harness, monkeypatch, capsys)
+    archive = _archive_path(path, raw)
+    managed_path = harness.fixture.receipt_path
+    receipt_before, managed_before = path.read_bytes(), managed_path.read_bytes()
+    plist_before = harness.fixture.plist_path.read_bytes()
+    loaded_before = harness.launchd.loaded_source
+    store = claims.ClaimStore(harness.request.claim_root)
+    claim_record = cast(claims.Metadata, prior["claim_owner"])
+    rollback_path = harness.fixture.scheduler_root / protected.ROLLBACK_RECEIPT_NAME
+    if defect == "plist_drift":
+        harness.fixture.plist_path.write_bytes(plist_before + b"\n")
+    elif defect == "plist_metadata_drift":
+        # Identical bytes, new mtime/ctime: the child would refuse this after the
+        # archive unless the pre-archive revalidation refuses it first.
+        harness.fixture.plist_path.write_bytes(plist_before)
+    elif defect == "loaded_runtime_drift":
+        harness.launchd.loaded_source = harness.fixture.worktree_parent / (
+            f"B649_PRODUCTION_{OLD_HEAD}"
+        )
+    elif defect == "enabled_drift":
+        harness.launchd.enabled = False
+    elif defect == "active_claim":
+        store._write(claim_record)
+    elif defect == "rollback_receipt":
+        rollback_path.write_bytes(b"{}\n")
+        rollback_path.chmod(0o600)
+    else:
+        archive.write_bytes(b"conflicting archive\n")
+        archive.chmod(0o600)
+    mutations = len(harness.launchd.mutation_calls)
+
+    assert protected.main(argv) == claims.UNVERIFIABLE
+    refused = _last_json_line(capsys)
+    assert _LAUNCH_REFUSALS[defect] in str(refused["error"])
+    assert harness.launches == 1
+    assert len(harness.launchd.mutation_calls) == mutations
+    assert path.read_bytes() == receipt_before
+    assert managed_path.read_bytes() == managed_before
+    owner = cutover.inspect_control_owner(harness.fixture.config)
+    assert owner is not None and owner["phase"] == "AUTHORIZED_PENDING"
+    assert owner["mutation_started"] is False
+    if defect == "archive_conflict":
+        assert archive.read_bytes() == b"conflicting archive\n"
+    else:
+        assert not list(path.parent.glob("*.superseded.json"))
+
+    if defect in _UNRECOVERABLE_DRIFT:
+        return
+    # Remove exactly the one defect: the same authorization is still resumable.
+    if defect == "loaded_runtime_drift":
+        harness.launchd.loaded_source = loaded_before
+    elif defect == "enabled_drift":
+        harness.launchd.enabled = True
+    elif defect == "active_claim":
+        store._release(claim_record)
+    elif defect == "rollback_receipt":
+        rollback_path.unlink()
+    else:
+        archive.unlink()
+    assert protected.main(argv) == 0
+    result = _last_json_line(capsys)
+    assert result["status"] == "SUCCESS"
+    assert harness.launches == 2
+    assert archive.read_bytes() == raw
+    assert protected.record(result["identity"])["operation_id"] == authorization["operation_id"]
+
+
+@pytest.mark.parametrize(
+    "defect",
+    [
+        None,
+        "status",
+        "result_status",
+        "exit_code",
+        "child_exit_code",
+        "action",
+        "seal",
+        "schema",
+        "task_key",
+        "receipt_path",
+    ],
+)
+def test_current_success_prior_receipt_gate_requires_sealed_apply_success(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    defect: str | None,
+) -> None:
+    path, raw = _current_success_cycle(harness, monkeypatch)
+    _reserve_and_authorize(harness, monkeypatch, capsys)
+    prior = protected.record(json.loads(raw))
+    if defect == "status":
+        prior["status"] = "FAILED"
+    elif defect == "result_status":
+        prior["result_status"] = "FAILED"
+    elif defect in {"exit_code", "child_exit_code"}:
+        prior[defect] = 1
+    elif defect == "schema":
+        prior["schema_version"] = "unknown"
+    elif defect in {"action", "task_key", "receipt_path"}:
+        field, value = {
+            "action": ("action", "rollback"),
+            "task_key": ("task_key", "unrelated-task"),
+            "receipt_path": ("execution_receipt_path", str(path.with_name("other.json"))),
+        }[defect]
+        identity = {**protected.record(prior["identity"]), field: value}
+        prior["identity"] = identity
+        prior["execution_id"] = protected.digest(identity)
+    unsigned = {key: item for key, item in prior.items() if key != "receipt_sha256"}
+    prior["receipt_sha256"] = "f" * 64 if defect == "seal" else protected.digest(unsigned)
+    eligible = protected.supersede_prior_execution_receipt(
+        harness.request, protected.ReceiptFile(path), prior
+    )
+    archive = _archive_path(path, raw)
+    # The untampered control proves every other gate admits this exact state.
+    assert eligible is (defect is None)
+    if defect is None:
+        assert archive.read_bytes() == raw
+        assert not path.exists()
+    else:
+        assert path.read_bytes() == raw
+        assert not list(path.parent.glob("*.superseded.json"))
+    assert harness.launches == 1
+
+
+def test_current_success_supersession_requires_the_exact_authorized_owner(
+    harness: Harness, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    path, raw = _current_success_cycle(harness, monkeypatch)
+    capsys.readouterr()
+    _, authorization = _drive_reserve_authorize(harness, monkeypatch, capsys)
+    prior = protected.record(json.loads(raw))
+    request = harness.request
+    assert isinstance(request, protected.Request)
+
+    def attempt(candidate: protected.Request) -> bool:
+        return protected.supersede_prior_execution_receipt(
+            candidate, protected.ReceiptFile(path), prior
+        )
+
+    # Reserved but not yet authorized.
+    assert attempt(request) is False
+    assert protected.main(_authorize_argv(authorization)) == 0
+    capsys.readouterr()
+    # Authorized, but the presented request is a different operation.
+    assert attempt(replace(request, operation_id="f" * 32)) is False
+    assert path.read_bytes() == raw
+    assert not list(path.parent.glob("*.superseded.json"))
+    # The exact authorized request is the only one admitted.
+    assert attempt(request) is True
+    assert _archive_path(path, raw).read_bytes() == raw
+    assert not path.exists()
+    assert harness.launches == 1
+
+
+@pytest.mark.parametrize("variant", ["missing", "other_receipt", "other_predecessor"])
+def test_current_success_supersession_requires_the_saved_predecessor_proof(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    variant: str,
+) -> None:
+    path, raw = _current_success_cycle(harness, monkeypatch)
+    _reserve_and_authorize(harness, monkeypatch, capsys)
+    prior = protected.record(json.loads(raw))
+    request = harness.request
+    assert isinstance(request, protected.Request)
+    stored = cutover._read_control_owner(harness.fixture.config)
+    assert stored is not None
+    original, identity = stored
+    evidence = protected.record(original["predecessor_release_evidence"])
+    if variant == "missing":
+        damaged = {
+            key: item for key, item in original.items() if key != "predecessor_release_evidence"
+        }
+    elif variant == "other_receipt":
+        other = {
+            **protected.record(evidence["prior_release_evidence"]),
+            "protected_receipt_sha256": "e" * 64,
+        }
+        damaged = {
+            **original,
+            "predecessor_release_evidence": _resealed(
+                {
+                    **evidence,
+                    "prior_protected_receipt_sha256": "e" * 64,
+                    "prior_release_evidence": other,
+                }
+            ),
+        }
+    else:
+        damaged = {
+            **original,
+            "predecessor_release_evidence": _resealed(
+                {**evidence, "prior_reservation_id": str(uuid4())}
+            ),
+        }
+    cutover._save_control_owner(harness.fixture.config, damaged, expected=identity)
+
+    def attempt() -> bool:
+        return protected.supersede_prior_execution_receipt(
+            request, protected.ReceiptFile(path), prior
+        )
+
+    # The owner is otherwise exactly the authorized one, so only the proof differs.
+    assert attempt() is False
+    assert path.read_bytes() == raw
+    assert not list(path.parent.glob("*.superseded.json"))
+    damaged_stored = cutover._read_control_owner(harness.fixture.config)
+    assert damaged_stored is not None
+    cutover._save_control_owner(harness.fixture.config, original, expected=damaged_stored[1])
+    assert attempt() is True
+    assert _archive_path(path, raw).read_bytes() == raw
+    assert harness.launches == 1
+
+
+def test_current_success_resume_after_archive_interruption_keeps_frozen_prior_sha(
+    harness: Harness, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    path, raw = _current_success_cycle(harness, monkeypatch)
+    raw_sha = hashlib.sha256(raw).hexdigest()
+    argv, authorization = _reserve_and_authorize(harness, monkeypatch, capsys)
+    archive_to = protected.ReceiptFile.archive_to
+
+    def interrupted(self: protected.ReceiptFile, name: str, *, expected_sha256: str) -> None:
+        archive_to(self, name, expected_sha256=expected_sha256)
+        raise OSError("process interrupted after durable archive")
+
+    with monkeypatch.context() as fault:
+        fault.setattr(protected.ReceiptFile, "archive_to", interrupted)
+        assert protected.main(argv) == claims.UNVERIFIABLE
+    capsys.readouterr()
+    archive = _archive_path(path, raw)
+    assert not path.exists()
+    assert archive.read_bytes() == raw
+    owner = cutover.inspect_control_owner(harness.fixture.config)
+    assert owner is not None and owner["phase"] == "AUTHORIZED_PENDING"
+    assert owner["mutation_started"] is False
+    assert harness.launches == 1
+    # A fresh CLI invocation rebinds the same operation from the archived prior SHA.
+    assert protected.main(argv) == 0
+    result = _last_json_line(capsys)
+    assert result["status"] == "SUCCESS"
+    assert protected.record(result["identity"])["operation_id"] == authorization["operation_id"]
+    assert protected.record(result["identity"])["prior_execution_receipt_sha256"] == raw_sha
+    assert result["superseded_execution_receipt"] == {
+        "path": str(archive),
+        "sha256": raw_sha,
+        "execution_id": json.loads(raw)["execution_id"],
+    }
+    assert harness.launches == 2
+    assert archive.read_bytes() == raw
+
+
+def _interrupt_after_archive_link(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> tuple[Path, bytes, Path, list[str]]:
+    """Authorize, then die between the archive hard link and the source unlink."""
+    path, raw = _current_success_cycle(harness, monkeypatch)
+    argv, _ = _reserve_and_authorize(harness, monkeypatch, capsys)
+    archive = _archive_path(path, raw)
+    real_unlink = os.unlink
+
+    def unlink(target: str, *, dir_fd: int | None = None) -> None:
+        if target == path.name:
+            raise OSError("process interrupted after the archive link")
+        real_unlink(target, dir_fd=dir_fd)
+
+    with monkeypatch.context() as fault:
+        fault.setattr(os, "unlink", unlink)
+        assert protected.main(argv) == claims.UNVERIFIABLE
+    capsys.readouterr()
+    return path, raw, archive, argv
+
+
+def test_current_success_link_created_before_unlink_is_completed_by_the_next_resume(
+    harness: Harness, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    path, raw, archive, argv = _interrupt_after_archive_link(harness, monkeypatch, capsys)
+    # Both names are one inode holding the exact prior bytes; nothing was launched.
+    assert path.stat().st_ino == archive.stat().st_ino and path.stat().st_nlink == 2
+    assert path.read_bytes() == raw == archive.read_bytes()
+    assert protected.ReceiptFile(path).read() is not None
+    owner = cutover.inspect_control_owner(harness.fixture.config)
+    assert owner is not None and owner["phase"] == "AUTHORIZED_PENDING"
+    assert owner["mutation_started"] is False
+    assert harness.launches == 1
+
+    assert protected.main(argv) == 0
+    result = _last_json_line(capsys)
+    assert result["status"] == "SUCCESS"
+    assert harness.launches == 2
+    assert archive.read_bytes() == raw and archive.stat().st_nlink == 1
+    assert path.read_bytes() != raw
+    assert result["superseded_execution_receipt"] == {
+        "path": str(archive),
+        "sha256": hashlib.sha256(raw).hexdigest(),
+        "execution_id": json.loads(raw)["execution_id"],
+    }
+
+
+@pytest.mark.parametrize("damage", ["foreign_link", "extra_link", "diverged_archive"])
+def test_current_success_ambiguous_archive_link_fails_closed_preserving_all_evidence(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    damage: str,
+) -> None:
+    path, raw, archive, argv = _interrupt_after_archive_link(harness, monkeypatch, capsys)
+    stray = path.with_name("stray-link.json")
+    if damage == "foreign_link":
+        # The second name is not the identity-qualified archive.
+        archive.unlink()
+        os.link(path, stray)
+    elif damage == "extra_link":
+        os.link(path, stray)
+    else:
+        archive.unlink()
+        archive.write_bytes(raw + b"\n")
+        archive.chmod(0o600)
+    before = {p: p.read_bytes() for p in (path, archive, stray) if p.exists()}
+    if damage != "diverged_archive":
+        # An inexact hard-link pair is unreadable, not merely unarchivable.
+        with pytest.raises(protected.ProtectedError):
+            protected.ReceiptFile(path).read()
+    assert protected.main(argv) == claims.UNVERIFIABLE
+    capsys.readouterr()
+    assert harness.launches == 1
+    assert {p: p.read_bytes() for p in (path, archive, stray) if p.exists()} == before
+    owner = cutover.inspect_control_owner(harness.fixture.config)
+    assert owner is not None and owner["phase"] == "AUTHORIZED_PENDING"
+    assert owner["mutation_started"] is False
+    assert path.exists()
+
+
+def test_current_success_competing_resume_in_the_archive_window_launches_one_child(
+    harness: Harness, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    path, raw = _current_success_cycle(harness, monkeypatch)
+    argv, authorization = _reserve_and_authorize(harness, monkeypatch, capsys)
+    archive_to = protected.ReceiptFile.archive_to
+    competing: list[int] = []
+
+    def archive_then_compete(
+        self: protected.ReceiptFile, name: str, *, expected_sha256: str
+    ) -> None:
+        archive_to(self, name, expected_sha256=expected_sha256)
+        # A second resume runs to completion while the first is between the durable
+        # archive and its own decision to spawn.
+        with monkeypatch.context() as inner:
+            inner.setattr(protected.ReceiptFile, "archive_to", archive_to)
+            competing.append(protected.main(argv))
+
+    with monkeypatch.context() as fault:
+        fault.setattr(protected.ReceiptFile, "archive_to", archive_then_compete)
+        assert protected.main(argv) == 0
+    assert competing == [0]
+    first = _last_json_line(capsys)
+    # Exactly one new managed child ran, and the woken resume reuses its result.
+    assert harness.launches == 2
+    assert first["reused"] is True
+    assert protected.record(first["identity"])["operation_id"] == authorization["operation_id"]
+    assert _archive_path(path, raw).read_bytes() == raw
+    assert len(list(path.parent.glob("*.superseded.json"))) == 1
+    owner = cutover.inspect_control_owner(harness.fixture.config)
+    assert owner is not None and owner["phase"] == "RELEASED"
+    assert protected.main(argv) == 0
+    assert harness.launches == 2
+
+
+def test_current_success_release_proof_survives_a_fresh_process_resume(
+    harness: Harness, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    path, raw = _current_success_cycle(harness, monkeypatch)
+    argv, authorization = _reserve_and_authorize(harness, monkeypatch, capsys)
+    identities = dict(harness.launchd.worktree_identities)
+    legacy = (NEW_HEAD, NEW_TREE)
+    plan_path = _apply_plan_file(harness)
+    assert path.read_bytes() == raw
+    # This interpreter has no in-memory request, owner or proof: only disk and argv.
+    resumed = _invoke_fresh_cli(
+        harness.fixture, plan_path, argv, identities=identities, legacy=legacy
+    )
+    assert resumed["code"] == 0, resumed["output"]
+    assert resumed["launches"] == 1
+    result = protected.record(json.loads(str(resumed["output"]).splitlines()[-1]))
+    archive = _archive_path(path, raw)
+    assert result["status"] == "SUCCESS"
+    assert protected.record(result["identity"])["operation_id"] == authorization["operation_id"]
+    assert archive.read_bytes() == raw
+    assert protected.record(resumed["owner"])["phase"] == "RELEASED"
+    replay = _invoke_fresh_cli(
+        harness.fixture, plan_path, argv, identities=identities, legacy=legacy
+    )
+    assert replay["code"] == 0 and replay["launches"] == replay["mutations"] == 0
+    assert archive.read_bytes() == raw
+
+
+def test_current_success_concurrent_fresh_processes_launch_at_most_one_child(
+    harness: Harness, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    path, raw = _current_success_cycle(harness, monkeypatch)
+    argv, authorization = _reserve_and_authorize(harness, monkeypatch, capsys)
+    identities = dict(harness.launchd.worktree_identities)
+    legacy = (NEW_HEAD, NEW_TREE)
+    results = _invoke_fresh_cli_concurrently(
+        harness.fixture,
+        _apply_plan_file(harness),
+        argv,
+        count=3,
+        identities=identities,
+        legacy=legacy,
+    )
+    # Whatever the interleaving, at most one competing process spawned a child.
+    assert sum(cast(int, result["launches"]) for result in results) == 1
+    archive = _archive_path(path, raw)
+    assert archive.read_bytes() == raw and archive.stat().st_nlink == 1
+    assert list(path.parent.glob("*.superseded.json")) == [archive]
+    receipt = protected.record(json.loads(path.read_bytes()))
+    assert receipt["status"] == "SUCCESS"
+    assert protected.record(receipt["identity"])["operation_id"] == authorization["operation_id"]
+    owner = cutover.inspect_control_owner(harness.fixture.config)
+    assert owner is not None and owner["phase"] == "RELEASED"
+    replay = _invoke_fresh_cli(
+        harness.fixture, _apply_plan_file(harness), argv, identities=identities, legacy=legacy
+    )
+    assert replay["code"] == 0 and replay["launches"] == 0
+
+
+_OWNER_LEGACY_KEYS = {
+    "schema",
+    "reservation_id",
+    "owner_kind",
+    "owner_pid",
+    "action",
+    "target",
+    "control_head",
+    "control_tree",
+    "operation_id",
+    "managed_receipt_sha256",
+    "phase",
+    "created_at",
+    "updated_at",
+    "authorization",
+    "mutation_started",
+    "terminal",
+    "release_evidence",
+    "record_sha256",
+}
+
+
+def test_owner_records_without_predecessor_proof_keep_the_legacy_key_set(
+    harness: Harness,
+) -> None:
+    assert harness.launch()["status"] == "SUCCESS"
+    stored = json.loads(cutover._control_owner_path(harness.fixture.config).read_bytes())
+    assert stored["phase"] == "RELEASED"
+    assert set(stored) == _OWNER_LEGACY_KEYS
+    # A record in the exact pre-change shape is still readable and retains its seal.
+    owner = cutover.inspect_control_owner(harness.fixture.config)
+    assert owner is not None and owner["record_sha256"] == stored["record_sha256"]
+
+
+def _successor_reservation(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> tuple[protected.Record, cutover.FileIdentity]:
+    _current_success_cycle(harness, monkeypatch)
+    capsys.readouterr()
+    _drive_reserve_authorize(harness, monkeypatch, capsys)
+    stored = cutover._read_control_owner(harness.fixture.config)
+    assert stored is not None
+    assert "predecessor_release_evidence" in stored[0]
+    return stored
+
+
+def _resealed(evidence: protected.Record) -> protected.Record:
+    unsigned = {key: item for key, item in evidence.items() if key != "evidence_sha256"}
+    return {**unsigned, "evidence_sha256": cutover._sha256_json(unsigned)}
+
+
+@pytest.mark.parametrize(
+    "tamper",
+    [
+        "stale_seal",
+        "schema",
+        "extra_key",
+        "new_reservation",
+        "new_operation",
+        "managed_receipt",
+        "prior_unverified",
+        "hash_shape",
+    ],
+)
+def test_successor_owner_with_tampered_predecessor_proof_is_refused_on_read(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    tamper: str,
+) -> None:
+    value, identity = _successor_reservation(harness, monkeypatch, capsys)
+    evidence = dict(protected.record(value["predecessor_release_evidence"]))
+    if tamper == "stale_seal":
+        evidence["prior_operation_id"] = "changed"
+    elif tamper == "schema":
+        evidence = _resealed({**evidence, "schema": "b649-unknown-v1"})
+    elif tamper == "extra_key":
+        evidence = _resealed({**evidence, "unexpected": True})
+    elif tamper == "new_reservation":
+        evidence = _resealed({**evidence, "new_reservation_id": str(uuid4())})
+    elif tamper == "new_operation":
+        evidence = _resealed({**evidence, "new_operation_id": "f" * 32})
+    elif tamper == "managed_receipt":
+        evidence = _resealed({**evidence, "prior_managed_receipt_sha256": "f" * 64})
+    elif tamper == "prior_unverified":
+        prior_release = {**protected.record(evidence["prior_release_evidence"]), "verified": False}
+        evidence = _resealed({**evidence, "prior_release_evidence": prior_release})
+    else:
+        evidence = _resealed({**evidence, "prior_authorization_sha256": "not-a-digest"})
+    cutover._save_control_owner(
+        harness.fixture.config,
+        {**value, "predecessor_release_evidence": evidence},
+        expected=identity,
+    )
+    with pytest.raises(cutover.CutoverSafetyError, match="predecessor release"):
+        cutover.inspect_control_owner(harness.fixture.config)
+
+
+@pytest.mark.parametrize("carrier", ["managed_owner", "rollback_owner"])
+def test_only_a_protected_apply_owner_may_carry_predecessor_proof(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    carrier: str,
+) -> None:
+    value, identity = _successor_reservation(harness, monkeypatch, capsys)
+    changed = (
+        {**value, "owner_kind": "managed"}
+        if carrier == "managed_owner"
+        else {**value, "action": "rollback"}
+    )
+    cutover._save_control_owner(harness.fixture.config, changed, expected=identity)
+    with pytest.raises(cutover.CutoverSafetyError):
+        cutover.inspect_control_owner(harness.fixture.config)
+
+
+@pytest.mark.parametrize(
+    "defect",
+    [None, "different_predecessor", "managed_owner", "different_reservation"],
+)
+def test_successor_reservation_accepts_proof_only_for_its_own_released_predecessor(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    defect: str | None,
+) -> None:
+    _current_success_cycle(harness, monkeypatch)
+    config = harness.fixture.config
+    released = cutover.inspect_control_owner(config)
+    assert released is not None and released["phase"] == "RELEASED"
+    reservation_id = str(uuid4())
+    request = protected.make_request(
+        config,
+        harness.fixture.old,
+        NEW_HEAD,
+        NEW_TREE,
+        _apply_plan_file(harness),
+        harness.request.claim_root,
+        reservation_id=reservation_id,
+        owner_id_argument=False,
+    )
+    evidence = protected._require_released_success_evidence(request, released)
+    assert evidence is not None
+    owner_kind = "protected"
+    if defect == "different_predecessor":
+        evidence = _resealed({**evidence, "prior_reservation_id": str(uuid4())})
+    elif defect == "managed_owner":
+        owner_kind = "managed"
+    elif defect == "different_reservation":
+        reservation_id = str(uuid4())
+    owner_path = cutover._control_owner_path(config)
+    before = owner_path.read_bytes()
+
+    def reserve() -> protected.Record:
+        return cutover.acquire_control_owner(
+            config,
+            action="apply",
+            target=protected.request_owner_target(request),
+            owner_kind=owner_kind,
+            reservation_id=reservation_id,
+            version={
+                "head": request.identity["control_head"],
+                "tree": request.identity["control_tree"],
+            },
+            operation_id=request.operation_id,
+            managed_receipt_sha256=request.managed_receipt_sha256,
+            predecessor_release_evidence=evidence,
+        )
+
+    if defect is None:
+        reserved = reserve()
+        assert reserved["predecessor_release_evidence"] == evidence
+        assert reserved["phase"] == "AUTHORIZATION_PENDING"
+        return
+    with pytest.raises(cutover.CutoverSafetyError, match="predecessor"):
+        reserve()
+    # The RELEASED predecessor is untouched, so its proof can still be frozen later.
+    assert owner_path.read_bytes() == before

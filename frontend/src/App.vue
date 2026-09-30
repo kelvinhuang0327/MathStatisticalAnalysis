@@ -7,6 +7,7 @@ import BestReplayPage from './features/best-replay/BestReplayPage.vue'
 import ReplayOverviewPage from './features/replay-overview/ReplayOverviewPage.vue'
 import StrategyIntelligencePage from './features/strategy-intelligence/StrategyIntelligencePage.vue'
 import B649ReplayPage from './features/b649-replay/B649ReplayPage.vue'
+import B649CurrentForecastPage from './features/b649-current-forecast/B649CurrentForecastPage.vue'
 import P638ReplayPage from './features/p638-replay/P638ReplayPage.vue'
 import T539ReplayPage from './features/t539-replay/T539ReplayPage.vue'
 import FutureModulesPage from './features/future-modules/FutureModulesPage.vue'
@@ -38,6 +39,7 @@ type Page =
   | 'strategy-evidence'
   | 'historical-success-windows'
   | 'b649-replay'
+  | 'b649-current-forecast'
   | 'b649-multi-ticket-records'
   | 'b649-owner-ranking'
   | 'p638-replay'
@@ -64,6 +66,7 @@ function pageFromHash(): Page {
   if (route === 'strategy-evidence') return 'strategy-evidence'
   if (route === 'historical-success-windows') return 'historical-success-windows'
   if (route === 'b649-replay') return 'b649-replay'
+  if (route === 'b649-current-forecast') return 'b649-current-forecast'
   if (route === 'b649-multi-ticket-records') return 'b649-multi-ticket-records'
   if (route === 'b649-owner-ranking') return 'b649-owner-ranking'
   if (route === 'p638-replay') return 'p638-replay'
@@ -86,6 +89,7 @@ const activeNavSection = computed(() => {
   if (p === 'best-replay' || p === 'ranking-matrix') return 'best-replay'
   if (p === 'replay-overview' || p === 'all-strategy-replay') return 'replay-overview'
   if (p === 'strategy-intelligence' || p === 'strategies' || p === 'strategy-evidence' || p === 'historical-success-windows') return 'strategy-intelligence'
+  if (p === 'b649-current-forecast') return 'b649-current-forecast'
   if (p === 'b649-replay' || p === 'b649-multi-ticket-records' || p === 'b649-owner-ranking') return 'b649-replay'
   if (p === 'p638-replay' || p === 'p638-historical-replay' || p === 'p638-strategy-analysis') return 'p638-replay'
   if (p === 't539-replay' || p === 't539-strategy-analysis') return 't539-replay'
@@ -156,6 +160,12 @@ onBeforeUnmount(() => window.removeEventListener('hashchange', synchronizePage))
           B649 Replay
         </a>
         <a
+          href="#/b649-current-forecast"
+          :aria-current="activeNavSection === 'b649-current-forecast' ? 'page' : undefined"
+        >
+          B649 Current Forecast
+        </a>
+        <a
           href="#/p638-replay"
           :aria-current="activeNavSection === 'p638-replay' ? 'page' : undefined"
         >
@@ -185,6 +195,7 @@ onBeforeUnmount(() => window.removeEventListener('hashchange', synchronizePage))
       <ReplayOverviewPage v-else-if="currentPage === 'replay-overview' || currentPage === 'all-strategy-replay'" />
       <StrategyIntelligencePage v-else-if="currentPage === 'strategy-intelligence'" />
       <B649ReplayPage v-else-if="currentPage === 'b649-replay'" />
+      <B649CurrentForecastPage v-else-if="currentPage === 'b649-current-forecast'" />
       <P638ReplayPage v-else-if="currentPage === 'p638-replay'" />
       <T539ReplayPage v-else-if="currentPage === 't539-replay'" />
       <FutureModulesPage v-else-if="currentPage === 'future-modules'" />
@@ -215,6 +226,9 @@ onBeforeUnmount(() => window.removeEventListener('hashchange', synchronizePage))
         </template>
         <template v-else-if="activeNavSection === 'b649-replay'">
           B649 historical records and rankings are descriptive research evidence only.
+        </template>
+        <template v-else-if="activeNavSection === 'b649-current-forecast'">
+          Current B649 ticket sets are read from the scheduler authority and do not establish predictive out-of-sample lift.
         </template>
         <template v-else-if="activeNavSection === 'p638-replay'">
           P638 replay is read-only historical evidence; no ticket generation or predictive edge is claimed.

@@ -43,6 +43,7 @@ TASK_ID = "B649_MANAGED_PRODUCTION_CUTOVER_ENTRYPOINT_R1"
 PLAN_SCHEMA_VERSION = "b649-managed-production-cutover-plan-v1"
 RECEIPT_SCHEMA_VERSION = "b649-managed-production-cutover-receipt-v1"
 CONTROL_OWNER_SCHEMA = "b649-durable-control-owner-v1"
+PROTECTED_PREDECESSOR_RELEASE_SCHEMA = "b649-protected-predecessor-release-v1"
 CONTROL_OWNER_NAME = "b649-control-owner-reservation.json"
 COMMAND_TIMEOUT = 10
 MAX_OUTPUT_BYTES = 2 * 1024 * 1024
@@ -1236,6 +1237,49 @@ def _seal_control_owner(value: Record) -> Record:
     return {**unsigned, "record_sha256": _sha256_json(unsigned)}
 
 
+def _validate_predecessor_release_evidence(value: object, owner: Record) -> Record:
+    evidence = _record(value, "protected predecessor release evidence")
+    unsigned = {key: item for key, item in evidence.items() if key != "evidence_sha256"}
+    required = {
+        "schema",
+        "prior_reservation_id",
+        "prior_operation_id",
+        "prior_authorization_sha256",
+        "prior_release_evidence",
+        "prior_protected_receipt_sha256",
+        "prior_managed_receipt_sha256",
+        "new_reservation_id",
+        "new_operation_id",
+        "evidence_sha256",
+    }
+    prior_release = _record(evidence.get("prior_release_evidence"), "prior release evidence")
+    if (
+        set(evidence) != required
+        or evidence.get("schema") != PROTECTED_PREDECESSOR_RELEASE_SCHEMA
+        or evidence.get("evidence_sha256") != _sha256_json(unsigned)
+        or evidence.get("new_reservation_id") != owner.get("reservation_id")
+        or evidence.get("new_operation_id") != owner.get("operation_id")
+        or evidence.get("prior_managed_receipt_sha256") != owner.get("managed_receipt_sha256")
+        or prior_release.get("verified") is not True
+        or prior_release.get("protected_receipt_sha256")
+        != evidence.get("prior_protected_receipt_sha256")
+        or prior_release.get("managed_receipt_sha256")
+        != evidence.get("prior_managed_receipt_sha256")
+    ):
+        raise CutoverSafetyError("protected predecessor release evidence is invalid")
+    for key in (
+        "prior_authorization_sha256",
+        "prior_protected_receipt_sha256",
+        "prior_managed_receipt_sha256",
+    ):
+        if re.fullmatch(r"[0-9a-f]{64}", str(evidence.get(key))) is None:
+            raise CutoverSafetyError("protected predecessor release hash is invalid")
+    _text(evidence.get("prior_reservation_id"), "prior reservation id")
+    _text(evidence.get("prior_operation_id"), "prior operation id")
+    _text(evidence.get("new_operation_id"), "new operation id")
+    return evidence
+
+
 def _read_control_owner(config: CutoverConfig) -> tuple[Record, FileIdentity] | None:
     path = _control_owner_path(config)
     if not os.path.lexists(path):
@@ -1261,7 +1305,15 @@ def _read_control_owner(config: CutoverConfig) -> tuple[Record, FileIdentity] | 
         "release_evidence",
         "record_sha256",
     }
-    if set(value) != required or value.get("schema") != CONTROL_OWNER_SCHEMA:
+    predecessor_field = {"predecessor_release_evidence"}
+    if (
+        frozenset(value)
+        not in {
+            frozenset(required),
+            frozenset(required | predecessor_field),
+        }
+        or value.get("schema") != CONTROL_OWNER_SCHEMA
+    ):
         raise CutoverSafetyError("durable control owner schema is invalid")
     unsigned = _owner_unsigned(value)
     if value.get("record_sha256") != _sha256_json(unsigned):
@@ -1347,6 +1399,10 @@ def _read_control_owner(config: CutoverConfig) -> tuple[Record, FileIdentity] | 
             raise CutoverSafetyError("durable control owner release evidence is invalid")
     elif evidence is not None:
         raise CutoverSafetyError("unreleased control owner has release evidence")
+    if value.get("predecessor_release_evidence") is not None:
+        if value.get("owner_kind") != "protected" or value.get("action") != "apply":
+            raise CutoverSafetyError("only a protected apply can bind predecessor release proof")
+        _validate_predecessor_release_evidence(value["predecessor_release_evidence"], value)
     if (
         value.get("phase") in {"MUTATION_IN_PROGRESS", "TERMINAL_CAPTURE_PENDING"}
         and not value["mutation_started"]
@@ -1476,6 +1532,9 @@ def acquire_control_owner(
     owner_kind: str = "managed",
     reservation_id: str | None = None,
     version: Record | None = None,
+    operation_id: str | None = None,
+    managed_receipt_sha256: str | None = None,
+    predecessor_release_evidence: Record | None = None,
 ) -> Record:
     """Atomically reserve the shared control boundary before receipt capture."""
     if action not in {"apply", "rollback"} or owner_kind not in {"managed", "protected"}:
@@ -1492,6 +1551,13 @@ def acquire_control_owner(
             raise ValueError
     except ValueError as exc:
         raise CutoverSafetyError("durable control owner id is invalid") from exc
+    if operation_id is not None:
+        operation_id = _text(operation_id, "operation id")
+    if (
+        managed_receipt_sha256 is not None
+        and re.fullmatch(r"[0-9a-f]{64}", managed_receipt_sha256) is None
+    ):
+        raise CutoverSafetyError("managed receipt SHA256 is invalid")
     with CutoverLock(_control_owner_lock_path(config)):
         current = _read_control_owner(config)
         if current is not None:
@@ -1503,6 +1569,28 @@ def acquire_control_owner(
             )
             if value["phase"] == "RELEASED":
                 expected = identity
+                if predecessor_release_evidence is not None:
+                    predecessor = _validate_predecessor_release_evidence(
+                        predecessor_release_evidence,
+                        {
+                            "reservation_id": selected_id,
+                            "operation_id": operation_id,
+                            "managed_receipt_sha256": managed_receipt_sha256,
+                        },
+                    )
+                    if (
+                        owner_kind != "protected"
+                        or action != "apply"
+                        or predecessor.get("prior_reservation_id") != value.get("reservation_id")
+                        or predecessor.get("prior_operation_id") != value.get("operation_id")
+                        or predecessor.get("prior_authorization_sha256")
+                        != _sha256_json(value.get("authorization"))
+                        or predecessor.get("prior_release_evidence")
+                        != value.get("release_evidence")
+                    ):
+                        raise CutoverSafetyError(
+                            "released predecessor changed before successor reservation"
+                        )
             elif (
                 value["reservation_id"] == selected_id
                 and value["action"] == action
@@ -1533,8 +1621,8 @@ def acquire_control_owner(
             "target": normalized_target,
             "control_head": head,
             "control_tree": tree,
-            "operation_id": None,
-            "managed_receipt_sha256": None,
+            "operation_id": operation_id,
+            "managed_receipt_sha256": managed_receipt_sha256,
             "phase": "AUTHORIZATION_PENDING",
             "created_at": _utc_text(_now()),
             "updated_at": _utc_text(_now()),
@@ -1543,6 +1631,11 @@ def acquire_control_owner(
             "terminal": None,
             "release_evidence": None,
         }
+        # Only a successor reservation carries the field, so every other owner
+        # record keeps exactly the pre-existing key set and seal.
+        if predecessor_release_evidence is not None:
+            created["predecessor_release_evidence"] = predecessor_release_evidence
+            _validate_predecessor_release_evidence(predecessor_release_evidence, created)
         return _save_control_owner(config, created, expected=expected)
 
 
@@ -3221,6 +3314,25 @@ def receipt_to_plan(config: CutoverConfig, receipt: Record) -> Record:
     return _receipt_to_plan(config, receipt)
 
 
+def verify_completed_receipt_live(
+    config: CutoverConfig, receipt: Record, *, runner: Runner
+) -> None:
+    """Read-only: raise unless a completed receipt's after-state is the live state.
+
+    Reuse of a completed receipt only needs the plist's content to match. A
+    successor operation additionally starts from the plist's exact file identity
+    (its next plan freezes it as OLD), so a rewritten-but-identical plist must
+    refuse here rather than after the caller has already retired the receipt.
+    """
+
+    _reconcile_completed_receipt(config, receipt, runner=runner)
+    after_plist = _record(_record(receipt.get("after"), "receipt after").get("plist"), "plist")
+    expected = _identity_from_record(after_plist.get("identity"), "receipt after plist identity")
+    current, _ = _file_identity(config.plist_path, missing_ok=False, require_mode=0o600)
+    if current is None or current.to_dict() != expected.to_dict():
+        raise CutoverSafetyError("completed receipt plist identity differs from the live plist")
+
+
 def rollback(
     config: CutoverConfig,
     *,
@@ -3852,4 +3964,5 @@ __all__ = [
     "reconcile_restored",
     "rollback",
     "run_command",
+    "verify_completed_receipt_live",
 ]

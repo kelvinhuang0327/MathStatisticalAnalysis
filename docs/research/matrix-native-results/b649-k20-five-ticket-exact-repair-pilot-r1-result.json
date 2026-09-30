@@ -1,0 +1,6823 @@
+{
+ "BEST_CANONICAL_RECOUNT": 313239661,
+ "BEST_CANONICAL_RECOUNT_STATUS": "PASS",
+ "BEST_COUNT": 313239661,
+ "BEST_DELTA": 0,
+ "BEST_DESTROY_POSITIONS": null,
+ "BEST_NEW_TICKETS": [],
+ "BEST_PORTFOLIO": [
+  [
+   1,
+   2,
+   34,
+   41,
+   42,
+   45
+  ],
+  [
+   1,
+   17,
+   22,
+   30,
+   33,
+   43
+  ],
+  [
+   2,
+   5,
+   33,
+   35,
+   40,
+   48
+  ],
+  [
+   3,
+   4,
+   10,
+   15,
+   26,
+   27
+  ],
+  [
+   3,
+   8,
+   13,
+   28,
+   31,
+   36
+  ],
+  [
+   3,
+   9,
+   16,
+   23,
+   29,
+   39
+  ],
+  [
+   4,
+   7,
+   12,
+   36,
+   39,
+   46
+  ],
+  [
+   4,
+   18,
+   20,
+   24,
+   28,
+   29
+  ],
+  [
+   5,
+   17,
+   25,
+   32,
+   41,
+   47
+  ],
+  [
+   6,
+   7,
+   9,
+   13,
+   18,
+   26
+  ],
+  [
+   6,
+   10,
+   11,
+   16,
+   24,
+   36
+  ],
+  [
+   6,
+   14,
+   20,
+   31,
+   37,
+   39
+  ],
+  [
+   7,
+   8,
+   10,
+   14,
+   19,
+   29
+  ],
+  [
+   8,
+   9,
+   11,
+   15,
+   20,
+   46
+  ],
+  [
+   11,
+   12,
+   18,
+   23,
+   27,
+   49
+  ],
+  [
+   12,
+   13,
+   15,
+   19,
+   24,
+   37
+  ],
+  [
+   16,
+   19,
+   26,
+   28,
+   46,
+   49
+  ],
+  [
+   21,
+   25,
+   30,
+   38,
+   45,
+   48
+  ],
+  [
+   21,
+   32,
+   40,
+   42,
+   43,
+   44
+  ],
+  [
+   22,
+   34,
+   35,
+   38,
+   44,
+   47
+  ]
+ ],
+ "BEST_REPLACED_INDICES": [],
+ "BEST_SHA256": "7ce41ff21d5c0821f1d5dda683e23114086f5024fc6d98d4e574df5306659b1e",
+ "CANDIDATE_POOL_MAX": 48,
+ "COMPLETE_N5_OPTIMUM": "NOT_CLAIMED",
+ "CPU_POLICY": {
+  "PROCESSES": 1,
+  "THREAD_ENV": {
+   "MKL_NUM_THREADS": "1",
+   "NUMEXPR_NUM_THREADS": "1",
+   "OMP_NUM_THREADS": "1",
+   "OPENBLAS_NUM_THREADS": "1",
+   "VECLIB_MAXIMUM_THREADS": "1"
+  }
+ },
+ "DESTROY_QUINTUPLES": [
+  [
+   3,
+   8,
+   12,
+   14,
+   16
+  ],
+  [
+   4,
+   6,
+   8,
+   13,
+   16
+  ],
+  [
+   1,
+   3,
+   5,
+   12,
+   19
+  ],
+  [
+   3,
+   4,
+   5,
+   12,
+   13
+  ],
+  [
+   4,
+   12,
+   16,
+   17,
+   18
+  ],
+  [
+   1,
+   2,
+   11,
+   18,
+   19
+  ],
+  [
+   5,
+   7,
+   9,
+   15,
+   19
+  ],
+  [
+   0,
+   1,
+   4,
+   9,
+   18
+  ]
+ ],
+ "DESTROY_QUINTUPLES_TESTED": 8,
+ "DESTROY_QUINTUPLE_SAMPLE_COUNT": 8,
+ "DESTROY_SIZE": 5,
+ "EXACT_CANDIDATES_SCORED": 34495,
+ "EXACT_CANDIDATES_SCORED_DEFINITION": "pool tickets scored by exact residual marginal (admissible universe plus required tickets) plus complete quintuples evaluated exactly at solver leaves",
+ "FEASIBLE_ONLY_QUINTUPLES": 0,
+ "GAIN_VS_PROTECTED_LANE_3": "NOT_EVALUATED",
+ "HEURISTIC_QUINTUPLES": 0,
+ "LEAF_QUINTUPLES_EVALUATED": 1404,
+ "LEVEL2_BEAM_WIDTH": 3,
+ "NEW_STABLE_NON_LANE3_GAIN": "NO",
+ "NODES_EXPLORED": 1849,
+ "NODES_PRUNED": 9484,
+ "NOT_CLAIMED": [
+  "complete N5 optimum",
+  "optimality beyond the sampled destroy quintuples and their candidate pools",
+  "global K20 optimum",
+  "superiority or equality relative to protected Lane 3"
+ ],
+ "PARITY": {
+  "PARITY_MISMATCHES": 0,
+  "PARITY_SAMPLE_COUNT": 382,
+  "REAL": {
+   "CANONICAL_PORTFOLIO_COUNT": 36,
+   "COMPARISONS": 42,
+   "MISMATCHES": 0,
+   "PARITY_DESTROY_QUINTUPLES": [
+    [
+     0,
+     8,
+     13,
+     18,
+     19
+    ],
+    [
+     3,
+     5,
+     6,
+     15,
+     17
+    ],
+    [
+     3,
+     7,
+     12,
+     16,
+     18
+    ]
+   ],
+   "PORTFOLIOS": [
+    {
+     "CANONICAL_COUNT": 313239661,
+     "DIRECT_SUBSET_COUNT": 313239661,
+     "HISTOGRAM_COUNT": 313239661,
+     "MATCH": true,
+     "POOL_INDICES": [
+      7,
+      17,
+      22,
+      30,
+      36
+     ],
+     "POSITIONS": [
+      0,
+      8,
+      13,
+      18,
+      19
+     ],
+     "SHA256": "7ce41ff21d5c0821f1d5dda683e23114086f5024fc6d98d4e574df5306659b1e"
+    },
+    {
+     "CANONICAL_COUNT": 295837024,
+     "DIRECT_SUBSET_COUNT": 295837024,
+     "HISTOGRAM_COUNT": 295837024,
+     "MATCH": true,
+     "POOL_INDICES": [
+      15,
+      20,
+      23,
+      33,
+      37
+     ],
+     "POSITIONS": [
+      0,
+      8,
+      13,
+      18,
+      19
+     ],
+     "SHA256": "25a285a32f73eed9cab5c5821e612abd493b886b422cd06908d704edf3fef6eb"
+    },
+    {
+     "CANONICAL_COUNT": 293318165,
+     "DIRECT_SUBSET_COUNT": 293318165,
+     "HISTOGRAM_COUNT": 293318165,
+     "MATCH": true,
+     "POOL_INDICES": [
+      7,
+      25,
+      38,
+      40,
+      45
+     ],
+     "POSITIONS": [
+      0,
+      8,
+      13,
+      18,
+      19
+     ],
+     "SHA256": "687345fed666bba8dd8bbef9616b070af3e4971ba5e8d18d85bb16c7a899a708"
+    },
+    {
+     "CANONICAL_COUNT": 281321873,
+     "DIRECT_SUBSET_COUNT": 281321873,
+     "HISTOGRAM_COUNT": 281321873,
+     "MATCH": true,
+     "POOL_INDICES": [
+      4,
+      9,
+      12,
+      43,
+      46
+     ],
+     "POSITIONS": [
+      0,
+      8,
+      13,
+      18,
+      19
+     ],
+     "SHA256": "c0c5a6b69aef84037fa3e902ba7e4adc5f03c128fea59a550fcfafd0d35659da"
+    },
+    {
+     "CANONICAL_COUNT": 286501222,
+     "DIRECT_SUBSET_COUNT": 286501222,
+     "HISTOGRAM_COUNT": 286501222,
+     "MATCH": true,
+     "POOL_INDICES": [
+      2,
+      8,
+      11,
+      24,
+      29
+     ],
+     "POSITIONS": [
+      0,
+      8,
+      13,
+      18,
+      19
+     ],
+     "SHA256": "1438d26609ce4108f2a22ec3cc0477522c6841f3382ebd29972c099e38f50f8d"
+    },
+    {
+     "CANONICAL_COUNT": 297378508,
+     "DIRECT_SUBSET_COUNT": 297378508,
+     "HISTOGRAM_COUNT": 297378508,
+     "MATCH": true,
+     "POOL_INDICES": [
+      12,
+      13,
+      17,
+      21,
+      36
+     ],
+     "POSITIONS": [
+      0,
+      8,
+      13,
+      18,
+      19
+     ],
+     "SHA256": "4d82f9ae989d7f49d691cea469879a867f97c6474c9b842f374c5c90a3eb9061"
+    },
+    {
+     "CANONICAL_COUNT": 289461039,
+     "DIRECT_SUBSET_COUNT": 289461039,
+     "HISTOGRAM_COUNT": 289461039,
+     "MATCH": true,
+     "POOL_INDICES": [
+      1,
+      13,
+      16,
+      20,
+      25
+     ],
+     "POSITIONS": [
+      0,
+      8,
+      13,
+      18,
+      19
+     ],
+     "SHA256": "08364a99ef52ac55d0fdfd4e44348321aba3543ce9d68c916004034b8dbcb455"
+    },
+    {
+     "CANONICAL_COUNT": 285120983,
+     "DIRECT_SUBSET_COUNT": 285120983,
+     "HISTOGRAM_COUNT": 285120983,
+     "MATCH": true,
+     "POOL_INDICES": [
+      14,
+      15,
+      16,
+      35,
+      47
+     ],
+     "POSITIONS": [
+      0,
+      8,
+      13,
+      18,
+      19
+     ],
+     "SHA256": "3d72441adf1ddd7de62d9a64e35e5f164e7f2d5d2b034524bc3f68ce6d982c1d"
+    },
+    {
+     "CANONICAL_COUNT": 286839882,
+     "DIRECT_SUBSET_COUNT": 286839882,
+     "HISTOGRAM_COUNT": 286839882,
+     "MATCH": true,
+     "POOL_INDICES": [
+      11,
+      23,
+      24,
+      28,
+      30
+     ],
+     "POSITIONS": [
+      0,
+      8,
+      13,
+      18,
+      19
+     ],
+     "SHA256": "cc55a3bab482a1d14f773f19b581cf8e9c59f93063c555ac9b33e80f5a63ed2b"
+    },
+    {
+     "CANONICAL_COUNT": 285986701,
+     "DIRECT_SUBSET_COUNT": 285986701,
+     "HISTOGRAM_COUNT": 285986701,
+     "MATCH": true,
+     "POOL_INDICES": [
+      3,
+      28,
+      32,
+      44,
+      46
+     ],
+     "POSITIONS": [
+      0,
+      8,
+      13,
+      18,
+      19
+     ],
+     "SHA256": "8acb8b58eac1cd285710d67fb870fd77e86fbb7f397a7ecb52e786dc0a24e576"
+    },
+    {
+     "CANONICAL_COUNT": 298257386,
+     "DIRECT_SUBSET_COUNT": 298257386,
+     "HISTOGRAM_COUNT": 298257386,
+     "MATCH": true,
+     "POOL_INDICES": [
+      7,
+      24,
+      31,
+      37,
+      41
+     ],
+     "POSITIONS": [
+      0,
+      8,
+      13,
+      18,
+      19
+     ],
+     "SHA256": "a53bc7bf5d0687a738eb18027b420265f9b452e215b213f203b7800c389becd4"
+    },
+    {
+     "CANONICAL_COUNT": 293554366,
+     "DIRECT_SUBSET_COUNT": 293554366,
+     "HISTOGRAM_COUNT": 293554366,
+     "MATCH": true,
+     "POOL_INDICES": [
+      6,
+      11,
+      24,
+      31,
+      43
+     ],
+     "POSITIONS": [
+      0,
+      8,
+      13,
+      18,
+      19
+     ],
+     "SHA256": "385388ed2ca511a7ee8c9d6796f10fd1a4384c96c119909525bc770c67710ff0"
+    },
+    {
+     "CANONICAL_COUNT": 313239661,
+     "DIRECT_SUBSET_COUNT": 313239661,
+     "HISTOGRAM_COUNT": 313239661,
+     "MATCH": true,
+     "POOL_INDICES": [
+      0,
+      14,
+      21,
+      32,
+      45
+     ],
+     "POSITIONS": [
+      3,
+      5,
+      6,
+      15,
+      17
+     ],
+     "SHA256": "7ce41ff21d5c0821f1d5dda683e23114086f5024fc6d98d4e574df5306659b1e"
+    },
+    {
+     "CANONICAL_COUNT": 302390585,
+     "DIRECT_SUBSET_COUNT": 302390585,
+     "HISTOGRAM_COUNT": 302390585,
+     "MATCH": true,
+     "POOL_INDICES": [
+      9,
+      10,
+      23,
+      34,
+      43
+     ],
+     "POSITIONS": [
+      3,
+      5,
+      6,
+      15,
+      17
+     ],
+     "SHA256": "6f33bccb63940c03a614e8a37d880463cacdd2492ea873513bc6ec8245f5a0e6"
+    },
+    {
+     "CANONICAL_COUNT": 296058539,
+     "DIRECT_SUBSET_COUNT": 296058539,
+     "HISTOGRAM_COUNT": 296058539,
+     "MATCH": true,
+     "POOL_INDICES": [
+      5,
+      22,
+      25,
+      41,
+      44
+     ],
+     "POSITIONS": [
+      3,
+      5,
+      6,
+      15,
+      17
+     ],
+     "SHA256": "02c31f17a9667a3e557fd5e13a8abe652ec360748df7a3177ff6c4bf16824f46"
+    },
+    {
+     "CANONICAL_COUNT": 289287656,
+     "DIRECT_SUBSET_COUNT": 289287656,
+     "HISTOGRAM_COUNT": 289287656,
+     "MATCH": true,
+     "POOL_INDICES": [
+      17,
+      20,
+      30,
+      31,
+      38
+     ],
+     "POSITIONS": [
+      3,
+      5,
+      6,
+      15,
+      17
+     ],
+     "SHA256": "0f8e017005342543c4af6c8e7a3f745e0f03640d37c6da245dcc7a6ce810b8f3"
+    },
+    {
+     "CANONICAL_COUNT": 299743738,
+     "DIRECT_SUBSET_COUNT": 299743738,
+     "HISTOGRAM_COUNT": 299743738,
+     "MATCH": true,
+     "POOL_INDICES": [
+      0,
+      17,
+      39,
+      43,
+      47
+     ],
+     "POSITIONS": [
+      3,
+      5,
+      6,
+      15,
+      17
+     ],
+     "SHA256": "c1ef673ca5cbbf3bd4a88a70924f37259ea4189277c41e969357fca9ac61314f"
+    },
+    {
+     "CANONICAL_COUNT": 293206319,
+     "DIRECT_SUBSET_COUNT": 293206319,
+     "HISTOGRAM_COUNT": 293206319,
+     "MATCH": true,
+     "POOL_INDICES": [
+      13,
+      18,
+      24,
+      28,
+      46
+     ],
+     "POSITIONS": [
+      3,
+      5,
+      6,
+      15,
+      17
+     ],
+     "SHA256": "84be65164389b5a7aee3ad4347fda8b2d5c28e3e553fc8128426028ac73a621c"
+    },
+    {
+     "CANONICAL_COUNT": 295733046,
+     "DIRECT_SUBSET_COUNT": 295733046,
+     "HISTOGRAM_COUNT": 295733046,
+     "MATCH": true,
+     "POOL_INDICES": [
+      5,
+      7,
+      32,
+      33,
+      40
+     ],
+     "POSITIONS": [
+      3,
+      5,
+      6,
+      15,
+      17
+     ],
+     "SHA256": "4543c412589a72d921a496289b9fa83e0503dc0727f8bfedaafe6dc1fa1b7c86"
+    },
+    {
+     "CANONICAL_COUNT": 297732057,
+     "DIRECT_SUBSET_COUNT": 297732057,
+     "HISTOGRAM_COUNT": 297732057,
+     "MATCH": true,
+     "POOL_INDICES": [
+      1,
+      7,
+      8,
+      13,
+      41
+     ],
+     "POSITIONS": [
+      3,
+      5,
+      6,
+      15,
+      17
+     ],
+     "SHA256": "92e788445f32ea00a0e7f4bca22af0300c490636ae1c3fed4acb508355bc7570"
+    },
+    {
+     "CANONICAL_COUNT": 297586282,
+     "DIRECT_SUBSET_COUNT": 297586282,
+     "HISTOGRAM_COUNT": 297586282,
+     "MATCH": true,
+     "POOL_INDICES": [
+      3,
+      4,
+      9,
+      21,
+      44
+     ],
+     "POSITIONS": [
+      3,
+      5,
+      6,
+      15,
+      17
+     ],
+     "SHA256": "22b00dc7a131dbde42be0fd4e580e1dfbbe18aa102d65886b6c14b2225df4b8c"
+    },
+    {
+     "CANONICAL_COUNT": 283141915,
+     "DIRECT_SUBSET_COUNT": 283141915,
+     "HISTOGRAM_COUNT": 283141915,
+     "MATCH": true,
+     "POOL_INDICES": [
+      16,
+      20,
+      27,
+      29,
+      39
+     ],
+     "POSITIONS": [
+      3,
+      5,
+      6,
+      15,
+      17
+     ],
+     "SHA256": "8edf01472122125435de7c53978669099de620c89f088823648958f884ad3bbd"
+    },
+    {
+     "CANONICAL_COUNT": 293816026,
+     "DIRECT_SUBSET_COUNT": 293816026,
+     "HISTOGRAM_COUNT": 293816026,
+     "MATCH": true,
+     "POOL_INDICES": [
+      15,
+      30,
+      31,
+      37,
+      44
+     ],
+     "POSITIONS": [
+      3,
+      5,
+      6,
+      15,
+      17
+     ],
+     "SHA256": "6daa629bdebb05ae08be1966448bc6a9ac4c6b9738760d1ff3ff4ac94bb48006"
+    },
+    {
+     "CANONICAL_COUNT": 290357179,
+     "DIRECT_SUBSET_COUNT": 290357179,
+     "HISTOGRAM_COUNT": 290357179,
+     "MATCH": true,
+     "POOL_INDICES": [
+      11,
+      12,
+      24,
+      25,
+      43
+     ],
+     "POSITIONS": [
+      3,
+      5,
+      6,
+      15,
+      17
+     ],
+     "SHA256": "b30d8c84ca604d599926e43331d4bed181ad2b00e2a97b8d73b9a64f4e06294e"
+    },
+    {
+     "CANONICAL_COUNT": 313239661,
+     "DIRECT_SUBSET_COUNT": 313239661,
+     "HISTOGRAM_COUNT": 313239661,
+     "MATCH": true,
+     "POOL_INDICES": [
+      0,
+      30,
+      33,
+      44,
+      45
+     ],
+     "POSITIONS": [
+      3,
+      7,
+      12,
+      16,
+      18
+     ],
+     "SHA256": "7ce41ff21d5c0821f1d5dda683e23114086f5024fc6d98d4e574df5306659b1e"
+    },
+    {
+     "CANONICAL_COUNT": 292214342,
+     "DIRECT_SUBSET_COUNT": 292214342,
+     "HISTOGRAM_COUNT": 292214342,
+     "MATCH": true,
+     "POOL_INDICES": [
+      0,
+      1,
+      9,
+      21,
+      39
+     ],
+     "POSITIONS": [
+      3,
+      7,
+      12,
+      16,
+      18
+     ],
+     "SHA256": "4d5a65fff5426dc05ffee8ccd96129bf9e115c9e3fa985515d6be48a9121fbcd"
+    },
+    {
+     "CANONICAL_COUNT": 289983827,
+     "DIRECT_SUBSET_COUNT": 289983827,
+     "HISTOGRAM_COUNT": 289983827,
+     "MATCH": true,
+     "POOL_INDICES": [
+      6,
+      18,
+      31,
+      33,
+      39
+     ],
+     "POSITIONS": [
+      3,
+      7,
+      12,
+      16,
+      18
+     ],
+     "SHA256": "45956ac5fb150fce9f378a8aa44287e0c39ba8f1d53d02baaed7f96de617e4ef"
+    },
+    {
+     "CANONICAL_COUNT": 293922013,
+     "DIRECT_SUBSET_COUNT": 293922013,
+     "HISTOGRAM_COUNT": 293922013,
+     "MATCH": true,
+     "POOL_INDICES": [
+      1,
+      3,
+      19,
+      24,
+      33
+     ],
+     "POSITIONS": [
+      3,
+      7,
+      12,
+      16,
+      18
+     ],
+     "SHA256": "9337ded4a460f35949a24fc9c199cf364a95e4b8c8034a24d42cca1c0e80ef7f"
+    },
+    {
+     "CANONICAL_COUNT": 294237237,
+     "DIRECT_SUBSET_COUNT": 294237237,
+     "HISTOGRAM_COUNT": 294237237,
+     "MATCH": true,
+     "POOL_INDICES": [
+      7,
+      24,
+      30,
+      40,
+      42
+     ],
+     "POSITIONS": [
+      3,
+      7,
+      12,
+      16,
+      18
+     ],
+     "SHA256": "c23a047bf84c800f98ac36ed3688394b9d64ca11981073347e9c66f69b4ed655"
+    },
+    {
+     "CANONICAL_COUNT": 292414794,
+     "DIRECT_SUBSET_COUNT": 292414794,
+     "HISTOGRAM_COUNT": 292414794,
+     "MATCH": true,
+     "POOL_INDICES": [
+      3,
+      8,
+      32,
+      39,
+      43
+     ],
+     "POSITIONS": [
+      3,
+      7,
+      12,
+      16,
+      18
+     ],
+     "SHA256": "8137688beb92b6c228b035a8d040121d0ba94ca2eaa1b07d8d9b065f60e35397"
+    },
+    {
+     "CANONICAL_COUNT": 289516143,
+     "DIRECT_SUBSET_COUNT": 289516143,
+     "HISTOGRAM_COUNT": 289516143,
+     "MATCH": true,
+     "POOL_INDICES": [
+      9,
+      14,
+      19,
+      31,
+      35
+     ],
+     "POSITIONS": [
+      3,
+      7,
+      12,
+      16,
+      18
+     ],
+     "SHA256": "cb6aec5b406ad83772b0ed1b6078615455bd8186cccfe21addf1436e641b8ed1"
+    },
+    {
+     "CANONICAL_COUNT": 288128267,
+     "DIRECT_SUBSET_COUNT": 288128267,
+     "HISTOGRAM_COUNT": 288128267,
+     "MATCH": true,
+     "POOL_INDICES": [
+      2,
+      11,
+      16,
+      21,
+      41
+     ],
+     "POSITIONS": [
+      3,
+      7,
+      12,
+      16,
+      18
+     ],
+     "SHA256": "211df8d5ecf46e514392199f1fd2853abd2a150f48e733ab182f51cb5d38b018"
+    },
+    {
+     "CANONICAL_COUNT": 300299517,
+     "DIRECT_SUBSET_COUNT": 300299517,
+     "HISTOGRAM_COUNT": 300299517,
+     "MATCH": true,
+     "POOL_INDICES": [
+      2,
+      20,
+      32,
+      44,
+      47
+     ],
+     "POSITIONS": [
+      3,
+      7,
+      12,
+      16,
+      18
+     ],
+     "SHA256": "87c568b1905045bae8948cad42edc0aaafb7234f237dbd8154705fa31df05e70"
+    },
+    {
+     "CANONICAL_COUNT": 290080931,
+     "DIRECT_SUBSET_COUNT": 290080931,
+     "HISTOGRAM_COUNT": 290080931,
+     "MATCH": true,
+     "POOL_INDICES": [
+      2,
+      5,
+      12,
+      23,
+      28
+     ],
+     "POSITIONS": [
+      3,
+      7,
+      12,
+      16,
+      18
+     ],
+     "SHA256": "90e9fe2f931997815455940ac940eb796bebec2a6ec804409161149dc79b1cf8"
+    },
+    {
+     "CANONICAL_COUNT": 294309610,
+     "DIRECT_SUBSET_COUNT": 294309610,
+     "HISTOGRAM_COUNT": 294309610,
+     "MATCH": true,
+     "POOL_INDICES": [
+      18,
+      20,
+      37,
+      43,
+      44
+     ],
+     "POSITIONS": [
+      3,
+      7,
+      12,
+      16,
+      18
+     ],
+     "SHA256": "64cebf8604f9f5fc1118480120c4aebec45dc9a71ed9231b7413cb24dd353510"
+    },
+    {
+     "CANONICAL_COUNT": 291774196,
+     "DIRECT_SUBSET_COUNT": 291774196,
+     "HISTOGRAM_COUNT": 291774196,
+     "MATCH": true,
+     "POOL_INDICES": [
+      8,
+      13,
+      19,
+      29,
+      33
+     ],
+     "POSITIONS": [
+      3,
+      7,
+      12,
+      16,
+      18
+     ],
+     "SHA256": "05819184c8125ae547ca9ac60eed6de1f161c6ff1751997e1341d1cb236fae19"
+    }
+   ],
+   "SMALL_POOL_CASES": [
+    {
+     "BRUTE_FORCE_VALUE": 10232553,
+     "CANONICAL_COUNT_OF_SOLVER_BEST": 313239661,
+     "CASE": "START_INCLUDED",
+     "IMPROVED_OVER_INCUMBENT": false,
+     "MATCH": true,
+     "POOL_SIZE": 12,
+     "POSITIONS": [
+      0,
+      8,
+      13,
+      18,
+      19
+     ],
+     "SOLVER_VALUE": 10232553
+    },
+    {
+     "BRUTE_FORCE_VALUE": 5985435,
+     "CANONICAL_COUNT_OF_SOLVER_BEST": 283509835,
+     "CASE": "ARBITRARY_INCUMBENT",
+     "IMPROVED_OVER_INCUMBENT": true,
+     "MATCH": true,
+     "POOL_SIZE": 12,
+     "POSITIONS": [
+      0,
+      8,
+      13,
+      18,
+      19
+     ],
+     "SOLVER_VALUE": 5985435
+    },
+    {
+     "BRUTE_FORCE_VALUE": 9393202,
+     "CANONICAL_COUNT_OF_SOLVER_BEST": 313239661,
+     "CASE": "START_INCLUDED",
+     "IMPROVED_OVER_INCUMBENT": false,
+     "MATCH": true,
+     "POOL_SIZE": 12,
+     "POSITIONS": [
+      3,
+      5,
+      6,
+      15,
+      17
+     ],
+     "SOLVER_VALUE": 9393202
+    },
+    {
+     "BRUTE_FORCE_VALUE": 5736558,
+     "CANONICAL_COUNT_OF_SOLVER_BEST": 287643153,
+     "CASE": "ARBITRARY_INCUMBENT",
+     "IMPROVED_OVER_INCUMBENT": true,
+     "MATCH": true,
+     "POOL_SIZE": 12,
+     "POSITIONS": [
+      3,
+      5,
+      6,
+      15,
+      17
+     ],
+     "SOLVER_VALUE": 5736558
+    },
+    {
+     "BRUTE_FORCE_VALUE": 9450934,
+     "CANONICAL_COUNT_OF_SOLVER_BEST": 313239661,
+     "CASE": "START_INCLUDED",
+     "IMPROVED_OVER_INCUMBENT": false,
+     "MATCH": true,
+     "POOL_SIZE": 12,
+     "POSITIONS": [
+      3,
+      7,
+      12,
+      16,
+      18
+     ],
+     "SOLVER_VALUE": 9450934
+    },
+    {
+     "BRUTE_FORCE_VALUE": 6761215,
+     "CANONICAL_COUNT_OF_SOLVER_BEST": 294411628,
+     "CASE": "ARBITRARY_INCUMBENT",
+     "IMPROVED_OVER_INCUMBENT": true,
+     "MATCH": true,
+     "POOL_SIZE": 12,
+     "POSITIONS": [
+      3,
+      7,
+      12,
+      16,
+      18
+     ],
+     "SOLVER_VALUE": 6761215
+    }
+   ]
+  },
+  "TOY": {
+   "CHECKS": [
+    "subset identity vs canonical",
+    "residual decomposition vs canonical (random 5-subsets)",
+    "neighbour scan vs direct marginals",
+    "exact solver vs brute force, bound on and off"
+   ],
+   "COMPARISONS": 340,
+   "GEOMETRIES": [
+    [
+     13,
+     6,
+     3
+    ],
+    [
+     14,
+     6,
+     4
+    ],
+    [
+     16,
+     6,
+     4
+    ],
+    [
+     12,
+     5,
+     3
+    ],
+    [
+     10,
+     4,
+     2
+    ]
+   ],
+   "MISMATCHES": 0,
+   "TRIALS_PER_GEOMETRY": 4
+  }
+ },
+ "PARITY_MISMATCHES": 0,
+ "PARITY_SAMPLE_COUNT": 382,
+ "PEAK_MEMORY_BYTES": 610648064,
+ "PEAK_MEMORY_DEFINITION": "ru_maxrss of the single pilot process (one worker, no children)",
+ "PER_QUINTUPLE": [
+  {
+   "BEST_COUNT": 313239661,
+   "BEST_DELTA": 0,
+   "BEST_NEW_TICKETS": [],
+   "BEST_POOL_INDICES": [
+    0,
+    12,
+    20,
+    31,
+    40
+   ],
+   "BEST_PORTFOLIO_SHA256": "7ce41ff21d5c0821f1d5dda683e23114086f5024fc6d98d4e574df5306659b1e",
+   "BEST_REPLACED_POSITIONS": [],
+   "CANDIDATE_UNIVERSE_SIZE": 4007,
+   "CANONICAL_MATCH": true,
+   "CANONICAL_RECOUNT": 313239661,
+   "DEAD_SUBSETS": 28177195,
+   "EXCLUDED_MUTATIONS_EQUAL_TO_FROZEN": 0,
+   "EXCLUDED_MUTATIONS_EQUAL_TO_REQUIRED": 16,
+   "HISTOGRAM_ROWS": 111581,
+   "IMPROVED": false,
+   "LEAF_QUINTUPLES_EVALUATED": 45,
+   "LEVEL1_CANDIDATES": 1289,
+   "LEVEL2_CANDIDATES": 2718,
+   "NODES_EXPLORED": 367,
+   "NODES_PRUNED": 624,
+   "OPTIMALITY_STATUS": "PROVEN_OPTIMAL",
+   "OUTCOMES_WON_BY_FROZEN_R": 246361745,
+   "POOL": [
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 13765934,
+     "SOURCE": "REMOVED",
+     "TICKET": [
+      3,
+      4,
+      10,
+      15,
+      26,
+      27
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 4950715,
+     "SOURCE": "ELITE",
+     "TICKET": [
+      3,
+      9,
+      12,
+      16,
+      29,
+      39
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14897029,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      3,
+      10,
+      14,
+      26,
+      27,
+      49
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14884030,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      3,
+      10,
+      19,
+      26,
+      27,
+      49
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 7893431,
+     "SOURCE": "ELITE",
+     "TICKET": [
+      4,
+      7,
+      36,
+      37,
+      39,
+      44
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 6118469,
+     "SOURCE": "ELITE",
+     "TICKET": [
+      4,
+      7,
+      36,
+      39,
+      46,
+      49
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14899493,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      4,
+      10,
+      14,
+      26,
+      27,
+      49
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14897036,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      4,
+      10,
+      19,
+      26,
+      27,
+      49
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14896980,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      4,
+      10,
+      23,
+      26,
+      27,
+      49
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 15269604,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      5,
+      17,
+      25,
+      27,
+      32,
+      49
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 15269604,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      5,
+      17,
+      25,
+      27,
+      41,
+      49
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 15269604,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      5,
+      17,
+      25,
+      27,
+      47,
+      49
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14487732,
+     "SOURCE": "REMOVED",
+     "TICKET": [
+      5,
+      17,
+      25,
+      32,
+      41,
+      47
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 15269604,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      5,
+      17,
+      27,
+      32,
+      41,
+      49
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 15269604,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      5,
+      17,
+      27,
+      32,
+      47,
+      49
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 15269604,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      5,
+      17,
+      27,
+      41,
+      47,
+      49
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 15269604,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      5,
+      25,
+      27,
+      32,
+      41,
+      49
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 15269604,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      5,
+      25,
+      27,
+      32,
+      47,
+      49
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 15269604,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      5,
+      25,
+      27,
+      41,
+      47,
+      49
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 8215242,
+     "SOURCE": "ELITE",
+     "TICKET": [
+      6,
+      20,
+      31,
+      34,
+      38,
+      44
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 13425293,
+     "SOURCE": "REMOVED",
+     "TICKET": [
+      7,
+      8,
+      10,
+      14,
+      19,
+      29
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14897155,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      7,
+      10,
+      14,
+      19,
+      27,
+      49
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14896980,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      8,
+      10,
+      14,
+      19,
+      27,
+      49
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14883918,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      10,
+      12,
+      14,
+      23,
+      27,
+      49
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14883988,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      10,
+      12,
+      23,
+      26,
+      27,
+      49
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14897029,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      10,
+      14,
+      15,
+      26,
+      27,
+      49
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14897155,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      10,
+      14,
+      18,
+      23,
+      27,
+      49
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14884065,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      10,
+      18,
+      19,
+      23,
+      27,
+      49
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14897204,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      10,
+      19,
+      26,
+      27,
+      28,
+      49
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14896980,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      10,
+      19,
+      26,
+      27,
+      46,
+      49
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 12570551,
+     "SOURCE": "ELITE",
+     "TICKET": [
+      11,
+      12,
+      14,
+      18,
+      23,
+      31
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14118650,
+     "SOURCE": "REMOVED",
+     "TICKET": [
+      11,
+      12,
+      18,
+      23,
+      27,
+      49
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14884009,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      11,
+      14,
+      19,
+      23,
+      27,
+      49
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14897211,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      11,
+      14,
+      23,
+      26,
+      27,
+      49
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14884065,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      11,
+      19,
+      23,
+      26,
+      27,
+      49
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14884051,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      14,
+      16,
+      19,
+      26,
+      27,
+      49
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14884121,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      14,
+      18,
+      19,
+      23,
+      27,
+      49
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14897036,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      14,
+      19,
+      26,
+      27,
+      28,
+      49
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14896980,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      14,
+      19,
+      26,
+      27,
+      46,
+      49
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 12880770,
+     "SOURCE": "ELITE",
+     "TICKET": [
+      16,
+      19,
+      23,
+      26,
+      28,
+      46
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 13766116,
+     "SOURCE": "REMOVED",
+     "TICKET": [
+      16,
+      19,
+      26,
+      28,
+      46,
+      49
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 15269604,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      17,
+      25,
+      27,
+      32,
+      41,
+      49
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 15269604,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      17,
+      25,
+      27,
+      32,
+      47,
+      49
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 15269604,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      17,
+      25,
+      27,
+      41,
+      47,
+      49
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14883953,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      19,
+      23,
+      26,
+      27,
+      28,
+      49
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14883953,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      19,
+      23,
+      26,
+      27,
+      46,
+      49
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 6528942,
+     "SOURCE": "ELITE",
+     "TICKET": [
+      21,
+      32,
+      40,
+      42,
+      43,
+      49
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 12416194,
+     "SOURCE": "ELITE",
+     "TICKET": [
+      22,
+      27,
+      35,
+      45,
+      47,
+      49
+     ]
+    }
+   ],
+   "POOL_REQUIRED_COUNT": 13,
+   "POOL_SIZE": 48,
+   "POOL_SOURCE_COUNTS": {
+    "ELITE": 8,
+    "MUTATION_L2": 35,
+    "REMOVED": 5
+   },
+   "POSITIONS": [
+    3,
+    8,
+    12,
+    14,
+    16
+   ],
+   "QUINTUPLES_ELIMINATED_BY_BOUND": 1712259,
+   "REMOVED_TICKETS": [
+    [
+     3,
+     4,
+     10,
+     15,
+     26,
+     27
+    ],
+    [
+     5,
+     17,
+     25,
+     32,
+     41,
+     47
+    ],
+    [
+     7,
+     8,
+     10,
+     14,
+     19,
+     29
+    ],
+    [
+     11,
+     12,
+     18,
+     23,
+     27,
+     49
+    ],
+    [
+     16,
+     19,
+     26,
+     28,
+     46,
+     49
+    ]
+   ],
+   "RESIDUAL_SUBSETS": 50706049,
+   "SECONDS": {
+    "HISTOGRAM": 3.26,
+    "POOL": 11.695,
+    "SOLVE": 0.853,
+    "TOTAL": 16.159
+   },
+   "START_OUTCOMES_VIA_KERNEL": 313239661,
+   "TOTAL_QUINTUPLES": 1712304,
+   "UNRESOLVED_QUINTUPLES": 0
+  },
+  {
+   "BEST_COUNT": 313239661,
+   "BEST_DELTA": 0,
+   "BEST_NEW_TICKETS": [],
+   "BEST_POOL_INDICES": [
+    0,
+    2,
+    11,
+    31,
+    40
+   ],
+   "BEST_PORTFOLIO_SHA256": "7ce41ff21d5c0821f1d5dda683e23114086f5024fc6d98d4e574df5306659b1e",
+   "BEST_REPLACED_POSITIONS": [],
+   "CANDIDATE_UNIVERSE_SIZE": 4169,
+   "CANONICAL_MATCH": true,
+   "CANONICAL_RECOUNT": 313239661,
+   "DEAD_SUBSETS": 29476675,
+   "EXCLUDED_MUTATIONS_EQUAL_TO_FROZEN": 0,
+   "EXCLUDED_MUTATIONS_EQUAL_TO_REQUIRED": 17,
+   "HISTOGRAM_ROWS": 15356,
+   "IMPROVED": false,
+   "LEAF_QUINTUPLES_EVALUATED": 45,
+   "LEVEL1_CANDIDATES": 1288,
+   "LEVEL2_CANDIDATES": 2881,
+   "NODES_EXPLORED": 334,
+   "NODES_PRUNED": 1031,
+   "OPTIMALITY_STATUS": "PROVEN_OPTIMAL",
+   "OUTCOMES_WON_BY_FROZEN_R": 247474241,
+   "POOL": [
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 13758934,
+     "SOURCE": "REMOVED",
+     "TICKET": [
+      3,
+      8,
+      13,
+      28,
+      31,
+      36
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 5680521,
+     "SOURCE": "ELITE",
+     "TICKET": [
+      3,
+      9,
+      12,
+      16,
+      29,
+      39
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 13370686,
+     "SOURCE": "REMOVED",
+     "TICKET": [
+      4,
+      7,
+      12,
+      36,
+      39,
+      46
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 12002060,
+     "SOURCE": "ELITE",
+     "TICKET": [
+      4,
+      7,
+      36,
+      37,
+      39,
+      44
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 13734448,
+     "SOURCE": "ELITE",
+     "TICKET": [
+      4,
+      7,
+      36,
+      39,
+      46,
+      49
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14853132,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      5,
+      8,
+      28,
+      31,
+      36,
+      46
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14837004,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      5,
+      17,
+      25,
+      28,
+      32,
+      46
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14837004,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      5,
+      17,
+      25,
+      28,
+      41,
+      46
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14837004,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      5,
+      17,
+      25,
+      28,
+      46,
+      47
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14837004,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      5,
+      17,
+      25,
+      32,
+      36,
+      46
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14872242,
+     "SOURCE": "MUTATION_L1",
+     "TICKET": [
+      5,
+      17,
+      25,
+      32,
+      41,
+      46
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14487732,
+     "SOURCE": "REMOVED",
+     "TICKET": [
+      5,
+      17,
+      25,
+      32,
+      41,
+      47
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14872242,
+     "SOURCE": "MUTATION_L1",
+     "TICKET": [
+      5,
+      17,
+      25,
+      32,
+      46,
+      47
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14837004,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      5,
+      17,
+      25,
+      36,
+      41,
+      46
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14837004,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      5,
+      17,
+      25,
+      36,
+      46,
+      47
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14872242,
+     "SOURCE": "MUTATION_L1",
+     "TICKET": [
+      5,
+      17,
+      25,
+      41,
+      46,
+      47
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14837004,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      5,
+      17,
+      28,
+      32,
+      41,
+      46
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14837004,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      5,
+      17,
+      28,
+      32,
+      46,
+      47
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14837004,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      5,
+      17,
+      28,
+      41,
+      46,
+      47
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14837004,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      5,
+      17,
+      32,
+      36,
+      41,
+      46
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14837004,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      5,
+      17,
+      32,
+      36,
+      46,
+      47
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14872242,
+     "SOURCE": "MUTATION_L1",
+     "TICKET": [
+      5,
+      17,
+      32,
+      41,
+      46,
+      47
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14837004,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      5,
+      17,
+      36,
+      41,
+      46,
+      47
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14837004,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      5,
+      25,
+      28,
+      32,
+      41,
+      46
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14837004,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      5,
+      25,
+      28,
+      32,
+      46,
+      47
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14837004,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      5,
+      25,
+      28,
+      41,
+      46,
+      47
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14837004,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      5,
+      25,
+      32,
+      36,
+      41,
+      46
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14837004,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      5,
+      25,
+      32,
+      36,
+      46,
+      47
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14872242,
+     "SOURCE": "MUTATION_L1",
+     "TICKET": [
+      5,
+      25,
+      32,
+      41,
+      46,
+      47
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14837004,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      5,
+      25,
+      36,
+      41,
+      46,
+      47
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 8797950,
+     "SOURCE": "ELITE",
+     "TICKET": [
+      6,
+      20,
+      31,
+      34,
+      38,
+      44
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 13370812,
+     "SOURCE": "REMOVED",
+     "TICKET": [
+      8,
+      9,
+      11,
+      15,
+      20,
+      46
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14853132,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      8,
+      17,
+      28,
+      31,
+      36,
+      46
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14853132,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      8,
+      25,
+      28,
+      31,
+      36,
+      46
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14853132,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      8,
+      28,
+      31,
+      32,
+      36,
+      46
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14853132,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      8,
+      28,
+      31,
+      36,
+      41,
+      46
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14853132,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      8,
+      28,
+      31,
+      36,
+      46,
+      47
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14877877,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      8,
+      28,
+      31,
+      36,
+      46,
+      49
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 8383669,
+     "SOURCE": "ELITE",
+     "TICKET": [
+      11,
+      12,
+      14,
+      18,
+      23,
+      31
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 12850012,
+     "SOURCE": "ELITE",
+     "TICKET": [
+      16,
+      19,
+      23,
+      26,
+      28,
+      46
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 13747209,
+     "SOURCE": "REMOVED",
+     "TICKET": [
+      16,
+      19,
+      26,
+      28,
+      46,
+      49
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14837004,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      17,
+      25,
+      28,
+      32,
+      41,
+      46
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14837004,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      17,
+      25,
+      28,
+      32,
+      46,
+      47
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14837004,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      17,
+      25,
+      28,
+      41,
+      46,
+      47
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14837004,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      17,
+      25,
+      32,
+      36,
+      41,
+      46
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14872242,
+     "SOURCE": "MUTATION_L1",
+     "TICKET": [
+      17,
+      25,
+      32,
+      41,
+      46,
+      47
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 6115942,
+     "SOURCE": "ELITE",
+     "TICKET": [
+      21,
+      32,
+      40,
+      42,
+      43,
+      49
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 10638684,
+     "SOURCE": "ELITE",
+     "TICKET": [
+      22,
+      27,
+      35,
+      45,
+      47,
+      49
+     ]
+    }
+   ],
+   "POOL_REQUIRED_COUNT": 13,
+   "POOL_SIZE": 48,
+   "POOL_SOURCE_COUNTS": {
+    "ELITE": 8,
+    "MUTATION_L1": 6,
+    "MUTATION_L2": 29,
+    "REMOVED": 5
+   },
+   "POSITIONS": [
+    4,
+    6,
+    8,
+    13,
+    16
+   ],
+   "QUINTUPLES_ELIMINATED_BY_BOUND": 1712259,
+   "REMOVED_TICKETS": [
+    [
+     3,
+     8,
+     13,
+     28,
+     31,
+     36
+    ],
+    [
+     4,
+     7,
+     12,
+     36,
+     39,
+     46
+    ],
+    [
+     5,
+     17,
+     25,
+     32,
+     41,
+     47
+    ],
+    [
+     8,
+     9,
+     11,
+     15,
+     20,
+     46
+    ],
+    [
+     16,
+     19,
+     26,
+     28,
+     46,
+     49
+    ]
+   ],
+   "RESIDUAL_SUBSETS": 50547121,
+   "SECONDS": {
+    "HISTOGRAM": 3.065,
+    "POOL": 11.954,
+    "SOLVE": 0.08,
+    "TOTAL": 15.481
+   },
+   "START_OUTCOMES_VIA_KERNEL": 313239661,
+   "TOTAL_QUINTUPLES": 1712304,
+   "UNRESOLVED_QUINTUPLES": 0
+  },
+  {
+   "BEST_COUNT": 313239661,
+   "BEST_DELTA": 0,
+   "BEST_NEW_TICKETS": [],
+   "BEST_POOL_INDICES": [
+    7,
+    23,
+    25,
+    29,
+    47
+   ],
+   "BEST_PORTFOLIO_SHA256": "7ce41ff21d5c0821f1d5dda683e23114086f5024fc6d98d4e574df5306659b1e",
+   "BEST_REPLACED_POSITIONS": [],
+   "CANDIDATE_UNIVERSE_SIZE": 4055,
+   "CANONICAL_MATCH": true,
+   "CANONICAL_RECOUNT": 313239661,
+   "DEAD_SUBSETS": 28861566,
+   "EXCLUDED_MUTATIONS_EQUAL_TO_FROZEN": 0,
+   "EXCLUDED_MUTATIONS_EQUAL_TO_REQUIRED": 16,
+   "HISTOGRAM_ROWS": 11435,
+   "IMPROVED": false,
+   "LEAF_QUINTUPLES_EVALUATED": 630,
+   "LEVEL1_CANDIDATES": 1289,
+   "LEVEL2_CANDIDATES": 2766,
+   "NODES_EXPLORED": 367,
+   "NODES_PRUNED": 2885,
+   "OPTIMALITY_STATUS": "PROVEN_OPTIMAL",
+   "OUTCOMES_WON_BY_FROZEN_R": 245633458,
+   "POOL": [
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14829276,
+     "SOURCE": "MUTATION_L1",
+     "TICKET": [
+      1,
+      10,
+      17,
+      22,
+      30,
+      33
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14829276,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      1,
+      10,
+      17,
+      22,
+      30,
+      35
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14829276,
+     "SOURCE": "MUTATION_L1",
+     "TICKET": [
+      1,
+      10,
+      17,
+      22,
+      30,
+      43
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14829276,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      1,
+      10,
+      17,
+      22,
+      30,
+      44
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14829276,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      1,
+      10,
+      17,
+      22,
+      33,
+      38
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14829276,
+     "SOURCE": "MUTATION_L1",
+     "TICKET": [
+      1,
+      10,
+      17,
+      22,
+      33,
+      43
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14829276,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      1,
+      10,
+      17,
+      22,
+      33,
+      44
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14859362,
+     "SOURCE": "REMOVED",
+     "TICKET": [
+      1,
+      17,
+      22,
+      30,
+      33,
+      43
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14859362,
+     "SOURCE": "MUTATION_L1",
+     "TICKET": [
+      1,
+      17,
+      22,
+      30,
+      33,
+      44
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14859362,
+     "SOURCE": "MUTATION_L1",
+     "TICKET": [
+      1,
+      17,
+      22,
+      30,
+      35,
+      43
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14859362,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      1,
+      17,
+      22,
+      30,
+      35,
+      44
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14859362,
+     "SOURCE": "MUTATION_L1",
+     "TICKET": [
+      1,
+      17,
+      22,
+      33,
+      38,
+      43
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14859362,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      1,
+      17,
+      22,
+      33,
+      38,
+      44
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14859362,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      1,
+      17,
+      22,
+      35,
+      38,
+      43
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14859362,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      1,
+      17,
+      22,
+      35,
+      38,
+      44
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14859362,
+     "SOURCE": "MUTATION_L1",
+     "TICKET": [
+      1,
+      22,
+      30,
+      33,
+      43,
+      47
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14859362,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      1,
+      22,
+      30,
+      33,
+      44,
+      47
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14859362,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      1,
+      22,
+      30,
+      35,
+      43,
+      47
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14859362,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      1,
+      22,
+      30,
+      35,
+      44,
+      47
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14859362,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      1,
+      22,
+      33,
+      38,
+      43,
+      47
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14859362,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      1,
+      22,
+      33,
+      38,
+      44,
+      47
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14859362,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      1,
+      22,
+      35,
+      38,
+      43,
+      47
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14859362,
+     "SOURCE": "MUTATION_L1",
+     "TICKET": [
+      1,
+      22,
+      35,
+      38,
+      44,
+      47
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 13443472,
+     "SOURCE": "REMOVED",
+     "TICKET": [
+      3,
+      4,
+      10,
+      15,
+      26,
+      27
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 12239773,
+     "SOURCE": "ELITE",
+     "TICKET": [
+      3,
+      9,
+      12,
+      16,
+      29,
+      39
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 13419217,
+     "SOURCE": "REMOVED",
+     "TICKET": [
+      3,
+      9,
+      16,
+      23,
+      29,
+      39
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 8555799,
+     "SOURCE": "ELITE",
+     "TICKET": [
+      4,
+      7,
+      36,
+      37,
+      39,
+      44
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 5088153,
+     "SOURCE": "ELITE",
+     "TICKET": [
+      4,
+      7,
+      36,
+      39,
+      46,
+      49
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 10935785,
+     "SOURCE": "ELITE",
+     "TICKET": [
+      6,
+      20,
+      31,
+      34,
+      38,
+      44
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 13443129,
+     "SOURCE": "REMOVED",
+     "TICKET": [
+      7,
+      8,
+      10,
+      14,
+      19,
+      29
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 8209313,
+     "SOURCE": "ELITE",
+     "TICKET": [
+      11,
+      12,
+      14,
+      18,
+      23,
+      31
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 5917422,
+     "SOURCE": "ELITE",
+     "TICKET": [
+      16,
+      19,
+      23,
+      26,
+      28,
+      46
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14859362,
+     "SOURCE": "MUTATION_L1",
+     "TICKET": [
+      17,
+      22,
+      30,
+      33,
+      34,
+      43
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14859362,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      17,
+      22,
+      30,
+      33,
+      34,
+      44
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14859362,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      17,
+      22,
+      30,
+      34,
+      35,
+      43
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14859362,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      17,
+      22,
+      30,
+      34,
+      35,
+      44
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14859362,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      17,
+      22,
+      33,
+      34,
+      38,
+      43
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14859362,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      17,
+      22,
+      33,
+      34,
+      38,
+      44
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14859362,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      17,
+      22,
+      34,
+      35,
+      38,
+      43
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14859362,
+     "SOURCE": "MUTATION_L1",
+     "TICKET": [
+      17,
+      22,
+      34,
+      35,
+      38,
+      44
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 5684980,
+     "SOURCE": "ELITE",
+     "TICKET": [
+      21,
+      32,
+      40,
+      42,
+      43,
+      49
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 13416109,
+     "SOURCE": "ELITE",
+     "TICKET": [
+      22,
+      27,
+      35,
+      45,
+      47,
+      49
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14859362,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      22,
+      30,
+      33,
+      34,
+      44,
+      47
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14859362,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      22,
+      30,
+      34,
+      35,
+      43,
+      47
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14859362,
+     "SOURCE": "MUTATION_L1",
+     "TICKET": [
+      22,
+      30,
+      34,
+      35,
+      44,
+      47
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14859362,
+     "SOURCE": "MUTATION_L1",
+     "TICKET": [
+      22,
+      33,
+      34,
+      38,
+      44,
+      47
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14859362,
+     "SOURCE": "MUTATION_L1",
+     "TICKET": [
+      22,
+      34,
+      35,
+      38,
+      43,
+      47
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14859362,
+     "SOURCE": "REMOVED",
+     "TICKET": [
+      22,
+      34,
+      35,
+      38,
+      44,
+      47
+     ]
+    }
+   ],
+   "POOL_REQUIRED_COUNT": 13,
+   "POOL_SIZE": 48,
+   "POOL_SOURCE_COUNTS": {
+    "ELITE": 8,
+    "MUTATION_L1": 13,
+    "MUTATION_L2": 22,
+    "REMOVED": 5
+   },
+   "POSITIONS": [
+    1,
+    3,
+    5,
+    12,
+    19
+   ],
+   "QUINTUPLES_ELIMINATED_BY_BOUND": 1711674,
+   "REMOVED_TICKETS": [
+    [
+     1,
+     17,
+     22,
+     30,
+     33,
+     43
+    ],
+    [
+     3,
+     4,
+     10,
+     15,
+     26,
+     27
+    ],
+    [
+     3,
+     9,
+     16,
+     23,
+     29,
+     39
+    ],
+    [
+     7,
+     8,
+     10,
+     14,
+     19,
+     29
+    ],
+    [
+     22,
+     34,
+     35,
+     38,
+     44,
+     47
+    ]
+   ],
+   "RESIDUAL_SUBSETS": 50810090,
+   "SECONDS": {
+    "HISTOGRAM": 3.027,
+    "POOL": 11.16,
+    "SOLVE": 0.066,
+    "TOTAL": 14.577
+   },
+   "START_OUTCOMES_VIA_KERNEL": 313239661,
+   "TOTAL_QUINTUPLES": 1712304,
+   "UNRESOLVED_QUINTUPLES": 0
+  },
+  {
+   "BEST_COUNT": 313239661,
+   "BEST_DELTA": 0,
+   "BEST_NEW_TICKETS": [],
+   "BEST_POOL_INDICES": [
+    7,
+    33,
+    37,
+    41,
+    43
+   ],
+   "BEST_PORTFOLIO_SHA256": "7ce41ff21d5c0821f1d5dda683e23114086f5024fc6d98d4e574df5306659b1e",
+   "BEST_REPLACED_POSITIONS": [],
+   "CANDIDATE_UNIVERSE_SIZE": 4157,
+   "CANONICAL_MATCH": true,
+   "CANONICAL_RECOUNT": 313239661,
+   "DEAD_SUBSETS": 28033445,
+   "EXCLUDED_MUTATIONS_EQUAL_TO_FROZEN": 0,
+   "EXCLUDED_MUTATIONS_EQUAL_TO_REQUIRED": 16,
+   "HISTOGRAM_ROWS": 64008,
+   "IMPROVED": false,
+   "LEAF_QUINTUPLES_EVALUATED": 45,
+   "LEVEL1_CANDIDATES": 1289,
+   "LEVEL2_CANDIDATES": 2868,
+   "NODES_EXPLORED": 135,
+   "NODES_PRUNED": 389,
+   "OPTIMALITY_STATUS": "PROVEN_OPTIMAL",
+   "OUTCOMES_WON_BY_FROZEN_R": 247485567,
+   "POOL": [
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14886396,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      3,
+      4,
+      8,
+      9,
+      10,
+      15
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14884037,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      3,
+      4,
+      8,
+      9,
+      10,
+      27
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14884086,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      3,
+      4,
+      8,
+      9,
+      15,
+      27
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14881580,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      3,
+      4,
+      8,
+      10,
+      14,
+      15
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14884093,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      3,
+      4,
+      8,
+      10,
+      15,
+      23
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14884093,
+     "SOURCE": "MUTATION_L1",
+     "TICKET": [
+      3,
+      4,
+      8,
+      10,
+      15,
+      27
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14881580,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      3,
+      4,
+      8,
+      10,
+      15,
+      31
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14122843,
+     "SOURCE": "REMOVED",
+     "TICKET": [
+      3,
+      4,
+      10,
+      15,
+      26,
+      27
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14884037,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      3,
+      7,
+      8,
+      10,
+      15,
+      27
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14886382,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      3,
+      7,
+      8,
+      10,
+      15,
+      29
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14884037,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      3,
+      7,
+      8,
+      10,
+      23,
+      29
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14884037,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      3,
+      7,
+      8,
+      10,
+      27,
+      29
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 15286208,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      3,
+      8,
+      9,
+      10,
+      14,
+      29
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 15288644,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      3,
+      8,
+      9,
+      10,
+      15,
+      27
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14883652,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      3,
+      8,
+      9,
+      10,
+      15,
+      46
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14883820,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      3,
+      8,
+      9,
+      10,
+      19,
+      29
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 15288679,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      3,
+      8,
+      9,
+      10,
+      23,
+      29
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14884093,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      3,
+      8,
+      9,
+      11,
+      15,
+      29
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 15272565,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      3,
+      8,
+      9,
+      14,
+      23,
+      29
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14883820,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      3,
+      8,
+      9,
+      15,
+      16,
+      29
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 15288679,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      3,
+      8,
+      9,
+      15,
+      23,
+      29
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14883652,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      3,
+      8,
+      9,
+      15,
+      29,
+      46
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 15272565,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      3,
+      8,
+      9,
+      23,
+      29,
+      31
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14884023,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      3,
+      8,
+      9,
+      23,
+      29,
+      36
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14881734,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      3,
+      8,
+      10,
+      13,
+      14,
+      29
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14881734,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      3,
+      8,
+      10,
+      13,
+      29,
+      31
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 15272530,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      3,
+      8,
+      10,
+      14,
+      15,
+      27
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 15286110,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      3,
+      8,
+      10,
+      14,
+      15,
+      29
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 15272530,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      3,
+      8,
+      10,
+      14,
+      23,
+      29
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 15272530,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      3,
+      8,
+      10,
+      14,
+      27,
+      29
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14883806,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      3,
+      8,
+      10,
+      15,
+      26,
+      29
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 15288686,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      3,
+      8,
+      10,
+      15,
+      27,
+      29
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 15272530,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      3,
+      8,
+      10,
+      15,
+      27,
+      31
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14098364,
+     "SOURCE": "REMOVED",
+     "TICKET": [
+      3,
+      8,
+      13,
+      28,
+      31,
+      36
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14896399,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      3,
+      9,
+      10,
+      15,
+      23,
+      29
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14896399,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      3,
+      9,
+      10,
+      15,
+      27,
+      29
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 12835312,
+     "SOURCE": "ELITE",
+     "TICKET": [
+      3,
+      9,
+      12,
+      16,
+      29,
+      39
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14097167,
+     "SOURCE": "REMOVED",
+     "TICKET": [
+      3,
+      9,
+      16,
+      23,
+      29,
+      39
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 8325919,
+     "SOURCE": "ELITE",
+     "TICKET": [
+      4,
+      7,
+      36,
+      37,
+      39,
+      44
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 5288136,
+     "SOURCE": "ELITE",
+     "TICKET": [
+      4,
+      7,
+      36,
+      39,
+      46,
+      49
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 8797887,
+     "SOURCE": "ELITE",
+     "TICKET": [
+      6,
+      20,
+      31,
+      34,
+      38,
+      44
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14110229,
+     "SOURCE": "REMOVED",
+     "TICKET": [
+      7,
+      8,
+      10,
+      14,
+      19,
+      29
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14893928,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      8,
+      9,
+      10,
+      14,
+      15,
+      29
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 13731011,
+     "SOURCE": "REMOVED",
+     "TICKET": [
+      8,
+      9,
+      11,
+      15,
+      20,
+      46
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 8698487,
+     "SOURCE": "ELITE",
+     "TICKET": [
+      11,
+      12,
+      14,
+      18,
+      23,
+      31
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 6174203,
+     "SOURCE": "ELITE",
+     "TICKET": [
+      16,
+      19,
+      23,
+      26,
+      28,
+      46
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 5570040,
+     "SOURCE": "ELITE",
+     "TICKET": [
+      21,
+      32,
+      40,
+      42,
+      43,
+      49
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 10345699,
+     "SOURCE": "ELITE",
+     "TICKET": [
+      22,
+      27,
+      35,
+      45,
+      47,
+      49
+     ]
+    }
+   ],
+   "POOL_REQUIRED_COUNT": 13,
+   "POOL_SIZE": 48,
+   "POOL_SOURCE_COUNTS": {
+    "ELITE": 8,
+    "MUTATION_L1": 1,
+    "MUTATION_L2": 34,
+    "REMOVED": 5
+   },
+   "POSITIONS": [
+    3,
+    4,
+    5,
+    12,
+    13
+   ],
+   "QUINTUPLES_ELIMINATED_BY_BOUND": 1712259,
+   "REMOVED_TICKETS": [
+    [
+     3,
+     4,
+     10,
+     15,
+     26,
+     27
+    ],
+    [
+     3,
+     8,
+     13,
+     28,
+     31,
+     36
+    ],
+    [
+     3,
+     9,
+     16,
+     23,
+     29,
+     39
+    ],
+    [
+     7,
+     8,
+     10,
+     14,
+     19,
+     29
+    ],
+    [
+     8,
+     9,
+     11,
+     15,
+     20,
+     46
+    ]
+   ],
+   "RESIDUAL_SUBSETS": 50545503,
+   "SECONDS": {
+    "HISTOGRAM": 3.027,
+    "POOL": 10.996,
+    "SOLVE": 0.177,
+    "TOTAL": 14.516
+   },
+   "START_OUTCOMES_VIA_KERNEL": 313239661,
+   "TOTAL_QUINTUPLES": 1712304,
+   "UNRESOLVED_QUINTUPLES": 0
+  },
+  {
+   "BEST_COUNT": 313239661,
+   "BEST_DELTA": 0,
+   "BEST_NEW_TICKETS": [],
+   "BEST_POOL_INDICES": [
+    0,
+    5,
+    15,
+    19,
+    43
+   ],
+   "BEST_PORTFOLIO_SHA256": "7ce41ff21d5c0821f1d5dda683e23114086f5024fc6d98d4e574df5306659b1e",
+   "BEST_REPLACED_POSITIONS": [],
+   "CANDIDATE_UNIVERSE_SIZE": 4054,
+   "CANONICAL_MATCH": true,
+   "CANONICAL_RECOUNT": 313239661,
+   "DEAD_SUBSETS": 28770678,
+   "EXCLUDED_MUTATIONS_EQUAL_TO_FROZEN": 0,
+   "EXCLUDED_MUTATIONS_EQUAL_TO_REQUIRED": 18,
+   "HISTOGRAM_ROWS": 10989,
+   "IMPROVED": false,
+   "LEAF_QUINTUPLES_EVALUATED": 504,
+   "LEVEL1_CANDIDATES": 1288,
+   "LEVEL2_CANDIDATES": 2766,
+   "NODES_EXPLORED": 386,
+   "NODES_PRUNED": 2924,
+   "OPTIMALITY_STATUS": "PROVEN_OPTIMAL",
+   "OUTCOMES_WON_BY_FROZEN_R": 245621047,
+   "POOL": [
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 13431460,
+     "SOURCE": "REMOVED",
+     "TICKET": [
+      3,
+      8,
+      13,
+      28,
+      31,
+      36
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 4777115,
+     "SOURCE": "ELITE",
+     "TICKET": [
+      3,
+      9,
+      12,
+      16,
+      29,
+      39
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 8291710,
+     "SOURCE": "ELITE",
+     "TICKET": [
+      4,
+      7,
+      36,
+      37,
+      39,
+      44
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 5934698,
+     "SOURCE": "ELITE",
+     "TICKET": [
+      4,
+      7,
+      36,
+      39,
+      46,
+      49
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 9146011,
+     "SOURCE": "ELITE",
+     "TICKET": [
+      6,
+      20,
+      31,
+      34,
+      38,
+      44
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 13431656,
+     "SOURCE": "REMOVED",
+     "TICKET": [
+      7,
+      8,
+      10,
+      14,
+      19,
+      29
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14829276,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      8,
+      21,
+      25,
+      30,
+      38,
+      40
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14829276,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      8,
+      21,
+      25,
+      30,
+      38,
+      42
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14829276,
+     "SOURCE": "MUTATION_L1",
+     "TICKET": [
+      8,
+      21,
+      25,
+      30,
+      38,
+      45
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14829276,
+     "SOURCE": "MUTATION_L1",
+     "TICKET": [
+      8,
+      21,
+      25,
+      30,
+      38,
+      48
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14829276,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      8,
+      21,
+      25,
+      30,
+      40,
+      45
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14829276,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      8,
+      21,
+      25,
+      30,
+      42,
+      48
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14829276,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      8,
+      21,
+      25,
+      30,
+      44,
+      45
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 8324428,
+     "SOURCE": "ELITE",
+     "TICKET": [
+      11,
+      12,
+      14,
+      18,
+      23,
+      31
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 12572959,
+     "SOURCE": "ELITE",
+     "TICKET": [
+      16,
+      19,
+      23,
+      26,
+      28,
+      46
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 13443213,
+     "SOURCE": "REMOVED",
+     "TICKET": [
+      16,
+      19,
+      26,
+      28,
+      46,
+      49
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14859362,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      21,
+      25,
+      30,
+      38,
+      40,
+      42
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14859362,
+     "SOURCE": "MUTATION_L1",
+     "TICKET": [
+      21,
+      25,
+      30,
+      38,
+      40,
+      45
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14859362,
+     "SOURCE": "MUTATION_L1",
+     "TICKET": [
+      21,
+      25,
+      30,
+      38,
+      42,
+      48
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14859362,
+     "SOURCE": "REMOVED",
+     "TICKET": [
+      21,
+      25,
+      30,
+      38,
+      45,
+      48
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14859362,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      21,
+      25,
+      30,
+      40,
+      42,
+      44
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14859362,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      21,
+      25,
+      30,
+      40,
+      44,
+      45
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14859362,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      21,
+      25,
+      30,
+      42,
+      44,
+      48
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14859362,
+     "SOURCE": "MUTATION_L1",
+     "TICKET": [
+      21,
+      25,
+      30,
+      44,
+      45,
+      48
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14859362,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      21,
+      25,
+      38,
+      40,
+      42,
+      43
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14859362,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      21,
+      25,
+      38,
+      40,
+      43,
+      45
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14859362,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      21,
+      25,
+      38,
+      42,
+      43,
+      48
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14859362,
+     "SOURCE": "MUTATION_L1",
+     "TICKET": [
+      21,
+      25,
+      38,
+      43,
+      45,
+      48
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14859362,
+     "SOURCE": "MUTATION_L1",
+     "TICKET": [
+      21,
+      25,
+      40,
+      42,
+      43,
+      44
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14859362,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      21,
+      25,
+      40,
+      43,
+      44,
+      45
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14859362,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      21,
+      25,
+      42,
+      43,
+      44,
+      48
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14859362,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      21,
+      25,
+      43,
+      44,
+      45,
+      48
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14859362,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      21,
+      30,
+      32,
+      38,
+      40,
+      42
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14859362,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      21,
+      30,
+      32,
+      38,
+      40,
+      45
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14859362,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      21,
+      30,
+      32,
+      38,
+      42,
+      48
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14859362,
+     "SOURCE": "MUTATION_L1",
+     "TICKET": [
+      21,
+      30,
+      32,
+      38,
+      45,
+      48
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14859362,
+     "SOURCE": "MUTATION_L1",
+     "TICKET": [
+      21,
+      30,
+      32,
+      40,
+      42,
+      44
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14859362,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      21,
+      30,
+      32,
+      40,
+      44,
+      45
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14859362,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      21,
+      30,
+      32,
+      42,
+      44,
+      48
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14859362,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      21,
+      30,
+      32,
+      44,
+      45,
+      48
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14859362,
+     "SOURCE": "MUTATION_L1",
+     "TICKET": [
+      21,
+      32,
+      38,
+      40,
+      42,
+      43
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14859362,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      21,
+      32,
+      38,
+      40,
+      43,
+      45
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14859362,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      21,
+      32,
+      38,
+      42,
+      43,
+      48
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14859362,
+     "SOURCE": "REMOVED",
+     "TICKET": [
+      21,
+      32,
+      40,
+      42,
+      43,
+      44
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14826476,
+     "SOURCE": "ELITE",
+     "TICKET": [
+      21,
+      32,
+      40,
+      42,
+      43,
+      49
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14859362,
+     "SOURCE": "MUTATION_L1",
+     "TICKET": [
+      21,
+      32,
+      40,
+      43,
+      44,
+      45
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14859362,
+     "SOURCE": "MUTATION_L1",
+     "TICKET": [
+      21,
+      32,
+      42,
+      43,
+      44,
+      48
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 10640945,
+     "SOURCE": "ELITE",
+     "TICKET": [
+      22,
+      27,
+      35,
+      45,
+      47,
+      49
+     ]
+    }
+   ],
+   "POOL_REQUIRED_COUNT": 13,
+   "POOL_SIZE": 48,
+   "POOL_SOURCE_COUNTS": {
+    "ELITE": 8,
+    "MUTATION_L1": 12,
+    "MUTATION_L2": 23,
+    "REMOVED": 5
+   },
+   "POSITIONS": [
+    4,
+    12,
+    16,
+    17,
+    18
+   ],
+   "QUINTUPLES_ELIMINATED_BY_BOUND": 1711800,
+   "REMOVED_TICKETS": [
+    [
+     3,
+     8,
+     13,
+     28,
+     31,
+     36
+    ],
+    [
+     7,
+     8,
+     10,
+     14,
+     19,
+     29
+    ],
+    [
+     16,
+     19,
+     26,
+     28,
+     46,
+     49
+    ],
+    [
+     21,
+     25,
+     30,
+     38,
+     45,
+     48
+    ],
+    [
+     21,
+     32,
+     40,
+     42,
+     43,
+     44
+    ]
+   ],
+   "RESIDUAL_SUBSETS": 50811863,
+   "SECONDS": {
+    "HISTOGRAM": 2.946,
+    "POOL": 10.898,
+    "SOLVE": 0.066,
+    "TOTAL": 14.228
+   },
+   "START_OUTCOMES_VIA_KERNEL": 313239661,
+   "TOTAL_QUINTUPLES": 1712304,
+   "UNRESOLVED_QUINTUPLES": 0
+  },
+  {
+   "BEST_COUNT": 313239661,
+   "BEST_DELTA": 0,
+   "BEST_NEW_TICKETS": [],
+   "BEST_POOL_INDICES": [
+    3,
+    13,
+    23,
+    32,
+    45
+   ],
+   "BEST_PORTFOLIO_SHA256": "7ce41ff21d5c0821f1d5dda683e23114086f5024fc6d98d4e574df5306659b1e",
+   "BEST_REPLACED_POSITIONS": [],
+   "CANDIDATE_UNIVERSE_SIZE": 4221,
+   "CANONICAL_MATCH": true,
+   "CANONICAL_RECOUNT": 313239661,
+   "DEAD_SUBSETS": 27886551,
+   "EXCLUDED_MUTATIONS_EQUAL_TO_FROZEN": 0,
+   "EXCLUDED_MUTATIONS_EQUAL_TO_REQUIRED": 16,
+   "HISTOGRAM_ROWS": 100150,
+   "IMPROVED": false,
+   "LEAF_QUINTUPLES_EVALUATED": 45,
+   "LEVEL1_CANDIDATES": 1289,
+   "LEVEL2_CANDIDATES": 2932,
+   "NODES_EXPLORED": 56,
+   "NODES_PRUNED": 183,
+   "OPTIMALITY_STATUS": "PROVEN_OPTIMAL",
+   "OUTCOMES_WON_BY_FROZEN_R": 240578471,
+   "POOL": [
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 16098432,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      1,
+      14,
+      22,
+      33,
+      35,
+      43
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 16098432,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      1,
+      14,
+      22,
+      33,
+      40,
+      43
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 16098432,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      1,
+      14,
+      22,
+      33,
+      43,
+      44
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 15655969,
+     "SOURCE": "REMOVED",
+     "TICKET": [
+      1,
+      17,
+      22,
+      30,
+      33,
+      43
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 16098432,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      1,
+      22,
+      31,
+      33,
+      35,
+      43
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 16098432,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      1,
+      22,
+      31,
+      33,
+      40,
+      43
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 16098432,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      1,
+      22,
+      31,
+      33,
+      43,
+      44
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 16098432,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      1,
+      22,
+      33,
+      35,
+      37,
+      43
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 16533832,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      1,
+      22,
+      33,
+      35,
+      40,
+      43
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 16533832,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      1,
+      22,
+      33,
+      35,
+      43,
+      44
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 16098432,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      1,
+      22,
+      33,
+      37,
+      40,
+      43
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 16098432,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      1,
+      22,
+      33,
+      37,
+      43,
+      44
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 16533832,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      1,
+      22,
+      33,
+      40,
+      43,
+      44
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 15655969,
+     "SOURCE": "REMOVED",
+     "TICKET": [
+      2,
+      5,
+      33,
+      35,
+      40,
+      48
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 16533832,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      2,
+      22,
+      33,
+      35,
+      40,
+      43
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 16533832,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      2,
+      22,
+      33,
+      35,
+      40,
+      44
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 16533832,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      2,
+      33,
+      35,
+      40,
+      43,
+      44
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 4622079,
+     "SOURCE": "ELITE",
+     "TICKET": [
+      3,
+      9,
+      12,
+      16,
+      29,
+      39
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 9352413,
+     "SOURCE": "ELITE",
+     "TICKET": [
+      4,
+      7,
+      36,
+      37,
+      39,
+      44
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 4935042,
+     "SOURCE": "ELITE",
+     "TICKET": [
+      4,
+      7,
+      36,
+      39,
+      46,
+      49
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 16533832,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      5,
+      22,
+      33,
+      35,
+      40,
+      43
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 16533832,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      5,
+      22,
+      33,
+      35,
+      40,
+      44
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 16533832,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      5,
+      33,
+      35,
+      40,
+      43,
+      44
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 13487579,
+     "SOURCE": "REMOVED",
+     "TICKET": [
+      6,
+      14,
+      20,
+      31,
+      37,
+      39
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14045892,
+     "SOURCE": "ELITE",
+     "TICKET": [
+      6,
+      20,
+      31,
+      34,
+      38,
+      44
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 8920961,
+     "SOURCE": "ELITE",
+     "TICKET": [
+      11,
+      12,
+      14,
+      18,
+      23,
+      31
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 4796218,
+     "SOURCE": "ELITE",
+     "TICKET": [
+      16,
+      19,
+      23,
+      26,
+      28,
+      46
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 16533832,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      17,
+      22,
+      33,
+      35,
+      40,
+      43
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 16533832,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      17,
+      22,
+      33,
+      35,
+      43,
+      44
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 16533832,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      17,
+      22,
+      33,
+      40,
+      43,
+      44
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 16533832,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      21,
+      22,
+      33,
+      40,
+      43,
+      44
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 16533832,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      21,
+      22,
+      35,
+      40,
+      43,
+      44
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 15655969,
+     "SOURCE": "REMOVED",
+     "TICKET": [
+      21,
+      32,
+      40,
+      42,
+      43,
+      44
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14797769,
+     "SOURCE": "ELITE",
+     "TICKET": [
+      21,
+      32,
+      40,
+      42,
+      43,
+      49
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 16533832,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      21,
+      33,
+      35,
+      40,
+      43,
+      44
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 13439860,
+     "SOURCE": "ELITE",
+     "TICKET": [
+      22,
+      27,
+      35,
+      45,
+      47,
+      49
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 16533832,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      22,
+      32,
+      33,
+      40,
+      43,
+      44
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 16533832,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      22,
+      32,
+      35,
+      40,
+      43,
+      44
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 16533832,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      22,
+      33,
+      34,
+      35,
+      40,
+      44
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 16533832,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      22,
+      33,
+      34,
+      35,
+      43,
+      44
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 16533832,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      22,
+      33,
+      35,
+      38,
+      40,
+      44
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 16533832,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      22,
+      33,
+      35,
+      38,
+      43,
+      44
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 16533832,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      22,
+      33,
+      35,
+      40,
+      44,
+      47
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 16533832,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      22,
+      33,
+      35,
+      43,
+      44,
+      47
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 16533832,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      22,
+      33,
+      40,
+      42,
+      43,
+      44
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 15655969,
+     "SOURCE": "REMOVED",
+     "TICKET": [
+      22,
+      34,
+      35,
+      38,
+      44,
+      47
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 16533832,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      22,
+      35,
+      40,
+      42,
+      43,
+      44
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 16533832,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      32,
+      33,
+      35,
+      40,
+      43,
+      44
+     ]
+    }
+   ],
+   "POOL_REQUIRED_COUNT": 13,
+   "POOL_SIZE": 48,
+   "POOL_SOURCE_COUNTS": {
+    "ELITE": 8,
+    "MUTATION_L2": 35,
+    "REMOVED": 5
+   },
+   "POSITIONS": [
+    1,
+    2,
+    11,
+    18,
+    19
+   ],
+   "QUINTUPLES_ELIMINATED_BY_BOUND": 1712259,
+   "REMOVED_TICKETS": [
+    [
+     1,
+     17,
+     22,
+     30,
+     33,
+     43
+    ],
+    [
+     2,
+     5,
+     33,
+     35,
+     40,
+     48
+    ],
+    [
+     6,
+     14,
+     20,
+     31,
+     37,
+     39
+    ],
+    [
+     21,
+     32,
+     40,
+     42,
+     43,
+     44
+    ],
+    [
+     22,
+     34,
+     35,
+     38,
+     44,
+     47
+    ]
+   ],
+   "RESIDUAL_SUBSETS": 51532231,
+   "SECONDS": {
+    "HISTOGRAM": 3.064,
+    "POOL": 11.798,
+    "SOLVE": 0.147,
+    "TOTAL": 15.339
+   },
+   "START_OUTCOMES_VIA_KERNEL": 313239661,
+   "TOTAL_QUINTUPLES": 1712304,
+   "UNRESOLVED_QUINTUPLES": 0
+  },
+  {
+   "BEST_COUNT": 313239661,
+   "BEST_DELTA": 0,
+   "BEST_NEW_TICKETS": [],
+   "BEST_POOL_INDICES": [
+    1,
+    4,
+    5,
+    14,
+    45
+   ],
+   "BEST_PORTFOLIO_SHA256": "7ce41ff21d5c0821f1d5dda683e23114086f5024fc6d98d4e574df5306659b1e",
+   "BEST_REPLACED_POSITIONS": [],
+   "CANDIDATE_UNIVERSE_SIZE": 4293,
+   "CANONICAL_MATCH": true,
+   "CANONICAL_RECOUNT": 313239661,
+   "DEAD_SUBSETS": 30261291,
+   "EXCLUDED_MUTATIONS_EQUAL_TO_FROZEN": 0,
+   "EXCLUDED_MUTATIONS_EQUAL_TO_REQUIRED": 16,
+   "HISTOGRAM_ROWS": 21877,
+   "IMPROVED": false,
+   "LEAF_QUINTUPLES_EVALUATED": 45,
+   "LEVEL1_CANDIDATES": 1289,
+   "LEVEL2_CANDIDATES": 3004,
+   "NODES_EXPLORED": 148,
+   "NODES_PRUNED": 1256,
+   "OPTIMALITY_STATUS": "PROVEN_OPTIMAL",
+   "OUTCOMES_WON_BY_FROZEN_R": 247879597,
+   "POOL": [
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 12514383,
+     "SOURCE": "ELITE",
+     "TICKET": [
+      3,
+      9,
+      12,
+      16,
+      29,
+      39
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 13367116,
+     "SOURCE": "REMOVED",
+     "TICKET": [
+      3,
+      9,
+      16,
+      23,
+      29,
+      39
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 8753038,
+     "SOURCE": "ELITE",
+     "TICKET": [
+      4,
+      7,
+      36,
+      37,
+      39,
+      44
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 5041519,
+     "SOURCE": "ELITE",
+     "TICKET": [
+      4,
+      7,
+      36,
+      39,
+      46,
+      49
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 13367102,
+     "SOURCE": "REMOVED",
+     "TICKET": [
+      4,
+      18,
+      20,
+      24,
+      28,
+      29
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 13367158,
+     "SOURCE": "REMOVED",
+     "TICKET": [
+      6,
+      7,
+      9,
+      13,
+      18,
+      26
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 11567738,
+     "SOURCE": "ELITE",
+     "TICKET": [
+      6,
+      20,
+      31,
+      34,
+      38,
+      44
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14442442,
+     "SOURCE": "MUTATION_L1",
+     "TICKET": [
+      9,
+      22,
+      34,
+      35,
+      38,
+      44
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14442442,
+     "SOURCE": "MUTATION_L1",
+     "TICKET": [
+      9,
+      22,
+      34,
+      35,
+      38,
+      47
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14442442,
+     "SOURCE": "MUTATION_L1",
+     "TICKET": [
+      9,
+      22,
+      34,
+      35,
+      44,
+      47
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14442442,
+     "SOURCE": "MUTATION_L1",
+     "TICKET": [
+      9,
+      22,
+      34,
+      38,
+      44,
+      47
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14442442,
+     "SOURCE": "MUTATION_L1",
+     "TICKET": [
+      9,
+      22,
+      35,
+      38,
+      44,
+      47
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14442442,
+     "SOURCE": "MUTATION_L1",
+     "TICKET": [
+      9,
+      34,
+      35,
+      38,
+      44,
+      47
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 8467893,
+     "SOURCE": "ELITE",
+     "TICKET": [
+      11,
+      12,
+      14,
+      18,
+      23,
+      31
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 13367144,
+     "SOURCE": "REMOVED",
+     "TICKET": [
+      12,
+      13,
+      15,
+      19,
+      24,
+      37
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14439642,
+     "SOURCE": "MUTATION_L1",
+     "TICKET": [
+      13,
+      22,
+      34,
+      35,
+      38,
+      44
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14439642,
+     "SOURCE": "MUTATION_L1",
+     "TICKET": [
+      13,
+      22,
+      34,
+      35,
+      38,
+      47
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14439642,
+     "SOURCE": "MUTATION_L1",
+     "TICKET": [
+      13,
+      22,
+      34,
+      35,
+      44,
+      47
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14439642,
+     "SOURCE": "MUTATION_L1",
+     "TICKET": [
+      13,
+      22,
+      34,
+      38,
+      44,
+      47
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14439642,
+     "SOURCE": "MUTATION_L1",
+     "TICKET": [
+      13,
+      22,
+      35,
+      38,
+      44,
+      47
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14439642,
+     "SOURCE": "MUTATION_L1",
+     "TICKET": [
+      13,
+      34,
+      35,
+      38,
+      44,
+      47
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 6027441,
+     "SOURCE": "ELITE",
+     "TICKET": [
+      16,
+      19,
+      23,
+      26,
+      28,
+      46
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14434042,
+     "SOURCE": "MUTATION_L1",
+     "TICKET": [
+      18,
+      22,
+      34,
+      35,
+      38,
+      44
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14434042,
+     "SOURCE": "MUTATION_L1",
+     "TICKET": [
+      18,
+      22,
+      34,
+      35,
+      38,
+      47
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14434042,
+     "SOURCE": "MUTATION_L1",
+     "TICKET": [
+      18,
+      22,
+      34,
+      35,
+      44,
+      47
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14434042,
+     "SOURCE": "MUTATION_L1",
+     "TICKET": [
+      18,
+      22,
+      34,
+      38,
+      44,
+      47
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14434042,
+     "SOURCE": "MUTATION_L1",
+     "TICKET": [
+      18,
+      22,
+      35,
+      38,
+      44,
+      47
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14434042,
+     "SOURCE": "MUTATION_L1",
+     "TICKET": [
+      18,
+      34,
+      35,
+      38,
+      44,
+      47
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 5541690,
+     "SOURCE": "ELITE",
+     "TICKET": [
+      21,
+      32,
+      40,
+      42,
+      43,
+      49
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14434042,
+     "SOURCE": "MUTATION_L1",
+     "TICKET": [
+      22,
+      23,
+      34,
+      35,
+      38,
+      44
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14434042,
+     "SOURCE": "MUTATION_L1",
+     "TICKET": [
+      22,
+      23,
+      34,
+      35,
+      38,
+      47
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14434042,
+     "SOURCE": "MUTATION_L1",
+     "TICKET": [
+      22,
+      23,
+      34,
+      35,
+      44,
+      47
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14434042,
+     "SOURCE": "MUTATION_L1",
+     "TICKET": [
+      22,
+      23,
+      34,
+      38,
+      44,
+      47
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14434042,
+     "SOURCE": "MUTATION_L1",
+     "TICKET": [
+      22,
+      23,
+      35,
+      38,
+      44,
+      47
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14442442,
+     "SOURCE": "MUTATION_L1",
+     "TICKET": [
+      22,
+      24,
+      34,
+      35,
+      38,
+      44
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14442442,
+     "SOURCE": "MUTATION_L1",
+     "TICKET": [
+      22,
+      24,
+      34,
+      35,
+      38,
+      47
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14442442,
+     "SOURCE": "MUTATION_L1",
+     "TICKET": [
+      22,
+      24,
+      34,
+      35,
+      44,
+      47
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14442442,
+     "SOURCE": "MUTATION_L1",
+     "TICKET": [
+      22,
+      24,
+      34,
+      38,
+      44,
+      47
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14442442,
+     "SOURCE": "MUTATION_L1",
+     "TICKET": [
+      22,
+      24,
+      35,
+      38,
+      44,
+      47
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 12625004,
+     "SOURCE": "ELITE",
+     "TICKET": [
+      22,
+      27,
+      35,
+      45,
+      47,
+      49
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14439642,
+     "SOURCE": "MUTATION_L1",
+     "TICKET": [
+      22,
+      29,
+      34,
+      35,
+      38,
+      44
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14439642,
+     "SOURCE": "MUTATION_L1",
+     "TICKET": [
+      22,
+      29,
+      34,
+      35,
+      38,
+      47
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14439642,
+     "SOURCE": "MUTATION_L1",
+     "TICKET": [
+      22,
+      29,
+      34,
+      35,
+      44,
+      47
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14439642,
+     "SOURCE": "MUTATION_L1",
+     "TICKET": [
+      22,
+      29,
+      34,
+      38,
+      44,
+      47
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14439642,
+     "SOURCE": "MUTATION_L1",
+     "TICKET": [
+      22,
+      29,
+      35,
+      38,
+      44,
+      47
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14487732,
+     "SOURCE": "REMOVED",
+     "TICKET": [
+      22,
+      34,
+      35,
+      38,
+      44,
+      47
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14442442,
+     "SOURCE": "MUTATION_L1",
+     "TICKET": [
+      24,
+      34,
+      35,
+      38,
+      44,
+      47
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14439642,
+     "SOURCE": "MUTATION_L1",
+     "TICKET": [
+      29,
+      34,
+      35,
+      38,
+      44,
+      47
+     ]
+    }
+   ],
+   "POOL_REQUIRED_COUNT": 13,
+   "POOL_SIZE": 48,
+   "POOL_SOURCE_COUNTS": {
+    "ELITE": 8,
+    "MUTATION_L1": 35,
+    "REMOVED": 5
+   },
+   "POSITIONS": [
+    5,
+    7,
+    9,
+    15,
+    19
+   ],
+   "QUINTUPLES_ELIMINATED_BY_BOUND": 1712259,
+   "REMOVED_TICKETS": [
+    [
+     3,
+     9,
+     16,
+     23,
+     29,
+     39
+    ],
+    [
+     4,
+     18,
+     20,
+     24,
+     28,
+     29
+    ],
+    [
+     6,
+     7,
+     9,
+     13,
+     18,
+     26
+    ],
+    [
+     12,
+     13,
+     15,
+     19,
+     24,
+     37
+    ],
+    [
+     22,
+     34,
+     35,
+     38,
+     44,
+     47
+    ]
+   ],
+   "RESIDUAL_SUBSETS": 50489213,
+   "SECONDS": {
+    "HISTOGRAM": 2.987,
+    "POOL": 10.745,
+    "SOLVE": 0.054,
+    "TOTAL": 14.135
+   },
+   "START_OUTCOMES_VIA_KERNEL": 313239661,
+   "TOTAL_QUINTUPLES": 1712304,
+   "UNRESOLVED_QUINTUPLES": 0
+  },
+  {
+   "BEST_COUNT": 313239661,
+   "BEST_DELTA": 0,
+   "BEST_NEW_TICKETS": [],
+   "BEST_POOL_INDICES": [
+    17,
+    26,
+    37,
+    41,
+    45
+   ],
+   "BEST_PORTFOLIO_SHA256": "7ce41ff21d5c0821f1d5dda683e23114086f5024fc6d98d4e574df5306659b1e",
+   "BEST_REPLACED_POSITIONS": [],
+   "CANDIDATE_UNIVERSE_SIZE": 4031,
+   "CANONICAL_MATCH": true,
+   "CANONICAL_RECOUNT": 313239661,
+   "DEAD_SUBSETS": 27156121,
+   "EXCLUDED_MUTATIONS_EQUAL_TO_FROZEN": 0,
+   "EXCLUDED_MUTATIONS_EQUAL_TO_REQUIRED": 17,
+   "HISTOGRAM_ROWS": 18424,
+   "IMPROVED": false,
+   "LEAF_QUINTUPLES_EVALUATED": 45,
+   "LEVEL1_CANDIDATES": 1289,
+   "LEVEL2_CANDIDATES": 2742,
+   "NODES_EXPLORED": 56,
+   "NODES_PRUNED": 192,
+   "OPTIMALITY_STATUS": "PROVEN_OPTIMAL",
+   "OUTCOMES_WON_BY_FROZEN_R": 244166202,
+   "POOL": [
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 15664033,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      1,
+      2,
+      17,
+      22,
+      42,
+      43
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 15664033,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      1,
+      2,
+      17,
+      30,
+      42,
+      43
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 15664033,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      1,
+      2,
+      17,
+      34,
+      42,
+      43
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 15664033,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      1,
+      2,
+      17,
+      42,
+      43,
+      45
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 15664033,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      1,
+      2,
+      21,
+      32,
+      42,
+      43
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 15664033,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      1,
+      2,
+      21,
+      34,
+      42,
+      43
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 15664033,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      1,
+      2,
+      21,
+      41,
+      42,
+      43
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 15664033,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      1,
+      2,
+      21,
+      42,
+      43,
+      44
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 15664033,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      1,
+      2,
+      22,
+      30,
+      42,
+      43
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 15664033,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      1,
+      2,
+      22,
+      41,
+      42,
+      43
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 15664033,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      1,
+      2,
+      22,
+      42,
+      43,
+      45
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 15664033,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      1,
+      2,
+      30,
+      34,
+      42,
+      43
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 15664033,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      1,
+      2,
+      30,
+      41,
+      42,
+      43
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 15664033,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      1,
+      2,
+      32,
+      34,
+      42,
+      43
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 15664033,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      1,
+      2,
+      32,
+      42,
+      43,
+      44
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 15664033,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      1,
+      2,
+      32,
+      42,
+      43,
+      45
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 15664033,
+     "SOURCE": "MUTATION_L1",
+     "TICKET": [
+      1,
+      2,
+      34,
+      41,
+      42,
+      43
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 15248548,
+     "SOURCE": "REMOVED",
+     "TICKET": [
+      1,
+      2,
+      34,
+      41,
+      42,
+      45
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 15664033,
+     "SOURCE": "MUTATION_L1",
+     "TICKET": [
+      1,
+      2,
+      34,
+      42,
+      43,
+      45
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 15664033,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      1,
+      2,
+      41,
+      42,
+      43,
+      44
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 15664033,
+     "SOURCE": "MUTATION_L1",
+     "TICKET": [
+      1,
+      2,
+      41,
+      42,
+      43,
+      45
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 15664033,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      1,
+      2,
+      42,
+      43,
+      44,
+      45
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 15664033,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      1,
+      17,
+      21,
+      22,
+      42,
+      43
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 15664033,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      1,
+      17,
+      21,
+      33,
+      42,
+      43
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 15664033,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      1,
+      17,
+      21,
+      40,
+      42,
+      43
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 15664033,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      1,
+      17,
+      21,
+      42,
+      43,
+      44
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 15248548,
+     "SOURCE": "REMOVED",
+     "TICKET": [
+      1,
+      17,
+      22,
+      30,
+      33,
+      43
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 15664033,
+     "SOURCE": "MUTATION_L1",
+     "TICKET": [
+      1,
+      17,
+      22,
+      30,
+      42,
+      43
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 15664033,
+     "SOURCE": "MUTATION_L1",
+     "TICKET": [
+      1,
+      17,
+      22,
+      33,
+      42,
+      43
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 15664033,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      1,
+      17,
+      22,
+      40,
+      42,
+      43
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 15664033,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      1,
+      17,
+      22,
+      42,
+      43,
+      45
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 15664033,
+     "SOURCE": "MUTATION_L1",
+     "TICKET": [
+      1,
+      17,
+      30,
+      33,
+      42,
+      43
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 15664033,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      1,
+      17,
+      30,
+      34,
+      42,
+      43
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 15664033,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      1,
+      17,
+      30,
+      40,
+      42,
+      43
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 15664033,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      1,
+      17,
+      30,
+      42,
+      43,
+      44
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 15664033,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      1,
+      17,
+      33,
+      34,
+      42,
+      43
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 15664033,
+     "SOURCE": "MUTATION_L2",
+     "TICKET": [
+      1,
+      17,
+      33,
+      42,
+      43,
+      44
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 13101571,
+     "SOURCE": "REMOVED",
+     "TICKET": [
+      3,
+      8,
+      13,
+      28,
+      31,
+      36
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 4688124,
+     "SOURCE": "ELITE",
+     "TICKET": [
+      3,
+      9,
+      12,
+      16,
+      29,
+      39
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 8324575,
+     "SOURCE": "ELITE",
+     "TICKET": [
+      4,
+      7,
+      36,
+      37,
+      39,
+      44
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 4993667,
+     "SOURCE": "ELITE",
+     "TICKET": [
+      4,
+      7,
+      36,
+      39,
+      46,
+      49
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 12753013,
+     "SOURCE": "REMOVED",
+     "TICKET": [
+      6,
+      7,
+      9,
+      13,
+      18,
+      26
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 9452709,
+     "SOURCE": "ELITE",
+     "TICKET": [
+      6,
+      20,
+      31,
+      34,
+      38,
+      44
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 8246203,
+     "SOURCE": "ELITE",
+     "TICKET": [
+      11,
+      12,
+      14,
+      18,
+      23,
+      31
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 4989005,
+     "SOURCE": "ELITE",
+     "TICKET": [
+      16,
+      19,
+      23,
+      26,
+      28,
+      46
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 15248548,
+     "SOURCE": "REMOVED",
+     "TICKET": [
+      21,
+      32,
+      40,
+      42,
+      43,
+      44
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 14797433,
+     "SOURCE": "ELITE",
+     "TICKET": [
+      21,
+      32,
+      40,
+      42,
+      43,
+      49
+     ]
+    },
+    {
+     "RESIDUAL_MARGINAL_OUTCOMES": 10579226,
+     "SOURCE": "ELITE",
+     "TICKET": [
+      22,
+      27,
+      35,
+      45,
+      47,
+      49
+     ]
+    }
+   ],
+   "POOL_REQUIRED_COUNT": 13,
+   "POOL_SIZE": 48,
+   "POOL_SOURCE_COUNTS": {
+    "ELITE": 8,
+    "MUTATION_L1": 6,
+    "MUTATION_L2": 29,
+    "REMOVED": 5
+   },
+   "POSITIONS": [
+    0,
+    1,
+    4,
+    9,
+    18
+   ],
+   "QUINTUPLES_ELIMINATED_BY_BOUND": 1712259,
+   "REMOVED_TICKETS": [
+    [
+     1,
+     2,
+     34,
+     41,
+     42,
+     45
+    ],
+    [
+     1,
+     17,
+     22,
+     30,
+     33,
+     43
+    ],
+    [
+     3,
+     8,
+     13,
+     28,
+     31,
+     36
+    ],
+    [
+     6,
+     7,
+     9,
+     13,
+     18,
+     26
+    ],
+    [
+     21,
+     32,
+     40,
+     42,
+     43,
+     44
+    ]
+   ],
+   "RESIDUAL_SUBSETS": 51019698,
+   "SECONDS": {
+    "HISTOGRAM": 3.255,
+    "POOL": 11.687,
+    "SOLVE": 0.022,
+    "TOTAL": 15.326
+   },
+   "START_OUTCOMES_VIA_KERNEL": 313239661,
+   "TOTAL_QUINTUPLES": 1712304,
+   "UNRESOLVED_QUINTUPLES": 0
+  }
+ ],
+ "PER_QUINTUPLE_WALL_LIMIT_SECONDS": 900,
+ "PHASE_SECONDS": {
+  "PILOT": 119.787,
+  "PINS_AND_PARITY": 95.801
+ },
+ "PILOT_SEED": 20261001,
+ "PINNED_ELITES": [
+  {
+   "CANONICAL_COUNT": 312986016,
+   "EXPECTED_COUNT": 312986016,
+   "EXPECTED_SHA256": "bc755e9b674e2ff37dac0fc8b52bb9f01bfd5a2bf90fc5f9f245dbb049c0ae86",
+   "NAME": "V5",
+   "SHA256": "bc755e9b674e2ff37dac0fc8b52bb9f01bfd5a2bf90fc5f9f245dbb049c0ae86",
+   "SOURCE": "sealed-geometry v5 K20 (commit 56c9715)",
+   "TICKET_COUNT": 20
+  },
+  {
+   "CANONICAL_COUNT": 313239647,
+   "EXPECTED_COUNT": 313239647,
+   "EXPECTED_SHA256": "0c52a1f0bed90cd47d08bb031b13c9bf693317493f88e45da8e087bd4a0ab65b",
+   "NAME": "V6",
+   "SHA256": "0c52a1f0bed90cd47d08bb031b13c9bf693317493f88e45da8e087bd4a0ab65b",
+   "SOURCE": "sealed-geometry v6 K20 (main 76085cc)",
+   "TICKET_COUNT": 20
+  },
+  {
+   "CANONICAL_COUNT": 313239661,
+   "EXPECTED_COUNT": 313239661,
+   "EXPECTED_SHA256": "7ce41ff21d5c0821f1d5dda683e23114086f5024fc6d98d4e574df5306659b1e",
+   "NAME": "CYCLE",
+   "SHA256": "7ce41ff21d5c0821f1d5dda683e23114086f5024fc6d98d4e574df5306659b1e",
+   "SOURCE": "three-ticket cycle full-family best (commit 3655b0f)",
+   "TICKET_COUNT": 20
+  }
+ ],
+ "POOL_CANDIDATES_SCORED_EXACT": 33091,
+ "POOL_SIZE_MAX": 48,
+ "POOL_SIZE_MEAN": 48.0,
+ "POOL_SIZE_MIN": 48,
+ "POOL_SOURCE_DEFINITIONS": {
+  "CAP_RULE": "required tickets first; remaining capacity by highest exact residual marginal against R, ties to the lowest ticket; pool cap 48 is a heuristic",
+  "ELITE": "tickets of the pinned elites V5, V6 and CYCLE that are not frozen in R (always in the pool)",
+  "MUTATION_L1": "legal one-number mutations of the removed tickets, ranked by exact residual marginal",
+  "MUTATION_L2": "one-number mutations of each removed ticket's three best level-1 mutations (bounded two-number neighbourhood), ranked by exact residual marginal",
+  "REMOVED": "the five removed tickets (always in the pool)"
+ },
+ "PROTECTED_LANE_3_TOUCHED": "NO",
+ "PROVEN_OPTIMAL_QUINTUPLES": 8,
+ "QUINTUPLES_ELIMINATED_BY_BOUND": 13697028,
+ "RUN_HEAD": "76085ccc8f226c8752cc7df28390e27009d21746",
+ "RUN_TREE": "a2bd43ed9019e4cf2f330eb7d0dfa498d7904b43",
+ "R_SIZE": 15,
+ "SAMPLE_FILE_SHA256": "76d5e835a38666323828513361f166b08d4adb60b095bd5ee49bdabeb87f65f6",
+ "SAMPLE_PERSISTED_AT": "2026-09-30T06:40:43Z",
+ "SAMPLE_PERSISTED_BEFORE_SCORING": true,
+ "SAMPLING_METHOD": "smallest sha256(f'{seed}:{comma-joined positions}') over C(20,5)",
+ "SCIENTIFIC_RESULT": "NO_IMPROVEMENT_IN_BOUNDED_FIVE_TICKET_REPAIR_PILOT",
+ "SCIENTIFIC_SCOPE": "BOUNDED_8_QUINTUPLE_FIVE_TICKET_REPAIR_WITHIN_CANDIDATE_POOL",
+ "SOLVER": "EXACT_BRANCH_AND_BOUND_NUMPY_GRAM_PAIR_COMPLETION",
+ "SOLVER_DETAIL": "DFS over pool tickets in descending single-marginal order; pruning only by the submodular remaining-slot bound (covered + sum of the r largest exact marginals); the last two slots are solved exactly by a weighted Gram matrix; strict-improvement incumbent starting at the removed tickets; no heuristic prunes",
+ "SOURCE_MODULE_PATH": "src/lottolab/research/b649_k20_five_ticket_exact_repair_r1.py",
+ "SOURCE_MODULE_SHA256": "2877785e3b956c5e6f79fc15b8e04f2f0b2c3b489625afbf44409ce62684c8d0",
+ "START_CANONICAL_RECOUNT": 313239661,
+ "START_COUNT": 313239661,
+ "START_PORTFOLIO": [
+  [
+   1,
+   2,
+   34,
+   41,
+   42,
+   45
+  ],
+  [
+   1,
+   17,
+   22,
+   30,
+   33,
+   43
+  ],
+  [
+   2,
+   5,
+   33,
+   35,
+   40,
+   48
+  ],
+  [
+   3,
+   4,
+   10,
+   15,
+   26,
+   27
+  ],
+  [
+   3,
+   8,
+   13,
+   28,
+   31,
+   36
+  ],
+  [
+   3,
+   9,
+   16,
+   23,
+   29,
+   39
+  ],
+  [
+   4,
+   7,
+   12,
+   36,
+   39,
+   46
+  ],
+  [
+   4,
+   18,
+   20,
+   24,
+   28,
+   29
+  ],
+  [
+   5,
+   17,
+   25,
+   32,
+   41,
+   47
+  ],
+  [
+   6,
+   7,
+   9,
+   13,
+   18,
+   26
+  ],
+  [
+   6,
+   10,
+   11,
+   16,
+   24,
+   36
+  ],
+  [
+   6,
+   14,
+   20,
+   31,
+   37,
+   39
+  ],
+  [
+   7,
+   8,
+   10,
+   14,
+   19,
+   29
+  ],
+  [
+   8,
+   9,
+   11,
+   15,
+   20,
+   46
+  ],
+  [
+   11,
+   12,
+   18,
+   23,
+   27,
+   49
+  ],
+  [
+   12,
+   13,
+   15,
+   19,
+   24,
+   37
+  ],
+  [
+   16,
+   19,
+   26,
+   28,
+   46,
+   49
+  ],
+  [
+   21,
+   25,
+   30,
+   38,
+   45,
+   48
+  ],
+  [
+   21,
+   32,
+   40,
+   42,
+   43,
+   44
+  ],
+  [
+   22,
+   34,
+   35,
+   38,
+   44,
+   47
+  ]
+ ],
+ "START_SHA256": "7ce41ff21d5c0821f1d5dda683e23114086f5024fc6d98d4e574df5306659b1e",
+ "START_SOURCE_ARTIFACT": "docs/research/matrix-native-results/b649-k20-three-ticket-cycle-full-family-r1-result.json",
+ "START_SOURCE_COMMIT": "3655b0f4bc43450748b4fc87c641d0acd11a8509",
+ "TASK_ID": "B649_K20_FIVE_TICKET_EXACT_REPAIR_PILOT_R1",
+ "TASK_STATUS": "COMPLETE",
+ "TIE_BREAK": "max exact count, then lowest normalized portfolio sha256",
+ "WALL_SECONDS": 215.945
+}

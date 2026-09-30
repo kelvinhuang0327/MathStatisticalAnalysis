@@ -1890,12 +1890,15 @@ def _supersede_current_success_receipt(
     old_plist_identity = record(successor_prestate.get("old_plist_identity"))
     # The new operation does not continue from exactly what the prior one left live.
     # Source records differ only in their side label: "new" after the prior apply,
-    # "old" in the successor plan's prestate.
+    # "old" in the successor plan's prestate. The prior receipt may predate a reboot,
+    # which renumbers st_dev, so its plist identity is compared without the device.
     if (
         after_source.get("role") != "new"
         or old_source != {**after_source, "role": "old"}
         or record(successor_prestate.get("old_runtime")) != record(after.get("runtime"))
-        or old_plist_identity != record(after_plist.get("identity"))
+        or not cutover.successor_plist_identity_matches(
+            old_plist_identity, after_plist.get("identity")
+        )
         or successor_prestate.get("old_launch_state") != after_launchd.get("state")
         or successor_prestate.get("old_enabled") is not after.get("enabled")
         or record(successor_prestate.get("old_binding")) != record(after_plist.get("binding"))
@@ -1913,8 +1916,14 @@ def _supersede_current_success_receipt(
     )
     cutover.validate_protected_plan(prior_config, cutover.receipt_to_plan(prior_config, managed))
     # Read-only; raises unless plist, loaded runtime and enabled state are exactly
-    # the prior after-state.
-    cutover.verify_completed_receipt_live(prior_config, managed, runner=cutover.run_command)
+    # the prior after-state and the live plist is exactly the plan's frozen OLD,
+    # device included, so a reboot since the plan refuses before the archive.
+    cutover.verify_completed_receipt_live(
+        prior_config,
+        managed,
+        successor_old_plist_identity=old_plist_identity,
+        runner=cutover.run_command,
+    )
     prior_execution_id = text(prior.get("execution_id"))
     destination_name = f"{request.receipt_path.stem}.{prior_execution_id}.superseded.json"
     if archive:

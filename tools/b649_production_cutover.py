@@ -326,6 +326,33 @@ class FileIdentity:
         )
 
 
+def successor_plist_identity_matches(recorded: object, current: object) -> bool:
+    """Whether a plist identity sealed by an earlier SUCCESS still names the live file.
+
+    Only for historical SUCCESS receipt continuity: a successor compares the plist
+    identity a completed receipt recorded, possibly before a reboot, with the one
+    it observes now. ``device`` is st_dev, the boot-assigned number of the
+    volume's device node, which a reboot renumbers, so it alone is ignored.
+    Every other field must be exactly equal: inode, mode, link count and ctime
+    still expose a replaced or rewritten file whose bytes are identical, because
+    ctime cannot be restored. A malformed identity never matches. Transaction
+    checks keep comparing the full ``FileIdentity.key()``.
+    """
+    stable: list[Record] = []
+    for value in (recorded, current):
+        if isinstance(value, FileIdentity):
+            identity = value
+        else:
+            try:
+                identity = FileIdentity.from_value(value)
+            except CutoverSafetyError:
+                return False
+            if identity.to_dict() != value:
+                return False
+        stable.append({key: item for key, item in identity.to_dict().items() if key != "device"})
+    return stable[0] == stable[1]
+
+
 def _int(value: object, label: str) -> int:
     if type(value) is not int:
         raise CutoverSafetyError(f"{label} must be an integer")
@@ -3315,22 +3342,33 @@ def receipt_to_plan(config: CutoverConfig, receipt: Record) -> Record:
 
 
 def verify_completed_receipt_live(
-    config: CutoverConfig, receipt: Record, *, runner: Runner
+    config: CutoverConfig,
+    receipt: Record,
+    *,
+    successor_old_plist_identity: object,
+    runner: Runner,
 ) -> None:
     """Read-only: raise unless a completed receipt's after-state is the live state.
 
     Reuse of a completed receipt only needs the plist's content to match. A
-    successor operation additionally starts from the plist's exact file identity
-    (its next plan freezes it as OLD), so a rewritten-but-identical plist must
-    refuse here rather than after the caller has already retired the receipt.
+    successor operation additionally starts from the plist's file identity, so
+    a rewritten-but-identical plist must refuse here rather than after the
+    caller has already retired the receipt. The receipt may predate a reboot,
+    so it is compared by ``successor_plist_identity_matches``. The successor
+    plan froze its OLD identity in this boot and its child's CAS requires
+    exactly that, so plan OLD and live must be equal on the full ``key()``,
+    device included.
     """
 
     _reconcile_completed_receipt(config, receipt, runner=runner)
     after_plist = _record(_record(receipt.get("after"), "receipt after").get("plist"), "plist")
-    expected = _identity_from_record(after_plist.get("identity"), "receipt after plist identity")
+    sealed = after_plist.get("identity")
+    planned = _identity_from_record(successor_old_plist_identity, "successor plan old plist")
     current, _ = _file_identity(config.plist_path, missing_ok=False, require_mode=0o600)
-    if current is None or current.to_dict() != expected.to_dict():
+    if current is None or not successor_plist_identity_matches(sealed, current):
         raise CutoverSafetyError("completed receipt plist identity differs from the live plist")
+    if current.key() != planned.key():
+        raise CutoverSafetyError("successor plan OLD plist identity differs from the live plist")
 
 
 def rollback(
@@ -3964,5 +4002,6 @@ __all__ = [
     "reconcile_restored",
     "rollback",
     "run_command",
+    "successor_plist_identity_matches",
     "verify_completed_receipt_live",
 ]

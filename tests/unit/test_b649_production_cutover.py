@@ -2749,3 +2749,30 @@ def test_verify_completed_receipt_live_binds_the_plan_old_identity_to_this_boot(
         cutover.verify_completed_receipt_live(
             fixture.config, receipt, successor_old_plist_identity=rebooted, runner=runner
         )
+
+
+def test_only_prestart_release_accepts_a_verified_control_descendant() -> None:
+    live = cutover.control_version()
+    parent_head = checkpoint.git_value(
+        cutover.run_command, str(cutover.CONTROL_ROOT), "HEAD^"
+    )
+    parent_tree = checkpoint.git_value(
+        cutover.run_command, str(cutover.CONTROL_ROOT), f"{parent_head}^{{tree}}"
+    )
+    owner: cutover.Record = {"control_head": parent_head, "control_tree": parent_tree}
+
+    assert cutover._control_version_matches_release_owner(  # pyright: ignore[reportPrivateUsage]
+        owner,
+        live,
+        allow_prestart_descendant=True,
+    )
+    assert not cutover._control_version_matches_release_owner(  # pyright: ignore[reportPrivateUsage]
+        owner,
+        live,
+        allow_prestart_descendant=False,
+    )
+    assert not cutover._control_version_matches_release_owner(  # pyright: ignore[reportPrivateUsage]
+        {**owner, "control_tree": "f" * 40},
+        live,
+        allow_prestart_descendant=True,
+    )

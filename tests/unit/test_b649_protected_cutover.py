@@ -3794,3 +3794,279 @@ def test_rebooted_current_success_still_refuses_runtime_drift(
     assert harness.launches == 2
     _assert_retired_once(path, raw, result)
     assert protected.record(result["identity"])["operation_id"] == authorization["operation_id"]
+
+
+def _prepare_prestart_failure(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> tuple[Path, bytes, dict[str, object]]:
+    prior_path, prior_bytes = _current_success_cycle(harness, monkeypatch)
+    capsys.readouterr()
+    _argv, authorization = _drive_reserve_authorize(harness, monkeypatch, capsys)
+    assert protected.main(_authorize_argv(authorization)) == 0
+    capsys.readouterr()
+    harness.exec_failed = True
+    failure = harness.launch()
+    assert failure["status"] == "INCOMPLETE_OR_AMBIGUOUS"
+    saved = protected.ReceiptFile(harness.request.receipt_path).read()
+    assert saved is not None
+    assert saved["phase"] == "COMPLETED"
+    assert "child_started_at" not in saved
+    archive = _archive_path(prior_path, prior_bytes)
+    assert archive.read_bytes() == prior_bytes
+    return prior_path, prior_bytes, authorization
+
+
+def _reconcile_prestart_argv(
+    harness: Harness,
+    authorization: dict[str, object],
+) -> list[str]:
+    target = protected.record(authorization["target"])
+    return [
+        "reconcile-prestart",
+        "--for",
+        "apply",
+        "--source-worktree",
+        str(target["source_worktree"]),
+        "--expected-head",
+        str(target["head"]),
+        "--expected-tree",
+        str(target["tree"]),
+        "--reservation-id",
+        str(authorization["reservation_id"]),
+        "--operation-id",
+        str(authorization["operation_id"]),
+    ]
+
+
+def _always_stale_process(_pid: int) -> bool:
+    return True
+
+
+def _invoke_prestart_reconciliation(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    authorization: dict[str, object],
+    *,
+    live_process: bool = False,
+) -> tuple[int, dict[str, object]]:
+    monkeypatch.setattr(
+        protected,
+        "build_reservation_config",
+        _fixed_reservation_config(harness),
+    )
+    with monkeypatch.context() as dead_processes:
+        def process_is_stale(_pid: int) -> bool:
+            return not live_process
+
+        dead_processes.setattr(protected, "_pid_is_stale", process_is_stale)
+        code = protected.main(_reconcile_prestart_argv(harness, authorization))
+    return code, _last_json_line(capsys)
+
+
+def test_prestart_zero_mutation_is_sealed_and_releases_only_the_exact_owner(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    prior_path, prior_bytes, authorization = _prepare_prestart_failure(
+        harness, monkeypatch, capsys
+    )
+    protected_path = harness.request.receipt_path
+    protected_before = protected_path.read_bytes()
+    managed_before = harness.fixture.receipt_path.read_bytes()
+    prior_archive = _archive_path(prior_path, prior_bytes)
+
+    code, result = _invoke_prestart_reconciliation(
+        harness, monkeypatch, capsys, authorization
+    )
+
+    assert code == 0, result
+    proof = protected.record(result["prestart_reconciliation"])
+    assert proof["classification"] == protected.PRESTART_RECONCILIATION_KIND
+    assert proof["source_protected_receipt_sha256"] == hashlib.sha256(protected_before).hexdigest()
+    assert proof["mutation_started"] is False
+    assert proof["mutation_completed"] is False
+    assert proof["managed_actions"] == []
+    assert proof["new_managed_receipt_exists"] is False
+    assert proof["claim_status"] == "ABSENT"
+    assert proof["predecessor_runtime_verified"] is True
+    owner = cutover.inspect_control_owner(harness.fixture.config)
+    assert owner is not None and owner["phase"] == "RELEASED"
+    release = protected.record(owner["release_evidence"])
+    assert release["kind"] == protected.PRESTART_RECONCILIATION_KIND
+    assert release["prestart_reconciliation_sha256"] == proof["proof_sha256"]
+    assert release["protected_receipt_sha256"] == hashlib.sha256(
+        protected_path.read_bytes()
+    ).hexdigest()
+    assert harness.fixture.receipt_path.read_bytes() == managed_before
+    assert prior_archive.read_bytes() == prior_bytes
+
+
+@pytest.mark.parametrize(
+    "damage",
+    [
+        "started_child",
+        "nonempty_actions",
+        "mutation_started",
+        "unknown_mutation",
+        "runtime_drift",
+        "live_process",
+        "owner_binding",
+    ],
+)
+def test_prestart_reconciliation_refuses_unknown_or_inconsistent_evidence(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    damage: str,
+) -> None:
+    prior_path, prior_bytes, authorization = _prepare_prestart_failure(
+        harness, monkeypatch, capsys
+    )
+    receipt_file = protected.ReceiptFile(harness.request.receipt_path)
+    receipt = receipt_file.read()
+    assert receipt is not None
+    if damage == "started_child":
+        receipt_file.write({**receipt, "child_started_at": protected.now()}, expected=receipt)
+    elif damage == "nonempty_actions":
+        receipt_file.write({**receipt, "actions": [{"name": "unexpected"}]}, expected=receipt)
+    elif damage in {"mutation_started", "unknown_mutation", "owner_binding"}:
+        stored = cutover._read_control_owner(harness.fixture.config)
+        assert stored is not None
+        owner, owner_identity = stored
+        if damage == "mutation_started":
+            replacement = {**owner, "phase": "MUTATION_IN_PROGRESS", "mutation_started": True}
+        elif damage == "unknown_mutation":
+            replacement = {**owner, "mutation_started": None}
+        else:
+            authorization_record = protected.record(owner["authorization"])
+            replacement = {
+                **owner,
+                "authorization": {
+                    **authorization_record,
+                    "operation_id": "f" * 32,
+                },
+            }
+        cutover._save_control_owner(
+            harness.fixture.config,
+            replacement,
+            expected=owner_identity,
+        )
+    elif damage == "runtime_drift":
+        harness.launchd.loaded_source = harness.fixture.new
+
+    protected_before = harness.request.receipt_path.read_bytes()
+    managed_before = harness.fixture.receipt_path.read_bytes()
+    prior_archive = _archive_path(prior_path, prior_bytes)
+    code, result = _invoke_prestart_reconciliation(
+        harness,
+        monkeypatch,
+        capsys,
+        authorization,
+        live_process=damage == "live_process",
+    )
+
+    assert code == claims.UNVERIFIABLE
+    assert "error" in result
+    assert harness.fixture.receipt_path.read_bytes() == managed_before
+    assert prior_archive.read_bytes() == prior_bytes
+    if damage in {"started_child", "nonempty_actions", "runtime_drift"}:
+        assert harness.request.receipt_path.read_bytes() == protected_before
+    if damage not in {"unknown_mutation", "owner_binding", "mutation_started"}:
+        owner = cutover.inspect_control_owner(harness.fixture.config)
+        assert owner is not None
+        assert owner["phase"] == "AUTHORIZED_PENDING"
+    elif damage == "mutation_started":
+        owner = cutover.inspect_control_owner(harness.fixture.config)
+        assert owner is not None and owner["mutation_started"] is True
+
+
+def test_unreconciled_incomplete_archive_is_not_a_successor_evidence_source(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    _prepare_prestart_failure(harness, monkeypatch, capsys)
+    path = harness.request.receipt_path
+    receipt_file = protected.ReceiptFile(path)
+    receipt, sha256 = receipt_file.read_with_sha256()
+    assert receipt is not None and sha256 is not None
+    receipt_file.archive_to(
+        f"{path.stem}.{receipt['execution_id']}.superseded.json",
+        expected_sha256=sha256,
+    )
+    with pytest.raises(protected.ProtectedError, match="pre-start reconciliation proof is invalid"):
+        protected._find_archived_prior_receipt(path, lambda candidate: candidate == sha256)
+
+
+def test_reconciled_prestart_failure_can_reserve_and_run_a_later_successor(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    prior_path, prior_bytes, failed_authorization = _prepare_prestart_failure(
+        harness, monkeypatch, capsys
+    )
+    code, reconciled = _invoke_prestart_reconciliation(
+        harness, monkeypatch, capsys, failed_authorization
+    )
+    assert code == 0, reconciled
+    failure_path = harness.request.receipt_path
+    failure_bytes = failure_path.read_bytes()
+
+    next_source = harness.fixture.worktree_parent / f"B649_PRODUCTION_{THIRD_HEAD}"
+    Fixture.make_source(next_source)
+    harness.launchd.worktree_identities[next_source] = (THIRD_HEAD, THIRD_TREE, True)
+    harness.fixture.new = next_source
+    harness.fixture.config = replace(
+        harness.fixture.config,
+        source_worktree=next_source,
+        expected_head=THIRD_HEAD,
+        expected_tree=THIRD_TREE,
+        durable_ref=f"refs/heads/runtime/b649/{THIRD_HEAD}",
+    )
+    harness.launchd.process_rows = [f"424242 1 {UID} S /usr/bin/fixture-shell"]
+    harness.launchd.file_rows = ["p424242", "fcwd", "n/tmp"]
+    plan = cutover.build_plan(harness.fixture.config, runner=harness.launchd)
+    assert plan["status"] == "PASS", plan.get("failures")
+    plan_path = harness.fixture.root / "plan-after-prestart-reconciliation.json"
+    plan_path.write_text(protected.canonical(plan))
+    plan_path.chmod(0o600)
+    harness.request = protected.make_request(
+        harness.fixture.config,
+        harness.fixture.old,
+        NEW_HEAD,
+        NEW_TREE,
+        plan_path,
+        harness.request.claim_root,
+    )
+    harness.chain()
+    with monkeypatch.context() as dead_processes:
+        dead_processes.setattr(protected, "_pid_is_stale", _always_stale_process)
+        argv, authorization = _drive_reserve_authorize(harness, monkeypatch, capsys)
+    reserved_owner = cutover.inspect_control_owner(harness.fixture.config)
+    assert reserved_owner is not None and reserved_owner["phase"] == "AUTHORIZATION_PENDING"
+    predecessor_proof = protected.record(reserved_owner["predecessor_release_evidence"])
+    assert protected.record(predecessor_proof["prior_release_evidence"])["kind"] == (
+        protected.PRESTART_RECONCILIATION_KIND
+    )
+    assert protected.main(_authorize_argv(authorization)) == 0
+    capsys.readouterr()
+
+    harness.exec_failed = False
+    assert protected.main(argv) == 0
+    result = _last_json_line(capsys)
+    assert result["status"] == "SUCCESS"
+    assert harness.launchd.loaded_source == next_source
+    prior_archive = _archive_path(prior_path, prior_bytes)
+    assert prior_archive.read_bytes() == prior_bytes
+    failure_archive = _archive_path(failure_path, failure_bytes)
+    assert failure_archive.read_bytes() == failure_bytes
+    assert protected.record(result["superseded_execution_receipt"])["path"] == str(
+        failure_archive
+    )
+    failure_receipt = json.loads(failure_archive.read_bytes())
+    assert failure_receipt["prestart_reconciliation"] == reconciled["prestart_reconciliation"]

@@ -44,6 +44,8 @@ PLAN_SCHEMA_VERSION = "b649-managed-production-cutover-plan-v1"
 RECEIPT_SCHEMA_VERSION = "b649-managed-production-cutover-receipt-v1"
 CONTROL_OWNER_SCHEMA = "b649-durable-control-owner-v1"
 PROTECTED_PREDECESSOR_RELEASE_SCHEMA = "b649-protected-predecessor-release-v1"
+PRESTART_RECONCILIATION_SCHEMA = "b649-protected-prestart-zero-mutation-v1"
+PRESTART_RECONCILIATION_KIND = "PRESTART_ZERO_MUTATION"
 CONTROL_OWNER_NAME = "b649-control-owner-reservation.json"
 COMMAND_TIMEOUT = 10
 MAX_OUTPUT_BYTES = 2 * 1024 * 1024
@@ -1211,6 +1213,41 @@ def control_version() -> Record:
     return {"head": head, "tree": tree}
 
 
+def _control_version_matches_release_owner(
+    owner: Record,
+    live: Record,
+    *,
+    allow_prestart_descendant: bool,
+) -> bool:
+    pinned_head = owner.get("control_head")
+    pinned_tree = owner.get("control_tree")
+    if (pinned_head, pinned_tree) == (live.get("head"), live.get("tree")):
+        return True
+    if not allow_prestart_descendant or not isinstance(pinned_head, str):
+        return False
+    try:
+        pinned_commit_tree = checkpoint.git_value(
+            run_command, str(CONTROL_ROOT), f"{pinned_head}^{{tree}}"
+        )
+        if pinned_commit_tree != pinned_tree:
+            return False
+        checkpoint.checked(
+            run_command,
+            [
+                "git",
+                "-C",
+                str(CONTROL_ROOT),
+                "merge-base",
+                "--is-ancestor",
+                pinned_head,
+                _text(live.get("head"), "live control head"),
+            ],
+        )
+    except (CutoverError, checkpoint.Unverifiable, OSError, ValueError):
+        return False
+    return True
+
+
 def _control_owner_path(config: CutoverConfig) -> Path:
     if _is_production_control_target(config):
         return PRODUCTION_CONTROL_OWNER_PATH
@@ -1549,6 +1586,231 @@ def _verify_protected_owner_receipt(
         or value.get("exit_code") == 0
     ):
         raise CutoverSafetyError("protected failure receipt is not terminal")
+
+
+def _verify_prestart_reconciliation_receipt(
+    value: Record,
+    *,
+    config: CutoverConfig,
+    path: Path,
+    bound_identity: Record,
+    owner: Record,
+    managed: Record,
+    managed_sha256: str,
+    expected_proof_sha256: str,
+) -> Record:
+    """Verify the narrow proof used to release an unstarted protected apply."""
+    unsigned_receipt = {key: item for key, item in value.items() if key != "receipt_sha256"}
+    try:
+        encoded = json.dumps(
+            unsigned_receipt,
+            ensure_ascii=True,
+            separators=(",", ":"),
+            sort_keys=True,
+            allow_nan=False,
+        ).encode("utf-8")
+        identity = _record(value.get("identity"), "protected execution identity")
+        identity_digest = hashlib.sha256(
+            json.dumps(
+                identity,
+                ensure_ascii=True,
+                separators=(",", ":"),
+                sort_keys=True,
+                allow_nan=False,
+            ).encode("utf-8")
+        ).hexdigest()
+        proof = _record(value.get("prestart_reconciliation"), "pre-start reconciliation proof")
+        unsigned_proof = {key: item for key, item in proof.items() if key != "proof_sha256"}
+        proof_digest = hashlib.sha256(
+            json.dumps(
+                unsigned_proof,
+                ensure_ascii=True,
+                separators=(",", ":"),
+                sort_keys=True,
+                allow_nan=False,
+            ).encode("utf-8")
+        ).hexdigest()
+    except (TypeError, ValueError) as exc:
+        raise CutoverSafetyError("pre-start reconciliation evidence encoding is invalid") from exc
+    expected_proof_fields = {
+        "schema",
+        "classification",
+        "reservation_id",
+        "operation_id",
+        "execution_id",
+        "protected_receipt_path",
+        "source_protected_receipt_sha256",
+        "owner_record_sha256",
+        "managed_receipt_path",
+        "managed_receipt_sha256",
+        "predecessor_execution_id",
+        "predecessor_reservation_id",
+        "predecessor_operation_id",
+        "archived_predecessor_protected_receipt_path",
+        "archived_predecessor_protected_receipt_sha256",
+        "child_started_at_absent",
+        "mutation_started",
+        "mutation_completed",
+        "managed_actions",
+        "new_managed_receipt_exists",
+        "claim_status",
+        "owner_pid",
+        "supervisor_pid",
+        "gated_child_pid",
+        "process_states",
+        "predecessor_runtime_verified",
+        "proof_sha256",
+    }
+    source_unsigned = {
+        key: item
+        for key, item in value.items()
+        if key not in {"receipt_sha256", "prestart_reconciliation"}
+    }
+    source_receipt = {
+        **source_unsigned,
+        "receipt_sha256": hashlib.sha256(
+            json.dumps(
+                source_unsigned,
+                ensure_ascii=True,
+                separators=(",", ":"),
+                sort_keys=True,
+                allow_nan=False,
+            ).encode("utf-8")
+        ).hexdigest(),
+    }
+    source_receipt_sha256 = hashlib.sha256(
+        (
+            json.dumps(
+                source_receipt,
+                ensure_ascii=True,
+                separators=(",", ":"),
+                sort_keys=True,
+                allow_nan=False,
+            )
+            + "\n"
+        ).encode("utf-8")
+    ).hexdigest()
+    link_value = value.get("managed_receipt")
+    link = _record(link_value, "protected managed receipt link") if link_value is not None else None
+    process_states = _record(proof.get("process_states"), "pre-start process evidence")
+    pids = (
+        proof.get("owner_pid"),
+        proof.get("supervisor_pid"),
+        proof.get("gated_child_pid"),
+    )
+    checks = {
+        "protected receipt schema": value.get("schema_version")
+        == "b649-protected-cutover-execution-receipt-v1",
+        "protected receipt task": value.get("task_key")
+        == "b649-protected-cutover:com.lottolab.b649-goalc-r1",
+        "protected receipt seal": value.get("receipt_sha256")
+        == hashlib.sha256(encoded).hexdigest(),
+        "protected execution identity": value.get("execution_id") == identity_digest,
+        "protected receipt path": identity.get("execution_receipt_path") == str(path),
+        "owner binding": all(identity.get(key) == item for key, item in bound_identity.items()),
+        "terminal phase": value.get("phase") == "COMPLETED",
+        "incomplete status": value.get("status") == "INCOMPLETE_OR_AMBIGUOUS",
+        "incomplete result": value.get("result_status") == "INCOMPLETE_OR_AMBIGUOUS",
+        "nonzero exit": type(value.get("exit_code")) is int and value.get("exit_code") != 0,
+        "child never completed": value.get("child_exit_code") is None,
+        "child never started": "child_started_at" not in value,
+        "receipt mutation state": "mutation_started" not in value
+        or value.get("mutation_started") is False,
+        "receipt actions": "actions" not in value or value.get("actions") == [],
+        "proof fields": set(proof) == expected_proof_fields,
+        "proof schema": proof.get("schema") == PRESTART_RECONCILIATION_SCHEMA,
+        "proof class": proof.get("classification") == PRESTART_RECONCILIATION_KIND,
+        "proof caller hash": proof.get("proof_sha256") == expected_proof_sha256,
+        "proof digest": proof_digest == expected_proof_sha256,
+        "proof reservation": proof.get("reservation_id") == identity.get("reservation_id")
+        == owner.get("reservation_id"),
+        "proof operation": proof.get("operation_id") == identity.get("operation_id")
+        == owner.get("operation_id"),
+        "proof execution": proof.get("execution_id") == value.get("execution_id"),
+        "proof protected path": proof.get("protected_receipt_path") == str(path),
+        "source receipt hash": proof.get("source_protected_receipt_sha256")
+        == source_receipt_sha256
+        and re.fullmatch(r"[0-9a-f]{64}", str(proof.get("source_protected_receipt_sha256")))
+        is not None,
+        "owner record hash": proof.get("owner_record_sha256") == owner.get("record_sha256")
+        and re.fullmatch(r"[0-9a-f]{64}", str(proof.get("owner_record_sha256"))) is not None,
+        "managed receipt path": proof.get("managed_receipt_path")
+        == identity.get("managed_receipt_path")
+        == str(config.receipt_path),
+        "managed receipt hash": proof.get("managed_receipt_sha256")
+        == managed_sha256
+        == owner.get("managed_receipt_sha256"),
+        "predecessor managed receipt": managed.get("phase") == "COMPLETED"
+        and managed.get("status") == "SUCCESS"
+        and proof.get("predecessor_operation_id") == managed.get("operation_id"),
+        "archived predecessor hash": proof.get("archived_predecessor_protected_receipt_sha256")
+        == identity.get("prior_execution_receipt_sha256"),
+        "child start marker": proof.get("child_started_at_absent") is True,
+        "mutation flags": proof.get("mutation_started") is False
+        and proof.get("mutation_completed") is False,
+        "empty managed actions": proof.get("managed_actions") == [],
+        "no new managed receipt": proof.get("new_managed_receipt_exists") is False,
+        "absent claim": proof.get("claim_status") == "ABSENT",
+        "predecessor runtime": proof.get("predecessor_runtime_verified") is True,
+        "dead process ids": all(type(pid) is int and pid > 0 for pid in pids)
+        and proof.get("owner_pid") == owner.get("owner_pid")
+        and proof.get("supervisor_pid") == value.get("supervisor_pid")
+        and proof.get("gated_child_pid") == value.get("gated_child_pid"),
+        "dead process states": process_states
+        == {"owner": "STALE_PROCESS", "supervisor": "STALE_PROCESS", "child": "STALE_PROCESS"},
+        "optional managed link": link is None
+        or (
+            link.get("path") == str(config.receipt_path)
+            and link.get("sha256") == managed_sha256
+            and link.get("status") == "SUCCESS"
+        ),
+    }
+    failed_checks = [name for name, passed in checks.items() if not passed]
+    if failed_checks:
+        raise CutoverSafetyError(
+            "pre-start reconciliation evidence does not bind this owner: "
+            + ", ".join(failed_checks)
+        )
+    if owner.get("phase") != "AUTHORIZED_PENDING":
+        raise CutoverSafetyError("pre-start reconciliation owner is not pre-mutation")
+    if owner.get("mutation_started") is not False:
+        raise CutoverSafetyError("pre-start reconciliation owner records mutation")
+    archive_path = Path(_text(
+        proof.get("archived_predecessor_protected_receipt_path"),
+        "archived predecessor protected receipt path",
+    ))
+    archived, archived_identity, _ = _load_json(archive_path)
+    archived_identity_record = _record(archived.get("identity"), "archived predecessor identity")
+    predecessor_bound_identity = {
+        "reservation_id": archived_identity_record.get("reservation_id"),
+        "operation_id": archived_identity_record.get("operation_id"),
+        "managed_receipt_sha256": archived_identity_record.get("managed_receipt_sha256"),
+        "control_head": archived_identity_record.get("control_head"),
+        "control_tree": archived_identity_record.get("control_tree"),
+        "action": archived_identity_record.get("action"),
+        "target": archived_identity_record.get("target"),
+    }
+    _verify_protected_owner_receipt(
+        archived,
+        path=path,
+        bound_identity=predecessor_bound_identity,
+        successful=True,
+    )
+    predecessor_link = _record(archived.get("managed_receipt"), "archived predecessor managed link")
+    if (
+        archive_path.parent != path.parent
+        or archive_path.name
+        != f"{path.stem}.{proof.get('predecessor_execution_id')}.superseded.json"
+        or archived_identity.sha256 != proof.get("archived_predecessor_protected_receipt_sha256")
+        or archived.get("execution_id") != proof.get("predecessor_execution_id")
+        or archived_identity_record.get("reservation_id") != proof.get("predecessor_reservation_id")
+        or archived_identity_record.get("operation_id") != proof.get("predecessor_operation_id")
+        or predecessor_link.get("path") != str(config.receipt_path)
+        or predecessor_link.get("sha256") != managed_sha256
+        or predecessor_link.get("status") != "SUCCESS"
+    ):
+        raise CutoverSafetyError("archived predecessor success does not match reconciliation")
+    return proof
 
 
 def acquire_control_owner(
@@ -2079,6 +2341,7 @@ def release_control_owner(
     reservation_id: str,
     *,
     protected_receipt_path: Path | None = None,
+    prestart_reconciliation_sha256: str | None = None,
 ) -> Record:
     """Release only after terminal evidence is re-read and bound to this owner."""
     with CutoverLock(_control_owner_lock_path(config)):
@@ -2091,11 +2354,62 @@ def release_control_owner(
         if value["phase"] == "RELEASED":
             return value
         live_control = control_version()
-        if (value["control_head"], value["control_tree"]) != (
-            live_control.get("head"),
-            live_control.get("tree"),
+        if not _control_version_matches_release_owner(
+            value,
+            live_control,
+            allow_prestart_descendant=prestart_reconciliation_sha256 is not None,
         ):
             raise CutoverSafetyError("control version changed before owner release")
+        if prestart_reconciliation_sha256 is not None:
+            expected_protected_path = (
+                config.scheduler_root / "b649-protected-cutover-execution-receipt.json"
+            )
+            if (
+                value["phase"] != "AUTHORIZED_PENDING"
+                or value["owner_kind"] != "protected"
+                or value["action"] != "apply"
+                or protected_receipt_path is None
+                or protected_receipt_path != expected_protected_path
+            ):
+                raise CutoverSafetyError(
+                    "pre-start reconciliation owner phase or receipt path differs"
+                )
+            protected, protected_identity, _ = _load_json(protected_receipt_path)
+            bound_identity = _owner_identity(value)
+            managed, managed_identity, _ = _load_json(config.receipt_path)
+            if (
+                managed_identity.sha256 != value.get("managed_receipt_sha256")
+                or managed.get("phase") != "COMPLETED"
+                or managed.get("status") != "SUCCESS"
+            ):
+                raise CutoverSafetyError("pre-start predecessor managed receipt changed")
+            _verify_prestart_reconciliation_receipt(
+                protected,
+                config=config,
+                path=protected_receipt_path,
+                bound_identity=bound_identity,
+                owner=value,
+                managed=managed,
+                managed_sha256=managed_identity.sha256,
+                expected_proof_sha256=prestart_reconciliation_sha256,
+            )
+            evidence: Record = {
+                "kind": PRESTART_RECONCILIATION_KIND,
+                "prestart_reconciliation_sha256": prestart_reconciliation_sha256,
+                "managed_receipt_sha256": managed_identity.sha256,
+                "protected_receipt_sha256": protected_identity.sha256,
+                "managed_receipt_unchanged": True,
+                "verified": True,
+            }
+            return _save_control_owner(
+                config,
+                {
+                    **value,
+                    "phase": "RELEASED",
+                    "release_evidence": evidence,
+                },
+                expected=identity,
+            )
         if value["phase"] == "TERMINAL_CAPTURE_PENDING":
             terminal = _record(value.get("terminal"), "managed terminal evidence")
             managed, managed_identity, _ = _load_json(config.receipt_path)

@@ -7,9 +7,9 @@ P(at least one ticket wins). K5 is pairwise disjoint. For both OFFICIAL_ANY_PRIZ
 and M3_PLUS, every pairwise-disjoint portfolio of size 1..8 attains the global
 optimum proved in ``lottolab.research.b649_k1_k8_global_optimality``; that
 optimum is not unique. K10 remains the frozen HARD_DIV pairwise-overlap
-radius2 authority from sealed-geometry v2. The v6 K20 is an independently
-exact-verified, sealed durable incumbent from the still-running exact two-ticket
-joint-replacement sweep. Neither sweep nor neighborhood completeness is claimed,
+radius2 authority from sealed-geometry v2. The v7 K20 is an independently
+exact-verified, sealed durable incumbent establishing 313,239,661 winning
+outcomes (+14 over v6). Neither sweep nor neighborhood completeness is claimed,
 and neither K10 nor K20 is a proven global optimum.
 There is no historical outcome tuning or predictive signal: the portfolios do
 not depend on the target draw, prediction streams, or historical outcomes.
@@ -34,7 +34,7 @@ from typing import Final
 type Ticket = tuple[int, ...]
 
 SEALED_GEOMETRY_METHOD_ID: Final = "B649_SEALED_GEOMETRY_PORTFOLIO"
-SEALED_GEOMETRY_METHOD_VERSION: Final = "6.0.0"
+SEALED_GEOMETRY_METHOD_VERSION: Final = "7.0.0"
 PROBABILITY_MODEL: Final = "BIG_LOTTO_UNIFORM_FAIR_DRAW"
 PRIZE_EVENT: Final = "OFFICIAL_ANY_PRIZE"
 POOL_SIZE: Final = 49
@@ -129,10 +129,10 @@ _K10 = SealedGeometryPortfolio(
     official_any_prize_probability=Fraction(536005, 1827672),
 )
 
-# OFFICIAL_ANY_PRIZE successor to sealed-geometry v5: a durable incumbent from
-# the still-running exact two-ticket joint-replacement sweep, independently
-# verified against the full outcome space. No sweep/neighborhood completeness
-# or global optimality is claimed; no historical outcomes were used for tuning.
+# OFFICIAL_ANY_PRIZE successor to sealed-geometry v6: the exact-recomputed
+# terminal local optimum of the bounded two-ticket replacement sweep,
+# establishing 313,239,661 winning outcomes (+14 over v6). Global optimality
+# is unknown; no historical outcomes were used for tuning.
 _K20 = SealedGeometryPortfolio(
     ticket_count=20,
     tickets=(
@@ -151,21 +151,21 @@ _K20 = SealedGeometryPortfolio(
         (7, 8, 10, 14, 19, 29),
         (8, 9, 11, 15, 20, 46),
         (11, 12, 18, 23, 27, 49),
-        (12, 13, 15, 19, 24, 37),
+        (13, 15, 19, 24, 37, 49),
         (16, 19, 23, 26, 28, 46),
         (21, 25, 30, 38, 45, 48),
         (21, 32, 40, 42, 43, 44),
         (22, 34, 35, 38, 44, 47),
     ),
-    portfolio_sha256="0c52a1f0bed90cd47d08bb031b13c9bf693317493f88e45da8e087bd4a0ab65b",
+    portfolio_sha256="0045ac8837fc82e9a585d812173341ac12e05c5de201af7f8fedeacafa19e1ff",
     source_id="B649_K20_EXACT_TWO_TICKET_JOINT_REPLACEMENT_SWEEP_R1",
     source_locator=(
         "docs/research/matrix-native-results/"
-        "b649-k20-two-ticket-joint-replacement-incumbent-r1.json"
+        "b649-k20-exact-two-ticket-joint-replacement-terminal-r1.json"
     ),
-    source_sha256="14f070a764a48a09007e18db212d491867a7c8dc59e775115391a02c8840f632",
+    source_sha256="e7698ff0d76a91c69378bf9bf0badb4ed9ac4f4dd146c71e5c94300bcfbbff9e",
     m3_plus_probability=Fraction(4807367, 13983816),
-    official_any_prize_probability=Fraction(44748521, 85900584),
+    official_any_prize_probability=Fraction(44748523, 85900584),
 )
 
 SEALED_GEOMETRY_PORTFOLIOS: Final[Mapping[int, SealedGeometryPortfolio]] = MappingProxyType(

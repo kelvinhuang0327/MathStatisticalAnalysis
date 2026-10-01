@@ -1,0 +1,661 @@
+{
+  "schema_version": 1,
+  "certificate_id": "B649_K10_OVERLAP_MASS11_MASS12_PROOF_CERTIFICATE_R1",
+  "integration_task_id": "B649_K10_PROOF_SLICE_INTEGRATION_R1",
+  "integration_base": {
+    "commit": "d32620eda04e3e01c1cb135d822bb21e41f0de34",
+    "tree": "1f8c8878dc6d108014028d9abf588ed7b4593d50"
+  },
+  "event": {
+    "name": "OFFICIAL_ANY_PRIZE",
+    "lottery": "BIG_LOTTO",
+    "probability_model": "BIG_LOTTO_UNIFORM_FAIR_DRAW",
+    "win_rule": "main_hits >= 3 OR (main_hits == 2 AND special number in ticket)",
+    "outcome_space": "C(49,6) main draws x 43 special numbers",
+    "total_outcomes": 601304088,
+    "evaluator": "lottolab.research.b649_official_any_prize_exact.evaluate_portfolio"
+  },
+  "ticket_count": 10,
+  "overlap_mass_definition": "mass = sum over ticket pairs i<j of |T_i ∩ T_j| = sum over numbers n of C(r_n, 2), where r_n counts the tickets containing n; tickets are distinct 6-subsets of 1..49",
+  "incumbent": {
+    "source": "src/lottolab/application/b649_sealed_geometry_portfolio.py K10 (HARD_DIV_PAIRWISE_OVERLAP_R1_K10_RADIUS2)",
+    "portfolio_sha256": "13b1126d5b26ce44c9aba24670142eeab49f4a4b51aaf3bbabe7a7f1659ac673",
+    "official_any_prize": "536005/1827672",
+    "outcome_count": 176345645,
+    "overlap_mass": 11
+  },
+  "claims": {
+    "proven_scope": "K=10 portfolios of distinct tickets with overlap mass 11 or 12",
+    "proven": [
+      "Overlap mass 11 is the K=10 minimum; its only number-frequency profile is 38 singles + 11 doubles (all 49 numbers used).",
+      "Mass 11: of the 89,198 legal isomorphism classes, exactly one reaches 536005/1827672 (the sealed K10 class); the next best class has 176,334,445 outcomes.",
+      "Mass 12: the only profiles are A (36 singles + 12 doubles, 48 numbers used) and B (39 singles + 9 doubles + 1 triple, 49 numbers used); the third-order Bonferroni upper bound of all 585,148 legal classes is at least 436,933 outcomes below the incumbent.",
+      "Therefore the sealed K10 is the unique optimum, up to relabeling numbers and reordering tickets, among K=10 portfolios with overlap mass <= 12."
+    ],
+    "not_proven": [
+      "Overlap mass >= 13: no enumeration, screen or bound has been run, and closing one shell does not close the higher shells.",
+      "Unrestricted K10 global optimality."
+    ],
+    "global_optimum_status": "UNKNOWN",
+    "probability_gain": 0,
+    "product_version": "UNCHANGED"
+  },
+  "shells": {
+    "mass_11": {
+      "status": "EXHAUSTED_EXACT",
+      "profile": {
+        "1": 38,
+        "2": 11
+      },
+      "numbers_used": 49,
+      "structure": "loopless multigraph on 10 unlabeled tickets; an edge of multiplicity m means the two tickets share m numbers; total multiplicity 11; ticket degree <= 6; a class whose reconstruction repeats a ticket is illegal",
+      "enumeration": {
+        "tool": "nauty 2.9.0 geng + multig",
+        "command": "geng -D6 -q 10 0:11 | multig -e11 -D6 -G -q",
+        "raw_classes": 89262,
+        "raw_class_set_sha256": "a3d27e92f4e7adb97effbc2360fcf9e865c1a6ddf745d234618fb3ba1d1e27e3",
+        "duplicate_ticket_rejected": 64,
+        "legal_classes": 89198,
+        "legal_class_set_sha256": "8ab1813e93188e8a8ff0f6da34b24ed21ffcc58259d8c7ac9ab8dca8e775348c",
+        "completeness_basis": "nauty enumeration run twice with identical digests; labelg confirms the classes are pairwise non-isomorphic; an independent Python enumerator agrees with nauty at (5,4,3) and (6,4,3)"
+      },
+      "exact_scoring": {
+        "classes_scored": 89198,
+        "best_outcome_count": 176345645,
+        "classes_at_best": 1,
+        "best_class_id": "10 11 24 0 6 1 0 7 1 0 8 1 0 9 1 1 9 1 6 7 1 6 8 1 6 9 1 7 8 1 7 9 1 8 9 1",
+        "runner_up": {
+          "class_id": "10 11 240 0 5 1 0 7 1 0 8 1 0 9 1 1 6 1 5 7 1 5 8 1 5 9 1 7 8 1 7 9 1 8 9 1",
+          "outcome_count": 176334445,
+          "official_any_prize": "1095245/3734808",
+          "tickets": [
+            [
+              1,
+              2,
+              3,
+              4,
+              12,
+              13
+            ],
+            [
+              5,
+              14,
+              15,
+              16,
+              17,
+              18
+            ],
+            [
+              19,
+              20,
+              21,
+              22,
+              23,
+              24
+            ],
+            [
+              25,
+              26,
+              27,
+              28,
+              29,
+              30
+            ],
+            [
+              31,
+              32,
+              33,
+              34,
+              35,
+              36
+            ],
+            [
+              1,
+              6,
+              7,
+              8,
+              37,
+              38
+            ],
+            [
+              5,
+              39,
+              40,
+              41,
+              42,
+              43
+            ],
+            [
+              2,
+              6,
+              9,
+              10,
+              44,
+              45
+            ],
+            [
+              3,
+              7,
+              9,
+              11,
+              46,
+              47
+            ],
+            [
+              4,
+              8,
+              10,
+              11,
+              48,
+              49
+            ]
+          ]
+        }
+      },
+      "bonferroni_cross_certificate": {
+        "source": "mass-12 task phase 'mass11-certificate' (fresh U3 computation; committed scores not read)",
+        "legal_classes": 89198,
+        "safe_pruned": 89197,
+        "survivors": 1,
+        "survivor_class_id": "10 11 24 0 6 1 0 7 1 0 8 1 0 9 1 1 9 1 6 7 1 6 8 1 6 9 1 7 8 1 7 9 1 8 9 1",
+        "survivor_u3_outcome_count": 176349040,
+        "survivor_exact_outcome_count": 176345645
+      },
+      "historical_record": {
+        "tool": "nauty",
+        "tool_version": "2.9.0",
+        "commands": {
+          "enumerate": "geng -D6 -q 10 0:11 | multig -e11 -D6 -G -q",
+          "isomorphism_check": "labelg -q  on the private-vertex multiplicity gadget"
+        },
+        "enumerator_raw_count": 89262,
+        "canonical_unique_count": 89198,
+        "rejected_invalid_count": 64,
+        "unlabeled_class_count": 89198,
+        "class_set_sha256_run_1": "a3d27e92f4e7adb97effbc2360fcf9e865c1a6ddf745d234618fb3ba1d1e27e3",
+        "class_set_sha256_run_2": "a3d27e92f4e7adb97effbc2360fcf9e865c1a6ddf745d234618fb3ba1d1e27e3",
+        "labelg_class_set_sha256_run_1": "b98de0edd46d4044b07bc391a85d118d164fda9a53e0c8d6225b11b943802446",
+        "labelg_class_set_sha256_run_2": "b98de0edd46d4044b07bc391a85d118d164fda9a53e0c8d6225b11b943802446",
+        "parallel_edges_included": true,
+        "exact_evaluation_count": 89198,
+        "small_enumeration_cross_check": [
+          {
+            "vertices": 5,
+            "edges": 4,
+            "max_degree": 3,
+            "python_count": 12,
+            "nauty_count": 12,
+            "agree": true
+          },
+          {
+            "vertices": 6,
+            "edges": 4,
+            "max_degree": 3,
+            "python_count": 16,
+            "nauty_count": 16,
+            "agree": true
+          }
+        ],
+        "baseline_in_family": true,
+        "hard_div_class_id": "10 11 24 0 6 1 0 7 1 0 8 1 0 9 1 1 9 1 6 7 1 6 8 1 6 9 1 7 8 1 7 9 1 8 9 1",
+        "hard_div_exact": "536005/1827672",
+        "hard_div_sha256": "13b1126d5b26ce44c9aba24670142eeab49f4a4b51aaf3bbabe7a7f1659ac673",
+        "best_exact": "536005/1827672",
+        "best_delta": "0",
+        "best_class_id": "10 11 24 0 6 1 0 7 1 0 8 1 0 9 1 1 9 1 6 7 1 6 8 1 6 9 1 7 8 1 7 9 1 8 9 1",
+        "best_portfolio_sha256": "f875b5c7d7721dce89b375956dbeb44b8d9bce9c5e7448cb3f0ad0e0051c56a3",
+        "best_tickets": [
+          [
+            1,
+            2,
+            3,
+            4,
+            12,
+            13
+          ],
+          [
+            5,
+            14,
+            15,
+            16,
+            17,
+            18
+          ],
+          [
+            19,
+            20,
+            21,
+            22,
+            23,
+            24
+          ],
+          [
+            25,
+            26,
+            27,
+            28,
+            29,
+            30
+          ],
+          [
+            31,
+            32,
+            33,
+            34,
+            35,
+            36
+          ],
+          [
+            37,
+            38,
+            39,
+            40,
+            41,
+            42
+          ],
+          [
+            1,
+            6,
+            7,
+            8,
+            43,
+            44
+          ],
+          [
+            2,
+            6,
+            9,
+            10,
+            45,
+            46
+          ],
+          [
+            3,
+            7,
+            9,
+            11,
+            47,
+            48
+          ],
+          [
+            4,
+            5,
+            8,
+            10,
+            11,
+            49
+          ]
+        ],
+        "classes_tied_with_baseline": 1,
+        "global_optimum_status": "UNKNOWN",
+        "exhaustive_status": "PROVEN",
+        "final_decision": "NO_IMPROVEMENT_WITHIN_EXHAUSTED_MIN_OVERLAP_K10_FAMILY",
+        "next_task_started": false
+      }
+    },
+    "mass_12": {
+      "status": "EXHAUSTED_BOUND_SCREEN",
+      "profiles": {
+        "A": {
+          "1": 36,
+          "2": 12,
+          "numbers_used": 48
+        },
+        "B": {
+          "1": 39,
+          "2": 9,
+          "3": 1,
+          "numbers_used": 49
+        }
+      },
+      "profile_proof": "11 <= E=60-U <= 12; mass-E is the sum of C(r-1,2) over r>=3, so it is 0 or 1. Thus there are either twelve doubles, or nine doubles and one triple. The incidence equation fixes the singles.",
+      "structure": "A: 12 units of pair multiplicity on 10 unlabeled tickets; B: 9 units of pair multiplicity plus one number shared by exactly three tickets; ticket degree <= 6; a class that repeats a ticket is illegal",
+      "enumeration": {
+        "generator": "src/lottolab/research/b649_k10_overlap_mass12_bonferroni_screen_r1.py (canonical augmentation)",
+        "families": {
+          "A": {
+            "raw_extensions": 10798311,
+            "canonical_states_before_ticket_legality": 335154,
+            "illegal_duplicate_ticket": 55171,
+            "legal_classes": 279983,
+            "class_set_sha256": "5f488d0121fe214906841ed4f34fa2e257d3fb09857146b7345520dae62f9708"
+          },
+          "B": {
+            "raw_extensions": 17236787,
+            "canonical_states_before_ticket_legality": 317890,
+            "illegal_duplicate_ticket": 12725,
+            "legal_classes": 305165,
+            "class_set_sha256": "fd0a6f9731768ebe63725334f315d0da36cca830a2008ad097c72834529ca0f2"
+          }
+        },
+        "legal_classes": 585148,
+        "full_class_set_sha256": "1158c4f662167056ba3a2ed6a7729f1fb7d336eb228465ad33bdd91fe6b66bf0",
+        "full_vs_sharded_run": "MATCH",
+        "nauty_cross_check": "NOT_RUN"
+      },
+      "screen": {
+        "bound": "U3 = S1 - S2 + S3, the third-order Bonferroni upper bound on official outcomes",
+        "prune_rule": "U3 <= incumbent outcome count",
+        "classes_screened": 585148,
+        "pruned": 585148,
+        "survivors": 0,
+        "exact_evaluations": 0,
+        "max_bound_gap_vs_incumbent": -436933,
+        "max_bound_gap_source": "derived during integration from the per-class screen results file",
+        "closest_classes": {
+          "A": {
+            "class_id": "A:10:0:110111000001110000100000000000110001000000000",
+            "u3_outcome_count": 175908712,
+            "bound_gap_vs_incumbent": -436933,
+            "tickets": [
+              [
+                1,
+                2,
+                3,
+                4,
+                5,
+                13
+              ],
+              [
+                1,
+                6,
+                7,
+                8,
+                14,
+                15
+              ],
+              [
+                2,
+                9,
+                16,
+                17,
+                18,
+                19
+              ],
+              [
+                20,
+                21,
+                22,
+                23,
+                24,
+                25
+              ],
+              [
+                3,
+                6,
+                9,
+                10,
+                11,
+                26
+              ],
+              [
+                4,
+                7,
+                10,
+                12,
+                27,
+                28
+              ],
+              [
+                5,
+                8,
+                11,
+                12,
+                29,
+                30
+              ],
+              [
+                31,
+                32,
+                33,
+                34,
+                35,
+                36
+              ],
+              [
+                37,
+                38,
+                39,
+                40,
+                41,
+                42
+              ],
+              [
+                43,
+                44,
+                45,
+                46,
+                47,
+                48
+              ]
+            ]
+          },
+          "B": {
+            "class_id": "B:10:320:110010011010000000010011000000000000000000000",
+            "u3_outcome_count": 175872368,
+            "bound_gap_vs_incumbent": -473277,
+            "tickets": [
+              [
+                1,
+                2,
+                3,
+                4,
+                5,
+                11
+              ],
+              [
+                1,
+                6,
+                12,
+                13,
+                14,
+                15
+              ],
+              [
+                2,
+                7,
+                8,
+                9,
+                16,
+                17
+              ],
+              [
+                6,
+                18,
+                19,
+                20,
+                21,
+                22
+              ],
+              [
+                23,
+                24,
+                25,
+                26,
+                27,
+                28
+              ],
+              [
+                3,
+                7,
+                10,
+                29,
+                30,
+                31
+              ],
+              [
+                32,
+                33,
+                34,
+                35,
+                36,
+                37
+              ],
+              [
+                38,
+                39,
+                40,
+                41,
+                42,
+                43
+              ],
+              [
+                4,
+                8,
+                10,
+                44,
+                45,
+                46
+              ],
+              [
+                5,
+                9,
+                10,
+                47,
+                48,
+                49
+              ]
+            ]
+          }
+        }
+      }
+    },
+    "mass_ge_13": {
+      "status": "NOT_PROVEN"
+    }
+  },
+  "historical_evidence": {
+    "mass_11_donor": {
+      "branch": "b649-k10-unlabeled-min-overlap-r1",
+      "commit": "1ad73707a1a2690cc5a17301f05fca1321cfbaf8",
+      "tree": "5c0f4ba856559665c8eb10160df6584ce0975f47",
+      "files": [
+        {
+          "path": "src/lottolab/research/b649_k10_min_overlap_classes.txt",
+          "git_blob": "dfe61d8b05e27eed5b5b697f13a2afd87100bf36",
+          "bytes": 5343486,
+          "sha256": "891763d60c3a1155ef31fa3cf92c7c4f93ad5f5f6be62e66c6af3158883b1534"
+        },
+        {
+          "path": "src/lottolab/research/b649_k10_min_overlap_scores.jsonl",
+          "git_blob": "92269b5cee51315926cde1f4572001a6b7508e2e",
+          "bytes": 43006867,
+          "sha256": "709f3f41953884eb596a5dbf55ebc645eab7d61243ee74d04f637a45c44ce270"
+        },
+        {
+          "path": "src/lottolab/research/b649_k10_min_overlap_exhaustive_r1.json",
+          "git_blob": "345da34f542bccfcbe9a38ce97e68a2f061c8e1b",
+          "bytes": 42281,
+          "sha256": "a74ff311306310cc5a04400b687cac036ca154b1c8f8eab41c1d80b3872cdced"
+        },
+        {
+          "path": "src/lottolab/research/b649_k10_min_overlap_exhaustive_r1.py",
+          "git_blob": "18e7ecb1f81f128bb11bab0eb4b2f8ec00b8ee5d",
+          "bytes": 16026,
+          "sha256": "66b247c20fc8bd852d4c60bb661491b016ecbb75b2caab03e3aeed5084b4524e"
+        },
+        {
+          "path": "tools/run_b649_k10_min_overlap_exhaustive_r1.py",
+          "git_blob": "740d23e8d2e2db7baf10d168d667e740dd4eafbe",
+          "bytes": 17234,
+          "sha256": "042a8451b051521944a049fec76f19e829c5bcdf0eb3142c161d336ecf66fe35"
+        },
+        {
+          "path": "tests/unit/test_b649_k10_min_overlap_exhaustive_r1.py",
+          "git_blob": "58b2ebeb56492908eaf3cfcb67b12c71b7349c0a",
+          "bytes": 5341,
+          "sha256": "b1e51e5702aa64f00e17bb2a14aaefa3f9598ace2606faf767299eb45f8e7807"
+        }
+      ]
+    },
+    "mass_12_donor": {
+      "branch": "b649-k10-overlap-mass12-bonferroni-screen-r1",
+      "commits": [
+        "32ee1def585f74b79c73ba128221ff3491df256f",
+        "7226a5018d74eedb959c9b659f0aa4a97e5c6ef9"
+      ],
+      "tree": "b2a24dfa9c4e976e72c20cca37f4ca2d34d9c606",
+      "files": [
+        {
+          "path": "src/lottolab/research/b649_k10_overlap_mass12_bonferroni_screen_r1.json",
+          "git_blob": "bf99980da29a8d8973cf2b4357c87a6619c47e9f",
+          "bytes": 10686,
+          "sha256": "fbbbb8e5a141ee8d3df76137d51789b88ce247256586d2d84da664442de64e0f"
+        },
+        {
+          "path": "src/lottolab/research/b649_k10_overlap_mass12_bonferroni_screen_r1.py",
+          "git_blob": "b3286dfd49ccaa02ca17e6ae4ef5bd5e3811bff1",
+          "bytes": 100410,
+          "sha256": "2b9ded022fb0c67313d72fe838f485455adf8db5d7ee1d02f8d42bdc2965ef07"
+        },
+        {
+          "path": "tests/unit/test_b649_k10_overlap_mass12_bonferroni_screen_r1.py",
+          "git_blob": "e65ac45c3791e490af3ee6e0e8af798ac745c6a6",
+          "bytes": 7024,
+          "sha256": "b828e64c35d93fd7b9bcd0eea5adbf9389f028b096967bde9590117ba0d88984"
+        }
+      ],
+      "local_task_data": {
+        "availability": "LOCAL_WORKSTATION_ONLY_NOT_IN_GIT",
+        "root": "/Users/kelvin/.codex/worktrees/b649-k10-overlap-mass12-bonferroni-screen-r1/MathStatisticalAnalysis/.task-data/B649_K10_OVERLAP_MASS12_BONFERRONI_SCREEN_R1",
+        "files": [
+          {
+            "file": "mass12_full_A_classes.txt",
+            "bytes": 14839099,
+            "sha256": "ed5f9b0d9ac6f7b98bdde051fe93ec21d66fe0cfdfc5057aec6eeb484c578f7d",
+            "lines": 279983
+          },
+          {
+            "file": "mass12_full_B_classes.txt",
+            "bytes": 16699647,
+            "sha256": "6348191c357b6d2bb9e9f033938096dfac58051cd022bdb6c1bc7e2bd9e411f4",
+            "lines": 305165
+          },
+          {
+            "file": "mass12_screen_results.jsonl",
+            "bytes": 152038236,
+            "sha256": "7f3d5cd40b28dbb44ff29b101ef5a9f3d34e91129361baedd3ed143c9a9b0059",
+            "lines": 585148
+          },
+          {
+            "file": "mass11_certificate_result.json",
+            "bytes": 916,
+            "sha256": "d84313461da4c5c35fa7b72fc8534e7b156e8d60dbce7a278c37e7cc6103b700"
+          },
+          {
+            "file": "mass12_result.json",
+            "bytes": 10684,
+            "sha256": "9a24fb9168bab31186b9ecde87e2670ac50623b200426d9c908ab862bf57bee6"
+          }
+        ],
+        "local_result_vs_committed_record": "IDENTICAL_EXCEPT_WALL_TIME_FIELDS"
+      }
+    },
+    "verified_during_integration": [
+      "mass-11 class file: 89,262 ids, raw digest matches class_set_sha256_run_1; 64 duplicate-ticket rejects; legal digest matches the Bonferroni cross-certificate",
+      "mass-11 scores: 89,198 rows, ids equal the legal class set, every fraction consistent with its outcome count, maximum 176,345,645 reached by exactly one class",
+      "mass-12 class files: 279,983 + 305,165 ids, family and full digests match the committed record, no cross-family overlap",
+      "mass-12 screen results: 585,148 rows, ids equal the class files, every U3 <= incumbent, maximum bound gap -436,933"
+    ]
+  },
+  "current_compatibility": {
+    "counter": {
+      "path": "src/lottolab/research/b649_official_any_prize_exact.py",
+      "git_blob_at_mass11_enumeration": "3d053b2d9bc2182fc00b22889e837be5d0ba10aa",
+      "git_blob_at_mass12_screen": "3d053b2d9bc2182fc00b22889e837be5d0ba10aa",
+      "git_blob_at_integration_base": "3d053b2d9bc2182fc00b22889e837be5d0ba10aa",
+      "identical": true
+    },
+    "integrated_modules": {
+      "src/lottolab/research/b649_k10_overlap_mass12_bonferroni_screen_r1.py": "byte-identical to the donor; its CLI requires the donor base commit and refuses to run on this tree",
+      "src/lottolab/research/b649_k10_min_overlap_exhaustive_r1.py": "donor module with RECORD_PATH pointed at this certificate plus two strict-pyright type annotations; scoring and enumeration logic unchanged"
+    },
+    "sample_rechecked_with_current_code": {
+      "mass_11_classes_rescored": 5,
+      "mass_11_all_match": true,
+      "mass_12_class_bounds_recomputed": 20,
+      "mass_12_all_match": true
+    },
+    "not_rechecked": "the remaining 89,193 mass-11 scores and 585,128 mass-12 bounds were not recomputed on the current tree; they rest on the historical runs and the identical counter blob"
+  }
+}

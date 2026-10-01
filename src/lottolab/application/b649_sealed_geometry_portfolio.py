@@ -3,11 +3,14 @@
 Under a fair BIG_LOTTO draw every single ticket has the same OFFICIAL_ANY_PRIZE
 probability (``7729/249711``), so no ticket beats another one-for-one. What a
 K-ticket set does change is how much its tickets overlap, and with it
-P(at least one ticket wins). K10 remains the frozen HARD_DIV pairwise-overlap
+P(at least one ticket wins). K5 is pairwise disjoint. For both OFFICIAL_ANY_PRIZE
+and M3_PLUS, every pairwise-disjoint portfolio of size 1..8 attains the global
+optimum proved in ``lottolab.research.b649_k1_k8_global_optimality``; that
+optimum is not unique. K10 remains the frozen HARD_DIV pairwise-overlap
 radius2 authority from sealed-geometry v2. The v6 K20 is an independently
 exact-verified, sealed durable incumbent from the still-running exact two-ticket
-joint-replacement sweep. Neither sweep nor neighborhood completeness is claimed;
-the global optimum is UNKNOWN. K5 is the best-known disjoint construction.
+joint-replacement sweep. Neither sweep nor neighborhood completeness is claimed,
+and neither K10 nor K20 is a proven global optimum.
 There is no historical outcome tuning or predictive signal: the portfolios do
 not depend on the target draw, prediction streams, or historical outcomes.
 Their probabilities are exact counts over the full outcome space, verified by
@@ -77,8 +80,9 @@ def canonical_portfolio_sha256(tickets: Sequence[Sequence[int]]) -> str:
 
 
 # Reference E (GREEDY_MINMAX_THEN_SUM_OVERLAP_V1) method_e_20[:5]: five pairwise-disjoint
-# tickets. Every family of five disjoint tickets is equivalent under relabeling, and this
-# one reaches the sealed diversification-frontier best-found K5 M3+ (54130/582659) exactly.
+# tickets. Every such K5 portfolio has the same OFFICIAL_ANY_PRIZE and M3+ probabilities.
+# This one is a proven global optimum for both events (ANY 547495/3579191, M3+ 54130/582659).
+# The optimum is not unique.
 _K5 = SealedGeometryPortfolio(
     ticket_count=5,
     tickets=(

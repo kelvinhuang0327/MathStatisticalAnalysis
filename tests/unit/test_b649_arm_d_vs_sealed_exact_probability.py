@@ -179,7 +179,7 @@ def test_frozen_v1_wrong_source_identity_fails_closed(tmp_path: Path, field: str
         load_frozen_v1_source_identity(PRIMARY_K, frontier)
 
 
-def test_frozen_v1_baseline_does_not_follow_current_v6_portfolios() -> None:
+def test_frozen_v1_baseline_does_not_follow_current_v7_portfolios() -> None:
     assert not hasattr(research_module, "SEALED_GEOMETRY_PORTFOLIOS")
     current_k10 = SEALED_GEOMETRY_PORTFOLIOS[PRIMARY_K]
     current_k20 = SEALED_GEOMETRY_PORTFOLIOS[SECONDARY_K]
@@ -189,10 +189,10 @@ def test_frozen_v1_baseline_does_not_follow_current_v6_portfolios() -> None:
         "13b1126d5b26ce44c9aba24670142eeab49f4a4b51aaf3bbabe7a7f1659ac673"
     )
     assert current_k20.portfolio_sha256 == (
-        "0c52a1f0bed90cd47d08bb031b13c9bf693317493f88e45da8e087bd4a0ab65b"
+        "7ce41ff21d5c0821f1d5dda683e23114086f5024fc6d98d4e574df5306659b1e"
     )
     assert current_k10.official_any_prize_probability == Fraction(536005, 1827672)
-    assert current_k20.official_any_prize_probability == Fraction(44748521, 85900584)
+    assert current_k20.official_any_prize_probability == Fraction(44748523, 85900584)
     assert current_k10.official_any_prize_probability != EXPECTED_SEALED_PROBABILITY_K10
     assert current_k20.official_any_prize_probability != EXPECTED_SEALED_PROBABILITY_K20
 

@@ -40,12 +40,17 @@ CANONICAL_FRONTIER_LOCATOR = (
     "b649-official-any-prize-frontier-reconciliation-r1/frontier_reconciliation.json"
 )
 CANONICAL_FRONTIER_SHA256 = "5b0ccf7485c3db699b9bb9e398f04857d018ec7b1ca87700f86cbace5a719d3e"
-K20_DONOR_SOURCE_ID = "B649_K20_EXACT_TWO_TICKET_JOINT_REPLACEMENT_SWEEP_R1"
-K20_DONOR_SEAL_TASK_ID = "B649_K20_ACTIVE_SWEEP_INCUMBENT_SEAL_HANDOFF_R1"
-K20_DONOR_LOCATOR = (
-    "docs/research/matrix-native-results/b649-k20-two-ticket-joint-replacement-incumbent-r1.json"
+K20_PROMOTION_TASK_ID = "B649_K20_313239661_TERMINAL_INCUMBENT_SOURCE_PROMOTION_R1"
+K20_INCUMBENT_SEAL_LOCATOR = (
+    "docs/research/matrix-native-results/b649-k20-r2-start-incumbent-promotion-r1.json"
 )
-K20_DONOR_SHA256 = "14f070a764a48a09007e18db212d491867a7c8dc59e775115391a02c8840f632"
+K20_INCUMBENT_SEAL_SHA256 = "f800013ad0a1821bfdca8ba4b61bf82923849bf39434ea98f0511b2335fc1e75"
+K20_TARGET_PORTFOLIO_SHA256 = "7ce41ff21d5c0821f1d5dda683e23114086f5024fc6d98d4e574df5306659b1e"
+K20_SOURCE_RESULT_LOCATOR = (
+    "docs/research/matrix-native-results/b649-k20-conditional-global-diversity-beam-r2-result.json"
+)
+K20_SOURCE_RESULT_SHA256 = "04d6a47589b2964cb14f2e0808503acd4bf5d0aa8c5498f23c2c12ef87a4751b"
+K20_V6_BASELINE_COUNT = 313239647
 K5_EXPECTED_TICKETS = (
     (1, 2, 3, 4, 5, 6),
     (7, 8, 9, 10, 11, 12),
@@ -101,9 +106,9 @@ def test_operational_buckets_are_sealed_for_k5_k10_k20() -> None:
     assert buckets[5] != buckets[10][:5]
 
 
-def test_method_v6_and_k5_identity_are_unchanged_from_v1() -> None:
+def test_method_v7_and_k5_identity_are_unchanged_from_v1() -> None:
     assert SEALED_GEOMETRY_METHOD_ID == "B649_SEALED_GEOMETRY_PORTFOLIO"
-    assert SEALED_GEOMETRY_METHOD_VERSION == "6.0.0"
+    assert SEALED_GEOMETRY_METHOD_VERSION == "7.0.0"
     entry = SEALED_GEOMETRY_PORTFOLIOS[5]
 
     assert entry.tickets == K5_EXPECTED_TICKETS
@@ -121,9 +126,8 @@ def test_exact_probabilities_reproduce_the_sealed_record(
     assert result.m3_plus == entry.m3_plus_probability
     assert result.official_any_prize == entry.official_any_prize_probability
     if size == 20:
-        assert result.official_any_prize_outcome_count == 313239647
-        assert result.official_any_prize_outcome_count - 312986016 == 253631
-        assert result.m3_plus_draw_count == 4807367
+        assert result.official_any_prize_outcome_count == 313239661
+        assert result.official_any_prize_outcome_count - K20_V6_BASELINE_COUNT == 14
         assert result.main_draw_count * result.special_count == 601304088
 
 
@@ -172,55 +176,59 @@ def test_k10_matches_the_frozen_canonical_frontier_contract() -> None:
         )
 
 
-def test_k20_matches_v6_sealed_two_ticket_joint_replacement_incumbent() -> None:
+def test_k20_matches_v7_sealed_terminal_incumbent() -> None:
     entry = SEALED_GEOMETRY_PORTFOLIOS[20]
     authority = _committed_json(entry.source_locator, entry.source_sha256)
     sealed_tickets = cast(list[list[int]], authority["TICKETS"])
 
-    assert entry.source_id == K20_DONOR_SOURCE_ID
-    assert entry.source_locator == K20_DONOR_LOCATOR
-    assert entry.source_sha256 == K20_DONOR_SHA256
+    assert entry.source_id == K20_PROMOTION_TASK_ID
+    assert entry.source_locator == K20_INCUMBENT_SEAL_LOCATOR
+    assert entry.source_sha256 == K20_INCUMBENT_SEAL_SHA256
     assert entry.tickets == tuple(tuple(ticket) for ticket in sealed_tickets)
     assert entry.portfolio_sha256 == authority["PORTFOLIO_SHA256"]
-    assert entry.portfolio_sha256 == (
-        "0c52a1f0bed90cd47d08bb031b13c9bf693317493f88e45da8e087bd4a0ab65b"
-    )
+    assert entry.portfolio_sha256 == K20_TARGET_PORTFOLIO_SHA256
     assert canonical_portfolio_sha256(entry.tickets) == entry.portfolio_sha256
     assert str(entry.official_any_prize_probability) == authority["EXACT_ANY_PRIZE"]
     assert str(entry.m3_plus_probability) == authority["M3_PLUS"]
     assert entry.m3_plus_probability == Fraction(4807367, 13983816)
-    assert entry.official_any_prize_probability == Fraction(44748521, 85900584)
+    assert entry.official_any_prize_probability == Fraction(44748523, 85900584)
 
-    assert authority["SOURCE_TASK"] == entry.source_id
-    assert authority["TASK_ID"] == K20_DONOR_SEAL_TASK_ID
-    assert authority["SOURCE_CHECKPOINT_SHA256"] == (
-        "8061c02b65a6ae3ec3dc16295dd483f9bae3ed3e2f1f979f7bb864b4853070bb"
-    )
-    assert authority["SOURCE_ACCEPTED_MOVES"] == 3
-    assert authority["SOURCE_ITERATION"] == 4
-    assert authority["WINNING_OUTCOMES"] == 313239647
+    assert authority["TASK_ID"] == entry.source_id
+    assert authority["METHOD_ID"] == "B649_SEALED_GEOMETRY_PORTFOLIO"
+    assert authority["METHOD_VERSION"] == "7.0.0"
+    assert authority["SOURCE_RESULT_LOCATOR"] == K20_SOURCE_RESULT_LOCATOR
+    assert authority["SOURCE_RESULT_SHA256"] == K20_SOURCE_RESULT_SHA256
+    assert authority["WINNING_OUTCOMES"] == 313239661
     assert authority["TOTAL_OUTCOMES"] == 601304088
+    assert authority["V6_BASELINE_OUTCOME_COUNT"] == K20_V6_BASELINE_COUNT
+    assert authority["STRICT_GAIN_OUTCOMES"] == 14
     assert (
         entry.official_any_prize_probability * cast(int, authority["TOTAL_OUTCOMES"])
-        == (authority["WINNING_OUTCOMES"])
+        == authority["WINNING_OUTCOMES"]
     )
-    assert authority["EXACT_RECOMPUTE_STATUS"] == "REUSED_MATCHING_PORTFOLIO_IDENTITY"
     assert authority["GLOBAL_OPTIMUM_STATUS"] == "UNKNOWN"
-    assert authority["SWEEP_TERMINAL"] == "NO"
-    assert authority["ACTIVE_SWEEP_CONTINUES"] == "YES"
-    assert authority["OUTCOME_FIELDS_USED"] == "NO"
-    assert authority["HISTORICAL_OUTCOME_TUNING"] == "NO"
+    assert authority["COMPLETE_K20_NEIGHBORHOOD"] == "NOT_CLAIMED"
+    assert authority["COMPLETE_BEAM_NEIGHBORHOOD"] == "NOT_CLAIMED"
+    assert authority["SEARCH_RERUN"] == "NO"
 
-    prior_v5 = _committed_json(
-        "docs/research/matrix-native-results/b649-k20-cross-swap-champion-r1.json",
-        "2deb616dc0c69dc0d6d41bc3d815f834f065c056b668a2e8db07b3a5064c05ea",
+    source_artifact = _committed_json(
+        cast(str, authority["SOURCE_RESULT_LOCATOR"]),
+        cast(str, authority["SOURCE_RESULT_SHA256"]),
     )
-    assert authority["LIVE_V5_WINNING_OUTCOMES"] == prior_v5["TERMINAL_K20_OUTCOME_COUNT"]
-    assert prior_v5["TERMINAL_K20_OUTCOME_COUNT"] == 312986016
-    gain = cast(int, authority["WINNING_OUTCOMES"]) - cast(
-        int, prior_v5["TERMINAL_K20_OUTCOME_COUNT"]
+    source_reproduction = cast(dict[str, object], source_artifact["START_REPRODUCTION"])
+    assert source_reproduction["CANONICAL_RECOUNT"] == 313239661
+    assert source_reproduction["MATCH"] is True
+    assert source_reproduction["START_SHA256"] == K20_TARGET_PORTFOLIO_SHA256
+    assert source_artifact["RUN_HEAD"] == "76085ccc8f226c8752cc7df28390e27009d21746"
+    assert source_artifact["RUN_TREE"] == "a2bd43ed9019e4cf2f330eb7d0dfa498d7904b43"
+
+    prior_v6 = _committed_json(
+        "docs/research/matrix-native-results/b649-k20-two-ticket-joint-replacement-incumbent-r1.json",
+        "14f070a764a48a09007e18db212d491867a7c8dc59e775115391a02c8840f632",
     )
-    assert gain == authority["GAIN_OVER_LIVE_V5_OUTCOMES"] == 253631
+    assert authority["V6_BASELINE_OUTCOME_COUNT"] == prior_v6["WINNING_OUTCOMES"]
+    gain = cast(int, authority["WINNING_OUTCOMES"]) - cast(int, prior_v6["WINNING_OUTCOMES"])
+    assert gain == authority["STRICT_GAIN_OUTCOMES"] == 14
     assert gain > 0
 
 

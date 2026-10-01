@@ -344,6 +344,48 @@ def fixture(tmp_path: Path) -> Fixture:
     return Fixture(tmp_path)
 
 
+_REAL_STAT_SEAMS = {
+    name: cast(Callable[..., os.stat_result], getattr(os, name))
+    for name in ("stat", "lstat", "fstat")
+}
+_VISIBLE_STAT_FIELDS = {"st_mode", "st_ino", "st_dev", "st_nlink", "st_uid", "st_gid", "st_size"}
+
+
+def simulate_reboot(monkeypatch: pytest.MonkeyPatch, volume: Path, boot: int) -> int:
+    """Report the device number a macOS reboot assigns to ``volume``; return it.
+
+    The production incident: after a reboot the Data volume's st_dev moved from
+    16777232 to 16777234 while every inode, mode, link count, size and timestamp
+    stayed byte-exact. ``boot`` 0 is the real number. ``os.stat``, ``os.lstat``
+    and ``os.fstat`` all report the renumbered device, so every same-read CAS
+    stays internally consistent, exactly as it does after a real reboot.
+    """
+    real = _REAL_STAT_SEAMS["lstat"](volume).st_dev
+    reported = real + 2 * boot
+
+    def renumbered(result: os.stat_result) -> os.stat_result:
+        if result.st_dev != real:
+            return result
+        visible = list(result)
+        visible[2] = reported
+        hidden = {
+            name: getattr(result, name)
+            for name in dir(result)
+            if name.startswith("st_") and name not in _VISIBLE_STAT_FIELDS
+        }
+        return os.stat_result(visible, hidden)
+
+    def seam(call: Callable[..., os.stat_result]) -> Callable[..., os.stat_result]:
+        def rebooted(*args: object, **kwargs: object) -> os.stat_result:
+            return renumbered(call(*args, **kwargs))
+
+        return rebooted
+
+    for name, call in _REAL_STAT_SEAMS.items():
+        monkeypatch.setattr(os, name, seam(call))
+    return reported
+
+
 def test_fake_launchd_rejects_bootstrap_while_disabled(fixture: Fixture) -> None:
     runner = FakeLaunchd(fixture, loaded=False, enabled=False)
     result = runner(("launchctl", "bootstrap", DOMAIN, str(fixture.plist_path)))
@@ -2585,3 +2627,125 @@ def test_abandon_drift_evidence_refuses_conflicting_replay(
         )
     owner = cutover.inspect_control_owner(config)
     assert owner is not None and owner["phase"] == "AUTHORIZED_PENDING"
+
+
+# Successor plist identity. Values are the v6 Stage A incident's shape: after the
+# reboot only st_dev moved (16777232 -> 16777234); every other field was byte-exact.
+_SEALED_PLIST_IDENTITY = cutover.FileIdentity(
+    path=f"/Users/fixture/Library/LaunchAgents/{cutover.LABEL}.plist",
+    device=16777232,
+    inode=40_812_345,
+    mode=0o100600,
+    uid=501,
+    links=1,
+    size=2_048,
+    modified_ns=1_790_700_000_123_456_789,
+    changed_ns=1_790_700_000_223_456_789,
+    sha256="a" * 64,
+)
+_REBOOTED_PLIST_IDENTITY = replace(_SEALED_PLIST_IDENTITY, device=16777234)
+_STABLE_FIELD_CHANGES: dict[str, object] = {
+    "path": f"/Users/fixture/Library/LaunchAgents/{cutover.LABEL}.other.plist",
+    "inode": 40_812_346,
+    "mode": 0o100644,
+    "uid": 502,
+    "links": 2,
+    "size": 2_049,
+    "modified_ns": 1_790_700_000_123_456_790,
+    "changed_ns": 1_790_700_000_223_456_790,
+    "sha256": "b" * 64,
+}
+
+
+def _sealed_identity_with(**changes: object) -> dict[str, object]:
+    return {**_SEALED_PLIST_IDENTITY.to_dict(), **changes}
+
+
+_MALFORMED_PLIST_IDENTITIES: dict[str, object] = {
+    "not_an_object": None,
+    "field_list": list(_SEALED_PLIST_IDENTITY.to_dict().values()),
+    "missing_device": {
+        key: item for key, item in _SEALED_PLIST_IDENTITY.to_dict().items() if key != "device"
+    },
+    "missing_changed_ns": {
+        key: item for key, item in _SEALED_PLIST_IDENTITY.to_dict().items() if key != "changed_ns"
+    },
+    "extra_field": _sealed_identity_with(generation=1),
+    "text_device": _sealed_identity_with(device="16777232"),
+    "boolean_links": _sealed_identity_with(links=True),
+    "float_size": _sealed_identity_with(size=2048.0),
+    "uppercase_sha256": _sealed_identity_with(sha256="A" * 64),
+    "short_sha256": _sealed_identity_with(sha256="a" * 63),
+    "empty_path": _sealed_identity_with(path=""),
+}
+
+
+def test_successor_plist_identity_ignores_only_the_rebooted_device() -> None:
+    sealed, rebooted = _SEALED_PLIST_IDENTITY, _REBOOTED_PLIST_IDENTITY
+    assert cutover.successor_plist_identity_matches(sealed.to_dict(), rebooted)
+    assert cutover.successor_plist_identity_matches(sealed.to_dict(), rebooted.to_dict())
+    assert cutover.successor_plist_identity_matches(rebooted, sealed)
+    # The transaction identity is unchanged: it still binds the device.
+    assert sealed.key() != rebooted.key()
+    assert {**sealed.to_dict(), "device": rebooted.device} == rebooted.to_dict()
+    assert cutover.FileIdentity.from_value(sealed.to_dict()) == sealed
+
+
+@pytest.mark.parametrize("rebooted", [False, True])
+@pytest.mark.parametrize("field_name", list(_STABLE_FIELD_CHANGES))
+def test_successor_plist_identity_refuses_any_other_field_difference(
+    field_name: str, rebooted: bool
+) -> None:
+    # The table is every persisted field except device.
+    assert set(_STABLE_FIELD_CHANGES) == set(_SEALED_PLIST_IDENTITY.to_dict()) - {"device"}
+    base = _REBOOTED_PLIST_IDENTITY if rebooted else _SEALED_PLIST_IDENTITY
+    live = replace(base, **{field_name: _STABLE_FIELD_CHANGES[field_name]})
+    sealed = _SEALED_PLIST_IDENTITY.to_dict()
+    assert not cutover.successor_plist_identity_matches(sealed, live)
+    assert not cutover.successor_plist_identity_matches(sealed, live.to_dict())
+    assert not cutover.successor_plist_identity_matches(live.to_dict(), _SEALED_PLIST_IDENTITY)
+
+
+@pytest.mark.parametrize("defect", list(_MALFORMED_PLIST_IDENTITIES))
+def test_successor_plist_identity_refuses_a_malformed_identity(defect: str) -> None:
+    malformed = _MALFORMED_PLIST_IDENTITIES[defect]
+    assert not cutover.successor_plist_identity_matches(malformed, _SEALED_PLIST_IDENTITY)
+    assert not cutover.successor_plist_identity_matches(_SEALED_PLIST_IDENTITY, malformed)
+    assert not cutover.successor_plist_identity_matches(malformed, malformed)
+
+
+def test_verify_completed_receipt_live_binds_the_plan_old_identity_to_this_boot(
+    fixture: Fixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    runner = FakeLaunchd(fixture)
+    plan = cutover.build_plan(fixture.config, runner=runner)
+    assert cutover.apply(fixture.config, plan=plan, runner=runner)["status"] == "SUCCESS"
+    receipt = _object(json.loads(fixture.receipt_path.read_bytes()))
+    sealed = _object(_object(_object(receipt["after"])["plist"])["identity"])
+    cutover.verify_completed_receipt_live(
+        fixture.config, receipt, successor_old_plist_identity=sealed, runner=runner
+    )
+    rebooted = {**sealed, "device": simulate_reboot(monkeypatch, fixture.root, 1)}
+    assert rebooted != sealed
+    # A plan frozen after the reboot continues from the pre-reboot receipt.
+    cutover.verify_completed_receipt_live(
+        fixture.config, receipt, successor_old_plist_identity=rebooted, runner=runner
+    )
+    # A plan frozen before the reboot no longer names the live file for its CAS.
+    with pytest.raises(cutover.CutoverSafetyError, match="successor plan OLD plist identity"):
+        cutover.verify_completed_receipt_live(
+            fixture.config, receipt, successor_old_plist_identity=sealed, runner=runner
+        )
+    with pytest.raises(cutover.CutoverSafetyError, match="file identity"):
+        cutover.verify_completed_receipt_live(
+            fixture.config,
+            receipt,
+            successor_old_plist_identity=_MALFORMED_PLIST_IDENTITIES["missing_device"],
+            runner=runner,
+        )
+    # Identical bytes rewritten after the reboot: the sealed receipt still refuses.
+    fixture.plist_path.write_bytes(fixture.plist_path.read_bytes())
+    with pytest.raises(cutover.CutoverSafetyError, match="completed receipt plist identity"):
+        cutover.verify_completed_receipt_live(
+            fixture.config, receipt, successor_old_plist_identity=rebooted, runner=runner
+        )

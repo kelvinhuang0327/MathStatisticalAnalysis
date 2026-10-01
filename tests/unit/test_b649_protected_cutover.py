@@ -41,6 +41,7 @@ from tests.unit.test_b649_production_cutover import (
     UID,
     FakeLaunchd,
     Fixture,
+    simulate_reboot,
 )
 from tools import b649_cutover_checkpoint as checkpoint
 from tools import b649_production_cutover as cutover
@@ -2117,6 +2118,7 @@ def _fresh_cli_session(
     identities: dict[Path, tuple[str, str, bool]] | None = None,
     legacy: tuple[str, str] | None = None,
     barrier: Barrier | None = None,
+    boot: int = 0,
 ) -> None:
     """Spawned interpreter: only disk state, CLI argv and hermetic OS seams survive."""
     output, errors = io.StringIO(), io.StringIO()
@@ -2126,6 +2128,8 @@ def _fresh_cli_session(
             redirect_stdout(output),
             redirect_stderr(errors),
         ):
+            if boot:
+                simulate_reboot(patches, fixture.root, boot)
             harness = Harness(
                 fixture,
                 patches,
@@ -2178,12 +2182,13 @@ def _invoke_fresh_cli(
     *,
     identities: dict[Path, tuple[str, str, bool]] | None = None,
     legacy: tuple[str, str] | None = None,
+    boot: int = 0,
 ) -> protected.Record:
     context = multiprocessing.get_context("spawn")
     receiver, sender = context.Pipe(duplex=False)
     process = context.Process(
         target=_fresh_cli_session,
-        args=(fixture, plan_path, argv, sender, identities, legacy),
+        args=(fixture, plan_path, argv, sender, identities, legacy, None, boot),
     )
     process.start()
     sender.close()
@@ -3511,3 +3516,281 @@ def test_successor_reservation_accepts_proof_only_for_its_own_released_predecess
         reserve()
     # The RELEASED predecessor is untouched, so its proof can still be frozen later.
     assert owner_path.read_bytes() == before
+
+
+# A reboot renumbers st_dev and nothing else. The receipt a prior SUCCESS sealed
+# keeps the old device, so the successor compares it without device; the plan it
+# froze in this boot must still equal the live plist on the full key.
+
+
+def _sealed_plist_identity(harness: Harness) -> cutover.FileIdentity:
+    managed = protected.record(json.loads(harness.fixture.receipt_path.read_bytes()))
+    plist = protected.record(protected.record(managed["after"])["plist"])
+    return cutover.FileIdentity.from_value(plist["identity"])
+
+
+def _planned_old_plist_identity(harness: Harness) -> cutover.FileIdentity:
+    plan = protected.record(json.loads(_apply_plan_file(harness).read_bytes()))
+    prestate = protected.record(plan["prestate"])
+    return cutover.FileIdentity.from_value(prestate["old_plist_identity"])
+
+
+def _live_plist_identity(harness: Harness) -> cutover.FileIdentity:
+    identity, _ = cutover._file_identity(harness.fixture.plist_path, missing_ok=False)
+    assert identity is not None
+    return identity
+
+
+def _rebooted_success_cycle(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    before_plan: Callable[[], None] | None = None,
+) -> tuple[Path, bytes]:
+    """OLD -> NEW succeeds, the machine reboots, then the successor plan is frozen."""
+    assert harness.launch()["status"] == "SUCCESS"
+    path = harness.request.receipt_path
+    raw = path.read_bytes()
+    simulate_reboot(monkeypatch, harness.fixture.root, 1)
+    if before_plan is not None:
+        before_plan()
+    _advance_to_successor(
+        harness,
+        monkeypatch,
+        legacy_head=NEW_HEAD,
+        legacy_tree=NEW_TREE,
+        head=SUCCESSOR_HEAD,
+        tree=SUCCESSOR_TREE,
+    )
+    return path, raw
+
+
+def _assert_nothing_retired(harness: Harness, path: Path, raw: bytes, mutations: int) -> None:
+    assert path.read_bytes() == raw
+    assert not list(path.parent.glob("*.superseded.json"))
+    assert harness.launches == 1
+    assert len(harness.launchd.mutation_calls) == mutations
+    store = claims.ClaimStore(harness.request.claim_root)
+    assert store.inspect(protected.TASK_KEY)["status"] == "ABSENT"
+
+
+def _assert_retired_once(path: Path, raw: bytes, result: protected.Record) -> None:
+    archive = _archive_path(path, raw)
+    assert result["status"] == "SUCCESS"
+    assert archive.read_bytes() == raw and archive.stat().st_nlink == 1
+    assert list(path.parent.glob("*.superseded.json")) == [archive]
+    assert protected.record(result["identity"])["prior_execution_receipt_sha256"] == (
+        hashlib.sha256(raw).hexdigest()
+    )
+
+
+@pytest.mark.parametrize("resume", ["same_process", "fresh_process"])
+def test_current_success_is_superseded_after_a_reboot_renumbers_the_plist_device(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    resume: str,
+) -> None:
+    """The v6 Stage A incident: reserve refused only because st_dev moved on reboot."""
+    path, raw = _rebooted_success_cycle(harness, monkeypatch)
+    sealed = _sealed_plist_identity(harness)
+    planned = _planned_old_plist_identity(harness)
+    assert planned.key() == _live_plist_identity(harness).key()
+    assert planned.device != sealed.device
+    assert {**planned.to_dict(), "device": sealed.device} == sealed.to_dict()
+    monkeypatch.setattr(protected, "build_reservation_config", _fixed_reservation_config(harness))
+    argv = list(harness.request.owner_argv()[2:])
+    capsys.readouterr()
+    code = protected.main(argv)
+    reserved = _last_json_line(capsys)
+    assert (code, reserved["status"]) == (claims.REFUSED, "AUTHORIZATION_PENDING"), reserved
+    authorization = _authorization_envelope(reserved)
+    harness.request = replace(
+        harness.request,
+        reservation_id=str(reserved["reservation_id"]),
+        operation_id=str(authorization["operation_id"]),
+    )
+    harness.chain()
+    assert protected.main(_authorize_argv(authorization)) == 0
+    capsys.readouterr()
+    assert path.read_bytes() == raw
+    assert not list(path.parent.glob("*.superseded.json"))
+
+    if resume == "same_process":
+        assert protected.main(argv) == 0
+        result = _last_json_line(capsys)
+        launched = harness.launches - 1
+    else:
+        resumed = _invoke_fresh_cli(
+            harness.fixture,
+            _apply_plan_file(harness),
+            argv,
+            identities=dict(harness.launchd.worktree_identities),
+            legacy=(NEW_HEAD, NEW_TREE),
+            boot=1,
+        )
+        assert resumed["code"] == 0, resumed["output"]
+        result = protected.record(json.loads(str(resumed["output"]).splitlines()[-1]))
+        launched = cast(int, resumed["launches"])
+    assert launched == 1
+    _assert_retired_once(path, raw, result)
+    assert protected.record(result["identity"])["operation_id"] == authorization["operation_id"]
+    owner = cutover.inspect_control_owner(harness.fixture.config)
+    assert owner is not None and owner["phase"] == "RELEASED"
+
+
+_PLIST_METADATA_ATTACKS = (
+    "replaced_file",
+    "in_place_rewrite",
+    "rewrite_restore_mtime",
+    "chmod_round_trip",
+    "hard_link_round_trip",
+)
+
+
+def _attack_plist(path: Path, attack: str) -> None:
+    """Same bytes, same mode, one link: only inode or ctime can still tell."""
+    raw = path.read_bytes()
+    before = os.lstat(path)
+    if attack == "replaced_file":
+        replacement = path.with_name(f".{path.name}.replacement")
+        replacement.write_bytes(raw)
+        replacement.chmod(0o600)
+        os.replace(replacement, path)
+    elif attack == "in_place_rewrite":
+        path.write_bytes(raw)
+    elif attack == "rewrite_restore_mtime":
+        path.write_bytes(raw)
+        os.utime(path, ns=(before.st_atime_ns, before.st_mtime_ns))
+    elif attack == "chmod_round_trip":
+        path.chmod(0o644)
+        path.chmod(0o600)
+    else:
+        link = path.with_name(f".{path.name}.link")
+        os.link(path, link)
+        link.unlink()
+    after = os.lstat(path)
+    assert path.read_bytes() == raw
+    assert (stat.S_IMODE(after.st_mode), after.st_nlink) == (0o600, 1)
+    assert after.st_ctime_ns != before.st_ctime_ns
+    assert (after.st_ino != before.st_ino) is (attack == "replaced_file")
+    if attack in {"rewrite_restore_mtime", "chmod_round_trip", "hard_link_round_trip"}:
+        assert after.st_mtime_ns == before.st_mtime_ns
+
+
+@pytest.mark.parametrize("stage", ["before_plan", "after_authorization"])
+@pytest.mark.parametrize("attack", _PLIST_METADATA_ATTACKS)
+def test_rebooted_current_success_still_refuses_a_rewritten_identical_plist(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    attack: str,
+    stage: str,
+) -> None:
+    plist = harness.fixture.plist_path
+
+    def before_plan() -> None:
+        if stage == "before_plan":
+            _attack_plist(plist, attack)
+
+    path, raw = _rebooted_success_cycle(harness, monkeypatch, before_plan=before_plan)
+    owner_path = cutover._control_owner_path(harness.fixture.config)
+    monkeypatch.setattr(protected, "build_reservation_config", _fixed_reservation_config(harness))
+    if stage == "before_plan":
+        # The fresh plan froze the attacked file, so only the sealed receipt can tell.
+        assert _planned_old_plist_identity(harness).key() == _live_plist_identity(harness).key()
+        owner_before = owner_path.read_bytes()
+        mutations = len(harness.launchd.mutation_calls)
+        capsys.readouterr()
+        code = protected.main(list(harness.request.owner_argv()[2:]))
+        refused = _last_json_line(capsys)
+        assert code == claims.UNVERIFIABLE
+        assert "not eligible for successor reservation" in str(refused["error"])
+        assert owner_path.read_bytes() == owner_before
+    else:
+        argv, _ = _reserve_and_authorize(harness, monkeypatch, capsys)
+        _attack_plist(plist, attack)
+        mutations = len(harness.launchd.mutation_calls)
+        assert protected.main(argv) == claims.UNVERIFIABLE
+        refused = _last_json_line(capsys)
+        assert "completed receipt plist identity differs" in str(refused["error"])
+        owner = cutover.inspect_control_owner(harness.fixture.config)
+        assert owner is not None and owner["phase"] == "AUTHORIZED_PENDING"
+        assert owner["mutation_started"] is False
+    assert _live_plist_identity(harness).sha256 == _sealed_plist_identity(harness).sha256
+    _assert_nothing_retired(harness, path, raw, mutations)
+
+
+@pytest.mark.parametrize("sealed_before_reboot", [False, True])
+def test_reboot_between_authorization_and_resume_refuses_before_the_archive(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    sealed_before_reboot: bool,
+) -> None:
+    """The plan froze OLD in one boot; its child CAS binds that exact device."""
+    if sealed_before_reboot:
+        path, raw = _rebooted_success_cycle(harness, monkeypatch)
+    else:
+        path, raw = _current_success_cycle(harness, monkeypatch)
+    argv, authorization = _reserve_and_authorize(harness, monkeypatch, capsys)
+    planned = _planned_old_plist_identity(harness)
+    simulate_reboot(monkeypatch, harness.fixture.root, 2)
+    live = _live_plist_identity(harness)
+    assert live.key() != planned.key()
+    assert {**live.to_dict(), "device": planned.device} == planned.to_dict()
+    mutations = len(harness.launchd.mutation_calls)
+
+    assert protected.main(argv) == claims.UNVERIFIABLE
+    refused = _last_json_line(capsys)
+    assert "successor plan OLD plist identity differs" in str(refused["error"])
+    _assert_nothing_retired(harness, path, raw, mutations)
+    owner = cutover.inspect_control_owner(harness.fixture.config)
+    assert owner is not None and owner["phase"] == "AUTHORIZED_PENDING"
+    assert owner["mutation_started"] is False
+    assert owner["reservation_id"] == authorization["reservation_id"]
+
+    # The device was the only defect: in the plan's own boot the same authorization resumes.
+    simulate_reboot(monkeypatch, harness.fixture.root, 1 if sealed_before_reboot else 0)
+    assert protected.main(argv) == 0
+    result = _last_json_line(capsys)
+    assert harness.launches == 2
+    _assert_retired_once(path, raw, result)
+    assert protected.record(result["identity"])["operation_id"] == authorization["operation_id"]
+
+
+@pytest.mark.parametrize("drift", ["loaded_runtime_drift", "enabled_drift"])
+def test_rebooted_current_success_still_refuses_runtime_drift(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    drift: str,
+) -> None:
+    path, raw = _rebooted_success_cycle(harness, monkeypatch)
+    argv, authorization = _reserve_and_authorize(harness, monkeypatch, capsys)
+    loaded_before = harness.launchd.loaded_source
+    if drift == "loaded_runtime_drift":
+        harness.launchd.loaded_source = harness.fixture.worktree_parent / (
+            f"B649_PRODUCTION_{OLD_HEAD}"
+        )
+    else:
+        harness.launchd.enabled = False
+    mutations = len(harness.launchd.mutation_calls)
+
+    assert protected.main(argv) == claims.UNVERIFIABLE
+    refused = _last_json_line(capsys)
+    assert "completed receipt" in str(refused["error"])
+    _assert_nothing_retired(harness, path, raw, mutations)
+    owner = cutover.inspect_control_owner(harness.fixture.config)
+    assert owner is not None and owner["phase"] == "AUTHORIZED_PENDING"
+    assert owner["mutation_started"] is False
+
+    if drift == "loaded_runtime_drift":
+        harness.launchd.loaded_source = loaded_before
+    else:
+        harness.launchd.enabled = True
+    assert protected.main(argv) == 0
+    result = _last_json_line(capsys)
+    assert harness.launches == 2
+    _assert_retired_once(path, raw, result)
+    assert protected.record(result["identity"])["operation_id"] == authorization["operation_id"]

@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "task_id": "B649_K20_ZERO_GAIN_PLATEAU_ESCAPE_PILOT_R1",
+  "execution_id": "run1",
+  "pid": 29627,
+  "status": "COMPLETED",
+  "durable_capture_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_K20_ZERO_GAIN_PLATEAU_ESCAPE_PILOT_R1/captures/run1.json",
+  "started_at": "2026-09-30T02:38:48Z",
+  "ended_at": "2026-09-30T04:24:36Z"
+}

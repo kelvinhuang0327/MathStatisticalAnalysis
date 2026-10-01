@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "command": [
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/python",
+    "-c",
+    "import json,sys; from pathlib import Path; sys.path.insert(0,\"src\"); from lottolab.application.b649_sealed_geometry_portfolio import canonical_portfolio_sha256; from lottolab.research.b649_official_any_prize_exact import evaluate_portfolio; d=json.loads(Path(\"docs/research/matrix-native-results/b649-k20-conditional-global-diversity-beam-r2-result.json\").read_text()); p=d[\"START_PORTFOLIO\"]; h=canonical_portfolio_sha256(p); r=evaluate_portfolio(p); print(\"PORTFOLIO_SHA256=\"+h); print(\"M3_PLUS_DRAW_COUNT=\"+str(r.m3_plus_draw_count)); print(\"M3_PLUS=\"+str(r.m3_plus)); print(\"OFFICIAL_ANY_PRIZE_OUTCOME_COUNT=\"+str(r.official_any_prize_outcome_count)); print(\"OFFICIAL_ANY_PRIZE=\"+str(r.official_any_prize)); print(\"TOTAL_OUTCOMES=\"+str(r.main_draw_count*r.special_count)); assert h==\"7ce41ff21d5c0821f1d5dda683e23114086f5024fc6d98d4e574df5306659b1e\"; assert r.official_any_prize_outcome_count==313239661; assert str(r.official_any_prize)==\"44748523/85900584\""
+  ],
+  "stdout": "PORTFOLIO_SHA256=7ce41ff21d5c0821f1d5dda683e23114086f5024fc6d98d4e574df5306659b1e\nM3_PLUS_DRAW_COUNT=4807367\nM3_PLUS=4807367/13983816\nOFFICIAL_ANY_PRIZE_OUTCOME_COUNT=313239661\nOFFICIAL_ANY_PRIZE=44748523/85900584\nTOTAL_OUTCOMES=601304088\n",
+  "stderr": "",
+  "exit_status": 0,
+  "started_at": "2026-10-01T08:11:02Z",
+  "ended_at": "2026-10-01T08:11:03Z"
+}

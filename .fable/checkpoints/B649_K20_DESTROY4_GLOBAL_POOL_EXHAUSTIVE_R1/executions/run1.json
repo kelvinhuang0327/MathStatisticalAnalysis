@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "task_id": "B649_K20_DESTROY4_GLOBAL_POOL_EXHAUSTIVE_R1",
+  "execution_id": "run1",
+  "pid": 10975,
+  "status": "STARTED",
+  "durable_capture_path": null,
+  "started_at": "2026-10-01T01:41:41Z",
+  "ended_at": null
+}

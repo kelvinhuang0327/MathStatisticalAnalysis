@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "command": [
+    "/opt/homebrew/opt/python@3.13/bin/python3.13",
+    "-m",
+    "lottolab.research.b649_k20_filmus_ward_nonoblivious_r1",
+    "--run1"
+  ],
+  "stdout": "RUN_STATUS=COMPLETE\nFINAL_DECISION=DIRECT_OBJECTIVE_BOUNDED_NEGATIVE\nPROVENANCE_PATH=.task-data/B649_K20_FILMUS_WARD_NONOBLIVIOUS_R1/run1/provenance.json\n",
+  "stderr": "",
+  "exit_status": 0,
+  "started_at": "2026-09-24T12:29:37Z",
+  "ended_at": "2026-09-24T12:29:55Z"
+}

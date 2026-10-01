@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "command": [
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/python",
+    "-B",
+    "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_CONTROL_D32620ED_V6_ACTIVATION_R1/tools/b649_protected_cutover.py",
+    "status",
+    "--for",
+    "apply",
+    "--source-worktree",
+    "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_PRODUCTION_76085ccc8f226c8752cc7df28390e27009d21746",
+    "--expected-head",
+    "76085ccc8f226c8752cc7df28390e27009d21746",
+    "--expected-tree",
+    "a2bd43ed9019e4cf2f330eb7d0dfa498d7904b43"
+  ],
+  "stdout": "{\"managed_receipt\":{\"exists\":true,\"path\":\"/Users/kelvin/VibeCoding-WorkSpace/.task-data/B649_OPERATIONAL_PREDICTION_LOOP_R1/scheduler/b649-production-cutover-receipt.json\",\"sha256\":\"6a2bb0ba29085e900f62e318e0f6caac96ec234611867f2fdb5556467868a83a\"},\"owner\":{\"action\":\"apply\",\"authorization\":null,\"control_head\":\"d32620eda04e3e01c1cb135d822bb21e41f0de34\",\"control_tree\":\"1f8c8878dc6d108014028d9abf588ed7b4593d50\",\"created_at\":\"2026-10-01T03:05:47.469267Z\",\"managed_receipt_sha256\":\"6a2bb0ba29085e900f62e318e0f6caac96ec234611867f2fdb5556467868a83a\",\"mutation_started\":false,\"operation_id\":\"27e1039be8f511114e06fcae200fcc2f\",\"owner_kind\":\"protected\",\"owner_pid\":40171,\"phase\":\"AUTHORIZATION_PENDING\",\"predecessor_release_evidence\":{\"evidence_sha256\":\"2e53de1a3ebba04333c645d1cdf8e8ab2043ea950d40719cd86a1f02ce92a476\",\"new_operation_id\":\"27e1039be8f511114e06fcae200fcc2f\",\"new_reservation_id\":\"fb748f08-cd90-4bec-89e1-31364d98143d\",\"prior_authorization_sha256\":\"7e9949a090bed822750062a29104f6866950ff4905490684b31c768030c10623\",\"prior_managed_receipt_sha256\":\"6a2bb0ba29085e900f62e318e0f6caac96ec234611867f2fdb5556467868a83a\",\"prior_operation_id\":\"ad7c7218805ec7f1c5d9685fdda503fe\",\"prior_protected_receipt_sha256\":\"86c25f3275b1197778ad722e0d5d7689fff61f7b4f689f3d09305dad3ce03196\",\"prior_release_evidence\":{\"managed_receipt_sha256\":\"6a2bb0ba29085e900f62e318e0f6caac96ec234611867f2fdb5556467868a83a\",\"protected_receipt_sha256\":\"86c25f3275b1197778ad722e0d5d7689fff61f7b4f689f3d09305dad3ce03196\",\"verified\":true},\"prior_reservation_id\":\"254a96f2-0f03-46e9-b684-175e7c1075e8\",\"schema\":\"b649-protected-predecessor-release-v1\"},\"record_sha256\":\"e6fff72d83140a6cbb40f9fe17d973944fe8fd83b7adb73e52f6bec8b6ca374c\",\"release_evidence\":null,\"reservation_id\":\"fb748f08-cd90-4bec-89e1-31364d98143d\",\"schema\":\"b649-durable-control-owner-v1\",\"target\":{\"durable_ref\":\"refs/heads/runtime/b649/76085ccc8f226c8752cc7df28390e27009d21746\",\"head\":\"76085ccc8f226c8752cc7df28390e27009d21746\",\"source_worktree\":\"/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_PRODUCTION_76085ccc8f226c8752cc7df28390e27009d21746\",\"tree\":\"a2bd43ed9019e4cf2f330eb7d0dfa498d7904b43\"},\"terminal\":null,\"updated_at\":\"2026-10-01T03:05:47.626174Z\",\"worker_state\":\"STALE_PROCESS\"},\"protected_apply_receipt\":{\"exists\":true,\"path\":\"/Users/kelvin/VibeCoding-WorkSpace/.task-data/B649_OPERATIONAL_PREDICTION_LOOP_R1/scheduler/b649-protected-cutover-execution-receipt.json\",\"sha256\":\"86c25f3275b1197778ad722e0d5d7689fff61f7b4f689f3d09305dad3ce03196\"},\"protected_rollback_receipt\":{\"exists\":false,\"path\":\"/Users/kelvin/VibeCoding-WorkSpace/.task-data/B649_OPERATIONAL_PREDICTION_LOOP_R1/scheduler/b649-protected-rollback-execution-receipt.json\",\"sha256\":null},\"status\":\"OK\"}\n",
+  "stderr": "",
+  "exit_status": 0,
+  "started_at": "2026-10-01T05:18:37Z",
+  "ended_at": "2026-10-01T05:18:39Z"
+}

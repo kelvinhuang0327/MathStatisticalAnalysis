@@ -127,6 +127,57 @@ DB 不會被自動採用或修改。P638 API routes 為 `/api/v1/p638-historical
 - 固定研究限制為：「歷史成功率、排名與隨機基準差異僅供描述性研究，不構成未來預測、推薦、
   上線決策或中獎保證。」
 
+<!-- BEGIN GENERATED B649 EVIDENCE STATUS -->
+
+### B649 回測證據現況（自動產生，請勿手改）
+
+本區塊由 `uv run python tools/b649_evidence_status.py --write-readme` 產生，`--check-readme`（pytest 內亦執行）會在與 canonical evidence 不一致時失敗。
+README 只是導覽索引，權威是下表 locator；README 沒列出某注數**不代表沒有回測**。
+`ABSENT` 只表示固定的 packaged lookup 沒找到該注數；
+README 或 provenance-only 外部路徑均不能證明 evidence 存在或不存在。
+新鮮度參照為 repo 內最新證據 cutoff `115000084`；repo 不追蹤線上最新期，判定實際缺期請加 `--latest-draw <期號>`。舊 cutoff 證據是 `AVAILABLE_STALE`，應先回報歷史排名，再以補期（delta refresh）而非全量重跑更新。
+
+| 注數 | 狀態（相對參照） | 最新 cutoff | 缺期（相對參照） | 策略數 | 排名 | 權威 locator |
+|---|---|---|---|---|---|---|
+| 2 | `AVAILABLE_CURRENT` | 115000084 | 無 | 19 | YES | `src/lottolab/strategies/data/biglotto_exact_native_k2_115000084_records_v1.json` |
+| 3 | `AVAILABLE_CURRENT` | 115000084 | 無 | 19 | YES | `src/lottolab/strategies/data/biglotto_exact_native_k3_115000084_records_v1.json` |
+| 5 | `AVAILABLE_CURRENT` | 115000084 | 無 | 5 | YES | `src/lottolab/strategies/data/biglotto_exact_native_k5_115000084_records_v1.json` |
+| 10 | `AVAILABLE_CURRENT` | 115000084 | 無 | 2 | YES | `src/lottolab/strategies/data/biglotto_exact_native_k10_115000084_records_v1.json` |
+| 15 | `AVAILABLE_STALE` | 115000073 | 115000074–115000084 | 133 | YES | `src/lottolab/strategies/data/biglotto_multi_ticket_historical_records_v2.json` |
+| 20 | `AVAILABLE_STALE` | 115000073 | 115000074–115000084 | 133 | YES | `src/lottolab/strategies/data/biglotto_multi_ticket_historical_records_v2.json` |
+
+#### 歷史排名摘要 (維持來源排名順序)
+
+| 注數 | 排名 | 策略 | 評估樣本 n | 官方得獎數 | 原始率 | Coverage |
+|---|---:|---|---:|---:|---:|---:|
+| 2 | 1 | `b649_new_horizon_minimax_disagreement_r1` | 1966 | 147 | 0.074771108850457782 | 0.907663896583564174 |
+| 2 | 2 | `legacy_biglotto__minimal_dual_bet_strategy__3c9657df7ff4` | 2165 | 151 | 0.069745958429561201 | 0.999538319482917821 |
+| 2 | 3 | `legacy_biglotto__predict_big_lotto_smart_2bet__7acdaab1bd0a` | 2165 | 147 | 0.067898383371824480 | 0.999538319482917821 |
+| 3 | 1 | `legacy_biglotto__predict_biglotto_triple_strike__dad1c50d1504` | 2016 | 197 | 0.097718253968253968 | 0.930747922437673130 |
+| 3 | 2 | `legacy_biglotto__test_dcb__c3299c25ca59` | 2165 | 208 | 0.096073903002309469 | 0.999538319482917821 |
+| 3 | 3 | `legacy_biglotto__big_lotto_exhaustive_audit__694d353b7ca2` | 2116 | 192 | 0.090737240075614367 | 0.976915974145891043 |
+| 5 | 1 | `legacy_biglotto__backtest_big_lotto_orthogonal_5bet__c4dff46c5a5e` | 1666 | 272 | 0.163265306122448980 | 0.769159741458910434 |
+| 5 | 2 | `legacy_composite__quick_predict_5bet_ts3_markov_freqort` | 1666 | 269 | 0.161464585834333733 | 0.769159741458910434 |
+| 5 | 3 | `legacy_biglotto__predict_5me_115000004__8a1c06ce1bdd` | 2165 | 299 | 0.138106235565819861 | 0.999538319482917821 |
+| 10 | 1 | `legacy_biglotto__backtest_10bet_biglotto__054e85b088be` | 2165 | 433 | 0.200000000000000000 | 0.999538319482917821 |
+| 10 | 2 | `legacy_biglotto__backtest_biglotto_coldpool_15__2a80423e3cf5` | 1866 | 364 | 0.195069667738478028 | 0.861495844875346260 |
+| 15 | 1 | `legacy_biglotto__quick_ml_predict__8b7ba0b52e2d` | 4 | 2 | 0.500000000000000000 | 0.001861330851558865 |
+| 15 | 2 | `legacy_biglotto__backtest_biglotto_6bet_ewma__e1b5e100d254` | 1949 | 799 | 0.409953822473063109 | 0.906933457422056771 |
+| 15 | 3 | `legacy_biglotto__feature_discovery_and_retrospective__e2ea8b18945d` | 18 | 7 | 0.388888888888888889 | 0.008375988832014891 |
+| 20 | 1 | `legacy_biglotto__quick_ml_predict__8b7ba0b52e2d` | 4 | 2 | 0.500000000000000000 | 0.001861330851558865 |
+| 20 | 2 | `legacy_biglotto__backtest_biglotto_6bet_ewma__e1b5e100d254` | 1949 | 950 | 0.487429451000513084 | 0.906933457422056771 |
+| 20 | 3 | `legacy_biglotto__orthogonal_diversification_benchmark__ce068c676ca5` | 716 | 997 | 0.464152700186219739 | 0.999534667287110284 |
+
+K2 cutoff 115000084 與 cutoff 115000073 的合約註記: `VALID_DIFFERENT_CONTRACT`; `DIFFERENT_CONTRACT_NOT_AN_EARLIER_SAME_CONTRACT_OBSERVATION`. 差異: E1 strategy universe; E2 draw population; E3 window anchoring; E4 seeded producer semantics; E5 eligibility semantics.
+cutoff 115000073 不是 cutoff 115000084 的同合約較早觀測或排名基線。
+
+K3 cutoff 115000084 與 cutoff 115000073 的合約註記: `VALID_DIFFERENT_CONTRACT`; `DIFFERENT_CONTRACT_NOT_AN_EARLIER_SAME_CONTRACT_OBSERVATION`. 差異: E1 strategy universe; E2 draw population; E3 window anchoring; E4 seeded producer semantics; E5 eligibility semantics.
+cutoff 115000073 不是 cutoff 115000084 的同合約較早觀測或排名基線。
+
+Sealed-geometry K20 組合屬 outcome-independent 研究族，不是回測排名，不得以歷史開獎結果調參：`docs/research/matrix-native-results/b649-k20-cross-swap-champion-r1.json`、`docs/research/matrix-native-results/b649-k20-two-ticket-joint-replacement-incumbent-r1.json`、`docs/research/matrix-native-results/b649-sealed-v2-direct-official-any-prize-k20-terminal-r1.json`。
+
+<!-- END GENERATED B649 EVIDENCE STATUS -->
+
 ## Historical Results 明確匯入
 
 本機 operator 可將一個已符合 LottoLab `HistoricalResultImportV1` target envelope 的 JSON 檔案，

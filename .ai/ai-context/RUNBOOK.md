@@ -112,6 +112,39 @@ switch to Neumaier summation changed floating-point results. A PR that casually
 upgrades a dependency alongside unrelated work is rejected outright. `[Confirmed]`
 ([ADR-0003](../../docs/decisions/ADR-0003-language-and-toolchain.md))
 
+## B649 evidence-first (backtest / ranking / strategy selection)
+
+Entry point: `uv run --no-sync python tools/b649_evidence_status.py --latest-draw <期號>`
+(bounded discovery; JSON per ticket count). README's generated block
+(`<!-- BEGIN GENERATED B649 EVIDENCE STATUS -->`) is refreshed with `--write-readme` and
+verified by `--check-readme` and `tests/unit/test_b649_evidence_status.py`.
+
+- **EXISTING_EVIDENCE_FIRST** — before any backtest/ranking recomputation: read the README
+  index, follow its locators, run the discovery tool, and report the existing result first.
+- **README_IS_INDEX_NOT_AUTHORITY** — README is navigation only; it can never prove
+  `NO_BACKTEST` / missing K. Absence requires the tool's bounded lookup to return `ABSENT`.
+- **PACKAGED_EVIDENCE_IS_CANONICAL** — only evidence found in the tool's packaged Git lookup
+  roots is canonical. Provenance-only `.task-data` locators are unverified metadata and never
+  replace a packaged evidence or ranking locator.
+- **STALE_IS_NOT_ABSENT** — old-cutoff evidence is `AVAILABLE_STALE`, never `ABSENT`.
+- **REPORT_BEFORE_REFRESH** — for stale evidence report historical ranking, cutoff, missing
+  draws, coverage/strategy count and freshness limits before computing anything.
+- **DELTA_REFRESH_BEFORE_FULL_RERUN** — extend with the missing draws whenever valid.
+- **OWNER_REFRESH_DECISION** — when the historical ranking is still valid evidence, surface
+  it and let the Owner decide whether to refresh; never silently replace it.
+- **FULL_RERUN_JUSTIFICATION** — a full rerun names one reason: `INCOMPATIBLE_SCHEMA`,
+  `INVALID_EXISTING_EVIDENCE`, `NON_INCREMENTAL_ALGORITHM`, `OWNER_REQUESTED_FULL_RERUN`
+  or `OTHER_EXPLICIT_TECHNICAL_REASON`. "README did not show it" is not a reason.
+- When both exist, report historical rank, refreshed rank, rank change, stability and
+  sample/coverage difference (`compare_rankings`); do not pick a strategy just because it
+  wins a small refresh window. Prefer long-history + recent-delta + rank stability +
+  coverage. Sealed-geometry K20 portfolios are outcome-independent and are never tuned on
+  historical outcomes.
+- **DIFFERENT_CONTRACT_IS_NOT_A_TIME_SERIES** — cutoff 084 K2/K3 is
+  `VALID_DIFFERENT_CONTRACT` relative to cutoff 073 across E1 strategy universe, E2 draw
+  population, E3 window anchoring, E4 seeded producer semantics, and E5 eligibility semantics.
+  Do not describe cutoff 073 as an earlier same-contract K2/K3 ranking.
+
 ## Branch / worktree safety
 
 - Never force-push, force-delete a branch, or force-reset a worktree without explicit,

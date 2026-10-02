@@ -1,0 +1,108 @@
+{
+  "schema_version": 1,
+  "task_id": "B649_K20_40_POOL_SUBMODST_LE_SCORE_R2",
+  "lineage": "NEW_R2",
+  "continuation_of_missing_R1": false,
+  "authorization_source": "CURRENT_WORKER_CONVERSATION_USER_MESSAGE",
+  "TASK_CLASS": "STATE_CHANGING_IMPLEMENTATION",
+  "WORKER_ROUTE": "STANDARD",
+  "IMPLEMENTATION_DEPTH": "ENHANCED",
+  "DEPTH_SOURCE": "PLANNER_SUPPLIED",
+  "JUDGE_MODE": "NOT_APPLICABLE",
+  "JUDGE_DISPATCH": "SUPPRESSED",
+  "source_resolution_status": "PASS",
+  "build_status": "PASS",
+  "build_manifest_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/docs/research/matrix-native-results/b649-k20-40-pool-submodst-le-score-r2-build-manifest.json",
+  "build_manifest_sha256": "eb3ee02e11713422b7a7a9b8ab6cd905d12ee9f2c77fb50276d3882932312009",
+  "FROZEN_POOL_SHA256_EXPECTED": "6a7b38de21242d98576bfa2b11cd145e21856a04185301a6e0de7b56736f8ed5",
+  "FROZEN_MATRIX_SHA256_EXPECTED": "e031a56169da6d211e2041eaf24d98e30e5fe97f21d55be84cc8cc10446da254",
+  "FROZEN_POOL_SHA256_ACTUAL": null,
+  "FROZEN_MATRIX_SHA256_ACTUAL": null,
+  "POOL_MATRIX_VERIFICATION_STATUS": "BLOCKED_INPUT_LOCATORS_UNAVAILABLE",
+  "BASELINE_COUNT_EXPECTED": 313239661,
+  "BASELINE_COUNT_REPRODUCED": null,
+  "BASELINE_INITIAL_SOLUTION_INDICES": [
+    3,
+    8,
+    12,
+    18,
+    19,
+    20,
+    21,
+    22,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29,
+    30,
+    31,
+    32,
+    34,
+    35,
+    37
+  ],
+  "BASELINE_VERIFICATION_STATUS": "NOT_RUN",
+  "STRICT_TARGET": 313239662,
+  "SOLVER_STATUS": "NOT_RUN_BLOCKED_FROZEN_INPUTS_UNAVAILABLE",
+  "SOLVE_SECONDS": null,
+  "PEAK_MEMORY": null,
+  "SOLVER_INCUMBENT_COUNT": null,
+  "SOLVER_BOUND": null,
+  "SOLVER_GAP": null,
+  "STRICT_IMPROVER_FOUND": "UNKNOWN_NOT_RUN",
+  "BEST_VERIFIED_COUNT": null,
+  "BEST_VERIFIED_SHA": null,
+  "CANONICAL_RECOUNT_STATUS": "NOT_RUN",
+  "SOLVE_INVOCATIONS": 0,
+  "POOL_OPTIMUM_PROVEN": false,
+  "PROOF_SCOPE": "NO_PROOF_CLAIMED",
+  "BLOCKER_CODE": "FROZEN_INPUT_LOCATORS_UNAVAILABLE",
+  "BLOCKER_DETAIL": "The Owner supplied exact input hashes but no file locators. Bounded input searches did not locate the frozen 40-ticket pool or matrix. Only baseline-initial-solution.txt is present under the old R1 inputs directory. No data were reconstructed or substituted.",
+  "SMALLEST_NEXT_ACTION": "Provide the existing frozen pool and matrix paths matching the two expected hashes.",
+  "ENHANCED_EVIDENCE": [
+    {
+      "INVARIANT": "Use the pinned solver commit without source edits",
+      "CHECK": "GitHub exact commit/tree API plus verification of all 44 source Git blobs and executable modes; reverification after build",
+      "RESULT": "RUN_THIS_TASK: PASS"
+    },
+    {
+      "INVARIANT": "Solve only after exact input hashes and baseline count pass; execute exactly once",
+      "CHECK": "Frozen input resolution gate; no solver invocation while input verification is blocked",
+      "RESULT": "RUN_THIS_TASK: BLOCKED, 0 solve invocations"
+    }
+  ],
+  "PROJECT_MEMORY_WRITE": "NONE",
+  "PUSH": "NOT_RUN",
+  "PR": "NOT_RUN",
+  "MERGE": "NOT_RUN",
+  "PRODUCTION_CHANGE": "NONE",
+  "RUNTIME_TRANSITION_OCCURRED": "NO",
+  "DESTRUCTIVE_ACTION_OCCURRED": "NO",
+  "written_at": "2026-10-02T09:31:52.877337+00:00",
+  "commit_scope": [
+    "docs/research/matrix-native-results/b649-k20-40-pool-submodst-le-score-r2-build-manifest.json",
+    "docs/research/matrix-native-results/b649-k20-40-pool-submodst-le-score-r2-result.json"
+  ],
+  "runtime_output_scope": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.task-data/B649_K20_40_POOL_SUBMODST_LE_SCORE_R2",
+  "files_deleted_during_task": [],
+  "local_result_branch": "refs/heads/codex/b649-k20-40-pool-submodst-le-score-r2",
+  "local_commit_method": "Separate index, commit-tree with canonical base parent, create new result branch; main HEAD and normal index retained unchanged.",
+  "git_attempts": [
+    {
+      "attempt": 1,
+      "status": "ABORTED_PRECOMMIT",
+      "reason": "Main HEAD advanced from original baseline before separate-index commit; no Git write occurred. Changes classified as one non-overlapping v7 cycle result."
+    },
+    {
+      "attempt": 2,
+      "status": "COMMIT_EXACT_TWO_MANIFESTS_TO_NEW_BRANCH",
+      "parent": "a124f55d2713b7ecb7fa071abb4c224a5b8853e5",
+      "live_main_observed": "c490edfdd6466960b5abd1e2d5368388dfa89a38",
+      "non_overlapping_main_changed_paths": [
+        "docs/research/matrix-native-results/b649-k20-v7-three-ticket-cycle-full-family-r1-result.json"
+      ]
+    }
+  ]
+}

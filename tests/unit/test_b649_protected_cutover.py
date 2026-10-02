@@ -21,7 +21,9 @@ import socket
 import stat
 import subprocess
 import sys
+import threading
 from collections.abc import Callable, Sequence
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import redirect_stderr, redirect_stdout
 from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime, timedelta
@@ -342,6 +344,11 @@ def _make_stranded_prestart_incident(
     monkeypatch: pytest.MonkeyPatch,
     *,
     preserve_legacy_parent_behavior: bool,
+    legacy_worktree: Path | None = None,
+    legacy_head: str = NEW_HEAD,
+    legacy_tree: str = NEW_TREE,
+    terminal_exit_code: int = 127,
+    predecessor_sha256_override: str | None = None,
 ) -> StrandedIncident:
     v5 = harness.launch()
     assert v5["status"] == "SUCCESS"
@@ -386,14 +393,18 @@ def _make_stranded_prestart_incident(
     )
     request = protected.make_request(
         v6_config,
-        harness.fixture.new,
-        NEW_HEAD,
-        NEW_TREE,
+        harness.fixture.new if legacy_worktree is None else legacy_worktree,
+        legacy_head,
+        legacy_tree,
         plan_file,
         harness.request.claim_root,
         reservation_id="fb748f08-cd90-4bec-89e1-31364d98143d",
         operation_id="27e1039be8f511114e06fcae200fcc2f",
-        prior_execution_receipt_sha256=predecessor_sha256,
+        prior_execution_receipt_sha256=(
+            predecessor_sha256
+            if predecessor_sha256_override is None
+            else predecessor_sha256_override
+        ),
     )
     monkeypatch.setattr(cutover, "run_command", harness.runner)
     predecessor_proof = protected._require_released_success_evidence(request, prior_owner)
@@ -432,6 +443,7 @@ def _make_stranded_prestart_incident(
     harness.request = request
     harness.chain()
     harness.exec_failed = True
+    harness.exit_override = terminal_exit_code
     if preserve_legacy_parent_behavior:
         monkeypatch.setattr(
             protected,
@@ -439,7 +451,7 @@ def _make_stranded_prestart_incident(
             _preserve_legacy_prestart_result,
         )
     result = harness.launch()
-    assert result["exit_code"] == 127
+    assert result["exit_code"] == terminal_exit_code
     return StrandedIncident(
         request=request,
         predecessor_sha256=predecessor_sha256,
@@ -448,6 +460,705 @@ def _make_stranded_prestart_incident(
         old_plist_bytes=old_plist_bytes,
         mutations_before=mutations_before,
     )
+
+
+class _DigestOverride:
+    def __init__(self, initial: bytes, overrides: dict[bytes, str]) -> None:
+        self._bytes = bytearray(initial)
+        self._real = hashlib.sha256(initial)
+        self._overrides = overrides
+
+    def update(self, value: bytes) -> None:
+        self._bytes.extend(value)
+        self._real.update(value)
+
+    def hexdigest(self) -> str:
+        return self._overrides.get(bytes(self._bytes), self._real.hexdigest())
+
+    def digest(self) -> bytes:
+        value = self.hexdigest()
+        return bytes.fromhex(value)
+
+
+class _FixtureHashlib:
+    def __init__(self) -> None:
+        self.overrides: dict[bytes, str] = {}
+
+    def sha256(self, value: bytes = b"") -> _DigestOverride:
+        return _DigestOverride(value, self.overrides)
+
+    def bind(self, value: bytes, expected_sha256: str) -> None:
+        self.overrides[value] = expected_sha256
+
+
+def _prepare_exact_failed_terminal_bridge(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+) -> tuple[StrandedIncident, protected.Request, _FixtureHashlib]:
+    v5_config = replace(
+        harness.fixture.config,
+        expected_head=cutover.V5_SOURCE_HEAD,
+        expected_tree=cutover.V5_SOURCE_TREE,
+        durable_ref=f"refs/heads/runtime/b649/{cutover.V5_SOURCE_HEAD}",
+        strict_release_layout=False,
+    )
+    harness.fixture.config = v5_config
+    harness.launchd.worktree_identities[harness.fixture.new] = (
+        cutover.V5_SOURCE_HEAD,
+        cutover.V5_SOURCE_TREE,
+        True,
+    )
+    harness.launchd.process_rows = ["1 0 0 S /sbin/launchd"]
+    harness.launchd.file_rows = ["p1\nfcwd\nn/"]
+    v5_plan = cutover.build_plan(v5_config, runner=harness.launchd)
+    ownership = protected.record(v5_plan.get("ownership"))
+    process_snapshot = protected.record(ownership.get("process"))
+    assert v5_plan["status"] == "PASS", (
+        v5_plan["failures"],
+        ownership.get("runtime"),
+        process_snapshot.get("processes"),
+        process_snapshot.get("uncertainties"),
+    )
+    v5_plan_file = harness.fixture.root / "v5-plan.json"
+    v5_plan_file.write_text(protected.canonical(v5_plan), encoding="utf-8")
+    v5_plan_file.chmod(0o600)
+    harness.request = protected.make_request(
+        v5_config,
+        harness.fixture.old,
+        OLD_HEAD,
+        OLD_TREE,
+        v5_plan_file,
+        harness.fixture.root / "claims",
+    )
+    harness.chain()
+    v5_result = harness.launch()
+    assert v5_result["status"] == "SUCCESS"
+
+    v5_receipt_file = protected.ReceiptFile(harness.request.receipt_path)
+    v5_receipt = v5_receipt_file.read()
+    assert v5_receipt is not None
+    v5_receipt_before = v5_receipt
+    v5_receipt = {
+        **v5_receipt,
+        "managed_receipt": {
+            **protected.record(v5_receipt.get("managed_receipt")),
+            "sha256": cutover.V5_MANAGED_RECEIPT_SHA256,
+        },
+    }
+    v5_receipt_file.write(v5_receipt, expected=v5_receipt_before)
+    managed_bytes = harness.fixture.receipt_path.read_bytes()
+    v5_bytes = harness.request.receipt_path.read_bytes()
+    owner_snapshot = cutover._read_control_owner(v5_config)  # pyright: ignore[reportPrivateUsage]
+    assert owner_snapshot is not None
+    v5_owner, owner_identity = owner_snapshot
+    v5_owner["release_evidence"] = {
+        "managed_receipt_sha256": cutover.V5_MANAGED_RECEIPT_SHA256,
+        "protected_receipt_sha256": cutover.V5_PROTECTED_RECEIPT_SHA256,
+        "verified": True,
+    }
+    cutover._save_control_owner(  # pyright: ignore[reportPrivateUsage]
+        v5_config, v5_owner, expected=owner_identity
+    )
+
+    fixture_hashlib = _FixtureHashlib()
+    fixture_hashlib.bind(managed_bytes, cutover.V5_MANAGED_RECEIPT_SHA256)
+    fixture_hashlib.bind(v5_bytes, cutover.V5_PROTECTED_RECEIPT_SHA256)
+    monkeypatch.setattr(protected, "hashlib", fixture_hashlib)
+    monkeypatch.setattr(cutover, "hashlib", fixture_hashlib)
+
+    incident = _make_stranded_prestart_incident(
+        harness,
+        monkeypatch,
+        preserve_legacy_parent_behavior=True,
+        legacy_worktree=harness.fixture.new,
+        legacy_head=cutover.V5_SOURCE_HEAD,
+        legacy_tree=cutover.V5_SOURCE_TREE,
+        terminal_exit_code=1,
+        predecessor_sha256_override=cutover.V5_PROTECTED_RECEIPT_SHA256,
+    )
+    failed_file = protected.ReceiptFile(incident.request.receipt_path)
+    failed = failed_file.read()
+    assert failed is not None
+    failed_before = failed
+    failed = {**failed}
+    failed["status"] = "FAILED"
+    failed["phase"] = "COMPLETED"
+    failed["exit_code"] = 1
+    failed["result_status"] = "INCOMPLETE_OR_AMBIGUOUS"
+    failed["child_exit_code"] = None
+    for marker in ("child_started_at", "child_completed_at"):
+        failed.pop(marker, None)
+    required_receipt_fields = {
+        "schema_version",
+        "identity",
+        "execution_id",
+        "task_key",
+        "claim_owner",
+        "supervisor_pid",
+        "gated_child_pid",
+        "direct_argv",
+        "phase",
+        "status",
+        "started_at",
+        "completed_at",
+        "exit_code",
+        "child_exit_code",
+        "stdout",
+        "stderr",
+        "managed_receipt",
+        "result_status",
+    }
+    assert required_receipt_fields <= failed.keys(), sorted(required_receipt_fields - failed.keys())
+    failed_file.write(failed, expected=failed_before)
+    fixture_hashlib.bind(
+        incident.request.receipt_path.read_bytes(),
+        cutover.FAILED_TERMINAL_RECEIPT_SHA256,
+    )
+    cutover.release_control_owner(
+        incident.request.config,
+        str(incident.request.reservation_id),
+        protected_receipt_path=incident.request.receipt_path,
+    )
+
+    v7_source = harness.fixture.worktree_parent / f"B649_PRODUCTION_{cutover.V7_SOURCE_HEAD}"
+    Fixture.make_source(v7_source)
+    harness.launchd.worktree_identities[v7_source] = (
+        cutover.V7_SOURCE_HEAD,
+        cutover.V7_SOURCE_TREE,
+        True,
+    )
+    v7_config = replace(
+        incident.request.config,
+        source_worktree=v7_source,
+        expected_head=cutover.V7_SOURCE_HEAD,
+        expected_tree=cutover.V7_SOURCE_TREE,
+        durable_ref=f"refs/heads/runtime/b649/{cutover.V7_SOURCE_HEAD}",
+        strict_release_layout=False,
+    )
+    harness.fixture.config = v7_config
+    harness.launchd.process_rows = ["1 0 0 S /sbin/launchd"]
+    harness.launchd.file_rows = ["p1\nfcwd\nn/"]
+    v7_plan = cutover.build_plan(v7_config, runner=harness.launchd)
+    assert v7_plan["status"] == "PASS", v7_plan["failures"]
+    v7_plan_file = harness.fixture.root / "v7-plan.json"
+    v7_plan_file.write_text(protected.canonical(v7_plan), encoding="utf-8")
+    v7_plan_file.chmod(0o600)
+    harness.chain()
+    request = protected.make_request(
+        v7_config,
+        harness.fixture.new,
+        cutover.V5_SOURCE_HEAD,
+        cutover.V5_SOURCE_TREE,
+        v7_plan_file,
+        incident.request.claim_root,
+        reservation_id=str(uuid4()),
+        prior_execution_receipt_sha256=cutover.V5_PROTECTED_RECEIPT_SHA256,
+    )
+    return incident, request, fixture_hashlib
+
+
+def test_exact_failed_terminal_bridge_archives_then_reserves_with_v5_authority(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    incident, request, _fixture_hashlib = _prepare_exact_failed_terminal_bridge(
+        harness, monkeypatch
+    )
+    failed_path = incident.request.receipt_path
+    failed_before = failed_path.read_bytes()
+    v5_managed_before = request.config.receipt_path.read_bytes()
+    owner_before = cutover._control_owner_path(request.config).read_bytes()  # pyright: ignore[reportPrivateUsage]
+    failed = protected.ReceiptFile(failed_path).read()
+    assert failed is not None
+    assert (
+        failed["status"],
+        failed["phase"],
+        failed["exit_code"],
+        failed["result_status"],
+    ) == ("FAILED", "COMPLETED", 1, "INCOMPLETE_OR_AMBIGUOUS")
+    assert "child_started_at" not in failed and "child_completed_at" not in failed
+    assert claims.ClaimStore(request.claim_root).inspect(protected.TASK_KEY)["status"] == "ABSENT"
+
+    prior_owner = cutover.inspect_control_owner(request.config)
+    assert prior_owner is not None and prior_owner["phase"] == "RELEASED"
+    proof = protected._require_released_success_evidence(request, prior_owner)
+    assert proof is not None
+    assert proof["prior_protected_receipt_sha256"] == cutover.V5_PROTECTED_RECEIPT_SHA256
+    assert proof["prior_managed_receipt_sha256"] == cutover.V5_MANAGED_RECEIPT_SHA256
+    assert proof["prior_protected_receipt_sha256"] != cutover.FAILED_TERMINAL_RECEIPT_SHA256
+    assert not failed_path.exists()
+    archive_path = failed_path.with_name(
+        f"{failed_path.stem}.{failed['execution_id']}.superseded.json"
+    )
+    assert archive_path.read_bytes() == failed_before
+    assert request.config.receipt_path.read_bytes() == v5_managed_before
+    assert cutover._control_owner_path(request.config).read_bytes() == owner_before  # pyright: ignore[reportPrivateUsage]
+
+    with pytest.raises(
+        cutover.CutoverSafetyError,
+        match="requires live predecessor revalidation",
+    ):
+        cutover.acquire_control_owner(
+            request.config,
+            action="apply",
+            target=protected.request_owner_target(request),
+            owner_kind="protected",
+            reservation_id=str(request.reservation_id),
+            version={"head": request.control_head, "tree": request.control_tree},
+            operation_id=request.operation_id,
+            managed_receipt_sha256=request.managed_receipt_sha256,
+            predecessor_release_evidence=proof,
+        )
+    assert cutover._control_owner_path(request.config).read_bytes() == owner_before  # pyright: ignore[reportPrivateUsage]
+
+    owner = cutover.acquire_control_owner(
+        request.config,
+        action="apply",
+        target=protected.request_owner_target(request),
+        owner_kind="protected",
+        reservation_id=str(request.reservation_id),
+        version={"head": request.control_head, "tree": request.control_tree},
+        operation_id=request.operation_id,
+        managed_receipt_sha256=request.managed_receipt_sha256,
+        predecessor_release_evidence=proof,
+        predecessor_live_verifier=protected._failed_terminal_bridge_live_verifier(
+            request,
+            prior_owner,
+            proof,
+            runner=harness.launchd,
+        ),
+    )
+    assert owner["phase"] == "AUTHORIZATION_PENDING"
+    saved_proof = protected.record(owner.get("predecessor_release_evidence"))
+    assert saved_proof["prior_protected_receipt_sha256"] == cutover.V5_PROTECTED_RECEIPT_SHA256
+    assert (
+        saved_proof["retired_failed_terminal_evidence"] == proof["retired_failed_terminal_evidence"]
+    )
+    retirement = protected.record(saved_proof["retired_failed_terminal_evidence"])
+    assert retirement["archive_status"] == "ARCHIVED_UNCHANGED"
+    assert retirement["zero_mutation"] is True
+    assert retirement["v5_protected_receipt_sha256"] == cutover.V5_PROTECTED_RECEIPT_SHA256
+    assert claims.ClaimStore(request.claim_root).inspect(protected.TASK_KEY)["status"] == "ABSENT"
+
+
+def test_failed_terminal_bridge_refuses_live_drift_before_owner_cas(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _incident, request, _fixture_hashlib = _prepare_exact_failed_terminal_bridge(
+        harness, monkeypatch
+    )
+    prior_owner = cutover.inspect_control_owner(request.config)
+    assert prior_owner is not None and prior_owner["phase"] == "RELEASED"
+    proof = protected._require_released_success_evidence(request, prior_owner)
+    assert proof is not None
+    owner_path = cutover._control_owner_path(request.config)  # pyright: ignore[reportPrivateUsage]
+    owner_before = owner_path.read_bytes()
+    archive_paths_before = set(request.config.scheduler_root.glob("*.superseded.json"))
+
+    harness.launchd.enabled = False
+    with pytest.raises(protected.ProtectedError, match="live launch state differs"):
+        cutover.acquire_control_owner(
+            request.config,
+            action="apply",
+            target=protected.request_owner_target(request),
+            owner_kind="protected",
+            reservation_id=str(request.reservation_id),
+            version={"head": request.control_head, "tree": request.control_tree},
+            operation_id=request.operation_id,
+            managed_receipt_sha256=request.managed_receipt_sha256,
+            predecessor_release_evidence=proof,
+            predecessor_live_verifier=protected._failed_terminal_bridge_live_verifier(
+                request,
+                prior_owner,
+                proof,
+                runner=harness.launchd,
+            ),
+        )
+
+    assert owner_path.read_bytes() == owner_before
+    assert cutover.inspect_control_owner(request.config) == prior_owner
+    assert set(request.config.scheduler_root.glob("*.superseded.json")) == archive_paths_before
+
+
+def test_exact_failed_terminal_operation_cannot_be_reacquired_without_successor_proof(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    incident, request, _fixture_hashlib = _prepare_exact_failed_terminal_bridge(
+        harness, monkeypatch
+    )
+    failed_path = incident.request.receipt_path
+    owner_path = cutover._control_owner_path(request.config)  # pyright: ignore[reportPrivateUsage]
+    owner = cutover.inspect_control_owner(request.config)
+    assert owner is not None and owner["phase"] == "RELEASED"
+    before = _bridge_files_snapshot(request)
+
+    with pytest.raises(cutover.CutoverSafetyError, match="requires a verified successor"):
+        cutover.acquire_control_owner(
+            request.config,
+            action="apply",
+            target=protected.request_owner_target(request),
+            owner_kind="protected",
+            reservation_id=cutover.FAILED_TERMINAL_RESERVATION_ID,
+            version={"head": request.control_head, "tree": request.control_tree},
+            operation_id=cutover.FAILED_TERMINAL_OPERATION_ID,
+            managed_receipt_sha256=cutover.V5_MANAGED_RECEIPT_SHA256,
+        )
+
+    assert _bridge_files_snapshot(request) == before
+    assert owner_path.read_bytes() == before[owner_path]
+    assert failed_path.exists()
+
+
+def _bridge_files_snapshot(request: protected.Request) -> dict[Path, bytes]:
+    paths: set[Path] = set()
+    for root in (request.config.scheduler_root, request.claim_root):
+        if root.exists():
+            paths.update(path for path in root.rglob("*") if path.is_file())
+    return {path: path.read_bytes() for path in paths}
+
+
+def _save_bridge_owner(
+    request: protected.Request,
+    changes: dict[str, object],
+    *,
+    bind_authorization: bool = False,
+) -> protected.Record:
+    snapshot = cutover._read_control_owner(request.config)  # pyright: ignore[reportPrivateUsage]
+    assert snapshot is not None
+    owner, identity = snapshot
+    updated = {**owner, **changes}
+    if bind_authorization:
+        updated["authorization"] = cutover._owner_identity(updated)  # pyright: ignore[reportPrivateUsage]
+    return cutover._save_control_owner(  # pyright: ignore[reportPrivateUsage]
+        request.config, updated, expected=identity
+    )
+
+
+def _seed_active_bridge_claim(request: protected.Request) -> None:
+    store = claims.ClaimStore(request.claim_root)
+    now = datetime.now(UTC).isoformat()
+    metadata = cast(
+        claims.Metadata,
+        {
+            "schema_version": 1,
+            "task_key": protected.TASK_KEY,
+            "owner_id": str(uuid4()),
+            "owner_pid": os.getpid(),
+            "child_pid": None,
+            "hostname": socket.gethostname(),
+            "started_at_utc": now,
+            "heartbeat_at_utc": now,
+            "cwd": str(request.claim_root.parent),
+            "command": [sys.executable, "-c", "pass"],
+            "claim_root": str(request.claim_root),
+        },
+    )
+    with store._transaction():  # pyright: ignore[reportPrivateUsage]
+        store._write(metadata)  # pyright: ignore[reportPrivateUsage]
+
+
+@pytest.mark.parametrize(
+    "mismatch",
+    [
+        "failed_sha",
+        "reservation",
+        "operation",
+        "owner_target",
+        "release_evidence",
+        "mutation_true",
+        "mutation_unknown",
+        "child_marker",
+        "failed_managed_receipt",
+        "claim_present",
+        "v5_managed_sha",
+        "v5_archive_sha",
+        "v5_archive_link",
+        "live_source",
+        "live_plist",
+        "live_enabled",
+    ],
+)
+def test_exact_failed_bridge_mismatches_refuse_before_retirement_or_reservation(
+    mismatch: str,
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    incident, request, fixture_hashlib = _prepare_exact_failed_terminal_bridge(harness, monkeypatch)
+    failed_path = incident.request.receipt_path
+    failed_value = protected.ReceiptFile(failed_path).read()
+    assert failed_value is not None
+    failed_execution_id = protected.text(failed_value.get("execution_id"))
+    expected_failed_archive_name = f"{failed_path.stem}.{failed_execution_id}.superseded.json"
+    prior_owner: protected.Record
+    if mismatch == "failed_sha":
+        failed_file = protected.ReceiptFile(failed_path)
+        failed = failed_file.read()
+        assert failed is not None
+        failed_file.write(
+            {**failed, "process_stderr": "changed receipt bytes\n"},
+            expected=failed,
+        )
+        prior_owner = cast(protected.Record, cutover.inspect_control_owner(request.config))
+    elif mismatch in {
+        "reservation",
+        "operation",
+        "owner_target",
+        "release_evidence",
+        "mutation_true",
+        "mutation_unknown",
+    }:
+        changes: dict[str, object]
+        if mismatch == "reservation":
+            updated_owner = cutover.inspect_control_owner(request.config)
+            assert updated_owner is not None
+            changes = {
+                "reservation_id": str(uuid4()),
+            }
+        elif mismatch == "operation":
+            changes = {"operation_id": "c" * 32}
+        elif mismatch == "owner_target":
+            stored_snapshot = cutover._read_control_owner(  # pyright: ignore[reportPrivateUsage]
+                request.config
+            )
+            assert stored_snapshot is not None
+            changed_target = {
+                **protected.record(stored_snapshot[0]["target"]),
+                "head": "a" * 40,
+            }
+            changes = {"target": changed_target}
+        elif mismatch == "release_evidence":
+            changes = {
+                "release_evidence": {
+                    "protected_receipt_sha256": cutover.FAILED_TERMINAL_RECEIPT_SHA256,
+                    "managed_receipt_unchanged": True,
+                    "verified": False,
+                }
+            }
+        elif mismatch == "mutation_true":
+            changes = {"mutation_started": True}
+        else:
+            changes = {"mutation_started": None}
+        if mismatch in {"reservation", "operation", "owner_target"}:
+            prior_owner = _save_bridge_owner(
+                request,
+                changes,
+                bind_authorization=True,
+            )
+        else:
+            prior_owner = _save_bridge_owner(request, changes)
+    elif mismatch == "child_marker":
+        failed_file = protected.ReceiptFile(failed_path)
+        failed = failed_file.read()
+        assert failed is not None
+        failed_file.write(
+            {**failed, "child_started_at": datetime.now(UTC).isoformat()},
+            expected=failed,
+        )
+        prior_owner = cast(protected.Record, cutover.inspect_control_owner(request.config))
+    elif mismatch == "failed_managed_receipt":
+        managed, identity, _ = cutover.read_control_json(request.config.receipt_path)
+        managed["operation_id"] = cutover.FAILED_TERMINAL_OPERATION_ID
+        cutover._write_json(  # pyright: ignore[reportPrivateUsage]
+            request.config.receipt_path, managed, expected=identity
+        )
+        fixture_hashlib.bind(
+            request.config.receipt_path.read_bytes(), cutover.V5_MANAGED_RECEIPT_SHA256
+        )
+        prior_owner = cast(protected.Record, cutover.inspect_control_owner(request.config))
+    elif mismatch == "claim_present":
+        _seed_active_bridge_claim(request)
+        prior_owner = cast(protected.Record, cutover.inspect_control_owner(request.config))
+    elif mismatch == "v5_managed_sha":
+        managed, identity, _ = cutover.read_control_json(request.config.receipt_path)
+        managed["status"] = "RECOVERY_REQUIRED"
+        cutover._write_json(  # pyright: ignore[reportPrivateUsage]
+            request.config.receipt_path, managed, expected=identity
+        )
+        prior_owner = cast(protected.Record, cutover.inspect_control_owner(request.config))
+    elif mismatch in {"v5_archive_sha", "v5_archive_link"}:
+        archive = next(
+            path
+            for path in request.config.scheduler_root.glob(
+                f"{request.receipt_path.stem}.*.superseded.json"
+            )
+            if path.name != expected_failed_archive_name
+        )
+        if mismatch == "v5_archive_sha":
+            with archive.open("ab") as stream:
+                stream.write(b" ")
+        else:
+            v5, identity, _ = cutover.read_control_json(archive)
+            protected.record(v5.get("managed_receipt"))["sha256"] = "f" * 64
+            unsigned = {key: value for key, value in v5.items() if key != "receipt_sha256"}
+            v5["receipt_sha256"] = protected.digest(unsigned)
+            cutover._write_json(  # pyright: ignore[reportPrivateUsage]
+                archive, v5, expected=identity
+            )
+            fixture_hashlib.bind(archive.read_bytes(), cutover.V5_PROTECTED_RECEIPT_SHA256)
+        prior_owner = cast(protected.Record, cutover.inspect_control_owner(request.config))
+    else:
+        prior_owner = cast(protected.Record, cutover.inspect_control_owner(request.config))
+        if mismatch == "live_source":
+            harness.launchd.loaded_source = harness.fixture.old
+        elif mismatch == "live_plist":
+            request.config.plist_path.write_bytes(b"changed plist bytes")
+        else:
+            harness.launchd.enabled = False
+
+    assert prior_owner is not None
+    before = _bridge_files_snapshot(request)
+    with pytest.raises((protected.ProtectedError, cutover.CutoverSafetyError)):
+        protected._require_released_success_evidence(request, prior_owner)
+    assert _bridge_files_snapshot(request) == before
+    assert failed_path.exists()
+    assert not (request.config.scheduler_root / cutover.FAILED_TERMINAL_RETIREMENT_NAME).exists()
+
+
+def _fresh_bridge_request(request: protected.Request) -> protected.Request:
+    assert request.reservation_id is not None
+    return protected.make_request(
+        request.config,
+        request.legacy_worktree,
+        request.legacy_head,
+        request.legacy_tree,
+        request.plan_file,
+        request.claim_root,
+        reservation_id=request.reservation_id,
+        prior_execution_receipt_sha256=cutover.V5_PROTECTED_RECEIPT_SHA256,
+        managed_receipt_sha256=request.managed_receipt_sha256,
+    )
+
+
+def test_archive_interruption_fresh_retry_is_idempotent_and_keeps_v5_proof(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    incident, request, _fixture_hashlib = _prepare_exact_failed_terminal_bridge(
+        harness, monkeypatch
+    )
+    failed_path = incident.request.receipt_path
+    failed_before = failed_path.read_bytes()
+    failed_value = protected.ReceiptFile(failed_path).read()
+    assert failed_value is not None
+    failed_execution_id = protected.text(failed_value.get("execution_id"))
+    prior_owner = cutover.inspect_control_owner(request.config)
+    assert prior_owner is not None
+    retirement_path = request.config.scheduler_root / cutover.FAILED_TERMINAL_RETIREMENT_NAME
+    original_write = cutover._write_json  # pyright: ignore[reportPrivateUsage]
+
+    def interrupt_before_sidecar(
+        path: Path,
+        value: cutover.Record,
+        *,
+        expected: cutover.FileIdentity | None,
+    ) -> cutover.FileIdentity:
+        if path == retirement_path:
+            raise OSError("injected interruption after archive and before reservation")
+        return original_write(path, value, expected=expected)
+
+    with monkeypatch.context() as interruption:
+        interruption.setattr(cutover, "_write_json", interrupt_before_sidecar)
+        with pytest.raises(OSError, match="injected interruption"):
+            protected._require_released_success_evidence(request, prior_owner)
+
+    archive_path = failed_path.with_name(
+        f"{failed_path.stem}.{failed_execution_id}.superseded.json"
+    )
+    assert archive_path.read_bytes() == failed_before
+    assert not failed_path.exists()
+    assert not retirement_path.exists()
+    owner_after_interruption = cutover.inspect_control_owner(request.config)
+    assert owner_after_interruption is not None
+    assert owner_after_interruption["reservation_id"] == cutover.FAILED_TERMINAL_RESERVATION_ID
+    assert owner_after_interruption["phase"] == "RELEASED"
+    assert owner_after_interruption["mutation_started"] is False
+
+    fresh_request = _fresh_bridge_request(request)
+    proof = protected._require_released_success_evidence(fresh_request, owner_after_interruption)
+    assert proof is not None
+    second_proof = protected._require_released_success_evidence(
+        fresh_request, owner_after_interruption
+    )
+    assert second_proof == proof
+    assert archive_path.read_bytes() == failed_before
+    assert (
+        len(list(request.config.scheduler_root.glob(f"{failed_path.stem}.*.superseded.json"))) == 2
+    )
+    assert not failed_path.exists()
+    assert proof["prior_protected_receipt_sha256"] == cutover.V5_PROTECTED_RECEIPT_SHA256
+    assert proof["prior_managed_receipt_sha256"] == cutover.V5_MANAGED_RECEIPT_SHA256
+    current_owner = cutover.inspect_control_owner(request.config)
+    assert current_owner is not None
+    assert current_owner["reservation_id"] == cutover.FAILED_TERMINAL_RESERVATION_ID
+
+
+def test_two_candidate_reservations_cannot_both_acquire_the_failed_transition(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _incident, first, _fixture_hashlib = _prepare_exact_failed_terminal_bridge(harness, monkeypatch)
+    first_id = cast(str, first.reservation_id)
+    second = protected.make_request(
+        first.config,
+        first.legacy_worktree,
+        first.legacy_head,
+        first.legacy_tree,
+        first.plan_file,
+        first.claim_root,
+        reservation_id=str(uuid4()),
+        prior_execution_receipt_sha256=cutover.V5_PROTECTED_RECEIPT_SHA256,
+        managed_receipt_sha256=first.managed_receipt_sha256,
+    )
+    failed_owner = cutover.inspect_control_owner(first.config)
+    assert failed_owner is not None
+    first_proof = protected._require_released_success_evidence(first, failed_owner)
+    second_proof = protected._require_released_success_evidence(second, failed_owner)
+    assert first_proof is not None and second_proof is not None
+    barrier = threading.Barrier(2)
+
+    def acquire(
+        request: protected.Request,
+        proof: protected.Record,
+    ) -> tuple[str, protected.Record | str]:
+        barrier.wait(timeout=5)
+        try:
+            owner = cutover.acquire_control_owner(
+                request.config,
+                action="apply",
+                target=protected.request_owner_target(request),
+                owner_kind="protected",
+                reservation_id=cast(str, request.reservation_id),
+                version={"head": request.control_head, "tree": request.control_tree},
+                operation_id=request.operation_id,
+                managed_receipt_sha256=request.managed_receipt_sha256,
+                predecessor_release_evidence=proof,
+                predecessor_live_verifier=protected._failed_terminal_bridge_live_verifier(
+                    request,
+                    failed_owner,
+                    proof,
+                    runner=harness.launchd,
+                ),
+            )
+            return "ACQUIRED", owner
+        except (cutover.CutoverSafetyError, cutover.CutoverAlreadyRunning) as exc:
+            return "BLOCKED", str(exc)
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        first_future = pool.submit(acquire, first, first_proof)
+        second_future = pool.submit(acquire, second, second_proof)
+        outcomes = [first_future.result(), second_future.result()]
+    acquired = [value for status, value in outcomes if status == "ACQUIRED"]
+    blocked = [value for status, value in outcomes if status == "BLOCKED"]
+    assert len(acquired) == 1 and len(blocked) == 1
+    winning_id = protected.text(protected.record(acquired[0]).get("reservation_id"))
+    assert winning_id in {first_id, cast(str, second.reservation_id)}
+    current_owner = cutover.inspect_control_owner(first.config)
+    assert current_owner is not None
+    assert current_owner["reservation_id"] == winning_id
+    assert current_owner["phase"] == "AUTHORIZATION_PENDING"
+    assert claims.ClaimStore(first.claim_root).inspect(protected.TASK_KEY)["status"] == "ABSENT"
 
 
 class FakeChild:
@@ -1227,6 +1938,13 @@ def test_candidate_terminalizes_prestart_failure_and_captures_process_output(
     assert protected.record(owner["release_evidence"])["verified"] is True
     assert harness.fixture.plist_path.read_bytes() == harness.fixture.old_plist_bytes
     assert harness.launchd.mutation_calls == []
+
+
+def test_unrelated_exit_one_is_not_a_prestart_failure_candidate() -> None:
+    staged: protected.Record = {"phase": "GATED"}
+    assert protected._is_prestart_failure_candidate(staged, 126)
+    assert protected._is_prestart_failure_candidate(staged, 127)
+    assert not protected._is_prestart_failure_candidate(staged, 1)
 
 
 def test_started_marker_blocks_prestart_terminalization(harness: Harness) -> None:

@@ -37,7 +37,7 @@ import re
 import stat
 import sys
 import time
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from contextlib import redirect_stderr, redirect_stdout, suppress
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime
@@ -2186,6 +2186,17 @@ def _prestart_successor_release_record_path(
     return config.scheduler_root / f"b649-prestart-successor-release-{reservation_id}.json"
 
 
+def _is_prestart_successor_released_owner(owner: Record | None) -> bool:
+    if owner is None or owner.get("phase") != "RELEASED":
+        return False
+    release_evidence = owner.get("release_evidence")
+    return (
+        isinstance(release_evidence, Mapping)
+        and cast(Mapping[str, object], release_evidence).get("kind")
+        == "PRESTART_SUCCESSOR_NO_MUTATION"
+    )
+
+
 def _prestart_successor_release_context(
     config: cutover.CutoverConfig,
     owner: Record | None,
@@ -2194,11 +2205,9 @@ def _prestart_successor_release_context(
     runner: cutover.Runner,
 ) -> Record | None:
     """Load a sealed no-mutation successor release and recover its v5 receipt link."""
-    if owner is None:
+    if owner is None or not _is_prestart_successor_released_owner(owner):
         return None
     release_evidence = record(owner.get("release_evidence"))
-    if release_evidence.get("kind") != "PRESTART_SUCCESSOR_NO_MUTATION":
-        return None
 
     live_owner_snapshot = cutover._read_control_owner(  # pyright: ignore[reportPrivateUsage]
         config
@@ -2783,11 +2792,7 @@ def _require_released_success_evidence(
     release. Return an integrity-sealed copy bound to the candidate reservation
     and operation before the RELEASED owner is replaced.
     """
-    if (
-        prior_owner is not None
-        and record(prior_owner.get("release_evidence")).get("kind")
-        == "PRESTART_SUCCESSOR_NO_MUTATION"
-    ):
+    if prior_owner is not None and _is_prestart_successor_released_owner(prior_owner):
         return _require_prestart_successor_success_evidence(request, prior_owner, runner=runner)
     failed_predecessor_sha = _failed_terminal_predecessor_receipt_sha256(prior_owner)
     if failed_predecessor_sha is not None:

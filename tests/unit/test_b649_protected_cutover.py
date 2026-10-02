@@ -686,6 +686,27 @@ def test_prestart_successor_release_recovers_exact_v5_success_authority(
     assert harness.launchd.mutation_calls == mutation_calls_before
 
 
+def test_owner_without_release_evidence_uses_ordinary_success_dispatch(
+    harness: Harness,
+) -> None:
+    owner: protected.Record = {"phase": "RELEASED"}
+
+    predecessor_sha = protected._prestart_successor_predecessor_receipt_sha256(  # pyright: ignore[reportPrivateUsage]
+        harness.fixture.config,
+        owner,
+        claim_root=harness.request.claim_root,
+        runner=harness.launchd,
+    )
+    ordinary_proof = protected._require_released_success_evidence(  # pyright: ignore[reportPrivateUsage]
+        cast(protected.Request, harness.request),
+        owner,
+        runner=harness.launchd,
+    )
+
+    assert predecessor_sha is None
+    assert ordinary_proof is None
+
+
 @pytest.mark.parametrize(
     "defect",
     [
@@ -3280,6 +3301,7 @@ def test_protected_main_end_to_end_reserve_authorize_resume_apply(
     assert harness.launchd.mutation_calls == []
     owner = cutover.inspect_control_owner(harness.fixture.config)
     assert owner is not None and owner["phase"] == "AUTHORIZATION_PENDING"
+    assert owner.get("release_evidence") is None
 
     # A repeated reservation attempt (still pending) performs zero mutation.
     exit_code = protected.main(argv)
@@ -3293,6 +3315,9 @@ def test_protected_main_end_to_end_reserve_authorize_resume_apply(
     assert exit_code == 0
     authorized = json.loads(capsys.readouterr().out)
     assert authorized["phase"] == "AUTHORIZED_PENDING"
+    authorized_owner = cutover.inspect_control_owner(harness.fixture.config)
+    assert authorized_owner is not None and authorized_owner["phase"] == "AUTHORIZED_PENDING"
+    assert authorized_owner.get("release_evidence") is None
 
     exit_code = protected.main(argv)
     result = _last_json_line(capsys)

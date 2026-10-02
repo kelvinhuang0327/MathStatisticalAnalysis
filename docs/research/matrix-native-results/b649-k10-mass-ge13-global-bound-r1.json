@@ -1,0 +1,91 @@
+{
+  "task_id": "B649_K10_MASS13_PLUS_GLOBAL_BOUND_R1",
+  "base_head": "a124f55d2713b7ecb7fa071abb4c224a5b8853e5",
+  "base_tree": "a2226ed522bced1ae3e57d8fc08ee6a43d4cba69",
+  "task_head": "a124f55d2713b7ecb7fa071abb4c224a5b8853e5",
+  "task_branch": "codex/b649-k10-mass-ge13-upper-bound-r1",
+  "incumbent": {
+    "outcome_count": 176345645,
+    "official_any_prize": "536005/1827672"
+  },
+  "reused_certificates": {
+    "k9_global_optimum_status": "PROVEN",
+    "k10_mass11_status": "EXHAUSTED_EXACT",
+    "k10_mass12_status": "EXHAUSTED_BOUND_SCREEN",
+    "k10_mass12_screened_classes": 585148,
+    "k10_mass12_survivors": 0
+  },
+  "all_used_reduction": {
+    "source": "src/lottolab/research/b649_k1_k8_global_optimality.py exchange lemma; reused by the K9 global-bound proof",
+    "coverage_property": "Replacing one repeated label in one ticket by an unused label does not decrease OFFICIAL_ANY_PRIZE coverage and strictly lowers overlap mass.",
+    "terminal_incidence_excess": 11,
+    "reason": "A terminal portfolio uses all 49 labels across 60 ticket incidences, so sum_n (r_n - 1) = 11."
+  },
+  "mass_ge13_profile_family": {
+    "profile_count": 52,
+    "mass_range": [13, 48],
+    "profile_parameterization": "Partitions of excess 11 into parts r-1, with frequencies 2..10; omit the already-certified mass-11 and mass-12 profiles.",
+    "realizability": "Each profile has a cyclic-support realization with at most three repeated labels per ticket and at least three private labels per ticket.",
+    "analytically_closed": 0,
+    "structurally_analyzed": 52
+  },
+  "best_profile_bound": {
+    "multiplicity_histogram": {
+      "1": 42,
+      "2": 3,
+      "3": 4
+    },
+    "overlap_mass": 15,
+    "largest_seven_multiplicities_sum": 18,
+    "maximum_simultaneous_winners": 6,
+    "single_ticket_outcomes": 18611432,
+    "s1": 186114320,
+    "pair_joint_outcomes_for_overlap_0_to_5": [
+      107800,
+      574000,
+      1695988,
+      3469942,
+      6224512,
+      10776332
+    ],
+    "pair_intersection_lower_bound": 11844000,
+    "coverage_bound": "floor(S1 - 2*S2/T), where T=6",
+    "outcome_upper_bound": 182166320,
+    "remaining_gap": 5820675
+  },
+  "structural_optimization_attempts": [
+    {
+      "objective": "Maximize exact third-order Bonferroni U3 over support-count variables for the full all-used family.",
+      "solver_status": "FEASIBLE",
+      "time_limit_seconds": 120,
+      "best_feasible_u3": 174766508,
+      "solver_upper_bound": 336239449,
+      "result": "Did not close; retained as an unsuccessful bound attempt."
+    },
+    {
+      "objective": "Maximize the minimum of exact U3 and the profile-aware second-moment bound over all 52 profiles.",
+      "solver_status": "FEASIBLE",
+      "time_limit_seconds": 120,
+      "best_feasible_bound": 175377552,
+      "solver_upper_bound": 182166320,
+      "best_feasible_profile_mass": 13,
+      "result": "Did not improve the analytical maximum profile bound."
+    }
+  ],
+  "result": {
+    "task_status": "COMPLETED_WITH_UNKNOWN_K10_GLOBAL_OPTIMALITY",
+    "global_optimum_status": "UNKNOWN",
+    "best_proven_mass_ge13_upper_bound": 182166320,
+    "remaining_gap": 5820675,
+    "unresolved_family": "All-used multiplicity profile with 42 singletons, 3 doubles, and 4 triples (overlap mass 15)."
+  },
+  "verification": {
+    "uv_sync": "PASS: uv sync --frozen --extra research",
+    "focused_tests": "PASS: 6 passed in tests/unit/test_b649_k10_mass_ge13_global_bound_r1.py",
+    "ruff": "PASS: changed Python files",
+    "pyright": "PASS: scoped files under pyproject.toml typeCheckingMode=strict",
+    "new_portfolio_search_started": "NO",
+    "k20_takeover": "NO",
+    "production_mutation": "NONE"
+  }
+}

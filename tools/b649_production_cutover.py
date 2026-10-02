@@ -1279,9 +1279,11 @@ def _validate_predecessor_release_evidence(value: object, owner: Record) -> Reco
         "new_operation_id",
         "evidence_sha256",
     }
+    reconciled_field = {"reconciled_prestart_failure"}
     prior_release = _record(evidence.get("prior_release_evidence"), "prior release evidence")
     if (
-        set(evidence) != required
+        frozenset(evidence)
+        not in {frozenset(required), frozenset(required | reconciled_field)}
         or evidence.get("schema") != PROTECTED_PREDECESSOR_RELEASE_SCHEMA
         or evidence.get("evidence_sha256") != _sha256_json(unsigned)
         or evidence.get("new_reservation_id") != owner.get("reservation_id")
@@ -1304,6 +1306,99 @@ def _validate_predecessor_release_evidence(value: object, owner: Record) -> Reco
     _text(evidence.get("prior_reservation_id"), "prior reservation id")
     _text(evidence.get("prior_operation_id"), "prior operation id")
     _text(evidence.get("new_operation_id"), "new operation id")
+    if "reconciled_prestart_failure" in evidence:
+        reconciled = _record(
+            evidence.get("reconciled_prestart_failure"),
+            "reconciled pre-start failure evidence",
+        )
+        reconciled_required = {
+            "schema",
+            "prior_reservation_id",
+            "prior_operation_id",
+            "prior_control_head",
+            "prior_control_tree",
+            "prior_authorization",
+            "prior_release_evidence",
+            "prior_predecessor_release_evidence",
+            "stranded_protected_receipt_sha256",
+            "reconciliation_record_path",
+            "reconciliation_record_sha256",
+        }
+        old_release = _record(
+            reconciled.get("prior_release_evidence"), "reconciled owner release evidence"
+        )
+        old_authorization = _record(
+            reconciled.get("prior_authorization"), "reconciled owner authorization"
+        )
+        if (
+            set(reconciled) != reconciled_required
+            or reconciled.get("schema") != "b649-reconciled-prestart-failure-successor-v1"
+            or old_release.get("kind") != "PRESTART_FAILURE_NO_MUTATION"
+            or old_release.get("verified") is not True
+            or old_release.get("protected_receipt_sha256")
+            != evidence.get("prior_protected_receipt_sha256")
+            or old_release.get("predecessor_protected_receipt_sha256")
+            != evidence.get("prior_protected_receipt_sha256")
+            or old_release.get("managed_receipt_sha256")
+            != evidence.get("prior_managed_receipt_sha256")
+            or old_release.get("stranded_protected_receipt_sha256")
+            != reconciled.get("stranded_protected_receipt_sha256")
+            or old_release.get("reconciliation_record_path")
+            != reconciled.get("reconciliation_record_path")
+            or old_release.get("reconciliation_record_sha256")
+            != reconciled.get("reconciliation_record_sha256")
+            or old_authorization.get("reservation_id")
+            != reconciled.get("prior_reservation_id")
+            or old_authorization.get("operation_id") != reconciled.get("prior_operation_id")
+            or old_authorization.get("control_head") != reconciled.get("prior_control_head")
+            or old_authorization.get("control_tree") != reconciled.get("prior_control_tree")
+            or old_authorization.get("action") != "apply"
+            or reconciled.get("prior_reservation_id") in {
+                evidence.get("prior_reservation_id"),
+                evidence.get("new_reservation_id"),
+            }
+            or reconciled.get("prior_operation_id") in {
+                evidence.get("prior_operation_id"),
+                evidence.get("new_operation_id"),
+            }
+            or re.fullmatch(
+                r"[0-9a-f]{64}", str(reconciled.get("stranded_protected_receipt_sha256"))
+            )
+            is None
+            or re.fullmatch(
+                r"[0-9a-f]{64}", str(reconciled.get("reconciliation_record_sha256"))
+            )
+            is None
+        ):
+            raise CutoverSafetyError("reconciled pre-start failure evidence is invalid")
+        for key in ("prior_control_head", "prior_control_tree"):
+            if HEX40.fullmatch(str(reconciled.get(key))) is None:
+                raise CutoverSafetyError("reconciled pre-start control identity is invalid")
+        if not isinstance(reconciled.get("reconciliation_record_path"), str):
+            raise CutoverSafetyError("reconciliation record path is invalid")
+        old_predecessor = _validate_predecessor_release_evidence(
+            reconciled.get("prior_predecessor_release_evidence"),
+            {
+                "reservation_id": reconciled.get("prior_reservation_id"),
+                "operation_id": reconciled.get("prior_operation_id"),
+                "managed_receipt_sha256": evidence.get("prior_managed_receipt_sha256"),
+            },
+        )
+        if (
+            old_predecessor.get("prior_reservation_id") != evidence.get("prior_reservation_id")
+            or old_predecessor.get("prior_operation_id") != evidence.get("prior_operation_id")
+            or old_predecessor.get("prior_authorization_sha256")
+            != evidence.get("prior_authorization_sha256")
+            or old_predecessor.get("prior_release_evidence")
+            != evidence.get("prior_release_evidence")
+            or old_predecessor.get("prior_protected_receipt_sha256")
+            != evidence.get("prior_protected_receipt_sha256")
+            or old_predecessor.get("prior_managed_receipt_sha256")
+            != evidence.get("prior_managed_receipt_sha256")
+        ):
+            raise CutoverSafetyError(
+                "reconciled failure does not share the SUCCESS predecessor chain"
+            )
     return evidence
 
 
@@ -1551,6 +1646,29 @@ def _verify_protected_owner_receipt(
         raise CutoverSafetyError("protected failure receipt is not terminal")
 
 
+def _successor_release_matches_current_owner(evidence: Record, owner: Record) -> bool:
+    reconciled_value = evidence.get("reconciled_prestart_failure")
+    if reconciled_value is None:
+        return (
+            evidence.get("prior_reservation_id") == owner.get("reservation_id")
+            and evidence.get("prior_operation_id") == owner.get("operation_id")
+            and evidence.get("prior_authorization_sha256")
+            == _sha256_json(owner.get("authorization"))
+            and evidence.get("prior_release_evidence") == owner.get("release_evidence")
+        )
+    reconciled = _record(reconciled_value, "reconciled pre-start failure evidence")
+    return (
+        reconciled.get("prior_reservation_id") == owner.get("reservation_id")
+        and reconciled.get("prior_operation_id") == owner.get("operation_id")
+        and reconciled.get("prior_authorization") == owner.get("authorization")
+        and reconciled.get("prior_release_evidence") == owner.get("release_evidence")
+        and reconciled.get("prior_control_head") == owner.get("control_head")
+        and reconciled.get("prior_control_tree") == owner.get("control_tree")
+        and reconciled.get("prior_predecessor_release_evidence")
+        == owner.get("predecessor_release_evidence")
+    )
+
+
 def acquire_control_owner(
     config: CutoverConfig,
     *,
@@ -1608,12 +1726,7 @@ def acquire_control_owner(
                     if (
                         owner_kind != "protected"
                         or action != "apply"
-                        or predecessor.get("prior_reservation_id") != value.get("reservation_id")
-                        or predecessor.get("prior_operation_id") != value.get("operation_id")
-                        or predecessor.get("prior_authorization_sha256")
-                        != _sha256_json(value.get("authorization"))
-                        or predecessor.get("prior_release_evidence")
-                        != value.get("release_evidence")
+                        or not _successor_release_matches_current_owner(predecessor, value)
                     ):
                         raise CutoverSafetyError(
                             "released predecessor changed before successor reservation"

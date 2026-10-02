@@ -59,7 +59,6 @@ ROLLBACK_RECEIPT_NAME = "b649-protected-rollback-execution-receipt.json"
 LIFECYCLE_RECEIPT_NAME = "b649-control-lifecycle-reconciliation.json"
 LIFECYCLE_SCHEMA = "b649-control-lifecycle-reconciliation-v1"
 APPLY_OPERATION_SCHEMA = "b649-protected-apply-operation-v1"
-PRESTART_SUCCESSOR_RELEASE_SCHEMA = "b649-protected-prestart-successor-release-v1"
 CONTROL_ROOT = Path(__file__).resolve().parents[1]
 LAUNCHER = CONTROL_ROOT / "tools/b649_protected_cutover.py"
 MANAGED = CONTROL_ROOT / "tools/b649_production_cutover.py"
@@ -95,12 +94,7 @@ def digest(value: object) -> str:
 
 
 def apply_operation_id(
-    reservation_id: str,
-    plan_sha256: str,
-    prior_execution_receipt_sha256: str | None,
-    *,
-    reconciled_stranded_receipt_sha256: str | None = None,
-    reconciliation_record_sha256: str | None = None,
+    reservation_id: str, plan_sha256: str, prior_execution_receipt_sha256: str | None
 ) -> str:
     """Derive the deterministic protected-apply operation identity.
 
@@ -108,22 +102,14 @@ def apply_operation_id(
     the same operation ID across a fresh process/session so that resume can
     rebind to the exact durable owner instead of minting an incompatible one.
     """
-    if (reconciled_stranded_receipt_sha256 is None) != (reconciliation_record_sha256 is None):
-        raise ProtectedError("reconciled pre-start binding requires both exact receipt hashes")
-    identity: Record = {
-        "schema": APPLY_OPERATION_SCHEMA,
-        "reservation_id": reservation_id,
-        "plan_sha256": plan_sha256,
-        "prior_execution_receipt_sha256": prior_execution_receipt_sha256,
-    }
-    if reconciled_stranded_receipt_sha256 is not None:
-        identity.update(
-            {
-                "reconciled_stranded_receipt_sha256": reconciled_stranded_receipt_sha256,
-                "reconciliation_record_sha256": reconciliation_record_sha256,
-            }
-        )
-    return digest(identity)[:32]
+    return digest(
+        {
+            "schema": APPLY_OPERATION_SCHEMA,
+            "reservation_id": reservation_id,
+            "plan_sha256": plan_sha256,
+            "prior_execution_receipt_sha256": prior_execution_receipt_sha256,
+        }
+    )[:32]
 
 
 def _existing_receipt_sha256(path: Path) -> str | None:
@@ -249,8 +235,6 @@ class Request:
     control_tree: str = ""
     owner_id_argument: bool = False
     prior_execution_receipt_sha256: str | None = None
-    reconciled_stranded_receipt_sha256: str | None = None
-    reconciliation_record_sha256: str | None = None
 
     @property
     def action(self) -> str:
@@ -273,7 +257,7 @@ class Request:
 
     @property
     def identity(self) -> Record:
-        identity: Record = {
+        return {
             "task_key": TASK_KEY,
             "action": "apply",
             "source_worktree": str(self.config.source_worktree),
@@ -307,14 +291,6 @@ class Request:
             },
             "interpreter": sys.executable,
         }
-        if self.reconciled_stranded_receipt_sha256 is not None:
-            identity.update(
-                {
-                    "reconciled_stranded_receipt_sha256": self.reconciled_stranded_receipt_sha256,
-                    "reconciliation_record_sha256": self.reconciliation_record_sha256,
-                }
-            )
-        return identity
 
     @property
     def execution_id(self) -> str:
@@ -405,8 +381,6 @@ def make_request(
     operation_id: str | None = None,
     prior_execution_receipt_sha256: str | None | _Unset = _UNSET,
     managed_receipt_sha256: str | None | _Unset = _UNSET,
-    reconciled_stranded_receipt_sha256: str | None = None,
-    reconciliation_record_sha256: str | None = None,
 ) -> Request:
     for path in (
         config.source_worktree,
@@ -464,8 +438,6 @@ def make_request(
         if isinstance(managed_receipt_sha256, _Unset)
         else managed_receipt_sha256
     )
-    if (reconciled_stranded_receipt_sha256 is None) != (reconciliation_record_sha256 is None):
-        raise ProtectedError("reconciled pre-start binding requires both exact receipt hashes")
     if operation_id is not None:
         selected_operation_id = operation_id
     elif reservation_id is not None:
@@ -473,11 +445,7 @@ def make_request(
         # against the same plan and prior protected receipt rebinds to the
         # exact durable owner instead of minting an incompatible identity.
         selected_operation_id = apply_operation_id(
-            reservation_id,
-            identity.sha256,
-            resolved_prior_receipt_sha,
-            reconciled_stranded_receipt_sha256=reconciled_stranded_receipt_sha256,
-            reconciliation_record_sha256=reconciliation_record_sha256,
+            reservation_id, identity.sha256, resolved_prior_receipt_sha
         )
     else:
         selected_operation_id = (
@@ -502,8 +470,6 @@ def make_request(
         control_tree,
         owner_id_argument,
         resolved_prior_receipt_sha,
-        reconciled_stranded_receipt_sha256,
-        reconciliation_record_sha256,
     )
     if request.receipt_path in {config.receipt_path, config.plist_path, plan_file}:
         raise ProtectedError("execution receipt must have its own canonical path")
@@ -1777,16 +1743,6 @@ def child_request(args: argparse.Namespace) -> Request | RollbackRequest:
                 prior_execution_receipt_sha256=(
                     None if prior_receipt_sha_value is None else text(prior_receipt_sha_value)
                 ),
-                reconciled_stranded_receipt_sha256=(
-                    None
-                    if identity.get("reconciled_stranded_receipt_sha256") is None
-                    else text(identity.get("reconciled_stranded_receipt_sha256"))
-                ),
-                reconciliation_record_sha256=(
-                    None
-                    if identity.get("reconciliation_record_sha256") is None
-                    else text(identity.get("reconciliation_record_sha256"))
-                ),
             )
     except (OSError, ValueError, cutover.CutoverError) as exc:
         raise ProtectedError(f"protected request cannot be revalidated: {exc}") from exc
@@ -1940,10 +1896,7 @@ def supersede_prior_execution_receipt(
     if not isinstance(request, Request):
         return False
     # Prior receipt is not sealed/terminal.
-    allowed_prior_statuses = {"SUCCESS", "FAILED"}
-    if request.reconciled_stranded_receipt_sha256 is not None:
-        allowed_prior_statuses.add("INCOMPLETE_OR_AMBIGUOUS")
-    if prior.get("phase") != "COMPLETED" or prior.get("status") not in allowed_prior_statuses:
+    if prior.get("phase") != "COMPLETED" or prior.get("status") not in {"SUCCESS", "FAILED"}:
         return False
     prior_identity = record(prior.get("identity"))
     # Prior receipt is the current execution; nothing to supersede.
@@ -1971,14 +1924,6 @@ def supersede_prior_execution_receipt(
     _, current_slot_sha256 = receipt_file.read_with_sha256()
     if current_slot_sha256 is None:
         return False
-    if request.reconciled_stranded_receipt_sha256 is not None:
-        return _supersede_reconciled_prestart_failure(
-            request,
-            receipt_file,
-            prior,
-            owner=owner,
-            slot_sha256=current_slot_sha256,
-        )
     # Prior receipt SHA is not part of the authorized operation identity.
     if bound_prior_sha != current_slot_sha256:
         return False
@@ -2233,287 +2178,51 @@ def _load_prestart_reconciliation(path: Path) -> tuple[Record, cutover.FileIdent
     return value, identity
 
 
-def _read_stranded_prestart_receipt(
-    config: cutover.CutoverConfig,
-    receipt_sha256: str,
-) -> tuple[Record, str]:
-    """Read only the exact sealed pre-STARTED receipt named by reconciliation."""
-    receipt_path = config.scheduler_root / RECEIPT_NAME
-    value: Record | None = None
-    if os.path.lexists(receipt_path):
-        value, file_sha = ReceiptFile(receipt_path).read_with_sha256()
-        if file_sha != receipt_sha256 or value is None:
-            raise ProtectedError("fixed protected receipt differs from the reconciled failure")
-        archive_path = receipt_path.with_name(
-            f"{receipt_path.stem}.{text(value.get('execution_id'))}.superseded.json"
-        )
-    else:
-        archive_path = None
-        for index, candidate in enumerate(
-            receipt_path.parent.glob(f"{receipt_path.stem}.*.superseded.json")
-        ):
-            if index >= 1024:
-                raise ProtectedError("stranded receipt archive lookup exceeds bound")
-            archived, identity, _ = cutover.read_control_json(candidate)
-            if identity.sha256 == receipt_sha256:
-                if archive_path is not None:
-                    raise ProtectedError("reconciled stranded receipt archive is ambiguous")
-                archive_path = candidate
-                value = archived
-        if archive_path is None:
-            raise ProtectedError("reconciled stranded protected receipt is absent")
-        _, identity, _ = cutover.read_control_json(archive_path)
-        if identity.sha256 != receipt_sha256:
-            raise ProtectedError("reconciled stranded protected receipt SHA changed")
-
-    if value is None:
-        raise ProtectedError("reconciled stranded protected receipt disappeared")
-    receipt_identity = record(value.get("identity"))
-    execution_id = digest(receipt_identity)
-    unsigned = {key: item for key, item in value.items() if key != "receipt_sha256"}
-    if (
-        value.get("schema_version") != SCHEMA
-        or value.get("task_key") != TASK_KEY
-        or value.get("receipt_sha256") != digest(unsigned)
-        or value.get("execution_id") != execution_id
-        or value.get("phase") != "COMPLETED"
-        or value.get("status") not in {"FAILED", "INCOMPLETE_OR_AMBIGUOUS"}
-        or value.get("result_status") not in {"FAILED", "INCOMPLETE_OR_AMBIGUOUS"}
-        or type(value.get("exit_code")) is not int
-        or value.get("exit_code") not in PRESTART_EXEC_FAILURE_CODES
-        or value.get("child_exit_code") is not None
-        or "child_started_at" in value
-        or "child_completed_at" in value
-        or type(value.get("gated_child_pid")) is not int
-        or cast(int, value.get("gated_child_pid")) <= 0
-        or record(value.get("claim_owner")).get("child_pid") != value.get("gated_child_pid")
-        or receipt_identity.get("execution_receipt_path") != str(receipt_path)
-        or receipt_identity.get("task_key") != TASK_KEY
-    ):
-        raise ProtectedError("reconciled receipt is not a sealed pre-STARTED failure")
-    return value, execution_id
-
-
-def _validate_embedded_prestart_failure_evidence(
-    receipt: Record,
-    *,
-    managed_receipt_sha256: str,
-    old_live_state: Record,
-    required: bool,
-) -> None:
-    """Check optional receipt-local evidence when a FAILED result carries it."""
-    raw_evidence = receipt.get("prestart_failure_evidence")
-    if raw_evidence is None:
-        if required:
-            raise ProtectedError("FAILED pre-start receipt lacks its zero-mutation evidence")
-        return
-    evidence = record(raw_evidence)
-    claim_owner = record(receipt.get("claim_owner"))
-    managed_link = record(evidence.get("managed_receipt"))
-    if (
-        evidence.get("classification") != "PRESTART_FAILURE_NO_MUTATION"
-        or evidence.get("child_spawned") is not True
-        or evidence.get("child_exited") is not True
-        or type(evidence.get("child_pid")) is not int
-        or evidence.get("child_pid") != receipt.get("gated_child_pid")
-        or evidence.get("child_pid") != claim_owner.get("child_pid")
-        or evidence.get("child_exit_code") != receipt.get("exit_code")
-        or evidence.get("child_exit_code") not in PRESTART_EXEC_FAILURE_CODES
-        or evidence.get("child_started") is not False
-        or evidence.get("owner_phase") != "AUTHORIZED_PENDING"
-        or evidence.get("owner_mutation_started") is not False
-        or evidence.get("claim_store_status") != "ABSENT"
-        or evidence.get("operation_managed_receipt_present") is not False
-        or evidence.get("unchanged_managed_receipt_sha256") != managed_receipt_sha256
-        or record(evidence.get("old_live_state")) != old_live_state
-        or managed_link.get("path") != record(receipt.get("identity")).get(
-            "managed_receipt_path"
-        )
-        or managed_link.get("sha256") != managed_receipt_sha256
-        or managed_link.get("status") != "SUCCESS"
-    ):
-        raise ProtectedError("receipt-local pre-start evidence does not prove zero mutation")
-
-
-def _load_reconciled_prestart_binding(
+def _reconciled_predecessor_receipt_sha256(
     config: cutover.CutoverConfig,
     owner: Record | None,
-) -> Record | None:
-    """Verify a released failed owner, its sealed reconciliation and exact receipt."""
+) -> str | None:
     if owner is None or owner.get("phase") != "RELEASED":
         return None
     release = record(owner.get("release_evidence"))
     if release.get("kind") != "PRESTART_FAILURE_NO_MUTATION":
         return None
     reservation_id = text(owner.get("reservation_id"))
-    operation_id = text(owner.get("operation_id"))
     reconciliation_path = _prestart_reconciliation_record_path(config, reservation_id)
     if release.get("reconciliation_record_path") != str(reconciliation_path):
         raise ProtectedError("released pre-start owner points to a different reconciliation record")
     reconciliation, reconciliation_identity = _load_prestart_reconciliation(reconciliation_path)
+    if (
+        release.get("reconciliation_record_sha256") != reconciliation_identity.sha256
+        or reconciliation.get("reservation_id") != reservation_id
+        or reconciliation.get("operation_id") != owner.get("operation_id")
+        or reconciliation.get("reason") != "PRESTART_FAILURE_NO_MUTATION"
+    ):
+        raise ProtectedError("released pre-start owner does not bind its reconciliation record")
     predecessor = cutover._validate_predecessor_release_evidence(  # pyright: ignore[reportPrivateUsage]
         owner.get("predecessor_release_evidence"), owner
     )
     predecessor_sha = text(predecessor.get("prior_protected_receipt_sha256"))
-    managed_sha = text(predecessor.get("prior_managed_receipt_sha256"))
-    stranded_sha = text(reconciliation.get("stranded_protected_receipt_sha256"))
     if (
-        release.get("verified") is not True
-        or release.get("reconciliation_record_sha256") != reconciliation_identity.sha256
-        or reconciliation.get("reservation_id") != reservation_id
-        or reconciliation.get("operation_id") != operation_id
-        or reconciliation.get("reason") != "PRESTART_FAILURE_NO_MUTATION"
-        or reconciliation.get("original_control_identity")
-        != {"head": owner.get("control_head"), "tree": owner.get("control_tree")}
-        or reconciliation.get("predecessor_protected_receipt_sha256") != predecessor_sha
-        or reconciliation.get("unchanged_managed_receipt_sha256") != managed_sha
-        or release.get("stranded_protected_receipt_sha256") != stranded_sha
-        or release.get("protected_receipt_sha256") != predecessor_sha
+        reconciliation.get("predecessor_protected_receipt_sha256") != predecessor_sha
+        or reconciliation.get("unchanged_managed_receipt_sha256")
+        != predecessor.get("prior_managed_receipt_sha256")
         or release.get("predecessor_protected_receipt_sha256") != predecessor_sha
-        or release.get("managed_receipt_sha256") != managed_sha
-        or re.fullmatch(r"[0-9a-f]{64}", stranded_sha) is None
     ):
-        raise ProtectedError("released pre-start owner does not bind exact reconciliation evidence")
-    expected_authorization = {
-        "reservation_id": reservation_id,
-        "operation_id": operation_id,
-        "managed_receipt_sha256": owner.get("managed_receipt_sha256"),
-        "control_head": owner.get("control_head"),
-        "control_tree": owner.get("control_tree"),
-        "action": "apply",
-        "target": owner.get("target"),
-    }
-    if (
-        owner.get("owner_kind") != "protected"
-        or owner.get("action") != "apply"
-        or owner.get("authorization") != expected_authorization
-        or owner.get("managed_receipt_sha256") != managed_sha
-    ):
-        raise ProtectedError("released pre-start owner authorization is not exact")
-    stranded, stranded_execution_id = _read_stranded_prestart_receipt(config, stranded_sha)
-    stranded_identity = record(stranded.get("identity"))
-    receipt_path = config.scheduler_root / RECEIPT_NAME
-    expected_stranded_archive = receipt_path.with_name(
-        f"{receipt_path.stem}.{stranded_execution_id}.superseded.json"
-    )
-    target = record(stranded_identity.get("target"))
-    failed_config = replace(
-        config,
-        source_worktree=Path(text(stranded_identity.get("source_worktree"))),
-        expected_head=text(stranded_identity.get("source_head")),
-        expected_tree=text(stranded_identity.get("source_tree")),
-        durable_ref=text(target.get("durable_ref")),
-    )
-    failed_plan, failed_plan_identity, _ = cutover.read_control_json(
-        Path(text(stranded_identity.get("plan_file")))
-    )
-    cutover.validate_protected_plan(failed_config, failed_plan)
-    failed_plan_source = record(failed_plan.get("source"))
-    failed_plan_old = record(failed_plan_source.get("old"))
-    failed_plan_new = record(failed_plan_source.get("new"))
-    failed_runtime = record(failed_plan.get("runtime"))
-    reconciled_live = record(reconciliation.get("old_live_state"))
-    recovery_control = record(reconciliation.get("recovery_control_identity"))
-    _validate_embedded_prestart_failure_evidence(
-        stranded,
-        managed_receipt_sha256=managed_sha,
-        old_live_state=reconciled_live,
-        required=False,
-    )
-    if (
-        stranded_identity.get("reservation_id") != reservation_id
-        or stranded_identity.get("operation_id") != operation_id
-        or stranded_identity.get("prior_execution_receipt_sha256") != predecessor_sha
-        or stranded_identity.get("managed_receipt_sha256") != managed_sha
-        or stranded_identity.get("control_head") != owner.get("control_head")
-        or stranded_identity.get("control_tree") != owner.get("control_tree")
-        or stranded_identity.get("target") != owner.get("target")
-        or reconciliation.get("plan_sha256") != stranded_identity.get("plan_sha256")
-        or failed_plan_identity.sha256 != stranded_identity.get("plan_sha256")
-        or failed_plan.get("plan_digest") != stranded_identity.get("plan_digest")
-        or failed_plan_new.get("source_worktree") != stranded_identity.get("source_worktree")
-        or failed_plan_new.get("head") != stranded_identity.get("source_head")
-        or failed_plan_new.get("tree") != stranded_identity.get("source_tree")
-        or failed_plan_new.get("durable_ref") != target.get("durable_ref")
-        or (
-            failed_plan_old.get("source_worktree"),
-            failed_plan_old.get("head"),
-            failed_plan_old.get("tree"),
-        )
-        != (
-            stranded_identity.get("legacy_worktree"),
-            stranded_identity.get("legacy_head"),
-            stranded_identity.get("legacy_tree"),
-        )
-        or reconciliation.get("stranded_protected_receipt_path") != str(receipt_path)
-        or reconciliation.get("stranded_protected_receipt_archive")
-        != str(expected_stranded_archive)
-        or reconciled_live.get("source") != failed_plan_old
-        or reconciled_live.get("runtime") != failed_runtime.get("old")
-        or reconciled_live.get("target_source") != failed_plan_new
-        or reconciled_live.get("target_runtime") != failed_runtime.get("new")
-        or recovery_control
-        == {"head": owner.get("control_head"), "tree": owner.get("control_tree")}
-        or any(
-            re.fullmatch(r"[0-9a-f]{40}", str(recovery_control.get(key))) is None
-            for key in ("head", "tree")
-        )
-    ):
-        raise ProtectedError("stranded pre-start receipt identity differs from its owner proof")
-    return {
-        "owner": owner,
-        "release_evidence": release,
-        "reconciliation": reconciliation,
-        "reconciliation_record_path": str(reconciliation_path),
-        "reconciliation_record_sha256": reconciliation_identity.sha256,
-        "stranded_receipt": stranded,
-        "stranded_receipt_sha256": stranded_sha,
-        "stranded_execution_id": stranded_execution_id,
-        "predecessor_release_evidence": predecessor,
-        "predecessor_protected_receipt_sha256": predecessor_sha,
-        "managed_receipt_sha256": managed_sha,
-    }
-
-
-def _reconciled_predecessor_receipt_sha256(
-    config: cutover.CutoverConfig,
-    owner: Record | None,
-) -> str | None:
-    binding = _load_reconciled_prestart_binding(config, owner)
-    if binding is None:
-        return None
-    return text(binding.get("predecessor_protected_receipt_sha256"))
+        raise ProtectedError("reconciled predecessor proof does not match the v5 receipt")
+    return predecessor_sha
 
 
 def _require_reconciled_success_evidence(
     request: Request,
     prior_owner: Record,
 ) -> Record:
-    binding = _load_reconciled_prestart_binding(request.config, prior_owner)
-    if binding is None:
-        raise ProtectedError("released owner has no verified pre-start reconciliation")
-    predecessor_sha = text(binding.get("predecessor_protected_receipt_sha256"))
-    stranded_sha = text(binding.get("stranded_receipt_sha256"))
-    reconciliation_sha = text(binding.get("reconciliation_record_sha256"))
-    if (
-        request.reservation_id is None
-        or request.operation_id
-        in {
-            text(prior_owner.get("operation_id")),
-            text(record(binding.get("predecessor_release_evidence")).get("prior_operation_id")),
-        }
-        or request.reservation_id
-        in {
-            prior_owner.get("reservation_id"),
-            record(binding.get("predecessor_release_evidence")).get("prior_reservation_id"),
-        }
-        or request_owner_target(request) == prior_owner.get("target")
-        or request.prior_execution_receipt_sha256 != predecessor_sha
-        or request.reconciled_stranded_receipt_sha256 != stranded_sha
-        or request.reconciliation_record_sha256 != reconciliation_sha
-    ):
-        raise ProtectedError("successor is not bound to the exact reconciled predecessor chain")
-    predecessor_proof = record(binding.get("predecessor_release_evidence"))
+    predecessor_sha = _reconciled_predecessor_receipt_sha256(request.config, prior_owner)
+    if predecessor_sha is None or request.prior_execution_receipt_sha256 != predecessor_sha:
+        raise ProtectedError("successor is not bound to the archived protected predecessor")
+    predecessor_proof = cutover._validate_predecessor_release_evidence(  # pyright: ignore[reportPrivateUsage]
+        prior_owner.get("predecessor_release_evidence"), prior_owner
+    )
     managed, managed_identity, _ = cutover.read_control_json(request.config.receipt_path)
     expected_managed_sha = text(predecessor_proof.get("prior_managed_receipt_sha256"))
     if (
@@ -2592,52 +2301,67 @@ def _require_reconciled_success_evidence(
         raise ProtectedError("archived protected SUCCESS is not the live plan OLD predecessor")
     owner_authorization = record(prior_owner.get("authorization"))
     owner_release = record(prior_owner.get("release_evidence"))
-    predecessor_target = record(record(prior.get("identity")).get("target"))
     if (
         owner_release.get("kind") != "PRESTART_FAILURE_NO_MUTATION"
         or owner_release.get("verified") is not True
         or owner_release.get("protected_receipt_sha256") != predecessor_sha
         or owner_release.get("managed_receipt_sha256") != expected_managed_sha
-        or (str(request.legacy_worktree), request.legacy_head, request.legacy_tree)
-        != (
-            predecessor_target.get("source_worktree"),
-            predecessor_target.get("head"),
-            predecessor_target.get("tree"),
-        )
-        or request.config.expected_head == predecessor_target.get("head")
     ):
         raise ProtectedError("reconciled owner does not preserve the archived SUCCESS binding")
-    reconciled_failure = {
-        "schema": "b649-reconciled-prestart-failure-successor-v1",
-        "prior_reservation_id": prior_owner["reservation_id"],
-        "prior_operation_id": prior_owner["operation_id"],
-        "prior_control_head": prior_owner["control_head"],
-        "prior_control_tree": prior_owner["control_tree"],
-        "prior_authorization": owner_authorization,
-        "prior_release_evidence": owner_release,
-        "prior_predecessor_release_evidence": predecessor_proof,
-        "stranded_protected_receipt_sha256": stranded_sha,
-        "reconciliation_record_path": binding["reconciliation_record_path"],
-        "reconciliation_record_sha256": reconciliation_sha,
-    }
     unsigned = {
         "schema": cutover.PROTECTED_PREDECESSOR_RELEASE_SCHEMA,
-        "prior_reservation_id": predecessor_proof["prior_reservation_id"],
-        "prior_operation_id": predecessor_proof["prior_operation_id"],
-        "prior_authorization_sha256": predecessor_proof["prior_authorization_sha256"],
-        "prior_release_evidence": predecessor_proof["prior_release_evidence"],
+        "prior_reservation_id": prior_owner["reservation_id"],
+        "prior_operation_id": prior_owner["operation_id"],
+        "prior_authorization_sha256": digest(owner_authorization),
+        "prior_release_evidence": owner_release,
         "prior_protected_receipt_sha256": predecessor_sha,
         "prior_managed_receipt_sha256": expected_managed_sha,
         "new_reservation_id": request.reservation_id,
         "new_operation_id": request.operation_id,
-        "reconciled_prestart_failure": reconciled_failure,
     }
     return {**unsigned, "evidence_sha256": digest(unsigned)}
+
+
+def _failed_terminal_predecessor_receipt_sha256(owner: Record | None) -> str | None:
+    if owner is None:
+        return None
+    matches = (
+        owner.get("reservation_id") == cutover.FAILED_TERMINAL_RESERVATION_ID,
+        owner.get("operation_id") == cutover.FAILED_TERMINAL_OPERATION_ID,
+    )
+    if any(matches) and not all(matches):
+        raise ProtectedError("exact failed terminal owner identity differs")
+    if not all(matches):
+        return None
+    release = record(owner.get("release_evidence"))
+    if release.get("kind") == "PRESTART_FAILURE_NO_MUTATION":
+        return None
+    if release != {
+        "protected_receipt_sha256": cutover.FAILED_TERMINAL_RECEIPT_SHA256,
+        "managed_receipt_unchanged": True,
+        "verified": True,
+    }:
+        raise ProtectedError(
+            "failed terminal owner release evidence differs from the frozen incident"
+        )
+    if owner.get("phase") != "RELEASED" or owner.get("mutation_started") is not False:
+        raise ProtectedError("failed terminal owner is not a released zero-mutation incident")
+    predecessor = cutover._validate_predecessor_release_evidence(  # pyright: ignore[reportPrivateUsage]
+        owner.get("predecessor_release_evidence"), owner
+    )
+    if (
+        predecessor.get("prior_protected_receipt_sha256") != cutover.V5_PROTECTED_RECEIPT_SHA256
+        or predecessor.get("prior_managed_receipt_sha256") != cutover.V5_MANAGED_RECEIPT_SHA256
+    ):
+        raise ProtectedError("failed terminal owner does not preserve the exact v5 predecessor")
+    return text(predecessor.get("prior_protected_receipt_sha256"))
 
 
 def _require_released_success_evidence(
     request: Request,
     prior_owner: Record | None,
+    *,
+    runner: cutover.Runner | None = None,
 ) -> Record | None:
     """Classify current-success eligibility and freeze its release proof pre-reservation.
 
@@ -2646,12 +2370,11 @@ def _require_released_success_evidence(
     release. Return an integrity-sealed copy bound to the candidate reservation
     and operation before the RELEASED owner is replaced.
     """
-    if (
-        prior_owner is not None
-        and record(prior_owner.get("release_evidence")).get("kind")
-        == "PRESTART_FAILURE_NO_MUTATION"
-    ):
-        return _require_reconciled_success_evidence(request, prior_owner)
+    failed_predecessor_sha = _failed_terminal_predecessor_receipt_sha256(prior_owner)
+    if failed_predecessor_sha is not None:
+        return _require_failed_terminal_successor_evidence(
+            request, cast(Record, prior_owner), runner=runner
+        )
     if not os.path.lexists(request.receipt_path):
         if not os.path.lexists(request.config.receipt_path):
             return None
@@ -2662,6 +2385,8 @@ def _require_released_success_evidence(
     if not os.path.lexists(request.config.receipt_path):
         return None
     prior, slot_sha256 = ReceiptFile(request.receipt_path).read_with_sha256()
+    if prior is not None and prior.get("status") == "FAILED":
+        raise ProtectedError("failed protected receipt is outside the exact successor bridge")
     managed, managed_identity, _ = cutover.read_control_json(request.config.receipt_path)
     if prior is None or prior.get("status") != "SUCCESS" or managed.get("status") != "SUCCESS":
         return None
@@ -2734,82 +2459,379 @@ def _require_released_success_evidence(
     return {**unsigned, "evidence_sha256": digest(unsigned)}
 
 
-def _reconciled_prestart_owner_stub(request: Request, owner: Record) -> Record | None:
-    """Recover the exact released failed-owner evidence saved in a successor proof."""
-    proof = cutover._validate_predecessor_release_evidence(  # pyright: ignore[reportPrivateUsage]
-        owner.get("predecessor_release_evidence"), owner
-    )
-    reconciled_value = proof.get("reconciled_prestart_failure")
-    if reconciled_value is None:
-        return None
-    reconciled = record(reconciled_value)
-    authorization = record(reconciled.get("prior_authorization"))
-    return {
-        "phase": "RELEASED",
-        "owner_kind": "protected",
-        "action": "apply",
-        "reservation_id": reconciled.get("prior_reservation_id"),
-        "operation_id": reconciled.get("prior_operation_id"),
-        "target": authorization.get("target"),
-        "control_head": reconciled.get("prior_control_head"),
-        "control_tree": reconciled.get("prior_control_tree"),
-        "managed_receipt_sha256": proof.get("prior_managed_receipt_sha256"),
-        "authorization": authorization,
-        "release_evidence": reconciled.get("prior_release_evidence"),
-        "predecessor_release_evidence": reconciled.get(
-            "prior_predecessor_release_evidence"
-        ),
-    }
-
-
-def _saved_reconciled_request_binding(owner: Record | None) -> Record | None:
-    if owner is None or owner.get("predecessor_release_evidence") is None:
-        return None
-    proof = cutover._validate_predecessor_release_evidence(  # pyright: ignore[reportPrivateUsage]
-        owner.get("predecessor_release_evidence"), owner
-    )
-    value = proof.get("reconciled_prestart_failure")
-    if value is None:
-        return None
-    reconciled = record(value)
-    return {
-        "prior_execution_receipt_sha256": proof.get("prior_protected_receipt_sha256"),
-        "reconciled_stranded_receipt_sha256": reconciled.get(
-            "stranded_protected_receipt_sha256"
-        ),
-        "reconciliation_record_sha256": reconciled.get("reconciliation_record_sha256"),
-    }
-
-
-def _supersede_reconciled_prestart_failure(
+def _require_failed_terminal_successor_evidence(
     request: Request,
-    receipt_file: ReceiptFile,
-    prior: Record,
+    prior_owner: Record,
     *,
-    owner: Record,
-    slot_sha256: str,
-) -> bool:
-    """Retire only the failure proven by this exact successor's saved reconciliation."""
+    runner: cutover.Runner | None,
+) -> Record:
+    selected_runner = cutover.run_command if runner is None else runner
     if (
-        request.reconciled_stranded_receipt_sha256 != slot_sha256
-        or request.reconciliation_record_sha256 is None
-        or request.prior_execution_receipt_sha256 is None
-        or claims.ClaimStore(request.claim_root).inspect(TASK_KEY).get("status") != "ABSENT"
+        request.reservation_id is None
+        or request.reservation_id == cutover.FAILED_TERMINAL_RESERVATION_ID
+        or request.operation_id == cutover.FAILED_TERMINAL_OPERATION_ID
+        or (request.config.expected_head, request.config.expected_tree)
+        != (cutover.V7_SOURCE_HEAD, cutover.V7_SOURCE_TREE)
     ):
-        return False
-    synthetic_owner = _reconciled_prestart_owner_stub(request, owner)
-    if synthetic_owner is None:
-        return False
-    expected_proof = _require_reconciled_success_evidence(request, synthetic_owner)
-    saved_proof = record(owner.get("predecessor_release_evidence"))
-    if expected_proof != saved_proof:
-        return False
-    binding = _load_reconciled_prestart_binding(request.config, synthetic_owner)
-    if binding is None or binding.get("stranded_receipt") != prior:
-        return False
-    destination_name = f"{request.receipt_path.stem}.{prior['execution_id']}.superseded.json"
-    receipt_file.archive_to(destination_name, expected_sha256=slot_sha256)
-    return True
+        raise ProtectedError("failed terminal incident permits only a fresh exact v7 successor")
+
+    owner_snapshot = cutover._read_control_owner(request.config)  # pyright: ignore[reportPrivateUsage]
+    if owner_snapshot is None:
+        raise ProtectedError("exact failed terminal owner is absent")
+    failed_owner, owner_file_identity = owner_snapshot
+    if (
+        failed_owner.get("reservation_id") != cutover.FAILED_TERMINAL_RESERVATION_ID
+        or failed_owner.get("operation_id") != cutover.FAILED_TERMINAL_OPERATION_ID
+        or failed_owner.get("owner_kind") != "protected"
+        or failed_owner.get("action") != "apply"
+        or failed_owner.get("phase") != "RELEASED"
+        or failed_owner.get("mutation_started") is not False
+        or failed_owner.get("managed_receipt_sha256") != cutover.V5_MANAGED_RECEIPT_SHA256
+        or failed_owner.get("authorization") != cutover._owner_identity(failed_owner)  # pyright: ignore[reportPrivateUsage]
+        or prior_owner.get("record_sha256") != failed_owner.get("record_sha256")
+        or prior_owner.get("release_evidence") != failed_owner.get("release_evidence")
+    ):
+        raise ProtectedError(
+            "released owner does not match the exact zero-mutation failed incident"
+        )
+    failed_release = record(failed_owner.get("release_evidence"))
+    if failed_release != {
+        "protected_receipt_sha256": cutover.FAILED_TERMINAL_RECEIPT_SHA256,
+        "managed_receipt_unchanged": True,
+        "verified": True,
+    }:
+        raise ProtectedError("failed owner release evidence does not verify the frozen incident")
+
+    v5_proof = cutover._validate_predecessor_release_evidence(  # pyright: ignore[reportPrivateUsage]
+        failed_owner.get("predecessor_release_evidence"), failed_owner
+    )
+    if (
+        v5_proof.get("prior_protected_receipt_sha256") != cutover.V5_PROTECTED_RECEIPT_SHA256
+        or v5_proof.get("prior_managed_receipt_sha256") != cutover.V5_MANAGED_RECEIPT_SHA256
+    ):
+        raise ProtectedError("failed v6 owner lost the exact v5 predecessor proof")
+
+    receipt_file = ReceiptFile(request.receipt_path)
+    receipt_exists = os.path.lexists(request.receipt_path)
+    failed: Record | None
+    failed_sha256: str | None
+    if receipt_exists:
+        failed, failed_sha256 = receipt_file.read_with_sha256()
+        if failed is None or failed_sha256 is None:
+            raise ProtectedError("failed terminal receipt disappeared before retirement")
+    else:
+        failed_archive = _find_archived_prior_receipt(
+            request.receipt_path,
+            lambda value: value == cutover.FAILED_TERMINAL_RECEIPT_SHA256,
+        )
+        if failed_archive is None:
+            raise ProtectedError("exact failed terminal receipt or its archive is absent")
+        failed_archive_path = Path(text(failed_archive.get("path")))
+        failed, failed_identity, _ = cutover.read_control_json(failed_archive_path)
+        failed_sha256 = failed_identity.sha256
+
+    failed_identity = record(failed.get("identity"))
+    failed_execution_id = text(failed.get("execution_id"))
+    if re.fullmatch(r"[0-9a-f]{64}", failed_execution_id) is None:
+        raise ProtectedError("failed terminal receipt execution identity is malformed")
+    failed_archive_path = request.receipt_path.with_name(
+        f"{request.receipt_path.stem}.{failed_execution_id}.superseded.json"
+    )
+    if (
+        failed.get("schema_version") != SCHEMA
+        or failed.get("task_key") != TASK_KEY
+        or failed.get("receipt_sha256")
+        != digest({key: value for key, value in failed.items() if key != "receipt_sha256"})
+        or failed_execution_id != digest(failed_identity)
+        or failed.get("status") != "FAILED"
+        or failed.get("phase") != "COMPLETED"
+        or type(failed.get("exit_code")) is not int
+        or failed.get("exit_code") != 1
+        or failed.get("result_status") != "INCOMPLETE_OR_AMBIGUOUS"
+        or failed.get("child_exit_code") is not None
+        or "child_started_at" in failed
+        or "child_completed_at" in failed
+        or failed_identity.get("reservation_id") != cutover.FAILED_TERMINAL_RESERVATION_ID
+        or failed_identity.get("operation_id") != cutover.FAILED_TERMINAL_OPERATION_ID
+        or failed_identity.get("action") != "apply"
+        or failed_identity.get("task_key") != TASK_KEY
+        or failed_identity.get("execution_receipt_path") != str(request.receipt_path)
+        or failed_identity.get("managed_receipt_path") != str(request.config.receipt_path)
+        or failed_identity.get("managed_receipt_sha256") != cutover.V5_MANAGED_RECEIPT_SHA256
+        or failed_identity.get("prior_execution_receipt_sha256")
+        != cutover.V5_PROTECTED_RECEIPT_SHA256
+        or failed_identity.get("claim_root") != str(request.claim_root)
+        or failed_identity.get("target") != failed_owner.get("target")
+        or failed_identity.get("source_worktree")
+        != record(failed_owner.get("target")).get("source_worktree")
+        or failed_identity.get("source_head") != record(failed_owner.get("target")).get("head")
+        or failed_identity.get("source_tree") != record(failed_owner.get("target")).get("tree")
+    ):
+        raise ProtectedError("protected receipt does not match the frozen FAILED terminal shape")
+    if failed_sha256 != cutover.FAILED_TERMINAL_RECEIPT_SHA256:
+        raise ProtectedError("protected FAILED receipt SHA differs from the frozen incident")
+    cutover._verify_protected_owner_receipt(  # pyright: ignore[reportPrivateUsage]
+        failed,
+        path=request.receipt_path,
+        bound_identity=cutover._owner_identity(failed_owner),  # pyright: ignore[reportPrivateUsage]
+        successful=False,
+    )
+    failed_link = failed.get("managed_receipt")
+    if isinstance(failed_link, dict):
+        failed_link_record = cast(Record, failed_link)
+        if failed_link_record.get("operation_id") == failed_identity.get("operation_id"):
+            raise ProtectedError("failed v6 operation has a managed receipt")
+
+    if os.path.lexists(request.config.scheduler_root / ROLLBACK_RECEIPT_NAME):
+        raise ProtectedError(
+            "a protected rollback receipt makes failed predecessor history ambiguous"
+        )
+    managed, managed_identity, _ = cutover.read_control_json(request.config.receipt_path)
+    if (
+        managed_identity.sha256 != cutover.V5_MANAGED_RECEIPT_SHA256
+        or request.managed_receipt_sha256 != cutover.V5_MANAGED_RECEIPT_SHA256
+        or failed_owner.get("managed_receipt_sha256") != managed_identity.sha256
+        or managed.get("schema_version") != cutover.RECEIPT_SCHEMA_VERSION
+        or managed.get("task") != cutover.TASK_ID
+        or managed.get("phase") != "COMPLETED"
+        or managed.get("status") != "SUCCESS"
+        or managed.get("operation_id") == cutover.FAILED_TERMINAL_OPERATION_ID
+        or managed.get("operation_id") != v5_proof.get("prior_operation_id")
+    ):
+        raise ProtectedError("unchanged v5 managed SUCCESS differs from the frozen predecessor")
+
+    v5_archive = _find_archived_prior_receipt(
+        request.receipt_path,
+        lambda value: value == cutover.V5_PROTECTED_RECEIPT_SHA256,
+    )
+    if v5_archive is None:
+        raise ProtectedError("archived v5 protected SUCCESS predecessor is absent")
+    v5_archive_path = Path(text(v5_archive.get("path")))
+    v5_receipt, v5_identity, _ = cutover.read_control_json(v5_archive_path)
+    v5_receipt_identity = record(v5_receipt.get("identity"))
+    v5_target = record(v5_receipt_identity.get("target"))
+    v5_owner_identity = {
+        "reservation_id": v5_receipt_identity.get("reservation_id"),
+        "operation_id": v5_receipt_identity.get("operation_id"),
+        "managed_receipt_sha256": v5_receipt_identity.get("managed_receipt_sha256"),
+        "control_head": v5_receipt_identity.get("control_head"),
+        "control_tree": v5_receipt_identity.get("control_tree"),
+        "action": "apply",
+        "target": v5_target,
+    }
+    expected_v5_authorization = {
+        key: value for key, value in v5_owner_identity.items() if key != "owner_kind"
+    }
+    v5_release = record(v5_proof.get("prior_release_evidence"))
+    v5_link = record(v5_receipt.get("managed_receipt"))
+    if (
+        v5_identity.sha256 != cutover.V5_PROTECTED_RECEIPT_SHA256
+        or v5_receipt.get("status") != "SUCCESS"
+        or v5_receipt.get("result_status") not in {"SUCCESS", "ALREADY_APPLIED"}
+        or v5_receipt_identity.get("reservation_id") != v5_proof.get("prior_reservation_id")
+        or v5_receipt_identity.get("operation_id") != v5_proof.get("prior_operation_id")
+        or v5_receipt_identity.get("action") != "apply"
+        or v5_receipt_identity.get("execution_receipt_path") != str(request.receipt_path)
+        or v5_target.get("head") != cutover.V5_SOURCE_HEAD
+        or v5_target.get("tree") != cutover.V5_SOURCE_TREE
+        or v5_proof.get("prior_authorization_sha256") != digest(expected_v5_authorization)
+        or v5_release.get("verified") is not True
+        or v5_release.get("protected_receipt_sha256") != cutover.V5_PROTECTED_RECEIPT_SHA256
+        or v5_release.get("managed_receipt_sha256") != cutover.V5_MANAGED_RECEIPT_SHA256
+        or v5_link.get("path") != str(request.config.receipt_path)
+        or v5_link.get("sha256") != cutover.V5_MANAGED_RECEIPT_SHA256
+        or v5_link.get("status") != "SUCCESS"
+        or managed.get("plan_digest") != v5_receipt_identity.get("plan_digest")
+    ):
+        raise ProtectedError("archived v5 SUCCESS does not match its saved release authority")
+    cutover._verify_protected_owner_receipt(  # pyright: ignore[reportPrivateUsage]
+        v5_receipt,
+        path=request.receipt_path,
+        bound_identity=v5_owner_identity,
+        successful=True,
+    )
+
+    candidate_plan = request.load_plan()
+    plan_source = record(candidate_plan.get("source"))
+    plan_old = record(plan_source.get("old"))
+    plan_new = record(plan_source.get("new"))
+    prestate = record(candidate_plan.get("prestate"))
+    v5_after = record(managed.get("after"))
+    v5_after_source = record(v5_after.get("source"))
+    v5_after_plist = record(v5_after.get("plist"))
+    v5_after_launchd = record(v5_after.get("launchd"))
+    if (
+        (str(request.legacy_worktree), request.legacy_head, request.legacy_tree)
+        != (v5_target.get("source_worktree"), cutover.V5_SOURCE_HEAD, cutover.V5_SOURCE_TREE)
+        or plan_old.get("source_worktree") != v5_target.get("source_worktree")
+        or plan_old.get("head") != cutover.V5_SOURCE_HEAD
+        or plan_old.get("tree") != cutover.V5_SOURCE_TREE
+        or plan_new.get("role") != "new"
+        or plan_new.get("source_worktree") != str(request.config.source_worktree)
+        or plan_new.get("head") != cutover.V7_SOURCE_HEAD
+        or plan_new.get("tree") != cutover.V7_SOURCE_TREE
+        or plan_new.get("clean") is not True
+        or v5_after_source.get("role") != "new"
+        or plan_old != {**v5_after_source, "role": "old"}
+        or record(prestate.get("old_runtime")) != record(v5_after.get("runtime"))
+        or not cutover.successor_plist_identity_matches(
+            record(prestate.get("old_plist_identity")), v5_after_plist.get("identity")
+        )
+        or prestate.get("old_launch_state") != v5_after_launchd.get("state")
+        or prestate.get("old_enabled") is not v5_after.get("enabled")
+        or record(prestate.get("old_binding")) != record(v5_after_plist.get("binding"))
+        or request.plan_digest == v5_receipt_identity.get("plan_digest")
+        or request.operation_id == v5_receipt_identity.get("operation_id")
+    ):
+        raise ProtectedError("candidate v7 plan is not the exact live v5 successor")
+
+    claim_state = claims.ClaimStore(request.claim_root).inspect(TASK_KEY)
+    if claim_state.get("status") != "ABSENT":
+        raise ProtectedError("ClaimStore is not absent")
+    old_live = _prove_plan_old_live(request.config, candidate_plan, selected_runner)
+    if (
+        record(old_live.get("source")) != plan_old
+        or record(old_live.get("runtime"))
+        != record(record(candidate_plan.get("runtime")).get("old"))
+        or record(old_live.get("target_source")) == record(old_live.get("source"))
+        or record(old_live.get("target_runtime")) == record(old_live.get("runtime"))
+    ):
+        raise ProtectedError("live state does not prove v5 OLD runtime and inactive v7 target")
+    v5_config = replace(
+        request.config,
+        source_worktree=Path(text(v5_target.get("source_worktree"))),
+        expected_head=text(v5_target.get("head")),
+        expected_tree=text(v5_target.get("tree")),
+        durable_ref=text(v5_target.get("durable_ref")),
+    )
+    cutover.validate_protected_plan(v5_config, cutover.receipt_to_plan(v5_config, managed))
+    cutover.verify_completed_receipt_live(
+        v5_config,
+        managed,
+        successor_old_plist_identity=prestate.get("old_plist_identity"),
+        runner=selected_runner,
+    )
+
+    if request.prior_execution_receipt_sha256 != cutover.V5_PROTECTED_RECEIPT_SHA256:
+        raise ProtectedError("candidate v7 operation is not bound to archived v5 SUCCESS")
+    if os.path.lexists(failed_archive_path):
+        archived, archived_identity, _ = cutover.read_control_json(failed_archive_path)
+        if archived_identity.sha256 != cutover.FAILED_TERMINAL_RECEIPT_SHA256 or archived != failed:
+            raise ProtectedError("failed receipt archive path already holds conflicting bytes")
+    existing_failed_archive = _find_archived_prior_receipt(
+        request.receipt_path,
+        lambda value: value == cutover.FAILED_TERMINAL_RECEIPT_SHA256,
+    )
+    if existing_failed_archive is not None and Path(text(existing_failed_archive.get("path"))) != (
+        failed_archive_path
+    ):
+        raise ProtectedError("failed terminal receipt has more than one matching archive")
+
+    candidate_target = request_owner_target(request)
+    unsigned_retirement: Record = {
+        "schema": cutover.FAILED_TERMINAL_RETIREMENT_SCHEMA,
+        "receipt_path": str(request.receipt_path),
+        "archive_path": str(failed_archive_path),
+        "execution_id": failed_execution_id,
+        "receipt_sha256": cutover.FAILED_TERMINAL_RECEIPT_SHA256,
+        "reservation_id": cutover.FAILED_TERMINAL_RESERVATION_ID,
+        "operation_id": cutover.FAILED_TERMINAL_OPERATION_ID,
+        "status": "FAILED",
+        "phase": "COMPLETED",
+        "exit_code": 1,
+        "result_status": "INCOMPLETE_OR_AMBIGUOUS",
+        "child_started": False,
+        "child_completed": False,
+        "mutation_started": False,
+        "zero_mutation": True,
+        "owner_record": failed_owner,
+        "owner_file_sha256": owner_file_identity.sha256,
+        "v5_predecessor_release_evidence": v5_proof,
+        "v5_protected_receipt_sha256": cutover.V5_PROTECTED_RECEIPT_SHA256,
+        "v5_protected_receipt_archive_path": str(v5_archive_path),
+        "v5_managed_receipt_sha256": cutover.V5_MANAGED_RECEIPT_SHA256,
+        "v5_managed_receipt_path": str(request.config.receipt_path),
+        "v5_source_head": cutover.V5_SOURCE_HEAD,
+        "v5_source_tree": cutover.V5_SOURCE_TREE,
+        "v5_live_state": {"verified": True, **old_live},
+        "candidate_plan_sha256": request.plan_sha256,
+        "candidate_target": candidate_target,
+        "claim_root": str(request.claim_root),
+        "claim_store_status": "ABSENT",
+        "failed_operation_managed_receipt_present": False,
+        "archive_status": "ARCHIVED_UNCHANGED",
+    }
+    retirement = {
+        **unsigned_retirement,
+        "record_sha256": digest(unsigned_retirement),
+    }
+    retirement_path = request.config.scheduler_root / cutover.FAILED_TERMINAL_RETIREMENT_NAME
+    existing_retirement: Record | None = None
+    if os.path.lexists(retirement_path):
+        existing_retirement, _, _ = cutover._load_json(  # pyright: ignore[reportPrivateUsage]
+            retirement_path
+        )
+        if existing_retirement != retirement:
+            raise ProtectedError(
+                "failed terminal retirement evidence exists with conflicting proof"
+            )
+
+    if receipt_exists:
+        receipt_file.archive_to(
+            failed_archive_path.name,
+            expected_sha256=cutover.FAILED_TERMINAL_RECEIPT_SHA256,
+        )
+    archived, archived_identity, _ = cutover.read_control_json(failed_archive_path)
+    if (
+        archived_identity.sha256 != cutover.FAILED_TERMINAL_RECEIPT_SHA256
+        or archived != failed
+        or os.path.lexists(request.receipt_path)
+    ):
+        raise ProtectedError("failed terminal receipt archive readback differs")
+    if existing_retirement is None:
+        cutover._write_json(  # pyright: ignore[reportPrivateUsage]
+            retirement_path, retirement, expected=None
+        )
+        readback, _, _ = cutover._load_json(retirement_path)  # pyright: ignore[reportPrivateUsage]
+        if readback != retirement:
+            raise ProtectedError("failed terminal retirement evidence readback differs")
+
+    unsigned = {
+        "schema": cutover.PROTECTED_PREDECESSOR_RELEASE_SCHEMA,
+        "prior_reservation_id": v5_proof["prior_reservation_id"],
+        "prior_operation_id": v5_proof["prior_operation_id"],
+        "prior_authorization_sha256": v5_proof["prior_authorization_sha256"],
+        "prior_release_evidence": v5_proof["prior_release_evidence"],
+        "prior_protected_receipt_sha256": cutover.V5_PROTECTED_RECEIPT_SHA256,
+        "prior_managed_receipt_sha256": cutover.V5_MANAGED_RECEIPT_SHA256,
+        "new_reservation_id": request.reservation_id,
+        "new_operation_id": request.operation_id,
+        "retired_failed_terminal_evidence": retirement,
+    }
+    return {**unsigned, "evidence_sha256": digest(unsigned)}
+
+
+def _failed_terminal_bridge_live_verifier(
+    request: Request,
+    prior_owner: Record,
+    expected_proof: Record,
+    *,
+    runner: cutover.Runner,
+) -> Callable[[], None]:
+    """Rebuild exact failed-successor proof at the serialized owner CAS boundary."""
+
+    def verify() -> None:
+        current_proof = _require_released_success_evidence(
+            request,
+            prior_owner,
+            runner=runner,
+        )
+        if current_proof != expected_proof:
+            raise ProtectedError(
+                "failed terminal predecessor or live state changed before owner reservation"
+            )
+
+    return verify
 
 
 def cmd_reconcile_prestart_failure(
@@ -2958,8 +2980,8 @@ def cmd_reconcile_prestart_failure(
             or execution_id != digest(stranded_identity)
             or observed_stranded_sha != supplied_hashes["stranded_protected_receipt_sha256"]
             or stranded.get("phase") != "COMPLETED"
-            or stranded.get("status") not in {"FAILED", "INCOMPLETE_OR_AMBIGUOUS"}
-            or stranded.get("result_status") not in {"FAILED", "INCOMPLETE_OR_AMBIGUOUS"}
+            or stranded.get("status") != "INCOMPLETE_OR_AMBIGUOUS"
+            or stranded.get("result_status") != "INCOMPLETE_OR_AMBIGUOUS"
             or type(stranded.get("exit_code")) is not int
             or cast(int, stranded.get("exit_code")) not in PRESTART_EXEC_FAILURE_CODES
             or stranded.get("child_exit_code") is not None
@@ -3099,14 +3121,6 @@ def cmd_reconcile_prestart_failure(
             raise ProtectedError("managed SUCCESS is not the archived v5 operation")
 
         old_live = _prove_plan_old_live(config, plan, selected_runner)
-        _validate_embedded_prestart_failure_evidence(
-            stranded,
-            managed_receipt_sha256=supplied_hashes["managed_receipt_sha256"],
-            old_live_state=old_live,
-            required=(
-                "FAILED" in {stranded.get("status"), stranded.get("result_status")}
-            ),
-        )
         if (
             record(old_live.get("source")) != plan_old
             or record(old_live.get("runtime")) != record(record(plan.get("runtime")).get("old"))
@@ -3262,309 +3276,6 @@ def cmd_reconcile_prestart_failure(
         return {"status": "RECONCILED", "owner": released, **release_evidence}
 
 
-def _prestart_successor_release_record_path(
-    config: cutover.CutoverConfig,
-    reservation_id: str,
-) -> Path:
-    return config.scheduler_root / f"b649-prestart-successor-release-{reservation_id}.json"
-
-
-def cmd_release_prestart_successor_no_mutation(
-    args: argparse.Namespace,
-    *,
-    runner: cutover.Runner | None = None,
-) -> Record:
-    """Seal and release one authorized pending successor across control versions.
-
-    This is a narrow proof path for a successor that never entered its managed
-    child. It retains the predecessor protected receipt in place and never
-    uses ABANDON semantics.
-    """
-    selected_runner = cutover.run_command if runner is None else runner
-    config = build_reservation_config(args, for_action="apply")
-    reservation_id = text(args.reservation_id)
-    operation_id = text(args.operation_id)
-    try:
-        if str(UUID(reservation_id)) != reservation_id:
-            raise ValueError
-    except ValueError as exc:
-        raise ProtectedError("reservation ID must be a canonical UUID") from exc
-    if re.fullmatch(r"[0-9a-f]{32}", operation_id) is None:
-        raise ProtectedError("operation ID must be a lowercase 32-character digest")
-    for label in ("managed_receipt_sha256", "plan_sha256"):
-        if re.fullmatch(r"[0-9a-f]{64}", text(getattr(args, label))) is None:
-            raise ProtectedError(f"{label} must be a lowercase SHA256")
-    original_control = {
-        "head": text(args.original_control_head),
-        "tree": text(args.original_control_tree),
-    }
-    recovery_control = {
-        "head": text(args.current_recovery_control_head),
-        "tree": text(args.current_recovery_control_tree),
-    }
-    for control in (original_control, recovery_control):
-        if any(re.fullmatch(r"[0-9a-f]{40}", value) is None for value in control.values()):
-            raise ProtectedError("control identities must be exact lowercase HEAD/tree values")
-    if cutover.control_version() != recovery_control or recovery_control == original_control:
-        raise ProtectedError("running recovery control identity differs from explicit arguments")
-
-    target = {
-        "source_worktree": str(config.source_worktree),
-        "head": config.expected_head,
-        "tree": config.expected_tree,
-        "durable_ref": config.durable_ref,
-    }
-    expected_authorization = {
-        "reservation_id": reservation_id,
-        "operation_id": operation_id,
-        "managed_receipt_sha256": text(args.managed_receipt_sha256),
-        "control_head": original_control["head"],
-        "control_tree": original_control["tree"],
-        "action": "apply",
-        "target": target,
-    }
-    receipt_path = config.scheduler_root / RECEIPT_NAME
-    rollback_path = config.scheduler_root / ROLLBACK_RECEIPT_NAME
-    release_record_path = _prestart_successor_release_record_path(config, reservation_id)
-    claim_root = repository_claim_root()
-    with cutover.CutoverLock(  # pyright: ignore[reportPrivateUsage]
-        cutover._control_owner_lock_path(config)  # pyright: ignore[reportPrivateUsage]
-    ):
-        owner_snapshot = cutover._read_control_owner(config)  # pyright: ignore[reportPrivateUsage]
-        if owner_snapshot is None:
-            raise ProtectedError("durable owner is absent")
-        owner, owner_identity = owner_snapshot
-        if (
-            owner.get("reservation_id") != reservation_id
-            or owner.get("operation_id") != operation_id
-            or owner.get("owner_kind") != "protected"
-            or owner.get("action") != "apply"
-            or owner.get("phase") not in {"AUTHORIZED_PENDING", "RELEASED"}
-            or owner.get("mutation_started") is not False
-            or (owner.get("control_head"), owner.get("control_tree"))
-            != (original_control["head"], original_control["tree"])
-            or owner.get("managed_receipt_sha256") != args.managed_receipt_sha256
-            or cutover._owner_identity(owner) != expected_authorization  # pyright: ignore[reportPrivateUsage]
-            or owner.get("authorization") != expected_authorization
-        ):
-            raise ProtectedError("durable owner does not match the exact pending successor")
-        if owner.get("phase") == "RELEASED" and record(owner.get("release_evidence")).get(
-            "kind"
-        ) != "PRESTART_SUCCESSOR_NO_MUTATION":
-            raise ProtectedError("durable owner was released under different terminal evidence")
-
-        request = make_request(
-            config,
-            Path(args.legacy_worktree),
-            text(args.legacy_head),
-            text(args.legacy_tree),
-            Path(args.plan_file),
-            claim_root,
-            reservation_id=reservation_id,
-            operation_id=operation_id,
-            managed_receipt_sha256=text(args.managed_receipt_sha256),
-        )
-        if request.plan_sha256 != args.plan_sha256:
-            raise ProtectedError("pending successor plan SHA differs from the explicit value")
-        plan = request.load_plan()
-        plan_new = record(record(plan.get("source")).get("new"))
-        plan_old = record(record(plan.get("source")).get("old"))
-        if (
-            plan_new.get("source_worktree") != target["source_worktree"]
-            or plan_new.get("head") != target["head"]
-            or plan_new.get("tree") != target["tree"]
-            or plan_new.get("durable_ref") != target["durable_ref"]
-            or plan_old.get("source_worktree") != str(request.legacy_worktree)
-            or plan_old.get("head") != request.legacy_head
-            or plan_old.get("tree") != request.legacy_tree
-        ):
-            raise ProtectedError("pending successor plan does not bind exact OLD and target")
-
-        claim_state = claims.ClaimStore(claim_root).inspect(TASK_KEY)
-        if claim_state.get("status") != "ABSENT":
-            raise ProtectedError("ClaimStore is not absent")
-        if os.path.lexists(rollback_path):
-            raise ProtectedError("protected rollback receipt makes no-mutation release ambiguous")
-
-        own_receipt_found = False
-        prior_receipt_snapshot: Record = {"path": str(receipt_path), "exists": False}
-        if os.path.lexists(receipt_path):
-            prior_execution, prior_sha = ReceiptFile(receipt_path).read_with_sha256()
-            if prior_execution is None or prior_sha is None:
-                raise ProtectedError("protected execution receipt cannot be verified")
-            prior_identity = record(prior_execution.get("identity"))
-            own_receipt_found = (
-                prior_identity.get("reservation_id") == reservation_id
-                or prior_identity.get("operation_id") == operation_id
-            )
-            prior_receipt_snapshot = {
-                "path": str(receipt_path),
-                "exists": True,
-                "sha256": prior_sha,
-                "execution_id": prior_execution.get("execution_id"),
-                "reservation_id": prior_identity.get("reservation_id"),
-                "operation_id": prior_identity.get("operation_id"),
-                "status": prior_execution.get("status"),
-            }
-        for index, archive in enumerate(
-            receipt_path.parent.glob(f"{receipt_path.stem}.*.superseded.json")
-        ):
-            if index >= 1024:
-                raise ProtectedError("protected execution archive lookup exceeds bound")
-            archived, _, _ = cutover.read_control_json(archive)
-            archived_identity = record(archived.get("identity"))
-            if (
-                archived_identity.get("reservation_id") == reservation_id
-                or archived_identity.get("operation_id") == operation_id
-            ):
-                own_receipt_found = True
-        if own_receipt_found:
-            raise ProtectedError("pending successor already has a protected execution receipt")
-
-        managed, managed_identity, _ = cutover.read_control_json(config.receipt_path)
-        if (
-            managed_identity.sha256 != args.managed_receipt_sha256
-            or managed.get("phase") != "COMPLETED"
-            or managed.get("status") != "SUCCESS"
-            or managed.get("operation_id") == operation_id
-        ):
-            raise ProtectedError("managed receipt changed or is not the prior SUCCESS")
-        live_old = _prove_plan_old_live(config, plan, selected_runner)
-        if (
-            record(live_old.get("source")) != plan_old
-            or record(live_old.get("runtime")) != record(record(plan.get("runtime")).get("old"))
-            or record(live_old.get("target_source")) == record(live_old.get("source"))
-            or record(live_old.get("target_runtime")) == record(live_old.get("runtime"))
-        ):
-            raise ProtectedError("live state does not prove the exact OLD runtime remains active")
-        predecessor_config = replace(
-            config,
-            source_worktree=Path(text(plan_old.get("source_worktree"))),
-            expected_head=text(plan_old.get("head")),
-            expected_tree=text(plan_old.get("tree")),
-            durable_ref=text(plan_old.get("durable_ref")),
-        )
-        cutover.validate_protected_plan(
-            predecessor_config, cutover.receipt_to_plan(predecessor_config, managed)
-        )
-        cutover.verify_completed_receipt_live(
-            predecessor_config,
-            managed,
-            successor_old_plist_identity=record(plan.get("prestate")).get(
-                "old_plist_identity"
-            ),
-            runner=selected_runner,
-        )
-
-        release_unsigned: Record = {
-            "schema": PRESTART_SUCCESSOR_RELEASE_SCHEMA,
-            "reservation_id": reservation_id,
-            "operation_id": operation_id,
-            "original_control_identity": original_control,
-            "recovery_control_identity": recovery_control,
-            "owner_authorization": expected_authorization,
-            "plan_sha256": request.plan_sha256,
-            "plan_digest": request.plan_digest,
-            "target": target,
-            "managed_receipt_sha256": managed_identity.sha256,
-            "protected_execution_receipt": prior_receipt_snapshot,
-            "claim_absent": True,
-            "rollback_receipt_absent": True,
-            "mutation_started": False,
-            "live_old_state": live_old,
-        }
-        existing_release: Record | None = None
-        if os.path.lexists(release_record_path):
-            existing_release, release_identity, _ = cutover._load_json(  # pyright: ignore[reportPrivateUsage]
-                release_record_path
-            )
-            if (
-                existing_release.get("schema") != PRESTART_SUCCESSOR_RELEASE_SCHEMA
-                or existing_release.get("record_sha256")
-                != digest(
-                    {
-                        key: value
-                        for key, value in existing_release.items()
-                        if key != "record_sha256"
-                    }
-                )
-                or any(
-                    existing_release.get(key) != value
-                    for key, value in release_unsigned.items()
-                )
-            ):
-                raise ProtectedError("no-mutation release record exists with conflicting proof")
-            release_record_sha256 = release_identity.sha256
-            release_record = existing_release
-        else:
-            release_record = {
-                **release_unsigned,
-                "record_sha256": digest(release_unsigned),
-            }
-            cutover._write_json(  # pyright: ignore[reportPrivateUsage]
-                release_record_path, release_record, expected=None
-            )
-            readback, release_identity, _ = cutover._load_json(  # pyright: ignore[reportPrivateUsage]
-                release_record_path
-            )
-            if readback != release_record:
-                raise ProtectedError("no-mutation release record readback differs")
-            release_record_sha256 = release_identity.sha256
-
-        release_evidence: Record = {
-            "kind": "PRESTART_SUCCESSOR_NO_MUTATION",
-            "verified": True,
-            "release_record_path": str(release_record_path),
-            "release_record_sha256": release_record_sha256,
-            "managed_receipt_sha256": managed_identity.sha256,
-            "protected_receipt_absent_for_operation": True,
-            "claim_absent": True,
-            "mutation_started": False,
-        }
-        if cutover.control_version() != recovery_control:
-            raise ProtectedError("recovery control identity changed before owner release")
-        if claims.ClaimStore(claim_root).inspect(TASK_KEY).get("status") != "ABSENT":
-            raise ProtectedError("ClaimStore changed before no-mutation owner release")
-        if _existing_receipt_sha256(config.receipt_path) != managed_identity.sha256:
-            raise ProtectedError("managed receipt changed before no-mutation owner release")
-        if os.path.lexists(rollback_path):
-            raise ProtectedError("rollback receipt appeared before no-mutation owner release")
-        if prior_receipt_snapshot.get("exists") is True:
-            _, final_prior_sha = ReceiptFile(receipt_path).read_with_sha256()
-            if final_prior_sha != prior_receipt_snapshot.get("sha256"):
-                raise ProtectedError("protected receipt changed before no-mutation owner release")
-        elif os.path.lexists(receipt_path):
-            raise ProtectedError("protected receipt appeared before no-mutation owner release")
-        for index, archive in enumerate(
-            receipt_path.parent.glob(f"{receipt_path.stem}.*.superseded.json")
-        ):
-            if index >= 1024:
-                raise ProtectedError("protected execution archive lookup exceeds bound")
-            archived, _, _ = cutover.read_control_json(archive)
-            archived_identity = record(archived.get("identity"))
-            if (
-                archived_identity.get("reservation_id") == reservation_id
-                or archived_identity.get("operation_id") == operation_id
-            ):
-                raise ProtectedError("pending successor acquired a receipt before release")
-        final_live_old = _prove_plan_old_live(config, plan, selected_runner)
-        if final_live_old != live_old:
-            raise ProtectedError("live OLD state changed before no-mutation owner release")
-        latest = cutover._read_control_owner(config)  # pyright: ignore[reportPrivateUsage]
-        if latest is None or latest[1].key() != owner_identity.key():
-            raise ProtectedError("durable owner changed after no-mutation proof")
-        if owner.get("phase") == "RELEASED":
-            if owner.get("release_evidence") != release_evidence:
-                raise ProtectedError("owner was released with different no-mutation evidence")
-            return {"status": "ALREADY_RELEASED", "owner": owner, **release_evidence}
-        released = cutover._save_control_owner(  # pyright: ignore[reportPrivateUsage]
-            config,
-            {**owner, "phase": "RELEASED", "release_evidence": release_evidence},
-            expected=owner_identity,
-        )
-        return {"status": "RELEASED_NO_MUTATION", "owner": released, **release_evidence}
-
-
 def launch(
     request: Request | RollbackRequest,
     *,
@@ -3670,8 +3381,6 @@ def launch(
         and prior.get("identity") != request.identity
         and supersede_prior_execution_receipt(request, receipt_file, prior)
     ):
-        if not isinstance(request, Request):
-            raise ProtectedError("only protected apply receipts can be superseded")
         store.superseded_receipt = {
             "path": str(
                 request.receipt_path.with_name(
@@ -3679,8 +3388,7 @@ def launch(
                 )
             ),
             "execution_id": prior["execution_id"],
-            "sha256": request.reconciled_stranded_receipt_sha256
-            or request.prior_execution_receipt_sha256,
+            "sha256": request.identity["prior_execution_receipt_sha256"],
         }
         prior = receipt_file.read()
     if prior is not None:
@@ -3705,28 +3413,11 @@ def launch(
             )
         return {**prior, "reused": True}
     if isinstance(request, Request) and request.prior_execution_receipt_sha256 is not None:
-        predecessor_archive = _find_archived_prior_receipt(
+        store.superseded_receipt = _find_archived_prior_receipt(
             request.receipt_path, lambda sha: sha == request.prior_execution_receipt_sha256
         )
-        if predecessor_archive is None:
+        if store.superseded_receipt is None:
             raise ProtectedError("authorized prior receipt archive is absent or changed")
-        if request.reconciled_stranded_receipt_sha256 is not None:
-            reconciled_owner = _reconciled_prestart_owner_stub(request, owner)
-            binding = _load_reconciled_prestart_binding(request.config, reconciled_owner)
-            if binding is None:
-                raise ProtectedError("reconciled stranded receipt proof is absent")
-            stranded_execution_id = text(binding.get("stranded_execution_id"))
-            store.superseded_receipt = {
-                "path": str(
-                    request.receipt_path.with_name(
-                        f"{request.receipt_path.stem}.{stranded_execution_id}.superseded.json"
-                    )
-                ),
-                "execution_id": stranded_execution_id,
-                "sha256": request.reconciled_stranded_receipt_sha256,
-            }
-        else:
-            store.superseded_receipt = predecessor_archive
     if owner.get("phase") in {"MUTATION_IN_PROGRESS", "TERMINAL_CAPTURE_PENDING"}:
         raise ProtectedError(
             "started owner has no reusable protected terminal receipt; reconcile exact evidence"
@@ -4058,27 +3749,6 @@ def parser() -> argparse.ArgumentParser:
         "plan-sha256",
     ):
         reconcile_parser.add_argument("--" + name, required=True)
-    release_prestart_parser = commands.add_parser(
-        "release-prestart-successor-no-mutation", allow_abbrev=False
-    )
-    for name in (
-        "source-worktree",
-        "expected-head",
-        "expected-tree",
-        "legacy-worktree",
-        "legacy-head",
-        "legacy-tree",
-        "plan-file",
-        "reservation-id",
-        "operation-id",
-        "original-control-head",
-        "original-control-tree",
-        "current-recovery-control-head",
-        "current-recovery-control-tree",
-        "managed-receipt-sha256",
-        "plan-sha256",
-    ):
-        release_prestart_parser.add_argument("--" + name, required=True)
     return cli
 
 
@@ -4099,10 +3769,6 @@ def main(argv: Sequence[str] | None = None) -> int:
             result = cmd_reconcile_prestart_failure(args)
             print(canonical(result))
             return 0 if result["status"] in {"RECONCILED", "ALREADY_RECONCILED"} else 74
-        if args.action == "release-prestart-successor-no-mutation":
-            result = cmd_release_prestart_successor_no_mutation(args)
-            print(canonical(result))
-            return 0 if result["status"] in {"RELEASED_NO_MUTATION", "ALREADY_RELEASED"} else 74
         version = cutover.control_version()
         if args.action == "rollback":
             reservation_config = build_reservation_config(args, for_action="rollback")
@@ -4123,9 +3789,20 @@ def main(argv: Sequence[str] | None = None) -> int:
         prior_execution_path = reservation_config.scheduler_root / (
             ROLLBACK_RECEIPT_NAME if args.action == "rollback" else RECEIPT_NAME
         )
+        failed_predecessor_sha: str | None = None
+        prior_execution: Record | None = None
+        if args.action == "apply":
+            failed_predecessor_sha = _failed_terminal_predecessor_receipt_sha256(prior_owner)
+            if os.path.lexists(prior_execution_path):
+                prior_execution = ReceiptFile(prior_execution_path).read()
+                if prior_execution is None:
+                    raise ProtectedError("prior execution disappeared before reservation")
+                if prior_execution.get("status") == "FAILED" and failed_predecessor_sha is None:
+                    raise ProtectedError(
+                        "failed protected receipt is outside the exact successor bridge"
+                    )
         released_replay = prior_owner is not None and os.path.lexists(prior_execution_path)
         if released_replay and args.action == "apply" and prior_owner is not None:
-            prior_execution = ReceiptFile(prior_execution_path).read()
             if prior_execution is None:
                 raise ProtectedError("prior execution disappeared before reservation")
             prior_link = prior_execution.get("managed_receipt")
@@ -4138,25 +3815,13 @@ def main(argv: Sequence[str] | None = None) -> int:
                 and cast(Record, prior_link).get("sha256")
                 == _existing_receipt_sha256(reservation_config.receipt_path)
             )
+        if failed_predecessor_sha is not None:
+            released_replay = False
         prepared_request: Request | None = None
         predecessor_release_evidence: Record | None = None
         recovered_predecessor_sha: str | None | _Unset = _UNSET
-        recovered_prestart_binding: Record | None = None
-        if (
-            args.action == "apply"
-            and prior_owner is not None
-            and prior_owner.get("phase") == "RELEASED"
-            and record(prior_owner.get("release_evidence")).get("kind")
-            == "PRESTART_FAILURE_NO_MUTATION"
-        ):
-            recovered_prestart_binding = _load_reconciled_prestart_binding(
-                reservation_config, prior_owner
-            )
-            if recovered_prestart_binding is None:
-                raise ProtectedError("released pre-start owner has no verified reconciliation")
-            recovered_predecessor_sha = text(
-                recovered_prestart_binding.get("predecessor_protected_receipt_sha256")
-            )
+        if args.action == "apply" and failed_predecessor_sha is not None:
+            recovered_predecessor_sha = failed_predecessor_sha
         elif args.action == "apply" and not os.path.lexists(prior_execution_path):
             recovered_predecessor_sha = _reconciled_predecessor_receipt_sha256(
                 reservation_config, prior_owner
@@ -4176,16 +3841,6 @@ def main(argv: Sequence[str] | None = None) -> int:
                 reservation_id=reservation_id,
                 owner_id_argument=False,
                 prior_execution_receipt_sha256=recovered_predecessor_sha,
-                reconciled_stranded_receipt_sha256=(
-                    None
-                    if recovered_prestart_binding is None
-                    else text(recovered_prestart_binding.get("stranded_receipt_sha256"))
-                ),
-                reconciliation_record_sha256=(
-                    None
-                    if recovered_prestart_binding is None
-                    else text(recovered_prestart_binding.get("reconciliation_record_sha256"))
-                ),
             )
             predecessor_release_evidence = _require_released_success_evidence(
                 prepared_request, prior_owner
@@ -4210,6 +3865,19 @@ def main(argv: Sequence[str] | None = None) -> int:
             owner = prior_owner
         else:
             if prepared_request is not None:
+                predecessor_live_verifier: Callable[[], None] | None = None
+                if (
+                    prior_owner is not None
+                    and predecessor_release_evidence is not None
+                    and predecessor_release_evidence.get("retired_failed_terminal_evidence")
+                    is not None
+                ):
+                    predecessor_live_verifier = _failed_terminal_bridge_live_verifier(
+                        prepared_request,
+                        prior_owner,
+                        predecessor_release_evidence,
+                        runner=cutover.run_command,
+                    )
                 owner = cutover.acquire_control_owner(
                     reservation_config,
                     action=args.action,
@@ -4220,6 +3888,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                     operation_id=prepared_request.operation_id,
                     managed_receipt_sha256=prepared_request.managed_receipt_sha256,
                     predecessor_release_evidence=predecessor_release_evidence,
+                    predecessor_live_verifier=predecessor_live_verifier,
                 )
                 reservation_id = text(owner.get("reservation_id"))
             else:
@@ -4269,7 +3938,6 @@ def main(argv: Sequence[str] | None = None) -> int:
             if prepared_request is not None:
                 request = prepared_request
             else:
-                saved_reconciled_binding = _saved_reconciled_request_binding(owner)
                 request = make_request(
                     config,
                     Path(args.legacy_worktree),
@@ -4284,34 +3952,6 @@ def main(argv: Sequence[str] | None = None) -> int:
                         cast(str | None, owner.get("managed_receipt_sha256"))
                         if already_bound
                         else _UNSET
-                    ),
-                    prior_execution_receipt_sha256=(
-                        _UNSET
-                        if saved_reconciled_binding is None
-                        else cast(
-                            str,
-                            saved_reconciled_binding.get(
-                                "prior_execution_receipt_sha256"
-                            ),
-                        )
-                    ),
-                    reconciled_stranded_receipt_sha256=(
-                        None
-                        if saved_reconciled_binding is None
-                        else cast(
-                            str,
-                            saved_reconciled_binding.get(
-                                "reconciled_stranded_receipt_sha256"
-                            ),
-                        )
-                    ),
-                    reconciliation_record_sha256=(
-                        None
-                        if saved_reconciled_binding is None
-                        else cast(
-                            str,
-                            saved_reconciled_binding.get("reconciliation_record_sha256"),
-                        )
                     ),
                 )
             if already_bound and request.operation_id != bound_operation_id:

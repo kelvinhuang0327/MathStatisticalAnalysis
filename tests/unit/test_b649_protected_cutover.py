@@ -1402,6 +1402,204 @@ def _configure_reconcile_cli(
     monkeypatch.setattr(cutover, "run_command", harness.runner)
 
 
+def _release_owner_with_evidence(
+    incident: StrandedIncident,
+    release_evidence: dict[str, object],
+) -> protected.Record:
+    stored = cutover._read_control_owner(incident.request.config)
+    assert stored is not None
+    owner, owner_file_identity = stored
+    return cutover._save_control_owner(
+        incident.request.config,
+        {**owner, "phase": "RELEASED", "release_evidence": release_evidence},
+        expected=owner_file_identity,
+    )
+
+
+def test_legacy_released_prestart_owner_migrates_and_replay_is_write_free(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    incident = _make_stranded_prestart_incident(
+        harness, monkeypatch, preserve_legacy_parent_behavior=True
+    )
+    _configure_reconcile_cli(harness, monkeypatch, incident)
+    legacy_release_evidence: protected.Record = {
+        "kind": "EXPLICIT_ABANDON_NO_MUTATION",
+        "verified": True,
+    }
+    legacy_owner = _release_owner_with_evidence(incident, legacy_release_evidence)
+    preserved_owner = {
+        key: value for key, value in legacy_owner.items() if key != "release_evidence"
+    }
+    stranded_sha256 = hashlib.sha256(incident.request.receipt_path.read_bytes()).hexdigest()
+    before = _write_snapshot(harness, incident)
+    argv = _incident_reconciliation_argv(incident)
+
+    assert protected.main(argv) == 0
+    result = json.loads(capsys.readouterr().out.splitlines()[-1])
+    assert result["status"] == "RECONCILED"
+
+    reconciliation_path = protected._prestart_reconciliation_record_path(
+        incident.request.config, str(incident.request.reservation_id)
+    )
+    reconciliation, reconciliation_identity = protected._load_prestart_reconciliation(
+        reconciliation_path
+    )
+    assert reconciliation["legacy_release_evidence"] == legacy_release_evidence
+    migrated_owner_snapshot = cutover._read_control_owner(incident.request.config)
+    assert migrated_owner_snapshot is not None
+    migrated_owner = migrated_owner_snapshot[0]
+    assert migrated_owner["phase"] == "RELEASED"
+    refreshed_metadata = {"release_evidence", "record_sha256", "updated_at"}
+    assert {
+        key: value for key, value in migrated_owner.items() if key not in refreshed_metadata
+    } == {key: value for key, value in preserved_owner.items() if key not in refreshed_metadata}
+    release_evidence = protected.record(migrated_owner["release_evidence"])
+    assert release_evidence == {
+        "kind": "PRESTART_FAILURE_NO_MUTATION",
+        "verified": True,
+        "reconciliation_record_path": str(reconciliation_path),
+        "reconciliation_record_sha256": reconciliation_identity.sha256,
+        "stranded_protected_receipt_sha256": stranded_sha256,
+        "protected_receipt_sha256": incident.predecessor_sha256,
+        "predecessor_protected_receipt_sha256": incident.predecessor_sha256,
+        "managed_receipt_sha256": incident.managed_sha256,
+    }
+
+    after_migration = _write_snapshot(harness, incident)
+    assert after_migration != before
+    assert protected.main(argv) == 0
+    replay = json.loads(capsys.readouterr().out.splitlines()[-1])
+    assert replay["status"] == "ALREADY_RECONCILED"
+    assert _write_snapshot(harness, incident) == after_migration
+    assert tuple(harness.launchd.mutation_calls) == incident.mutations_before
+
+
+def test_legacy_released_owner_rejects_another_release_kind_without_writes(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    incident = _make_stranded_prestart_incident(
+        harness, monkeypatch, preserve_legacy_parent_behavior=True
+    )
+    _configure_reconcile_cli(harness, monkeypatch, incident)
+    _release_owner_with_evidence(
+        incident,
+        {"kind": "EXPLICIT_ABANDON_WITH_MUTATION", "verified": True},
+    )
+    before = _write_snapshot(harness, incident)
+
+    assert protected.main(_incident_reconciliation_argv(incident)) == claims.UNVERIFIABLE
+    assert "INCOMPLETE_OR_AMBIGUOUS" in capsys.readouterr().out
+    assert _write_snapshot(harness, incident) == before
+
+
+@pytest.mark.parametrize("defect", ["missing", "wrong"])
+def test_legacy_released_owner_requires_exact_predecessor_archive_without_writes(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    defect: str,
+) -> None:
+    incident = _make_stranded_prestart_incident(
+        harness, monkeypatch, preserve_legacy_parent_behavior=True
+    )
+    _configure_reconcile_cli(harness, monkeypatch, incident)
+    _release_owner_with_evidence(
+        incident,
+        {"kind": "EXPLICIT_ABANDON_NO_MUTATION", "verified": True},
+    )
+    archived = protected._find_archived_prior_receipt(
+        incident.request.receipt_path,
+        lambda sha256: sha256 == incident.predecessor_sha256,
+    )
+    assert archived is not None
+    archived_path = Path(str(protected.record(archived).get("path")))
+    if defect == "missing":
+        archived_path.unlink()
+    else:
+        archived_path.write_bytes(archived_path.read_bytes() + b"\n")
+    before = _write_snapshot(harness, incident)
+
+    assert protected.main(_incident_reconciliation_argv(incident)) == claims.UNVERIFIABLE
+    assert "INCOMPLETE_OR_AMBIGUOUS" in capsys.readouterr().out
+    assert _write_snapshot(harness, incident) == before
+
+
+def test_legacy_released_owner_rejects_managed_success_drift_without_writes(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    incident = _make_stranded_prestart_incident(
+        harness, monkeypatch, preserve_legacy_parent_behavior=True
+    )
+    _configure_reconcile_cli(harness, monkeypatch, incident)
+    _release_owner_with_evidence(
+        incident,
+        {"kind": "EXPLICIT_ABANDON_NO_MUTATION", "verified": True},
+    )
+    receipt_path = incident.request.config.receipt_path
+    receipt_path.write_bytes(receipt_path.read_bytes() + b" ")
+    before = _write_snapshot(harness, incident)
+
+    assert protected.main(_incident_reconciliation_argv(incident)) == claims.UNVERIFIABLE
+    assert "INCOMPLETE_OR_AMBIGUOUS" in capsys.readouterr().out
+    assert _write_snapshot(harness, incident) == before
+
+
+def test_legacy_released_owner_rejects_old_live_state_drift_without_writes(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    incident = _make_stranded_prestart_incident(
+        harness, monkeypatch, preserve_legacy_parent_behavior=True
+    )
+    _configure_reconcile_cli(harness, monkeypatch, incident)
+    _release_owner_with_evidence(
+        incident,
+        {"kind": "EXPLICIT_ABANDON_NO_MUTATION", "verified": True},
+    )
+    incident.request.config.plist_path.write_bytes(b"drifted OLD plist")
+    before = _write_snapshot(harness, incident)
+
+    assert protected.main(_incident_reconciliation_argv(incident)) == claims.UNVERIFIABLE
+    assert "INCOMPLETE_OR_AMBIGUOUS" in capsys.readouterr().out
+    assert _write_snapshot(harness, incident) == before
+    assert tuple(harness.launchd.mutation_calls) == incident.mutations_before
+
+
+def test_legacy_released_owner_requires_inactive_claimstore_without_writes(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    incident = _make_stranded_prestart_incident(
+        harness, monkeypatch, preserve_legacy_parent_behavior=True
+    )
+    _configure_reconcile_cli(harness, monkeypatch, incident)
+    _release_owner_with_evidence(
+        incident,
+        {"kind": "EXPLICIT_ABANDON_NO_MUTATION", "verified": True},
+    )
+    before = _write_snapshot(harness, incident)
+
+    with monkeypatch.context() as claim_patch:
+
+        def active_claim(_store: claims.ClaimStore, _task_key: str) -> dict[str, object]:
+            return {"status": "ACTIVE"}
+
+        claim_patch.setattr(claims.ClaimStore, "inspect", active_claim)
+        assert protected.main(_incident_reconciliation_argv(incident)) == claims.UNVERIFIABLE
+        assert "INCOMPLETE_OR_AMBIGUOUS" in capsys.readouterr().out
+
+    assert _write_snapshot(harness, incident) == before
+
+
 def test_historical_incident_reconciles_once_then_successor_binds_archived_v5(
     harness: Harness,
     monkeypatch: pytest.MonkeyPatch,

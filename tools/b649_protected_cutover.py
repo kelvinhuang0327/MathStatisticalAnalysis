@@ -2485,6 +2485,18 @@ def cmd_reconcile_prestart_failure(
         ):
             raise ProtectedError("durable owner does not match the exact pre-start operation")
 
+        legacy_release_evidence: Record | None = None
+        if owner.get("phase") == "RELEASED":
+            current_release_evidence = record(owner.get("release_evidence"))
+            if (
+                set(current_release_evidence) == {"kind", "verified"}
+                and current_release_evidence.get("kind") == "EXPLICIT_ABANDON_NO_MUTATION"
+                and current_release_evidence.get("verified") is True
+            ):
+                legacy_release_evidence = dict(current_release_evidence)
+            elif current_release_evidence.get("kind") != "PRESTART_FAILURE_NO_MUTATION":
+                raise ProtectedError("released owner has unsupported release evidence")
+
         target = {
             "source_worktree": str(config.source_worktree),
             "head": config.expected_head,
@@ -2763,6 +2775,8 @@ def cmd_reconcile_prestart_failure(
             "unchanged_managed_receipt_sha256": managed_identity.sha256,
             "old_live_state": old_live,
         }
+        if legacy_release_evidence is not None:
+            unsigned_reconciliation["legacy_release_evidence"] = legacy_release_evidence
         existing_reconciliation: Record | None = None
         if os.path.lexists(reservation_record_path):
             existing_reconciliation, _reconciliation_identity = _load_prestart_reconciliation(
@@ -2809,11 +2823,12 @@ def cmd_reconcile_prestart_failure(
         if current_control != recovery_control:
             raise ProtectedError("recovery control identity changed during reconciliation proof")
         if owner.get("phase") == "RELEASED":
-            if owner.get("release_evidence") != release_evidence:
+            if owner.get("release_evidence") == release_evidence:
+                if existing_reconciliation is None:
+                    raise ProtectedError("released owner has no sealed reconciliation record")
+                return {"status": "ALREADY_RECONCILED", **release_evidence}
+            if legacy_release_evidence is None:
                 raise ProtectedError("owner was released with different reconciliation evidence")
-            if existing_reconciliation is None:
-                raise ProtectedError("released owner has no sealed reconciliation record")
-            return {"status": "ALREADY_RECONCILED", **release_evidence}
 
         if not os.path.lexists(archive_path):
             # archive_to verifies the exact source bytes and uses a durable

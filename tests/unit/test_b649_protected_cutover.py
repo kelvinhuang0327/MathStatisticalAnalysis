@@ -462,6 +462,337 @@ def _make_stranded_prestart_incident(
     )
 
 
+@dataclass(frozen=True)
+class ReleasedPrestartSuccessor:
+    request: protected.Request
+    release_record_path: Path
+    predecessor_sha256: str
+
+
+def _make_released_prestart_successor(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    renumber_plist_device: bool = False,
+) -> ReleasedPrestartSuccessor:
+    incident = _make_stranded_prestart_incident(
+        harness, monkeypatch, preserve_legacy_parent_behavior=True
+    )
+    failed_file = protected.ReceiptFile(incident.request.receipt_path)
+    failed_before = failed_file.read()
+    assert failed_before is not None
+    failed = {
+        **failed_before,
+        "status": "FAILED",
+        "phase": "COMPLETED",
+        "exit_code": 1,
+        "result_status": "INCOMPLETE_OR_AMBIGUOUS",
+        "child_exit_code": None,
+    }
+    for marker in ("child_started_at", "child_completed_at"):
+        failed.pop(marker, None)
+    failed_file.write(failed, expected=failed_before)
+
+    harness.launchd.process_rows = ["1 0 0 S /sbin/launchd"]
+    harness.launchd.file_rows = ["p1\nfcwd\nn/"]
+    release_plan = incident.request.load_plan()
+    live_old = protected._prove_plan_old_live(  # pyright: ignore[reportPrivateUsage]
+        incident.request.config, release_plan, harness.launchd
+    )
+    if renumber_plist_device:
+        plist_identity = protected.record(live_old.get("plist_identity"))
+        device = plist_identity.get("device")
+        assert isinstance(device, int)
+        plist_identity["device"] = device + 1
+        live_old["plist_identity"] = plist_identity
+    owner_snapshot = cutover._read_control_owner(  # pyright: ignore[reportPrivateUsage]
+        incident.request.config
+    )
+    assert owner_snapshot is not None
+    owner, owner_file_identity = owner_snapshot
+    reservation_id = "92740b95-103b-4350-8dc0-ee2ffe6cec32"
+    operation_id = "b985e964f4b21c417d08a266c3d13ff8"
+    target = protected.request_owner_target(incident.request)
+    authorization: protected.Record = {
+        "reservation_id": reservation_id,
+        "operation_id": operation_id,
+        "managed_receipt_sha256": incident.managed_sha256,
+        "control_head": owner["control_head"],
+        "control_tree": owner["control_tree"],
+        "action": "apply",
+        "target": target,
+    }
+    receipt = protected.record(failed)
+    receipt_identity = protected.record(receipt.get("identity"))
+    release_record_unsigned: protected.Record = {
+        "schema": "b649-protected-prestart-successor-release-v1",
+        "reservation_id": reservation_id,
+        "operation_id": operation_id,
+        "original_control_identity": {
+            "head": owner["control_head"],
+            "tree": owner["control_tree"],
+        },
+        "recovery_control_identity": {
+            "head": "5dafa9946bb6c8f43979b390d41604606e5064a1",
+            "tree": "99cb4aee76b397587bfdceb9fea77a86c13ccaf5",
+        },
+        "owner_authorization": authorization,
+        "plan_sha256": incident.plan_sha256,
+        "plan_digest": incident.request.plan_digest,
+        "target": target,
+        "managed_receipt_sha256": incident.managed_sha256,
+        "protected_execution_receipt": {
+            "path": str(incident.request.receipt_path),
+            "exists": True,
+            "sha256": hashlib.sha256(incident.request.receipt_path.read_bytes()).hexdigest(),
+            "execution_id": receipt.get("execution_id"),
+            "reservation_id": receipt_identity.get("reservation_id"),
+            "operation_id": receipt_identity.get("operation_id"),
+            "status": receipt.get("status"),
+        },
+        "claim_absent": True,
+        "rollback_receipt_absent": True,
+        "mutation_started": False,
+        "live_old_state": live_old,
+    }
+    release_record = {
+        **release_record_unsigned,
+        "record_sha256": protected.digest(release_record_unsigned),
+    }
+    release_record_path = protected._prestart_successor_release_record_path(  # pyright: ignore[reportPrivateUsage]
+        incident.request.config, reservation_id
+    )
+    cutover._write_json(  # pyright: ignore[reportPrivateUsage]
+        release_record_path, release_record, expected=None
+    )
+    _, release_file_identity, _ = cutover.read_control_json(release_record_path)
+    release_evidence: protected.Record = {
+        "kind": "PRESTART_SUCCESSOR_NO_MUTATION",
+        "verified": True,
+        "release_record_path": str(release_record_path),
+        "release_record_sha256": release_file_identity.sha256,
+        "managed_receipt_sha256": incident.managed_sha256,
+        "protected_receipt_absent_for_operation": True,
+        "claim_absent": True,
+        "mutation_started": False,
+    }
+    updated_owner = {
+        **owner,
+        "reservation_id": reservation_id,
+        "operation_id": operation_id,
+        "target": target,
+        "phase": "RELEASED",
+        "mutation_started": False,
+        "authorization": authorization,
+        "release_evidence": release_evidence,
+    }
+    updated_owner.pop("predecessor_release_evidence", None)
+    cutover._save_control_owner(  # pyright: ignore[reportPrivateUsage]
+        incident.request.config,
+        updated_owner,
+        expected=owner_file_identity,
+    )
+
+    v7_head, v7_tree = "c" * 40, "9" * 40
+    v7_source = harness.fixture.worktree_parent / f"B649_PRODUCTION_{v7_head}"
+    Fixture.make_source(v7_source)
+    harness.launchd.worktree_identities[v7_source] = (v7_head, v7_tree, True)
+    v7_config = replace(
+        incident.request.config,
+        source_worktree=v7_source,
+        expected_head=v7_head,
+        expected_tree=v7_tree,
+        durable_ref=f"refs/heads/runtime/b649/{v7_head}",
+        strict_release_layout=False,
+    )
+    v7_plan = cutover.build_plan(v7_config, runner=harness.launchd)
+    assert v7_plan["status"] == "PASS", v7_plan["failures"]
+    v7_plan_file = harness.fixture.root / "v7-release-plan.json"
+    v7_plan_file.write_text(protected.canonical(v7_plan), encoding="utf-8")
+    v7_plan_file.chmod(0o600)
+    request = protected.make_request(
+        v7_config,
+        incident.request.legacy_worktree,
+        incident.request.legacy_head,
+        incident.request.legacy_tree,
+        v7_plan_file,
+        incident.request.claim_root,
+        reservation_id=str(uuid4()),
+        prior_execution_receipt_sha256=incident.predecessor_sha256,
+    )
+    return ReleasedPrestartSuccessor(request, release_record_path, incident.predecessor_sha256)
+
+
+@pytest.mark.parametrize("renumber_plist_device", [False, True])
+def test_prestart_successor_release_recovers_exact_v5_success_authority(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    renumber_plist_device: bool,
+) -> None:
+    released = _make_released_prestart_successor(
+        harness, monkeypatch, renumber_plist_device=renumber_plist_device
+    )
+    request = released.request
+    owner = cutover.inspect_control_owner(request.config)
+    assert owner is not None and owner["phase"] == "RELEASED"
+    paths = (
+        request.receipt_path,
+        request.config.receipt_path,
+        cutover._control_owner_path(request.config),  # pyright: ignore[reportPrivateUsage]
+        released.release_record_path,
+    )
+    before = {path: path.read_bytes() for path in paths}
+    mutation_calls_before = list(harness.launchd.mutation_calls)
+
+    proof = protected._require_released_success_evidence(request, owner, runner=harness.launchd)
+
+    assert proof is not None
+    assert proof["prior_protected_receipt_sha256"] == released.predecessor_sha256
+    assert (
+        proof["prior_managed_receipt_sha256"]
+        == hashlib.sha256(request.config.receipt_path.read_bytes()).hexdigest()
+    )
+    archived = protected._find_archived_prior_receipt(  # pyright: ignore[reportPrivateUsage]
+        request.receipt_path,
+        lambda value: value == released.predecessor_sha256,
+    )
+    assert archived is not None
+    predecessor, _, _ = cutover.read_control_json(Path(str(archived["path"])))
+    predecessor_identity = protected.record(predecessor.get("identity"))
+    assert proof["prior_reservation_id"] == owner["reservation_id"]
+    assert proof["prior_operation_id"] == owner["operation_id"]
+    assert proof["prior_release_evidence"] == owner["release_evidence"]
+    recovered_link = protected.record(proof["prestart_successor_predecessor_evidence"])
+    assert recovered_link["predecessor_reservation_id"] == predecessor_identity["reservation_id"]
+    assert recovered_link["predecessor_operation_id"] == predecessor_identity["operation_id"]
+    assert proof["evidence_sha256"] == protected.digest(
+        {key: value for key, value in proof.items() if key != "evidence_sha256"}
+    )
+    assert request.prior_execution_receipt_sha256 == released.predecessor_sha256
+    assert {path: path.read_bytes() for path in paths} == before
+
+    next_owner = cutover.acquire_control_owner(
+        request.config,
+        action="apply",
+        target=protected.request_owner_target(request),
+        owner_kind="protected",
+        reservation_id=request.reservation_id,
+        version={"head": request.control_head, "tree": request.control_tree},
+        operation_id=request.operation_id,
+        managed_receipt_sha256=request.managed_receipt_sha256,
+        predecessor_release_evidence=proof,
+    )
+    assert next_owner["phase"] == "AUTHORIZATION_PENDING"
+    assert harness.launchd.mutation_calls == mutation_calls_before
+
+
+@pytest.mark.parametrize(
+    "defect",
+    [
+        "release_record_sha_drift",
+        "owner_reservation_mismatch",
+        "managed_success_drift",
+        "claim_active",
+        "rollback_receipt_exists",
+        "successor_receipt_exists",
+        "successor_archive_exists",
+        "old_live_state_drift",
+    ],
+)
+def test_prestart_successor_release_refuses_invalidated_authority(
+    defect: str,
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    released = _make_released_prestart_successor(harness, monkeypatch)
+    request = released.request
+    owner = cutover.inspect_control_owner(request.config)
+    assert owner is not None
+    if defect == "release_record_sha_drift":
+        released.release_record_path.write_bytes(released.release_record_path.read_bytes() + b" ")
+    elif defect == "owner_reservation_mismatch":
+        _save_bridge_owner(
+            request,
+            {"reservation_id": str(uuid4())},
+            bind_authorization=True,
+        )
+    elif defect == "managed_success_drift":
+        managed, identity, _ = cutover.read_control_json(request.config.receipt_path)
+        managed["status"] = "RECOVERY_REQUIRED"
+        cutover._write_json(  # pyright: ignore[reportPrivateUsage]
+            request.config.receipt_path, managed, expected=identity
+        )
+    elif defect == "claim_active":
+        _seed_active_bridge_claim(request)
+    elif defect == "rollback_receipt_exists":
+        (request.config.scheduler_root / protected.ROLLBACK_RECEIPT_NAME).write_text(
+            "{}", encoding="utf-8"
+        )
+    elif defect == "successor_receipt_exists":
+        current = protected.ReceiptFile(request.receipt_path).read()
+        assert current is not None
+        identity = {
+            **protected.record(current.get("identity")),
+            "reservation_id": owner["reservation_id"],
+            "operation_id": owner["operation_id"],
+        }
+        successor_receipt = {
+            **current,
+            "identity": identity,
+            "execution_id": protected.digest(identity),
+        }
+        successor_receipt["receipt_sha256"] = protected.digest(
+            {key: value for key, value in successor_receipt.items() if key != "receipt_sha256"}
+        )
+        request.receipt_path.write_text(protected.canonical(successor_receipt), encoding="utf-8")
+    elif defect == "successor_archive_exists":
+        archive = request.receipt_path.with_name(
+            f"{request.receipt_path.stem}.successor.superseded.json"
+        )
+        archive.write_text(
+            protected.canonical(
+                {
+                    "identity": {
+                        "reservation_id": owner["reservation_id"],
+                        "operation_id": owner["operation_id"],
+                    }
+                }
+            ),
+            encoding="utf-8",
+        )
+    else:
+        target_source = protected.record(owner["target"])["source_worktree"]
+        harness.launchd.loaded_source = Path(str(target_source))
+
+    with pytest.raises((protected.ProtectedError, cutover.CutoverSafetyError)):
+        protected._require_released_success_evidence(request, owner, runner=harness.launchd)
+
+
+def test_prestart_successor_current_failure_reconciliation_path_remains_unchanged(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    incident = _make_stranded_prestart_incident(
+        harness, monkeypatch, preserve_legacy_parent_behavior=True
+    )
+    _configure_reconcile_cli(harness, monkeypatch, incident)
+
+    assert protected.main(_incident_reconciliation_argv(incident)) == 0
+    assert _last_json_line(capsys)["status"] == "RECONCILED"
+
+    request = incident.request
+    owner = cutover.inspect_control_owner(request.config)
+    assert owner is not None and owner["phase"] == "RELEASED"
+    proof = protected._require_released_success_evidence(
+        request,
+        owner,
+        runner=harness.launchd,
+    )
+    assert proof is not None
+    assert proof["prior_protected_receipt_sha256"] == incident.predecessor_sha256
+
+
 class _DigestOverride:
     def __init__(self, initial: bytes, overrides: dict[bytes, str]) -> None:
         self._bytes = bytearray(initial)

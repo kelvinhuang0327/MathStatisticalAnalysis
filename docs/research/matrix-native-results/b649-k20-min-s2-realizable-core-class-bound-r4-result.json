@@ -1,0 +1,76 @@
+{
+  "TASK_ID": "B649_K20_MIN_S2_REALIZABLE_CORE_CLASS_BOUND_R4",
+  "TASK_STATUS": "SUCCESS_B_CERTIFIED_STRICT_TIGHTENING",
+  "BASE_HEAD": "561333c4f4c9922c84aab28da8f6635f8bc340bc",
+  "BASE_TREE": "ccbddabba21107db393b868a5de62c5ec1986e13",
+  "STRUCTURAL_FAMILY": {
+    "TICKET_COUNT": 20,
+    "TRIPLE_SUPPORT_COUNT": 22,
+    "DOUBLE_SUPPORT_COUNT": 27,
+    "PAIR_REUSE_ALLOWED": false,
+    "TRIPLE_INCIDENCES": 66,
+    "TOTAL_SUPPORT_INCIDENCES": 120,
+    "TICKET_CAPACITY": 6
+  },
+  "DEGREE_PROFILE_CERTIFICATE": {
+    "BOUNDED_NONINCREASING_PROFILES_ENUMERATED": 5126,
+    "PROFILES_PASSING_ALL_PREFIX_PAIR_CAPACITY_CHECKS": 4850,
+    "PAIR_CAPACITY_CERTIFICATE": {
+      "TEN_HIGHEST_DEGREE_TICKETS": 10,
+      "PAIR_USE_LOWER_BOUND_PER_SUPPORT": "binom(k,2) >= 2*k - 3 for k in {0,1,2,3}",
+      "TEN_TICKET_PAIR_CAPACITY": 45,
+      "TEN_HIGHEST_DEGREE_SUM_UPPER_BOUND": 55,
+      "MAXIMUM_SUM_OF_SQUARED_DEGREES": 356,
+      "MAXIMUM_WEDGE_COUNT": 841,
+      "SQUARE_SUM_CASE_TABLE_BY_D10": [
+        {"D10": 0, "MAX_SQUARE_SUM": null},
+        {"D10": 1, "MAX_SQUARE_SUM": null},
+        {"D10": 2, "MAX_SQUARE_SUM": 338},
+        {"D10": 3, "MAX_SQUARE_SUM": 344},
+        {"D10": 4, "MAX_SQUARE_SUM": 350},
+        {"D10": 5, "MAX_SQUARE_SUM": 356},
+        {"D10": 6, "MAX_SQUARE_SUM": null}
+      ],
+      "UNIQUE_MAXIMUM_CANDIDATE_PROFILE": [6, 6, 6, 6, 6, 5, 5, 5, 5, 5, 5, 5, 1, 0, 0, 0, 0, 0, 0, 0],
+      "PROFILE_REALIZABILITY": "NOT ASSERTED"
+    },
+    "CERTIFICATE_METHOD": "Exact finite integer profile enumeration plus a seven-case convex allocation table; no LP/ILP dual or CP-SAT solve was needed"
+  },
+  "SURVIVING_STRUCTURAL_CLASSES": {
+    "COUNT": 4850,
+    "MEANING": "Candidate degree profiles passing necessary pair-capacity inequalities; not a claim that all are realizable",
+    "MOTIF_CLASSES_ENUMERATED": 0
+  },
+  "UNRESOLVED_CORE_CLASS": "Exact realizability and motif signatures of the envelope-maximizing candidate profile (6^5,5^7,1,0^7), including loose-cycle/Pasch-like configurations and compatible residual double edges, were not enumerated. The uniform wedge bound covers this class whether or not it is realizable.",
+  "S3_S4_ENVELOPE": {
+    "EXACT_THREE_TICKET_LOCAL_COUNTS": {
+      "TWO_EDGE_WEDGE": 2800,
+      "NONCORE_TRIANGLE_OF_DOUBLE_SUPPORTS": 20272,
+      "CORE_TRIANGLE_WITH_TRIPLE_SUPPORT": 7000
+    },
+    "MAXIMUM_OVERLAP_WEDGES": 841,
+    "MAXIMUM_NONCORE_TRIANGLES": 258,
+    "S3_UPPER_BOUND": 5386976,
+    "S4_LOWER_BOUND_USED": 0,
+    "FOURTH_ORDER_CORRECTION_USED": 0,
+    "COMBINED_S3_MINUS_CORRECTION_UPPER_BOUND": 5386976
+  },
+  "S1": 372228640,
+  "S2": 63838600,
+  "PREVIOUS_S3_BOUND": 5526080,
+  "FAMILY_UPPER_BOUND": 313777016,
+  "PREVIOUS_FAMILY_UPPER_BOUND": 313915480,
+  "BOUND_IMPROVEMENT": 138464,
+  "INCUMBENT": 313239661,
+  "REMAINING_FAMILY_GAP": 537355,
+  "FAMILY_STATUS": "OPEN_STRICTLY_TIGHTENED",
+  "SOLVER_STATUS": "NOT_USED_EXACT_PROFILE_ENUMERATION",
+  "SOLVER_CONFIGURED_WALL_LIMIT": "NOT_APPLICABLE",
+  "SOLVER_ACTUAL_WALL_TIME": "NOT_APPLICABLE",
+  "SOLVER_CERTIFIED_BOUND": null,
+  "FOCUSED_TESTS": "PASS: 7 passed",
+  "RUFF": "PASS: lint and format",
+  "PYRIGHT": "PASS: 0 errors, 0 warnings, 0 informations",
+  "NEW_PORTFOLIO_SEARCH_STARTED": "NO",
+  "PRODUCTION_MUTATION": "NONE"
+}

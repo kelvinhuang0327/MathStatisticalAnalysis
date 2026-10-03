@@ -2960,3 +2960,86 @@ def test_production_validator_preserves_ordinary_predecessor_proof_shape() -> No
         "managed_receipt_sha256": "c" * 64,
     }
     assert validate(predecessor, owner) == predecessor
+
+
+def _prestart_successor_predecessor_proof() -> tuple[dict[str, object], dict[str, object]]:
+    digest_json = cast(Callable[[object], str], vars(cutover)["_sha256_json"])
+    prior_reservation = "92740b95-103b-4350-8dc0-ee2ffe6cec32"
+    prior_operation = "b985e964f4b21c417d08a266c3d13ff8"
+    release_sha = "a" * 64
+    managed_sha = "c" * 64
+    protected_sha = "b" * 64
+    release_evidence: dict[str, object] = {
+        "kind": "PRESTART_SUCCESSOR_NO_MUTATION",
+        "verified": True,
+        "release_record_path": (f"/tmp/b649-prestart-successor-release-{prior_reservation}.json"),
+        "release_record_sha256": release_sha,
+        "managed_receipt_sha256": managed_sha,
+        "protected_receipt_absent_for_operation": True,
+        "claim_absent": True,
+        "mutation_started": False,
+    }
+    proof: dict[str, object] = {
+        "schema": cutover.PROTECTED_PREDECESSOR_RELEASE_SCHEMA,
+        "prior_reservation_id": prior_reservation,
+        "prior_operation_id": prior_operation,
+        "prior_authorization_sha256": "d" * 64,
+        "prior_release_evidence": release_evidence,
+        "prior_protected_receipt_sha256": protected_sha,
+        "prior_managed_receipt_sha256": managed_sha,
+        "new_reservation_id": "next-reservation",
+        "new_operation_id": "next-operation",
+        "prestart_successor_predecessor_evidence": {
+            "schema": cutover.PRESTART_SUCCESSOR_PREDECESSOR_SCHEMA,
+            "release_record_sha256": release_sha,
+            "predecessor_reservation_id": "v5-reservation",
+            "predecessor_operation_id": "v5-operation",
+            "protected_receipt_sha256": protected_sha,
+            "managed_receipt_sha256": managed_sha,
+        },
+    }
+    proof["evidence_sha256"] = digest_json(proof)
+    successor_owner = {
+        "reservation_id": proof["new_reservation_id"],
+        "operation_id": proof["new_operation_id"],
+        "managed_receipt_sha256": managed_sha,
+        "target": {
+            "source_worktree": "/tmp/B649_PRODUCTION_NEXT",
+            "head": "e" * 40,
+            "tree": "f" * 40,
+        },
+    }
+    return proof, successor_owner
+
+
+@pytest.mark.parametrize(
+    "defect",
+    ["link_missing", "release_sha", "release_path", "release_shape"],
+)
+def test_production_validator_requires_bound_prestart_successor_predecessor_link(
+    defect: str,
+) -> None:
+    digest_json = cast(Callable[[object], str], vars(cutover)["_sha256_json"])
+    validate = cast(
+        Callable[[object, dict[str, object]], dict[str, object]],
+        vars(cutover)["_validate_predecessor_release_evidence"],
+    )
+    proof, successor_owner = _prestart_successor_predecessor_proof()
+    if defect == "link_missing":
+        proof.pop("prestart_successor_predecessor_evidence")
+    else:
+        prior_release = _object(proof["prior_release_evidence"])
+        link = _object(proof["prestart_successor_predecessor_evidence"])
+        if defect == "release_sha":
+            link["release_record_sha256"] = "e" * 64
+        elif defect == "release_path":
+            prior_release["release_record_path"] = "/tmp/wrong-release.json"
+        else:
+            prior_release["claim_absent"] = False
+    proof["evidence_sha256"] = ""
+    proof["evidence_sha256"] = digest_json(
+        {key: value for key, value in proof.items() if key != "evidence_sha256"}
+    )
+
+    with pytest.raises(cutover.CutoverSafetyError):
+        validate(proof, successor_owner)

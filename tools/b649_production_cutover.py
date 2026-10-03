@@ -45,6 +45,7 @@ PLAN_SCHEMA_VERSION = "b649-managed-production-cutover-plan-v1"
 RECEIPT_SCHEMA_VERSION = "b649-managed-production-cutover-receipt-v1"
 CONTROL_OWNER_SCHEMA = "b649-durable-control-owner-v1"
 PROTECTED_PREDECESSOR_RELEASE_SCHEMA = "b649-protected-predecessor-release-v1"
+PRESTART_SUCCESSOR_PREDECESSOR_SCHEMA = "b649-protected-prestart-successor-predecessor-v1"
 FAILED_TERMINAL_RETIREMENT_SCHEMA = "b649-protected-failed-terminal-retirement-v1"
 FAILED_TERMINAL_RETIREMENT_NAME = (
     "b649-failed-terminal-retirement-27e1039be8f511114e06fcae200fcc2f.json"
@@ -1412,7 +1413,14 @@ def _validate_predecessor_release_evidence(value: object, owner: Record) -> Reco
         "evidence_sha256",
     }
     prior_release = _record(evidence.get("prior_release_evidence"), "prior release evidence")
-    allowed = {frozenset(required), frozenset(required | {"retired_failed_terminal_evidence"})}
+    prestart_link_key = "prestart_successor_predecessor_evidence"
+    allowed = {
+        frozenset(required),
+        frozenset(required | {"retired_failed_terminal_evidence"}),
+        frozenset(required | {prestart_link_key}),
+    }
+    prestart_link = evidence.get(prestart_link_key)
+    prestart_successor_release = prior_release.get("kind") == "PRESTART_SUCCESSOR_NO_MUTATION"
     if (
         frozenset(evidence) not in allowed
         or evidence.get("schema") != PROTECTED_PREDECESSOR_RELEASE_SCHEMA
@@ -1421,12 +1429,60 @@ def _validate_predecessor_release_evidence(value: object, owner: Record) -> Reco
         or evidence.get("new_operation_id") != owner.get("operation_id")
         or evidence.get("prior_managed_receipt_sha256") != owner.get("managed_receipt_sha256")
         or prior_release.get("verified") is not True
-        or prior_release.get("protected_receipt_sha256")
-        != evidence.get("prior_protected_receipt_sha256")
         or prior_release.get("managed_receipt_sha256")
         != evidence.get("prior_managed_receipt_sha256")
+        or prestart_successor_release != (prestart_link is not None)
+        or (prestart_link_key in evidence) != (prestart_link is not None)
     ):
         raise CutoverSafetyError("protected predecessor release evidence is invalid")
+    if prestart_successor_release:
+        link = _record(prestart_link, "pre-start successor predecessor link")
+        prior_reservation_id = _text(evidence.get("prior_reservation_id"), "prior reservation id")
+        release_record_path = Path(
+            _text(prior_release.get("release_record_path"), "successor release record path")
+        )
+        if (
+            set(prior_release)
+            != {
+                "kind",
+                "verified",
+                "release_record_path",
+                "release_record_sha256",
+                "managed_receipt_sha256",
+                "protected_receipt_absent_for_operation",
+                "claim_absent",
+                "mutation_started",
+            }
+            or prior_release.get("protected_receipt_absent_for_operation") is not True
+            or prior_release.get("claim_absent") is not True
+            or prior_release.get("mutation_started") is not False
+            or not release_record_path.is_absolute()
+            or release_record_path.name
+            != f"b649-prestart-successor-release-{prior_reservation_id}.json"
+            or re.fullmatch(r"[0-9a-f]{64}", str(prior_release.get("release_record_sha256")))
+            is None
+            or set(link)
+            != {
+                "schema",
+                "release_record_sha256",
+                "predecessor_reservation_id",
+                "predecessor_operation_id",
+                "protected_receipt_sha256",
+                "managed_receipt_sha256",
+            }
+            or link.get("schema") != PRESTART_SUCCESSOR_PREDECESSOR_SCHEMA
+            or link.get("release_record_sha256") != prior_release.get("release_record_sha256")
+            or link.get("protected_receipt_sha256")
+            != evidence.get("prior_protected_receipt_sha256")
+            or link.get("managed_receipt_sha256") != evidence.get("prior_managed_receipt_sha256")
+        ):
+            raise CutoverSafetyError("pre-start successor predecessor link is invalid")
+        _text(link.get("predecessor_reservation_id"), "predecessor reservation id")
+        _text(link.get("predecessor_operation_id"), "predecessor operation id")
+    elif prior_release.get("protected_receipt_sha256") != evidence.get(
+        "prior_protected_receipt_sha256"
+    ):
+        raise CutoverSafetyError("protected predecessor release receipt binding is invalid")
     for key in (
         "prior_authorization_sha256",
         "prior_protected_receipt_sha256",

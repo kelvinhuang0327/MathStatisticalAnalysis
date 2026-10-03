@@ -1,0 +1,4121 @@
+{
+  "canonical_base_commit": "87841ac3e0aabaa95176b58d42519b70d5813707",
+  "convex_s2_formula": "For p occupied pairs, write 15=q*p+r (0<=r<p). Discrete convexity minimizes S2 with p-r overlaps q and r overlaps q+1; all other pairs have overlap 0.",
+  "forbidden_searches_started": {
+    "49_number_enumeration": "NO",
+    "cp_sat_long_run": "NO",
+    "k20_work": "NO",
+    "portfolio_search": "NO"
+  },
+  "global_optimum_status": "PROVEN",
+  "histogram_certificates": [
+    {
+      "dual_certificate": {
+        "common_triple_labels": "1170806",
+        "degree_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "degree_incidence_total": "0",
+        "degree_vertex_total": "0",
+        "pair_multiplicity_classes": [
+          "0",
+          "77546",
+          "207305",
+          "155344",
+          "25760",
+          "112938"
+        ],
+        "row_count": "0",
+        "triple_pair_capacity_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "1279096/5"
+        ]
+      },
+      "occupied_pairs": 4,
+      "pair_multiplicity_histogram_n0_to_n5": [
+        41,
+        0,
+        0,
+        1,
+        3,
+        0
+      ],
+      "s2": 26563278,
+      "s3_integer_upper": 6544216,
+      "s3_upper_rational": "6544216",
+      "u3_upper": 166095258
+    },
+    {
+      "dual_certificate": {
+        "common_triple_labels": "862043",
+        "degree_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "degree_incidence_total": "0",
+        "degree_vertex_total": "0",
+        "pair_multiplicity_classes": [
+          "0",
+          "105840",
+          "207305",
+          "155344",
+          "25760",
+          "56350"
+        ],
+        "row_count": "0",
+        "triple_pair_capacity_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "102921",
+          "1850289/5"
+        ]
+      },
+      "occupied_pairs": 4,
+      "pair_multiplicity_histogram_n0_to_n5": [
+        41,
+        0,
+        0,
+        2,
+        1,
+        1
+      ],
+      "s2": 28360528,
+      "s3_integer_upper": 8852529,
+      "s3_upper_rational": "8852529",
+      "u3_upper": 166606321
+    },
+    {
+      "dual_certificate": {
+        "common_triple_labels": "1170806",
+        "degree_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "degree_incidence_total": "0",
+        "degree_vertex_total": "0",
+        "pair_multiplicity_classes": [
+          "0",
+          "105840",
+          "207305",
+          "155344",
+          "25760",
+          "56350"
+        ],
+        "row_count": "0",
+        "triple_pair_capacity_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "1335684/5"
+        ]
+      },
+      "occupied_pairs": 4,
+      "pair_multiplicity_histogram_n0_to_n5": [
+        41,
+        0,
+        1,
+        0,
+        2,
+        1
+      ],
+      "s2": 29341144,
+      "s3_integer_upper": 8540308,
+      "s3_upper_rational": "8540308",
+      "u3_upper": 165313484
+    },
+    {
+      "dual_certificate": {
+        "common_triple_labels": "452732",
+        "degree_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "degree_incidence_total": "0",
+        "degree_vertex_total": "0",
+        "pair_multiplicity_classes": [
+          "0",
+          "105840",
+          "69293",
+          "175028",
+          "301784",
+          "56350"
+        ],
+        "row_count": "0",
+        "triple_pair_capacity_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "196840",
+          "2532474/5"
+        ]
+      },
+      "occupied_pairs": 4,
+      "pair_multiplicity_histogram_n0_to_n5": [
+        41,
+        0,
+        1,
+        1,
+        0,
+        2
+      ],
+      "s2": 31138394,
+      "s3_integer_upper": 9732044,
+      "s3_upper_rational": "9732044",
+      "u3_upper": 164707970
+    },
+    {
+      "dual_certificate": {
+        "common_triple_labels": "1170806",
+        "degree_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "degree_incidence_total": "0",
+        "degree_vertex_total": "0",
+        "pair_multiplicity_classes": [
+          "0",
+          "105840",
+          "207305",
+          "155344",
+          "25760",
+          "56350"
+        ],
+        "row_count": "0",
+        "triple_pair_capacity_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "1335684/5"
+        ]
+      },
+      "occupied_pairs": 4,
+      "pair_multiplicity_histogram_n0_to_n5": [
+        41,
+        1,
+        0,
+        0,
+        1,
+        2
+      ],
+      "s2": 32770976,
+      "s3_integer_upper": 9308992,
+      "s3_upper_rational": "9308992",
+      "u3_upper": 162652336
+    },
+    {
+      "dual_certificate": {
+        "common_triple_labels": "511784",
+        "degree_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "degree_incidence_total": "0",
+        "degree_vertex_total": "0",
+        "pair_multiplicity_classes": [
+          "0",
+          "20272/3",
+          "108661",
+          "155344",
+          "223048",
+          "763546/3"
+        ],
+        "row_count": "0",
+        "triple_pair_capacity_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "255892",
+          "6707666/15"
+        ]
+      },
+      "occupied_pairs": 5,
+      "pair_multiplicity_histogram_n0_to_n5": [
+        40,
+        0,
+        0,
+        5,
+        0,
+        0
+      ],
+      "s2": 21661710,
+      "s3_integer_upper": 8260896,
+      "s3_upper_rational": "8260896",
+      "u3_upper": 172713506
+    },
+    {
+      "dual_certificate": {
+        "common_triple_labels": "2670577/4",
+        "degree_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "degree_incidence_total": "0",
+        "degree_vertex_total": "0",
+        "pair_multiplicity_classes": [
+          "0",
+          "20272/3",
+          "108661",
+          "155344",
+          "223048",
+          "763546/3"
+        ],
+        "row_count": "0",
+        "triple_pair_capacity_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "400127/4",
+          "23713459/60"
+        ]
+      },
+      "occupied_pairs": 5,
+      "pair_multiplicity_histogram_n0_to_n5": [
+        40,
+        0,
+        1,
+        3,
+        1,
+        0
+      ],
+      "s2": 22642326,
+      "s3_integer_upper": 9452632,
+      "s3_upper_rational": "9452632",
+      "u3_upper": 172924626
+    },
+    {
+      "dual_certificate": {
+        "common_triple_labels": "-277403/2",
+        "degree_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "degree_incidence_total": "0",
+        "degree_vertex_total": "0",
+        "pair_multiplicity_classes": [
+          "0",
+          "77546",
+          "207305",
+          "155344",
+          "25760",
+          "112938"
+        ],
+        "row_count": "0",
+        "triple_pair_capacity_classes": [
+          "0",
+          "0",
+          "0",
+          "667163/2",
+          "873005/2",
+          "6923217/10"
+        ]
+      },
+      "occupied_pairs": 5,
+      "pair_multiplicity_histogram_n0_to_n5": [
+        40,
+        0,
+        2,
+        1,
+        2,
+        0
+      ],
+      "s2": 23622942,
+      "s3_integer_upper": 8909750,
+      "s3_upper_rational": "17819501/2",
+      "u3_upper": 171401128
+    },
+    {
+      "dual_certificate": {
+        "common_triple_labels": "76419",
+        "degree_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "degree_incidence_total": "0",
+        "degree_vertex_total": "0",
+        "pair_multiplicity_classes": [
+          "0",
+          "105840",
+          "69293",
+          "175028",
+          "301784",
+          "56350"
+        ],
+        "row_count": "0",
+        "triple_pair_capacity_classes": [
+          "0",
+          "0",
+          "0",
+          "376313/3",
+          "966833/3",
+          "9478987/15"
+        ]
+      },
+      "occupied_pairs": 5,
+      "pair_multiplicity_histogram_n0_to_n5": [
+        40,
+        0,
+        2,
+        2,
+        0,
+        1
+      ],
+      "s2": 25420192,
+      "s3_integer_upper": 8577900,
+      "s3_upper_rational": "25733701/3",
+      "u3_upper": 169272028
+    },
+    {
+      "dual_certificate": {
+        "common_triple_labels": "77455",
+        "degree_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "degree_incidence_total": "0",
+        "degree_vertex_total": "0",
+        "pair_multiplicity_classes": [
+          "0",
+          "105840",
+          "206843/3",
+          "527156/3",
+          "907424/3",
+          "56350"
+        ],
+        "row_count": "0",
+        "triple_pair_capacity_classes": [
+          "0",
+          "0",
+          "0",
+          "1758841/12",
+          "1661429/6",
+          "9473807/15"
+        ]
+      },
+      "occupied_pairs": 5,
+      "pair_multiplicity_histogram_n0_to_n5": [
+        40,
+        0,
+        3,
+        0,
+        1,
+        1
+      ],
+      "s2": 26400808,
+      "s3_integer_upper": 9100716,
+      "s3_upper_rational": "27302149/3",
+      "u3_upper": 168814228
+    },
+    {
+      "dual_certificate": {
+        "common_triple_labels": "862043",
+        "degree_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "degree_incidence_total": "0",
+        "degree_vertex_total": "0",
+        "pair_multiplicity_classes": [
+          "0",
+          "77546",
+          "207305",
+          "155344",
+          "25760",
+          "112938"
+        ],
+        "row_count": "0",
+        "triple_pair_capacity_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "102921",
+          "1793701/5"
+        ]
+      },
+      "occupied_pairs": 5,
+      "pair_multiplicity_histogram_n0_to_n5": [
+        40,
+        1,
+        0,
+        2,
+        2,
+        0
+      ],
+      "s2": 24274908,
+      "s3_integer_upper": 7789572,
+      "s3_upper_rational": "7789572",
+      "u3_upper": 169628984
+    },
+    {
+      "dual_certificate": {
+        "common_triple_labels": "511784",
+        "degree_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "degree_incidence_total": "0",
+        "degree_vertex_total": "0",
+        "pair_multiplicity_classes": [
+          "-155344",
+          "-49504",
+          "0",
+          "0",
+          "0",
+          "-98994"
+        ],
+        "row_count": "466032",
+        "triple_pair_capacity_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "323596",
+          "2434054/5"
+        ]
+      },
+      "occupied_pairs": 5,
+      "pair_multiplicity_histogram_n0_to_n5": [
+        40,
+        1,
+        0,
+        3,
+        0,
+        1
+      ],
+      "s2": 26072158,
+      "s3_integer_upper": 9506966,
+      "s3_upper_rational": "9506966",
+      "u3_upper": 169549128
+    },
+    {
+      "dual_certificate": {
+        "common_triple_labels": "1170806",
+        "degree_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "degree_incidence_total": "0",
+        "degree_vertex_total": "0",
+        "pair_multiplicity_classes": [
+          "0",
+          "77546",
+          "207305",
+          "155344",
+          "25760",
+          "112938"
+        ],
+        "row_count": "0",
+        "triple_pair_capacity_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "1279096/5"
+        ]
+      },
+      "occupied_pairs": 5,
+      "pair_multiplicity_histogram_n0_to_n5": [
+        40,
+        1,
+        1,
+        0,
+        3,
+        0
+      ],
+      "s2": 25255524,
+      "s3_integer_upper": 7580272,
+      "s3_upper_rational": "7580272",
+      "u3_upper": 168439068
+    },
+    {
+      "dual_certificate": {
+        "common_triple_labels": "862043",
+        "degree_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "degree_incidence_total": "0",
+        "degree_vertex_total": "0",
+        "pair_multiplicity_classes": [
+          "0",
+          "105840",
+          "207305",
+          "155344",
+          "25760",
+          "56350"
+        ],
+        "row_count": "0",
+        "triple_pair_capacity_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "102921",
+          "1850289/5"
+        ]
+      },
+      "occupied_pairs": 5,
+      "pair_multiplicity_histogram_n0_to_n5": [
+        40,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "s2": 27052774,
+      "s3_integer_upper": 10114937,
+      "s3_upper_rational": "10114937",
+      "u3_upper": 169176483
+    },
+    {
+      "dual_certificate": {
+        "common_triple_labels": "77455",
+        "degree_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "degree_incidence_total": "0",
+        "degree_vertex_total": "0",
+        "pair_multiplicity_classes": [
+          "0",
+          "105840",
+          "206843/3",
+          "527156/3",
+          "907424/3",
+          "56350"
+        ],
+        "row_count": "0",
+        "triple_pair_capacity_classes": [
+          "0",
+          "0",
+          "0",
+          "373205/3",
+          "963725/3",
+          "9473807/15"
+        ]
+      },
+      "occupied_pairs": 5,
+      "pair_multiplicity_histogram_n0_to_n5": [
+        40,
+        1,
+        2,
+        0,
+        0,
+        2
+      ],
+      "s2": 29830640,
+      "s3_integer_upper": 9477174,
+      "s3_upper_rational": "9477174",
+      "u3_upper": 165760854
+    },
+    {
+      "dual_certificate": {
+        "common_triple_labels": "1170806",
+        "degree_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "degree_incidence_total": "0",
+        "degree_vertex_total": "0",
+        "pair_multiplicity_classes": [
+          "0",
+          "77546",
+          "207305",
+          "155344",
+          "25760",
+          "112938"
+        ],
+        "row_count": "0",
+        "triple_pair_capacity_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "1279096/5"
+        ]
+      },
+      "occupied_pairs": 5,
+      "pair_multiplicity_histogram_n0_to_n5": [
+        40,
+        2,
+        0,
+        0,
+        2,
+        1
+      ],
+      "s2": 28685356,
+      "s3_integer_upper": 8518720,
+      "s3_upper_rational": "8518720",
+      "u3_upper": 165947684
+    },
+    {
+      "dual_certificate": {
+        "common_triple_labels": "511784",
+        "degree_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "degree_incidence_total": "0",
+        "degree_vertex_total": "0",
+        "pair_multiplicity_classes": [
+          "-155344",
+          "-49504",
+          "0",
+          "0",
+          "0",
+          "-98994"
+        ],
+        "row_count": "466032",
+        "triple_pair_capacity_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "323596",
+          "2434054/5"
+        ]
+      },
+      "occupied_pairs": 5,
+      "pair_multiplicity_histogram_n0_to_n5": [
+        40,
+        2,
+        0,
+        1,
+        0,
+        2
+      ],
+      "s2": 30482606,
+      "s3_integer_upper": 10753036,
+      "s3_upper_rational": "10753036",
+      "u3_upper": 166384750
+    },
+    {
+      "dual_certificate": {
+        "common_triple_labels": "76419",
+        "degree_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "degree_incidence_total": "0",
+        "degree_vertex_total": "0",
+        "pair_multiplicity_classes": [
+          "0",
+          "20272/3",
+          "69293",
+          "175028",
+          "301784",
+          "763546/3"
+        ],
+        "row_count": "0",
+        "triple_pair_capacity_classes": [
+          "0",
+          "0",
+          "0",
+          "376313/3",
+          "966833/3",
+          "2961497/5"
+        ]
+      },
+      "occupied_pairs": 6,
+      "pair_multiplicity_histogram_n0_to_n5": [
+        39,
+        0,
+        3,
+        3,
+        0,
+        0
+      ],
+      "s2": 19701990,
+      "s3_integer_upper": 7298319,
+      "s3_upper_rational": "7298319",
+      "u3_upper": 173710649
+    },
+    {
+      "dual_certificate": {
+        "common_triple_labels": "77455",
+        "degree_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "degree_incidence_total": "0",
+        "degree_vertex_total": "0",
+        "pair_multiplicity_classes": [
+          "0",
+          "20272/3",
+          "206843/3",
+          "527156/3",
+          "907424/3",
+          "763546/3"
+        ],
+        "row_count": "0",
+        "triple_pair_capacity_classes": [
+          "0",
+          "0",
+          "0",
+          "1758841/12",
+          "1661429/6",
+          "8879311/15"
+        ]
+      },
+      "occupied_pairs": 6,
+      "pair_multiplicity_histogram_n0_to_n5": [
+        39,
+        0,
+        4,
+        1,
+        1,
+        0
+      ],
+      "s2": 20682606,
+      "s3_integer_upper": 7889021,
+      "s3_upper_rational": "94668259/12",
+      "u3_upper": 173320735
+    },
+    {
+      "dual_certificate": {
+        "common_triple_labels": "77455",
+        "degree_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "degree_incidence_total": "0",
+        "degree_vertex_total": "0",
+        "pair_multiplicity_classes": [
+          "0",
+          "105840",
+          "206843/3",
+          "527156/3",
+          "907424/3",
+          "56350"
+        ],
+        "row_count": "0",
+        "triple_pair_capacity_classes": [
+          "0",
+          "0",
+          "0",
+          "373205/3",
+          "963725/3",
+          "9473807/15"
+        ]
+      },
+      "occupied_pairs": 6,
+      "pair_multiplicity_histogram_n0_to_n5": [
+        39,
+        0,
+        5,
+        0,
+        0,
+        1
+      ],
+      "s2": 23460472,
+      "s3_integer_upper": 6676462,
+      "s3_upper_rational": "20029387/3",
+      "u3_upper": 169330310
+    },
+    {
+      "dual_certificate": {
+        "common_triple_labels": "511784",
+        "degree_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "degree_incidence_total": "0",
+        "degree_vertex_total": "0",
+        "pair_multiplicity_classes": [
+          "0",
+          "20272/3",
+          "108661",
+          "155344",
+          "223048",
+          "763546/3"
+        ],
+        "row_count": "0",
+        "triple_pair_capacity_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "255892",
+          "6707666/15"
+        ]
+      },
+      "occupied_pairs": 6,
+      "pair_multiplicity_histogram_n0_to_n5": [
+        39,
+        1,
+        1,
+        4,
+        0,
+        0
+      ],
+      "s2": 20353956,
+      "s3_integer_upper": 7941490,
+      "s3_upper_rational": "23824472/3",
+      "u3_upper": 173701854
+    },
+    {
+      "dual_certificate": {
+        "common_triple_labels": "60214",
+        "degree_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "degree_incidence_total": "0",
+        "degree_vertex_total": "0",
+        "pair_multiplicity_classes": [
+          "0",
+          "20272/3",
+          "224084/3",
+          "1033963/6",
+          "872942/3",
+          "763546/3"
+        ],
+        "row_count": "0",
+        "triple_pair_capacity_classes": [
+          "0",
+          "0",
+          "0",
+          "960113/6",
+          "856576/3",
+          "8965516/15"
+        ]
+      },
+      "occupied_pairs": 6,
+      "pair_multiplicity_histogram_n0_to_n5": [
+        39,
+        1,
+        2,
+        2,
+        1,
+        0
+      ],
+      "s2": 21334572,
+      "s3_integer_upper": 8677323,
+      "s3_upper_rational": "26031971/3",
+      "u3_upper": 173457071
+    },
+    {
+      "dual_certificate": {
+        "common_triple_labels": "-65037/2",
+        "degree_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "degree_incidence_total": "0",
+        "degree_vertex_total": "0",
+        "pair_multiplicity_classes": [
+          "0",
+          "20272/3",
+          "409549/3",
+          "155344",
+          "502012/3",
+          "763546/3"
+        ],
+        "row_count": "0",
+        "triple_pair_capacity_classes": [
+          "0",
+          "12831/2",
+          "0",
+          "3051349/12",
+          "347347",
+          "6286119/10"
+        ]
+      },
+      "occupied_pairs": 6,
+      "pair_multiplicity_histogram_n0_to_n5": [
+        39,
+        1,
+        3,
+        0,
+        2,
+        0
+      ],
+      "s2": 22315188,
+      "s3_integer_upper": 8662965,
+      "s3_upper_rational": "17325931/2",
+      "u3_upper": 172462097
+    },
+    {
+      "dual_certificate": {
+        "common_triple_labels": "77455",
+        "degree_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "degree_incidence_total": "0",
+        "degree_vertex_total": "0",
+        "pair_multiplicity_classes": [
+          "0",
+          "105840",
+          "206843/3",
+          "527156/3",
+          "907424/3",
+          "56350"
+        ],
+        "row_count": "0",
+        "triple_pair_capacity_classes": [
+          "0",
+          "0",
+          "0",
+          "373205/3",
+          "963725/3",
+          "9473807/15"
+        ]
+      },
+      "occupied_pairs": 6,
+      "pair_multiplicity_histogram_n0_to_n5": [
+        39,
+        1,
+        3,
+        1,
+        0,
+        1
+      ],
+      "s2": 24112438,
+      "s3_integer_upper": 8198974,
+      "s3_upper_rational": "8198974",
+      "u3_upper": 170200856
+    },
+    {
+      "dual_certificate": {
+        "common_triple_labels": "2921275/4",
+        "degree_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "degree_incidence_total": "0",
+        "degree_vertex_total": "0",
+        "pair_multiplicity_classes": [
+          "-155344",
+          "-445760/3",
+          "0",
+          "0",
+          "35980/3",
+          "297514/3"
+        ],
+        "row_count": "466032",
+        "triple_pair_capacity_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "1116815/12",
+          "22459969/60"
+        ]
+      },
+      "occupied_pairs": 6,
+      "pair_multiplicity_histogram_n0_to_n5": [
+        39,
+        2,
+        0,
+        3,
+        1,
+        0
+      ],
+      "s2": 21986538,
+      "s3_integer_upper": 8468618,
+      "s3_upper_rational": "25405856/3",
+      "u3_upper": 172596400
+    },
+    {
+      "dual_certificate": {
+        "common_triple_labels": "-83601",
+        "degree_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "degree_incidence_total": "0",
+        "degree_vertex_total": "0",
+        "pair_multiplicity_classes": [
+          "0",
+          "122437/3",
+          "511714/3",
+          "155344",
+          "297682/3",
+          "559216/3"
+        ],
+        "row_count": "0",
+        "triple_pair_capacity_classes": [
+          "0",
+          "0",
+          "0",
+          "1781087/6",
+          "381402",
+          "3296307/5"
+        ]
+      },
+      "occupied_pairs": 6,
+      "pair_multiplicity_histogram_n0_to_n5": [
+        39,
+        2,
+        1,
+        1,
+        2,
+        0
+      ],
+      "s2": 22967154,
+      "s3_integer_upper": 8455312,
+      "s3_upper_rational": "50731877/6",
+      "u3_upper": 171602478
+    },
+    {
+      "dual_certificate": {
+        "common_triple_labels": "76419",
+        "degree_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "degree_incidence_total": "0",
+        "degree_vertex_total": "0",
+        "pair_multiplicity_classes": [
+          "0",
+          "20272/3",
+          "69293",
+          "175028",
+          "301784",
+          "763546/3"
+        ],
+        "row_count": "0",
+        "triple_pair_capacity_classes": [
+          "0",
+          "0",
+          "0",
+          "376313/3",
+          "966833/3",
+          "2961497/5"
+        ]
+      },
+      "occupied_pairs": 6,
+      "pair_multiplicity_histogram_n0_to_n5": [
+        39,
+        2,
+        1,
+        2,
+        0,
+        1
+      ],
+      "s2": 24764404,
+      "s3_integer_upper": 9518831,
+      "s3_upper_rational": "9518831",
+      "u3_upper": 170868747
+    },
+    {
+      "dual_certificate": {
+        "common_triple_labels": "60214",
+        "degree_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "degree_incidence_total": "0",
+        "degree_vertex_total": "0",
+        "pair_multiplicity_classes": [
+          "0",
+          "20272/3",
+          "224084/3",
+          "1033963/6",
+          "872942/3",
+          "763546/3"
+        ],
+        "row_count": "0",
+        "triple_pair_capacity_classes": [
+          "0",
+          "0",
+          "0",
+          "960113/6",
+          "856576/3",
+          "8965516/15"
+        ]
+      },
+      "occupied_pairs": 6,
+      "pair_multiplicity_histogram_n0_to_n5": [
+        39,
+        2,
+        2,
+        0,
+        1,
+        1
+      ],
+      "s2": 25745020,
+      "s3_integer_upper": 10038662,
+      "s3_upper_rational": "30115988/3",
+      "u3_upper": 170407962
+    },
+    {
+      "dual_certificate": {
+        "common_triple_labels": "1170806",
+        "degree_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "degree_incidence_total": "0",
+        "degree_vertex_total": "0",
+        "pair_multiplicity_classes": [
+          "0",
+          "77546",
+          "207305",
+          "155344",
+          "25760",
+          "112938"
+        ],
+        "row_count": "0",
+        "triple_pair_capacity_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "1279096/5"
+        ]
+      },
+      "occupied_pairs": 6,
+      "pair_multiplicity_histogram_n0_to_n5": [
+        39,
+        3,
+        0,
+        0,
+        3,
+        0
+      ],
+      "s2": 24599736,
+      "s3_integer_upper": 7162568,
+      "s3_upper_rational": "7162568",
+      "u3_upper": 168677152
+    },
+    {
+      "dual_certificate": {
+        "common_triple_labels": "862043",
+        "degree_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "degree_incidence_total": "0",
+        "degree_vertex_total": "0",
+        "pair_multiplicity_classes": [
+          "0",
+          "77546",
+          "207305",
+          "155344",
+          "25760",
+          "112938"
+        ],
+        "row_count": "0",
+        "triple_pair_capacity_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "102921",
+          "1793701/5"
+        ]
+      },
+      "occupied_pairs": 6,
+      "pair_multiplicity_histogram_n0_to_n5": [
+        39,
+        3,
+        0,
+        1,
+        1,
+        1
+      ],
+      "s2": 26396986,
+      "s3_integer_upper": 9866997,
+      "s3_upper_rational": "9866997",
+      "u3_upper": 169584331
+    },
+    {
+      "dual_certificate": {
+        "common_triple_labels": "77455",
+        "degree_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "degree_incidence_total": "0",
+        "degree_vertex_total": "0",
+        "pair_multiplicity_classes": [
+          "0",
+          "105840",
+          "206843/3",
+          "527156/3",
+          "907424/3",
+          "56350"
+        ],
+        "row_count": "0",
+        "triple_pair_capacity_classes": [
+          "0",
+          "0",
+          "0",
+          "373205/3",
+          "963725/3",
+          "9473807/15"
+        ]
+      },
+      "occupied_pairs": 6,
+      "pair_multiplicity_histogram_n0_to_n5": [
+        39,
+        3,
+        1,
+        0,
+        0,
+        2
+      ],
+      "s2": 29174852,
+      "s3_integer_upper": 10619032,
+      "s3_upper_rational": "31857098/3",
+      "u3_upper": 167558500
+    },
+    {
+      "dual_certificate": {
+        "common_triple_labels": "77455",
+        "degree_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "degree_incidence_total": "0",
+        "degree_vertex_total": "0",
+        "pair_multiplicity_classes": [
+          "0",
+          "20272/3",
+          "206843/3",
+          "527156/3",
+          "907424/3",
+          "763546/3"
+        ],
+        "row_count": "0",
+        "triple_pair_capacity_classes": [
+          "0",
+          "0",
+          "0",
+          "373205/3",
+          "963725/3",
+          "8879311/15"
+        ]
+      },
+      "occupied_pairs": 7,
+      "pair_multiplicity_histogram_n0_to_n5": [
+        38,
+        0,
+        6,
+        1,
+        0,
+        0
+      ],
+      "s2": 17742270,
+      "s3_integer_upper": 5398262,
+      "s3_upper_rational": "16194787/3",
+      "u3_upper": 173770312
+    },
+    {
+      "dual_certificate": {
+        "common_triple_labels": "77455",
+        "degree_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "degree_incidence_total": "0",
+        "degree_vertex_total": "0",
+        "pair_multiplicity_classes": [
+          "0",
+          "20272/3",
+          "206843/3",
+          "527156/3",
+          "907424/3",
+          "763546/3"
+        ],
+        "row_count": "0",
+        "triple_pair_capacity_classes": [
+          "0",
+          "0",
+          "0",
+          "373205/3",
+          "963725/3",
+          "8879311/15"
+        ]
+      },
+      "occupied_pairs": 7,
+      "pair_multiplicity_histogram_n0_to_n5": [
+        38,
+        1,
+        4,
+        2,
+        0,
+        0
+      ],
+      "s2": 18394236,
+      "s3_integer_upper": 6128112,
+      "s3_upper_rational": "18384338/3",
+      "u3_upper": 173848196
+    },
+    {
+      "dual_certificate": {
+        "common_triple_labels": "77455",
+        "degree_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "degree_incidence_total": "0",
+        "degree_vertex_total": "0",
+        "pair_multiplicity_classes": [
+          "0",
+          "20272/3",
+          "206843/3",
+          "527156/3",
+          "907424/3",
+          "763546/3"
+        ],
+        "row_count": "0",
+        "triple_pair_capacity_classes": [
+          "0",
+          "0",
+          "0",
+          "1758841/12",
+          "1661429/6",
+          "8879311/15"
+        ]
+      },
+      "occupied_pairs": 7,
+      "pair_multiplicity_histogram_n0_to_n5": [
+        38,
+        1,
+        5,
+        0,
+        1,
+        0
+      ],
+      "s2": 19374852,
+      "s3_integer_upper": 6649202,
+      "s3_upper_rational": "6649202",
+      "u3_upper": 173388670
+    },
+    {
+      "dual_certificate": {
+        "common_triple_labels": "76419",
+        "degree_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "degree_incidence_total": "0",
+        "degree_vertex_total": "0",
+        "pair_multiplicity_classes": [
+          "0",
+          "20272/3",
+          "69293",
+          "175028",
+          "301784",
+          "763546/3"
+        ],
+        "row_count": "0",
+        "triple_pair_capacity_classes": [
+          "0",
+          "0",
+          "0",
+          "376313/3",
+          "966833/3",
+          "2961497/5"
+        ]
+      },
+      "occupied_pairs": 7,
+      "pair_multiplicity_histogram_n0_to_n5": [
+        38,
+        2,
+        2,
+        3,
+        0,
+        0
+      ],
+      "s2": 19046202,
+      "s3_integer_upper": 6852092,
+      "s3_upper_rational": "20556277/3",
+      "u3_upper": 173920210
+    },
+    {
+      "dual_certificate": {
+        "common_triple_labels": "76419",
+        "degree_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "degree_incidence_total": "0",
+        "degree_vertex_total": "0",
+        "pair_multiplicity_classes": [
+          "0",
+          "20272/3",
+          "69293",
+          "175028",
+          "301784",
+          "763546/3"
+        ],
+        "row_count": "0",
+        "triple_pair_capacity_classes": [
+          "0",
+          "0",
+          "0",
+          "1774381/12",
+          "1664537/6",
+          "2961497/5"
+        ]
+      },
+      "occupied_pairs": 7,
+      "pair_multiplicity_histogram_n0_to_n5": [
+        38,
+        2,
+        3,
+        1,
+        1,
+        0
+      ],
+      "s2": 20026818,
+      "s3_integer_upper": 7444607,
+      "s3_upper_rational": "89335295/12",
+      "u3_upper": 173532109
+    },
+    {
+      "dual_certificate": {
+        "common_triple_labels": "77455",
+        "degree_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "degree_incidence_total": "0",
+        "degree_vertex_total": "0",
+        "pair_multiplicity_classes": [
+          "0",
+          "20272/3",
+          "206843/3",
+          "527156/3",
+          "907424/3",
+          "763546/3"
+        ],
+        "row_count": "0",
+        "triple_pair_capacity_classes": [
+          "0",
+          "0",
+          "0",
+          "373205/3",
+          "963725/3",
+          "8879311/15"
+        ]
+      },
+      "occupied_pairs": 7,
+      "pair_multiplicity_histogram_n0_to_n5": [
+        38,
+        2,
+        4,
+        0,
+        0,
+        1
+      ],
+      "s2": 22804684,
+      "s3_integer_upper": 7620155,
+      "s3_upper_rational": "22860467/3",
+      "u3_upper": 170929791
+    },
+    {
+      "dual_certificate": {
+        "common_triple_labels": "511784",
+        "degree_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "degree_incidence_total": "0",
+        "degree_vertex_total": "0",
+        "pair_multiplicity_classes": [
+          "0",
+          "20272/3",
+          "108661",
+          "155344",
+          "223048",
+          "763546/3"
+        ],
+        "row_count": "0",
+        "triple_pair_capacity_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "255892",
+          "6707666/15"
+        ]
+      },
+      "occupied_pairs": 7,
+      "pair_multiplicity_histogram_n0_to_n5": [
+        38,
+        3,
+        0,
+        4,
+        0,
+        0
+      ],
+      "s2": 19698168,
+      "s3_integer_upper": 7180320,
+      "s3_upper_rational": "7180320",
+      "u3_upper": 173596472
+    },
+    {
+      "dual_certificate": {
+        "common_triple_labels": "-13272",
+        "degree_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "degree_incidence_total": "0",
+        "degree_vertex_total": "0",
+        "pair_multiplicity_classes": [
+          "0",
+          "20272/3",
+          "409549/3",
+          "155344",
+          "502012/3",
+          "763546/3"
+        ],
+        "row_count": "0",
+        "triple_pair_capacity_classes": [
+          "0",
+          "0",
+          "0",
+          "2974363/12",
+          "681863/2",
+          "3110982/5"
+        ]
+      },
+      "occupied_pairs": 7,
+      "pair_multiplicity_histogram_n0_to_n5": [
+        38,
+        3,
+        1,
+        2,
+        1,
+        0
+      ],
+      "s2": 20678784,
+      "s3_integer_upper": 7876328,
+      "s3_upper_rational": "47257973/6",
+      "u3_upper": 173311864
+    },
+    {
+      "dual_certificate": {
+        "common_triple_labels": "-65037/2",
+        "degree_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "degree_incidence_total": "0",
+        "degree_vertex_total": "0",
+        "pair_multiplicity_classes": [
+          "0",
+          "20272/3",
+          "409549/3",
+          "155344",
+          "502012/3",
+          "763546/3"
+        ],
+        "row_count": "0",
+        "triple_pair_capacity_classes": [
+          "0",
+          "12831/2",
+          "0",
+          "3051349/12",
+          "347347",
+          "6286119/10"
+        ]
+      },
+      "occupied_pairs": 7,
+      "pair_multiplicity_histogram_n0_to_n5": [
+        38,
+        3,
+        2,
+        0,
+        2,
+        0
+      ],
+      "s2": 21659400,
+      "s3_integer_upper": 7691783,
+      "s3_upper_rational": "46150699/6",
+      "u3_upper": 172146703
+    },
+    {
+      "dual_certificate": {
+        "common_triple_labels": "77455",
+        "degree_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "degree_incidence_total": "0",
+        "degree_vertex_total": "0",
+        "pair_multiplicity_classes": [
+          "0",
+          "20272/3",
+          "206843/3",
+          "527156/3",
+          "907424/3",
+          "763546/3"
+        ],
+        "row_count": "0",
+        "triple_pair_capacity_classes": [
+          "0",
+          "0",
+          "0",
+          "373205/3",
+          "963725/3",
+          "8879311/15"
+        ]
+      },
+      "occupied_pairs": 7,
+      "pair_multiplicity_histogram_n0_to_n5": [
+        38,
+        3,
+        2,
+        1,
+        0,
+        1
+      ],
+      "s2": 23456650,
+      "s3_integer_upper": 8350006,
+      "s3_upper_rational": "8350006",
+      "u3_upper": 171007676
+    },
+    {
+      "dual_certificate": {
+        "common_triple_labels": "-13272",
+        "degree_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "degree_incidence_total": "0",
+        "degree_vertex_total": "0",
+        "pair_multiplicity_classes": [
+          "0",
+          "20272/3",
+          "409549/3",
+          "155344",
+          "502012/3",
+          "763546/3"
+        ],
+        "row_count": "0",
+        "triple_pair_capacity_classes": [
+          "0",
+          "0",
+          "0",
+          "2974363/12",
+          "681863/2",
+          "3110982/5"
+        ]
+      },
+      "occupied_pairs": 7,
+      "pair_multiplicity_histogram_n0_to_n5": [
+        38,
+        4,
+        0,
+        1,
+        2,
+        0
+      ],
+      "s2": 22311366,
+      "s3_integer_upper": 7554338,
+      "s3_upper_rational": "30217355/4",
+      "u3_upper": 171357292
+    },
+    {
+      "dual_certificate": {
+        "common_triple_labels": "-13272",
+        "degree_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "degree_incidence_total": "0",
+        "degree_vertex_total": "0",
+        "pair_multiplicity_classes": [
+          "-155344",
+          "-445760/3",
+          "0",
+          "0",
+          "35980/3",
+          "297514/3"
+        ],
+        "row_count": "466032",
+        "triple_pair_capacity_classes": [
+          "0",
+          "0",
+          "0",
+          "525056/3",
+          "1459864/3",
+          "3110982/5"
+        ]
+      },
+      "occupied_pairs": 7,
+      "pair_multiplicity_histogram_n0_to_n5": [
+        38,
+        4,
+        0,
+        2,
+        0,
+        1
+      ],
+      "s2": 24108616,
+      "s3_integer_upper": 8845867,
+      "s3_upper_rational": "26537602/3",
+      "u3_upper": 170851571
+    },
+    {
+      "dual_certificate": {
+        "common_triple_labels": "-13272",
+        "degree_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "degree_incidence_total": "0",
+        "degree_vertex_total": "0",
+        "pair_multiplicity_classes": [
+          "0",
+          "20272/3",
+          "409549/3",
+          "155344",
+          "502012/3",
+          "763546/3"
+        ],
+        "row_count": "0",
+        "triple_pair_capacity_classes": [
+          "0",
+          "0",
+          "0",
+          "2974363/12",
+          "681863/2",
+          "3110982/5"
+        ]
+      },
+      "occupied_pairs": 7,
+      "pair_multiplicity_histogram_n0_to_n5": [
+        38,
+        4,
+        1,
+        0,
+        1,
+        1
+      ],
+      "s2": 25089232,
+      "s3_integer_upper": 9104806,
+      "s3_upper_rational": "27314420/3",
+      "u3_upper": 170129894
+    },
+    {
+      "dual_certificate": {
+        "common_triple_labels": "-13272",
+        "degree_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "degree_incidence_total": "0",
+        "degree_vertex_total": "0",
+        "pair_multiplicity_classes": [
+          "0",
+          "20272/3",
+          "206843/3",
+          "527156/3",
+          "907424/3",
+          "763546/3"
+        ],
+        "row_count": "0",
+        "triple_pair_capacity_classes": [
+          "0",
+          "0",
+          "90727/3",
+          "154644",
+          "351484",
+          "3110982/5"
+        ]
+      },
+      "occupied_pairs": 7,
+      "pair_multiplicity_histogram_n0_to_n5": [
+        38,
+        5,
+        0,
+        0,
+        0,
+        2
+      ],
+      "s2": 28519064,
+      "s3_integer_upper": 10511414,
+      "s3_upper_rational": "31534244/3",
+      "u3_upper": 168106670
+    },
+    {
+      "dual_certificate": {
+        "common_triple_labels": "77455",
+        "degree_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "degree_incidence_total": "0",
+        "degree_vertex_total": "0",
+        "pair_multiplicity_classes": [
+          "0",
+          "20272/3",
+          "206843/3",
+          "527156/3",
+          "907424/3",
+          "763546/3"
+        ],
+        "row_count": "0",
+        "triple_pair_capacity_classes": [
+          "0",
+          "0",
+          "0",
+          "373205/3",
+          "963725/3",
+          "8879311/15"
+        ]
+      },
+      "occupied_pairs": 8,
+      "pair_multiplicity_histogram_n0_to_n5": [
+        37,
+        1,
+        7,
+        0,
+        0,
+        0
+      ],
+      "s2": 16434516,
+      "s3_integer_upper": 4224948,
+      "s3_upper_rational": "4224948",
+      "u3_upper": 173904752
+    },
+    {
+      "dual_certificate": {
+        "common_triple_labels": "77455",
+        "degree_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "degree_incidence_total": "0",
+        "degree_vertex_total": "0",
+        "pair_multiplicity_classes": [
+          "-206843/3",
+          "-186571/3",
+          "0",
+          "106771",
+          "233527",
+          "556703/3"
+        ],
+        "row_count": "206843",
+        "triple_pair_capacity_classes": [
+          "0",
+          "0",
+          "0",
+          "373205/3",
+          "963725/3",
+          "8879311/15"
+        ]
+      },
+      "occupied_pairs": 8,
+      "pair_multiplicity_histogram_n0_to_n5": [
+        37,
+        2,
+        5,
+        1,
+        0,
+        0
+      ],
+      "s2": 17086482,
+      "s3_integer_upper": 4954798,
+      "s3_upper_rational": "14864395/3",
+      "u3_upper": 173982636
+    },
+    {
+      "dual_certificate": {
+        "common_triple_labels": "76419",
+        "degree_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "degree_incidence_total": "0",
+        "degree_vertex_total": "0",
+        "pair_multiplicity_classes": [
+          "0",
+          "20272/3",
+          "69293",
+          "175028",
+          "301784",
+          "763546/3"
+        ],
+        "row_count": "0",
+        "triple_pair_capacity_classes": [
+          "0",
+          "0",
+          "0",
+          "376313/3",
+          "966833/3",
+          "2961497/5"
+        ]
+      },
+      "occupied_pairs": 8,
+      "pair_multiplicity_histogram_n0_to_n5": [
+        37,
+        3,
+        3,
+        2,
+        0,
+        0
+      ],
+      "s2": 17738448,
+      "s3_integer_upper": 5683958,
+      "s3_upper_rational": "5683958",
+      "u3_upper": 174059830
+    },
+    {
+      "dual_certificate": {
+        "common_triple_labels": "77455",
+        "degree_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "degree_incidence_total": "0",
+        "degree_vertex_total": "0",
+        "pair_multiplicity_classes": [
+          "0",
+          "20272/3",
+          "206843/3",
+          "527156/3",
+          "907424/3",
+          "763546/3"
+        ],
+        "row_count": "0",
+        "triple_pair_capacity_classes": [
+          "0",
+          "0",
+          "0",
+          "1758841/12",
+          "1661429/6",
+          "8879311/15"
+        ]
+      },
+      "occupied_pairs": 8,
+      "pair_multiplicity_histogram_n0_to_n5": [
+        37,
+        3,
+        4,
+        0,
+        1,
+        0
+      ],
+      "s2": 18719064,
+      "s3_integer_upper": 6205738,
+      "s3_upper_rational": "6205738",
+      "u3_upper": 173600994
+    },
+    {
+      "dual_certificate": {
+        "common_triple_labels": "-13272",
+        "degree_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "degree_incidence_total": "0",
+        "degree_vertex_total": "0",
+        "pair_multiplicity_classes": [
+          "0",
+          "20272/3",
+          "108661",
+          "155344",
+          "223048",
+          "763546/3"
+        ],
+        "row_count": "0",
+        "triple_pair_capacity_classes": [
+          "0",
+          "0",
+          "45073/6",
+          "525056/3",
+          "1292732/3",
+          "3110982/5"
+        ]
+      },
+      "occupied_pairs": 8,
+      "pair_multiplicity_histogram_n0_to_n5": [
+        37,
+        4,
+        1,
+        3,
+        0,
+        0
+      ],
+      "s2": 18390414,
+      "s3_integer_upper": 6350883,
+      "s3_upper_rational": "6350883",
+      "u3_upper": 174074789
+    },
+    {
+      "dual_certificate": {
+        "common_triple_labels": "-13272",
+        "degree_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "degree_incidence_total": "0",
+        "degree_vertex_total": "0",
+        "pair_multiplicity_classes": [
+          "0",
+          "20272/3",
+          "108661",
+          "155344",
+          "223048",
+          "763546/3"
+        ],
+        "row_count": "0",
+        "triple_pair_capacity_classes": [
+          "0",
+          "0",
+          "45073/6",
+          "2723665/12",
+          "1962023/6",
+          "3110982/5"
+        ]
+      },
+      "occupied_pairs": 8,
+      "pair_multiplicity_histogram_n0_to_n5": [
+        37,
+        4,
+        2,
+        1,
+        1,
+        0
+      ],
+      "s2": 19371030,
+      "s3_integer_upper": 6947838,
+      "s3_upper_rational": "83374067/12",
+      "u3_upper": 173691128
+    },
+    {
+      "dual_certificate": {
+        "common_triple_labels": "-13272",
+        "degree_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "degree_incidence_total": "0",
+        "degree_vertex_total": "0",
+        "pair_multiplicity_classes": [
+          "0",
+          "20272/3",
+          "206843/3",
+          "527156/3",
+          "907424/3",
+          "763546/3"
+        ],
+        "row_count": "0",
+        "triple_pair_capacity_classes": [
+          "0",
+          "0",
+          "90727/3",
+          "154644",
+          "351484",
+          "3110982/5"
+        ]
+      },
+      "occupied_pairs": 8,
+      "pair_multiplicity_histogram_n0_to_n5": [
+        37,
+        4,
+        3,
+        0,
+        0,
+        1
+      ],
+      "s2": 22148896,
+      "s3_integer_upper": 7146449,
+      "s3_upper_rational": "21439348/3",
+      "u3_upper": 171111873
+    },
+    {
+      "dual_certificate": {
+        "common_triple_labels": "-13272",
+        "degree_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "degree_incidence_total": "0",
+        "degree_vertex_total": "0",
+        "pair_multiplicity_classes": [
+          "-155344",
+          "-445760/3",
+          "0",
+          "0",
+          "35980/3",
+          "297514/3"
+        ],
+        "row_count": "466032",
+        "triple_pair_capacity_classes": [
+          "0",
+          "0",
+          "0",
+          "2974363/12",
+          "681863/2",
+          "3110982/5"
+        ]
+      },
+      "occupied_pairs": 8,
+      "pair_multiplicity_histogram_n0_to_n5": [
+        37,
+        5,
+        0,
+        2,
+        1,
+        0
+      ],
+      "s2": 20022996,
+      "s3_integer_upper": 6892315,
+      "s3_upper_rational": "13784631/2",
+      "u3_upper": 172983639
+    },
+    {
+      "dual_certificate": {
+        "common_triple_labels": "-13272",
+        "degree_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "degree_incidence_total": "0",
+        "degree_vertex_total": "0",
+        "pair_multiplicity_classes": [
+          "0",
+          "20272/3",
+          "409549/3",
+          "155344",
+          "502012/3",
+          "763546/3"
+        ],
+        "row_count": "0",
+        "triple_pair_capacity_classes": [
+          "0",
+          "0",
+          "0",
+          "2974363/12",
+          "681863/2",
+          "3110982/5"
+        ]
+      },
+      "occupied_pairs": 8,
+      "pair_multiplicity_histogram_n0_to_n5": [
+        37,
+        5,
+        1,
+        0,
+        2,
+        0
+      ],
+      "s2": 21003612,
+      "s3_integer_upper": 6714185,
+      "s3_upper_rational": "20142556/3",
+      "u3_upper": 171824893
+    },
+    {
+      "dual_certificate": {
+        "common_triple_labels": "-13272",
+        "degree_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "degree_incidence_total": "0",
+        "degree_vertex_total": "0",
+        "pair_multiplicity_classes": [
+          "-69293",
+          "-187607/3",
+          "0",
+          "105735",
+          "232491",
+          "555667/3"
+        ],
+        "row_count": "207879",
+        "triple_pair_capacity_classes": [
+          "0",
+          "0",
+          "29897",
+          "466004/3",
+          "1056524/3",
+          "3110982/5"
+        ]
+      },
+      "occupied_pairs": 8,
+      "pair_multiplicity_histogram_n0_to_n5": [
+        37,
+        5,
+        1,
+        1,
+        0,
+        1
+      ],
+      "s2": 22800862,
+      "s3_integer_upper": 7844676,
+      "s3_upper_rational": "7844676",
+      "u3_upper": 171158134
+    },
+    {
+      "dual_certificate": {
+        "common_triple_labels": "-13272",
+        "degree_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "degree_incidence_total": "0",
+        "degree_vertex_total": "0",
+        "pair_multiplicity_classes": [
+          "0",
+          "20272/3",
+          "409549/3",
+          "155344",
+          "502012/3",
+          "763546/3"
+        ],
+        "row_count": "0",
+        "triple_pair_capacity_classes": [
+          "0",
+          "0",
+          "0",
+          "2974363/12",
+          "681863/2",
+          "3110982/5"
+        ]
+      },
+      "occupied_pairs": 8,
+      "pair_multiplicity_histogram_n0_to_n5": [
+        37,
+        6,
+        0,
+        0,
+        1,
+        1
+      ],
+      "s2": 24433444,
+      "s3_integer_upper": 8120793,
+      "s3_upper_rational": "24362380/3",
+      "u3_upper": 169801669
+    },
+    {
+      "dual_certificate": {
+        "common_triple_labels": "77455",
+        "degree_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "degree_incidence_total": "0",
+        "degree_vertex_total": "0",
+        "pair_multiplicity_classes": [
+          "-206843/3",
+          "-186571/3",
+          "0",
+          "106771",
+          "233527",
+          "556703/3"
+        ],
+        "row_count": "206843",
+        "triple_pair_capacity_classes": [
+          "0",
+          "0",
+          "0",
+          "373205/3",
+          "963725/3",
+          "8879311/15"
+        ]
+      },
+      "occupied_pairs": 9,
+      "pair_multiplicity_histogram_n0_to_n5": [
+        36,
+        3,
+        6,
+        0,
+        0,
+        0
+      ],
+      "s2": 15778728,
+      "s3_integer_upper": 3781484,
+      "s3_upper_rational": "3781484",
+      "u3_upper": 174117076
+    },
+    {
+      "dual_certificate": {
+        "common_triple_labels": "-13272",
+        "degree_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "degree_incidence_total": "0",
+        "degree_vertex_total": "0",
+        "pair_multiplicity_classes": [
+          "0",
+          "20272/3",
+          "206843/3",
+          "527156/3",
+          "907424/3",
+          "763546/3"
+        ],
+        "row_count": "0",
+        "triple_pair_capacity_classes": [
+          "0",
+          "0",
+          "90727/3",
+          "154644",
+          "351484",
+          "3110982/5"
+        ]
+      },
+      "occupied_pairs": 9,
+      "pair_multiplicity_histogram_n0_to_n5": [
+        36,
+        4,
+        4,
+        1,
+        0,
+        0
+      ],
+      "s2": 16430694,
+      "s3_integer_upper": 4481092,
+      "s3_upper_rational": "4481092",
+      "u3_upper": 174164718
+    },
+    {
+      "dual_certificate": {
+        "common_triple_labels": "-13272",
+        "degree_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "degree_incidence_total": "0",
+        "degree_vertex_total": "0",
+        "pair_multiplicity_classes": [
+          "0",
+          "20272/3",
+          "69293",
+          "175028",
+          "301784",
+          "763546/3"
+        ],
+        "row_count": "0",
+        "triple_pair_capacity_classes": [
+          "0",
+          "0",
+          "29897",
+          "466004/3",
+          "1056524/3",
+          "3110982/5"
+        ]
+      },
+      "occupied_pairs": 9,
+      "pair_multiplicity_histogram_n0_to_n5": [
+        36,
+        5,
+        2,
+        2,
+        0,
+        0
+      ],
+      "s2": 17082660,
+      "s3_integer_upper": 5177937,
+      "s3_upper_rational": "15533812/3",
+      "u3_upper": 174209597
+    },
+    {
+      "dual_certificate": {
+        "common_triple_labels": "-13272",
+        "degree_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "degree_incidence_total": "0",
+        "degree_vertex_total": "0",
+        "pair_multiplicity_classes": [
+          "0",
+          "20272/3",
+          "206843/3",
+          "527156/3",
+          "907424/3",
+          "763546/3"
+        ],
+        "row_count": "0",
+        "triple_pair_capacity_classes": [
+          "0",
+          "0",
+          "90727/3",
+          "2121749/12",
+          "1842883/6",
+          "3110982/5"
+        ]
+      },
+      "occupied_pairs": 9,
+      "pair_multiplicity_histogram_n0_to_n5": [
+        36,
+        5,
+        3,
+        0,
+        1,
+        0
+      ],
+      "s2": 18063276,
+      "s3_integer_upper": 5701789,
+      "s3_upper_rational": "17105368/3",
+      "u3_upper": 173752833
+    },
+    {
+      "dual_certificate": {
+        "common_triple_labels": "-13272",
+        "degree_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "degree_incidence_total": "0",
+        "degree_vertex_total": "0",
+        "pair_multiplicity_classes": [
+          "0",
+          "20272/3",
+          "108661",
+          "155344",
+          "223048",
+          "763546/3"
+        ],
+        "row_count": "0",
+        "triple_pair_capacity_classes": [
+          "0",
+          "0",
+          "45073/6",
+          "525056/3",
+          "1292732/3",
+          "3110982/5"
+        ]
+      },
+      "occupied_pairs": 9,
+      "pair_multiplicity_histogram_n0_to_n5": [
+        36,
+        6,
+        0,
+        3,
+        0,
+        0
+      ],
+      "s2": 17734626,
+      "s3_integer_upper": 5574688,
+      "s3_upper_rational": "5574688",
+      "u3_upper": 173954382
+    },
+    {
+      "dual_certificate": {
+        "common_triple_labels": "-13272",
+        "degree_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "degree_incidence_total": "0",
+        "degree_vertex_total": "0",
+        "pair_multiplicity_classes": [
+          "0",
+          "20272/3",
+          "409549/3",
+          "155344",
+          "502012/3",
+          "763546/3"
+        ],
+        "row_count": "0",
+        "triple_pair_capacity_classes": [
+          "0",
+          "0",
+          "0",
+          "2974363/12",
+          "681863/2",
+          "3110982/5"
+        ]
+      },
+      "occupied_pairs": 9,
+      "pair_multiplicity_histogram_n0_to_n5": [
+        36,
+        6,
+        1,
+        1,
+        1,
+        0
+      ],
+      "s2": 18715242,
+      "s3_integer_upper": 6052162,
+      "s3_upper_rational": "72625945/12",
+      "u3_upper": 173451240
+    },
+    {
+      "dual_certificate": {
+        "common_triple_labels": "-13272",
+        "degree_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "degree_incidence_total": "0",
+        "degree_vertex_total": "0",
+        "pair_multiplicity_classes": [
+          "0",
+          "20272/3",
+          "206843/3",
+          "527156/3",
+          "907424/3",
+          "763546/3"
+        ],
+        "row_count": "0",
+        "triple_pair_capacity_classes": [
+          "0",
+          "0",
+          "90727/3",
+          "154644",
+          "351484",
+          "3110982/5"
+        ]
+      },
+      "occupied_pairs": 9,
+      "pair_multiplicity_histogram_n0_to_n5": [
+        36,
+        6,
+        2,
+        0,
+        0,
+        1
+      ],
+      "s2": 21493108,
+      "s3_integer_upper": 6642500,
+      "s3_upper_rational": "19927502/3",
+      "u3_upper": 171263712
+    },
+    {
+      "dual_certificate": {
+        "common_triple_labels": "-13272",
+        "degree_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "degree_incidence_total": "0",
+        "degree_vertex_total": "0",
+        "pair_multiplicity_classes": [
+          "0",
+          "20272/3",
+          "409549/3",
+          "155344",
+          "502012/3",
+          "763546/3"
+        ],
+        "row_count": "0",
+        "triple_pair_capacity_classes": [
+          "0",
+          "0",
+          "0",
+          "2974363/12",
+          "681863/2",
+          "3110982/5"
+        ]
+      },
+      "occupied_pairs": 9,
+      "pair_multiplicity_histogram_n0_to_n5": [
+        36,
+        7,
+        0,
+        0,
+        2,
+        0
+      ],
+      "s2": 20347824,
+      "s3_integer_upper": 5730172,
+      "s3_upper_rational": "5730172",
+      "u3_upper": 171496668
+    },
+    {
+      "dual_certificate": {
+        "common_triple_labels": "-13272",
+        "degree_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "degree_incidence_total": "0",
+        "degree_vertex_total": "0",
+        "pair_multiplicity_classes": [
+          "-155344",
+          "-445760/3",
+          "0",
+          "0",
+          "35980/3",
+          "297514/3"
+        ],
+        "row_count": "466032",
+        "triple_pair_capacity_classes": [
+          "0",
+          "0",
+          "0",
+          "525056/3",
+          "1459864/3",
+          "3110982/5"
+        ]
+      },
+      "occupied_pairs": 9,
+      "pair_multiplicity_histogram_n0_to_n5": [
+        36,
+        7,
+        0,
+        1,
+        0,
+        1
+      ],
+      "s2": 22145074,
+      "s3_integer_upper": 7240235,
+      "s3_upper_rational": "21720706/3",
+      "u3_upper": 171209481
+    },
+    {
+      "dual_certificate": {
+        "common_triple_labels": "-13272",
+        "degree_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "degree_incidence_total": "0",
+        "degree_vertex_total": "0",
+        "pair_multiplicity_classes": [
+          "-206843/3",
+          "-186571/3",
+          "0",
+          "106771",
+          "233527",
+          "556703/3"
+        ],
+        "row_count": "206843",
+        "triple_pair_capacity_classes": [
+          "0",
+          "0",
+          "90727/3",
+          "154644",
+          "351484",
+          "3110982/5"
+        ]
+      },
+      "occupied_pairs": 10,
+      "pair_multiplicity_histogram_n0_to_n5": [
+        35,
+        5,
+        5,
+        0,
+        0,
+        0
+      ],
+      "s2": 15122940,
+      "s3_integer_upper": 3277535,
+      "s3_upper_rational": "9832606/3",
+      "u3_upper": 174268915
+    },
+    {
+      "dual_certificate": {
+        "common_triple_labels": "-13272",
+        "degree_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "degree_incidence_total": "0",
+        "degree_vertex_total": "0",
+        "pair_multiplicity_classes": [
+          "0",
+          "20272/3",
+          "206843/3",
+          "527156/3",
+          "907424/3",
+          "763546/3"
+        ],
+        "row_count": "0",
+        "triple_pair_capacity_classes": [
+          "0",
+          "0",
+          "90727/3",
+          "154644",
+          "351484",
+          "3110982/5"
+        ]
+      },
+      "occupied_pairs": 10,
+      "pair_multiplicity_histogram_n0_to_n5": [
+        35,
+        6,
+        3,
+        1,
+        0,
+        0
+      ],
+      "s2": 15774906,
+      "s3_integer_upper": 3977143,
+      "s3_upper_rational": "11931430/3",
+      "u3_upper": 174316557
+    },
+    {
+      "dual_certificate": {
+        "common_triple_labels": "-13272",
+        "degree_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "degree_incidence_total": "0",
+        "degree_vertex_total": "0",
+        "pair_multiplicity_classes": [
+          "0",
+          "20272/3",
+          "69293",
+          "175028",
+          "301784",
+          "763546/3"
+        ],
+        "row_count": "0",
+        "triple_pair_capacity_classes": [
+          "0",
+          "0",
+          "29897",
+          "466004/3",
+          "1056524/3",
+          "3110982/5"
+        ]
+      },
+      "occupied_pairs": 10,
+      "pair_multiplicity_histogram_n0_to_n5": [
+        35,
+        7,
+        1,
+        2,
+        0,
+        0
+      ],
+      "s2": 16426872,
+      "s3_integer_upper": 4671916,
+      "s3_upper_rational": "14015750/3",
+      "u3_upper": 174359364
+    },
+    {
+      "dual_certificate": {
+        "common_triple_labels": "-13272",
+        "degree_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "degree_incidence_total": "0",
+        "degree_vertex_total": "0",
+        "pair_multiplicity_classes": [
+          "0",
+          "20272/3",
+          "224084/3",
+          "1033963/6",
+          "872942/3",
+          "763546/3"
+        ],
+        "row_count": "0",
+        "triple_pair_capacity_classes": [
+          "0",
+          "0",
+          "73486/3",
+          "1107085/6",
+          "930062/3",
+          "3110982/5"
+        ]
+      },
+      "occupied_pairs": 10,
+      "pair_multiplicity_histogram_n0_to_n5": [
+        35,
+        7,
+        2,
+        0,
+        1,
+        0
+      ],
+      "s2": 17407488,
+      "s3_integer_upper": 5186346,
+      "s3_upper_rational": "15559040/3",
+      "u3_upper": 173893178
+    },
+    {
+      "dual_certificate": {
+        "common_triple_labels": "-13272",
+        "degree_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "degree_incidence_total": "0",
+        "degree_vertex_total": "0",
+        "pair_multiplicity_classes": [
+          "0",
+          "20272/3",
+          "409549/3",
+          "155344",
+          "502012/3",
+          "763546/3"
+        ],
+        "row_count": "0",
+        "triple_pair_capacity_classes": [
+          "0",
+          "0",
+          "0",
+          "2974363/12",
+          "681863/2",
+          "3110982/5"
+        ]
+      },
+      "occupied_pairs": 10,
+      "pair_multiplicity_histogram_n0_to_n5": [
+        35,
+        8,
+        0,
+        1,
+        1,
+        0
+      ],
+      "s2": 18059454,
+      "s3_integer_upper": 5068148,
+      "s3_upper_rational": "20272595/4",
+      "u3_upper": 173123014
+    },
+    {
+      "dual_certificate": {
+        "common_triple_labels": "-13272",
+        "degree_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "degree_incidence_total": "0",
+        "degree_vertex_total": "0",
+        "pair_multiplicity_classes": [
+          "0",
+          "20272/3",
+          "206843/3",
+          "527156/3",
+          "907424/3",
+          "763546/3"
+        ],
+        "row_count": "0",
+        "triple_pair_capacity_classes": [
+          "0",
+          "0",
+          "90727/3",
+          "154644",
+          "351484",
+          "3110982/5"
+        ]
+      },
+      "occupied_pairs": 10,
+      "pair_multiplicity_histogram_n0_to_n5": [
+        35,
+        8,
+        1,
+        0,
+        0,
+        1
+      ],
+      "s2": 20837320,
+      "s3_integer_upper": 6138552,
+      "s3_upper_rational": "6138552",
+      "u3_upper": 171415552
+    },
+    {
+      "dual_certificate": {
+        "common_triple_labels": "-13272",
+        "degree_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "degree_incidence_total": "0",
+        "degree_vertex_total": "0",
+        "pair_multiplicity_classes": [
+          "-206843/3",
+          "-186571/3",
+          "0",
+          "106771",
+          "233527",
+          "556703/3"
+        ],
+        "row_count": "206843",
+        "triple_pair_capacity_classes": [
+          "0",
+          "0",
+          "90727/3",
+          "154644",
+          "351484",
+          "3110982/5"
+        ]
+      },
+      "occupied_pairs": 11,
+      "pair_multiplicity_histogram_n0_to_n5": [
+        34,
+        7,
+        4,
+        0,
+        0,
+        0
+      ],
+      "s2": 14467152,
+      "s3_integer_upper": 2773586,
+      "s3_upper_rational": "8320760/3",
+      "u3_upper": 174420754
+    },
+    {
+      "dual_certificate": {
+        "common_triple_labels": "-13272",
+        "degree_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "degree_incidence_total": "0",
+        "degree_vertex_total": "0",
+        "pair_multiplicity_classes": [
+          "0",
+          "20272/3",
+          "206843/3",
+          "527156/3",
+          "907424/3",
+          "763546/3"
+        ],
+        "row_count": "0",
+        "triple_pair_capacity_classes": [
+          "0",
+          "0",
+          "90727/3",
+          "154644",
+          "351484",
+          "3110982/5"
+        ]
+      },
+      "occupied_pairs": 11,
+      "pair_multiplicity_histogram_n0_to_n5": [
+        34,
+        8,
+        2,
+        1,
+        0,
+        0
+      ],
+      "s2": 15119118,
+      "s3_integer_upper": 3473194,
+      "s3_upper_rational": "10419584/3",
+      "u3_upper": 174468396
+    },
+    {
+      "dual_certificate": {
+        "common_triple_labels": "-13272",
+        "degree_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "degree_incidence_total": "0",
+        "degree_vertex_total": "0",
+        "pair_multiplicity_classes": [
+          "0",
+          "20272/3",
+          "108661",
+          "155344",
+          "223048",
+          "763546/3"
+        ],
+        "row_count": "0",
+        "triple_pair_capacity_classes": [
+          "0",
+          "0",
+          "45073/6",
+          "525056/3",
+          "1292732/3",
+          "3110982/5"
+        ]
+      },
+      "occupied_pairs": 11,
+      "pair_multiplicity_histogram_n0_to_n5": [
+        34,
+        9,
+        0,
+        2,
+        0,
+        0
+      ],
+      "s2": 15771084,
+      "s3_integer_upper": 3969056,
+      "s3_upper_rational": "3969056",
+      "u3_upper": 174312292
+    },
+    {
+      "dual_certificate": {
+        "common_triple_labels": "-13272",
+        "degree_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "degree_incidence_total": "0",
+        "degree_vertex_total": "0",
+        "pair_multiplicity_classes": [
+          "0",
+          "20272/3",
+          "409549/3",
+          "155344",
+          "502012/3",
+          "763546/3"
+        ],
+        "row_count": "0",
+        "triple_pair_capacity_classes": [
+          "0",
+          "0",
+          "0",
+          "2974363/12",
+          "681863/2",
+          "3110982/5"
+        ]
+      },
+      "occupied_pairs": 11,
+      "pair_multiplicity_histogram_n0_to_n5": [
+        34,
+        9,
+        1,
+        0,
+        1,
+        0
+      ],
+      "s2": 16751700,
+      "s3_integer_upper": 4227995,
+      "s3_upper_rational": "12683986/3",
+      "u3_upper": 173590615
+    },
+    {
+      "dual_certificate": {
+        "common_triple_labels": "-13272",
+        "degree_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "degree_incidence_total": "0",
+        "degree_vertex_total": "0",
+        "pair_multiplicity_classes": [
+          "0",
+          "20272/3",
+          "206843/3",
+          "527156/3",
+          "907424/3",
+          "763546/3"
+        ],
+        "row_count": "0",
+        "triple_pair_capacity_classes": [
+          "0",
+          "0",
+          "90727/3",
+          "154644",
+          "351484",
+          "3110982/5"
+        ]
+      },
+      "occupied_pairs": 11,
+      "pair_multiplicity_histogram_n0_to_n5": [
+        34,
+        10,
+        0,
+        0,
+        0,
+        1
+      ],
+      "s2": 20181532,
+      "s3_integer_upper": 5634603,
+      "s3_upper_rational": "16903810/3",
+      "u3_upper": 171567391
+    },
+    {
+      "dual_certificate": {
+        "common_triple_labels": "-13272",
+        "degree_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "degree_incidence_total": "0",
+        "degree_vertex_total": "0",
+        "pair_multiplicity_classes": [
+          "-206843/3",
+          "-186571/3",
+          "0",
+          "106771",
+          "233527",
+          "556703/3"
+        ],
+        "row_count": "206843",
+        "triple_pair_capacity_classes": [
+          "0",
+          "0",
+          "90727/3",
+          "154644",
+          "351484",
+          "3110982/5"
+        ]
+      },
+      "occupied_pairs": 12,
+      "pair_multiplicity_histogram_n0_to_n5": [
+        33,
+        9,
+        3,
+        0,
+        0,
+        0
+      ],
+      "s2": 13811364,
+      "s3_integer_upper": 2269638,
+      "s3_upper_rational": "2269638",
+      "u3_upper": 174572594
+    },
+    {
+      "dual_certificate": {
+        "common_triple_labels": "-13272",
+        "degree_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "degree_incidence_total": "0",
+        "degree_vertex_total": "0",
+        "pair_multiplicity_classes": [
+          "0",
+          "20272/3",
+          "69293",
+          "175028",
+          "301784",
+          "763546/3"
+        ],
+        "row_count": "0",
+        "triple_pair_capacity_classes": [
+          "0",
+          "0",
+          "29897",
+          "466004/3",
+          "1056524/3",
+          "3110982/5"
+        ]
+      },
+      "occupied_pairs": 12,
+      "pair_multiplicity_histogram_n0_to_n5": [
+        33,
+        10,
+        1,
+        1,
+        0,
+        0
+      ],
+      "s2": 14463330,
+      "s3_integer_upper": 2967864,
+      "s3_upper_rational": "8903594/3",
+      "u3_upper": 174618854
+    },
+    {
+      "dual_certificate": {
+        "common_triple_labels": "-13272",
+        "degree_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "degree_incidence_total": "0",
+        "degree_vertex_total": "0",
+        "pair_multiplicity_classes": [
+          "0",
+          "20272/3",
+          "409549/3",
+          "155344",
+          "502012/3",
+          "763546/3"
+        ],
+        "row_count": "0",
+        "triple_pair_capacity_classes": [
+          "0",
+          "0",
+          "0",
+          "2974363/12",
+          "681863/2",
+          "3110982/5"
+        ]
+      },
+      "occupied_pairs": 12,
+      "pair_multiplicity_histogram_n0_to_n5": [
+        33,
+        11,
+        0,
+        0,
+        1,
+        0
+      ],
+      "s2": 16095912,
+      "s3_integer_upper": 3243982,
+      "s3_upper_rational": "3243982",
+      "u3_upper": 173262390
+    },
+    {
+      "dual_certificate": {
+        "common_triple_labels": "-13272",
+        "degree_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "degree_incidence_total": "0",
+        "degree_vertex_total": "0",
+        "pair_multiplicity_classes": [
+          "-206843/3",
+          "-186571/3",
+          "0",
+          "106771",
+          "233527",
+          "556703/3"
+        ],
+        "row_count": "206843",
+        "triple_pair_capacity_classes": [
+          "0",
+          "0",
+          "90727/3",
+          "154644",
+          "351484",
+          "3110982/5"
+        ]
+      },
+      "occupied_pairs": 13,
+      "pair_multiplicity_histogram_n0_to_n5": [
+        32,
+        11,
+        2,
+        0,
+        0,
+        0
+      ],
+      "s2": 13155576,
+      "s3_integer_upper": 1765689,
+      "s3_upper_rational": "5297068/3",
+      "u3_upper": 174724433
+    },
+    {
+      "dual_certificate": {
+        "common_triple_labels": "-13272",
+        "degree_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "degree_incidence_total": "0",
+        "degree_vertex_total": "0",
+        "pair_multiplicity_classes": [
+          "0",
+          "20272/3",
+          "108661",
+          "155344",
+          "223048",
+          "763546/3"
+        ],
+        "row_count": "0",
+        "triple_pair_capacity_classes": [
+          "0",
+          "0",
+          "45073/6",
+          "525056/3",
+          "1292732/3",
+          "3110982/5"
+        ]
+      },
+      "occupied_pairs": 13,
+      "pair_multiplicity_histogram_n0_to_n5": [
+        32,
+        12,
+        0,
+        1,
+        0,
+        0
+      ],
+      "s2": 13807542,
+      "s3_integer_upper": 2363424,
+      "s3_upper_rational": "2363424",
+      "u3_upper": 174670202
+    },
+    {
+      "dual_certificate": {
+        "common_triple_labels": "-13272",
+        "degree_classes": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "degree_incidence_total": "0",
+        "degree_vertex_total": "0",
+        "pair_multiplicity_classes": [
+          "-206843/3",
+          "-186571/3",
+          "0",
+          "106771",
+          "233527",
+          "556703/3"
+        ],
+        "row_count": "206843",
+        "triple_pair_capacity_classes": [
+          "0",
+          "0",
+          "90727/3",
+          "154644",
+          "351484",
+          "3110982/5"
+        ]
+      },
+      "occupied_pairs": 14,
+      "pair_multiplicity_histogram_n0_to_n5": [
+        31,
+        13,
+        1,
+        0,
+        0,
+        0
+      ],
+      "s2": 12499788,
+      "s3_integer_upper": 1261740,
+      "s3_upper_rational": "3785222/3",
+      "u3_upper": 174876272
+    }
+  ],
+  "incumbent": 176345645,
+  "new_nonlinear_p4_p14_bound": 174876272,
+  "new_profile_bound": 175977872,
+  "optional_s4": "NOT_NEEDED_SUCCESS_A",
+  "p_family_bounds": [
+    {
+      "balanced_histogram_n0_to_n5": [
+        41,
+        0,
+        0,
+        1,
+        3,
+        0
+      ],
+      "closed_at_incumbent": true,
+      "histograms_examined": 5,
+      "maximizing_pair_multiplicity_histogram_n0_to_n5": [
+        41,
+        0,
+        0,
+        2,
+        1,
+        1
+      ],
+      "maximum_u3_upper": 166606321,
+      "minimum_s2": 26563278,
+      "occupied_pairs": 4,
+      "s2_at_maximum": 28360528,
+      "s3_integer_upper_at_maximum": 8852529,
+      "s3_upper_rational_at_maximum": "8852529"
+    },
+    {
+      "balanced_histogram_n0_to_n5": [
+        40,
+        0,
+        0,
+        5,
+        0,
+        0
+      ],
+      "closed_at_incumbent": true,
+      "histograms_examined": 12,
+      "maximizing_pair_multiplicity_histogram_n0_to_n5": [
+        40,
+        0,
+        1,
+        3,
+        1,
+        0
+      ],
+      "maximum_u3_upper": 172924626,
+      "minimum_s2": 21661710,
+      "occupied_pairs": 5,
+      "s2_at_maximum": 22642326,
+      "s3_integer_upper_at_maximum": 9452632,
+      "s3_upper_rational_at_maximum": "9452632"
+    },
+    {
+      "balanced_histogram_n0_to_n5": [
+        39,
+        0,
+        3,
+        3,
+        0,
+        0
+      ],
+      "closed_at_incumbent": true,
+      "histograms_examined": 14,
+      "maximizing_pair_multiplicity_histogram_n0_to_n5": [
+        39,
+        0,
+        3,
+        3,
+        0,
+        0
+      ],
+      "maximum_u3_upper": 173710649,
+      "minimum_s2": 19701990,
+      "occupied_pairs": 6,
+      "s2_at_maximum": 19701990,
+      "s3_integer_upper_at_maximum": 7298319,
+      "s3_upper_rational_at_maximum": "7298319"
+    },
+    {
+      "balanced_histogram_n0_to_n5": [
+        38,
+        0,
+        6,
+        1,
+        0,
+        0
+      ],
+      "closed_at_incumbent": true,
+      "histograms_examined": 14,
+      "maximizing_pair_multiplicity_histogram_n0_to_n5": [
+        38,
+        2,
+        2,
+        3,
+        0,
+        0
+      ],
+      "maximum_u3_upper": 173920210,
+      "minimum_s2": 17742270,
+      "occupied_pairs": 7,
+      "s2_at_maximum": 19046202,
+      "s3_integer_upper_at_maximum": 6852092,
+      "s3_upper_rational_at_maximum": "20556277/3"
+    },
+    {
+      "balanced_histogram_n0_to_n5": [
+        37,
+        1,
+        7,
+        0,
+        0,
+        0
+      ],
+      "closed_at_incumbent": true,
+      "histograms_examined": 11,
+      "maximizing_pair_multiplicity_histogram_n0_to_n5": [
+        37,
+        4,
+        1,
+        3,
+        0,
+        0
+      ],
+      "maximum_u3_upper": 174074789,
+      "minimum_s2": 16434516,
+      "occupied_pairs": 8,
+      "s2_at_maximum": 18390414,
+      "s3_integer_upper_at_maximum": 6350883,
+      "s3_upper_rational_at_maximum": "6350883"
+    },
+    {
+      "balanced_histogram_n0_to_n5": [
+        36,
+        3,
+        6,
+        0,
+        0,
+        0
+      ],
+      "closed_at_incumbent": true,
+      "histograms_examined": 9,
+      "maximizing_pair_multiplicity_histogram_n0_to_n5": [
+        36,
+        5,
+        2,
+        2,
+        0,
+        0
+      ],
+      "maximum_u3_upper": 174209597,
+      "minimum_s2": 15778728,
+      "occupied_pairs": 9,
+      "s2_at_maximum": 17082660,
+      "s3_integer_upper_at_maximum": 5177937,
+      "s3_upper_rational_at_maximum": "15533812/3"
+    },
+    {
+      "balanced_histogram_n0_to_n5": [
+        35,
+        5,
+        5,
+        0,
+        0,
+        0
+      ],
+      "closed_at_incumbent": true,
+      "histograms_examined": 6,
+      "maximizing_pair_multiplicity_histogram_n0_to_n5": [
+        35,
+        7,
+        1,
+        2,
+        0,
+        0
+      ],
+      "maximum_u3_upper": 174359364,
+      "minimum_s2": 15122940,
+      "occupied_pairs": 10,
+      "s2_at_maximum": 16426872,
+      "s3_integer_upper_at_maximum": 4671916,
+      "s3_upper_rational_at_maximum": "14015750/3"
+    },
+    {
+      "balanced_histogram_n0_to_n5": [
+        34,
+        7,
+        4,
+        0,
+        0,
+        0
+      ],
+      "closed_at_incumbent": true,
+      "histograms_examined": 5,
+      "maximizing_pair_multiplicity_histogram_n0_to_n5": [
+        34,
+        8,
+        2,
+        1,
+        0,
+        0
+      ],
+      "maximum_u3_upper": 174468396,
+      "minimum_s2": 14467152,
+      "occupied_pairs": 11,
+      "s2_at_maximum": 15119118,
+      "s3_integer_upper_at_maximum": 3473194,
+      "s3_upper_rational_at_maximum": "10419584/3"
+    },
+    {
+      "balanced_histogram_n0_to_n5": [
+        33,
+        9,
+        3,
+        0,
+        0,
+        0
+      ],
+      "closed_at_incumbent": true,
+      "histograms_examined": 3,
+      "maximizing_pair_multiplicity_histogram_n0_to_n5": [
+        33,
+        10,
+        1,
+        1,
+        0,
+        0
+      ],
+      "maximum_u3_upper": 174618854,
+      "minimum_s2": 13811364,
+      "occupied_pairs": 12,
+      "s2_at_maximum": 14463330,
+      "s3_integer_upper_at_maximum": 2967864,
+      "s3_upper_rational_at_maximum": "8903594/3"
+    },
+    {
+      "balanced_histogram_n0_to_n5": [
+        32,
+        11,
+        2,
+        0,
+        0,
+        0
+      ],
+      "closed_at_incumbent": true,
+      "histograms_examined": 2,
+      "maximizing_pair_multiplicity_histogram_n0_to_n5": [
+        32,
+        11,
+        2,
+        0,
+        0,
+        0
+      ],
+      "maximum_u3_upper": 174724433,
+      "minimum_s2": 13155576,
+      "occupied_pairs": 13,
+      "s2_at_maximum": 13155576,
+      "s3_integer_upper_at_maximum": 1765689,
+      "s3_upper_rational_at_maximum": "5297068/3"
+    },
+    {
+      "balanced_histogram_n0_to_n5": [
+        31,
+        13,
+        1,
+        0,
+        0,
+        0
+      ],
+      "closed_at_incumbent": true,
+      "histograms_examined": 1,
+      "maximizing_pair_multiplicity_histogram_n0_to_n5": [
+        31,
+        13,
+        1,
+        0,
+        0,
+        0
+      ],
+      "maximum_u3_upper": 174876272,
+      "minimum_s2": 12499788,
+      "occupied_pairs": 14,
+      "s2_at_maximum": 12499788,
+      "s3_integer_upper_at_maximum": 1261740,
+      "s3_upper_rational_at_maximum": "3785222/3"
+    }
+  ],
+  "pair_event_counts_overlap_0_to_5": [
+    107800,
+    574000,
+    1695988,
+    3469942,
+    6224512,
+    10776332
+  ],
+  "previous_profile_bound": 181947724,
+  "prior_closed_profile_families": {
+    "p15_linear_upper": 175977872,
+    "p3_upper": 173828788,
+    "source": "same-profile prior exact-closure certificate; not reanalyzed"
+  },
+  "profile": {
+    "double_labels": 3,
+    "overlap_mass": 15,
+    "pair_count_range": [
+      4,
+      14
+    ],
+    "singleton_labels": 42,
+    "ticket_vertices": 10,
+    "triple_labels": 4
+  },
+  "remaining_gap": 0,
+  "responsible_p_for_new_nonlinear_maximum": 14,
+  "s3_relaxation": {
+    "certificate": "exact rational dual inequalities checked in Python",
+    "integer_histograms_examined": 82,
+    "local_event": "J(a,b,c,z), the exact three-ticket Venn intersection count",
+    "pair_histogram_condition": "For each m=0..5, local triple rows contain 8*n_m pair slots of multiplicity m, where n_m is fixed by the exact histogram.",
+    "relaxation": "nonnegative LP over local pattern counts and degree classes",
+    "solver": "OR-Tools GLOP, single thread; no CP-SAT",
+    "triple_double_intersection_condition": "If t_m is the number of triple-label pair incidences on pairs of multiplicity m, then t_m<=m*n_m; the residual 15-12=3 incidences are exactly the three double labels. z records triple labels common to each local ticket triple.",
+    "vertex_incidence_degree_condition": {
+      "degree_domain": "r_v in 0..6",
+      "degree_histogram_relaxation": "Each vertex occurs in 36 of the 120 local triples; the LP uses nonnegative degree-class counts summing to ten and eighteen total incidences.",
+      "degree_sum": 18,
+      "dual_uniform_over_compatible_degree_profiles": true,
+      "local_degree_floor": "r_a>=a+b-z; r_b>=a+c-z; r_c>=b+c-z"
+    }
+  },
+  "task_id": "B649_K10_NONLINEAR_P4_P14_HIGHER_ORDER_BOUND_R1"
+}

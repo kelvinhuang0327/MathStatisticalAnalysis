@@ -1,0 +1,131 @@
+{
+  "BASE_HEAD": "6d14fe4009047cc9396660db812442798c8b2d0c",
+  "COVERAGE_BOUND_METHOD": "Bonferroni upper bound S1 - S2 + S3",
+  "FAMILY_B_BOUND": 303218880,
+  "FAMILY_B_STATUS": "CLOSED",
+  "INCUMBENT": 313239661,
+  "MULTIPLICITY_PROFILES": [
+    {
+      "counts_by_multiplicity": {
+        "2": 28,
+        "3": 20,
+        "4": 1
+      },
+      "incidence_count": 120,
+      "label_count": 49,
+      "pair_mass": 94,
+      "shared_triple_mass": 24
+    },
+    {
+      "counts_by_multiplicity": {
+        "1": 1,
+        "2": 25,
+        "3": 23
+      },
+      "incidence_count": 120,
+      "label_count": 49,
+      "pair_mass": 94,
+      "shared_triple_mass": 23
+    }
+  ],
+  "MULTIPLICITY_PROFILE_COUNT": 2,
+  "NEW_PORTFOLIO_SEARCH_STARTED": "NO",
+  "OVERLAP_GRAPH": {
+    "ticket_count": 20,
+    "total_overlap_mass": 94,
+    "weight_0_edges": 141,
+    "weight_1_edges": 4,
+    "weight_2_edges": 45
+  },
+  "PAIR_GRAPH_REALIZABLE": "NOT_CLASSIFIED",
+  "PRODUCTION_MUTATION": "NONE",
+  "PROFILE_BOUNDS": [
+    {
+      "family_b_upper_bound": 303218880,
+      "profile": [
+        0,
+        28,
+        20,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "s3_upper_bound": 32612580,
+      "shared_triple_mass": 24
+    },
+    {
+      "family_b_upper_bound": 303141425,
+      "profile": [
+        1,
+        25,
+        23,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "s3_upper_bound": 32535125,
+      "shared_triple_mass": 23
+    }
+  ],
+  "REALIZABLE_PROFILE_COUNT": null,
+  "REALIZABLE_PROFILE_COUNT_NOTE": "Two profiles satisfy the exact incidence, pair-mass, and 49-label constraints. An unlabeled clique-decomposition census was not needed for the universal bound, so profile-specific existence is not classified.",
+  "REMAINING_GAP": -10020781,
+  "S1": 364421560,
+  "S2": 93815260,
+  "S3_BOUND": 32612580,
+  "S3_CERTIFICATE": {
+    "bound_formula": "18*45*2240 + 225*33264 + 48*14420 + 28*2800 + floor(301/3)*206843 + 24*77455",
+    "heavy_heavy_wedge_cap": 33264,
+    "heavy_light_wedge_cap": 14420,
+    "light_light_wedge_cap": 2800,
+    "maximum_shared_triple_mass": 24,
+    "per_common_label_triangle_bonus": 77455,
+    "positive_triangle_zero_common_cap": 206843,
+    "single_heavy_triple_cap": 2240,
+    "single_heavy_triple_slots_upper": 810
+  },
+  "SOLVER_ACTUAL_WALL_TIME": null,
+  "SOLVER_CERTIFIED_BOUND": null,
+  "SOLVER_CONFIGURED_WALL_LIMIT": null,
+  "SOLVER_STATUS": "NOT_RUN",
+  "TASK_BRANCH": "codex/b649-k20-multi-r2-exact-mass94-realization-bound-r5",
+  "TASK_ID": "B649_K20_MULTI_R2_EXACT_MASS94_REALIZATION_BOUND_R5",
+  "TASK_STATUS": "CLOSED",
+  "WEDGE_CERTIFICATE": {
+    "heavy_degree_cap": 6,
+    "heavy_heavy_wedges": 225,
+    "heavy_light_wedges": 48,
+    "light_light_wedges": 28,
+    "ticket_overlap_degree_cap": 13,
+    "total_wedges": 301,
+    "triangle_count": 100
+  }
+}

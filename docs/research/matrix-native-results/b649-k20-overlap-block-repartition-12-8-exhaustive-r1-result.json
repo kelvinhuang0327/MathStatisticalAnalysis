@@ -1,0 +1,438 @@
+{
+  "BEST_COUNT": 313263888,
+  "BEST_DELETED_POINT": 5,
+  "BEST_DELTA_VS_313239661": 24227,
+  "BEST_PORTFOLIO": [
+    [
+      1,
+      2,
+      3,
+      4,
+      5,
+      21
+    ],
+    [
+      1,
+      6,
+      7,
+      8,
+      9,
+      22
+    ],
+    [
+      2,
+      10,
+      11,
+      12,
+      13,
+      22
+    ],
+    [
+      3,
+      6,
+      10,
+      14,
+      15,
+      23
+    ],
+    [
+      2,
+      7,
+      14,
+      16,
+      17,
+      24
+    ],
+    [
+      4,
+      8,
+      10,
+      16,
+      18,
+      25
+    ],
+    [
+      1,
+      11,
+      14,
+      18,
+      19,
+      26
+    ],
+    [
+      4,
+      6,
+      12,
+      19,
+      20,
+      24
+    ],
+    [
+      5,
+      7,
+      11,
+      15,
+      20,
+      25
+    ],
+    [
+      5,
+      9,
+      12,
+      17,
+      18,
+      23
+    ],
+    [
+      9,
+      13,
+      15,
+      16,
+      19,
+      21
+    ],
+    [
+      3,
+      8,
+      13,
+      17,
+      20,
+      26
+    ],
+    [
+      27,
+      29,
+      30,
+      31,
+      32,
+      33
+    ],
+    [
+      27,
+      34,
+      35,
+      36,
+      37,
+      38
+    ],
+    [
+      27,
+      39,
+      40,
+      41,
+      42,
+      43
+    ],
+    [
+      28,
+      29,
+      34,
+      39,
+      44,
+      45
+    ],
+    [
+      28,
+      30,
+      35,
+      40,
+      46,
+      47
+    ],
+    [
+      28,
+      31,
+      36,
+      41,
+      48,
+      49
+    ],
+    [
+      32,
+      37,
+      42,
+      44,
+      46,
+      48
+    ],
+    [
+      33,
+      38,
+      43,
+      45,
+      47,
+      49
+    ]
+  ],
+  "BEST_PORTFOLIO_SHA256": "10d4ef5102ad824fb2c96503501694bef3f878504c8c164698c86f2f1ce35a3b",
+  "BEST_STS_CLASS": "NONCYCLIC",
+  "CANDIDATES_TOTAL": 26,
+  "CANDIDATES_UNIQUE_SHA256_COUNT": 25,
+  "CANDIDATE_COUNTS": [
+    {
+      "DELETED_POINT": 0,
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 313263867,
+      "PORTFOLIO_SHA256": "c0657150a652fcf0ec7ad0fb024e88f5b839ad6dc42150e96726bdb2ca997024",
+      "STS_CLASS": "CYCLIC"
+    },
+    {
+      "DELETED_POINT": 1,
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 313263867,
+      "PORTFOLIO_SHA256": "15db820aac71f11005717431926f1599e1b6b14e578ad8c5f402aa6c76e9bbd9",
+      "STS_CLASS": "CYCLIC"
+    },
+    {
+      "DELETED_POINT": 2,
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 313263867,
+      "PORTFOLIO_SHA256": "67edce28c8a45e16f9e972e59b68d9888f752f3356f350890a6d9bdd997c5acb",
+      "STS_CLASS": "CYCLIC"
+    },
+    {
+      "DELETED_POINT": 3,
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 313263867,
+      "PORTFOLIO_SHA256": "b4c3b19f47fdccf47bc5b7f36221b63eacda73a467cbdcfd049ab50319f31f9c",
+      "STS_CLASS": "CYCLIC"
+    },
+    {
+      "DELETED_POINT": 4,
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 313263867,
+      "PORTFOLIO_SHA256": "47b63210d5d85258f192458925e34dd7bec651edf9efeb92276e618841976a96",
+      "STS_CLASS": "CYCLIC"
+    },
+    {
+      "DELETED_POINT": 5,
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 313263867,
+      "PORTFOLIO_SHA256": "833208dcac60af84f4925e584182e411bb44deb0827a9d0c4c8d4e977f944693",
+      "STS_CLASS": "CYCLIC"
+    },
+    {
+      "DELETED_POINT": 6,
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 313263867,
+      "PORTFOLIO_SHA256": "f9661a21f54b69a774877fc0a8adccc15c90e4087fd33deac29712b501ab4100",
+      "STS_CLASS": "CYCLIC"
+    },
+    {
+      "DELETED_POINT": 7,
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 313263867,
+      "PORTFOLIO_SHA256": "93ee7c29df9790291eb74c73d026c4143ee3f6b60b1678e51ea929a47b8c2525",
+      "STS_CLASS": "CYCLIC"
+    },
+    {
+      "DELETED_POINT": 8,
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 313263867,
+      "PORTFOLIO_SHA256": "60784e844917e8ea991e52be45c32c63d01bc35e7d695104489840dc54b6f5db",
+      "STS_CLASS": "CYCLIC"
+    },
+    {
+      "DELETED_POINT": 9,
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 313263867,
+      "PORTFOLIO_SHA256": "137f451a440dda18b3af25cd1a10f02ad092ccd5a11d45e9185ec9ed902a64cc",
+      "STS_CLASS": "CYCLIC"
+    },
+    {
+      "DELETED_POINT": 10,
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 313263867,
+      "PORTFOLIO_SHA256": "956ed0f80b7c54542424da76d64099f652a3a8e93e3cc11b6535ef6210c5c327",
+      "STS_CLASS": "CYCLIC"
+    },
+    {
+      "DELETED_POINT": 11,
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 313263867,
+      "PORTFOLIO_SHA256": "133948994135e1dcd8c35270ac9ff2ee2987a3f056b1718c008299fb9398c7b8",
+      "STS_CLASS": "CYCLIC"
+    },
+    {
+      "DELETED_POINT": 12,
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 313263867,
+      "PORTFOLIO_SHA256": "c0657150a652fcf0ec7ad0fb024e88f5b839ad6dc42150e96726bdb2ca997024",
+      "STS_CLASS": "CYCLIC"
+    },
+    {
+      "DELETED_POINT": 0,
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 313263888,
+      "PORTFOLIO_SHA256": "6a537ea56c2741e1208dbbb4abf1064bc74508f2d356712920d348d11e3a4a24",
+      "STS_CLASS": "NONCYCLIC"
+    },
+    {
+      "DELETED_POINT": 1,
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 313263888,
+      "PORTFOLIO_SHA256": "dd313824121b901b07e797119a48875b97b06eafb17d0be33e0f37c3ea8fa230",
+      "STS_CLASS": "NONCYCLIC"
+    },
+    {
+      "DELETED_POINT": 2,
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 313263881,
+      "PORTFOLIO_SHA256": "58524d611a3bce7b9c408889aee77695c6085a2afa0623192329d691463a71c3",
+      "STS_CLASS": "NONCYCLIC"
+    },
+    {
+      "DELETED_POINT": 3,
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 313263888,
+      "PORTFOLIO_SHA256": "8055e98e52f56d54ce0932cb985951c28b64d1e4c883934100207de8902f0c8b",
+      "STS_CLASS": "NONCYCLIC"
+    },
+    {
+      "DELETED_POINT": 4,
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 313263888,
+      "PORTFOLIO_SHA256": "b1c1574090a061436728b94d8c5ba3881d8bfacc9f734482b6ff6e5ed23a3a84",
+      "STS_CLASS": "NONCYCLIC"
+    },
+    {
+      "DELETED_POINT": 5,
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 313263888,
+      "PORTFOLIO_SHA256": "10d4ef5102ad824fb2c96503501694bef3f878504c8c164698c86f2f1ce35a3b",
+      "STS_CLASS": "NONCYCLIC"
+    },
+    {
+      "DELETED_POINT": 6,
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 313263881,
+      "PORTFOLIO_SHA256": "434ccd42bae0968d3601d3a4318326e4eb7bd8a019cf52bf7747ea14df497a4e",
+      "STS_CLASS": "NONCYCLIC"
+    },
+    {
+      "DELETED_POINT": 7,
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 313263881,
+      "PORTFOLIO_SHA256": "7d73802ab5915ed42723eaf4a0a913f1100e0c4e035a9e1fc4b62145345927fd",
+      "STS_CLASS": "NONCYCLIC"
+    },
+    {
+      "DELETED_POINT": 8,
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 313263888,
+      "PORTFOLIO_SHA256": "15cb12b820dfb50025fbe814019592ccbfdc3b1a651a77122827b92905c42a0b",
+      "STS_CLASS": "NONCYCLIC"
+    },
+    {
+      "DELETED_POINT": 9,
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 313263881,
+      "PORTFOLIO_SHA256": "dfe579d6ab8efb0d07c0b0ead41f8e50e10043dd6403194cca7a8695da45b62d",
+      "STS_CLASS": "NONCYCLIC"
+    },
+    {
+      "DELETED_POINT": 10,
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 313263888,
+      "PORTFOLIO_SHA256": "952ac381e5500bf734bc3eb68e7c3aba147fb380a29d5efdbbd4f255e5e039cd",
+      "STS_CLASS": "NONCYCLIC"
+    },
+    {
+      "DELETED_POINT": 11,
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 313263888,
+      "PORTFOLIO_SHA256": "c2afdd2f5856be202a2009dd12ae858f4c100d7bab42ed2ace6892bc64f24426",
+      "STS_CLASS": "NONCYCLIC"
+    },
+    {
+      "DELETED_POINT": 12,
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 313263888,
+      "PORTFOLIO_SHA256": "a797104dda09aea658cc98b106bc862df21536f939c0895af2525c53e0e4f2ab",
+      "STS_CLASS": "NONCYCLIC"
+    }
+  ],
+  "CANONICAL_CANDIDATE_EVALUATIONS": 26,
+  "CANONICAL_EVALUATION_BUDGET": {
+    "FAMILY_CANDIDATES": 26,
+    "FRESH_WINNER_RECOUNT": 1,
+    "TOTAL_USED": 27
+  },
+  "CYCLIC_PASCH_COUNT": 13,
+  "FAMILY_EVALUATION_PROCESS_ID": 11506,
+  "FAMILY_RESULT": "IMPROVEMENT_CONFIRMED",
+  "FRESH_CANONICAL_RECOUNT": 313263888,
+  "FRESH_CANONICAL_RECOUNT_PROCESS_ID": 11924,
+  "GLOBAL_K20_OPTIMUM_STATUS": "UNKNOWN",
+  "INDEPENDENT_7SET_RECOUNT": 313263888,
+  "KNOWN_WITNESS_COUNT_PARITY": {
+    "EXPECTED_COUNT": 313263867,
+    "MATCHING_CYCLIC_CANDIDATES": [
+      {
+        "DELETED_POINT": 0,
+        "PORTFOLIO_SHA256": "c0657150a652fcf0ec7ad0fb024e88f5b839ad6dc42150e96726bdb2ca997024"
+      },
+      {
+        "DELETED_POINT": 1,
+        "PORTFOLIO_SHA256": "15db820aac71f11005717431926f1599e1b6b14e578ad8c5f402aa6c76e9bbd9"
+      },
+      {
+        "DELETED_POINT": 2,
+        "PORTFOLIO_SHA256": "67edce28c8a45e16f9e972e59b68d9888f752f3356f350890a6d9bdd997c5acb"
+      },
+      {
+        "DELETED_POINT": 3,
+        "PORTFOLIO_SHA256": "b4c3b19f47fdccf47bc5b7f36221b63eacda73a467cbdcfd049ab50319f31f9c"
+      },
+      {
+        "DELETED_POINT": 4,
+        "PORTFOLIO_SHA256": "47b63210d5d85258f192458925e34dd7bec651edf9efeb92276e618841976a96"
+      },
+      {
+        "DELETED_POINT": 5,
+        "PORTFOLIO_SHA256": "833208dcac60af84f4925e584182e411bb44deb0827a9d0c4c8d4e977f944693"
+      },
+      {
+        "DELETED_POINT": 6,
+        "PORTFOLIO_SHA256": "f9661a21f54b69a774877fc0a8adccc15c90e4087fd33deac29712b501ab4100"
+      },
+      {
+        "DELETED_POINT": 7,
+        "PORTFOLIO_SHA256": "93ee7c29df9790291eb74c73d026c4143ee3f6b60b1678e51ea929a47b8c2525"
+      },
+      {
+        "DELETED_POINT": 8,
+        "PORTFOLIO_SHA256": "60784e844917e8ea991e52be45c32c63d01bc35e7d695104489840dc54b6f5db"
+      },
+      {
+        "DELETED_POINT": 9,
+        "PORTFOLIO_SHA256": "137f451a440dda18b3af25cd1a10f02ad092ccd5a11d45e9185ec9ed902a64cc"
+      },
+      {
+        "DELETED_POINT": 10,
+        "PORTFOLIO_SHA256": "956ed0f80b7c54542424da76d64099f652a3a8e93e3cc11b6535ef6210c5c327"
+      },
+      {
+        "DELETED_POINT": 11,
+        "PORTFOLIO_SHA256": "133948994135e1dcd8c35270ac9ff2ee2987a3f056b1718c008299fb9398c7b8"
+      },
+      {
+        "DELETED_POINT": 12,
+        "PORTFOLIO_SHA256": "c0657150a652fcf0ec7ad0fb024e88f5b839ad6dc42150e96726bdb2ca997024"
+      }
+    ],
+    "STATUS": "PASS"
+  },
+  "NONCYCLIC_PASCH_COUNT": 8,
+  "PR": "NOT CREATED",
+  "PRODUCTION_MUTATION": "NONE",
+  "PUSH": "NOT RUN",
+  "READY_FOR_LOCAL_ASCENT": "YES",
+  "SCHEMA_VERSION": "B649_K20_OVERLAP_BLOCK_REPARTITION_12_8_EXHAUSTIVE_R1_V1",
+  "SEAL_PARITY": "PASS",
+  "STRUCTURAL_INVARIANTS": {
+    "ALL_CANDIDATES_PASS": true,
+    "CANDIDATE_PORTFOLIOS_CHECKED": 26,
+    "FREQUENCY_PROFILE": {
+      "NUMBERS_APPEARING_2_TIMES": 27,
+      "NUMBERS_APPEARING_3_TIMES": 22
+    },
+    "LEGAL_DISTINCT_TICKETS": true,
+    "MAXIMUM_PAIRWISE_OVERLAP": 1,
+    "PAIRWISE_OVERLAP_HISTOGRAM": {
+      "OVERLAP_0": 97,
+      "OVERLAP_1": 93
+    },
+    "TICKET_COUNT": 20
+  },
+  "STS_CLASSES": {
+    "CLASSES_NONISOMORPHIC": true,
+    "CYCLIC_PASCH_COUNT": 13,
+    "NONCYCLIC_PASCH_COUNT": 8,
+    "PASCH_COUNT_8_ISOMORPHISM_CLASS_COUNT": 1,
+    "PASCH_COUNT_8_TRADE_RESULT_COUNT": 13,
+    "VALID_PASCH_TRADE_COUNT": 13
+  },
+  "TASK_ID": "B649_K20_OVERLAP_BLOCK_REPARTITION_12_8_EXHAUSTIVE_R1",
+  "TASK_STATUS": "COMPLETE",
+  "VERIFICATION": {
+    "DIFF_CHECK": "PASS",
+    "FOCUSED_TESTS": "PASS (6 tests)",
+    "PYRIGHT": "PASS",
+    "RUFF": "PASS"
+  }
+}

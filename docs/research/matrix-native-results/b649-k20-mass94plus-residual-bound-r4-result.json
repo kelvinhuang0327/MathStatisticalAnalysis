@@ -1,0 +1,234 @@
+{
+  "BASE_HEAD": "c16be9ca51e3fbdb2414dc96b77187337425d370",
+  "BASE_TREE": "f107b43faed6cb38d6cbd796718492b8443307c9",
+  "CLOSED_GRAPH_FAMILIES": [
+    "THREE_DISJOINT_PAIRS",
+    "PATH_2_PLUS_DISJOINT_EDGE",
+    "PATH_4",
+    "THREE_EDGE_STAR",
+    "TRIANGLE"
+  ],
+  "CP_SAT": {
+    "CERTIFIED_UPPER_BOUND": null,
+    "FEASIBLE_IS_NOT_PROOF": true,
+    "OBJECTIVE": null,
+    "REPORTED_WALL_TIME_EXCEEDS_FIXED_BUDGET": true,
+    "SCOPE": "h=45, M=94, maximize tickets sharing one fixed 7-label outcome",
+    "STATUS": "UNKNOWN",
+    "TIME_LIMIT_SECONDS": 30.0,
+    "WALL_TIME_SECONDS": 812.974078,
+    "WORKERS": 1
+  },
+  "EXACT_PAIR_COUNTS_BY_OVERLAP": [
+    107800,
+    574000,
+    1695988,
+    3469942,
+    6224512,
+    10776332,
+    18611432
+  ],
+  "FAMILY_B_BOUND": 353997642,
+  "FAMILY_B_STATUS": "TIGHTENED_OPEN_RESIDUAL",
+  "GRAPH_FAMILY_CLASSIFICATION": {
+    "EXACTLY_THREE_HEAVY_EDGES": [
+      "THREE_DISJOINT_PAIRS",
+      "PATH_2_PLUS_DISJOINT_EDGE",
+      "PATH_4",
+      "THREE_EDGE_STAR",
+      "TRIANGLE"
+    ],
+    "FOUR_OR_MORE_HEAVY_EDGES": "All realizable simple graph topologies, including paths, stars, triangles, cycles, matchings with extra edges, and mixtures, are covered by the h-only multiplicity envelope."
+  },
+  "INCUMBENT": 313239661,
+  "MASS94_BOUND": 353997642,
+  "MASS94_WITNESS": {
+    "pair_multiplicity_witness": {
+      "duplicate_outcome_lower_bound": 10423918,
+      "heavy_pair_count": 45,
+      "minimum_overlap_mass": 94,
+      "ordinary_edge_count": 4,
+      "pair_reuse_floor_above_cap": 51,
+      "pair_reuse_floor_at_cap": 45,
+      "s2_lower_bound": 93815260,
+      "upper_bound": 353997642,
+      "winning_ticket_cap": 18
+    },
+    "three_edge_motif_maximum": {
+      "heavy_degree_sequence": [
+        3,
+        1,
+        1,
+        1
+      ],
+      "heavy_normal_wedges_upper": 54,
+      "heavy_wedges": 3,
+      "motif": "THREE_EDGE_STAR",
+      "ordinary_wedges_upper": 1035,
+      "s2_lower_bound": 66272164,
+      "s3_upper_bound": 8792266,
+      "triangle_counts_upper": [
+        336,
+        27,
+        0,
+        1
+      ],
+      "upper_bound": 306941662
+    },
+    "upper_bound": 353997642,
+    "witness_kind": "PAIR_MULTIPLICITY"
+  },
+  "MASS95PLUS_BOUND": 353945842,
+  "MASS95PLUS_WITNESS": {
+    "duplicate_outcome_lower_bound": 10475718,
+    "heavy_pair_count": 45,
+    "minimum_overlap_mass": 95,
+    "ordinary_edge_count": 5,
+    "pair_reuse_floor_above_cap": 51,
+    "pair_reuse_floor_at_cap": 45,
+    "s2_lower_bound": 94281460,
+    "upper_bound": 353945842,
+    "winning_ticket_cap": 18
+  },
+  "MONOTONICITY": {
+    "HIGHER_HEAVY_COUNTS": "For each fixed h, minimize at M=max(94,2h). All h=3..190 were checked by the closed integer formula.",
+    "MASS_95PLUS": "For fixed h, K(h) is fixed and S2 rises by 466200 per added mass. The worst row is at its minimum feasible mass."
+  },
+  "NEW_PORTFOLIO_SEARCH_STARTED": "NO",
+  "PRODUCTION_MUTATION": "NONE",
+  "REMAINING_GAP": 40757981,
+  "RESIDUAL_GRAPH_FAMILY_COUNT": 1,
+  "S2_FORMULA": "190*I0 + (M-2h)*(I1-I0) + h*(I2-I0); at fixed h, increasing M by one adds I1-I0=466200",
+  "TASK_BRANCH": "codex/b649-k20-multi-r2-mass94plus-residual-bound-r4",
+  "TASK_ID": "B649_K20_MULTI_R2_MASS94PLUS_RESIDUAL_BOUND_R4",
+  "TASK_STATUS": "TIGHTENED_OPEN_RESIDUAL",
+  "THREE_EDGE_BOUNDARY_CERTIFICATES": [
+    {
+      "heavy_degree_sequence": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "heavy_normal_wedges_upper": 66,
+      "heavy_wedges": 0,
+      "motif": "THREE_DISJOINT_PAIRS",
+      "ordinary_wedges_upper": 1035,
+      "s2_lower_bound": 66272164,
+      "s3_upper_bound": 8743966,
+      "triangle_counts_upper": [
+        334,
+        33,
+        0,
+        0
+      ],
+      "upper_bound": 306893362
+    },
+    {
+      "heavy_degree_sequence": [
+        2,
+        1,
+        1,
+        1,
+        1
+      ],
+      "heavy_normal_wedges_upper": 62,
+      "heavy_wedges": 1,
+      "motif": "PATH_2_PLUS_DISJOINT_EDGE",
+      "ordinary_wedges_upper": 1035,
+      "s2_lower_bound": 66272164,
+      "s3_upper_bound": 8727824,
+      "triangle_counts_upper": [
+        335,
+        30,
+        1,
+        0
+      ],
+      "upper_bound": 306877220
+    },
+    {
+      "heavy_degree_sequence": [
+        2,
+        2,
+        1,
+        1
+      ],
+      "heavy_normal_wedges_upper": 58,
+      "heavy_wedges": 2,
+      "motif": "PATH_4",
+      "ordinary_wedges_upper": 1035,
+      "s2_lower_bound": 66272164,
+      "s3_upper_bound": 8711682,
+      "triangle_counts_upper": [
+        336,
+        27,
+        2,
+        0
+      ],
+      "upper_bound": 306861078
+    },
+    {
+      "heavy_degree_sequence": [
+        3,
+        1,
+        1,
+        1
+      ],
+      "heavy_normal_wedges_upper": 54,
+      "heavy_wedges": 3,
+      "motif": "THREE_EDGE_STAR",
+      "ordinary_wedges_upper": 1035,
+      "s2_lower_bound": 66272164,
+      "s3_upper_bound": 8792266,
+      "triangle_counts_upper": [
+        336,
+        27,
+        0,
+        1
+      ],
+      "upper_bound": 306941662
+    },
+    {
+      "heavy_degree_sequence": [
+        2,
+        2,
+        2
+      ],
+      "heavy_normal_wedges_upper": 54,
+      "heavy_wedges": 3,
+      "motif": "TRIANGLE",
+      "ordinary_wedges_upper": 1035,
+      "s2_lower_bound": 66272164,
+      "s3_upper_bound": 8792266,
+      "triangle_counts_upper": [
+        336,
+        27,
+        0,
+        1
+      ],
+      "upper_bound": 306941662
+    }
+  ],
+  "TICKET_CAPACITY_6_INCIDENCE_BOUND": {
+    "at_sum_19_minimum_pair_mass": 94,
+    "at_sum_20_minimum_pair_mass": 95,
+    "maximum_ticket_overlap_degree_at_M94": 13,
+    "selected_six_label_frequency_sum_limit": 19
+  },
+  "UNRESOLVED_RESIDUAL": {
+    "description": "exactly 45 overlap-2 ticket pairs and 4 overlap-1 pairs at total overlap mass exactly 94",
+    "heavy_pair_count": 45,
+    "mass_partition": "EXACT_MASS_94",
+    "ordinary_edge_count": 4,
+    "overlap_mass_floor": 94
+  },
+  "WINNING_TICKET_MULTIPLICITY_PROOF": {
+    "drawn_label_count": 7,
+    "inequality": "S2 <= K/2 * (S1-union), so duplicate loss >= ceil(2*S2/K)",
+    "pair_label_slots": 21,
+    "pair_reuse_floor": "balanced sum of choose(pair-label frequency, 2) over 21 slots",
+    "ticket_label_count": 6
+  }
+}

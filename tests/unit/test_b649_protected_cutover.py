@@ -1010,6 +1010,430 @@ def _prepare_exact_failed_terminal_bridge(
     return incident, request, fixture_hashlib
 
 
+def _prepare_exact_released_v7_intermediate_bridge(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+) -> tuple[StrandedIncident, protected.Request, _FixtureHashlib, protected.Record]:
+    incident, request, fixture_hashlib = _prepare_exact_failed_terminal_bridge(harness, monkeypatch)
+    failed = protected.ReceiptFile(incident.request.receipt_path).read()
+    assert failed is not None
+    failed_identity = protected.record(failed.get("identity"))
+    v5_archive = protected._find_archived_prior_receipt(  # pyright: ignore[reportPrivateUsage]
+        request.receipt_path,
+        lambda sha: sha == cutover.V5_PROTECTED_RECEIPT_SHA256,
+    )
+    assert v5_archive is not None
+    v5_path = Path(protected.text(v5_archive.get("path")))
+    v5, _v5_file_identity, _ = cutover.read_control_json(v5_path)
+    v5_identity = protected.record(v5.get("identity"))
+    v5_target = protected.record(v5_identity.get("target"))
+    v5_owner_identity = {
+        "reservation_id": v5_identity.get("reservation_id"),
+        "operation_id": v5_identity.get("operation_id"),
+        "managed_receipt_sha256": v5_identity.get("managed_receipt_sha256"),
+        "control_head": v5_identity.get("control_head"),
+        "control_tree": v5_identity.get("control_tree"),
+        "action": "apply",
+        "target": v5_target,
+    }
+    v5_release = {
+        "managed_receipt_sha256": cutover.V5_MANAGED_RECEIPT_SHA256,
+        "protected_receipt_sha256": cutover.V5_PROTECTED_RECEIPT_SHA256,
+        "verified": True,
+    }
+    v5_proof_unsigned: protected.Record = {
+        "schema": cutover.PROTECTED_PREDECESSOR_RELEASE_SCHEMA,
+        "prior_reservation_id": v5_identity.get("reservation_id"),
+        "prior_operation_id": v5_identity.get("operation_id"),
+        "prior_authorization_sha256": protected.digest(v5_owner_identity),
+        "prior_release_evidence": v5_release,
+        "prior_protected_receipt_sha256": cutover.V5_PROTECTED_RECEIPT_SHA256,
+        "prior_managed_receipt_sha256": cutover.V5_MANAGED_RECEIPT_SHA256,
+        "new_reservation_id": failed_identity.get("reservation_id"),
+        "new_operation_id": failed_identity.get("operation_id"),
+    }
+    v5_proof_sha256 = protected.digest(v5_proof_unsigned)
+    monkeypatch.setattr(cutover, "V5_RESERVATION_ID", v5_identity["reservation_id"])
+    monkeypatch.setattr(cutover, "V5_OPERATION_ID", v5_identity["operation_id"])
+    monkeypatch.setattr(cutover, "V5_EXECUTION_ID", v5.get("execution_id"))
+    monkeypatch.setattr(
+        cutover,
+        "V5_AUTHORIZATION_SHA256",
+        v5_proof_unsigned["prior_authorization_sha256"],
+    )
+    monkeypatch.setattr(
+        cutover,
+        "V5_RECONSTRUCTED_PREDECESSOR_PROOF_SHA256",
+        v5_proof_sha256,
+    )
+    monkeypatch.setattr(
+        cutover, "FAILED_TERMINAL_RESERVATION_ID", failed_identity["reservation_id"]
+    )
+    monkeypatch.setattr(cutover, "FAILED_TERMINAL_OPERATION_ID", failed_identity["operation_id"])
+    monkeypatch.setattr(cutover, "FAILED_TERMINAL_EXECUTION_ID", failed["execution_id"])
+    monkeypatch.setattr(cutover, "FAILED_TERMINAL_SOURCE_HEAD", failed_identity["source_head"])
+    monkeypatch.setattr(cutover, "FAILED_TERMINAL_SOURCE_TREE", failed_identity["source_tree"])
+    monkeypatch.setattr(cutover, "FAILED_TERMINAL_CONTROL_HEAD", failed_identity["control_head"])
+    monkeypatch.setattr(cutover, "FAILED_TERMINAL_CONTROL_TREE", failed_identity["control_tree"])
+
+    prior_owner_snapshot = cutover._read_control_owner(request.config)  # pyright: ignore[reportPrivateUsage]
+    assert prior_owner_snapshot is not None
+    _prior_owner, owner_file_identity = prior_owner_snapshot
+    intermediate_target: protected.Record = {
+        "source_worktree": cutover.RELEASED_INTERMEDIATE_TARGET_WORKTREE,
+        "head": cutover.RELEASED_INTERMEDIATE_TARGET_HEAD,
+        "tree": cutover.RELEASED_INTERMEDIATE_TARGET_TREE,
+        "durable_ref": cutover.RELEASED_INTERMEDIATE_TARGET_REF,
+    }
+    release_path = request.config.scheduler_root / (
+        f"b649-prestart-successor-release-{cutover.RELEASED_INTERMEDIATE_RESERVATION_ID}.json"
+    )
+    owner: protected.Record = {
+        "schema": cutover.CONTROL_OWNER_SCHEMA,
+        "reservation_id": cutover.RELEASED_INTERMEDIATE_RESERVATION_ID,
+        "owner_kind": "protected",
+        "owner_pid": os.getpid(),
+        "action": "apply",
+        "target": intermediate_target,
+        "control_head": cutover.V7_SOURCE_HEAD,
+        "control_tree": cutover.V7_SOURCE_TREE,
+        "operation_id": cutover.RELEASED_INTERMEDIATE_OPERATION_ID,
+        "managed_receipt_sha256": cutover.V5_MANAGED_RECEIPT_SHA256,
+        "phase": "RELEASED",
+        "created_at": "2026-10-01T00:00:00Z",
+        "updated_at": "2026-10-01T00:00:00Z",
+        "authorization": None,
+        "mutation_started": False,
+        "terminal": None,
+        "release_evidence": None,
+        "predecessor_release_evidence": None,
+    }
+    owner["authorization"] = cutover._owner_identity(owner)  # pyright: ignore[reportPrivateUsage]
+    release: protected.Record = {
+        "schema": "b649-protected-prestart-successor-release-v1",
+        "reservation_id": cutover.RELEASED_INTERMEDIATE_RESERVATION_ID,
+        "operation_id": cutover.RELEASED_INTERMEDIATE_OPERATION_ID,
+        "owner_authorization": owner["authorization"],
+        "plan_digest": "a" * 64,
+        "plan_sha256": "b" * 64,
+        "original_control_identity": {
+            "head": cutover.V7_SOURCE_HEAD,
+            "tree": cutover.V7_SOURCE_TREE,
+        },
+        "recovery_control_identity": {"head": "c" * 40, "tree": "d" * 40},
+        "target": intermediate_target,
+        "live_old_state": {
+            "verified": True,
+            "source": {"head": cutover.V5_SOURCE_HEAD, "tree": cutover.V5_SOURCE_TREE},
+        },
+        "managed_receipt_sha256": cutover.V5_MANAGED_RECEIPT_SHA256,
+        "protected_execution_receipt": {
+            "execution_id": failed["execution_id"],
+            "exists": True,
+            "operation_id": failed_identity["operation_id"],
+            "path": str(request.receipt_path),
+            "reservation_id": failed_identity["reservation_id"],
+            "sha256": cutover.FAILED_TERMINAL_RECEIPT_SHA256,
+            "status": "FAILED",
+        },
+        "claim_absent": True,
+        "rollback_receipt_absent": True,
+        "mutation_started": False,
+    }
+    release["record_sha256"] = protected.digest(release)
+    release_bytes = (protected.canonical(release) + "\n").encode("utf-8")
+    release_path.write_bytes(release_bytes)
+    release_path.chmod(0o600)
+    release_file_sha = hashlib.sha256(release_bytes).hexdigest()
+    monkeypatch.setattr(
+        cutover,
+        "RELEASED_INTERMEDIATE_RELEASE_RECORD_FILE_SHA256",
+        release_file_sha,
+    )
+    monkeypatch.setattr(
+        cutover,
+        "RELEASED_INTERMEDIATE_RELEASE_RECORD_SHA256",
+        release["record_sha256"],
+    )
+    owner["release_evidence"] = {
+        "claim_absent": True,
+        "kind": "PRESTART_SUCCESSOR_NO_MUTATION",
+        "managed_receipt_sha256": cutover.V5_MANAGED_RECEIPT_SHA256,
+        "mutation_started": False,
+        "protected_receipt_absent_for_operation": True,
+        "release_record_path": str(release_path),
+        "release_record_sha256": release_file_sha,
+        "verified": True,
+    }
+    owner = cutover._save_control_owner(  # pyright: ignore[reportPrivateUsage]
+        request.config,
+        owner,
+        expected=owner_file_identity,
+    )
+    updated_owner_snapshot = cutover._read_control_owner(request.config)  # pyright: ignore[reportPrivateUsage]
+    assert updated_owner_snapshot is not None
+    owner, owner_file_identity = updated_owner_snapshot
+    monkeypatch.setattr(
+        cutover,
+        "RELEASED_INTERMEDIATE_OWNER_FILE_SHA256",
+        owner_file_identity.sha256,
+    )
+    monkeypatch.setattr(
+        cutover,
+        "RELEASED_INTERMEDIATE_OWNER_RECORD_SHA256",
+        owner["record_sha256"],
+    )
+    return incident, request, fixture_hashlib, owner
+
+
+def test_exact_released_v7_intermediate_reconstructs_v5_and_binds_v6_failure(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    incident, request, _fixture_hashlib, intermediate_owner = (
+        _prepare_exact_released_v7_intermediate_bridge(harness, monkeypatch)
+    )
+    failed_before = incident.request.receipt_path.read_bytes()
+    managed_before = request.config.receipt_path.read_bytes()
+    owner_path = cutover._control_owner_path(request.config)  # pyright: ignore[reportPrivateUsage]
+    owner_before = owner_path.read_bytes()
+
+    proof = protected._require_released_success_evidence(
+        request,
+        cutover.inspect_control_owner(request.config),
+        runner=harness.launchd,
+    )
+    assert proof is not None
+    assert proof["prior_protected_receipt_sha256"] == cutover.V5_PROTECTED_RECEIPT_SHA256
+    assert proof["prior_managed_receipt_sha256"] == cutover.V5_MANAGED_RECEIPT_SHA256
+    retirement = protected.record(proof["retired_failed_terminal_evidence"])
+    assert retirement["schema"] == cutover.FAILED_TERMINAL_RETIREMENT_V2_SCHEMA
+    assert (
+        retirement["v5_predecessor_proof_sha256"]
+        == cutover.V5_RECONSTRUCTED_PREDECESSOR_PROOF_SHA256
+    )
+    assert retirement["reservation_id"] == incident.request.reservation_id
+    assert retirement["operation_id"] == incident.request.operation_id
+    assert retirement["intermediate_owner_record"] == intermediate_owner
+    assert (
+        protected.record(retirement["intermediate_target"])["head"]
+        == cutover.RELEASED_INTERMEDIATE_TARGET_HEAD
+    )
+    assert (
+        retirement["intermediate_release_record_file_sha256"]
+        == cutover.RELEASED_INTERMEDIATE_RELEASE_RECORD_FILE_SHA256
+    )
+    assert protected.record(retirement["candidate_target"])["head"] == cutover.V7_SOURCE_HEAD
+    assert retirement["candidate_reservation_id"] not in {
+        cutover.V5_RESERVATION_ID,
+        cutover.FAILED_TERMINAL_RESERVATION_ID,
+        cutover.RELEASED_INTERMEDIATE_RESERVATION_ID,
+    }
+    assert retirement["candidate_operation_id"] not in {
+        cutover.V5_OPERATION_ID,
+        cutover.FAILED_TERMINAL_OPERATION_ID,
+        cutover.RELEASED_INTERMEDIATE_OPERATION_ID,
+    }
+    assert retirement["candidate_method"] == cutover.V7_TARGET_METHOD
+    assert retirement["candidate_k20_sha256"] == cutover.V7_TARGET_K20_SHA256
+    assert not incident.request.receipt_path.exists()
+    archive_path = Path(protected.text(retirement["archive_path"]))
+    assert archive_path.read_bytes() == failed_before
+    assert request.config.receipt_path.read_bytes() == managed_before
+    assert owner_path.read_bytes() == owner_before
+
+
+def test_v2_evidence_retry_after_interrupted_owner_swap_is_safe(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _incident, request, _fixture_hashlib, intermediate_owner = (
+        _prepare_exact_released_v7_intermediate_bridge(harness, monkeypatch)
+    )
+    prior_owner = cutover.inspect_control_owner(request.config)
+    proof = protected._require_released_success_evidence(
+        request,
+        prior_owner,
+        runner=harness.launchd,
+    )
+    assert proof is not None
+    owner_path = cutover._control_owner_path(request.config)  # pyright: ignore[reportPrivateUsage]
+    owner_before = owner_path.read_bytes()
+    retirement_path = request.config.scheduler_root / cutover.FAILED_TERMINAL_RETIREMENT_V2_NAME
+    retirement_before = retirement_path.read_bytes()
+    original_save = cutover._save_control_owner  # pyright: ignore[reportPrivateUsage]
+    interrupted = False
+
+    def fail_owner_swap(
+        config: cutover.CutoverConfig,
+        value: cutover.Record,
+        *,
+        expected: cutover.FileIdentity | None,
+    ) -> cutover.Record:
+        nonlocal interrupted
+        if not interrupted:
+            interrupted = True
+            raise OSError("simulated interruption before owner replacement")
+        return original_save(config, value, expected=expected)
+
+    with monkeypatch.context() as scoped:
+        scoped.setattr(cutover, "_save_control_owner", fail_owner_swap)
+        with pytest.raises(OSError, match="simulated interruption"):
+            cutover.acquire_control_owner(
+                request.config,
+                action="apply",
+                target=protected.request_owner_target(request),
+                owner_kind="protected",
+                reservation_id=str(request.reservation_id),
+                version={"head": request.control_head, "tree": request.control_tree},
+                operation_id=request.operation_id,
+                managed_receipt_sha256=request.managed_receipt_sha256,
+                predecessor_release_evidence=proof,
+                predecessor_live_verifier=protected._failed_terminal_bridge_live_verifier(
+                    request,
+                    prior_owner if prior_owner is not None else intermediate_owner,
+                    proof,
+                    runner=harness.launchd,
+                ),
+            )
+
+    assert owner_path.read_bytes() == owner_before
+    assert retirement_path.read_bytes() == retirement_before
+    retried = protected._require_released_success_evidence(
+        request,
+        cutover.inspect_control_owner(request.config),
+        runner=harness.launchd,
+    )
+    assert retried is not None
+    assert retried == proof
+    owner = cutover.acquire_control_owner(
+        request.config,
+        action="apply",
+        target=protected.request_owner_target(request),
+        owner_kind="protected",
+        reservation_id=str(request.reservation_id),
+        version={"head": request.control_head, "tree": request.control_tree},
+        operation_id=request.operation_id,
+        managed_receipt_sha256=request.managed_receipt_sha256,
+        predecessor_release_evidence=retried,
+        predecessor_live_verifier=protected._failed_terminal_bridge_live_verifier(
+            request,
+            cutover.inspect_control_owner(request.config) or intermediate_owner,
+            retried,
+            runner=harness.launchd,
+        ),
+    )
+    assert owner["reservation_id"] == request.reservation_id
+    assert (
+        protected.record(owner["predecessor_release_evidence"])["prior_protected_receipt_sha256"]
+        == cutover.V5_PROTECTED_RECEIPT_SHA256
+    )
+
+
+@pytest.mark.parametrize(
+    "mismatch",
+    [
+        "release_record_changed",
+        "release_record_missing",
+        "intermediate_receipt_present",
+        "v5_archive_missing",
+        "managed_receipt_changed",
+        "claim_present",
+        "rollback_receipt_present",
+        "live_source_changed",
+        "reservation_reused",
+        "operation_reused",
+        "intermediate_reservation_reused",
+        "intermediate_operation_reused",
+        "intermediate_target_reused",
+        "owner_reservation_mismatch",
+    ],
+)
+def test_released_v7_intermediate_mismatches_refuse_without_mutation(
+    mismatch: str,
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    incident, request, _fixture_hashlib, _owner = _prepare_exact_released_v7_intermediate_bridge(
+        harness, monkeypatch
+    )
+    prior_owner = cutover.inspect_control_owner(request.config)
+    assert prior_owner is not None
+    candidate = request
+    release_path = request.config.scheduler_root / (
+        f"b649-prestart-successor-release-{cutover.RELEASED_INTERMEDIATE_RESERVATION_ID}.json"
+    )
+    if mismatch == "release_record_changed":
+        release_path.write_bytes(release_path.read_bytes() + b" ")
+    elif mismatch == "release_record_missing":
+        release_path.unlink()
+    elif mismatch == "intermediate_receipt_present":
+        fake_receipt = request.receipt_path.with_name(
+            f"{request.receipt_path.stem}.intermediate.superseded.json"
+        )
+        fake_receipt.write_text(
+            json.dumps(
+                {
+                    "identity": {
+                        "reservation_id": cutover.RELEASED_INTERMEDIATE_RESERVATION_ID,
+                        "operation_id": cutover.RELEASED_INTERMEDIATE_OPERATION_ID,
+                    }
+                }
+            ),
+            encoding="utf-8",
+        )
+    elif mismatch == "v5_archive_missing":
+        v5_archive = request.receipt_path.with_name(
+            f"{request.receipt_path.stem}.{cutover.V5_EXECUTION_ID}.superseded.json"
+        )
+        v5_archive.unlink()
+    elif mismatch == "managed_receipt_changed":
+        with request.config.receipt_path.open("ab") as stream:
+            stream.write(b" ")
+    elif mismatch == "claim_present":
+        _seed_active_bridge_claim(request)
+    elif mismatch == "rollback_receipt_present":
+        (request.config.scheduler_root / protected.ROLLBACK_RECEIPT_NAME).write_text(
+            "{}\n", encoding="utf-8"
+        )
+    elif mismatch == "live_source_changed":
+        harness.launchd.loaded_source = request.config.source_worktree
+    elif mismatch == "owner_reservation_mismatch":
+        _save_bridge_owner(
+            request, {"reservation_id": str(uuid4())}, bind_authorization=True
+        )
+    elif mismatch == "reservation_reused":
+        candidate = replace(request, reservation_id=cutover.FAILED_TERMINAL_RESERVATION_ID)
+    elif mismatch == "operation_reused":
+        candidate = replace(request, operation_id=cutover.FAILED_TERMINAL_OPERATION_ID)
+    elif mismatch == "intermediate_reservation_reused":
+        candidate = replace(request, reservation_id=cutover.RELEASED_INTERMEDIATE_RESERVATION_ID)
+    elif mismatch == "intermediate_operation_reused":
+        candidate = replace(request, operation_id=cutover.RELEASED_INTERMEDIATE_OPERATION_ID)
+    else:
+        candidate = replace(
+            request,
+            config=replace(
+                request.config,
+                expected_head=cutover.RELEASED_INTERMEDIATE_TARGET_HEAD,
+                expected_tree=cutover.RELEASED_INTERMEDIATE_TARGET_TREE,
+            ),
+        )
+
+    before = _bridge_files_snapshot(request)
+    runner_mutations_before = list(harness.launchd.mutation_calls)
+    with pytest.raises((protected.ProtectedError, cutover.CutoverSafetyError)):
+        protected._require_released_success_evidence(
+            candidate,
+            prior_owner,
+            runner=harness.launchd,
+        )
+
+    assert _bridge_files_snapshot(request) == before
+    assert incident.request.receipt_path.exists()
+    assert not (request.config.scheduler_root / cutover.FAILED_TERMINAL_RETIREMENT_V2_NAME).exists()
+    assert harness.launchd.mutation_calls == runner_mutations_before
+
 def test_exact_failed_terminal_bridge_archives_then_reserves_with_v5_authority(
     harness: Harness,
     monkeypatch: pytest.MonkeyPatch,

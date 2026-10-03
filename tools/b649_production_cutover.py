@@ -60,6 +60,48 @@ V5_SOURCE_HEAD = "56c9715ca60bb9af3afe3b5faae83b0dc0471d8f"
 V5_SOURCE_TREE = "74cc4a56afd7ae0e67f9cca591572b32f058c33d"
 V7_SOURCE_HEAD = "13d1d5f984b69122f38843ded83019889dde1636"
 V7_SOURCE_TREE = "86a88cc2e1c61daa2240c5e452655dc1cf2a1285"
+
+FAILED_TERMINAL_RETIREMENT_V2_SCHEMA = "b649-protected-failed-terminal-retirement-v2"
+FAILED_TERMINAL_RETIREMENT_V2_NAME = (
+    "b649-failed-terminal-retirement-v2-27e1039be8f511114e06fcae200fcc2f.json"
+)
+FAILED_TERMINAL_EXECUTION_ID = "d10bfe50f32243faf9b36d75e81df9aa444852996e356460d20c334bde34b7fc"
+FAILED_TERMINAL_SOURCE_HEAD = "76085ccc8f226c8752cc7df28390e27009d21746"
+FAILED_TERMINAL_SOURCE_TREE = "a2bd43ed9019e4cf2f330eb7d0dfa498d7904b43"
+FAILED_TERMINAL_CONTROL_HEAD = "d32620eda04e3e01c1cb135d822bb21e41f0de34"
+FAILED_TERMINAL_CONTROL_TREE = "1f8c8878dc6d108014028d9abf588ed7b4593d50"
+V5_RESERVATION_ID = "254a96f2-0f03-46e9-b684-175e7c1075e8"
+V5_OPERATION_ID = "ad7c7218805ec7f1c5d9685fdda503fe"
+V5_EXECUTION_ID = "dfa02aabd39590733e2ad2b2d3bc7b98c12cbf1b6e490811277923d1df2147a3"
+V5_AUTHORIZATION_SHA256 = "7e9949a090bed822750062a29104f6866950ff4905490684b31c768030c10623"
+V5_RECONSTRUCTED_PREDECESSOR_PROOF_SHA256 = (
+    "2e53de1a3ebba04333c645d1cdf8e8ab2043ea950d40719cd86a1f02ce92a476"
+)
+RELEASED_INTERMEDIATE_RESERVATION_ID = "92740b95-103b-4350-8dc0-ee2ffe6cec32"
+RELEASED_INTERMEDIATE_OPERATION_ID = "b985e964f4b21c417d08a266c3d13ff8"
+RELEASED_INTERMEDIATE_OWNER_FILE_SHA256 = (
+    "26a749e83ada58674c2bf3d9cf54bf4e342e9d47c4b9c4e723f97dc01a3d60af"
+)
+RELEASED_INTERMEDIATE_OWNER_RECORD_SHA256 = (
+    "5590de26424676d9ee9e9ff0d3aaf8718488becef849e1c447a5167c0ee07069"
+)
+RELEASED_INTERMEDIATE_RELEASE_RECORD_FILE_SHA256 = (
+    "c14d06b986bd0b34bce8a63468f36325ae21d5aa2753ab2f3b7b4281f0ecd363"
+)
+RELEASED_INTERMEDIATE_RELEASE_RECORD_SHA256 = (
+    "739456de25e93ba0952da541ae085b04e73414843db9ab882e0bb1244c6d4a58"
+)
+RELEASED_INTERMEDIATE_TARGET_HEAD = "a124f55d2713b7ecb7fa071abb4c224a5b8853e5"
+RELEASED_INTERMEDIATE_TARGET_TREE = "a2226ed522bced1ae3e57d8fc08ee6a43d4cba69"
+RELEASED_INTERMEDIATE_TARGET_WORKTREE = (
+    "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/"
+    "B649_PRODUCTION_a124f55d2713b7ecb7fa071abb4c224a5b8853e5"
+)
+RELEASED_INTERMEDIATE_TARGET_REF = (
+    "refs/heads/runtime/b649/a124f55d2713b7ecb7fa071abb4c224a5b8853e5"
+)
+V7_TARGET_METHOD = "B649_SEALED_GEOMETRY_PORTFOLIO@7.0.0"
+V7_TARGET_K20_SHA256 = "0045ac8837fc82e9a585d812173341ac12e05c5de201af7f8fedeacafa19e1ff"
 CONTROL_OWNER_NAME = "b649-control-owner-reservation.json"
 COMMAND_TIMEOUT = 10
 MAX_OUTPUT_BYTES = 2 * 1024 * 1024
@@ -1282,6 +1324,8 @@ def _seal_control_owner(value: Record) -> Record:
 
 def _validate_failed_terminal_retirement_evidence(value: object) -> Record:
     evidence = _record(value, "failed terminal retirement evidence")
+    if evidence.get("schema") == FAILED_TERMINAL_RETIREMENT_V2_SCHEMA:
+        return _validate_failed_terminal_retirement_v2_evidence(evidence)
     unsigned = {key: item for key, item in evidence.items() if key != "record_sha256"}
     required = {
         "schema",
@@ -1396,6 +1440,231 @@ def _validate_failed_terminal_retirement_evidence(value: object) -> Record:
         raise CutoverSafetyError("failed terminal retirement lost exact v5/v7 source authority")
     return evidence
 
+
+def _reconstructed_v5_predecessor_proof() -> Record:
+    unsigned: Record = {
+        "schema": PROTECTED_PREDECESSOR_RELEASE_SCHEMA,
+        "prior_reservation_id": V5_RESERVATION_ID,
+        "prior_operation_id": V5_OPERATION_ID,
+        "prior_authorization_sha256": V5_AUTHORIZATION_SHA256,
+        "prior_release_evidence": {
+            "managed_receipt_sha256": V5_MANAGED_RECEIPT_SHA256,
+            "protected_receipt_sha256": V5_PROTECTED_RECEIPT_SHA256,
+            "verified": True,
+        },
+        "prior_protected_receipt_sha256": V5_PROTECTED_RECEIPT_SHA256,
+        "prior_managed_receipt_sha256": V5_MANAGED_RECEIPT_SHA256,
+        "new_reservation_id": FAILED_TERMINAL_RESERVATION_ID,
+        "new_operation_id": FAILED_TERMINAL_OPERATION_ID,
+    }
+    return {**unsigned, "evidence_sha256": _sha256_json(unsigned)}
+
+
+def _validate_failed_terminal_retirement_v2_evidence(evidence: Record) -> Record:
+    unsigned = {key: item for key, item in evidence.items() if key != "record_sha256"}
+    required = {
+        "schema",
+        "receipt_path",
+        "archive_path",
+        "execution_id",
+        "receipt_sha256",
+        "reservation_id",
+        "operation_id",
+        "status",
+        "phase",
+        "exit_code",
+        "result_status",
+        "child_started",
+        "child_completed",
+        "mutation_started",
+        "zero_mutation",
+        "v5_predecessor_release_evidence",
+        "v5_predecessor_proof_sha256",
+        "v5_protected_receipt_sha256",
+        "v5_protected_receipt_archive_path",
+        "v5_managed_receipt_sha256",
+        "v5_managed_receipt_path",
+        "v5_source_head",
+        "v5_source_tree",
+        "v5_live_state",
+        "intermediate_owner_record",
+        "intermediate_owner_file_sha256",
+        "intermediate_release_record_path",
+        "intermediate_release_record_file_sha256",
+        "intermediate_release_record",
+        "intermediate_reservation_id",
+        "intermediate_operation_id",
+        "intermediate_target",
+        "candidate_plan_sha256",
+        "candidate_reservation_id",
+        "candidate_operation_id",
+        "candidate_target",
+        "candidate_method",
+        "candidate_k20_sha256",
+        "claim_root",
+        "claim_store_status",
+        "rollback_receipt_absent",
+        "intermediate_execution_receipt_absent",
+        "failed_operation_managed_receipt_present",
+        "archive_status",
+        "record_sha256",
+    }
+    owner = _record(evidence.get("intermediate_owner_record"), "released intermediate owner")
+    owner_target = _normalized_owner_target(owner.get("target"))
+    expected_owner_target = {
+        "source_worktree": RELEASED_INTERMEDIATE_TARGET_WORKTREE,
+        "head": RELEASED_INTERMEDIATE_TARGET_HEAD,
+        "tree": RELEASED_INTERMEDIATE_TARGET_TREE,
+        "durable_ref": RELEASED_INTERMEDIATE_TARGET_REF,
+    }
+    release = _record(
+        evidence.get("intermediate_release_record"), "released intermediate release record"
+    )
+    release_unsigned = {key: item for key, item in release.items() if key != "record_sha256"}
+    release_path = Path(
+        _text(evidence.get("intermediate_release_record_path"), "intermediate release path")
+    )
+    receipt_path = Path(_text(evidence.get("receipt_path"), "failed receipt path"))
+    archive_path = Path(_text(evidence.get("archive_path"), "failed receipt archive path"))
+    v5_archive_path = Path(
+        _text(evidence.get("v5_protected_receipt_archive_path"), "v5 receipt archive path")
+    )
+    managed_path = Path(_text(evidence.get("v5_managed_receipt_path"), "v5 managed receipt path"))
+    expected_v5_proof = _reconstructed_v5_predecessor_proof()
+    v5_proof = _record(
+        evidence.get("v5_predecessor_release_evidence"), "reconstructed v5 predecessor proof"
+    )
+    candidate_target = _normalized_owner_target(evidence.get("candidate_target"))
+    live = _record(evidence.get("v5_live_state"), "verified live v5 state")
+    live_source = _record(live.get("source"), "verified live v5 source")
+    v6_receipt = _record(release.get("protected_execution_receipt"), "v6 failed receipt binding")
+    expected_release_evidence = {
+        "claim_absent": True,
+        "kind": "PRESTART_SUCCESSOR_NO_MUTATION",
+        "managed_receipt_sha256": V5_MANAGED_RECEIPT_SHA256,
+        "mutation_started": False,
+        "protected_receipt_absent_for_operation": True,
+        "release_record_path": str(release_path),
+        "release_record_sha256": RELEASED_INTERMEDIATE_RELEASE_RECORD_FILE_SHA256,
+        "verified": True,
+    }
+    if (
+        set(evidence) != required
+        or evidence.get("schema") != FAILED_TERMINAL_RETIREMENT_V2_SCHEMA
+        or evidence.get("record_sha256") != _sha256_json(unsigned)
+        or receipt_path.name != FAILED_TERMINAL_RECEIPT_NAME
+        or archive_path.parent != receipt_path.parent
+        or archive_path.name
+        != f"{receipt_path.stem}.{FAILED_TERMINAL_EXECUTION_ID}.superseded.json"
+        or evidence.get("execution_id") != FAILED_TERMINAL_EXECUTION_ID
+        or evidence.get("receipt_sha256") != FAILED_TERMINAL_RECEIPT_SHA256
+        or evidence.get("reservation_id") != FAILED_TERMINAL_RESERVATION_ID
+        or evidence.get("operation_id") != FAILED_TERMINAL_OPERATION_ID
+        or evidence.get("status") != "FAILED"
+        or evidence.get("phase") != "COMPLETED"
+        or type(evidence.get("exit_code")) is not int
+        or evidence.get("exit_code") != 1
+        or evidence.get("result_status") != "INCOMPLETE_OR_AMBIGUOUS"
+        or evidence.get("child_started") is not False
+        or evidence.get("child_completed") is not False
+        or evidence.get("mutation_started") is not False
+        or evidence.get("zero_mutation") is not True
+        or v5_proof != expected_v5_proof
+        or evidence.get("v5_predecessor_proof_sha256") != V5_RECONSTRUCTED_PREDECESSOR_PROOF_SHA256
+        or evidence.get("v5_predecessor_proof_sha256") != v5_proof.get("evidence_sha256")
+        or evidence.get("v5_protected_receipt_sha256") != V5_PROTECTED_RECEIPT_SHA256
+        or evidence.get("v5_managed_receipt_sha256") != V5_MANAGED_RECEIPT_SHA256
+        or evidence.get("v5_source_head") != V5_SOURCE_HEAD
+        or evidence.get("v5_source_tree") != V5_SOURCE_TREE
+        or v5_archive_path.parent != receipt_path.parent
+        or v5_archive_path.name != f"{receipt_path.stem}.{V5_EXECUTION_ID}.superseded.json"
+        or not managed_path.is_absolute()
+        or managed_path.parent != receipt_path.parent
+        or evidence.get("intermediate_reservation_id") != RELEASED_INTERMEDIATE_RESERVATION_ID
+        or evidence.get("intermediate_operation_id") != RELEASED_INTERMEDIATE_OPERATION_ID
+        or owner.get("schema") != CONTROL_OWNER_SCHEMA
+        or owner.get("reservation_id") != RELEASED_INTERMEDIATE_RESERVATION_ID
+        or owner.get("operation_id") != RELEASED_INTERMEDIATE_OPERATION_ID
+        or owner.get("owner_kind") != "protected"
+        or owner.get("action") != "apply"
+        or owner.get("phase") != "RELEASED"
+        or owner.get("mutation_started") is not False
+        or owner.get("managed_receipt_sha256") != V5_MANAGED_RECEIPT_SHA256
+        or owner.get("control_head") != V7_SOURCE_HEAD
+        or owner.get("control_tree") != V7_SOURCE_TREE
+        or owner.get("authorization") != _owner_identity(owner)
+        or owner.get("record_sha256") != RELEASED_INTERMEDIATE_OWNER_RECORD_SHA256
+        or owner.get("record_sha256") != _sha256_json(_owner_unsigned(owner))
+        or evidence.get("intermediate_owner_file_sha256") != RELEASED_INTERMEDIATE_OWNER_FILE_SHA256
+        or owner.get("release_evidence") != expected_release_evidence
+        or owner_target != expected_owner_target
+        or evidence.get("intermediate_target") != expected_owner_target
+        or release_path.parent != receipt_path.parent
+        or release_path.name
+        != f"b649-prestart-successor-release-{RELEASED_INTERMEDIATE_RESERVATION_ID}.json"
+        or evidence.get("intermediate_release_record_file_sha256")
+        != RELEASED_INTERMEDIATE_RELEASE_RECORD_FILE_SHA256
+        or release.get("schema") != "b649-protected-prestart-successor-release-v1"
+        or release.get("record_sha256") != RELEASED_INTERMEDIATE_RELEASE_RECORD_SHA256
+        or release.get("record_sha256") != _sha256_json(release_unsigned)
+        or release.get("reservation_id") != RELEASED_INTERMEDIATE_RESERVATION_ID
+        or release.get("operation_id") != RELEASED_INTERMEDIATE_OPERATION_ID
+        or release.get("owner_authorization") != owner.get("authorization")
+        or release.get("target") != expected_owner_target
+        or release.get("original_control_identity")
+        != {"head": V7_SOURCE_HEAD, "tree": V7_SOURCE_TREE}
+        or release.get("managed_receipt_sha256") != V5_MANAGED_RECEIPT_SHA256
+        or release.get("mutation_started") is not False
+        or release.get("claim_absent") is not True
+        or release.get("rollback_receipt_absent") is not True
+        or v6_receipt
+        != {
+            "execution_id": FAILED_TERMINAL_EXECUTION_ID,
+            "exists": True,
+            "operation_id": FAILED_TERMINAL_OPERATION_ID,
+            "path": str(receipt_path),
+            "reservation_id": FAILED_TERMINAL_RESERVATION_ID,
+            "sha256": FAILED_TERMINAL_RECEIPT_SHA256,
+            "status": "FAILED",
+        }
+        or evidence.get("claim_store_status") != "ABSENT"
+        or evidence.get("rollback_receipt_absent") is not True
+        or evidence.get("intermediate_execution_receipt_absent") is not True
+        or evidence.get("failed_operation_managed_receipt_present") is not False
+        or evidence.get("archive_status") != "ARCHIVED_UNCHANGED"
+        or re.fullmatch(r"[0-9a-f]{64}", str(evidence.get("candidate_plan_sha256"))) is None
+        or candidate_target.get("head") != V7_SOURCE_HEAD
+        or candidate_target.get("tree") != V7_SOURCE_TREE
+        or evidence.get("candidate_method") != V7_TARGET_METHOD
+        or evidence.get("candidate_k20_sha256") != V7_TARGET_K20_SHA256
+        or evidence.get("candidate_reservation_id")
+        in {
+            V5_RESERVATION_ID,
+            FAILED_TERMINAL_RESERVATION_ID,
+            RELEASED_INTERMEDIATE_RESERVATION_ID,
+        }
+        or evidence.get("candidate_operation_id")
+        in {
+            V5_OPERATION_ID,
+            FAILED_TERMINAL_OPERATION_ID,
+            RELEASED_INTERMEDIATE_OPERATION_ID,
+        }
+        or not Path(_text(evidence.get("claim_root"), "claim root")).is_absolute()
+        or live.get("verified") is not True
+        or live_source.get("head") != V5_SOURCE_HEAD
+        or live_source.get("tree") != V5_SOURCE_TREE
+    ):
+        raise CutoverSafetyError("released-intermediate retirement evidence is invalid")
+    try:
+        if str(UUID(str(evidence.get("candidate_reservation_id")))) != evidence.get(
+            "candidate_reservation_id"
+        ):
+            raise ValueError
+    except ValueError as exc:
+        raise CutoverSafetyError("successor reservation identity is invalid") from exc
+    if re.fullmatch(r"[0-9a-f]{32}", str(evidence.get("candidate_operation_id"))) is None:
+        raise CutoverSafetyError("successor operation identity is invalid")
+    return evidence
 
 def _validate_predecessor_release_evidence(value: object, owner: Record) -> Record:
     evidence = _record(value, "protected predecessor release evidence")
@@ -1514,12 +1783,33 @@ def _validate_predecessor_release_evidence(value: object, owner: Record) -> Reco
             or evidence.get("prior_protected_receipt_sha256") != V5_PROTECTED_RECEIPT_SHA256
             or evidence.get("prior_managed_receipt_sha256") != V5_MANAGED_RECEIPT_SHA256
             or evidence.get("new_reservation_id")
-            in {FAILED_TERMINAL_RESERVATION_ID, old_predecessor.get("new_reservation_id")}
+            in {
+                V5_RESERVATION_ID,
+                FAILED_TERMINAL_RESERVATION_ID,
+                RELEASED_INTERMEDIATE_RESERVATION_ID,
+                old_predecessor.get("new_reservation_id"),
+            }
             or evidence.get("new_operation_id")
-            in {FAILED_TERMINAL_OPERATION_ID, old_predecessor.get("new_operation_id")}
+            in {
+                V5_OPERATION_ID,
+                FAILED_TERMINAL_OPERATION_ID,
+                RELEASED_INTERMEDIATE_OPERATION_ID,
+                old_predecessor.get("new_operation_id"),
+            }
             or (
                 target is not None
                 and _normalized_owner_target(target) != retired["candidate_target"]
+            )
+            or (
+                retired.get("schema") == FAILED_TERMINAL_RETIREMENT_V2_SCHEMA
+                and (
+                    evidence.get("new_reservation_id") != retired.get("candidate_reservation_id")
+                    or evidence.get("new_operation_id") != retired.get("candidate_operation_id")
+                    or (
+                        target is not None
+                        and _normalized_owner_target(target) != retired.get("candidate_target")
+                    )
+                )
             )
         ):
             raise CutoverSafetyError(
@@ -1532,6 +1822,9 @@ def _verify_failed_terminal_retirement_inputs(
     config: CutoverConfig,
     evidence: Record,
 ) -> None:
+    if evidence.get("schema") == FAILED_TERMINAL_RETIREMENT_V2_SCHEMA:
+        _verify_failed_terminal_retirement_v2_inputs(config, evidence)
+        return
     retirement_path = _control_owner_path(config).with_name(FAILED_TERMINAL_RETIREMENT_NAME)
     stored, _stored_identity, _ = _load_json(retirement_path)
     if stored != evidence:
@@ -1636,6 +1929,215 @@ def _verify_failed_terminal_retirement_inputs(
     ):
         raise CutoverSafetyError("ClaimStore is not absent before failed terminal owner CAS")
 
+
+def _verify_failed_terminal_retirement_v2_inputs(
+    config: CutoverConfig,
+    evidence: Record,
+) -> None:
+    retirement_path = _control_owner_path(config).with_name(FAILED_TERMINAL_RETIREMENT_V2_NAME)
+    stored, _retirement_identity, _ = _load_json(retirement_path)
+    if stored != evidence:
+        raise CutoverSafetyError("v2 failed terminal retirement evidence changed before owner CAS")
+
+    receipt_path = config.scheduler_root / FAILED_TERMINAL_RECEIPT_NAME
+    archive_path = Path(_text(evidence.get("archive_path"), "failed receipt archive path"))
+    if (
+        evidence.get("receipt_path") != str(receipt_path)
+        or archive_path.parent != config.scheduler_root
+        or archive_path.name
+        != f"{receipt_path.stem}.{FAILED_TERMINAL_EXECUTION_ID}.superseded.json"
+        or os.path.lexists(receipt_path)
+    ):
+        raise CutoverSafetyError("v6 failed receipt was not retired before successor owner CAS")
+    failed, failed_identity, _ = _load_json(archive_path)
+    failed_execution_identity = _record(failed.get("identity"), "failed v6 execution identity")
+    if (
+        failed_identity.sha256 != FAILED_TERMINAL_RECEIPT_SHA256
+        or failed.get("execution_id") != FAILED_TERMINAL_EXECUTION_ID
+        or failed.get("receipt_sha256")
+        != _sha256_json({key: value for key, value in failed.items() if key != "receipt_sha256"})
+        or failed.get("execution_id") != _sha256_json(failed_execution_identity)
+        or failed.get("schema_version") != "b649-protected-cutover-execution-receipt-v1"
+        or failed.get("task_key") != "b649-protected-cutover:com.lottolab.b649-goalc-r1"
+        or failed.get("status") != "FAILED"
+        or failed.get("phase") != "COMPLETED"
+        or type(failed.get("exit_code")) is not int
+        or failed.get("exit_code") != 1
+        or failed.get("result_status") != "INCOMPLETE_OR_AMBIGUOUS"
+        or failed.get("child_exit_code") is not None
+        or "child_started_at" in failed
+        or "child_completed_at" in failed
+        or failed_execution_identity.get("reservation_id") != FAILED_TERMINAL_RESERVATION_ID
+        or failed_execution_identity.get("operation_id") != FAILED_TERMINAL_OPERATION_ID
+        or failed_execution_identity.get("action") != "apply"
+        or failed_execution_identity.get("execution_receipt_path") != str(receipt_path)
+        or failed_execution_identity.get("managed_receipt_path") != str(config.receipt_path)
+        or failed_execution_identity.get("managed_receipt_sha256") != V5_MANAGED_RECEIPT_SHA256
+        or failed_execution_identity.get("prior_execution_receipt_sha256")
+        != V5_PROTECTED_RECEIPT_SHA256
+        or failed_execution_identity.get("source_head") != FAILED_TERMINAL_SOURCE_HEAD
+        or failed_execution_identity.get("source_tree") != FAILED_TERMINAL_SOURCE_TREE
+        or failed_execution_identity.get("control_head") != FAILED_TERMINAL_CONTROL_HEAD
+        or failed_execution_identity.get("control_tree") != FAILED_TERMINAL_CONTROL_TREE
+    ):
+        raise CutoverSafetyError(
+            "archived v6 FAILED receipt differs from its frozen zero-mutation identity"
+        )
+    failed_bound_identity = {
+        "reservation_id": FAILED_TERMINAL_RESERVATION_ID,
+        "operation_id": FAILED_TERMINAL_OPERATION_ID,
+        "managed_receipt_sha256": V5_MANAGED_RECEIPT_SHA256,
+        "control_head": failed_execution_identity.get("control_head"),
+        "control_tree": failed_execution_identity.get("control_tree"),
+        "action": "apply",
+        "target": failed_execution_identity.get("target"),
+    }
+    _verify_protected_owner_receipt(
+        failed,
+        path=receipt_path,
+        bound_identity=failed_bound_identity,
+        successful=False,
+    )
+    failed_link = failed.get("managed_receipt")
+    if (
+        isinstance(failed_link, dict)
+        and cast(Record, failed_link).get("operation_id") == FAILED_TERMINAL_OPERATION_ID
+    ):
+        raise CutoverSafetyError("failed v6 operation unexpectedly has a managed receipt")
+
+    owner_snapshot = _read_control_owner(config)
+    if owner_snapshot is None:
+        raise CutoverSafetyError(
+            "released intermediate owner disappeared before successor owner CAS"
+        )
+    current_owner, owner_identity = owner_snapshot
+    recorded_owner = _record(
+        evidence.get("intermediate_owner_record"), "released intermediate owner"
+    )
+    if (
+        current_owner != recorded_owner
+        or owner_identity.sha256 != RELEASED_INTERMEDIATE_OWNER_FILE_SHA256
+        or current_owner.get("record_sha256") != RELEASED_INTERMEDIATE_OWNER_RECORD_SHA256
+    ):
+        raise CutoverSafetyError("released intermediate owner changed before successor owner CAS")
+
+    release_path = config.scheduler_root / (
+        f"b649-prestart-successor-release-{RELEASED_INTERMEDIATE_RESERVATION_ID}.json"
+    )
+    release, release_identity, _ = _load_json(release_path)
+    if (
+        str(release_path) != evidence.get("intermediate_release_record_path")
+        or release != evidence.get("intermediate_release_record")
+        or release_identity.sha256 != RELEASED_INTERMEDIATE_RELEASE_RECORD_FILE_SHA256
+        or release.get("record_sha256") != RELEASED_INTERMEDIATE_RELEASE_RECORD_SHA256
+    ):
+        raise CutoverSafetyError(
+            "released intermediate release record changed before successor owner CAS"
+        )
+
+    v5_archive_path = Path(
+        _text(evidence.get("v5_protected_receipt_archive_path"), "v5 receipt archive path")
+    )
+    expected_v5_archive_path = config.scheduler_root / (
+        f"{FAILED_TERMINAL_RECEIPT_NAME.rsplit('.', 1)[0]}.{V5_EXECUTION_ID}.superseded.json"
+    )
+    if v5_archive_path != expected_v5_archive_path:
+        raise CutoverSafetyError("archived v5 receipt path differs from the frozen predecessor")
+    v5, v5_identity, _ = _load_json(v5_archive_path)
+    v5_identity_record = _record(v5.get("identity"), "v5 protected receipt identity")
+    v5_target = _normalized_owner_target(v5_identity_record.get("target"))
+    v5_owner_authorization = {
+        "reservation_id": v5_identity_record.get("reservation_id"),
+        "operation_id": v5_identity_record.get("operation_id"),
+        "managed_receipt_sha256": v5_identity_record.get("managed_receipt_sha256"),
+        "control_head": v5_identity_record.get("control_head"),
+        "control_tree": v5_identity_record.get("control_tree"),
+        "action": "apply",
+        "target": v5_target,
+    }
+    reconstructed_unsigned: Record = {
+        "schema": PROTECTED_PREDECESSOR_RELEASE_SCHEMA,
+        "prior_reservation_id": v5_identity_record.get("reservation_id"),
+        "prior_operation_id": v5_identity_record.get("operation_id"),
+        "prior_authorization_sha256": _sha256_json(v5_owner_authorization),
+        "prior_release_evidence": {
+            "managed_receipt_sha256": V5_MANAGED_RECEIPT_SHA256,
+            "protected_receipt_sha256": V5_PROTECTED_RECEIPT_SHA256,
+            "verified": True,
+        },
+        "prior_protected_receipt_sha256": V5_PROTECTED_RECEIPT_SHA256,
+        "prior_managed_receipt_sha256": V5_MANAGED_RECEIPT_SHA256,
+        "new_reservation_id": FAILED_TERMINAL_RESERVATION_ID,
+        "new_operation_id": FAILED_TERMINAL_OPERATION_ID,
+    }
+    reconstructed_v5_proof = {
+        **reconstructed_unsigned,
+        "evidence_sha256": _sha256_json(reconstructed_unsigned),
+    }
+    v5_link = _record(v5.get("managed_receipt"), "v5 managed receipt link")
+    managed_path = Path(_text(evidence.get("v5_managed_receipt_path"), "v5 managed receipt path"))
+    managed, managed_identity, _ = _load_json(managed_path)
+    if (
+        v5_identity.sha256 != V5_PROTECTED_RECEIPT_SHA256
+        or v5.get("schema_version") != "b649-protected-cutover-execution-receipt-v1"
+        or v5.get("task_key") != "b649-protected-cutover:com.lottolab.b649-goalc-r1"
+        or v5.get("status") != "SUCCESS"
+        or v5.get("phase") != "COMPLETED"
+        or type(v5.get("exit_code")) is not int
+        or v5.get("exit_code") != 0
+        or v5.get("result_status") not in {"SUCCESS", "ALREADY_APPLIED"}
+        or v5_identity_record.get("reservation_id") != V5_RESERVATION_ID
+        or v5_identity_record.get("operation_id") != V5_OPERATION_ID
+        or v5_identity_record.get("execution_receipt_path") != str(receipt_path)
+        or v5_identity_record.get("source_head") != V5_SOURCE_HEAD
+        or v5_identity_record.get("source_tree") != V5_SOURCE_TREE
+        or reconstructed_v5_proof != evidence.get("v5_predecessor_release_evidence")
+        or reconstructed_v5_proof.get("evidence_sha256")
+        != V5_RECONSTRUCTED_PREDECESSOR_PROOF_SHA256
+        or managed_path != config.receipt_path
+        or managed_identity.sha256 != V5_MANAGED_RECEIPT_SHA256
+        or managed.get("schema_version") != RECEIPT_SCHEMA_VERSION
+        or managed.get("task") != TASK_ID
+        or managed.get("status") != "SUCCESS"
+        or managed.get("phase") != "COMPLETED"
+        or managed.get("operation_id") != V5_OPERATION_ID
+        or managed.get("plan_digest") != v5_identity_record.get("plan_digest")
+        or v5_link.get("path") != str(managed_path)
+        or v5_link.get("sha256") != V5_MANAGED_RECEIPT_SHA256
+        or v5_link.get("status") != "SUCCESS"
+    ):
+        raise CutoverSafetyError(
+            "archived v5 SUCCESS or reconstructed proof changed before owner CAS"
+        )
+    _verify_protected_owner_receipt(
+        v5,
+        path=receipt_path,
+        bound_identity=v5_owner_authorization,
+        successful=True,
+    )
+
+    claim_root = Path(_text(evidence.get("claim_root"), "claim root"))
+    if (
+        ClaimStore(claim_root)
+        .inspect("b649-protected-cutover:com.lottolab.b649-goalc-r1")
+        .get("status")
+        != "ABSENT"
+    ):
+        raise CutoverSafetyError("ClaimStore is not absent before v2 successor owner CAS")
+    if os.path.lexists(config.scheduler_root / "b649-protected-cutover-rollback-receipt.json"):
+        raise CutoverSafetyError("rollback receipt appeared before v2 successor owner CAS")
+    if os.path.lexists(receipt_path):
+        raise CutoverSafetyError("active protected receipt appeared before v2 successor owner CAS")
+    for archived_path in config.scheduler_root.glob(f"{receipt_path.stem}.*.superseded.json"):
+        archived, _, _ = _load_json(archived_path)
+        archived_identity = _record(archived.get("identity"), "archived protected receipt identity")
+        if (
+            archived_identity.get("reservation_id") == RELEASED_INTERMEDIATE_RESERVATION_ID
+            or archived_identity.get("operation_id") == RELEASED_INTERMEDIATE_OPERATION_ID
+        ):
+            raise CutoverSafetyError(
+                "released intermediate unexpectedly has a protected execution receipt"
+            )
 
 def _read_control_owner(config: CutoverConfig) -> tuple[Record, FileIdentity] | None:
     path = _control_owner_path(config)
@@ -1926,10 +2428,36 @@ def acquire_control_owner(
             )
             if any(failed_signature) and not all(failed_signature):
                 raise CutoverSafetyError("exact failed terminal owner identity differs")
+            intermediate_signature = (
+                value.get("reservation_id") == RELEASED_INTERMEDIATE_RESERVATION_ID,
+                value.get("operation_id") == RELEASED_INTERMEDIATE_OPERATION_ID,
+            )
+            if any(intermediate_signature) and not all(intermediate_signature):
+                raise CutoverSafetyError("exact released intermediate owner identity differs")
             same_failed_ids = all(failed_signature)
             if same_failed_ids and value.get("phase") != "RELEASED":
                 raise CutoverSafetyError("failed terminal operation cannot be resumed or rerun")
+            same_intermediate_ids = all(intermediate_signature)
             failed_release = value.get("release_evidence")
+            intermediate_target = {
+                "source_worktree": RELEASED_INTERMEDIATE_TARGET_WORKTREE,
+                "head": RELEASED_INTERMEDIATE_TARGET_HEAD,
+                "tree": RELEASED_INTERMEDIATE_TARGET_TREE,
+                "durable_ref": RELEASED_INTERMEDIATE_TARGET_REF,
+            }
+            intermediate_release_evidence = (
+                cast(Record, failed_release) if isinstance(failed_release, dict) else {}
+            )
+            intermediate_owner_candidate = same_intermediate_ids and (
+                value.get("target") == intermediate_target
+                or value.get("record_sha256") == RELEASED_INTERMEDIATE_OWNER_RECORD_SHA256
+                or intermediate_release_evidence.get("release_record_sha256")
+                == RELEASED_INTERMEDIATE_RELEASE_RECORD_FILE_SHA256
+            )
+            if intermediate_owner_candidate and value.get("phase") != "RELEASED":
+                raise CutoverSafetyError(
+                    "released intermediate operation cannot be resumed or rerun"
+                )
             exact_failed_owner = same_failed_ids and failed_release == {
                 "protected_receipt_sha256": FAILED_TERMINAL_RECEIPT_SHA256,
                 "managed_receipt_unchanged": True,
@@ -1941,6 +2469,28 @@ def acquire_control_owner(
             )
             if same_failed_ids and not exact_failed_owner and not legacy_prestart_release:
                 raise CutoverSafetyError("failed terminal owner release evidence differs")
+            expected_intermediate_release = {
+                "claim_absent": True,
+                "kind": "PRESTART_SUCCESSOR_NO_MUTATION",
+                "managed_receipt_sha256": V5_MANAGED_RECEIPT_SHA256,
+                "mutation_started": False,
+                "protected_receipt_absent_for_operation": True,
+                "release_record_path": str(
+                    _control_owner_path(config).parent
+                    / f"b649-prestart-successor-release-{RELEASED_INTERMEDIATE_RESERVATION_ID}.json"
+                ),
+                "release_record_sha256": RELEASED_INTERMEDIATE_RELEASE_RECORD_FILE_SHA256,
+                "verified": True,
+            }
+            exact_released_intermediate = (
+                intermediate_owner_candidate
+                and value.get("target") == intermediate_target
+                and failed_release == expected_intermediate_release
+            )
+            if intermediate_owner_candidate and not exact_released_intermediate:
+                raise CutoverSafetyError(
+                    "released intermediate evidence differs from the frozen record"
+                )
             stored_target = (
                 None
                 if value.get("target") is None
@@ -1986,6 +2536,47 @@ def acquire_control_owner(
                                 "failed terminal successor requires live predecessor revalidation"
                             )
                         predecessor_live_verifier()
+                    elif exact_released_intermediate:
+                        if (
+                            owner_kind != "protected"
+                            or action != "apply"
+                            or retirement_value is None
+                            or cast(Record, retirement_value).get("schema")
+                            != FAILED_TERMINAL_RETIREMENT_V2_SCHEMA
+                            or predecessor.get("new_reservation_id")
+                            in {
+                                V5_RESERVATION_ID,
+                                FAILED_TERMINAL_RESERVATION_ID,
+                                RELEASED_INTERMEDIATE_RESERVATION_ID,
+                            }
+                            or predecessor.get("new_operation_id")
+                            in {
+                                V5_OPERATION_ID,
+                                FAILED_TERMINAL_OPERATION_ID,
+                                RELEASED_INTERMEDIATE_OPERATION_ID,
+                            }
+                        ):
+                            raise CutoverSafetyError(
+                                "released intermediate requires a fresh exact v2 successor bridge"
+                            )
+                        retirement = _validate_failed_terminal_retirement_evidence(retirement_value)
+                        if (
+                            retirement.get("intermediate_owner_record") != value
+                            or retirement.get("intermediate_owner_file_sha256") != identity.sha256
+                            or retirement.get("candidate_reservation_id")
+                            != predecessor.get("new_reservation_id")
+                            or retirement.get("candidate_operation_id")
+                            != predecessor.get("new_operation_id")
+                        ):
+                            raise CutoverSafetyError(
+                                "released intermediate changed before successor reservation"
+                            )
+                        _verify_failed_terminal_retirement_inputs(config, retirement)
+                        if predecessor_live_verifier is None:
+                            raise CutoverSafetyError(
+                                "released intermediate successor requires live v5 revalidation"
+                            )
+                        predecessor_live_verifier()
                     elif (
                         retirement_value is not None
                         or owner_kind != "protected"
@@ -2003,6 +2594,10 @@ def acquire_control_owner(
                 elif exact_failed_owner:
                     raise CutoverSafetyError(
                         "failed terminal owner requires a verified successor predecessor proof"
+                    )
+                elif exact_released_intermediate:
+                    raise CutoverSafetyError(
+                        "released intermediate requires a verified v2 successor predecessor proof"
                     )
             elif (
                 value["reservation_id"] == selected_id

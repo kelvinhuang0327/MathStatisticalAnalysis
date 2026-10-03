@@ -2962,6 +2962,294 @@ def test_production_validator_preserves_ordinary_predecessor_proof_shape() -> No
     assert validate(predecessor, owner) == predecessor
 
 
+def _exact_released_intermediate_v2_retirement(
+    fixture: Fixture,
+    monkeypatch: pytest.MonkeyPatch,
+) -> tuple[dict[str, object], dict[str, object]]:
+    digest_json = cast(Callable[[object], str], vars(cutover)["_sha256_json"])
+    seal = cast(
+        Callable[[dict[str, object]], dict[str, object]], vars(cutover)["_seal_control_owner"]
+    )
+    canonical_json = cast(Callable[[object], str], vars(cutover)["_canonical_json"])
+    owner_identity = cast(
+        Callable[[dict[str, object]], dict[str, object]], vars(cutover)["_owner_identity"]
+    )
+
+    def file_sha(value: dict[str, object]) -> str:
+        return hashlib.sha256((canonical_json(value) + "\n").encode()).hexdigest()
+
+    receipt_path = fixture.scheduler_root / cutover.FAILED_TERMINAL_RECEIPT_NAME
+    release_path = fixture.scheduler_root / (
+        f"b649-prestart-successor-release-{cutover.RELEASED_INTERMEDIATE_RESERVATION_ID}.json"
+    )
+    intermediate_target: dict[str, object] = {
+        "source_worktree": cutover.RELEASED_INTERMEDIATE_TARGET_WORKTREE,
+        "head": cutover.RELEASED_INTERMEDIATE_TARGET_HEAD,
+        "tree": cutover.RELEASED_INTERMEDIATE_TARGET_TREE,
+        "durable_ref": cutover.RELEASED_INTERMEDIATE_TARGET_REF,
+    }
+    owner: dict[str, object] = {
+        "schema": cutover.CONTROL_OWNER_SCHEMA,
+        "reservation_id": cutover.RELEASED_INTERMEDIATE_RESERVATION_ID,
+        "owner_kind": "protected",
+        "owner_pid": 1234,
+        "action": "apply",
+        "target": intermediate_target,
+        "control_head": cutover.V7_SOURCE_HEAD,
+        "control_tree": cutover.V7_SOURCE_TREE,
+        "operation_id": cutover.RELEASED_INTERMEDIATE_OPERATION_ID,
+        "managed_receipt_sha256": cutover.V5_MANAGED_RECEIPT_SHA256,
+        "phase": "RELEASED",
+        "created_at": "2026-10-01T00:00:00Z",
+        "updated_at": "2026-10-01T00:00:00Z",
+        "authorization": None,
+        "mutation_started": False,
+        "terminal": None,
+        "release_evidence": None,
+        "predecessor_release_evidence": None,
+    }
+    owner["authorization"] = owner_identity(owner)
+    release: dict[str, object] = {
+        "schema": "b649-protected-prestart-successor-release-v1",
+        "reservation_id": cutover.RELEASED_INTERMEDIATE_RESERVATION_ID,
+        "operation_id": cutover.RELEASED_INTERMEDIATE_OPERATION_ID,
+        "owner_authorization": owner["authorization"],
+        "plan_digest": "1" * 64,
+        "plan_sha256": "2" * 64,
+        "original_control_identity": {
+            "head": cutover.V7_SOURCE_HEAD,
+            "tree": cutover.V7_SOURCE_TREE,
+        },
+        "recovery_control_identity": {"head": "3" * 40, "tree": "4" * 40},
+        "target": intermediate_target,
+        "live_old_state": {
+            "verified": True,
+            "source": {"head": cutover.V5_SOURCE_HEAD, "tree": cutover.V5_SOURCE_TREE},
+        },
+        "managed_receipt_sha256": cutover.V5_MANAGED_RECEIPT_SHA256,
+        "protected_execution_receipt": {
+            "execution_id": cutover.FAILED_TERMINAL_EXECUTION_ID,
+            "exists": True,
+            "operation_id": cutover.FAILED_TERMINAL_OPERATION_ID,
+            "path": str(receipt_path),
+            "reservation_id": cutover.FAILED_TERMINAL_RESERVATION_ID,
+            "sha256": cutover.FAILED_TERMINAL_RECEIPT_SHA256,
+            "status": "FAILED",
+        },
+        "claim_absent": True,
+        "rollback_receipt_absent": True,
+        "mutation_started": False,
+    }
+    release_unsigned = {key: value for key, value in release.items() if key != "record_sha256"}
+    release["record_sha256"] = digest_json(release_unsigned)
+    release_file_sha = file_sha(release)
+    owner["release_evidence"] = {
+        "claim_absent": True,
+        "kind": "PRESTART_SUCCESSOR_NO_MUTATION",
+        "managed_receipt_sha256": cutover.V5_MANAGED_RECEIPT_SHA256,
+        "mutation_started": False,
+        "protected_receipt_absent_for_operation": True,
+        "release_record_path": str(release_path),
+        "release_record_sha256": release_file_sha,
+        "verified": True,
+    }
+    owner = seal(owner)
+    owner_file_sha = file_sha(owner)
+    monkeypatch.setattr(
+        cutover, "RELEASED_INTERMEDIATE_OWNER_RECORD_SHA256", owner["record_sha256"]
+    )
+    monkeypatch.setattr(cutover, "RELEASED_INTERMEDIATE_OWNER_FILE_SHA256", owner_file_sha)
+    monkeypatch.setattr(
+        cutover, "RELEASED_INTERMEDIATE_RELEASE_RECORD_SHA256", release["record_sha256"]
+    )
+    monkeypatch.setattr(
+        cutover, "RELEASED_INTERMEDIATE_RELEASE_RECORD_FILE_SHA256", release_file_sha
+    )
+
+    v5_proof = cast(
+        Callable[[], dict[str, object]], vars(cutover)["_reconstructed_v5_predecessor_proof"]
+    )()
+    candidate_target: dict[str, object] = {
+        "source_worktree": str(fixture.new),
+        "head": cutover.V7_SOURCE_HEAD,
+        "tree": cutover.V7_SOURCE_TREE,
+        "durable_ref": f"refs/heads/runtime/b649/{cutover.V7_SOURCE_HEAD}",
+    }
+    retirement_unsigned: dict[str, object] = {
+        "schema": cutover.FAILED_TERMINAL_RETIREMENT_V2_SCHEMA,
+        "receipt_path": str(receipt_path),
+        "archive_path": str(
+            receipt_path.with_name(
+                f"{receipt_path.stem}.{cutover.FAILED_TERMINAL_EXECUTION_ID}.superseded.json"
+            )
+        ),
+        "execution_id": cutover.FAILED_TERMINAL_EXECUTION_ID,
+        "receipt_sha256": cutover.FAILED_TERMINAL_RECEIPT_SHA256,
+        "reservation_id": cutover.FAILED_TERMINAL_RESERVATION_ID,
+        "operation_id": cutover.FAILED_TERMINAL_OPERATION_ID,
+        "status": "FAILED",
+        "phase": "COMPLETED",
+        "exit_code": 1,
+        "result_status": "INCOMPLETE_OR_AMBIGUOUS",
+        "child_started": False,
+        "child_completed": False,
+        "mutation_started": False,
+        "zero_mutation": True,
+        "v5_predecessor_release_evidence": v5_proof,
+        "v5_predecessor_proof_sha256": cutover.V5_RECONSTRUCTED_PREDECESSOR_PROOF_SHA256,
+        "v5_protected_receipt_sha256": cutover.V5_PROTECTED_RECEIPT_SHA256,
+        "v5_protected_receipt_archive_path": str(
+            fixture.scheduler_root
+            / (
+                f"{cutover.FAILED_TERMINAL_RECEIPT_NAME.rsplit('.', 1)[0]}."
+                f"{cutover.V5_EXECUTION_ID}.superseded.json"
+            )
+        ),
+        "v5_managed_receipt_sha256": cutover.V5_MANAGED_RECEIPT_SHA256,
+        "v5_managed_receipt_path": str(fixture.receipt_path),
+        "v5_source_head": cutover.V5_SOURCE_HEAD,
+        "v5_source_tree": cutover.V5_SOURCE_TREE,
+        "v5_live_state": {
+            "verified": True,
+            "source": {"head": cutover.V5_SOURCE_HEAD, "tree": cutover.V5_SOURCE_TREE},
+        },
+        "intermediate_owner_record": owner,
+        "intermediate_owner_file_sha256": owner_file_sha,
+        "intermediate_release_record_path": str(release_path),
+        "intermediate_release_record_file_sha256": release_file_sha,
+        "intermediate_release_record": release,
+        "intermediate_reservation_id": cutover.RELEASED_INTERMEDIATE_RESERVATION_ID,
+        "intermediate_operation_id": cutover.RELEASED_INTERMEDIATE_OPERATION_ID,
+        "intermediate_target": intermediate_target,
+        "candidate_plan_sha256": "5" * 64,
+        "candidate_reservation_id": "8f66c4b9-f104-40ea-8591-a4deef696c99",
+        "candidate_operation_id": "9" * 32,
+        "candidate_target": candidate_target,
+        "candidate_method": cutover.V7_TARGET_METHOD,
+        "candidate_k20_sha256": cutover.V7_TARGET_K20_SHA256,
+        "claim_root": str(fixture.root / "claims"),
+        "claim_store_status": "ABSENT",
+        "rollback_receipt_absent": True,
+        "intermediate_execution_receipt_absent": True,
+        "failed_operation_managed_receipt_present": False,
+        "archive_status": "ARCHIVED_UNCHANGED",
+    }
+    retirement = {
+        **retirement_unsigned,
+        "record_sha256": digest_json(retirement_unsigned),
+    }
+    successor_proof_unsigned: dict[str, object] = {
+        "schema": cutover.PROTECTED_PREDECESSOR_RELEASE_SCHEMA,
+        "prior_reservation_id": v5_proof["prior_reservation_id"],
+        "prior_operation_id": v5_proof["prior_operation_id"],
+        "prior_authorization_sha256": v5_proof["prior_authorization_sha256"],
+        "prior_release_evidence": v5_proof["prior_release_evidence"],
+        "prior_protected_receipt_sha256": cutover.V5_PROTECTED_RECEIPT_SHA256,
+        "prior_managed_receipt_sha256": cutover.V5_MANAGED_RECEIPT_SHA256,
+        "new_reservation_id": retirement["candidate_reservation_id"],
+        "new_operation_id": retirement["candidate_operation_id"],
+        "retired_failed_terminal_evidence": retirement,
+    }
+    successor_proof = {
+        **successor_proof_unsigned,
+        "evidence_sha256": digest_json(successor_proof_unsigned),
+    }
+    return retirement, successor_proof
+
+
+def test_production_validator_accepts_exact_released_intermediate_v2_bridge(
+    fixture: Fixture,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _retirement, proof = _exact_released_intermediate_v2_retirement(fixture, monkeypatch)
+    validate = cast(
+        Callable[[object, dict[str, object]], dict[str, object]],
+        vars(cutover)["_validate_predecessor_release_evidence"],
+    )
+    owner = {
+        "reservation_id": proof["new_reservation_id"],
+        "operation_id": proof["new_operation_id"],
+        "managed_receipt_sha256": cutover.V5_MANAGED_RECEIPT_SHA256,
+        "target": _object(_object(proof["retired_failed_terminal_evidence"])["candidate_target"]),
+    }
+    assert validate(proof, owner) == proof
+
+
+@pytest.mark.parametrize(
+    "defect",
+    [
+        "owner_file_seal",
+        "owner_record_seal",
+        "release_file_seal",
+        "release_record_seal",
+        "v5_proof_digest",
+        "v6_binding",
+        "candidate_target",
+        "candidate_id_reuse",
+        "candidate_operation_reuse",
+        "wrong_method",
+        "wrong_k20",
+    ],
+)
+def test_production_validator_rejects_released_intermediate_v2_corruption(
+    fixture: Fixture,
+    monkeypatch: pytest.MonkeyPatch,
+    defect: str,
+) -> None:
+    digest_json = cast(Callable[[object], str], vars(cutover)["_sha256_json"])
+    _retirement, proof = _exact_released_intermediate_v2_retirement(fixture, monkeypatch)
+    corrupted = copy.deepcopy(proof)
+    retirement = _object(corrupted["retired_failed_terminal_evidence"])
+    if defect in {"owner_file_seal", "owner_record_seal"}:
+        owner = _object(retirement["intermediate_owner_record"])
+        if defect == "owner_file_seal":
+            retirement["intermediate_owner_file_sha256"] = "a" * 64
+        else:
+            owner["record_sha256"] = "a" * 64
+    elif defect in {"release_file_seal", "release_record_seal"}:
+        release = _object(retirement["intermediate_release_record"])
+        if defect == "release_file_seal":
+            retirement["intermediate_release_record_file_sha256"] = "b" * 64
+        else:
+            release["record_sha256"] = "b" * 64
+    elif defect == "v5_proof_digest":
+        retirement["v5_predecessor_proof_sha256"] = "c" * 64
+    elif defect == "v6_binding":
+        release = _object(retirement["intermediate_release_record"])
+        _object(release["protected_execution_receipt"])["operation_id"] = "d" * 32
+    elif defect == "candidate_target":
+        _object(retirement["candidate_target"])["head"] = cutover.RELEASED_INTERMEDIATE_TARGET_HEAD
+    elif defect == "candidate_id_reuse":
+        retirement["candidate_reservation_id"] = cutover.RELEASED_INTERMEDIATE_RESERVATION_ID
+    elif defect == "candidate_operation_reuse":
+        retirement["candidate_operation_id"] = cutover.RELEASED_INTERMEDIATE_OPERATION_ID
+    elif defect == "wrong_method":
+        retirement["candidate_method"] = "other"
+    else:
+        retirement["candidate_k20_sha256"] = "e" * 64
+    retirement["record_sha256"] = ""
+    retirement["record_sha256"] = digest_json(
+        {key: value for key, value in retirement.items() if key != "record_sha256"}
+    )
+    corrupted["evidence_sha256"] = ""
+    corrupted["evidence_sha256"] = digest_json(
+        {key: value for key, value in corrupted.items() if key != "evidence_sha256"}
+    )
+    validate = cast(
+        Callable[[object, dict[str, object]], dict[str, object]],
+        vars(cutover)["_validate_predecessor_release_evidence"],
+    )
+    owner = {
+        "reservation_id": corrupted["new_reservation_id"],
+        "operation_id": corrupted["new_operation_id"],
+        "managed_receipt_sha256": cutover.V5_MANAGED_RECEIPT_SHA256,
+        "target": _object(
+            _object(corrupted["retired_failed_terminal_evidence"])["candidate_target"]
+        ),
+    }
+    with pytest.raises(cutover.CutoverSafetyError):
+        validate(corrupted, owner)
+
 def _prestart_successor_predecessor_proof() -> tuple[dict[str, object], dict[str, object]]:
     digest_json = cast(Callable[[object], str], vars(cutover)["_sha256_json"])
     prior_reservation = "92740b95-103b-4350-8dc0-ee2ffe6cec32"

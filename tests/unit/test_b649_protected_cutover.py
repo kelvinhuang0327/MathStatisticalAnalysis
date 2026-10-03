@@ -22,6 +22,7 @@ import stat
 import subprocess
 import sys
 import threading
+import traceback
 from collections.abc import Callable, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import redirect_stderr, redirect_stdout
@@ -3863,6 +3864,8 @@ def _fresh_cli_session(
     legacy: tuple[str, str] | None = None,
     barrier: Barrier | None = None,
     boot: int = 0,
+    *,
+    observe_owner: bool = True,
 ) -> None:
     """Spawned interpreter: only disk state, CLI argv and hermetic OS seams survive."""
     output, errors = io.StringIO(), io.StringIO()
@@ -3902,21 +3905,51 @@ def _fresh_cli_session(
             if barrier is not None:
                 barrier.wait(30)
             code = protected.main(argv)
-            owner = cutover.inspect_control_owner(fixture.config)
+            # Concurrent peers can still atomically update this record after
+            # their CLI call returns. The parent checks final owner state once
+            # all peers have exited, so do not race that write here.
+            owner = cutover.inspect_control_owner(fixture.config) if observe_owner else None
             channel.send(
                 {
-                    "code": code,
-                    "output": output.getvalue(),
-                    "errors": errors.getvalue(),
-                    "pid": os.getpid(),
-                    "launches": harness.launches,
-                    "mutations": len(harness.launchd.mutation_calls),
-                    "owner": owner,
-                    "started": harness.observed_started,
+                    "status": "SUCCESS",
+                    "result": {
+                        "code": code,
+                        "output": output.getvalue(),
+                        "errors": errors.getvalue(),
+                        "pid": os.getpid(),
+                        "launches": harness.launches,
+                        "mutations": len(harness.launchd.mutation_calls),
+                        "owner": owner,
+                        "started": harness.observed_started,
+                    },
                 }
             )
+    except BaseException as exc:
+        channel.send(
+            {
+                "status": "FAILURE",
+                "exception_type": type(exc).__name__,
+                "exception_message": str(exc),
+                "traceback": traceback.format_exc(),
+                "pid": os.getpid(),
+            }
+        )
+        raise
     finally:
         channel.close()
+
+
+def _receive_fresh_cli_result(channel: Connection) -> protected.Record:
+    payload = protected.record(channel.recv())
+    if payload.get("status") == "FAILURE":
+        raise AssertionError(
+            "fresh CLI child failed: "
+            f"pid={payload.get('pid')} "
+            f"{payload.get('exception_type')}: {payload.get('exception_message')}\n"
+            f"{payload.get('traceback')}"
+        )
+    assert payload.get("status") == "SUCCESS", f"unexpected fresh CLI child payload: {payload}"
+    return protected.record(payload.get("result"))
 
 
 def _invoke_fresh_cli(
@@ -3938,7 +3971,7 @@ def _invoke_fresh_cli(
     sender.close()
     try:
         assert receiver.poll(30), "fresh CLI timed out"
-        result = protected.record(receiver.recv())
+        result = _receive_fresh_cli_result(receiver)
         process.join(10)
         assert process.exitcode == 0
         return result
@@ -3968,6 +4001,7 @@ def _invoke_fresh_cli_concurrently(
         process = context.Process(
             target=_fresh_cli_session,
             args=(fixture, plan_path, argv, sender, identities, legacy, barrier),
+            kwargs={"observe_owner": False},
         )
         process.start()
         sender.close()
@@ -3976,7 +4010,7 @@ def _invoke_fresh_cli_concurrently(
     try:
         for receiver, process in started:
             assert receiver.poll(60), "concurrent fresh CLI timed out"
-            results.append(protected.record(receiver.recv()))
+            results.append(_receive_fresh_cli_result(receiver))
             process.join(10)
             assert process.exitcode == 0
         return results

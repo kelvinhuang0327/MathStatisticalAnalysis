@@ -1,0 +1,78 @@
+{
+  "AGGREGATE_REALIZABILITY": {
+    "CELL_LABEL_CAPACITIES": {
+      "a_only": 3,
+      "b_only": 3,
+      "outside": 40,
+      "shared": 3
+    },
+    "MAXIMUM_PAIR_OVERLAP": 3,
+    "MODEL_SCOPE": "Necessary aggregate realizability relaxation. Every actual ticket family maps into it; no complete ticket portfolios are constructed.",
+    "PAIR_CELL_OVERLAP": "Each cell overlap is bounded by the two type coordinates and its physical label capacity; only four-cell overlap vectors totaling at most 3 are admitted.",
+    "REPEATED_LABEL_CAPACITY": "Each physical label has frequency 0..18; for each cell the balanced-frequency convex minimum is checked against the maximum pair mass admitted by the type-pair overlap vectors.",
+    "TICKET_SIZE": 6
+  },
+  "ANCHOR_INCIDENCE_TYPE_COUNT": 30,
+  "BASE_HEAD": "92f88afb2f98073bdb9612f1e002e2c1a20cc350",
+  "CRITICAL_DANGEROUS_VECTOR": [
+    [
+      0,
+      7
+    ],
+    [
+      4,
+      11
+    ]
+  ],
+  "CRITICAL_LOCAL_LOSS": 4871790,
+  "CRITICAL_LOCAL_RECOVERY": -8581860,
+  "CRITICAL_OUTSIDE_LABEL_INCIDENCES": 97,
+  "CRITICAL_OUTSIDE_LABEL_PAIR_MASS_FLOOR": 74,
+  "CRITICAL_PAIR_INTERSECTION_MASS_FLOOR": 16416064,
+  "CRITICAL_PRIOR_FOREST_PENALTY": 1148000,
+  "CRITICAL_TOTAL_RECOVERY_REDUCTION": 6695798,
+  "DANGEROUS_VECTOR_COUNT": 0,
+  "FAMILY_A_BOTTLENECK_R": "R4",
+  "FAMILY_A_RECOMPUTED_BOUND": 354779928,
+  "FULL_TYPE_COUNT_SIMPLEX_COUNT": 4568648125690,
+  "GUARANTEED_RECOVERY_REDUCTION": 5757570,
+  "INCUMBENT": 313239661,
+  "LOCAL_LOSS_CUTOFF": 5314680,
+  "LOCAL_TAIL_RECOVERY_REDUCTION_FLOOR": 5757570,
+  "MANDATORY_OUTSIDE_PAIR_PENALTY": 1824008,
+  "NEW_PORTFOLIO_SEARCH_STARTED": "NO",
+  "OUTSIDE_PAIR_SLOPE": "1036",
+  "PRODUCTION_MUTATION": "NONE",
+  "R3_BOUND": 351483978,
+  "R3_PROOF": {
+    "COMPLEMENTARY_PRIOR_CERTIFICATE": "The frozen r5 good-count penalty rows are reused only via max with the new pair-sum bound; the r5 weighted-forest computation is not rerun.",
+    "GLOBAL_ENVELOPE": "The census minimum is 6695798. Every omitted vector has at least 13 non-good tickets and local loss at least 5757570; hence the certified global reduction is 5757570.",
+    "LOCAL_RECOVERY": "For type t=(s,a,b,o), net(t)=J((3,s+a,s+b),s)-I(s+a)-I(s+b); the count-vector local recovery is the exact sum of n_t*net(t).",
+    "OUTSIDE_REUSE": "Q_out=sum_l binom(f_l,2), with 0<=f_l<=18 and sum_l f_l equal to the outside incidence count. Convexity gives the balanced-frequency minimum over 40 labels.",
+    "PAIR_DUAL": "For each type pair beta is the exact minimum of the pair residual floor over physically allowed cell overlaps totaling at most 3; the complete 30-type table proves floor >= beta+1036*x_outside.",
+    "PAIR_RESIDUAL_FLOOR": "For outside tickets C,D with four-cell common counts x and d=sum(x), |R_C intersect R_D| >= max(0,I(d)-J((u_C,u_D,d),x_shared+x_A)-J((v_C,v_D,d),x_shared+x_B)).",
+    "PAIR_SUM_TO_UNION": "For outcome multiplicity k<=18, binom(k,2)<=9*(k-1); therefore the residual union correction is at least ceil(pair_intersection_mass/9)."
+  },
+  "R3_STATUS": "TIGHTENED_OPEN",
+  "R4_BOUND": 354779928,
+  "R5_BOUND": 350778728,
+  "R6_BOUND": 343869728,
+  "REMAINING_GAP": 41540267,
+  "SOLVER_ACTUAL_WALL_TIME": "NOT_APPLICABLE",
+  "SOLVER_CERTIFIED_BOUND": null,
+  "SOLVER_CONFIGURED_WALL_LIMIT": "NOT_APPLICABLE",
+  "SOLVER_STATUS": "NOT_USED_COMPLETE_FINITE_CENSUS",
+  "TASK_BRANCH": "codex/b649-k20-r3-exact-anchor-neighborhood-envelope-r6",
+  "TASK_ID": "B649_K20_R3_EXACT_ANCHOR_NEIGHBORHOOD_ENVELOPE_R6",
+  "TASK_STATUS": "CERTIFIED_R3_BOUND_TIGHTENED",
+  "TYPE_COUNT_CENSUS_SCOPE": "Complete census of aggregate-feasible 30-type vectors with local loss at most the previous 5314680 reduction; vectors outside this set are bounded by the local-loss tail.",
+  "TYPE_COUNT_VECTOR_COUNT": 2683,
+  "UNCORRECTED_R3_BOUND": 357241548,
+  "VERIFICATION": {
+    "FOCUSED_TESTS": "PASS: 4 passed in 28.21s",
+    "FULL_SUITE": "NOT RUN: outside task scope",
+    "PYRIGHT": "PASS: Pyright 1.1.411 scoped check, 0 errors, 0 warnings, 0 informations; explicit Python 3.13 interpreter used (configured .venv absent notice)",
+    "RUFF": "PASS: Ruff 0.15.21 scoped check"
+  },
+  "WORKTREE_DISPOSITION": "RETAIN"
+}

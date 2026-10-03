@@ -1,0 +1,137 @@
+{
+  "ANCHOR_INCIDENCE_TYPE_COUNT": 30,
+  "BASE_HEAD": "dc2c5760d9b63cffb1ccc7435b42d2c12f07d80b",
+  "BASE_TREE": "1dd021b0b87fa911c71807cd9e0fa76bf229a5a0",
+  "CAPACITY_CONSTRAINTS": {
+    "ANCHOR_A_ONLY_LABELS": 3,
+    "ANCHOR_B_ONLY_LABELS": 3,
+    "ANCHOR_SHARED_LABELS": 3,
+    "LABEL_FREQUENCIES": "Each of the 3+3+3+40 physical labels has an integer frequency from 0 through 18 among outside tickets; cell frequency sums equal the corresponding type-coordinate totals.",
+    "OUTSIDE_LABELS": 40,
+    "OUTSIDE_TICKETS": 18,
+    "PAIRWISE_MAXIMUM_OVERLAP": "For every outside-ticket pair, shared-label counts across the four cells sum to at most 3; good-ticket pairs therefore share at most 3 outside labels.",
+    "TYPE_COUNT_CONSTRAINTS": "For integer n_t>=0, sum_t n_t=18; the four coordinate totals equal their physical-label frequency sums, with at most 3*18 incidences in each 3-label anchor cell and 40*18 outside.",
+    "TYPE_RULES": "0<=s<=3; 0<=a,b<=3; s+a<=3; s+b<=3; o=6-s-a-b>=0"
+  },
+  "FALSIFIABILITY_CHECK": {
+    "FINAL_REVERIFY": "PASS: focused suite, 5 passed",
+    "MUTATION": "temporarily added 1 to the computed non-good local loss",
+    "OBSERVED": "the test failed at the certified tradeoff invariant",
+    "RESTORE": "PASS",
+    "STATUS": "CONFIRMED",
+    "TARGET": "test_weighted_forest_census_proves_the_full_good_count_tradeoff"
+  },
+  "FAMILY_A_BOUND": 354779928,
+  "FAMILY_A_STATUS": "TIGHTENED_OPEN",
+  "IMPROVEMENT_VS_CURRENT_R3_BOUND": 4740680,
+  "INCUMBENT": 313239661,
+  "LOCAL_TYPE_EXTREMA": {
+    "GOOD_PROFILE": [
+      0,
+      0,
+      0,
+      6,
+      9485,
+      215600,
+      -206115
+    ],
+    "MAXIMUM_NON_GOOD_NET_RECOVERY": -649005
+  },
+  "NEW_PORTFOLIO_SEARCH_STARTED": "NO",
+  "OUTSIDE_OVERLAP_PENALTY": {
+    "GOOD_TICKET_COLLISION_THRESHOLD": 7,
+    "MINIMUM_FORCED_PENALTY_AT_OR_ABOVE_THRESHOLD": 1148000,
+    "RESIDUAL_PAIR_FLOORS_BY_OVERLAP": {
+      "1": 574000,
+      "2": 1691508,
+      "3": 3450972
+    },
+    "TRADEOFF_BY_GOOD_TICKET_COUNT": [
+      "0,0,0,0,0,0,0,0,0,7972020,7972020",
+      "1,0,0,0,0,0,0,0,0,7529130,7529130",
+      "2,0,0,0,0,0,0,0,0,7086240,7086240",
+      "3,0,0,0,0,0,0,0,0,6643350,6643350",
+      "4,0,0,0,0,0,0,0,0,6200460,6200460",
+      "5,0,0,0,0,0,0,0,0,5757570,5757570",
+      "6,0,0,0,0,0,0,0,0,5314680,5314680",
+      "7,2,2,0,0,2,0,0,1148000,4871790,6019790",
+      "8,8,8,0,0,4,0,0,2296000,4428900,6724900",
+      "9,14,14,0,0,5,0,0,2870000,3986010,6856010",
+      "10,20,20,0,0,6,0,0,3444000,3543120,6987120",
+      "11,26,26,0,0,7,0,0,4018000,3100230,7118230",
+      "12,32,32,0,0,8,0,0,4592000,2657340,7249340",
+      "13,38,38,0,0,9,0,0,5166000,2214450,7380450",
+      "14,48,48,0,0,10,0,0,5740000,1771560,7511560",
+      "15,60,60,0,0,11,0,0,6314000,1328670,7642670",
+      "16,72,72,0,0,12,0,0,6888000,885780,7773780",
+      "17,84,84,0,0,13,0,0,7462000,442890,7904890",
+      "18,96,96,0,0,14,0,0,8036000,0,8036000"
+    ],
+    "TRADEOFF_COLUMNS": [
+      "good_count",
+      "minimum_label_pair_mass",
+      "e1",
+      "e2",
+      "e3",
+      "rank1_floor",
+      "rank2_floor",
+      "rank3_floor",
+      "outside_overlap_penalty",
+      "non_good_local_loss",
+      "total_recovery_reduction"
+    ],
+    "TRADEOFF_ROWS_ENCODING": "Each row is a comma-separated integer string in column order."
+  },
+  "PAIR_INTERSECTION_COUNTS_BY_OVERLAP": [
+    107800,
+    574000,
+    1695988,
+    3469942,
+    6224512,
+    10776332,
+    18611432
+  ],
+  "PRODUCTION_MUTATION": "NONE",
+  "R3_BOUND": 351926868,
+  "R3_LOCAL_TRADEOFF": {
+    "GOOD_LOCAL_NET_RECOVERY": -206115,
+    "GUARANTEED_RECOVERY_REDUCTION": 5314680,
+    "MAXIMUM_NON_GOOD_LOCAL_NET_RECOVERY": -649005,
+    "MINIMUM_NON_GOOD_LOCAL_LOSS": 442890,
+    "UNCORRECTED_ANCHOR_BOUND": 357241548,
+    "WORST_CASE_GOOD_TICKET_COUNT": 6
+  },
+  "R3_PRIOR_BOUND": 356667548,
+  "R3_PROOF": {
+    "ANCHOR_COVER_IDENTITY": "|union E_i| <= S1 - I(3) + sum_C net(C), where net(C)=J-I(s+a)-I(s+b)",
+    "FOREST_UNION_CORRECTION": "For any forest on good residual events, union size is at most the sum of event sizes minus the sum of edge intersections.",
+    "LOCAL_RESIDUAL_IDENTITY": "|E_C \\ (E_A union E_B)| = N - I(s+a) - I(s+b) + J(3,s+a,s+b;s)",
+    "OUTSIDE_LABEL_PAIR_MASS": "For m good tickets, f_l in 0..m, sum_l f_l=6m over 40 labels, Q=sum_l binom(f_l,2)=sum_{i<j} d_ij. Convexity gives the balanced-frequency minimum.",
+    "RESIDUAL_PAIR_IDENTITY": "|R_C intersect R_D| >= I(d)-2*J(0,0,d); the omitted four-way anchor intersection is nonnegative.",
+    "TRADEOFF": "At m<=6, at least 12 non-good tickets lose 442890 each. At m>=7, the exact frequency/forest census forces at least 1148000 residual outcomes of outside-overlap correction; the combined minimum over m=0..18 is 5314680 at m=6.",
+    "WEIGHTED_FOREST_CENSUS": "With e_t=#pairs sharing at least t outside labels, e1>=e2>=e3 and e1+e2+e3=Q. A graph of forest rank r has at most binom(r+1,2) edges, so rank>=rho(e_t), where rho(e)=min{r:binom(r+1,2)>=e}. The maximum weighted forest has weight w1*rank(G1)+(w2-w1)*rank(G2)+(w3-w2)*rank(G3). Exhausting the finite e1,e2,e3 relaxation yields the recorded residual-union penalty."
+  },
+  "R4_BOUND": 354779928,
+  "R5_BOUND": 350778728,
+  "R6_BOUND": 343869728,
+  "REMAINING_GAP": 41540267,
+  "SOLVER_ACTUAL_WALL_TIME": "NOT_APPLICABLE",
+  "SOLVER_CERTIFIED_BOUND": null,
+  "SOLVER_CONFIGURED_WALL_LIMIT": "NOT_APPLICABLE",
+  "SOLVER_STATUS": "NOT_NEEDED_ANALYTIC_EXACT_FINITE_CENSUS",
+  "SUCCESS_A": false,
+  "SUCCESS_B": true,
+  "TASK_BRANCH": "codex/b649-k20-r3-anchor-incidence-bound-r5",
+  "TASK_ID": "B649_K20_R3_ANCHOR_INCIDENCE_BOUND_R5",
+  "TASK_STATUS": "CERTIFIED_R3_BOUND_TIGHTENED",
+  "VERIFICATION": {
+    "CP_SAT": "NOT RUN: analytic exact finite census certified the bound",
+    "EXACT_PAIR_TRIPLE_COUNTS": "PASS: exact I(0..6), good-pair J(0,0,d), and all 30 local type contributions",
+    "FOCUSED_TESTS": "PASS: 5 passed",
+    "FULL_SUITE": "NOT RUN: outside task scope",
+    "PYRIGHT": "PASS: scoped strict check, 0 errors, 0 warnings, 0 informations",
+    "RUFF": "PASS: scoped check of the proof module and focused test",
+    "SMALL_ANCHOR_INCIDENCE_TOYS": "PASS: exhaustive legal type signatures and 120 valid residual-event neighborhoods"
+  },
+  "WORKTREE_DISPOSITION": "RETAIN"
+}

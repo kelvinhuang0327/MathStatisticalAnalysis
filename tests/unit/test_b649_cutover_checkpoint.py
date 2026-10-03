@@ -509,6 +509,33 @@ def test_malformed_process_state_fails_closed(
     assert observation(result, "old_runtime_ownership")["classification"] == "UNVERIFIABLE"
 
 
+def test_negative_uid_daemon_is_parsed_without_becoming_an_owner(
+    harness: Harness, capsys: pytest.CaptureFixture[str]
+) -> None:
+    harness.loaded = False
+    harness.process_rows.append("900002 1 -2 S /usr/libexec/dhcp6d")
+    code, result = execute(harness, capsys, "post-unload")
+    assert code == 0, result
+    snapshot = observation(result, "process_snapshot")
+    assert snapshot["process_count"] == 2
+    assert snapshot["uncertainties"] == []
+    for role in ("runtime", "primary", "scheduler", "shadow"):
+        assert checkpoint.object_record(snapshot[role]) == {"classification": "ABSENT", "pids": []}
+
+
+def test_nonnumeric_process_uid_fails_closed(
+    harness: Harness, capsys: pytest.CaptureFixture[str]
+) -> None:
+    harness.loaded = False
+    harness.process_rows.append("900002 1 unknown S /usr/libexec/dhcp6d")
+    code, result = execute(harness, capsys, "post-unload")
+    assert code == 1
+    entry = checkpoint.object_record(checkpoint.object_record(result["checks"])["process_snapshot"])
+    assert entry["classification"] == "UNVERIFIABLE"
+    assert "unparseable process table row" in str(entry["error"])
+    assert observation(result, "old_runtime_ownership")["classification"] == "UNVERIFIABLE"
+
+
 def test_zombie_does_not_exempt_malformed_lsof(
     harness: Harness, capsys: pytest.CaptureFixture[str]
 ) -> None:

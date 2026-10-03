@@ -733,7 +733,7 @@ def process_snapshot(
         # macOS ps STAT is a run state followed by documented state modifiers.
         # Keep it separate from argv: command text cannot establish exit state.
         match = re.fullmatch(
-            r"\s*(\d+)\s+(\d+)\s+(\d+)\s+([IRSTUZ][+<>AELNSVWXs]*)\s+(\S.*)", line
+            r"\s*(\d+)\s+(\d+)\s+(-?\d+)\s+([IRSTUZ][+<>AELNSVWXs]*)\s+(\S.*)", line
         )
         if match is None:
             raise Unverifiable("unparseable process table row")

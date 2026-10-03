@@ -1,0 +1,90 @@
+{
+  "BASE_HEAD": "c16be9ca51e3fbdb2414dc96b77187337425d370",
+  "CP_SAT_CERTIFIED_BOUND": null,
+  "CP_SAT_STATUS": "NOT_RUN",
+  "DISJOINT_ANCHOR_TRIPLE_COUNTS_BY_OUTSIDE_OVERLAP": {
+    "1": 0,
+    "2": 2240,
+    "3": 9485
+  },
+  "FAMILY_A_BOUND": 356667548,
+  "FAMILY_A_STATUS": "TIGHTENED_OPEN",
+  "IMPROVEMENT_VS_PRIOR_BOUND": 574000,
+  "INCUMBENT": 313239661,
+  "NEW_PORTFOLIO_SEARCH_STARTED": "NO",
+  "PAIR_INTERSECTION_COUNTS_BY_OVERLAP": [
+    107800,
+    574000,
+    1695988,
+    3469942,
+    6224512,
+    10776332,
+    18611432
+  ],
+  "PRODUCTION_MUTATION": "NONE",
+  "R3_ANCHOR_TRADEOFF": {
+    "anchor_overlap": 3,
+    "collision_pair_recovery_floor": 574000,
+    "collision_profiles": [
+      {
+        "anchor_triple_intersection": 0,
+        "outside_ticket_overlap": 1,
+        "pair_intersection": 574000,
+        "residual_pair_intersection_lower_bound": 574000
+      },
+      {
+        "anchor_triple_intersection": 2240,
+        "outside_ticket_overlap": 2,
+        "pair_intersection": 1695988,
+        "residual_pair_intersection_lower_bound": 1691508
+      },
+      {
+        "anchor_triple_intersection": 9485,
+        "outside_ticket_overlap": 3,
+        "pair_intersection": 3469942,
+        "residual_pair_intersection_lower_bound": 3450972
+      }
+    ],
+    "good_local_net_recovery": -206115,
+    "good_ticket_collision_threshold": 7,
+    "guaranteed_recovery_improvement": 574000,
+    "maximum_non_good_local_net_recovery": -649005,
+    "minimum_non_good_local_loss": 442890,
+    "non_good_case_minimum_loss": 5314680,
+    "outside_label_capacity": 40,
+    "outside_ticket_count": 18,
+    "ticket_size": 6
+  },
+  "R3_BOUND": 356667548,
+  "R3_PRIOR_BOUND": 357241548,
+  "R3_PROOF": {
+    "ANCHOR_COVER_IDENTITY": "|union E_i| <= S1 - I(3) + sum_C net(C), where net(C)=J(A,B,C)-I(A,C)-I(B,C)",
+    "COLLISION_CASE": "At least 7 good six-label tickets force a shared label. For overlap d in 1..3, residual pair intersection is at least I(d)-2*J(0,0,d), whose minimum is 574000.",
+    "GOOD_TICKET_DEFINITION": "C is good iff it is disjoint in labels from both anchors; good tickets use only the 40 labels outside A union B",
+    "GUARANTEED_RECOVERY_REDUCTION": 574000,
+    "LOCAL_RESIDUAL_IDENTITY": "|E_C \\ (E_A union E_B)| = N - I(|A intersect C)| - I(|B intersect C)| + J(A,B,C)",
+    "LOW_GOOD_COUNT_CASE": "At most 6 good tickets leaves at least 12 non-good tickets; each loses at least 442890 local net recovery, for a 5314680 total reduction.",
+    "UNION_CORRECTION": "For the forced residual pair C,D, |union R_i| <= sum_i |R_i| - |R_C intersect R_D|."
+  },
+  "R4_BOUND": 354779928,
+  "R5_BOUND": 350778728,
+  "R6_BOUND": 343869728,
+  "REMAINING_GAP": 43427887,
+  "SUCCESS_A": false,
+  "SUCCESS_B": true,
+  "TASK_BRANCH": "codex/b649-k20-heavy-pair-r3plus-higher-order-bound-r4",
+  "TASK_ID": "B649_K20_HEAVY_PAIR_R3PLUS_HIGHER_ORDER_BOUND_R4",
+  "TASK_STATUS": "CERTIFIED_FAMILY_A_BOUND_TIGHTENED",
+  "VERIFICATION": {
+    "ANCHOR_NEIGHBORHOOD_TOY_CASES": "PASS: 120 exhaustive valid toy neighborhoods (pool=11, draw=3)",
+    "CP_SAT": "NOT RUN: the combinatorial tradeoff proves the bound",
+    "EXACT_PAIR_TRIPLE_COUNTS": "PASS: exact K20 pair table and anchor triples; exhaustive toy event intersections",
+    "FOCUSED_TESTS": "PASS: 10 passed across the new and frozen r3 suites",
+    "FULL_C49_ENUMERATION": "NOT RUN",
+    "FULL_SUITE": "NOT RUN",
+    "JUDGE": "NOT RUN",
+    "PYRIGHT": "PASS: scoped strict Pyright, 0 errors, 0 warnings, 0 informations",
+    "RUFF": "PASS: scoped Ruff check on the new proof module and test"
+  },
+  "WORKTREE_DISPOSITION": "RETAIN"
+}

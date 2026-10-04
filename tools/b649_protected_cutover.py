@@ -2988,6 +2988,226 @@ def _require_reconstructed_v5_proof(
     )
     return proof, v5, managed, archive_path
 
+
+def _recover_v2_successor_request(
+    config: cutover.CutoverConfig,
+    legacy_worktree: Path,
+    legacy_head: str,
+    legacy_tree: str,
+    plan_file: Path,
+    claim_root: Path,
+    prior_owner: Record | None,
+    *,
+    prior_execution_receipt_sha256: str | None | _Unset,
+    takeover_stale: bool = False,
+) -> Request | None:
+    """Rebuild only the successor identity sealed by matching v2 retirement evidence.
+
+    This path is read-only. It validates the durable transition and all of its
+    historical inputs before constructing a request with the persisted
+    reservation; callers never supply either recovered identity.
+    """
+    retirement_path = config.scheduler_root / cutover.FAILED_TERMINAL_RETIREMENT_V2_NAME
+    if not os.path.lexists(retirement_path):
+        return None
+    retirement, _, _ = cutover._load_json(retirement_path)  # pyright: ignore[reportPrivateUsage]
+    cutover._validate_failed_terminal_retirement_v2_evidence(  # pyright: ignore[reportPrivateUsage]
+        retirement
+    )
+    candidate_reservation_id = text(retirement.get("candidate_reservation_id"))
+    candidate_operation_id = text(retirement.get("candidate_operation_id"))
+    if (
+        prior_owner is not None
+        and prior_owner.get("reservation_id") == candidate_reservation_id
+        and prior_owner.get("operation_id") == candidate_operation_id
+    ):
+        predecessor = cutover._validate_predecessor_release_evidence(  # pyright: ignore[reportPrivateUsage]
+            prior_owner.get("predecessor_release_evidence"),
+            prior_owner,
+        )
+        if (
+            prior_owner.get("owner_kind") == "protected"
+            and prior_owner.get("action") == "apply"
+            and prior_owner.get("managed_receipt_sha256") == cutover.V5_MANAGED_RECEIPT_SHA256
+            and prior_owner.get("target") == retirement.get("candidate_target")
+            and predecessor.get("new_reservation_id") == candidate_reservation_id
+            and predecessor.get("new_operation_id") == candidate_operation_id
+            and predecessor.get("retired_failed_terminal_evidence") == retirement
+        ):
+            if prior_owner.get("phase") == "RELEASED":
+                # The exact successor already completed; normal handling may
+                # now consider a later transition from its released owner.
+                return None
+            if (
+                prior_owner.get("phase")
+                not in {
+                    "AUTHORIZATION_PENDING",
+                    "AUTHORIZED_PENDING",
+                    "MUTATION_IN_PROGRESS",
+                    "TERMINAL_CAPTURE_PENDING",
+                }
+                or prior_execution_receipt_sha256 != cutover.V5_PROTECTED_RECEIPT_SHA256
+                or (legacy_head, legacy_tree) != (cutover.V5_SOURCE_HEAD, cutover.V5_SOURCE_TREE)
+                or retirement.get("claim_root") != str(claim_root)
+            ):
+                raise ProtectedError(
+                    "v2 retirement successor owner is outside its exact pending retry"
+                )
+            expected_target = {
+                "source_worktree": str(config.source_worktree),
+                "head": config.expected_head,
+                "tree": config.expected_tree,
+                "durable_ref": config.durable_ref,
+            }
+            if retirement.get("candidate_target") != expected_target:
+                raise ProtectedError(
+                    "v2 retirement evidence belongs to a different successor target"
+                )
+            request = make_request(
+                config,
+                legacy_worktree,
+                legacy_head,
+                legacy_tree,
+                plan_file,
+                claim_root,
+                takeover_stale=takeover_stale,
+                reservation_id=candidate_reservation_id,
+                prior_execution_receipt_sha256=prior_execution_receipt_sha256,
+                managed_receipt_sha256=cast(
+                    str | None,
+                    prior_owner.get("managed_receipt_sha256"),
+                ),
+            )
+            if (
+                request.plan_sha256 != retirement.get("candidate_plan_sha256")
+                or request.managed_receipt_sha256 != cutover.V5_MANAGED_RECEIPT_SHA256
+                or request.operation_id != candidate_operation_id
+                or request_owner_target(request) != expected_target
+                or (request.control_head, request.control_tree)
+                != (prior_owner.get("control_head"), prior_owner.get("control_tree"))
+            ):
+                raise ProtectedError(
+                    "v2 retirement successor identity does not match its pending owner"
+                )
+            _failed, _failed_identity, failed_archive_path, failed_is_active = (
+                _read_exact_failed_terminal_receipt(request)
+            )
+            if failed_is_active or str(failed_archive_path) != retirement.get("archive_path"):
+                raise ProtectedError("v2 retirement failed receipt archive changed")
+            predecessor_proof, _v5, _managed, v5_archive_path = _require_reconstructed_v5_proof(
+                request
+            )
+            if predecessor_proof != retirement.get("v5_predecessor_release_evidence") or str(
+                v5_archive_path
+            ) != retirement.get("v5_protected_receipt_archive_path"):
+                raise ProtectedError("v2 retirement v5 predecessor evidence changed")
+            release_path = Path(text(retirement.get("intermediate_release_record_path")))
+            release, release_identity, _ = cutover._load_json(  # pyright: ignore[reportPrivateUsage]
+                release_path
+            )
+            if (
+                str(release_path) != retirement.get("intermediate_release_record_path")
+                or release != retirement.get("intermediate_release_record")
+                or release_identity.sha256
+                != retirement.get("intermediate_release_record_file_sha256")
+            ):
+                raise ProtectedError("v2 retirement intermediate release evidence changed")
+            plan, _, _ = cutover.read_control_json(plan_file)
+            plan_source = record(plan.get("source"))
+            plan_old = record(plan_source.get("old"))
+            plan_new = record(plan_source.get("new"))
+            if (
+                plan_old.get("head") != cutover.V5_SOURCE_HEAD
+                or plan_old.get("tree") != cutover.V5_SOURCE_TREE
+                or plan_new.get("head") != cutover.V7_SOURCE_HEAD
+                or plan_new.get("tree") != cutover.V7_SOURCE_TREE
+                or plan_new.get("source_worktree") != str(config.source_worktree)
+            ):
+                raise ProtectedError(
+                    "v2 retirement evidence belongs to a different successor transition"
+                )
+            if (
+                prior_owner.get("phase") in {"AUTHORIZATION_PENDING", "AUTHORIZED_PENDING"}
+                and claims.ClaimStore(claim_root).inspect(TASK_KEY).get("status") != "ABSENT"
+            ):
+                raise ProtectedError("ClaimStore changed before the v2 successor started mutation")
+            # This durable owner has consumed the sealed identity. Its exact
+            # inputs have been checked before normal resume can update the owner.
+            return None
+        raise ProtectedError("v2 retirement evidence conflicts with its current successor owner")
+
+    if (
+        prior_owner is None
+        or prior_owner.get("reservation_id") != cutover.RELEASED_INTERMEDIATE_RESERVATION_ID
+        or prior_owner.get("operation_id") != cutover.RELEASED_INTERMEDIATE_OPERATION_ID
+        or prior_execution_receipt_sha256 != cutover.V5_PROTECTED_RECEIPT_SHA256
+        or (legacy_head, legacy_tree) != (cutover.V5_SOURCE_HEAD, cutover.V5_SOURCE_TREE)
+    ):
+        raise ProtectedError(
+            "v2 retirement evidence is outside the exact released-intermediate retry"
+        )
+
+    if retirement.get("claim_root") != str(claim_root):
+        raise ProtectedError("v2 retirement evidence belongs to a different ClaimStore")
+    expected_target = {
+        "source_worktree": str(config.source_worktree),
+        "head": config.expected_head,
+        "tree": config.expected_tree,
+        "durable_ref": config.durable_ref,
+    }
+    if retirement.get("candidate_target") != expected_target:
+        raise ProtectedError("v2 retirement evidence belongs to a different successor target")
+    plan, plan_identity, _ = cutover.read_control_json(plan_file)
+    if plan_identity.sha256 != retirement.get("candidate_plan_sha256"):
+        raise ProtectedError("v2 retirement evidence belongs to a different successor plan")
+    plan_source = record(plan.get("source"))
+    plan_old = record(plan_source.get("old"))
+    plan_new = record(plan_source.get("new"))
+    if (
+        plan_old.get("head") != cutover.V5_SOURCE_HEAD
+        or plan_old.get("tree") != cutover.V5_SOURCE_TREE
+        or plan_new.get("head") != cutover.V7_SOURCE_HEAD
+        or plan_new.get("tree") != cutover.V7_SOURCE_TREE
+        or plan_new.get("source_worktree") != str(config.source_worktree)
+    ):
+        raise ProtectedError("v2 retirement evidence belongs to a different successor transition")
+
+    cutover._verify_failed_terminal_retirement_v2_inputs(  # pyright: ignore[reportPrivateUsage]
+        config,
+        retirement,
+    )
+    owner, owner_identity, release, release_identity = _released_v7_intermediate_context(
+        config, prior_owner
+    )
+    if (
+        retirement.get("intermediate_owner_record") != owner
+        or retirement.get("intermediate_owner_file_sha256") != owner_identity.sha256
+        or retirement.get("intermediate_release_record") != release
+        or retirement.get("intermediate_release_record_file_sha256") != release_identity.sha256
+    ):
+        raise ProtectedError("v2 retirement evidence does not match the released control lineage")
+
+    request = make_request(
+        config,
+        legacy_worktree,
+        legacy_head,
+        legacy_tree,
+        plan_file,
+        claim_root,
+        takeover_stale=takeover_stale,
+        reservation_id=candidate_reservation_id,
+        prior_execution_receipt_sha256=prior_execution_receipt_sha256,
+    )
+    if (
+        request.plan_sha256 != retirement.get("candidate_plan_sha256")
+        or request.managed_receipt_sha256 != cutover.V5_MANAGED_RECEIPT_SHA256
+        or request.operation_id != candidate_operation_id
+        or request_owner_target(request) != expected_target
+    ):
+        raise ProtectedError("v2 retirement successor identity does not match its sealed inputs")
+    return request
+
+
 def _failed_terminal_predecessor_receipt_sha256(
     owner: Record | None,
     config: cutover.CutoverConfig | None = None,
@@ -3008,21 +3228,16 @@ def _failed_terminal_predecessor_receipt_sha256(
             "durable_ref": cutover.RELEASED_INTERMEDIATE_TARGET_REF,
         }
         release_value = owner.get("release_evidence")
-        release_evidence = (
-            cast(Record, release_value) if isinstance(release_value, dict) else {}
-        )
+        release_evidence = cast(Record, release_value) if isinstance(release_value, dict) else {}
         intermediate_owner_candidate = (
             owner.get("target") == expected_target
-            or owner.get("record_sha256")
-            == cutover.RELEASED_INTERMEDIATE_OWNER_RECORD_SHA256
+            or owner.get("record_sha256") == cutover.RELEASED_INTERMEDIATE_OWNER_RECORD_SHA256
             or release_evidence.get("release_record_sha256")
             == cutover.RELEASED_INTERMEDIATE_RELEASE_RECORD_FILE_SHA256
         )
         if intermediate_owner_candidate:
             if config is None:
-                raise ProtectedError(
-                    "exact intermediate recognition requires its protected config"
-                )
+                raise ProtectedError("exact intermediate recognition requires its protected config")
             _released_v7_intermediate_context(config, owner)
             return cutover.V5_PROTECTED_RECEIPT_SHA256
     matches = (
@@ -3308,6 +3523,7 @@ def _require_released_v7_intermediate_successor_evidence(
         },
     )
     return proof
+
 
 def _require_released_success_evidence(
     request: Request,
@@ -4749,6 +4965,26 @@ def main(argv: Sequence[str] | None = None) -> int:
                 "durable_ref": reservation_config.durable_ref,
             }
         prior_owner = cutover.inspect_control_owner(reservation_config)
+        retired_v2_request: Request | None = None
+        retirement_v2_path = (
+            reservation_config.scheduler_root / cutover.FAILED_TERMINAL_RETIREMENT_V2_NAME
+        )
+        if os.path.lexists(retirement_v2_path):
+            if args.action != "apply":
+                raise ProtectedError(
+                    "v2 retirement evidence permits only its exact apply successor"
+                )
+            retired_v2_request = _recover_v2_successor_request(
+                reservation_config,
+                Path(args.legacy_worktree),
+                args.legacy_head,
+                args.legacy_tree,
+                Path(args.plan_file),
+                repository_claim_root(),
+                prior_owner,
+                prior_execution_receipt_sha256=cutover.V5_PROTECTED_RECEIPT_SHA256,
+                takeover_stale=args.takeover_stale,
+            )
         prior_execution_path = reservation_config.scheduler_root / (
             ROLLBACK_RECEIPT_NAME if args.action == "rollback" else RECEIPT_NAME
         )
@@ -4809,19 +5045,22 @@ def main(argv: Sequence[str] | None = None) -> int:
         if args.action == "apply" and (
             prior_owner is None or (prior_owner.get("phase") == "RELEASED" and not released_replay)
         ):
-            reservation_id = str(uuid4())
-            prepared_request = make_request(
-                reservation_config,
-                Path(args.legacy_worktree),
-                args.legacy_head,
-                args.legacy_tree,
-                Path(args.plan_file),
-                repository_claim_root(),
-                takeover_stale=args.takeover_stale,
-                reservation_id=reservation_id,
-                owner_id_argument=False,
-                prior_execution_receipt_sha256=recovered_predecessor_sha,
-            )
+            if retired_v2_request is not None:
+                prepared_request = retired_v2_request
+            else:
+                reservation_id = str(uuid4())
+                prepared_request = make_request(
+                    reservation_config,
+                    Path(args.legacy_worktree),
+                    args.legacy_head,
+                    args.legacy_tree,
+                    Path(args.plan_file),
+                    repository_claim_root(),
+                    takeover_stale=args.takeover_stale,
+                    reservation_id=reservation_id,
+                    owner_id_argument=False,
+                    prior_execution_receipt_sha256=recovered_predecessor_sha,
+                )
             predecessor_release_evidence = _require_released_success_evidence(
                 prepared_request, prior_owner
             )

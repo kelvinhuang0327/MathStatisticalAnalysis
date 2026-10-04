@@ -1,0 +1,409 @@
+{
+  "BASE_HEAD": "669566579ac7b06682acc624937843f1e714b1c8",
+  "BASE_TREE": "6d08f9882b732778aff13fc3cadd2a31c9b1bc9c",
+  "FAMILY_A_BOTTLENECK_R": 3,
+  "FAMILY_A_RECOMPUTED_BOUND": 351483978,
+  "FOCUSED_TESTS": "PASS: 5 focused tests passed.",
+  "FREQUENCY_MULTIPLICITY_CERTIFICATE": "For an outcome with k residual wins, each needs at least three main hits except tickets containing the special label, which need two. Thus 3k is at most the incidence sum on its six main labels and one special label. At pair mass M, the seven outside-label incidences are bounded by the exact frequency-histogram DP; add at most one anchor-exclusive incidence for either mirrored realization. Therefore K(M)=min(18,floor((top7(M)+anchor_incidence)/3)).",
+  "FROZEN_OTHER_SUBFAMILY_BOUNDS": {
+    "R3": 351483978,
+    "R5": 350778728,
+    "R6": 343869728
+  },
+  "INCUMBENT": 313239661,
+  "JOINT_RESIDUAL_ENVELOPE": [
+    {
+      "COMPONENT_CLASS_COUNT": 6,
+      "JOINT_STATE_COUNT": 3120,
+      "JOINT_UNION_REDUCTION_AT_OUTSIDE_PAIR_MASS": 137,
+      "MAXIMUM_S3_ENVELOPE": {
+        "AT_S2": 945384552,
+        "IS_EXACT_TRIPLE_TOTAL": false,
+        "MAXIMUM_RESIDUAL_MULTIPLICITY_CAP": 18,
+        "OUTSIDE_PAIR_MASS": 612,
+        "S2_UPPER_BOUND_AT_MASS": 945384552,
+        "S3_UPPER_BOUND": 5042050944,
+        "S3_UPPER_BOUND_AT_MASS": 5042050944
+      },
+      "MAXIMUM_SELECTED_SEVEN_FREQUENCY_AT_MASS_FLOOR": 21,
+      "MINIMUM_JOINT_UNION_REDUCTION": 11480400,
+      "OUTSIDE_INCIDENCES": 108,
+      "OUTSIDE_PAIR_MASS_FLOOR": 93,
+      "R4_BOUND": 351106608,
+      "R9_PRIOR_S3_ENVELOPE": 5042050944,
+      "RESIDUAL_MULTIPLICITY_CAP_AT_MASS_FLOOR": 7,
+      "RESIDUAL_S1": 331588656,
+      "RESIDUAL_S2_FLOOR": 59850000,
+      "RESIDUAL_S3_CAP_AT_MINIMUM_S2": 99750000,
+      "RESIDUAL_S3_CAP_AT_SAME_MASS_MAXIMUM_S2": 260994720,
+      "RESIDUAL_UNION_BOUND": 320108256,
+      "S2_S3_FRONTIER": [
+        {
+          "residual_multiplicity_cap": 7,
+          "s2_end": 61248599,
+          "s2_start": 59850000
+        },
+        {
+          "residual_multiplicity_cap": 8,
+          "s2_end": 62647199,
+          "s2_start": 61248600
+        },
+        {
+          "residual_multiplicity_cap": 9,
+          "s2_end": 64978199,
+          "s2_start": 62647200
+        },
+        {
+          "residual_multiplicity_cap": 10,
+          "s2_end": 67775399,
+          "s2_start": 64978200
+        },
+        {
+          "residual_multiplicity_cap": 11,
+          "s2_end": 71038799,
+          "s2_start": 67775400
+        },
+        {
+          "residual_multiplicity_cap": 12,
+          "s2_end": 75234599,
+          "s2_start": 71038800
+        },
+        {
+          "residual_multiplicity_cap": 13,
+          "s2_end": 80362799,
+          "s2_start": 75234600
+        },
+        {
+          "residual_multiplicity_cap": 14,
+          "s2_end": 87355799,
+          "s2_start": 80362800
+        },
+        {
+          "residual_multiplicity_cap": 15,
+          "s2_end": 103473383,
+          "s2_start": 87355800
+        },
+        {
+          "residual_multiplicity_cap": 16,
+          "s2_end": 122478635,
+          "s2_start": 103473384
+        },
+        {
+          "residual_multiplicity_cap": 17,
+          "s2_end": 142601843,
+          "s2_start": 122478636
+        },
+        {
+          "residual_multiplicity_cap": 18,
+          "s2_end": 939779568,
+          "s2_start": 142601844
+        },
+        {
+          "residual_multiplicity_cap": 18,
+          "s2_end": 940897524,
+          "s2_start": 939932742
+        },
+        {
+          "residual_multiplicity_cap": 18,
+          "s2_end": 942658647,
+          "s2_start": 942658647
+        },
+        {
+          "residual_multiplicity_cap": 18,
+          "s2_end": 945384552,
+          "s2_start": 945384552
+        }
+      ],
+      "S2_S3_FRONTIER_FORMULA": "S3 <= max(0,floor((K-2)*S2/3)) on each segment with cap K",
+      "S2_S3_FRONTIER_KIND": "CERTIFIED_UPPER_FRONTIER; pair-S2 intervals are relaxed, and S3 values are upper bounds rather than exact triple totals",
+      "S2_S3_FRONTIER_SHA256": "cc5add1f3b1af96aac21342bdf9ff9638a214a1688716d9eb5e6cc0e805e6d34",
+      "S2_S3_FRONTIER_SIZE": 15,
+      "S3_SEPARATION_PROOF": {
+        "GLOBAL_MAXIMUM_S3_CAP": 5042050944,
+        "GLOBAL_MAXIMUM_S3_OUTSIDE_PAIR_MASS": 612,
+        "MINIMUM_S2": 59850000,
+        "MINIMUM_S2_CANNOT_ATTAIN_GLOBAL_MAXIMUM": true,
+        "MINIMUM_S2_S3_CAP": 99750000,
+        "OUTSIDE_PAIR_MASS": 93,
+        "SAME_MASS_MAXIMUM_S2": 156596832,
+        "SAME_MASS_MAXIMUM_S3_CAP": 260994720
+      },
+      "UNION_OBJECTIVE": "max_M [S1 - ceil(2*minimum_S2(M)/K(M))] over the shared joint states",
+      "UNIQUE_VECTOR_MASS_STATE_COUNT": 520,
+      "VECTOR_LABEL": "18_GOOD"
+    },
+    {
+      "COMPONENT_CLASS_COUNT": 6,
+      "JOINT_STATE_COUNT": 3132,
+      "JOINT_UNION_REDUCTION_AT_OUTSIDE_PAIR_MASS": 132,
+      "MAXIMUM_S3_ENVELOPE": {
+        "AT_S2": 944889988,
+        "IS_EXACT_TRIPLE_TOTAL": false,
+        "MAXIMUM_RESIDUAL_MULTIPLICITY_CAP": 18,
+        "OUTSIDE_PAIR_MASS": 612,
+        "S2_UPPER_BOUND_AT_MASS": 944889988,
+        "S3_UPPER_BOUND": 5039413269,
+        "S3_UPPER_BOUND_AT_MASS": 5039413269
+      },
+      "MAXIMUM_SELECTED_SEVEN_FREQUENCY_AT_MASS_FLOOR": 21,
+      "MINIMUM_JOINT_UNION_REDUCTION": 11140600,
+      "OUTSIDE_INCIDENCES": 107,
+      "OUTSIDE_PAIR_MASS_FLOOR": 91,
+      "R4_BOUND": 351010308,
+      "R9_PRIOR_S3_ENVELOPE": 5039413269,
+      "RESIDUAL_MULTIPLICITY_CAP_AT_MASS_FLOOR": 7,
+      "RESIDUAL_S1": 331152556,
+      "RESIDUAL_S2_FLOOR": 58870000,
+      "RESIDUAL_S3_CAP_AT_MINIMUM_S2": 98116666,
+      "RESIDUAL_S3_CAP_AT_SAME_MASS_MAXIMUM_S2": 255674545,
+      "RESIDUAL_UNION_BOUND": 320011956,
+      "S2_S3_FRONTIER": [
+        {
+          "residual_multiplicity_cap": 7,
+          "s2_end": 59802399,
+          "s2_start": 58870000
+        },
+        {
+          "residual_multiplicity_cap": 8,
+          "s2_end": 61200999,
+          "s2_start": 59802400
+        },
+        {
+          "residual_multiplicity_cap": 9,
+          "s2_end": 63065799,
+          "s2_start": 61201000
+        },
+        {
+          "residual_multiplicity_cap": 10,
+          "s2_end": 65862999,
+          "s2_start": 63065800
+        },
+        {
+          "residual_multiplicity_cap": 11,
+          "s2_end": 68660199,
+          "s2_start": 65863000
+        },
+        {
+          "residual_multiplicity_cap": 12,
+          "s2_end": 72855999,
+          "s2_start": 68660200
+        },
+        {
+          "residual_multiplicity_cap": 13,
+          "s2_end": 77984199,
+          "s2_start": 72856000
+        },
+        {
+          "residual_multiplicity_cap": 14,
+          "s2_end": 84510999,
+          "s2_start": 77984200
+        },
+        {
+          "residual_multiplicity_cap": 15,
+          "s2_end": 96645695,
+          "s2_start": 84511000
+        },
+        {
+          "residual_multiplicity_cap": 16,
+          "s2_end": 114451595,
+          "s2_start": 96645696
+        },
+        {
+          "residual_multiplicity_cap": 17,
+          "s2_end": 134574803,
+          "s2_start": 114451596
+        },
+        {
+          "residual_multiplicity_cap": 18,
+          "s2_end": 939311296,
+          "s2_start": 134574804
+        },
+        {
+          "residual_multiplicity_cap": 18,
+          "s2_end": 940420208,
+          "s2_start": 939438178
+        },
+        {
+          "residual_multiplicity_cap": 18,
+          "s2_end": 942170621,
+          "s2_start": 942164083
+        },
+        {
+          "residual_multiplicity_cap": 18,
+          "s2_end": 944889988,
+          "s2_start": 944889988
+        }
+      ],
+      "S2_S3_FRONTIER_FORMULA": "S3 <= max(0,floor((K-2)*S2/3)) on each segment with cap K",
+      "S2_S3_FRONTIER_KIND": "CERTIFIED_UPPER_FRONTIER; pair-S2 intervals are relaxed, and S3 values are upper bounds rather than exact triple totals",
+      "S2_S3_FRONTIER_SHA256": "d9f6aac3d4706c8cd6ce4d393d4434413c9caeb3271e5c83898a79366b3fecbd",
+      "S2_S3_FRONTIER_SIZE": 15,
+      "S3_SEPARATION_PROOF": {
+        "GLOBAL_MAXIMUM_S3_CAP": 5039413269,
+        "GLOBAL_MAXIMUM_S3_OUTSIDE_PAIR_MASS": 612,
+        "MINIMUM_S2": 58870000,
+        "MINIMUM_S2_CANNOT_ATTAIN_GLOBAL_MAXIMUM": true,
+        "MINIMUM_S2_S3_CAP": 98116666,
+        "OUTSIDE_PAIR_MASS": 91,
+        "SAME_MASS_MAXIMUM_S2": 153404727,
+        "SAME_MASS_MAXIMUM_S3_CAP": 255674545
+      },
+      "UNION_OBJECTIVE": "max_M [S1 - ceil(2*minimum_S2(M)/K(M))] over the shared joint states",
+      "UNIQUE_VECTOR_MASS_STATE_COUNT": 522,
+      "VECTOR_LABEL": "17_GOOD_PLUS_B_ONLY"
+    },
+    {
+      "COMPONENT_CLASS_COUNT": 6,
+      "JOINT_STATE_COUNT": 3132,
+      "JOINT_UNION_REDUCTION_AT_OUTSIDE_PAIR_MASS": 132,
+      "MAXIMUM_S3_ENVELOPE": {
+        "AT_S2": 944889988,
+        "IS_EXACT_TRIPLE_TOTAL": false,
+        "MAXIMUM_RESIDUAL_MULTIPLICITY_CAP": 18,
+        "OUTSIDE_PAIR_MASS": 612,
+        "S2_UPPER_BOUND_AT_MASS": 944889988,
+        "S3_UPPER_BOUND": 5039413269,
+        "S3_UPPER_BOUND_AT_MASS": 5039413269
+      },
+      "MAXIMUM_SELECTED_SEVEN_FREQUENCY_AT_MASS_FLOOR": 21,
+      "MINIMUM_JOINT_UNION_REDUCTION": 11140600,
+      "OUTSIDE_INCIDENCES": 107,
+      "OUTSIDE_PAIR_MASS_FLOOR": 91,
+      "R4_BOUND": 351010308,
+      "R9_PRIOR_S3_ENVELOPE": 5039413269,
+      "RESIDUAL_MULTIPLICITY_CAP_AT_MASS_FLOOR": 7,
+      "RESIDUAL_S1": 331152556,
+      "RESIDUAL_S2_FLOOR": 58870000,
+      "RESIDUAL_S3_CAP_AT_MINIMUM_S2": 98116666,
+      "RESIDUAL_S3_CAP_AT_SAME_MASS_MAXIMUM_S2": 255674545,
+      "RESIDUAL_UNION_BOUND": 320011956,
+      "S2_S3_FRONTIER": [
+        {
+          "residual_multiplicity_cap": 7,
+          "s2_end": 59802399,
+          "s2_start": 58870000
+        },
+        {
+          "residual_multiplicity_cap": 8,
+          "s2_end": 61200999,
+          "s2_start": 59802400
+        },
+        {
+          "residual_multiplicity_cap": 9,
+          "s2_end": 63065799,
+          "s2_start": 61201000
+        },
+        {
+          "residual_multiplicity_cap": 10,
+          "s2_end": 65862999,
+          "s2_start": 63065800
+        },
+        {
+          "residual_multiplicity_cap": 11,
+          "s2_end": 68660199,
+          "s2_start": 65863000
+        },
+        {
+          "residual_multiplicity_cap": 12,
+          "s2_end": 72855999,
+          "s2_start": 68660200
+        },
+        {
+          "residual_multiplicity_cap": 13,
+          "s2_end": 77984199,
+          "s2_start": 72856000
+        },
+        {
+          "residual_multiplicity_cap": 14,
+          "s2_end": 84510999,
+          "s2_start": 77984200
+        },
+        {
+          "residual_multiplicity_cap": 15,
+          "s2_end": 96645695,
+          "s2_start": 84511000
+        },
+        {
+          "residual_multiplicity_cap": 16,
+          "s2_end": 114451595,
+          "s2_start": 96645696
+        },
+        {
+          "residual_multiplicity_cap": 17,
+          "s2_end": 134574803,
+          "s2_start": 114451596
+        },
+        {
+          "residual_multiplicity_cap": 18,
+          "s2_end": 939311296,
+          "s2_start": 134574804
+        },
+        {
+          "residual_multiplicity_cap": 18,
+          "s2_end": 940420208,
+          "s2_start": 939438178
+        },
+        {
+          "residual_multiplicity_cap": 18,
+          "s2_end": 942170621,
+          "s2_start": 942164083
+        },
+        {
+          "residual_multiplicity_cap": 18,
+          "s2_end": 944889988,
+          "s2_start": 944889988
+        }
+      ],
+      "S2_S3_FRONTIER_FORMULA": "S3 <= max(0,floor((K-2)*S2/3)) on each segment with cap K",
+      "S2_S3_FRONTIER_KIND": "CERTIFIED_UPPER_FRONTIER; pair-S2 intervals are relaxed, and S3 values are upper bounds rather than exact triple totals",
+      "S2_S3_FRONTIER_SHA256": "d9f6aac3d4706c8cd6ce4d393d4434413c9caeb3271e5c83898a79366b3fecbd",
+      "S2_S3_FRONTIER_SIZE": 15,
+      "S3_SEPARATION_PROOF": {
+        "GLOBAL_MAXIMUM_S3_CAP": 5039413269,
+        "GLOBAL_MAXIMUM_S3_OUTSIDE_PAIR_MASS": 612,
+        "MINIMUM_S2": 58870000,
+        "MINIMUM_S2_CANNOT_ATTAIN_GLOBAL_MAXIMUM": true,
+        "MINIMUM_S2_S3_CAP": 98116666,
+        "OUTSIDE_PAIR_MASS": 91,
+        "SAME_MASS_MAXIMUM_S2": 153404727,
+        "SAME_MASS_MAXIMUM_S3_CAP": 255674545
+      },
+      "UNION_OBJECTIVE": "max_M [S1 - ceil(2*minimum_S2(M)/K(M))] over the shared joint states",
+      "UNIQUE_VECTOR_MASS_STATE_COUNT": 522,
+      "VECTOR_LABEL": "17_GOOD_PLUS_A_ONLY"
+    }
+  ],
+  "JOINT_STATE_COUNT": 9384,
+  "JOINT_STATE_DEFINITION": "One state per R9 compressed class (realization x component count) and exact outside label-pair mass M; each state joins the relaxed min/max residual S2 DP with the exact top-seven frequency maximum over 41-label incidence histograms.",
+  "JOINT_STATE_SHA256": "d162a950bc3345fc8219f1c922880706fcfcbf3528bb0fcf833c740e67f8fe1a",
+  "NEW_PORTFOLIO_SEARCH_STARTED": "NO",
+  "PRODUCTION_MUTATION": "NONE",
+  "PYRIGHT": "PASS: scoped strict Python 3.13; 0 errors, 0 warnings, 0 informations; configured .venv absent.",
+  "R4_BOUND": 351106608,
+  "R4_BOUND_IMPROVEMENT": 2272707,
+  "R4_PRIOR_BOUND": 353379315,
+  "R4_STATUS": "TIGHTENED_OPEN_SUCCESS_B",
+  "R9_BASE_HEAD": "726ca446f7ab521740ef9e8b41b29fe561af89cc",
+  "R9_BASE_TREE": "a180363a33f51bc3b1f62a5665c4878825f2d652",
+  "REALIZATION_COUNT": 3,
+  "REMAINING_GAP": 38244317,
+  "RESIDUAL_CLASS_COUNT": 18,
+  "RESIDUAL_S3_POINTWISE_CERTIFICATE": "For every outcome with m residual wins, C(m,3)=(m-2)*C(m,2)/3 when m>=3; when K(M)<3, S3=0. Since m<=K(M), summing gives S3<=max(0,floor((K(M)-2)*S2/3)). The frontier records this upper bound on the same outside-pair-mass state as S2.",
+  "RESIDUAL_UNION_POINTWISE_CERTIFICATE": "For 1<=m<=K, m-2*C(m,2)/K = 1+(m-1)*(K-m)/K >= 1; for m=0 both sides are zero. Summing gives U<=S1-2*S2/K. At each M, S2 is at least the pair-cost DP minimum and the actual multiplicity is at most K(M), so U<=S1-ceil(2*minimum_S2(M)/K(M)).",
+  "RUFF": "PASS: scoped proof module and focused test; no diagnostics.",
+  "S2_S3_FRONTIER_SIZE": 45,
+  "SOLVER_ACTUAL_WALL_TIME_SECONDS": 0.211038,
+  "SOLVER_CERTIFIED_BOUND": 351106608,
+  "SOLVER_CONFIGURED_WALL_LIMIT": "45s native; 60s external hard timeout",
+  "SOLVER_NOTE": "The finite DP exhausts 41-label frequency histograms and all outside pair-mass states under the fixed 18-ticket cap. Pair-cost S2 minima/maxima are a safe relaxation over ticket-pair overlaps; the S3 Pareto frontier uses the same M and K(M). The union objective is exhausted over every joint state.",
+  "SOLVER_STATUS": "EXACT_JOINT_DYNAMIC_PROGRAM_OPTIMAL",
+  "SUCCESS_A": false,
+  "SUCCESS_B": true,
+  "TASK_BRANCH": "codex/b649-k20-r4-three-realization-joint-residual-r10",
+  "TASK_HEAD": "RECORDED_IN_FINAL_HANDOFF",
+  "TASK_ID": "B649_K20_R4_THREE_REALIZATION_JOINT_RESIDUAL_R10",
+  "TASK_STATUS": "COMPLETED_SUCCESS_B",
+  "UNIQUE_VECTOR_MASS_STATE_COUNT": 1564,
+  "WORKTREE_DISPOSITION": "RETAIN",
+  "WORKTREE_PATH": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_K20_R4_THREE_REALIZATION_JOINT_RESIDUAL_R10"
+}

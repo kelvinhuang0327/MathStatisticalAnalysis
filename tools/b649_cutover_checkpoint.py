@@ -720,6 +720,27 @@ def reconcile_coverage_gap_liveness(runner: Runner, pending: set[int]) -> set[in
     return alive
 
 
+def parse_process_row(line: str, *, darwin: bool) -> Process:
+    """Parse one ps row, normalizing Darwin's signed 32-bit UID output."""
+    # macOS ps STAT is a run state followed by documented modifiers; command
+    # text alone must not establish the process state.
+    uid_pattern = r"(?:0|-?[1-9][0-9]*)" if darwin else r"\d+"
+    match = re.fullmatch(
+        rf"\s*(\d+)\s+(\d+)\s+({uid_pattern})\s+([IRSTUZ][+<>AELNSVWXs]*)\s+(\S.*)",
+        line,
+    )
+    if match is None:
+        raise Unverifiable("unparseable process table row")
+    pid, ppid, owner, state, cmd = match.groups()
+    uid = int(owner)
+    if darwin:
+        if not -(2**31) <= uid <= 2**31 - 1:
+            raise Unverifiable("unparseable process table row")
+        if uid < 0:
+            uid += 2**32
+    return Process(int(pid), int(ppid), uid, cmd, state=state)
+
+
 def process_snapshot(
     args: argparse.Namespace,
     runner: Runner,
@@ -730,17 +751,10 @@ def process_snapshot(
     raw = checked(runner, ["ps", "-ww", "-axo", "pid=,ppid=,uid=,stat=,command="])
     processes: dict[int, Process] = {}
     for line in raw.splitlines():
-        # macOS ps STAT is a run state followed by documented state modifiers.
-        # Keep it separate from argv: command text cannot establish exit state.
-        match = re.fullmatch(
-            r"\s*(\d+)\s+(\d+)\s+(\d+)\s+([IRSTUZ][+<>AELNSVWXs]*)\s+(\S.*)", line
-        )
-        if match is None:
-            raise Unverifiable("unparseable process table row")
-        pid, ppid, owner, state, cmd = match.groups()
-        if int(pid) in processes:
+        process = parse_process_row(line, darwin=sys.platform == "darwin")
+        if process.pid in processes:
             raise Unverifiable("duplicate process table PID")
-        processes[int(pid)] = Process(int(pid), int(ppid), int(owner), cmd, state=state)
+        processes[process.pid] = process
     if not processes:
         raise Unverifiable("empty process table")
     current_pid = os.getpid()

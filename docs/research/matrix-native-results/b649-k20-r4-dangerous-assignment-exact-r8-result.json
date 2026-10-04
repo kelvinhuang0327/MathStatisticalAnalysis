@@ -1,0 +1,310 @@
+{
+  "ANCHOR_S3_RECOVERY_DEFINITION": "Exact sum_C J(A,B,C) from the pinned incidence signatures; global label assignments cannot change this anchored third-order term.",
+  "ANCHOR_SHARED_LABEL_CAPACITY": 4,
+  "ASSIGNMENT_CLASS_COUNT": 18,
+  "ASSIGNMENT_CLASS_DEFINITION": "Eighteen compressed proof strata: three pinned vectors times component counts 1..6. This is not a count of raw incidence matrices; the exact frequency and component DPs quotient out label names and bound every case.",
+  "A_ONLY_LABEL_CAPACITY": 2,
+  "BASE_HEAD": "aea551006d341648408d534d317ae020d3bb89e2",
+  "BASE_TREE": "148a1b234ac984890ea3dcf8e8a1d71d5bc0e0b8",
+  "B_ONLY_LABEL_CAPACITY": 2,
+  "COMPONENT_CASES": [
+    {
+      "COMPONENT_COUNT": 1,
+      "NO_REPEAT_LABEL_FLOOR_ALL_GOOD": 29,
+      "NO_REPEAT_LABEL_FLOOR_ONE_SPECIAL": 28,
+      "PENALTY_FLOOR": 9413376,
+      "POSITIVE_TREE_EDGES": 17,
+      "REPEATED_OVERLAP_FORCED": false,
+      "ZERO_OVERLAP_BRIDGES": 0
+    },
+    {
+      "COMPONENT_COUNT": 2,
+      "NO_REPEAT_LABEL_FLOOR_ALL_GOOD": 35,
+      "NO_REPEAT_LABEL_FLOOR_ONE_SPECIAL": 34,
+      "PENALTY_FLOOR": 8964648,
+      "POSITIVE_TREE_EDGES": 16,
+      "REPEATED_OVERLAP_FORCED": false,
+      "ZERO_OVERLAP_BRIDGES": 1
+    },
+    {
+      "COMPONENT_COUNT": 3,
+      "NO_REPEAT_LABEL_FLOOR_ALL_GOOD": 40,
+      "NO_REPEAT_LABEL_FLOOR_ONE_SPECIAL": 39,
+      "PENALTY_FLOOR": 8515920,
+      "POSITIVE_TREE_EDGES": 15,
+      "REPEATED_OVERLAP_FORCED": false,
+      "ZERO_OVERLAP_BRIDGES": 2
+    },
+    {
+      "COMPONENT_COUNT": 4,
+      "NO_REPEAT_LABEL_FLOOR_ALL_GOOD": 46,
+      "NO_REPEAT_LABEL_FLOOR_ONE_SPECIAL": 45,
+      "PENALTY_FLOOR": 9152150,
+      "POSITIVE_TREE_EDGES": 14,
+      "REPEATED_OVERLAP_FORCED": true,
+      "ZERO_OVERLAP_BRIDGES": 3
+    },
+    {
+      "COMPONENT_COUNT": 5,
+      "NO_REPEAT_LABEL_FLOOR_ALL_GOOD": 51,
+      "NO_REPEAT_LABEL_FLOOR_ONE_SPECIAL": 50,
+      "PENALTY_FLOOR": 8703422,
+      "POSITIVE_TREE_EDGES": 13,
+      "REPEATED_OVERLAP_FORCED": true,
+      "ZERO_OVERLAP_BRIDGES": 4
+    },
+    {
+      "COMPONENT_COUNT": 6,
+      "NO_REPEAT_LABEL_FLOOR_ALL_GOOD": 56,
+      "NO_REPEAT_LABEL_FLOOR_ONE_SPECIAL": 55,
+      "PENALTY_FLOOR": 8254694,
+      "POSITIVE_TREE_EDGES": 12,
+      "REPEATED_OVERLAP_FORCED": true,
+      "ZERO_OVERLAP_BRIDGES": 5
+    }
+  ],
+  "COUNT_VECTOR_CENSUS": "REUSED_PINNED_R7_RESULT; 52,360-VECTOR CENSUS NOT RERUN",
+  "DANGEROUS_VECTOR_COUNT": 3,
+  "DANGEROUS_VECTOR_RESULTS": [
+    {
+      "ANCHOR_PAIR_COST": 3880800,
+      "ANCHOR_S3_RECOVERY": 463680,
+      "LABEL": "18_GOOD",
+      "LOCAL_RECOVERY_LOSS": 0,
+      "NET_ANCHOR_RECOVERY": -3417120,
+      "OUTSIDE_INCIDENCES": 108,
+      "OUTSIDE_PAIR_PENALTY": 8254694,
+      "R4_BOUND": 354332314,
+      "REALIZABLE": true,
+      "S2_FREQUENCIES": [
+        {
+          "FREQUENCY": 2,
+          "LABEL_COUNT": 15
+        },
+        {
+          "FREQUENCY": 3,
+          "LABEL_COUNT": 26
+        }
+      ],
+      "S2_MIN": 93,
+      "TOTAL_RECOVERY_REDUCTION": 8254694,
+      "TYPE_COUNTS": [
+        {
+          "COUNT": 18,
+          "SIGNATURE": [
+            0,
+            0,
+            0,
+            6
+          ]
+        }
+      ],
+      "WITNESS": {
+        "ALL_TICKETS_SIZE_SIX": true,
+        "ANCHOR_CAPACITIES": [
+          4,
+          2,
+          2,
+          41
+        ],
+        "MAXIMUM_FULL_PORTFOLIO_PAIR_OVERLAP": 4,
+        "MAXIMUM_OUTSIDE_PAIR_OVERLAP": 4,
+        "OUTSIDE_FREQUENCIES": [
+          {
+            "FREQUENCY": 2,
+            "LABEL_COUNT": 15
+          },
+          {
+            "FREQUENCY": 3,
+            "LABEL_COUNT": 26
+          }
+        ],
+        "OUTSIDE_PAIR_MASS": 93,
+        "SPECIAL_ASSIGNMENT": null
+      }
+    },
+    {
+      "ANCHOR_PAIR_COST": 4347000,
+      "ANCHOR_S3_RECOVERY": 493780,
+      "LABEL": "17_GOOD_PLUS_B_ONLY",
+      "LOCAL_RECOVERY_LOSS": 436100,
+      "NET_ANCHOR_RECOVERY": -3853220,
+      "OUTSIDE_INCIDENCES": 107,
+      "OUTSIDE_PAIR_PENALTY": 8254694,
+      "R4_BOUND": 353896214,
+      "REALIZABLE": true,
+      "S2_FREQUENCIES": [
+        {
+          "FREQUENCY": 2,
+          "LABEL_COUNT": 16
+        },
+        {
+          "FREQUENCY": 3,
+          "LABEL_COUNT": 25
+        }
+      ],
+      "S2_MIN": 91,
+      "TOTAL_RECOVERY_REDUCTION": 8690794,
+      "TYPE_COUNTS": [
+        {
+          "COUNT": 17,
+          "SIGNATURE": [
+            0,
+            0,
+            0,
+            6
+          ]
+        },
+        {
+          "COUNT": 1,
+          "SIGNATURE": [
+            0,
+            0,
+            1,
+            5
+          ]
+        }
+      ],
+      "WITNESS": {
+        "ALL_TICKETS_SIZE_SIX": true,
+        "ANCHOR_CAPACITIES": [
+          4,
+          2,
+          2,
+          41
+        ],
+        "MAXIMUM_FULL_PORTFOLIO_PAIR_OVERLAP": 4,
+        "MAXIMUM_OUTSIDE_PAIR_OVERLAP": 4,
+        "OUTSIDE_FREQUENCIES": [
+          {
+            "FREQUENCY": 2,
+            "LABEL_COUNT": 16
+          },
+          {
+            "FREQUENCY": 3,
+            "LABEL_COUNT": 25
+          }
+        ],
+        "OUTSIDE_PAIR_MASS": 91,
+        "SPECIAL_ASSIGNMENT": {
+          "ANCHOR_EXCLUSIVE_LABEL": 6,
+          "REPLACED_OUTSIDE_LABEL": 8,
+          "TICKET_INDEX": 0
+        }
+      }
+    },
+    {
+      "ANCHOR_PAIR_COST": 4347000,
+      "ANCHOR_S3_RECOVERY": 493780,
+      "LABEL": "17_GOOD_PLUS_A_ONLY",
+      "LOCAL_RECOVERY_LOSS": 436100,
+      "NET_ANCHOR_RECOVERY": -3853220,
+      "OUTSIDE_INCIDENCES": 107,
+      "OUTSIDE_PAIR_PENALTY": 8254694,
+      "R4_BOUND": 353896214,
+      "REALIZABLE": true,
+      "S2_FREQUENCIES": [
+        {
+          "FREQUENCY": 2,
+          "LABEL_COUNT": 16
+        },
+        {
+          "FREQUENCY": 3,
+          "LABEL_COUNT": 25
+        }
+      ],
+      "S2_MIN": 91,
+      "TOTAL_RECOVERY_REDUCTION": 8690794,
+      "TYPE_COUNTS": [
+        {
+          "COUNT": 17,
+          "SIGNATURE": [
+            0,
+            0,
+            0,
+            6
+          ]
+        },
+        {
+          "COUNT": 1,
+          "SIGNATURE": [
+            0,
+            1,
+            0,
+            5
+          ]
+        }
+      ],
+      "WITNESS": {
+        "ALL_TICKETS_SIZE_SIX": true,
+        "ANCHOR_CAPACITIES": [
+          4,
+          2,
+          2,
+          41
+        ],
+        "MAXIMUM_FULL_PORTFOLIO_PAIR_OVERLAP": 4,
+        "MAXIMUM_OUTSIDE_PAIR_OVERLAP": 4,
+        "OUTSIDE_FREQUENCIES": [
+          {
+            "FREQUENCY": 2,
+            "LABEL_COUNT": 16
+          },
+          {
+            "FREQUENCY": 3,
+            "LABEL_COUNT": 25
+          }
+        ],
+        "OUTSIDE_PAIR_MASS": 91,
+        "SPECIAL_ASSIGNMENT": {
+          "ANCHOR_EXCLUSIVE_LABEL": 4,
+          "REPLACED_OUTSIDE_LABEL": 8,
+          "TICKET_INDEX": 0
+        }
+      }
+    }
+  ],
+  "FAMILY_A_BOTTLENECK_R": 4,
+  "FAMILY_A_RECOMPUTED_BOUND": 354332314,
+  "FOCUSED_TESTS": "PASS: 4 focused tests passed.",
+  "FOREST_PENALTY_FORMULA": "(18-k)*p1 + (k-1)*p0; add p2-p1 for k=4..6, where the exact no-repeat frequency DP requires more than 41 labels.",
+  "FROZEN_OTHER_SUBFAMILY_BOUNDS": {
+    "R3": 351483978,
+    "R5": 350778728,
+    "R6": 343869728
+  },
+  "INCUMBENT": 313239661,
+  "MANDATORY_OUTSIDE_PAIR_PENALTY": 8254694,
+  "MAXIMUM_PAIR_OVERLAP": 4,
+  "NEW_PORTFOLIO_SEARCH_STARTED": "NO",
+  "OUTSIDE_LABEL_CAPACITY": 41,
+  "PRIOR_R4_BOUND": 354519816,
+  "PRODUCTION_MUTATION": "NONE",
+  "PYRIGHT": "PASS: scoped strict Python 3.13; 0 errors, 0 warnings, 0 informations.",
+  "R4_BASE_BOUND": 362587008,
+  "R4_BOUND": 354332314,
+  "R4_BOUND_IMPROVEMENT": 187502,
+  "R4_STATUS": "TIGHTENED_OPEN_SUCCESS_B",
+  "REALIZABLE_VECTOR_COUNT": 3,
+  "REMAINING_GAP": 41092653,
+  "RESIDUAL_PAIR_FLOORS_BY_OVERLAP_AT_LEAST_0_TO_2": [
+    105000,
+    553728,
+    1638686
+  ],
+  "RUFF": "PASS: scoped proof module and focused test.",
+  "SOLVER_ACTUAL_WALL_TIME_SECONDS": 0.343555,
+  "SOLVER_CERTIFIED_BOUND": 8254694,
+  "SOLVER_CONFIGURED_WALL_LIMIT": "45s native; 60s external hard timeout",
+  "SOLVER_NOTE": "Exact finite frequency/component DP; no CP-SAT/MILP feasible status was used as proof. Every returned state was exhausted under the fixed deadline.",
+  "SOLVER_STATUS": "EXACT_DYNAMIC_PROGRAM_OPTIMAL",
+  "SUCCESS_A": false,
+  "SUCCESS_B": true,
+  "TASK_BRANCH": "codex/b649-k20-r4-dangerous-vector-exact-assignment-r8",
+  "TASK_HEAD": "RECORDED_IN_FINAL_HANDOFF",
+  "TASK_ID": "B649_K20_R4_DANGEROUS_VECTOR_EXACT_ASSIGNMENT_R8",
+  "TASK_STATUS": "COMPLETED_SUCCESS_B",
+  "TICKET_SIZE": 6,
+  "WORKTREE_DISPOSITION": "RETAIN",
+  "WORKTREE_PATH": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_K20_R4_DANGEROUS_VECTOR_EXACT_ASSIGNMENT_R8"
+}

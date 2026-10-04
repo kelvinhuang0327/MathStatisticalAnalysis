@@ -22,7 +22,6 @@ from lottolab.research.b649_k20_heavy_pair_defect_global_bound_r2 import (
 from lottolab.research.b649_k20_mass94plus_residual_bound_r4 import pair_costs
 from lottolab.research.b649_k20_outside_min_s2_global_penalty_bound_r1 import (
     INCUMBENT,
-    PORTFOLIO_S1,
     TICKET_COUNT,
 )
 
@@ -36,6 +35,7 @@ OVERLAP_MASS = 94
 HEAVY_PAIR_COUNT = 45
 LIGHT_PAIR_COUNT = 4
 HEAVY_WEIGHT = 2
+FAMILY_B_S1 = 372_228_640
 
 
 @dataclass(frozen=True)
@@ -334,7 +334,7 @@ def profile_bounds(
         ):
             raise ValueError("profile is outside the exact mass-94 constraints")
         s3 = fixed_s3 + common_bonus * profile.shared_triple_mass
-        family_bound = PORTFOLIO_S1 - s2 + s3
+        family_bound = FAMILY_B_S1 - s2 + s3
         results.append(
             ProfileBound(
                 profile=profile.counts_by_multiplicity,
@@ -397,7 +397,7 @@ def result_record() -> dict[str, object]:
         "MULTIPLICITY_PROFILES": profile_rows,
         "PAIR_GRAPH_REALIZABLE": "NOT_CLASSIFIED",
         "COVERAGE_BOUND_METHOD": "Bonferroni upper bound S1 - S2 + S3",
-        "S1": PORTFOLIO_S1,
+        "S1": FAMILY_B_S1,
         "S2": s2,
         "S3_BOUND": s3,
         "PROFILE_BOUNDS": [asdict(bound) for bound in bounds],

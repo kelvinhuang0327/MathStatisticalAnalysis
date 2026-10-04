@@ -1,7 +1,7 @@
 {
   "BASE_HEAD": "6d14fe4009047cc9396660db812442798c8b2d0c",
   "COVERAGE_BOUND_METHOD": "Bonferroni upper bound S1 - S2 + S3",
-  "FAMILY_B_BOUND": 303218880,
+  "FAMILY_B_BOUND": 311025960,
   "FAMILY_B_STATUS": "CLOSED",
   "INCUMBENT": 313239661,
   "MULTIPLICITY_PROFILES": [
@@ -41,7 +41,7 @@
   "PRODUCTION_MUTATION": "NONE",
   "PROFILE_BOUNDS": [
     {
-      "family_b_upper_bound": 303218880,
+      "family_b_upper_bound": 311025960,
       "profile": [
         0,
         28,
@@ -68,7 +68,7 @@
       "shared_triple_mass": 24
     },
     {
-      "family_b_upper_bound": 303141425,
+      "family_b_upper_bound": 310948505,
       "profile": [
         1,
         25,
@@ -97,8 +97,8 @@
   ],
   "REALIZABLE_PROFILE_COUNT": null,
   "REALIZABLE_PROFILE_COUNT_NOTE": "Two profiles satisfy the exact incidence, pair-mass, and 49-label constraints. An unlabeled clique-decomposition census was not needed for the universal bound, so profile-specific existence is not classified.",
-  "REMAINING_GAP": -10020781,
-  "S1": 364421560,
+  "REMAINING_GAP": -2213701,
+  "S1": 372228640,
   "S2": 93815260,
   "S3_BOUND": 32612580,
   "S3_CERTIFICATE": {

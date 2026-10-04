@@ -113,10 +113,11 @@ def test_wedge_toy_and_result_close_every_mass_94_profile() -> None:
     record = result_record()
     family_bound = record["FAMILY_B_BOUND"]
     assert isinstance(family_bound, int)
-    assert record["S1"] == 364_421_560
+    assert record["S1"] == 372_228_640
     assert record["S2"] == 93_815_260
     assert record["S3_BOUND"] == 32_612_580
-    assert family_bound == 303_218_880
+    assert family_bound == 311_025_960
+    assert record["REMAINING_GAP"] == -2_213_701
     assert family_bound <= INCUMBENT
     assert record["COVERAGE_BOUND_METHOD"] == "Bonferroni upper bound S1 - S2 + S3"
     assert record["FAMILY_B_STATUS"] == "CLOSED"

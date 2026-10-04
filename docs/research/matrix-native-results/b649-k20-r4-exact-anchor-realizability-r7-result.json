@@ -1,0 +1,134 @@
+{
+  "TASK_ID": "B649_K20_R4_EXACT_ANCHOR_REALIZABILITY_R7",
+  "TASK_STATUS": "COMPLETED_SUCCESS_B",
+  "BASE_HEAD": "3735fdcc2273e5e36c6a7a8a64352235aa7324a9",
+  "BASE_TREE": "10ae61d7d1ea3cdc71a95299a181fc03cb4460f3",
+  "TASK_BRANCH": "codex/b649-k20-r4-exact-anchor-realizability-r7",
+  "TASK_HEAD": "RECORDED_IN_FINAL_HANDOFF",
+  "WORKTREE_PATH": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_K20_R4_EXACT_ANCHOR_REALIZABILITY_R7",
+  "WORKTREE_DISPOSITION": "RETAIN",
+  "COUNT_VECTOR_CENSUS": {
+    "ANCHOR_INCIDENCE_TYPE_COUNT": 32,
+    "TOTAL_TYPE_COUNT_VECTOR_SPACE": 11554258485616,
+    "TYPE_COUNT_VECTOR_COUNT": 52360,
+    "ENUMERATED_SCOPE": "Every 32-type count vector with at least 14 good tickets; exact recovery and cell/full-system pair-mass floors computed for every emitted vector.",
+    "PRUNED_LOWER_GOOD_VECTOR_COUNT": 11554258433256,
+    "LOWER_GOOD_PRUNE_CERTIFICATE": "The prior certified per-good-count envelope is at least 8,392,832 for good_count <= 16 and at least 8,828,932 for good_count <= 13.",
+    "DANGEROUS_VECTOR_COUNT": 3,
+    "REALIZABLE_DANGEROUS_VECTOR_COUNT": 3,
+    "DANGEROUS_VECTOR_CLASSIFICATION": [
+      "18 good tickets: one vector.",
+      "17 good plus one best non-good ticket: two mirrored vectors, one A-only and one B-only."
+    ],
+    "INDEPENDENT_GENERATOR": "PASS: the count-vector generator matched an independently ordered exhaustive toy oracle."
+  },
+  "REALIZABILITY_CONSTRAINTS": {
+    "ANCHOR_SHARED_LABEL_CAPACITY": 4,
+    "A_ONLY_LABEL_CAPACITY": 2,
+    "B_ONLY_LABEL_CAPACITY": 2,
+    "OUTSIDE_LABEL_CAPACITY": 41,
+    "MAXIMUM_PAIR_INTERSECTION": 4,
+    "FULL_20_TICKET_PAIR_OVERLAP_MASS_FLOOR": 93,
+    "PAIR_MASS_DERIVATION": "120 label incidences over 49 labels; convex balancing gives 22 labels of multiplicity 3 and 27 of multiplicity 2, hence 93 pair overlaps.",
+    "ALL_PROFILE_RESIDUAL_PAIR_FLOORS_BY_OVERLAP_AT_LEAST": [11242, 41496, 41496, 223314, 804258],
+    "TOP_TYPE_RESIDUAL_PAIR_FLOORS_BY_OVERLAP_AT_LEAST": [105000, 553728, 1638686, 3354015, 6004446]
+  },
+  "DANGEROUS_VECTOR_RESULTS": [
+    {
+      "TYPE_COUNTS": [
+        {"signature": [0, 0, 0, 6], "count": 18}
+      ],
+      "EXACT_LOCAL_RECOVERY_LOSS": 0,
+      "CELLWISE_OUTSIDE_PAIR_MASS_FLOOR": 93,
+      "FULL_SYSTEM_REMAINDER_FLOOR": 89,
+      "OUTSIDE_PAIR_MASS_FLOOR": 93,
+      "MAXIMUM_OVERLAP_COMPONENTS": 6,
+      "MINIMUM_COMPONENT_FOREST_PENALTY": 8067192,
+      "COMPONENT_CASES": [
+        {"components": 1, "threshold_one_rank": 17, "edge_capacity": 153, "repeated_overlap_forced": false, "penalty_floor": 9413376},
+        {"components": 2, "threshold_one_rank": 16, "edge_capacity": 136, "repeated_overlap_forced": false, "penalty_floor": 8964648},
+        {"components": 3, "threshold_one_rank": 15, "edge_capacity": 120, "repeated_overlap_forced": false, "penalty_floor": 8515920},
+        {"components": 4, "threshold_one_rank": 14, "edge_capacity": 105, "repeated_overlap_forced": false, "penalty_floor": 8067192},
+        {"components": 5, "threshold_one_rank": 13, "edge_capacity": 91, "repeated_overlap_forced": true, "penalty_floor": 8703422},
+        {"components": 6, "threshold_one_rank": 12, "edge_capacity": 78, "repeated_overlap_forced": true, "penalty_floor": 8254694}
+      ],
+      "TOTAL_RECOVERY_REDUCTION": 8067192,
+      "R4_BOUND": 354519816,
+      "REALIZABILITY_WITNESS": "18 cyclic outside-label intervals of length 6 on 41 labels, with starts 2i mod 41; all pair intersections are at most 4."
+    },
+    {
+      "TYPE_COUNTS": [
+        {"signature": [0, 0, 0, 6], "count": 17},
+        {"signature": [0, 0, 1, 5], "count": 1}
+      ],
+      "EXACT_LOCAL_RECOVERY_LOSS": 436100,
+      "CELLWISE_OUTSIDE_PAIR_MASS_FLOOR": 91,
+      "FULL_SYSTEM_REMAINDER_FLOOR": 88,
+      "OUTSIDE_PAIR_MASS_FLOOR": 91,
+      "MAXIMUM_OVERLAP_COMPONENTS": 6,
+      "MINIMUM_COMPONENT_FOREST_PENALTY": 8067192,
+      "COMPONENT_CASES": [
+        {"components": 1, "threshold_one_rank": 17, "edge_capacity": 153, "repeated_overlap_forced": false, "penalty_floor": 9413376},
+        {"components": 2, "threshold_one_rank": 16, "edge_capacity": 136, "repeated_overlap_forced": false, "penalty_floor": 8964648},
+        {"components": 3, "threshold_one_rank": 15, "edge_capacity": 120, "repeated_overlap_forced": false, "penalty_floor": 8515920},
+        {"components": 4, "threshold_one_rank": 14, "edge_capacity": 105, "repeated_overlap_forced": false, "penalty_floor": 8067192},
+        {"components": 5, "threshold_one_rank": 13, "edge_capacity": 91, "repeated_overlap_forced": true, "penalty_floor": 8703422},
+        {"components": 6, "threshold_one_rank": 12, "edge_capacity": 78, "repeated_overlap_forced": true, "penalty_floor": 8254694}
+      ],
+      "TOTAL_RECOVERY_REDUCTION": 8503292,
+      "R4_BOUND": 354083716,
+      "REALIZABILITY_WITNESS": "Replace one interval's sixth outside label with one B-only anchor label."
+    },
+    {
+      "TYPE_COUNTS": [
+        {"signature": [0, 0, 0, 6], "count": 17},
+        {"signature": [0, 1, 0, 5], "count": 1}
+      ],
+      "EXACT_LOCAL_RECOVERY_LOSS": 436100,
+      "CELLWISE_OUTSIDE_PAIR_MASS_FLOOR": 91,
+      "FULL_SYSTEM_REMAINDER_FLOOR": 88,
+      "OUTSIDE_PAIR_MASS_FLOOR": 91,
+      "MAXIMUM_OVERLAP_COMPONENTS": 6,
+      "MINIMUM_COMPONENT_FOREST_PENALTY": 8067192,
+      "TOTAL_RECOVERY_REDUCTION": 8503292,
+      "R4_BOUND": 354083716,
+      "REALIZABILITY_WITNESS": "Replace one interval's sixth outside label with one A-only anchor label."
+    }
+  ],
+  "R4_BASE_BOUND": 362587008,
+  "MANDATORY_OUTSIDE_PAIR_PENALTY": 8067192,
+  "MINIMUM_GUARANTEED_RECOVERY_REDUCTION": 8067192,
+  "R4_BOUND": 354519816,
+  "R4_STATUS": "TIGHTENED_OPEN_SUCCESS_B",
+  "SUCCESS_A": false,
+  "SUCCESS_B": true,
+  "PRIOR_R4_BOUND": 354532444,
+  "R4_BOUND_IMPROVEMENT": 12628,
+  "FAMILY_A_RECOMPUTED_BOUND": 354519816,
+  "FAMILY_A_BOTTLENECK_R": 4,
+  "FROZEN_OTHER_SUBFAMILY_BOUNDS": {
+    "R3": 351483978,
+    "R5": 350778728,
+    "R6": 343869728
+  },
+  "INCUMBENT": 313239661,
+  "REMAINING_GAP": 41280155,
+  "SOLVER_STATUS": "NOT_USED_ANALYTIC_CERTIFICATE",
+  "SOLVER_CONFIGURED_WALL_LIMIT": "NOT_APPLICABLE_NO_SOLVER",
+  "SOLVER_ACTUAL_WALL_TIME": "NOT_APPLICABLE_NO_SOLVER",
+  "SOLVER_CERTIFIED_BOUND": "NOT_APPLICABLE_NO_SOLVER",
+  "FOCUSED_TESTS": "PASS: 5 passed in 35.88 seconds.",
+  "RUFF": "PASS: scoped check of proof module and focused test.",
+  "PYRIGHT": "PASS: scoped strict check, 0 errors, 0 warnings, 0 informations.",
+  "VERIFICATION_ATTEMPTS": [
+    {"check": "focused pytest initial run", "result": "FAIL: 4 passed, 1 failed; dangerous-vector serialization zipped profiles and counts in reverse order."},
+    {"check": "Ruff initial run", "result": "FAIL: one 110-character line; split before final pass."},
+    {"check": "Pyright initial runs", "result": "FAIL: strict optional-value narrowing, tuple-shape inference, and one unused helper; corrected before final pass."},
+    {"check": "focused pytest final run", "result": "PASS: 5 passed in 35.88 seconds, with a 60-second external hard timeout."},
+    {"check": "Ruff final run", "result": "PASS."},
+    {"check": "Pyright final run", "result": "PASS: 0 errors, 0 warnings, 0 informations."}
+  ],
+  "NEW_PORTFOLIO_SEARCH_STARTED": "NO",
+  "PRODUCTION_MUTATION": "NONE",
+  "WORKTREE_DISPOSITION": "RETAIN"
+}

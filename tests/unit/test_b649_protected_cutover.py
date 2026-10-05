@@ -3908,6 +3908,266 @@ def test_protected_status_cli_is_read_only_and_reports_owner_and_receipts(
     assert not (harness.fixture.scheduler_root / protected.ROLLBACK_RECEIPT_NAME).exists()
 
 
+def _status_assessment_argv(
+    config: cutover.CutoverConfig,
+    *,
+    candidate: protected.Request | None = None,
+) -> list[str]:
+    argv = [
+        "status",
+        "--for",
+        "apply",
+        "--source-worktree",
+        str(config.source_worktree),
+        "--expected-head",
+        str(config.expected_head),
+        "--expected-tree",
+        str(config.expected_tree),
+        "--assess-successor",
+    ]
+    if candidate is not None:
+        assert candidate.reservation_id is not None
+        argv.extend(
+            [
+                "--candidate-plan-file",
+                str(candidate.plan_file),
+                "--candidate-reservation-id",
+                candidate.reservation_id,
+                "--candidate-operation-id",
+                candidate.operation_id,
+                "--legacy-worktree",
+                str(candidate.legacy_worktree),
+                "--legacy-head",
+                candidate.legacy_head,
+                "--legacy-tree",
+                candidate.legacy_tree,
+                "--candidate-control-head",
+                candidate.control_head,
+                "--candidate-control-tree",
+                candidate.control_tree,
+            ]
+        )
+    return argv
+
+
+def _temp_tree_snapshot(root: Path) -> dict[Path, bytes]:
+    return {
+        path.relative_to(root): path.read_bytes()
+        for path in root.rglob("*")
+        if path.is_file()
+    }
+
+
+def _forbid_status_mutations(monkeypatch: pytest.MonkeyPatch) -> None:
+    def forbidden(*_args: object, **_kwargs: object) -> object:
+        raise AssertionError("read-only successor assessment reached a mutation boundary")
+
+    monkeypatch.setattr(cutover, "_write_json", forbidden)
+    monkeypatch.setattr(cutover, "_save_control_owner", forbidden)
+    monkeypatch.setattr(cutover, "acquire_control_owner", forbidden)
+    monkeypatch.setattr(cutover, "bind_control_owner", forbidden)
+    monkeypatch.setattr(cutover, "authorize_control_owner", forbidden)
+    monkeypatch.setattr(cutover, "release_control_owner", forbidden)
+    monkeypatch.setattr(cutover, "reconcile_control_owner", forbidden)
+    monkeypatch.setattr(protected.ReceiptFile, "archive_to", forbidden)
+
+
+def test_protected_status_successor_assessment_reuses_read_only_checks(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    _incident, request, _fixture_hashlib, _owner = (
+        _prepare_exact_released_v7_intermediate_bridge(harness, monkeypatch)
+    )
+    monkeypatch.setattr(
+        protected, "build_reservation_config", _fixed_reservation_config(harness)
+    )
+    _forbid_status_mutations(monkeypatch)
+    monkeypatch.setattr(
+        protected,
+        "control_identity",
+        lambda: (_ for _ in ()).throw(AssertionError("status must not derive control identity")),
+    )
+    before = _temp_tree_snapshot(harness.fixture.root)
+    mutation_calls_before = list(harness.launchd.mutation_calls)
+    launches_before = harness.launches
+
+    exit_code = protected.main(
+        _status_assessment_argv(request.config, candidate=request)
+    )
+
+    assert exit_code == 0
+    report = _last_json_line(capsys)
+    assessment = report["successor_assessment"]
+    assert assessment["owner_route"]["route"] == "RELEASED_V7_INTERMEDIATE"
+    assert assessment["predecessor_status"] == "PASS"
+    assert assessment["candidate_status"] == "PRECHECKED"
+    assert assessment["overall_status"] == "NOT_READY"
+    assert "write boundary" in assessment["overall_detail"]
+    assert all(item["status"] == "PASS" for item in assessment["predecessor_checks"])
+    assert all(item["status"] == "PASS" for item in assessment["candidate_checks"])
+    assert any(
+        item["name"] == "fresh_write_boundary_revalidation"
+        for item in assessment["candidate_checks"]
+    )
+    assert _temp_tree_snapshot(harness.fixture.root) == before
+    assert harness.launchd.mutation_calls == mutation_calls_before
+    assert harness.launches == launches_before
+
+
+def test_protected_status_missing_candidate_inputs_stays_not_evaluated(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    _incident, request, _fixture_hashlib, _owner = (
+        _prepare_exact_released_v7_intermediate_bridge(harness, monkeypatch)
+    )
+    monkeypatch.setattr(
+        protected, "build_reservation_config", _fixed_reservation_config(harness)
+    )
+    _forbid_status_mutations(monkeypatch)
+    monkeypatch.setattr(
+        protected,
+        "uuid4",
+        lambda: (_ for _ in ()).throw(AssertionError("assessment must not mint identity")),
+    )
+    monkeypatch.setattr(
+        cutover,
+        "run_command",
+        lambda _argv: (_ for _ in ()).throw(AssertionError("predecessor-only check ran runtime")),
+    )
+    before = _temp_tree_snapshot(harness.fixture.root)
+    launches_before = harness.launches
+
+    exit_code = protected.main(_status_assessment_argv(request.config))
+
+    assert exit_code == 0
+    assessment = _last_json_line(capsys)["successor_assessment"]
+    assert assessment["predecessor_status"] == "PASS"
+    assert all(item["status"] == "PASS" for item in assessment["predecessor_checks"])
+    assert assessment["candidate_status"] == "NOT_EVALUATED"
+    assert assessment["candidate_checks"][0]["status"] == "NOT_EVALUATED"
+    assert "--candidate-plan-file" in assessment["candidate_checks"][0]["missing_inputs"]
+    assert "--candidate-operation-id" in assessment["candidate_checks"][0]["missing_inputs"]
+    assert assessment["overall_status"] == "NOT_READY"
+    assert _temp_tree_snapshot(harness.fixture.root) == before
+    assert harness.launches == launches_before
+
+
+def test_protected_status_pending_owner_requires_existing_operation_resolution(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    _argv, authorization = _drive_reserve_authorize(harness, monkeypatch, capsys)
+    assert protected.main(_authorize_argv(authorization)) == 0
+    capsys.readouterr()
+    owner_before = cutover.inspect_control_owner(harness.fixture.config)
+    assert owner_before is not None and owner_before["phase"] == "AUTHORIZED_PENDING"
+    monkeypatch.setattr(
+        protected,
+        "build_reservation_config",
+        _fixed_reservation_config(harness),
+    )
+    _forbid_status_mutations(monkeypatch)
+    monkeypatch.setattr(
+        protected,
+        "uuid4",
+        lambda: (_ for _ in ()).throw(AssertionError("assessment must not mint identity")),
+    )
+    argv = _status_assessment_argv(harness.fixture.config)
+    argv.extend(
+        ["--candidate-plan-file", str(harness.fixture.root / "must-not-be-read.json")]
+    )
+    before = _temp_tree_snapshot(harness.fixture.root)
+    mutation_calls_before = list(harness.launchd.mutation_calls)
+
+    exit_code = protected.main(argv)
+
+    assert exit_code == 0
+    assessment = _last_json_line(capsys)["successor_assessment"]
+    assert assessment["owner_route"]["route"] == "EXISTING_OPERATION_PENDING"
+    assert assessment["owner_route"]["phase"] == "AUTHORIZED_PENDING"
+    assert "before creating a successor" in assessment["owner_route"]["required_action"]
+    assert assessment["candidate_status"] == "NOT_EVALUATED"
+    assert assessment["overall_status"] == "NOT_READY"
+    assert _temp_tree_snapshot(harness.fixture.root) == before
+    assert cutover.inspect_control_owner(harness.fixture.config) == owner_before
+    assert harness.launchd.mutation_calls == mutation_calls_before
+    assert harness.launches == 0
+
+
+@pytest.mark.parametrize(
+    "mismatch", ["failed_receipt_hash", "release_record_hash", "owner_operation"]
+)
+def test_protected_status_successor_assessment_fails_closed_without_writes(
+    mismatch: str,
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    _incident, request, _fixture_hashlib, _owner = (
+        _prepare_exact_released_v7_intermediate_bridge(harness, monkeypatch)
+    )
+    release_path = request.config.scheduler_root / (
+        f"b649-prestart-successor-release-{cutover.RELEASED_INTERMEDIATE_RESERVATION_ID}.json"
+    )
+    if mismatch == "failed_receipt_hash":
+        with request.receipt_path.open("ab") as stream:
+            stream.write(b" ")
+    elif mismatch == "release_record_hash":
+        with release_path.open("ab") as stream:
+            stream.write(b" ")
+    else:
+        _save_bridge_owner(
+            request,
+            {"operation_id": "e" * 32},
+            bind_authorization=True,
+        )
+    monkeypatch.setattr(
+        protected, "build_reservation_config", _fixed_reservation_config(harness)
+    )
+    _forbid_status_mutations(monkeypatch)
+    before = _temp_tree_snapshot(harness.fixture.root)
+    launches_before = harness.launches
+
+    exit_code = protected.main(_status_assessment_argv(request.config))
+
+    assert exit_code == 0
+    assessment = _last_json_line(capsys)["successor_assessment"]
+    assert assessment["predecessor_status"] == "FAIL"
+    assert assessment["overall_status"] == "FAIL"
+    assert any(item["status"] == "FAIL" for item in assessment["predecessor_checks"])
+    assert _temp_tree_snapshot(harness.fixture.root) == before
+    assert harness.launches == launches_before
+
+
+def test_selector_null_is_not_v5_authority_or_receipt_damage(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    owner: protected.Record = {
+        "phase": "RELEASED",
+        "reservation_id": cutover.V5_RESERVATION_ID,
+        "operation_id": cutover.V5_OPERATION_ID,
+        "selector": None,
+    }
+    monkeypatch.setattr(cutover, "inspect_control_owner", lambda _config: owner)
+    report = protected.status_report(
+        harness.fixture.config,
+        assess_successor=True,
+        candidate_inputs={"candidate_plan_file": str(harness.fixture.root / "missing.json")},
+    )
+    assessment = report["successor_assessment"]
+    assert assessment["owner_route"]["route"] == "OWNER_SELECTOR_UNRESOLVED"
+    assert assessment["overall_status"] == "NOT_READY"
+    assert assessment["predecessor_status"] == "NOT_EVALUATED"
+    assert assessment["candidate_status"] == "NOT_EVALUATED"
+    assert "does not establish receipt damage" in assessment["owner_route"]["detail"]
+
+
 def _drive_reserve_authorize(
     harness: Harness,
     monkeypatch: pytest.MonkeyPatch,

@@ -1,0 +1,700 @@
+{
+  "BASE_HEAD": "ac4d084375515309268153a829ce6ad5a370d896",
+  "BASE_TREE": "f3d10b7af4a1c9484bfbaa184d1d0991207e2fc4",
+  "CLASSIFICATION_BASIS_COUNTS": {
+    "CP_SAT_INFEASIBLE_PROOF": 14,
+    "GRAPH_COMPONENT_EXTREMAL_PROOF": 127,
+    "VERIFIED_INCIDENCE_WITNESS": 33
+  },
+  "CLASSIFIED_FRONTIER_GROUPS": [
+    {
+      "COMPONENT_COUNT": 1,
+      "REALIZABLE_MASSES": [
+        126,
+        127,
+        128,
+        129,
+        137,
+        138,
+        139,
+        140,
+        141,
+        152,
+        153
+      ],
+      "REALIZATION": "18_GOOD",
+      "UNREALIZABLE_BY_CP_SAT": [],
+      "UNREALIZABLE_BY_GRAPH_BOUND": []
+    },
+    {
+      "COMPONENT_COUNT": 2,
+      "REALIZABLE_MASSES": [
+        126,
+        127,
+        128,
+        129
+      ],
+      "REALIZATION": "18_GOOD",
+      "UNREALIZABLE_BY_CP_SAT": [],
+      "UNREALIZABLE_BY_GRAPH_BOUND": [
+        137,
+        138,
+        139,
+        140,
+        141,
+        152,
+        153
+      ]
+    },
+    {
+      "COMPONENT_COUNT": 3,
+      "REALIZABLE_MASSES": [],
+      "REALIZATION": "18_GOOD",
+      "UNREALIZABLE_BY_CP_SAT": [],
+      "UNREALIZABLE_BY_GRAPH_BOUND": [
+        126,
+        127,
+        128,
+        129,
+        137,
+        138,
+        139,
+        140,
+        141,
+        152,
+        153
+      ]
+    },
+    {
+      "COMPONENT_COUNT": 4,
+      "REALIZABLE_MASSES": [],
+      "REALIZATION": "18_GOOD",
+      "UNREALIZABLE_BY_CP_SAT": [],
+      "UNREALIZABLE_BY_GRAPH_BOUND": [
+        126,
+        127,
+        128,
+        129,
+        137,
+        138,
+        139,
+        140,
+        141,
+        152,
+        153
+      ]
+    },
+    {
+      "COMPONENT_COUNT": 5,
+      "REALIZABLE_MASSES": [],
+      "REALIZATION": "18_GOOD",
+      "UNREALIZABLE_BY_CP_SAT": [],
+      "UNREALIZABLE_BY_GRAPH_BOUND": [
+        126,
+        127,
+        128,
+        129,
+        137,
+        138,
+        139,
+        140,
+        141,
+        152,
+        153
+      ]
+    },
+    {
+      "COMPONENT_COUNT": 6,
+      "REALIZABLE_MASSES": [],
+      "REALIZATION": "18_GOOD",
+      "UNREALIZABLE_BY_CP_SAT": [],
+      "UNREALIZABLE_BY_GRAPH_BOUND": [
+        126,
+        127,
+        128,
+        129,
+        137,
+        138,
+        139,
+        140,
+        141,
+        152,
+        153
+      ]
+    },
+    {
+      "COMPONENT_COUNT": 1,
+      "REALIZABLE_MASSES": [
+        121,
+        122,
+        123,
+        132,
+        133,
+        134,
+        135,
+        146,
+        147
+      ],
+      "REALIZATION": "17_GOOD_PLUS_B_ONLY",
+      "UNREALIZABLE_BY_CP_SAT": [],
+      "UNREALIZABLE_BY_GRAPH_BOUND": []
+    },
+    {
+      "COMPONENT_COUNT": 2,
+      "REALIZABLE_MASSES": [],
+      "REALIZATION": "17_GOOD_PLUS_B_ONLY",
+      "UNREALIZABLE_BY_CP_SAT": [
+        121,
+        122,
+        123,
+        132,
+        133,
+        134,
+        135
+      ],
+      "UNREALIZABLE_BY_GRAPH_BOUND": [
+        146,
+        147
+      ]
+    },
+    {
+      "COMPONENT_COUNT": 3,
+      "REALIZABLE_MASSES": [],
+      "REALIZATION": "17_GOOD_PLUS_B_ONLY",
+      "UNREALIZABLE_BY_CP_SAT": [],
+      "UNREALIZABLE_BY_GRAPH_BOUND": [
+        121,
+        122,
+        123,
+        132,
+        133,
+        134,
+        135,
+        146,
+        147
+      ]
+    },
+    {
+      "COMPONENT_COUNT": 4,
+      "REALIZABLE_MASSES": [],
+      "REALIZATION": "17_GOOD_PLUS_B_ONLY",
+      "UNREALIZABLE_BY_CP_SAT": [],
+      "UNREALIZABLE_BY_GRAPH_BOUND": [
+        121,
+        122,
+        123,
+        132,
+        133,
+        134,
+        135,
+        146,
+        147
+      ]
+    },
+    {
+      "COMPONENT_COUNT": 5,
+      "REALIZABLE_MASSES": [],
+      "REALIZATION": "17_GOOD_PLUS_B_ONLY",
+      "UNREALIZABLE_BY_CP_SAT": [],
+      "UNREALIZABLE_BY_GRAPH_BOUND": [
+        121,
+        122,
+        123,
+        132,
+        133,
+        134,
+        135,
+        146,
+        147
+      ]
+    },
+    {
+      "COMPONENT_COUNT": 6,
+      "REALIZABLE_MASSES": [],
+      "REALIZATION": "17_GOOD_PLUS_B_ONLY",
+      "UNREALIZABLE_BY_CP_SAT": [],
+      "UNREALIZABLE_BY_GRAPH_BOUND": [
+        121,
+        122,
+        123,
+        132,
+        133,
+        134,
+        135,
+        146,
+        147
+      ]
+    },
+    {
+      "COMPONENT_COUNT": 1,
+      "REALIZABLE_MASSES": [
+        121,
+        122,
+        123,
+        132,
+        133,
+        134,
+        135,
+        146,
+        147
+      ],
+      "REALIZATION": "17_GOOD_PLUS_A_ONLY",
+      "UNREALIZABLE_BY_CP_SAT": [],
+      "UNREALIZABLE_BY_GRAPH_BOUND": []
+    },
+    {
+      "COMPONENT_COUNT": 2,
+      "REALIZABLE_MASSES": [],
+      "REALIZATION": "17_GOOD_PLUS_A_ONLY",
+      "UNREALIZABLE_BY_CP_SAT": [
+        121,
+        122,
+        123,
+        132,
+        133,
+        134,
+        135
+      ],
+      "UNREALIZABLE_BY_GRAPH_BOUND": [
+        146,
+        147
+      ]
+    },
+    {
+      "COMPONENT_COUNT": 3,
+      "REALIZABLE_MASSES": [],
+      "REALIZATION": "17_GOOD_PLUS_A_ONLY",
+      "UNREALIZABLE_BY_CP_SAT": [],
+      "UNREALIZABLE_BY_GRAPH_BOUND": [
+        121,
+        122,
+        123,
+        132,
+        133,
+        134,
+        135,
+        146,
+        147
+      ]
+    },
+    {
+      "COMPONENT_COUNT": 4,
+      "REALIZABLE_MASSES": [],
+      "REALIZATION": "17_GOOD_PLUS_A_ONLY",
+      "UNREALIZABLE_BY_CP_SAT": [],
+      "UNREALIZABLE_BY_GRAPH_BOUND": [
+        121,
+        122,
+        123,
+        132,
+        133,
+        134,
+        135,
+        146,
+        147
+      ]
+    },
+    {
+      "COMPONENT_COUNT": 5,
+      "REALIZABLE_MASSES": [],
+      "REALIZATION": "17_GOOD_PLUS_A_ONLY",
+      "UNREALIZABLE_BY_CP_SAT": [],
+      "UNREALIZABLE_BY_GRAPH_BOUND": [
+        121,
+        122,
+        123,
+        132,
+        133,
+        134,
+        135,
+        146,
+        147
+      ]
+    },
+    {
+      "COMPONENT_COUNT": 6,
+      "REALIZABLE_MASSES": [],
+      "REALIZATION": "17_GOOD_PLUS_A_ONLY",
+      "UNREALIZABLE_BY_CP_SAT": [],
+      "UNREALIZABLE_BY_GRAPH_BOUND": [
+        121,
+        122,
+        123,
+        132,
+        133,
+        134,
+        135,
+        146,
+        147
+      ]
+    }
+  ],
+  "DANGEROUS_FRONTIER_STATES": [
+    {
+      "COMPONENT_COUNT": 1,
+      "OUTSIDE_PAIR_MASSES": [
+        126,
+        127,
+        128,
+        129,
+        137,
+        138,
+        139,
+        140,
+        141,
+        152,
+        153
+      ],
+      "REALIZATION": "18_GOOD"
+    },
+    {
+      "COMPONENT_COUNT": 2,
+      "OUTSIDE_PAIR_MASSES": [
+        126,
+        127,
+        128,
+        129,
+        137,
+        138,
+        139,
+        140,
+        141,
+        152,
+        153
+      ],
+      "REALIZATION": "18_GOOD"
+    },
+    {
+      "COMPONENT_COUNT": 3,
+      "OUTSIDE_PAIR_MASSES": [
+        126,
+        127,
+        128,
+        129,
+        137,
+        138,
+        139,
+        140,
+        141,
+        152,
+        153
+      ],
+      "REALIZATION": "18_GOOD"
+    },
+    {
+      "COMPONENT_COUNT": 4,
+      "OUTSIDE_PAIR_MASSES": [
+        126,
+        127,
+        128,
+        129,
+        137,
+        138,
+        139,
+        140,
+        141,
+        152,
+        153
+      ],
+      "REALIZATION": "18_GOOD"
+    },
+    {
+      "COMPONENT_COUNT": 5,
+      "OUTSIDE_PAIR_MASSES": [
+        126,
+        127,
+        128,
+        129,
+        137,
+        138,
+        139,
+        140,
+        141,
+        152,
+        153
+      ],
+      "REALIZATION": "18_GOOD"
+    },
+    {
+      "COMPONENT_COUNT": 6,
+      "OUTSIDE_PAIR_MASSES": [
+        126,
+        127,
+        128,
+        129,
+        137,
+        138,
+        139,
+        140,
+        141,
+        152,
+        153
+      ],
+      "REALIZATION": "18_GOOD"
+    },
+    {
+      "COMPONENT_COUNT": 1,
+      "OUTSIDE_PAIR_MASSES": [
+        121,
+        122,
+        123,
+        132,
+        133,
+        134,
+        135,
+        146,
+        147
+      ],
+      "REALIZATION": "17_GOOD_PLUS_B_ONLY"
+    },
+    {
+      "COMPONENT_COUNT": 2,
+      "OUTSIDE_PAIR_MASSES": [
+        121,
+        122,
+        123,
+        132,
+        133,
+        134,
+        135,
+        146,
+        147
+      ],
+      "REALIZATION": "17_GOOD_PLUS_B_ONLY"
+    },
+    {
+      "COMPONENT_COUNT": 3,
+      "OUTSIDE_PAIR_MASSES": [
+        121,
+        122,
+        123,
+        132,
+        133,
+        134,
+        135,
+        146,
+        147
+      ],
+      "REALIZATION": "17_GOOD_PLUS_B_ONLY"
+    },
+    {
+      "COMPONENT_COUNT": 4,
+      "OUTSIDE_PAIR_MASSES": [
+        121,
+        122,
+        123,
+        132,
+        133,
+        134,
+        135,
+        146,
+        147
+      ],
+      "REALIZATION": "17_GOOD_PLUS_B_ONLY"
+    },
+    {
+      "COMPONENT_COUNT": 5,
+      "OUTSIDE_PAIR_MASSES": [
+        121,
+        122,
+        123,
+        132,
+        133,
+        134,
+        135,
+        146,
+        147
+      ],
+      "REALIZATION": "17_GOOD_PLUS_B_ONLY"
+    },
+    {
+      "COMPONENT_COUNT": 6,
+      "OUTSIDE_PAIR_MASSES": [
+        121,
+        122,
+        123,
+        132,
+        133,
+        134,
+        135,
+        146,
+        147
+      ],
+      "REALIZATION": "17_GOOD_PLUS_B_ONLY"
+    },
+    {
+      "COMPONENT_COUNT": 1,
+      "OUTSIDE_PAIR_MASSES": [
+        121,
+        122,
+        123,
+        132,
+        133,
+        134,
+        135,
+        146,
+        147
+      ],
+      "REALIZATION": "17_GOOD_PLUS_A_ONLY"
+    },
+    {
+      "COMPONENT_COUNT": 2,
+      "OUTSIDE_PAIR_MASSES": [
+        121,
+        122,
+        123,
+        132,
+        133,
+        134,
+        135,
+        146,
+        147
+      ],
+      "REALIZATION": "17_GOOD_PLUS_A_ONLY"
+    },
+    {
+      "COMPONENT_COUNT": 3,
+      "OUTSIDE_PAIR_MASSES": [
+        121,
+        122,
+        123,
+        132,
+        133,
+        134,
+        135,
+        146,
+        147
+      ],
+      "REALIZATION": "17_GOOD_PLUS_A_ONLY"
+    },
+    {
+      "COMPONENT_COUNT": 4,
+      "OUTSIDE_PAIR_MASSES": [
+        121,
+        122,
+        123,
+        132,
+        133,
+        134,
+        135,
+        146,
+        147
+      ],
+      "REALIZATION": "17_GOOD_PLUS_A_ONLY"
+    },
+    {
+      "COMPONENT_COUNT": 5,
+      "OUTSIDE_PAIR_MASSES": [
+        121,
+        122,
+        123,
+        132,
+        133,
+        134,
+        135,
+        146,
+        147
+      ],
+      "REALIZATION": "17_GOOD_PLUS_A_ONLY"
+    },
+    {
+      "COMPONENT_COUNT": 6,
+      "OUTSIDE_PAIR_MASSES": [
+        121,
+        122,
+        123,
+        132,
+        133,
+        134,
+        135,
+        146,
+        147
+      ],
+      "REALIZATION": "17_GOOD_PLUS_A_ONLY"
+    }
+  ],
+  "DANGEROUS_FRONTIER_STATE_COUNT": 174,
+  "DANGEROUS_FRONTIER_STATE_SHA256": "bd63b9109dec2df1aa23e493f7a7ec934508a5abd1f29456abeeb091ec547eca",
+  "DANGEROUS_REALIZABLE_R4_BOUND": 300547996,
+  "DANGEROUS_REALIZABLE_R4_BOUND_MAXIMIZING_STATE_IDS": [
+    "17_GOOD_PLUS_A_ONLY/components=1/outside_pair_mass=121",
+    "17_GOOD_PLUS_B_ONLY/components=1/outside_pair_mass=121"
+  ],
+  "FOCUSED_TESTS": "PASS: 10 focused tests",
+  "GENERATED_JOINT_STATE_COUNT_FOR_ID_REPRODUCTION": 9384,
+  "GRAPH_COMPONENT_ELIMINATIONS": 127,
+  "INCUMBENT": 313239661,
+  "LEAF_GAP": 37539067,
+  "NEW_PORTFOLIO_SEARCH_STARTED": "NO",
+  "PRODUCTION_MUTATION": "NONE",
+  "PYRIGHT": "PASS: scoped pyright, 0 errors",
+  "R4_BOUND": 350778728,
+  "R4_STATUS": "CLOSED_VS_R5",
+  "REALIZABLE_STATE_COUNT": 33,
+  "RUFF": "PASS: scoped ruff check",
+  "S3_MAX": {
+    "ATTAINEDNESS": "PROVEN_BY_VERIFIED_SUPPORT_WITNESS",
+    "BOUND_MAXIMIZING_STATE_IDS": [
+      "18_GOOD/components=1/outside_pair_mass=153"
+    ],
+    "CERTIFICATE": "Pair mass 153 on 18 tickets forces K18. The outside-label supports are therefore an exact clique partition of K18's 153 edges; the verified 29-block witness has H=100 and attains residual S3. Every other realizable dangerous state has certified S3 upper bound below it.",
+    "CERTIFIED_UPPER_BOUND": 15214752,
+    "EXACT_MAXIMUM": 15214752,
+    "FORCED_FREQUENCY_ARGMIN": 7,
+    "FORCED_FREQUENCY_H_FLOOR_FOR_FREQUENCY_AT_LEAST_7": 111,
+    "H_LE_99_FREQUENCY_HISTOGRAM_COUNT": 4,
+    "H_LE_99_PROFILE_COMPATIBLE_HISTOGRAM_COUNT": 1,
+    "H_LE_99_PROFILE_DECOMPOSITION_COUNT": 3,
+    "H_LOWER_BOUND_CERTIFICATE": "For a forced label frequency >=7, the exact residual frequency DP gives H>=111. For frequencies 1..6, exhaustive integer histogram enumeration under (I,M,label count) yields four H<100 profiles; exact DP over the 18 ticket-local six-label frequency patterns summing to 23 leaves one profile, with n5=1 and n6=0, and exactly three decompositions. Two require a ticket in multiple frequency-5 labels. In the remaining decomposition, both frequency-2 labels join tickets inside the unique frequency-5 K5, duplicating an already-covered pair.",
+    "H_MIN": 100,
+    "MAXIMIZER_SUPPORT_WITNESS_SHA256": "0eb27b0b99ea18b36295f7c7089dccc18732c19e665931de5e60aa237d05bd02",
+    "OTHER_REALIZABLE_STATE_CERTIFIED_S3_UPPER_MAXIMUM": 14991088,
+    "STATUS": "EXACT_MAXIMUM_WITH_SUPPORT_AND_HISTOGRAM_CERTIFICATES"
+  },
+  "S4_MIN_AT_S3_MAX": {
+    "CERTIFICATE": "At H=100, the exact (I,M,label-count) histogram census and ticket-local frequency-profile DP leave one profile-compatible histogram, with G=28. The verified K18 block witness attains it. Four-ticket profile counts are (N0,N3,N4)=(1644,1388,28), with exact residual intersections (J0,J3,J4)=(679,448,0), giving S4=1,738,100.",
+    "EXACT_MINIMUM": 1738100,
+    "G_MIN_AT_H_100": 28,
+    "H_100_FREQUENCY_HISTOGRAM_COUNT": 2,
+    "H_100_PROFILE_COMPATIBLE_HISTOGRAM_COUNT": 1,
+    "PROFILE_COUNTS_NO_TRIPLE_ONE_TRIPLE_COMMON_FOUR": [
+      1644,
+      1388,
+      28
+    ],
+    "PROFILE_RESIDUAL_INTERSECTIONS_J0_J3_J4": [
+      679,
+      448,
+      0
+    ],
+    "STATUS": "EXACT_OPTIMAL_SUPPORT_MINIMUM",
+    "USED_IN_R4_BOUND": false
+  },
+  "SOLVER_ACTUAL_WALL_TIME_SECONDS": 40.022021,
+  "SOLVER_CERTIFIED_BOUND": 350778728,
+  "SOLVER_CONFIGURED_WALL_LIMIT": "8.0s native per frontier support case; 2 search workers; 150s external process timeout; higher-order bound proved by finite census, no solver",
+  "SOLVER_STATUS": "EXACT_SUPPORT_FEASIBILITY; FINITE H/PROFILE CENSUS; EXACT S3/S4 CELL COUNTS",
+  "SOURCE_R10_FRONTIER_SEGMENT_COUNT": 45,
+  "SOURCE_R10_RESULT_SHA256": "2829fa4182fed169ba2b46695560efd244566c3dc3649ff50fc9b64c7d6e3d01",
+  "SOURCE_R9_RESULT_SHA256": "0024f79c9ed7bf4f5b00a207aa80e5adc8fa18b9d7f7946f4b0e192cd60ce1da",
+  "SUPPORT_CLASSIFICATION_SHA256": "392db14374c9723da66190445be06ca98b15749174bbc8049f06124b939cdfe8",
+  "SUPPORT_TYPE_CLASSIFICATION_COUNTS": {
+    "17_GOOD_PLUS_SPECIAL": {
+      "DANGEROUS": 108,
+      "REALIZABLE": 18,
+      "UNREALIZABLE": 90
+    },
+    "18_GOOD": {
+      "DANGEROUS": 66,
+      "REALIZABLE": 15,
+      "UNREALIZABLE": 51
+    }
+  },
+  "TASK_BRANCH": "codex/b649-k20-r4-frontier-maximizer-realizability-r11",
+  "TASK_HEAD": "RECORDED_IN_FINAL_HANDOFF",
+  "TASK_ID": "B649_K20_R4_FRONTIER_MAXIMIZER_REALIZABILITY_R11",
+  "TASK_STATUS": "SUCCESS_A_B_C_EXACT_S3_S4",
+  "UNREALIZABLE_STATE_COUNT": 141,
+  "WORKTREE_DISPOSITION": "RETAIN",
+  "WORKTREE_PATH": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_K20_R4_FRONTIER_MAXIMIZER_REALIZABILITY_R11"
+}

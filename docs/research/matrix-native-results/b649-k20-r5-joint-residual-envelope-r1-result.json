@@ -1,0 +1,1739 @@
+{
+  "ANCHOR_INCIDENCE_TYPE_COUNT": 21,
+  "ANCHOR_UNION": 26446532,
+  "BASE_HEAD": "ac4d084375515309268153a829ce6ad5a370d896",
+  "BASE_TREE": "f3d10b7af4a1c9484bfbaa184d1d0991207e2fc4",
+  "BOUND_BY_GOOD_TICKET_COUNT": [
+    {
+      "FEASIBLE_TYPE_COUNT_VECTOR_COUNT": 17531511375,
+      "GOOD_GROUP_MINIMUM_UNION_REDUCTION": 0,
+      "GOOD_GROUP_RESIDUAL_UNION_BOUND": 0,
+      "GOOD_TICKET_COUNT": 0,
+      "MAXIMUM_NON_GOOD_ORBIT_UNION_BOUND": 319585756,
+      "R5_UPPER_BOUND": 346032288
+    },
+    {
+      "FEASIBLE_TYPE_COUNT_VECTOR_COUNT": 8542869300,
+      "GOOD_GROUP_MINIMUM_UNION_REDUCTION": 0,
+      "GOOD_GROUP_RESIDUAL_UNION_BOUND": 18452182,
+      "GOOD_TICKET_COUNT": 1,
+      "MAXIMUM_NON_GOOD_ORBIT_UNION_BOUND": 301863254,
+      "R5_UPPER_BOUND": 346761968
+    },
+    {
+      "FEASIBLE_TYPE_COUNT_VECTOR_COUNT": 4039898940,
+      "GOOD_GROUP_MINIMUM_UNION_REDUCTION": 107800,
+      "GOOD_GROUP_RESIDUAL_UNION_BOUND": 36796564,
+      "GOOD_TICKET_COUNT": 2,
+      "MAXIMUM_NON_GOOD_ORBIT_UNION_BOUND": 284140752,
+      "R5_UPPER_BOUND": 347383848
+    },
+    {
+      "FEASIBLE_TYPE_COUNT_VECTOR_COUNT": 1849060620,
+      "GOOD_GROUP_MINIMUM_UNION_REDUCTION": 323400,
+      "GOOD_GROUP_RESIDUAL_UNION_BOUND": 55033146,
+      "GOOD_TICKET_COUNT": 3,
+      "MAXIMUM_NON_GOOD_ORBIT_UNION_BOUND": 266418250,
+      "R5_UPPER_BOUND": 347897928
+    },
+    {
+      "FEASIBLE_TYPE_COUNT_VECTOR_COUNT": 816589125,
+      "GOOD_GROUP_MINIMUM_UNION_REDUCTION": 646800,
+      "GOOD_GROUP_RESIDUAL_UNION_BOUND": 73161928,
+      "GOOD_TICKET_COUNT": 4,
+      "MAXIMUM_NON_GOOD_ORBIT_UNION_BOUND": 248695748,
+      "R5_UPPER_BOUND": 348304208
+    },
+    {
+      "FEASIBLE_TYPE_COUNT_VECTOR_COUNT": 346715800,
+      "GOOD_GROUP_MINIMUM_UNION_REDUCTION": 1078000,
+      "GOOD_GROUP_RESIDUAL_UNION_BOUND": 91182910,
+      "GOOD_TICKET_COUNT": 5,
+      "MAXIMUM_NON_GOOD_ORBIT_UNION_BOUND": 230973246,
+      "R5_UPPER_BOUND": 348602688
+    },
+    {
+      "FEASIBLE_TYPE_COUNT_VECTOR_COUNT": 140943425,
+      "GOOD_GROUP_MINIMUM_UNION_REDUCTION": 1617000,
+      "GOOD_GROUP_RESIDUAL_UNION_BOUND": 109096092,
+      "GOOD_TICKET_COUNT": 6,
+      "MAXIMUM_NON_GOOD_ORBIT_UNION_BOUND": 213250744,
+      "R5_UPPER_BOUND": 348793368
+    },
+    {
+      "FEASIBLE_TYPE_COUNT_VECTOR_COUNT": 54584796,
+      "GOOD_GROUP_MINIMUM_UNION_REDUCTION": 2130800,
+      "GOOD_GROUP_RESIDUAL_UNION_BOUND": 127034474,
+      "GOOD_TICKET_COUNT": 7,
+      "MAXIMUM_NON_GOOD_ORBIT_UNION_BOUND": 195528242,
+      "R5_UPPER_BOUND": 349009248
+    },
+    {
+      "FEASIBLE_TYPE_COUNT_VECTOR_COUNT": 20021155,
+      "GOOD_GROUP_MINIMUM_UNION_REDUCTION": 2885680,
+      "GOOD_GROUP_RESIDUAL_UNION_BOUND": 144731776,
+      "GOOD_TICKET_COUNT": 8,
+      "MAXIMUM_NON_GOOD_ORBIT_UNION_BOUND": 177805740,
+      "R5_UPPER_BOUND": 348984048
+    },
+    {
+      "FEASIBLE_TYPE_COUNT_VECTOR_COUNT": 6905360,
+      "GOOD_GROUP_MINIMUM_UNION_REDUCTION": 3780000,
+      "GOOD_GROUP_RESIDUAL_UNION_BOUND": 162289638,
+      "GOOD_TICKET_COUNT": 9,
+      "MAXIMUM_NON_GOOD_ORBIT_UNION_BOUND": 160083238,
+      "R5_UPPER_BOUND": 348819408
+    },
+    {
+      "FEASIBLE_TYPE_COUNT_VECTOR_COUNT": 2219865,
+      "GOOD_GROUP_MINIMUM_UNION_REDUCTION": 4716000,
+      "GOOD_GROUP_RESIDUAL_UNION_BOUND": 179805820,
+      "GOOD_TICKET_COUNT": 10,
+      "MAXIMUM_NON_GOOD_ORBIT_UNION_BOUND": 142360736,
+      "R5_UPPER_BOUND": 348613088
+    },
+    {
+      "FEASIBLE_TYPE_COUNT_VECTOR_COUNT": 657780,
+      "GOOD_GROUP_MINIMUM_UNION_REDUCTION": 5772356,
+      "GOOD_GROUP_RESIDUAL_UNION_BOUND": 197201646,
+      "GOOD_TICKET_COUNT": 11,
+      "MAXIMUM_NON_GOOD_ORBIT_UNION_BOUND": 124638234,
+      "R5_UPPER_BOUND": 348286412
+    },
+    {
+      "FEASIBLE_TYPE_COUNT_VECTOR_COUNT": 177099,
+      "GOOD_GROUP_MINIMUM_UNION_REDUCTION": 6657467,
+      "GOOD_GROUP_RESIDUAL_UNION_BOUND": 214768717,
+      "GOOD_TICKET_COUNT": 12,
+      "MAXIMUM_NON_GOOD_ORBIT_UNION_BOUND": 106915732,
+      "R5_UPPER_BOUND": 348130981
+    },
+    {
+      "FEASIBLE_TYPE_COUNT_VECTOR_COUNT": 42504,
+      "GOOD_GROUP_MINIMUM_UNION_REDUCTION": 7555800,
+      "GOOD_GROUP_RESIDUAL_UNION_BOUND": 232322566,
+      "GOOD_TICKET_COUNT": 13,
+      "MAXIMUM_NON_GOOD_ORBIT_UNION_BOUND": 89193230,
+      "R5_UPPER_BOUND": 347962328
+    },
+    {
+      "FEASIBLE_TYPE_COUNT_VECTOR_COUNT": 8855,
+      "GOOD_GROUP_MINIMUM_UNION_REDUCTION": 8395164,
+      "GOOD_GROUP_RESIDUAL_UNION_BOUND": 249935384,
+      "GOOD_TICKET_COUNT": 14,
+      "MAXIMUM_NON_GOOD_ORBIT_UNION_BOUND": 71470728,
+      "R5_UPPER_BOUND": 347852644
+    },
+    {
+      "FEASIBLE_TYPE_COUNT_VECTOR_COUNT": 1540,
+      "GOOD_GROUP_MINIMUM_UNION_REDUCTION": 9178146,
+      "GOOD_GROUP_RESIDUAL_UNION_BOUND": 267604584,
+      "GOOD_TICKET_COUNT": 15,
+      "MAXIMUM_NON_GOOD_ORBIT_UNION_BOUND": 53739266,
+      "R5_UPPER_BOUND": 347790382
+    },
+    {
+      "FEASIBLE_TYPE_COUNT_VECTOR_COUNT": 210,
+      "GOOD_GROUP_MINIMUM_UNION_REDUCTION": 9926000,
+      "GOOD_GROUP_RESIDUAL_UNION_BOUND": 285308912,
+      "GOOD_TICKET_COUNT": 16,
+      "MAXIMUM_NON_GOOD_ORBIT_UNION_BOUND": 35914564,
+      "R5_UPPER_BOUND": 347670008
+    },
+    {
+      "FEASIBLE_TYPE_COUNT_VECTOR_COUNT": 20,
+      "GOOD_GROUP_MINIMUM_UNION_REDUCTION": 10679667,
+      "GOOD_GROUP_RESIDUAL_UNION_BOUND": 303007427,
+      "GOOD_TICKET_COUNT": 17,
+      "MAXIMUM_NON_GOOD_ORBIT_UNION_BOUND": 18011182,
+      "R5_UPPER_BOUND": 347465141
+    },
+    {
+      "FEASIBLE_TYPE_COUNT_VECTOR_COUNT": 1,
+      "GOOD_GROUP_MINIMUM_UNION_REDUCTION": 11413800,
+      "GOOD_GROUP_RESIDUAL_UNION_BOUND": 320725476,
+      "GOOD_TICKET_COUNT": 18,
+      "MAXIMUM_NON_GOOD_ORBIT_UNION_BOUND": 0,
+      "R5_UPPER_BOUND": 347172008
+    }
+  ],
+  "COMPRESSED_ANCHOR_TYPE_CLASS_COUNT": 16,
+  "CURRENT_CERTIFIED_R5_BOUND": 350778728,
+  "FEASIBLE_TYPE_COUNT_VECTOR_COUNT": 33352207770,
+  "FOCUSED_TESTS": "PASS",
+  "INCUMBENT": 313239661,
+  "JOINT_STATE_SHA256": "6803dacb45802e6b28061b70be9120718d78ba0bda9f5ff6578e0081278d1da9",
+  "LEAF_GAP": 35769587,
+  "MILESTONE_BOUND": 350545750,
+  "MILESTONE_MET": true,
+  "NEW_PORTFOLIO_SEARCH_STARTED": "NO",
+  "PAIR_OUTCOME_TABLE": [
+    107800,
+    574000,
+    1695988,
+    3469942,
+    6224512,
+    10776332,
+    18611432
+  ],
+  "PAIR_TRIPLE_TABLE_SOURCE": "Canonical pair_intersection_table and triple_intersection_count from b649_k20_r4_anchor_incidence_bound_r6.py.",
+  "PRODUCTION_MUTATION": "NONE",
+  "PYRIGHT": "PASS",
+  "R5_BOUND": 349009248,
+  "R5_BOUND_IMPROVEMENT": 1769480,
+  "R5_STATUS": "TIGHTENED_OPEN",
+  "RESIDUAL_PAIR_FLOOR_CERTIFICATE": "For every outside pair, residual S2 is at least I(C,D)-I(A,C,D)-I(B,C,D); the omitted four-event term is nonnegative. The finite type-pair census minimizes this floor over all legal shared/A-only/B-only/outside cell intersections.",
+  "RESIDUAL_S3_POINTWISE_CERTIFICATE": "For each same-mass state, residual multiplicity m<=K gives C(m,3)<=(K-2)*C(m,2)/3 when K>=3; otherwise S3=0. The frontier carries K on each S2 interval.",
+  "RESIDUAL_STATE_COUNT": 4408,
+  "RESIDUAL_UNION_POINTWISE_CERTIFICATE": "For 1<=m<=K, 1<=m-2*C(m,2)/K. The good-type union objective uses the minimum residual S2 and maximum multiplicity from the same outside-pair-mass state. Other anchor type classes use their own within-class pair floors and are combined by subadditivity.",
+  "RUFF": "PASS",
+  "S2_S3_FRONTIER_BY_GOOD_COUNT": [
+    {
+      "GOOD_TICKET_COUNT": 0,
+      "MAXIMUM_FRONTIER_S2_ENDPOINT": 0,
+      "MAXIMUM_FRONTIER_S3_UPPER_BOUND": 0,
+      "MINIMUM_UNION_REDUCTION": 0,
+      "REDUCTION_MULTIPLICITY_CAP": 0,
+      "REDUCTION_OUTSIDE_PAIR_MASS": 0,
+      "REDUCTION_S2_LOWER_BOUND": 0,
+      "REDUCTION_TOP_SEVEN_FREQUENCY": 0,
+      "RESIDUAL_S1": 0,
+      "RESIDUAL_STATE_COUNT": 1,
+      "RESIDUAL_UNION_BOUND": 0,
+      "S2_S3_FRONTIER": [
+        {
+          "maximum_s3_at_end": 0,
+          "maximum_s3_at_start": 0,
+          "residual_multiplicity_cap": 0,
+          "s2_end": 0,
+          "s2_start": 0
+        }
+      ],
+      "S2_S3_FRONTIER_SHA256": "a66514f7d99272ec176c2e8f8687d97d7d27402d3a36c58a6a2befcd924b206d",
+      "S2_S3_FRONTIER_SIZE": 1,
+      "UNION_OBJECTIVE": "max_M [S1 - ceil(2*minimum_S2(M)/K(M))] over the same outside-pair-mass states"
+    },
+    {
+      "GOOD_TICKET_COUNT": 1,
+      "MAXIMUM_FRONTIER_S2_ENDPOINT": 0,
+      "MAXIMUM_FRONTIER_S3_UPPER_BOUND": 0,
+      "MINIMUM_UNION_REDUCTION": 0,
+      "REDUCTION_MULTIPLICITY_CAP": 1,
+      "REDUCTION_OUTSIDE_PAIR_MASS": 0,
+      "REDUCTION_S2_LOWER_BOUND": 0,
+      "REDUCTION_TOP_SEVEN_FREQUENCY": 6,
+      "RESIDUAL_S1": 18452182,
+      "RESIDUAL_STATE_COUNT": 1,
+      "RESIDUAL_UNION_BOUND": 18452182,
+      "S2_S3_FRONTIER": [
+        {
+          "maximum_s3_at_end": 0,
+          "maximum_s3_at_start": 0,
+          "residual_multiplicity_cap": 1,
+          "s2_end": 0,
+          "s2_start": 0
+        }
+      ],
+      "S2_S3_FRONTIER_SHA256": "fba5945eda573a1d08d1ed98c1e391da5d1277c754f761d264a8d16929b3d725",
+      "S2_S3_FRONTIER_SIZE": 1,
+      "UNION_OBJECTIVE": "max_M [S1 - ceil(2*minimum_S2(M)/K(M))] over the same outside-pair-mass states"
+    },
+    {
+      "GOOD_TICKET_COUNT": 2,
+      "MAXIMUM_FRONTIER_S2_ENDPOINT": 10776332,
+      "MAXIMUM_FRONTIER_S3_UPPER_BOUND": 0,
+      "MINIMUM_UNION_REDUCTION": 107800,
+      "REDUCTION_MULTIPLICITY_CAP": 2,
+      "REDUCTION_OUTSIDE_PAIR_MASS": 0,
+      "REDUCTION_S2_LOWER_BOUND": 107800,
+      "REDUCTION_TOP_SEVEN_FREQUENCY": 7,
+      "RESIDUAL_S1": 36904364,
+      "RESIDUAL_STATE_COUNT": 6,
+      "RESIDUAL_UNION_BOUND": 36796564,
+      "S2_S3_FRONTIER": [
+        {
+          "maximum_s3_at_end": 0,
+          "maximum_s3_at_start": 0,
+          "residual_multiplicity_cap": 2,
+          "s2_end": 107800,
+          "s2_start": 107800
+        },
+        {
+          "maximum_s3_at_end": 0,
+          "maximum_s3_at_start": 0,
+          "residual_multiplicity_cap": 2,
+          "s2_end": 574000,
+          "s2_start": 574000
+        },
+        {
+          "maximum_s3_at_end": 0,
+          "maximum_s3_at_start": 0,
+          "residual_multiplicity_cap": 2,
+          "s2_end": 1695988,
+          "s2_start": 1691508
+        },
+        {
+          "maximum_s3_at_end": 0,
+          "maximum_s3_at_start": 0,
+          "residual_multiplicity_cap": 2,
+          "s2_end": 3469942,
+          "s2_start": 3450972
+        },
+        {
+          "maximum_s3_at_end": 0,
+          "maximum_s3_at_start": 0,
+          "residual_multiplicity_cap": 2,
+          "s2_end": 6224512,
+          "s2_start": 6172992
+        },
+        {
+          "maximum_s3_at_end": 0,
+          "maximum_s3_at_start": 0,
+          "residual_multiplicity_cap": 2,
+          "s2_end": 10776332,
+          "s2_start": 10663632
+        }
+      ],
+      "S2_S3_FRONTIER_SHA256": "2133b313ac02c31dd2c91c9146f2157e1d457b6f92006655f03fd552e25ba16d",
+      "S2_S3_FRONTIER_SIZE": 6,
+      "UNION_OBJECTIVE": "max_M [S1 - ceil(2*minimum_S2(M)/K(M))] over the same outside-pair-mass states"
+    },
+    {
+      "GOOD_TICKET_COUNT": 3,
+      "MAXIMUM_FRONTIER_S2_ENDPOINT": 32328996,
+      "MAXIMUM_FRONTIER_S3_UPPER_BOUND": 10776332,
+      "MINIMUM_UNION_REDUCTION": 323400,
+      "REDUCTION_MULTIPLICITY_CAP": 2,
+      "REDUCTION_OUTSIDE_PAIR_MASS": 0,
+      "REDUCTION_S2_LOWER_BOUND": 323400,
+      "REDUCTION_TOP_SEVEN_FREQUENCY": 7,
+      "RESIDUAL_S1": 55356546,
+      "RESIDUAL_STATE_COUNT": 16,
+      "RESIDUAL_UNION_BOUND": 55033146,
+      "S2_S3_FRONTIER": [
+        {
+          "maximum_s3_at_end": 0,
+          "maximum_s3_at_start": 0,
+          "residual_multiplicity_cap": 2,
+          "s2_end": 323400,
+          "s2_start": 323400
+        },
+        {
+          "maximum_s3_at_end": 0,
+          "maximum_s3_at_start": 0,
+          "residual_multiplicity_cap": 2,
+          "s2_end": 789600,
+          "s2_start": 789600
+        },
+        {
+          "maximum_s3_at_end": 8340868,
+          "maximum_s3_at_start": 418600,
+          "residual_multiplicity_cap": 3,
+          "s2_end": 25022606,
+          "s2_start": 1255800
+        },
+        {
+          "maximum_s3_at_end": 9259058,
+          "maximum_s3_at_start": 9166752,
+          "residual_multiplicity_cap": 3,
+          "s2_end": 27777176,
+          "s2_start": 27500256
+        },
+        {
+          "maximum_s3_at_end": 10776332,
+          "maximum_s3_at_start": 10663632,
+          "residual_multiplicity_cap": 3,
+          "s2_end": 32328996,
+          "s2_start": 31990896
+        }
+      ],
+      "S2_S3_FRONTIER_SHA256": "0a3921552747669a5f235c88af25c2e41a75b53e57bccac3d29ed46a4077c135",
+      "S2_S3_FRONTIER_SIZE": 5,
+      "UNION_OBJECTIVE": "max_M [S1 - ceil(2*minimum_S2(M)/K(M))] over the same outside-pair-mass states"
+    },
+    {
+      "GOOD_TICKET_COUNT": 4,
+      "MAXIMUM_FRONTIER_S2_ENDPOINT": 64657992,
+      "MAXIMUM_FRONTIER_S3_UPPER_BOUND": 43105328,
+      "MINIMUM_UNION_REDUCTION": 646800,
+      "REDUCTION_MULTIPLICITY_CAP": 2,
+      "REDUCTION_OUTSIDE_PAIR_MASS": 0,
+      "REDUCTION_S2_LOWER_BOUND": 646800,
+      "REDUCTION_TOP_SEVEN_FREQUENCY": 7,
+      "RESIDUAL_S1": 73808728,
+      "RESIDUAL_STATE_COUNT": 31,
+      "RESIDUAL_UNION_BOUND": 73161928,
+      "S2_S3_FRONTIER": [
+        {
+          "maximum_s3_at_end": 0,
+          "maximum_s3_at_start": 0,
+          "residual_multiplicity_cap": 2,
+          "s2_end": 646800,
+          "s2_start": 646800
+        },
+        {
+          "maximum_s3_at_end": 0,
+          "maximum_s3_at_start": 0,
+          "residual_multiplicity_cap": 2,
+          "s2_end": 1113000,
+          "s2_start": 1113000
+        },
+        {
+          "maximum_s3_at_end": 992599,
+          "maximum_s3_at_start": 526400,
+          "residual_multiplicity_cap": 3,
+          "s2_end": 2977799,
+          "s2_start": 1579200
+        },
+        {
+          "maximum_s3_at_end": 38234401,
+          "maximum_s3_at_start": 1985200,
+          "residual_multiplicity_cap": 4,
+          "s2_end": 57351602,
+          "s2_start": 2977800
+        },
+        {
+          "maximum_s3_at_end": 40070781,
+          "maximum_s3_at_start": 39660768,
+          "residual_multiplicity_cap": 4,
+          "s2_end": 60106172,
+          "s2_start": 59491152
+        },
+        {
+          "maximum_s3_at_end": 43105328,
+          "maximum_s3_at_start": 42654528,
+          "residual_multiplicity_cap": 4,
+          "s2_end": 64657992,
+          "s2_start": 63981792
+        }
+      ],
+      "S2_S3_FRONTIER_SHA256": "642f13f2a7ab54c693f714d90bfea2b76ea39c97ac21a9c9a4694c2bf23b86b7",
+      "S2_S3_FRONTIER_SIZE": 6,
+      "UNION_OBJECTIVE": "max_M [S1 - ceil(2*minimum_S2(M)/K(M))] over the same outside-pair-mass states"
+    },
+    {
+      "GOOD_TICKET_COUNT": 5,
+      "MAXIMUM_FRONTIER_S2_ENDPOINT": 107763320,
+      "MAXIMUM_FRONTIER_S3_UPPER_BOUND": 107763320,
+      "MINIMUM_UNION_REDUCTION": 1078000,
+      "REDUCTION_MULTIPLICITY_CAP": 2,
+      "REDUCTION_OUTSIDE_PAIR_MASS": 0,
+      "REDUCTION_S2_LOWER_BOUND": 1078000,
+      "REDUCTION_TOP_SEVEN_FREQUENCY": 7,
+      "RESIDUAL_S1": 92260910,
+      "RESIDUAL_STATE_COUNT": 51,
+      "RESIDUAL_UNION_BOUND": 91182910,
+      "S2_S3_FRONTIER": [
+        {
+          "maximum_s3_at_end": 0,
+          "maximum_s3_at_start": 0,
+          "residual_multiplicity_cap": 2,
+          "s2_end": 1078000,
+          "s2_start": 1078000
+        },
+        {
+          "maximum_s3_at_end": 0,
+          "maximum_s3_at_start": 0,
+          "residual_multiplicity_cap": 2,
+          "s2_end": 1544200,
+          "s2_start": 1544200
+        },
+        {
+          "maximum_s3_at_end": 1136333,
+          "maximum_s3_at_start": 670133,
+          "residual_multiplicity_cap": 3,
+          "s2_end": 3408999,
+          "s2_start": 2010400
+        },
+        {
+          "maximum_s3_at_end": 3515866,
+          "maximum_s3_at_start": 2272666,
+          "residual_multiplicity_cap": 4,
+          "s2_end": 5273799,
+          "s2_start": 3409000
+        },
+        {
+          "maximum_s3_at_end": 100456930,
+          "maximum_s3_at_start": 5273800,
+          "residual_multiplicity_cap": 5,
+          "s2_end": 100456930,
+          "s2_start": 5273800
+        },
+        {
+          "maximum_s3_at_end": 103211500,
+          "maximum_s3_at_start": 102145680,
+          "residual_multiplicity_cap": 5,
+          "s2_end": 103211500,
+          "s2_start": 102145680
+        },
+        {
+          "maximum_s3_at_end": 107763320,
+          "maximum_s3_at_start": 106636320,
+          "residual_multiplicity_cap": 5,
+          "s2_end": 107763320,
+          "s2_start": 106636320
+        }
+      ],
+      "S2_S3_FRONTIER_SHA256": "f5b539cf40c503784fe6d874e48288581a0c378a335260d54f4a7d5ff28ffb3c",
+      "S2_S3_FRONTIER_SIZE": 7,
+      "UNION_OBJECTIVE": "max_M [S1 - ceil(2*minimum_S2(M)/K(M))] over the same outside-pair-mass states"
+    },
+    {
+      "GOOD_TICKET_COUNT": 6,
+      "MAXIMUM_FRONTIER_S2_ENDPOINT": 161644980,
+      "MAXIMUM_FRONTIER_S3_UPPER_BOUND": 215526640,
+      "MINIMUM_UNION_REDUCTION": 1617000,
+      "REDUCTION_MULTIPLICITY_CAP": 2,
+      "REDUCTION_OUTSIDE_PAIR_MASS": 0,
+      "REDUCTION_S2_LOWER_BOUND": 1617000,
+      "REDUCTION_TOP_SEVEN_FREQUENCY": 7,
+      "RESIDUAL_S1": 110713092,
+      "RESIDUAL_STATE_COUNT": 76,
+      "RESIDUAL_UNION_BOUND": 109096092,
+      "S2_S3_FRONTIER": [
+        {
+          "maximum_s3_at_end": 0,
+          "maximum_s3_at_start": 0,
+          "residual_multiplicity_cap": 2,
+          "s2_end": 1617000,
+          "s2_start": 1617000
+        },
+        {
+          "maximum_s3_at_end": 0,
+          "maximum_s3_at_start": 0,
+          "residual_multiplicity_cap": 2,
+          "s2_end": 2083200,
+          "s2_start": 2083200
+        },
+        {
+          "maximum_s3_at_end": 1315999,
+          "maximum_s3_at_start": 849800,
+          "residual_multiplicity_cap": 3,
+          "s2_end": 3947999,
+          "s2_start": 2549400
+        },
+        {
+          "maximum_s3_at_end": 3875199,
+          "maximum_s3_at_start": 2632000,
+          "residual_multiplicity_cap": 4,
+          "s2_end": 5812799,
+          "s2_start": 3948000
+        },
+        {
+          "maximum_s3_at_end": 8609999,
+          "maximum_s3_at_start": 5812800,
+          "residual_multiplicity_cap": 5,
+          "s2_end": 8609999,
+          "s2_start": 5812800
+        },
+        {
+          "maximum_s3_at_end": 205784786,
+          "maximum_s3_at_start": 11480000,
+          "residual_multiplicity_cap": 6,
+          "s2_end": 154338590,
+          "s2_start": 8610000
+        },
+        {
+          "maximum_s3_at_end": 209457546,
+          "maximum_s3_at_start": 207285120,
+          "residual_multiplicity_cap": 6,
+          "s2_end": 157093160,
+          "s2_start": 155463840
+        },
+        {
+          "maximum_s3_at_end": 215526640,
+          "maximum_s3_at_start": 213272640,
+          "residual_multiplicity_cap": 6,
+          "s2_end": 161644980,
+          "s2_start": 159954480
+        }
+      ],
+      "S2_S3_FRONTIER_SHA256": "8e37600429e1e35c6511cb5a8e6bacb499bbb12dc034ce89b4803aa1d254a2a2",
+      "S2_S3_FRONTIER_SIZE": 8,
+      "UNION_OBJECTIVE": "max_M [S1 - ceil(2*minimum_S2(M)/K(M))] over the same outside-pair-mass states"
+    },
+    {
+      "GOOD_TICKET_COUNT": 7,
+      "MAXIMUM_FRONTIER_S2_ENDPOINT": 226302972,
+      "MAXIMUM_FRONTIER_S3_UPPER_BOUND": 377171620,
+      "MINIMUM_UNION_REDUCTION": 2130800,
+      "REDUCTION_MULTIPLICITY_CAP": 3,
+      "REDUCTION_OUTSIDE_PAIR_MASS": 2,
+      "REDUCTION_S2_LOWER_BOUND": 3196200,
+      "REDUCTION_TOP_SEVEN_FREQUENCY": 9,
+      "RESIDUAL_S1": 129165274,
+      "RESIDUAL_STATE_COUNT": 106,
+      "RESIDUAL_UNION_BOUND": 127034474,
+      "S2_S3_FRONTIER": [
+        {
+          "maximum_s3_at_end": 0,
+          "maximum_s3_at_start": 0,
+          "residual_multiplicity_cap": 2,
+          "s2_end": 2263800,
+          "s2_start": 2263800
+        },
+        {
+          "maximum_s3_at_end": 0,
+          "maximum_s3_at_start": 0,
+          "residual_multiplicity_cap": 2,
+          "s2_end": 2730000,
+          "s2_start": 2730000
+        },
+        {
+          "maximum_s3_at_end": 1531599,
+          "maximum_s3_at_start": 1065400,
+          "residual_multiplicity_cap": 3,
+          "s2_end": 4594799,
+          "s2_start": 3196200
+        },
+        {
+          "maximum_s3_at_end": 4306399,
+          "maximum_s3_at_start": 3063200,
+          "residual_multiplicity_cap": 4,
+          "s2_end": 6459599,
+          "s2_start": 4594800
+        },
+        {
+          "maximum_s3_at_end": 9256799,
+          "maximum_s3_at_start": 6459600,
+          "residual_multiplicity_cap": 5,
+          "s2_end": 9256799,
+          "s2_start": 6459600
+        },
+        {
+          "maximum_s3_at_end": 16071998,
+          "maximum_s3_at_start": 12342400,
+          "residual_multiplicity_cap": 6,
+          "s2_end": 12053999,
+          "s2_start": 9256800
+        },
+        {
+          "maximum_s3_at_end": 364994303,
+          "maximum_s3_at_start": 20090000,
+          "residual_multiplicity_cap": 7,
+          "s2_end": 218996582,
+          "s2_start": 12054000
+        },
+        {
+          "maximum_s3_at_end": 369585253,
+          "maximum_s3_at_start": 365742720,
+          "residual_multiplicity_cap": 7,
+          "s2_end": 221751152,
+          "s2_start": 219445632
+        },
+        {
+          "maximum_s3_at_end": 377171620,
+          "maximum_s3_at_start": 373227120,
+          "residual_multiplicity_cap": 7,
+          "s2_end": 226302972,
+          "s2_start": 223936272
+        }
+      ],
+      "S2_S3_FRONTIER_SHA256": "f5d40720ff403a91207cbaa0e4e7b3172db5b99c14aa31db10eb5d26b9fdec94",
+      "S2_S3_FRONTIER_SIZE": 9,
+      "UNION_OBJECTIVE": "max_M [S1 - ceil(2*minimum_S2(M)/K(M))] over the same outside-pair-mass states"
+    },
+    {
+      "GOOD_TICKET_COUNT": 8,
+      "MAXIMUM_FRONTIER_S2_ENDPOINT": 301737296,
+      "MAXIMUM_FRONTIER_S3_UPPER_BOUND": 603474592,
+      "MINIMUM_UNION_REDUCTION": 2885680,
+      "REDUCTION_MULTIPLICITY_CAP": 5,
+      "REDUCTION_OUTSIDE_PAIR_MASS": 9,
+      "REDUCTION_S2_LOWER_BOUND": 7214200,
+      "REDUCTION_TOP_SEVEN_FREQUENCY": 15,
+      "RESIDUAL_S1": 147617456,
+      "RESIDUAL_STATE_COUNT": 135,
+      "RESIDUAL_UNION_BOUND": 144731776,
+      "S2_S3_FRONTIER": [
+        {
+          "maximum_s3_at_end": 4809466,
+          "maximum_s3_at_start": 3877066,
+          "residual_multiplicity_cap": 4,
+          "s2_end": 7214199,
+          "s2_start": 5815600
+        },
+        {
+          "maximum_s3_at_end": 10011399,
+          "maximum_s3_at_start": 7214200,
+          "residual_multiplicity_cap": 5,
+          "s2_end": 10011399,
+          "s2_start": 7214200
+        },
+        {
+          "maximum_s3_at_end": 17078132,
+          "maximum_s3_at_start": 13348533,
+          "residual_multiplicity_cap": 6,
+          "s2_end": 12808599,
+          "s2_start": 10011400
+        },
+        {
+          "maximum_s3_at_end": 30511691,
+          "maximum_s3_at_start": 21347666,
+          "residual_multiplicity_cap": 7,
+          "s2_end": 18307015,
+          "s2_start": 12808600
+        },
+        {
+          "maximum_s3_at_end": 594370952,
+          "maximum_s3_at_start": 36614032,
+          "residual_multiplicity_cap": 8,
+          "s2_end": 297185476,
+          "s2_start": 18307016
+        },
+        {
+          "maximum_s3_at_end": 603474592,
+          "maximum_s3_at_start": 597163392,
+          "residual_multiplicity_cap": 8,
+          "s2_end": 301737296,
+          "s2_start": 298581696
+        }
+      ],
+      "S2_S3_FRONTIER_SHA256": "cad89b6235caee0572d06176d9b8d68774a0819b14e7af6abbb5c42b86ad7e54",
+      "S2_S3_FRONTIER_SIZE": 6,
+      "UNION_OBJECTIVE": "max_M [S1 - ceil(2*minimum_S2(M)/K(M))] over the same outside-pair-mass states"
+    },
+    {
+      "GOOD_TICKET_COUNT": 9,
+      "MAXIMUM_FRONTIER_S2_ENDPOINT": 387947952,
+      "MAXIMUM_FRONTIER_S3_UPPER_BOUND": 905211888,
+      "MINIMUM_UNION_REDUCTION": 3780000,
+      "REDUCTION_MULTIPLICITY_CAP": 6,
+      "REDUCTION_OUTSIDE_PAIR_MASS": 16,
+      "REDUCTION_S2_LOWER_BOUND": 11340000,
+      "REDUCTION_TOP_SEVEN_FREQUENCY": 18,
+      "RESIDUAL_S1": 166069638,
+      "RESIDUAL_STATE_COUNT": 169,
+      "RESIDUAL_UNION_BOUND": 162289638,
+      "S2_S3_FRONTIER": [
+        {
+          "maximum_s3_at_end": 6627599,
+          "maximum_s3_at_start": 6316800,
+          "residual_multiplicity_cap": 4,
+          "s2_end": 9941399,
+          "s2_start": 9475200
+        },
+        {
+          "maximum_s3_at_end": 11339999,
+          "maximum_s3_at_start": 9941400,
+          "residual_multiplicity_cap": 5,
+          "s2_end": 11339999,
+          "s2_start": 9941400
+        },
+        {
+          "maximum_s3_at_end": 18227998,
+          "maximum_s3_at_start": 15120000,
+          "residual_multiplicity_cap": 6,
+          "s2_end": 13670999,
+          "s2_start": 11340000
+        },
+        {
+          "maximum_s3_at_end": 29777998,
+          "maximum_s3_at_start": 22785000,
+          "residual_multiplicity_cap": 7,
+          "s2_end": 17866799,
+          "s2_start": 13671000
+        },
+        {
+          "maximum_s3_at_end": 48033046,
+          "maximum_s3_at_start": 35733600,
+          "residual_multiplicity_cap": 8,
+          "s2_end": 24016523,
+          "s2_start": 17866800
+        },
+        {
+          "maximum_s3_at_end": 894590974,
+          "maximum_s3_at_start": 56038556,
+          "residual_multiplicity_cap": 9,
+          "s2_end": 383396132,
+          "s2_start": 24016524
+        },
+        {
+          "maximum_s3_at_end": 905211888,
+          "maximum_s3_at_start": 895745088,
+          "residual_multiplicity_cap": 9,
+          "s2_end": 387947952,
+          "s2_start": 383890752
+        }
+      ],
+      "S2_S3_FRONTIER_SHA256": "cdb862349c3c51cc2c95e477aeaa54a46c9b8fa1adf7f758a43db5e12c464b82",
+      "S2_S3_FRONTIER_SIZE": 7,
+      "UNION_OBJECTIVE": "max_M [S1 - ceil(2*minimum_S2(M)/K(M))] over the same outside-pair-mass states"
+    },
+    {
+      "GOOD_TICKET_COUNT": 10,
+      "MAXIMUM_FRONTIER_S2_ENDPOINT": 484934940,
+      "MAXIMUM_FRONTIER_S3_UPPER_BOUND": 1293159840,
+      "MINIMUM_UNION_REDUCTION": 4716000,
+      "REDUCTION_MULTIPLICITY_CAP": 7,
+      "REDUCTION_OUTSIDE_PAIR_MASS": 25,
+      "REDUCTION_S2_LOWER_BOUND": 16506000,
+      "REDUCTION_TOP_SEVEN_FREQUENCY": 21,
+      "RESIDUAL_S1": 184521820,
+      "RESIDUAL_STATE_COUNT": 208,
+      "RESIDUAL_UNION_BOUND": 179805820,
+      "S2_S3_FRONTIER": [
+        {
+          "maximum_s3_at_end": 9139199,
+          "maximum_s3_at_start": 8828400,
+          "residual_multiplicity_cap": 4,
+          "s2_end": 13708799,
+          "s2_start": 13242600
+        },
+        {
+          "maximum_s3_at_end": 15107399,
+          "maximum_s3_at_start": 13708800,
+          "residual_multiplicity_cap": 5,
+          "s2_end": 15107399,
+          "s2_start": 13708800
+        },
+        {
+          "maximum_s3_at_end": 22007998,
+          "maximum_s3_at_start": 20143200,
+          "residual_multiplicity_cap": 6,
+          "s2_end": 16505999,
+          "s2_start": 15107400
+        },
+        {
+          "maximum_s3_at_end": 32171998,
+          "maximum_s3_at_start": 27510000,
+          "residual_multiplicity_cap": 7,
+          "s2_end": 19303199,
+          "s2_start": 16506000
+        },
+        {
+          "maximum_s3_at_end": 46065598,
+          "maximum_s3_at_start": 38606400,
+          "residual_multiplicity_cap": 8,
+          "s2_end": 23032799,
+          "s2_start": 19303200
+        },
+        {
+          "maximum_s3_at_end": 73307591,
+          "maximum_s3_at_start": 53743200,
+          "residual_multiplicity_cap": 9,
+          "s2_end": 31417539,
+          "s2_start": 23032800
+        },
+        {
+          "maximum_s3_at_end": 1293159840,
+          "maximum_s3_at_start": 83780106,
+          "residual_multiplicity_cap": 10,
+          "s2_end": 484934940,
+          "s2_start": 31417540
+        }
+      ],
+      "S2_S3_FRONTIER_SHA256": "ccd4882e696cad2736e13a596345032b4b62c08d227f397a6aca7f39995cacf4",
+      "S2_S3_FRONTIER_SIZE": 7,
+      "UNION_OBJECTIVE": "max_M [S1 - ceil(2*minimum_S2(M)/K(M))] over the same outside-pair-mass states"
+    },
+    {
+      "GOOD_TICKET_COUNT": 11,
+      "MAXIMUM_FRONTIER_S2_ENDPOINT": 592698260,
+      "MAXIMUM_FRONTIER_S3_UPPER_BOUND": 1778094780,
+      "MINIMUM_UNION_REDUCTION": 5772356,
+      "REDUCTION_MULTIPLICITY_CAP": 9,
+      "REDUCTION_OUTSIDE_PAIR_MASS": 43,
+      "REDUCTION_S2_LOWER_BOUND": 25975600,
+      "REDUCTION_TOP_SEVEN_FREQUENCY": 27,
+      "RESIDUAL_S1": 202974002,
+      "RESIDUAL_STATE_COUNT": 252,
+      "RESIDUAL_UNION_BOUND": 197201646,
+      "S2_S3_FRONTIER": [
+        {
+          "maximum_s3_at_end": 11722666,
+          "maximum_s3_at_start": 11411866,
+          "residual_multiplicity_cap": 4,
+          "s2_end": 17583999,
+          "s2_start": 17117800
+        },
+        {
+          "maximum_s3_at_end": 18982599,
+          "maximum_s3_at_start": 17584000,
+          "residual_multiplicity_cap": 5,
+          "s2_end": 18982599,
+          "s2_start": 17584000
+        },
+        {
+          "maximum_s3_at_end": 27174932,
+          "maximum_s3_at_start": 25310133,
+          "residual_multiplicity_cap": 6,
+          "s2_end": 20381199,
+          "s2_start": 18982600
+        },
+        {
+          "maximum_s3_at_end": 38630665,
+          "maximum_s3_at_start": 33968666,
+          "residual_multiplicity_cap": 7,
+          "s2_end": 23178399,
+          "s2_start": 20381200
+        },
+        {
+          "maximum_s3_at_end": 51951198,
+          "maximum_s3_at_start": 46356800,
+          "residual_multiplicity_cap": 8,
+          "s2_end": 25975599,
+          "s2_start": 23178400
+        },
+        {
+          "maximum_s3_at_end": 69312131,
+          "maximum_s3_at_start": 60609733,
+          "residual_multiplicity_cap": 9,
+          "s2_end": 29705199,
+          "s2_start": 25975600
+        },
+        {
+          "maximum_s3_at_end": 105046813,
+          "maximum_s3_at_start": 79213866,
+          "residual_multiplicity_cap": 10,
+          "s2_end": 39392555,
+          "s2_start": 29705200
+        },
+        {
+          "maximum_s3_at_end": 1778094780,
+          "maximum_s3_at_start": 118177668,
+          "residual_multiplicity_cap": 11,
+          "s2_end": 592698260,
+          "s2_start": 39392556
+        }
+      ],
+      "S2_S3_FRONTIER_SHA256": "5d231f0413840d5b8e0670bf98e3b609b1fb14e08c2cfcd834b8600b6cd995fa",
+      "S2_S3_FRONTIER_SIZE": 8,
+      "UNION_OBJECTIVE": "max_M [S1 - ceil(2*minimum_S2(M)/K(M))] over the same outside-pair-mass states"
+    },
+    {
+      "GOOD_TICKET_COUNT": 12,
+      "MAXIMUM_FRONTIER_S2_ENDPOINT": 711237912,
+      "MAXIMUM_FRONTIER_S3_UPPER_BOUND": 2370793040,
+      "MINIMUM_UNION_REDUCTION": 6657467,
+      "REDUCTION_MULTIPLICITY_CAP": 9,
+      "REDUCTION_OUTSIDE_PAIR_MASS": 49,
+      "REDUCTION_S2_LOWER_BOUND": 29958600,
+      "REDUCTION_TOP_SEVEN_FREQUENCY": 27,
+      "RESIDUAL_S1": 221426184,
+      "RESIDUAL_STATE_COUNT": 301,
+      "RESIDUAL_UNION_BOUND": 214768717,
+      "S2_S3_FRONTIER": [
+        {
+          "maximum_s3_at_end": 14377999,
+          "maximum_s3_at_start": 14067200,
+          "residual_multiplicity_cap": 4,
+          "s2_end": 21566999,
+          "s2_start": 21100800
+        },
+        {
+          "maximum_s3_at_end": 22965599,
+          "maximum_s3_at_start": 21567000,
+          "residual_multiplicity_cap": 5,
+          "s2_end": 22965599,
+          "s2_start": 21567000
+        },
+        {
+          "maximum_s3_at_end": 32485598,
+          "maximum_s3_at_start": 30620800,
+          "residual_multiplicity_cap": 6,
+          "s2_end": 24364199,
+          "s2_start": 22965600
+        },
+        {
+          "maximum_s3_at_end": 45268998,
+          "maximum_s3_at_start": 40607000,
+          "residual_multiplicity_cap": 7,
+          "s2_end": 27161399,
+          "s2_start": 24364200
+        },
+        {
+          "maximum_s3_at_end": 59917198,
+          "maximum_s3_at_start": 54322800,
+          "residual_multiplicity_cap": 8,
+          "s2_end": 29958599,
+          "s2_start": 27161400
+        },
+        {
+          "maximum_s3_at_end": 78605797,
+          "maximum_s3_at_start": 69903400,
+          "residual_multiplicity_cap": 9,
+          "s2_end": 33688199,
+          "s2_start": 29958600
+        },
+        {
+          "maximum_s3_at_end": 101023997,
+          "maximum_s3_at_start": 89835200,
+          "residual_multiplicity_cap": 10,
+          "s2_end": 37883999,
+          "s2_start": 33688200
+        },
+        {
+          "maximum_s3_at_end": 147177237,
+          "maximum_s3_at_start": 113652000,
+          "residual_multiplicity_cap": 11,
+          "s2_end": 49059079,
+          "s2_start": 37884000
+        },
+        {
+          "maximum_s3_at_end": 2370793040,
+          "maximum_s3_at_start": 163530266,
+          "residual_multiplicity_cap": 12,
+          "s2_end": 711237912,
+          "s2_start": 49059080
+        }
+      ],
+      "S2_S3_FRONTIER_SHA256": "10a2340c4357890451147806dd39f40046ad56b42a77c4bb56a9a70c87b55485",
+      "S2_S3_FRONTIER_SIZE": 9,
+      "UNION_OBJECTIVE": "max_M [S1 - ceil(2*minimum_S2(M)/K(M))] over the same outside-pair-mass states"
+    },
+    {
+      "GOOD_TICKET_COUNT": 13,
+      "MAXIMUM_FRONTIER_S2_ENDPOINT": 840553896,
+      "MAXIMUM_FRONTIER_S3_UPPER_BOUND": 3082030952,
+      "MINIMUM_UNION_REDUCTION": 7555800,
+      "REDUCTION_MULTIPLICITY_CAP": 10,
+      "REDUCTION_OUTSIDE_PAIR_MASS": 63,
+      "REDUCTION_S2_LOWER_BOUND": 37779000,
+      "REDUCTION_TOP_SEVEN_FREQUENCY": 30,
+      "RESIDUAL_S1": 239878366,
+      "RESIDUAL_STATE_COUNT": 355,
+      "RESIDUAL_UNION_BOUND": 232322566,
+      "S2_S3_FRONTIER": [
+        {
+          "maximum_s3_at_end": 17105199,
+          "maximum_s3_at_start": 16794400,
+          "residual_multiplicity_cap": 4,
+          "s2_end": 25657799,
+          "s2_start": 25191600
+        },
+        {
+          "maximum_s3_at_end": 27056399,
+          "maximum_s3_at_start": 25657800,
+          "residual_multiplicity_cap": 5,
+          "s2_end": 27056399,
+          "s2_start": 25657800
+        },
+        {
+          "maximum_s3_at_end": 37939998,
+          "maximum_s3_at_start": 36075200,
+          "residual_multiplicity_cap": 6,
+          "s2_end": 28454999,
+          "s2_start": 27056400
+        },
+        {
+          "maximum_s3_at_end": 52086998,
+          "maximum_s3_at_start": 47425000,
+          "residual_multiplicity_cap": 7,
+          "s2_end": 31252199,
+          "s2_start": 28455000
+        },
+        {
+          "maximum_s3_at_end": 68098798,
+          "maximum_s3_at_start": 62504400,
+          "residual_multiplicity_cap": 8,
+          "s2_end": 34049399,
+          "s2_start": 31252200
+        },
+        {
+          "maximum_s3_at_end": 88150997,
+          "maximum_s3_at_start": 79448600,
+          "residual_multiplicity_cap": 9,
+          "s2_end": 37778999,
+          "s2_start": 34049400
+        },
+        {
+          "maximum_s3_at_end": 111932797,
+          "maximum_s3_at_start": 100744000,
+          "residual_multiplicity_cap": 10,
+          "s2_end": 41974799,
+          "s2_start": 37779000
+        },
+        {
+          "maximum_s3_at_end": 147726093,
+          "maximum_s3_at_start": 125924400,
+          "residual_multiplicity_cap": 11,
+          "s2_end": 49242031,
+          "s2_start": 41974800
+        },
+        {
+          "maximum_s3_at_end": 208840423,
+          "maximum_s3_at_start": 164140106,
+          "residual_multiplicity_cap": 12,
+          "s2_end": 62652127,
+          "s2_start": 49242032
+        },
+        {
+          "maximum_s3_at_end": 3082030952,
+          "maximum_s3_at_start": 229724469,
+          "residual_multiplicity_cap": 13,
+          "s2_end": 840553896,
+          "s2_start": 62652128
+        }
+      ],
+      "S2_S3_FRONTIER_SHA256": "ccf35cde2ab799cea8f3e805d656a54d37c766218c6ce645a45358c71af9557b",
+      "S2_S3_FRONTIER_SIZE": 10,
+      "UNION_OBJECTIVE": "max_M [S1 - ceil(2*minimum_S2(M)/K(M))] over the same outside-pair-mass states"
+    },
+    {
+      "GOOD_TICKET_COUNT": 14,
+      "MAXIMUM_FRONTIER_S2_ENDPOINT": 980646212,
+      "MAXIMUM_FRONTIER_S3_UPPER_BOUND": 3922584848,
+      "MINIMUM_UNION_REDUCTION": 8395164,
+      "REDUCTION_MULTIPLICITY_CAP": 11,
+      "REDUCTION_OUTSIDE_PAIR_MASS": 78,
+      "REDUCTION_S2_LOWER_BOUND": 46173400,
+      "REDUCTION_TOP_SEVEN_FREQUENCY": 33,
+      "RESIDUAL_S1": 258330548,
+      "RESIDUAL_STATE_COUNT": 414,
+      "RESIDUAL_UNION_BOUND": 249935384,
+      "S2_S3_FRONTIER": [
+        {
+          "maximum_s3_at_end": 19904266,
+          "maximum_s3_at_start": 19593466,
+          "residual_multiplicity_cap": 4,
+          "s2_end": 29856399,
+          "s2_start": 29390200
+        },
+        {
+          "maximum_s3_at_end": 31254999,
+          "maximum_s3_at_start": 29856400,
+          "residual_multiplicity_cap": 5,
+          "s2_end": 31254999,
+          "s2_start": 29856400
+        },
+        {
+          "maximum_s3_at_end": 43538132,
+          "maximum_s3_at_start": 41673333,
+          "residual_multiplicity_cap": 6,
+          "s2_end": 32653599,
+          "s2_start": 31255000
+        },
+        {
+          "maximum_s3_at_end": 59084665,
+          "maximum_s3_at_start": 54422666,
+          "residual_multiplicity_cap": 7,
+          "s2_end": 35450799,
+          "s2_start": 32653600
+        },
+        {
+          "maximum_s3_at_end": 76495998,
+          "maximum_s3_at_start": 70901600,
+          "residual_multiplicity_cap": 8,
+          "s2_end": 38247999,
+          "s2_start": 35450800
+        },
+        {
+          "maximum_s3_at_end": 97947731,
+          "maximum_s3_at_start": 89245333,
+          "residual_multiplicity_cap": 9,
+          "s2_end": 41977599,
+          "s2_start": 38248000
+        },
+        {
+          "maximum_s3_at_end": 123129064,
+          "maximum_s3_at_start": 111940266,
+          "residual_multiplicity_cap": 10,
+          "s2_end": 46173399,
+          "s2_start": 41977600
+        },
+        {
+          "maximum_s3_at_end": 152506197,
+          "maximum_s3_at_start": 138520200,
+          "residual_multiplicity_cap": 11,
+          "s2_end": 50835399,
+          "s2_start": 46173400
+        },
+        {
+          "maximum_s3_at_end": 207638570,
+          "maximum_s3_at_start": 169451333,
+          "residual_multiplicity_cap": 12,
+          "s2_end": 62291571,
+          "s2_start": 50835400
+        },
+        {
+          "maximum_s3_at_end": 277572779,
+          "maximum_s3_at_start": 228402430,
+          "residual_multiplicity_cap": 13,
+          "s2_end": 75701667,
+          "s2_start": 62291572
+        },
+        {
+          "maximum_s3_at_end": 3922584848,
+          "maximum_s3_at_start": 302806672,
+          "residual_multiplicity_cap": 14,
+          "s2_end": 980646212,
+          "s2_start": 75701668
+        }
+      ],
+      "S2_S3_FRONTIER_SHA256": "9306edadb330c5c6b323e5817b887b7cc15bf2196e442d043d21178d95251fe8",
+      "S2_S3_FRONTIER_SIZE": 11,
+      "UNION_OBJECTIVE": "max_M [S1 - ceil(2*minimum_S2(M)/K(M))] over the same outside-pair-mass states"
+    },
+    {
+      "GOOD_TICKET_COUNT": 15,
+      "MAXIMUM_FRONTIER_S2_ENDPOINT": 1131514860,
+      "MAXIMUM_FRONTIER_S3_UPPER_BOUND": 4903231060,
+      "MINIMUM_UNION_REDUCTION": 9178146,
+      "REDUCTION_MULTIPLICITY_CAP": 11,
+      "REDUCTION_OUTSIDE_PAIR_MASS": 84,
+      "REDUCTION_S2_LOWER_BOUND": 50479800,
+      "REDUCTION_TOP_SEVEN_FREQUENCY": 33,
+      "RESIDUAL_S1": 276782730,
+      "RESIDUAL_STATE_COUNT": 472,
+      "RESIDUAL_UNION_BOUND": 267604584,
+      "S2_S3_FRONTIER": [
+        {
+          "maximum_s3_at_end": 49279998,
+          "maximum_s3_at_start": 48658400,
+          "residual_multiplicity_cap": 6,
+          "s2_end": 36959999,
+          "s2_start": 36493800
+        },
+        {
+          "maximum_s3_at_end": 66261998,
+          "maximum_s3_at_start": 61600000,
+          "residual_multiplicity_cap": 7,
+          "s2_end": 39757199,
+          "s2_start": 36960000
+        },
+        {
+          "maximum_s3_at_end": 85108798,
+          "maximum_s3_at_start": 79514400,
+          "residual_multiplicity_cap": 8,
+          "s2_end": 42554399,
+          "s2_start": 39757200
+        },
+        {
+          "maximum_s3_at_end": 107995997,
+          "maximum_s3_at_start": 99293600,
+          "residual_multiplicity_cap": 9,
+          "s2_end": 46283999,
+          "s2_start": 42554400
+        },
+        {
+          "maximum_s3_at_end": 134612797,
+          "maximum_s3_at_start": 123424000,
+          "residual_multiplicity_cap": 10,
+          "s2_end": 50479799,
+          "s2_start": 46284000
+        },
+        {
+          "maximum_s3_at_end": 165425397,
+          "maximum_s3_at_start": 151439400,
+          "residual_multiplicity_cap": 11,
+          "s2_end": 55141799,
+          "s2_start": 50479800
+        },
+        {
+          "maximum_s3_at_end": 204625023,
+          "maximum_s3_at_start": 183806000,
+          "residual_multiplicity_cap": 12,
+          "s2_end": 61387507,
+          "s2_start": 55141800
+        },
+        {
+          "maximum_s3_at_end": 274257877,
+          "maximum_s3_at_start": 225087529,
+          "residual_multiplicity_cap": 13,
+          "s2_end": 74797603,
+          "s2_start": 61387508
+        },
+        {
+          "maximum_s3_at_end": 366240892,
+          "maximum_s3_at_start": 299190416,
+          "residual_multiplicity_cap": 14,
+          "s2_end": 91560223,
+          "s2_start": 74797604
+        },
+        {
+          "maximum_s3_at_end": 4903231060,
+          "maximum_s3_at_start": 396760970,
+          "residual_multiplicity_cap": 15,
+          "s2_end": 1131514860,
+          "s2_start": 91560224
+        }
+      ],
+      "S2_S3_FRONTIER_SHA256": "1f23df08effdd0ee85170b34c98e66a9178d39a6c82d21ce8352dbea4298218b",
+      "S2_S3_FRONTIER_SIZE": 10,
+      "UNION_OBJECTIVE": "max_M [S1 - ceil(2*minimum_S2(M)/K(M))] over the same outside-pair-mass states"
+    },
+    {
+      "GOOD_TICKET_COUNT": 16,
+      "MAXIMUM_FRONTIER_S2_ENDPOINT": 1293159840,
+      "MAXIMUM_FRONTIER_S3_UPPER_BOUND": 6034745920,
+      "MINIMUM_UNION_REDUCTION": 9926000,
+      "REDUCTION_MULTIPLICITY_CAP": 12,
+      "REDUCTION_OUTSIDE_PAIR_MASS": 100,
+      "REDUCTION_S2_LOWER_BOUND": 59556000,
+      "REDUCTION_TOP_SEVEN_FREQUENCY": 36,
+      "RESIDUAL_S1": 295234912,
+      "RESIDUAL_STATE_COUNT": 535,
+      "RESIDUAL_UNION_BOUND": 285308912,
+      "S2_S3_FRONTIER": [
+        {
+          "maximum_s3_at_end": 75172998,
+          "maximum_s3_at_start": 72842000,
+          "residual_multiplicity_cap": 7,
+          "s2_end": 45103799,
+          "s2_start": 43705200
+        },
+        {
+          "maximum_s3_at_end": 93937198,
+          "maximum_s3_at_start": 90207600,
+          "residual_multiplicity_cap": 8,
+          "s2_end": 46968599,
+          "s2_start": 45103800
+        },
+        {
+          "maximum_s3_at_end": 118295797,
+          "maximum_s3_at_start": 109593400,
+          "residual_multiplicity_cap": 9,
+          "s2_end": 50698199,
+          "s2_start": 46968600
+        },
+        {
+          "maximum_s3_at_end": 146383997,
+          "maximum_s3_at_start": 135195200,
+          "residual_multiplicity_cap": 10,
+          "s2_end": 54893999,
+          "s2_start": 50698200
+        },
+        {
+          "maximum_s3_at_end": 178667997,
+          "maximum_s3_at_start": 164682000,
+          "residual_multiplicity_cap": 11,
+          "s2_end": 59555999,
+          "s2_start": 54894000
+        },
+        {
+          "maximum_s3_at_end": 217167996,
+          "maximum_s3_at_start": 198520000,
+          "residual_multiplicity_cap": 12,
+          "s2_end": 65150399,
+          "s2_start": 59556000
+        },
+        {
+          "maximum_s3_at_end": 268950113,
+          "maximum_s3_at_start": 238884800,
+          "residual_multiplicity_cap": 13,
+          "s2_end": 73350031,
+          "s2_start": 65150400
+        },
+        {
+          "maximum_s3_at_end": 360450604,
+          "maximum_s3_at_start": 293400128,
+          "residual_multiplicity_cap": 14,
+          "s2_end": 90112651,
+          "s2_start": 73350032
+        },
+        {
+          "maximum_s3_at_end": 463126174,
+          "maximum_s3_at_start": 390488158,
+          "residual_multiplicity_cap": 15,
+          "s2_end": 106875271,
+          "s2_start": 90112652
+        },
+        {
+          "maximum_s3_at_end": 6034745920,
+          "maximum_s3_at_start": 498751269,
+          "residual_multiplicity_cap": 16,
+          "s2_end": 1293159840,
+          "s2_start": 106875272
+        }
+      ],
+      "S2_S3_FRONTIER_SHA256": "11ce52602cac1ddd7100220bb0b489fd1dba15c75bcc37daafc870d568685c27",
+      "S2_S3_FRONTIER_SIZE": 10,
+      "UNION_OBJECTIVE": "max_M [S1 - ceil(2*minimum_S2(M)/K(M))] over the same outside-pair-mass states"
+    },
+    {
+      "GOOD_TICKET_COUNT": 17,
+      "MAXIMUM_FRONTIER_S2_ENDPOINT": 1465581152,
+      "MAXIMUM_FRONTIER_S3_UPPER_BOUND": 7327905760,
+      "MINIMUM_UNION_REDUCTION": 10679667,
+      "REDUCTION_MULTIPLICITY_CAP": 12,
+      "REDUCTION_OUTSIDE_PAIR_MASS": 106,
+      "REDUCTION_S2_LOWER_BOUND": 64078000,
+      "REDUCTION_TOP_SEVEN_FREQUENCY": 36,
+      "RESIDUAL_S1": 313687094,
+      "RESIDUAL_STATE_COUNT": 603,
+      "RESIDUAL_UNION_BOUND": 303007427,
+      "S2_S3_FRONTIER": [
+        {
+          "maximum_s3_at_end": 87371665,
+          "maximum_s3_at_start": 85040666,
+          "residual_multiplicity_cap": 7,
+          "s2_end": 52422999,
+          "s2_start": 51024400
+        },
+        {
+          "maximum_s3_at_end": 107643198,
+          "maximum_s3_at_start": 104846000,
+          "residual_multiplicity_cap": 8,
+          "s2_end": 53821599,
+          "s2_start": 52423000
+        },
+        {
+          "maximum_s3_at_end": 131022731,
+          "maximum_s3_at_start": 125583733,
+          "residual_multiplicity_cap": 9,
+          "s2_end": 56152599,
+          "s2_start": 53821600
+        },
+        {
+          "maximum_s3_at_end": 158442664,
+          "maximum_s3_at_start": 149740266,
+          "residual_multiplicity_cap": 10,
+          "s2_end": 59415999,
+          "s2_start": 56152600
+        },
+        {
+          "maximum_s3_at_end": 192233997,
+          "maximum_s3_at_start": 178248000,
+          "residual_multiplicity_cap": 11,
+          "s2_end": 64077999,
+          "s2_start": 59416000
+        },
+        {
+          "maximum_s3_at_end": 232241330,
+          "maximum_s3_at_start": 213593333,
+          "residual_multiplicity_cap": 12,
+          "s2_end": 69672399,
+          "s2_start": 64078000
+        },
+        {
+          "maximum_s3_at_end": 275978263,
+          "maximum_s3_at_start": 255465466,
+          "residual_multiplicity_cap": 13,
+          "s2_end": 75266799,
+          "s2_start": 69672400
+        },
+        {
+          "maximum_s3_at_end": 352486284,
+          "maximum_s3_at_start": 301067200,
+          "residual_multiplicity_cap": 14,
+          "s2_end": 88121571,
+          "s2_start": 75266800
+        },
+        {
+          "maximum_s3_at_end": 454498161,
+          "maximum_s3_at_start": 381860145,
+          "residual_multiplicity_cap": 15,
+          "s2_end": 104884191,
+          "s2_start": 88121572
+        },
+        {
+          "maximum_s3_at_end": 578115192,
+          "maximum_s3_at_start": 489459562,
+          "residual_multiplicity_cap": 16,
+          "s2_end": 123881827,
+          "s2_start": 104884192
+        },
+        {
+          "maximum_s3_at_end": 7327905760,
+          "maximum_s3_at_start": 619409140,
+          "residual_multiplicity_cap": 17,
+          "s2_end": 1465581152,
+          "s2_start": 123881828
+        }
+      ],
+      "S2_S3_FRONTIER_SHA256": "308a46c148c0eb063905578cc7bdb00583a019bd7dc9a13bb0a9759fbdf419c2",
+      "S2_S3_FRONTIER_SIZE": 11,
+      "UNION_OBJECTIVE": "max_M [S1 - ceil(2*minimum_S2(M)/K(M))] over the same outside-pair-mass states"
+    },
+    {
+      "GOOD_TICKET_COUNT": 18,
+      "MAXIMUM_FRONTIER_S2_ENDPOINT": 1648778796,
+      "MAXIMUM_FRONTIER_S3_UPPER_BOUND": 8793486912,
+      "MINIMUM_UNION_REDUCTION": 11413800,
+      "REDUCTION_MULTIPLICITY_CAP": 14,
+      "REDUCTION_OUTSIDE_PAIR_MASS": 136,
+      "REDUCTION_S2_LOWER_BOUND": 79896600,
+      "REDUCTION_TOP_SEVEN_FREQUENCY": 42,
+      "RESIDUAL_S1": 332139276,
+      "RESIDUAL_STATE_COUNT": 676,
+      "RESIDUAL_UNION_BOUND": 320725476,
+      "S2_S3_FRONTIER": [
+        {
+          "maximum_s3_at_end": 99749998,
+          "maximum_s3_at_start": 97419000,
+          "residual_multiplicity_cap": 7,
+          "s2_end": 59849999,
+          "s2_start": 58451400
+        },
+        {
+          "maximum_s3_at_end": 122497198,
+          "maximum_s3_at_start": 119700000,
+          "residual_multiplicity_cap": 8,
+          "s2_end": 61248599,
+          "s2_start": 59850000
+        },
+        {
+          "maximum_s3_at_end": 148352397,
+          "maximum_s3_at_start": 142913400,
+          "residual_multiplicity_cap": 9,
+          "s2_end": 63579599,
+          "s2_start": 61248600
+        },
+        {
+          "maximum_s3_at_end": 177004797,
+          "maximum_s3_at_start": 169545600,
+          "residual_multiplicity_cap": 10,
+          "s2_end": 66376799,
+          "s2_start": 63579600
+        },
+        {
+          "maximum_s3_at_end": 208920597,
+          "maximum_s3_at_start": 199130400,
+          "residual_multiplicity_cap": 11,
+          "s2_end": 69640199,
+          "s2_start": 66376800
+        },
+        {
+          "maximum_s3_at_end": 247673996,
+          "maximum_s3_at_start": 232134000,
+          "residual_multiplicity_cap": 12,
+          "s2_end": 74302199,
+          "s2_start": 69640200
+        },
+        {
+          "maximum_s3_at_end": 292954196,
+          "maximum_s3_at_start": 272441400,
+          "residual_multiplicity_cap": 13,
+          "s2_end": 79896599,
+          "s2_start": 74302200
+        },
+        {
+          "maximum_s3_at_end": 347558396,
+          "maximum_s3_at_start": 319586400,
+          "residual_multiplicity_cap": 14,
+          "s2_end": 86889599,
+          "s2_start": 79896600
+        },
+        {
+          "maximum_s3_at_end": 443514946,
+          "maximum_s3_at_start": 376521600,
+          "residual_multiplicity_cap": 15,
+          "s2_end": 102349603,
+          "s2_start": 86889600
+        },
+        {
+          "maximum_s3_at_end": 566287115,
+          "maximum_s3_at_start": 477631485,
+          "residual_multiplicity_cap": 16,
+          "s2_end": 121347239,
+          "s2_start": 102349604
+        },
+        {
+          "maximum_s3_at_end": 707311915,
+          "maximum_s3_at_start": 606736200,
+          "residual_multiplicity_cap": 17,
+          "s2_end": 141462383,
+          "s2_start": 121347240
+        },
+        {
+          "maximum_s3_at_end": 8793486912,
+          "maximum_s3_at_start": 754466048,
+          "residual_multiplicity_cap": 18,
+          "s2_end": 1648778796,
+          "s2_start": 141462384
+        }
+      ],
+      "S2_S3_FRONTIER_SHA256": "8e0f1f61a3a2dd73e52fca95d00dcef9d373db1af0ef19100d476c7ed3a5175b",
+      "S2_S3_FRONTIER_SIZE": 12,
+      "UNION_OBJECTIVE": "max_M [S1 - ceil(2*minimum_S2(M)/K(M))] over the same outside-pair-mass states"
+    }
+  ],
+  "S2_S3_FRONTIER_SIZE": 144,
+  "SOLVER_ACTUAL_WALL_TIME_SECONDS": 0.661724,
+  "SOLVER_CERTIFICATE_SHA256": "6803dacb45802e6b28061b70be9120718d78ba0bda9f5ff6578e0081278d1da9",
+  "SOLVER_CERTIFIED_BOUND": 349009248,
+  "SOLVER_CONFIGURED_WALL_LIMIT": "45s native; 60s external hard timeout",
+  "SOLVER_STATUS": "EXACT_FINITE_STATE_DP_WITH_CERTIFIED_RELAXATIONS",
+  "TASK_BRANCH": "codex/b649-k20-r5-joint-residual-envelope-r1",
+  "TASK_HEAD": "RECORDED_IN_FINAL_HANDOFF",
+  "TASK_ID": "B649_K20_R5_JOINT_RESIDUAL_ENVELOPE_R1",
+  "TASK_STATUS": "COMPLETED_SUCCESS_B",
+  "TYPE_COUNT_VECTOR_COMPRESSION": "Exact bounded generating-function census, compressed by A/B-symmetric anchor type class and good-ticket count.",
+  "WORKTREE_DISPOSITION": "RETAIN",
+  "WORKTREE_PATH": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_K20_R5_JOINT_RESIDUAL_ENVELOPE_R1",
+  "WORST_CASE_COMPRESSED_TYPE_VECTOR": [
+    {
+      "CLASS_KEY": [
+        0,
+        0,
+        6
+      ],
+      "MEMBER_COUNTS": [
+        7
+      ],
+      "TICKET_COUNT": 7
+    },
+    {
+      "CLASS_KEY": [
+        0,
+        1,
+        5
+      ],
+      "MEMBER_COUNTS": [
+        1,
+        1
+      ],
+      "TICKET_COUNT": 2
+    },
+    {
+      "CLASS_KEY": [
+        0,
+        2,
+        4
+      ],
+      "MEMBER_COUNTS": [
+        1
+      ],
+      "TICKET_COUNT": 1
+    },
+    {
+      "CLASS_KEY": [
+        1,
+        0,
+        5
+      ],
+      "MEMBER_COUNTS": [
+        8
+      ],
+      "TICKET_COUNT": 8
+    },
+    {
+      "CLASS_KEY": [
+        1,
+        1,
+        4
+      ],
+      "MEMBER_COUNTS": [
+        0,
+        0
+      ],
+      "TICKET_COUNT": 0
+    },
+    {
+      "CLASS_KEY": [
+        1,
+        2,
+        3
+      ],
+      "MEMBER_COUNTS": [
+        0
+      ],
+      "TICKET_COUNT": 0
+    },
+    {
+      "CLASS_KEY": [
+        2,
+        0,
+        4
+      ],
+      "MEMBER_COUNTS": [
+        0
+      ],
+      "TICKET_COUNT": 0
+    },
+    {
+      "CLASS_KEY": [
+        2,
+        1,
+        3
+      ],
+      "MEMBER_COUNTS": [
+        0,
+        0
+      ],
+      "TICKET_COUNT": 0
+    },
+    {
+      "CLASS_KEY": [
+        2,
+        2,
+        2
+      ],
+      "MEMBER_COUNTS": [
+        0
+      ],
+      "TICKET_COUNT": 0
+    },
+    {
+      "CLASS_KEY": [
+        3,
+        0,
+        3
+      ],
+      "MEMBER_COUNTS": [
+        0
+      ],
+      "TICKET_COUNT": 0
+    },
+    {
+      "CLASS_KEY": [
+        3,
+        1,
+        2
+      ],
+      "MEMBER_COUNTS": [
+        0,
+        0
+      ],
+      "TICKET_COUNT": 0
+    },
+    {
+      "CLASS_KEY": [
+        3,
+        2,
+        1
+      ],
+      "MEMBER_COUNTS": [
+        0
+      ],
+      "TICKET_COUNT": 0
+    },
+    {
+      "CLASS_KEY": [
+        4,
+        0,
+        2
+      ],
+      "MEMBER_COUNTS": [
+        0
+      ],
+      "TICKET_COUNT": 0
+    },
+    {
+      "CLASS_KEY": [
+        4,
+        1,
+        1
+      ],
+      "MEMBER_COUNTS": [
+        0,
+        0
+      ],
+      "TICKET_COUNT": 0
+    },
+    {
+      "CLASS_KEY": [
+        4,
+        2,
+        0
+      ],
+      "MEMBER_COUNTS": [
+        0
+      ],
+      "TICKET_COUNT": 0
+    },
+    {
+      "CLASS_KEY": [
+        5,
+        0,
+        1
+      ],
+      "MEMBER_COUNTS": [
+        0
+      ],
+      "TICKET_COUNT": 0
+    }
+  ],
+  "WORST_GOOD_TICKET_COUNT": 7
+}

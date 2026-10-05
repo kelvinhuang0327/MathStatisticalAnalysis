@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import itertools
+import json
 import random
 from collections.abc import Sequence
 from math import comb
 from pathlib import Path
+from types import SimpleNamespace
 from typing import cast
 
 import pytest
@@ -28,6 +30,28 @@ PORTFOLIO = ttc.normalize_portfolio(
     pool_size=POOL_SIZE,
 )
 QUADRUPLE = (0, 1, 2, 3)
+HISTORICAL_START_PORTFOLIO = (
+    (1, 2, 34, 41, 42, 45),
+    (1, 17, 22, 30, 33, 43),
+    (2, 5, 33, 35, 40, 48),
+    (3, 4, 10, 15, 26, 27),
+    (3, 8, 13, 28, 31, 36),
+    (3, 9, 16, 23, 29, 39),
+    (4, 7, 12, 36, 39, 46),
+    (4, 18, 20, 24, 28, 29),
+    (5, 17, 25, 32, 41, 47),
+    (6, 7, 9, 13, 18, 26),
+    (6, 10, 11, 16, 24, 36),
+    (6, 14, 20, 31, 37, 39),
+    (7, 8, 10, 14, 19, 29),
+    (8, 9, 11, 15, 20, 46),
+    (11, 12, 18, 23, 27, 49),
+    (12, 13, 15, 19, 24, 37),
+    (16, 19, 26, 28, 46, 49),
+    (21, 25, 30, 38, 45, 48),
+    (21, 32, 40, 42, 43, 44),
+    (22, 34, 35, 38, 44, 47),
+)
 FROZEN_ORIENTATIONS = {
     ("(0 1 2 3)", (1, 2, 3, 0)),
     ("(0 3 2 1)", (3, 0, 1, 2)),
@@ -45,8 +69,9 @@ def draws12() -> DrawMasks:
 
 def _count(portfolio: Sequence[Sequence[int]], draws: DrawMasks) -> int:
     return int(
-        canonical.evaluate_portfolio(portfolio, pool_size=POOL_SIZE, draws=draws)
-        .official_any_prize_outcome_count
+        canonical.evaluate_portfolio(
+            portfolio, pool_size=POOL_SIZE, draws=draws
+        ).official_any_prize_outcome_count
     )
 
 
@@ -194,3 +219,121 @@ def test_rejection_accounting_accepts_missing_zero_categories_but_not_wrong_coun
         recorded, {**generator, cycle.REJECT_ILLEGAL_TICKET: 48_419}
     )
     assert not cycle.rejection_counts_match(recorded, {**generator, "UNKNOWN": 0})
+
+
+def test_current_v7_artifact_is_explicit_and_passed_to_the_canonical_binder(
+    draws12: DrawMasks, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    captured: dict[str, object] = {}
+
+    def bind(portfolio: Sequence[Sequence[int]], **kwargs: object) -> SimpleNamespace:
+        captured["portfolio"] = tuple(tuple(ticket) for ticket in portfolio)
+        captured.update(kwargs)
+        return SimpleNamespace(
+            portfolio=tuple(tuple(ticket) for ticket in portfolio),
+            sha256=cycle.V7_BASELINE_SHA256,
+            outcome_count=cycle.V7_BASELINE_OUTCOMES,
+        )
+
+    monkeypatch.setattr(cycle, "bind_explicit_incumbent", bind)
+    start = cycle.load_current_v7_start(
+        ROOT,
+        Path(
+            "docs/research/matrix-native-results/b649-k20-v7-three-ticket-global-repair-pilot-r1-result.json"
+        ),
+        draws=draws12,
+    )
+
+    assert len(start.portfolio) == 20
+    assert start.sha256 == cycle.V7_BASELINE_SHA256
+    assert start.outcome_count == cycle.V7_BASELINE_OUTCOMES
+    assert captured["expected_sha256"] == cycle.V7_BASELINE_SHA256
+    assert captured["expected_outcome_count"] == cycle.V7_BASELINE_OUTCOMES
+
+
+def test_primary_start_fails_closed_without_the_v7_artifact_or_on_old_sha(
+    draws12: DrawMasks, tmp_path: Path
+) -> None:
+    with pytest.raises(cycle.CycleError, match="explicit current-v7"):
+        cycle.load_start(cycle.START_PRIMARY, ROOT, draws=draws12)
+
+    old_artifact = tmp_path / "old-start.json"
+    old_artifact.write_text(
+        json.dumps(
+            {
+                "TASK_ID": cycle.V7_BASELINE_TASK_ID,
+                "BEST_COUNT": cycle.V7_BASELINE_OUTCOMES,
+                "BEST_SHA256": cycle.HISTORICAL_START_SHA256,
+                "BEST_PORTFOLIO": [list(ticket) for ticket in HISTORICAL_START_PORTFOLIO],
+            }
+        ),
+        encoding="utf-8",
+    )
+    with pytest.raises(cycle.CycleError, match="sha256 does not match"):
+        cycle.load_current_v7_start(tmp_path, old_artifact, draws=draws12)
+
+
+def test_explicit_historical_incumbent_preserves_sealed_proposal_behavior(
+    draws12: DrawMasks, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def historical_bind(
+        portfolio: Sequence[Sequence[int]],
+        *,
+        pool_size: int,
+        expected_sha256: str,
+        expected_outcome_count: int,
+        draws: DrawMasks,
+    ) -> SimpleNamespace:
+        assert pool_size == 49
+        assert expected_sha256 == cycle.HISTORICAL_START_SHA256
+        assert expected_outcome_count == cycle.HISTORICAL_START_COUNT
+        return SimpleNamespace(
+            portfolio=tuple(tuple(ticket) for ticket in portfolio),
+            sha256=expected_sha256,
+            outcome_count=expected_outcome_count,
+        )
+
+    monkeypatch.setattr(ttc, "bind_start", historical_bind)
+    start = cycle.bind_explicit_incumbent(
+        HISTORICAL_START_PORTFOLIO,
+        expected_sha256=cycle.HISTORICAL_START_SHA256,
+        expected_outcome_count=cycle.HISTORICAL_START_COUNT,
+        draws=draws12,
+    )
+    expected_pilot_order = (
+        (5, 12, 13, 17),
+        (4, 9, 10, 17),
+        (2, 3, 6, 14),
+        (3, 4, 9, 15),
+        (6, 14, 15, 17),
+        (4, 12, 13, 19),
+        (0, 2, 4, 17),
+        (0, 3, 18, 19),
+        (10, 11, 12, 19),
+        (2, 8, 11, 15),
+        (5, 14, 15, 17),
+        (12, 13, 16, 19),
+        (5, 6, 10, 18),
+        (0, 2, 7, 16),
+        (0, 3, 6, 15),
+        (6, 12, 13, 14),
+        (0, 7, 8, 18),
+        (1, 6, 9, 18),
+        (8, 9, 11, 18),
+        (3, 9, 10, 11),
+        (0, 6, 9, 10),
+        (4, 5, 10, 17),
+        (3, 5, 12, 19),
+        (0, 5, 7, 10),
+    )
+    emission = cycle.emit_spec(
+        start.portfolio,
+        cycle.RawFourCycleSpec((2, 8, 11, 15), (5, 5, 37, 37), "(0 2 1 3)"),
+        pool_size=49,
+    )
+
+    assert start.sha256 == cycle.HISTORICAL_START_SHA256
+    assert start.outcome_count == cycle.HISTORICAL_START_COUNT
+    assert cycle.select_pilot_quadruples() == expected_pilot_order
+    assert emission is not None
+    assert emission.sha256 == "292db85d03715ca7c66b37888b1a4d180284bec1d915b4d2cd744c57dcf27081"

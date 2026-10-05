@@ -53,6 +53,7 @@ from collections import Counter
 from collections.abc import Iterable, Iterator, Mapping, Sequence
 from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from fractions import Fraction
 from math import comb
 from pathlib import Path
@@ -142,6 +143,7 @@ def rejection_counts_match(left: Mapping[str, int], right: Mapping[str, int]) ->
         and set(right).issubset(allowed)
         and all(left.get(reason, 0) == right.get(reason, 0) for reason in REJECT_REASONS)
     )
+
 
 if (
     CYCLE_ORIENTATIONS != 6
@@ -407,9 +409,7 @@ class SubsetResidual:
         added = int(np.einsum("ij,ij->", carried, self.fresh_by_number, dtype=np.int64))
         open_rows = ~won
         won_draws = self.rest_won_draws + int(self.pattern_draws[won].sum())
-        return (
-            self.special_count * won_draws + int(self.pattern_rescue[open_rows].sum()) + added
-        )
+        return self.special_count * won_draws + int(self.pattern_rescue[open_rows].sum()) + added
 
 
 def build_subset_residual(
@@ -506,22 +506,19 @@ def build_subset_residual(
 
 # --- starts, pilot selection and tie-break ---------------------------------------------
 
-TASK_ID = "B649_K20_FOUR_TICKET_CYCLE_PILOT_R1"
-SCIENTIFIC_SCOPE = "BOUNDED_FOUR_TICKET_CYCLE_PILOT"
+TASK_ID = "B649_K20_V7_FOUR_TICKET_RUNNER_COMPAT_AND_PILOT_R1"
+SCIENTIFIC_SCOPE = "BOUNDED_FOUR_TICKET_CYCLE_PILOT_FROM_V7"
 TOTAL_OUTCOMES = ttc.TOTAL_OUTCOMES
 V6_REFERENCE_HEAD = "76085ccc8f226c8752cc7df28390e27009d21746"
-PRIMARY_START_COMMIT = "3655b0f4bc43450748b4fc87c641d0acd11a8509"
-PRIMARY_START_TREE = "faa67081c8dd77563d1d8f1aba95a30b19d2f543"
-PRIMARY_START_ARTIFACT = (
-    "docs/research/matrix-native-results/b649-k20-three-ticket-cycle-full-family-r1-result.json"
-)
-PRIMARY_START_ARTIFACT_SHA256 = "2ba9308faa96518b8a75bb1ee8b1ddcf62e7cd66258c8f36999e48f68c676266"
-PRIMARY_START_COUNT = 313_239_661
-PRIMARY_START_SHA256 = "7ce41ff21d5c0821f1d5dda683e23114086f5024fc6d98d4e574df5306659b1e"
-PRIMARY_START_EXACT_PROBABILITY = "44748523/85900584"
+V7_BASELINE_TASK_ID = "B649_K20_V7_THREE_TICKET_GLOBAL_REPAIR_PILOT_R1"
+V7_BASELINE_OUTCOMES = 313_239_661
+V7_BASELINE_SHA256 = "0045ac8837fc82e9a585d812173341ac12e05c5de201af7f8fedeacafa19e1ff"
+V7_BASELINE_EXACT_PROBABILITY = "44748523/85900584"
+HISTORICAL_START_COUNT = 313_239_661
+HISTORICAL_START_SHA256 = "7ce41ff21d5c0821f1d5dda683e23114086f5024fc6d98d4e574df5306659b1e"
 CONTROL_START_COUNT = ttc.STARTING_COUNT
 CONTROL_START_SHA256 = ttc.STARTING_PORTFOLIO_SHA256
-GAIN_THRESHOLD_COUNT = PRIMARY_START_COUNT
+GAIN_THRESHOLD_COUNT = V7_BASELINE_OUTCOMES
 START_PRIMARY = "PRIMARY"
 START_CONTROL = "CONTROL"
 PILOT_SEED = 20260930
@@ -533,56 +530,103 @@ PARITY_MIN_SAMPLE = 60
 WORKERS = 2
 TOP_N = 25
 CONTROL_WALL_BUDGET_SECONDS = 1800.0
-RESULT_PATH = "docs/research/matrix-native-results/b649-k20-four-ticket-cycle-pilot-r1-result.json"
-RUNTIME_DIR = ".task-data/B649_K20_FOUR_TICKET_CYCLE_PILOT_R1"
+OWNER_RECORD_PATH = f".fable/checkpoints/{TASK_ID}/owner.json"
+EXECUTION_RECORD_PATH = f".fable/checkpoints/{TASK_ID}/executions/run1.json"
 TIE_BREAK = "max exact count, then lowest normalized portfolio sha256"
 
 if PILOT_RAW_ATTEMPT_CEILING != 186_624 or TOTAL_OUTCOMES != 601_304_088:
     raise RuntimeError("pilot ceiling or outcome total drifted")
 
 
-def load_primary_start(repo_root: Path, *, draws: DrawMasks) -> StartBinding:
-    """Reproduce the three-ticket-cycle candidate's count and identity canonically."""
+def bind_explicit_incumbent(
+    portfolio: Sequence[Sequence[int]],
+    *,
+    expected_sha256: str,
+    expected_outcome_count: int,
+    draws: DrawMasks,
+) -> StartBinding:
+    """Bind an explicitly named portfolio and recompute its canonical identity and count."""
 
-    raw = (repo_root / PRIMARY_START_ARTIFACT).read_bytes()
-    if hashlib.sha256(raw).hexdigest() != PRIMARY_START_ARTIFACT_SHA256:
-        raise CycleError("primary start artifact bytes do not match the pinned sha256")
-    payload: object = json.loads(raw)
-    if not isinstance(payload, dict):
-        raise CycleError("primary start artifact must be a JSON object")
-    fields = cast(dict[str, object], payload)
-    if fields.get("BEST_PORTFOLIO_SHA256") != PRIMARY_START_SHA256:
-        raise CycleError("primary start artifact names a different portfolio")
-    if fields.get("BEST_COUNT") != PRIMARY_START_COUNT:
-        raise CycleError("primary start artifact names a different count")
-    rows = fields.get("BEST_PORTFOLIO")
-    if not isinstance(rows, list):
-        raise CycleError("primary start BEST_PORTFOLIO must be a list")
-    tickets: list[list[int]] = []
-    for row in cast(list[object], rows):
-        if not isinstance(row, list):
-            raise CycleError("primary start ticket rows must be lists")
-        numbers = [number for number in cast(list[object], row) if type(number) is int]
-        if len(numbers) != len(cast(list[object], row)):
-            raise CycleError("primary start ticket rows must be integer lists")
-        tickets.append(numbers)
+    if len(expected_sha256) != 64 or any(c not in "0123456789abcdef" for c in expected_sha256):
+        raise CycleError("incumbent sha256 must be a lowercase 64-character digest")
+    if type(expected_outcome_count) is not int or expected_outcome_count < 0:
+        raise CycleError("incumbent outcomes must be a non-negative integer")
     start = ttc.bind_start(
-        tickets,
+        portfolio,
         pool_size=BIG_LOTTO_POOL_SIZE,
-        expected_sha256=PRIMARY_START_SHA256,
-        expected_outcome_count=PRIMARY_START_COUNT,
+        expected_sha256=expected_sha256,
+        expected_outcome_count=expected_outcome_count,
         draws=draws,
     )
     if len(start.portfolio) != K20:
-        raise CycleError("primary start is not a K=20 portfolio")
-    if str(Fraction(start.outcome_count, TOTAL_OUTCOMES)) != PRIMARY_START_EXACT_PROBABILITY:
-        raise CycleError("primary start exact probability does not reproduce")
+        raise CycleError("incumbent is not a K=20 portfolio")
+    if start.sha256 != expected_sha256 or start.outcome_count != expected_outcome_count:
+        raise CycleError("recomputed incumbent identity does not match the explicit expectation")
     return start
 
 
-def load_start(label: str, repo_root: Path, *, draws: DrawMasks) -> StartBinding:
+def load_current_v7_start(
+    repo_root: Path, incumbent_artifact: Path | None, *, draws: DrawMasks
+) -> StartBinding:
+    """Load only the exact v7 incumbent; missing or mismatched inputs fail closed."""
+
+    if incumbent_artifact is None:
+        raise CycleError("an explicit current-v7 incumbent artifact is required")
+    root = repo_root.resolve()
+    artifact = incumbent_artifact if incumbent_artifact.is_absolute() else root / incumbent_artifact
+    try:
+        artifact = artifact.resolve(strict=True)
+        raw = artifact.read_bytes()
+    except OSError as error:
+        raise CycleError(
+            f"current-v7 incumbent artifact is unavailable: {incumbent_artifact}"
+        ) from error
+    if not artifact.is_relative_to(root):
+        raise CycleError("current-v7 incumbent artifact must be inside the repository")
+    try:
+        payload: object = json.loads(raw)
+    except (UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise CycleError("current-v7 incumbent artifact is not valid JSON") from error
+    if not isinstance(payload, dict):
+        raise CycleError("current-v7 incumbent artifact must be a JSON object")
+    fields = cast(dict[str, object], payload)
+    if fields.get("TASK_ID") != V7_BASELINE_TASK_ID:
+        raise CycleError("incumbent artifact is not the selected v7 authority")
+    if fields.get("BEST_COUNT") != V7_BASELINE_OUTCOMES:
+        raise CycleError("incumbent artifact outcome count does not match the v7 baseline")
+    if fields.get("BEST_SHA256") != V7_BASELINE_SHA256:
+        raise CycleError("incumbent artifact portfolio sha256 does not match the v7 baseline")
+    rows = fields.get("BEST_PORTFOLIO")
+    if not isinstance(rows, list):
+        raise CycleError("current-v7 BEST_PORTFOLIO must be a list")
+    tickets: list[list[int]] = []
+    for row in cast(list[object], rows):
+        if not isinstance(row, list):
+            raise CycleError("current-v7 tickets must be lists of integers")
+        ticket = cast(list[object], row)
+        if any(type(number) is not int for number in ticket):
+            raise CycleError("current-v7 tickets must be lists of integers")
+        tickets.append(cast(list[int], ticket))
+    start = bind_explicit_incumbent(
+        tickets,
+        expected_sha256=V7_BASELINE_SHA256,
+        expected_outcome_count=V7_BASELINE_OUTCOMES,
+        draws=draws,
+    )
+    if str(Fraction(start.outcome_count, TOTAL_OUTCOMES)) != V7_BASELINE_EXACT_PROBABILITY:
+        raise CycleError("current-v7 baseline exact probability does not reproduce")
+    return start
+
+
+def load_start(
+    label: str,
+    repo_root: Path,
+    *,
+    draws: DrawMasks,
+    incumbent_artifact: Path | None = None,
+) -> StartBinding:
     if label == START_PRIMARY:
-        return load_primary_start(repo_root, draws=draws)
+        return load_current_v7_start(repo_root, incumbent_artifact, draws=draws)
     if label == START_CONTROL:
         return ttc.load_v6_authority(repo_root, draws=draws)
     raise CycleError(f"unknown start {label}")
@@ -623,10 +667,10 @@ def _peak_rss_bytes() -> int:
     return int(peak) if os.uname().sysname == "Darwin" else int(peak) * 1024
 
 
-def _worker_init(repo_root: str, label: str) -> None:
+def _worker_init(start: StartBinding) -> None:
     draws = ttc.load_draws(BIG_LOTTO_POOL_SIZE)
     _STATE["draws"] = draws
-    _STATE["start"] = load_start(label, Path(repo_root), draws=draws)
+    _STATE["start"] = start
 
 
 def _worker_state() -> tuple[StartBinding, DrawMasks]:
@@ -793,9 +837,7 @@ def _float(value: object) -> float:
 
 def summarize_parity(results: Sequence[dict[str, object]]) -> dict[str, object]:
     samples = [
-        sample
-        for result in results
-        for sample in cast(list[dict[str, object]], result["SAMPLES"])
+        sample for result in results for sample in cast(list[dict[str, object]], result["SAMPLES"])
     ]
     return {
         "SEED": PARITY_SEED,
@@ -1036,17 +1078,18 @@ def run_start(
     runtime_dir: Path,
     workers: int,
     with_parity: bool,
+    incumbent_artifact: Path | None = None,
 ) -> dict[str, object]:
     """Optional parity phase, then the pilot scan of one start on ``workers`` processes."""
 
-    start = load_start(label, repo_root, draws=draws)
+    start = load_start(label, repo_root, draws=draws, incumbent_artifact=incumbent_artifact)
     ledger_path = runtime_dir / f"{label.lower()}-candidates.jsonl"
     context = mp.get_context("spawn")
     with ProcessPoolExecutor(
         max_workers=workers,
         mp_context=context,
         initializer=_worker_init,
-        initargs=(str(repo_root), label),
+        initargs=(start,),
     ) as pool:
         parity: dict[str, object] | None = None
         parity_seconds = 0.0
@@ -1111,6 +1154,7 @@ def full_family_estimate(primary: dict[str, object], *, workers: int) -> dict[st
 def run_pilot(
     repo_root: Path,
     *,
+    incumbent_artifact: Path,
     result_path: Path,
     runtime_dir: Path,
     workers: int = WORKERS,
@@ -1135,14 +1179,28 @@ def run_pilot(
         runtime_dir=runtime_dir,
         workers=workers,
         with_parity=True,
+        incumbent_artifact=incumbent_artifact,
     )
+    resolved_artifact = (
+        incumbent_artifact
+        if incumbent_artifact.is_absolute()
+        else repo_root.resolve() / incumbent_artifact
+    ).resolve()
     record: dict[str, object] = {
         "TASK_ID": TASK_ID,
         "FAMILY_NAME": FAMILY_NAME,
         "SCIENTIFIC_SCOPE": SCIENTIFIC_SCOPE,
+        "EVENT": "OFFICIAL_ANY_PRIZE",
+        "PROMOTION_AUTHORITY": "OFFICIAL_ANY_PRIZE",
+        "BASELINE_OUTCOMES": V7_BASELINE_OUTCOMES,
+        "BASELINE_SHA": V7_BASELINE_SHA256,
+        "INCUMBENT_ARTIFACT": str(resolved_artifact.relative_to(repo_root.resolve())),
+        "INCUMBENT_ARTIFACT_SHA256": hashlib.sha256(resolved_artifact.read_bytes()).hexdigest(),
+        "RESULT_LOCATOR": str(result_path.resolve().relative_to(repo_root.resolve())),
+        "RUNNER_HEAD": _git(repo_root, "rev-parse", "HEAD"),
+        "RUNNER_TREE": _git(repo_root, "rev-parse", "HEAD^{tree}"),
         "RUN_HEAD": _git(repo_root, "rev-parse", "HEAD"),
         "RUN_TREE": _git(repo_root, "rev-parse", "HEAD^{tree}"),
-        "BASE_COMMIT": PRIMARY_START_COMMIT,
         "V6_REFERENCE_HEAD": V6_REFERENCE_HEAD,
         "SOURCE_MODULE_PATH": str(source.relative_to(repo_root.resolve())),
         "SOURCE_MODULE_SHA256": hashlib.sha256(source.read_bytes()).hexdigest(),
@@ -1228,9 +1286,7 @@ def run_pilot(
         gain = _int(best["COUNT"]) > GAIN_THRESHOLD_COUNT
         record.update(
             TASK_STATUS="COMPLETE",
-            SCIENTIFIC_RESULT=(
-                "IMPROVED" if gain else "NO_IMPROVEMENT_IN_BOUNDED_FOUR_TICKET_CYCLE_PILOT"
-            ),
+            SCIENTIFIC_RESULT="STRICT_GAIN" if gain else "TERMINAL_NO_STRICT_GAIN",
             START_COUNT=primary["START_COUNT"],
             START_SHA256=primary["START_SHA256"],
             PARITY_SAMPLE_COUNT=parity["SAMPLE_COUNT"],
@@ -1244,8 +1300,13 @@ def run_pilot(
             CANDIDATES_PER_SECOND=primary["CANDIDATES_PER_SECOND"],
             BEST_COUNT=best["COUNT"],
             BEST_DELTA=best["DELTA_VS_START"],
+            BEST_EXACT_OUTCOMES=best["COUNT"],
+            DELTA=best["DELTA_VS_START"],
             BEST_EXACT_PROBABILITY=best["EXACT_PROBABILITY"],
             BEST_SHA256=best["SHA256"],
+            BEST_PORTFOLIO_SHA=best["SHA256"],
+            PROPOSALS_COMPLETED=primary["EXACT_SCORED"],
+            STRICT_GAIN="YES" if gain else "NO",
             BEST_QUADRUPLE=best["QUADRUPLE"],
             BEST_MOVE={
                 "NUMBERS": best["NUMBERS"],
@@ -1257,16 +1318,13 @@ def run_pilot(
             BEST_CANONICAL_RECOUNT_STATUS=primary["BEST_CANONICAL_RECOUNT_STATUS"],
             FULL_FAMILY_ESTIMATED_WALL_SECONDS=estimate["FULL_FAMILY_ESTIMATED_WALL_SECONDS"],
             NEW_STABLE_NON_LANE3_GAIN="YES" if gain else "NO",
-            DECISION=(
-                "NEW_STABLE_NON_LANE3_GAIN"
-                if gain
-                else "NO_IMPROVEMENT_IN_BOUNDED_FOUR_TICKET_CYCLE_PILOT"
-            ),
+            DECISION="STRICT_GAIN" if gain else "TERMINAL_NO_STRICT_GAIN",
         )
     else:
         record.update(
             TASK_STATUS=str(primary.get("STATUS")),
             NEW_STABLE_NON_LANE3_GAIN="NO",
+            STRICT_GAIN="NOT_ESTABLISHED",
             DECISION="NOT_ESTABLISHED",
         )
     peaks = [_peak_rss_bytes(), int(resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss)]
@@ -1282,25 +1340,120 @@ def run_pilot(
     return record
 
 
+def _repo_path(repo_root: Path, value: Path, *, label: str) -> Path:
+    root = repo_root.resolve()
+    resolved = (root / value if not value.is_absolute() else value).resolve()
+    if not resolved.is_relative_to(root):
+        raise CycleError(f"{label} must be inside the repository")
+    return resolved
+
+
+def _write_json_durably(path: Path, payload: dict[str, object]) -> str:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    encoded = (json.dumps(payload, sort_keys=True, indent=2, allow_nan=False) + "\n").encode()
+    staging = path.with_name(f"{path.name}.{os.getpid()}.tmp")
+    with staging.open("xb") as stream:
+        stream.write(encoded)
+        stream.flush()
+        os.fsync(stream.fileno())
+    os.replace(staging, path)
+    directory_fd = os.open(path.parent, os.O_RDONLY)
+    try:
+        os.fsync(directory_fd)
+    finally:
+        os.close(directory_fd)
+    return hashlib.sha256(encoded).hexdigest()
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Bounded 24-quadruple four-ticket cycle pilot.")
     parser.add_argument("--repo-root", type=Path, required=True)
+    parser.add_argument("--incumbent-artifact", type=Path, required=True)
+    parser.add_argument("--result-path", type=Path, required=True)
+    parser.add_argument("--runtime-dir", type=Path, required=True)
+    parser.add_argument("--owner-conversation-id", required=True)
     parser.add_argument("--workers", type=int, default=WORKERS)
     parser.add_argument(
         "--control-wall-budget-seconds", type=float, default=CONTROL_WALL_BUDGET_SECONDS
     )
     args = parser.parse_args(argv)
-    repo_root: Path = args.repo_root
-    record = run_pilot(
-        repo_root,
-        result_path=repo_root / RESULT_PATH,
-        runtime_dir=repo_root / RUNTIME_DIR,
-        workers=args.workers,
-        control_wall_budget_seconds=args.control_wall_budget_seconds,
+    repo_root = args.repo_root.resolve()
+    incumbent_artifact = _repo_path(repo_root, args.incumbent_artifact, label="incumbent artifact")
+    result_path = _repo_path(repo_root, args.result_path, label="result path")
+    runtime_dir = _repo_path(repo_root, args.runtime_dir, label="runtime directory")
+    owner_path = _repo_path(repo_root, Path(OWNER_RECORD_PATH), label="owner record")
+    if not incumbent_artifact.is_file():
+        raise CycleError(f"incumbent artifact is missing: {incumbent_artifact}")
+    if owner_path.exists():
+        raise CycleError(f"owner record already exists; reconcile before resuming: {owner_path}")
+    if result_path.exists() or runtime_dir.exists():
+        raise CycleError(
+            "result or runtime path already exists; refusing to overwrite prior evidence"
+        )
+    if not args.owner_conversation_id.strip():
+        raise CycleError("owner conversation id is required")
+
+    owner_record: dict[str, object] = {
+        "OWNER_CONVERSATION_ID": args.owner_conversation_id,
+        "TASK_ID": TASK_ID,
+        "RUNNER_HEAD": _git(repo_root, "rev-parse", "HEAD"),
+        "RUNNER_TREE": _git(repo_root, "rev-parse", "HEAD^{tree}"),
+        "PID": os.getpid(),
+        "PROTECTED_SUPERVISOR_PID": os.getppid(),
+        "CHECKPOINT_LOCATOR": EXECUTION_RECORD_PATH,
+        "OWNER_RECORD_LOCATOR": OWNER_RECORD_PATH,
+        "RESULT_LOCATOR": str(result_path.relative_to(repo_root)),
+        "WRITE_OWNERSHIP": "RETAINED",
+        "RESUME_AUTHORITY": (
+            f".fable/packets/{TASK_ID}.md and owner conversation "
+            f"{args.owner_conversation_id}; reconcile the protected run record before any resume"
+        ),
+        "BASELINE_OUTCOMES": V7_BASELINE_OUTCOMES,
+        "BASELINE_SHA": V7_BASELINE_SHA256,
+        "INCUMBENT_ARTIFACT": str(incumbent_artifact.relative_to(repo_root)),
+        "INCUMBENT_ARTIFACT_SHA256": hashlib.sha256(incumbent_artifact.read_bytes()).hexdigest(),
+        "RUN_STATUS": "STARTING",
+        "STARTED_AT_UTC": datetime.now(UTC).isoformat(),
+    }
+    _write_json_durably(owner_path, owner_record)
+    try:
+        record = run_pilot(
+            repo_root,
+            incumbent_artifact=incumbent_artifact,
+            result_path=result_path,
+            runtime_dir=runtime_dir,
+            workers=args.workers,
+            control_wall_budget_seconds=args.control_wall_budget_seconds,
+        )
+    except BaseException as error:
+        owner_record.update(
+            RUN_STATUS="FAILED",
+            WRITE_OWNERSHIP="RELEASED",
+            FAILURE=f"{type(error).__name__}: {error}",
+            ENDED_AT_UTC=datetime.now(UTC).isoformat(),
+        )
+        _write_json_durably(owner_path, owner_record)
+        raise
+    digest = hashlib.sha256(result_path.read_bytes()).hexdigest()
+    owner_record.update(
+        RUN_STATUS=record.get("TASK_STATUS"),
+        STRICT_GAIN=record.get("STRICT_GAIN", "NOT_ESTABLISHED"),
+        RESULT_SHA256=digest,
+        WRITE_OWNERSHIP="RELEASED",
+        ENDED_AT_UTC=datetime.now(UTC).isoformat(),
     )
-    digest = hashlib.sha256((repo_root / RESULT_PATH).read_bytes()).hexdigest()
+    _write_json_durably(owner_path, owner_record)
     summary = {
-        key: record.get(key) for key in ("TASK_STATUS", "DECISION", "NEW_STABLE_NON_LANE3_GAIN")
+        key: record.get(key)
+        for key in (
+            "TASK_STATUS",
+            "DECISION",
+            "STRICT_GAIN",
+            "PROPOSALS_COMPLETED",
+            "BEST_EXACT_OUTCOMES",
+            "DELTA",
+            "BEST_PORTFOLIO_SHA",
+        )
     }
     summary["RESULT_SHA256"] = digest
     print(json.dumps(summary, sort_keys=True))

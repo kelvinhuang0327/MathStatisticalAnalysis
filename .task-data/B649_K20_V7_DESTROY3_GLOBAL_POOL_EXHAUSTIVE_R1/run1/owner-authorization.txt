@@ -1,0 +1,309 @@
+OWNER AUTHORIZATION —
+B649_K20_V7_DESTROY3_GLOBAL_POOL_EXHAUSTIVE_R1
+
+/fable-method
+
+MODE: WORKER_EXECUTION
+
+TASK_CLASS:
+STATE_CHANGING_IMPLEMENTATION
+
+WORKER_ROUTE:
+STANDARD
+
+IMPLEMENTATION_DEPTH:
+ENHANCED
+
+JUDGE_MODE:
+NOT_APPLICABLE
+
+==================================================
+SOLE OBJECTIVE
+==================================================
+
+Search ALL 1,140 three-ticket destroy sets on canonical v7 under the exact
+scientific contract already validated by:
+
+B649_K20_V7_THREE_TICKET_GLOBAL_REPAIR_PILOT_R1
+
+Success means finding:
+
+COUNT > 313239661
+
+Correctness means completing the declared fixed-start search without changing
+the pool/solver semantics.
+
+==================================================
+START
+==================================================
+
+START_COUNT:
+313239661
+
+START_SHA256:
+0045ac8837fc82e9a585d812173341ac12e05c5de201af7f8fedeacafa19e1ff
+
+Canonical recount and SHA verification required before launch.
+
+==================================================
+AUTHORITATIVE PREDECESSOR
+==================================================
+
+SEALED_RESULT_COMMIT:
+e7b472a97c4ab6c87a3f40211b9d97aaaa705b7b
+
+SEALED_RESULT_SHA256:
+d233d6ab14efae0813055cf29699c7dc2a29c33769d1a328d066d845bb6ae078
+
+Reuse its exact:
+
+- scorer;
+- stable elite definition;
+- pool construction;
+- tie-break;
+- solver;
+- legality rules.
+
+Do NOT redesign those scientific semantics.
+
+==================================================
+FROZEN REPAIR CONTRACT
+==================================================
+
+DESTROY_SIZE:
+3
+
+ALL_DESTROY_TRIPLES:
+C(20,3) = 1140
+
+GLOBAL_TICKET_UNIVERSE:
+13983816
+
+GLOBAL_TOP_MARGINAL:
+64
+
+REPAIR_POOL_MAX:
+80
+
+STABLE_ELITES:
+canonical v5 + v6 + v7 only
+
+For each triple:
+
+1. freeze 17 incumbent tickets;
+2. exact-score all 13,983,816 legal tickets;
+3. retain global top-64 exact residual marginal tickets;
+4. retain three removed incumbent tickets;
+5. add eligible stable-elite tickets in remaining capacity;
+6. deduplicate;
+7. solve exactly for three replacement tickets;
+8. require PROVEN_OPTIMAL within the declared pool.
+
+No heuristic ticket prefilter.
+
+==================================================
+SEARCH ORDER
+==================================================
+
+Enumerate all triples lexicographically:
+
+0 <= i < j < k < 20
+
+Do NOT rerun the previous 64 completed pilot triples merely because this is a
+new campaign if their exact result records can be safely imported with matching:
+
+- START SHA;
+- scorer/source hash;
+- elite hashes;
+- pool rule;
+- solver identity.
+
+If exact reuse identity is fully proven:
+reuse those 64 terminal records.
+
+Otherwise:
+recompute them inside this campaign.
+
+Correctness takes precedence over reuse.
+
+==================================================
+FIXED INCUMBENT
+==================================================
+
+The campaign START remains frozen.
+
+If an intermediate triple finds a strict gain:
+
+record it,
+but DO NOT switch the incumbent during the sweep.
+
+All 1140 triples evaluate the same original START.
+
+==================================================
+DURABILITY
+==================================================
+
+This run MUST be resumable.
+
+Before scientific execution persist:
+
+execution-contract.json
+state.json
+
+During execution persist:
+
+set-results.jsonl
+
+Every <=20 completed triples:
+
+- fsync/update state;
+- store completed count;
+- store journal prefix SHA256.
+
+On resume:
+
+verify prefix SHA;
+continue from the next incomplete triple;
+never recompute completed verified triples.
+
+SINGLE_WRITER:
+YES
+
+==================================================
+LAUNCH
+==================================================
+
+Prefer canonical protected launcher if available.
+
+The Packet must record before launch:
+
+LAUNCH_METHOD
+EXACT_ARGV
+WORKTREE
+SOURCE_HEAD
+SOURCE_TREE
+
+If protected launcher is unavailable:
+
+use the exact direct-run argv frozen by the Worker BEFORE scientific execution.
+
+Do not stop simply because the optional launcher is absent.
+
+==================================================
+PARITY
+==================================================
+
+Reuse exact predecessor parity only when scorer/source identity is byte-identical.
+
+For any new/changed orchestration logic run only focused accounting tests.
+
+Do not rerun large validation suites for ceremony.
+
+==================================================
+TERMINAL
+==================================================
+
+Require:
+
+DESTROY_TRIPLES_COMPLETED:
+1140 / 1140
+
+PROVEN_OPTIMAL_TRIPLES:
+1140
+
+Canonical recount:
+
+- global best;
+- every global-best tie.
+
+If:
+
+BEST_COUNT > 313239661
+
+SCIENTIFIC_RESULT:
+IMPROVED
+
+Else:
+
+SCIENTIFIC_RESULT:
+NO_IMPROVEMENT
+
+==================================================
+CLAIM SCOPE
+==================================================
+
+SCIENTIFIC_SCOPE:
+
+COMPLETE_DESTROY3_GLOBAL_TOP64_POOL_FAMILY_ON_CANONICAL_V7
+
+Do NOT claim:
+
+- complete N3 optimum;
+- global K20 optimum.
+
+The pool is still bounded.
+
+==================================================
+REPORT
+==================================================
+
+DESTROY_TRIPLES_COMPLETED
+PROVEN_OPTIMAL_TRIPLES
+
+REUSED_PILOT_TRIPLES
+NEWLY_COMPUTED_TRIPLES
+
+GLOBAL_TICKETS_SCORED
+
+NODES_EXPLORED
+NODES_PRUNED
+EXACT_LEAVES_SCORED
+
+WALL_SECONDS
+PEAK_MEMORY_BYTES
+
+BEST_COUNT
+BEST_DELTA
+BEST_SHA256
+
+BEST_DESTROY_INDICES
+BEST_NEW_TICKETS
+
+BEST_TIE_COUNT
+BEST_CANONICAL_RECOUNT_STATUS
+
+SCIENTIFIC_RESULT
+
+==================================================
+TERMINAL SEAL
+==================================================
+
+Immediately after terminal verification:
+
+write:
+
+docs/research/matrix-native-results/
+b649-k20-v7-destroy3-global-pool-exhaustive-r1-result.json
+
+Create one local result commit.
+
+Do not leave a completed result uncommitted.
+
+==================================================
+BOUNDARY
+==================================================
+
+PROJECT_MEMORY_WRITE:
+FORBIDDEN
+
+PUSH:
+NO
+
+PR:
+NO
+
+MERGE:
+NO
+
+PRODUCTION_CHANGE:
+NONE

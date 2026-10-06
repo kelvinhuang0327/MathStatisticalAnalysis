@@ -21,6 +21,8 @@ L25 = "L25_AUTHORIZATION_REQUIRED_BEFORE_RENDER"
 CANONICAL_PRIMITIVE_AUTHORITY_INVALID = "CANONICAL_PRIMITIVE_AUTHORITY_INVALID"
 NON_LOAD_BEARING_TARGET = "NON_LOAD_BEARING_TARGET"
 UNFROZEN_RESEARCH_RESULT = "UNFROZEN_RESEARCH_RESULT"
+EXACT_WORKTREE_ABSENT = "EXACT_WORKTREE_ABSENT"
+EXACT_WORKTREE_IDENTITY_INVALID = "EXACT_WORKTREE_IDENTITY_INVALID"
 _CANONICAL_SINGLE_TICKET_ANY_PRIZE = 18_611_432
 _CANONICAL_RESEARCH_PRIMITIVES = {
     "SINGLE_TICKET_ANY_PRIZE": _CANONICAL_SINGLE_TICKET_ANY_PRIZE,
@@ -471,6 +473,54 @@ def _git_commit(repository: str, revision: Any) -> str | None:
         repository, "rev-parse", "--verify", "--quiet", "--end-of-options", f"{revision}^{{commit}}"
     )
     return output.decode("ascii", errors="ignore").strip() if output else None
+
+
+def _execution_worktree_errors(manifest: dict[str, Any]) -> list[str]:
+    """Validate an explicitly designated execution worktree, never ambient cwd."""
+    context_value = manifest.get("context")
+    context = cast(dict[str, Any], context_value) if isinstance(context_value, dict) else {}
+    worktree_value = context.get("worktree")
+    worktree = cast(dict[str, Any], worktree_value) if isinstance(worktree_value, dict) else {}
+    if worktree.get("mode") not in {"EPHEMERAL_TASK_WORKTREE", "EXISTING_TASK_WORKTREE"}:
+        return []
+
+    path_value = worktree.get("path")
+    path = Path(path_value) if isinstance(path_value, str) else None
+    if path is None or not path.is_absolute() or not path.is_dir():
+        return [
+            f"{EXACT_WORKTREE_ABSENT}: FIRST_EXECUTION_BLOCKER={EXACT_WORKTREE_ABSENT}; "
+            "NEXT_PROVEN_BLOCKER=UNKNOWN; exact designated worktree is absent"
+        ]
+
+    repository = str(path)
+    actual_head = _git_commit(repository, "HEAD")
+    expected_head = _git_commit(repository, context.get("head_sha"))
+    actual_branch_output = _git_output(repository, "branch", "--show-current")
+    actual_branch = (
+        actual_branch_output.decode("utf-8", errors="replace").strip()
+        if actual_branch_output
+        else None
+    )
+    status = _git_output(
+        repository, "status", "--porcelain=v1", "-z", "--untracked-files=all"
+    )
+    expected_branch = worktree.get("branch")
+    if (
+        actual_head is None
+        or expected_head is None
+        or actual_head != expected_head
+        or actual_branch != expected_branch
+        or status is None
+        or status
+    ):
+        blocker = (
+            f"{EXACT_WORKTREE_IDENTITY_INVALID}: "
+            f"FIRST_EXECUTION_BLOCKER={EXACT_WORKTREE_IDENTITY_INVALID}; "
+            "NEXT_PROVEN_BLOCKER=UNKNOWN; exact designated worktree HEAD, "
+            "branch, or tracked tree does not match"
+        )
+        return [blocker]
+    return []
 
 
 def _nul_paths(output: bytes | None) -> set[str] | None:
@@ -976,6 +1026,10 @@ def main(argv: list[str] | None = None) -> int:
             manifest, errors = _validated_manifest_file(
                 args.manifest, schema, _route_table()
             )
+            if isinstance(manifest, dict):
+                errors.extend(
+                    _execution_worktree_errors(cast(dict[str, Any], manifest))
+                )
             if errors:
                 return _print_errors([f"{args.manifest}: {error}" for error in errors])
             payload = render_worker(cast(dict[str, Any], manifest))

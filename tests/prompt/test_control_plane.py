@@ -81,6 +81,36 @@ def write_manifest(path: Path, manifest: dict[str, Any]) -> None:
     )
 
 
+def execution_worktree_fixture(path: Path, *, branch: str = "task/exact") -> str:
+    path.mkdir(parents=True)
+    subprocess.run(["git", "init", "-q", "-b", branch, str(path)], check=True)
+    subprocess.run(["git", "-C", str(path), "config", "user.name", "Prompt Test"], check=True)
+    subprocess.run(
+        ["git", "-C", str(path), "config", "user.email", "prompt-test@example.invalid"],
+        check=True,
+    )
+    (path / "tracked.txt").write_text("designated\n", encoding="utf-8")
+    subprocess.run(["git", "-C", str(path), "add", "tracked.txt"], check=True)
+    subprocess.run(["git", "-C", str(path), "commit", "-qm", "designated head"], check=True)
+    return subprocess.run(
+        ["git", "-C", str(path), "rev-parse", "HEAD"],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+
+
+def run_tool_from(cwd: Path, *args: str) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        [sys.executable, str(TOOL), *args],
+        cwd=cwd,
+        check=False,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+    )
+
+
 def standalone_manifest() -> dict[str, Any]:
     manifest = load_example("medium-implementation.task.yaml")
     risk = cast(dict[str, Any], manifest["risk"])
@@ -381,6 +411,100 @@ def test_canonical_primitive_preflight_passes_current_authorities(tmp_path: Path
     }
 
     assert_research_preflight_passes(manifest, tmp_path)
+
+
+def test_exact_worktree_render_ignores_dirty_wrong_ambient_checkout(tmp_path: Path) -> None:
+    designated = tmp_path / "designated"
+    designated_head = execution_worktree_fixture(designated)
+    ambient = tmp_path / "ambient"
+    execution_worktree_fixture(ambient, branch="ambient/wrong")
+    (ambient / "tracked.txt").write_text("ambient dirty\n", encoding="utf-8")
+    before = subprocess.run(
+        ["git", "-C", str(ambient), "status", "--porcelain=v1", "--untracked-files=all"],
+        check=True,
+        capture_output=True,
+    ).stdout
+    identity_before = subprocess.run(
+        ["git", "-C", str(ambient), "rev-parse", "HEAD", "HEAD^{tree}"],
+        check=True,
+        capture_output=True,
+    ).stdout
+    manifest = authorized_medium_manifest()
+    context = cast(dict[str, Any], manifest["context"])
+    context["head_sha"] = designated_head
+    worktree = cast(dict[str, Any], context["worktree"])
+    worktree.update(
+        {"mode": "EXISTING_TASK_WORKTREE", "path": str(designated), "branch": "task/exact"}
+    )
+    manifest_path = tmp_path / "exact.task.yaml"
+    output_path = tmp_path / "exact.worker.md"
+    write_manifest(manifest_path, manifest)
+
+    result = run_tool_from(
+        ambient, "render", "--manifest", str(manifest_path), "--output", str(output_path)
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "PASS Worker Prompt rendered" in result.stdout
+    after = subprocess.run(
+        ["git", "-C", str(ambient), "status", "--porcelain=v1", "--untracked-files=all"],
+        check=True,
+        capture_output=True,
+    ).stdout
+    identity_after = subprocess.run(
+        ["git", "-C", str(ambient), "rev-parse", "HEAD", "HEAD^{tree}"],
+        check=True,
+        capture_output=True,
+    ).stdout
+    assert after == before
+    assert identity_after == identity_before
+    assert (ambient / "tracked.txt").read_text(encoding="utf-8") == "ambient dirty\n"
+
+
+def test_exact_worktree_absent_fails_closed(tmp_path: Path) -> None:
+    manifest = authorized_medium_manifest()
+    context = cast(dict[str, Any], manifest["context"])
+    worktree = cast(dict[str, Any], context["worktree"])
+    worktree.update(
+        {"mode": "EXISTING_TASK_WORKTREE", "path": str(tmp_path / "absent"), "branch": "task/exact"}
+    )
+    manifest_path = tmp_path / "absent.task.yaml"
+    write_manifest(manifest_path, manifest)
+
+    result = run_tool_from(tmp_path, "render", "--manifest", str(manifest_path))
+
+    assert result.returncode == 1
+    assert "EXACT_WORKTREE_ABSENT" in result.stderr
+    assert "FIRST_EXECUTION_BLOCKER=EXACT_WORKTREE_ABSENT" in result.stderr
+    assert "NEXT_PROVEN_BLOCKER=UNKNOWN" in result.stderr
+
+
+@pytest.mark.parametrize("mismatch", ["head", "branch", "tree"])
+def test_exact_worktree_wrong_identity_fails_closed(tmp_path: Path, mismatch: str) -> None:
+    designated = tmp_path / "designated"
+    actual_head = execution_worktree_fixture(designated)
+    manifest = authorized_medium_manifest()
+    context = cast(dict[str, Any], manifest["context"])
+    context["head_sha"] = "0" * 40 if mismatch == "head" else actual_head
+    worktree = cast(dict[str, Any], context["worktree"])
+    worktree.update(
+        {
+            "mode": "EXISTING_TASK_WORKTREE",
+            "path": str(designated),
+            "branch": "task/wrong" if mismatch == "branch" else "task/exact",
+        }
+    )
+    if mismatch == "tree":
+        (designated / "tracked.txt").write_text("dirty designated tree\n", encoding="utf-8")
+    manifest_path = tmp_path / f"wrong-{mismatch}.task.yaml"
+    write_manifest(manifest_path, manifest)
+
+    result = run_tool_from(tmp_path, "render", "--manifest", str(manifest_path))
+
+    assert result.returncode == 1
+    assert "EXACT_WORKTREE_IDENTITY_INVALID" in result.stderr
+    assert "FIRST_EXECUTION_BLOCKER=EXACT_WORKTREE_IDENTITY_INVALID" in result.stderr
+    assert "NEXT_PROVEN_BLOCKER=UNKNOWN" in result.stderr
 
 
 def test_committed_successful_research_result_passes(tmp_path: Path) -> None:

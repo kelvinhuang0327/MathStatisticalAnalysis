@@ -1,0 +1,119 @@
+{
+  "BEST_CANONICAL_RECOUNT": 313239661,
+  "BEST_CANONICAL_RECOUNT_STATUS": "PASS_REUSED_FROZEN_START_EVIDENCE",
+  "BEST_COUNT": 313239661,
+  "BEST_DELTA": 0,
+  "BEST_DESTROY_INDICES": null,
+  "BEST_NEW_TICKETS": [],
+  "BEST_PROVENANCE": "FROZEN_START_NO_CAMPAIGN_SET_EVALUATED",
+  "BEST_SHA256": "0045ac8837fc82e9a585d812173341ac12e05c5de201af7f8fedeacafa19e1ff",
+  "BRANCH": "codex/b649-k20-v7-destroy5-global-pool-2048-r1",
+  "CAMPAIGN_COMPLETE": false,
+  "CAMPAIGN_RUNTIME_STATE": "NOT_INITIALIZED_NOT_LAUNCHED",
+  "COMPLETE_N5_OPTIMUM": "NOT_CLAIMED",
+  "DEPTH_SOURCE": "PLANNER_SUPPLIED",
+  "DESTROY_SIZE": 5,
+  "DRIVER_SHA256": "d1a554378d7d468c71aa288f9699588bbd734de4c3f87430a705359a669ed30f",
+  "ENHANCED_EVIDENCE": [
+    {
+      "CHECK": "Bounded hash comparison to prelaunch-verification.json and frozen engine pins; existing run state absent.",
+      "INVARIANT": "Frozen scientific sources, START and sample match final PASS evidence; no verified completed set is recomputed.",
+      "RESULT": "REUSED_EXACT_TREE_EVIDENCE: PASS"
+    },
+    {
+      "CHECK": "One process snapshot and one free-space read.",
+      "INVARIANT": "Launch only with >=8 GiB free and no active heavy scientific writer.",
+      "RESULT": "RUN_THIS_TASK: FAIL; STOP_ONCE honored, campaign not launched."
+    }
+  ],
+  "EXECUTION_ID": "run1",
+  "EXPENSIVE_PRELAUNCH_RERUN": false,
+  "FINAL_LAUNCH_CHECK": {
+    "ACTIVE_HEAVY_SCIENTIFIC_PIDS": [
+      50932,
+      75129,
+      99834
+    ],
+    "ACTIVE_HEAVY_SCIENTIFIC_WRITERS": [
+      {
+        "COMMAND": "/Users/kelvin/.codex/worktrees/b649-k20-12-8-winner-two-ticket-ascent-r1/MathStatisticalAnalysis/.task-data/B649_K20_12_8_WINNER_TWO_TICKET_ASCENT_R1/engine/tbr_engine slotpair",
+        "CPU_PERCENT": "71.4",
+        "PID": 50932,
+        "STATE": "R"
+      },
+      {
+        "COMMAND": "/opt/homebrew/Cellar/python@3.13/3.13.8/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -u /Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.task-data/B649_K20_V7_FOUR_TICKET_CYCLE_FULL_FAMILY_R2/run1/driver.py run",
+        "CPU_PERCENT": "92.5",
+        "PID": 75129,
+        "STATE": "Rs"
+      },
+      {
+        "COMMAND": "/opt/homebrew/Cellar/python@3.13/3.13.8/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -u /Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.task-data/B649_BRANCH2_K20_L4R_PARTIAL_TOP100K_EXACT_SCORE_R1/exact_score.py",
+        "CPU_PERCENT": "93.1",
+        "PID": 99834,
+        "STATE": "RN"
+      }
+    ],
+    "ACTIVE_WRITER_SNAPSHOT_COUNT": 1,
+    "CHECKED_AT_UTC": "2026-10-06T10:20:38+00:00",
+    "FINAL_LAUNCH_CHECK": "FAIL",
+    "FREE_BYTES": 9900707840,
+    "FREE_GIB": 9.220752716064453,
+    "FREE_SPACE_READ_COUNT": 1,
+    "HEAVY_SCIENTIFIC_WRITER_ACTIVE": "YES",
+    "LAUNCH": "NOT_RUN",
+    "RECHECKS": 0,
+    "REQUIRED_FREE_BYTES": 8589934592,
+    "STOP_ONCE": true,
+    "STORAGE_GATE": "PASS"
+  },
+  "FIXED_START": true,
+  "FROZEN_MANIFEST_SHA256": "744c8d9b5488abf213334bba1030cbbd7119d7f97ace99a77e1bbdef168370db",
+  "GLOBAL_TICKETS_SCORED": 0,
+  "GLOBAL_TOP_MARGINAL": 96,
+  "HEAD_AT_STOP": "594c36b573c53b77583be555e9ba9787da0d111c",
+  "IMPLEMENTATION_DEPTH": "ENHANCED",
+  "JOURNAL_PREFIX_SHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "JUDGE_DISPATCH": "SUPPRESSED",
+  "JUDGE_MODE": "NOT_APPLICABLE",
+  "MANIFEST_REGENERATED": false,
+  "MERGE": "NO",
+  "NODES_EXPLORED": 0,
+  "NODES_PRUNED": 0,
+  "NO_IMPROVEMENT_CLAIMED": false,
+  "PARITY_MISMATCHES": 0,
+  "PARITY_MISMATCHES_SCOPE": "REUSED_PRELAUNCH_EVIDENCE",
+  "PR": "NO",
+  "PRELAUNCH_STATUS": "PASS",
+  "PRELAUNCH_VERIFICATION_SHA256": "8e4ae28cf94678d21ffa3778092556b4aa1a0d6e827cceef2bb44678c21208f2",
+  "PRODUCTION_CHANGE": "NONE",
+  "PROJECT_MEMORY_WRITTEN": "NO",
+  "PROVEN_OPTIMAL_SETS": 0,
+  "PUSH": "NO",
+  "PYRIGHT": "PASS_REUSED_OWNER_AUTHORITATIVE",
+  "REPAIR_POOL_MAX": 112,
+  "REUSED_SOURCE_SHA256": {
+    "destroy-sets-frozen.json": "744c8d9b5488abf213334bba1030cbbd7119d7f97ace99a77e1bbdef168370db",
+    "start.json": "8877ea8cd82eda3276788ccc0eeee440af356213c267a113e96ea0774e8d4aa7",
+    "stratify.py": "9af6f3bc8fcf9c74640e7e238e662ece0b7ce2055e8a1853a566fd9827bac972",
+    "test_prelaunch.py": "5bdd541a95d8b925f49a8fd537ab0766d6753685cda22013f193b223d65c7dd9",
+    "wide.py": "0d530359746db8d408d77e6dc78b6930ca924c6f444841ac72d484fa82dc318f"
+  },
+  "RUFF_REMEDIATION_REPEATED": false,
+  "RUNTIME_TRANSITION_OCCURRED": false,
+  "SAMPLE_COUNT": 2048,
+  "SAMPLE_SEED": 20261007,
+  "SCHEMA_VERSION": 1,
+  "SCIENTIFIC_RESULT": "NOT_RUN",
+  "SCIENTIFIC_SOURCE_HASHES_MATCH_FINAL_PASS": true,
+  "SEALED_AT_UTC": "2026-10-06T10:20:38+00:00",
+  "SETS_COMPLETED": 0,
+  "START_COUNT": 313239661,
+  "START_SHA256": "0045ac8837fc82e9a585d812173341ac12e05c5de201af7f8fedeacafa19e1ff",
+  "STOP_REASON": "HEAVY_SCIENTIFIC_WRITER_ACTIVE",
+  "TASK_ID": "B649_K20_V7_DESTROY5_GLOBAL_POOL_2048_R1",
+  "TASK_SCOPED_RUFF": "PASS_REUSED_OWNER_AUTHORITATIVE",
+  "TASK_STATUS": "STOPPED_PRELAUNCH_GATE",
+  "VERIFIED_COMPLETED_SETS_RECOMPUTED": 0,
+  "WORKTREE": "/Users/kelvin/.codex/worktrees/b649-k20-v7-destroy5-global-pool-2048-r1/MathStatisticalAnalysis"
+}

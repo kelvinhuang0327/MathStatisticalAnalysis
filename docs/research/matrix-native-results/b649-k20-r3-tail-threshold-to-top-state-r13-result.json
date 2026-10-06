@@ -1,0 +1,382 @@
+{
+  "TASK_ID": "B649_K20_R3_TAIL_THRESHOLD_TO_TOP_STATE_R13",
+  "TASK_STATUS": "SUCCESS_B_R3_AT_OR_BELOW_TOP_STATE",
+  "BASE_HEAD": "f66424c8fc762d7ebe7128fbb3eb95481e153374",
+  "BASE_TREE": "cf32c22fdc1e71dd9e35ec0d3f3c6e02809456fd",
+  "TASK_BRANCH": "codex/b649-k20-r3-tail-threshold-to-top-state-r13",
+  "CANONICAL_PRIMITIVES": {
+    "SINGLE_TICKET_ANY_PRIZE": 18611432,
+    "PAIR_INTERSECTION_COST[6]": 18611432,
+    "K20_S1": 372228640
+  },
+  "CANONICAL_PRIMITIVE_STATUS": "PASS",
+  "UPSTREAM_FINGERPRINTS_SHA256": {
+    "src/lottolab/research/b649_k20_r3_corrected_tail_min_loss_plateau_r12.py": "4501b7a496d32a87bdbfa2d4e0951bca330a60feb8b799350cc0a76607008c92",
+    "docs/research/matrix-native-results/b649-k20-r3-corrected-tail-min-loss-plateau-r12-result.json": "fc9c31ecb106efef7867e93815772261e2d9eafc8031c62de477ee32979d3823"
+  },
+  "PRIOR_R3_BOUND": 358337063,
+  "PRIOR_BOUND_OWNER_SET": [
+    "corrected-tail"
+  ],
+  "CROSSOVER": {
+    "CANONICAL_K20_S1": 372228640,
+    "FIXED_CERTIFIED_LOSS": 7180012,
+    "CANONICAL_UNCORRECTED_BASELINE": 365048628,
+    "TOP_STATE_BOUND": 356799210,
+    "CROSSOVER_LOSS_THRESHOLD": 8249418,
+    "FORMULA": "K20_S1 - fixed certified loss - TOP_STATE_BOUND",
+    "TAIL_FLOOR_AT_THRESHOLD": 356799210,
+    "LAST_CLASSIFIED_LEVEL_LOSS": 8249367,
+    "FIRST_UNCLASSIFIED_LEVEL_LOSS": 8249444,
+    "CERTIFIED_EMPTY_LOSS_INTERVAL": [
+      8249368,
+      8249443
+    ],
+    "CLASSIFICATION_THROUGH_CROSSOVER_COMPLETE": true
+  },
+  "NO_RERUN_GUARD": {
+    "R12_LEVELS_FINGERPRINT_VALIDATED": 32,
+    "R12_VECTORS_FINGERPRINT_VALIDATED": 235,
+    "R12_LEVEL_SEQUENCE_SHA256": "ae9e2cefa334b5f8ecf3577289b9645f1445514bbd41a78271d0c41726ceda7e",
+    "R12_LEVEL_SEQUENCE_MATCHES_CERTIFICATE": true,
+    "R12_VECTORS_RECLASSIFIED": 0,
+    "R12_MAXIMUM_CARRIED_FROM_CERTIFICATE": {
+      "VECTOR_ID": "tail-vector:L6709346:0x6,1x11,17x1",
+      "VECTOR_BOUND": 356534853
+    },
+    "GUARD": "classify_vector refuses any vector below START_UNCLASSIFIED_LOSS"
+  },
+  "START_UNCLASSIFIED_LOSS": 6711565,
+  "CROSSOVER_LOSS_THRESHOLD": 8249418,
+  "LEVEL_CENSUS": {
+    "LOCAL_LOSS_CUTOFF": 6695798,
+    "VECTORS_AT_OR_BELOW_CUTOFF": 10816,
+    "ENUMERATION_LOSS_LIMIT": 8253514,
+    "ENUMERATED_VECTOR_COUNT": 45996,
+    "ATTAINED_LEVELS_AT_OR_ABOVE_CURSOR": 3644,
+    "LEVEL_COUNT_CAP": "NONE",
+    "LEVEL_DEFINITION": "A loss level is a local-loss value attained by at least one 18-ticket type-count vector; every integer strictly between consecutive levels is certified empty by the same exact enumeration."
+  },
+  "NEW_LOSS_LEVEL_COUNT": 3621,
+  "NEW_VECTOR_COUNT": 34767,
+  "NEW_REALIZABLE_VECTOR_COUNT": 34767,
+  "NEW_UNREALIZABLE_VECTOR_COUNT": 0,
+  "NEW_UNRESOLVED_VECTOR_COUNT": 0,
+  "TOTAL_CLASSIFIED_VECTOR_COUNT": 35002,
+  "REALIZABLE_VECTOR_COUNT": 35002,
+  "UNREALIZABLE_VECTOR_COUNT": 0,
+  "UNRESOLVED_VECTOR_COUNT": 0,
+  "SUPPORT_WITNESS_SHA256": "df716ef65e5bab9464f115a3ebb1e3cff01dd8667f525cf1af81888af68c7028",
+  "SUPPORT_WITNESS_VALIDATOR": "R8 validate_support_assignment (solver-independent)",
+  "CLASSIFIED_ROWS_SHA256": "3d320cb2dee7d00dc5a64d536764c8328194f9eefda16231d5c60ec8090c406e",
+  "CLASSIFIED_VECTOR_CORRECTIONS": {
+    "R6_SOURCE": "R6 type_count_envelope: max(ceil(residual pair/anchor-triple intersection mass floor / 9), frozen R5 weighted-forest floor)",
+    "MINIMUM": 1782540,
+    "MAXIMUM": 6888000,
+    "R5_FOREST_FLOOR_BINDING_COUNT": 29304,
+    "FOUR_TICKET_TRIGGER": "R6-corrected vector bound > TOP_STATE_BOUND",
+    "FOUR_TICKET_SOURCE": "R8 state_moment_floor: ceil(residual S2 floor / 9)",
+    "FOUR_TICKET_APPLIED_COUNT": 0,
+    "FOUR_TICKET_NOT_APPLICABLE_COUNT": 0,
+    "NEW_WORST_VECTOR": {
+      "VECTOR_ID": "tail-vector:L6742484:0x6,1x11,6x1",
+      "TYPE_COUNTS": [
+        [
+          0,
+          6
+        ],
+        [
+          1,
+          11
+        ],
+        [
+          6,
+          1
+        ]
+      ],
+      "LOCAL_LOSS": 6742484,
+      "CORRECTION": 1804199,
+      "FOUR_TICKET_STATUS": "NOT_REQUIRED_R6_BOUND_AT_OR_BELOW_TOP_STATE",
+      "VECTOR_BOUND": 356501945,
+      "SLACK_BELOW_TOP_STATE": 297265
+    }
+  },
+  "NEXT_UNCLASSIFIED_LOSS": 8249444,
+  "UNCLASSIFIED_TAIL_BOUND": 356799184,
+  "MAX_CLASSIFIED_VECTOR_BOUND": 356534853,
+  "MAX_CLASSIFIED_VECTOR_ID": "tail-vector:L6709346:0x6,1x11,17x1",
+  "TOP_STATE_BOUND": 356799210,
+  "TOP_LEVEL_R3_TERMS": [
+    {
+      "stable_id": "unclassified-tail",
+      "bound": 356799184
+    },
+    {
+      "stable_id": "tail-vector:L6709346:0x6,1x11,17x1",
+      "bound": 356534853
+    },
+    {
+      "stable_id": "state:s2-10833008-s3-427140",
+      "bound": 354671803
+    },
+    {
+      "stable_id": "state:s2-11298977-s3-504238",
+      "bound": 354399779
+    },
+    {
+      "stable_id": "state:s2-11295555-s3-450450",
+      "bound": 354332053
+    },
+    {
+      "stable_id": "state:s2-11764636-s3-581336",
+      "bound": 354215592
+    },
+    {
+      "stable_id": "state:s2-11761525-s3-527548",
+      "bound": 354059548
+    },
+    {
+      "stable_id": "state:s2-12229984-s3-658434",
+      "bound": 353923259
+    },
+    {
+      "stable_id": "state:s2-12227184-s3-604646",
+      "bound": 353872346
+    },
+    {
+      "stable_id": "state:s2-12695020-s3-735532",
+      "bound": 356799210
+    },
+    {
+      "stable_id": "state:s2-12692531-s3-681744",
+      "bound": 356747911
+    },
+    {
+      "stable_id": "state:s2-13169800-s3-789320",
+      "bound": 356378218
+    },
+    {
+      "stable_id": "state:s2-13548976-s3-951748",
+      "bound": 356161470
+    },
+    {
+      "stable_id": "state:s2-14122976-s3-1005536",
+      "bound": 355641258
+    },
+    {
+      "stable_id": "state:s2-14696976-s3-1059324",
+      "bound": 355121046
+    },
+    {
+      "stable_id": "state:s2-15270976-s3-1113112",
+      "bound": 354600834
+    },
+    {
+      "stable_id": "state:s2-15754130-s3-1115170",
+      "bound": 354119738
+    },
+    {
+      "stable_id": "state:s2-15844976-s3-1166900",
+      "bound": 354080622
+    },
+    {
+      "stable_id": "state:s2-16328130-s3-1168958",
+      "bound": 353599526
+    },
+    {
+      "stable_id": "state:s2-16798152-s3-1383116",
+      "bound": 353343662
+    },
+    {
+      "stable_id": "state:s2-16608564-s3-1182916",
+      "bound": 353333050
+    },
+    {
+      "stable_id": "state:s2-16794330-s3-1246056",
+      "bound": 353210424
+    },
+    {
+      "stable_id": "state:s2-17743684-s3-1816864",
+      "bound": 352831878
+    },
+    {
+      "stable_id": "state:s2-17372152-s3-1436904",
+      "bound": 352823450
+    },
+    {
+      "stable_id": "state:s2-18317684-s3-1870652",
+      "bound": 352311666
+    }
+  ],
+  "R3_FORMULA": "max(UNCLASSIFIED_TAIL_BOUND, MAX_CLASSIFIED_VECTOR_BOUND, TOP_STATE_BOUND, remaining 22 state terms)",
+  "R3_BOUND": 356799210,
+  "R3_BOUND_OWNER": "state:s2-12695020-s3-735532",
+  "CURRENT_BOUND_OWNER_SET": [
+    "state:s2-12695020-s3-735532"
+  ],
+  "R3_STATUS": "CERTIFIED_CORRECTED_TAIL_NO_LONGER_EXCEEDS_TOP_STATE",
+  "R3_TIGHTENING": 1537853,
+  "OWNER_TRANSITIONS": [
+    {
+      "ordinal": 1,
+      "next_unclassified_loss": 6711964,
+      "from": [
+        "corrected-tail"
+      ],
+      "to": [
+        "unclassified-tail"
+      ],
+      "r3_bound": 358336664
+    },
+    {
+      "ordinal": 3621,
+      "next_unclassified_loss": 8249444,
+      "from": [
+        "unclassified-tail"
+      ],
+      "to": [
+        "state:s2-12695020-s3-735532"
+      ],
+      "r3_bound": 356799210
+    }
+  ],
+  "TRAJECTORY_CHECKPOINTS": [
+    {
+      "ordinal": 1,
+      "local_loss": 6711565,
+      "vector_count": 4,
+      "next_unclassified_loss": 6711964,
+      "unclassified_tail_bound": 358336664,
+      "max_classified_vector_bound": 356534853,
+      "max_classified_vector_id": "tail-vector:L6709346:0x6,1x11,17x1",
+      "r3_bound": 358336664,
+      "owner_set": [
+        "unclassified-tail"
+      ]
+    },
+    {
+      "ordinal": 512,
+      "local_loss": 7045556,
+      "vector_count": 18,
+      "next_unclassified_loss": 7046256,
+      "unclassified_tail_bound": 358002372,
+      "max_classified_vector_bound": 356534853,
+      "max_classified_vector_id": "tail-vector:L6709346:0x6,1x11,17x1",
+      "r3_bound": 358002372,
+      "owner_set": [
+        "unclassified-tail"
+      ]
+    },
+    {
+      "ordinal": 1024,
+      "local_loss": 7323946,
+      "vector_count": 12,
+      "next_unclassified_loss": 7323995,
+      "unclassified_tail_bound": 357724633,
+      "max_classified_vector_bound": 356534853,
+      "max_classified_vector_id": "tail-vector:L6709346:0x6,1x11,17x1",
+      "r3_bound": 357724633,
+      "owner_set": [
+        "unclassified-tail"
+      ]
+    },
+    {
+      "ordinal": 1536,
+      "local_loss": 7559783,
+      "vector_count": 8,
+      "next_unclassified_loss": 7560028,
+      "unclassified_tail_bound": 357488600,
+      "max_classified_vector_bound": 356534853,
+      "max_classified_vector_id": "tail-vector:L6709346:0x6,1x11,17x1",
+      "r3_bound": 357488600,
+      "owner_set": [
+        "unclassified-tail"
+      ]
+    },
+    {
+      "ordinal": 2048,
+      "local_loss": 7755076,
+      "vector_count": 36,
+      "next_unclassified_loss": 7756224,
+      "unclassified_tail_bound": 357292404,
+      "max_classified_vector_bound": 356534853,
+      "max_classified_vector_id": "tail-vector:L6709346:0x6,1x11,17x1",
+      "r3_bound": 357292404,
+      "owner_set": [
+        "unclassified-tail"
+      ]
+    },
+    {
+      "ordinal": 2560,
+      "local_loss": 7923566,
+      "vector_count": 6,
+      "next_unclassified_loss": 7923790,
+      "unclassified_tail_bound": 357124838,
+      "max_classified_vector_bound": 356534853,
+      "max_classified_vector_id": "tail-vector:L6709346:0x6,1x11,17x1",
+      "r3_bound": 357124838,
+      "owner_set": [
+        "unclassified-tail"
+      ]
+    },
+    {
+      "ordinal": 3072,
+      "local_loss": 8088290,
+      "vector_count": 2,
+      "next_unclassified_loss": 8088472,
+      "unclassified_tail_bound": 356960156,
+      "max_classified_vector_bound": 356534853,
+      "max_classified_vector_id": "tail-vector:L6709346:0x6,1x11,17x1",
+      "r3_bound": 356960156,
+      "owner_set": [
+        "unclassified-tail"
+      ]
+    },
+    {
+      "ordinal": 3584,
+      "local_loss": 8240442,
+      "vector_count": 12,
+      "next_unclassified_loss": 8240470,
+      "unclassified_tail_bound": 356808158,
+      "max_classified_vector_bound": 356534853,
+      "max_classified_vector_id": "tail-vector:L6709346:0x6,1x11,17x1",
+      "r3_bound": 356808158,
+      "owner_set": [
+        "unclassified-tail"
+      ]
+    },
+    {
+      "ordinal": 3621,
+      "local_loss": 8249367,
+      "vector_count": 4,
+      "next_unclassified_loss": 8249444,
+      "unclassified_tail_bound": 356799184,
+      "max_classified_vector_bound": 356534853,
+      "max_classified_vector_id": "tail-vector:L6709346:0x6,1x11,17x1",
+      "r3_bound": 356799210,
+      "owner_set": [
+        "state:s2-12695020-s3-735532"
+      ]
+    }
+  ],
+  "TRAJECTORY_SHA256": "3c475fde87862821523aa8b0c876d132cac29b7ea1f453d9424e1983331a60d0",
+  "STOP_CONDITION": "B_R3_AT_OR_BELOW_TOP_STATE",
+  "STOP_FLAGS": {
+    "A_R3_AT_OR_BELOW_R4_REFERENCE": false,
+    "B_R3_AT_OR_BELOW_TOP_STATE": true,
+    "C_CLASSIFIED_VECTOR_OWNER_IDENTIFIED": false,
+    "D_PROOF_WALL_BUDGET_EXHAUSTED": false
+  },
+  "SUCCESS_A": false,
+  "SUCCESS_B": true,
+  "SUCCESS_C": true,
+  "R4_REFERENCE_BOUND": 350545749,
+  "INCUMBENT": 313239661,
+  "REMAINING_GAP": 43559549,
+  "PROOF_WALL_SECONDS": 31.26227,
+  "PROOF_WALL_BUDGET_SECONDS": 3600.0,
+  "SOLVER_STATUS": "NOT_USED_EXACT_TYPE_COUNT_CENSUS_AND_CONSTRUCTIVE_WITNESSES",
+  "OUTCOME_SPACE_ENUMERATED": "NO",
+  "NEW_PORTFOLIO_SEARCH_STARTED": "NO",
+  "PRODUCTION_MUTATION": "NONE"
+}

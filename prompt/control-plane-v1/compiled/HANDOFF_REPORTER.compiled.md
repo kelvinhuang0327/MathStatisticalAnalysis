@@ -1,7 +1,7 @@
 # Handoff Reporter — Compiled Control Plane v1
 Document status: `DRAFT_FOR_OWNER_REVIEW`
 Generated artifact: do not edit manually.
-Durable-source fingerprint: `sha256:91b4db6bba1f39a04fb5e283f3c0be7f54c990d75fa22fa7a566fb740f6235f2`
+Durable-source fingerprint: `sha256:c87e693f26d20cb008ad3571a1cb5ecb735d6b5e5636c1ba1b777d7603f78dd4`
 This prompt is standalone; embedded rules require no source-file access.
 <!-- SHARED_CORE:START -->
 ## Operating contract

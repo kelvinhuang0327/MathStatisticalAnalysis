@@ -64,6 +64,15 @@ def load_example(filename: str) -> dict[str, Any]:
     )
 
 
+def authorized_medium_manifest() -> dict[str, Any]:
+    manifest = load_example("medium-implementation.task.yaml")
+    authorization = cast(dict[str, Any], manifest["authorization"])
+    authorization.update(
+        {"state": "PRESENT", "owner_statement_ref": "OWNER_MESSAGE_REF:research-gate"}
+    )
+    return manifest
+
+
 def write_manifest(path: Path, manifest: dict[str, Any]) -> None:
     path.write_text(
         json.dumps(manifest, ensure_ascii=False, indent=2) + "\n",
@@ -131,6 +140,52 @@ def assert_manifest_rejected(
     assert render.stdout == ""
     assert not output_path.exists()
     assert control_plane_snapshot() == before
+
+
+def assert_research_preflight_rejected(
+    manifest: dict[str, Any], tmp_path: Path, status: str
+) -> None:
+    manifest_path = tmp_path / "research-preflight.task.yaml"
+    output_path = tmp_path / "research-preflight.worker.md"
+    write_manifest(manifest_path, manifest)
+
+    lint = run_tool("lint", "--manifest", str(manifest_path), check=False)
+    assert lint.returncode == 1
+    assert status in lint.stderr
+    assert lint.stdout == ""
+
+    render = run_tool(
+        "render",
+        "--manifest",
+        str(manifest_path),
+        "--output",
+        str(output_path),
+        check=False,
+    )
+    assert render.returncode == 1
+    assert status in render.stderr
+    assert render.stdout == ""
+    assert not output_path.exists()
+
+
+def assert_research_preflight_passes(
+    manifest: dict[str, Any], tmp_path: Path
+) -> None:
+    manifest_path = tmp_path / "research-preflight.task.yaml"
+    output_path = tmp_path / "research-preflight.worker.md"
+    write_manifest(manifest_path, manifest)
+
+    lint = run_tool("lint", "--manifest", str(manifest_path))
+    assert "PASS control-plane lint" in lint.stdout
+    render = run_tool(
+        "render",
+        "--manifest",
+        str(manifest_path),
+        "--output",
+        str(output_path),
+    )
+    assert "PASS Worker Prompt rendered" in render.stdout
+    assert output_path.is_file()
 
 
 def assert_render_blocked(
@@ -245,6 +300,92 @@ def test_examples_lint_and_invalid_authorization_is_rejected(tmp_path: Path) -> 
     result = run_tool("lint", "--manifest", str(invalid), check=False)
     assert result.returncode == 1
     assert "$.authorization.class: expected constant 'SINGLE_PROMPT'" in result.stderr
+
+
+def test_canonical_primitive_preflight_passes_current_authorities(tmp_path: Path) -> None:
+    manifest = authorized_medium_manifest()
+    task = cast(dict[str, Any], manifest["task"])
+    task["canonical_primitives"] = {
+        "SINGLE_TICKET_ANY_PRIZE": 18_611_432,
+        "PAIR_INTERSECTION_COST[6]": 18_611_432,
+        "K20_S1": 372_228_640,
+    }
+
+    assert_research_preflight_passes(manifest, tmp_path)
+
+
+def test_canonical_primitive_preflight_rejects_stale_single_ticket_value(
+    tmp_path: Path,
+) -> None:
+    manifest = authorized_medium_manifest()
+    task = cast(dict[str, Any], manifest["task"])
+    task["canonical_primitives"] = {"SINGLE_TICKET_ANY_PRIZE": 18_221_078}
+
+    assert_research_preflight_rejected(
+        manifest, tmp_path, "CANONICAL_PRIMITIVE_AUTHORITY_INVALID"
+    )
+
+
+def test_canonical_primitive_preflight_rejects_pair_intersection_mismatch(
+    tmp_path: Path,
+) -> None:
+    manifest = authorized_medium_manifest()
+    task = cast(dict[str, Any], manifest["task"])
+    task["canonical_primitives"] = {"PAIR_INTERSECTION_COST[6]": 18_611_433}
+
+    assert_research_preflight_rejected(
+        manifest, tmp_path, "CANONICAL_PRIMITIVE_AUTHORITY_INVALID"
+    )
+
+
+def test_canonical_primitive_preflight_rejects_k20_s1_mismatch(tmp_path: Path) -> None:
+    manifest = authorized_medium_manifest()
+    task = cast(dict[str, Any], manifest["task"])
+    task["canonical_primitives"] = {"K20_S1": 372_228_639}
+
+    assert_research_preflight_rejected(
+        manifest, tmp_path, "CANONICAL_PRIMITIVE_AUTHORITY_INVALID"
+    )
+
+
+def test_load_bearing_target_preflight_passes(tmp_path: Path) -> None:
+    manifest = authorized_medium_manifest()
+    task = cast(dict[str, Any], manifest["task"])
+    task["load_bearing_target"] = {
+        "CURRENT_FAMILY_BOUND": 372_228_640,
+        "CURRENT_BOUND_OWNER": "K20_S1 family bound",
+        "TARGET_BOUND": "strictly below the current family bound",
+        "TARGET_CAN_CHANGE_CURRENT_BOUND": True,
+    }
+
+    assert_research_preflight_passes(manifest, tmp_path)
+
+
+def test_non_load_bearing_target_preflight_blocks_render(tmp_path: Path) -> None:
+    manifest = authorized_medium_manifest()
+    task = cast(dict[str, Any], manifest["task"])
+    task["load_bearing_target"] = {
+        "CURRENT_FAMILY_BOUND": 372_228_640,
+        "CURRENT_BOUND_OWNER": "K20_S1 family bound",
+        "TARGET_BOUND": "a local subcase bound",
+        "TARGET_CAN_CHANGE_CURRENT_BOUND": False,
+    }
+
+    assert_research_preflight_rejected(manifest, tmp_path, "NON_LOAD_BEARING_TARGET")
+
+
+def test_explicit_prerequisite_exception_passes(tmp_path: Path) -> None:
+    manifest = authorized_medium_manifest()
+    task = cast(dict[str, Any], manifest["task"])
+    task["load_bearing_target"] = {
+        "CURRENT_FAMILY_BOUND": "K20_S1 = 372228640",
+        "CURRENT_BOUND_OWNER": "K20_S1 family bound",
+        "TARGET_BOUND": "a prerequisite needed to tighten K20_S1",
+        "TARGET_CAN_CHANGE_CURRENT_BOUND": False,
+        "TARGET_IS_EXPLICIT_PREREQUISITE": True,
+    }
+
+    assert_research_preflight_passes(manifest, tmp_path)
 
 
 def test_l23_safe_reference_grammar_and_metadata_rendering(tmp_path: Path) -> None:

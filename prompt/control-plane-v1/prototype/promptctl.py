@@ -17,6 +17,14 @@ COMPILED_DIR = ROOT / "compiled"
 L23 = "L23_UNSAFE_OWNER_STATEMENT_REFERENCE"
 L24 = "L24_WORKTREE_REQUIRED_FOR_REPOSITORY_WRITES"
 L25 = "L25_AUTHORIZATION_REQUIRED_BEFORE_RENDER"
+CANONICAL_PRIMITIVE_AUTHORITY_INVALID = "CANONICAL_PRIMITIVE_AUTHORITY_INVALID"
+NON_LOAD_BEARING_TARGET = "NON_LOAD_BEARING_TARGET"
+_CANONICAL_SINGLE_TICKET_ANY_PRIZE = 18_611_432
+_CANONICAL_RESEARCH_PRIMITIVES = {
+    "SINGLE_TICKET_ANY_PRIZE": _CANONICAL_SINGLE_TICKET_ANY_PRIZE,
+    "PAIR_INTERSECTION_COST[6]": _CANONICAL_SINGLE_TICKET_ANY_PRIZE,
+    "K20_S1": 20 * _CANONICAL_SINGLE_TICKET_ANY_PRIZE,
+}
 
 OWNER_REFERENCE_PATTERN = re.compile(
     r"(?:NOT_REQUIRED|PENDING_OWNER_REFERENCE|"
@@ -211,7 +219,14 @@ def _json_yaml(path: Path) -> Any:
         ) from exc
 
 
-def _matches_type(value: Any, expected: str) -> bool:
+def _matches_type(value: Any, expected: Any) -> bool:
+    if isinstance(expected, list):
+        for candidate in cast(list[Any], expected):
+            if isinstance(candidate, str) and _matches_type(value, candidate):
+                return True
+        return False
+    if not isinstance(expected, str):
+        return False
     if expected == "object":
         return isinstance(value, dict)
     if expected == "array":
@@ -237,8 +252,15 @@ def _schema_errors(value: Any, schema: dict[str, Any], path: str = "$") -> list[
         errors.append(f"{path}: expected one of {schema['enum']!r}")
 
     expected_type = schema.get("type")
-    if isinstance(expected_type, str) and not _matches_type(value, expected_type):
-        return [f"{path}: expected {expected_type}, got {type(value).__name__}"]
+    if isinstance(expected_type, (str, list)) and not _matches_type(
+        value, expected_type
+    ):
+        expected_label = (
+            expected_type
+            if isinstance(expected_type, str)
+            else " or ".join(str(item) for item in cast(list[Any], expected_type))
+        )
+        return [f"{path}: expected {expected_label}, got {type(value).__name__}"]
 
     if isinstance(value, dict):
         object_value = cast(dict[str, Any], value)
@@ -319,7 +341,7 @@ def _is_exact_value(value: Any) -> bool:
 
 
 def _manifest_contract_errors(manifest: dict[str, Any]) -> list[str]:
-    errors: list[str] = []
+    errors = _research_preflight_errors(manifest)
     authorization_value = manifest.get("authorization")
     if isinstance(authorization_value, dict):
         authorization = cast(dict[str, Any], authorization_value)
@@ -390,6 +412,38 @@ def _manifest_contract_errors(manifest: dict[str, Any]) -> list[str]:
         elif repository_writes:
             errors.append(
                 f"{L24}: repository writes require a supported write-capable worktree mode"
+            )
+    return errors
+
+
+def _research_preflight_errors(manifest: dict[str, Any]) -> list[str]:
+    task_value = manifest.get("task")
+    if not isinstance(task_value, dict):
+        return []
+
+    task = cast(dict[str, Any], task_value)
+    errors: list[str] = []
+    primitives_value = task.get("canonical_primitives")
+    if isinstance(primitives_value, dict):
+        primitives = cast(dict[str, Any], primitives_value)
+        for name, expected in _CANONICAL_RESEARCH_PRIMITIVES.items():
+            if name in primitives and primitives[name] != expected:
+                errors.append(
+                    f"{CANONICAL_PRIMITIVE_AUTHORITY_INVALID}: "
+                    f"$.task.canonical_primitives.{name}={primitives[name]!r}; "
+                    f"expected {expected}"
+                )
+
+    target_value = task.get("load_bearing_target")
+    if isinstance(target_value, dict):
+        target = cast(dict[str, Any], target_value)
+        if (
+            target.get("TARGET_CAN_CHANGE_CURRENT_BOUND") is False
+            and target.get("TARGET_IS_EXPLICIT_PREREQUISITE") is not True
+        ):
+            errors.append(
+                f"{NON_LOAD_BEARING_TARGET}: $.task.load_bearing_target target "
+                "cannot change the current family bound and is not an explicit prerequisite"
             )
     return errors
 

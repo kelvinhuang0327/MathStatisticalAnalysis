@@ -1,7 +1,7 @@
 # Planner / Task Compiler — Compiled Control Plane v1
 Document status: `DRAFT_FOR_OWNER_REVIEW`
 Generated artifact: do not edit manually.
-Durable-source fingerprint: `sha256:91b4db6bba1f39a04fb5e283f3c0be7f54c990d75fa22fa7a566fb740f6235f2`
+Durable-source fingerprint: `sha256:c87e693f26d20cb008ad3571a1cb5ecb735d6b5e5636c1ba1b777d7603f78dd4`
 This prompt is standalone; embedded rules require no source-file access.
 <!-- SHARED_CORE:START -->
 ## Operating contract
@@ -300,7 +300,28 @@ The following JSON-compatible YAML schema is normative for compilation.
         "id": {"type": "string", "pattern": "^[A-Z0-9][A-Z0-9_-]{2,79}$"},
         "title": {"type": "string", "minLength": 3},
         "goal": {"type": "string", "minLength": 10},
-        "steps": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 3}}
+        "steps": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 3}},
+        "canonical_primitives": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "SINGLE_TICKET_ANY_PRIZE": {"type": "integer"},
+            "PAIR_INTERSECTION_COST[6]": {"type": "integer"},
+            "K20_S1": {"type": "integer"}
+          }
+        },
+        "load_bearing_target": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["CURRENT_FAMILY_BOUND", "CURRENT_BOUND_OWNER", "TARGET_BOUND", "TARGET_CAN_CHANGE_CURRENT_BOUND"],
+          "properties": {
+            "CURRENT_FAMILY_BOUND": {"type": ["number", "string"], "minLength": 1},
+            "CURRENT_BOUND_OWNER": {"type": "string", "minLength": 1},
+            "TARGET_BOUND": {"type": ["number", "string"], "minLength": 1},
+            "TARGET_CAN_CHANGE_CURRENT_BOUND": {"type": "boolean"},
+            "TARGET_IS_EXPLICIT_PREREQUISITE": {"type": "boolean"}
+          }
+        }
       }
     },
     "project": {

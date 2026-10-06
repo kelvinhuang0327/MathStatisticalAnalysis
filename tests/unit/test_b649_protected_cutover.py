@@ -3203,6 +3203,56 @@ def _configure_not_started_reconcile_cli(
     monkeypatch.setattr(cutover, "run_command", harness.runner)
 
 
+def _configure_cross_control_not_started_reconcile_cli(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    incident: StrandedIncident,
+    *,
+    recovery_head: str = "a" * 40,
+    recovery_tree: str = "b" * 40,
+) -> None:
+    def fixed_config(_args: argparse.Namespace, *, for_action: str) -> cutover.CutoverConfig:
+        del for_action
+        return incident.request.config
+
+    monkeypatch.setattr(protected, "build_reservation_config", fixed_config)
+    monkeypatch.setattr(protected, "repository_claim_root", lambda: incident.request.claim_root)
+    monkeypatch.setattr(protected, "control_identity", lambda: (recovery_head, recovery_tree))
+    monkeypatch.setattr(
+        cutover,
+        "control_version",
+        lambda: {"head": recovery_head, "tree": recovery_tree},
+    )
+    monkeypatch.setattr(cutover, "run_command", harness.runner)
+
+
+def _cross_control_not_started_argv(
+    incident: StrandedIncident,
+    *,
+    original_control: tuple[str, str] | None = None,
+    recovery_control: tuple[str, str] = ("a" * 40, "b" * 40),
+) -> list[str]:
+    if original_control is None:
+        original_control = (
+            cast(str, incident.request.identity["control_head"]),
+            cast(str, incident.request.identity["control_tree"]),
+        )
+    argv = _not_started_reconciliation_argv(incident)
+    argv.extend(
+        [
+            "--original-control-head",
+            original_control[0],
+            "--original-control-tree",
+            original_control[1],
+            "--current-recovery-control-head",
+            recovery_control[0],
+            "--current-recovery-control-tree",
+            recovery_control[1],
+        ]
+    )
+    return argv
+
+
 def _write_snapshot(harness: Harness, incident: StrandedIncident) -> dict[Path, bytes | None]:
     config = incident.request.config
     paths = {
@@ -3385,6 +3435,340 @@ def test_legacy_masked_not_started_terminal_reconciles_from_saved_process_output
     archived, archived_identity, _ = cutover.read_control_json(archived_path)
     assert archived == stranded
     assert archived_identity.sha256 == hashlib.sha256(archived_path.read_bytes()).hexdigest()
+    assert tuple(harness.launchd.mutation_calls) == incident.mutations_before
+
+
+def test_historical_not_started_incident_reconciles_across_control_versions(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    incident = _make_stranded_prestart_incident(
+        harness,
+        monkeypatch,
+        preserve_legacy_parent_behavior=False,
+        same_control_version=True,
+        not_started_result=True,
+    )
+    request = incident.request
+    receipt_file = protected.ReceiptFile(request.receipt_path)
+    captured = receipt_file.read()
+    assert captured is not None
+    legacy_masked = {
+        **captured,
+        "status": "INCOMPLETE_OR_AMBIGUOUS",
+        "result_status": "INCOMPLETE_OR_AMBIGUOUS",
+        "child_exit_code": None,
+        "stdout": None,
+        "stderr": None,
+    }
+    legacy_masked.pop("child_completed_at")
+    legacy_masked.pop("unchanged_predecessor_managed_receipt")
+    stranded = receipt_file.write(legacy_masked, expected=captured)
+    original_receipt_bytes = request.receipt_path.read_bytes()
+    managed_receipt_bytes = request.config.receipt_path.read_bytes()
+    original_control = (
+        cast(str, request.identity["control_head"]),
+        cast(str, request.identity["control_tree"]),
+    )
+    recovery_control = ("a" * 40, "b" * 40)
+    _configure_cross_control_not_started_reconcile_cli(
+        harness,
+        monkeypatch,
+        incident,
+        recovery_head=recovery_control[0],
+        recovery_tree=recovery_control[1],
+    )
+    argv = _cross_control_not_started_argv(
+        incident,
+        original_control=original_control,
+        recovery_control=recovery_control,
+    )
+
+    real_save_owner = cutover._save_control_owner
+    observed_sealed_release: list[bool] = []
+
+    def save_owner_after_sealed_reconciliation(
+        config: cutover.CutoverConfig,
+        value: protected.Record,
+        *,
+        expected: cutover.FileIdentity | None,
+    ) -> protected.Record:
+        if value.get("phase") == "RELEASED":
+            release = protected.record(value.get("release_evidence"))
+            reconciliation_path = Path(str(release["reconciliation_record_path"]))
+            reconciliation, reconciliation_identity = protected._load_prestart_reconciliation(
+                reconciliation_path
+            )
+            assert reconciliation_identity.sha256 == release["reconciliation_record_sha256"]
+            archived_path = Path(str(reconciliation["stranded_protected_receipt_archive"]))
+            assert archived_path.read_bytes() == original_receipt_bytes
+            assert not request.receipt_path.exists()
+            observed_sealed_release.append(True)
+        return real_save_owner(config, value, expected=expected)
+
+    monkeypatch.setattr(cutover, "_save_control_owner", save_owner_after_sealed_reconciliation)
+    before = _write_snapshot(harness, incident)
+    assert protected.main(argv) == 0
+    result = json.loads(capsys.readouterr().out.splitlines()[-1])
+    assert result["status"] == "RECONCILED"
+    assert observed_sealed_release == [True]
+
+    reconciliation_path = protected._prestart_reconciliation_record_path(
+        request.config, str(request.reservation_id)
+    )
+    reconciliation, reconciliation_identity = protected._load_prestart_reconciliation(
+        reconciliation_path
+    )
+    assert reconciliation["control_identity"] == {
+        "head": original_control[0],
+        "tree": original_control[1],
+    }
+    assert reconciliation["original_control_identity"] == reconciliation["control_identity"]
+    assert reconciliation["recovery_control_identity"] == {
+        "head": recovery_control[0],
+        "tree": recovery_control[1],
+    }
+    released = cutover.inspect_control_owner(request.config)
+    assert released is not None and released["phase"] == "RELEASED"
+    release_evidence = protected.record(released["release_evidence"])
+    assert release_evidence["reconciliation_record_sha256"] == reconciliation_identity.sha256
+    archive_path = request.receipt_path.with_name(
+        f"{request.receipt_path.stem}.{stranded['execution_id']}.superseded.json"
+    )
+    assert archive_path.read_bytes() == original_receipt_bytes
+    assert request.config.receipt_path.read_bytes() == managed_receipt_bytes
+    assert tuple(harness.launchd.mutation_calls) == incident.mutations_before
+
+    successor = protected.make_request(
+        request.config,
+        request.legacy_worktree,
+        request.legacy_head,
+        request.legacy_tree,
+        request.plan_file,
+        request.claim_root,
+        reservation_id=str(uuid4()),
+        prior_execution_receipt_sha256=incident.predecessor_sha256,
+    )
+    successor_proof = protected._require_released_success_evidence(
+        successor, released, runner=harness.launchd
+    )
+    assert successor_proof is not None
+    assert successor_proof["prior_protected_receipt_sha256"] == incident.predecessor_sha256
+
+    after_first = _write_snapshot(harness, incident)
+    assert after_first != before
+    assert protected.main(argv) == 0
+    retry = json.loads(capsys.readouterr().out.splitlines()[-1])
+    assert retry["status"] == "ALREADY_RECONCILED"
+    assert _write_snapshot(harness, incident) == after_first
+
+
+@pytest.mark.parametrize(
+    "defect",
+    [
+        "owner_original_control_mismatch",
+        "running_recovery_mismatch",
+        "identities_equal",
+        "partial_args",
+    ],
+)
+def test_cross_control_not_started_rejects_conflicting_control_authority_without_writes(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    defect: str,
+) -> None:
+    incident = _make_stranded_prestart_incident(
+        harness,
+        monkeypatch,
+        preserve_legacy_parent_behavior=False,
+        not_started_result=True,
+    )
+    recovery_control = ("a" * 40, "b" * 40)
+    _configure_cross_control_not_started_reconcile_cli(
+        harness,
+        monkeypatch,
+        incident,
+        recovery_head=recovery_control[0],
+        recovery_tree=recovery_control[1],
+    )
+    original_control = (
+        cast(str, incident.request.identity["control_head"]),
+        cast(str, incident.request.identity["control_tree"]),
+    )
+    argv = _cross_control_not_started_argv(incident, recovery_control=recovery_control)
+    if defect == "owner_original_control_mismatch":
+        stored = cutover._read_control_owner(incident.request.config)
+        assert stored is not None
+        owner, identity = stored
+        cutover._save_control_owner(
+            incident.request.config,
+            {**owner, "control_head": "f" * 40},
+            expected=identity,
+        )
+    elif defect == "running_recovery_mismatch":
+        monkeypatch.setattr(
+            cutover,
+            "control_version",
+            lambda: {"head": "c" * 40, "tree": recovery_control[1]},
+        )
+    elif defect == "identities_equal":
+        argv[argv.index("--current-recovery-control-head") + 1] = original_control[0]
+        argv[argv.index("--current-recovery-control-tree") + 1] = original_control[1]
+        monkeypatch.setattr(protected, "control_identity", lambda: original_control)
+        monkeypatch.setattr(
+            cutover,
+            "control_version",
+            lambda: {"head": original_control[0], "tree": original_control[1]},
+        )
+    else:
+        del argv[-4:]
+
+    before = _write_snapshot(harness, incident)
+    assert protected.main(argv) == claims.UNVERIFIABLE
+    capsys.readouterr()
+    assert _write_snapshot(harness, incident) == before
+    assert tuple(harness.launchd.mutation_calls) == incident.mutations_before
+
+
+@pytest.mark.parametrize(
+    "defect",
+    [
+        "reservation",
+        "operation",
+        "stranded_sha",
+        "managed_sha",
+        "predecessor_sha",
+        "plan_sha",
+        "plan_digest",
+        "owner_mutation_started",
+        "managed_receipt_drift",
+        "operation_managed_receipt_present",
+        "claim_active",
+        "rollback_receipt",
+        "old_plist_drift",
+        "new_target_drift",
+    ],
+)
+def test_cross_control_not_started_preserves_exact_proofs_and_writes_nothing_on_drift(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    defect: str,
+) -> None:
+    incident = _make_stranded_prestart_incident(
+        harness,
+        monkeypatch,
+        preserve_legacy_parent_behavior=False,
+        not_started_result=True,
+    )
+    recovery_control = ("a" * 40, "b" * 40)
+    _configure_cross_control_not_started_reconcile_cli(
+        harness,
+        monkeypatch,
+        incident,
+        recovery_head=recovery_control[0],
+        recovery_tree=recovery_control[1],
+    )
+    argv = _cross_control_not_started_argv(incident, recovery_control=recovery_control)
+    if defect in {
+        "reservation",
+        "operation",
+        "stranded_sha",
+        "managed_sha",
+        "predecessor_sha",
+        "plan_sha",
+        "plan_digest",
+    }:
+        flag = {
+            "reservation": "--reservation-id",
+            "operation": "--operation-id",
+            "stranded_sha": "--stranded-protected-receipt-sha256",
+            "managed_sha": "--managed-receipt-sha256",
+            "predecessor_sha": "--predecessor-protected-receipt-sha256",
+            "plan_sha": "--plan-sha256",
+            "plan_digest": "--plan-digest",
+        }[defect]
+        replacement = {
+            "reservation": str(uuid4()),
+            "operation": uuid4().hex,
+            "stranded_sha": "f" * 64,
+            "managed_sha": "e" * 64,
+            "predecessor_sha": "d" * 64,
+            "plan_sha": "c" * 64,
+            "plan_digest": "b" * 64,
+        }[defect]
+        argv[argv.index(flag) + 1] = replacement
+    elif defect == "owner_mutation_started":
+        stored = cutover._read_control_owner(incident.request.config)
+        assert stored is not None
+        owner, identity = stored
+        cutover._save_control_owner(
+            incident.request.config,
+            {**owner, "phase": "MUTATION_IN_PROGRESS", "mutation_started": True},
+            expected=identity,
+        )
+    elif defect == "managed_receipt_drift":
+        managed, identity, _ = cutover.read_control_json(incident.request.config.receipt_path)
+        cutover._write_json(
+            incident.request.config.receipt_path,
+            {**managed, "operation_id": incident.request.operation_id},
+            expected=identity,
+        )
+    elif defect == "operation_managed_receipt_present":
+        receipt_file = protected.ReceiptFile(incident.request.receipt_path)
+        stranded = receipt_file.read()
+        assert stranded is not None
+        receipt_file.write(
+            {
+                **stranded,
+                "managed_receipt": {
+                    "path": str(incident.request.config.receipt_path),
+                    "sha256": incident.managed_sha256,
+                    "status": "SUCCESS",
+                },
+            },
+            expected=stranded,
+        )
+    elif defect == "claim_active":
+        pass
+    elif defect == "rollback_receipt":
+        (incident.request.config.scheduler_root / protected.ROLLBACK_RECEIPT_NAME).write_text(
+            "{}", encoding="utf-8"
+        )
+    elif defect == "old_plist_drift":
+        incident.request.config.plist_path.write_bytes(b"drifted OLD plist")
+    elif defect == "new_target_drift":
+        receipt_file = protected.ReceiptFile(incident.request.receipt_path)
+        stranded = receipt_file.read()
+        assert stranded is not None
+        operation_identity = dict(protected.record(stranded["identity"]))
+        target = protected.record(operation_identity["target"])
+        operation_identity["target"] = {**target, "head": "f" * 40}
+        receipt_file.write(
+            {
+                **stranded,
+                "identity": operation_identity,
+                "execution_id": protected.digest(operation_identity),
+            },
+            expected=stranded,
+        )
+
+    before = _write_snapshot(harness, incident)
+    if defect == "claim_active":
+        with monkeypatch.context() as claim_patch:
+
+            def active_claim(_store: claims.ClaimStore, _task_key: str) -> dict[str, object]:
+                return {"status": "ACTIVE"}
+
+            claim_patch.setattr(claims.ClaimStore, "inspect", active_claim)
+            assert protected.main(argv) == claims.UNVERIFIABLE
+            capsys.readouterr()
+    else:
+        assert protected.main(argv) == claims.UNVERIFIABLE
+        capsys.readouterr()
+    assert _write_snapshot(harness, incident) == before
     assert tuple(harness.launchd.mutation_calls) == incident.mutations_before
 
 

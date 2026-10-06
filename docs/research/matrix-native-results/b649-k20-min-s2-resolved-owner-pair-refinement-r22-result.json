@@ -1,0 +1,2720 @@
+{
+  "TASK_ID": "B649_K20_MIN_S2_RESOLVED_OWNER_PAIR_REFINEMENT_R22",
+  "TASK_BRANCH": "codex/b649-k20-min-s2-resolved-owner-pair-refinement-r22",
+  "WORKTREE_PATH": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_K20_MIN_S2_RESOLVED_OWNER_PAIR_REFINEMENT_R22",
+  "TASK_STATUS": "SUCCESS_B_ALL_RESOLVED_AT_OR_BELOW_CURSOR",
+  "BASE_HEAD": "3e4d1a96891d74aba29b35052cee17ba57735b8f",
+  "BASE_TREE": "ded8639944bcfc12c0d2a7b9341b27917577d2a0",
+  "START_FAMILY_BOUND": 313656776,
+  "OWNER_PROFILE_COUNT": 2,
+  "OWNER_PROFILES": [
+    "66665555555411100000",
+    "66655555555521000000"
+  ],
+  "OWNER_CERTIFICATES": [
+    {
+      "PROFILE_ID": "66665555555411100000",
+      "DEGREE_PROFILE": [
+        6,
+        6,
+        6,
+        6,
+        5,
+        5,
+        5,
+        5,
+        5,
+        5,
+        5,
+        4,
+        1,
+        1,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "SOURCE_RESULT": "b649-k20-min-s2-resolved-above-cursor-owner-chase-r20-result.json",
+      "SOURCE_ROW": "OWNER_ATTEMPTS[0]",
+      "R20_LEDGER_ROW": "FINAL_RESOLVED_LEDGER[0]",
+      "WITNESS_SOURCE": "R12.PROFILE_BOUNDS[8]",
+      "REALIZABILITY_STATUS": "REALIZABLE",
+      "WITNESS_TRIPLES": [
+        [
+          0,
+          1,
+          12
+        ],
+        [
+          0,
+          2,
+          13
+        ],
+        [
+          0,
+          3,
+          10
+        ],
+        [
+          0,
+          4,
+          11
+        ],
+        [
+          0,
+          5,
+          8
+        ],
+        [
+          0,
+          6,
+          9
+        ],
+        [
+          1,
+          2,
+          8
+        ],
+        [
+          1,
+          3,
+          14
+        ],
+        [
+          1,
+          4,
+          10
+        ],
+        [
+          1,
+          5,
+          7
+        ],
+        [
+          1,
+          9,
+          11
+        ],
+        [
+          2,
+          3,
+          11
+        ],
+        [
+          2,
+          4,
+          6
+        ],
+        [
+          2,
+          5,
+          9
+        ],
+        [
+          2,
+          7,
+          10
+        ],
+        [
+          3,
+          4,
+          5
+        ],
+        [
+          3,
+          6,
+          8
+        ],
+        [
+          3,
+          7,
+          9
+        ],
+        [
+          4,
+          7,
+          8
+        ],
+        [
+          5,
+          6,
+          10
+        ],
+        [
+          6,
+          7,
+          11
+        ],
+        [
+          8,
+          9,
+          10
+        ]
+      ],
+      "WITNESS_DOUBLE_SUPPORTS": [
+        [
+          4,
+          17
+        ],
+        [
+          5,
+          16
+        ],
+        [
+          6,
+          12
+        ],
+        [
+          7,
+          14
+        ],
+        [
+          8,
+          15
+        ],
+        [
+          9,
+          16
+        ],
+        [
+          10,
+          14
+        ],
+        [
+          11,
+          18
+        ],
+        [
+          11,
+          19
+        ],
+        [
+          12,
+          13
+        ],
+        [
+          12,
+          16
+        ],
+        [
+          12,
+          17
+        ],
+        [
+          12,
+          18
+        ],
+        [
+          13,
+          15
+        ],
+        [
+          13,
+          17
+        ],
+        [
+          13,
+          18
+        ],
+        [
+          13,
+          19
+        ],
+        [
+          14,
+          15
+        ],
+        [
+          14,
+          16
+        ],
+        [
+          14,
+          19
+        ],
+        [
+          15,
+          17
+        ],
+        [
+          15,
+          18
+        ],
+        [
+          15,
+          19
+        ],
+        [
+          16,
+          17
+        ],
+        [
+          16,
+          19
+        ],
+        [
+          17,
+          18
+        ],
+        [
+          18,
+          19
+        ]
+      ],
+      "WITNESS_VALIDATION": "PASS",
+      "WEDGE_COUNT": 832,
+      "PRIOR_DEGREE_CLASS_TRIANGLE_CAP": 273,
+      "PRIOR_MOTIF_TRIANGLE_CAP": 278,
+      "GRAPH_TRIANGLE_CAP": 272,
+      "NONCORE_TRIANGLE_CAP": 250,
+      "OPEN_WEDGE_FLOOR": 16,
+      "S3": 5266800,
+      "S4_FLOOR": 112,
+      "S4_SCOPE": "ALL_REALIZATIONS_INCLUDING_S3_MAXIMIZERS",
+      "FOURTH_ORDER_CREDIT": 64,
+      "BOUND_LIMITING_RELAXATION": "A_EXACT_SUPPORT_OPEN_WEDGE_REFUTATION",
+      "EXACT_RELAXATION": {
+        "IDENTITY": "S1 - S2 + S3 - floor(4*S4/7)",
+        "S1": 372228640,
+        "S2": 63838600,
+        "S3": 5266800,
+        "S4_FLOOR": 112,
+        "VALUE": 313656776
+      },
+      "COMMITTED_OPEN_WEDGE_PROOF": {
+        "ROUTE": "A_EXACT_SUPPORT_OPEN_WEDGE_REFUTATION",
+        "STATUS": "INFEASIBLE",
+        "CERTIFICATE_KIND": "CP_SAT_INFEASIBLE",
+        "WEDGE_COUNT": 832,
+        "REFUTED_GRAPH_TRIANGLE_COUNT": 273,
+        "OPEN_WEDGE_CEILING_REFUTED": 13,
+        "CERTIFIED_OPEN_WEDGE_LOWER_BOUND": 14,
+        "CERTIFIED_GRAPH_TRIANGLE_UPPER_BOUND": 272,
+        "OPEN_WEDGE_INDICATOR_COUNT": 3420,
+        "SOLVER_WALL_TIME_SECONDS": 1.53085,
+        "ACTUAL_CALL_WALL_SECONDS": 2.2198336660003406,
+        "PROFILE_ID": "66665555555411100000",
+        "EXTERNAL_HARD_TIMEOUT_SECONDS": 90.0,
+        "SUBPROCESS_WALL_SECONDS": 3.114926584006753
+      }
+    },
+    {
+      "PROFILE_ID": "66655555555521000000",
+      "DEGREE_PROFILE": [
+        6,
+        6,
+        6,
+        5,
+        5,
+        5,
+        5,
+        5,
+        5,
+        5,
+        5,
+        5,
+        2,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "SOURCE_RESULT": "b649-k20-min-s2-resolved-above-cursor-owner-chase-r20-result.json",
+      "SOURCE_ROW": "OWNER_ATTEMPTS[1]",
+      "R20_LEDGER_ROW": "FINAL_RESOLVED_LEDGER[1]",
+      "WITNESS_SOURCE": "R12.PROFILE_BOUNDS[10]",
+      "REALIZABILITY_STATUS": "REALIZABLE",
+      "WITNESS_TRIPLES": [
+        [
+          0,
+          1,
+          13
+        ],
+        [
+          0,
+          2,
+          9
+        ],
+        [
+          0,
+          3,
+          5
+        ],
+        [
+          0,
+          4,
+          10
+        ],
+        [
+          0,
+          6,
+          7
+        ],
+        [
+          0,
+          8,
+          11
+        ],
+        [
+          1,
+          2,
+          4
+        ],
+        [
+          1,
+          3,
+          7
+        ],
+        [
+          1,
+          5,
+          11
+        ],
+        [
+          1,
+          6,
+          9
+        ],
+        [
+          1,
+          8,
+          10
+        ],
+        [
+          2,
+          3,
+          10
+        ],
+        [
+          2,
+          5,
+          6
+        ],
+        [
+          2,
+          7,
+          8
+        ],
+        [
+          2,
+          11,
+          12
+        ],
+        [
+          3,
+          4,
+          9
+        ],
+        [
+          3,
+          6,
+          8
+        ],
+        [
+          4,
+          5,
+          8
+        ],
+        [
+          4,
+          6,
+          11
+        ],
+        [
+          5,
+          7,
+          9
+        ],
+        [
+          7,
+          10,
+          12
+        ],
+        [
+          9,
+          10,
+          11
+        ]
+      ],
+      "WITNESS_DOUBLE_SUPPORTS": [
+        [
+          3,
+          12
+        ],
+        [
+          4,
+          13
+        ],
+        [
+          5,
+          15
+        ],
+        [
+          6,
+          19
+        ],
+        [
+          7,
+          18
+        ],
+        [
+          8,
+          15
+        ],
+        [
+          9,
+          16
+        ],
+        [
+          10,
+          19
+        ],
+        [
+          11,
+          18
+        ],
+        [
+          12,
+          16
+        ],
+        [
+          12,
+          17
+        ],
+        [
+          12,
+          18
+        ],
+        [
+          13,
+          14
+        ],
+        [
+          13,
+          15
+        ],
+        [
+          13,
+          16
+        ],
+        [
+          13,
+          17
+        ],
+        [
+          14,
+          15
+        ],
+        [
+          14,
+          16
+        ],
+        [
+          14,
+          17
+        ],
+        [
+          14,
+          18
+        ],
+        [
+          14,
+          19
+        ],
+        [
+          15,
+          16
+        ],
+        [
+          15,
+          19
+        ],
+        [
+          16,
+          17
+        ],
+        [
+          17,
+          18
+        ],
+        [
+          17,
+          19
+        ],
+        [
+          18,
+          19
+        ]
+      ],
+      "WITNESS_VALIDATION": "PASS",
+      "WEDGE_COUNT": 832,
+      "PRIOR_DEGREE_CLASS_TRIANGLE_CAP": 273,
+      "PRIOR_MOTIF_TRIANGLE_CAP": 278,
+      "GRAPH_TRIANGLE_CAP": 272,
+      "NONCORE_TRIANGLE_CAP": 250,
+      "OPEN_WEDGE_FLOOR": 16,
+      "S3": 5266800,
+      "S4_FLOOR": 112,
+      "S4_SCOPE": "ALL_REALIZATIONS_INCLUDING_S3_MAXIMIZERS",
+      "FOURTH_ORDER_CREDIT": 64,
+      "BOUND_LIMITING_RELAXATION": "A_EXACT_SUPPORT_OPEN_WEDGE_REFUTATION",
+      "EXACT_RELAXATION": {
+        "IDENTITY": "S1 - S2 + S3 - floor(4*S4/7)",
+        "S1": 372228640,
+        "S2": 63838600,
+        "S3": 5266800,
+        "S4_FLOOR": 112,
+        "VALUE": 313656776
+      },
+      "COMMITTED_OPEN_WEDGE_PROOF": {
+        "ROUTE": "A_EXACT_SUPPORT_OPEN_WEDGE_REFUTATION",
+        "STATUS": "INFEASIBLE",
+        "CERTIFICATE_KIND": "CP_SAT_INFEASIBLE",
+        "WEDGE_COUNT": 832,
+        "REFUTED_GRAPH_TRIANGLE_COUNT": 273,
+        "OPEN_WEDGE_CEILING_REFUTED": 13,
+        "CERTIFIED_OPEN_WEDGE_LOWER_BOUND": 14,
+        "CERTIFIED_GRAPH_TRIANGLE_UPPER_BOUND": 272,
+        "OPEN_WEDGE_INDICATOR_COUNT": 3420,
+        "SOLVER_WALL_TIME_SECONDS": 9.498814000000001,
+        "ACTUAL_CALL_WALL_SECONDS": 10.222154666997085,
+        "PROFILE_ID": "66655555555521000000",
+        "EXTERNAL_HARD_TIMEOUT_SECONDS": 90.0,
+        "SUBPROCESS_WALL_SECONDS": 10.993284000003769
+      }
+    }
+  ],
+  "START_OWNER_BOUNDS": {
+    "66665555555411100000": 313656776,
+    "66655555555521000000": 313656776
+  },
+  "REFINED_OWNER_BOUNDS": {
+    "66665555555411100000": 313644904,
+    "66655555555521000000": 313644904
+  },
+  "COMMITTED_INPUT_SHA256": {
+    "docs/research/matrix-native-results/b649-k20-min-s2-continued-multi-plateau-descent-r12-result.json": "e36cf3010e077923a7c27efa83e3b9dc157b3e34e5458708eb70ce40998f77f0",
+    "docs/research/matrix-native-results/b649-k20-min-s2-resolved-above-cursor-owner-chase-r20-result.json": "47afe9b8e5643f0123fcccfcf678689755106056e7b9b68a3431b837706113aa",
+    "docs/research/matrix-native-results/b649-k20-min-s2-unique-cursor-plateau-r21-result.json": "7d3ffa7b063701a33f00b55f3e203c249c1691187b081341f563b9c72a9548be"
+  },
+  "INPUT_AUTHORITY": "IMMUTABLE_BASE_HEAD_R12_R20_R21_GIT_BLOBS",
+  "RESOLVED_LEDGER_COUNT": 339,
+  "EXACT_OWNER_PAIR_ASSERTION": "PASS",
+  "NO_THIRD_OWNER_ABOVE_CURSOR": "PASS",
+  "OWNER_ATTEMPTS": [
+    {
+      "PROFILE_ID": "66665555555411100000",
+      "START_BOUND": 313656776,
+      "START_TRIANGLE_CAP": 272,
+      "REFINED_TRIANGLE_CAP": 271,
+      "REFINED_NONCORE_TRIANGLE_CAP": 249,
+      "REFINED_S3": 5254928,
+      "S4_FLOOR": 112,
+      "CERTIFIED_OWNER_BOUND": 313644904,
+      "BOUND_LIMITING_RELAXATION": "A_EXACT_SUPPORT_OPEN_WEDGE_REFUTATION",
+      "ROUTES": [
+        {
+          "ROUTE": "A_EXACT_SUPPORT_OPEN_WEDGE_REFUTATION",
+          "STATUS": "INFEASIBLE",
+          "CERTIFICATE_KIND": "CP_SAT_INFEASIBLE",
+          "WEDGE_COUNT": 832,
+          "REFUTED_GRAPH_TRIANGLE_COUNT": 272,
+          "OPEN_WEDGE_CEILING_REFUTED": 16,
+          "CERTIFIED_OPEN_WEDGE_LOWER_BOUND": 17,
+          "CERTIFIED_GRAPH_TRIANGLE_UPPER_BOUND": 271,
+          "OPEN_WEDGE_INDICATOR_COUNT": 3420,
+          "SOLVER_WALL_TIME_SECONDS": 13.187482000000001,
+          "PROFILE_ID": "66665555555411100000",
+          "EXTERNAL_HARD_TIMEOUT_SECONDS": 90.0,
+          "SUBPROCESS_WALL_SECONDS": 17.994870084003196
+        }
+      ],
+      "WITNESS_CHECK": {
+        "WITNESS_SOURCE": "R12.PROFILE_BOUNDS[8]",
+        "WITNESS_GRAPH_TRIANGLES": 188,
+        "WITNESS_OPEN_WEDGES": 268,
+        "FIXED_WITNESS_STATUS_BY_CEILING": {
+          "AT_WITNESS_COUNT": "OPTIMAL",
+          "ONE_BELOW_WITNESS_COUNT": "INFEASIBLE"
+        },
+        "STATUS": "PASS",
+        "ROUTE": "WITNESS",
+        "PROFILE_ID": "66665555555411100000",
+        "EXTERNAL_HARD_TIMEOUT_SECONDS": 90.0,
+        "SUBPROCESS_WALL_SECONDS": 3.2992681249961606
+      },
+      "LATER_ROUTES": "NOT_REQUIRED"
+    },
+    {
+      "PROFILE_ID": "66655555555521000000",
+      "CERTIFIED_OWNER_BOUND": null,
+      "ROUTES": [
+        {
+          "ROUTE": "A_EXACT_SUPPORT_OPEN_WEDGE_REFUTATION",
+          "STATUS": "UNKNOWN",
+          "CERTIFICATE_KIND": "NOT_CERTIFIED",
+          "WEDGE_COUNT": 832,
+          "REFUTED_GRAPH_TRIANGLE_COUNT": 272,
+          "OPEN_WEDGE_CEILING_REFUTED": 16,
+          "CERTIFIED_OPEN_WEDGE_LOWER_BOUND": null,
+          "CERTIFIED_GRAPH_TRIANGLE_UPPER_BOUND": null,
+          "OPEN_WEDGE_INDICATOR_COUNT": 3420,
+          "SOLVER_WALL_TIME_SECONDS": 60.001359,
+          "PROFILE_ID": "66655555555521000000",
+          "EXTERNAL_HARD_TIMEOUT_SECONDS": 90.0,
+          "SUBPROCESS_WALL_SECONDS": 62.49154004199954
+        },
+        {
+          "ROUTE": "B_COMPLEMENT_TRIANGLE_LOWER_BOUND",
+          "STATUS": "FEASIBLE",
+          "CERTIFICATE_KIND": "CP_SAT_BEST_OBJECTIVE_LOWER_BOUND",
+          "RELAXATION": "COMPLEMENT_SIMPLE_GRAPH_FIXED_DEGREES",
+          "COMPLEMENT_DEGREES": [
+            7,
+            7,
+            7,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            11,
+            12,
+            13,
+            13,
+            13,
+            13,
+            13,
+            13
+          ],
+          "COMPLEMENT_TRIANGLE_INCUMBENT": 64,
+          "COMPLEMENT_TRIANGLE_CERTIFIED_LOWER_BOUND": 26,
+          "GRAPH_TRIANGLE_UPPER_BOUND": 272,
+          "GRAPH_TRIANGLE_IDENTITY_CONSTANT": 298,
+          "COMPLEMENT_EDGE_COUNT": 97,
+          "COMPLEMENT_WEDGE_COUNT": 904,
+          "REUSED_SUPPORT_WITNESS_GRAPH_TRIANGLES": 191,
+          "REUSED_SUPPORT_WITNESS_COMPLEMENT_TRIANGLES": 107,
+          "PAIR_AND_VERTEX_CODEGREE_CUTS": "APPLIED",
+          "SOLVER_WALL_TIME_SECONDS": 90.004647,
+          "CERTIFIED_GRAPH_TRIANGLE_UPPER_BOUND": 272,
+          "SOLVER_ACTUAL_WALL_TIME_SECONDS": 92.71031012499589,
+          "PROFILE_ID": "66655555555521000000",
+          "EXTERNAL_HARD_TIMEOUT_SECONDS": 120.0,
+          "SUBPROCESS_WALL_SECONDS": 93.81011341699923
+        },
+        {
+          "SOLVER_STATUS": "FEASIBLE",
+          "BOUND_KIND": "BEST_OBJECTIVE_UPPER_BOUND",
+          "SOLVER_WALL_TIME_SECONDS": 60.00868500000001,
+          "SOLVER_CERTIFIED_TRIANGLE_UPPER_BOUND": 278,
+          "WITNESS_GRAPH_TRIANGLE_COUNT": 239,
+          "MOTIF_WITNESS_TRIPLES": [
+            [
+              0,
+              1,
+              11
+            ],
+            [
+              0,
+              2,
+              4
+            ],
+            [
+              0,
+              3,
+              9
+            ],
+            [
+              0,
+              5,
+              7
+            ],
+            [
+              0,
+              6,
+              10
+            ],
+            [
+              0,
+              8,
+              12
+            ],
+            [
+              1,
+              2,
+              13
+            ],
+            [
+              1,
+              3,
+              6
+            ],
+            [
+              1,
+              4,
+              10
+            ],
+            [
+              1,
+              5,
+              9
+            ],
+            [
+              1,
+              7,
+              8
+            ],
+            [
+              2,
+              3,
+              7
+            ],
+            [
+              2,
+              5,
+              10
+            ],
+            [
+              2,
+              6,
+              9
+            ],
+            [
+              2,
+              8,
+              11
+            ],
+            [
+              3,
+              4,
+              11
+            ],
+            [
+              3,
+              8,
+              10
+            ],
+            [
+              4,
+              5,
+              8
+            ],
+            [
+              4,
+              6,
+              7
+            ],
+            [
+              5,
+              6,
+              11
+            ],
+            [
+              7,
+              9,
+              11
+            ],
+            [
+              9,
+              10,
+              12
+            ]
+          ],
+          "MOTIF_WITNESS_DOUBLE_SUPPORTS": [
+            [
+              3,
+              12
+            ],
+            [
+              4,
+              9
+            ],
+            [
+              5,
+              12
+            ],
+            [
+              6,
+              8
+            ],
+            [
+              7,
+              12
+            ],
+            [
+              10,
+              11
+            ],
+            [
+              12,
+              19
+            ],
+            [
+              13,
+              14
+            ],
+            [
+              13,
+              15
+            ],
+            [
+              13,
+              16
+            ],
+            [
+              13,
+              17
+            ],
+            [
+              13,
+              18
+            ],
+            [
+              14,
+              15
+            ],
+            [
+              14,
+              16
+            ],
+            [
+              14,
+              17
+            ],
+            [
+              14,
+              18
+            ],
+            [
+              14,
+              19
+            ],
+            [
+              15,
+              16
+            ],
+            [
+              15,
+              17
+            ],
+            [
+              15,
+              18
+            ],
+            [
+              15,
+              19
+            ],
+            [
+              16,
+              17
+            ],
+            [
+              16,
+              18
+            ],
+            [
+              16,
+              19
+            ],
+            [
+              17,
+              18
+            ],
+            [
+              17,
+              19
+            ],
+            [
+              18,
+              19
+            ]
+          ],
+          "MOTIF_WITNESS_MOTIFS": {
+            "triple_support_count": 22,
+            "shadow_triangle_count": 169,
+            "noncore_shadow_triangle_count": 147,
+            "shared_vertex_support_pair_count": 136,
+            "loose_three_cycle_count": 147,
+            "pasch_like_four_support_count": 2
+          },
+          "STATUS": "FEASIBLE",
+          "CERTIFIED_GRAPH_TRIANGLE_UPPER_BOUND": 278,
+          "ROUTE": "C_EXACT_NONCORE_TRIANGLE_CEILING",
+          "PROFILE_ID": "66655555555521000000",
+          "EXTERNAL_HARD_TIMEOUT_SECONDS": 90.0,
+          "SUBPROCESS_WALL_SECONDS": 62.774692916995264
+        }
+      ],
+      "WITNESS_CHECK": {
+        "WITNESS_SOURCE": "R12.PROFILE_BOUNDS[10]",
+        "WITNESS_GRAPH_TRIANGLES": 191,
+        "WITNESS_OPEN_WEDGES": 259,
+        "FIXED_WITNESS_STATUS_BY_CEILING": {
+          "AT_WITNESS_COUNT": "OPTIMAL",
+          "ONE_BELOW_WITNESS_COUNT": "INFEASIBLE"
+        },
+        "STATUS": "PASS",
+        "ROUTE": "WITNESS",
+        "PROFILE_ID": "66655555555521000000",
+        "EXTERNAL_HARD_TIMEOUT_SECONDS": 90.0,
+        "SUBPROCESS_WALL_SECONDS": 3.9642980420030653
+      }
+    },
+    {
+      "PROFILE_ID": "66655555555521000000",
+      "START_BOUND": 313656776,
+      "START_TRIANGLE_CAP": 272,
+      "REFINED_TRIANGLE_CAP": 271,
+      "REFINED_NONCORE_TRIANGLE_CAP": 249,
+      "REFINED_S3": 5254928,
+      "S4_FLOOR": 112,
+      "CERTIFIED_OWNER_BOUND": 313644904,
+      "BOUND_LIMITING_RELAXATION": "A_EXACT_SUPPORT_OPEN_WEDGE_REFUTATION",
+      "ROUTES": [
+        {
+          "ROUTE": "A_EXACT_SUPPORT_OPEN_WEDGE_REFUTATION",
+          "STATUS": "INFEASIBLE",
+          "CERTIFICATE_KIND": "CP_SAT_INFEASIBLE",
+          "WEDGE_COUNT": 832,
+          "REFUTED_GRAPH_TRIANGLE_COUNT": 272,
+          "OPEN_WEDGE_CEILING_REFUTED": 16,
+          "CERTIFIED_OPEN_WEDGE_LOWER_BOUND": 17,
+          "CERTIFIED_GRAPH_TRIANGLE_UPPER_BOUND": 271,
+          "OPEN_WEDGE_INDICATOR_COUNT": 3420,
+          "SOLVER_WALL_TIME_SECONDS": 204.18284500000001,
+          "PROFILE_ID": "66655555555521000000",
+          "EXTERNAL_HARD_TIMEOUT_SECONDS": 630.0,
+          "SUBPROCESS_WALL_SECONDS": 205.16301645899512
+        }
+      ],
+      "WITNESS_CHECK": {
+        "WITNESS_SOURCE": "R12.PROFILE_BOUNDS[10]",
+        "WITNESS_GRAPH_TRIANGLES": 191,
+        "WITNESS_OPEN_WEDGES": 259,
+        "FIXED_WITNESS_STATUS_BY_CEILING": {
+          "AT_WITNESS_COUNT": "OPTIMAL",
+          "ONE_BELOW_WITNESS_COUNT": "INFEASIBLE"
+        },
+        "STATUS": "PASS",
+        "ROUTE": "WITNESS",
+        "PROFILE_ID": "66655555555521000000",
+        "EXTERNAL_HARD_TIMEOUT_SECONDS": 90.0,
+        "SUBPROCESS_WALL_SECONDS": 1.3795631249959115
+      },
+      "LATER_ROUTES": "NOT_REQUIRED"
+    }
+  ],
+  "REFINEMENT_STEPS": [
+    {
+      "STEP": 1,
+      "PROFILE_ID": "66665555555411100000",
+      "START_OWNER_BOUND": 313656776,
+      "REFINED_OWNER_BOUND": 313644904,
+      "FAMILY_BOUND_BEFORE": 313656776,
+      "FAMILY_BOUND_AFTER": 313656776,
+      "OWNER_SET_BEFORE": [
+        "66665555555411100000",
+        "66655555555521000000"
+      ],
+      "OWNER_SET_AFTER": [
+        "66655555555521000000"
+      ],
+      "CERTIFICATE": {
+        "PROFILE_ID": "66665555555411100000",
+        "START_BOUND": 313656776,
+        "START_TRIANGLE_CAP": 272,
+        "REFINED_TRIANGLE_CAP": 271,
+        "REFINED_NONCORE_TRIANGLE_CAP": 249,
+        "REFINED_S3": 5254928,
+        "S4_FLOOR": 112,
+        "CERTIFIED_OWNER_BOUND": 313644904,
+        "BOUND_LIMITING_RELAXATION": "A_EXACT_SUPPORT_OPEN_WEDGE_REFUTATION",
+        "ROUTES": [
+          {
+            "ROUTE": "A_EXACT_SUPPORT_OPEN_WEDGE_REFUTATION",
+            "STATUS": "INFEASIBLE",
+            "CERTIFICATE_KIND": "CP_SAT_INFEASIBLE",
+            "WEDGE_COUNT": 832,
+            "REFUTED_GRAPH_TRIANGLE_COUNT": 272,
+            "OPEN_WEDGE_CEILING_REFUTED": 16,
+            "CERTIFIED_OPEN_WEDGE_LOWER_BOUND": 17,
+            "CERTIFIED_GRAPH_TRIANGLE_UPPER_BOUND": 271,
+            "OPEN_WEDGE_INDICATOR_COUNT": 3420,
+            "SOLVER_WALL_TIME_SECONDS": 13.187482000000001,
+            "PROFILE_ID": "66665555555411100000",
+            "EXTERNAL_HARD_TIMEOUT_SECONDS": 90.0,
+            "SUBPROCESS_WALL_SECONDS": 17.994870084003196
+          }
+        ],
+        "WITNESS_CHECK": {
+          "WITNESS_SOURCE": "R12.PROFILE_BOUNDS[8]",
+          "WITNESS_GRAPH_TRIANGLES": 188,
+          "WITNESS_OPEN_WEDGES": 268,
+          "FIXED_WITNESS_STATUS_BY_CEILING": {
+            "AT_WITNESS_COUNT": "OPTIMAL",
+            "ONE_BELOW_WITNESS_COUNT": "INFEASIBLE"
+          },
+          "STATUS": "PASS",
+          "ROUTE": "WITNESS",
+          "PROFILE_ID": "66665555555411100000",
+          "EXTERNAL_HARD_TIMEOUT_SECONDS": 90.0,
+          "SUBPROCESS_WALL_SECONDS": 3.2992681249961606
+        },
+        "LATER_ROUTES": "NOT_REQUIRED"
+      }
+    },
+    {
+      "STEP": 2,
+      "PROFILE_ID": "66655555555521000000",
+      "START_OWNER_BOUND": 313656776,
+      "REFINED_OWNER_BOUND": 313644904,
+      "FAMILY_BOUND_BEFORE": 313656776,
+      "FAMILY_BOUND_AFTER": 313655320,
+      "OWNER_SET_BEFORE": [
+        "66655555555521000000"
+      ],
+      "OWNER_SET_AFTER": [
+        "66666665433111111111"
+      ],
+      "CERTIFICATE": {
+        "PROFILE_ID": "66655555555521000000",
+        "START_BOUND": 313656776,
+        "START_TRIANGLE_CAP": 272,
+        "REFINED_TRIANGLE_CAP": 271,
+        "REFINED_NONCORE_TRIANGLE_CAP": 249,
+        "REFINED_S3": 5254928,
+        "S4_FLOOR": 112,
+        "CERTIFIED_OWNER_BOUND": 313644904,
+        "BOUND_LIMITING_RELAXATION": "A_EXACT_SUPPORT_OPEN_WEDGE_REFUTATION",
+        "ROUTES": [
+          {
+            "ROUTE": "A_EXACT_SUPPORT_OPEN_WEDGE_REFUTATION",
+            "STATUS": "INFEASIBLE",
+            "CERTIFICATE_KIND": "CP_SAT_INFEASIBLE",
+            "WEDGE_COUNT": 832,
+            "REFUTED_GRAPH_TRIANGLE_COUNT": 272,
+            "OPEN_WEDGE_CEILING_REFUTED": 16,
+            "CERTIFIED_OPEN_WEDGE_LOWER_BOUND": 17,
+            "CERTIFIED_GRAPH_TRIANGLE_UPPER_BOUND": 271,
+            "OPEN_WEDGE_INDICATOR_COUNT": 3420,
+            "SOLVER_WALL_TIME_SECONDS": 204.18284500000001,
+            "PROFILE_ID": "66655555555521000000",
+            "EXTERNAL_HARD_TIMEOUT_SECONDS": 630.0,
+            "SUBPROCESS_WALL_SECONDS": 205.16301645899512
+          }
+        ],
+        "WITNESS_CHECK": {
+          "WITNESS_SOURCE": "R12.PROFILE_BOUNDS[10]",
+          "WITNESS_GRAPH_TRIANGLES": 191,
+          "WITNESS_OPEN_WEDGES": 259,
+          "FIXED_WITNESS_STATUS_BY_CEILING": {
+            "AT_WITNESS_COUNT": "OPTIMAL",
+            "ONE_BELOW_WITNESS_COUNT": "INFEASIBLE"
+          },
+          "STATUS": "PASS",
+          "ROUTE": "WITNESS",
+          "PROFILE_ID": "66655555555521000000",
+          "EXTERNAL_HARD_TIMEOUT_SECONDS": 90.0,
+          "SUBPROCESS_WALL_SECONDS": 1.3795631249959115
+        },
+        "LATER_ROUTES": "NOT_REQUIRED"
+      }
+    }
+  ],
+  "OWNER_TRANSITION_COUNT": 2,
+  "OWNERS_REFINED_COUNT": 2,
+  "NEXT_CURSOR_BOUND": 313655320,
+  "NEXT_CURSOR_PROFILE": "66666665433111111111",
+  "FAMILY_UPPER_BOUND": 313655320,
+  "CURRENT_BOUND_OWNER_SET": [
+    "66666665433111111111"
+  ],
+  "INCUMBENT": 313239661,
+  "REMAINING_GAP": 415659,
+  "FAMILY_STATUS": "OPEN_STRICTLY_TIGHTENED",
+  "CERTIFIED_FAMILY_DROP": 1456,
+  "CURSOR_GENUINELY_LOAD_BEARING": true,
+  "MAX_RESOLVED_BOUND": 313653976,
+  "FINAL_RESOLVED_LEDGER": [
+    {
+      "PROFILE_ID": "66655555555511100000",
+      "CURRENT_BOUND": 313653976
+    },
+    {
+      "PROFILE_ID": "66666665443111111110",
+      "CURRENT_BOUND": 313651848
+    },
+    {
+      "PROFILE_ID": "66666665442221111100",
+      "CURRENT_BOUND": 313651848
+    },
+    {
+      "PROFILE_ID": "66666665433311111100",
+      "CURRENT_BOUND": 313651848
+    },
+    {
+      "PROFILE_ID": "66666665433222111000",
+      "CURRENT_BOUND": 313651848
+    },
+    {
+      "PROFILE_ID": "66666665432222220000",
+      "CURRENT_BOUND": 313651848
+    },
+    {
+      "PROFILE_ID": "66666665333331111000",
+      "CURRENT_BOUND": 313651848
+    },
+    {
+      "PROFILE_ID": "66666665333322210000",
+      "CURRENT_BOUND": 313651848
+    },
+    {
+      "PROFILE_ID": "66666664444211111100",
+      "CURRENT_BOUND": 313651848
+    },
+    {
+      "PROFILE_ID": "66666664443321111000",
+      "CURRENT_BOUND": 313651848
+    },
+    {
+      "PROFILE_ID": "66666664443222210000",
+      "CURRENT_BOUND": 313651848
+    },
+    {
+      "PROFILE_ID": "66666664433332110000",
+      "CURRENT_BOUND": 313651848
+    },
+    {
+      "PROFILE_ID": "66666664333333200000",
+      "CURRENT_BOUND": 313651848
+    },
+    {
+      "PROFILE_ID": "66666655543211111100",
+      "CURRENT_BOUND": 313651848
+    },
+    {
+      "PROFILE_ID": "66666655542222111000",
+      "CURRENT_BOUND": 313651848
+    },
+    {
+      "PROFILE_ID": "66666655533321111000",
+      "CURRENT_BOUND": 313651848
+    },
+    {
+      "PROFILE_ID": "66666655533222210000",
+      "CURRENT_BOUND": 313651848
+    },
+    {
+      "PROFILE_ID": "66666655444221111000",
+      "CURRENT_BOUND": 313651848
+    },
+    {
+      "PROFILE_ID": "66666655443322110000",
+      "CURRENT_BOUND": 313651848
+    },
+    {
+      "PROFILE_ID": "66666655433332200000",
+      "CURRENT_BOUND": 313651848
+    },
+    {
+      "PROFILE_ID": "66666654444411111000",
+      "CURRENT_BOUND": 313651848
+    },
+    {
+      "PROFILE_ID": "66666654444331110000",
+      "CURRENT_BOUND": 313651848
+    },
+    {
+      "PROFILE_ID": "66666654444322200000",
+      "CURRENT_BOUND": 313651848
+    },
+    {
+      "PROFILE_ID": "66666654443333100000",
+      "CURRENT_BOUND": 313651848
+    },
+    {
+      "PROFILE_ID": "66666644444432100000",
+      "CURRENT_BOUND": 313651848
+    },
+    {
+      "PROFILE_ID": "66666555553221111000",
+      "CURRENT_BOUND": 313651848
+    },
+    {
+      "PROFILE_ID": "66666555552222210000",
+      "CURRENT_BOUND": 313651848
+    },
+    {
+      "PROFILE_ID": "66666555544311111000",
+      "CURRENT_BOUND": 313651848
+    },
+    {
+      "PROFILE_ID": "66666555544222110000",
+      "CURRENT_BOUND": 313651848
+    },
+    {
+      "PROFILE_ID": "66666555543331110000",
+      "CURRENT_BOUND": 313651848
+    },
+    {
+      "PROFILE_ID": "66666555543322200000",
+      "CURRENT_BOUND": 313651848
+    },
+    {
+      "PROFILE_ID": "66666555533333100000",
+      "CURRENT_BOUND": 313651848
+    },
+    {
+      "PROFILE_ID": "66666555444421110000",
+      "CURRENT_BOUND": 313651848
+    },
+    {
+      "PROFILE_ID": "66666555444332100000",
+      "CURRENT_BOUND": 313651848
+    },
+    {
+      "PROFILE_ID": "66666544444443000000",
+      "CURRENT_BOUND": 313651848
+    },
+    {
+      "PROFILE_ID": "66665555555111111100",
+      "CURRENT_BOUND": 313651848
+    },
+    {
+      "PROFILE_ID": "66665555554321110000",
+      "CURRENT_BOUND": 313651848
+    },
+    {
+      "PROFILE_ID": "66665555554222200000",
+      "CURRENT_BOUND": 313651848
+    },
+    {
+      "PROFILE_ID": "66665555553332100000",
+      "CURRENT_BOUND": 313651848
+    },
+    {
+      "PROFILE_ID": "66665555544422100000",
+      "CURRENT_BOUND": 313651848
+    },
+    {
+      "PROFILE_ID": "66665555444441100000",
+      "CURRENT_BOUND": 313651848
+    },
+    {
+      "PROFILE_ID": "66665555444433000000",
+      "CURRENT_BOUND": 313651848
+    },
+    {
+      "PROFILE_ID": "66655555555322100000",
+      "CURRENT_BOUND": 313651848
+    },
+    {
+      "PROFILE_ID": "66655555554431100000",
+      "CURRENT_BOUND": 313651848
+    },
+    {
+      "PROFILE_ID": "66655555554333000000",
+      "CURRENT_BOUND": 313651848
+    },
+    {
+      "PROFILE_ID": "66655555544442000000",
+      "CURRENT_BOUND": 313651848
+    },
+    {
+      "PROFILE_ID": "66555555555511110000",
+      "CURRENT_BOUND": 313651848
+    },
+    {
+      "PROFILE_ID": "66555555555432000000",
+      "CURRENT_BOUND": 313651848
+    },
+    {
+      "PROFILE_ID": "55555555555551000000",
+      "CURRENT_BOUND": 313651848
+    },
+    {
+      "PROFILE_ID": "66666665444322000000",
+      "CURRENT_BOUND": 313650504
+    },
+    {
+      "PROFILE_ID": "66666664444431000000",
+      "CURRENT_BOUND": 313650504
+    },
+    {
+      "PROFILE_ID": "66666655544411100000",
+      "CURRENT_BOUND": 313650504
+    },
+    {
+      "PROFILE_ID": "66666655544331000000",
+      "CURRENT_BOUND": 313650504
+    },
+    {
+      "PROFILE_ID": "66666555555311100000",
+      "CURRENT_BOUND": 313650504
+    },
+    {
+      "PROFILE_ID": "66666555554421000000",
+      "CURRENT_BOUND": 313650504
+    },
+    {
+      "PROFILE_ID": "66665555554440000000",
+      "CURRENT_BOUND": 313649608
+    },
+    {
+      "PROFILE_ID": "66655555555530000000",
+      "CURRENT_BOUND": 313649608
+    },
+    {
+      "PROFILE_ID": "66666665442211111110",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66666665433221111100",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66666665432222211000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66666665333322111000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66666665333222220000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66666664444111111110",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66666664443311111100",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66666664443222111000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66666664442222220000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66666664433331111000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66666664433322210000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66666664333333110000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66666663333333300000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66666655543111111110",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66666655542221111100",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66666655533311111100",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66666655533222111000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66666655532222220000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66666655444211111100",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66666655443321111000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66666655443222210000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66666655433332110000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66666655333333200000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66666654444322110000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66666654443332200000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66666644444431110000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66666644444422200000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66666644444333100000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66666555553211111100",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66666555552222111000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66666555544221111000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66666555543322110000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66666555533332200000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66666555444411111000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66666555444331110000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66666555444322200000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66666555443333100000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66666554444432100000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66666444444444000000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66665555554311111000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66665555554222110000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66665555553331110000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66665555553322200000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66665555544421110000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66665555544332100000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66665554444443000000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66655555555321110000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66655555555222200000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66655555554422100000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66655555544441100000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66655555544433000000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66555555555431100000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66555555555333000000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66555555554442000000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "65555555555532000000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66666665444321100000",
+      "CURRENT_BOUND": 313647704
+    },
+    {
+      "PROFILE_ID": "66666664444422000000",
+      "CURRENT_BOUND": 313647704
+    },
+    {
+      "PROFILE_ID": "66666655544322000000",
+      "CURRENT_BOUND": 313647704
+    },
+    {
+      "PROFILE_ID": "66666655444431000000",
+      "CURRENT_BOUND": 313647704
+    },
+    {
+      "PROFILE_ID": "66666555555221100000",
+      "CURRENT_BOUND": 313647704
+    },
+    {
+      "PROFILE_ID": "66666555554411100000",
+      "CURRENT_BOUND": 313647704
+    },
+    {
+      "PROFILE_ID": "66666555554331000000",
+      "CURRENT_BOUND": 313647704
+    },
+    {
+      "PROFILE_ID": "66665555555421000000",
+      "CURRENT_BOUND": 313647704
+    },
+    {
+      "PROFILE_ID": "66655555555440000000",
+      "CURRENT_BOUND": 313646808
+    },
+    {
+      "PROFILE_ID": "66666665442111111111",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66666665433211111110",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66666665432222111100",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66666665422222221000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66666665333321111100",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66666665333222211000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66666664443221111100",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66666664442222211000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66666664433322111000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66666664433222220000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66666664333332210000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66666655542211111110",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66666655533221111100",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66666655532222211000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66666655444111111110",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66666655443311111100",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66666655443222111000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66666655442222220000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66666655433331111000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66666655433322210000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66666655333333110000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66666654444321111000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66666654444222210000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66666654443332110000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66666654433333200000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66666644444422110000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66666644444332200000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66666555553111111110",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66666555552221111100",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66666555544211111100",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66666555543321111000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66666555543222210000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66666555533332110000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66666555444322110000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66666555443332200000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66666554444431110000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66666554444422200000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66666554444333100000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66666544444442100000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66665555554221111000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66665555553322110000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66665555544411111000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66665555544331110000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66665555544322200000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66665555543333100000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66665555444432100000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66665544444444000000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66655555555311111000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66655555555222110000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66655555554421110000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66655555554332100000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66655555444443000000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66555555555422100000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66555555554441100000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66555555554433000000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "65555555555531100000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "65555555555442000000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66666655544321100000",
+      "CURRENT_BOUND": 313644904
+    },
+    {
+      "PROFILE_ID": "66666555555211110000",
+      "CURRENT_BOUND": 313644904
+    },
+    {
+      "PROFILE_ID": "66666555544431000000",
+      "CURRENT_BOUND": 313644904
+    },
+    {
+      "PROFILE_ID": "66665555555411100000",
+      "CURRENT_BOUND": 313644904
+    },
+    {
+      "PROFILE_ID": "66665555555331000000",
+      "CURRENT_BOUND": 313644904
+    },
+    {
+      "PROFILE_ID": "66655555555521000000",
+      "CURRENT_BOUND": 313644904
+    },
+    {
+      "PROFILE_ID": "66666655444421100000",
+      "CURRENT_BOUND": 313642104
+    },
+    {
+      "PROFILE_ID": "66666555554321100000",
+      "CURRENT_BOUND": 313642104
+    },
+    {
+      "PROFILE_ID": "66665555555321100000",
+      "CURRENT_BOUND": 313639304
+    },
+    {
+      "PROFILE_ID": "66665555554422000000",
+      "CURRENT_BOUND": 313639304
+    },
+    {
+      "PROFILE_ID": "66665555544441000000",
+      "CURRENT_BOUND": 313639304
+    },
+    {
+      "PROFILE_ID": "66655555555431000000",
+      "CURRENT_BOUND": 313639304
+    },
+    {
+      "PROFILE_ID": "66666555555222000000",
+      "CURRENT_BOUND": 313638632
+    },
+    {
+      "PROFILE_ID": "66666665444111111100",
+      "CURRENT_BOUND": 313636504
+    },
+    {
+      "PROFILE_ID": "66666665443311111000",
+      "CURRENT_BOUND": 313636504
+    },
+    {
+      "PROFILE_ID": "66666665443222110000",
+      "CURRENT_BOUND": 313636504
+    },
+    {
+      "PROFILE_ID": "66666665433331110000",
+      "CURRENT_BOUND": 313636504
+    },
+    {
+      "PROFILE_ID": "66666665433322200000",
+      "CURRENT_BOUND": 313636504
+    },
+    {
+      "PROFILE_ID": "66666665333333100000",
+      "CURRENT_BOUND": 313636504
+    },
+    {
+      "PROFILE_ID": "66666664444321110000",
+      "CURRENT_BOUND": 313636504
+    },
+    {
+      "PROFILE_ID": "66666664444222200000",
+      "CURRENT_BOUND": 313636504
+    },
+    {
+      "PROFILE_ID": "66666664443332100000",
+      "CURRENT_BOUND": 313636504
+    },
+    {
+      "PROFILE_ID": "66666655544211111000",
+      "CURRENT_BOUND": 313636504
+    },
+    {
+      "PROFILE_ID": "66666655543321110000",
+      "CURRENT_BOUND": 313636504
+    },
+    {
+      "PROFILE_ID": "66666655543222200000",
+      "CURRENT_BOUND": 313636504
+    },
+    {
+      "PROFILE_ID": "66666655533332100000",
+      "CURRENT_BOUND": 313636504
+    },
+    {
+      "PROFILE_ID": "66666655444322100000",
+      "CURRENT_BOUND": 313636504
+    },
+    {
+      "PROFILE_ID": "66666654444431100000",
+      "CURRENT_BOUND": 313636504
+    },
+    {
+      "PROFILE_ID": "66666654444333000000",
+      "CURRENT_BOUND": 313636504
+    },
+    {
+      "PROFILE_ID": "66666644444442000000",
+      "CURRENT_BOUND": 313636504
+    },
+    {
+      "PROFILE_ID": "66666555554221110000",
+      "CURRENT_BOUND": 313636504
+    },
+    {
+      "PROFILE_ID": "66666555553322100000",
+      "CURRENT_BOUND": 313636504
+    },
+    {
+      "PROFILE_ID": "66666555544411110000",
+      "CURRENT_BOUND": 313636504
+    },
+    {
+      "PROFILE_ID": "66666555544331100000",
+      "CURRENT_BOUND": 313636504
+    },
+    {
+      "PROFILE_ID": "66666555543333000000",
+      "CURRENT_BOUND": 313636504
+    },
+    {
+      "PROFILE_ID": "66666555444432000000",
+      "CURRENT_BOUND": 313636504
+    },
+    {
+      "PROFILE_ID": "66665555555311110000",
+      "CURRENT_BOUND": 313636504
+    },
+    {
+      "PROFILE_ID": "66665555555222100000",
+      "CURRENT_BOUND": 313636504
+    },
+    {
+      "PROFILE_ID": "66665555554421100000",
+      "CURRENT_BOUND": 313636504
+    },
+    {
+      "PROFILE_ID": "66665555554332000000",
+      "CURRENT_BOUND": 313636504
+    },
+    {
+      "PROFILE_ID": "66655555555422000000",
+      "CURRENT_BOUND": 313636504
+    },
+    {
+      "PROFILE_ID": "66655555554441000000",
+      "CURRENT_BOUND": 313636504
+    },
+    {
+      "PROFILE_ID": "66555555555531000000",
+      "CURRENT_BOUND": 313636504
+    },
+    {
+      "PROFILE_ID": "66666665443332000000",
+      "CURRENT_BOUND": 313635832
+    },
+    {
+      "PROFILE_ID": "66666665443221111000",
+      "CURRENT_BOUND": 313633704
+    },
+    {
+      "PROFILE_ID": "66666665442222210000",
+      "CURRENT_BOUND": 313633704
+    },
+    {
+      "PROFILE_ID": "66666665433322110000",
+      "CURRENT_BOUND": 313633704
+    },
+    {
+      "PROFILE_ID": "66666665333332200000",
+      "CURRENT_BOUND": 313633704
+    },
+    {
+      "PROFILE_ID": "66666664444311111000",
+      "CURRENT_BOUND": 313633704
+    },
+    {
+      "PROFILE_ID": "66666664444222110000",
+      "CURRENT_BOUND": 313633704
+    },
+    {
+      "PROFILE_ID": "66666664443331110000",
+      "CURRENT_BOUND": 313633704
+    },
+    {
+      "PROFILE_ID": "66666664443322200000",
+      "CURRENT_BOUND": 313633704
+    },
+    {
+      "PROFILE_ID": "66666664433333100000",
+      "CURRENT_BOUND": 313633704
+    },
+    {
+      "PROFILE_ID": "66666655544111111100",
+      "CURRENT_BOUND": 313633704
+    },
+    {
+      "PROFILE_ID": "66666655543311111000",
+      "CURRENT_BOUND": 313633704
+    },
+    {
+      "PROFILE_ID": "66666655543222110000",
+      "CURRENT_BOUND": 313633704
+    },
+    {
+      "PROFILE_ID": "66666655533331110000",
+      "CURRENT_BOUND": 313633704
+    },
+    {
+      "PROFILE_ID": "66666655533322200000",
+      "CURRENT_BOUND": 313633704
+    },
+    {
+      "PROFILE_ID": "66666655444321110000",
+      "CURRENT_BOUND": 313633704
+    },
+    {
+      "PROFILE_ID": "66666655444222200000",
+      "CURRENT_BOUND": 313633704
+    },
+    {
+      "PROFILE_ID": "66666655443332100000",
+      "CURRENT_BOUND": 313633704
+    },
+    {
+      "PROFILE_ID": "66666654444422100000",
+      "CURRENT_BOUND": 313633704
+    },
+    {
+      "PROFILE_ID": "66666644444441100000",
+      "CURRENT_BOUND": 313633704
+    },
+    {
+      "PROFILE_ID": "66666644444433000000",
+      "CURRENT_BOUND": 313633704
+    },
+    {
+      "PROFILE_ID": "66666555554211111000",
+      "CURRENT_BOUND": 313633704
+    },
+    {
+      "PROFILE_ID": "66666555553321110000",
+      "CURRENT_BOUND": 313633704
+    },
+    {
+      "PROFILE_ID": "66666555553222200000",
+      "CURRENT_BOUND": 313633704
+    },
+    {
+      "PROFILE_ID": "66666555544322100000",
+      "CURRENT_BOUND": 313633704
+    },
+    {
+      "PROFILE_ID": "66666555444431100000",
+      "CURRENT_BOUND": 313633704
+    },
+    {
+      "PROFILE_ID": "66666555444333000000",
+      "CURRENT_BOUND": 313633704
+    },
+    {
+      "PROFILE_ID": "66666554444442000000",
+      "CURRENT_BOUND": 313633704
+    },
+    {
+      "PROFILE_ID": "66665555555221110000",
+      "CURRENT_BOUND": 313633704
+    },
+    {
+      "PROFILE_ID": "66665555554411110000",
+      "CURRENT_BOUND": 313633704
+    },
+    {
+      "PROFILE_ID": "66665555554331100000",
+      "CURRENT_BOUND": 313633704
+    },
+    {
+      "PROFILE_ID": "66665555553333000000",
+      "CURRENT_BOUND": 313633704
+    },
+    {
+      "PROFILE_ID": "66665555544432000000",
+      "CURRENT_BOUND": 313633704
+    },
+    {
+      "PROFILE_ID": "66655555555421100000",
+      "CURRENT_BOUND": 313633704
+    },
+    {
+      "PROFILE_ID": "66655555555332000000",
+      "CURRENT_BOUND": 313633704
+    },
+    {
+      "PROFILE_ID": "66555555555522000000",
+      "CURRENT_BOUND": 313633704
+    },
+    {
+      "PROFILE_ID": "66555555555441000000",
+      "CURRENT_BOUND": 313633704
+    },
+    {
+      "PROFILE_ID": "66666665443331100000",
+      "CURRENT_BOUND": 313633032
+    },
+    {
+      "PROFILE_ID": "66666664444421100000",
+      "CURRENT_BOUND": 313633032
+    },
+    {
+      "PROFILE_ID": "66666664444332000000",
+      "CURRENT_BOUND": 313633032
+    },
+    {
+      "PROFILE_ID": "66666655444422000000",
+      "CURRENT_BOUND": 313633032
+    },
+    {
+      "PROFILE_ID": "66666654444441000000",
+      "CURRENT_BOUND": 313633032
+    },
+    {
+      "PROFILE_ID": "66666555554322000000",
+      "CURRENT_BOUND": 313633032
+    },
+    {
+      "PROFILE_ID": "66555555555540000000",
+      "CURRENT_BOUND": 313632136
+    },
+    {
+      "PROFILE_ID": "66666665443211111100",
+      "CURRENT_BOUND": 313630904
+    },
+    {
+      "PROFILE_ID": "66666665442222111000",
+      "CURRENT_BOUND": 313630904
+    },
+    {
+      "PROFILE_ID": "66666665433321111000",
+      "CURRENT_BOUND": 313630904
+    },
+    {
+      "PROFILE_ID": "66666665433222210000",
+      "CURRENT_BOUND": 313630904
+    },
+    {
+      "PROFILE_ID": "66666665333332110000",
+      "CURRENT_BOUND": 313630904
+    },
+    {
+      "PROFILE_ID": "66666664444221111000",
+      "CURRENT_BOUND": 313630904
+    },
+    {
+      "PROFILE_ID": "66666664443322110000",
+      "CURRENT_BOUND": 313630904
+    },
+    {
+      "PROFILE_ID": "66666664433332200000",
+      "CURRENT_BOUND": 313630904
+    },
+    {
+      "PROFILE_ID": "66666655543221111000",
+      "CURRENT_BOUND": 313630904
+    },
+    {
+      "PROFILE_ID": "66666655542222210000",
+      "CURRENT_BOUND": 313630904
+    },
+    {
+      "PROFILE_ID": "66666655533322110000",
+      "CURRENT_BOUND": 313630904
+    },
+    {
+      "PROFILE_ID": "66666655444311111000",
+      "CURRENT_BOUND": 313630904
+    },
+    {
+      "PROFILE_ID": "66666655444222110000",
+      "CURRENT_BOUND": 313630904
+    },
+    {
+      "PROFILE_ID": "66666655443331110000",
+      "CURRENT_BOUND": 313630904
+    },
+    {
+      "PROFILE_ID": "66666655443322200000",
+      "CURRENT_BOUND": 313630904
+    },
+    {
+      "PROFILE_ID": "66666655433333100000",
+      "CURRENT_BOUND": 313630904
+    },
+    {
+      "PROFILE_ID": "66666654444421110000",
+      "CURRENT_BOUND": 313630904
+    },
+    {
+      "PROFILE_ID": "66666654444332100000",
+      "CURRENT_BOUND": 313630904
+    },
+    {
+      "PROFILE_ID": "66666555554111111100",
+      "CURRENT_BOUND": 313630904
+    },
+    {
+      "PROFILE_ID": "66666555553311111000",
+      "CURRENT_BOUND": 313630904
+    },
+    {
+      "PROFILE_ID": "66666555553222110000",
+      "CURRENT_BOUND": 313630904
+    },
+    {
+      "PROFILE_ID": "66666555544321110000",
+      "CURRENT_BOUND": 313630904
+    },
+    {
+      "PROFILE_ID": "66666555544222200000",
+      "CURRENT_BOUND": 313630904
+    },
+    {
+      "PROFILE_ID": "66666555543332100000",
+      "CURRENT_BOUND": 313630904
+    },
+    {
+      "PROFILE_ID": "66666555444422100000",
+      "CURRENT_BOUND": 313630904
+    },
+    {
+      "PROFILE_ID": "66666554444441100000",
+      "CURRENT_BOUND": 313630904
+    },
+    {
+      "PROFILE_ID": "66666554444433000000",
+      "CURRENT_BOUND": 313630904
+    },
+    {
+      "PROFILE_ID": "66665555555211111000",
+      "CURRENT_BOUND": 313630904
+    },
+    {
+      "PROFILE_ID": "66665555554322100000",
+      "CURRENT_BOUND": 313630904
+    },
+    {
+      "PROFILE_ID": "66665555544431100000",
+      "CURRENT_BOUND": 313630904
+    },
+    {
+      "PROFILE_ID": "66665555544333000000",
+      "CURRENT_BOUND": 313630904
+    },
+    {
+      "PROFILE_ID": "66665555444442000000",
+      "CURRENT_BOUND": 313630904
+    },
+    {
+      "PROFILE_ID": "66655555555411110000",
+      "CURRENT_BOUND": 313630904
+    },
+    {
+      "PROFILE_ID": "66655555555331100000",
+      "CURRENT_BOUND": 313630904
+    },
+    {
+      "PROFILE_ID": "66655555554432000000",
+      "CURRENT_BOUND": 313630904
+    },
+    {
+      "PROFILE_ID": "66555555555521100000",
+      "CURRENT_BOUND": 313630904
+    },
+    {
+      "PROFILE_ID": "65555555555541000000",
+      "CURRENT_BOUND": 313630904
+    },
+    {
+      "PROFILE_ID": "66666655544311110000",
+      "CURRENT_BOUND": 313630232
+    },
+    {
+      "PROFILE_ID": "66666655543331100000",
+      "CURRENT_BOUND": 313630232
+    },
+    {
+      "PROFILE_ID": "66666555555111111000",
+      "CURRENT_BOUND": 313630232
+    },
+    {
+      "PROFILE_ID": "66665555554431000000",
+      "CURRENT_BOUND": 313630232
+    },
+    {
+      "PROFILE_ID": "66666555554311110000",
+      "CURRENT_BOUND": 313627432
+    },
+    {
+      "PROFILE_ID": "66666555553331100000",
+      "CURRENT_BOUND": 313627432
+    },
+    {
+      "PROFILE_ID": "66666555544421100000",
+      "CURRENT_BOUND": 313627432
+    },
+    {
+      "PROFILE_ID": "66666665444311110000",
+      "CURRENT_BOUND": 313621160
+    },
+    {
+      "PROFILE_ID": "66666665444222100000",
+      "CURRENT_BOUND": 313621160
+    },
+    {
+      "PROFILE_ID": "66666655543332000000",
+      "CURRENT_BOUND": 313621160
+    },
+    {
+      "PROFILE_ID": "66666665444221110000",
+      "CURRENT_BOUND": 313618360
+    },
+    {
+      "PROFILE_ID": "66666664444331100000",
+      "CURRENT_BOUND": 313618360
+    },
+    {
+      "PROFILE_ID": "66666655544222100000",
+      "CURRENT_BOUND": 313618360
+    },
+    {
+      "PROFILE_ID": "66666655444332000000",
+      "CURRENT_BOUND": 313618360
+    },
+    {
+      "PROFILE_ID": "66666555544422000000",
+      "CURRENT_BOUND": 313618360
+    },
+    {
+      "PROFILE_ID": "66666555444441000000",
+      "CURRENT_BOUND": 313618360
+    },
+    {
+      "PROFILE_ID": "66665555555322000000",
+      "CURRENT_BOUND": 313618360
+    },
+    {
+      "PROFILE_ID": "65555555555550000000",
+      "CURRENT_BOUND": 313617464
+    },
+    {
+      "PROFILE_ID": "66666655544221110000",
+      "CURRENT_BOUND": 313615560
+    },
+    {
+      "PROFILE_ID": "66666655444411110000",
+      "CURRENT_BOUND": 313615560
+    },
+    {
+      "PROFILE_ID": "66666655444331100000",
+      "CURRENT_BOUND": 313615560
+    },
+    {
+      "PROFILE_ID": "66666665433333000000",
+      "CURRENT_BOUND": 313609288
+    },
+    {
+      "PROFILE_ID": "66666665443322100000",
+      "CURRENT_BOUND": 313606488
+    },
+    {
+      "PROFILE_ID": "66666664444411110000",
+      "CURRENT_BOUND": 313606488
+    },
+    {
+      "PROFILE_ID": "66666555553332000000",
+      "CURRENT_BOUND": 313606488
+    },
+    {
+      "PROFILE_ID": "66666665443321110000",
+      "CURRENT_BOUND": 313603688
+    },
+    {
+      "PROFILE_ID": "66666665433332100000",
+      "CURRENT_BOUND": 313603688
+    },
+    {
+      "PROFILE_ID": "66666664444322100000",
+      "CURRENT_BOUND": 313603688
+    },
+    {
+      "PROFILE_ID": "66666655543322100000",
+      "CURRENT_BOUND": 313603688
+    },
+    {
+      "PROFILE_ID": "66666654444432000000",
+      "CURRENT_BOUND": 313603688
+    },
+    {
+      "PROFILE_ID": "66666555554222100000",
+      "CURRENT_BOUND": 313603688
+    },
+    {
+      "PROFILE_ID": "66666555544332000000",
+      "CURRENT_BOUND": 313603688
+    },
+    {
+      "PROFILE_ID": "66666664443333000000",
+      "CURRENT_BOUND": 313594616
+    },
+    {
+      "PROFILE_ID": "66666655533333000000",
+      "CURRENT_BOUND": 313594616
+    },
+    {
+      "PROFILE_ID": "66666665444211111000",
+      "CURRENT_BOUND": 313591816
+    },
+    {
+      "PROFILE_ID": "66666665443222200000",
+      "CURRENT_BOUND": 313579944
+    },
+    {
+      "PROFILE_ID": "66666655443333000000",
+      "CURRENT_BOUND": 313579944
+    }
+  ],
+  "CANONICAL_PRIMITIVES": {
+    "STATUS": "PASS",
+    "SINGLE_TICKET_ANY_PRIZE": 18611432,
+    "K20_S1": 372228640
+  },
+  "CANONICAL_PRIMITIVE_STATUS": "PASS",
+  "S4_CERTIFICATE": {
+    "minimum_triple_incidence_square_sum": 222,
+    "cross_incidence_lower_bound": 486,
+    "core_outside_pair_count": 374,
+    "double_incidence_lower_bound_if_no_contribution": 112,
+    "core_edge_count": 66,
+    "s4_lower_bound": 112
+  },
+  "SOLVER_RUNTIME_PREFLIGHT": {
+    "STATUS": "PASS",
+    "PYTHON_EXECUTABLE": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/python",
+    "PYTHON_VERSION": "3.13.8",
+    "ORTOOLS_VERSION": "9.15.6755",
+    "CP_MODEL_IMPORT": "PASS",
+    "EXTERNAL_TIMEOUT_WRAPPER_PATH": "/opt/homebrew/bin/timeout",
+    "EXTERNAL_TIMEOUT_WRAPPER_VERSION": "timeout (GNU coreutils) 9.10",
+    "EXTERNAL_TIMEOUT_PROBE_EXIT_CODE": 124
+  },
+  "SOLVER_STATUS": "INFEASIBLE_CERTIFIED_OWNER_PAIR",
+  "SOLVER_CONFIGURED_WALL_LIMIT": {
+    "INITIAL_NATIVE_REFUTATION_SECONDS": 60.0,
+    "NATIVE_REFUTATION_SECONDS": 600.0,
+    "NATIVE_COMPLEMENT_SECONDS": 90.0,
+    "NATIVE_WITNESS_SECONDS_PER_SOLVE": 30.0,
+    "EXTERNAL_REFUTATION_TIMEOUT_SECONDS": 630.0,
+    "EXTERNAL_COMPLEMENT_TIMEOUT_SECONDS": 120.0,
+    "PROOF_WALL_SECONDS": 3600.0,
+    "MAX_RESOLVED_OWNER_PROFILES": 8,
+    "CP_SAT_SEARCH_WORKERS": 1
+  },
+  "SOLVER_ACTUAL_WALL_TIME": 427.385018,
+  "PROOF_ACTUAL_WALL_SECONDS": 457.0784766669967,
+  "ATTEMPT_NUMBER": 2,
+  "SOLVER_MODEL_SOURCE_SHA256": "62167c5e8d0b82e6881f9e007220ed8038bb134aaf7a79ed795b159b62c55394",
+  "PREVIOUS_ATTEMPT": {
+    "TASK_STATUS": "NO_CERTIFIED_FAMILY_DROP",
+    "FAMILY_UPPER_BOUND": 313656776,
+    "SOLVER_STATUS": "SEE_OWNER_ATTEMPTS",
+    "SOLVER_CONFIGURED_WALL_LIMIT": {
+      "NATIVE_REFUTATION_SECONDS": 60.0,
+      "NATIVE_COMPLEMENT_SECONDS": 90.0,
+      "NATIVE_WITNESS_SECONDS_PER_SOLVE": 30.0,
+      "EXTERNAL_REFUTATION_TIMEOUT_SECONDS": 90.0,
+      "EXTERNAL_COMPLEMENT_TIMEOUT_SECONDS": 120.0,
+      "PROOF_WALL_SECONDS": 3600.0,
+      "MAX_RESOLVED_OWNER_PROFILES": 8,
+      "CP_SAT_SEARCH_WORKERS": 1
+    },
+    "SOLVER_ACTUAL_WALL_TIME": 223.20217300000002,
+    "PROOF_ACTUAL_WALL_SECONDS": 248.7623103750011,
+    "SOLVER_MODEL_SOURCE_SHA256": "3885ce680b5a0ed499bcffcd19060d9a98fa8d82ffce2354c18e13f10fac7ad2",
+    "RETRY_ATTRIBUTION": {
+      "BLOCKER": "Owner B exact-support refutation returned UNKNOWN at the native time limit",
+      "HYPOTHESIS": "The same one-triangle refutation may finish within a bounded 600-second native limit",
+      "TARGET_PROFILE": "66655555555521000000",
+      "ALREADY_BELOW_CURSOR_PROFILES": [
+        "66665555555411100000"
+      ],
+      "OWNER_A_RERUN_AUTHORIZED": false
+    }
+  },
+  "SOLVER_CERTIFIED_BOUND": 313644904,
+  "SOLVER_CERTIFIED_BOUND_SCOPE": "RESOLVED_OWNER_PAIR_ONLY",
+  "SOLVER_PROFILES_SENT": [
+    "66665555555411100000",
+    "66655555555521000000"
+  ],
+  "CURSOR_PROFILE_SOLVES": 0,
+  "NO_CURSOR_WORK_GUARD": "PASS",
+  "PLATEAU_RERUN_COUNT": 0,
+  "RETAINED_PLATEAU_BOUND": 313646248,
+  "FULL_4850_PROFILE_CENSUS_REBUILT": false,
+  "TIGHTENING_PRIORITY_ORDER": [
+    "A_EXACT_SUPPORT_OPEN_WEDGE_REFUTATION",
+    "B_COMPLEMENT_TRIANGLE_LOWER_BOUND",
+    "C_EXACT_NONCORE_TRIANGLE_CEILING",
+    "D_LOOSE_CYCLE_PASCH_SHARED_VERTEX",
+    "E_MINIMUM_S4_AT_S3_MAXIMIZERS",
+    "F_HIGHER_ORDER_MULTIPLICITY"
+  ],
+  "WORKTREE_DISPOSITION": "RETAIN",
+  "NEW_PORTFOLIO_SEARCH_STARTED": "NO",
+  "PRODUCTION_MUTATION": "NONE",
+  "RUNTIME_TRANSITION_OCCURRED": "NO",
+  "FOCUSED_TESTS": {
+    "STATUS": "PASS",
+    "TEST_COUNT": 28,
+    "WALL_SECONDS": 1.27,
+    "SELECTION": [
+      "tests/unit/test_b649_k20_min_s2_resolved_owner_pair_refinement_r22.py",
+      "tests/unit/test_b649_k1_k8_global_optimality.py::test_closed_form_matches_independent_binomial_counts"
+    ],
+    "PYTEST_CACHE_PROVIDER": "DISABLED"
+  },
+  "RUFF": {
+    "STATUS": "PASS",
+    "LINT": "PASS",
+    "FORMAT": "PASS",
+    "SCOPE": [
+      "src/lottolab/research/b649_k20_min_s2_resolved_owner_pair_refinement_r22.py",
+      "tests/unit/test_b649_k20_min_s2_resolved_owner_pair_refinement_r22.py"
+    ],
+    "CACHE": "DISABLED"
+  },
+  "PYRIGHT": {
+    "STATUS": "PASS",
+    "VERSION": "1.1.411",
+    "ERRORS": 0,
+    "ANALYZER_WARNINGS": 0,
+    "SCOPE": [
+      "src/lottolab/research/b649_k20_min_s2_resolved_owner_pair_refinement_r22.py",
+      "tests/unit/test_b649_k20_min_s2_resolved_owner_pair_refinement_r22.py"
+    ],
+    "VENV_PATH": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis"
+  },
+  "VERIFICATION_PROVENANCE": "RUN_THIS_TASK",
+  "FALSIFIABILITY_CHECK": {
+    "STATUS": "CONFIRMED",
+    "MUTATION": "in-memory cursor/max-owner dispatch guard disabled",
+    "EXPECTED_FAILURE_EXIT_CODE": 1,
+    "EXPECTED_FAILURE": "DID NOT RAISE AssertionError",
+    "RESTORE": "PASS",
+    "FINAL_REVERIFY": "PASS",
+    "SOURCE_FILES_MUTATED": false
+  },
+  "VERIFICATION_ATTEMPT_HISTORY": [
+    {
+      "CHECK": "initial Ruff lint/format",
+      "RESULT": "RUF043 and formatting detected",
+      "REPAIR": "raw regex string and Ruff formatter"
+    },
+    {
+      "CHECK": "first focused subset",
+      "RESULT": "21 passed, 1 deselected"
+    },
+    {
+      "CHECK": "resume focused subset",
+      "RESULT": "26 passed, 1 deselected"
+    },
+    {
+      "CHECK": "final focused pytest",
+      "RESULT": "28 passed"
+    }
+  ],
+  "REFINED_OWNER_CERTIFICATES": [
+    {
+      "PROFILE_ID": "66665555555411100000",
+      "GRAPH_TRIANGLE_CAP": 271,
+      "NONCORE_TRIANGLE_CAP": 249,
+      "WEDGE_COUNT": 832,
+      "OPEN_WEDGE_LOWER_BOUND_RAW": 17,
+      "OPEN_WEDGE_LOWER_BOUND_AFTER_CONGRUENCE": 19,
+      "COMPLEMENT_TRIANGLE_LOWER_BOUND": 27,
+      "S3": 5254928,
+      "S4_FLOOR": 112,
+      "FOURTH_ORDER_CREDIT": 64,
+      "FAMILY_UPPER_BOUND": 313644904,
+      "CERTIFICATE": "CP_SAT_INFEASIBLE_AT_GRAPH_TRIANGLES_GE_272"
+    },
+    {
+      "PROFILE_ID": "66655555555521000000",
+      "GRAPH_TRIANGLE_CAP": 271,
+      "NONCORE_TRIANGLE_CAP": 249,
+      "WEDGE_COUNT": 832,
+      "OPEN_WEDGE_LOWER_BOUND_RAW": 17,
+      "OPEN_WEDGE_LOWER_BOUND_AFTER_CONGRUENCE": 19,
+      "COMPLEMENT_TRIANGLE_LOWER_BOUND": 27,
+      "S3": 5254928,
+      "S4_FLOOR": 112,
+      "FOURTH_ORDER_CREDIT": 64,
+      "FAMILY_UPPER_BOUND": 313644904,
+      "CERTIFICATE": "CP_SAT_INFEASIBLE_AT_GRAPH_TRIANGLES_GE_272"
+    }
+  ],
+  "SUCCESS_A_SATISFIED": false,
+  "SUCCESS_B_SATISFIED": true,
+  "STOP_REASON": "ALL_RESOLVED_BELOW_UNPROCESSED_UNRESOLVED_CURSOR",
+  "WORK_AFTER_CURSOR_BECAME_LOAD_BEARING": false,
+  "SOLVER_ACTUAL_WALL_TIME_SCOPE": "NATIVE_UNFIXED_OWNER_REFUTATION_AND_OPTIMIZATION_SOLVES_INCLUDING_UNCERTIFIED_ATTEMPTS",
+  "SOLVER_WRAPPED_CALL_WALL_SECONDS": 450.8773622109875,
+  "OUTER_PROOF_EXTERNAL_TIMEOUT_SECONDS_BY_ATTEMPT": [
+    3600,
+    3300
+  ],
+  "IMPLEMENTATION_LIFECYCLE_STATUS": "COMPLETE",
+  "PR_PUBLICATION_STATUS": "NOT_APPLICABLE",
+  "POSTMERGE_LIFECYCLE_STATUS": "NOT_APPLICABLE",
+  "INTENT": "code refines only max resolved owners; the task expects both owners at or below 313655320; the opened Packet forbids cursor solving and requires a full ledger recomputation after each strict improvement.",
+  "FILESYSTEM_ACCOUNTING": {
+    "REPOSITORY_FILES_CREATED": [
+      "src/lottolab/research/b649_k20_min_s2_resolved_owner_pair_refinement_r22.py",
+      "tests/unit/test_b649_k20_min_s2_resolved_owner_pair_refinement_r22.py",
+      "docs/research/matrix-native-results/b649-k20-min-s2-resolved-owner-pair-refinement-r22-result.json"
+    ],
+    "REPOSITORY_PREEXISTING_FILES_MODIFIED": [],
+    "FILES_DELETED": [],
+    "WORKTREE_MATERIALIZATION_CREATED": "EXACT_PACKET_WORKTREE_FROM_BASE_HEAD",
+    "WORKTREE_MATERIALIZATION_REMOVED": [],
+    "WORKSPACE_TOOLCHAIN_RUNTIME_OUTPUTS_CREATED": [],
+    "GIT_METADATA_WRITES": [
+      "exact worktree registration",
+      "exact task branch",
+      "task worktree index",
+      "one authorized local commit"
+    ],
+    "WORKTREE_DISPOSITION": "RETAIN"
+  }
+}

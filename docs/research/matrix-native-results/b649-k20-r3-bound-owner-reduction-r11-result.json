@@ -1,0 +1,440 @@
+{
+  "TASK_ID": "B649_K20_R3_CORRECTED_BOUND_OWNER_REDUCTION_R11",
+  "TASK_STATUS": "CERTIFIED_R3_BOUND_TIGHTENED",
+  "BASE_HEAD": "b662fe93f2eeb3cac95163b85f82c92dff763ef3",
+  "BASE_TREE": "29a0b83293c326073b313e334533e3ca4647c226",
+  "TASK_BRANCH": "codex/b649-k20-r3-corrected-bound-owner-reduction-r11",
+  "CANONICAL_PRIMITIVES": {
+    "SINGLE_TICKET_ANY_PRIZE": 18611432,
+    "PAIR_INTERSECTION_COST[6]": 18611432,
+    "K20_S1": 372228640
+  },
+  "CURRENT_BOUND_OWNER_SET": [
+    "corrected-tail"
+  ],
+  "OWNER_TERM_COUNT": 1,
+  "TOP_LEVEL_R3_TERMS": [
+    {
+      "stable_id": "corrected-tail",
+      "bound": 358352827,
+      "primitive_dependencies": [
+        "CANONICAL_K20_S1",
+        "R6_FIXED_BASELINE_REDUCTION",
+        "R7_JOINT_LOCAL_LOSS_CUTOFF",
+        "EXACT_30_PROFILE_18_TICKET_COUNT_VECTOR_SPECTRUM"
+      ],
+      "structural_certificate_source": "R11_EXACT_30_PROFILE_18_TICKET_TYPE_VECTOR_CENSUS",
+      "prior_uncorrected_frontier_bound": null
+    },
+    {
+      "stable_id": "state:s2-10833008-s3-427140",
+      "bound": 354671803,
+      "primitive_dependencies": [
+        "CANONICAL_K20_S1",
+        "ANCHOR_PAIR_INTERSECTION_I3",
+        "EXACT_ANCHOR_S2_AND_S3",
+        "R9_OPTIMAL_JOINT_HISTOGRAM_CORRECTION",
+        "18_RESIDUAL_TICKET_MULTIPLICITY_CAP"
+      ],
+      "structural_certificate_source": "R9_OPTIMAL_HISTOGRAM_AND_MULTIPLICITY; histogram correction=5505035; multiplicity cap=18 from residual-ticket structure; support witness SHA256=4cbdadfed4e5743dd811f07d664d49949aee3a4876117c7294e1ee5237528cb6",
+      "prior_uncorrected_frontier_bound": 358352830
+    },
+    {
+      "stable_id": "state:s2-11298977-s3-504238",
+      "bound": 354399779,
+      "primitive_dependencies": [
+        "CANONICAL_K20_S1",
+        "ANCHOR_PAIR_INTERSECTION_I3",
+        "EXACT_ANCHOR_S2_AND_S3",
+        "R9_OPTIMAL_JOINT_HISTOGRAM_CORRECTION",
+        "18_RESIDUAL_TICKET_MULTIPLICITY_CAP"
+      ],
+      "structural_certificate_source": "R9_OPTIMAL_HISTOGRAM_AND_MULTIPLICITY; histogram correction=5387957; multiplicity cap=18 from residual-ticket structure; support witness SHA256=968a14f0f4afdb985b61d09bbdd895bd2eaebee384719505fe3796f026bc2115",
+      "prior_uncorrected_frontier_bound": 357963959
+    },
+    {
+      "stable_id": "state:s2-11295555-s3-450450",
+      "bound": 354332053,
+      "primitive_dependencies": [
+        "CANONICAL_K20_S1",
+        "ANCHOR_PAIR_INTERSECTION_I3",
+        "EXACT_ANCHOR_S2_AND_S3",
+        "R9_OPTIMAL_JOINT_HISTOGRAM_CORRECTION",
+        "18_RESIDUAL_TICKET_MULTIPLICITY_CAP"
+      ],
+      "structural_certificate_source": "R9_OPTIMAL_HISTOGRAM_AND_MULTIPLICITY; histogram correction=5401895; multiplicity cap=18 from residual-ticket structure; support witness SHA256=78f4024c3f6a9bb52f58951eec4abf47343b68fa6bf4bc2ca4610cc5f48aafc6",
+      "prior_uncorrected_frontier_bound": 357913593
+    },
+    {
+      "stable_id": "state:s2-11764636-s3-581336",
+      "bound": 354215592,
+      "primitive_dependencies": [
+        "CANONICAL_K20_S1",
+        "ANCHOR_PAIR_INTERSECTION_I3",
+        "EXACT_ANCHOR_S2_AND_S3",
+        "R9_OPTIMAL_JOINT_HISTOGRAM_CORRECTION",
+        "18_RESIDUAL_TICKET_MULTIPLICITY_CAP"
+      ],
+      "structural_certificate_source": "R9_OPTIMAL_HISTOGRAM_AND_MULTIPLICITY; histogram correction=5183042; multiplicity cap=18 from residual-ticket structure; support witness SHA256=e86f63609f4edf7af34e8c192f47e857de1fec2ebaf8fbd43afc20e6508b2f39",
+      "prior_uncorrected_frontier_bound": 357575398
+    },
+    {
+      "stable_id": "state:s2-11761525-s3-527548",
+      "bound": 354059548,
+      "primitive_dependencies": [
+        "CANONICAL_K20_S1",
+        "ANCHOR_PAIR_INTERSECTION_I3",
+        "EXACT_ANCHOR_S2_AND_S3",
+        "R9_OPTIMAL_JOINT_HISTOGRAM_CORRECTION",
+        "18_RESIDUAL_TICKET_MULTIPLICITY_CAP"
+      ],
+      "structural_certificate_source": "R9_OPTIMAL_HISTOGRAM_AND_MULTIPLICITY; histogram correction=5285298; multiplicity cap=18 from residual-ticket structure; support witness SHA256=de6f031fd47c62e852d1981f1113978a138052b85b2c9276ea8fbde8f9ec471d",
+      "prior_uncorrected_frontier_bound": 357524721
+    },
+    {
+      "stable_id": "state:s2-12229984-s3-658434",
+      "bound": 353923259,
+      "primitive_dependencies": [
+        "CANONICAL_K20_S1",
+        "ANCHOR_PAIR_INTERSECTION_I3",
+        "EXACT_ANCHOR_S2_AND_S3",
+        "R9_OPTIMAL_JOINT_HISTOGRAM_CORRECTION",
+        "18_RESIDUAL_TICKET_MULTIPLICITY_CAP"
+      ],
+      "structural_certificate_source": "R9_OPTIMAL_HISTOGRAM_AND_MULTIPLICITY; histogram correction=5086273; multiplicity cap=18 from residual-ticket structure; support witness SHA256=ecc443e99b36e7832f803d504f2c660b9432b1d1249becd00ababeed52941692",
+      "prior_uncorrected_frontier_bound": 357187148
+    },
+    {
+      "stable_id": "state:s2-12227184-s3-604646",
+      "bound": 353872346,
+      "primitive_dependencies": [
+        "CANONICAL_K20_S1",
+        "ANCHOR_PAIR_INTERSECTION_I3",
+        "EXACT_ANCHOR_S2_AND_S3",
+        "R9_OPTIMAL_JOINT_HISTOGRAM_CORRECTION",
+        "18_RESIDUAL_TICKET_MULTIPLICITY_CAP"
+      ],
+      "structural_certificate_source": "R9_OPTIMAL_HISTOGRAM_AND_MULTIPLICITY; histogram correction=5083398; multiplicity cap=18 from residual-ticket structure; support witness SHA256=529c7de56dbf049272dbc26b2b578d78dd8c80ca5e7e1a0869f8ab253cdf743c",
+      "prior_uncorrected_frontier_bound": 357136160
+    },
+    {
+      "stable_id": "state:s2-12695020-s3-735532",
+      "bound": 356799210,
+      "primitive_dependencies": [
+        "CANONICAL_K20_S1",
+        "ANCHOR_PAIR_INTERSECTION_I3",
+        "JOINT_S2",
+        "MAXIMUM_JOINT_S3"
+      ],
+      "structural_certificate_source": "R7_EXACT_S2_S3_FRONTIER; coherent frontier point from one type-count state",
+      "prior_uncorrected_frontier_bound": 356799210
+    },
+    {
+      "stable_id": "state:s2-12692531-s3-681744",
+      "bound": 356747911,
+      "primitive_dependencies": [
+        "CANONICAL_K20_S1",
+        "ANCHOR_PAIR_INTERSECTION_I3",
+        "JOINT_S2",
+        "MAXIMUM_JOINT_S3"
+      ],
+      "structural_certificate_source": "R7_EXACT_S2_S3_FRONTIER; coherent frontier point from one type-count state",
+      "prior_uncorrected_frontier_bound": 356747911
+    },
+    {
+      "stable_id": "state:s2-13169800-s3-789320",
+      "bound": 356378218,
+      "primitive_dependencies": [
+        "CANONICAL_K20_S1",
+        "ANCHOR_PAIR_INTERSECTION_I3",
+        "JOINT_S2",
+        "MAXIMUM_JOINT_S3"
+      ],
+      "structural_certificate_source": "R7_EXACT_S2_S3_FRONTIER; coherent frontier point from one type-count state",
+      "prior_uncorrected_frontier_bound": 356378218
+    },
+    {
+      "stable_id": "state:s2-13548976-s3-951748",
+      "bound": 356161470,
+      "primitive_dependencies": [
+        "CANONICAL_K20_S1",
+        "ANCHOR_PAIR_INTERSECTION_I3",
+        "JOINT_S2",
+        "MAXIMUM_JOINT_S3"
+      ],
+      "structural_certificate_source": "R7_EXACT_S2_S3_FRONTIER; coherent frontier point from one type-count state",
+      "prior_uncorrected_frontier_bound": 356161470
+    },
+    {
+      "stable_id": "state:s2-14122976-s3-1005536",
+      "bound": 355641258,
+      "primitive_dependencies": [
+        "CANONICAL_K20_S1",
+        "ANCHOR_PAIR_INTERSECTION_I3",
+        "JOINT_S2",
+        "MAXIMUM_JOINT_S3"
+      ],
+      "structural_certificate_source": "R7_EXACT_S2_S3_FRONTIER; coherent frontier point from one type-count state",
+      "prior_uncorrected_frontier_bound": 355641258
+    },
+    {
+      "stable_id": "state:s2-14696976-s3-1059324",
+      "bound": 355121046,
+      "primitive_dependencies": [
+        "CANONICAL_K20_S1",
+        "ANCHOR_PAIR_INTERSECTION_I3",
+        "JOINT_S2",
+        "MAXIMUM_JOINT_S3"
+      ],
+      "structural_certificate_source": "R7_EXACT_S2_S3_FRONTIER; coherent frontier point from one type-count state",
+      "prior_uncorrected_frontier_bound": 355121046
+    },
+    {
+      "stable_id": "state:s2-15270976-s3-1113112",
+      "bound": 354600834,
+      "primitive_dependencies": [
+        "CANONICAL_K20_S1",
+        "ANCHOR_PAIR_INTERSECTION_I3",
+        "JOINT_S2",
+        "MAXIMUM_JOINT_S3"
+      ],
+      "structural_certificate_source": "R7_EXACT_S2_S3_FRONTIER; coherent frontier point from one type-count state",
+      "prior_uncorrected_frontier_bound": 354600834
+    },
+    {
+      "stable_id": "state:s2-15754130-s3-1115170",
+      "bound": 354119738,
+      "primitive_dependencies": [
+        "CANONICAL_K20_S1",
+        "ANCHOR_PAIR_INTERSECTION_I3",
+        "JOINT_S2",
+        "MAXIMUM_JOINT_S3"
+      ],
+      "structural_certificate_source": "R7_EXACT_S2_S3_FRONTIER; coherent frontier point from one type-count state",
+      "prior_uncorrected_frontier_bound": 354119738
+    },
+    {
+      "stable_id": "state:s2-15844976-s3-1166900",
+      "bound": 354080622,
+      "primitive_dependencies": [
+        "CANONICAL_K20_S1",
+        "ANCHOR_PAIR_INTERSECTION_I3",
+        "JOINT_S2",
+        "MAXIMUM_JOINT_S3"
+      ],
+      "structural_certificate_source": "R7_EXACT_S2_S3_FRONTIER; coherent frontier point from one type-count state",
+      "prior_uncorrected_frontier_bound": 354080622
+    },
+    {
+      "stable_id": "state:s2-16328130-s3-1168958",
+      "bound": 353599526,
+      "primitive_dependencies": [
+        "CANONICAL_K20_S1",
+        "ANCHOR_PAIR_INTERSECTION_I3",
+        "JOINT_S2",
+        "MAXIMUM_JOINT_S3"
+      ],
+      "structural_certificate_source": "R7_EXACT_S2_S3_FRONTIER; coherent frontier point from one type-count state",
+      "prior_uncorrected_frontier_bound": 353599526
+    },
+    {
+      "stable_id": "state:s2-16798152-s3-1383116",
+      "bound": 353343662,
+      "primitive_dependencies": [
+        "CANONICAL_K20_S1",
+        "ANCHOR_PAIR_INTERSECTION_I3",
+        "JOINT_S2",
+        "MAXIMUM_JOINT_S3"
+      ],
+      "structural_certificate_source": "R7_EXACT_S2_S3_FRONTIER; coherent frontier point from one type-count state",
+      "prior_uncorrected_frontier_bound": 353343662
+    },
+    {
+      "stable_id": "state:s2-16608564-s3-1182916",
+      "bound": 353333050,
+      "primitive_dependencies": [
+        "CANONICAL_K20_S1",
+        "ANCHOR_PAIR_INTERSECTION_I3",
+        "JOINT_S2",
+        "MAXIMUM_JOINT_S3"
+      ],
+      "structural_certificate_source": "R7_EXACT_S2_S3_FRONTIER; coherent frontier point from one type-count state",
+      "prior_uncorrected_frontier_bound": 353333050
+    },
+    {
+      "stable_id": "state:s2-16794330-s3-1246056",
+      "bound": 353210424,
+      "primitive_dependencies": [
+        "CANONICAL_K20_S1",
+        "ANCHOR_PAIR_INTERSECTION_I3",
+        "JOINT_S2",
+        "MAXIMUM_JOINT_S3"
+      ],
+      "structural_certificate_source": "R7_EXACT_S2_S3_FRONTIER; coherent frontier point from one type-count state",
+      "prior_uncorrected_frontier_bound": 353210424
+    },
+    {
+      "stable_id": "state:s2-17743684-s3-1816864",
+      "bound": 352831878,
+      "primitive_dependencies": [
+        "CANONICAL_K20_S1",
+        "ANCHOR_PAIR_INTERSECTION_I3",
+        "JOINT_S2",
+        "MAXIMUM_JOINT_S3"
+      ],
+      "structural_certificate_source": "R7_EXACT_S2_S3_FRONTIER; coherent frontier point from one type-count state",
+      "prior_uncorrected_frontier_bound": 352831878
+    },
+    {
+      "stable_id": "state:s2-17372152-s3-1436904",
+      "bound": 352823450,
+      "primitive_dependencies": [
+        "CANONICAL_K20_S1",
+        "ANCHOR_PAIR_INTERSECTION_I3",
+        "JOINT_S2",
+        "MAXIMUM_JOINT_S3"
+      ],
+      "structural_certificate_source": "R7_EXACT_S2_S3_FRONTIER; coherent frontier point from one type-count state",
+      "prior_uncorrected_frontier_bound": 352823450
+    },
+    {
+      "stable_id": "state:s2-18317684-s3-1870652",
+      "bound": 352311666,
+      "primitive_dependencies": [
+        "CANONICAL_K20_S1",
+        "ANCHOR_PAIR_INTERSECTION_I3",
+        "JOINT_S2",
+        "MAXIMUM_JOINT_S3"
+      ],
+      "structural_certificate_source": "R7_EXACT_S2_S3_FRONTIER; coherent frontier point from one type-count state",
+      "prior_uncorrected_frontier_bound": 352311666
+    }
+  ],
+  "CORRECTED_TAIL_BOUND": 358352827,
+  "TAIL_OWNER_DECOMPOSITION": {
+    "LOCAL_LOSS_CUTOFF": 6695798,
+    "RESIDUAL_TICKET_COUNT": 18,
+    "ANCHOR_INCIDENCE_PROFILE_COUNT": 30,
+    "CERTIFIED_CANDIDATE_VECTOR_COUNT_AT_CUTOFF": 10816,
+    "EXACT_TYPE_VECTOR_COUNT_THROUGH_CUTOFF_PLUS_TWO": 10816,
+    "VECTORS_AT_EXACT_CUTOFF_PLUS_ONE": 0,
+    "VECTORS_AT_EXACT_CUTOFF_PLUS_TWO": 0,
+    "MINIMUM_OMITTED_LOCAL_LOSS": 6695801,
+    "FIXED_BASELINE_REDUCTION": 7180012,
+    "CANONICAL_UNCORRECTED_BASELINE": 365048628,
+    "PRIOR_CORRECTED_TAIL_BOUND": 358352828,
+    "CORRECTED_TAIL_BOUND": 358352827,
+    "EXACT_CENSUS_WALL_SECONDS": 0.101061,
+    "PROOF": "The pinned R7 census contains every 18-ticket type-count vector through local loss cutoff. Exact R11 enumeration through cutoff+2 has the same 10,816 vectors, so no vector exists at cutoff+1 or cutoff+2. Every omitted portfolio therefore has integer local loss at least cutoff+3."
+  },
+  "TOP_STATE_BOUNDS": [
+    {
+      "stable_id": "state:s2-10833008-s3-427140",
+      "bound": 354671803
+    },
+    {
+      "stable_id": "state:s2-11298977-s3-504238",
+      "bound": 354399779
+    },
+    {
+      "stable_id": "state:s2-11295555-s3-450450",
+      "bound": 354332053
+    },
+    {
+      "stable_id": "state:s2-11764636-s3-581336",
+      "bound": 354215592
+    },
+    {
+      "stable_id": "state:s2-11761525-s3-527548",
+      "bound": 354059548
+    },
+    {
+      "stable_id": "state:s2-12229984-s3-658434",
+      "bound": 353923259
+    },
+    {
+      "stable_id": "state:s2-12227184-s3-604646",
+      "bound": 353872346
+    },
+    {
+      "stable_id": "state:s2-12695020-s3-735532",
+      "bound": 356799210
+    },
+    {
+      "stable_id": "state:s2-12692531-s3-681744",
+      "bound": 356747911
+    },
+    {
+      "stable_id": "state:s2-13169800-s3-789320",
+      "bound": 356378218
+    },
+    {
+      "stable_id": "state:s2-13548976-s3-951748",
+      "bound": 356161470
+    },
+    {
+      "stable_id": "state:s2-14122976-s3-1005536",
+      "bound": 355641258
+    },
+    {
+      "stable_id": "state:s2-14696976-s3-1059324",
+      "bound": 355121046
+    },
+    {
+      "stable_id": "state:s2-15270976-s3-1113112",
+      "bound": 354600834
+    },
+    {
+      "stable_id": "state:s2-15754130-s3-1115170",
+      "bound": 354119738
+    },
+    {
+      "stable_id": "state:s2-15844976-s3-1166900",
+      "bound": 354080622
+    },
+    {
+      "stable_id": "state:s2-16328130-s3-1168958",
+      "bound": 353599526
+    },
+    {
+      "stable_id": "state:s2-16798152-s3-1383116",
+      "bound": 353343662
+    },
+    {
+      "stable_id": "state:s2-16608564-s3-1182916",
+      "bound": 353333050
+    },
+    {
+      "stable_id": "state:s2-16794330-s3-1246056",
+      "bound": 353210424
+    },
+    {
+      "stable_id": "state:s2-17743684-s3-1816864",
+      "bound": 352831878
+    },
+    {
+      "stable_id": "state:s2-17372152-s3-1436904",
+      "bound": 352823450
+    },
+    {
+      "stable_id": "state:s2-18317684-s3-1870652",
+      "bound": 352311666
+    }
+  ],
+  "R3_BOUND": 358352827,
+  "PRIOR_R3_BOUND": 358352828,
+  "R3_STATUS": "CERTIFIED_STRICTLY_BELOW_PRIOR_BOUND",
+  "SUCCESS_A": false,
+  "SUCCESS_B": true,
+  "SUCCESS_C": true,
+  "R4_REFERENCE_BOUND": 350545749,
+  "INCUMBENT": 313239661,
+  "REMAINING_GAP": 45113166,
+  "SOLVER_STATUS": "NOT_USED_EXACT_TYPE_COUNT_VECTOR_CENSUS",
+  "SOLVER_CONFIGURED_WALL_LIMIT": "NOT_APPLICABLE; no solver launched",
+  "SOLVER_ACTUAL_WALL_TIME": "NOT_APPLICABLE; no solver launched",
+  "SOLVER_CERTIFIED_BOUND": null,
+  "EXACT_CENSUS_EXTERNAL_HARD_TIMEOUT_SECONDS": 30,
+  "NEW_PORTFOLIO_SEARCH_STARTED": "NO",
+  "PRODUCTION_MUTATION": "NONE"
+}

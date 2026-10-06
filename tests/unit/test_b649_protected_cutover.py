@@ -3181,6 +3181,90 @@ def _not_started_reconciliation_argv(incident: StrandedIncident) -> list[str]:
     ]
 
 
+def _rewrite_not_started_output(
+    incident: StrandedIncident,
+    *,
+    stream_name: str,
+    result_updates: dict[str, object] | None = None,
+    remove_result_keys: tuple[str, ...] = (),
+    raw_text: str | None = None,
+    stream_updates: dict[str, object] | None = None,
+    make_old_incomplete: bool = False,
+) -> protected.Record:
+    receipt_file = protected.ReceiptFile(incident.request.receipt_path)
+    stranded = receipt_file.read()
+    assert stranded is not None
+    output = protected.record(stranded.get(stream_name))
+    if raw_text is None:
+        output_text = output.get("text")
+        assert isinstance(output_text, str)
+        lines = output_text.splitlines(keepends=True)
+        found = False
+        for index in range(len(lines) - 1, -1, -1):
+            try:
+                candidate = json.loads(lines[index])
+            except (TypeError, ValueError):
+                continue
+            if not isinstance(candidate, dict):
+                continue
+            candidate_record = cast(dict[str, object], candidate)
+            if candidate_record.get("status") != "NOT_STARTED":
+                continue
+            updated_result: dict[str, object] = dict(candidate_record)
+            for key in remove_result_keys:
+                updated_result.pop(key, None)
+            updated_result.update(result_updates or {})
+            ending = "\n" if lines[index].endswith("\n") else ""
+            lines[index] = protected.canonical(updated_result) + ending
+            found = True
+        if not found:
+            raise AssertionError("captured NOT_STARTED JSON is absent")
+        output_text = "".join(lines)
+    else:
+        output_text = raw_text
+    updated_output = {
+        **output,
+        "text": output_text,
+        "bytes": len(output_text.encode("utf-8")),
+        "sha256": hashlib.sha256(output_text.encode("utf-8")).hexdigest(),
+    }
+    updated_output.update(stream_updates or {})
+    updated_stranded: protected.Record = {**stranded, stream_name: updated_output}
+    if make_old_incomplete:
+        updated_stranded.update(
+            {
+                "status": "INCOMPLETE_OR_AMBIGUOUS",
+                "result_status": "INCOMPLETE_OR_AMBIGUOUS",
+                "child_exit_code": None,
+                "stdout": None,
+                "stderr": None,
+            }
+        )
+        updated_stranded.pop("child_completed_at", None)
+        updated_stranded.pop("unchanged_predecessor_managed_receipt", None)
+    return receipt_file.write(updated_stranded, expected=stranded)
+
+
+def _make_legacy_not_started_incident(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+) -> StrandedIncident:
+    incident = _make_stranded_prestart_incident(
+        harness,
+        monkeypatch,
+        preserve_legacy_parent_behavior=False,
+        same_control_version=True,
+        not_started_result=True,
+    )
+    _rewrite_not_started_output(
+        incident,
+        stream_name="process_stdout",
+        remove_result_keys=("mutation_summary",),
+        make_old_incomplete=True,
+    )
+    return incident
+
+
 def _configure_not_started_reconcile_cli(
     harness: Harness,
     monkeypatch: pytest.MonkeyPatch,
@@ -3395,29 +3479,19 @@ def test_legacy_masked_not_started_terminal_reconciles_from_saved_process_output
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    incident = _make_stranded_prestart_incident(
-        harness,
-        monkeypatch,
-        preserve_legacy_parent_behavior=False,
-        same_control_version=True,
-        not_started_result=True,
-    )
+    incident = _make_legacy_not_started_incident(harness, monkeypatch)
     receipt_file = protected.ReceiptFile(incident.request.receipt_path)
-    captured = receipt_file.read()
-    assert captured is not None
-    legacy_masked = {
-        **captured,
-        "status": "INCOMPLETE_OR_AMBIGUOUS",
-        "result_status": "INCOMPLETE_OR_AMBIGUOUS",
-        "child_exit_code": None,
-        "stdout": None,
-        "stderr": None,
-    }
-    legacy_masked.pop("child_completed_at")
-    legacy_masked.pop("unchanged_predecessor_managed_receipt")
-    stranded = receipt_file.write(legacy_masked, expected=captured)
+    stranded = receipt_file.read()
+    assert stranded is not None
+    assert stranded["status"] == "INCOMPLETE_OR_AMBIGUOUS"
+    assert "child_completed_at" not in stranded
     output_text = cast(str, protected.record(stranded["process_stdout"]).get("text"))
-    assert json.loads(output_text.splitlines()[-1])["status"] == "NOT_STARTED"
+    captured_result = json.loads(output_text.splitlines()[-1])
+    assert captured_result["status"] == "NOT_STARTED"
+    assert captured_result["command"] == "apply"
+    assert captured_result["task"] == cutover.TASK_ID
+    assert captured_result["actions"] == []
+    assert "mutation_summary" not in captured_result
 
     _configure_not_started_reconcile_cli(harness, monkeypatch, incident)
     argv = _not_started_reconciliation_argv(incident)
@@ -3435,6 +3509,171 @@ def test_legacy_masked_not_started_terminal_reconciles_from_saved_process_output
     archived, archived_identity, _ = cutover.read_control_json(archived_path)
     assert archived == stranded
     assert archived_identity.sha256 == hashlib.sha256(archived_path.read_bytes()).hexdigest()
+    assert tuple(harness.launchd.mutation_calls) == incident.mutations_before
+
+    successor = protected.make_request(
+        incident.request.config,
+        incident.request.legacy_worktree,
+        incident.request.legacy_head,
+        incident.request.legacy_tree,
+        incident.request.plan_file,
+        incident.request.claim_root,
+        reservation_id=str(uuid4()),
+        prior_execution_receipt_sha256=incident.predecessor_sha256,
+    )
+    successor_proof = protected._require_released_success_evidence(
+        successor, owner, runner=harness.launchd
+    )
+    assert successor_proof is not None
+    assert successor_proof["prior_protected_receipt_sha256"] == incident.predecessor_sha256
+
+
+@pytest.mark.parametrize("mutation_field", ["launchd", "plist", "control_files", "malformed"])
+def test_not_started_present_mutation_summary_must_prove_exact_zero(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    mutation_field: str,
+) -> None:
+    incident = _make_stranded_prestart_incident(
+        harness,
+        monkeypatch,
+        preserve_legacy_parent_behavior=False,
+        same_control_version=True,
+        not_started_result=True,
+    )
+    if mutation_field == "malformed":
+        summary: object = [False, False, False]
+    else:
+        summary = {
+            "launchd": mutation_field == "launchd",
+            "plist": mutation_field == "plist",
+            "control_files": mutation_field == "control_files",
+        }
+    _rewrite_not_started_output(
+        incident,
+        stream_name="stdout",
+        result_updates={"mutation_summary": summary},
+    )
+    _configure_not_started_reconcile_cli(harness, monkeypatch, incident)
+    before = _write_snapshot(harness, incident)
+
+    assert protected.main(_not_started_reconciliation_argv(incident)) == claims.UNVERIFIABLE
+    capsys.readouterr()
+    assert _write_snapshot(harness, incident) == before
+    assert tuple(harness.launchd.mutation_calls) == incident.mutations_before
+
+
+@pytest.mark.parametrize(
+    "defect",
+    [
+        "actions_non_empty",
+        "owner_mutation_started",
+        "managed_predecessor_drift",
+        "operation_managed_receipt",
+        "claim_active",
+        "rollback_receipt",
+        "old_live_drift",
+        "process_stdout_malformed",
+        "process_stdout_truncated",
+        "wrong_command",
+        "wrong_task",
+        "wrong_status",
+    ],
+)
+def test_legacy_missing_mutation_summary_still_requires_all_no_mutation_proofs(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    defect: str,
+) -> None:
+    incident = _make_legacy_not_started_incident(harness, monkeypatch)
+    request = incident.request
+    if defect == "actions_non_empty":
+        _rewrite_not_started_output(
+            incident,
+            stream_name="process_stdout",
+            result_updates={"actions": ["launchd"]},
+        )
+    elif defect == "owner_mutation_started":
+        stored = cutover._read_control_owner(request.config)
+        assert stored is not None
+        owner, identity = stored
+        cutover._save_control_owner(
+            request.config,
+            {**owner, "phase": "MUTATION_IN_PROGRESS", "mutation_started": True},
+            expected=identity,
+        )
+    elif defect == "managed_predecessor_drift":
+        managed, identity, _ = cutover.read_control_json(request.config.receipt_path)
+        cutover._write_json(
+            request.config.receipt_path,
+            {**managed, "operation_id": request.operation_id},
+            expected=identity,
+        )
+    elif defect == "operation_managed_receipt":
+        receipt_file = protected.ReceiptFile(request.receipt_path)
+        stranded = receipt_file.read()
+        assert stranded is not None
+        receipt_file.write(
+            {
+                **stranded,
+                "managed_receipt": {
+                    "path": str(request.config.receipt_path),
+                    "sha256": incident.managed_sha256,
+                    "status": "SUCCESS",
+                },
+            },
+            expected=stranded,
+        )
+    elif defect == "rollback_receipt":
+        (request.config.scheduler_root / protected.ROLLBACK_RECEIPT_NAME).write_text(
+            "{}", encoding="utf-8"
+        )
+    elif defect == "old_live_drift":
+        request.config.plist_path.write_bytes(b"drifted OLD plist")
+    elif defect == "process_stdout_malformed":
+        _rewrite_not_started_output(
+            incident,
+            stream_name="process_stdout",
+            raw_text='{"command":"apply","task":"B649_MANAGED",',
+        )
+    elif defect == "process_stdout_truncated":
+        _rewrite_not_started_output(
+            incident,
+            stream_name="process_stdout",
+            stream_updates={"truncated": True},
+        )
+    elif defect in {"wrong_command", "wrong_task", "wrong_status"}:
+        result_updates: dict[str, object] = {}
+        if defect == "wrong_command":
+            result_updates["command"] = "rollback"
+        elif defect == "wrong_task":
+            result_updates["task"] = "B649_UNRELATED_TASK"
+        else:
+            result_updates["status"] = "SUCCESS"
+        _rewrite_not_started_output(
+            incident,
+            stream_name="process_stdout",
+            result_updates=result_updates,
+        )
+
+    _configure_not_started_reconcile_cli(harness, monkeypatch, incident)
+    before = _write_snapshot(harness, incident)
+    argv = _not_started_reconciliation_argv(incident)
+    if defect == "claim_active":
+        with monkeypatch.context() as claim_patch:
+
+            def active_claim(_store: claims.ClaimStore, _task_key: str) -> dict[str, object]:
+                return {"status": "ACTIVE"}
+
+            claim_patch.setattr(claims.ClaimStore, "inspect", active_claim)
+            assert protected.main(argv) == claims.UNVERIFIABLE
+            capsys.readouterr()
+    else:
+        assert protected.main(argv) == claims.UNVERIFIABLE
+        capsys.readouterr()
+    assert _write_snapshot(harness, incident) == before
     assert tuple(harness.launchd.mutation_calls) == incident.mutations_before
 
 

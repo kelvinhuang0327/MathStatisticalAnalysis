@@ -1,7 +1,7 @@
 # Planner / Task Compiler — Compiled Control Plane v1
 Document status: `DRAFT_FOR_OWNER_REVIEW`
 Generated artifact: do not edit manually.
-Durable-source fingerprint: `sha256:c87e693f26d20cb008ad3571a1cb5ecb735d6b5e5636c1ba1b777d7603f78dd4`
+Durable-source fingerprint: `sha256:46b36e09476d0cc162d04118dd252724ac7a850fdd610b4e58f6dd6710de186b`
 This prompt is standalone; embedded rules require no source-file access.
 <!-- SHARED_CORE:START -->
 ## Operating contract
@@ -260,6 +260,8 @@ Both unresolved states use `PENDING_OWNER_REFERENCE`, remain lint-valid, and blo
 rendering. For `SINGLE_PROMPT` and `STANDALONE`, only `PRESENT` with a safe `OWNER_MESSAGE_REF`
 can render; `NONE` remains renderable only through the exact `NOT_REQUIRED` envelope. Render the
 complete Worker Prompt only from `WORKER_TASK_TEMPLATE.md`.
+Use `task.result_dependency` for successful state-changing dependencies; unfrozen results block
+rendering.
 Generated text must remain byte-reproducible for the same five durable sources and manifest.
 <!-- PLANNER_ROUTING:END -->
 ## Embedded Task Manifest Schema
@@ -321,7 +323,8 @@ The following JSON-compatible YAML schema is normative for compilation.
             "TARGET_CAN_CHANGE_CURRENT_BOUND": {"type": "boolean"},
             "TARGET_IS_EXPLICIT_PREREQUISITE": {"type": "boolean"}
           }
-        }
+        },
+        "result_dependency": {"type": "object", "additionalProperties": false, "required": ["TASK_STATUS", "CHANGED_PATHS"], "properties": {"TASK_STATUS": {"type": "string", "pattern": "^[A-Z][A-Z0-9_]*$"}, "BASE_HEAD": {"type": "string", "minLength": 7}, "TASK_HEAD": {"type": "string", "minLength": 7}, "CHANGED_PATHS": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}}, "NON_AUTHORITATIVE_PATHS": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}}}}
       }
     },
     "project": {

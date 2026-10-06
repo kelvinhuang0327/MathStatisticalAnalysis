@@ -52,7 +52,8 @@
             "TARGET_CAN_CHANGE_CURRENT_BOUND": {"type": "boolean"},
             "TARGET_IS_EXPLICIT_PREREQUISITE": {"type": "boolean"}
           }
-        }
+        },
+        "result_dependency": {"type": "object", "additionalProperties": false, "required": ["TASK_STATUS", "CHANGED_PATHS"], "properties": {"TASK_STATUS": {"type": "string", "pattern": "^[A-Z][A-Z0-9_]*$"}, "BASE_HEAD": {"type": "string", "minLength": 7}, "TASK_HEAD": {"type": "string", "minLength": 7}, "CHANGED_PATHS": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}}, "NON_AUTHORITATIVE_PATHS": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}}}}
       }
     },
     "project": {

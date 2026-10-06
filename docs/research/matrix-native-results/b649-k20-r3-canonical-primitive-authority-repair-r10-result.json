@@ -1,0 +1,471 @@
+{
+  "ATTEMPT_LEDGER": [
+    {
+      "action": "Import standalone official-any-prize evaluator",
+      "attempt": 1,
+      "reason": "NumPy is unavailable in the active Python 3.13 runtime",
+      "result": "BLOCKED",
+      "state_change": "NONE"
+    },
+    {
+      "action": "R9 solver runtime preflight in active Python 3.13 runtime",
+      "attempt": 2,
+      "reason": "OR-Tools is unavailable; no new solver was launched",
+      "result": "BLOCKED",
+      "state_change": "NONE"
+    },
+    {
+      "action": "Reuse R9 exact certificates after pinned fingerprint checks",
+      "attempt": 3,
+      "reason": "All seven histogram relaxations are OPTIMAL; multiplicity uses optimal or conservative structural caps",
+      "result": "PASS",
+      "state_change": "NONE"
+    },
+    {
+      "action": "Build pre-commit R10 result record",
+      "attempt": 4,
+      "reason": "R7 frontier point exposes coordinates rather than an identifier property",
+      "result": "FAILED_THEN_REPAIRED",
+      "state_change": "NONE"
+    },
+    {
+      "action": "Build pre-commit R10 result record",
+      "attempt": 5,
+      "reason": "R8 result names the witness digest s4_support_witness_sha256",
+      "result": "FAILED_THEN_REPAIRED",
+      "state_change": "NONE"
+    },
+    {
+      "action": "Build pre-commit R10 result record",
+      "attempt": 6,
+      "reason": "One R9 FEASIBLE multiplicity status requires conservative interpretation",
+      "result": "FAILED_THEN_REPAIRED",
+      "state_change": "NONE"
+    },
+    {
+      "action": "Initial focused Ruff/Pyright checks",
+      "attempt": 7,
+      "reason": "Import order, formatting, and inferred list type needed correction",
+      "result": "FAILED_THEN_REPAIRED",
+      "state_change": "NONE"
+    },
+    {
+      "action": "Focused Ruff import check",
+      "attempt": 8,
+      "reason": "Ruff project rules require separate from-import blocks",
+      "result": "FAILED_THEN_REPAIRED",
+      "state_change": "NONE"
+    }
+  ],
+  "BASE_HEAD": "862b61c9bccc25222d17b664a77bdaf5014e77a1",
+  "BASE_TREE": "68cbefac9a215df49e9825d422bc32b2dfcc16d5",
+  "CANONICAL_SINGLE_TICKET_COUNT": 18611432,
+  "CORRECTED_LOAD_BEARING_FRONTIER": [
+    {
+      "canonical_frontier_rank": 1,
+      "canonical_frontier_upper_bound": 358352830,
+      "capable_of_exceeding_r4_reference": true,
+      "certified_state_r3_upper_bound": 354671803,
+      "joint_s2": 10833008,
+      "maximum_joint_s3": 427140,
+      "refinement_source": "R9_OPTIMAL_HISTOGRAM_AND_MULTIPLICITY",
+      "state_id": "s2-10833008-s3-427140"
+    },
+    {
+      "canonical_frontier_rank": 2,
+      "canonical_frontier_upper_bound": 357963959,
+      "capable_of_exceeding_r4_reference": true,
+      "certified_state_r3_upper_bound": 354399779,
+      "joint_s2": 11298977,
+      "maximum_joint_s3": 504238,
+      "refinement_source": "R9_OPTIMAL_HISTOGRAM_AND_MULTIPLICITY",
+      "state_id": "s2-11298977-s3-504238"
+    },
+    {
+      "canonical_frontier_rank": 3,
+      "canonical_frontier_upper_bound": 357913593,
+      "capable_of_exceeding_r4_reference": true,
+      "certified_state_r3_upper_bound": 354332053,
+      "joint_s2": 11295555,
+      "maximum_joint_s3": 450450,
+      "refinement_source": "R9_OPTIMAL_HISTOGRAM_AND_MULTIPLICITY",
+      "state_id": "s2-11295555-s3-450450"
+    },
+    {
+      "canonical_frontier_rank": 4,
+      "canonical_frontier_upper_bound": 357575398,
+      "capable_of_exceeding_r4_reference": true,
+      "certified_state_r3_upper_bound": 354215592,
+      "joint_s2": 11764636,
+      "maximum_joint_s3": 581336,
+      "refinement_source": "R9_OPTIMAL_HISTOGRAM_AND_MULTIPLICITY",
+      "state_id": "s2-11764636-s3-581336"
+    },
+    {
+      "canonical_frontier_rank": 5,
+      "canonical_frontier_upper_bound": 357524721,
+      "capable_of_exceeding_r4_reference": true,
+      "certified_state_r3_upper_bound": 354059548,
+      "joint_s2": 11761525,
+      "maximum_joint_s3": 527548,
+      "refinement_source": "R9_OPTIMAL_HISTOGRAM_AND_MULTIPLICITY",
+      "state_id": "s2-11761525-s3-527548"
+    },
+    {
+      "canonical_frontier_rank": 6,
+      "canonical_frontier_upper_bound": 357187148,
+      "capable_of_exceeding_r4_reference": true,
+      "certified_state_r3_upper_bound": 353923259,
+      "joint_s2": 12229984,
+      "maximum_joint_s3": 658434,
+      "refinement_source": "R9_OPTIMAL_HISTOGRAM_AND_MULTIPLICITY",
+      "state_id": "s2-12229984-s3-658434"
+    },
+    {
+      "canonical_frontier_rank": 7,
+      "canonical_frontier_upper_bound": 357136160,
+      "capable_of_exceeding_r4_reference": true,
+      "certified_state_r3_upper_bound": 353872346,
+      "joint_s2": 12227184,
+      "maximum_joint_s3": 604646,
+      "refinement_source": "R9_OPTIMAL_HISTOGRAM_AND_MULTIPLICITY",
+      "state_id": "s2-12227184-s3-604646"
+    },
+    {
+      "canonical_frontier_rank": 8,
+      "canonical_frontier_upper_bound": 356799210,
+      "capable_of_exceeding_r4_reference": true,
+      "certified_state_r3_upper_bound": 356799210,
+      "joint_s2": 12695020,
+      "maximum_joint_s3": 735532,
+      "refinement_source": "R7_EXACT_S2_S3_FRONTIER",
+      "state_id": "s2-12695020-s3-735532"
+    },
+    {
+      "canonical_frontier_rank": 9,
+      "canonical_frontier_upper_bound": 356747911,
+      "capable_of_exceeding_r4_reference": true,
+      "certified_state_r3_upper_bound": 356747911,
+      "joint_s2": 12692531,
+      "maximum_joint_s3": 681744,
+      "refinement_source": "R7_EXACT_S2_S3_FRONTIER",
+      "state_id": "s2-12692531-s3-681744"
+    },
+    {
+      "canonical_frontier_rank": 10,
+      "canonical_frontier_upper_bound": 356378218,
+      "capable_of_exceeding_r4_reference": true,
+      "certified_state_r3_upper_bound": 356378218,
+      "joint_s2": 13169800,
+      "maximum_joint_s3": 789320,
+      "refinement_source": "R7_EXACT_S2_S3_FRONTIER",
+      "state_id": "s2-13169800-s3-789320"
+    },
+    {
+      "canonical_frontier_rank": 11,
+      "canonical_frontier_upper_bound": 356161470,
+      "capable_of_exceeding_r4_reference": true,
+      "certified_state_r3_upper_bound": 356161470,
+      "joint_s2": 13548976,
+      "maximum_joint_s3": 951748,
+      "refinement_source": "R7_EXACT_S2_S3_FRONTIER",
+      "state_id": "s2-13548976-s3-951748"
+    },
+    {
+      "canonical_frontier_rank": 12,
+      "canonical_frontier_upper_bound": 355641258,
+      "capable_of_exceeding_r4_reference": true,
+      "certified_state_r3_upper_bound": 355641258,
+      "joint_s2": 14122976,
+      "maximum_joint_s3": 1005536,
+      "refinement_source": "R7_EXACT_S2_S3_FRONTIER",
+      "state_id": "s2-14122976-s3-1005536"
+    },
+    {
+      "canonical_frontier_rank": 13,
+      "canonical_frontier_upper_bound": 355121046,
+      "capable_of_exceeding_r4_reference": true,
+      "certified_state_r3_upper_bound": 355121046,
+      "joint_s2": 14696976,
+      "maximum_joint_s3": 1059324,
+      "refinement_source": "R7_EXACT_S2_S3_FRONTIER",
+      "state_id": "s2-14696976-s3-1059324"
+    },
+    {
+      "canonical_frontier_rank": 14,
+      "canonical_frontier_upper_bound": 354600834,
+      "capable_of_exceeding_r4_reference": true,
+      "certified_state_r3_upper_bound": 354600834,
+      "joint_s2": 15270976,
+      "maximum_joint_s3": 1113112,
+      "refinement_source": "R7_EXACT_S2_S3_FRONTIER",
+      "state_id": "s2-15270976-s3-1113112"
+    },
+    {
+      "canonical_frontier_rank": 15,
+      "canonical_frontier_upper_bound": 354119738,
+      "capable_of_exceeding_r4_reference": true,
+      "certified_state_r3_upper_bound": 354119738,
+      "joint_s2": 15754130,
+      "maximum_joint_s3": 1115170,
+      "refinement_source": "R7_EXACT_S2_S3_FRONTIER",
+      "state_id": "s2-15754130-s3-1115170"
+    },
+    {
+      "canonical_frontier_rank": 16,
+      "canonical_frontier_upper_bound": 354080622,
+      "capable_of_exceeding_r4_reference": true,
+      "certified_state_r3_upper_bound": 354080622,
+      "joint_s2": 15844976,
+      "maximum_joint_s3": 1166900,
+      "refinement_source": "R7_EXACT_S2_S3_FRONTIER",
+      "state_id": "s2-15844976-s3-1166900"
+    },
+    {
+      "canonical_frontier_rank": 17,
+      "canonical_frontier_upper_bound": 353599526,
+      "capable_of_exceeding_r4_reference": true,
+      "certified_state_r3_upper_bound": 353599526,
+      "joint_s2": 16328130,
+      "maximum_joint_s3": 1168958,
+      "refinement_source": "R7_EXACT_S2_S3_FRONTIER",
+      "state_id": "s2-16328130-s3-1168958"
+    },
+    {
+      "canonical_frontier_rank": 18,
+      "canonical_frontier_upper_bound": 353343662,
+      "capable_of_exceeding_r4_reference": true,
+      "certified_state_r3_upper_bound": 353343662,
+      "joint_s2": 16798152,
+      "maximum_joint_s3": 1383116,
+      "refinement_source": "R7_EXACT_S2_S3_FRONTIER",
+      "state_id": "s2-16798152-s3-1383116"
+    },
+    {
+      "canonical_frontier_rank": 19,
+      "canonical_frontier_upper_bound": 353333050,
+      "capable_of_exceeding_r4_reference": true,
+      "certified_state_r3_upper_bound": 353333050,
+      "joint_s2": 16608564,
+      "maximum_joint_s3": 1182916,
+      "refinement_source": "R7_EXACT_S2_S3_FRONTIER",
+      "state_id": "s2-16608564-s3-1182916"
+    },
+    {
+      "canonical_frontier_rank": 20,
+      "canonical_frontier_upper_bound": 353210424,
+      "capable_of_exceeding_r4_reference": true,
+      "certified_state_r3_upper_bound": 353210424,
+      "joint_s2": 16794330,
+      "maximum_joint_s3": 1246056,
+      "refinement_source": "R7_EXACT_S2_S3_FRONTIER",
+      "state_id": "s2-16794330-s3-1246056"
+    },
+    {
+      "canonical_frontier_rank": 21,
+      "canonical_frontier_upper_bound": 352831878,
+      "capable_of_exceeding_r4_reference": true,
+      "certified_state_r3_upper_bound": 352831878,
+      "joint_s2": 17743684,
+      "maximum_joint_s3": 1816864,
+      "refinement_source": "R7_EXACT_S2_S3_FRONTIER",
+      "state_id": "s2-17743684-s3-1816864"
+    },
+    {
+      "canonical_frontier_rank": 22,
+      "canonical_frontier_upper_bound": 352823450,
+      "capable_of_exceeding_r4_reference": true,
+      "certified_state_r3_upper_bound": 352823450,
+      "joint_s2": 17372152,
+      "maximum_joint_s3": 1436904,
+      "refinement_source": "R7_EXACT_S2_S3_FRONTIER",
+      "state_id": "s2-17372152-s3-1436904"
+    },
+    {
+      "canonical_frontier_rank": 23,
+      "canonical_frontier_upper_bound": 352311666,
+      "capable_of_exceeding_r4_reference": true,
+      "certified_state_r3_upper_bound": 352311666,
+      "joint_s2": 18317684,
+      "maximum_joint_s3": 1870652,
+      "refinement_source": "R7_EXACT_S2_S3_FRONTIER",
+      "state_id": "s2-18317684-s3-1870652"
+    }
+  ],
+  "CORRECTED_LOAD_BEARING_STATE_COUNT": 23,
+  "FAMILY_A_BOTTLENECK_R": "R3",
+  "FAMILY_A_RECOMPUTED_BOUND": 358352828,
+  "FOCUSED_TESTS": "PASS: 5 passed in 7.30s; Python 3.13.8, pytest 9.1.1",
+  "INCUMBENT": 313239661,
+  "K20_S1": 372228640,
+  "NEW_PORTFOLIO_SEARCH_STARTED": "NO",
+  "OLD_INVALID_SINGLE_TICKET_COUNT": 18221078,
+  "PAIR_DIAGONAL_I6": 18611432,
+  "PRODUCTION_MUTATION": "NONE",
+  "PYRIGHT": "PASS: Pyright 1.1.411; 0 errors, 0 warnings, 0 informations; project .venv absent notice",
+  "R3_BOUND": 358352828,
+  "R3_BOUND_FORMULA": "max(CANONICAL_K20_S1 - fixed_R6_baseline_reduction - minimum_omitted_local_loss, all 23 canonical frontier terms; use verified R9 state-wide histogram bounds for its seven overlapping states)",
+  "R3_STATUS": "CERTIFIED_STRICTLY_BELOW_R9_CANONICAL_TAIL",
+  "R4_REFERENCE_BOUND": 350545749,
+  "REMAINING_GAP": 45113167,
+  "REUSED_R9_EXACT_S4_SUMMARY": {
+    "first_six_exact_minima": {
+      "s2-10833008-s3-427140": 0,
+      "s2-11295555-s3-450450": 0,
+      "s2-11298977-s3-504238": 0,
+      "s2-11761525-s3-527548": 0,
+      "s2-11764636-s3-581336": 2016,
+      "s2-12227184-s3-604646": 2016
+    },
+    "last_state_external_timeout_seconds": 130.0,
+    "last_state_id": "s2-12229984-s3-658434",
+    "last_state_minimum_interval": [
+      4368,
+      5208
+    ],
+    "last_state_minimum_proven": false,
+    "last_state_native_wall_limit_seconds": 120.0,
+    "last_state_solver_status": "FEASIBLE"
+  },
+  "REUSED_R9_REFINEMENTS": {
+    "s2-10833008-s3-427140": {
+      "certified_state_r3_bound": 354671803,
+      "histogram_correction_lower_bound": 5505035,
+      "histogram_solver_status": "OPTIMAL",
+      "multiplicity_bound_source": "STRUCTURAL_MAXIMUM_FROM_18_RESIDUAL_TICKETS",
+      "multiplicity_cap": 18,
+      "multiplicity_exactness_source": "OPTIMAL",
+      "multiplicity_solver_status": "OPTIMAL",
+      "s4_minimum_certified_lower_bound": 0,
+      "s4_minimum_proven": true,
+      "support_witness_sha256": "4cbdadfed4e5743dd811f07d664d49949aee3a4876117c7294e1ee5237528cb6"
+    },
+    "s2-11295555-s3-450450": {
+      "certified_state_r3_bound": 354332053,
+      "histogram_correction_lower_bound": 5401895,
+      "histogram_solver_status": "OPTIMAL",
+      "multiplicity_bound_source": "STRUCTURAL_MAXIMUM_FROM_18_RESIDUAL_TICKETS",
+      "multiplicity_cap": 18,
+      "multiplicity_exactness_source": "CONSERVATIVE_SOLVER_BOUND",
+      "multiplicity_solver_status": "FEASIBLE",
+      "s4_minimum_certified_lower_bound": 0,
+      "s4_minimum_proven": true,
+      "support_witness_sha256": "78f4024c3f6a9bb52f58951eec4abf47343b68fa6bf4bc2ca4610cc5f48aafc6"
+    },
+    "s2-11298977-s3-504238": {
+      "certified_state_r3_bound": 354399779,
+      "histogram_correction_lower_bound": 5387957,
+      "histogram_solver_status": "OPTIMAL",
+      "multiplicity_bound_source": "STRUCTURAL_MAXIMUM_FROM_18_RESIDUAL_TICKETS",
+      "multiplicity_cap": 18,
+      "multiplicity_exactness_source": "OPTIMAL",
+      "multiplicity_solver_status": "OPTIMAL",
+      "s4_minimum_certified_lower_bound": 0,
+      "s4_minimum_proven": true,
+      "support_witness_sha256": "968a14f0f4afdb985b61d09bbdd895bd2eaebee384719505fe3796f026bc2115"
+    },
+    "s2-11761525-s3-527548": {
+      "certified_state_r3_bound": 354059548,
+      "histogram_correction_lower_bound": 5285298,
+      "histogram_solver_status": "OPTIMAL",
+      "multiplicity_bound_source": "STRUCTURAL_MAXIMUM_FROM_18_RESIDUAL_TICKETS",
+      "multiplicity_cap": 18,
+      "multiplicity_exactness_source": "OPTIMAL",
+      "multiplicity_solver_status": "OPTIMAL",
+      "s4_minimum_certified_lower_bound": 0,
+      "s4_minimum_proven": true,
+      "support_witness_sha256": "de6f031fd47c62e852d1981f1113978a138052b85b2c9276ea8fbde8f9ec471d"
+    },
+    "s2-11764636-s3-581336": {
+      "certified_state_r3_bound": 354215592,
+      "histogram_correction_lower_bound": 5183042,
+      "histogram_solver_status": "OPTIMAL",
+      "multiplicity_bound_source": "STRUCTURAL_MAXIMUM_FROM_18_RESIDUAL_TICKETS",
+      "multiplicity_cap": 18,
+      "multiplicity_exactness_source": "OPTIMAL",
+      "multiplicity_solver_status": "OPTIMAL",
+      "s4_minimum_certified_lower_bound": 2016,
+      "s4_minimum_proven": true,
+      "support_witness_sha256": "e86f63609f4edf7af34e8c192f47e857de1fec2ebaf8fbd43afc20e6508b2f39"
+    },
+    "s2-12227184-s3-604646": {
+      "certified_state_r3_bound": 353872346,
+      "histogram_correction_lower_bound": 5083398,
+      "histogram_solver_status": "OPTIMAL",
+      "multiplicity_bound_source": "STRUCTURAL_MAXIMUM_FROM_18_RESIDUAL_TICKETS",
+      "multiplicity_cap": 18,
+      "multiplicity_exactness_source": "OPTIMAL",
+      "multiplicity_solver_status": "OPTIMAL",
+      "s4_minimum_certified_lower_bound": 2016,
+      "s4_minimum_proven": true,
+      "support_witness_sha256": "529c7de56dbf049272dbc26b2b578d78dd8c80ca5e7e1a0869f8ab253cdf743c"
+    },
+    "s2-12229984-s3-658434": {
+      "certified_state_r3_bound": 353923259,
+      "histogram_correction_lower_bound": 5086273,
+      "histogram_solver_status": "OPTIMAL",
+      "multiplicity_bound_source": "STRUCTURAL_MAXIMUM_FROM_18_RESIDUAL_TICKETS",
+      "multiplicity_cap": 18,
+      "multiplicity_exactness_source": "OPTIMAL",
+      "multiplicity_solver_status": "OPTIMAL",
+      "s4_minimum_certified_lower_bound": 4368,
+      "s4_minimum_proven": false,
+      "support_witness_sha256": "ecc443e99b36e7832f803d504f2c660b9432b1d1249becd00ababeed52941692"
+    }
+  },
+  "RUFF": "PASS: Ruff 0.15.21 check and format --check",
+  "S1_CORRECTION": 7807080,
+  "S1_INDEPENDENT_R7_CENSUS": {
+    "CANDIDATE_TYPE_COUNT_VECTOR_COUNT": 10816,
+    "FEASIBLE_TYPE_COUNT_VECTOR_COUNT": 10816,
+    "RESIDUAL_STATE_COUNT": 10117,
+    "REUSED_EXACT_TYPE_COUNT_VECTOR_COUNT": 2683,
+    "REUSED_EXACT_TYPE_COUNT_VECTOR_SHA256_REPR": "6e6dbdf5bb9cdf2905a7c8dbc061a032cb0dce005b3fb80b062f40eb64e1581f",
+    "S2_LEVEL_COUNT": 398,
+    "S2_S3_ENVELOPE_SHA256": "8c5ab3a5a404531af61648ffd78690a28aece8a140d91bd4c1515925132ccf65",
+    "S2_S3_FRONTIER_SHA256": "271c3950b6d30d58d4baa5bb534894a60f17111b8458586fda0089447d1bc7d3",
+    "S2_S3_FRONTIER_SIZE": 23
+  },
+  "SOLVER_EXECUTION": {
+    "CURRENT_RUNTIME_PREFLIGHT": "BLOCKED: active Python 3.13 environment has no OR-Tools package",
+    "FEASIBLE_IS_PROOF": false,
+    "NEW_SOLVER_RUNS": "NONE; fingerprinted R9 optimal certificates reused",
+    "REUSED_R9_RUNTIME_PREFLIGHT": {
+      "compiler": "/usr/bin/c++",
+      "compiler_version": "Apple clang version 21.0.0 (clang-2100.3.34.2)",
+      "ortools": "9.15.6755",
+      "python": "3.13.8"
+    },
+    "S4_UNPROVEN_STATE": "s2-12229984-s3-658434",
+    "S4_UNPROVEN_STATE_USED_AS_PROOF": false
+  },
+  "SUCCESS_A": false,
+  "SUCCESS_B": true,
+  "SUCCESS_C": true,
+  "TAIL_CERTIFICATE": {
+    "CANDIDATE_VECTOR_COUNT_AT_CUTOFF_PLUS_ONE": 10816,
+    "CANONICAL_UNCORRECTED_BASELINE": 365048628,
+    "CORRECTED_TAIL_BOUND": 358352828,
+    "FIXED_BASELINE_REDUCTION_INDEPENDENT_OF_S1": 7180012,
+    "LOCAL_LOSS_CUTOFF": 6695798,
+    "MINIMUM_OMITTED_LOCAL_LOSS": 6695800,
+    "R9_PREVIOUS_CANONICAL_TAIL_BOUND": 358352829,
+    "VECTORS_AT_EXACT_CUTOFF_PLUS_ONE": 0
+  },
+  "TASK_BRANCH": "codex/b649-k20-r3-canonical-primitive-authority-repair-r10",
+  "TASK_ID": "B649_K20_R3_CANONICAL_PRIMITIVE_AUTHORITY_REPAIR_R10",
+  "TASK_STATUS": "CERTIFIED_CORRECTED_R3_BOUND_TIGHTENED",
+  "UPSTREAM_FINGERPRINTS_SHA256": {
+    "docs/research/matrix-native-results/b649-k20-r3-frontier-realizability-bound-r8-result.json": "63ecd6b76fef541795d6b6956fd25592fd35e8f7f172fc722156a6b7bcfe0e71",
+    "docs/research/matrix-native-results/b649-k20-r3-joint-residual-envelope-r7-result.json": "463f0e1d577e5e175822d7fc52b1237fd7eb750fbd8ac654280993c160051f02",
+    "docs/research/matrix-native-results/b649-k20-r3-seven-state-higher-order-bound-r9-result.json": "9136d9c4d9487a999719e570da65d528f5d9f8e7e210de707feb0de418d93465",
+    "src/lottolab/research/b649_k20_outside_min_s2_global_penalty_bound_r1.py": "7706e57e77df6e786e77c4824f3c72663fdae73b20aa5f6797192689f2b6ea62",
+    "src/lottolab/research/b649_k20_r3_anchor_incidence_bound_r5.py": "569d525f1e9905d043fe0f6132c936d5b260ba3d4b3a376da6c961db8aa5c435",
+    "src/lottolab/research/b649_k20_r3_exact_anchor_neighborhood_envelope_r6.py": "a83f6f2a7091aedf034e0905d80993df5001382fedc297fdd503202665e6622c",
+    "src/lottolab/research/b649_k20_r3_frontier_realizability_bound_r8.py": "14884faf5b2e66c1f30d4e04e453ba5838b7f95815d70d8b7d45be47c5e9bd2b",
+    "src/lottolab/research/b649_k20_r3_joint_residual_envelope_r7.py": "f376899a25bc287e45b80c3f5d9116db97f4c09de31ec81d0ccd2badf4222c50",
+    "src/lottolab/research/b649_k20_r3_seven_state_higher_order_bound_r9.cpp": "acd00c6e2ed3f8a00c2ae05ef15a6833262478bf56115fcf116e356f6b805ff6",
+    "src/lottolab/research/b649_k20_r3_seven_state_higher_order_bound_r9.py": "53819d16316567cd2bcc5bb6f4ae45ef7d839b5d392fb2f1d712f7a6c8a19f15",
+    "src/lottolab/research/b649_official_any_prize_exact.py": "92dcb836254cc6dbcd6c2ad907e619a5eb8cf3917197a8f6de3e5f989825cf66"
+  }
+}

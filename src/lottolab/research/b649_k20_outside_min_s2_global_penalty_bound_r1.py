@@ -10,6 +10,10 @@ from functools import cache
 from itertools import combinations_with_replacement
 from math import comb
 
+from lottolab.research.b649_k1_k8_global_optimality import (
+    OFFICIAL_ANY_PRIZE_SINGLE_OUTCOMES,
+)
+
 POOL_SIZE = 49
 DRAW_SIZE = 6
 OUTRIGHT_MATCHES = 3
@@ -17,7 +21,7 @@ TICKET_COUNT = 20
 PAIR_COUNT = comb(TICKET_COUNT, 2)
 TRIPLE_COUNT = comb(TICKET_COUNT, 3)
 INCUMBENT = 313_239_661
-SINGLE_TICKET_OUTCOMES = 18_221_078
+SINGLE_TICKET_OUTCOMES = OFFICIAL_ANY_PRIZE_SINGLE_OUTCOMES
 PORTFOLIO_S1 = TICKET_COUNT * SINGLE_TICKET_OUTCOMES
 TWO_EDGE_TRIPLE_CAP = 2_800
 THREE_EDGE_TRIPLE_CAP = 20_272
@@ -219,7 +223,7 @@ def outside_min_s2_bounds() -> dict[str, int | str]:
     s2_minimum = 97 * c0 + 93 * c1
     if s2_minimum != 63_838_600:
         raise AssertionError("K20 minimum-S2 input does not match the exact pair table")
-    if PORTFOLIO_S1 != 364_421_560:
+    if PORTFOLIO_S1 != 372_228_640:
         raise AssertionError("K20 single-ticket total changed")
 
     min_s2_penalty = c1 - c0

@@ -1,0 +1,482 @@
+{
+  "ABOVE_OLD_THRESHOLD_STATES_REUSED_WITHOUT_REOPTIMIZATION": 174,
+  "AT_OR_BELOW_NEW_THRESHOLD_STATES_LEFT_UNOPTIMIZED": 8982,
+  "BASE_HEAD": "813392e28f08a54f58962663987a9ae75bc9d38f",
+  "BASE_TREE": "f037dd9a97760580d21fa88ff4f92be8d20929c5",
+  "CLASSIFICATION_SHA256": "356d179f5dbbbe1fc2e190193352e09af1476828bb450865cb4c16e560fe8665",
+  "CURRENT_BOUNDS": {
+    "R3": 350545749,
+    "R5": 349009248,
+    "R6": 343869728
+  },
+  "FOCUSED_TESTS": "REPORTED_IN_FINAL_HANDOFF",
+  "GENERATED_JOINT_STATE_COUNT_FOR_ID_RECONSTRUCTION": 9384,
+  "INCUMBENT": 313239661,
+  "LEAF_GAP": 37306088,
+  "LOWER_SAFE_STATE_BOUND": 350545749,
+  "NEW_CLASS_MASS_COUNT": 38,
+  "NEW_INTERVAL_CERTIFIED_S3_UPPER_MAXIMUM": 14737408,
+  "NEW_INTERVAL_R4_BOUND_MAXIMIZING_STATE_IDS": [
+    "17_GOOD_PLUS_A_ONLY/components=1/outside_pair_mass=112",
+    "17_GOOD_PLUS_B_ONLY/components=1/outside_pair_mass=112"
+  ],
+  "NEW_INTERVAL_R4_BOUND_MAXIMUM": 303529884,
+  "NEW_LOAD_BEARING_STATES": [
+    {
+      "COMPONENT_COUNT": 1,
+      "OUTSIDE_PAIR_MASSES": [
+        117,
+        118,
+        119,
+        130,
+        131,
+        132,
+        142,
+        143,
+        144,
+        145,
+        154,
+        155
+      ],
+      "REALIZABLE_MASSES": [
+        117,
+        118,
+        119,
+        130,
+        131,
+        132,
+        142,
+        143,
+        144,
+        145
+      ],
+      "REALIZATION": "18_GOOD"
+    },
+    {
+      "COMPONENT_COUNT": 2,
+      "OUTSIDE_PAIR_MASSES": [
+        117,
+        118,
+        119,
+        130,
+        131,
+        132,
+        142,
+        143,
+        144,
+        145,
+        154,
+        155
+      ],
+      "REALIZABLE_MASSES": [
+        117,
+        118,
+        119,
+        130,
+        131,
+        132
+      ],
+      "REALIZATION": "18_GOOD"
+    },
+    {
+      "COMPONENT_COUNT": 3,
+      "OUTSIDE_PAIR_MASSES": [
+        117,
+        118,
+        119,
+        130,
+        131,
+        132,
+        142,
+        143,
+        144,
+        145,
+        154,
+        155
+      ],
+      "REALIZABLE_MASSES": [
+        117,
+        118,
+        119
+      ],
+      "REALIZATION": "18_GOOD"
+    },
+    {
+      "COMPONENT_COUNT": 4,
+      "OUTSIDE_PAIR_MASSES": [
+        117,
+        118,
+        119,
+        130,
+        131,
+        132,
+        142,
+        143,
+        144,
+        145,
+        154,
+        155
+      ],
+      "REALIZABLE_MASSES": [],
+      "REALIZATION": "18_GOOD"
+    },
+    {
+      "COMPONENT_COUNT": 5,
+      "OUTSIDE_PAIR_MASSES": [
+        117,
+        118,
+        119,
+        130,
+        131,
+        132,
+        142,
+        143,
+        144,
+        145,
+        154,
+        155
+      ],
+      "REALIZABLE_MASSES": [],
+      "REALIZATION": "18_GOOD"
+    },
+    {
+      "COMPONENT_COUNT": 6,
+      "OUTSIDE_PAIR_MASSES": [
+        117,
+        118,
+        119,
+        130,
+        131,
+        132,
+        142,
+        143,
+        144,
+        145,
+        154,
+        155
+      ],
+      "REALIZABLE_MASSES": [],
+      "REALIZATION": "18_GOOD"
+    },
+    {
+      "COMPONENT_COUNT": 1,
+      "OUTSIDE_PAIR_MASSES": [
+        112,
+        113,
+        114,
+        124,
+        125,
+        126,
+        136,
+        137,
+        138,
+        148,
+        149,
+        150,
+        151
+      ],
+      "REALIZABLE_MASSES": [
+        112,
+        113,
+        114,
+        124,
+        125,
+        126,
+        136,
+        137,
+        138,
+        148,
+        149,
+        150,
+        151
+      ],
+      "REALIZATION": "17_GOOD_PLUS_B_ONLY"
+    },
+    {
+      "COMPONENT_COUNT": 2,
+      "OUTSIDE_PAIR_MASSES": [
+        112,
+        113,
+        114,
+        124,
+        125,
+        126,
+        136,
+        137,
+        138,
+        148,
+        149,
+        150,
+        151
+      ],
+      "REALIZABLE_MASSES": [],
+      "REALIZATION": "17_GOOD_PLUS_B_ONLY"
+    },
+    {
+      "COMPONENT_COUNT": 3,
+      "OUTSIDE_PAIR_MASSES": [
+        112,
+        113,
+        114,
+        124,
+        125,
+        126,
+        136,
+        137,
+        138,
+        148,
+        149,
+        150,
+        151
+      ],
+      "REALIZABLE_MASSES": [],
+      "REALIZATION": "17_GOOD_PLUS_B_ONLY"
+    },
+    {
+      "COMPONENT_COUNT": 4,
+      "OUTSIDE_PAIR_MASSES": [
+        112,
+        113,
+        114,
+        124,
+        125,
+        126,
+        136,
+        137,
+        138,
+        148,
+        149,
+        150,
+        151
+      ],
+      "REALIZABLE_MASSES": [],
+      "REALIZATION": "17_GOOD_PLUS_B_ONLY"
+    },
+    {
+      "COMPONENT_COUNT": 5,
+      "OUTSIDE_PAIR_MASSES": [
+        112,
+        113,
+        114,
+        124,
+        125,
+        126,
+        136,
+        137,
+        138,
+        148,
+        149,
+        150,
+        151
+      ],
+      "REALIZABLE_MASSES": [],
+      "REALIZATION": "17_GOOD_PLUS_B_ONLY"
+    },
+    {
+      "COMPONENT_COUNT": 6,
+      "OUTSIDE_PAIR_MASSES": [
+        112,
+        113,
+        114,
+        124,
+        125,
+        126,
+        136,
+        137,
+        138,
+        148,
+        149,
+        150,
+        151
+      ],
+      "REALIZABLE_MASSES": [],
+      "REALIZATION": "17_GOOD_PLUS_B_ONLY"
+    },
+    {
+      "COMPONENT_COUNT": 1,
+      "OUTSIDE_PAIR_MASSES": [
+        112,
+        113,
+        114,
+        124,
+        125,
+        126,
+        136,
+        137,
+        138,
+        148,
+        149,
+        150,
+        151
+      ],
+      "REALIZABLE_MASSES": [
+        112,
+        113,
+        114,
+        124,
+        125,
+        126,
+        136,
+        137,
+        138,
+        148,
+        149,
+        150,
+        151
+      ],
+      "REALIZATION": "17_GOOD_PLUS_A_ONLY"
+    },
+    {
+      "COMPONENT_COUNT": 2,
+      "OUTSIDE_PAIR_MASSES": [
+        112,
+        113,
+        114,
+        124,
+        125,
+        126,
+        136,
+        137,
+        138,
+        148,
+        149,
+        150,
+        151
+      ],
+      "REALIZABLE_MASSES": [],
+      "REALIZATION": "17_GOOD_PLUS_A_ONLY"
+    },
+    {
+      "COMPONENT_COUNT": 3,
+      "OUTSIDE_PAIR_MASSES": [
+        112,
+        113,
+        114,
+        124,
+        125,
+        126,
+        136,
+        137,
+        138,
+        148,
+        149,
+        150,
+        151
+      ],
+      "REALIZABLE_MASSES": [],
+      "REALIZATION": "17_GOOD_PLUS_A_ONLY"
+    },
+    {
+      "COMPONENT_COUNT": 4,
+      "OUTSIDE_PAIR_MASSES": [
+        112,
+        113,
+        114,
+        124,
+        125,
+        126,
+        136,
+        137,
+        138,
+        148,
+        149,
+        150,
+        151
+      ],
+      "REALIZABLE_MASSES": [],
+      "REALIZATION": "17_GOOD_PLUS_A_ONLY"
+    },
+    {
+      "COMPONENT_COUNT": 5,
+      "OUTSIDE_PAIR_MASSES": [
+        112,
+        113,
+        114,
+        124,
+        125,
+        126,
+        136,
+        137,
+        138,
+        148,
+        149,
+        150,
+        151
+      ],
+      "REALIZABLE_MASSES": [],
+      "REALIZATION": "17_GOOD_PLUS_A_ONLY"
+    },
+    {
+      "COMPONENT_COUNT": 6,
+      "OUTSIDE_PAIR_MASSES": [
+        112,
+        113,
+        114,
+        124,
+        125,
+        126,
+        136,
+        137,
+        138,
+        148,
+        149,
+        150,
+        151
+      ],
+      "REALIZABLE_MASSES": [],
+      "REALIZATION": "17_GOOD_PLUS_A_ONLY"
+    }
+  ],
+  "NEW_LOAD_BEARING_STATE_COUNT": 228,
+  "NEW_LOAD_BEARING_STATE_SHA256": "efe6acc253090f66eba8db65b47981f0b02508950f4821410d5d6bed2e132eea",
+  "NEW_PORTFOLIO_SEARCH_STARTED": "NO",
+  "NEW_THRESHOLD": 350545749,
+  "OLD_THRESHOLD": 350778728,
+  "PRIOR_CLASSIFIED_R11_R4_BOUND": 300547996,
+  "PRODUCTION_MUTATION": "NONE",
+  "PYRIGHT": "REPORTED_IN_FINAL_HANDOFF",
+  "R4_BOUND": 350545749,
+  "R4_STATUS": "CLOSED_AT_OR_BELOW_R3",
+  "REALIZABLE_STATE_COUNT": 45,
+  "RUFF": "REPORTED_IN_FINAL_HANDOFF",
+  "S3_MAX": {
+    "EXACT_MAXIMUM": 15214752,
+    "GLOBAL_MAXIMUM_REMAINS_R11_STATE": true,
+    "MAXIMIZING_STATE_IDS": [
+      "18_GOOD/components=1/outside_pair_mass=153"
+    ],
+    "NEW_INTERVAL_CERTIFIED_UPPER_MAXIMUM": 14737408,
+    "OTHER_PREVIOUS_STATE_CERTIFIED_UPPER_MAXIMUM": 14991088,
+    "STATUS": "EXACT_MAXIMUM_WITH_SUPPORT_AND_HISTOGRAM_CERTIFICATES"
+  },
+  "S4_MIN_AT_GLOBAL_S3_MAX": {
+    "EXACT_MINIMUM": 1738100,
+    "SOURCE_R11_RESULT_SHA256": "b3cb322122619b1786b74114ead4533791c61f55bf371c99247f1904b4fbc043",
+    "STATUS": "EXACT_OPTIMAL_SUPPORT_MINIMUM",
+    "USED_AS_CORRECTION_IN_NEW_INTERVAL": false
+  },
+  "SOLVER_ACTUAL_WALL_TIME_SECONDS": 62.215532,
+  "SOLVER_CONFIGURED_LIMITS": {
+    "CP_SAT_RANDOM_SEED": 0,
+    "CP_SAT_SEARCH_WORKERS": 2,
+    "EXTERNAL_HARD_TIMEOUT_SECONDS": 300,
+    "NATIVE_ONE_TWO_COMPONENT_SUPPORT_CASE_SECONDS": 30,
+    "NATIVE_PER_SUPPORT_CASE_SECONDS": 30,
+    "NATIVE_THREE_COMPONENT_SUPPORT_CASE_SECONDS": 8.0
+  },
+  "SOLVER_STATUS": "EXACT_SUPPORT_FEASIBILITY; OPTIMAL/FEASIBLE IS ACCEPTED ONLY WITH A VERIFIED WITNESS; INFEASIBLE IS A CP-SAT PROOF; UNKNOWN FAILS CLOSED",
+  "SOURCE_R10_FRONTIER_SEGMENT_COUNT": 45,
+  "SOURCE_R10_RESULT_SHA256": "2829fa4182fed169ba2b46695560efd244566c3dc3649ff50fc9b64c7d6e3d01",
+  "SOURCE_R11_RESULT_SHA256": "b3cb322122619b1786b74114ead4533791c61f55bf371c99247f1904b4fbc043",
+  "SOURCE_R9_RESULT_SHA256": "0024f79c9ed7bf4f5b00a207aa80e5adc8fa18b9d7f7946f4b0e192cd60ce1da",
+  "SUCCESS_A_R4_AT_OR_BELOW_R3": true,
+  "SUCCESS_B_STRICTLY_BELOW_OLD_R4": true,
+  "SUCCESS_C_ALL_NEW_INTERVAL_STATES_CLASSIFIED": true,
+  "TASK_BRANCH": "codex/b649-k20-r4-threshold-descent-below-r3-r13",
+  "TASK_HEAD": "RECORDED_IN_FINAL_HANDOFF",
+  "TASK_ID": "B649_K20_R4_THRESHOLD_DESCENT_BELOW_R3_R13",
+  "TASK_STATUS": "SUCCESS_A_B_C",
+  "UNREALIZABLE_STATE_COUNT": 183,
+  "WORKTREE_DISPOSITION": "RETAIN",
+  "WORKTREE_PATH": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_K20_R4_THRESHOLD_DESCENT_BELOW_R3_R13"
+}

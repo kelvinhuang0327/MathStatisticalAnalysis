@@ -3528,7 +3528,10 @@ def test_legacy_masked_not_started_terminal_reconciles_from_saved_process_output
     assert successor_proof["prior_protected_receipt_sha256"] == incident.predecessor_sha256
 
 
-@pytest.mark.parametrize("mutation_field", ["launchd", "plist", "control_files", "malformed"])
+@pytest.mark.parametrize(
+    "mutation_field",
+    ["launchd", "plist", "control_files", "malformed", "integer_zero"],
+)
 def test_not_started_present_mutation_summary_must_prove_exact_zero(
     harness: Harness,
     monkeypatch: pytest.MonkeyPatch,
@@ -3544,6 +3547,8 @@ def test_not_started_present_mutation_summary_must_prove_exact_zero(
     )
     if mutation_field == "malformed":
         summary: object = [False, False, False]
+    elif mutation_field == "integer_zero":
+        summary = {"launchd": 0, "plist": False, "control_files": False}
     else:
         summary = {
             "launchd": mutation_field == "launchd",

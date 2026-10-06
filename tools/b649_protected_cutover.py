@@ -4925,12 +4925,20 @@ def cmd_reconcile_prestart_not_started(
                 # every NOT_STARTED exit. Accept this classification only after
                 # the durable and live no-mutation proof below has completed.
                 legacy_missing_mutation_summary = True
-            elif record(operation_result.get("mutation_summary")) != {
-                "launchd": False,
-                "plist": False,
-                "control_files": False,
-            }:
-                raise ProtectedError("captured NOT_STARTED result does not prove zero mutation")
+            else:
+                mutation_summary = record(operation_result.get("mutation_summary"))
+                expected_mutation_summary = {
+                    "launchd": False,
+                    "plist": False,
+                    "control_files": False,
+                }
+                if mutation_summary != expected_mutation_summary or any(
+                    type(mutation_summary.get(field)) is not bool
+                    for field in expected_mutation_summary
+                ):
+                    raise ProtectedError(
+                        "captured NOT_STARTED result does not prove zero mutation"
+                    )
 
         if stranded_identity.get("target") != expected_owner_identity["target"]:
             raise ProtectedError("stranded protected receipt target differs from the owner")

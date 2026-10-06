@@ -1,13 +1,19 @@
 /* n3sig: one destroy triple -> exact signature compression report + exact complete-N3 B&B.
  *
  * usage: n3sig --kept "a,b,c,d,e,f;..." --removed "...;...;..." --out result.json
- *              [--probe "t;t;..."] [--time-limit SECONDS] [--no-solve] [--verbose]
+ *              [--probe "t;t;..."] [--checkpoint JOURNAL]
+ *              [--time-limit SECONDS] [--no-solve] [--verbose]
  * Tickets are 1-based in the interface. */
 #include "n3.h"
 #include "n3_mtab.h"
 #include "n3_sig.h"
 #include "n3_solve.h"
 #include "n3_bounds.h"
+#include "n3_checkpoint.h"
+
+#ifndef N3_ENGINE_SHA256
+#define N3_ENGINE_SHA256 ""
+#endif
 
 static int parse_tickets(const char *s, uint64_t *out, int cap) {
     int n = 0, cur = 0, cnt = 0;
@@ -43,6 +49,7 @@ static uint32_t rank6(uint64_t m) { return rank_mask(m); }
 
 int main(int argc, char **argv) {
     const char *kept_s = NULL, *removed_s = NULL, *out_path = NULL, *probe_s = NULL;
+    const char *checkpoint_path = NULL;
     double time_limit = 3600.0;
     int solve = 1, verbose = 0, legacy = 0;
     const char *witness_path = NULL;
@@ -50,6 +57,7 @@ int main(int argc, char **argv) {
         if (!strcmp(argv[i], "--kept")) kept_s = argv[++i];
         else if (!strcmp(argv[i], "--removed")) removed_s = argv[++i];
         else if (!strcmp(argv[i], "--out")) out_path = argv[++i];
+        else if (!strcmp(argv[i], "--checkpoint")) checkpoint_path = argv[++i];
         else if (!strcmp(argv[i], "--probe")) probe_s = argv[++i];
         else if (!strcmp(argv[i], "--time-limit")) time_limit = atof(argv[++i]);
         else if (!strcmp(argv[i], "--no-solve")) solve = 0;
@@ -102,6 +110,7 @@ int main(int argc, char **argv) {
 
     /* direct checks */
     int check_fail = 0;
+    int checkpoint_fail = 0;
     FILE *chk = tmpfile();
     uint64_t sample[16];
     int ns = 0;
@@ -201,7 +210,38 @@ int main(int argc, char **argv) {
     double solver_budget = 0.0;
     if (solve && identities_ok && check_fail == 0 && pair_fail == 0 && F0_direct == F0_ie) {
         solver_budget = time_limit - (n3_now() - t0);
-        if (legacy) solver_run_legacy(&sol, c, F0_direct, solver_budget, verbose);
+        if (checkpoint_path && legacy) {
+            fprintf(stderr,"durable checkpoints are supported by the R2 exact solver only\n");
+            checkpoint_fail = 1;
+        } else if (checkpoint_path) {
+            char destroy_set[64], canonical_input[1200], solver_config[256];
+            char input_sha256[65], solver_config_sha256[65];
+            int used = snprintf(destroy_set,sizeof destroy_set,
+                "%016llx,%016llx,%016llx",
+                (unsigned long long)X[0],(unsigned long long)X[1],(unsigned long long)X[2]);
+            if (used < 0 || (size_t)used >= sizeof destroy_set) return 2;
+            used = snprintf(canonical_input,sizeof canonical_input,"NPOOL=%d;R=",NPOOL);
+            for (int i=0;i<c->nR && used>0 && (size_t)used<sizeof canonical_input;i++)
+                used += snprintf(canonical_input+used,sizeof canonical_input-(size_t)used,
+                    "%s%016llx",i?",":"",(unsigned long long)c->Rmask[i]);
+            if (used < 0 || (size_t)used>=sizeof canonical_input) return 2;
+            used += snprintf(canonical_input+used,sizeof canonical_input-(size_t)used,";X=");
+            for (int i=0;i<3 && used>0 && (size_t)used<sizeof canonical_input;i++)
+                used += snprintf(canonical_input+used,sizeof canonical_input-(size_t)used,
+                    "%s%016llx",i?",":"",(unsigned long long)X[i]);
+            if (used < 0 || (size_t)used>=sizeof canonical_input) return 2;
+            used = snprintf(solver_config,sizeof solver_config,
+                "R2;legacy=0;time_limit=%.17g;cache_bits=%u;anchor_limit=%llu;NT6=%u;NPOOL=%d",
+                time_limit,n3_cache_bits,(unsigned long long)n3_anchor_limit,(unsigned)NT6,NPOOL);
+            if (used < 0 || (size_t)used>=sizeof solver_config) return 2;
+            n3_sha256_hex(canonical_input,strlen(canonical_input),input_sha256);
+            n3_sha256_hex(solver_config,strlen(solver_config),solver_config_sha256);
+            SolverResumeConfig resume = {
+                .path=checkpoint_path,.destroy_set=destroy_set,.input_sha256=input_sha256,
+                .engine_sha256=N3_ENGINE_SHA256,.solver_config_sha256=solver_config_sha256
+            };
+            checkpoint_fail = solver_run_durable(&sol,c,F0_direct,solver_budget,verbose,&resume,0);
+        } else if (legacy) solver_run_legacy(&sol, c, F0_direct, solver_budget, verbose);
         else solver_run(&sol, c, F0_direct, solver_budget, verbose);
     }
     double t_end = n3_now();
@@ -272,7 +312,11 @@ int main(int argc, char **argv) {
                    "\"PAIR_CALLS\":%llu,\"TRIPLE_CALLS\":%llu,\"MTAB_BUILDS\":%llu,\"GA_EVALS\":%llu,"
                    "\"SECONDS_MTAB\":%.3f,\"SECONDS_PAIR\":%.3f,\"SECONDS_TRIPLE\":%.3f,"
                    "\"TRIPLES_ACCOUNTED\":\"%s\",\"TRIPLES_TOTAL\":\"%s\",\"ACCOUNTING_COMPLETE\":%s,\"OPEN_UPPER_BOUND\":%lld,\"TIES\":[",
-                sol.closed ? "true" : "false", sol.closed ? "CLOSED" : sol.stop_reason == 2 ? "ANCHOR_PROFILE_LIMIT" : "TIME_LIMIT", time_limit, solver_budget, sol.seconds,
+                sol.closed ? "true" : "false", sol.closed ? "CLOSED" :
+                    sol.stop_reason == 2 ? "ANCHOR_PROFILE_LIMIT" :
+                    sol.stop_reason == 3 ? "DURABLE_CHECKPOINT_TEST_STOP" :
+                    sol.stop_reason == 4 ? "CHECKPOINT_ERROR" : "TIME_LIMIT",
+                time_limit, solver_budget, sol.seconds,
                 (long long)sol.incumbent, (long long)sol.target, sol.improved ? "true" : "false", (unsigned long long)sol.tie_count,
                 (unsigned long long)sol.ties_stored, (unsigned long long)sol.L, (long long)sol.rmin, (long long)sol.a_break_position,
                 (unsigned long long)sol.a_last, (unsigned long long)sol.prune_audits, (unsigned long long)sol.prune_audit_failures,
@@ -287,7 +331,8 @@ int main(int argc, char **argv) {
             for (int k = 0; k < 3; k++) { if (k) fputc(',', f); put_ticket(f, n3_unrank6(sol.ties[3 * i + k])); }
             fprintf(f, "]");
         }
-        fprintf(f, "],\"ANCHORS_COMPLETED\":%llu,\"ANCHORS_PRUNED_CONDITIONAL\":%llu,\"CONDITIONAL_CANDIDATES\":%llu,\"CACHE_HITS\":%llu,\"CACHE_MISSES\":%llu,\"SECONDS_CONDITIONAL\":%.6f,\"LOWER_BOUND_CALLS\":%llu,\"LEAVES_PRUNED_LOWER\":%llu,\"PAIR_SHARED_COUNTS\":[%llu,%llu,%llu,%llu,%llu,%llu,%llu]},",
+        fprintf(f, "],\"ANCHORS_COMPLETED\":%llu,\"ANCHORS_PRUNED_CONDITIONAL\":%llu,\"CONDITIONAL_CANDIDATES\":%llu,\"CACHE_HITS\":%llu,\"CACHE_MISSES\":%llu,\"SECONDS_CONDITIONAL\":%.6f,\"LOWER_BOUND_CALLS\":%llu,\"LEAVES_PRUNED_LOWER\":%llu,\"PAIR_SHARED_COUNTS\":[%llu,%llu,%llu,%llu,%llu,%llu,%llu],"
+                   "\"DURABLE_CHECKPOINT_AVAILABLE\":%s,\"CHECKPOINT_ANCHORS_RECORDED\":%llu,\"JOURNAL_PREFIX_SHA256\":\"%s\"},",
                 (unsigned long long)sol.anchors_completed, (unsigned long long)sol.anchors_pruned_conditional,
                 (unsigned long long)sol.conditional_candidates, (unsigned long long)sol.cache_hits,
                 (unsigned long long)sol.cache_misses, sol.seconds_conditional,
@@ -295,7 +340,9 @@ int main(int argc, char **argv) {
                 (unsigned long long)sol.pair_shared[0], (unsigned long long)sol.pair_shared[1],
                 (unsigned long long)sol.pair_shared[2], (unsigned long long)sol.pair_shared[3],
                 (unsigned long long)sol.pair_shared[4], (unsigned long long)sol.pair_shared[5],
-                (unsigned long long)sol.pair_shared[6]);
+                (unsigned long long)sol.pair_shared[6],
+                checkpoint_path && !legacy && !checkpoint_fail ? "true" : "false",
+                (unsigned long long)sol.checkpoint_anchor_records, sol.checkpoint_prefix_sha256);
     } else {
         fprintf(f, "\"SOLVER\":{\"RAN\":false},");
     }
@@ -344,6 +391,6 @@ int main(int argc, char **argv) {
     }
     fprintf(f, "\"PEAK_RSS_BYTES\":%zu}\n", n3_peak_rss());
     fclose(f);
-    return check_fail || pair_fail || !identities_ok || F0_direct != F0_ie ||
+    return checkpoint_fail || check_fail || pair_fail || !identities_ok || F0_direct != F0_ie ||
         (solve && (sol.prune_audit_failures || sol.leaf_audit_failures)) ? 1 : 0;
 }

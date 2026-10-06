@@ -8,6 +8,7 @@
  */
 #include "n3_solve.h"
 #include "n3_bounds.h"
+#include "n3_checkpoint.h"
 
 uint64_t n3_anchor_limit = 0;
 unsigned n3_cache_bits = 0;
@@ -72,7 +73,8 @@ static void record(Solver *s, const Cand *a, const Cand *b, const Cand *c, int64
 static int64_t max64(int64_t a, int64_t b) { return a > b ? a : b; }
 static int pow2(uint64_t a) { return a && !(a & (a - 1)); }
 
-void solver_run(Solver *s, const Ctx *ctx, int64_t F0, double tl, int verbose) {
+static int solver_run_impl(Solver *s, const Ctx *ctx, int64_t F0, double tl, int verbose,
+                           const SolverResumeConfig *resume, uint64_t stop_after_new_anchors) {
     double t0 = n3_now();
     memset(s, 0, sizeof *s);
     s->incumbent = s->target = F0;
@@ -101,6 +103,40 @@ void solver_run(Solver *s, const Ctx *ctx, int64_t F0, double tl, int verbose) {
         if ((int64_t)list[a].r + list[a + 1].r + list[a + 2].r < F0) break;
         s->a_bound_count++;
     }
+    N3Checkpoint checkpoint = {0};
+    uint64_t start_anchor = 0, new_anchors = 0;
+    int durable_error = 0;
+    if (resume) {
+        char error[256] = {0};
+        if (!n3_checkpoint_open(&checkpoint,resume->path,resume->destroy_set,s->a_bound_count,F0,
+                                resume->input_sha256,resume->engine_sha256,
+                                resume->solver_config_sha256,s->accounted,
+                                MAX_TIES_STORED,error,sizeof error)) {
+            fprintf(stderr,"durable checkpoint rejected: %s\n",error);
+            n3_checkpoint_close(&checkpoint);
+            free(conditional); free(s->list); free(s->ties);
+            s->list = NULL; s->ties = NULL;
+            return 1;
+        }
+        if (checkpoint.next_anchor > s->a_bound_count) {
+            fprintf(stderr,"durable checkpoint has more anchors than the current problem\n");
+            n3_checkpoint_close(&checkpoint);
+            free(conditional); free(s->list); free(s->ties);
+            s->list = NULL; s->ties = NULL;
+            return 1;
+        }
+        start_anchor = checkpoint.next_anchor;
+        s->target = checkpoint.incumbent;
+        s->tie_count = checkpoint.tie_count;
+        s->ties_stored = checkpoint.ties_stored;
+        if (s->ties_stored)
+            memcpy(s->ties,checkpoint.ties,(size_t)s->ties_stored*3*sizeof(uint32_t));
+        s->improved = s->target > F0;
+        s->accounted = checkpoint.accounted;
+        s->anchors_completed = checkpoint.anchors_completed;
+        s->checkpoint_anchor_records = checkpoint.next_anchor;
+        memcpy(s->checkpoint_prefix_sha256,checkpoint.prefix_sha256,65);
+    }
     PairCache pc = {.s = s, .c = ctx};
     if (n3_cache_bits) {
         if (n3_cache_bits > 25) { fprintf(stderr, "cache bits must be <=25\n"); exit(2); }
@@ -111,11 +147,26 @@ void solver_run(Solver *s, const Ctx *ctx, int64_t F0, double tl, int verbose) {
         if (!pc.keys || !pc.values) { fprintf(stderr, "cache allocation failed\n"); exit(3); }
     }
     double last_report = t0;
-    for (uint64_t a = 0; a + 2 < L; a++) {
+    for (uint64_t a = start_anchor; a + 2 < L && (!resume || a < s->a_bound_count); a++) {
         int64_t rA = list[a].r;
         int64_t global = rA + list[a + 1].r + list[a + 2].r;
         if (global < s->target) {
-            s->accounted += choose3_128(L - a);
+            if (resume) {
+                for (uint64_t i = a; i < s->a_bound_count; i++) {
+                    int64_t bound = (int64_t)list[i].r + list[i+1].r + list[i+2].r;
+                    s->accounted += choose2_128(L - i - 1);
+                    char error[256] = {0};
+                    if (!n3_checkpoint_append(&checkpoint,i,1,s->target,bound,0,NULL,0,
+                                              s->accounted,error,sizeof error)) {
+                        fprintf(stderr,"durable checkpoint append failed: %s\n",error);
+                        durable_error = 1; break;
+                    }
+                    s->checkpoint_anchor_records = checkpoint.next_anchor;
+                    memcpy(s->checkpoint_prefix_sha256,checkpoint.prefix_sha256,65);
+                }
+            } else {
+                s->accounted += choose3_128(L - a);
+            }
             s->a_break_position = (int64_t)a;
             s->closed = 1;
             break;
@@ -125,6 +176,9 @@ void solver_run(Solver *s, const Ctx *ctx, int64_t F0, double tl, int verbose) {
             s->open_upper_bound = global;
             break;
         }
+        int64_t target_before_anchor = s->target;
+        uint64_t tie_count_before_anchor = s->tie_count;
+        uint64_t ties_stored_before_anchor = s->ties_stored;
         s->a_explored++;
         s->a_last = a;
         int64_t next_global = a + 3 < L ?
@@ -236,6 +290,23 @@ void solver_run(Solver *s, const Ctx *ctx, int64_t F0, double tl, int verbose) {
         }
         if (timeout) { s->stop_reason = 1; break; }
         s->anchors_completed++;
+        if (resume) {
+            uint64_t anchor_tie_count = s->target > target_before_anchor
+                ? s->tie_count : s->tie_count - tie_count_before_anchor;
+            uint64_t tie_offset = s->target > target_before_anchor ? 0 : ties_stored_before_anchor;
+            uint64_t anchor_ties_stored = s->ties_stored - tie_offset;
+            char error[256] = {0};
+            if (!n3_checkpoint_append(&checkpoint,a,0,s->target,-1,anchor_tie_count,
+                                      anchor_ties_stored ? s->ties + 3*tie_offset : NULL,
+                                      anchor_ties_stored,s->accounted,error,sizeof error)) {
+                fprintf(stderr,"durable checkpoint append failed: %s\n",error);
+                durable_error = 1;
+                break;
+            }
+            new_anchors++;
+            s->checkpoint_anchor_records = checkpoint.next_anchor;
+            memcpy(s->checkpoint_prefix_sha256,checkpoint.prefix_sha256,65);
+        }
         double now = n3_now();
         if (verbose && now - last_report >= 30) {
             last_report = now;
@@ -249,11 +320,49 @@ void solver_run(Solver *s, const Ctx *ctx, int64_t F0, double tl, int verbose) {
                     (unsigned long long)s->pair_calls, (unsigned long long)s->cache_hits,
                     (unsigned long long)s->cache_misses);
         }
+        if (resume && stop_after_new_anchors && new_anchors >= stop_after_new_anchors) {
+            s->stop_reason = 3;
+            s->open_upper_bound = a + 3 < L
+                ? (int64_t)list[a+1].r + list[a+2].r + list[a+3].r : -1;
+            break;
+        }
     }
-    /* Exhausted all anchors (including n<3). */
-    if (!s->stop_reason) s->closed = 1;
+    if (resume && !s->stop_reason && !durable_error) {
+        if (checkpoint.next_anchor != s->a_bound_count) {
+            fprintf(stderr,"durable checkpoint did not cover the immutable anchor total\n");
+            durable_error = 1;
+        } else {
+            /* Remaining triples have an initial marginal bound below F0. */
+            s->accounted += choose3_128(L - s->a_bound_count);
+            s->closed = 1;
+        }
+    } else if (!resume && !s->stop_reason) {
+        /* Exhausted all anchors (including n<3). */
+        s->closed = 1;
+    }
+    if (durable_error) {
+        s->closed = 0;
+        if (!s->stop_reason) s->stop_reason = 4;
+    }
     s->seconds = n3_now() - t0;
     free(conditional);
     free(pc.keys);
     free(pc.values);
+    if (resume) {
+        s->checkpoint_anchor_records = checkpoint.next_anchor;
+        memcpy(s->checkpoint_prefix_sha256,checkpoint.prefix_sha256,65);
+        n3_checkpoint_close(&checkpoint);
+    }
+    return durable_error ? 1 : 0;
+}
+
+void solver_run(Solver *s, const Ctx *ctx, int64_t F0, double tl, int verbose) {
+    (void)solver_run_impl(s,ctx,F0,tl,verbose,NULL,0);
+}
+
+int solver_run_durable(Solver *s, const Ctx *ctx, int64_t F0, double tl, int verbose,
+                       const SolverResumeConfig *resume, uint64_t stop_after_new_anchors) {
+    if (!resume || !resume->path || !resume->destroy_set || !resume->input_sha256 ||
+        !resume->engine_sha256 || !resume->solver_config_sha256) return 1;
+    return solver_run_impl(s,ctx,F0,tl,verbose,resume,stop_after_new_anchors);
 }

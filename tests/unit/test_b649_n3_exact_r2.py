@@ -19,6 +19,7 @@ def build_and_run(tmp_path: Path, mutation: str | None = None) -> subprocess.Com
         str(p)
         for p in (
             ROOT / "tests/native/b649_n3_toy.c",
+            SOURCE / "n3_checkpoint.c",
             SOURCE / "n3_solve.c",
             SOURCE / "n3_solve_legacy.c",
         )

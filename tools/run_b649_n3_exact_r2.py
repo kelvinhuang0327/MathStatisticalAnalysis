@@ -79,13 +79,24 @@ def inputs() -> tuple[Document, Document]:
 def build() -> None:
     RUN.mkdir(parents=True, exist_ok=True)
     sources = sorted(SOURCE.glob("*.c"))
-    argv = ["clang", "-std=c11", "-O3", "-Wall", "-Wextra", *(str(p) for p in sources)]
+    source_hashes = {p.name: digest(p.read_bytes()) for p in sorted(SOURCE.iterdir()) if p.is_file()}
+    engine_sha256 = digest(json.dumps(source_hashes, sort_keys=True, separators=(",", ":")).encode())
+    argv = [
+        "clang",
+        "-std=c11",
+        "-O3",
+        "-Wall",
+        "-Wextra",
+        f'-DN3_ENGINE_SHA256="{engine_sha256}"',
+        *(str(p) for p in sources),
+    ]
     subprocess.run([*argv, "-o", str(RUN / "n3-exact")], check=True, cwd=ROOT)
     save(
         RUN / "build.json",
         {
             "ARGV": argv,
-            "SOURCE_SHA256": {p.name: digest(p.read_bytes()) for p in sorted(SOURCE.iterdir())},
+            "SOURCE_SHA256": source_hashes,
+            "ENGINE_SHA256": engine_sha256,
             "BINARY_SHA256": digest((RUN / "n3-exact").read_bytes()),
             "BASE_HEAD": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT)
             .decode()
@@ -166,15 +177,22 @@ def engine(
     witness_file: Path | None = None,
 ) -> Document:
     rec, kept, removed = reference(set_number)
+    checkpoint = RUN / f"{name}.anchors.jsonl"
     out = RUN / f"{name}.json"
-    timing = RUN / f"{name}-observation.json"
-    if out.exists():
-        assert timing.exists(), (
-            "Existing terminal output lacks its runner observation; inspect first"
-        )
-        result = read(out)
-        assert result["KEPT"] == kept and result["REMOVED"] == removed
-        return result
+    attempt = 0
+    while out.exists():
+        timing = out.with_name(f"{out.stem}-observation.json")
+        assert timing.exists(), "Existing result lacks its runner observation; inspect first"
+        previous = read(out)
+        assert previous["KEPT"] == kept and previous["REMOVED"] == removed
+        solver = previous.get("SOLVER", {})
+        if not solver.get("RAN", False) or solver.get("CLOSED", False):
+            return previous
+        # Keep the incomplete attempt immutable; reusing its checkpoint writes
+        # only a new result and observation after missing anchors resume.
+        attempt += 1
+        out = RUN / f"{name}-resume{attempt}.json"
+    timing = out.with_name(f"{out.stem}-observation.json")
     argv = [
         str(RUN / "n3-exact"),
         "--kept",
@@ -189,6 +207,8 @@ def engine(
     ]
     if legacy:
         argv.append("--legacy")
+    else:
+        argv.extend(["--checkpoint", str(checkpoint)])
     if anchor_limit:
         argv.extend(["--anchor-limit", str(anchor_limit)])
     if witness_file:

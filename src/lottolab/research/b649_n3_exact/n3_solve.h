@@ -5,6 +5,14 @@
 #define MAX_TIES_STORED (1u << 20)
 
 typedef struct {
+    const char *path;
+    const char *destroy_set;
+    const char *input_sha256;
+    const char *engine_sha256;
+    const char *solver_config_sha256;
+} SolverResumeConfig;
+
+typedef struct {
     uint64_t mask;
     uint32_t rank;
     int32_t r;
@@ -45,9 +53,13 @@ typedef struct {
     uint64_t cache_hits, cache_misses;
     double seconds_conditional;
     uint64_t leaves_pruned_lower, lower_calls, pair_shared[7];
+    uint64_t checkpoint_anchor_records;
+    char checkpoint_prefix_sha256[65];
 } Solver;
 
 void solver_run(Solver *s, const Ctx *c, int64_t incumbent, double time_limit_s, int verbose);
+int solver_run_durable(Solver *s, const Ctx *c, int64_t incumbent, double time_limit_s,
+                       int verbose, const SolverResumeConfig *resume, uint64_t stop_after_new_anchors);
 void solver_run_legacy(Solver *s, const Ctx *c, int64_t incumbent, double time_limit_s, int verbose);
 extern uint64_t n3_anchor_limit; /* profiling stop only; never a proof of closure */
 extern unsigned n3_cache_bits; /* storage limit; cache misses are evaluated exactly */

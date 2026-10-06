@@ -4886,6 +4886,7 @@ def cmd_reconcile_prestart_not_started(
             "status": "SUCCESS",
         }:
             raise ProtectedError("protected receipt predecessor link differs from the v5 receipt")
+        legacy_missing_mutation_summary = False
         if captured_not_started or old_incomplete:
             stream_name = "stdout" if captured_not_started else "process_stdout"
             output_evidence = record(stranded.get(stream_name))
@@ -4908,18 +4909,36 @@ def cmd_reconcile_prestart_not_started(
                 if candidate.get("status") == "NOT_STARTED":
                     operation_result = candidate
                     break
-            mutation_summary = record(
-                None if operation_result is None else operation_result.get("mutation_summary")
-            )
             if (
                 operation_result is None
                 or operation_result.get("command") != "apply"
                 or operation_result.get("task") != cutover.TASK_ID
                 or operation_result.get("actions") != []
-                or mutation_summary
-                != {"launchd": False, "plist": False, "control_files": False}
             ):
                 raise ProtectedError("captured NOT_STARTED result does not prove zero mutation")
+            if "mutation_summary" not in operation_result:
+                if not old_incomplete:
+                    raise ProtectedError(
+                        "captured NOT_STARTED result does not prove zero mutation"
+                    )
+                # Historical old_incomplete captures predate mutation_summary on
+                # every NOT_STARTED exit. Accept this classification only after
+                # the durable and live no-mutation proof below has completed.
+                legacy_missing_mutation_summary = True
+            else:
+                mutation_summary = record(operation_result.get("mutation_summary"))
+                expected_mutation_summary = {
+                    "launchd": False,
+                    "plist": False,
+                    "control_files": False,
+                }
+                if mutation_summary != expected_mutation_summary or any(
+                    type(mutation_summary.get(field)) is not bool
+                    for field in expected_mutation_summary
+                ):
+                    raise ProtectedError(
+                        "captured NOT_STARTED result does not prove zero mutation"
+                    )
 
         if stranded_identity.get("target") != expected_owner_identity["target"]:
             raise ProtectedError("stranded protected receipt target differs from the owner")
@@ -5022,6 +5041,9 @@ def cmd_reconcile_prestart_not_started(
             successor_old_plist_identity=record(plan.get("prestate")).get("old_plist_identity"),
             runner=selected_runner,
         )
+
+        if legacy_missing_mutation_summary and not old_incomplete:
+            raise ProtectedError("legacy NOT_STARTED capture shape is not exact")
 
         if archive_path != receipt_path.with_name(
             f"{receipt_path.stem}.{execution_id}.superseded.json"

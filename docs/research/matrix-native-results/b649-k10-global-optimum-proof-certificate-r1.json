@@ -1,0 +1,180 @@
+{
+  "certificate_id": "B649_K10_GLOBAL_OPTIMUM_PROOF_CERTIFICATE_R1",
+  "payload": {
+    "K10_GLOBAL_OPTIMUM_STATUS": "PROVEN",
+    "closures": [
+      {
+        "authorities": [
+          {
+            "path": "docs/research/matrix-native-results/b649-k10-overlap-mass11-mass12-proof-certificate-r1.json",
+            "sha256": "59663cecd2145f38a8d1a94653c227fd06bcb579af14a0a5c7e8d9625290d8ac"
+          },
+          {
+            "path": "src/lottolab/research/b649_k10_min_overlap_exhaustive_r1.py",
+            "sha256": "effa5a861ab013a5d6236f21ea2d9eea21956b54dadf67dde28ee74a88e4ef37"
+          },
+          {
+            "path": "src/lottolab/research/b649_k10_overlap_mass12_bonferroni_screen_r1.py",
+            "sha256": "2b9ded022fb0c67313d72fe838f485455adf8db5d7ee1d02f8d42bdc2965ef07"
+          },
+          {
+            "path": "tests/unit/test_b649_k10_overlap_proof_certificate_r1.py",
+            "sha256": "8e67676af1e78b7c529a0af4425aab6460a5e52ce3877a43dfa85688dce61b9e"
+          }
+        ],
+        "mass_range": [
+          11,
+          12
+        ],
+        "method": "EXISTING_OVERLAP_PROOF_CERTIFICATE",
+        "status": "CLOSED"
+      },
+      {
+        "authorities": [
+          {
+            "masses": [
+              13,
+              14,
+              15,
+              16,
+              17
+            ],
+            "method": "EXACT_U3",
+            "modes": [
+              "mass13-recheck",
+              "mass14",
+              "mass15",
+              "mass16",
+              "mass17"
+            ],
+            "runner": {
+              "path": "src/lottolab/research/b649_k10_mass14_profiles_exact_u3_r1.py",
+              "sha256": "2a9797c4c8afd1574cadbb84e7d36e02d270f95d032e74350b81acc89290801e"
+            },
+            "status": "CLOSED"
+          },
+          {
+            "mass": 18,
+            "method": "EXACT_U3",
+            "result": {
+              "path": "docs/research/matrix-native-results/b649-k10-mass18-profiles-exact-u3-r1.json",
+              "result_payload_sha256": "bccf869a9207471b0229c5032e29ebc329bd7af56dfd3d4e8fc6b93830da6bf1",
+              "sha256": "2697f8e59d166be16650c3e31057b0f8b54e792090e062a5f9008c816f279cfb"
+            },
+            "runner": {
+              "path": "src/lottolab/research/b649_k10_mass18_profiles_exact_u3_r1.py",
+              "sha256": "559ceed95b492d456c411acf09609e948acec1a77ed76d1fb32d6024789aefc4"
+            },
+            "status": "CLOSED"
+          },
+          {
+            "mass": 19,
+            "method": "EXACT_U3",
+            "result": {
+              "path": "docs/research/matrix-native-results/b649-k10-mass19-profiles-exact-u3-r1.json",
+              "result_payload_sha256": "36a481792ca9543e46ad9a97aeb4680ed201379d8438418e096a6410962dc8bb",
+              "sha256": "beafafc05efa55c4c1be8998874a1e3572839bfc46d409fdea7d5b0f8f44e761"
+            },
+            "runner": {
+              "path": "src/lottolab/research/b649_k10_mass19_profiles_exact_u3_r1.py",
+              "sha256": "4a5c6e3558d3cc7562c1385edc8b5bc50c3cbf4717fa52aa3dd2904eee0f094b"
+            },
+            "status": "CLOSED"
+          },
+          {
+            "mass": 20,
+            "method": "EXACT_U3",
+            "result": {
+              "path": "docs/research/matrix-native-results/b649-k10-mass20-profiles-exact-u3-r1.json",
+              "result_payload_sha256": "f4fd4b150d4eea871b9a7e49942aa7c30c638a9e2eb659e746f0b7d0050a8317",
+              "sha256": "1e8c7cf7cfff3f01f4b660cee22a636ea058648e27aac67d476d0f85c9ff3d7f"
+            },
+            "runner": {
+              "path": "src/lottolab/research/b649_k10_mass20_profiles_exact_u3_r1.py",
+              "sha256": "d70eab20311a6f722bd21d042f1f23d83cd5bd1afdbcaf6e2ccec58e486a4c0a"
+            },
+            "status": "CLOSED"
+          }
+        ],
+        "mass_range": [
+          13,
+          20
+        ],
+        "method": "EXACT_U3",
+        "profile_catalog": {
+          "path": "src/lottolab/research/b649_k10_mass_ge21_sequential_exact_u3_r1.py",
+          "sha256": "7d9752e43e80945657f0a4c16f3eaf48ca503c0e7c40b8cb7234b84501540415"
+        },
+        "status": "CLOSED"
+      },
+      {
+        "mass_range": [
+          21,
+          48
+        ],
+        "method": "EXACT_U3",
+        "profile_result_count": 34,
+        "result_ledger": {
+          "path": "docs/research/matrix-native-results/b649-k10-mass-ge21-sequential-exact-u3-r1.json",
+          "payload_sha256": "5e42412e1d065db8f495756385a58cb3aa625a64e7fe4c2deda265a372790120",
+          "sha256": "32834f1fcd164c552e2c6f06f86874823ece5f2fdc62ef26b5f1328bd3f5c5f9"
+        },
+        "runner": {
+          "path": "src/lottolab/research/b649_k10_mass_ge21_sequential_exact_u3_r1.py",
+          "sha256": "7d9752e43e80945657f0a4c16f3eaf48ca503c0e7c40b8cb7234b84501540415"
+        },
+        "status": "CLOSED"
+      }
+    ],
+    "event": {
+      "evaluator": {
+        "path": "src/lottolab/research/b649_official_any_prize_exact.py",
+        "sha256": "92dcb836254cc6dbcd6c2ad907e619a5eb8cf3917197a8f6de3e5f989825cf66"
+      },
+      "name": "OFFICIAL_ANY_PRIZE",
+      "outcome_count": 601304088
+    },
+    "full_support_reduction": {
+      "authority": {
+        "path": "src/lottolab/research/b649_k1_k8_global_optimality.py",
+        "sha256": "89f9af823e4a46bc5ee80508d70a871b6e51b6a55d090529497d162bbedfb4a0"
+      },
+      "claim": "Replacing a repeated label with an unused label preserves or improves OFFICIAL_ANY_PRIZE coverage and strictly lowers overlap mass; repeat until the portfolio uses all 49 labels.",
+      "status": "PROVED",
+      "test": {
+        "path": "tests/unit/test_b649_k1_k8_global_optimality.py",
+        "sha256": "bd8ba4d36c277aeae4a4aa351eefefaf3bb1d43513b0a335518dc37f3daf0eb0"
+      }
+    },
+    "incumbent": {
+      "official_any_prize_probability": "536005/1827672",
+      "outcome_count": 176345645,
+      "overlap_mass": 11,
+      "portfolio_sha256": "13b1126d5b26ce44c9aba24670142eeab49f4a4b51aaf3bbabe7a7f1659ac673",
+      "sealed_source": {
+        "path": "src/lottolab/application/b649_sealed_geometry_portfolio.py",
+        "sha256": "c0ac22fa5c927e39f0cbff7b6b3aff5e14e34bfeb00399de6ffcc83e176ae59a",
+        "symbol": "_K10"
+      },
+      "ticket_count": 10
+    },
+    "profile_family": {
+      "mass_range": [
+        11,
+        48
+      ],
+      "profile_catalog": {
+        "path": "src/lottolab/research/b649_k10_mass_ge21_sequential_exact_u3_r1.py",
+        "sha256": "7d9752e43e80945657f0a4c16f3eaf48ca503c0e7c40b8cb7234b84501540415",
+        "symbols": [
+          "PRIOR_CLOSED_PROFILES",
+          "derive_full_support_profiles"
+        ]
+      },
+      "profile_count": 54,
+      "support": "FULL_SUPPORT"
+    },
+    "task_id": "B649_K10_GLOBAL_OPTIMUM_PROOF_MINIMAL_CANONICAL_INTEGRATION_R1"
+  },
+  "payload_sha256": "8c150f78ea41dc54f31893e4e2b997032c5614423af1854c87acd8cba6cc08bb"
+}

@@ -7,6 +7,7 @@ import argparse
 import hashlib
 import json
 import re
+import subprocess
 import sys
 from pathlib import Path
 from typing import Any, cast
@@ -17,6 +18,15 @@ COMPILED_DIR = ROOT / "compiled"
 L23 = "L23_UNSAFE_OWNER_STATEMENT_REFERENCE"
 L24 = "L24_WORKTREE_REQUIRED_FOR_REPOSITORY_WRITES"
 L25 = "L25_AUTHORIZATION_REQUIRED_BEFORE_RENDER"
+CANONICAL_PRIMITIVE_AUTHORITY_INVALID = "CANONICAL_PRIMITIVE_AUTHORITY_INVALID"
+NON_LOAD_BEARING_TARGET = "NON_LOAD_BEARING_TARGET"
+UNFROZEN_RESEARCH_RESULT = "UNFROZEN_RESEARCH_RESULT"
+_CANONICAL_SINGLE_TICKET_ANY_PRIZE = 18_611_432
+_CANONICAL_RESEARCH_PRIMITIVES = {
+    "SINGLE_TICKET_ANY_PRIZE": _CANONICAL_SINGLE_TICKET_ANY_PRIZE,
+    "PAIR_INTERSECTION_COST[6]": _CANONICAL_SINGLE_TICKET_ANY_PRIZE,
+    "K20_S1": 20 * _CANONICAL_SINGLE_TICKET_ANY_PRIZE,
+}
 
 OWNER_REFERENCE_PATTERN = re.compile(
     r"(?:NOT_REQUIRED|PENDING_OWNER_REFERENCE|"
@@ -211,7 +221,14 @@ def _json_yaml(path: Path) -> Any:
         ) from exc
 
 
-def _matches_type(value: Any, expected: str) -> bool:
+def _matches_type(value: Any, expected: Any) -> bool:
+    if isinstance(expected, list):
+        for candidate in cast(list[Any], expected):
+            if isinstance(candidate, str) and _matches_type(value, candidate):
+                return True
+        return False
+    if not isinstance(expected, str):
+        return False
     if expected == "object":
         return isinstance(value, dict)
     if expected == "array":
@@ -237,8 +254,15 @@ def _schema_errors(value: Any, schema: dict[str, Any], path: str = "$") -> list[
         errors.append(f"{path}: expected one of {schema['enum']!r}")
 
     expected_type = schema.get("type")
-    if isinstance(expected_type, str) and not _matches_type(value, expected_type):
-        return [f"{path}: expected {expected_type}, got {type(value).__name__}"]
+    if isinstance(expected_type, (str, list)) and not _matches_type(
+        value, expected_type
+    ):
+        expected_label = (
+            expected_type
+            if isinstance(expected_type, str)
+            else " or ".join(str(item) for item in cast(list[Any], expected_type))
+        )
+        return [f"{path}: expected {expected_label}, got {type(value).__name__}"]
 
     if isinstance(value, dict):
         object_value = cast(dict[str, Any], value)
@@ -319,7 +343,7 @@ def _is_exact_value(value: Any) -> bool:
 
 
 def _manifest_contract_errors(manifest: dict[str, Any]) -> list[str]:
-    errors: list[str] = []
+    errors = _research_preflight_errors(manifest)
     authorization_value = manifest.get("authorization")
     if isinstance(authorization_value, dict):
         authorization = cast(dict[str, Any], authorization_value)
@@ -392,6 +416,178 @@ def _manifest_contract_errors(manifest: dict[str, Any]) -> list[str]:
                 f"{L24}: repository writes require a supported write-capable worktree mode"
             )
     return errors
+
+
+def _research_preflight_errors(manifest: dict[str, Any]) -> list[str]:
+    task_value = manifest.get("task")
+    if not isinstance(task_value, dict):
+        return []
+
+    task = cast(dict[str, Any], task_value)
+    errors: list[str] = []
+    primitives_value = task.get("canonical_primitives")
+    if isinstance(primitives_value, dict):
+        primitives = cast(dict[str, Any], primitives_value)
+        for name, expected in _CANONICAL_RESEARCH_PRIMITIVES.items():
+            if name in primitives and primitives[name] != expected:
+                errors.append(
+                    f"{CANONICAL_PRIMITIVE_AUTHORITY_INVALID}: "
+                    f"$.task.canonical_primitives.{name}={primitives[name]!r}; "
+                    f"expected {expected}"
+                )
+
+    target_value = task.get("load_bearing_target")
+    if isinstance(target_value, dict):
+        target = cast(dict[str, Any], target_value)
+        if (
+            target.get("TARGET_CAN_CHANGE_CURRENT_BOUND") is False
+            and target.get("TARGET_IS_EXPLICIT_PREREQUISITE") is not True
+        ):
+            errors.append(
+                f"{NON_LOAD_BEARING_TARGET}: $.task.load_bearing_target target "
+                "cannot change the current family bound and is not an explicit prerequisite"
+            )
+    errors.extend(_durable_result_freeze_errors(manifest, task))
+    return errors
+
+
+def _git_output(repository: str, *arguments: str) -> bytes | None:
+    try:
+        result = subprocess.run(
+            ["git", "-C", repository, *arguments],
+            check=True,
+            capture_output=True,
+            timeout=10,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return result.stdout
+
+
+def _git_commit(repository: str, revision: Any) -> str | None:
+    if not _is_exact_value(revision):
+        return None
+    output = _git_output(
+        repository, "rev-parse", "--verify", "--quiet", "--end-of-options", f"{revision}^{{commit}}"
+    )
+    return output.decode("ascii", errors="ignore").strip() if output else None
+
+
+def _nul_paths(output: bytes | None) -> set[str] | None:
+    if output is None:
+        return None
+    return {
+        item.decode("utf-8", errors="surrogateescape")
+        for item in output.split(b"\0")
+        if item
+    }
+
+
+def _tracked_worktree_paths(repository: str) -> set[str] | None:
+    output = _git_output(repository, "status", "--porcelain=v1", "-z", "--untracked-files=no")
+    records = output.split(b"\0") if output is not None else []
+    if output is None:
+        return None
+    paths: set[str] = set()
+    index = 0
+    while index < len(records):
+        record = records[index]
+        index += 1
+        if not record:
+            continue
+        paths.add(record[3:].decode("utf-8", errors="surrogateescape"))
+        if b"R" in record[:2] or b"C" in record[:2]:
+            if index < len(records) and records[index]:
+                paths.add(records[index].decode("utf-8", errors="surrogateescape"))
+            index += 1
+    return paths
+
+
+def _durable_result_freeze_errors(
+    manifest: dict[str, Any], task: dict[str, Any]
+) -> list[str]:
+    dependency_value = task.get("result_dependency")
+    if not isinstance(dependency_value, dict):
+        return []
+    dependency = cast(dict[str, Any], dependency_value)
+    task_status = dependency.get("TASK_STATUS")
+    if not isinstance(task_status, str):
+        return []
+    if task_status == "NO_CHANGE_REQUIRED":
+        return []
+
+    scope_value = manifest.get("scope")
+    scope = cast(dict[str, Any], scope_value) if isinstance(scope_value, dict) else {}
+    allowed_writes = scope.get("allowed_writes")
+    if not isinstance(allowed_writes, list) or not allowed_writes:
+        return []
+
+    if not (
+        task_status in {"SUCCESS", "SUCCESS_A", "SUCCESS_B", "SUCCESS_C", "COMPLETE", "COMPLETED"}
+        or task_status.startswith("CERTIFIED_")
+    ):
+        return []
+
+    declared_paths_value = dependency.get("CHANGED_PATHS", [])
+    declared_paths: set[str] = set()
+    if isinstance(declared_paths_value, list):
+        for path_value in cast(list[Any], declared_paths_value):
+            if isinstance(path_value, str):
+                declared_paths.add(path_value)
+    non_authoritative_value = dependency.get("NON_AUTHORITATIVE_PATHS", [])
+    non_authoritative_paths: set[str] = set()
+    if isinstance(non_authoritative_value, list):
+        for path_value in cast(list[Any], non_authoritative_value):
+            if isinstance(path_value, str):
+                non_authoritative_paths.add(path_value)
+    intended_paths = declared_paths - non_authoritative_paths
+
+    context_value = manifest.get("context")
+    context = cast(dict[str, Any], context_value) if isinstance(context_value, dict) else {}
+    worktree_value = context.get("worktree")
+    worktree = cast(dict[str, Any], worktree_value) if isinstance(worktree_value, dict) else {}
+    repository_value = worktree.get("path")
+    repository = repository_value if isinstance(repository_value, str) else ""
+
+    base_commit = _git_commit(repository, dependency.get("BASE_HEAD")) if repository else None
+    task_commit = _git_commit(repository, dependency.get("TASK_HEAD")) if repository else None
+    committed_paths: set[str] | None = None
+    if base_commit is not None and task_commit is not None:
+        output = _git_output(repository, "diff", "--name-only", "-z", base_commit, task_commit)
+        committed_paths = _nul_paths(output)
+
+    dirty_paths = _tracked_worktree_paths(repository) if repository else None
+    changed_paths = set(intended_paths)
+    if committed_paths is not None:
+        changed_paths.update(committed_paths - non_authoritative_paths)
+
+    # Scratch evidence explicitly marked non-authoritative does not activate this gate.
+    if not changed_paths:
+        return []
+
+    failure = (
+        f"{UNFROZEN_RESEARCH_RESULT}: dependent Worker Prompts require "
+        "a clean durable TASK_HEAD"
+    )
+    if base_commit is None or task_commit is None or base_commit == task_commit:
+        return [failure]
+
+    current_head = _git_commit(repository, "HEAD") if repository else None
+    manifest_head = _git_commit(repository, context.get("head_sha")) if repository else None
+    declared_paths_are_committed = (
+        committed_paths is not None and intended_paths.issubset(committed_paths)
+    )
+    clean_tracked_worktree = dirty_paths is not None and not (
+        dirty_paths - non_authoritative_paths
+    )
+    if (
+        current_head != task_commit
+        or manifest_head != task_commit
+        or not declared_paths_are_committed
+        or not clean_tracked_worktree
+    ):
+        return [failure]
+    return []
 
 
 def validate_manifest(manifest: Any, schema: dict[str, Any], routes: dict[str, Any]) -> list[str]:

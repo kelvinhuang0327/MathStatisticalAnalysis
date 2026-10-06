@@ -64,6 +64,15 @@ def load_example(filename: str) -> dict[str, Any]:
     )
 
 
+def authorized_medium_manifest() -> dict[str, Any]:
+    manifest = load_example("medium-implementation.task.yaml")
+    authorization = cast(dict[str, Any], manifest["authorization"])
+    authorization.update(
+        {"state": "PRESENT", "owner_statement_ref": "OWNER_MESSAGE_REF:research-gate"}
+    )
+    return manifest
+
+
 def write_manifest(path: Path, manifest: dict[str, Any]) -> None:
     path.write_text(
         json.dumps(manifest, ensure_ascii=False, indent=2) + "\n",
@@ -131,6 +140,121 @@ def assert_manifest_rejected(
     assert render.stdout == ""
     assert not output_path.exists()
     assert control_plane_snapshot() == before
+
+
+def assert_research_preflight_rejected(
+    manifest: dict[str, Any], tmp_path: Path, status: str
+) -> None:
+    manifest_path = tmp_path / "research-preflight.task.yaml"
+    output_path = tmp_path / "research-preflight.worker.md"
+    write_manifest(manifest_path, manifest)
+
+    lint = run_tool("lint", "--manifest", str(manifest_path), check=False)
+    assert lint.returncode == 1
+    assert status in lint.stderr
+    assert lint.stdout == ""
+
+    render = run_tool(
+        "render",
+        "--manifest",
+        str(manifest_path),
+        "--output",
+        str(output_path),
+        check=False,
+    )
+    assert render.returncode == 1
+    assert status in render.stderr
+    assert render.stdout == ""
+    assert not output_path.exists()
+
+
+def assert_research_preflight_passes(
+    manifest: dict[str, Any], tmp_path: Path
+) -> None:
+    manifest_path = tmp_path / "research-preflight.task.yaml"
+    output_path = tmp_path / "research-preflight.worker.md"
+    write_manifest(manifest_path, manifest)
+
+    lint = run_tool("lint", "--manifest", str(manifest_path))
+    assert "PASS control-plane lint" in lint.stdout
+    render = run_tool(
+        "render",
+        "--manifest",
+        str(manifest_path),
+        "--output",
+        str(output_path),
+    )
+    assert "PASS Worker Prompt rendered" in render.stdout
+    assert output_path.is_file()
+
+
+def result_dependency_manifest(
+    tmp_path: Path, *, commit_result: bool
+) -> tuple[dict[str, Any], Path, str]:
+    repository = tmp_path / "upstream-result"
+    repository.mkdir()
+    subprocess.run(["git", "init", "-q", str(repository)], check=True)
+    subprocess.run(
+        ["git", "-C", str(repository), "config", "user.name", "Prompt Test"],
+        check=True,
+    )
+    subprocess.run(
+        [
+            "git",
+            "-C",
+            str(repository),
+            "config",
+            "user.email",
+            "prompt-test@example.invalid",
+        ],
+        check=True,
+    )
+    changed_paths = ["proof.txt", "tests/test_result.py", "results.json"]
+    for path in changed_paths:
+        target = repository / path
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text("base\n", encoding="utf-8")
+    subprocess.run(
+        ["git", "-C", str(repository), "add", "--", *changed_paths], check=True
+    )
+    subprocess.run(["git", "-C", str(repository), "commit", "-qm", "base"], check=True)
+    base_head = subprocess.run(
+        ["git", "-C", str(repository), "rev-parse", "HEAD"],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+
+    for path in changed_paths:
+        (repository / path).write_text("result\n", encoding="utf-8")
+    if commit_result:
+        subprocess.run(
+            ["git", "-C", str(repository), "add", "--", *changed_paths], check=True
+        )
+        subprocess.run(
+            ["git", "-C", str(repository), "commit", "-qm", "research result"],
+            check=True,
+        )
+    task_head = subprocess.run(
+        ["git", "-C", str(repository), "rev-parse", "HEAD"],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+
+    manifest = authorized_medium_manifest()
+    context = cast(dict[str, Any], manifest["context"])
+    worktree = cast(dict[str, Any], context["worktree"])
+    worktree["path"] = str(repository)
+    context["head_sha"] = task_head
+    task = cast(dict[str, Any], manifest["task"])
+    task["result_dependency"] = {
+        "TASK_STATUS": "SUCCESS_C",
+        "BASE_HEAD": base_head,
+        "TASK_HEAD": task_head,
+        "CHANGED_PATHS": changed_paths,
+    }
+    return manifest, repository, base_head
 
 
 def assert_render_blocked(
@@ -245,6 +369,181 @@ def test_examples_lint_and_invalid_authorization_is_rejected(tmp_path: Path) -> 
     result = run_tool("lint", "--manifest", str(invalid), check=False)
     assert result.returncode == 1
     assert "$.authorization.class: expected constant 'SINGLE_PROMPT'" in result.stderr
+
+
+def test_canonical_primitive_preflight_passes_current_authorities(tmp_path: Path) -> None:
+    manifest = authorized_medium_manifest()
+    task = cast(dict[str, Any], manifest["task"])
+    task["canonical_primitives"] = {
+        "SINGLE_TICKET_ANY_PRIZE": 18_611_432,
+        "PAIR_INTERSECTION_COST[6]": 18_611_432,
+        "K20_S1": 372_228_640,
+    }
+
+    assert_research_preflight_passes(manifest, tmp_path)
+
+
+def test_committed_successful_research_result_passes(tmp_path: Path) -> None:
+    manifest, _, _ = result_dependency_manifest(tmp_path, commit_result=True)
+
+    assert_research_preflight_passes(manifest, tmp_path)
+
+
+def test_r16_success_c_same_base_with_tracked_results_is_unfrozen(tmp_path: Path) -> None:
+    manifest, _, base_head = result_dependency_manifest(tmp_path, commit_result=False)
+    dependency = cast(
+        dict[str, Any], cast(dict[str, Any], manifest["task"])["result_dependency"]
+    )
+    assert dependency["TASK_STATUS"] == "SUCCESS_C"
+    assert dependency["BASE_HEAD"] == dependency["TASK_HEAD"] == base_head
+    assert dependency["CHANGED_PATHS"] == [
+        "proof.txt",
+        "tests/test_result.py",
+        "results.json",
+    ]
+
+    manifest_path = tmp_path / "r16-success-c.task.yaml"
+    write_manifest(manifest_path, manifest)
+    lint = run_tool("lint", "--manifest", str(manifest_path), check=False)
+    assert lint.returncode == 1
+    assert "UNFROZEN_RESEARCH_RESULT" in lint.stderr
+    assert lint.stdout == ""
+
+
+def test_claimed_commit_with_tracked_worktree_changes_is_blocked(tmp_path: Path) -> None:
+    manifest, repository, _ = result_dependency_manifest(tmp_path, commit_result=True)
+    (repository / "results.json").write_text("uncommitted\n", encoding="utf-8")
+
+    assert_research_preflight_rejected(manifest, tmp_path, "UNFROZEN_RESEARCH_RESULT")
+
+
+def test_read_only_no_change_result_passes(tmp_path: Path) -> None:
+    manifest = load_example("low-readonly.task.yaml")
+    task = cast(dict[str, Any], manifest["task"])
+    task["result_dependency"] = {"TASK_STATUS": "SUCCESS_C", "CHANGED_PATHS": []}
+
+    assert_research_preflight_passes(manifest, tmp_path)
+
+
+def test_state_changing_no_change_required_result_passes(tmp_path: Path) -> None:
+    manifest = authorized_medium_manifest()
+    task = cast(dict[str, Any], manifest["task"])
+    task["result_dependency"] = {
+        "TASK_STATUS": "NO_CHANGE_REQUIRED",
+        "CHANGED_PATHS": [],
+    }
+
+    assert_research_preflight_passes(manifest, tmp_path)
+
+
+def test_successful_state_changing_result_with_no_tracked_changes_passes(
+    tmp_path: Path,
+) -> None:
+    manifest = authorized_medium_manifest()
+    task = cast(dict[str, Any], manifest["task"])
+    task["result_dependency"] = {"TASK_STATUS": "SUCCESS", "CHANGED_PATHS": []}
+
+    assert_research_preflight_passes(manifest, tmp_path)
+
+
+def test_dependent_successor_render_from_unfrozen_result_is_suppressed(
+    tmp_path: Path,
+) -> None:
+    manifest, _, _ = result_dependency_manifest(tmp_path, commit_result=False)
+
+    assert_research_preflight_rejected(manifest, tmp_path, "UNFROZEN_RESEARCH_RESULT")
+
+
+def test_dependent_successor_compiles_from_frozen_task_head(tmp_path: Path) -> None:
+    manifest, _, _ = result_dependency_manifest(tmp_path, commit_result=True)
+
+    assert_research_preflight_passes(manifest, tmp_path)
+
+
+def test_non_authoritative_scratch_paths_do_not_activate_freeze_gate(
+    tmp_path: Path,
+) -> None:
+    manifest, _, _ = result_dependency_manifest(tmp_path, commit_result=True)
+    dependency = cast(
+        dict[str, Any], cast(dict[str, Any], manifest["task"])["result_dependency"]
+    )
+    dependency["NON_AUTHORITATIVE_PATHS"] = list(dependency["CHANGED_PATHS"])
+
+    assert_research_preflight_passes(manifest, tmp_path)
+
+
+def test_canonical_primitive_preflight_rejects_stale_single_ticket_value(
+    tmp_path: Path,
+) -> None:
+    manifest = authorized_medium_manifest()
+    task = cast(dict[str, Any], manifest["task"])
+    task["canonical_primitives"] = {"SINGLE_TICKET_ANY_PRIZE": 18_221_078}
+
+    assert_research_preflight_rejected(
+        manifest, tmp_path, "CANONICAL_PRIMITIVE_AUTHORITY_INVALID"
+    )
+
+
+def test_canonical_primitive_preflight_rejects_pair_intersection_mismatch(
+    tmp_path: Path,
+) -> None:
+    manifest = authorized_medium_manifest()
+    task = cast(dict[str, Any], manifest["task"])
+    task["canonical_primitives"] = {"PAIR_INTERSECTION_COST[6]": 18_611_433}
+
+    assert_research_preflight_rejected(
+        manifest, tmp_path, "CANONICAL_PRIMITIVE_AUTHORITY_INVALID"
+    )
+
+
+def test_canonical_primitive_preflight_rejects_k20_s1_mismatch(tmp_path: Path) -> None:
+    manifest = authorized_medium_manifest()
+    task = cast(dict[str, Any], manifest["task"])
+    task["canonical_primitives"] = {"K20_S1": 372_228_639}
+
+    assert_research_preflight_rejected(
+        manifest, tmp_path, "CANONICAL_PRIMITIVE_AUTHORITY_INVALID"
+    )
+
+
+def test_load_bearing_target_preflight_passes(tmp_path: Path) -> None:
+    manifest = authorized_medium_manifest()
+    task = cast(dict[str, Any], manifest["task"])
+    task["load_bearing_target"] = {
+        "CURRENT_FAMILY_BOUND": 372_228_640,
+        "CURRENT_BOUND_OWNER": "K20_S1 family bound",
+        "TARGET_BOUND": "strictly below the current family bound",
+        "TARGET_CAN_CHANGE_CURRENT_BOUND": True,
+    }
+
+    assert_research_preflight_passes(manifest, tmp_path)
+
+
+def test_non_load_bearing_target_preflight_blocks_render(tmp_path: Path) -> None:
+    manifest = authorized_medium_manifest()
+    task = cast(dict[str, Any], manifest["task"])
+    task["load_bearing_target"] = {
+        "CURRENT_FAMILY_BOUND": 372_228_640,
+        "CURRENT_BOUND_OWNER": "K20_S1 family bound",
+        "TARGET_BOUND": "a local subcase bound",
+        "TARGET_CAN_CHANGE_CURRENT_BOUND": False,
+    }
+
+    assert_research_preflight_rejected(manifest, tmp_path, "NON_LOAD_BEARING_TARGET")
+
+
+def test_explicit_prerequisite_exception_passes(tmp_path: Path) -> None:
+    manifest = authorized_medium_manifest()
+    task = cast(dict[str, Any], manifest["task"])
+    task["load_bearing_target"] = {
+        "CURRENT_FAMILY_BOUND": "K20_S1 = 372228640",
+        "CURRENT_BOUND_OWNER": "K20_S1 family bound",
+        "TARGET_BOUND": "a prerequisite needed to tighten K20_S1",
+        "TARGET_CAN_CHANGE_CURRENT_BOUND": False,
+        "TARGET_IS_EXPLICIT_PREREQUISITE": True,
+    }
+
+    assert_research_preflight_passes(manifest, tmp_path)
 
 
 def test_l23_safe_reference_grammar_and_metadata_rendering(tmp_path: Path) -> None:

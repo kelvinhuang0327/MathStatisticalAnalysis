@@ -2630,6 +2630,29 @@ def _reconciled_predecessor_receipt_sha256(
         or release.get("predecessor_protected_receipt_sha256") != predecessor_sha
     ):
         raise ProtectedError("reconciled predecessor proof does not match the v5 receipt")
+    cross_control_identity_valid = True
+    if release_kind == PRESTART_NOT_STARTED_RELEASE_KIND:
+        has_cross_control_identity = any(
+            key in reconciliation
+            for key in ("original_control_identity", "recovery_control_identity")
+        )
+        if has_cross_control_identity:
+            original_control = record(reconciliation.get("original_control_identity"))
+            recovery_control = record(reconciliation.get("recovery_control_identity"))
+            owner_control = {
+                "head": owner.get("control_head"),
+                "tree": owner.get("control_tree"),
+            }
+            cross_control_identity_valid = (
+                set(original_control) == {"head", "tree"}
+                and original_control == owner_control
+                and set(recovery_control) == {"head", "tree"}
+                and all(
+                    re.fullmatch(r"[0-9a-f]{40}", str(recovery_control.get(key))) is not None
+                    for key in ("head", "tree")
+                )
+                and recovery_control != original_control
+            )
     if release_kind == PRESTART_NOT_STARTED_RELEASE_KIND and (
         reconciliation.get("stranded_protected_receipt_sha256")
         != release.get("stranded_protected_receipt_sha256")
@@ -2642,6 +2665,7 @@ def _reconciled_predecessor_receipt_sha256(
             "head": owner.get("control_head"),
             "tree": owner.get("control_tree"),
         }
+        or not cross_control_identity_valid
     ):
         raise ProtectedError("released NOT_STARTED evidence differs from its sealed reconciliation")
     if release_kind == PRESTART_NOT_STARTED_RELEASE_KIND:
@@ -4595,7 +4619,7 @@ def cmd_reconcile_prestart_not_started(
     *,
     runner: cutover.Runner | None = None,
 ) -> Record:
-    """Seal and release one exact same-control NOT_STARTED apply incident."""
+    """Seal and release one exact same-control or explicitly cross-control incident."""
     selected_runner = cutover.run_command if runner is None else runner
     config = build_reservation_config(args, for_action="apply")
     reservation_id = text(args.reservation_id)
@@ -4622,16 +4646,58 @@ def cmd_reconcile_prestart_not_started(
     if re.fullmatch(r"[0-9a-f]{64}", plan_digest) is None:
         raise ProtectedError("plan digest must be a lowercase SHA256")
 
-    control = cutover.control_version()
-    control_identity_value = {"head": control.get("head"), "tree": control.get("tree")}
-    if any(
-        re.fullmatch(r"[0-9a-f]{40}", str(value)) is None
-        for value in control_identity_value.values()
-    ) or control_identity_value != {
-        "head": control_identity()[0],
-        "tree": control_identity()[1],
-    }:
-        raise ProtectedError("same-control reconciliation source identity is invalid")
+    control_arguments = (
+        getattr(args, "original_control_head", None),
+        getattr(args, "original_control_tree", None),
+        getattr(args, "current_recovery_control_head", None),
+        getattr(args, "current_recovery_control_tree", None),
+    )
+    supplied_control_arguments = tuple(value is not None for value in control_arguments)
+    if any(supplied_control_arguments) and not all(supplied_control_arguments):
+        raise ProtectedError("cross-control reconciliation requires all four control identities")
+    cross_control = all(supplied_control_arguments)
+    if cross_control:
+        original_control_identity = {
+            "head": text(control_arguments[0]),
+            "tree": text(control_arguments[1]),
+        }
+        recovery_control_identity = {
+            "head": text(control_arguments[2]),
+            "tree": text(control_arguments[3]),
+        }
+        for identity in (original_control_identity, recovery_control_identity):
+            if any(
+                re.fullmatch(r"[0-9a-f]{40}", value) is None
+                for value in identity.values()
+            ):
+                raise ProtectedError("control identities must be exact lowercase HEAD/tree values")
+        running_control = cutover.control_version()
+        source_control_identity = control_identity()
+        if (
+            original_control_identity == recovery_control_identity
+            or running_control != recovery_control_identity
+            or source_control_identity
+            != (recovery_control_identity["head"], recovery_control_identity["tree"])
+        ):
+            raise ProtectedError(
+                "running recovery control differs from explicit cross-control identities"
+            )
+    else:
+        control = cutover.control_version()
+        original_control_identity = {
+            "head": control.get("head"),
+            "tree": control.get("tree"),
+        }
+        if any(
+            re.fullmatch(r"[0-9a-f]{40}", str(value)) is None
+            for value in original_control_identity.values()
+        ) or original_control_identity != {
+            "head": control_identity()[0],
+            "tree": control_identity()[1],
+        }:
+            raise ProtectedError("same-control reconciliation source identity is invalid")
+        recovery_control_identity = dict(original_control_identity)
+    control_identity_value = original_control_identity
 
     receipt_path = config.scheduler_root / RECEIPT_NAME
     receipt_file = ReceiptFile(receipt_path)
@@ -4736,13 +4802,18 @@ def cmd_reconcile_prestart_not_started(
             managed_receipt_sha256=supplied_hashes["managed_receipt_sha256"],
             owner_id_argument=owner_id_argument,
         )
+        expected_stranded_identity = {
+            **request.identity,
+            "control_head": original_control_identity["head"],
+            "control_tree": original_control_identity["tree"],
+        }
         plan, plan_identity, _ = cutover.read_control_json(plan_file)
         if (
             plan_identity.sha256 != supplied_hashes["plan_sha256"]
             or plan.get("plan_digest") != plan_digest
             or request.plan_sha256 != supplied_hashes["plan_sha256"]
             or request.plan_digest != plan_digest
-            or request.identity != stranded_identity
+            or expected_stranded_identity != stranded_identity
         ):
             raise ProtectedError("stranded operation identity or exact plan differs")
         cutover.validate_protected_plan(config, plan)
@@ -4977,6 +5048,13 @@ def cmd_reconcile_prestart_not_started(
             "owner_mutation_started": False,
             "old_live_state": old_live,
         }
+        if cross_control:
+            unsigned_reconciliation.update(
+                {
+                    "original_control_identity": original_control_identity,
+                    "recovery_control_identity": recovery_control_identity,
+                }
+            )
         existing_reconciliation: Record | None = None
         if os.path.lexists(reconciliation_path):
             existing_reconciliation, _ = _load_prestart_reconciliation(reconciliation_path)
@@ -5029,8 +5107,13 @@ def cmd_reconcile_prestart_not_started(
             raise ProtectedError("stranded protected receipt was not archived unchanged")
 
         current_control = cutover.control_version()
-        if current_control != control_identity_value:
-            raise ProtectedError("same-control identity changed before owner release")
+        if current_control != recovery_control_identity:
+            raise ProtectedError("recovery control identity changed before owner release")
+        if cross_control and control_identity() != (
+            recovery_control_identity["head"],
+            recovery_control_identity["tree"],
+        ):
+            raise ProtectedError("recovery source identity changed before owner release")
         if claims.ClaimStore(claim_root).inspect(TASK_KEY).get("status") != "ABSENT":
             raise ProtectedError("ClaimStore appeared before owner release")
         if os.path.lexists(config.scheduler_root / ROLLBACK_RECEIPT_NAME):
@@ -5570,6 +5653,13 @@ def parser() -> argparse.ArgumentParser:
         "plan-digest",
     ):
         not_started_parser.add_argument("--" + name, required=True)
+    for name in (
+        "original-control-head",
+        "original-control-tree",
+        "current-recovery-control-head",
+        "current-recovery-control-tree",
+    ):
+        not_started_parser.add_argument("--" + name)
     return cli
 
 

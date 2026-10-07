@@ -4614,6 +4614,84 @@ def cmd_reconcile_prestart_failure(
         return {"status": "RECONCILED", "owner": released, **release_evidence}
 
 
+def _validate_cross_control_historical_provenance(
+    stranded: Record,
+    stranded_identity: Record,
+    original_control_head: str,
+    original_control_tree: str,
+) -> str:
+    """Validate the sealed historical control checkout without requiring it to exist."""
+    unsigned_receipt = {
+        key: value for key, value in stranded.items() if key != "receipt_sha256"
+    }
+    execution_id = text(stranded.get("execution_id"))
+    if (
+        execution_id != digest(stranded_identity)
+        or stranded.get("receipt_sha256") != digest(unsigned_receipt)
+    ):
+        raise ProtectedError("historical protected receipt seal or execution identity is invalid")
+
+    try:
+        historical_worktree_value = text(stranded_identity.get("control_worktree"))
+    except ProtectedError as exc:
+        raise ProtectedError("historical control worktree provenance is absent") from exc
+    historical_worktree = Path(historical_worktree_value)
+    try:
+        canonical_worktree = str(historical_worktree.resolve())
+    except (OSError, RuntimeError, ValueError) as exc:
+        raise ProtectedError("historical control worktree provenance is not canonical") from exc
+    if (
+        not historical_worktree.is_absolute()
+        or ".." in historical_worktree.parts
+        or canonical_worktree != historical_worktree_value
+    ):
+        raise ProtectedError("historical control worktree provenance is not canonical")
+
+    raw_direct_argv = stranded.get("direct_argv")
+    if not isinstance(raw_direct_argv, list):
+        raise ProtectedError("historical direct argv provenance is invalid")
+    argv_values = cast(list[object], raw_direct_argv)
+    if len(argv_values) < 2 or any(not isinstance(argument, str) for argument in argv_values):
+        raise ProtectedError("historical direct argv provenance is invalid")
+    direct_argv = cast(list[str], argv_values)
+    expected_managed_script = str(
+        historical_worktree / "tools" / "b649_production_cutover.py"
+    )
+    if direct_argv[1] != expected_managed_script:
+        raise ProtectedError("historical direct argv managed script differs from its control root")
+    if stranded_identity.get("interpreter") != direct_argv[0]:
+        raise ProtectedError("historical interpreter differs from direct argv")
+
+    def option_value(option: str) -> str:
+        indexes = [index for index, value in enumerate(direct_argv[:-1]) if value == option]
+        if len(indexes) != 1:
+            raise ProtectedError(f"historical direct argv must contain one {option}")
+        return direct_argv[indexes[0] + 1]
+
+    try:
+        protected_request = json.loads(
+            option_value("--protected-request"), object_pairs_hook=unique_object
+        )
+    except (TypeError, ValueError, ProtectedError) as exc:
+        raise ProtectedError("historical protected request is invalid") from exc
+    if not isinstance(protected_request, dict):
+        raise ProtectedError("historical protected request is invalid")
+    protected_request_record = cast(Record, protected_request)
+    if (
+        set(protected_request_record) != {"identity", "takeover_stale"}
+        or type(protected_request_record.get("takeover_stale")) is not bool
+        or protected_request_record.get("identity") != stranded_identity
+        or option_value("--protected-execution") != execution_id
+    ):
+        raise ProtectedError("historical protected request differs from the sealed receipt")
+    if (
+        stranded_identity.get("control_head") != original_control_head
+        or stranded_identity.get("control_tree") != original_control_tree
+    ):
+        raise ProtectedError("historical control identity differs from explicit original version")
+    return historical_worktree_value
+
+
 def cmd_reconcile_prestart_not_started(
     args: argparse.Namespace,
     *,
@@ -4807,6 +4885,15 @@ def cmd_reconcile_prestart_not_started(
             "control_head": original_control_identity["head"],
             "control_tree": original_control_identity["tree"],
         }
+        if cross_control:
+            expected_stranded_identity["control_worktree"] = (
+                _validate_cross_control_historical_provenance(
+                    stranded,
+                    stranded_identity,
+                    text(original_control_identity["head"]),
+                    text(original_control_identity["tree"]),
+                )
+            )
         plan, plan_identity, _ = cutover.read_control_json(plan_file)
         if (
             plan_identity.sha256 != supplied_hashes["plan_sha256"]

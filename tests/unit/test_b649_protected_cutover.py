@@ -3337,6 +3337,51 @@ def _cross_control_not_started_argv(
     return argv
 
 
+def _reseal_historical_control_provenance(
+    incident: StrandedIncident,
+    historical_control_worktree: Path,
+    *,
+    script_path: str | None = None,
+    interpreter: str | None = None,
+    control_worktree_value: str | None = None,
+    identity_updates: dict[str, object] | None = None,
+) -> protected.Record:
+    receipt_file = protected.ReceiptFile(incident.request.receipt_path)
+    stranded = receipt_file.read()
+    assert stranded is not None
+    identity = {**protected.record(stranded["identity"]), **(identity_updates or {})}
+    identity["control_worktree"] = (
+        str(historical_control_worktree.resolve())
+        if control_worktree_value is None
+        else control_worktree_value
+    )
+    direct_argv = list(cast(list[str], stranded["direct_argv"]))
+    direct_argv[1] = (
+        script_path
+        if script_path is not None
+        else str(historical_control_worktree / "tools" / "b649_production_cutover.py")
+    )
+    if interpreter is not None:
+        direct_argv[0] = interpreter
+    request_index = direct_argv.index("--protected-request")
+    wire = json.loads(direct_argv[request_index + 1])
+    wire["identity"] = identity
+    direct_argv[request_index + 1] = protected.canonical(wire)
+    execution_id = protected.digest(identity)
+    direct_argv[direct_argv.index("--protected-execution") + 1] = execution_id
+    claim_owner = {**protected.record(stranded["claim_owner"]), "command": direct_argv}
+    return receipt_file.write(
+        {
+            **stranded,
+            "identity": identity,
+            "execution_id": execution_id,
+            "direct_argv": direct_argv,
+            "claim_owner": claim_owner,
+        },
+        expected=stranded,
+    )
+
+
 def _write_snapshot(harness: Harness, incident: StrandedIncident) -> dict[Path, bytes | None]:
     config = incident.request.config
     paths = {
@@ -3696,6 +3741,9 @@ def test_historical_not_started_incident_reconciles_across_control_versions(
     )
     request = incident.request
     receipt_file = protected.ReceiptFile(request.receipt_path)
+    historical_control_worktree = request.config.scheduler_root.parent / "historical-control-v7"
+    _reseal_historical_control_provenance(incident, historical_control_worktree)
+    assert historical_control_worktree.resolve() != protected.CONTROL_ROOT
     captured = receipt_file.read()
     assert captured is not None
     legacy_masked = {
@@ -3806,6 +3854,159 @@ def test_historical_not_started_incident_reconciles_across_control_versions(
     retry = json.loads(capsys.readouterr().out.splitlines()[-1])
     assert retry["status"] == "ALREADY_RECONCILED"
     assert _write_snapshot(harness, incident) == after_first
+
+    successor_owner = cutover.acquire_control_owner(
+        request.config,
+        action="apply",
+        target=protected.request_owner_target(successor),
+        owner_kind="protected",
+        reservation_id=successor.reservation_id,
+        version={"head": recovery_control[0], "tree": recovery_control[1]},
+        operation_id=successor.operation_id,
+        managed_receipt_sha256=successor.managed_receipt_sha256,
+        predecessor_release_evidence=successor_proof,
+    )
+    assert successor_owner["phase"] == "AUTHORIZATION_PENDING"
+
+
+@pytest.mark.parametrize(
+    "defect",
+    [
+        "managed_script_path",
+        "interpreter",
+        "noncanonical_worktree",
+        "protected_request_identity",
+        "control_head",
+        "control_tree",
+        "operation_identity",
+    ],
+)
+def test_cross_control_requires_exact_sealed_historical_provenance(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    defect: str,
+) -> None:
+    incident = _make_stranded_prestart_incident(
+        harness,
+        monkeypatch,
+        preserve_legacy_parent_behavior=False,
+        same_control_version=True,
+        not_started_result=True,
+    )
+    request = incident.request
+    historical_control_worktree = request.config.scheduler_root.parent / "historical-control-v7"
+    updates: dict[str, object] = {}
+    script_path: str | None = None
+    interpreter: str | None = None
+    control_worktree_value: str | None = None
+    if defect == "managed_script_path":
+        script_path = str(historical_control_worktree / "tools" / "wrong_script.py")
+    elif defect == "interpreter":
+        interpreter = "/historical/python"
+    elif defect == "noncanonical_worktree":
+        control_worktree_value = str(
+            historical_control_worktree / ".." / historical_control_worktree.name
+        )
+    elif defect == "control_head":
+        updates["control_head"] = "f" * 40
+    elif defect == "control_tree":
+        updates["control_tree"] = "e" * 40
+    elif defect == "operation_identity":
+        updates["plan_digest"] = "d" * 64
+    _reseal_historical_control_provenance(
+        incident,
+        historical_control_worktree,
+        script_path=script_path,
+        interpreter=interpreter,
+        control_worktree_value=control_worktree_value,
+        identity_updates=updates,
+    )
+    if defect == "protected_request_identity":
+        receipt_file = protected.ReceiptFile(request.receipt_path)
+        stranded = receipt_file.read()
+        assert stranded is not None
+        direct_argv = list(cast(list[str], stranded["direct_argv"]))
+        request_index = direct_argv.index("--protected-request")
+        wire = json.loads(direct_argv[request_index + 1])
+        wire["identity"]["label"] = "different sealed request"
+        direct_argv[request_index + 1] = protected.canonical(wire)
+        claim_owner = {**protected.record(stranded["claim_owner"]), "command": direct_argv}
+        receipt_file.write(
+            {**stranded, "direct_argv": direct_argv, "claim_owner": claim_owner},
+            expected=stranded,
+        )
+    _configure_cross_control_not_started_reconcile_cli(harness, monkeypatch, incident)
+    original_control = (
+        cast(str, request.identity["control_head"]),
+        cast(str, request.identity["control_tree"]),
+    )
+    argv = _cross_control_not_started_argv(incident, original_control=original_control)
+    before = _write_snapshot(harness, incident)
+
+    assert protected.main(argv) == claims.UNVERIFIABLE
+    capsys.readouterr()
+    assert _write_snapshot(harness, incident) == before
+    assert tuple(harness.launchd.mutation_calls) == incident.mutations_before
+
+
+def test_cross_control_worktree_tampering_without_resealing_fails_closed(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    incident = _make_stranded_prestart_incident(
+        harness,
+        monkeypatch,
+        preserve_legacy_parent_behavior=False,
+        same_control_version=True,
+        not_started_result=True,
+    )
+    historical_control_worktree = (
+        incident.request.config.scheduler_root.parent / "historical-control-v7"
+    )
+    _reseal_historical_control_provenance(incident, historical_control_worktree)
+    _configure_cross_control_not_started_reconcile_cli(harness, monkeypatch, incident)
+    argv = _cross_control_not_started_argv(incident)
+    raw_receipt = json.loads(incident.request.receipt_path.read_text(encoding="utf-8"))
+    raw_receipt["identity"]["control_worktree"] = str(
+        incident.request.config.scheduler_root.parent / "tampered-control-v7"
+    )
+    raw_bytes = (protected.canonical(raw_receipt) + "\n").encode("utf-8")
+    incident.request.receipt_path.write_bytes(raw_bytes)
+    argv[argv.index("--stranded-protected-receipt-sha256") + 1] = hashlib.sha256(
+        raw_bytes
+    ).hexdigest()
+    before = _write_snapshot(harness, incident)
+
+    assert protected.main(argv) == claims.UNVERIFIABLE
+    capsys.readouterr()
+    assert _write_snapshot(harness, incident) == before
+    assert tuple(harness.launchd.mutation_calls) == incident.mutations_before
+
+
+def test_same_control_reconciliation_still_requires_current_control_worktree(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    incident = _make_stranded_prestart_incident(
+        harness,
+        monkeypatch,
+        preserve_legacy_parent_behavior=False,
+        same_control_version=True,
+        not_started_result=True,
+    )
+    historical_control_worktree = (
+        incident.request.config.scheduler_root.parent / "historical-control-v7"
+    )
+    _reseal_historical_control_provenance(incident, historical_control_worktree)
+    _configure_not_started_reconcile_cli(harness, monkeypatch, incident)
+    before = _write_snapshot(harness, incident)
+
+    assert protected.main(_not_started_reconciliation_argv(incident)) == claims.UNVERIFIABLE
+    capsys.readouterr()
+    assert _write_snapshot(harness, incident) == before
 
 
 @pytest.mark.parametrize(

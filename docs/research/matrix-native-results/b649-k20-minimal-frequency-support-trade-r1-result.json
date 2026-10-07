@@ -1,0 +1,241 @@
+{
+  "BASELINE_ARTIFACT_SHA": "10d4ef5102ad824fb2c96503501694bef3f878504c8c164698c86f2f1ce35a3b",
+  "BASELINE_CANONICAL_RESCORE": "PASS",
+  "BASELINE_COUNT": 313263888,
+  "BASELINE_FREQUENCY_HISTOGRAM": {
+    "2": 27,
+    "3": 22
+  },
+  "BASELINE_M3_PLUS_DRAW_COUNT": 4807892,
+  "BASELINE_NORMALIZED_SHA": "eaed652900d101881b678a1515d2a366bff9de6723dbec2ec9c82fe0d0d7844c",
+  "BASELINE_SOURCE_FILE_SHA256": "3d5d3f8f2389b66a9b2c45b0e345b81a0d9dc59d08ca9223519be70a055e5a00",
+  "BASELINE_SOURCE_PATH": "/Users/kelvin/.codex/worktrees/b649-k20-12-8-winner-two-ticket-ascent-r1/MathStatisticalAnalysis/docs/research/matrix-native-results/b649-k20-12-8-winner-two-ticket-ascent-r1-result.json",
+  "BASELINE_SPECIAL_RESCUE_OUTCOMES": 106524532,
+  "BEST_ARTIFACT_SHA": "737e038daa05279d0549e1a87b53f1e1fcd6cfc56a99841c3e200761649b45e4",
+  "BEST_CHANGED_SLOTS_ZERO_BASED": [
+    6,
+    11,
+    13,
+    14
+  ],
+  "BEST_DELTA": -78120,
+  "BEST_EXACT_COUNT": 313185768,
+  "BEST_EXCHANGE": {
+    "A_ZERO_BASED": [
+      13,
+      14
+    ],
+    "B_ZERO_BASED": [
+      6,
+      11
+    ],
+    "FAMILY": "F3_F2",
+    "X": 27,
+    "Y": 26
+  },
+  "BEST_M3_PLUS_DRAW_COUNT": 4807270,
+  "BEST_NORMALIZED_SHA": "0006de2c5e787776994e5ce9b72933c62fc194062dbfd0d5e2c752d9791e43f2",
+  "BEST_SPECIAL_RESCUE_OUTCOMES": 106473158,
+  "BEST_TICKETS": [
+    [
+      1,
+      2,
+      3,
+      4,
+      5,
+      21
+    ],
+    [
+      1,
+      6,
+      7,
+      8,
+      9,
+      22
+    ],
+    [
+      2,
+      10,
+      11,
+      12,
+      13,
+      22
+    ],
+    [
+      3,
+      6,
+      10,
+      14,
+      15,
+      23
+    ],
+    [
+      2,
+      7,
+      14,
+      16,
+      17,
+      24
+    ],
+    [
+      4,
+      8,
+      10,
+      16,
+      18,
+      25
+    ],
+    [
+      1,
+      11,
+      14,
+      18,
+      19,
+      27
+    ],
+    [
+      4,
+      6,
+      12,
+      19,
+      20,
+      24
+    ],
+    [
+      5,
+      7,
+      11,
+      15,
+      20,
+      25
+    ],
+    [
+      5,
+      9,
+      12,
+      17,
+      18,
+      23
+    ],
+    [
+      9,
+      13,
+      15,
+      16,
+      19,
+      21
+    ],
+    [
+      3,
+      8,
+      13,
+      17,
+      20,
+      27
+    ],
+    [
+      27,
+      29,
+      30,
+      31,
+      32,
+      33
+    ],
+    [
+      26,
+      34,
+      35,
+      36,
+      37,
+      38
+    ],
+    [
+      26,
+      39,
+      40,
+      41,
+      42,
+      43
+    ],
+    [
+      28,
+      29,
+      34,
+      39,
+      44,
+      45
+    ],
+    [
+      28,
+      30,
+      35,
+      40,
+      46,
+      47
+    ],
+    [
+      28,
+      31,
+      36,
+      41,
+      48,
+      49
+    ],
+    [
+      32,
+      37,
+      42,
+      44,
+      46,
+      48
+    ],
+    [
+      33,
+      38,
+      43,
+      45,
+      47,
+      49
+    ]
+  ],
+  "CANDIDATE_MANIFEST_SHA256": "ba76d11e7c3d3d4613d4f7b9bbbb5c353e33297fd10354e9e658c7840a24e22e",
+  "CANDIDATE_SCORE_SHA256": "1bad5a9443916a203f509e264331c2dd08d28bd3cfa434deace97b77dab9c202",
+  "CANONICAL_EVALUATOR_SHA256": "92dcb836254cc6dbcd6c2ad907e619a5eb8cf3917197a8f6de3e5f989825cf66",
+  "CANONICAL_RESCORE": "PASS",
+  "DIFF_CHECK": "PASS",
+  "DRIVER_SHA256": "77ca80340f0a6366b8d8efb533f2e143d224c05742f93d87ae64ae037c858587",
+  "DUPLICATE_NORMALIZED_CANDIDATES": 0,
+  "EVALUATION_SECONDS": 1151.934,
+  "EXACT_SCORED_CANDIDATES": 2511,
+  "EXCLUDED_ILLEGAL": 0,
+  "EXCLUDED_N1_N2_EQUIVALENT": 0,
+  "F3_F2_CANDIDATES": 1512,
+  "F3_F2_RAW_INSTANTIATIONS": 1512,
+  "F3_F3_CANDIDATES": 999,
+  "F3_F3_RAW_INSTANTIATIONS": 999,
+  "FALSIFIABILITY_CHECK": "CONFIRMED",
+  "FAMILY_STATUS": "NO_STRICT_GAIN_FOR_DEFINED_MINIMAL_FOUR_TICKET_SUPPORT_TRADE_FAMILY",
+  "FOCUSED_TESTS": "PASS",
+  "FOCUSED_TEST_COUNT": 20,
+  "GLOBAL_K20_OPTIMUM_STATUS": "UNKNOWN",
+  "LEGAL_CANDIDATES": 2511,
+  "LOCAL_COMMIT": "NOT_CREATED_NO_OWNER_AUTHORIZATION",
+  "MAIN_DRAW_COUNT": 13983816,
+  "NORMALIZED_HASH_HELPER_MODULE_SHA256": "dc8bb5e89fb0b98bd9f691693754550cccd6fe274bb08fae73412c59c7c43e42",
+  "OPERATOR_SIGNATURE": "MINIMAL_DISJOINT_SUPPORT_2X2_EXCHANGE_F3F2_OR_F3F3",
+  "PRODUCTION_MUTATION": "NONE",
+  "PROTECTED_WRAPPER_TERMINAL_CAPTURE": "UNAVAILABLE_WRAPPER_EXITED_CHILD_COMPLETED",
+  "PYRIGHT": "PASS",
+  "RAW_OPERATOR_INSTANTIATIONS": 2511,
+  "READY_FOR_N1_ASCENT": "NO",
+  "RESULT_LOCATOR": "/Users/kelvin/.codex/worktrees/b649-k20-minimal-frequency-support-trade-r1/MathStatisticalAnalysis/docs/research/matrix-native-results/b649-k20-minimal-frequency-support-trade-r1-result.json",
+  "RUFF": "PASS",
+  "SCHEMA_VERSION": 1,
+  "SOURCE_HEAD": "f785f8f5b1af1f4987558caf42180e7c8bc4bf03",
+  "SPECIAL_COUNT": 43,
+  "STRICT_GAIN": "NO",
+  "TASK_ID": "B649_K20_12_8_WINNER_MINIMAL_FREQUENCY_SUPPORT_TRADE_R1",
+  "TASK_STATUS": "COMPLETE",
+  "UNIQUE_NORMALIZED_CANDIDATES": 2511,
+  "WORKTREE": "/Users/kelvin/.codex/worktrees/b649-k20-minimal-frequency-support-trade-r1/MathStatisticalAnalysis"
+}

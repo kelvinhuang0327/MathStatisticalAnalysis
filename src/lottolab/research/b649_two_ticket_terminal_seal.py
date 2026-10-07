@@ -28,6 +28,8 @@ driver's responsibility; successful pair comparison is not a complete seal.
 
 from __future__ import annotations
 
+from typing import cast
+
 
 def canonicalize_winning_slot_pairs(pairs: object, *, ticket_count: int) -> list[list[int]]:
     """Return fresh JSON-safe pairs while rejecting malformed or duplicate entries."""
@@ -37,12 +39,16 @@ def canonicalize_winning_slot_pairs(pairs: object, *, ticket_count: int) -> list
     if not isinstance(pairs, (list, tuple)) or not pairs:
         raise ValueError("winning slot pairs must be a non-empty list or tuple")
 
+    validated_pairs = cast(list[object] | tuple[object, ...], pairs)
     canonical: list[list[int]] = []
     seen: set[tuple[int, int]] = set()
-    for pair in pairs:
-        if not isinstance(pair, (list, tuple)) or len(pair) != 2:
+    for pair in validated_pairs:
+        if not isinstance(pair, (list, tuple)):
             raise ValueError("each winning slot pair must contain exactly two slots")
-        i, j = pair
+        pair_elements = cast(list[object] | tuple[object, ...], pair)
+        if len(pair_elements) != 2:
+            raise ValueError("each winning slot pair must contain exactly two slots")
+        i, j = pair_elements
         if type(i) is not int or type(j) is not int:
             raise ValueError("winning slot indices must be integers")
         if not 0 <= i < j < ticket_count:

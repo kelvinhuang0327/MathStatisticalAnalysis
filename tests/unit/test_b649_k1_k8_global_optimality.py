@@ -312,12 +312,13 @@ def test_sealed_k5_wording_records_a_proven_optimum_without_new_numbers() -> Non
     assert "proven" in document
     assert "not unique" in document
     assert "best-known" not in document
-    assert "neither K10 nor K20 is a proven global optimum" in document
+    assert "Global K20 optimality remains unknown." in document
+    assert "Neither K10 nor K20 is claimed to be a proven global optimum." in document
     assert SEALED_GEOMETRY_PORTFOLIOS[10].official_any_prize_probability == Fraction(
         536005, 1827672
     )
     assert SEALED_GEOMETRY_PORTFOLIOS[20].official_any_prize_probability == Fraction(
-        44748523, 85900584
+        1864666, 3579191
     )
 
 

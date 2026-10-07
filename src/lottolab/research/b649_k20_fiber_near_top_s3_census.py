@@ -56,7 +56,7 @@ PREP_TASK_ID = "B649_K20_FIBER_CENSUS_PREP_AUTHORITY_DECOUPLING_R1"
 MANIFEST_RELATIVE = (
     "docs/research/matrix-native-results/b649-k20-fiber-near-top-s3-census-slice1-manifest.json"
 )
-MANIFEST_SHA256 = "d454385846c29b2f3c5437092bdea181a2bb0c2d9f3410736b60c2675ee02791"
+MANIFEST_SHA256 = "4b1df0503ab0c4a780e56b6189821f1d2f9080c2124dc6951d8663580e79e64f"
 DURABLE_RELATIVE = ".task-data/b649-k20-fiber-near-top-s3-census-r1"
 PROOF_LOG = "proof-log.jsonl"
 WITNESS_LEDGER = "witness-ledger.jsonl"
@@ -108,17 +108,13 @@ R28_BOUND_MODULE_RELATIVE = (
 )
 R28_BOUND_MODULE_SHA256 = "b63081af598a6366ab9989f00f3e269052e8edbc41956a0771941dc03891b74e"
 R28_SOURCE_PATHS = ("src/lottolab/__init__.py", "src/lottolab/research")
-R30_ROOT = Path(
-    "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/"
-    "B649_K20_MIN_S2_CURRENT_CURSOR_DYNAMIC_FAMILY_MAX_R30"
-)
+R30_ROOT = Path(__file__).resolve().parents[3]
 R30_BRANCH = "codex/b649-k20-min-s2-current-cursor-dynamic-family-max-r30"
 R30_BASE_HEAD = "cbea83281a9ea7959de584a6b66d500f7bd0e6e1"
 R30_RESULT_RELATIVE = (
     "docs/research/matrix-native-results/"
     "b649-k20-min-s2-current-cursor-dynamic-family-max-r30-result.json"
 )
-R30_SEGMENT1_COPY_RELATIVE = ".task-data/r30/segment-1-result.json"
 R30_RESULT_SHA256 = "5b7e5d10583d275409441c422e107994fb6058fae5060933c6c35c436481e777"
 R30_LEDGER_SHA256 = "375ccbe04ac1e5216ef66d69e9d5576ce7e5bd0fb6813925f53af64301f359b0"
 R30_MODULE_AUTHORITY_STATUS = "UNRESOLVED_NON_LOAD_BEARING"
@@ -1310,12 +1306,11 @@ def verify_r28(root: Path) -> dict[str, object]:
     }
 
 
-def verify_r30_result(r30_root: Path = R30_ROOT) -> str:
-    for relative in (R30_RESULT_RELATIVE, R30_SEGMENT1_COPY_RELATIVE):
-        path = r30_root / relative
-        if path.exists() and sha256_bytes(path.read_bytes()) == R30_RESULT_SHA256:
-            return str(path)
-    raise PreflightError("sealed R30 result is unavailable at its pinned paths")
+def verify_r30_result() -> str:
+    path = R30_ROOT / R30_RESULT_RELATIVE
+    if path.is_file() and sha256_bytes(path.read_bytes()) == R30_RESULT_SHA256:
+        return str(path)
+    raise PreflightError("tracked sealed R30 result is unavailable or has changed")
 
 
 def build_manifest(
@@ -1336,10 +1331,9 @@ def build_manifest(
                 "WORKTREE": str(R30_ROOT),
                 "BRANCH": R30_BRANCH,
                 "BASE_HEAD": R30_BASE_HEAD,
-                "RESULT_PATH": str(R30_ROOT / R30_RESULT_RELATIVE),
-                "RESULT_SEGMENT1_COPY_PATH": str(R30_ROOT / R30_SEGMENT1_COPY_RELATIVE),
+                "RESULT_PATH": R30_RESULT_RELATIVE,
                 "RESULT_SHA256": R30_RESULT_SHA256,
-                "RESULT_TRACKED": False,
+                "RESULT_TRACKED": True,
                 "RESULT_ROLE": "LOAD_BEARING_SEALED_DATA",
                 "MODULE_AUTHORITY_STATUS": R30_MODULE_AUTHORITY_STATUS,
                 "MODULE_AUTHORITY_REASON": R30_MODULE_AUTHORITY_REASON,

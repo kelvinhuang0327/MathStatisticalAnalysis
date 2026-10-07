@@ -275,7 +275,14 @@ def test_authorities_are_full_hashes_bound_to_r28_r30_and_the_evaluator(
     )
     # The R30 producer module is unresolved and bound nowhere: no path, no SHA, no prefix.
     assert r30["MODULE_AUTHORITY_STATUS"] == "UNRESOLVED_NON_LOAD_BEARING"
-    assert r30["RESULT_ROLE"] == "LOAD_BEARING_SEALED_DATA" and r30["RESULT_TRACKED"] is False
+    assert r30["RESULT_ROLE"] == "LOAD_BEARING_SEALED_DATA" and r30["RESULT_TRACKED"] is True
+    assert r30["WORKTREE"] == str(ROOT)
+    assert r30["RESULT_PATH"] == census.R30_RESULT_RELATIVE
+    assert "RESULT_SEGMENT1_COPY_PATH" not in r30
+    assert (
+        Path(census.verify_r30_result()).resolve()
+        == (ROOT / census.R30_RESULT_RELATIVE).resolve()
+    )
     assert not [k for k in r30 if k.startswith(("MODULE_PATH", "MODULE_SHA", "OLD_MODULE"))]
     assert not [m for m in R30_MODULE_MARKERS if m in MANIFEST.read_bytes()]
     sealed = r30["SEALED_DERIVATION"]

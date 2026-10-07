@@ -34,8 +34,8 @@
    }
   },
   "PREPARED_AT_BASE": {
-   "HEAD": "046c67d1f28559da21b41962a53d680d90b5a674",
-   "TREE": "780f89e5063792b2b0df0ae120904ee7bea1b7a9"
+   "HEAD": "fdd622d8f1551b00237059822f8a4d737968a636",
+   "TREE": "a537b8602ba521f36cb09dbfb3e3d830deedacc2"
   },
   "R28": {
    "BOUND_MODULE_PATH": "src/lottolab/research/b649_k20_min_s2_resolved_above_cursor_owner_chase_r20.py",
@@ -67,11 +67,10 @@
    "BRANCH": "codex/b649-k20-min-s2-current-cursor-dynamic-family-max-r30",
    "MODULE_AUTHORITY_REASON": "The sealed R30 result is available and content-addressed. Slice 1 is derived from its data by committed R28 bound code; neither the freeze nor the census imports or loads R30 code. Four discovered R30 module versions replay the sealed result to the same ledger and the same 992-profile Slice-1 input, but none can be proven to be the producer. R30 module identity is therefore historical provenance, not execution authority, and no R30 module is bound.",
    "MODULE_AUTHORITY_STATUS": "UNRESOLVED_NON_LOAD_BEARING",
-   "RESULT_PATH": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_K20_MIN_S2_CURRENT_CURSOR_DYNAMIC_FAMILY_MAX_R30/docs/research/matrix-native-results/b649-k20-min-s2-current-cursor-dynamic-family-max-r30-result.json",
+   "RESULT_PATH": "docs/research/matrix-native-results/b649-k20-min-s2-current-cursor-dynamic-family-max-r30-result.json",
    "RESULT_ROLE": "LOAD_BEARING_SEALED_DATA",
-   "RESULT_SEGMENT1_COPY_PATH": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_K20_MIN_S2_CURRENT_CURSOR_DYNAMIC_FAMILY_MAX_R30/.task-data/r30/segment-1-result.json",
    "RESULT_SHA256": "5b7e5d10583d275409441c422e107994fb6058fae5060933c6c35c436481e777",
-   "RESULT_TRACKED": false,
+   "RESULT_TRACKED": true,
    "SEALED_DERIVATION": {
     "FAMILY_UPPER_BOUND": 313588232,
     "LEDGER_COUNT": 1399,
@@ -110,7 +109,7 @@
      "PLATEAU_CERTIFICATE": 108
     }
    },
-   "WORKTREE": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_K20_MIN_S2_CURRENT_CURSOR_DYNAMIC_FAMILY_MAX_R30"
+   "WORKTREE": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_K20_FIBER_NEAR_TOP_S3_CENSUS_ENGINE_PREP_R1"
   }
  },
  "PREPARED_BY": "B649_K20_FIBER_CENSUS_PREP_AUTHORITY_DECOUPLING_R1",

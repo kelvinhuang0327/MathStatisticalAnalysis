@@ -1,0 +1,2840 @@
+{
+  "SCHEMA_VERSION": 1,
+  "TASK_ID": "B649_K20_12_8_WINNER_TWO_TICKET_ASCENT_R1",
+  "TASK_STATUS": "COMPLETE",
+  "SOURCE_AUTHORITY": {
+    "ORIGIN_MAIN_SHA": "2e186755154419fc5a6c70d66c230cb3219de74e",
+    "SOURCE_HEAD": "2e186755154419fc5a6c70d66c230cb3219de74e",
+    "SOURCE_TREE": "f8c3f8f2b120fc05426185406f8289596e0096f8",
+    "DIRECT_SEMANTIC_DEPENDENCIES_UNCHANGED": true
+  },
+  "START_ARTIFACT_PATH": "/Users/kelvin/.codex/worktrees/b649-k20-12-8-winner-single-ticket-ascent-r1/MathStatisticalAnalysis/docs/research/matrix-native-results/b649-k20-12-8-winner-single-ticket-ascent-r1-result.json",
+  "START_ARTIFACT_FILE_SHA256": "9cb3cc4d9b56eb1854739f18fd27e6369e0819823cc45b25cbc5a6e34c118119",
+  "START_COUNT": 313263888,
+  "START_ARTIFACT_SHA256": "10d4ef5102ad824fb2c96503501694bef3f878504c8c164698c86f2f1ce35a3b",
+  "START_NORMALIZED_ENGINE_SHA256": "eaed652900d101881b678a1515d2a366bff9de6723dbec2ec9c82fe0d0d7844c",
+  "START_TICKET_MULTISET_IDENTITY": "PASS",
+  "START_TICKETS": [
+    [
+      1,
+      2,
+      3,
+      4,
+      5,
+      21
+    ],
+    [
+      1,
+      6,
+      7,
+      8,
+      9,
+      22
+    ],
+    [
+      2,
+      10,
+      11,
+      12,
+      13,
+      22
+    ],
+    [
+      3,
+      6,
+      10,
+      14,
+      15,
+      23
+    ],
+    [
+      2,
+      7,
+      14,
+      16,
+      17,
+      24
+    ],
+    [
+      4,
+      8,
+      10,
+      16,
+      18,
+      25
+    ],
+    [
+      1,
+      11,
+      14,
+      18,
+      19,
+      26
+    ],
+    [
+      4,
+      6,
+      12,
+      19,
+      20,
+      24
+    ],
+    [
+      5,
+      7,
+      11,
+      15,
+      20,
+      25
+    ],
+    [
+      5,
+      9,
+      12,
+      17,
+      18,
+      23
+    ],
+    [
+      9,
+      13,
+      15,
+      16,
+      19,
+      21
+    ],
+    [
+      3,
+      8,
+      13,
+      17,
+      20,
+      26
+    ],
+    [
+      27,
+      29,
+      30,
+      31,
+      32,
+      33
+    ],
+    [
+      27,
+      34,
+      35,
+      36,
+      37,
+      38
+    ],
+    [
+      27,
+      39,
+      40,
+      41,
+      42,
+      43
+    ],
+    [
+      28,
+      29,
+      34,
+      39,
+      44,
+      45
+    ],
+    [
+      28,
+      30,
+      35,
+      40,
+      46,
+      47
+    ],
+    [
+      28,
+      31,
+      36,
+      41,
+      48,
+      49
+    ],
+    [
+      32,
+      37,
+      42,
+      44,
+      46,
+      48
+    ],
+    [
+      33,
+      38,
+      43,
+      45,
+      47,
+      49
+    ]
+  ],
+  "SEARCH_START_TICKETS": [
+    [
+      1,
+      2,
+      3,
+      4,
+      5,
+      21
+    ],
+    [
+      1,
+      6,
+      7,
+      8,
+      9,
+      22
+    ],
+    [
+      1,
+      11,
+      14,
+      18,
+      19,
+      26
+    ],
+    [
+      2,
+      7,
+      14,
+      16,
+      17,
+      24
+    ],
+    [
+      2,
+      10,
+      11,
+      12,
+      13,
+      22
+    ],
+    [
+      3,
+      6,
+      10,
+      14,
+      15,
+      23
+    ],
+    [
+      3,
+      8,
+      13,
+      17,
+      20,
+      26
+    ],
+    [
+      4,
+      6,
+      12,
+      19,
+      20,
+      24
+    ],
+    [
+      4,
+      8,
+      10,
+      16,
+      18,
+      25
+    ],
+    [
+      5,
+      7,
+      11,
+      15,
+      20,
+      25
+    ],
+    [
+      5,
+      9,
+      12,
+      17,
+      18,
+      23
+    ],
+    [
+      9,
+      13,
+      15,
+      16,
+      19,
+      21
+    ],
+    [
+      27,
+      29,
+      30,
+      31,
+      32,
+      33
+    ],
+    [
+      27,
+      34,
+      35,
+      36,
+      37,
+      38
+    ],
+    [
+      27,
+      39,
+      40,
+      41,
+      42,
+      43
+    ],
+    [
+      28,
+      29,
+      34,
+      39,
+      44,
+      45
+    ],
+    [
+      28,
+      30,
+      35,
+      40,
+      46,
+      47
+    ],
+    [
+      28,
+      31,
+      36,
+      41,
+      48,
+      49
+    ],
+    [
+      32,
+      37,
+      42,
+      44,
+      46,
+      48
+    ],
+    [
+      33,
+      38,
+      43,
+      45,
+      47,
+      49
+    ]
+  ],
+  "START_CANONICAL_RECOUNT": "PASS",
+  "ENGINE_AUTHORITY": {
+    "VALIDATED_TASK_ID": "B649_K20_EXACT_TWO_TICKET_JOINT_REPLACEMENT_SWEEP_R1",
+    "ENGINE_SOURCE_PATH": "/Users/kelvin/.codex/worktrees/b649-k20-12-8-winner-two-ticket-ascent-r1/MathStatisticalAnalysis/.task-data/B649_K20_12_8_WINNER_TWO_TICKET_ASCENT_R1/engine/tbr_engine.c",
+    "ENGINE_SOURCE_SHA256": "ed7c88467a56648c6587aadbbce6b23bc419c9218f840405238019ac7286d4fa",
+    "ENGINE_BINARY_SHA256": "89de3a0f439576a3028f59fb41da8703990a52188df94c0bc33379e1da7fa0cf",
+    "BASE_DRIVER_SHA256": "de1224fe08c291f1740b1d177ee3cf482e4dd9502672e472f43e2e38b5db8c4f",
+    "RUBY_EXECUTABLE": "/opt/homebrew/bin/ruby",
+    "PROTECTED_RUNNER_PATH": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/skill/FABLE_CANONICAL_RUNNER_66DB_R1/fable-method/scripts/task_checkpoint.rb",
+    "PROTECTED_RUNNER_SHA256": "d488f24c3ea3ce7e5ff038a9622f98bd3d648c40a8ee55c54bc72e600bae0f71"
+  },
+  "ITERATIONS_COMPLETED": 1,
+  "ACCEPTED_MOVES_TOTAL": 0,
+  "ACCEPTED_MOVES": [],
+  "FINAL_COUNT": 313263888,
+  "TOTAL_DELTA": 0,
+  "FINAL_SHA256": "eaed652900d101881b678a1515d2a366bff9de6723dbec2ec9c82fe0d0d7844c",
+  "FINAL_HASH_CONVENTION": "SHA256 of compact JSON for FINAL_TICKETS in normalized engine order.",
+  "FINAL_ENGINE_NORMALIZED_SHA256": "eaed652900d101881b678a1515d2a366bff9de6723dbec2ec9c82fe0d0d7844c",
+  "FINAL_TICKETS": [
+    [
+      1,
+      2,
+      3,
+      4,
+      5,
+      21
+    ],
+    [
+      1,
+      6,
+      7,
+      8,
+      9,
+      22
+    ],
+    [
+      1,
+      11,
+      14,
+      18,
+      19,
+      26
+    ],
+    [
+      2,
+      7,
+      14,
+      16,
+      17,
+      24
+    ],
+    [
+      2,
+      10,
+      11,
+      12,
+      13,
+      22
+    ],
+    [
+      3,
+      6,
+      10,
+      14,
+      15,
+      23
+    ],
+    [
+      3,
+      8,
+      13,
+      17,
+      20,
+      26
+    ],
+    [
+      4,
+      6,
+      12,
+      19,
+      20,
+      24
+    ],
+    [
+      4,
+      8,
+      10,
+      16,
+      18,
+      25
+    ],
+    [
+      5,
+      7,
+      11,
+      15,
+      20,
+      25
+    ],
+    [
+      5,
+      9,
+      12,
+      17,
+      18,
+      23
+    ],
+    [
+      9,
+      13,
+      15,
+      16,
+      19,
+      21
+    ],
+    [
+      27,
+      29,
+      30,
+      31,
+      32,
+      33
+    ],
+    [
+      27,
+      34,
+      35,
+      36,
+      37,
+      38
+    ],
+    [
+      27,
+      39,
+      40,
+      41,
+      42,
+      43
+    ],
+    [
+      28,
+      29,
+      34,
+      39,
+      44,
+      45
+    ],
+    [
+      28,
+      30,
+      35,
+      40,
+      46,
+      47
+    ],
+    [
+      28,
+      31,
+      36,
+      41,
+      48,
+      49
+    ],
+    [
+      32,
+      37,
+      42,
+      44,
+      46,
+      48
+    ],
+    [
+      33,
+      38,
+      43,
+      45,
+      47,
+      49
+    ]
+  ],
+  "FINAL_EXACT_FRACTION": "1864666/3579191",
+  "TERMINAL_190_PAIR_ACCOUNTING": {
+    "STATUS": "PASS",
+    "EXPECTED_PAIR_COUNT": 190,
+    "COMPLETE_PAIR_COUNT": 190,
+    "PENDING_PAIRS": [],
+    "UNKNOWN_PAIRS": [],
+    "BEST_DELTA": 0,
+    "ITERATIONS": [
+      {
+        "ITERATION": 1,
+        "COMPLETE_SLOT_PAIRS": 190,
+        "BEST_DELTA": 0,
+        "ACCEPTED_MOVE": false
+      }
+    ],
+    "TERMINAL_PAIRS": [
+      {
+        "SLOT_PAIR": [
+          0,
+          1
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 40100376,
+        "PRUNED_CANDIDATES": 97773507868644,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          0,
+          2
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 39818941,
+        "PRUNED_CANDIDATES": 97773508150079,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          0,
+          3
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 39170654,
+        "PRUNED_CANDIDATES": 97773508798366,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          0,
+          4
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 40131190,
+        "PRUNED_CANDIDATES": 97773507837830,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          0,
+          5
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 39777805,
+        "PRUNED_CANDIDATES": 97773508191215,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          0,
+          6
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 39794816,
+        "PRUNED_CANDIDATES": 97773508174204,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          0,
+          7
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 39975907,
+        "PRUNED_CANDIDATES": 97773507993113,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          0,
+          8
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 39373527,
+        "PRUNED_CANDIDATES": 97773508595493,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          0,
+          9
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 39170654,
+        "PRUNED_CANDIDATES": 97773508798366,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          0,
+          10
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 39519837,
+        "PRUNED_CANDIDATES": 97773508449183,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          0,
+          11
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 2790186,
+        "PRUNED_CANDIDATES": 97773545178834,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          0,
+          12
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 16196395,
+        "PRUNED_CANDIDATES": 97773531772625,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          0,
+          13
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 16196395,
+        "PRUNED_CANDIDATES": 97773531772625,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          0,
+          14
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 16196395,
+        "PRUNED_CANDIDATES": 97773531772625,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          0,
+          15
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 16196395,
+        "PRUNED_CANDIDATES": 97773531772625,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          0,
+          16
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 16196395,
+        "PRUNED_CANDIDATES": 97773531772625,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          0,
+          17
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 16196395,
+        "PRUNED_CANDIDATES": 97773531772625,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          0,
+          18
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 9029879,
+        "PRUNED_CANDIDATES": 97773538939141,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          0,
+          19
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 9029879,
+        "PRUNED_CANDIDATES": 97773538939141,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          1,
+          2
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 39828627,
+        "PRUNED_CANDIDATES": 97773508140393,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          1,
+          3
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 40065575,
+        "PRUNED_CANDIDATES": 97773507903445,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          1,
+          4
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 3108681,
+        "PRUNED_CANDIDATES": 97773544860339,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          1,
+          5
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 39519837,
+        "PRUNED_CANDIDATES": 97773508449183,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          1,
+          6
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 39847839,
+        "PRUNED_CANDIDATES": 97773508121181,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          1,
+          7
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 39083159,
+        "PRUNED_CANDIDATES": 97773508885861,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          1,
+          8
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 40100376,
+        "PRUNED_CANDIDATES": 97773507868644,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          1,
+          9
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 39646573,
+        "PRUNED_CANDIDATES": 97773508322447,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          1,
+          10
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 39332340,
+        "PRUNED_CANDIDATES": 97773508636680,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          1,
+          11
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 39794816,
+        "PRUNED_CANDIDATES": 97773508174204,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          1,
+          12
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 16195647,
+        "PRUNED_CANDIDATES": 97773531773373,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          1,
+          13
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 16195647,
+        "PRUNED_CANDIDATES": 97773531773373,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          1,
+          14
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 16195647,
+        "PRUNED_CANDIDATES": 97773531773373,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          1,
+          15
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 16195647,
+        "PRUNED_CANDIDATES": 97773531773373,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          1,
+          16
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 16195647,
+        "PRUNED_CANDIDATES": 97773531773373,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          1,
+          17
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 16195647,
+        "PRUNED_CANDIDATES": 97773531773373,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          1,
+          18
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 9029774,
+        "PRUNED_CANDIDATES": 97773538939246,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          1,
+          19
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 9029774,
+        "PRUNED_CANDIDATES": 97773538939246,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          2,
+          3
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 39170654,
+        "PRUNED_CANDIDATES": 97773508798366,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          2,
+          4
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 39847839,
+        "PRUNED_CANDIDATES": 97773508121181,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          2,
+          5
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 39606835,
+        "PRUNED_CANDIDATES": 97773508362185,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          2,
+          6
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 3108681,
+        "PRUNED_CANDIDATES": 97773544860339,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          2,
+          7
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 40065575,
+        "PRUNED_CANDIDATES": 97773507903445,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          2,
+          8
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 39646573,
+        "PRUNED_CANDIDATES": 97773508322447,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          2,
+          9
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 40045241,
+        "PRUNED_CANDIDATES": 97773507923779,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          2,
+          10
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 39373527,
+        "PRUNED_CANDIDATES": 97773508595493,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          2,
+          11
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 40131190,
+        "PRUNED_CANDIDATES": 97773507837830,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          2,
+          12
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 16195647,
+        "PRUNED_CANDIDATES": 97773531773373,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          2,
+          13
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 16195647,
+        "PRUNED_CANDIDATES": 97773531773373,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          2,
+          14
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 16195647,
+        "PRUNED_CANDIDATES": 97773531773373,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          2,
+          15
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 16195647,
+        "PRUNED_CANDIDATES": 97773531773373,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          2,
+          16
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 16195647,
+        "PRUNED_CANDIDATES": 97773531773373,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          2,
+          17
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 16195647,
+        "PRUNED_CANDIDATES": 97773531773373,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          2,
+          18
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 9029774,
+        "PRUNED_CANDIDATES": 97773538939246,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          2,
+          19
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 9029774,
+        "PRUNED_CANDIDATES": 97773538939246,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          3,
+          4
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 40065575,
+        "PRUNED_CANDIDATES": 97773507903445,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          3,
+          5
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 39332340,
+        "PRUNED_CANDIDATES": 97773508636680,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          3,
+          6
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 39083159,
+        "PRUNED_CANDIDATES": 97773508885861,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          3,
+          7
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 3024046,
+        "PRUNED_CANDIDATES": 97773544944974,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          3,
+          8
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 39170654,
+        "PRUNED_CANDIDATES": 97773508798366,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          3,
+          9
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 40100376,
+        "PRUNED_CANDIDATES": 97773507868644,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          3,
+          10
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 39777805,
+        "PRUNED_CANDIDATES": 97773508191215,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          3,
+          11
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 39975907,
+        "PRUNED_CANDIDATES": 97773507993113,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          3,
+          12
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 16196927,
+        "PRUNED_CANDIDATES": 97773531772093,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          3,
+          13
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 16196927,
+        "PRUNED_CANDIDATES": 97773531772093,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          3,
+          14
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 16196927,
+        "PRUNED_CANDIDATES": 97773531772093,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          3,
+          15
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 16196927,
+        "PRUNED_CANDIDATES": 97773531772093,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          3,
+          16
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 16196927,
+        "PRUNED_CANDIDATES": 97773531772093,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          3,
+          17
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 16196927,
+        "PRUNED_CANDIDATES": 97773531772093,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          3,
+          18
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 9029947,
+        "PRUNED_CANDIDATES": 97773538939073,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          3,
+          19
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 9029947,
+        "PRUNED_CANDIDATES": 97773538939073,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          4,
+          5
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 39373527,
+        "PRUNED_CANDIDATES": 97773508595493,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          4,
+          6
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 39828627,
+        "PRUNED_CANDIDATES": 97773508140393,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          4,
+          7
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 39170654,
+        "PRUNED_CANDIDATES": 97773508798366,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          4,
+          8
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 39646573,
+        "PRUNED_CANDIDATES": 97773508322447,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          4,
+          9
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 40045241,
+        "PRUNED_CANDIDATES": 97773507923779,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          4,
+          10
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 39606835,
+        "PRUNED_CANDIDATES": 97773508362185,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          4,
+          11
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 39818941,
+        "PRUNED_CANDIDATES": 97773508150079,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          4,
+          12
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 16195647,
+        "PRUNED_CANDIDATES": 97773531773373,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          4,
+          13
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 16195647,
+        "PRUNED_CANDIDATES": 97773531773373,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          4,
+          14
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 16195647,
+        "PRUNED_CANDIDATES": 97773531773373,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          4,
+          15
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 16195647,
+        "PRUNED_CANDIDATES": 97773531773373,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          4,
+          16
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 16195647,
+        "PRUNED_CANDIDATES": 97773531773373,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          4,
+          17
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 16195647,
+        "PRUNED_CANDIDATES": 97773531773373,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          4,
+          18
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 9029774,
+        "PRUNED_CANDIDATES": 97773538939246,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          4,
+          19
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 9029774,
+        "PRUNED_CANDIDATES": 97773538939246,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          5,
+          6
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 39332340,
+        "PRUNED_CANDIDATES": 97773508636680,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          5,
+          7
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 39777805,
+        "PRUNED_CANDIDATES": 97773508191215,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          5,
+          8
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 40045241,
+        "PRUNED_CANDIDATES": 97773507923779,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          5,
+          9
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 39373527,
+        "PRUNED_CANDIDATES": 97773508595493,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          5,
+          10
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 2563791,
+        "PRUNED_CANDIDATES": 97773545405229,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          5,
+          11
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 39519837,
+        "PRUNED_CANDIDATES": 97773508449183,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          5,
+          12
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 16197153,
+        "PRUNED_CANDIDATES": 97773531771867,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          5,
+          13
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 16197153,
+        "PRUNED_CANDIDATES": 97773531771867,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          5,
+          14
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 16197153,
+        "PRUNED_CANDIDATES": 97773531771867,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          5,
+          15
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 16197153,
+        "PRUNED_CANDIDATES": 97773531771867,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          5,
+          16
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 16197153,
+        "PRUNED_CANDIDATES": 97773531771867,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          5,
+          17
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 16197153,
+        "PRUNED_CANDIDATES": 97773531771867,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          5,
+          18
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 9029984,
+        "PRUNED_CANDIDATES": 97773538939036,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          5,
+          19
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 9029984,
+        "PRUNED_CANDIDATES": 97773538939036,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          6,
+          7
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 40065575,
+        "PRUNED_CANDIDATES": 97773507903445,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          6,
+          8
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 40100376,
+        "PRUNED_CANDIDATES": 97773507868644,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          6,
+          9
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 39646573,
+        "PRUNED_CANDIDATES": 97773508322447,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          6,
+          10
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 39519837,
+        "PRUNED_CANDIDATES": 97773508449183,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          6,
+          11
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 40100376,
+        "PRUNED_CANDIDATES": 97773507868644,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          6,
+          12
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 16195647,
+        "PRUNED_CANDIDATES": 97773531773373,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          6,
+          13
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 16195647,
+        "PRUNED_CANDIDATES": 97773531773373,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          6,
+          14
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 16195647,
+        "PRUNED_CANDIDATES": 97773531773373,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          6,
+          15
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 16195647,
+        "PRUNED_CANDIDATES": 97773531773373,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          6,
+          16
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 16195647,
+        "PRUNED_CANDIDATES": 97773531773373,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          6,
+          17
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 16195647,
+        "PRUNED_CANDIDATES": 97773531773373,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          6,
+          18
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 9029774,
+        "PRUNED_CANDIDATES": 97773538939246,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          6,
+          19
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 9029774,
+        "PRUNED_CANDIDATES": 97773538939246,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          7,
+          8
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 39170654,
+        "PRUNED_CANDIDATES": 97773508798366,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          7,
+          9
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 40100376,
+        "PRUNED_CANDIDATES": 97773507868644,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          7,
+          10
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 39332340,
+        "PRUNED_CANDIDATES": 97773508636680,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          7,
+          11
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 39170654,
+        "PRUNED_CANDIDATES": 97773508798366,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          7,
+          12
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 16196927,
+        "PRUNED_CANDIDATES": 97773531772093,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          7,
+          13
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 16196927,
+        "PRUNED_CANDIDATES": 97773531772093,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          7,
+          14
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 16196927,
+        "PRUNED_CANDIDATES": 97773531772093,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          7,
+          15
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 16196927,
+        "PRUNED_CANDIDATES": 97773531772093,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          7,
+          16
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 16196927,
+        "PRUNED_CANDIDATES": 97773531772093,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          7,
+          17
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 16196927,
+        "PRUNED_CANDIDATES": 97773531772093,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          7,
+          18
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 9029947,
+        "PRUNED_CANDIDATES": 97773538939073,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          7,
+          19
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 9029947,
+        "PRUNED_CANDIDATES": 97773538939073,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          8,
+          9
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 3439105,
+        "PRUNED_CANDIDATES": 97773544529915,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          8,
+          10
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 40045241,
+        "PRUNED_CANDIDATES": 97773507923779,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          8,
+          11
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 39373527,
+        "PRUNED_CANDIDATES": 97773508595493,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          8,
+          12
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 16196174,
+        "PRUNED_CANDIDATES": 97773531772846,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          8,
+          13
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 16196174,
+        "PRUNED_CANDIDATES": 97773531772846,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          8,
+          14
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 16196174,
+        "PRUNED_CANDIDATES": 97773531772846,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          8,
+          15
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 16196174,
+        "PRUNED_CANDIDATES": 97773531772846,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          8,
+          16
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 16196174,
+        "PRUNED_CANDIDATES": 97773531772846,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          8,
+          17
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 16196174,
+        "PRUNED_CANDIDATES": 97773531772846,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          8,
+          18
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 9029842,
+        "PRUNED_CANDIDATES": 97773538939178,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          8,
+          19
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 9029842,
+        "PRUNED_CANDIDATES": 97773538939178,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          9,
+          10
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 39373527,
+        "PRUNED_CANDIDATES": 97773508595493,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          9,
+          11
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 39170654,
+        "PRUNED_CANDIDATES": 97773508798366,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          9,
+          12
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 16196174,
+        "PRUNED_CANDIDATES": 97773531772846,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          9,
+          13
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 16196174,
+        "PRUNED_CANDIDATES": 97773531772846,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          9,
+          14
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 16196174,
+        "PRUNED_CANDIDATES": 97773531772846,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          9,
+          15
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 16196174,
+        "PRUNED_CANDIDATES": 97773531772846,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          9,
+          16
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 16196174,
+        "PRUNED_CANDIDATES": 97773531772846,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          9,
+          17
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 16196174,
+        "PRUNED_CANDIDATES": 97773531772846,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          9,
+          18
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 9029842,
+        "PRUNED_CANDIDATES": 97773538939178,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          9,
+          19
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 9029842,
+        "PRUNED_CANDIDATES": 97773538939178,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          10,
+          11
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 39777805,
+        "PRUNED_CANDIDATES": 97773508191215,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          10,
+          12
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 16197153,
+        "PRUNED_CANDIDATES": 97773531771867,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          10,
+          13
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 16197153,
+        "PRUNED_CANDIDATES": 97773531771867,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          10,
+          14
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 16197153,
+        "PRUNED_CANDIDATES": 97773531771867,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          10,
+          15
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 16197153,
+        "PRUNED_CANDIDATES": 97773531771867,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          10,
+          16
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 16197153,
+        "PRUNED_CANDIDATES": 97773531771867,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          10,
+          17
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 16197153,
+        "PRUNED_CANDIDATES": 97773531771867,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          10,
+          18
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 9029984,
+        "PRUNED_CANDIDATES": 97773538939036,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          10,
+          19
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 9029984,
+        "PRUNED_CANDIDATES": 97773538939036,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          11,
+          12
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 16196395,
+        "PRUNED_CANDIDATES": 97773531772625,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          11,
+          13
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 16196395,
+        "PRUNED_CANDIDATES": 97773531772625,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          11,
+          14
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 16196395,
+        "PRUNED_CANDIDATES": 97773531772625,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          11,
+          15
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 16196395,
+        "PRUNED_CANDIDATES": 97773531772625,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          11,
+          16
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 16196395,
+        "PRUNED_CANDIDATES": 97773531772625,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          11,
+          17
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 16196395,
+        "PRUNED_CANDIDATES": 97773531772625,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          11,
+          18
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 9029879,
+        "PRUNED_CANDIDATES": 97773538939141,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          11,
+          19
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 9029879,
+        "PRUNED_CANDIDATES": 97773538939141,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          12,
+          13
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 22000,
+        "PRUNED_CANDIDATES": 97773547947020,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          12,
+          14
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 22000,
+        "PRUNED_CANDIDATES": 97773547947020,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          12,
+          15
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 309763,
+        "PRUNED_CANDIDATES": 97773547659257,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          12,
+          16
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 309763,
+        "PRUNED_CANDIDATES": 97773547659257,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          12,
+          17
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 309763,
+        "PRUNED_CANDIDATES": 97773547659257,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          12,
+          18
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 174844,
+        "PRUNED_CANDIDATES": 97773547794176,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          12,
+          19
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 174844,
+        "PRUNED_CANDIDATES": 97773547794176,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          13,
+          14
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 22000,
+        "PRUNED_CANDIDATES": 97773547947020,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          13,
+          15
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 309763,
+        "PRUNED_CANDIDATES": 97773547659257,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          13,
+          16
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 309763,
+        "PRUNED_CANDIDATES": 97773547659257,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          13,
+          17
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 309763,
+        "PRUNED_CANDIDATES": 97773547659257,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          13,
+          18
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 174844,
+        "PRUNED_CANDIDATES": 97773547794176,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          13,
+          19
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 174844,
+        "PRUNED_CANDIDATES": 97773547794176,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          14,
+          15
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 309763,
+        "PRUNED_CANDIDATES": 97773547659257,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          14,
+          16
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 309763,
+        "PRUNED_CANDIDATES": 97773547659257,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          14,
+          17
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 309763,
+        "PRUNED_CANDIDATES": 97773547659257,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          14,
+          18
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 174844,
+        "PRUNED_CANDIDATES": 97773547794176,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          14,
+          19
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 174844,
+        "PRUNED_CANDIDATES": 97773547794176,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          15,
+          16
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 22000,
+        "PRUNED_CANDIDATES": 97773547947020,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          15,
+          17
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 22000,
+        "PRUNED_CANDIDATES": 97773547947020,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          15,
+          18
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 174844,
+        "PRUNED_CANDIDATES": 97773547794176,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          15,
+          19
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 174844,
+        "PRUNED_CANDIDATES": 97773547794176,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          16,
+          17
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 22000,
+        "PRUNED_CANDIDATES": 97773547947020,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          16,
+          18
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 174844,
+        "PRUNED_CANDIDATES": 97773547794176,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          16,
+          19
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 174844,
+        "PRUNED_CANDIDATES": 97773547794176,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          17,
+          18
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 174844,
+        "PRUNED_CANDIDATES": 97773547794176,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          17,
+          19
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 174844,
+        "PRUNED_CANDIDATES": 97773547794176,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      },
+      {
+        "SLOT_PAIR": [
+          18,
+          19
+        ],
+        "BEST_DELTA": 0,
+        "EXACT_CANDIDATES": 2016,
+        "PRUNED_CANDIDATES": 97773547967004,
+        "ACCOUNTING": "PASS",
+        "TICKET_INVARIANT": "PASS",
+        "PAIR_INVARIANT": "PASS"
+      }
+    ]
+  },
+  "TWO_TICKET_LOCAL_OPTIMUM_STATUS": "PROVEN_FOR_VALIDATED_EXACT_TWO_TICKET_NEIGHBORHOOD",
+  "N1_N2_COMBINED_LOCAL_STATUS": "PROVEN_FOR_VALIDATED_N1_AND_N2_NEIGHBORHOODS",
+  "CANONICAL_RESCORE": "PASS",
+  "READY_FOR_SINGLE_TICKET_RECHECK": "NO",
+  "VERIFICATION": {
+    "START_IDENTITY": "PASS",
+    "ENGINE_IDENTITY": "PASS",
+    "TERMINAL_PAIR_ACCOUNTING": "PASS",
+    "ACCEPTED_MOVE_ARITHMETIC": "PASS",
+    "CANONICAL_RECOUNT_EACH_ACCEPTED_MOVE": "PASS",
+    "TERMINAL_CANONICAL_RECOUNT": "PASS",
+    "DETERMINISTIC_TIE_BREAK": "PASS",
+    "LEGALITY_AND_DISTINCT_TICKETS": "PASS",
+    "CHECKPOINT_RESULT_CONSISTENCY": "PASS"
+  },
+  "PUSH": "NOT RUN",
+  "PR": "NOT CREATED",
+  "PRODUCTION_MUTATION": "NONE",
+  "GLOBAL_K20_OPTIMUM_STATUS": "UNKNOWN"
+}

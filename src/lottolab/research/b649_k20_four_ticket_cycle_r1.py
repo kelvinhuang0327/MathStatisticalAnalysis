@@ -510,15 +510,8 @@ TASK_ID = "B649_K20_V7_FOUR_TICKET_RUNNER_COMPAT_AND_PILOT_R1"
 SCIENTIFIC_SCOPE = "BOUNDED_FOUR_TICKET_CYCLE_PILOT_FROM_V7"
 TOTAL_OUTCOMES = ttc.TOTAL_OUTCOMES
 V6_REFERENCE_HEAD = "76085ccc8f226c8752cc7df28390e27009d21746"
-V7_BASELINE_TASK_ID = "B649_K20_V7_THREE_TICKET_GLOBAL_REPAIR_PILOT_R1"
-V7_BASELINE_OUTCOMES = 313_239_661
-V7_BASELINE_SHA256 = "0045ac8837fc82e9a585d812173341ac12e05c5de201af7f8fedeacafa19e1ff"
-V7_BASELINE_EXACT_PROBABILITY = "44748523/85900584"
-HISTORICAL_START_COUNT = 313_239_661
-HISTORICAL_START_SHA256 = "7ce41ff21d5c0821f1d5dda683e23114086f5024fc6d98d4e574df5306659b1e"
 CONTROL_START_COUNT = ttc.STARTING_COUNT
 CONTROL_START_SHA256 = ttc.STARTING_PORTFOLIO_SHA256
-GAIN_THRESHOLD_COUNT = V7_BASELINE_OUTCOMES
 START_PRIMARY = "PRIMARY"
 START_CONTROL = "CONTROL"
 PILOT_SEED = 20260930
@@ -551,8 +544,11 @@ def bind_explicit_incumbent(
         raise CycleError("incumbent sha256 must be a lowercase 64-character digest")
     if type(expected_outcome_count) is not int or expected_outcome_count < 0:
         raise CycleError("incumbent outcomes must be a non-negative integer")
+    canonical = ttc.normalize_portfolio(
+        portfolio, pool_size=BIG_LOTTO_POOL_SIZE, expected_ticket_count=K20
+    )
     start = ttc.bind_start(
-        portfolio,
+        canonical,
         pool_size=BIG_LOTTO_POOL_SIZE,
         expected_sha256=expected_sha256,
         expected_outcome_count=expected_outcome_count,
@@ -565,57 +561,93 @@ def bind_explicit_incumbent(
     return start
 
 
-def load_current_v7_start(
-    repo_root: Path, incumbent_artifact: Path | None, *, draws: DrawMasks
-) -> StartBinding:
-    """Load only the exact v7 incumbent; missing or mismatched inputs fail closed."""
+def _incumbent_path(repo_root: Path, artifact: Path) -> Path:
+    """Authority inputs may be absolute external references; outputs remain repo-local."""
 
-    if incumbent_artifact is None:
-        raise CycleError("an explicit current-v7 incumbent artifact is required")
+    return (artifact if artifact.is_absolute() else repo_root.resolve() / artifact).resolve()
+
+
+def _incumbent_locator(repo_root: Path, artifact: Path) -> str:
+    resolved = _incumbent_path(repo_root, artifact)
     root = repo_root.resolve()
-    artifact = incumbent_artifact if incumbent_artifact.is_absolute() else root / incumbent_artifact
+    return str(resolved.relative_to(root) if resolved.is_relative_to(root) else resolved)
+
+
+def load_incumbent_start(
+    repo_root: Path,
+    incumbent_artifact: Path | None,
+    *,
+    incumbent_artifact_sha256: str | None,
+    draws: DrawMasks,
+) -> StartBinding:
+    """Verify the caller-pinned authority, portfolio SHA and canonical any-prize count.
+
+    BEST_SHA256 names normalized compact JSON, as in the sealed runner donor.
+    BEST_PORTFOLIO_SHA256 names compact JSON in artifact order, as in the
+    overlap-block research results. Exactly one convention must be supplied.
+    The search always receives the same canonical normalization from bind_start.
+    """
+
+    if incumbent_artifact is None or incumbent_artifact_sha256 is None:
+        raise CycleError("an explicit incumbent artifact and its sha256 are required")
+    if len(incumbent_artifact_sha256) != 64 or any(
+        c not in "0123456789abcdef" for c in incumbent_artifact_sha256
+    ):
+        raise CycleError("incumbent artifact sha256 must be a lowercase 64-character digest")
+    artifact = _incumbent_path(repo_root, incumbent_artifact)
     try:
-        artifact = artifact.resolve(strict=True)
         raw = artifact.read_bytes()
     except OSError as error:
-        raise CycleError(
-            f"current-v7 incumbent artifact is unavailable: {incumbent_artifact}"
-        ) from error
-    if not artifact.is_relative_to(root):
-        raise CycleError("current-v7 incumbent artifact must be inside the repository")
+        raise CycleError(f"incumbent artifact is unavailable: {incumbent_artifact}") from error
+    if hashlib.sha256(raw).hexdigest() != incumbent_artifact_sha256:
+        raise CycleError("incumbent artifact sha256 does not match the caller's authority")
     try:
         payload: object = json.loads(raw)
     except (UnicodeDecodeError, json.JSONDecodeError) as error:
-        raise CycleError("current-v7 incumbent artifact is not valid JSON") from error
+        raise CycleError("incumbent artifact is not valid JSON") from error
     if not isinstance(payload, dict):
-        raise CycleError("current-v7 incumbent artifact must be a JSON object")
+        raise CycleError("incumbent artifact must be a JSON object")
     fields = cast(dict[str, object], payload)
-    if fields.get("TASK_ID") != V7_BASELINE_TASK_ID:
-        raise CycleError("incumbent artifact is not the selected v7 authority")
-    if fields.get("BEST_COUNT") != V7_BASELINE_OUTCOMES:
-        raise CycleError("incumbent artifact outcome count does not match the v7 baseline")
-    if fields.get("BEST_SHA256") != V7_BASELINE_SHA256:
-        raise CycleError("incumbent artifact portfolio sha256 does not match the v7 baseline")
+    for key in ("EVENT", "PROMOTION_AUTHORITY"):
+        if key in fields and fields[key] != "OFFICIAL_ANY_PRIZE":
+            raise CycleError("incumbent objective must be OFFICIAL_ANY_PRIZE")
+    count = fields.get("BEST_COUNT")
+    if type(count) is not int or not 0 <= count <= TOTAL_OUTCOMES:
+        raise CycleError("incumbent BEST_COUNT must be an exact outcome count")
+    hash_fields = [key for key in ("BEST_SHA256", "BEST_PORTFOLIO_SHA256") if key in fields]
+    if len(hash_fields) != 1:
+        raise CycleError("incumbent must declare exactly one portfolio sha256 convention")
+    sha = fields[hash_fields[0]]
+    if not isinstance(sha, str) or len(sha) != 64 or any(c not in "0123456789abcdef" for c in sha):
+        raise CycleError("incumbent portfolio sha256 must be a lowercase 64-character digest")
     rows = fields.get("BEST_PORTFOLIO")
     if not isinstance(rows, list):
-        raise CycleError("current-v7 BEST_PORTFOLIO must be a list")
+        raise CycleError("incumbent BEST_PORTFOLIO must be a list")
     tickets: list[list[int]] = []
     for row in cast(list[object], rows):
         if not isinstance(row, list):
-            raise CycleError("current-v7 tickets must be lists of integers")
+            raise CycleError("incumbent tickets must be lists of integers")
         ticket = cast(list[object], row)
         if any(type(number) is not int for number in ticket):
-            raise CycleError("current-v7 tickets must be lists of integers")
+            raise CycleError("incumbent tickets must be lists of integers")
         tickets.append(cast(list[int], ticket))
-    start = bind_explicit_incumbent(
-        tickets,
-        expected_sha256=V7_BASELINE_SHA256,
-        expected_outcome_count=V7_BASELINE_OUTCOMES,
+    canonical = ttc.normalize_portfolio(
+        tickets, pool_size=BIG_LOTTO_POOL_SIZE, expected_ticket_count=K20
+    )
+    if hash_fields[0] == "BEST_PORTFOLIO_SHA256":
+        ordered_json = json.dumps(tickets, separators=(",", ":")).encode()
+        ordered_sha = hashlib.sha256(ordered_json).hexdigest()
+        if ordered_sha != sha:
+            raise CycleError(
+                "incumbent portfolio sha256 does not match the artifact-order identity"
+            )
+        sha = ttc.portfolio_sha256(canonical, pool_size=BIG_LOTTO_POOL_SIZE)
+    return bind_explicit_incumbent(
+        canonical,
+        expected_sha256=sha,
+        expected_outcome_count=count,
         draws=draws,
     )
-    if str(Fraction(start.outcome_count, TOTAL_OUTCOMES)) != V7_BASELINE_EXACT_PROBABILITY:
-        raise CycleError("current-v7 baseline exact probability does not reproduce")
-    return start
 
 
 def load_start(
@@ -624,9 +656,15 @@ def load_start(
     *,
     draws: DrawMasks,
     incumbent_artifact: Path | None = None,
+    incumbent_artifact_sha256: str | None = None,
 ) -> StartBinding:
     if label == START_PRIMARY:
-        return load_current_v7_start(repo_root, incumbent_artifact, draws=draws)
+        return load_incumbent_start(
+            repo_root,
+            incumbent_artifact,
+            incumbent_artifact_sha256=incumbent_artifact_sha256,
+            draws=draws,
+        )
     if label == START_CONTROL:
         return ttc.load_v6_authority(repo_root, draws=draws)
     raise CycleError(f"unknown start {label}")
@@ -1079,10 +1117,17 @@ def run_start(
     workers: int,
     with_parity: bool,
     incumbent_artifact: Path | None = None,
+    incumbent_artifact_sha256: str | None = None,
 ) -> dict[str, object]:
     """Optional parity phase, then the pilot scan of one start on ``workers`` processes."""
 
-    start = load_start(label, repo_root, draws=draws, incumbent_artifact=incumbent_artifact)
+    start = load_start(
+        label,
+        repo_root,
+        draws=draws,
+        incumbent_artifact=incumbent_artifact,
+        incumbent_artifact_sha256=incumbent_artifact_sha256,
+    )
     ledger_path = runtime_dir / f"{label.lower()}-candidates.jsonl"
     context = mp.get_context("spawn")
     with ProcessPoolExecutor(
@@ -1155,6 +1200,7 @@ def run_pilot(
     repo_root: Path,
     *,
     incumbent_artifact: Path,
+    incumbent_artifact_sha256: str,
     result_path: Path,
     runtime_dir: Path,
     workers: int = WORKERS,
@@ -1169,8 +1215,14 @@ def run_pilot(
     quadruples = select_pilot_quadruples()
     if len(set(quadruples)) != QUADRUPLE_SAMPLE_COUNT:
         raise CycleError("pilot quadruples are not distinct")
-    runtime_dir.mkdir(parents=True, exist_ok=True)
     draws = ttc.load_draws(BIG_LOTTO_POOL_SIZE)
+    incumbent = load_incumbent_start(
+        repo_root,
+        incumbent_artifact,
+        incumbent_artifact_sha256=incumbent_artifact_sha256,
+        draws=draws,
+    )
+    runtime_dir.mkdir(parents=True, exist_ok=True)
     primary = run_start(
         START_PRIMARY,
         repo_root,
@@ -1180,22 +1232,18 @@ def run_pilot(
         workers=workers,
         with_parity=True,
         incumbent_artifact=incumbent_artifact,
+        incumbent_artifact_sha256=incumbent_artifact_sha256,
     )
-    resolved_artifact = (
-        incumbent_artifact
-        if incumbent_artifact.is_absolute()
-        else repo_root.resolve() / incumbent_artifact
-    ).resolve()
     record: dict[str, object] = {
         "TASK_ID": TASK_ID,
         "FAMILY_NAME": FAMILY_NAME,
         "SCIENTIFIC_SCOPE": SCIENTIFIC_SCOPE,
         "EVENT": "OFFICIAL_ANY_PRIZE",
         "PROMOTION_AUTHORITY": "OFFICIAL_ANY_PRIZE",
-        "BASELINE_OUTCOMES": V7_BASELINE_OUTCOMES,
-        "BASELINE_SHA": V7_BASELINE_SHA256,
-        "INCUMBENT_ARTIFACT": str(resolved_artifact.relative_to(repo_root.resolve())),
-        "INCUMBENT_ARTIFACT_SHA256": hashlib.sha256(resolved_artifact.read_bytes()).hexdigest(),
+        "BASELINE_OUTCOMES": incumbent.outcome_count,
+        "BASELINE_SHA": incumbent.sha256,
+        "INCUMBENT_ARTIFACT": _incumbent_locator(repo_root, incumbent_artifact),
+        "INCUMBENT_ARTIFACT_SHA256": incumbent_artifact_sha256,
         "RESULT_LOCATOR": str(result_path.resolve().relative_to(repo_root.resolve())),
         "RUNNER_HEAD": _git(repo_root, "rev-parse", "HEAD"),
         "RUNNER_TREE": _git(repo_root, "rev-parse", "HEAD^{tree}"),
@@ -1283,7 +1331,7 @@ def run_pilot(
         best = cast(dict[str, object], primary["BEST"])
         parity = cast(dict[str, object], primary["PARITY"])
         estimate = cast(dict[str, object], record["FULL_FAMILY_ESTIMATE"])
-        gain = _int(best["COUNT"]) > GAIN_THRESHOLD_COUNT
+        gain = _int(best["COUNT"]) > incumbent.outcome_count
         record.update(
             TASK_STATUS="COMPLETE",
             SCIENTIFIC_RESULT="STRICT_GAIN" if gain else "TERMINAL_NO_STRICT_GAIN",
@@ -1369,6 +1417,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Bounded 24-quadruple four-ticket cycle pilot.")
     parser.add_argument("--repo-root", type=Path, required=True)
     parser.add_argument("--incumbent-artifact", type=Path, required=True)
+    parser.add_argument(
+        "--incumbent-artifact-sha256",
+        required=True,
+        help="SHA256 of the exact incumbent authority file selected by the caller",
+    )
     parser.add_argument("--result-path", type=Path, required=True)
     parser.add_argument("--runtime-dir", type=Path, required=True)
     parser.add_argument("--owner-conversation-id", required=True)
@@ -1378,7 +1431,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
     repo_root = args.repo_root.resolve()
-    incumbent_artifact = _repo_path(repo_root, args.incumbent_artifact, label="incumbent artifact")
+    incumbent_artifact = _incumbent_path(repo_root, args.incumbent_artifact)
     result_path = _repo_path(repo_root, args.result_path, label="result path")
     runtime_dir = _repo_path(repo_root, args.runtime_dir, label="runtime directory")
     owner_path = _repo_path(repo_root, Path(OWNER_RECORD_PATH), label="owner record")
@@ -1393,6 +1446,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     if not args.owner_conversation_id.strip():
         raise CycleError("owner conversation id is required")
 
+    incumbent = load_incumbent_start(
+        repo_root,
+        incumbent_artifact,
+        incumbent_artifact_sha256=args.incumbent_artifact_sha256,
+        draws=ttc.load_draws(BIG_LOTTO_POOL_SIZE),
+    )
     owner_record: dict[str, object] = {
         "OWNER_CONVERSATION_ID": args.owner_conversation_id,
         "TASK_ID": TASK_ID,
@@ -1408,10 +1467,10 @@ def main(argv: Sequence[str] | None = None) -> int:
             f".fable/packets/{TASK_ID}.md and owner conversation "
             f"{args.owner_conversation_id}; reconcile the protected run record before any resume"
         ),
-        "BASELINE_OUTCOMES": V7_BASELINE_OUTCOMES,
-        "BASELINE_SHA": V7_BASELINE_SHA256,
-        "INCUMBENT_ARTIFACT": str(incumbent_artifact.relative_to(repo_root)),
-        "INCUMBENT_ARTIFACT_SHA256": hashlib.sha256(incumbent_artifact.read_bytes()).hexdigest(),
+        "BASELINE_OUTCOMES": incumbent.outcome_count,
+        "BASELINE_SHA": incumbent.sha256,
+        "INCUMBENT_ARTIFACT": _incumbent_locator(repo_root, incumbent_artifact),
+        "INCUMBENT_ARTIFACT_SHA256": args.incumbent_artifact_sha256,
         "RUN_STATUS": "STARTING",
         "STARTED_AT_UTC": datetime.now(UTC).isoformat(),
     }
@@ -1420,6 +1479,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         record = run_pilot(
             repo_root,
             incumbent_artifact=incumbent_artifact,
+            incumbent_artifact_sha256=args.incumbent_artifact_sha256,
             result_path=result_path,
             runtime_dir=runtime_dir,
             workers=args.workers,

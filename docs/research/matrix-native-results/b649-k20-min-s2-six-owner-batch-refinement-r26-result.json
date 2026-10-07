@@ -1,0 +1,8625 @@
+{
+  "TASK_ID": "B649_K20_MIN_S2_SIX_OWNER_BATCH_REFINEMENT_R26",
+  "BASE_HEAD": "a990c5f0bc20c3f6dd56e92c6aedc75ca9dcac50",
+  "BASE_TREE": "0efc56f9dc73963309efa3d89fa3f4d80f620d83",
+  "START_FAMILY_BOUND": 313650504,
+  "OWNER_COUNT": 6,
+  "OWNER_PROFILES": [
+    "66666665444322000000",
+    "66666664444431000000",
+    "66666655544411100000",
+    "66666655544331000000",
+    "66666555555311100000",
+    "66666555554421000000"
+  ],
+  "OWNER_CERTIFICATES": [
+    {
+      "PROFILE_ID": "66666665444322000000",
+      "SOURCE_RESULT": "b649-k20-min-s2-budgeted-multi-plateau-descent-r11-result.json",
+      "SOURCE_ROW": "PROFILE_BOUNDS[0]",
+      "DEGREE_PROFILE": [
+        6,
+        6,
+        6,
+        6,
+        6,
+        6,
+        6,
+        5,
+        4,
+        4,
+        4,
+        3,
+        2,
+        2,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "CURRENT_BOUND": 313650504,
+      "TRIANGLE_CAP": 271,
+      "NONCORE_TRIANGLE_CAP": 249,
+      "WEDGE_COUNT": 834,
+      "S3": 5260528,
+      "S4_FLOOR": 112,
+      "REALIZABILITY_WITNESS": {
+        "STATUS": "PASS",
+        "SOURCE": "R11.PROFILE_BOUNDS[0]",
+        "TRIPLES": [
+          [
+            0,
+            1,
+            10
+          ],
+          [
+            0,
+            2,
+            11
+          ],
+          [
+            0,
+            3,
+            4
+          ],
+          [
+            0,
+            5,
+            9
+          ],
+          [
+            0,
+            6,
+            12
+          ],
+          [
+            0,
+            7,
+            8
+          ],
+          [
+            1,
+            2,
+            13
+          ],
+          [
+            1,
+            3,
+            8
+          ],
+          [
+            1,
+            4,
+            12
+          ],
+          [
+            1,
+            5,
+            7
+          ],
+          [
+            1,
+            6,
+            9
+          ],
+          [
+            2,
+            3,
+            9
+          ],
+          [
+            2,
+            4,
+            10
+          ],
+          [
+            2,
+            5,
+            8
+          ],
+          [
+            2,
+            6,
+            7
+          ],
+          [
+            3,
+            5,
+            13
+          ],
+          [
+            3,
+            6,
+            11
+          ],
+          [
+            3,
+            7,
+            10
+          ],
+          [
+            4,
+            5,
+            11
+          ],
+          [
+            4,
+            6,
+            8
+          ],
+          [
+            4,
+            7,
+            9
+          ],
+          [
+            5,
+            6,
+            10
+          ]
+        ],
+        "DOUBLES": [
+          [
+            7,
+            12
+          ],
+          [
+            8,
+            15
+          ],
+          [
+            8,
+            17
+          ],
+          [
+            9,
+            14
+          ],
+          [
+            9,
+            16
+          ],
+          [
+            10,
+            11
+          ],
+          [
+            10,
+            17
+          ],
+          [
+            11,
+            16
+          ],
+          [
+            11,
+            18
+          ],
+          [
+            12,
+            14
+          ],
+          [
+            12,
+            15
+          ],
+          [
+            12,
+            19
+          ],
+          [
+            13,
+            14
+          ],
+          [
+            13,
+            15
+          ],
+          [
+            13,
+            16
+          ],
+          [
+            13,
+            17
+          ],
+          [
+            14,
+            15
+          ],
+          [
+            14,
+            18
+          ],
+          [
+            14,
+            19
+          ],
+          [
+            15,
+            18
+          ],
+          [
+            15,
+            19
+          ],
+          [
+            16,
+            17
+          ],
+          [
+            16,
+            18
+          ],
+          [
+            16,
+            19
+          ],
+          [
+            17,
+            18
+          ],
+          [
+            17,
+            19
+          ],
+          [
+            18,
+            19
+          ]
+        ],
+        "TRIPLE_SUPPORT_COUNT": 22,
+        "DOUBLE_SUPPORT_COUNT": 27
+      },
+      "BOUND_LIMITING_RELAXATION": "R10_DEGREE_CLASS_OPEN_WEDGE_RELAXATION"
+    },
+    {
+      "PROFILE_ID": "66666664444431000000",
+      "SOURCE_RESULT": "b649-k20-min-s2-resolved-above-cursor-owner-chase-r20-result.json",
+      "SOURCE_ROW": "OWNER_ATTEMPTS[3]",
+      "DEGREE_PROFILE": [
+        6,
+        6,
+        6,
+        6,
+        6,
+        6,
+        6,
+        4,
+        4,
+        4,
+        4,
+        4,
+        3,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "CURRENT_BOUND": 313650504,
+      "TRIANGLE_CAP": 271,
+      "NONCORE_TRIANGLE_CAP": 249,
+      "WEDGE_COUNT": 834,
+      "S3": 5260528,
+      "S4_FLOOR": 112,
+      "REALIZABILITY_WITNESS": {
+        "STATUS": "PASS",
+        "SOURCE": "R11.PROFILE_BOUNDS[1]",
+        "TRIPLES": [
+          [
+            0,
+            1,
+            13
+          ],
+          [
+            0,
+            2,
+            3
+          ],
+          [
+            0,
+            4,
+            11
+          ],
+          [
+            0,
+            5,
+            7
+          ],
+          [
+            0,
+            6,
+            10
+          ],
+          [
+            0,
+            8,
+            9
+          ],
+          [
+            1,
+            2,
+            7
+          ],
+          [
+            1,
+            3,
+            12
+          ],
+          [
+            1,
+            4,
+            10
+          ],
+          [
+            1,
+            5,
+            9
+          ],
+          [
+            1,
+            6,
+            8
+          ],
+          [
+            2,
+            4,
+            9
+          ],
+          [
+            2,
+            5,
+            8
+          ],
+          [
+            2,
+            6,
+            12
+          ],
+          [
+            2,
+            10,
+            11
+          ],
+          [
+            3,
+            4,
+            8
+          ],
+          [
+            3,
+            5,
+            10
+          ],
+          [
+            3,
+            6,
+            9
+          ],
+          [
+            3,
+            7,
+            11
+          ],
+          [
+            4,
+            5,
+            12
+          ],
+          [
+            4,
+            6,
+            7
+          ],
+          [
+            5,
+            6,
+            11
+          ]
+        ],
+        "DOUBLES": [
+          [
+            7,
+            13
+          ],
+          [
+            7,
+            17
+          ],
+          [
+            8,
+            14
+          ],
+          [
+            8,
+            15
+          ],
+          [
+            9,
+            16
+          ],
+          [
+            9,
+            18
+          ],
+          [
+            10,
+            15
+          ],
+          [
+            10,
+            19
+          ],
+          [
+            11,
+            13
+          ],
+          [
+            11,
+            17
+          ],
+          [
+            12,
+            14
+          ],
+          [
+            12,
+            15
+          ],
+          [
+            12,
+            19
+          ],
+          [
+            13,
+            14
+          ],
+          [
+            13,
+            16
+          ],
+          [
+            13,
+            18
+          ],
+          [
+            14,
+            15
+          ],
+          [
+            14,
+            16
+          ],
+          [
+            14,
+            18
+          ],
+          [
+            15,
+            17
+          ],
+          [
+            15,
+            19
+          ],
+          [
+            16,
+            17
+          ],
+          [
+            16,
+            18
+          ],
+          [
+            16,
+            19
+          ],
+          [
+            17,
+            18
+          ],
+          [
+            17,
+            19
+          ],
+          [
+            18,
+            19
+          ]
+        ],
+        "TRIPLE_SUPPORT_COUNT": 22,
+        "DOUBLE_SUPPORT_COUNT": 27
+      },
+      "BOUND_LIMITING_RELAXATION": "A_EXACT_SUPPORT_OPEN_WEDGE_REFUTATION"
+    },
+    {
+      "PROFILE_ID": "66666655544411100000",
+      "SOURCE_RESULT": "b649-k20-min-s2-resolved-above-cursor-owner-chase-r20-result.json",
+      "SOURCE_ROW": "OWNER_ATTEMPTS[4]",
+      "DEGREE_PROFILE": [
+        6,
+        6,
+        6,
+        6,
+        6,
+        6,
+        5,
+        5,
+        5,
+        4,
+        4,
+        4,
+        1,
+        1,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "CURRENT_BOUND": 313650504,
+      "TRIANGLE_CAP": 271,
+      "NONCORE_TRIANGLE_CAP": 249,
+      "WEDGE_COUNT": 834,
+      "S3": 5260528,
+      "S4_FLOOR": 112,
+      "REALIZABILITY_WITNESS": {
+        "STATUS": "PASS",
+        "SOURCE": "R11.PROFILE_BOUNDS[2]",
+        "TRIPLES": [
+          [
+            0,
+            1,
+            12
+          ],
+          [
+            0,
+            2,
+            11
+          ],
+          [
+            0,
+            3,
+            7
+          ],
+          [
+            0,
+            4,
+            10
+          ],
+          [
+            0,
+            5,
+            9
+          ],
+          [
+            0,
+            6,
+            8
+          ],
+          [
+            1,
+            2,
+            3
+          ],
+          [
+            1,
+            4,
+            11
+          ],
+          [
+            1,
+            5,
+            8
+          ],
+          [
+            1,
+            6,
+            10
+          ],
+          [
+            1,
+            7,
+            9
+          ],
+          [
+            2,
+            4,
+            9
+          ],
+          [
+            2,
+            5,
+            14
+          ],
+          [
+            2,
+            6,
+            7
+          ],
+          [
+            2,
+            8,
+            10
+          ],
+          [
+            3,
+            4,
+            13
+          ],
+          [
+            3,
+            5,
+            10
+          ],
+          [
+            3,
+            6,
+            9
+          ],
+          [
+            3,
+            8,
+            11
+          ],
+          [
+            4,
+            5,
+            6
+          ],
+          [
+            4,
+            7,
+            8
+          ],
+          [
+            5,
+            7,
+            11
+          ]
+        ],
+        "DOUBLES": [
+          [
+            6,
+            15
+          ],
+          [
+            7,
+            17
+          ],
+          [
+            8,
+            16
+          ],
+          [
+            9,
+            15
+          ],
+          [
+            9,
+            19
+          ],
+          [
+            10,
+            17
+          ],
+          [
+            10,
+            18
+          ],
+          [
+            11,
+            14
+          ],
+          [
+            11,
+            16
+          ],
+          [
+            12,
+            13
+          ],
+          [
+            12,
+            14
+          ],
+          [
+            12,
+            16
+          ],
+          [
+            12,
+            18
+          ],
+          [
+            12,
+            19
+          ],
+          [
+            13,
+            14
+          ],
+          [
+            13,
+            16
+          ],
+          [
+            13,
+            18
+          ],
+          [
+            13,
+            19
+          ],
+          [
+            14,
+            15
+          ],
+          [
+            14,
+            18
+          ],
+          [
+            15,
+            17
+          ],
+          [
+            15,
+            18
+          ],
+          [
+            15,
+            19
+          ],
+          [
+            16,
+            17
+          ],
+          [
+            16,
+            19
+          ],
+          [
+            17,
+            18
+          ],
+          [
+            17,
+            19
+          ]
+        ],
+        "TRIPLE_SUPPORT_COUNT": 22,
+        "DOUBLE_SUPPORT_COUNT": 27
+      },
+      "BOUND_LIMITING_RELAXATION": "A_EXACT_SUPPORT_OPEN_WEDGE_REFUTATION"
+    },
+    {
+      "PROFILE_ID": "66666655544331000000",
+      "SOURCE_RESULT": "b649-k20-min-s2-resolved-above-cursor-owner-chase-r20-result.json",
+      "SOURCE_ROW": "OWNER_ATTEMPTS[5]",
+      "DEGREE_PROFILE": [
+        6,
+        6,
+        6,
+        6,
+        6,
+        6,
+        5,
+        5,
+        5,
+        4,
+        4,
+        3,
+        3,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "CURRENT_BOUND": 313650504,
+      "TRIANGLE_CAP": 271,
+      "NONCORE_TRIANGLE_CAP": 249,
+      "WEDGE_COUNT": 834,
+      "S3": 5260528,
+      "S4_FLOOR": 112,
+      "REALIZABILITY_WITNESS": {
+        "STATUS": "PASS",
+        "SOURCE": "R11.PROFILE_BOUNDS[3]",
+        "TRIPLES": [
+          [
+            0,
+            1,
+            13
+          ],
+          [
+            0,
+            2,
+            6
+          ],
+          [
+            0,
+            3,
+            8
+          ],
+          [
+            0,
+            4,
+            10
+          ],
+          [
+            0,
+            5,
+            12
+          ],
+          [
+            0,
+            7,
+            9
+          ],
+          [
+            1,
+            2,
+            11
+          ],
+          [
+            1,
+            3,
+            10
+          ],
+          [
+            1,
+            4,
+            12
+          ],
+          [
+            1,
+            5,
+            7
+          ],
+          [
+            1,
+            6,
+            8
+          ],
+          [
+            2,
+            3,
+            12
+          ],
+          [
+            2,
+            4,
+            5
+          ],
+          [
+            2,
+            7,
+            10
+          ],
+          [
+            2,
+            8,
+            9
+          ],
+          [
+            3,
+            4,
+            11
+          ],
+          [
+            3,
+            5,
+            9
+          ],
+          [
+            3,
+            6,
+            7
+          ],
+          [
+            4,
+            6,
+            9
+          ],
+          [
+            4,
+            7,
+            8
+          ],
+          [
+            5,
+            6,
+            10
+          ],
+          [
+            5,
+            8,
+            11
+          ]
+        ],
+        "DOUBLES": [
+          [
+            6,
+            13
+          ],
+          [
+            7,
+            13
+          ],
+          [
+            8,
+            19
+          ],
+          [
+            9,
+            14
+          ],
+          [
+            9,
+            19
+          ],
+          [
+            10,
+            14
+          ],
+          [
+            10,
+            16
+          ],
+          [
+            11,
+            15
+          ],
+          [
+            11,
+            18
+          ],
+          [
+            11,
+            19
+          ],
+          [
+            12,
+            15
+          ],
+          [
+            12,
+            16
+          ],
+          [
+            12,
+            17
+          ],
+          [
+            13,
+            14
+          ],
+          [
+            13,
+            17
+          ],
+          [
+            13,
+            18
+          ],
+          [
+            14,
+            16
+          ],
+          [
+            14,
+            17
+          ],
+          [
+            14,
+            18
+          ],
+          [
+            15,
+            16
+          ],
+          [
+            15,
+            17
+          ],
+          [
+            15,
+            18
+          ],
+          [
+            15,
+            19
+          ],
+          [
+            16,
+            17
+          ],
+          [
+            16,
+            19
+          ],
+          [
+            17,
+            18
+          ],
+          [
+            18,
+            19
+          ]
+        ],
+        "TRIPLE_SUPPORT_COUNT": 22,
+        "DOUBLE_SUPPORT_COUNT": 27
+      },
+      "BOUND_LIMITING_RELAXATION": "A_EXACT_SUPPORT_OPEN_WEDGE_REFUTATION"
+    },
+    {
+      "PROFILE_ID": "66666555555311100000",
+      "SOURCE_RESULT": "b649-k20-min-s2-resolved-above-cursor-owner-chase-r20-result.json",
+      "SOURCE_ROW": "OWNER_ATTEMPTS[6]",
+      "DEGREE_PROFILE": [
+        6,
+        6,
+        6,
+        6,
+        6,
+        5,
+        5,
+        5,
+        5,
+        5,
+        5,
+        3,
+        1,
+        1,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "CURRENT_BOUND": 313650504,
+      "TRIANGLE_CAP": 271,
+      "NONCORE_TRIANGLE_CAP": 249,
+      "WEDGE_COUNT": 834,
+      "S3": 5260528,
+      "S4_FLOOR": 112,
+      "REALIZABILITY_WITNESS": {
+        "STATUS": "PASS",
+        "SOURCE": "R11.PROFILE_BOUNDS[4]",
+        "TRIPLES": [
+          [
+            0,
+            1,
+            12
+          ],
+          [
+            0,
+            2,
+            14
+          ],
+          [
+            0,
+            3,
+            7
+          ],
+          [
+            0,
+            4,
+            5
+          ],
+          [
+            0,
+            6,
+            10
+          ],
+          [
+            0,
+            8,
+            9
+          ],
+          [
+            1,
+            2,
+            5
+          ],
+          [
+            1,
+            3,
+            10
+          ],
+          [
+            1,
+            4,
+            6
+          ],
+          [
+            1,
+            7,
+            8
+          ],
+          [
+            1,
+            9,
+            11
+          ],
+          [
+            2,
+            3,
+            8
+          ],
+          [
+            2,
+            4,
+            11
+          ],
+          [
+            2,
+            6,
+            7
+          ],
+          [
+            2,
+            9,
+            10
+          ],
+          [
+            3,
+            4,
+            13
+          ],
+          [
+            3,
+            5,
+            11
+          ],
+          [
+            3,
+            6,
+            9
+          ],
+          [
+            4,
+            7,
+            9
+          ],
+          [
+            4,
+            8,
+            10
+          ],
+          [
+            5,
+            6,
+            8
+          ],
+          [
+            5,
+            7,
+            10
+          ]
+        ],
+        "DOUBLES": [
+          [
+            5,
+            13
+          ],
+          [
+            6,
+            17
+          ],
+          [
+            7,
+            16
+          ],
+          [
+            8,
+            14
+          ],
+          [
+            9,
+            18
+          ],
+          [
+            10,
+            18
+          ],
+          [
+            11,
+            12
+          ],
+          [
+            11,
+            15
+          ],
+          [
+            11,
+            17
+          ],
+          [
+            12,
+            15
+          ],
+          [
+            12,
+            16
+          ],
+          [
+            12,
+            18
+          ],
+          [
+            12,
+            19
+          ],
+          [
+            13,
+            14
+          ],
+          [
+            13,
+            17
+          ],
+          [
+            13,
+            18
+          ],
+          [
+            13,
+            19
+          ],
+          [
+            14,
+            15
+          ],
+          [
+            14,
+            16
+          ],
+          [
+            14,
+            19
+          ],
+          [
+            15,
+            16
+          ],
+          [
+            15,
+            18
+          ],
+          [
+            15,
+            19
+          ],
+          [
+            16,
+            17
+          ],
+          [
+            16,
+            19
+          ],
+          [
+            17,
+            18
+          ],
+          [
+            17,
+            19
+          ]
+        ],
+        "TRIPLE_SUPPORT_COUNT": 22,
+        "DOUBLE_SUPPORT_COUNT": 27
+      },
+      "BOUND_LIMITING_RELAXATION": "A_EXACT_SUPPORT_OPEN_WEDGE_REFUTATION"
+    },
+    {
+      "PROFILE_ID": "66666555554421000000",
+      "SOURCE_RESULT": "b649-k20-min-s2-resolved-above-cursor-owner-chase-r20-result.json",
+      "SOURCE_ROW": "OWNER_ATTEMPTS[7]",
+      "DEGREE_PROFILE": [
+        6,
+        6,
+        6,
+        6,
+        6,
+        5,
+        5,
+        5,
+        5,
+        5,
+        4,
+        4,
+        2,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "CURRENT_BOUND": 313650504,
+      "TRIANGLE_CAP": 271,
+      "NONCORE_TRIANGLE_CAP": 249,
+      "WEDGE_COUNT": 834,
+      "S3": 5260528,
+      "S4_FLOOR": 112,
+      "REALIZABILITY_WITNESS": {
+        "STATUS": "PASS",
+        "SOURCE": "R11.PROFILE_BOUNDS[6]",
+        "TRIPLES": [
+          [
+            0,
+            1,
+            13
+          ],
+          [
+            0,
+            2,
+            5
+          ],
+          [
+            0,
+            3,
+            11
+          ],
+          [
+            0,
+            4,
+            9
+          ],
+          [
+            0,
+            6,
+            10
+          ],
+          [
+            0,
+            7,
+            8
+          ],
+          [
+            1,
+            2,
+            11
+          ],
+          [
+            1,
+            3,
+            8
+          ],
+          [
+            1,
+            4,
+            6
+          ],
+          [
+            1,
+            5,
+            10
+          ],
+          [
+            1,
+            7,
+            9
+          ],
+          [
+            2,
+            3,
+            9
+          ],
+          [
+            2,
+            4,
+            10
+          ],
+          [
+            2,
+            6,
+            7
+          ],
+          [
+            2,
+            8,
+            12
+          ],
+          [
+            3,
+            4,
+            12
+          ],
+          [
+            3,
+            5,
+            6
+          ],
+          [
+            3,
+            7,
+            10
+          ],
+          [
+            4,
+            5,
+            7
+          ],
+          [
+            4,
+            8,
+            11
+          ],
+          [
+            5,
+            8,
+            9
+          ],
+          [
+            6,
+            9,
+            11
+          ]
+        ],
+        "DOUBLES": [
+          [
+            5,
+            12
+          ],
+          [
+            6,
+            12
+          ],
+          [
+            7,
+            15
+          ],
+          [
+            8,
+            13
+          ],
+          [
+            9,
+            16
+          ],
+          [
+            10,
+            13
+          ],
+          [
+            10,
+            19
+          ],
+          [
+            11,
+            13
+          ],
+          [
+            11,
+            17
+          ],
+          [
+            12,
+            13
+          ],
+          [
+            12,
+            14
+          ],
+          [
+            13,
+            18
+          ],
+          [
+            14,
+            15
+          ],
+          [
+            14,
+            16
+          ],
+          [
+            14,
+            17
+          ],
+          [
+            14,
+            18
+          ],
+          [
+            14,
+            19
+          ],
+          [
+            15,
+            16
+          ],
+          [
+            15,
+            17
+          ],
+          [
+            15,
+            18
+          ],
+          [
+            15,
+            19
+          ],
+          [
+            16,
+            17
+          ],
+          [
+            16,
+            18
+          ],
+          [
+            16,
+            19
+          ],
+          [
+            17,
+            18
+          ],
+          [
+            17,
+            19
+          ],
+          [
+            18,
+            19
+          ]
+        ],
+        "TRIPLE_SUPPORT_COUNT": 22,
+        "DOUBLE_SUPPORT_COUNT": 27
+      },
+      "BOUND_LIMITING_RELAXATION": "A_EXACT_SUPPORT_OPEN_WEDGE_REFUTATION"
+    }
+  ],
+  "OWNER_SIGNATURE_GROUP_COUNT": 1,
+  "OWNER_SIGNATURE_GROUPS": [
+    {
+      "SIGNATURE": [
+        20,
+        22,
+        27,
+        93,
+        342,
+        834,
+        271,
+        5260528,
+        112,
+        313650504
+      ],
+      "SIGNATURE_FIELDS": [
+        "N",
+        "TRIPLES",
+        "DOUBLES",
+        "EDGES",
+        "DEGREE_SQUARE_SUM",
+        "WEDGES",
+        "TRIANGLE_CAP",
+        "S3",
+        "S4_FLOOR",
+        "CURRENT_BOUND"
+      ],
+      "PROFILE_IDS": [
+        "66666665444322000000",
+        "66666664444431000000",
+        "66666655544411100000",
+        "66666655544331000000",
+        "66666555555311100000",
+        "66666555554421000000"
+      ],
+      "COVERAGE": "EXACT_ALLOWED_ASSIGNMENT_UNION_OF_LISTED_HISTOGRAMS"
+    }
+  ],
+  "START_OWNER_BOUNDS": {
+    "66666665444322000000": 313650504,
+    "66666664444431000000": 313650504,
+    "66666655544411100000": 313650504,
+    "66666655544331000000": 313650504,
+    "66666555555311100000": 313650504,
+    "66666555554421000000": 313650504
+  },
+  "REQUIRED_REDUCTION": 12656,
+  "REDUCTION_PER_TRIANGLE": 11872,
+  "REQUIRED_TRIANGLE_REDUCTION": 2,
+  "TARGET_TRIANGLE_CAP": 269,
+  "SIX_OWNER_UNION_NONVACUITY": [
+    {
+      "STATUS": "PASS",
+      "CHECKS": [
+        {
+          "PROFILE_ID": "66666665444322000000",
+          "WITNESS_OPEN_WEDGES": 261,
+          "FIXED_WITNESS_STATUSES": {
+            "AT_WITNESS_COUNT": "OPTIMAL",
+            "ONE_BELOW": "INFEASIBLE"
+          }
+        },
+        {
+          "PROFILE_ID": "66666664444431000000",
+          "WITNESS_OPEN_WEDGES": 270,
+          "FIXED_WITNESS_STATUSES": {
+            "AT_WITNESS_COUNT": "OPTIMAL",
+            "ONE_BELOW": "INFEASIBLE"
+          }
+        },
+        {
+          "PROFILE_ID": "66666655544411100000",
+          "WITNESS_OPEN_WEDGES": 267,
+          "FIXED_WITNESS_STATUSES": {
+            "AT_WITNESS_COUNT": "OPTIMAL",
+            "ONE_BELOW": "INFEASIBLE"
+          }
+        },
+        {
+          "PROFILE_ID": "66666655544331000000",
+          "WITNESS_OPEN_WEDGES": 252,
+          "FIXED_WITNESS_STATUSES": {
+            "AT_WITNESS_COUNT": "OPTIMAL",
+            "ONE_BELOW": "INFEASIBLE"
+          }
+        },
+        {
+          "PROFILE_ID": "66666555555311100000",
+          "WITNESS_OPEN_WEDGES": 258,
+          "FIXED_WITNESS_STATUSES": {
+            "AT_WITNESS_COUNT": "OPTIMAL",
+            "ONE_BELOW": "INFEASIBLE"
+          }
+        },
+        {
+          "PROFILE_ID": "66666555554421000000",
+          "WITNESS_OPEN_WEDGES": 204,
+          "FIXED_WITNESS_STATUSES": {
+            "AT_WITNESS_COUNT": "OPTIMAL",
+            "ONE_BELOW": "INFEASIBLE"
+          }
+        }
+      ]
+    }
+  ],
+  "NEXT_CURSOR_BOUND": 313637848,
+  "NEXT_CURSOR_PROFILE": "66666665422221111111",
+  "CANONICAL_PRIMITIVE_STATUS": "PASS",
+  "CANONICAL_PRIMITIVES": {
+    "STATUS": "PASS",
+    "SINGLE_TICKET_ANY_PRIZE": 18611432,
+    "K20_S1": 372228640
+  },
+  "S4_CERTIFIED_FLOOR": 112,
+  "COMMITTED_INPUT_SHA256": {
+    "b649-k20-min-s2-budgeted-multi-plateau-descent-r11-result.json": "f7c142036d9914a89e3531be24393bb9bc7c976160f108a41854a901dd153281",
+    "b649-k20-min-s2-continued-multi-plateau-descent-r12-result.json": "e36cf3010e077923a7c27efa83e3b9dc157b3e34e5458708eb70ce40998f77f0",
+    "b649-k20-min-s2-class-dominance-or-descent-r13-result.json": "6eaff42ef7dd1bb5b315313736027d5ca1187fa5490e19e0d9cdbb85dea38819",
+    "b649-k20-min-s2-successive-class-dominance-r14-result.json": "ec9f013d2fc74f367b31306224463867590f53dca85e94e9aa148504bf74d7fe",
+    "b649-k20-min-s2-current-bound-owner-refinement-r15-result.json": "1deff3171509e8debfdd0887b1c479ca695e993e31c035dc278d0a50db31daca",
+    "b649-k20-min-s2-load-bearing-plateau-descent-r16-result.json": "777b7ee0bf85a0daf351f4c41120f29343d91266df8d59432a8b943602f80083",
+    "b649-k20-min-s2-r16-freeze-and-owner-refinement-r17-result.json": "5a2dc223010dc4020fe679c62d6f185b1905651973e0f4f2718c22233d70557e",
+    "b649-k20-min-s2-cursor-plateau-closure-r18-result.json": "1d0e3574251fb47db102688ac139c647177953212ec00ce64ac03c0eb4735ef9",
+    "b649-k20-min-s2-dual-owner-refinement-r19-result.json": "e6f085cdc57c8c91f1ef02e1f847d5015b04aad17cb9c426866fb68ff32ea671",
+    "b649-k20-min-s2-resolved-above-cursor-owner-chase-r20-result.json": "47afe9b8e5643f0123fcccfcf678689755106056e7b9b68a3431b837706113aa",
+    "b649-k20-min-s2-unique-cursor-plateau-r21-result.json": "7d3ffa7b063701a33f00b55f3e203c249c1691187b081341f563b9c72a9548be",
+    "b649-k20-min-s2-resolved-owner-pair-refinement-r22-result.json": "fea84b7d4cd814d231cc38ad2d98d682fd19ec2875de6fdf2ecac5c8e4256ef6",
+    "b649-k20-min-s2-unique-cursor-class-closure-r23-result.json": "327099e4b569bb7dfd512d4e8a47fb844ef9c487bb4e6a29e9a0e6f21381ee79",
+    "b649-k20-min-s2-owner-ledger-reconcile-and-refine-r24-result.json": "ca3678b2e7159cc67dab99c9fa3d73e46ffeed7458fcccd36bd5b53f53a39827",
+    "b649-k20-min-s2-cursor-dynamic-owner-chase-r25-result.json": "5ac39ba68c10ad512eded98536f9859e22f5841769baa18c3ca7a91ace63de6c"
+  },
+  "SOLVER_RUNTIME_PREFLIGHT": {
+    "STATUS": "PASS",
+    "PYTHON_EXECUTABLE": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/python",
+    "PYTHON_VERSION": "3.13.8",
+    "ORTOOLS_VERSION": "9.15.6755",
+    "CP_MODEL_IMPORT": "PASS",
+    "EXTERNAL_TIMEOUT_WRAPPER_PATH": "/opt/homebrew/bin/timeout",
+    "EXTERNAL_TIMEOUT_WRAPPER_VERSION": "timeout (GNU coreutils) 9.10",
+    "EXTERNAL_TIMEOUT_PROBE_EXIT_CODE": 124
+  },
+  "SOLVER_CONFIGURED_WALL_LIMIT": {
+    "NATIVE_GROUP_SECONDS": 180.0,
+    "EXTERNAL_GRACE_SECONDS": 15.0,
+    "PROOF_WALL_SECONDS": 3600.0,
+    "CP_SAT_SEARCH_WORKERS": 1,
+    "EXTERNAL_KILL_AFTER_SECONDS": 5,
+    "NATIVE_INDIVIDUAL_SECONDS": 120.0
+  },
+  "SOLVER_ACTUAL_WALL_TIME": 791.1599120000001,
+  "SOLVER_STATUS": [
+    "UNKNOWN",
+    "INFEASIBLE",
+    "INFEASIBLE",
+    "INFEASIBLE",
+    "INFEASIBLE",
+    "INFEASIBLE",
+    "INFEASIBLE",
+    "UNKNOWN",
+    "UNKNOWN",
+    "INFEASIBLE",
+    "UNKNOWN"
+  ],
+  "PROOF_ACTUAL_WALL_SECONDS": 938.2510564034601,
+  "PROOF_STARTED_UNIX_TIME": 1791296916.9910948,
+  "RESOLVED_LEDGER_COUNT": 408,
+  "RESOLVED_PROFILE_COUNT_INCLUDING_FROZEN_CLASS": 484,
+  "FROZEN_76_PROFILE_CLASS_BOUND": 313628776,
+  "FROZEN_CLASS_AUTHORITY": "PINNED_R25",
+  "PLATEAU_RERUN_COUNT": 0,
+  "CHEAP_CHASE_RERUN_COUNT": 0,
+  "CURSOR_PROFILE_SOLVES": 0,
+  "NO_76_PLATEAU_RERUN_GUARD": "PASS",
+  "NO_48_OWNER_CHEAP_CHASE_RERUN_GUARD": "PASS",
+  "NO_CURSOR_WORK_GUARD": "PASS",
+  "FULL_4850_PROFILE_CENSUS_REBUILT": false,
+  "INCUMBENT": 313239661,
+  "WORKTREE_DISPOSITION": "RETAIN",
+  "NEW_PORTFOLIO_SEARCH_STARTED": "NO",
+  "PRODUCTION_MUTATION": "NONE",
+  "RUNTIME_TRANSITION_OCCURRED": "NO",
+  "JUDGE_MODE": "NOT_APPLICABLE",
+  "JUDGE_DISPATCH": "SUPPRESSED",
+  "TASK_STATUS": "SUCCESS_C_STRICT_FAMILY_TIGHTENING_EXACT_REMAINING_OWNERS",
+  "FAMILY_UPPER_BOUND": 313649608,
+  "MAX_RESOLVED_BOUND": 313649608,
+  "CURRENT_BOUND_OWNER_SET": [
+    "66665555554440000000"
+  ],
+  "CURRENT_BOUND_OWNER_CERTIFICATES": [
+    {
+      "PROFILE_ID": "66665555554440000000",
+      "SOURCE_RESULT": "b649-k20-min-s2-resolved-above-cursor-owner-chase-r20-result.json",
+      "SOURCE_ROW": "OWNER_ATTEMPTS[8]",
+      "DEGREE_PROFILE": [
+        6,
+        6,
+        6,
+        6,
+        5,
+        5,
+        5,
+        5,
+        5,
+        5,
+        4,
+        4,
+        4,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "CURRENT_BOUND": 313649608,
+      "TRIANGLE_CAP": 271,
+      "NONCORE_TRIANGLE_CAP": 249,
+      "WEDGE_COUNT": 834,
+      "S3": 5260528,
+      "S4_FLOOR": 1680,
+      "REALIZABILITY_WITNESS": {
+        "STATUS": "PASS",
+        "SOURCE": "R11.PROFILE_BOUNDS[7]",
+        "TRIPLES": [
+          [
+            0,
+            1,
+            12
+          ],
+          [
+            0,
+            2,
+            4
+          ],
+          [
+            0,
+            3,
+            11
+          ],
+          [
+            0,
+            5,
+            6
+          ],
+          [
+            0,
+            7,
+            9
+          ],
+          [
+            0,
+            8,
+            10
+          ],
+          [
+            1,
+            2,
+            3
+          ],
+          [
+            1,
+            4,
+            8
+          ],
+          [
+            1,
+            5,
+            7
+          ],
+          [
+            1,
+            6,
+            11
+          ],
+          [
+            1,
+            9,
+            10
+          ],
+          [
+            2,
+            5,
+            12
+          ],
+          [
+            2,
+            6,
+            10
+          ],
+          [
+            2,
+            7,
+            8
+          ],
+          [
+            2,
+            9,
+            11
+          ],
+          [
+            3,
+            4,
+            6
+          ],
+          [
+            3,
+            5,
+            10
+          ],
+          [
+            3,
+            7,
+            12
+          ],
+          [
+            3,
+            8,
+            9
+          ],
+          [
+            4,
+            5,
+            9
+          ],
+          [
+            4,
+            7,
+            11
+          ],
+          [
+            6,
+            8,
+            12
+          ]
+        ],
+        "DOUBLES": [
+          [
+            4,
+            13
+          ],
+          [
+            5,
+            11
+          ],
+          [
+            6,
+            7
+          ],
+          [
+            8,
+            15
+          ],
+          [
+            9,
+            19
+          ],
+          [
+            10,
+            17
+          ],
+          [
+            10,
+            19
+          ],
+          [
+            11,
+            15
+          ],
+          [
+            12,
+            13
+          ],
+          [
+            12,
+            16
+          ],
+          [
+            13,
+            14
+          ],
+          [
+            13,
+            16
+          ],
+          [
+            13,
+            17
+          ],
+          [
+            13,
+            18
+          ],
+          [
+            14,
+            15
+          ],
+          [
+            14,
+            16
+          ],
+          [
+            14,
+            17
+          ],
+          [
+            14,
+            18
+          ],
+          [
+            14,
+            19
+          ],
+          [
+            15,
+            16
+          ],
+          [
+            15,
+            18
+          ],
+          [
+            15,
+            19
+          ],
+          [
+            16,
+            17
+          ],
+          [
+            16,
+            18
+          ],
+          [
+            17,
+            18
+          ],
+          [
+            17,
+            19
+          ],
+          [
+            18,
+            19
+          ]
+        ],
+        "TRIPLE_SUPPORT_COUNT": 22,
+        "DOUBLE_SUPPORT_COUNT": 27
+      },
+      "BOUND_LIMITING_RELAXATION": "A_EXACT_SUPPORT_OPEN_WEDGE_REFUTATION"
+    }
+  ],
+  "GROUP_ATTEMPTS": [
+    {
+      "OWNER_CERTIFICATES": [
+        {
+          "PROFILE_ID": "66666665444322000000",
+          "SOURCE_RESULT": "b649-k20-min-s2-budgeted-multi-plateau-descent-r11-result.json",
+          "SOURCE_ROW": "PROFILE_BOUNDS[0]",
+          "DEGREE_PROFILE": [
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            5,
+            4,
+            4,
+            4,
+            3,
+            2,
+            2,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "CURRENT_BOUND": 313650504,
+          "TRIANGLE_CAP": 271,
+          "NONCORE_TRIANGLE_CAP": 249,
+          "WEDGE_COUNT": 834,
+          "S3": 5260528,
+          "S4_FLOOR": 112,
+          "REALIZABILITY_WITNESS": {
+            "STATUS": "PASS",
+            "SOURCE": "R11.PROFILE_BOUNDS[0]",
+            "TRIPLES": [
+              [
+                0,
+                1,
+                10
+              ],
+              [
+                0,
+                2,
+                11
+              ],
+              [
+                0,
+                3,
+                4
+              ],
+              [
+                0,
+                5,
+                9
+              ],
+              [
+                0,
+                6,
+                12
+              ],
+              [
+                0,
+                7,
+                8
+              ],
+              [
+                1,
+                2,
+                13
+              ],
+              [
+                1,
+                3,
+                8
+              ],
+              [
+                1,
+                4,
+                12
+              ],
+              [
+                1,
+                5,
+                7
+              ],
+              [
+                1,
+                6,
+                9
+              ],
+              [
+                2,
+                3,
+                9
+              ],
+              [
+                2,
+                4,
+                10
+              ],
+              [
+                2,
+                5,
+                8
+              ],
+              [
+                2,
+                6,
+                7
+              ],
+              [
+                3,
+                5,
+                13
+              ],
+              [
+                3,
+                6,
+                11
+              ],
+              [
+                3,
+                7,
+                10
+              ],
+              [
+                4,
+                5,
+                11
+              ],
+              [
+                4,
+                6,
+                8
+              ],
+              [
+                4,
+                7,
+                9
+              ],
+              [
+                5,
+                6,
+                10
+              ]
+            ],
+            "DOUBLES": [
+              [
+                7,
+                12
+              ],
+              [
+                8,
+                15
+              ],
+              [
+                8,
+                17
+              ],
+              [
+                9,
+                14
+              ],
+              [
+                9,
+                16
+              ],
+              [
+                10,
+                11
+              ],
+              [
+                10,
+                17
+              ],
+              [
+                11,
+                16
+              ],
+              [
+                11,
+                18
+              ],
+              [
+                12,
+                14
+              ],
+              [
+                12,
+                15
+              ],
+              [
+                12,
+                19
+              ],
+              [
+                13,
+                14
+              ],
+              [
+                13,
+                15
+              ],
+              [
+                13,
+                16
+              ],
+              [
+                13,
+                17
+              ],
+              [
+                14,
+                15
+              ],
+              [
+                14,
+                18
+              ],
+              [
+                14,
+                19
+              ],
+              [
+                15,
+                18
+              ],
+              [
+                15,
+                19
+              ],
+              [
+                16,
+                17
+              ],
+              [
+                16,
+                18
+              ],
+              [
+                16,
+                19
+              ],
+              [
+                17,
+                18
+              ],
+              [
+                17,
+                19
+              ],
+              [
+                18,
+                19
+              ]
+            ],
+            "TRIPLE_SUPPORT_COUNT": 22,
+            "DOUBLE_SUPPORT_COUNT": 27
+          },
+          "BOUND_LIMITING_RELAXATION": "R10_DEGREE_CLASS_OPEN_WEDGE_RELAXATION"
+        },
+        {
+          "PROFILE_ID": "66666664444431000000",
+          "SOURCE_RESULT": "b649-k20-min-s2-resolved-above-cursor-owner-chase-r20-result.json",
+          "SOURCE_ROW": "OWNER_ATTEMPTS[3]",
+          "DEGREE_PROFILE": [
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            4,
+            4,
+            4,
+            4,
+            4,
+            3,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "CURRENT_BOUND": 313650504,
+          "TRIANGLE_CAP": 271,
+          "NONCORE_TRIANGLE_CAP": 249,
+          "WEDGE_COUNT": 834,
+          "S3": 5260528,
+          "S4_FLOOR": 112,
+          "REALIZABILITY_WITNESS": {
+            "STATUS": "PASS",
+            "SOURCE": "R11.PROFILE_BOUNDS[1]",
+            "TRIPLES": [
+              [
+                0,
+                1,
+                13
+              ],
+              [
+                0,
+                2,
+                3
+              ],
+              [
+                0,
+                4,
+                11
+              ],
+              [
+                0,
+                5,
+                7
+              ],
+              [
+                0,
+                6,
+                10
+              ],
+              [
+                0,
+                8,
+                9
+              ],
+              [
+                1,
+                2,
+                7
+              ],
+              [
+                1,
+                3,
+                12
+              ],
+              [
+                1,
+                4,
+                10
+              ],
+              [
+                1,
+                5,
+                9
+              ],
+              [
+                1,
+                6,
+                8
+              ],
+              [
+                2,
+                4,
+                9
+              ],
+              [
+                2,
+                5,
+                8
+              ],
+              [
+                2,
+                6,
+                12
+              ],
+              [
+                2,
+                10,
+                11
+              ],
+              [
+                3,
+                4,
+                8
+              ],
+              [
+                3,
+                5,
+                10
+              ],
+              [
+                3,
+                6,
+                9
+              ],
+              [
+                3,
+                7,
+                11
+              ],
+              [
+                4,
+                5,
+                12
+              ],
+              [
+                4,
+                6,
+                7
+              ],
+              [
+                5,
+                6,
+                11
+              ]
+            ],
+            "DOUBLES": [
+              [
+                7,
+                13
+              ],
+              [
+                7,
+                17
+              ],
+              [
+                8,
+                14
+              ],
+              [
+                8,
+                15
+              ],
+              [
+                9,
+                16
+              ],
+              [
+                9,
+                18
+              ],
+              [
+                10,
+                15
+              ],
+              [
+                10,
+                19
+              ],
+              [
+                11,
+                13
+              ],
+              [
+                11,
+                17
+              ],
+              [
+                12,
+                14
+              ],
+              [
+                12,
+                15
+              ],
+              [
+                12,
+                19
+              ],
+              [
+                13,
+                14
+              ],
+              [
+                13,
+                16
+              ],
+              [
+                13,
+                18
+              ],
+              [
+                14,
+                15
+              ],
+              [
+                14,
+                16
+              ],
+              [
+                14,
+                18
+              ],
+              [
+                15,
+                17
+              ],
+              [
+                15,
+                19
+              ],
+              [
+                16,
+                17
+              ],
+              [
+                16,
+                18
+              ],
+              [
+                16,
+                19
+              ],
+              [
+                17,
+                18
+              ],
+              [
+                17,
+                19
+              ],
+              [
+                18,
+                19
+              ]
+            ],
+            "TRIPLE_SUPPORT_COUNT": 22,
+            "DOUBLE_SUPPORT_COUNT": 27
+          },
+          "BOUND_LIMITING_RELAXATION": "A_EXACT_SUPPORT_OPEN_WEDGE_REFUTATION"
+        },
+        {
+          "PROFILE_ID": "66666655544411100000",
+          "SOURCE_RESULT": "b649-k20-min-s2-resolved-above-cursor-owner-chase-r20-result.json",
+          "SOURCE_ROW": "OWNER_ATTEMPTS[4]",
+          "DEGREE_PROFILE": [
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            5,
+            5,
+            5,
+            4,
+            4,
+            4,
+            1,
+            1,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "CURRENT_BOUND": 313650504,
+          "TRIANGLE_CAP": 271,
+          "NONCORE_TRIANGLE_CAP": 249,
+          "WEDGE_COUNT": 834,
+          "S3": 5260528,
+          "S4_FLOOR": 112,
+          "REALIZABILITY_WITNESS": {
+            "STATUS": "PASS",
+            "SOURCE": "R11.PROFILE_BOUNDS[2]",
+            "TRIPLES": [
+              [
+                0,
+                1,
+                12
+              ],
+              [
+                0,
+                2,
+                11
+              ],
+              [
+                0,
+                3,
+                7
+              ],
+              [
+                0,
+                4,
+                10
+              ],
+              [
+                0,
+                5,
+                9
+              ],
+              [
+                0,
+                6,
+                8
+              ],
+              [
+                1,
+                2,
+                3
+              ],
+              [
+                1,
+                4,
+                11
+              ],
+              [
+                1,
+                5,
+                8
+              ],
+              [
+                1,
+                6,
+                10
+              ],
+              [
+                1,
+                7,
+                9
+              ],
+              [
+                2,
+                4,
+                9
+              ],
+              [
+                2,
+                5,
+                14
+              ],
+              [
+                2,
+                6,
+                7
+              ],
+              [
+                2,
+                8,
+                10
+              ],
+              [
+                3,
+                4,
+                13
+              ],
+              [
+                3,
+                5,
+                10
+              ],
+              [
+                3,
+                6,
+                9
+              ],
+              [
+                3,
+                8,
+                11
+              ],
+              [
+                4,
+                5,
+                6
+              ],
+              [
+                4,
+                7,
+                8
+              ],
+              [
+                5,
+                7,
+                11
+              ]
+            ],
+            "DOUBLES": [
+              [
+                6,
+                15
+              ],
+              [
+                7,
+                17
+              ],
+              [
+                8,
+                16
+              ],
+              [
+                9,
+                15
+              ],
+              [
+                9,
+                19
+              ],
+              [
+                10,
+                17
+              ],
+              [
+                10,
+                18
+              ],
+              [
+                11,
+                14
+              ],
+              [
+                11,
+                16
+              ],
+              [
+                12,
+                13
+              ],
+              [
+                12,
+                14
+              ],
+              [
+                12,
+                16
+              ],
+              [
+                12,
+                18
+              ],
+              [
+                12,
+                19
+              ],
+              [
+                13,
+                14
+              ],
+              [
+                13,
+                16
+              ],
+              [
+                13,
+                18
+              ],
+              [
+                13,
+                19
+              ],
+              [
+                14,
+                15
+              ],
+              [
+                14,
+                18
+              ],
+              [
+                15,
+                17
+              ],
+              [
+                15,
+                18
+              ],
+              [
+                15,
+                19
+              ],
+              [
+                16,
+                17
+              ],
+              [
+                16,
+                19
+              ],
+              [
+                17,
+                18
+              ],
+              [
+                17,
+                19
+              ]
+            ],
+            "TRIPLE_SUPPORT_COUNT": 22,
+            "DOUBLE_SUPPORT_COUNT": 27
+          },
+          "BOUND_LIMITING_RELAXATION": "A_EXACT_SUPPORT_OPEN_WEDGE_REFUTATION"
+        },
+        {
+          "PROFILE_ID": "66666655544331000000",
+          "SOURCE_RESULT": "b649-k20-min-s2-resolved-above-cursor-owner-chase-r20-result.json",
+          "SOURCE_ROW": "OWNER_ATTEMPTS[5]",
+          "DEGREE_PROFILE": [
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            5,
+            5,
+            5,
+            4,
+            4,
+            3,
+            3,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "CURRENT_BOUND": 313650504,
+          "TRIANGLE_CAP": 271,
+          "NONCORE_TRIANGLE_CAP": 249,
+          "WEDGE_COUNT": 834,
+          "S3": 5260528,
+          "S4_FLOOR": 112,
+          "REALIZABILITY_WITNESS": {
+            "STATUS": "PASS",
+            "SOURCE": "R11.PROFILE_BOUNDS[3]",
+            "TRIPLES": [
+              [
+                0,
+                1,
+                13
+              ],
+              [
+                0,
+                2,
+                6
+              ],
+              [
+                0,
+                3,
+                8
+              ],
+              [
+                0,
+                4,
+                10
+              ],
+              [
+                0,
+                5,
+                12
+              ],
+              [
+                0,
+                7,
+                9
+              ],
+              [
+                1,
+                2,
+                11
+              ],
+              [
+                1,
+                3,
+                10
+              ],
+              [
+                1,
+                4,
+                12
+              ],
+              [
+                1,
+                5,
+                7
+              ],
+              [
+                1,
+                6,
+                8
+              ],
+              [
+                2,
+                3,
+                12
+              ],
+              [
+                2,
+                4,
+                5
+              ],
+              [
+                2,
+                7,
+                10
+              ],
+              [
+                2,
+                8,
+                9
+              ],
+              [
+                3,
+                4,
+                11
+              ],
+              [
+                3,
+                5,
+                9
+              ],
+              [
+                3,
+                6,
+                7
+              ],
+              [
+                4,
+                6,
+                9
+              ],
+              [
+                4,
+                7,
+                8
+              ],
+              [
+                5,
+                6,
+                10
+              ],
+              [
+                5,
+                8,
+                11
+              ]
+            ],
+            "DOUBLES": [
+              [
+                6,
+                13
+              ],
+              [
+                7,
+                13
+              ],
+              [
+                8,
+                19
+              ],
+              [
+                9,
+                14
+              ],
+              [
+                9,
+                19
+              ],
+              [
+                10,
+                14
+              ],
+              [
+                10,
+                16
+              ],
+              [
+                11,
+                15
+              ],
+              [
+                11,
+                18
+              ],
+              [
+                11,
+                19
+              ],
+              [
+                12,
+                15
+              ],
+              [
+                12,
+                16
+              ],
+              [
+                12,
+                17
+              ],
+              [
+                13,
+                14
+              ],
+              [
+                13,
+                17
+              ],
+              [
+                13,
+                18
+              ],
+              [
+                14,
+                16
+              ],
+              [
+                14,
+                17
+              ],
+              [
+                14,
+                18
+              ],
+              [
+                15,
+                16
+              ],
+              [
+                15,
+                17
+              ],
+              [
+                15,
+                18
+              ],
+              [
+                15,
+                19
+              ],
+              [
+                16,
+                17
+              ],
+              [
+                16,
+                19
+              ],
+              [
+                17,
+                18
+              ],
+              [
+                18,
+                19
+              ]
+            ],
+            "TRIPLE_SUPPORT_COUNT": 22,
+            "DOUBLE_SUPPORT_COUNT": 27
+          },
+          "BOUND_LIMITING_RELAXATION": "A_EXACT_SUPPORT_OPEN_WEDGE_REFUTATION"
+        },
+        {
+          "PROFILE_ID": "66666555555311100000",
+          "SOURCE_RESULT": "b649-k20-min-s2-resolved-above-cursor-owner-chase-r20-result.json",
+          "SOURCE_ROW": "OWNER_ATTEMPTS[6]",
+          "DEGREE_PROFILE": [
+            6,
+            6,
+            6,
+            6,
+            6,
+            5,
+            5,
+            5,
+            5,
+            5,
+            5,
+            3,
+            1,
+            1,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "CURRENT_BOUND": 313650504,
+          "TRIANGLE_CAP": 271,
+          "NONCORE_TRIANGLE_CAP": 249,
+          "WEDGE_COUNT": 834,
+          "S3": 5260528,
+          "S4_FLOOR": 112,
+          "REALIZABILITY_WITNESS": {
+            "STATUS": "PASS",
+            "SOURCE": "R11.PROFILE_BOUNDS[4]",
+            "TRIPLES": [
+              [
+                0,
+                1,
+                12
+              ],
+              [
+                0,
+                2,
+                14
+              ],
+              [
+                0,
+                3,
+                7
+              ],
+              [
+                0,
+                4,
+                5
+              ],
+              [
+                0,
+                6,
+                10
+              ],
+              [
+                0,
+                8,
+                9
+              ],
+              [
+                1,
+                2,
+                5
+              ],
+              [
+                1,
+                3,
+                10
+              ],
+              [
+                1,
+                4,
+                6
+              ],
+              [
+                1,
+                7,
+                8
+              ],
+              [
+                1,
+                9,
+                11
+              ],
+              [
+                2,
+                3,
+                8
+              ],
+              [
+                2,
+                4,
+                11
+              ],
+              [
+                2,
+                6,
+                7
+              ],
+              [
+                2,
+                9,
+                10
+              ],
+              [
+                3,
+                4,
+                13
+              ],
+              [
+                3,
+                5,
+                11
+              ],
+              [
+                3,
+                6,
+                9
+              ],
+              [
+                4,
+                7,
+                9
+              ],
+              [
+                4,
+                8,
+                10
+              ],
+              [
+                5,
+                6,
+                8
+              ],
+              [
+                5,
+                7,
+                10
+              ]
+            ],
+            "DOUBLES": [
+              [
+                5,
+                13
+              ],
+              [
+                6,
+                17
+              ],
+              [
+                7,
+                16
+              ],
+              [
+                8,
+                14
+              ],
+              [
+                9,
+                18
+              ],
+              [
+                10,
+                18
+              ],
+              [
+                11,
+                12
+              ],
+              [
+                11,
+                15
+              ],
+              [
+                11,
+                17
+              ],
+              [
+                12,
+                15
+              ],
+              [
+                12,
+                16
+              ],
+              [
+                12,
+                18
+              ],
+              [
+                12,
+                19
+              ],
+              [
+                13,
+                14
+              ],
+              [
+                13,
+                17
+              ],
+              [
+                13,
+                18
+              ],
+              [
+                13,
+                19
+              ],
+              [
+                14,
+                15
+              ],
+              [
+                14,
+                16
+              ],
+              [
+                14,
+                19
+              ],
+              [
+                15,
+                16
+              ],
+              [
+                15,
+                18
+              ],
+              [
+                15,
+                19
+              ],
+              [
+                16,
+                17
+              ],
+              [
+                16,
+                19
+              ],
+              [
+                17,
+                18
+              ],
+              [
+                17,
+                19
+              ]
+            ],
+            "TRIPLE_SUPPORT_COUNT": 22,
+            "DOUBLE_SUPPORT_COUNT": 27
+          },
+          "BOUND_LIMITING_RELAXATION": "A_EXACT_SUPPORT_OPEN_WEDGE_REFUTATION"
+        },
+        {
+          "PROFILE_ID": "66666555554421000000",
+          "SOURCE_RESULT": "b649-k20-min-s2-resolved-above-cursor-owner-chase-r20-result.json",
+          "SOURCE_ROW": "OWNER_ATTEMPTS[7]",
+          "DEGREE_PROFILE": [
+            6,
+            6,
+            6,
+            6,
+            6,
+            5,
+            5,
+            5,
+            5,
+            5,
+            4,
+            4,
+            2,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "CURRENT_BOUND": 313650504,
+          "TRIANGLE_CAP": 271,
+          "NONCORE_TRIANGLE_CAP": 249,
+          "WEDGE_COUNT": 834,
+          "S3": 5260528,
+          "S4_FLOOR": 112,
+          "REALIZABILITY_WITNESS": {
+            "STATUS": "PASS",
+            "SOURCE": "R11.PROFILE_BOUNDS[6]",
+            "TRIPLES": [
+              [
+                0,
+                1,
+                13
+              ],
+              [
+                0,
+                2,
+                5
+              ],
+              [
+                0,
+                3,
+                11
+              ],
+              [
+                0,
+                4,
+                9
+              ],
+              [
+                0,
+                6,
+                10
+              ],
+              [
+                0,
+                7,
+                8
+              ],
+              [
+                1,
+                2,
+                11
+              ],
+              [
+                1,
+                3,
+                8
+              ],
+              [
+                1,
+                4,
+                6
+              ],
+              [
+                1,
+                5,
+                10
+              ],
+              [
+                1,
+                7,
+                9
+              ],
+              [
+                2,
+                3,
+                9
+              ],
+              [
+                2,
+                4,
+                10
+              ],
+              [
+                2,
+                6,
+                7
+              ],
+              [
+                2,
+                8,
+                12
+              ],
+              [
+                3,
+                4,
+                12
+              ],
+              [
+                3,
+                5,
+                6
+              ],
+              [
+                3,
+                7,
+                10
+              ],
+              [
+                4,
+                5,
+                7
+              ],
+              [
+                4,
+                8,
+                11
+              ],
+              [
+                5,
+                8,
+                9
+              ],
+              [
+                6,
+                9,
+                11
+              ]
+            ],
+            "DOUBLES": [
+              [
+                5,
+                12
+              ],
+              [
+                6,
+                12
+              ],
+              [
+                7,
+                15
+              ],
+              [
+                8,
+                13
+              ],
+              [
+                9,
+                16
+              ],
+              [
+                10,
+                13
+              ],
+              [
+                10,
+                19
+              ],
+              [
+                11,
+                13
+              ],
+              [
+                11,
+                17
+              ],
+              [
+                12,
+                13
+              ],
+              [
+                12,
+                14
+              ],
+              [
+                13,
+                18
+              ],
+              [
+                14,
+                15
+              ],
+              [
+                14,
+                16
+              ],
+              [
+                14,
+                17
+              ],
+              [
+                14,
+                18
+              ],
+              [
+                14,
+                19
+              ],
+              [
+                15,
+                16
+              ],
+              [
+                15,
+                17
+              ],
+              [
+                15,
+                18
+              ],
+              [
+                15,
+                19
+              ],
+              [
+                16,
+                17
+              ],
+              [
+                16,
+                18
+              ],
+              [
+                16,
+                19
+              ],
+              [
+                17,
+                18
+              ],
+              [
+                17,
+                19
+              ],
+              [
+                18,
+                19
+              ]
+            ],
+            "TRIPLE_SUPPORT_COUNT": 22,
+            "DOUBLE_SUPPORT_COUNT": 27
+          },
+          "BOUND_LIMITING_RELAXATION": "A_EXACT_SUPPORT_OPEN_WEDGE_REFUTATION"
+        }
+      ],
+      "ROUTE": "A_EXACT_SUPPORT_UNION_OPEN_WEDGE_REFUTATION",
+      "STATUS": "UNKNOWN",
+      "CERTIFICATE_KIND": "NOT_CERTIFIED",
+      "PROFILE_IDS": [
+        "66666665444322000000",
+        "66666664444431000000",
+        "66666655544411100000",
+        "66666655544331000000",
+        "66666555555311100000",
+        "66666555554421000000"
+      ],
+      "WEDGE_COUNT": 834,
+      "REFUTED_GRAPH_TRIANGLE_COUNT": 270,
+      "OPEN_WEDGE_CEILING_REFUTED": 24,
+      "CERTIFIED_GRAPH_TRIANGLE_UPPER_BOUND": null,
+      "CERTIFIED_OPEN_WEDGE_LOWER_BOUND": null,
+      "OPEN_WEDGE_INDICATOR_COUNT": 3420,
+      "SOLVER_WALL_TIME_SECONDS": 180.006292,
+      "SOLVER_CONFIGURED_WALL_LIMIT": 180.0,
+      "EXTERNAL_HARD_TIMEOUT_SECONDS": 195.0,
+      "EXTERNAL_TIMEOUT_EXIT_CODE": 0,
+      "SUBPROCESS_WALL_SECONDS": 183.27455062499212,
+      "PRESERVED_FROM_FIRST_EXECUTION": true
+    },
+    {
+      "OWNER_CERTIFICATES": [
+        {
+          "PROFILE_ID": "66666665444322000000",
+          "SOURCE_RESULT": "b649-k20-min-s2-budgeted-multi-plateau-descent-r11-result.json",
+          "SOURCE_ROW": "PROFILE_BOUNDS[0]",
+          "DEGREE_PROFILE": [
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            5,
+            4,
+            4,
+            4,
+            3,
+            2,
+            2,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "CURRENT_BOUND": 313650504,
+          "TRIANGLE_CAP": 271,
+          "NONCORE_TRIANGLE_CAP": 249,
+          "WEDGE_COUNT": 834,
+          "S3": 5260528,
+          "S4_FLOOR": 112,
+          "REALIZABILITY_WITNESS": {
+            "STATUS": "PASS",
+            "SOURCE": "R11.PROFILE_BOUNDS[0]",
+            "TRIPLES": [
+              [
+                0,
+                1,
+                10
+              ],
+              [
+                0,
+                2,
+                11
+              ],
+              [
+                0,
+                3,
+                4
+              ],
+              [
+                0,
+                5,
+                9
+              ],
+              [
+                0,
+                6,
+                12
+              ],
+              [
+                0,
+                7,
+                8
+              ],
+              [
+                1,
+                2,
+                13
+              ],
+              [
+                1,
+                3,
+                8
+              ],
+              [
+                1,
+                4,
+                12
+              ],
+              [
+                1,
+                5,
+                7
+              ],
+              [
+                1,
+                6,
+                9
+              ],
+              [
+                2,
+                3,
+                9
+              ],
+              [
+                2,
+                4,
+                10
+              ],
+              [
+                2,
+                5,
+                8
+              ],
+              [
+                2,
+                6,
+                7
+              ],
+              [
+                3,
+                5,
+                13
+              ],
+              [
+                3,
+                6,
+                11
+              ],
+              [
+                3,
+                7,
+                10
+              ],
+              [
+                4,
+                5,
+                11
+              ],
+              [
+                4,
+                6,
+                8
+              ],
+              [
+                4,
+                7,
+                9
+              ],
+              [
+                5,
+                6,
+                10
+              ]
+            ],
+            "DOUBLES": [
+              [
+                7,
+                12
+              ],
+              [
+                8,
+                15
+              ],
+              [
+                8,
+                17
+              ],
+              [
+                9,
+                14
+              ],
+              [
+                9,
+                16
+              ],
+              [
+                10,
+                11
+              ],
+              [
+                10,
+                17
+              ],
+              [
+                11,
+                16
+              ],
+              [
+                11,
+                18
+              ],
+              [
+                12,
+                14
+              ],
+              [
+                12,
+                15
+              ],
+              [
+                12,
+                19
+              ],
+              [
+                13,
+                14
+              ],
+              [
+                13,
+                15
+              ],
+              [
+                13,
+                16
+              ],
+              [
+                13,
+                17
+              ],
+              [
+                14,
+                15
+              ],
+              [
+                14,
+                18
+              ],
+              [
+                14,
+                19
+              ],
+              [
+                15,
+                18
+              ],
+              [
+                15,
+                19
+              ],
+              [
+                16,
+                17
+              ],
+              [
+                16,
+                18
+              ],
+              [
+                16,
+                19
+              ],
+              [
+                17,
+                18
+              ],
+              [
+                17,
+                19
+              ],
+              [
+                18,
+                19
+              ]
+            ],
+            "TRIPLE_SUPPORT_COUNT": 22,
+            "DOUBLE_SUPPORT_COUNT": 27
+          },
+          "BOUND_LIMITING_RELAXATION": "R10_DEGREE_CLASS_OPEN_WEDGE_RELAXATION"
+        }
+      ],
+      "ROUTE": "A_EXACT_SUPPORT_UNION_OPEN_WEDGE_REFUTATION",
+      "STATUS": "INFEASIBLE",
+      "CERTIFICATE_KIND": "CP_SAT_INFEASIBLE",
+      "PROFILE_IDS": [
+        "66666665444322000000"
+      ],
+      "WEDGE_COUNT": 834,
+      "REFUTED_GRAPH_TRIANGLE_COUNT": 270,
+      "OPEN_WEDGE_CEILING_REFUTED": 24,
+      "CERTIFIED_GRAPH_TRIANGLE_UPPER_BOUND": 269,
+      "CERTIFIED_OPEN_WEDGE_LOWER_BOUND": 25,
+      "OPEN_WEDGE_INDICATOR_COUNT": 3420,
+      "SOLVER_WALL_TIME_SECONDS": 87.736849,
+      "SOLVER_CONFIGURED_WALL_LIMIT": 120.0,
+      "EXTERNAL_HARD_TIMEOUT_SECONDS": 135.0,
+      "EXTERNAL_TIMEOUT_EXIT_CODE": 0,
+      "SUBPROCESS_WALL_SECONDS": 89.19516650000878
+    },
+    {
+      "OWNER_CERTIFICATES": [
+        {
+          "PROFILE_ID": "66666664444431000000",
+          "SOURCE_RESULT": "b649-k20-min-s2-resolved-above-cursor-owner-chase-r20-result.json",
+          "SOURCE_ROW": "OWNER_ATTEMPTS[3]",
+          "DEGREE_PROFILE": [
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            4,
+            4,
+            4,
+            4,
+            4,
+            3,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "CURRENT_BOUND": 313650504,
+          "TRIANGLE_CAP": 271,
+          "NONCORE_TRIANGLE_CAP": 249,
+          "WEDGE_COUNT": 834,
+          "S3": 5260528,
+          "S4_FLOOR": 112,
+          "REALIZABILITY_WITNESS": {
+            "STATUS": "PASS",
+            "SOURCE": "R11.PROFILE_BOUNDS[1]",
+            "TRIPLES": [
+              [
+                0,
+                1,
+                13
+              ],
+              [
+                0,
+                2,
+                3
+              ],
+              [
+                0,
+                4,
+                11
+              ],
+              [
+                0,
+                5,
+                7
+              ],
+              [
+                0,
+                6,
+                10
+              ],
+              [
+                0,
+                8,
+                9
+              ],
+              [
+                1,
+                2,
+                7
+              ],
+              [
+                1,
+                3,
+                12
+              ],
+              [
+                1,
+                4,
+                10
+              ],
+              [
+                1,
+                5,
+                9
+              ],
+              [
+                1,
+                6,
+                8
+              ],
+              [
+                2,
+                4,
+                9
+              ],
+              [
+                2,
+                5,
+                8
+              ],
+              [
+                2,
+                6,
+                12
+              ],
+              [
+                2,
+                10,
+                11
+              ],
+              [
+                3,
+                4,
+                8
+              ],
+              [
+                3,
+                5,
+                10
+              ],
+              [
+                3,
+                6,
+                9
+              ],
+              [
+                3,
+                7,
+                11
+              ],
+              [
+                4,
+                5,
+                12
+              ],
+              [
+                4,
+                6,
+                7
+              ],
+              [
+                5,
+                6,
+                11
+              ]
+            ],
+            "DOUBLES": [
+              [
+                7,
+                13
+              ],
+              [
+                7,
+                17
+              ],
+              [
+                8,
+                14
+              ],
+              [
+                8,
+                15
+              ],
+              [
+                9,
+                16
+              ],
+              [
+                9,
+                18
+              ],
+              [
+                10,
+                15
+              ],
+              [
+                10,
+                19
+              ],
+              [
+                11,
+                13
+              ],
+              [
+                11,
+                17
+              ],
+              [
+                12,
+                14
+              ],
+              [
+                12,
+                15
+              ],
+              [
+                12,
+                19
+              ],
+              [
+                13,
+                14
+              ],
+              [
+                13,
+                16
+              ],
+              [
+                13,
+                18
+              ],
+              [
+                14,
+                15
+              ],
+              [
+                14,
+                16
+              ],
+              [
+                14,
+                18
+              ],
+              [
+                15,
+                17
+              ],
+              [
+                15,
+                19
+              ],
+              [
+                16,
+                17
+              ],
+              [
+                16,
+                18
+              ],
+              [
+                16,
+                19
+              ],
+              [
+                17,
+                18
+              ],
+              [
+                17,
+                19
+              ],
+              [
+                18,
+                19
+              ]
+            ],
+            "TRIPLE_SUPPORT_COUNT": 22,
+            "DOUBLE_SUPPORT_COUNT": 27
+          },
+          "BOUND_LIMITING_RELAXATION": "A_EXACT_SUPPORT_OPEN_WEDGE_REFUTATION"
+        }
+      ],
+      "ROUTE": "A_EXACT_SUPPORT_UNION_OPEN_WEDGE_REFUTATION",
+      "STATUS": "INFEASIBLE",
+      "CERTIFICATE_KIND": "CP_SAT_INFEASIBLE",
+      "PROFILE_IDS": [
+        "66666664444431000000"
+      ],
+      "WEDGE_COUNT": 834,
+      "REFUTED_GRAPH_TRIANGLE_COUNT": 270,
+      "OPEN_WEDGE_CEILING_REFUTED": 24,
+      "CERTIFIED_GRAPH_TRIANGLE_UPPER_BOUND": 269,
+      "CERTIFIED_OPEN_WEDGE_LOWER_BOUND": 25,
+      "OPEN_WEDGE_INDICATOR_COUNT": 3420,
+      "SOLVER_WALL_TIME_SECONDS": 2.124854,
+      "SOLVER_CONFIGURED_WALL_LIMIT": 120.0,
+      "EXTERNAL_HARD_TIMEOUT_SECONDS": 135.0,
+      "EXTERNAL_TIMEOUT_EXIT_CODE": 0,
+      "SUBPROCESS_WALL_SECONDS": 3.3516984580055578
+    },
+    {
+      "OWNER_CERTIFICATES": [
+        {
+          "PROFILE_ID": "66666655544411100000",
+          "SOURCE_RESULT": "b649-k20-min-s2-resolved-above-cursor-owner-chase-r20-result.json",
+          "SOURCE_ROW": "OWNER_ATTEMPTS[4]",
+          "DEGREE_PROFILE": [
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            5,
+            5,
+            5,
+            4,
+            4,
+            4,
+            1,
+            1,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "CURRENT_BOUND": 313650504,
+          "TRIANGLE_CAP": 271,
+          "NONCORE_TRIANGLE_CAP": 249,
+          "WEDGE_COUNT": 834,
+          "S3": 5260528,
+          "S4_FLOOR": 112,
+          "REALIZABILITY_WITNESS": {
+            "STATUS": "PASS",
+            "SOURCE": "R11.PROFILE_BOUNDS[2]",
+            "TRIPLES": [
+              [
+                0,
+                1,
+                12
+              ],
+              [
+                0,
+                2,
+                11
+              ],
+              [
+                0,
+                3,
+                7
+              ],
+              [
+                0,
+                4,
+                10
+              ],
+              [
+                0,
+                5,
+                9
+              ],
+              [
+                0,
+                6,
+                8
+              ],
+              [
+                1,
+                2,
+                3
+              ],
+              [
+                1,
+                4,
+                11
+              ],
+              [
+                1,
+                5,
+                8
+              ],
+              [
+                1,
+                6,
+                10
+              ],
+              [
+                1,
+                7,
+                9
+              ],
+              [
+                2,
+                4,
+                9
+              ],
+              [
+                2,
+                5,
+                14
+              ],
+              [
+                2,
+                6,
+                7
+              ],
+              [
+                2,
+                8,
+                10
+              ],
+              [
+                3,
+                4,
+                13
+              ],
+              [
+                3,
+                5,
+                10
+              ],
+              [
+                3,
+                6,
+                9
+              ],
+              [
+                3,
+                8,
+                11
+              ],
+              [
+                4,
+                5,
+                6
+              ],
+              [
+                4,
+                7,
+                8
+              ],
+              [
+                5,
+                7,
+                11
+              ]
+            ],
+            "DOUBLES": [
+              [
+                6,
+                15
+              ],
+              [
+                7,
+                17
+              ],
+              [
+                8,
+                16
+              ],
+              [
+                9,
+                15
+              ],
+              [
+                9,
+                19
+              ],
+              [
+                10,
+                17
+              ],
+              [
+                10,
+                18
+              ],
+              [
+                11,
+                14
+              ],
+              [
+                11,
+                16
+              ],
+              [
+                12,
+                13
+              ],
+              [
+                12,
+                14
+              ],
+              [
+                12,
+                16
+              ],
+              [
+                12,
+                18
+              ],
+              [
+                12,
+                19
+              ],
+              [
+                13,
+                14
+              ],
+              [
+                13,
+                16
+              ],
+              [
+                13,
+                18
+              ],
+              [
+                13,
+                19
+              ],
+              [
+                14,
+                15
+              ],
+              [
+                14,
+                18
+              ],
+              [
+                15,
+                17
+              ],
+              [
+                15,
+                18
+              ],
+              [
+                15,
+                19
+              ],
+              [
+                16,
+                17
+              ],
+              [
+                16,
+                19
+              ],
+              [
+                17,
+                18
+              ],
+              [
+                17,
+                19
+              ]
+            ],
+            "TRIPLE_SUPPORT_COUNT": 22,
+            "DOUBLE_SUPPORT_COUNT": 27
+          },
+          "BOUND_LIMITING_RELAXATION": "A_EXACT_SUPPORT_OPEN_WEDGE_REFUTATION"
+        }
+      ],
+      "ROUTE": "A_EXACT_SUPPORT_UNION_OPEN_WEDGE_REFUTATION",
+      "STATUS": "INFEASIBLE",
+      "CERTIFICATE_KIND": "CP_SAT_INFEASIBLE",
+      "PROFILE_IDS": [
+        "66666655544411100000"
+      ],
+      "WEDGE_COUNT": 834,
+      "REFUTED_GRAPH_TRIANGLE_COUNT": 270,
+      "OPEN_WEDGE_CEILING_REFUTED": 24,
+      "CERTIFIED_GRAPH_TRIANGLE_UPPER_BOUND": 269,
+      "CERTIFIED_OPEN_WEDGE_LOWER_BOUND": 25,
+      "OPEN_WEDGE_INDICATOR_COUNT": 3420,
+      "SOLVER_WALL_TIME_SECONDS": 0.6276550000000001,
+      "SOLVER_CONFIGURED_WALL_LIMIT": 120.0,
+      "EXTERNAL_HARD_TIMEOUT_SECONDS": 135.0,
+      "EXTERNAL_TIMEOUT_EXIT_CODE": 0,
+      "SUBPROCESS_WALL_SECONDS": 1.8422278749931138
+    },
+    {
+      "OWNER_CERTIFICATES": [
+        {
+          "PROFILE_ID": "66666655544331000000",
+          "SOURCE_RESULT": "b649-k20-min-s2-resolved-above-cursor-owner-chase-r20-result.json",
+          "SOURCE_ROW": "OWNER_ATTEMPTS[5]",
+          "DEGREE_PROFILE": [
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            5,
+            5,
+            5,
+            4,
+            4,
+            3,
+            3,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "CURRENT_BOUND": 313650504,
+          "TRIANGLE_CAP": 271,
+          "NONCORE_TRIANGLE_CAP": 249,
+          "WEDGE_COUNT": 834,
+          "S3": 5260528,
+          "S4_FLOOR": 112,
+          "REALIZABILITY_WITNESS": {
+            "STATUS": "PASS",
+            "SOURCE": "R11.PROFILE_BOUNDS[3]",
+            "TRIPLES": [
+              [
+                0,
+                1,
+                13
+              ],
+              [
+                0,
+                2,
+                6
+              ],
+              [
+                0,
+                3,
+                8
+              ],
+              [
+                0,
+                4,
+                10
+              ],
+              [
+                0,
+                5,
+                12
+              ],
+              [
+                0,
+                7,
+                9
+              ],
+              [
+                1,
+                2,
+                11
+              ],
+              [
+                1,
+                3,
+                10
+              ],
+              [
+                1,
+                4,
+                12
+              ],
+              [
+                1,
+                5,
+                7
+              ],
+              [
+                1,
+                6,
+                8
+              ],
+              [
+                2,
+                3,
+                12
+              ],
+              [
+                2,
+                4,
+                5
+              ],
+              [
+                2,
+                7,
+                10
+              ],
+              [
+                2,
+                8,
+                9
+              ],
+              [
+                3,
+                4,
+                11
+              ],
+              [
+                3,
+                5,
+                9
+              ],
+              [
+                3,
+                6,
+                7
+              ],
+              [
+                4,
+                6,
+                9
+              ],
+              [
+                4,
+                7,
+                8
+              ],
+              [
+                5,
+                6,
+                10
+              ],
+              [
+                5,
+                8,
+                11
+              ]
+            ],
+            "DOUBLES": [
+              [
+                6,
+                13
+              ],
+              [
+                7,
+                13
+              ],
+              [
+                8,
+                19
+              ],
+              [
+                9,
+                14
+              ],
+              [
+                9,
+                19
+              ],
+              [
+                10,
+                14
+              ],
+              [
+                10,
+                16
+              ],
+              [
+                11,
+                15
+              ],
+              [
+                11,
+                18
+              ],
+              [
+                11,
+                19
+              ],
+              [
+                12,
+                15
+              ],
+              [
+                12,
+                16
+              ],
+              [
+                12,
+                17
+              ],
+              [
+                13,
+                14
+              ],
+              [
+                13,
+                17
+              ],
+              [
+                13,
+                18
+              ],
+              [
+                14,
+                16
+              ],
+              [
+                14,
+                17
+              ],
+              [
+                14,
+                18
+              ],
+              [
+                15,
+                16
+              ],
+              [
+                15,
+                17
+              ],
+              [
+                15,
+                18
+              ],
+              [
+                15,
+                19
+              ],
+              [
+                16,
+                17
+              ],
+              [
+                16,
+                19
+              ],
+              [
+                17,
+                18
+              ],
+              [
+                18,
+                19
+              ]
+            ],
+            "TRIPLE_SUPPORT_COUNT": 22,
+            "DOUBLE_SUPPORT_COUNT": 27
+          },
+          "BOUND_LIMITING_RELAXATION": "A_EXACT_SUPPORT_OPEN_WEDGE_REFUTATION"
+        }
+      ],
+      "ROUTE": "A_EXACT_SUPPORT_UNION_OPEN_WEDGE_REFUTATION",
+      "STATUS": "INFEASIBLE",
+      "CERTIFICATE_KIND": "CP_SAT_INFEASIBLE",
+      "PROFILE_IDS": [
+        "66666655544331000000"
+      ],
+      "WEDGE_COUNT": 834,
+      "REFUTED_GRAPH_TRIANGLE_COUNT": 270,
+      "OPEN_WEDGE_CEILING_REFUTED": 24,
+      "CERTIFIED_GRAPH_TRIANGLE_UPPER_BOUND": 269,
+      "CERTIFIED_OPEN_WEDGE_LOWER_BOUND": 25,
+      "OPEN_WEDGE_INDICATOR_COUNT": 3420,
+      "SOLVER_WALL_TIME_SECONDS": 2.931992,
+      "SOLVER_CONFIGURED_WALL_LIMIT": 120.0,
+      "EXTERNAL_HARD_TIMEOUT_SECONDS": 135.0,
+      "EXTERNAL_TIMEOUT_EXIT_CODE": 0,
+      "SUBPROCESS_WALL_SECONDS": 4.230875041001127
+    },
+    {
+      "OWNER_CERTIFICATES": [
+        {
+          "PROFILE_ID": "66666555555311100000",
+          "SOURCE_RESULT": "b649-k20-min-s2-resolved-above-cursor-owner-chase-r20-result.json",
+          "SOURCE_ROW": "OWNER_ATTEMPTS[6]",
+          "DEGREE_PROFILE": [
+            6,
+            6,
+            6,
+            6,
+            6,
+            5,
+            5,
+            5,
+            5,
+            5,
+            5,
+            3,
+            1,
+            1,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "CURRENT_BOUND": 313650504,
+          "TRIANGLE_CAP": 271,
+          "NONCORE_TRIANGLE_CAP": 249,
+          "WEDGE_COUNT": 834,
+          "S3": 5260528,
+          "S4_FLOOR": 112,
+          "REALIZABILITY_WITNESS": {
+            "STATUS": "PASS",
+            "SOURCE": "R11.PROFILE_BOUNDS[4]",
+            "TRIPLES": [
+              [
+                0,
+                1,
+                12
+              ],
+              [
+                0,
+                2,
+                14
+              ],
+              [
+                0,
+                3,
+                7
+              ],
+              [
+                0,
+                4,
+                5
+              ],
+              [
+                0,
+                6,
+                10
+              ],
+              [
+                0,
+                8,
+                9
+              ],
+              [
+                1,
+                2,
+                5
+              ],
+              [
+                1,
+                3,
+                10
+              ],
+              [
+                1,
+                4,
+                6
+              ],
+              [
+                1,
+                7,
+                8
+              ],
+              [
+                1,
+                9,
+                11
+              ],
+              [
+                2,
+                3,
+                8
+              ],
+              [
+                2,
+                4,
+                11
+              ],
+              [
+                2,
+                6,
+                7
+              ],
+              [
+                2,
+                9,
+                10
+              ],
+              [
+                3,
+                4,
+                13
+              ],
+              [
+                3,
+                5,
+                11
+              ],
+              [
+                3,
+                6,
+                9
+              ],
+              [
+                4,
+                7,
+                9
+              ],
+              [
+                4,
+                8,
+                10
+              ],
+              [
+                5,
+                6,
+                8
+              ],
+              [
+                5,
+                7,
+                10
+              ]
+            ],
+            "DOUBLES": [
+              [
+                5,
+                13
+              ],
+              [
+                6,
+                17
+              ],
+              [
+                7,
+                16
+              ],
+              [
+                8,
+                14
+              ],
+              [
+                9,
+                18
+              ],
+              [
+                10,
+                18
+              ],
+              [
+                11,
+                12
+              ],
+              [
+                11,
+                15
+              ],
+              [
+                11,
+                17
+              ],
+              [
+                12,
+                15
+              ],
+              [
+                12,
+                16
+              ],
+              [
+                12,
+                18
+              ],
+              [
+                12,
+                19
+              ],
+              [
+                13,
+                14
+              ],
+              [
+                13,
+                17
+              ],
+              [
+                13,
+                18
+              ],
+              [
+                13,
+                19
+              ],
+              [
+                14,
+                15
+              ],
+              [
+                14,
+                16
+              ],
+              [
+                14,
+                19
+              ],
+              [
+                15,
+                16
+              ],
+              [
+                15,
+                18
+              ],
+              [
+                15,
+                19
+              ],
+              [
+                16,
+                17
+              ],
+              [
+                16,
+                19
+              ],
+              [
+                17,
+                18
+              ],
+              [
+                17,
+                19
+              ]
+            ],
+            "TRIPLE_SUPPORT_COUNT": 22,
+            "DOUBLE_SUPPORT_COUNT": 27
+          },
+          "BOUND_LIMITING_RELAXATION": "A_EXACT_SUPPORT_OPEN_WEDGE_REFUTATION"
+        }
+      ],
+      "ROUTE": "A_EXACT_SUPPORT_UNION_OPEN_WEDGE_REFUTATION",
+      "STATUS": "INFEASIBLE",
+      "CERTIFICATE_KIND": "CP_SAT_INFEASIBLE",
+      "PROFILE_IDS": [
+        "66666555555311100000"
+      ],
+      "WEDGE_COUNT": 834,
+      "REFUTED_GRAPH_TRIANGLE_COUNT": 270,
+      "OPEN_WEDGE_CEILING_REFUTED": 24,
+      "CERTIFIED_GRAPH_TRIANGLE_UPPER_BOUND": 269,
+      "CERTIFIED_OPEN_WEDGE_LOWER_BOUND": 25,
+      "OPEN_WEDGE_INDICATOR_COUNT": 3420,
+      "SOLVER_WALL_TIME_SECONDS": 1.654555,
+      "SOLVER_CONFIGURED_WALL_LIMIT": 120.0,
+      "EXTERNAL_HARD_TIMEOUT_SECONDS": 135.0,
+      "EXTERNAL_TIMEOUT_EXIT_CODE": 0,
+      "SUBPROCESS_WALL_SECONDS": 2.887402499996824
+    },
+    {
+      "OWNER_CERTIFICATES": [
+        {
+          "PROFILE_ID": "66666555554421000000",
+          "SOURCE_RESULT": "b649-k20-min-s2-resolved-above-cursor-owner-chase-r20-result.json",
+          "SOURCE_ROW": "OWNER_ATTEMPTS[7]",
+          "DEGREE_PROFILE": [
+            6,
+            6,
+            6,
+            6,
+            6,
+            5,
+            5,
+            5,
+            5,
+            5,
+            4,
+            4,
+            2,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "CURRENT_BOUND": 313650504,
+          "TRIANGLE_CAP": 271,
+          "NONCORE_TRIANGLE_CAP": 249,
+          "WEDGE_COUNT": 834,
+          "S3": 5260528,
+          "S4_FLOOR": 112,
+          "REALIZABILITY_WITNESS": {
+            "STATUS": "PASS",
+            "SOURCE": "R11.PROFILE_BOUNDS[6]",
+            "TRIPLES": [
+              [
+                0,
+                1,
+                13
+              ],
+              [
+                0,
+                2,
+                5
+              ],
+              [
+                0,
+                3,
+                11
+              ],
+              [
+                0,
+                4,
+                9
+              ],
+              [
+                0,
+                6,
+                10
+              ],
+              [
+                0,
+                7,
+                8
+              ],
+              [
+                1,
+                2,
+                11
+              ],
+              [
+                1,
+                3,
+                8
+              ],
+              [
+                1,
+                4,
+                6
+              ],
+              [
+                1,
+                5,
+                10
+              ],
+              [
+                1,
+                7,
+                9
+              ],
+              [
+                2,
+                3,
+                9
+              ],
+              [
+                2,
+                4,
+                10
+              ],
+              [
+                2,
+                6,
+                7
+              ],
+              [
+                2,
+                8,
+                12
+              ],
+              [
+                3,
+                4,
+                12
+              ],
+              [
+                3,
+                5,
+                6
+              ],
+              [
+                3,
+                7,
+                10
+              ],
+              [
+                4,
+                5,
+                7
+              ],
+              [
+                4,
+                8,
+                11
+              ],
+              [
+                5,
+                8,
+                9
+              ],
+              [
+                6,
+                9,
+                11
+              ]
+            ],
+            "DOUBLES": [
+              [
+                5,
+                12
+              ],
+              [
+                6,
+                12
+              ],
+              [
+                7,
+                15
+              ],
+              [
+                8,
+                13
+              ],
+              [
+                9,
+                16
+              ],
+              [
+                10,
+                13
+              ],
+              [
+                10,
+                19
+              ],
+              [
+                11,
+                13
+              ],
+              [
+                11,
+                17
+              ],
+              [
+                12,
+                13
+              ],
+              [
+                12,
+                14
+              ],
+              [
+                13,
+                18
+              ],
+              [
+                14,
+                15
+              ],
+              [
+                14,
+                16
+              ],
+              [
+                14,
+                17
+              ],
+              [
+                14,
+                18
+              ],
+              [
+                14,
+                19
+              ],
+              [
+                15,
+                16
+              ],
+              [
+                15,
+                17
+              ],
+              [
+                15,
+                18
+              ],
+              [
+                15,
+                19
+              ],
+              [
+                16,
+                17
+              ],
+              [
+                16,
+                18
+              ],
+              [
+                16,
+                19
+              ],
+              [
+                17,
+                18
+              ],
+              [
+                17,
+                19
+              ],
+              [
+                18,
+                19
+              ]
+            ],
+            "TRIPLE_SUPPORT_COUNT": 22,
+            "DOUBLE_SUPPORT_COUNT": 27
+          },
+          "BOUND_LIMITING_RELAXATION": "A_EXACT_SUPPORT_OPEN_WEDGE_REFUTATION"
+        }
+      ],
+      "ROUTE": "A_EXACT_SUPPORT_UNION_OPEN_WEDGE_REFUTATION",
+      "STATUS": "INFEASIBLE",
+      "CERTIFICATE_KIND": "CP_SAT_INFEASIBLE",
+      "PROFILE_IDS": [
+        "66666555554421000000"
+      ],
+      "WEDGE_COUNT": 834,
+      "REFUTED_GRAPH_TRIANGLE_COUNT": 270,
+      "OPEN_WEDGE_CEILING_REFUTED": 24,
+      "CERTIFIED_GRAPH_TRIANGLE_UPPER_BOUND": 269,
+      "CERTIFIED_OPEN_WEDGE_LOWER_BOUND": 25,
+      "OPEN_WEDGE_INDICATOR_COUNT": 3420,
+      "SOLVER_WALL_TIME_SECONDS": 21.754047,
+      "SOLVER_CONFIGURED_WALL_LIMIT": 120.0,
+      "EXTERNAL_HARD_TIMEOUT_SECONDS": 135.0,
+      "EXTERNAL_TIMEOUT_EXIT_CODE": 0,
+      "SUBPROCESS_WALL_SECONDS": 22.96421662499779
+    },
+    {
+      "OWNER_CERTIFICATES": [
+        {
+          "PROFILE_ID": "66665555554440000000",
+          "SOURCE_RESULT": "b649-k20-min-s2-resolved-above-cursor-owner-chase-r20-result.json",
+          "SOURCE_ROW": "OWNER_ATTEMPTS[8]",
+          "DEGREE_PROFILE": [
+            6,
+            6,
+            6,
+            6,
+            5,
+            5,
+            5,
+            5,
+            5,
+            5,
+            4,
+            4,
+            4,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "CURRENT_BOUND": 313649608,
+          "TRIANGLE_CAP": 271,
+          "NONCORE_TRIANGLE_CAP": 249,
+          "WEDGE_COUNT": 834,
+          "S3": 5260528,
+          "S4_FLOOR": 1680,
+          "REALIZABILITY_WITNESS": {
+            "STATUS": "PASS",
+            "SOURCE": "R11.PROFILE_BOUNDS[7]",
+            "TRIPLES": [
+              [
+                0,
+                1,
+                12
+              ],
+              [
+                0,
+                2,
+                4
+              ],
+              [
+                0,
+                3,
+                11
+              ],
+              [
+                0,
+                5,
+                6
+              ],
+              [
+                0,
+                7,
+                9
+              ],
+              [
+                0,
+                8,
+                10
+              ],
+              [
+                1,
+                2,
+                3
+              ],
+              [
+                1,
+                4,
+                8
+              ],
+              [
+                1,
+                5,
+                7
+              ],
+              [
+                1,
+                6,
+                11
+              ],
+              [
+                1,
+                9,
+                10
+              ],
+              [
+                2,
+                5,
+                12
+              ],
+              [
+                2,
+                6,
+                10
+              ],
+              [
+                2,
+                7,
+                8
+              ],
+              [
+                2,
+                9,
+                11
+              ],
+              [
+                3,
+                4,
+                6
+              ],
+              [
+                3,
+                5,
+                10
+              ],
+              [
+                3,
+                7,
+                12
+              ],
+              [
+                3,
+                8,
+                9
+              ],
+              [
+                4,
+                5,
+                9
+              ],
+              [
+                4,
+                7,
+                11
+              ],
+              [
+                6,
+                8,
+                12
+              ]
+            ],
+            "DOUBLES": [
+              [
+                4,
+                13
+              ],
+              [
+                5,
+                11
+              ],
+              [
+                6,
+                7
+              ],
+              [
+                8,
+                15
+              ],
+              [
+                9,
+                19
+              ],
+              [
+                10,
+                17
+              ],
+              [
+                10,
+                19
+              ],
+              [
+                11,
+                15
+              ],
+              [
+                12,
+                13
+              ],
+              [
+                12,
+                16
+              ],
+              [
+                13,
+                14
+              ],
+              [
+                13,
+                16
+              ],
+              [
+                13,
+                17
+              ],
+              [
+                13,
+                18
+              ],
+              [
+                14,
+                15
+              ],
+              [
+                14,
+                16
+              ],
+              [
+                14,
+                17
+              ],
+              [
+                14,
+                18
+              ],
+              [
+                14,
+                19
+              ],
+              [
+                15,
+                16
+              ],
+              [
+                15,
+                18
+              ],
+              [
+                15,
+                19
+              ],
+              [
+                16,
+                17
+              ],
+              [
+                16,
+                18
+              ],
+              [
+                17,
+                18
+              ],
+              [
+                17,
+                19
+              ],
+              [
+                18,
+                19
+              ]
+            ],
+            "TRIPLE_SUPPORT_COUNT": 22,
+            "DOUBLE_SUPPORT_COUNT": 27
+          },
+          "BOUND_LIMITING_RELAXATION": "A_EXACT_SUPPORT_OPEN_WEDGE_REFUTATION"
+        },
+        {
+          "PROFILE_ID": "66655555555530000000",
+          "SOURCE_RESULT": "b649-k20-min-s2-resolved-above-cursor-owner-chase-r20-result.json",
+          "SOURCE_ROW": "OWNER_ATTEMPTS[9]",
+          "DEGREE_PROFILE": [
+            6,
+            6,
+            6,
+            5,
+            5,
+            5,
+            5,
+            5,
+            5,
+            5,
+            5,
+            5,
+            3,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "CURRENT_BOUND": 313649608,
+          "TRIANGLE_CAP": 271,
+          "NONCORE_TRIANGLE_CAP": 249,
+          "WEDGE_COUNT": 834,
+          "S3": 5260528,
+          "S4_FLOOR": 1680,
+          "REALIZABILITY_WITNESS": {
+            "STATUS": "PASS",
+            "SOURCE": "R11.PROFILE_BOUNDS[8]",
+            "TRIPLES": [
+              [
+                0,
+                1,
+                9
+              ],
+              [
+                0,
+                2,
+                6
+              ],
+              [
+                0,
+                3,
+                10
+              ],
+              [
+                0,
+                4,
+                8
+              ],
+              [
+                0,
+                5,
+                12
+              ],
+              [
+                0,
+                7,
+                11
+              ],
+              [
+                1,
+                2,
+                5
+              ],
+              [
+                1,
+                3,
+                7
+              ],
+              [
+                1,
+                4,
+                10
+              ],
+              [
+                1,
+                6,
+                12
+              ],
+              [
+                1,
+                8,
+                11
+              ],
+              [
+                2,
+                3,
+                12
+              ],
+              [
+                2,
+                4,
+                9
+              ],
+              [
+                2,
+                7,
+                8
+              ],
+              [
+                2,
+                10,
+                11
+              ],
+              [
+                3,
+                5,
+                6
+              ],
+              [
+                3,
+                9,
+                11
+              ],
+              [
+                4,
+                5,
+                11
+              ],
+              [
+                4,
+                6,
+                7
+              ],
+              [
+                5,
+                8,
+                10
+              ],
+              [
+                6,
+                8,
+                9
+              ],
+              [
+                7,
+                9,
+                10
+              ]
+            ],
+            "DOUBLES": [
+              [
+                3,
+                4
+              ],
+              [
+                5,
+                14
+              ],
+              [
+                6,
+                14
+              ],
+              [
+                7,
+                13
+              ],
+              [
+                8,
+                17
+              ],
+              [
+                9,
+                18
+              ],
+              [
+                10,
+                13
+              ],
+              [
+                11,
+                15
+              ],
+              [
+                12,
+                16
+              ],
+              [
+                12,
+                17
+              ],
+              [
+                12,
+                19
+              ],
+              [
+                13,
+                14
+              ],
+              [
+                13,
+                15
+              ],
+              [
+                13,
+                17
+              ],
+              [
+                13,
+                18
+              ],
+              [
+                14,
+                16
+              ],
+              [
+                14,
+                18
+              ],
+              [
+                14,
+                19
+              ],
+              [
+                15,
+                16
+              ],
+              [
+                15,
+                17
+              ],
+              [
+                15,
+                18
+              ],
+              [
+                15,
+                19
+              ],
+              [
+                16,
+                17
+              ],
+              [
+                16,
+                18
+              ],
+              [
+                16,
+                19
+              ],
+              [
+                17,
+                19
+              ],
+              [
+                18,
+                19
+              ]
+            ],
+            "TRIPLE_SUPPORT_COUNT": 22,
+            "DOUBLE_SUPPORT_COUNT": 27
+          },
+          "BOUND_LIMITING_RELAXATION": "A_EXACT_SUPPORT_OPEN_WEDGE_REFUTATION"
+        }
+      ],
+      "ROUTE": "A_EXACT_SUPPORT_UNION_OPEN_WEDGE_REFUTATION",
+      "STATUS": "UNKNOWN",
+      "CERTIFICATE_KIND": "NOT_CERTIFIED",
+      "PROFILE_IDS": [
+        "66665555554440000000",
+        "66655555555530000000"
+      ],
+      "WEDGE_COUNT": 834,
+      "REFUTED_GRAPH_TRIANGLE_COUNT": 271,
+      "OPEN_WEDGE_CEILING_REFUTED": 21,
+      "CERTIFIED_GRAPH_TRIANGLE_UPPER_BOUND": null,
+      "CERTIFIED_OPEN_WEDGE_LOWER_BOUND": null,
+      "OPEN_WEDGE_INDICATOR_COUNT": 3420,
+      "SOLVER_WALL_TIME_SECONDS": 180.002145,
+      "SOLVER_CONFIGURED_WALL_LIMIT": 180.0,
+      "EXTERNAL_HARD_TIMEOUT_SECONDS": 195.0,
+      "EXTERNAL_TIMEOUT_EXIT_CODE": 0,
+      "SUBPROCESS_WALL_SECONDS": 181.28461825000704
+    },
+    {
+      "OWNER_CERTIFICATES": [
+        {
+          "PROFILE_ID": "66665555554440000000",
+          "SOURCE_RESULT": "b649-k20-min-s2-resolved-above-cursor-owner-chase-r20-result.json",
+          "SOURCE_ROW": "OWNER_ATTEMPTS[8]",
+          "DEGREE_PROFILE": [
+            6,
+            6,
+            6,
+            6,
+            5,
+            5,
+            5,
+            5,
+            5,
+            5,
+            4,
+            4,
+            4,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "CURRENT_BOUND": 313649608,
+          "TRIANGLE_CAP": 271,
+          "NONCORE_TRIANGLE_CAP": 249,
+          "WEDGE_COUNT": 834,
+          "S3": 5260528,
+          "S4_FLOOR": 1680,
+          "REALIZABILITY_WITNESS": {
+            "STATUS": "PASS",
+            "SOURCE": "R11.PROFILE_BOUNDS[7]",
+            "TRIPLES": [
+              [
+                0,
+                1,
+                12
+              ],
+              [
+                0,
+                2,
+                4
+              ],
+              [
+                0,
+                3,
+                11
+              ],
+              [
+                0,
+                5,
+                6
+              ],
+              [
+                0,
+                7,
+                9
+              ],
+              [
+                0,
+                8,
+                10
+              ],
+              [
+                1,
+                2,
+                3
+              ],
+              [
+                1,
+                4,
+                8
+              ],
+              [
+                1,
+                5,
+                7
+              ],
+              [
+                1,
+                6,
+                11
+              ],
+              [
+                1,
+                9,
+                10
+              ],
+              [
+                2,
+                5,
+                12
+              ],
+              [
+                2,
+                6,
+                10
+              ],
+              [
+                2,
+                7,
+                8
+              ],
+              [
+                2,
+                9,
+                11
+              ],
+              [
+                3,
+                4,
+                6
+              ],
+              [
+                3,
+                5,
+                10
+              ],
+              [
+                3,
+                7,
+                12
+              ],
+              [
+                3,
+                8,
+                9
+              ],
+              [
+                4,
+                5,
+                9
+              ],
+              [
+                4,
+                7,
+                11
+              ],
+              [
+                6,
+                8,
+                12
+              ]
+            ],
+            "DOUBLES": [
+              [
+                4,
+                13
+              ],
+              [
+                5,
+                11
+              ],
+              [
+                6,
+                7
+              ],
+              [
+                8,
+                15
+              ],
+              [
+                9,
+                19
+              ],
+              [
+                10,
+                17
+              ],
+              [
+                10,
+                19
+              ],
+              [
+                11,
+                15
+              ],
+              [
+                12,
+                13
+              ],
+              [
+                12,
+                16
+              ],
+              [
+                13,
+                14
+              ],
+              [
+                13,
+                16
+              ],
+              [
+                13,
+                17
+              ],
+              [
+                13,
+                18
+              ],
+              [
+                14,
+                15
+              ],
+              [
+                14,
+                16
+              ],
+              [
+                14,
+                17
+              ],
+              [
+                14,
+                18
+              ],
+              [
+                14,
+                19
+              ],
+              [
+                15,
+                16
+              ],
+              [
+                15,
+                18
+              ],
+              [
+                15,
+                19
+              ],
+              [
+                16,
+                17
+              ],
+              [
+                16,
+                18
+              ],
+              [
+                17,
+                18
+              ],
+              [
+                17,
+                19
+              ],
+              [
+                18,
+                19
+              ]
+            ],
+            "TRIPLE_SUPPORT_COUNT": 22,
+            "DOUBLE_SUPPORT_COUNT": 27
+          },
+          "BOUND_LIMITING_RELAXATION": "A_EXACT_SUPPORT_OPEN_WEDGE_REFUTATION"
+        }
+      ],
+      "ROUTE": "A_EXACT_SUPPORT_UNION_OPEN_WEDGE_REFUTATION",
+      "STATUS": "UNKNOWN",
+      "CERTIFICATE_KIND": "NOT_CERTIFIED",
+      "PROFILE_IDS": [
+        "66665555554440000000"
+      ],
+      "WEDGE_COUNT": 834,
+      "REFUTED_GRAPH_TRIANGLE_COUNT": 271,
+      "OPEN_WEDGE_CEILING_REFUTED": 21,
+      "CERTIFIED_GRAPH_TRIANGLE_UPPER_BOUND": null,
+      "CERTIFIED_OPEN_WEDGE_LOWER_BOUND": null,
+      "OPEN_WEDGE_INDICATOR_COUNT": 3420,
+      "SOLVER_WALL_TIME_SECONDS": 120.00246200000001,
+      "SOLVER_CONFIGURED_WALL_LIMIT": 120.0,
+      "EXTERNAL_HARD_TIMEOUT_SECONDS": 135.0,
+      "EXTERNAL_TIMEOUT_EXIT_CODE": 0,
+      "SUBPROCESS_WALL_SECONDS": 121.44093608300318
+    },
+    {
+      "OWNER_CERTIFICATES": [
+        {
+          "PROFILE_ID": "66655555555530000000",
+          "SOURCE_RESULT": "b649-k20-min-s2-resolved-above-cursor-owner-chase-r20-result.json",
+          "SOURCE_ROW": "OWNER_ATTEMPTS[9]",
+          "DEGREE_PROFILE": [
+            6,
+            6,
+            6,
+            5,
+            5,
+            5,
+            5,
+            5,
+            5,
+            5,
+            5,
+            5,
+            3,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "CURRENT_BOUND": 313649608,
+          "TRIANGLE_CAP": 271,
+          "NONCORE_TRIANGLE_CAP": 249,
+          "WEDGE_COUNT": 834,
+          "S3": 5260528,
+          "S4_FLOOR": 1680,
+          "REALIZABILITY_WITNESS": {
+            "STATUS": "PASS",
+            "SOURCE": "R11.PROFILE_BOUNDS[8]",
+            "TRIPLES": [
+              [
+                0,
+                1,
+                9
+              ],
+              [
+                0,
+                2,
+                6
+              ],
+              [
+                0,
+                3,
+                10
+              ],
+              [
+                0,
+                4,
+                8
+              ],
+              [
+                0,
+                5,
+                12
+              ],
+              [
+                0,
+                7,
+                11
+              ],
+              [
+                1,
+                2,
+                5
+              ],
+              [
+                1,
+                3,
+                7
+              ],
+              [
+                1,
+                4,
+                10
+              ],
+              [
+                1,
+                6,
+                12
+              ],
+              [
+                1,
+                8,
+                11
+              ],
+              [
+                2,
+                3,
+                12
+              ],
+              [
+                2,
+                4,
+                9
+              ],
+              [
+                2,
+                7,
+                8
+              ],
+              [
+                2,
+                10,
+                11
+              ],
+              [
+                3,
+                5,
+                6
+              ],
+              [
+                3,
+                9,
+                11
+              ],
+              [
+                4,
+                5,
+                11
+              ],
+              [
+                4,
+                6,
+                7
+              ],
+              [
+                5,
+                8,
+                10
+              ],
+              [
+                6,
+                8,
+                9
+              ],
+              [
+                7,
+                9,
+                10
+              ]
+            ],
+            "DOUBLES": [
+              [
+                3,
+                4
+              ],
+              [
+                5,
+                14
+              ],
+              [
+                6,
+                14
+              ],
+              [
+                7,
+                13
+              ],
+              [
+                8,
+                17
+              ],
+              [
+                9,
+                18
+              ],
+              [
+                10,
+                13
+              ],
+              [
+                11,
+                15
+              ],
+              [
+                12,
+                16
+              ],
+              [
+                12,
+                17
+              ],
+              [
+                12,
+                19
+              ],
+              [
+                13,
+                14
+              ],
+              [
+                13,
+                15
+              ],
+              [
+                13,
+                17
+              ],
+              [
+                13,
+                18
+              ],
+              [
+                14,
+                16
+              ],
+              [
+                14,
+                18
+              ],
+              [
+                14,
+                19
+              ],
+              [
+                15,
+                16
+              ],
+              [
+                15,
+                17
+              ],
+              [
+                15,
+                18
+              ],
+              [
+                15,
+                19
+              ],
+              [
+                16,
+                17
+              ],
+              [
+                16,
+                18
+              ],
+              [
+                16,
+                19
+              ],
+              [
+                17,
+                19
+              ],
+              [
+                18,
+                19
+              ]
+            ],
+            "TRIPLE_SUPPORT_COUNT": 22,
+            "DOUBLE_SUPPORT_COUNT": 27
+          },
+          "BOUND_LIMITING_RELAXATION": "A_EXACT_SUPPORT_OPEN_WEDGE_REFUTATION"
+        }
+      ],
+      "ROUTE": "A_EXACT_SUPPORT_UNION_OPEN_WEDGE_REFUTATION",
+      "STATUS": "INFEASIBLE",
+      "CERTIFICATE_KIND": "CP_SAT_INFEASIBLE",
+      "PROFILE_IDS": [
+        "66655555555530000000"
+      ],
+      "WEDGE_COUNT": 834,
+      "REFUTED_GRAPH_TRIANGLE_COUNT": 271,
+      "OPEN_WEDGE_CEILING_REFUTED": 21,
+      "CERTIFIED_GRAPH_TRIANGLE_UPPER_BOUND": 270,
+      "CERTIFIED_OPEN_WEDGE_LOWER_BOUND": 22,
+      "OPEN_WEDGE_INDICATOR_COUNT": 3420,
+      "SOLVER_WALL_TIME_SECONDS": 74.317071,
+      "SOLVER_CONFIGURED_WALL_LIMIT": 120.0,
+      "EXTERNAL_HARD_TIMEOUT_SECONDS": 135.0,
+      "EXTERNAL_TIMEOUT_EXIT_CODE": 0,
+      "SUBPROCESS_WALL_SECONDS": 75.7189715840068
+    },
+    {
+      "OWNER_CERTIFICATES": [
+        {
+          "PROFILE_ID": "66665555554440000000",
+          "SOURCE_RESULT": "b649-k20-min-s2-resolved-above-cursor-owner-chase-r20-result.json",
+          "SOURCE_ROW": "OWNER_ATTEMPTS[8]",
+          "DEGREE_PROFILE": [
+            6,
+            6,
+            6,
+            6,
+            5,
+            5,
+            5,
+            5,
+            5,
+            5,
+            4,
+            4,
+            4,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "CURRENT_BOUND": 313649608,
+          "TRIANGLE_CAP": 271,
+          "NONCORE_TRIANGLE_CAP": 249,
+          "WEDGE_COUNT": 834,
+          "S3": 5260528,
+          "S4_FLOOR": 1680,
+          "REALIZABILITY_WITNESS": {
+            "STATUS": "PASS",
+            "SOURCE": "R11.PROFILE_BOUNDS[7]",
+            "TRIPLES": [
+              [
+                0,
+                1,
+                12
+              ],
+              [
+                0,
+                2,
+                4
+              ],
+              [
+                0,
+                3,
+                11
+              ],
+              [
+                0,
+                5,
+                6
+              ],
+              [
+                0,
+                7,
+                9
+              ],
+              [
+                0,
+                8,
+                10
+              ],
+              [
+                1,
+                2,
+                3
+              ],
+              [
+                1,
+                4,
+                8
+              ],
+              [
+                1,
+                5,
+                7
+              ],
+              [
+                1,
+                6,
+                11
+              ],
+              [
+                1,
+                9,
+                10
+              ],
+              [
+                2,
+                5,
+                12
+              ],
+              [
+                2,
+                6,
+                10
+              ],
+              [
+                2,
+                7,
+                8
+              ],
+              [
+                2,
+                9,
+                11
+              ],
+              [
+                3,
+                4,
+                6
+              ],
+              [
+                3,
+                5,
+                10
+              ],
+              [
+                3,
+                7,
+                12
+              ],
+              [
+                3,
+                8,
+                9
+              ],
+              [
+                4,
+                5,
+                9
+              ],
+              [
+                4,
+                7,
+                11
+              ],
+              [
+                6,
+                8,
+                12
+              ]
+            ],
+            "DOUBLES": [
+              [
+                4,
+                13
+              ],
+              [
+                5,
+                11
+              ],
+              [
+                6,
+                7
+              ],
+              [
+                8,
+                15
+              ],
+              [
+                9,
+                19
+              ],
+              [
+                10,
+                17
+              ],
+              [
+                10,
+                19
+              ],
+              [
+                11,
+                15
+              ],
+              [
+                12,
+                13
+              ],
+              [
+                12,
+                16
+              ],
+              [
+                13,
+                14
+              ],
+              [
+                13,
+                16
+              ],
+              [
+                13,
+                17
+              ],
+              [
+                13,
+                18
+              ],
+              [
+                14,
+                15
+              ],
+              [
+                14,
+                16
+              ],
+              [
+                14,
+                17
+              ],
+              [
+                14,
+                18
+              ],
+              [
+                14,
+                19
+              ],
+              [
+                15,
+                16
+              ],
+              [
+                15,
+                18
+              ],
+              [
+                15,
+                19
+              ],
+              [
+                16,
+                17
+              ],
+              [
+                16,
+                18
+              ],
+              [
+                17,
+                18
+              ],
+              [
+                17,
+                19
+              ],
+              [
+                18,
+                19
+              ]
+            ],
+            "TRIPLE_SUPPORT_COUNT": 22,
+            "DOUBLE_SUPPORT_COUNT": 27
+          },
+          "BOUND_LIMITING_RELAXATION": "A_EXACT_SUPPORT_OPEN_WEDGE_REFUTATION"
+        }
+      ],
+      "ROUTE": "A_EXACT_SUPPORT_UNION_OPEN_WEDGE_REFUTATION",
+      "STATUS": "UNKNOWN",
+      "CERTIFICATE_KIND": "NOT_CERTIFIED",
+      "PROFILE_IDS": [
+        "66665555554440000000"
+      ],
+      "WEDGE_COUNT": 834,
+      "REFUTED_GRAPH_TRIANGLE_COUNT": 271,
+      "OPEN_WEDGE_CEILING_REFUTED": 21,
+      "CERTIFIED_GRAPH_TRIANGLE_UPPER_BOUND": null,
+      "CERTIFIED_OPEN_WEDGE_LOWER_BOUND": null,
+      "OPEN_WEDGE_INDICATOR_COUNT": 3420,
+      "SOLVER_WALL_TIME_SECONDS": 120.00199,
+      "SOLVER_CONFIGURED_WALL_LIMIT": 120.0,
+      "EXTERNAL_HARD_TIMEOUT_SECONDS": 135.0,
+      "EXTERNAL_TIMEOUT_EXIT_CODE": 0,
+      "SUBPROCESS_WALL_SECONDS": 121.29299862499465
+    }
+  ],
+  "GROUP_REFINEMENT_STEPS": [
+    {
+      "GROUP_PROFILE_IDS": [
+        "66666665444322000000"
+      ],
+      "FAMILY_BOUND_BEFORE": 313650504,
+      "FAMILY_BOUND_AFTER": 313650504,
+      "MAX_RESOLVED_BOUND": 313650504,
+      "OWNER_SET_AFTER": [
+        "66666664444431000000",
+        "66666655544411100000",
+        "66666655544331000000",
+        "66666555555311100000",
+        "66666555554421000000"
+      ],
+      "NEW_BOUND": 313626760,
+      "TRIANGLE_CAP": 269,
+      "COMPLETE_LEDGER_ROW_COUNT": 408
+    },
+    {
+      "GROUP_PROFILE_IDS": [
+        "66666664444431000000"
+      ],
+      "FAMILY_BOUND_BEFORE": 313650504,
+      "FAMILY_BOUND_AFTER": 313650504,
+      "MAX_RESOLVED_BOUND": 313650504,
+      "OWNER_SET_AFTER": [
+        "66666655544411100000",
+        "66666655544331000000",
+        "66666555555311100000",
+        "66666555554421000000"
+      ],
+      "NEW_BOUND": 313626760,
+      "TRIANGLE_CAP": 269,
+      "COMPLETE_LEDGER_ROW_COUNT": 408
+    },
+    {
+      "GROUP_PROFILE_IDS": [
+        "66666655544411100000"
+      ],
+      "FAMILY_BOUND_BEFORE": 313650504,
+      "FAMILY_BOUND_AFTER": 313650504,
+      "MAX_RESOLVED_BOUND": 313650504,
+      "OWNER_SET_AFTER": [
+        "66666655544331000000",
+        "66666555555311100000",
+        "66666555554421000000"
+      ],
+      "NEW_BOUND": 313626760,
+      "TRIANGLE_CAP": 269,
+      "COMPLETE_LEDGER_ROW_COUNT": 408
+    },
+    {
+      "GROUP_PROFILE_IDS": [
+        "66666655544331000000"
+      ],
+      "FAMILY_BOUND_BEFORE": 313650504,
+      "FAMILY_BOUND_AFTER": 313650504,
+      "MAX_RESOLVED_BOUND": 313650504,
+      "OWNER_SET_AFTER": [
+        "66666555555311100000",
+        "66666555554421000000"
+      ],
+      "NEW_BOUND": 313626760,
+      "TRIANGLE_CAP": 269,
+      "COMPLETE_LEDGER_ROW_COUNT": 408
+    },
+    {
+      "GROUP_PROFILE_IDS": [
+        "66666555555311100000"
+      ],
+      "FAMILY_BOUND_BEFORE": 313650504,
+      "FAMILY_BOUND_AFTER": 313650504,
+      "MAX_RESOLVED_BOUND": 313650504,
+      "OWNER_SET_AFTER": [
+        "66666555554421000000"
+      ],
+      "NEW_BOUND": 313626760,
+      "TRIANGLE_CAP": 269,
+      "COMPLETE_LEDGER_ROW_COUNT": 408
+    },
+    {
+      "GROUP_PROFILE_IDS": [
+        "66666555554421000000"
+      ],
+      "FAMILY_BOUND_BEFORE": 313650504,
+      "FAMILY_BOUND_AFTER": 313649608,
+      "MAX_RESOLVED_BOUND": 313649608,
+      "OWNER_SET_AFTER": [
+        "66665555554440000000",
+        "66655555555530000000"
+      ],
+      "NEW_BOUND": 313626760,
+      "TRIANGLE_CAP": 269,
+      "COMPLETE_LEDGER_ROW_COUNT": 408
+    },
+    {
+      "GROUP_PROFILE_IDS": [
+        "66655555555530000000"
+      ],
+      "FAMILY_BOUND_BEFORE": 313649608,
+      "FAMILY_BOUND_AFTER": 313649608,
+      "MAX_RESOLVED_BOUND": 313649608,
+      "OWNER_SET_AFTER": [
+        "66665555554440000000"
+      ],
+      "NEW_BOUND": 313637736,
+      "TRIANGLE_CAP": 270,
+      "COMPLETE_LEDGER_ROW_COUNT": 408
+    }
+  ],
+  "NEWLY_EXPOSED_RESOLVED_OWNER_COUNT": 2,
+  "NEWLY_EXPOSED_RESOLVED_OWNER_PROFILES": [
+    "66665555554440000000",
+    "66655555555530000000"
+  ],
+  "REFINED_OWNER_BOUNDS": {
+    "66666665444322000000": 313626760,
+    "66666664444431000000": 313626760,
+    "66666655544411100000": 313626760,
+    "66666655544331000000": 313626760,
+    "66666555555311100000": 313626760,
+    "66666555554421000000": 313626760
+  },
+  "FINAL_RESOLVED_LEDGER": [
+    {
+      "PROFILE_ID": "66665555554440000000",
+      "CURRENT_BOUND": 313649608
+    },
+    {
+      "PROFILE_ID": "66666665442211111110",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66666665433221111100",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66666665432222211000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66666665333322111000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66666665333222220000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66666664444111111110",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66666664443311111100",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66666664443222111000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66666664442222220000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66666664433331111000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66666664433322210000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66666664333333110000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66666663333333300000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66666655543111111110",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66666655542221111100",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66666655533311111100",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66666655533222111000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66666655532222220000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66666655444211111100",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66666655443321111000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66666655443222210000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66666655433332110000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66666655333333200000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66666654444322110000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66666654443332200000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66666644444431110000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66666644444422200000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66666644444333100000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66666555553211111100",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66666555552222111000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66666555544221111000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66666555543322110000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66666555533332200000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66666555444411111000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66666555444331110000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66666555444322200000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66666555443333100000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66666554444432100000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66666444444444000000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66665555554311111000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66665555554222110000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66665555553331110000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66665555553322200000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66665555544421110000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66665555544332100000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66665554444443000000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66655555555321110000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66655555555222200000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66655555554422100000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66655555544441100000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66655555544433000000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66555555555431100000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66555555555333000000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66555555554442000000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "65555555555532000000",
+      "CURRENT_BOUND": 313649048
+    },
+    {
+      "PROFILE_ID": "66666665444321100000",
+      "CURRENT_BOUND": 313647704
+    },
+    {
+      "PROFILE_ID": "66666664444422000000",
+      "CURRENT_BOUND": 313647704
+    },
+    {
+      "PROFILE_ID": "66666655544322000000",
+      "CURRENT_BOUND": 313647704
+    },
+    {
+      "PROFILE_ID": "66666655444431000000",
+      "CURRENT_BOUND": 313647704
+    },
+    {
+      "PROFILE_ID": "66666555555221100000",
+      "CURRENT_BOUND": 313647704
+    },
+    {
+      "PROFILE_ID": "66666555554411100000",
+      "CURRENT_BOUND": 313647704
+    },
+    {
+      "PROFILE_ID": "66666555554331000000",
+      "CURRENT_BOUND": 313647704
+    },
+    {
+      "PROFILE_ID": "66665555555421000000",
+      "CURRENT_BOUND": 313647704
+    },
+    {
+      "PROFILE_ID": "66655555555440000000",
+      "CURRENT_BOUND": 313646808
+    },
+    {
+      "PROFILE_ID": "66666665442111111111",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66666665433211111110",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66666665432222111100",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66666665422222221000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66666665333321111100",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66666665333222211000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66666664443221111100",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66666664442222211000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66666664433322111000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66666664433222220000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66666664333332210000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66666655542211111110",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66666655533221111100",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66666655532222211000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66666655444111111110",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66666655443311111100",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66666655443222111000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66666655442222220000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66666655433331111000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66666655433322210000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66666655333333110000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66666654444321111000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66666654444222210000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66666654443332110000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66666654433333200000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66666644444422110000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66666644444332200000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66666555553111111110",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66666555552221111100",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66666555544211111100",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66666555543321111000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66666555543222210000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66666555533332110000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66666555444322110000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66666555443332200000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66666554444431110000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66666554444422200000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66666554444333100000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66666544444442100000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66665555554221111000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66665555553322110000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66665555544411111000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66665555544331110000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66665555544322200000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66665555543333100000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66665555444432100000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66665544444444000000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66655555555311111000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66655555555222110000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66655555554421110000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66655555554332100000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66655555444443000000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66555555555422100000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66555555554441100000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66555555554433000000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "65555555555531100000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "65555555555442000000",
+      "CURRENT_BOUND": 313646248
+    },
+    {
+      "PROFILE_ID": "66666655544321100000",
+      "CURRENT_BOUND": 313644904
+    },
+    {
+      "PROFILE_ID": "66666555555211110000",
+      "CURRENT_BOUND": 313644904
+    },
+    {
+      "PROFILE_ID": "66666555544431000000",
+      "CURRENT_BOUND": 313644904
+    },
+    {
+      "PROFILE_ID": "66665555555411100000",
+      "CURRENT_BOUND": 313644904
+    },
+    {
+      "PROFILE_ID": "66665555555331000000",
+      "CURRENT_BOUND": 313644904
+    },
+    {
+      "PROFILE_ID": "66655555555521000000",
+      "CURRENT_BOUND": 313644904
+    },
+    {
+      "PROFILE_ID": "66666655444421100000",
+      "CURRENT_BOUND": 313642104
+    },
+    {
+      "PROFILE_ID": "66666555554321100000",
+      "CURRENT_BOUND": 313642104
+    },
+    {
+      "PROFILE_ID": "66655555555511100000",
+      "CURRENT_BOUND": 313642104
+    },
+    {
+      "PROFILE_ID": "66555555555511110000",
+      "CURRENT_BOUND": 313639976
+    },
+    {
+      "PROFILE_ID": "66665555555321100000",
+      "CURRENT_BOUND": 313639304
+    },
+    {
+      "PROFILE_ID": "66665555554422000000",
+      "CURRENT_BOUND": 313639304
+    },
+    {
+      "PROFILE_ID": "66665555544441000000",
+      "CURRENT_BOUND": 313639304
+    },
+    {
+      "PROFILE_ID": "66655555555431000000",
+      "CURRENT_BOUND": 313639304
+    },
+    {
+      "PROFILE_ID": "66666555555222000000",
+      "CURRENT_BOUND": 313638632
+    },
+    {
+      "PROFILE_ID": "66655555555530000000",
+      "CURRENT_BOUND": 313637736
+    },
+    {
+      "PROFILE_ID": "66666665444111111100",
+      "CURRENT_BOUND": 313636504
+    },
+    {
+      "PROFILE_ID": "66666665443311111000",
+      "CURRENT_BOUND": 313636504
+    },
+    {
+      "PROFILE_ID": "66666665443222110000",
+      "CURRENT_BOUND": 313636504
+    },
+    {
+      "PROFILE_ID": "66666665433331110000",
+      "CURRENT_BOUND": 313636504
+    },
+    {
+      "PROFILE_ID": "66666665433322200000",
+      "CURRENT_BOUND": 313636504
+    },
+    {
+      "PROFILE_ID": "66666665333333100000",
+      "CURRENT_BOUND": 313636504
+    },
+    {
+      "PROFILE_ID": "66666664444321110000",
+      "CURRENT_BOUND": 313636504
+    },
+    {
+      "PROFILE_ID": "66666664444222200000",
+      "CURRENT_BOUND": 313636504
+    },
+    {
+      "PROFILE_ID": "66666664443332100000",
+      "CURRENT_BOUND": 313636504
+    },
+    {
+      "PROFILE_ID": "66666655544211111000",
+      "CURRENT_BOUND": 313636504
+    },
+    {
+      "PROFILE_ID": "66666655543321110000",
+      "CURRENT_BOUND": 313636504
+    },
+    {
+      "PROFILE_ID": "66666655543222200000",
+      "CURRENT_BOUND": 313636504
+    },
+    {
+      "PROFILE_ID": "66666655533332100000",
+      "CURRENT_BOUND": 313636504
+    },
+    {
+      "PROFILE_ID": "66666655444322100000",
+      "CURRENT_BOUND": 313636504
+    },
+    {
+      "PROFILE_ID": "66666654444431100000",
+      "CURRENT_BOUND": 313636504
+    },
+    {
+      "PROFILE_ID": "66666654444333000000",
+      "CURRENT_BOUND": 313636504
+    },
+    {
+      "PROFILE_ID": "66666644444442000000",
+      "CURRENT_BOUND": 313636504
+    },
+    {
+      "PROFILE_ID": "66666555554221110000",
+      "CURRENT_BOUND": 313636504
+    },
+    {
+      "PROFILE_ID": "66666555553322100000",
+      "CURRENT_BOUND": 313636504
+    },
+    {
+      "PROFILE_ID": "66666555544411110000",
+      "CURRENT_BOUND": 313636504
+    },
+    {
+      "PROFILE_ID": "66666555544331100000",
+      "CURRENT_BOUND": 313636504
+    },
+    {
+      "PROFILE_ID": "66666555543333000000",
+      "CURRENT_BOUND": 313636504
+    },
+    {
+      "PROFILE_ID": "66666555444432000000",
+      "CURRENT_BOUND": 313636504
+    },
+    {
+      "PROFILE_ID": "66665555555311110000",
+      "CURRENT_BOUND": 313636504
+    },
+    {
+      "PROFILE_ID": "66665555555222100000",
+      "CURRENT_BOUND": 313636504
+    },
+    {
+      "PROFILE_ID": "66665555554421100000",
+      "CURRENT_BOUND": 313636504
+    },
+    {
+      "PROFILE_ID": "66665555554332000000",
+      "CURRENT_BOUND": 313636504
+    },
+    {
+      "PROFILE_ID": "66655555555422000000",
+      "CURRENT_BOUND": 313636504
+    },
+    {
+      "PROFILE_ID": "66655555554441000000",
+      "CURRENT_BOUND": 313636504
+    },
+    {
+      "PROFILE_ID": "66555555555531000000",
+      "CURRENT_BOUND": 313636504
+    },
+    {
+      "PROFILE_ID": "66666665443332000000",
+      "CURRENT_BOUND": 313635832
+    },
+    {
+      "PROFILE_ID": "66666665443221111000",
+      "CURRENT_BOUND": 313633704
+    },
+    {
+      "PROFILE_ID": "66666665442222210000",
+      "CURRENT_BOUND": 313633704
+    },
+    {
+      "PROFILE_ID": "66666665433322110000",
+      "CURRENT_BOUND": 313633704
+    },
+    {
+      "PROFILE_ID": "66666665333332200000",
+      "CURRENT_BOUND": 313633704
+    },
+    {
+      "PROFILE_ID": "66666664444311111000",
+      "CURRENT_BOUND": 313633704
+    },
+    {
+      "PROFILE_ID": "66666664444222110000",
+      "CURRENT_BOUND": 313633704
+    },
+    {
+      "PROFILE_ID": "66666664443331110000",
+      "CURRENT_BOUND": 313633704
+    },
+    {
+      "PROFILE_ID": "66666664443322200000",
+      "CURRENT_BOUND": 313633704
+    },
+    {
+      "PROFILE_ID": "66666664433333100000",
+      "CURRENT_BOUND": 313633704
+    },
+    {
+      "PROFILE_ID": "66666655544111111100",
+      "CURRENT_BOUND": 313633704
+    },
+    {
+      "PROFILE_ID": "66666655543311111000",
+      "CURRENT_BOUND": 313633704
+    },
+    {
+      "PROFILE_ID": "66666655543222110000",
+      "CURRENT_BOUND": 313633704
+    },
+    {
+      "PROFILE_ID": "66666655533331110000",
+      "CURRENT_BOUND": 313633704
+    },
+    {
+      "PROFILE_ID": "66666655533322200000",
+      "CURRENT_BOUND": 313633704
+    },
+    {
+      "PROFILE_ID": "66666655444321110000",
+      "CURRENT_BOUND": 313633704
+    },
+    {
+      "PROFILE_ID": "66666655444222200000",
+      "CURRENT_BOUND": 313633704
+    },
+    {
+      "PROFILE_ID": "66666655443332100000",
+      "CURRENT_BOUND": 313633704
+    },
+    {
+      "PROFILE_ID": "66666654444422100000",
+      "CURRENT_BOUND": 313633704
+    },
+    {
+      "PROFILE_ID": "66666644444441100000",
+      "CURRENT_BOUND": 313633704
+    },
+    {
+      "PROFILE_ID": "66666644444433000000",
+      "CURRENT_BOUND": 313633704
+    },
+    {
+      "PROFILE_ID": "66666555554211111000",
+      "CURRENT_BOUND": 313633704
+    },
+    {
+      "PROFILE_ID": "66666555553321110000",
+      "CURRENT_BOUND": 313633704
+    },
+    {
+      "PROFILE_ID": "66666555553222200000",
+      "CURRENT_BOUND": 313633704
+    },
+    {
+      "PROFILE_ID": "66666555544322100000",
+      "CURRENT_BOUND": 313633704
+    },
+    {
+      "PROFILE_ID": "66666555444431100000",
+      "CURRENT_BOUND": 313633704
+    },
+    {
+      "PROFILE_ID": "66666555444333000000",
+      "CURRENT_BOUND": 313633704
+    },
+    {
+      "PROFILE_ID": "66666554444442000000",
+      "CURRENT_BOUND": 313633704
+    },
+    {
+      "PROFILE_ID": "66665555555221110000",
+      "CURRENT_BOUND": 313633704
+    },
+    {
+      "PROFILE_ID": "66665555554411110000",
+      "CURRENT_BOUND": 313633704
+    },
+    {
+      "PROFILE_ID": "66665555554331100000",
+      "CURRENT_BOUND": 313633704
+    },
+    {
+      "PROFILE_ID": "66665555553333000000",
+      "CURRENT_BOUND": 313633704
+    },
+    {
+      "PROFILE_ID": "66665555544432000000",
+      "CURRENT_BOUND": 313633704
+    },
+    {
+      "PROFILE_ID": "66655555555421100000",
+      "CURRENT_BOUND": 313633704
+    },
+    {
+      "PROFILE_ID": "66655555555332000000",
+      "CURRENT_BOUND": 313633704
+    },
+    {
+      "PROFILE_ID": "66555555555522000000",
+      "CURRENT_BOUND": 313633704
+    },
+    {
+      "PROFILE_ID": "66555555555441000000",
+      "CURRENT_BOUND": 313633704
+    },
+    {
+      "PROFILE_ID": "66666665443331100000",
+      "CURRENT_BOUND": 313633032
+    },
+    {
+      "PROFILE_ID": "66666664444421100000",
+      "CURRENT_BOUND": 313633032
+    },
+    {
+      "PROFILE_ID": "66666664444332000000",
+      "CURRENT_BOUND": 313633032
+    },
+    {
+      "PROFILE_ID": "66666655444422000000",
+      "CURRENT_BOUND": 313633032
+    },
+    {
+      "PROFILE_ID": "66666654444441000000",
+      "CURRENT_BOUND": 313633032
+    },
+    {
+      "PROFILE_ID": "66666555554322000000",
+      "CURRENT_BOUND": 313633032
+    },
+    {
+      "PROFILE_ID": "66555555555540000000",
+      "CURRENT_BOUND": 313632136
+    },
+    {
+      "PROFILE_ID": "66666665433111111111",
+      "CURRENT_BOUND": 313631576
+    },
+    {
+      "PROFILE_ID": "66666665432221111110",
+      "CURRENT_BOUND": 313631576
+    },
+    {
+      "PROFILE_ID": "66666665422222211100",
+      "CURRENT_BOUND": 313631576
+    },
+    {
+      "PROFILE_ID": "66666665333311111110",
+      "CURRENT_BOUND": 313631576
+    },
+    {
+      "PROFILE_ID": "66666665333222111100",
+      "CURRENT_BOUND": 313631576
+    },
+    {
+      "PROFILE_ID": "66666665332222221000",
+      "CURRENT_BOUND": 313631576
+    },
+    {
+      "PROFILE_ID": "66666664443211111110",
+      "CURRENT_BOUND": 313631576
+    },
+    {
+      "PROFILE_ID": "66666664442222111100",
+      "CURRENT_BOUND": 313631576
+    },
+    {
+      "PROFILE_ID": "66666664433321111100",
+      "CURRENT_BOUND": 313631576
+    },
+    {
+      "PROFILE_ID": "66666664433222211000",
+      "CURRENT_BOUND": 313631576
+    },
+    {
+      "PROFILE_ID": "66666664333332111000",
+      "CURRENT_BOUND": 313631576
+    },
+    {
+      "PROFILE_ID": "66666664333322220000",
+      "CURRENT_BOUND": 313631576
+    },
+    {
+      "PROFILE_ID": "66666663333333210000",
+      "CURRENT_BOUND": 313631576
+    },
+    {
+      "PROFILE_ID": "66666655542111111111",
+      "CURRENT_BOUND": 313631576
+    },
+    {
+      "PROFILE_ID": "66666655533211111110",
+      "CURRENT_BOUND": 313631576
+    },
+    {
+      "PROFILE_ID": "66666655532222111100",
+      "CURRENT_BOUND": 313631576
+    },
+    {
+      "PROFILE_ID": "66666655522222221000",
+      "CURRENT_BOUND": 313631576
+    },
+    {
+      "PROFILE_ID": "66666655443221111100",
+      "CURRENT_BOUND": 313631576
+    },
+    {
+      "PROFILE_ID": "66666655442222211000",
+      "CURRENT_BOUND": 313631576
+    },
+    {
+      "PROFILE_ID": "66666655433322111000",
+      "CURRENT_BOUND": 313631576
+    },
+    {
+      "PROFILE_ID": "66666655433222220000",
+      "CURRENT_BOUND": 313631576
+    },
+    {
+      "PROFILE_ID": "66666655333332210000",
+      "CURRENT_BOUND": 313631576
+    },
+    {
+      "PROFILE_ID": "66666654444311111100",
+      "CURRENT_BOUND": 313631576
+    },
+    {
+      "PROFILE_ID": "66666654444222111000",
+      "CURRENT_BOUND": 313631576
+    },
+    {
+      "PROFILE_ID": "66666654443331111000",
+      "CURRENT_BOUND": 313631576
+    },
+    {
+      "PROFILE_ID": "66666654443322210000",
+      "CURRENT_BOUND": 313631576
+    },
+    {
+      "PROFILE_ID": "66666654433333110000",
+      "CURRENT_BOUND": 313631576
+    },
+    {
+      "PROFILE_ID": "66666654333333300000",
+      "CURRENT_BOUND": 313631576
+    },
+    {
+      "PROFILE_ID": "66666644444421111000",
+      "CURRENT_BOUND": 313631576
+    },
+    {
+      "PROFILE_ID": "66666644444332110000",
+      "CURRENT_BOUND": 313631576
+    },
+    {
+      "PROFILE_ID": "66666644443333200000",
+      "CURRENT_BOUND": 313631576
+    },
+    {
+      "PROFILE_ID": "66666555552211111110",
+      "CURRENT_BOUND": 313631576
+    },
+    {
+      "PROFILE_ID": "66666555544111111110",
+      "CURRENT_BOUND": 313631576
+    },
+    {
+      "PROFILE_ID": "66666555543311111100",
+      "CURRENT_BOUND": 313631576
+    },
+    {
+      "PROFILE_ID": "66666555543222111000",
+      "CURRENT_BOUND": 313631576
+    },
+    {
+      "PROFILE_ID": "66666555542222220000",
+      "CURRENT_BOUND": 313631576
+    },
+    {
+      "PROFILE_ID": "66666555533331111000",
+      "CURRENT_BOUND": 313631576
+    },
+    {
+      "PROFILE_ID": "66666555533322210000",
+      "CURRENT_BOUND": 313631576
+    },
+    {
+      "PROFILE_ID": "66666555444321111000",
+      "CURRENT_BOUND": 313631576
+    },
+    {
+      "PROFILE_ID": "66666555444222210000",
+      "CURRENT_BOUND": 313631576
+    },
+    {
+      "PROFILE_ID": "66666555443332110000",
+      "CURRENT_BOUND": 313631576
+    },
+    {
+      "PROFILE_ID": "66666555433333200000",
+      "CURRENT_BOUND": 313631576
+    },
+    {
+      "PROFILE_ID": "66666554444422110000",
+      "CURRENT_BOUND": 313631576
+    },
+    {
+      "PROFILE_ID": "66666554444332200000",
+      "CURRENT_BOUND": 313631576
+    },
+    {
+      "PROFILE_ID": "66666544444441110000",
+      "CURRENT_BOUND": 313631576
+    },
+    {
+      "PROFILE_ID": "66666544444433100000",
+      "CURRENT_BOUND": 313631576
+    },
+    {
+      "PROFILE_ID": "66665555554211111100",
+      "CURRENT_BOUND": 313631576
+    },
+    {
+      "PROFILE_ID": "66665555553321111000",
+      "CURRENT_BOUND": 313631576
+    },
+    {
+      "PROFILE_ID": "66665555553222210000",
+      "CURRENT_BOUND": 313631576
+    },
+    {
+      "PROFILE_ID": "66665555544322110000",
+      "CURRENT_BOUND": 313631576
+    },
+    {
+      "PROFILE_ID": "66665555543332200000",
+      "CURRENT_BOUND": 313631576
+    },
+    {
+      "PROFILE_ID": "66665555444431110000",
+      "CURRENT_BOUND": 313631576
+    },
+    {
+      "PROFILE_ID": "66665555444422200000",
+      "CURRENT_BOUND": 313631576
+    },
+    {
+      "PROFILE_ID": "66665555444333100000",
+      "CURRENT_BOUND": 313631576
+    },
+    {
+      "PROFILE_ID": "66665554444442100000",
+      "CURRENT_BOUND": 313631576
+    },
+    {
+      "PROFILE_ID": "66655555555221111000",
+      "CURRENT_BOUND": 313631576
+    },
+    {
+      "PROFILE_ID": "66655555554411111000",
+      "CURRENT_BOUND": 313631576
+    },
+    {
+      "PROFILE_ID": "66655555554331110000",
+      "CURRENT_BOUND": 313631576
+    },
+    {
+      "PROFILE_ID": "66655555554322200000",
+      "CURRENT_BOUND": 313631576
+    },
+    {
+      "PROFILE_ID": "66655555553333100000",
+      "CURRENT_BOUND": 313631576
+    },
+    {
+      "PROFILE_ID": "66655555544432100000",
+      "CURRENT_BOUND": 313631576
+    },
+    {
+      "PROFILE_ID": "66655554444444000000",
+      "CURRENT_BOUND": 313631576
+    },
+    {
+      "PROFILE_ID": "66555555555421110000",
+      "CURRENT_BOUND": 313631576
+    },
+    {
+      "PROFILE_ID": "66555555555332100000",
+      "CURRENT_BOUND": 313631576
+    },
+    {
+      "PROFILE_ID": "66555555544443000000",
+      "CURRENT_BOUND": 313631576
+    },
+    {
+      "PROFILE_ID": "65555555555522100000",
+      "CURRENT_BOUND": 313631576
+    },
+    {
+      "PROFILE_ID": "65555555555441100000",
+      "CURRENT_BOUND": 313631576
+    },
+    {
+      "PROFILE_ID": "65555555555433000000",
+      "CURRENT_BOUND": 313631576
+    },
+    {
+      "PROFILE_ID": "55555555555542000000",
+      "CURRENT_BOUND": 313631576
+    },
+    {
+      "PROFILE_ID": "66666665443211111100",
+      "CURRENT_BOUND": 313630904
+    },
+    {
+      "PROFILE_ID": "66666665442222111000",
+      "CURRENT_BOUND": 313630904
+    },
+    {
+      "PROFILE_ID": "66666665433321111000",
+      "CURRENT_BOUND": 313630904
+    },
+    {
+      "PROFILE_ID": "66666665433222210000",
+      "CURRENT_BOUND": 313630904
+    },
+    {
+      "PROFILE_ID": "66666665333332110000",
+      "CURRENT_BOUND": 313630904
+    },
+    {
+      "PROFILE_ID": "66666664444221111000",
+      "CURRENT_BOUND": 313630904
+    },
+    {
+      "PROFILE_ID": "66666664443322110000",
+      "CURRENT_BOUND": 313630904
+    },
+    {
+      "PROFILE_ID": "66666664433332200000",
+      "CURRENT_BOUND": 313630904
+    },
+    {
+      "PROFILE_ID": "66666655543221111000",
+      "CURRENT_BOUND": 313630904
+    },
+    {
+      "PROFILE_ID": "66666655542222210000",
+      "CURRENT_BOUND": 313630904
+    },
+    {
+      "PROFILE_ID": "66666655533322110000",
+      "CURRENT_BOUND": 313630904
+    },
+    {
+      "PROFILE_ID": "66666655444311111000",
+      "CURRENT_BOUND": 313630904
+    },
+    {
+      "PROFILE_ID": "66666655444222110000",
+      "CURRENT_BOUND": 313630904
+    },
+    {
+      "PROFILE_ID": "66666655443331110000",
+      "CURRENT_BOUND": 313630904
+    },
+    {
+      "PROFILE_ID": "66666655443322200000",
+      "CURRENT_BOUND": 313630904
+    },
+    {
+      "PROFILE_ID": "66666655433333100000",
+      "CURRENT_BOUND": 313630904
+    },
+    {
+      "PROFILE_ID": "66666654444421110000",
+      "CURRENT_BOUND": 313630904
+    },
+    {
+      "PROFILE_ID": "66666654444332100000",
+      "CURRENT_BOUND": 313630904
+    },
+    {
+      "PROFILE_ID": "66666555554111111100",
+      "CURRENT_BOUND": 313630904
+    },
+    {
+      "PROFILE_ID": "66666555553311111000",
+      "CURRENT_BOUND": 313630904
+    },
+    {
+      "PROFILE_ID": "66666555553222110000",
+      "CURRENT_BOUND": 313630904
+    },
+    {
+      "PROFILE_ID": "66666555544321110000",
+      "CURRENT_BOUND": 313630904
+    },
+    {
+      "PROFILE_ID": "66666555544222200000",
+      "CURRENT_BOUND": 313630904
+    },
+    {
+      "PROFILE_ID": "66666555543332100000",
+      "CURRENT_BOUND": 313630904
+    },
+    {
+      "PROFILE_ID": "66666555444422100000",
+      "CURRENT_BOUND": 313630904
+    },
+    {
+      "PROFILE_ID": "66666554444441100000",
+      "CURRENT_BOUND": 313630904
+    },
+    {
+      "PROFILE_ID": "66666554444433000000",
+      "CURRENT_BOUND": 313630904
+    },
+    {
+      "PROFILE_ID": "66665555555211111000",
+      "CURRENT_BOUND": 313630904
+    },
+    {
+      "PROFILE_ID": "66665555554322100000",
+      "CURRENT_BOUND": 313630904
+    },
+    {
+      "PROFILE_ID": "66665555544431100000",
+      "CURRENT_BOUND": 313630904
+    },
+    {
+      "PROFILE_ID": "66665555544333000000",
+      "CURRENT_BOUND": 313630904
+    },
+    {
+      "PROFILE_ID": "66665555444442000000",
+      "CURRENT_BOUND": 313630904
+    },
+    {
+      "PROFILE_ID": "66655555555411110000",
+      "CURRENT_BOUND": 313630904
+    },
+    {
+      "PROFILE_ID": "66655555555331100000",
+      "CURRENT_BOUND": 313630904
+    },
+    {
+      "PROFILE_ID": "66655555554432000000",
+      "CURRENT_BOUND": 313630904
+    },
+    {
+      "PROFILE_ID": "66555555555521100000",
+      "CURRENT_BOUND": 313630904
+    },
+    {
+      "PROFILE_ID": "65555555555541000000",
+      "CURRENT_BOUND": 313630904
+    },
+    {
+      "PROFILE_ID": "66666655544311110000",
+      "CURRENT_BOUND": 313630232
+    },
+    {
+      "PROFILE_ID": "66666655543331100000",
+      "CURRENT_BOUND": 313630232
+    },
+    {
+      "PROFILE_ID": "66666555555111111000",
+      "CURRENT_BOUND": 313630232
+    },
+    {
+      "PROFILE_ID": "66665555554431000000",
+      "CURRENT_BOUND": 313630232
+    },
+    {
+      "PROFILE_ID": "66666555554311110000",
+      "CURRENT_BOUND": 313627432
+    },
+    {
+      "PROFILE_ID": "66666555553331100000",
+      "CURRENT_BOUND": 313627432
+    },
+    {
+      "PROFILE_ID": "66666555544421100000",
+      "CURRENT_BOUND": 313627432
+    },
+    {
+      "PROFILE_ID": "66666665444322000000",
+      "CURRENT_BOUND": 313626760
+    },
+    {
+      "PROFILE_ID": "66666664444431000000",
+      "CURRENT_BOUND": 313626760
+    },
+    {
+      "PROFILE_ID": "66666655544411100000",
+      "CURRENT_BOUND": 313626760
+    },
+    {
+      "PROFILE_ID": "66666655544331000000",
+      "CURRENT_BOUND": 313626760
+    },
+    {
+      "PROFILE_ID": "66666555555311100000",
+      "CURRENT_BOUND": 313626760
+    },
+    {
+      "PROFILE_ID": "66666555554421000000",
+      "CURRENT_BOUND": 313626760
+    },
+    {
+      "PROFILE_ID": "66666665444311110000",
+      "CURRENT_BOUND": 313621160
+    },
+    {
+      "PROFILE_ID": "66666665444222100000",
+      "CURRENT_BOUND": 313621160
+    },
+    {
+      "PROFILE_ID": "66666655543332000000",
+      "CURRENT_BOUND": 313621160
+    },
+    {
+      "PROFILE_ID": "66666665444221110000",
+      "CURRENT_BOUND": 313618360
+    },
+    {
+      "PROFILE_ID": "66666664444331100000",
+      "CURRENT_BOUND": 313618360
+    },
+    {
+      "PROFILE_ID": "66666655544222100000",
+      "CURRENT_BOUND": 313618360
+    },
+    {
+      "PROFILE_ID": "66666655444332000000",
+      "CURRENT_BOUND": 313618360
+    },
+    {
+      "PROFILE_ID": "66666555544422000000",
+      "CURRENT_BOUND": 313618360
+    },
+    {
+      "PROFILE_ID": "66666555444441000000",
+      "CURRENT_BOUND": 313618360
+    },
+    {
+      "PROFILE_ID": "66665555555322000000",
+      "CURRENT_BOUND": 313618360
+    },
+    {
+      "PROFILE_ID": "65555555555550000000",
+      "CURRENT_BOUND": 313617464
+    },
+    {
+      "PROFILE_ID": "66666655544221110000",
+      "CURRENT_BOUND": 313615560
+    },
+    {
+      "PROFILE_ID": "66666655444411110000",
+      "CURRENT_BOUND": 313615560
+    },
+    {
+      "PROFILE_ID": "66666655444331100000",
+      "CURRENT_BOUND": 313615560
+    },
+    {
+      "PROFILE_ID": "66666665433333000000",
+      "CURRENT_BOUND": 313609288
+    },
+    {
+      "PROFILE_ID": "66666665443322100000",
+      "CURRENT_BOUND": 313606488
+    },
+    {
+      "PROFILE_ID": "66666664444411110000",
+      "CURRENT_BOUND": 313606488
+    },
+    {
+      "PROFILE_ID": "66666555553332000000",
+      "CURRENT_BOUND": 313606488
+    },
+    {
+      "PROFILE_ID": "66666665443321110000",
+      "CURRENT_BOUND": 313603688
+    },
+    {
+      "PROFILE_ID": "66666665433332100000",
+      "CURRENT_BOUND": 313603688
+    },
+    {
+      "PROFILE_ID": "66666664444322100000",
+      "CURRENT_BOUND": 313603688
+    },
+    {
+      "PROFILE_ID": "66666655543322100000",
+      "CURRENT_BOUND": 313603688
+    },
+    {
+      "PROFILE_ID": "66666654444432000000",
+      "CURRENT_BOUND": 313603688
+    },
+    {
+      "PROFILE_ID": "66666555554222100000",
+      "CURRENT_BOUND": 313603688
+    },
+    {
+      "PROFILE_ID": "66666555544332000000",
+      "CURRENT_BOUND": 313603688
+    },
+    {
+      "PROFILE_ID": "66666664443333000000",
+      "CURRENT_BOUND": 313594616
+    },
+    {
+      "PROFILE_ID": "66666655533333000000",
+      "CURRENT_BOUND": 313594616
+    },
+    {
+      "PROFILE_ID": "66666555544311111000",
+      "CURRENT_BOUND": 313592488
+    },
+    {
+      "PROFILE_ID": "66666555444421110000",
+      "CURRENT_BOUND": 313592488
+    },
+    {
+      "PROFILE_ID": "66665555555111111100",
+      "CURRENT_BOUND": 313592488
+    },
+    {
+      "PROFILE_ID": "66665555554321110000",
+      "CURRENT_BOUND": 313592488
+    },
+    {
+      "PROFILE_ID": "66666665444211111000",
+      "CURRENT_BOUND": 313591816
+    },
+    {
+      "PROFILE_ID": "66666555543331110000",
+      "CURRENT_BOUND": 313580616
+    },
+    {
+      "PROFILE_ID": "66655555554431100000",
+      "CURRENT_BOUND": 313580616
+    },
+    {
+      "PROFILE_ID": "66666665443222200000",
+      "CURRENT_BOUND": 313579944
+    },
+    {
+      "PROFILE_ID": "66666655443333000000",
+      "CURRENT_BOUND": 313579944
+    },
+    {
+      "PROFILE_ID": "66666655533321111000",
+      "CURRENT_BOUND": 313568744
+    },
+    {
+      "PROFILE_ID": "66666655444221111000",
+      "CURRENT_BOUND": 313568744
+    },
+    {
+      "PROFILE_ID": "66666654444331110000",
+      "CURRENT_BOUND": 313568744
+    },
+    {
+      "PROFILE_ID": "66666555553221111000",
+      "CURRENT_BOUND": 313568744
+    },
+    {
+      "PROFILE_ID": "66666555544222110000",
+      "CURRENT_BOUND": 313568744
+    },
+    {
+      "PROFILE_ID": "66665555544422100000",
+      "CURRENT_BOUND": 313568744
+    },
+    {
+      "PROFILE_ID": "66665555444441100000",
+      "CURRENT_BOUND": 313568744
+    },
+    {
+      "PROFILE_ID": "66655555555322100000",
+      "CURRENT_BOUND": 313568744
+    },
+    {
+      "PROFILE_ID": "55555555555551000000",
+      "CURRENT_BOUND": 313568744
+    },
+    {
+      "PROFILE_ID": "66666665333331111000",
+      "CURRENT_BOUND": 313556872
+    },
+    {
+      "PROFILE_ID": "66666655443322110000",
+      "CURRENT_BOUND": 313556872
+    },
+    {
+      "PROFILE_ID": "66666654444411111000",
+      "CURRENT_BOUND": 313556872
+    },
+    {
+      "PROFILE_ID": "66666654444322200000",
+      "CURRENT_BOUND": 313556872
+    },
+    {
+      "PROFILE_ID": "66666644444432100000",
+      "CURRENT_BOUND": 313556872
+    },
+    {
+      "PROFILE_ID": "66666555444332100000",
+      "CURRENT_BOUND": 313556872
+    },
+    {
+      "PROFILE_ID": "66665555553332100000",
+      "CURRENT_BOUND": 313556872
+    },
+    {
+      "PROFILE_ID": "66666664443321111000",
+      "CURRENT_BOUND": 313545000
+    },
+    {
+      "PROFILE_ID": "66666664433332110000",
+      "CURRENT_BOUND": 313545000
+    },
+    {
+      "PROFILE_ID": "66666655543211111100",
+      "CURRENT_BOUND": 313545000
+    },
+    {
+      "PROFILE_ID": "66666655433332200000",
+      "CURRENT_BOUND": 313545000
+    },
+    {
+      "PROFILE_ID": "66666555543322200000",
+      "CURRENT_BOUND": 313545000
+    },
+    {
+      "PROFILE_ID": "66665555554222200000",
+      "CURRENT_BOUND": 313545000
+    },
+    {
+      "PROFILE_ID": "66655555544442000000",
+      "CURRENT_BOUND": 313545000
+    },
+    {
+      "PROFILE_ID": "66555555555432000000",
+      "CURRENT_BOUND": 313545000
+    },
+    {
+      "PROFILE_ID": "66666665442221111100",
+      "CURRENT_BOUND": 313533128
+    },
+    {
+      "PROFILE_ID": "66666665433311111100",
+      "CURRENT_BOUND": 313533128
+    },
+    {
+      "PROFILE_ID": "66666665433222111000",
+      "CURRENT_BOUND": 313533128
+    },
+    {
+      "PROFILE_ID": "66666664444211111100",
+      "CURRENT_BOUND": 313533128
+    },
+    {
+      "PROFILE_ID": "66666664443222210000",
+      "CURRENT_BOUND": 313533128
+    },
+    {
+      "PROFILE_ID": "66666655542222111000",
+      "CURRENT_BOUND": 313533128
+    },
+    {
+      "PROFILE_ID": "66666654443333100000",
+      "CURRENT_BOUND": 313533128
+    },
+    {
+      "PROFILE_ID": "66666555533333100000",
+      "CURRENT_BOUND": 313533128
+    },
+    {
+      "PROFILE_ID": "66666665333322210000",
+      "CURRENT_BOUND": 313521256
+    },
+    {
+      "PROFILE_ID": "66666664333333200000",
+      "CURRENT_BOUND": 313521256
+    },
+    {
+      "PROFILE_ID": "66666655533222210000",
+      "CURRENT_BOUND": 313521256
+    },
+    {
+      "PROFILE_ID": "66666555552222210000",
+      "CURRENT_BOUND": 313521256
+    },
+    {
+      "PROFILE_ID": "66666544444443000000",
+      "CURRENT_BOUND": 313521256
+    },
+    {
+      "PROFILE_ID": "66665555444433000000",
+      "CURRENT_BOUND": 313521256
+    },
+    {
+      "PROFILE_ID": "66655555554333000000",
+      "CURRENT_BOUND": 313521256
+    },
+    {
+      "PROFILE_ID": "66666665443111111110",
+      "CURRENT_BOUND": 313509384
+    },
+    {
+      "PROFILE_ID": "66666665432222220000",
+      "CURRENT_BOUND": 313497512
+    }
+  ],
+  "SOLVER_CERTIFIED_BOUND": 313649608,
+  "SOLVER_CERTIFIED_BOUND_SCOPE": "COMPLETE_FAMILY_LEDGER_PLUS_UNRESOLVED_CURSOR",
+  "REMAINING_GAP": 409947,
+  "CURSOR_GENUINELY_LOAD_BEARING": false,
+  "FAMILY_STATUS": "OPEN_STRICTLY_TIGHTENED",
+  "TASK_BRANCH": "codex/b649-k20-min-s2-six-owner-batch-refinement-r26",
+  "WORKTREE_PATH": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_K20_MIN_S2_SIX_OWNER_BATCH_REFINEMENT_R26",
+  "SOLVER_ACTUAL_WALL_TIME_SCOPE": "SUM_OF_REPORTED_PROOF_SOLVER_TIMES_INCLUDING_PRESERVED_UNKNOWN_ATTEMPTS; WITNESS_CHECKS_EXCLUDED",
+  "PROOF_START_TIME_PROVENANCE": "INFERRED_FROM_FIRST_RESULT_MTIME_MINUS_ITS_OBSERVED_PROOF_ELAPSED_TIME; ORIGINAL_DEADLINE_RETAINED",
+  "PROOF_EXECUTION_COMMANDS": [
+    "PYTHONPATH=src PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1 timeout --signal=TERM --kill-after=5s 3660s /Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/python -m lottolab.research.b649_k20_min_s2_six_owner_batch_refinement_r26",
+    "PYTHONPATH=src PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1 timeout --signal=TERM --kill-after=5s 3400s /Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/python -m lottolab.research.b649_k20_min_s2_six_owner_batch_refinement_r26 --resume-failed-union"
+  ],
+  "STOP_RULE": "SUCCESS_C_WITH_ALL_ORIGINAL_SIX_BELOW_CURSOR_AND_EXACT_NEWLY_EXPOSED_REMAINING_OWNER; INCONCLUSIVE_ATTEMPTS_PRESERVED",
+  "LATER_ROUTES": {
+    "B_COMPLEMENT_TRIANGLE_LOWER_BOUND": "NOT_RUN",
+    "C_EXACT_NONCORE_TRIANGLE_CEILING": "NOT_RUN",
+    "D_CYCLE_PASCH_SHARED_VERTEX": "NOT_RUN",
+    "E_S4_AT_S3_MAXIMIZER": "NOT_RUN",
+    "F_HIGHER_ORDER_MULTIPLICITY": "NOT_RUN"
+  },
+  "LATER_ROUTE_DISPOSITION": "SUCCESS_C_HANDOFF; REMAINING_OWNER_TRIANGLE_CAP_270_NOT_PROVED; CURSOR_REMAINS_UNRESOLVED",
+  "FOCUSED_TESTS": {
+    "STATUS": "PASS",
+    "EXIT_CODE": 0,
+    "RESULT": "26 passed in 5.57s",
+    "COMMAND": "PYTHONPATH=src PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1 timeout --signal=TERM --kill-after=5s 120s /Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/python -m pytest -q -p no:cacheprovider tests/unit/test_b649_k20_min_s2_six_owner_batch_refinement_r26.py"
+  },
+  "RUFF": {
+    "STATUS": "PASS",
+    "EXIT_CODE": 0,
+    "RESULT": "All checks passed; 2 files already formatted",
+    "SCOPED_PATHS": [
+      "src/lottolab/research/b649_k20_min_s2_six_owner_batch_refinement_r26.py",
+      "tests/unit/test_b649_k20_min_s2_six_owner_batch_refinement_r26.py"
+    ]
+  },
+  "PYRIGHT": {
+    "STATUS": "PASS",
+    "EXIT_CODE": 0,
+    "ERRORS": 0,
+    "WARNINGS": 0,
+    "INFORMATIONS": 0,
+    "TOOL_VERSION": "1.1.411",
+    "SCOPED_PATHS": [
+      "src/lottolab/research/b649_k20_min_s2_six_owner_batch_refinement_r26.py",
+      "tests/unit/test_b649_k20_min_s2_six_owner_batch_refinement_r26.py"
+    ],
+    "VENV_PATH": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis"
+  },
+  "FALSIFIABILITY_CHECK": {
+    "STATUS": "CONFIRMED",
+    "PERSISTENT_SOURCE_MUTATION": "NONE",
+    "RESTORE": "PASS",
+    "FINAL_REVERIFY": "PASS",
+    "CASES": [
+      {
+        "TARGET": "test_structural_grouping_and_histogram_union",
+        "MUTATION": "In-memory signature_groups seam splits the structural group into six singletons",
+        "OBSERVED": "AssertionError",
+        "RESTORE_AND_REVERIFY": "PASS"
+      },
+      {
+        "TARGET": "test_full_resolved_ledger_recomputed_after_every_group",
+        "MUTATION": "In-memory family_state seam omits the other 402 resolved profiles",
+        "OBSERVED": "AssertionError",
+        "RESTORE_AND_REVERIFY": "PASS"
+      }
+    ]
+  },
+  "VERIFICATION_ATTEMPT_HISTORY": [
+    {
+      "ATTEMPT": "Initial catalog reconstruction",
+      "RESULT": "Missing shared class S3 field",
+      "REPAIR": "Reproduce class S3 from the committed triangle cap and certified S4 floor; require exact bound equality"
+    },
+    {
+      "ATTEMPT": "Initial static checks",
+      "RESULT": "Formatting and scoped typing diagnostics",
+      "REPAIR": "Format and use explicit Pair keys, result dictionary type and float narrowing"
+    },
+    {
+      "ATTEMPT": "Initial focused regression",
+      "RESULT": "1 failed, 23 passed, 1 deselected; incorrect expected above-cursor count 145",
+      "REPAIR": "Use complete-ledger observed count 144"
+    },
+    {
+      "ATTEMPT": "Final focused regression and static checks",
+      "RESULT": "PASS"
+    },
+    {
+      "ATTEMPT": "Final metadata and integer target arithmetic verification",
+      "RESULT": "26 passed in 5.57s; Ruff check/format and scoped Pyright exit 0; completion audit PASS",
+      "GIT_DIFF_CHECK": "PASS with core.fsmonitor=false; transient fsmonitor-daemon already-running diagnostic observed on earlier exit-0 check"
+    }
+  ],
+  "PROOF_ATTEMPT_HISTORY": [
+    {
+      "ATTEMPT": 1,
+      "RESULT": "Initial six-owner union returned UNKNOWN after 180.006292 solver seconds; no adoption",
+      "PRESERVED": "GROUP_ATTEMPTS[0]",
+      "FOLLOWUP": "Retain attempt, add sound per-nonedge degree cuts, then independent owner refutations; original proof wall deadline retained"
+    },
+    {
+      "ATTEMPT": 2,
+      "RESULT": "Six INFEASIBLE owner refutations at cap269; one newly exposed owner at cap270; strict complete-family tightening",
+      "PRESERVED": "GROUP_ATTEMPTS[1:11]"
+    }
+  ],
+  "FILESYSTEM_ACCOUNTING": {
+    "PERSISTENT_WRITE_ROOT": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_K20_MIN_S2_SIX_OWNER_BATCH_REFINEMENT_R26",
+    "TASK_CREATED_FILES_RETAINED": [
+      "src/lottolab/research/b649_k20_min_s2_six_owner_batch_refinement_r26.py",
+      "tests/unit/test_b649_k20_min_s2_six_owner_batch_refinement_r26.py",
+      "docs/research/matrix-native-results/b649-k20-min-s2-six-owner-batch-refinement-r26-result.json"
+    ],
+    "PRE_EXISTING_PRODUCT_FILES_MODIFIED": [],
+    "TASK_CREATED_FILES_DELETED": [],
+    "WORKTREE_MATERIALIZATION_CREATED": [
+      "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_K20_MIN_S2_SIX_OWNER_BATCH_REFINEMENT_R26"
+    ],
+    "RUNTIME_OUTPUTS": "Requested R26 JSON only; original inconclusive attempt preserved within final JSON; no bytecode, pytest cache, Ruff cache or scratch files",
+    "GIT_METADATA_WRITES": "Exact task branch/worktree registration and one authorized local commit of these three paths",
+    "WORKTREE_DISPOSITION": "RETAIN"
+  },
+  "IMPLEMENTATION_LIFECYCLE_STATUS": "COMPLETE",
+  "VERIFICATION_PROVENANCE": "OBSERVED_THIS_TASK",
+  "SOLVER_MODEL_SOURCE_SHA256": "ece75120b9e9945ed074eaf89cfc8dc9f801998a1b691f6e81acd4a2df8968d9",
+  "TEST_SOURCE_SHA256": "18f872f9fe5836cb884c28fde0b1709eb28d885f45f236c4dafa25ee4225e5da",
+  "LOCAL_COMMIT_DISPOSITION": "EXACTLY_ONE_AUTHORIZED_LOCAL_COMMIT; FINAL_HEAD_AND_TREE_REPORTED_IN_HANDOFF",
+  "TRACKED_WORKTREE_CLEAN_AT_HANDOFF": "VERIFY_AFTER_COMMIT"
+}

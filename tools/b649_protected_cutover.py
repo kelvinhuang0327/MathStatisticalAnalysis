@@ -234,9 +234,11 @@ def _canonical_absolute_identity_path(value: object) -> str | None:
     if not isinstance(value, str) or not value or any(ord(char) < 32 for char in value):
         return None
     path = Path(value)
+    normalized_path = os.path.normpath(value)
     if (
         not path.is_absolute()
-        or str(path) != os.path.normpath(value)
+        or value != normalized_path
+        or str(path) != normalized_path
         or ".." in path.parts
     ):
         return None

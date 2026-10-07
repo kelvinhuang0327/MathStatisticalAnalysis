@@ -505,7 +505,7 @@ def _make_stranded_incident_with_control_provenance(
     harness: Harness,
     monkeypatch: pytest.MonkeyPatch,
     *,
-    historical_control_worktree: Path | None = None,
+    historical_control_worktree: Path | str | None = None,
     historical_interpreter: str | None = None,
     preserve_legacy_parent_behavior: bool = False,
 ) -> StrandedIncident:
@@ -3945,6 +3945,45 @@ def test_cross_control_accepts_each_sealed_historical_provenance_relocation(
     assert protected.main(argv) == 0
     result = json.loads(capsys.readouterr().out.splitlines()[-1])
     assert result["status"] == "RECONCILED"
+    assert tuple(harness.launchd.mutation_calls) == incident.mutations_before
+
+
+@pytest.mark.parametrize("noncanonical_field", ["control_worktree", "interpreter"])
+def test_cross_control_rejects_noncanonical_historical_provenance_paths(
+    hermetic_recovery_harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    noncanonical_field: str,
+) -> None:
+    harness = hermetic_recovery_harness
+    historical_control_worktree = str(harness.fixture.root / "historical-control")
+    historical_interpreter = str(harness.fixture.root / "historical-python/bin/python")
+    if noncanonical_field == "control_worktree":
+        historical_control_worktree += "/./"
+    else:
+        historical_interpreter = historical_interpreter.replace(
+            "/bin/python", "/./bin/python"
+        )
+    incident = _make_stranded_incident_with_control_provenance(
+        harness,
+        monkeypatch,
+        historical_control_worktree=historical_control_worktree,
+        historical_interpreter=historical_interpreter,
+    )
+    recovery_control = ("a" * 40, "b" * 40)
+    _configure_cross_control_not_started_reconcile_cli(
+        harness,
+        monkeypatch,
+        incident,
+        recovery_head=recovery_control[0],
+        recovery_tree=recovery_control[1],
+    )
+    argv = _cross_control_not_started_argv(incident, recovery_control=recovery_control)
+    before = _write_snapshot(harness, incident)
+
+    assert protected.main(argv) == claims.UNVERIFIABLE
+    capsys.readouterr()
+    assert _write_snapshot(harness, incident) == before
     assert tuple(harness.launchd.mutation_calls) == incident.mutations_before
 
 

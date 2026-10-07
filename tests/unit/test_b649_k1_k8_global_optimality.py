@@ -117,7 +117,7 @@ def test_k5_bounds_match_the_sealed_portfolio_exactly() -> None:
     assert sealed.portfolio_sha256 == (
         "ec858fe04075ee40931366c05617ad7d04d934c5f72ac35c9b74c26ba91f8d87"
     )
-    assert SEALED_GEOMETRY_METHOD_VERSION == "7.0.0"
+    assert SEALED_GEOMETRY_METHOD_VERSION == "8.0.0"
 
 
 def test_overlap_below_k9_still_leaves_an_unused_label() -> None:

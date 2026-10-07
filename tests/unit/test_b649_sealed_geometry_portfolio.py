@@ -40,15 +40,19 @@ CANONICAL_FRONTIER_LOCATOR = (
     "b649-official-any-prize-frontier-reconciliation-r1/frontier_reconciliation.json"
 )
 CANONICAL_FRONTIER_SHA256 = "5b0ccf7485c3db699b9bb9e398f04857d018ec7b1ca87700f86cbace5a719d3e"
-K20_TERMINAL_TASK_ID = "B649_K20_EXACT_TWO_TICKET_JOINT_REPLACEMENT_SWEEP_R1"
-K20_TERMINAL_RESULT_LOCATOR = (
+K20_WINNER_TASK_ID = "B649_K20_12_8_WINNER_TWO_TICKET_ASCENT_R1"
+K20_WINNER_RESULT_LOCATOR = (
     "docs/research/matrix-native-results/"
-    "b649-k20-exact-two-ticket-joint-replacement-terminal-r1.json"
+    "b649-k20-12-8-winner-two-ticket-ascent-r1-result.json"
 )
-K20_TERMINAL_RESULT_SHA256 = "e7698ff0d76a91c69378bf9bf0badb4ed9ac4f4dd146c71e5c94300bcfbbff9e"
-K20_TARGET_PORTFOLIO_SHA256 = "0045ac8837fc82e9a585d812173341ac12e05c5de201af7f8fedeacafa19e1ff"
-K20_TERMINAL_STATE_SHA256 = "589daf96d5bd5efaf2ddb3e6d97acb3e68ab1029dc6620743f41e175210fcc98"
-K20_V6_BASELINE_COUNT = 313239647
+K20_WINNER_RESULT_SHA256 = "3d5d3f8f2389b66a9b2c45b0e345b81a0d9dc59d08ca9223519be70a055e5a00"
+K20_SOURCE_PORTFOLIO_SHA256 = "eaed652900d101881b678a1515d2a366bff9de6723dbec2ec9c82fe0d0d7844c"
+K20_EXPECTED_ENGINE_NORMALIZED_SHA256 = (
+    "eaed652900d101881b678a1515d2a366bff9de6723dbec2ec9c82fe0d0d7844c"
+)
+K20_START_ARTIFACT_SHA256 = "10d4ef5102ad824fb2c96503501694bef3f878504c8c164698c86f2f1ce35a3b"
+K20_EXPECTED_OUTCOME_COUNT = 313263888
+K20_EXPECTED_EXACT_FRACTION = Fraction(1864666, 3579191)
 K5_EXPECTED_TICKETS = (
     (1, 2, 3, 4, 5, 6),
     (7, 8, 9, 10, 11, 12),
@@ -104,9 +108,9 @@ def test_operational_buckets_are_sealed_for_k5_k10_k20() -> None:
     assert buckets[5] != buckets[10][:5]
 
 
-def test_method_v7_and_k5_identity_are_unchanged_from_v1() -> None:
+def test_method_v8_and_k5_identity_are_unchanged_from_v1() -> None:
     assert SEALED_GEOMETRY_METHOD_ID == "B649_SEALED_GEOMETRY_PORTFOLIO"
-    assert SEALED_GEOMETRY_METHOD_VERSION == "7.0.0"
+    assert SEALED_GEOMETRY_METHOD_VERSION == "8.0.0"
     entry = SEALED_GEOMETRY_PORTFOLIOS[5]
 
     assert entry.tickets == K5_EXPECTED_TICKETS
@@ -124,8 +128,8 @@ def test_exact_probabilities_reproduce_the_sealed_record(
     assert result.m3_plus == entry.m3_plus_probability
     assert result.official_any_prize == entry.official_any_prize_probability
     if size == 20:
-        assert result.official_any_prize_outcome_count == 313239661
-        assert result.official_any_prize_outcome_count - K20_V6_BASELINE_COUNT == 14
+        assert result.official_any_prize_outcome_count == K20_EXPECTED_OUTCOME_COUNT
+        assert result.official_any_prize == K20_EXPECTED_EXACT_FRACTION
         assert result.main_draw_count * result.special_count == 601304088
 
 
@@ -174,55 +178,34 @@ def test_k10_matches_the_frozen_canonical_frontier_contract() -> None:
         )
 
 
-def test_k20_matches_v7_sealed_sweep_terminal() -> None:
+def test_k20_matches_v8_two_ticket_ascent_authority() -> None:
     entry = SEALED_GEOMETRY_PORTFOLIOS[20]
-    authority = _committed_json(entry.source_locator, entry.source_sha256)
-    sealed_tickets = cast(list[list[int]], authority["TICKETS"])
+    authority = _committed_json(K20_WINNER_RESULT_LOCATOR, K20_WINNER_RESULT_SHA256)
+    sealed_tickets = cast(list[list[int]], authority["FINAL_TICKETS"])
 
-    assert entry.source_id == K20_TERMINAL_TASK_ID
-    assert entry.source_locator == K20_TERMINAL_RESULT_LOCATOR
-    assert entry.source_sha256 == K20_TERMINAL_RESULT_SHA256
+    assert entry.source_id == K20_WINNER_TASK_ID
+    assert entry.source_locator == K20_WINNER_RESULT_LOCATOR
+    assert entry.source_sha256 == K20_WINNER_RESULT_SHA256
     assert entry.tickets == tuple(tuple(ticket) for ticket in sealed_tickets)
-    assert entry.portfolio_sha256 == authority["PORTFOLIO_SHA256"]
-    assert entry.portfolio_sha256 == K20_TARGET_PORTFOLIO_SHA256
-    assert canonical_portfolio_sha256(entry.tickets) == entry.portfolio_sha256
+    assert entry.portfolio_sha256 == K20_SOURCE_PORTFOLIO_SHA256
+    assert canonical_portfolio_sha256(entry.tickets) == K20_SOURCE_PORTFOLIO_SHA256
     assert str(entry.official_any_prize_probability) == authority["FINAL_EXACT_FRACTION"]
-    assert str(entry.m3_plus_probability) == authority["FINAL_M3_PLUS_FRACTION"]
-    assert entry.m3_plus_probability == Fraction(4807367, 13983816)
-    assert entry.official_any_prize_probability == Fraction(44748523, 85900584)
+    assert entry.official_any_prize_probability == K20_EXPECTED_EXACT_FRACTION
+    assert entry.m3_plus_probability == Fraction(1201973, 3495954)
 
-    assert authority["TASK_ID"] == entry.source_id
-    assert authority["RESULT_TYPE"] == "TERMINAL_LOCAL_OPTIMUM"
-    assert authority["METHOD_ID"] == "B649_SEALED_GEOMETRY_PORTFOLIO"
-    assert authority["METHOD_VERSION"] == "7.0.0"
-    assert authority["FINAL_EXACT_COUNT"] == 313239661
-    assert authority["TOTAL_OUTCOMES"] == 601304088
-    assert authority["V6_BASELINE_OUTCOME_COUNT"] == K20_V6_BASELINE_COUNT
-    assert authority["STRICT_GAIN_OUTCOMES"] == 14
+    assert authority["TASK_ID"] == K20_WINNER_TASK_ID
+    assert authority["TASK_STATUS"] == "COMPLETE"
+    assert authority["FINAL_COUNT"] == K20_EXPECTED_OUTCOME_COUNT
+    assert authority["FINAL_ENGINE_NORMALIZED_SHA256"] == (
+        K20_EXPECTED_ENGINE_NORMALIZED_SHA256
+    )
+    assert authority["START_ARTIFACT_SHA256"] == K20_START_ARTIFACT_SHA256
+    assert K20_START_ARTIFACT_SHA256 != K20_EXPECTED_ENGINE_NORMALIZED_SHA256
     assert (
-        entry.official_any_prize_probability * cast(int, authority["TOTAL_OUTCOMES"])
-        == authority["FINAL_EXACT_COUNT"]
+        authority["TWO_TICKET_LOCAL_OPTIMUM_STATUS"]
+        == "PROVEN_FOR_VALIDATED_EXACT_TWO_TICKET_NEIGHBORHOOD"
     )
-    assert authority["FINAL_M3_PLUS_COUNT"] == 4807367
-    assert authority["MAIN_DRAW_COUNT"] == 13983816
-    assert authority["PRESERVED_STATE_SHA256"] == K20_TERMINAL_STATE_SHA256
-    assert authority["TERMINAL_ITERATION"] == 5
-    assert authority["TERMINAL_STATUS"] == "TERMINAL_LOCAL_OPTIMUM"
-    assert authority["FINAL_ITERATION_SLOT_PAIRS"] == 190
-    assert authority["FINAL_ITERATION_ACCEPTED_MOVES"] == 0
-    assert authority["FINAL_ITERATION_BEST_DELTA"] == 0
-    assert authority["EXACT_RECOMPUTE"] == "PASS"
-    assert authority["GLOBAL_OPTIMUM"] == "UNKNOWN"
-    assert authority["SEARCH_RERUN"] == "NO"
-
-    prior_v6 = _committed_json(
-        "docs/research/matrix-native-results/b649-k20-two-ticket-joint-replacement-incumbent-r1.json",
-        "14f070a764a48a09007e18db212d491867a7c8dc59e775115391a02c8840f632",
-    )
-    assert authority["V6_BASELINE_OUTCOME_COUNT"] == prior_v6["WINNING_OUTCOMES"]
-    gain = cast(int, authority["FINAL_EXACT_COUNT"]) - cast(int, prior_v6["WINNING_OUTCOMES"])
-    assert gain == authority["STRICT_GAIN_OUTCOMES"] == 14
-    assert gain > 0
+    assert authority["GLOBAL_K20_OPTIMUM_STATUS"] == "UNKNOWN"
 
 
 def test_k5_reaches_the_committed_frontier_best_found_with_disjoint_tickets() -> None:

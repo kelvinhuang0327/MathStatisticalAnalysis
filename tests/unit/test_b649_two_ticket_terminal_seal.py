@@ -55,7 +55,11 @@ def test_semantic_mismatch_fails_closed(recorded: object) -> None:
 @pytest.mark.parametrize("side", ["recorded", "expected"])
 def test_duplicate_pair_in_either_input_fails_closed(side: str) -> None:
     duplicate = [(3, 7), [3, 7], (0, 1), (18, 19)]
-    recorded, expected = (duplicate, WINNING_LISTS) if side == "recorded" else (WINNING_TUPLES, duplicate)
+    recorded, expected = (
+        (duplicate, WINNING_LISTS)
+        if side == "recorded"
+        else (WINNING_TUPLES, duplicate)
+    )
     with pytest.raises(ValueError, match="duplicate winning slot pair"):
         validate_winning_slot_pairs(recorded, expected, ticket_count=20)
 
@@ -112,7 +116,9 @@ def test_future_task_local_driver_can_import_and_use_tracked_seal(tmp_path: Path
                         ticket_count=20,
                     )
                 except ValueError as error:
-                    raise SystemExit(f"CHECKPOINT_RESULT_MISMATCH: winning pairs: {error}") from error
+                    raise SystemExit(
+                        f"CHECKPOINT_RESULT_MISMATCH: winning pairs: {error}"
+                    ) from error
 
             iteration = {"slot_pairs": {
                 "3_7": {"pos_i": 3, "pos_j": 7, "best_delta_outcome": 0},

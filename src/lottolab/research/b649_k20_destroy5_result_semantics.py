@@ -16,8 +16,8 @@ INITIAL_VERIFIED_INCUMBENT_SOURCE_COMMIT = (
     "032ce592c3efd0ac4b5b82a813d157224419c794"
 )
 INITIAL_VERIFIED_INCUMBENT_ARTIFACT_LOCATOR = (
-    "/Users/kelvin/.codex/worktrees/b649-k20-12-8-winner-two-ticket-ascent-r1/"
-    "MathStatisticalAnalysis/docs/research/matrix-native-results/"
+    "git:032ce592c3efd0ac4b5b82a813d157224419c794:"
+    "docs/research/matrix-native-results/"
     "b649-k20-12-8-winner-two-ticket-ascent-r1-result.json"
 )
 

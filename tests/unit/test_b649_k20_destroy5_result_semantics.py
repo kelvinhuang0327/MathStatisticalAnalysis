@@ -46,9 +46,8 @@ def test_execution_authority_keeps_incumbent_out_of_frozen_manifest() -> None:
             "eaed652900d101881b678a1515d2a366bff9de6723dbec2ec9c82fe0d0d7844c"
         ),
         "LAUNCH_TIME_CURRENT_VERIFIED_INCUMBENT_ARTIFACT_LOCATOR": (
-            "/Users/kelvin/.codex/worktrees/"
-            "b649-k20-12-8-winner-two-ticket-ascent-r1/"
-            "MathStatisticalAnalysis/docs/research/matrix-native-results/"
+            "git:032ce592c3efd0ac4b5b82a813d157224419c794:"
+            "docs/research/matrix-native-results/"
             "b649-k20-12-8-winner-two-ticket-ascent-r1-result.json"
         ),
         "LAUNCH_TIME_CURRENT_VERIFIED_INCUMBENT_SOURCE_COMMIT": (

@@ -1,0 +1,2112 @@
+{
+  "BASELINE_ARTIFACT_SHA": "10d4ef5102ad824fb2c96503501694bef3f878504c8c164698c86f2f1ce35a3b",
+  "BASELINE_AUTHORITY_FILE_SHA256": "3d5d3f8f2389b66a9b2c45b0e345b81a0d9dc59d08ca9223519be70a055e5a00",
+  "BASELINE_AUTHORITY_PATH": "/Users/kelvin/.codex/worktrees/b649-k20-12-8-winner-two-ticket-ascent-r1/MathStatisticalAnalysis/docs/research/matrix-native-results/b649-k20-12-8-winner-two-ticket-ascent-r1-result.json",
+  "BASELINE_CANONICAL_RESCORE": "PASS",
+  "BASELINE_COUNT": 313263888,
+  "BASELINE_M3_PLUS_DRAW_COUNT": 4807892,
+  "BASELINE_NORMALIZED_SHA": "eaed652900d101881b678a1515d2a366bff9de6723dbec2ec9c82fe0d0d7844c",
+  "BASELINE_SPECIAL_RESCUE_OUTCOMES": 106524532,
+  "BASELINE_TICKETS": [
+    [
+      1,
+      2,
+      3,
+      4,
+      5,
+      21
+    ],
+    [
+      1,
+      6,
+      7,
+      8,
+      9,
+      22
+    ],
+    [
+      2,
+      10,
+      11,
+      12,
+      13,
+      22
+    ],
+    [
+      3,
+      6,
+      10,
+      14,
+      15,
+      23
+    ],
+    [
+      2,
+      7,
+      14,
+      16,
+      17,
+      24
+    ],
+    [
+      4,
+      8,
+      10,
+      16,
+      18,
+      25
+    ],
+    [
+      1,
+      11,
+      14,
+      18,
+      19,
+      26
+    ],
+    [
+      4,
+      6,
+      12,
+      19,
+      20,
+      24
+    ],
+    [
+      5,
+      7,
+      11,
+      15,
+      20,
+      25
+    ],
+    [
+      5,
+      9,
+      12,
+      17,
+      18,
+      23
+    ],
+    [
+      9,
+      13,
+      15,
+      16,
+      19,
+      21
+    ],
+    [
+      3,
+      8,
+      13,
+      17,
+      20,
+      26
+    ],
+    [
+      27,
+      29,
+      30,
+      31,
+      32,
+      33
+    ],
+    [
+      27,
+      34,
+      35,
+      36,
+      37,
+      38
+    ],
+    [
+      27,
+      39,
+      40,
+      41,
+      42,
+      43
+    ],
+    [
+      28,
+      29,
+      34,
+      39,
+      44,
+      45
+    ],
+    [
+      28,
+      30,
+      35,
+      40,
+      46,
+      47
+    ],
+    [
+      28,
+      31,
+      36,
+      41,
+      48,
+      49
+    ],
+    [
+      32,
+      37,
+      42,
+      44,
+      46,
+      48
+    ],
+    [
+      33,
+      38,
+      43,
+      45,
+      47,
+      49
+    ]
+  ],
+  "BEST_DELTA": -1195593,
+  "BEST_EXACT_COUNT": 312068295,
+  "BEST_FRESH_CANONICAL_COMPONENTS": {
+    "M3_PLUS_DRAW_COUNT": 4790618,
+    "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+    "SPECIAL_RESCUE_OUTCOMES": 106071721
+  },
+  "BEST_M3_PLUS_DRAW_COUNT": 4790618,
+  "BEST_NORMALIZED_SHA": "010c351120999e84f53f77557ccf2f9b16ead15b3faf4c8615efe52c20e9a35e",
+  "BEST_OPERATOR": {
+    "AX": [
+      12,
+      13
+    ],
+    "AZ": [
+      15,
+      16
+    ],
+    "DIRECTION": "FORWARD",
+    "NORMALIZED_SHA": "010c351120999e84f53f77557ccf2f9b16ead15b3faf4c8615efe52c20e9a35e",
+    "Y": 22
+  },
+  "BEST_SPECIAL_RESCUE_OUTCOMES": 106071721,
+  "BEST_TICKETS": [
+    [
+      1,
+      2,
+      3,
+      4,
+      5,
+      21
+    ],
+    [
+      1,
+      6,
+      7,
+      8,
+      9,
+      28
+    ],
+    [
+      2,
+      10,
+      11,
+      12,
+      13,
+      28
+    ],
+    [
+      3,
+      6,
+      10,
+      14,
+      15,
+      23
+    ],
+    [
+      2,
+      7,
+      14,
+      16,
+      17,
+      24
+    ],
+    [
+      4,
+      8,
+      10,
+      16,
+      18,
+      25
+    ],
+    [
+      1,
+      11,
+      14,
+      18,
+      19,
+      26
+    ],
+    [
+      4,
+      6,
+      12,
+      19,
+      20,
+      24
+    ],
+    [
+      5,
+      7,
+      11,
+      15,
+      20,
+      25
+    ],
+    [
+      5,
+      9,
+      12,
+      17,
+      18,
+      23
+    ],
+    [
+      9,
+      13,
+      15,
+      16,
+      19,
+      21
+    ],
+    [
+      3,
+      8,
+      13,
+      17,
+      20,
+      26
+    ],
+    [
+      22,
+      29,
+      30,
+      31,
+      32,
+      33
+    ],
+    [
+      22,
+      34,
+      35,
+      36,
+      37,
+      38
+    ],
+    [
+      27,
+      39,
+      40,
+      41,
+      42,
+      43
+    ],
+    [
+      27,
+      29,
+      34,
+      39,
+      44,
+      45
+    ],
+    [
+      27,
+      30,
+      35,
+      40,
+      46,
+      47
+    ],
+    [
+      28,
+      31,
+      36,
+      41,
+      48,
+      49
+    ],
+    [
+      32,
+      37,
+      42,
+      44,
+      46,
+      48
+    ],
+    [
+      33,
+      38,
+      43,
+      45,
+      47,
+      49
+    ]
+  ],
+  "CANDIDATE_SCORES": [
+    {
+      "AX": [
+        12,
+        13
+      ],
+      "AZ": [
+        15,
+        16
+      ],
+      "DIRECTION": "FORWARD",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "09cd4b7e975ad8ae5a9f08cdc117609d334312dd21822a38cdc5e21f72591570",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 21
+    },
+    {
+      "AX": [
+        12,
+        13
+      ],
+      "AZ": [
+        15,
+        16
+      ],
+      "DIRECTION": "REVERSE",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "1467fd9abdadc14bb820212bbe2a84e2c516ad863e9cdabaf079efa4b7b4dafe",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 21
+    },
+    {
+      "AX": [
+        12,
+        13
+      ],
+      "AZ": [
+        15,
+        17
+      ],
+      "DIRECTION": "FORWARD",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "47887839989631c1637d0d95a1553e06d53388d4679c119169ad97edbc7b6991",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 21
+    },
+    {
+      "AX": [
+        12,
+        13
+      ],
+      "AZ": [
+        15,
+        17
+      ],
+      "DIRECTION": "REVERSE",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "e1d04a6a5b7fac504814616435fb96dc842c46d0218cbbb87d6c4ad54f4e93b8",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 21
+    },
+    {
+      "AX": [
+        12,
+        13
+      ],
+      "AZ": [
+        16,
+        17
+      ],
+      "DIRECTION": "FORWARD",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "f3892c76606dcbc6153010b2c51012f85f5aece8b1c4afb3a0eb37b8990c9bf3",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 21
+    },
+    {
+      "AX": [
+        12,
+        13
+      ],
+      "AZ": [
+        16,
+        17
+      ],
+      "DIRECTION": "REVERSE",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "6bab563707985445ebb1d0dba1c9be4cc591612d13cc4a744e958fb6717821e4",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 21
+    },
+    {
+      "AX": [
+        12,
+        14
+      ],
+      "AZ": [
+        15,
+        16
+      ],
+      "DIRECTION": "FORWARD",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "b71e599e07777d0b689f8e5008ca6a73cbcec6d38f3ba4dfbcb1490e5acd2a34",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 21
+    },
+    {
+      "AX": [
+        12,
+        14
+      ],
+      "AZ": [
+        15,
+        16
+      ],
+      "DIRECTION": "REVERSE",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "7f59226e1979cc00908c113ad24e8b1dbe1cef7410ac051bb9c07b0ccb97ace2",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 21
+    },
+    {
+      "AX": [
+        12,
+        14
+      ],
+      "AZ": [
+        15,
+        17
+      ],
+      "DIRECTION": "FORWARD",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "62573b1b6d72db9276190644cbb6655e6f6b4143e26ff0067a0162ed663378e2",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 21
+    },
+    {
+      "AX": [
+        12,
+        14
+      ],
+      "AZ": [
+        15,
+        17
+      ],
+      "DIRECTION": "REVERSE",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "61f17da7554c4a15654cf8c68be23a4977fed37f34eb002d617570e5a74af53f",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 21
+    },
+    {
+      "AX": [
+        12,
+        14
+      ],
+      "AZ": [
+        16,
+        17
+      ],
+      "DIRECTION": "FORWARD",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "5de459c658e24303a5d90e04611562eed96140460bca53bab2237271b9db41aa",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 21
+    },
+    {
+      "AX": [
+        12,
+        14
+      ],
+      "AZ": [
+        16,
+        17
+      ],
+      "DIRECTION": "REVERSE",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "03ea9cfd923c3012f9f90e6aff3d95940be3d339255aa9e7ae7ffc6f2cfb4e14",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 21
+    },
+    {
+      "AX": [
+        13,
+        14
+      ],
+      "AZ": [
+        15,
+        16
+      ],
+      "DIRECTION": "FORWARD",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "9eae4aa9b16f1cd262a13d51a7069482c760b61df449fa9a5cdd372e7a3d92d1",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 21
+    },
+    {
+      "AX": [
+        13,
+        14
+      ],
+      "AZ": [
+        15,
+        16
+      ],
+      "DIRECTION": "REVERSE",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "6126cc96101f6d93996aa1e2cdec97bd0430d0c055a9b6e9c48b359fa3d9a294",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 21
+    },
+    {
+      "AX": [
+        13,
+        14
+      ],
+      "AZ": [
+        15,
+        17
+      ],
+      "DIRECTION": "FORWARD",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "909bb1707b338b35244632e7df2c1c9ad4985ff20338c9d566224f1e965090eb",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 21
+    },
+    {
+      "AX": [
+        13,
+        14
+      ],
+      "AZ": [
+        15,
+        17
+      ],
+      "DIRECTION": "REVERSE",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "9c7d1e1cf86216d0af611ab616adf2de1c017a98966cfc82f730abb6156ce86a",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 21
+    },
+    {
+      "AX": [
+        13,
+        14
+      ],
+      "AZ": [
+        16,
+        17
+      ],
+      "DIRECTION": "FORWARD",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "dcbe952c031408b18742812c3774d26a2f9b6f79f993bd9937163adae5c1ffaf",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 21
+    },
+    {
+      "AX": [
+        13,
+        14
+      ],
+      "AZ": [
+        16,
+        17
+      ],
+      "DIRECTION": "REVERSE",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "f3a18beed1df0f8dbd21395ac43d449ab6b7185df8e997a6059a9194c61feb9a",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 21
+    },
+    {
+      "AX": [
+        12,
+        13
+      ],
+      "AZ": [
+        15,
+        16
+      ],
+      "DIRECTION": "FORWARD",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "010c351120999e84f53f77557ccf2f9b16ead15b3faf4c8615efe52c20e9a35e",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 22
+    },
+    {
+      "AX": [
+        12,
+        13
+      ],
+      "AZ": [
+        15,
+        16
+      ],
+      "DIRECTION": "REVERSE",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "4dd5b29fd52954fa1993a37c9aca389008922f0d7c7ff75c7ecf2d513abc64ed",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 22
+    },
+    {
+      "AX": [
+        12,
+        13
+      ],
+      "AZ": [
+        15,
+        17
+      ],
+      "DIRECTION": "FORWARD",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "b30fa915a25b8f20536e9309dd27ea984f4d00b8d12f43133613024859c4fcb8",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 22
+    },
+    {
+      "AX": [
+        12,
+        13
+      ],
+      "AZ": [
+        15,
+        17
+      ],
+      "DIRECTION": "REVERSE",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "35f58427f1339da15135f9f08238572fcb492c598aa19b4248185b05ab41fb44",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 22
+    },
+    {
+      "AX": [
+        12,
+        13
+      ],
+      "AZ": [
+        16,
+        17
+      ],
+      "DIRECTION": "FORWARD",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "974d74d3494d7264d077a2d265c9699c57538fc4221c1af5f07c7e22ca6a1538",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 22
+    },
+    {
+      "AX": [
+        12,
+        13
+      ],
+      "AZ": [
+        16,
+        17
+      ],
+      "DIRECTION": "REVERSE",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "a9ac4389311ef827b41e0c2b30f54a6da04f59e0888e16f7610a115c3145fec2",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 22
+    },
+    {
+      "AX": [
+        12,
+        14
+      ],
+      "AZ": [
+        15,
+        16
+      ],
+      "DIRECTION": "FORWARD",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "ce57b9c80feb3852bc757870c84208ffb091b47f991713dc446df90225111af0",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 22
+    },
+    {
+      "AX": [
+        12,
+        14
+      ],
+      "AZ": [
+        15,
+        16
+      ],
+      "DIRECTION": "REVERSE",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "df9f6ac35b6b4ea83532421e6dc516df2243c7d0c16a86af33116ba9571610a4",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 22
+    },
+    {
+      "AX": [
+        12,
+        14
+      ],
+      "AZ": [
+        15,
+        17
+      ],
+      "DIRECTION": "FORWARD",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "bff8996a4a8ece2b7bad48ec85e2b5130d22323465ee7b8018ec8f8628f466c9",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 22
+    },
+    {
+      "AX": [
+        12,
+        14
+      ],
+      "AZ": [
+        15,
+        17
+      ],
+      "DIRECTION": "REVERSE",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "257070b869d085fdecd7879cbd3bd3f088634bbc1fb44f292e4b42876794ebeb",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 22
+    },
+    {
+      "AX": [
+        12,
+        14
+      ],
+      "AZ": [
+        16,
+        17
+      ],
+      "DIRECTION": "FORWARD",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "eeab8f079f7f35b7012465157f2de03543902f624279e64f5313f10c87a3a106",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 22
+    },
+    {
+      "AX": [
+        12,
+        14
+      ],
+      "AZ": [
+        16,
+        17
+      ],
+      "DIRECTION": "REVERSE",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "b350c01ccfc1c45ba767bd592b9ae9e00c654615ca304be2b408807f07911b52",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 22
+    },
+    {
+      "AX": [
+        13,
+        14
+      ],
+      "AZ": [
+        15,
+        16
+      ],
+      "DIRECTION": "FORWARD",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "8b65dffe0d6756d12f0ea4c5cccdc0b38f65bbdcb8136fbd623b19924ec86aef",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 22
+    },
+    {
+      "AX": [
+        13,
+        14
+      ],
+      "AZ": [
+        15,
+        16
+      ],
+      "DIRECTION": "REVERSE",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "c7af19358447a796f7ad4d7b18b77fc34828f2c7562a8ba5ae3ec8100578b236",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 22
+    },
+    {
+      "AX": [
+        13,
+        14
+      ],
+      "AZ": [
+        15,
+        17
+      ],
+      "DIRECTION": "FORWARD",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "72e549ca291d29f04e91bb0a635b83b4fe0c02528cac763fbdc91445821c6f5e",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 22
+    },
+    {
+      "AX": [
+        13,
+        14
+      ],
+      "AZ": [
+        15,
+        17
+      ],
+      "DIRECTION": "REVERSE",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "021935a3b2ad56a6a88b92c8c10d69287839ce528c11b28007314df9aef39388",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 22
+    },
+    {
+      "AX": [
+        13,
+        14
+      ],
+      "AZ": [
+        16,
+        17
+      ],
+      "DIRECTION": "FORWARD",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "9ca2aa3d04720f6cfa0139562839123d8afefad3c0df229e9837fe936e43e91e",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 22
+    },
+    {
+      "AX": [
+        13,
+        14
+      ],
+      "AZ": [
+        16,
+        17
+      ],
+      "DIRECTION": "REVERSE",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "ccdbb66f155e6d713069d2be77ba8adc5c99900617e7916f56ee036563b6c499",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 22
+    },
+    {
+      "AX": [
+        12,
+        13
+      ],
+      "AZ": [
+        15,
+        16
+      ],
+      "DIRECTION": "FORWARD",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "5586689a5c90b4db97d7db9ee7c3253c52abf6dc5f24599d4ccd645bedaa9b7f",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 23
+    },
+    {
+      "AX": [
+        12,
+        13
+      ],
+      "AZ": [
+        15,
+        16
+      ],
+      "DIRECTION": "REVERSE",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "f3a0b8ccc9f5f93b4bbbe2c31d40835558ddf000feb46052ec9e9ddbc5926028",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 23
+    },
+    {
+      "AX": [
+        12,
+        13
+      ],
+      "AZ": [
+        15,
+        17
+      ],
+      "DIRECTION": "FORWARD",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "42bc4412faf08aed4a069a50f58706b8f08323dac2f4fb11e3c06d1f43c767d9",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 23
+    },
+    {
+      "AX": [
+        12,
+        13
+      ],
+      "AZ": [
+        15,
+        17
+      ],
+      "DIRECTION": "REVERSE",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "5cb70dd13aa7dafeaeff017d60fa02002d63ae82378daba4778a5c76276bbfb8",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 23
+    },
+    {
+      "AX": [
+        12,
+        13
+      ],
+      "AZ": [
+        16,
+        17
+      ],
+      "DIRECTION": "FORWARD",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "fce507b77feebb724df7ee1f6a48d6930ba4909d1defe21e55abaf1bf2dece44",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 23
+    },
+    {
+      "AX": [
+        12,
+        13
+      ],
+      "AZ": [
+        16,
+        17
+      ],
+      "DIRECTION": "REVERSE",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "f878f76f8eb81d07c77dafcca377366fb398340bf7765ea901f81ba2812ac595",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 23
+    },
+    {
+      "AX": [
+        12,
+        14
+      ],
+      "AZ": [
+        15,
+        16
+      ],
+      "DIRECTION": "FORWARD",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "23a9670e19d8a137347659c47554006ed73eb65a433cfe3a031b2ab40c1838a1",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 23
+    },
+    {
+      "AX": [
+        12,
+        14
+      ],
+      "AZ": [
+        15,
+        16
+      ],
+      "DIRECTION": "REVERSE",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "612ec579d31560a61953bc44793affa61700cccc7a496b546fa39473c26624f4",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 23
+    },
+    {
+      "AX": [
+        12,
+        14
+      ],
+      "AZ": [
+        15,
+        17
+      ],
+      "DIRECTION": "FORWARD",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "72ed8ee6afd8dbe6a2d43a7a8e4966cd36c78c60e8c22d7442b43cdc0f008595",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 23
+    },
+    {
+      "AX": [
+        12,
+        14
+      ],
+      "AZ": [
+        15,
+        17
+      ],
+      "DIRECTION": "REVERSE",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "6540e3a0bca456f0e43e65aa71d277f0a0583c4482e4638d5cfc2e496b931d09",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 23
+    },
+    {
+      "AX": [
+        12,
+        14
+      ],
+      "AZ": [
+        16,
+        17
+      ],
+      "DIRECTION": "FORWARD",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "db9d39ccd5d46f1c707da2053a5a83261f78e28863f148214e153b6b4db3cad8",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 23
+    },
+    {
+      "AX": [
+        12,
+        14
+      ],
+      "AZ": [
+        16,
+        17
+      ],
+      "DIRECTION": "REVERSE",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "ea1035cbc0bf330282280d3db21b5f611168e566d3a1d922188a9c18aefbd2f9",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 23
+    },
+    {
+      "AX": [
+        13,
+        14
+      ],
+      "AZ": [
+        15,
+        16
+      ],
+      "DIRECTION": "FORWARD",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "7df0885e127f4c8f561d6d36cc8594309d1c42b575b2b523d8610b0f478dd306",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 23
+    },
+    {
+      "AX": [
+        13,
+        14
+      ],
+      "AZ": [
+        15,
+        16
+      ],
+      "DIRECTION": "REVERSE",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "a91caf095f2c00916519bae752f414c5018357fe7b6cad83e57c2529137f9a43",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 23
+    },
+    {
+      "AX": [
+        13,
+        14
+      ],
+      "AZ": [
+        15,
+        17
+      ],
+      "DIRECTION": "FORWARD",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "4031b8186df3bfcda389b2e9ef36934d3abdda4341509a9b25d695112ea3d882",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 23
+    },
+    {
+      "AX": [
+        13,
+        14
+      ],
+      "AZ": [
+        15,
+        17
+      ],
+      "DIRECTION": "REVERSE",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "2367f872d92c450c459ae3758c20adf14d73508c1486e399374cb47e9356d8bd",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 23
+    },
+    {
+      "AX": [
+        13,
+        14
+      ],
+      "AZ": [
+        16,
+        17
+      ],
+      "DIRECTION": "FORWARD",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "7d154d439050814d0d7fe5e4634ba2c5d95082a5b71b5a6ed914aec1bfb0adb4",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 23
+    },
+    {
+      "AX": [
+        13,
+        14
+      ],
+      "AZ": [
+        16,
+        17
+      ],
+      "DIRECTION": "REVERSE",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "8c33e6ef3d21f547a98e1f91215913d0f551dd8b3db185a293920f3ca02d196d",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 23
+    },
+    {
+      "AX": [
+        12,
+        13
+      ],
+      "AZ": [
+        15,
+        16
+      ],
+      "DIRECTION": "FORWARD",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "5b045973b467b7704904a916f2e926b494448ad29326ce508f3df56b28fd51e8",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 24
+    },
+    {
+      "AX": [
+        12,
+        13
+      ],
+      "AZ": [
+        15,
+        16
+      ],
+      "DIRECTION": "REVERSE",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "e59d8adcfe324e0e566e42d9ae9b9a38b9693afd01e859a1d879a11cdd5f3e10",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 24
+    },
+    {
+      "AX": [
+        12,
+        13
+      ],
+      "AZ": [
+        15,
+        17
+      ],
+      "DIRECTION": "FORWARD",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "c9ffff94b8c214b0902696ce8896c0520a21dcfa4c0438a1769e24dcfb38221a",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 24
+    },
+    {
+      "AX": [
+        12,
+        13
+      ],
+      "AZ": [
+        15,
+        17
+      ],
+      "DIRECTION": "REVERSE",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "1515f1506bbcb6330349fd9861c85a601b309810b8745c5b0058b74566eeb61b",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 24
+    },
+    {
+      "AX": [
+        12,
+        13
+      ],
+      "AZ": [
+        16,
+        17
+      ],
+      "DIRECTION": "FORWARD",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "ecb2c91b20a614b6b8fbfc92ee9c10d75445711b43087bfe2282924d76d9b0a3",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 24
+    },
+    {
+      "AX": [
+        12,
+        13
+      ],
+      "AZ": [
+        16,
+        17
+      ],
+      "DIRECTION": "REVERSE",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "e0c33027549d90f9fe5532bc73de79dccf930323246b70e71fbda8a3041a4f63",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 24
+    },
+    {
+      "AX": [
+        12,
+        14
+      ],
+      "AZ": [
+        15,
+        16
+      ],
+      "DIRECTION": "FORWARD",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "9cc08efcba2cbd871eee894243a5aa5f12fb3a52ccd8947000ba131b3d030971",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 24
+    },
+    {
+      "AX": [
+        12,
+        14
+      ],
+      "AZ": [
+        15,
+        16
+      ],
+      "DIRECTION": "REVERSE",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "bd837edfe1a72012c6c7f044b934f28d7ae1651435e2aa07693d4f25e6855839",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 24
+    },
+    {
+      "AX": [
+        12,
+        14
+      ],
+      "AZ": [
+        15,
+        17
+      ],
+      "DIRECTION": "FORWARD",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "b0d165ff9e03aad4ab1fda116de80910c671987491a265d23312be2431a7db84",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 24
+    },
+    {
+      "AX": [
+        12,
+        14
+      ],
+      "AZ": [
+        15,
+        17
+      ],
+      "DIRECTION": "REVERSE",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "4548b7b645beb3682857948b04e5c762d9c6c6d5c7e4db9f77d70f75e4897537",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 24
+    },
+    {
+      "AX": [
+        12,
+        14
+      ],
+      "AZ": [
+        16,
+        17
+      ],
+      "DIRECTION": "FORWARD",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "0f324eff746931d140f4d2f4ef6ddd95d11645ed790f879466d57c76aa827b4b",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 24
+    },
+    {
+      "AX": [
+        12,
+        14
+      ],
+      "AZ": [
+        16,
+        17
+      ],
+      "DIRECTION": "REVERSE",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "aa9aca1fcfdf20b609d3acc9c47b437d5a41ddfebabb8cce904cd78b8da1ed10",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 24
+    },
+    {
+      "AX": [
+        13,
+        14
+      ],
+      "AZ": [
+        15,
+        16
+      ],
+      "DIRECTION": "FORWARD",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "8e17a8c066733d322b848cf57507e05e5796f4f407dede6e952863c1ebb0e646",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 24
+    },
+    {
+      "AX": [
+        13,
+        14
+      ],
+      "AZ": [
+        15,
+        16
+      ],
+      "DIRECTION": "REVERSE",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "1c1a196445a11440f141988a5bdecff4900cb5c94ee8454988013e9d483e7eb3",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 24
+    },
+    {
+      "AX": [
+        13,
+        14
+      ],
+      "AZ": [
+        15,
+        17
+      ],
+      "DIRECTION": "FORWARD",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "101c0692cc3d5d1ab92569d9ba2372e6d1863d9196d926564fb0f63db0eff056",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 24
+    },
+    {
+      "AX": [
+        13,
+        14
+      ],
+      "AZ": [
+        15,
+        17
+      ],
+      "DIRECTION": "REVERSE",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "608971d1b9ff74ba17485826f02ef3c830be9a64839fe1d155f89c087b2672af",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 24
+    },
+    {
+      "AX": [
+        13,
+        14
+      ],
+      "AZ": [
+        16,
+        17
+      ],
+      "DIRECTION": "FORWARD",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "8f97f323fe7fa0e0108764ecdcf1cc911c313e992c74729d24e2a41a3b8d9668",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 24
+    },
+    {
+      "AX": [
+        13,
+        14
+      ],
+      "AZ": [
+        16,
+        17
+      ],
+      "DIRECTION": "REVERSE",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "ec71d0b7b2d3a0b45a60a2be0d060627ea6d2b705907d99c7de41b402a167c14",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 24
+    },
+    {
+      "AX": [
+        12,
+        13
+      ],
+      "AZ": [
+        15,
+        16
+      ],
+      "DIRECTION": "FORWARD",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "a7af2eba95a434d5aad5944176cadd4c330b97dafdf8cdf334cfd625fbf33b4c",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 25
+    },
+    {
+      "AX": [
+        12,
+        13
+      ],
+      "AZ": [
+        15,
+        16
+      ],
+      "DIRECTION": "REVERSE",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "c62ee7c7230760ea23d7ff8a47063e2fdd6e445109d367712f67ed3d6807c474",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 25
+    },
+    {
+      "AX": [
+        12,
+        13
+      ],
+      "AZ": [
+        15,
+        17
+      ],
+      "DIRECTION": "FORWARD",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "026568dbfc76d458ac27678ebafb94c7ec62acfdd955c44574c9127d6bcad8ca",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 25
+    },
+    {
+      "AX": [
+        12,
+        13
+      ],
+      "AZ": [
+        15,
+        17
+      ],
+      "DIRECTION": "REVERSE",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "e2c054c9a0fe41ac832e647ab4047e126d3a90bffa2871a5258c25a8f9e93ce7",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 25
+    },
+    {
+      "AX": [
+        12,
+        13
+      ],
+      "AZ": [
+        16,
+        17
+      ],
+      "DIRECTION": "FORWARD",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "fb79463a7dff987cf950b7bf1b79e2f3fd75e25227ea4dacd0474be8ceb4b065",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 25
+    },
+    {
+      "AX": [
+        12,
+        13
+      ],
+      "AZ": [
+        16,
+        17
+      ],
+      "DIRECTION": "REVERSE",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "e22831b159f07c7c9610997bfe4db2e4cb875097615da5a082714777da24d9da",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 25
+    },
+    {
+      "AX": [
+        12,
+        14
+      ],
+      "AZ": [
+        15,
+        16
+      ],
+      "DIRECTION": "FORWARD",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "81089b7b0570fedac97605224db4b72c685337770a9beb84c30a28af8061ec7e",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 25
+    },
+    {
+      "AX": [
+        12,
+        14
+      ],
+      "AZ": [
+        15,
+        16
+      ],
+      "DIRECTION": "REVERSE",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "883f11bf9a57fabdf478a095aff4bfae715cc0bd5e7a80130ce5d26eed2cde03",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 25
+    },
+    {
+      "AX": [
+        12,
+        14
+      ],
+      "AZ": [
+        15,
+        17
+      ],
+      "DIRECTION": "FORWARD",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "f727f15e314bb29aa019fa7b7d9d6470f4d654eb9f0e7a2df8c4478063435b03",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 25
+    },
+    {
+      "AX": [
+        12,
+        14
+      ],
+      "AZ": [
+        15,
+        17
+      ],
+      "DIRECTION": "REVERSE",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "52e7f8d454a8968e10260f1fb9b226c035067d1fc6025618e8b63a78b57cc678",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 25
+    },
+    {
+      "AX": [
+        12,
+        14
+      ],
+      "AZ": [
+        16,
+        17
+      ],
+      "DIRECTION": "FORWARD",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "833fbd9f79bb80170a2c6e297b3ffe597eac58bb74f0801fb7a3dab328281ec0",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 25
+    },
+    {
+      "AX": [
+        12,
+        14
+      ],
+      "AZ": [
+        16,
+        17
+      ],
+      "DIRECTION": "REVERSE",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "87475d484a160241a79ea92ef248512a593b00ca31e9929cb4b81a1d78fd06a1",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 25
+    },
+    {
+      "AX": [
+        13,
+        14
+      ],
+      "AZ": [
+        15,
+        16
+      ],
+      "DIRECTION": "FORWARD",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "64b382bc8bf77478dd0709c0b5843217c6c753cb4c2dc7f6656b011d0071309c",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 25
+    },
+    {
+      "AX": [
+        13,
+        14
+      ],
+      "AZ": [
+        15,
+        16
+      ],
+      "DIRECTION": "REVERSE",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "9513d1310bbe046b32fcc4000f93814de8547520994724be658d754e44309c60",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 25
+    },
+    {
+      "AX": [
+        13,
+        14
+      ],
+      "AZ": [
+        15,
+        17
+      ],
+      "DIRECTION": "FORWARD",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "e68476dbbe0be0fd439c4ce102a97c943dbb717c1e7666144f9b7f7812f3e7c4",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 25
+    },
+    {
+      "AX": [
+        13,
+        14
+      ],
+      "AZ": [
+        15,
+        17
+      ],
+      "DIRECTION": "REVERSE",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "2d901ab720ef1f6f4698af394b12e5429edfdffb2ee872a9a37fd84585a99a52",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 25
+    },
+    {
+      "AX": [
+        13,
+        14
+      ],
+      "AZ": [
+        16,
+        17
+      ],
+      "DIRECTION": "FORWARD",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "9681f9bf629021000195bd4add2b28791d8a39fd689dc3c0e461c304634c4bc9",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 25
+    },
+    {
+      "AX": [
+        13,
+        14
+      ],
+      "AZ": [
+        16,
+        17
+      ],
+      "DIRECTION": "REVERSE",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "ab32bec26722e009a614061230c05e71fa46f3b0bb88e97a7e0fcf60d8d3befe",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 25
+    },
+    {
+      "AX": [
+        12,
+        13
+      ],
+      "AZ": [
+        15,
+        16
+      ],
+      "DIRECTION": "FORWARD",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "b39ea62dbc0ea19d4ab1c95503f207948ab3a2c29195e0fe01cba28cb39a2f15",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 26
+    },
+    {
+      "AX": [
+        12,
+        13
+      ],
+      "AZ": [
+        15,
+        16
+      ],
+      "DIRECTION": "REVERSE",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "4f367eb924ead96f474cc345b6d8fd99ae9bbfa4130662ef41e668b84788e191",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 26
+    },
+    {
+      "AX": [
+        12,
+        13
+      ],
+      "AZ": [
+        15,
+        17
+      ],
+      "DIRECTION": "FORWARD",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "42ebeaa96598eb62d161bde923431179f473c90b080f709075cdccc5c9de1a31",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 26
+    },
+    {
+      "AX": [
+        12,
+        13
+      ],
+      "AZ": [
+        15,
+        17
+      ],
+      "DIRECTION": "REVERSE",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "f725b3ddbf81b9a4ab3883d8e2b25e33868069ff9dc63189a7fe094a6f08fc25",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 26
+    },
+    {
+      "AX": [
+        12,
+        13
+      ],
+      "AZ": [
+        16,
+        17
+      ],
+      "DIRECTION": "FORWARD",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "6f281c42ab938fcd2f5c9e619a7c6f6110b404ceebb67c9962f2c252e54d9314",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 26
+    },
+    {
+      "AX": [
+        12,
+        13
+      ],
+      "AZ": [
+        16,
+        17
+      ],
+      "DIRECTION": "REVERSE",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "79525dedabc082e70d72dee4ef8dae09875f37153be69dce0a4ebf55e83d5077",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 26
+    },
+    {
+      "AX": [
+        12,
+        14
+      ],
+      "AZ": [
+        15,
+        16
+      ],
+      "DIRECTION": "FORWARD",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "8911a7d7ae108d34b09edcbfa4abb46009f16857fc858ad3127a6abbbb9619cf",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 26
+    },
+    {
+      "AX": [
+        12,
+        14
+      ],
+      "AZ": [
+        15,
+        16
+      ],
+      "DIRECTION": "REVERSE",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "61c3baf06db151be9035263ca923522f3906c2dc43f1b22b8d626a8920728f7d",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 26
+    },
+    {
+      "AX": [
+        12,
+        14
+      ],
+      "AZ": [
+        15,
+        17
+      ],
+      "DIRECTION": "FORWARD",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "8483d72b8b664e212bb3fa7fab3ef437408800bc0b5525f94e9834f4a9b69ec3",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 26
+    },
+    {
+      "AX": [
+        12,
+        14
+      ],
+      "AZ": [
+        15,
+        17
+      ],
+      "DIRECTION": "REVERSE",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "b6cd10e09f2f83cece930b37d2b1e6d10b64372326292497c60ace59c3a906c3",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 26
+    },
+    {
+      "AX": [
+        12,
+        14
+      ],
+      "AZ": [
+        16,
+        17
+      ],
+      "DIRECTION": "FORWARD",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "413194fadcc5c3ed295b08366ae648cfa7a3800f787759ee88f8d6f3af371cb5",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 26
+    },
+    {
+      "AX": [
+        12,
+        14
+      ],
+      "AZ": [
+        16,
+        17
+      ],
+      "DIRECTION": "REVERSE",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "be4af2bd06294310d4c34847b48f530a6f910673a7600f3c465a1b1149ec2093",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 26
+    },
+    {
+      "AX": [
+        13,
+        14
+      ],
+      "AZ": [
+        15,
+        16
+      ],
+      "DIRECTION": "FORWARD",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "65813583cc30f8f6e6484d3f067f038a3ff34878c4e2e9d6ad40e0d54a0ba345",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 26
+    },
+    {
+      "AX": [
+        13,
+        14
+      ],
+      "AZ": [
+        15,
+        16
+      ],
+      "DIRECTION": "REVERSE",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "3e674cd70cedcbdb7898f43e6a148f87c76a273dc92f69994f1e3bd1dfa6658d",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 26
+    },
+    {
+      "AX": [
+        13,
+        14
+      ],
+      "AZ": [
+        15,
+        17
+      ],
+      "DIRECTION": "FORWARD",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "92715ca52661ea106934f178de83efac5f57d566f194e1c52321a481c71de2a5",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 26
+    },
+    {
+      "AX": [
+        13,
+        14
+      ],
+      "AZ": [
+        15,
+        17
+      ],
+      "DIRECTION": "REVERSE",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "78af94cc7aff3843b64266e4b2f2dee6886a4968281886d6d326518ac4709a56",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 26
+    },
+    {
+      "AX": [
+        13,
+        14
+      ],
+      "AZ": [
+        16,
+        17
+      ],
+      "DIRECTION": "FORWARD",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "6b83df24afa905fd228c3ac45326cf959d66d992b00ea14d10effd730babf436",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 26
+    },
+    {
+      "AX": [
+        13,
+        14
+      ],
+      "AZ": [
+        16,
+        17
+      ],
+      "DIRECTION": "REVERSE",
+      "M3_PLUS_DRAW_COUNT": 4790618,
+      "NORMALIZED_SHA": "4598fff182ac3d76352488659746791b46f7146fb3a155beee884f450d437d59",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312068295,
+      "SPECIAL_RESCUE_OUTCOMES": 106071721,
+      "Y": 26
+    }
+  ],
+  "CANONICAL_EVALUATIONS": 110,
+  "CANONICAL_EVALUATOR": "src/lottolab/research/b649_official_any_prize_exact.py",
+  "CANONICAL_EVALUATOR_SHA256": "92dcb836254cc6dbcd6c2ad907e619a5eb8cf3917197a8f6de3e5f989825cf66",
+  "CANONICAL_RESCORE": "PASS",
+  "COMPLETE_MAIN_DRAW_COUNT": 13983816,
+  "FAMILY_STATUS": "NO_STRICT_GAIN_FOR_DEFINED_PARETO_INTERFACE_SIX_TICKET_CYCLE_FAMILY",
+  "FORWARD_CANDIDATES": 54,
+  "GLOBAL_K20_OPTIMUM_STATUS": "UNKNOWN",
+  "JSON_ROUND_TRIP": "PASS",
+  "LEGAL_CANDIDATES": 108,
+  "OPERATOR_SIGNATURE": "PARETO_INTERFACE_F3_F3_F2_SELECTED_SUPPORT_CYCLE_V1",
+  "PR": "NOT CREATED",
+  "PRODUCTION_MUTATION": "NONE",
+  "PUSH": "NOT RUN",
+  "RAW_CANDIDATES": 108,
+  "READY_FOR_N1_ASCENT": "NO",
+  "REVERSE_CANDIDATES": 54,
+  "SCHEMA_VERSION": 1,
+  "SOURCE_HEAD": "f785f8f5b1af1f4987558caf42180e7c8bc4bf03",
+  "SPECIAL_COUNT": 43,
+  "START_NORMALIZED_SHA": "eaed652900d101881b678a1515d2a366bff9de6723dbec2ec9c82fe0d0d7844c",
+  "STRICT_GAIN": "NO",
+  "TASK_ID": "B649_K20_12_8_PARETO_INTERFACE_SIX_TICKET_CYCLE_R1",
+  "TASK_STATUS": "COMPLETE",
+  "UNIQUE_NORMALIZED_CANDIDATES": 108
+}

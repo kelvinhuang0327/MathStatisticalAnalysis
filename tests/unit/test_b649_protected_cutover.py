@@ -501,6 +501,35 @@ def _make_stranded_prestart_incident(
     )
 
 
+def _make_stranded_incident_with_control_provenance(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    historical_control_worktree: Path | None = None,
+    historical_interpreter: str | None = None,
+    preserve_legacy_parent_behavior: bool = False,
+) -> StrandedIncident:
+    incident = _make_stranded_prestart_incident(
+        harness,
+        monkeypatch,
+        preserve_legacy_parent_behavior=preserve_legacy_parent_behavior,
+        not_started_result=True,
+    )
+    identity_updates: dict[str, object] = {}
+    if historical_control_worktree is not None:
+        identity_updates["control_worktree"] = str(historical_control_worktree)
+    if historical_interpreter is not None:
+        identity_updates["interpreter"] = historical_interpreter
+    if identity_updates:
+        _rewrite_stranded_identity(
+            incident,
+            identity_updates,
+            bind_updated_identity_in_argv=True,
+            relocate_control_argv=True,
+        )
+    return incident
+
+
 @dataclass(frozen=True)
 class ReleasedPrestartSuccessor:
     request: protected.Request
@@ -2323,6 +2352,12 @@ def harness(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Harness:
 
 
 @pytest.fixture
+def hermetic_recovery_harness(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Harness:
+    monkeypatch.setattr(protected, "control_identity", lambda: ("8" * 40, "9" * 40))
+    return Harness(Fixture(tmp_path), monkeypatch)
+
+
+@pytest.fixture
 def rollback_harness(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Harness:
     return Harness(Fixture(tmp_path, old_name="legacy-receipt-bound-old"), monkeypatch, "rollback")
 
@@ -3337,6 +3372,44 @@ def _cross_control_not_started_argv(
     return argv
 
 
+def _rewrite_stranded_identity(
+    incident: StrandedIncident,
+    identity_updates: dict[str, object],
+    *,
+    bind_updated_identity_in_argv: bool = False,
+    relocate_control_argv: bool = False,
+) -> protected.Record:
+    receipt_file = protected.ReceiptFile(incident.request.receipt_path)
+    stranded = receipt_file.read()
+    assert stranded is not None
+    identity = {**protected.record(stranded.get("identity")), **identity_updates}
+    updated: protected.Record = {
+        **stranded,
+        "identity": identity,
+        "execution_id": protected.digest(identity),
+    }
+    if bind_updated_identity_in_argv:
+        direct_argv = list(cast(list[str], stranded.get("direct_argv")))
+        if relocate_control_argv:
+            direct_argv[0] = str(identity["interpreter"])
+            direct_argv[1] = str(
+                Path(str(identity["control_worktree"])) / "tools/b649_production_cutover.py"
+            )
+        request_index = direct_argv.index("--protected-request")
+        execution_index = direct_argv.index("--protected-execution")
+        wire = protected.record(json.loads(direct_argv[request_index + 1]))
+        wire["identity"] = identity
+        direct_argv[request_index + 1] = protected.canonical(wire)
+        direct_argv[execution_index + 1] = protected.digest(identity)
+        claim_owner = {
+            **protected.record(stranded.get("claim_owner")),
+            "command": direct_argv,
+        }
+        updated["direct_argv"] = direct_argv
+        updated["claim_owner"] = claim_owner
+    return receipt_file.write(updated, expected=stranded)
+
+
 def _write_snapshot(harness: Harness, incident: StrandedIncident) -> dict[Path, bytes | None]:
     config = incident.request.config
     paths = {
@@ -3683,21 +3756,33 @@ def test_legacy_missing_mutation_summary_still_requires_all_no_mutation_proofs(
 
 
 def test_historical_not_started_incident_reconciles_across_control_versions(
-    harness: Harness,
+    hermetic_recovery_harness: Harness,
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    incident = _make_stranded_prestart_incident(
+    harness = hermetic_recovery_harness
+    historical_control_worktree = harness.fixture.root / "historical-control"
+    historical_interpreter = str(historical_control_worktree / ".venv/bin/python")
+    incident = _make_stranded_incident_with_control_provenance(
         harness,
         monkeypatch,
-        preserve_legacy_parent_behavior=False,
-        same_control_version=True,
-        not_started_result=True,
+        historical_control_worktree=historical_control_worktree,
+        historical_interpreter=historical_interpreter,
     )
     request = incident.request
     receipt_file = protected.ReceiptFile(request.receipt_path)
     captured = receipt_file.read()
     assert captured is not None
+    historical_identity = protected.record(captured.get("identity"))
+    historical_argv = cast(list[str], captured.get("direct_argv"))
+    assert historical_identity["control_worktree"] == str(historical_control_worktree)
+    assert historical_identity["interpreter"] == historical_interpreter
+    assert historical_identity["control_worktree"] != str(protected.CONTROL_ROOT)
+    assert historical_identity["interpreter"] != sys.executable
+    assert historical_argv[0] == historical_interpreter
+    assert historical_argv[1] == str(
+        historical_control_worktree / "tools/b649_production_cutover.py"
+    )
     legacy_masked = {
         **captured,
         "status": "INCOMPLETE_OR_AMBIGUOUS",
@@ -3806,6 +3891,210 @@ def test_historical_not_started_incident_reconciles_across_control_versions(
     retry = json.loads(capsys.readouterr().out.splitlines()[-1])
     assert retry["status"] == "ALREADY_RECONCILED"
     assert _write_snapshot(harness, incident) == after_first
+
+
+@pytest.mark.parametrize("relocated_provenance", ["control_worktree", "interpreter"])
+def test_cross_control_accepts_each_sealed_historical_provenance_relocation(
+    hermetic_recovery_harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    relocated_provenance: str,
+) -> None:
+    harness = hermetic_recovery_harness
+    historical_control_worktree = (
+        harness.fixture.root / "historical-control"
+        if relocated_provenance == "control_worktree"
+        else None
+    )
+    historical_interpreter = (
+        str(harness.fixture.root / "historical-python/bin/python")
+        if relocated_provenance == "interpreter"
+        else None
+    )
+    incident = _make_stranded_incident_with_control_provenance(
+        harness,
+        monkeypatch,
+        historical_control_worktree=historical_control_worktree,
+        historical_interpreter=historical_interpreter,
+    )
+    stranded = protected.ReceiptFile(incident.request.receipt_path).read()
+    assert stranded is not None
+    historical_identity = protected.record(stranded.get("identity"))
+    historical_argv = cast(list[str], stranded.get("direct_argv"))
+    assert historical_argv[0] == historical_identity["interpreter"]
+    assert historical_argv[1] == str(
+        Path(str(historical_identity["control_worktree"]))
+        / "tools/b649_production_cutover.py"
+    )
+    if relocated_provenance == "control_worktree":
+        assert historical_identity["control_worktree"] != str(protected.CONTROL_ROOT)
+        assert historical_identity["interpreter"] == sys.executable
+    else:
+        assert historical_identity["control_worktree"] == str(protected.CONTROL_ROOT)
+        assert historical_identity["interpreter"] != sys.executable
+
+    recovery_control = ("a" * 40, "b" * 40)
+    _configure_cross_control_not_started_reconcile_cli(
+        harness,
+        monkeypatch,
+        incident,
+        recovery_head=recovery_control[0],
+        recovery_tree=recovery_control[1],
+    )
+    argv = _cross_control_not_started_argv(incident, recovery_control=recovery_control)
+    assert protected.main(argv) == 0
+    result = json.loads(capsys.readouterr().out.splitlines()[-1])
+    assert result["status"] == "RECONCILED"
+    assert tuple(harness.launchd.mutation_calls) == incident.mutations_before
+
+
+@pytest.mark.parametrize(
+    "provenance_field",
+    ["control_head", "control_tree", "control_worktree", "interpreter"],
+)
+def test_cross_control_rejects_historical_provenance_not_bound_to_receipt(
+    hermetic_recovery_harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    provenance_field: str,
+) -> None:
+    harness = hermetic_recovery_harness
+    historical_control_worktree = harness.fixture.root / "historical-control"
+    historical_interpreter = str(historical_control_worktree / ".venv/bin/python")
+    incident = _make_stranded_incident_with_control_provenance(
+        harness,
+        monkeypatch,
+        historical_control_worktree=historical_control_worktree,
+        historical_interpreter=historical_interpreter,
+    )
+    request = incident.request
+    original_control = (
+        request.control_head,
+        request.control_tree,
+    )
+    if provenance_field in {"control_head", "control_tree"}:
+        replacement = "f" * 40
+    elif provenance_field == "control_worktree":
+        replacement = str(harness.fixture.root / "different-historical-control")
+    else:
+        replacement = str(harness.fixture.root / "different-historical-python/bin/python")
+    _rewrite_stranded_identity(
+        incident,
+        {provenance_field: replacement},
+        bind_updated_identity_in_argv=True,
+    )
+    recovery_control = ("a" * 40, "b" * 40)
+    _configure_cross_control_not_started_reconcile_cli(
+        harness,
+        monkeypatch,
+        incident,
+        recovery_head=recovery_control[0],
+        recovery_tree=recovery_control[1],
+    )
+    argv = _cross_control_not_started_argv(
+        incident,
+        original_control=original_control,
+        recovery_control=recovery_control,
+    )
+    before = _write_snapshot(harness, incident)
+    assert protected.main(argv) == claims.UNVERIFIABLE
+    capsys.readouterr()
+    assert _write_snapshot(harness, incident) == before
+    assert tuple(harness.launchd.mutation_calls) == incident.mutations_before
+
+
+def test_cross_control_rejects_every_operation_bound_identity_difference(
+    hermetic_recovery_harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    harness = hermetic_recovery_harness
+    historical_control_worktree = harness.fixture.root / "historical-control"
+    incident = _make_stranded_incident_with_control_provenance(
+        harness,
+        monkeypatch,
+        historical_control_worktree=historical_control_worktree,
+        historical_interpreter=str(historical_control_worktree / ".venv/bin/python"),
+    )
+    recovery_control = ("a" * 40, "b" * 40)
+    _configure_cross_control_not_started_reconcile_cli(
+        harness,
+        monkeypatch,
+        incident,
+        recovery_head=recovery_control[0],
+        recovery_tree=recovery_control[1],
+    )
+    argv = _cross_control_not_started_argv(incident, recovery_control=recovery_control)
+    identity_property = protected.Request.identity
+    identity_getter = identity_property.fget
+    assert identity_getter is not None
+    operation_bound_fields = (
+        "task_key",
+        "action",
+        "source_worktree",
+        "source_head",
+        "source_tree",
+        "legacy_worktree",
+        "legacy_head",
+        "legacy_tree",
+        "plan_digest",
+        "plan_file",
+        "plan_sha256",
+        "label",
+        "launch_domain",
+        "plist_path",
+        "managed_receipt_path",
+        "execution_receipt_path",
+        "claim_root",
+        "reservation_id",
+        "operation_id",
+        "managed_receipt_sha256",
+        "owner_id_argument",
+        "prior_execution_receipt_sha256",
+        "target",
+    )
+    before = _write_snapshot(harness, incident)
+    for field_name in operation_bound_fields:
+        def changed_identity(
+            request: protected.Request,
+            field_name: str = field_name,
+        ) -> protected.Record:
+            identity = cast(protected.Record, dict(identity_getter(request)))
+            if field_name == "target":
+                identity[field_name] = {
+                    **protected.record(identity[field_name]),
+                    "head": "f" * 40,
+                }
+            elif field_name == "owner_id_argument":
+                identity[field_name] = not bool(identity[field_name])
+            elif field_name == "reservation_id":
+                identity[field_name] = str(uuid4())
+            elif field_name == "operation_id":
+                identity[field_name] = uuid4().hex
+            elif field_name.endswith("_head") or field_name.endswith("_tree"):
+                replacement = "f" * 40
+                identity[field_name] = (
+                    replacement if identity[field_name] != replacement else "e" * 40
+                )
+            elif field_name.endswith("_sha256") or field_name == "plan_digest":
+                replacement = "f" * 64
+                identity[field_name] = (
+                    replacement if identity[field_name] != replacement else "e" * 64
+                )
+            else:
+                identity[field_name] = f"unexpected-{field_name}"
+            return identity
+
+        with monkeypatch.context() as identity_patch:
+            identity_patch.setattr(
+                protected.Request,
+                "identity",
+                property(changed_identity),
+            )
+            assert protected.main(argv) == claims.UNVERIFIABLE, field_name
+            capsys.readouterr()
+        assert _write_snapshot(harness, incident) == before, field_name
+    assert tuple(harness.launchd.mutation_calls) == incident.mutations_before
 
 
 @pytest.mark.parametrize(

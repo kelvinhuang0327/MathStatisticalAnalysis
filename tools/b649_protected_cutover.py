@@ -70,6 +70,36 @@ PRESTART_NOT_STARTED_RECONCILIATION_SCHEMA = (
     "b649-protected-prestart-not-started-reconciliation-v1"
 )
 PRESTART_NOT_STARTED_RELEASE_KIND = "PRESTART_NOT_STARTED_NO_MUTATION"
+_CROSS_CONTROL_OPERATION_IDENTITY_FIELDS = frozenset(
+    {
+        "task_key",
+        "action",
+        "source_worktree",
+        "source_head",
+        "source_tree",
+        "legacy_worktree",
+        "legacy_head",
+        "legacy_tree",
+        "plan_digest",
+        "plan_file",
+        "plan_sha256",
+        "label",
+        "launch_domain",
+        "plist_path",
+        "managed_receipt_path",
+        "execution_receipt_path",
+        "claim_root",
+        "reservation_id",
+        "operation_id",
+        "managed_receipt_sha256",
+        "owner_id_argument",
+        "prior_execution_receipt_sha256",
+        "target",
+    }
+)
+_CROSS_CONTROL_PROVENANCE_FIELDS = frozenset(
+    {"control_head", "control_tree", "control_worktree", "interpreter"}
+)
 QUIESCENCE_SECONDS = 5.0
 ROLLBACK_SUCCESS = "ROLLBACK_SUCCESS"
 ROLLBACK_FAILED = "ROLLBACK_FAILED"
@@ -198,6 +228,85 @@ def text(value: object) -> str:
     if not isinstance(value, str) or not value or any(ord(c) < 32 for c in value):
         raise ProtectedError("invalid identity string")
     return value
+
+
+def _canonical_absolute_identity_path(value: object) -> str | None:
+    if not isinstance(value, str) or not value or any(ord(char) < 32 for char in value):
+        return None
+    path = Path(value)
+    if (
+        not path.is_absolute()
+        or str(path) != os.path.normpath(value)
+        or ".." in path.parts
+    ):
+        return None
+    return value
+
+
+def _cross_control_historical_identity_matches(
+    historical_identity: Record,
+    recovery_identity: Record,
+    original_control_identity: Mapping[str, object],
+    direct_argv_value: object,
+    execution_id: str,
+) -> bool:
+    """Compare operation authority exactly while validating sealed old-control provenance."""
+    required_fields = _CROSS_CONTROL_OPERATION_IDENTITY_FIELDS | _CROSS_CONTROL_PROVENANCE_FIELDS
+    if (
+        frozenset(historical_identity) != required_fields
+        or frozenset(recovery_identity) != required_fields
+        or any(
+            historical_identity.get(field) != recovery_identity.get(field)
+            for field in _CROSS_CONTROL_OPERATION_IDENTITY_FIELDS
+        )
+        or historical_identity.get("control_head") != original_control_identity.get("head")
+        or historical_identity.get("control_tree") != original_control_identity.get("tree")
+    ):
+        return False
+
+    control_worktree = _canonical_absolute_identity_path(
+        historical_identity.get("control_worktree")
+    )
+    interpreter = _canonical_absolute_identity_path(historical_identity.get("interpreter"))
+    if control_worktree is None or interpreter is None:
+        return False
+    expected_managed_script = _canonical_absolute_identity_path(
+        str(Path(control_worktree) / "tools" / "b649_production_cutover.py")
+    )
+    if expected_managed_script is None:
+        return False
+    if (
+        not isinstance(direct_argv_value, list)
+    ):
+        return False
+    argv_values = cast(list[object], direct_argv_value)
+    if any(not isinstance(argument, str) for argument in argv_values):
+        return False
+    direct_argv = cast(list[str], argv_values)
+    if (
+        len(direct_argv) < 3
+        or direct_argv[0] != interpreter
+        or direct_argv[1] != expected_managed_script
+        or direct_argv[2] != "apply"
+        or direct_argv.count("--protected-request") != 1
+        or direct_argv.count("--protected-execution") != 1
+    ):
+        return False
+    request_index = direct_argv.index("--protected-request")
+    execution_index = direct_argv.index("--protected-execution")
+    if request_index + 1 >= len(direct_argv) or execution_index + 1 >= len(direct_argv):
+        return False
+    try:
+        wire = record(json.loads(direct_argv[request_index + 1], object_pairs_hook=unique_object))
+    except (TypeError, ValueError):
+        return False
+    return not (
+        set(wire) != {"identity", "takeover_stale"}
+        or record(wire.get("identity")) != historical_identity
+        or type(wire.get("takeover_stale")) is not bool
+        or canonical(wire) != direct_argv[request_index + 1]
+        or direct_argv[execution_index + 1] != execution_id
+    )
 
 
 def repository_claim_root() -> Path:
@@ -3408,7 +3517,10 @@ def _failed_terminal_predecessor_receipt_sha256(
     if not all(matches):
         return None
     release = record(owner.get("release_evidence"))
-    if release.get("kind") == "PRESTART_FAILURE_NO_MUTATION":
+    if release.get("kind") in {
+        "PRESTART_FAILURE_NO_MUTATION",
+        PRESTART_NOT_STARTED_RELEASE_KIND,
+    }:
         return None
     if release != {
         "protected_receipt_sha256": cutover.FAILED_TERMINAL_RECEIPT_SHA256,
@@ -4802,18 +4914,30 @@ def cmd_reconcile_prestart_not_started(
             managed_receipt_sha256=supplied_hashes["managed_receipt_sha256"],
             owner_id_argument=owner_id_argument,
         )
-        expected_stranded_identity = {
-            **request.identity,
-            "control_head": original_control_identity["head"],
-            "control_tree": original_control_identity["tree"],
-        }
+        execution_id = text(stranded.get("execution_id"))
+        recovery_identity = request.identity
+        if cross_control:
+            identity_matches = _cross_control_historical_identity_matches(
+                stranded_identity,
+                recovery_identity,
+                original_control_identity,
+                stranded.get("direct_argv"),
+                execution_id,
+            )
+        else:
+            expected_stranded_identity = {
+                **recovery_identity,
+                "control_head": original_control_identity["head"],
+                "control_tree": original_control_identity["tree"],
+            }
+            identity_matches = expected_stranded_identity == stranded_identity
         plan, plan_identity, _ = cutover.read_control_json(plan_file)
         if (
             plan_identity.sha256 != supplied_hashes["plan_sha256"]
             or plan.get("plan_digest") != plan_digest
             or request.plan_sha256 != supplied_hashes["plan_sha256"]
             or request.plan_digest != plan_digest
-            or expected_stranded_identity != stranded_identity
+            or not identity_matches
         ):
             raise ProtectedError("stranded operation identity or exact plan differs")
         cutover.validate_protected_plan(config, plan)
@@ -4831,7 +4955,6 @@ def cmd_reconcile_prestart_not_started(
         ):
             raise ProtectedError("stranded plan does not bind the exact OLD and target sources")
 
-        execution_id = text(stranded.get("execution_id"))
         archive_path = receipt_path.with_name(
             f"{receipt_path.stem}.{execution_id}.superseded.json"
         )

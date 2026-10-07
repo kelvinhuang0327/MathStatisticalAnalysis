@@ -1,0 +1,3084 @@
+{
+  "SCHEMA_VERSION": "B649_K20_11_9_SINGLE_BRIDGE_STS13_FAMILY_EXACT_R1_V1",
+  "TASK_ID": "B649_K20_11_9_SINGLE_BRIDGE_STS13_FAMILY_EXACT_R1",
+  "TASK_STATUS": "COMPLETE",
+  "SOURCE_AUTHORITY": {
+    "SOURCE_HEAD": "f785f8f5b1af1f4987558caf42180e7c8bc4bf03",
+    "DRIVER_PATH": "src/lottolab/research/b649_k20_11_9_single_bridge_sts13_family_exact_r1.py",
+    "DRIVER_SHA256": "44d085dc7a9475fd81e3014e507d32a818ebe8179f4c6a0ad98a0d3a4bfb5282",
+    "EVALUATOR_PATH": "src/lottolab/research/b649_official_any_prize_exact.py",
+    "EVALUATOR_SHA256": "92dcb836254cc6dbcd6c2ad907e619a5eb8cf3917197a8f6de3e5f989825cf66",
+    "EVALUATOR_FUNCTION": "evaluate_portfolio(...).official_any_prize_outcome_count"
+  },
+  "BASELINE": {
+    "AUTHORITY_TASK_ID": "B649_K20_12_8_WINNER_TWO_TICKET_ASCENT_R1",
+    "AUTHORITY_PATH": "/Users/kelvin/.codex/worktrees/b649-k20-12-8-winner-two-ticket-ascent-r1/MathStatisticalAnalysis/docs/research/matrix-native-results/b649-k20-12-8-winner-two-ticket-ascent-r1-result.json",
+    "AUTHORITY_FILE_SHA256": "3d5d3f8f2389b66a9b2c45b0e345b81a0d9dc59d08ca9223519be70a055e5a00",
+    "COUNT": 313263888,
+    "NORMALIZED_PORTFOLIO_SHA256": "eaed652900d101881b678a1515d2a366bff9de6723dbec2ec9c82fe0d0d7844c",
+    "CANONICAL_RECOUNT": 313263888,
+    "CANONICAL_RECOUNT_STATUS": "PASS"
+  },
+  "STS13_INPUTS": {
+    "SOURCE": {
+      "TASK_ID": "B649_K20_OVERLAP_BLOCK_REPARTITION_12_8_EXHAUSTIVE_R1",
+      "COMMIT": "82e88ada111bf6d0999ac9c0c167a160a6ae5df8",
+      "PATH": "src/lottolab/research/b649_k20_overlap_block_repartition_12_8_exhaustive_r1.py",
+      "BLOB": "b5d9dd41481762bad815e14119c6e7c39ce1d8e3",
+      "FUNCTION": "build_sts13_classes"
+    },
+    "DESIGNS_SHA256": "ab9438ef501f32f186490c7ff9adf388f7672a55e7d013bde0ae0ea1bd03acca",
+    "PASCH_COUNTS": {
+      "CYCLIC": 13,
+      "NONCYCLIC": 8
+    }
+  },
+  "GRAPH_TEMPLATES": {
+    "K3_3": {
+      "EDGES": [
+        [
+          0,
+          3
+        ],
+        [
+          0,
+          4
+        ],
+        [
+          0,
+          5
+        ],
+        [
+          1,
+          3
+        ],
+        [
+          1,
+          4
+        ],
+        [
+          1,
+          5
+        ],
+        [
+          2,
+          3
+        ],
+        [
+          2,
+          4
+        ],
+        [
+          2,
+          5
+        ]
+      ],
+      "TRIANGLES": 0
+    },
+    "TRIANGULAR_PRISM": {
+      "EDGES": [
+        [
+          0,
+          1
+        ],
+        [
+          0,
+          2
+        ],
+        [
+          0,
+          3
+        ],
+        [
+          1,
+          2
+        ],
+        [
+          1,
+          4
+        ],
+        [
+          2,
+          5
+        ],
+        [
+          3,
+          4
+        ],
+        [
+          3,
+          5
+        ],
+        [
+          4,
+          5
+        ]
+      ],
+      "TRIANGLES": 2
+    }
+  },
+  "STRUCTURAL_INVARIANTS": {
+    "STATUS": "PASS",
+    "RAW_CONSTRUCTIONS_CHECKED": 5616,
+    "EXPECTED": {
+      "TICKET_COUNT": 20,
+      "LEGAL_DISTINCT_TICKETS": true,
+      "USED_NUMBER_COUNT": 49,
+      "FREQUENCY_PROFILE": {
+        "2": 27,
+        "3": 22
+      },
+      "PAIRWISE_OVERLAP_HISTOGRAM": {
+        "0": 97,
+        "1": 93
+      },
+      "MAXIMUM_PAIRWISE_OVERLAP": 1,
+      "CROSS_GROUP_OVERLAP_PAIRS": 2
+    },
+    "BLOCK_KIND_COUNTS": {
+      "A_TRIPLE": 15,
+      "A_PAIR": 10,
+      "B_VERTEX": 6,
+      "B_PAIR": 17,
+      "BRIDGE": 1
+    }
+  },
+  "ORBIT_COVERAGE": {
+    "STATUS": "PASS",
+    "RAW_CONSTRUCTIONS_EXPECTED": 5616,
+    "RAW_CONSTRUCTIONS_ENUMERATED": 5616,
+    "RAW_CONSTRUCTION_KEYS_EQUAL_FULL_PRODUCT": true,
+    "REPRESENTATIVES": 95,
+    "ORBIT_WEIGHT_SUM": 5616,
+    "STRUCTURAL_INVARIANT_PASSES_RAW": 5616,
+    "EXPLICIT_RELABELING_WITNESSES_VERIFIED": 5616,
+    "QUOTIENT_GROUP": "Aut(STS13) x Aut(cubic template), each enumerated and group-verified",
+    "STS13_AUTOMORPHISM_GROUP_ORDERS": {
+      "CYCLIC": 39,
+      "NONCYCLIC": 6
+    },
+    "GRAPH_AUTOMORPHISM_GROUP_ORDERS": {
+      "K3_3": 72,
+      "TRIANGULAR_PRISM": 12
+    },
+    "A_DELETED_PAIR_ORBITS": {
+      "CYCLIC": [
+        {
+          "REPRESENTATIVE_PAIR": [
+            0,
+            1
+          ],
+          "BRIDGE_POINT_A": 4,
+          "SIZE": 39
+        },
+        {
+          "REPRESENTATIVE_PAIR": [
+            0,
+            2
+          ],
+          "BRIDGE_POINT_A": 7,
+          "SIZE": 39
+        }
+      ],
+      "NONCYCLIC": [
+        {
+          "REPRESENTATIVE_PAIR": [
+            0,
+            1
+          ],
+          "BRIDGE_POINT_A": 7,
+          "SIZE": 6
+        },
+        {
+          "REPRESENTATIVE_PAIR": [
+            0,
+            2
+          ],
+          "BRIDGE_POINT_A": 4,
+          "SIZE": 6
+        },
+        {
+          "REPRESENTATIVE_PAIR": [
+            0,
+            3
+          ],
+          "BRIDGE_POINT_A": 12,
+          "SIZE": 6
+        },
+        {
+          "REPRESENTATIVE_PAIR": [
+            0,
+            5
+          ],
+          "BRIDGE_POINT_A": 11,
+          "SIZE": 6
+        },
+        {
+          "REPRESENTATIVE_PAIR": [
+            0,
+            6
+          ],
+          "BRIDGE_POINT_A": 8,
+          "SIZE": 6
+        },
+        {
+          "REPRESENTATIVE_PAIR": [
+            0,
+            7
+          ],
+          "BRIDGE_POINT_A": 1,
+          "SIZE": 6
+        },
+        {
+          "REPRESENTATIVE_PAIR": [
+            0,
+            8
+          ],
+          "BRIDGE_POINT_A": 6,
+          "SIZE": 3
+        },
+        {
+          "REPRESENTATIVE_PAIR": [
+            0,
+            9
+          ],
+          "BRIDGE_POINT_A": 10,
+          "SIZE": 6
+        },
+        {
+          "REPRESENTATIVE_PAIR": [
+            0,
+            10
+          ],
+          "BRIDGE_POINT_A": 9,
+          "SIZE": 6
+        },
+        {
+          "REPRESENTATIVE_PAIR": [
+            0,
+            11
+          ],
+          "BRIDGE_POINT_A": 5,
+          "SIZE": 3
+        },
+        {
+          "REPRESENTATIVE_PAIR": [
+            0,
+            12
+          ],
+          "BRIDGE_POINT_A": 3,
+          "SIZE": 3
+        },
+        {
+          "REPRESENTATIVE_PAIR": [
+            2,
+            3
+          ],
+          "BRIDGE_POINT_A": 6,
+          "SIZE": 3
+        },
+        {
+          "REPRESENTATIVE_PAIR": [
+            2,
+            5
+          ],
+          "BRIDGE_POINT_A": 1,
+          "SIZE": 6
+        },
+        {
+          "REPRESENTATIVE_PAIR": [
+            2,
+            6
+          ],
+          "BRIDGE_POINT_A": 3,
+          "SIZE": 3
+        },
+        {
+          "REPRESENTATIVE_PAIR": [
+            2,
+            7
+          ],
+          "BRIDGE_POINT_A": 9,
+          "SIZE": 3
+        },
+        {
+          "REPRESENTATIVE_PAIR": [
+            3,
+            5
+          ],
+          "BRIDGE_POINT_A": 10,
+          "SIZE": 3
+        },
+        {
+          "REPRESENTATIVE_PAIR": [
+            3,
+            6
+          ],
+          "BRIDGE_POINT_A": 2,
+          "SIZE": 3
+        }
+      ]
+    },
+    "B_MARKED_PAIR_ORBITS": {
+      "K3_3": [
+        {
+          "REPRESENTATIVE_MARKED_PAIR": [
+            [
+              0,
+              3
+            ],
+            [
+              1,
+              4
+            ]
+          ],
+          "SIZE": 18
+        }
+      ],
+      "TRIANGULAR_PRISM": [
+        {
+          "REPRESENTATIVE_MARKED_PAIR": [
+            [
+              0,
+              1
+            ],
+            [
+              2,
+              5
+            ]
+          ],
+          "SIZE": 6
+        },
+        {
+          "REPRESENTATIVE_MARKED_PAIR": [
+            [
+              0,
+              1
+            ],
+            [
+              3,
+              4
+            ]
+          ],
+          "SIZE": 3
+        },
+        {
+          "REPRESENTATIVE_MARKED_PAIR": [
+            [
+              0,
+              1
+            ],
+            [
+              3,
+              5
+            ]
+          ],
+          "SIZE": 6
+        },
+        {
+          "REPRESENTATIVE_MARKED_PAIR": [
+            [
+              0,
+              3
+            ],
+            [
+              1,
+              4
+            ]
+          ],
+          "SIZE": 3
+        }
+      ]
+    },
+    "CTO_SCRATCH_REFERENCE": {
+      "A_DELETED_PAIR_ORBITS": {
+        "CYCLIC": 2,
+        "NONCYCLIC": 17
+      },
+      "B_MARKED_PAIR_ORBITS": {
+        "K3_3": 1,
+        "TRIANGULAR_PRISM": 4
+      },
+      "REPRESENTATIVES_AT_MOST": 95
+    },
+    "CTO_SCRATCH_REFERENCE_MATCH": true
+  },
+  "REPRESENTATIVES_EVALUATED": 95,
+  "CANDIDATE_COUNTS": [
+    {
+      "STS_CLASS": "CYCLIC",
+      "DELETED_PAIR": [
+        0,
+        1
+      ],
+      "BRIDGE_POINT_A": 4,
+      "TEMPLATE": "K3_3",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          3
+        ],
+        [
+          1,
+          4
+        ]
+      ],
+      "A_ORBIT_SIZE": 39,
+      "B_ORBIT_SIZE": 18,
+      "ORBIT_WEIGHT": 702,
+      "NORMALIZED_PORTFOLIO_SHA256": "6dab93b2468298f1664734574bb188cf649dc0e505027cbe981fd2558cb4db01",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992323,
+      "DELTA_VS_BASELINE": -271565
+    },
+    {
+      "STS_CLASS": "CYCLIC",
+      "DELETED_PAIR": [
+        0,
+        2
+      ],
+      "BRIDGE_POINT_A": 7,
+      "TEMPLATE": "K3_3",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          3
+        ],
+        [
+          1,
+          4
+        ]
+      ],
+      "A_ORBIT_SIZE": 39,
+      "B_ORBIT_SIZE": 18,
+      "ORBIT_WEIGHT": 702,
+      "NORMALIZED_PORTFOLIO_SHA256": "6fa144bdac66fb8d3993110820aae86cd559eafc7583895e5bb15a2676748309",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992316,
+      "DELTA_VS_BASELINE": -271572
+    },
+    {
+      "STS_CLASS": "CYCLIC",
+      "DELETED_PAIR": [
+        0,
+        1
+      ],
+      "BRIDGE_POINT_A": 4,
+      "TEMPLATE": "TRIANGULAR_PRISM",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          1
+        ],
+        [
+          2,
+          5
+        ]
+      ],
+      "A_ORBIT_SIZE": 39,
+      "B_ORBIT_SIZE": 6,
+      "ORBIT_WEIGHT": 234,
+      "NORMALIZED_PORTFOLIO_SHA256": "75ca93fe0e064b50a0a525683d2cf2a95ef8f7996ebcfe920dc3a45a21851e1a",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992323,
+      "DELTA_VS_BASELINE": -271565
+    },
+    {
+      "STS_CLASS": "CYCLIC",
+      "DELETED_PAIR": [
+        0,
+        1
+      ],
+      "BRIDGE_POINT_A": 4,
+      "TEMPLATE": "TRIANGULAR_PRISM",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          1
+        ],
+        [
+          3,
+          4
+        ]
+      ],
+      "A_ORBIT_SIZE": 39,
+      "B_ORBIT_SIZE": 3,
+      "ORBIT_WEIGHT": 117,
+      "NORMALIZED_PORTFOLIO_SHA256": "4f4b2bc9bd5ef19e3365bded59fa65239f6296e1571b76c9fa418245e4eb08d9",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992323,
+      "DELTA_VS_BASELINE": -271565
+    },
+    {
+      "STS_CLASS": "CYCLIC",
+      "DELETED_PAIR": [
+        0,
+        1
+      ],
+      "BRIDGE_POINT_A": 4,
+      "TEMPLATE": "TRIANGULAR_PRISM",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          1
+        ],
+        [
+          3,
+          5
+        ]
+      ],
+      "A_ORBIT_SIZE": 39,
+      "B_ORBIT_SIZE": 6,
+      "ORBIT_WEIGHT": 234,
+      "NORMALIZED_PORTFOLIO_SHA256": "ede18f0f9f8af1999392a527a028bc4697a92fcddb19a3943537a3f4580c4115",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992323,
+      "DELTA_VS_BASELINE": -271565
+    },
+    {
+      "STS_CLASS": "CYCLIC",
+      "DELETED_PAIR": [
+        0,
+        1
+      ],
+      "BRIDGE_POINT_A": 4,
+      "TEMPLATE": "TRIANGULAR_PRISM",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          3
+        ],
+        [
+          1,
+          4
+        ]
+      ],
+      "A_ORBIT_SIZE": 39,
+      "B_ORBIT_SIZE": 3,
+      "ORBIT_WEIGHT": 117,
+      "NORMALIZED_PORTFOLIO_SHA256": "e40185d3ec2db7f11dbd9ce478147e25bdec9c8bdfee8d2ad97597f45f260383",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992323,
+      "DELTA_VS_BASELINE": -271565
+    },
+    {
+      "STS_CLASS": "CYCLIC",
+      "DELETED_PAIR": [
+        0,
+        2
+      ],
+      "BRIDGE_POINT_A": 7,
+      "TEMPLATE": "TRIANGULAR_PRISM",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          1
+        ],
+        [
+          2,
+          5
+        ]
+      ],
+      "A_ORBIT_SIZE": 39,
+      "B_ORBIT_SIZE": 6,
+      "ORBIT_WEIGHT": 234,
+      "NORMALIZED_PORTFOLIO_SHA256": "b0b5ac381790e3ebebcb214b68c731da23bbdac386492cfbfe73cec3096487cc",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992316,
+      "DELTA_VS_BASELINE": -271572
+    },
+    {
+      "STS_CLASS": "CYCLIC",
+      "DELETED_PAIR": [
+        0,
+        2
+      ],
+      "BRIDGE_POINT_A": 7,
+      "TEMPLATE": "TRIANGULAR_PRISM",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          1
+        ],
+        [
+          3,
+          4
+        ]
+      ],
+      "A_ORBIT_SIZE": 39,
+      "B_ORBIT_SIZE": 3,
+      "ORBIT_WEIGHT": 117,
+      "NORMALIZED_PORTFOLIO_SHA256": "c0ab78b063ebb94d3824adf63f34d0dcdbee14cbd66f557068f69dfedf2cedb0",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992316,
+      "DELTA_VS_BASELINE": -271572
+    },
+    {
+      "STS_CLASS": "CYCLIC",
+      "DELETED_PAIR": [
+        0,
+        2
+      ],
+      "BRIDGE_POINT_A": 7,
+      "TEMPLATE": "TRIANGULAR_PRISM",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          1
+        ],
+        [
+          3,
+          5
+        ]
+      ],
+      "A_ORBIT_SIZE": 39,
+      "B_ORBIT_SIZE": 6,
+      "ORBIT_WEIGHT": 234,
+      "NORMALIZED_PORTFOLIO_SHA256": "f78311bb9418167fb860a855379da412f804f4cb249091cb91f371c11c6344f2",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992316,
+      "DELTA_VS_BASELINE": -271572
+    },
+    {
+      "STS_CLASS": "CYCLIC",
+      "DELETED_PAIR": [
+        0,
+        2
+      ],
+      "BRIDGE_POINT_A": 7,
+      "TEMPLATE": "TRIANGULAR_PRISM",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          3
+        ],
+        [
+          1,
+          4
+        ]
+      ],
+      "A_ORBIT_SIZE": 39,
+      "B_ORBIT_SIZE": 3,
+      "ORBIT_WEIGHT": 117,
+      "NORMALIZED_PORTFOLIO_SHA256": "f9c3c9ad636992266cfd76b180eb113c3cb2fa229db5afd4c96b92fa0d8d4dad",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992316,
+      "DELTA_VS_BASELINE": -271572
+    },
+    {
+      "STS_CLASS": "NONCYCLIC",
+      "DELETED_PAIR": [
+        0,
+        1
+      ],
+      "BRIDGE_POINT_A": 7,
+      "TEMPLATE": "K3_3",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          3
+        ],
+        [
+          1,
+          4
+        ]
+      ],
+      "A_ORBIT_SIZE": 6,
+      "B_ORBIT_SIZE": 18,
+      "ORBIT_WEIGHT": 108,
+      "NORMALIZED_PORTFOLIO_SHA256": "63594380bc2a14574cf0e6fd47f578b497b9f288021fa91e34b9d8dc2fca6616",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992330,
+      "DELTA_VS_BASELINE": -271558
+    },
+    {
+      "STS_CLASS": "NONCYCLIC",
+      "DELETED_PAIR": [
+        0,
+        2
+      ],
+      "BRIDGE_POINT_A": 4,
+      "TEMPLATE": "K3_3",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          3
+        ],
+        [
+          1,
+          4
+        ]
+      ],
+      "A_ORBIT_SIZE": 6,
+      "B_ORBIT_SIZE": 18,
+      "ORBIT_WEIGHT": 108,
+      "NORMALIZED_PORTFOLIO_SHA256": "464d1dc6a364beacb8ba2122c6348aaf4fc95cffa74d3c03a4b92052343cb288",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992330,
+      "DELTA_VS_BASELINE": -271558
+    },
+    {
+      "STS_CLASS": "NONCYCLIC",
+      "DELETED_PAIR": [
+        0,
+        3
+      ],
+      "BRIDGE_POINT_A": 12,
+      "TEMPLATE": "K3_3",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          3
+        ],
+        [
+          1,
+          4
+        ]
+      ],
+      "A_ORBIT_SIZE": 6,
+      "B_ORBIT_SIZE": 18,
+      "ORBIT_WEIGHT": 108,
+      "NORMALIZED_PORTFOLIO_SHA256": "34588f97ce83d632f5d1e0d44252c7544153e1e3622c6ace65cc7d1cd1a668f1",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992330,
+      "DELTA_VS_BASELINE": -271558
+    },
+    {
+      "STS_CLASS": "NONCYCLIC",
+      "DELETED_PAIR": [
+        0,
+        5
+      ],
+      "BRIDGE_POINT_A": 11,
+      "TEMPLATE": "K3_3",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          3
+        ],
+        [
+          1,
+          4
+        ]
+      ],
+      "A_ORBIT_SIZE": 6,
+      "B_ORBIT_SIZE": 18,
+      "ORBIT_WEIGHT": 108,
+      "NORMALIZED_PORTFOLIO_SHA256": "d1b370a2b2668fa1e48b88cafe380404a2aca5bdb41002a6a9d147ffef1e37b2",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992330,
+      "DELTA_VS_BASELINE": -271558
+    },
+    {
+      "STS_CLASS": "NONCYCLIC",
+      "DELETED_PAIR": [
+        0,
+        6
+      ],
+      "BRIDGE_POINT_A": 8,
+      "TEMPLATE": "K3_3",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          3
+        ],
+        [
+          1,
+          4
+        ]
+      ],
+      "A_ORBIT_SIZE": 6,
+      "B_ORBIT_SIZE": 18,
+      "ORBIT_WEIGHT": 108,
+      "NORMALIZED_PORTFOLIO_SHA256": "290417a24a669648070994a87369687bdd7a61df709d315c7e3868fd61d5344f",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992323,
+      "DELTA_VS_BASELINE": -271565
+    },
+    {
+      "STS_CLASS": "NONCYCLIC",
+      "DELETED_PAIR": [
+        0,
+        7
+      ],
+      "BRIDGE_POINT_A": 1,
+      "TEMPLATE": "K3_3",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          3
+        ],
+        [
+          1,
+          4
+        ]
+      ],
+      "A_ORBIT_SIZE": 6,
+      "B_ORBIT_SIZE": 18,
+      "ORBIT_WEIGHT": 108,
+      "NORMALIZED_PORTFOLIO_SHA256": "4744825a6285db4b28cac782f289eb79e9533ccdd9ce4b008f3f02ff3491e821",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992330,
+      "DELTA_VS_BASELINE": -271558
+    },
+    {
+      "STS_CLASS": "NONCYCLIC",
+      "DELETED_PAIR": [
+        0,
+        8
+      ],
+      "BRIDGE_POINT_A": 6,
+      "TEMPLATE": "K3_3",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          3
+        ],
+        [
+          1,
+          4
+        ]
+      ],
+      "A_ORBIT_SIZE": 3,
+      "B_ORBIT_SIZE": 18,
+      "ORBIT_WEIGHT": 54,
+      "NORMALIZED_PORTFOLIO_SHA256": "01bffcf76f3d8ae35f4944f5b42bb9a7ece09f61e6604143eb9bdef8b0b63215",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992330,
+      "DELTA_VS_BASELINE": -271558
+    },
+    {
+      "STS_CLASS": "NONCYCLIC",
+      "DELETED_PAIR": [
+        0,
+        9
+      ],
+      "BRIDGE_POINT_A": 10,
+      "TEMPLATE": "K3_3",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          3
+        ],
+        [
+          1,
+          4
+        ]
+      ],
+      "A_ORBIT_SIZE": 6,
+      "B_ORBIT_SIZE": 18,
+      "ORBIT_WEIGHT": 108,
+      "NORMALIZED_PORTFOLIO_SHA256": "7e51d59b0b0955b22371c095102f991eb7e445e7e27c5d7c4aa6c226af9642a3",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992323,
+      "DELTA_VS_BASELINE": -271565
+    },
+    {
+      "STS_CLASS": "NONCYCLIC",
+      "DELETED_PAIR": [
+        0,
+        10
+      ],
+      "BRIDGE_POINT_A": 9,
+      "TEMPLATE": "K3_3",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          3
+        ],
+        [
+          1,
+          4
+        ]
+      ],
+      "A_ORBIT_SIZE": 6,
+      "B_ORBIT_SIZE": 18,
+      "ORBIT_WEIGHT": 108,
+      "NORMALIZED_PORTFOLIO_SHA256": "392c4d4f627aba915e3fa7cfa6757b4cb76d7eda9f7c5c83258bcc0d9127d8d6",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992337,
+      "DELTA_VS_BASELINE": -271551
+    },
+    {
+      "STS_CLASS": "NONCYCLIC",
+      "DELETED_PAIR": [
+        0,
+        11
+      ],
+      "BRIDGE_POINT_A": 5,
+      "TEMPLATE": "K3_3",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          3
+        ],
+        [
+          1,
+          4
+        ]
+      ],
+      "A_ORBIT_SIZE": 3,
+      "B_ORBIT_SIZE": 18,
+      "ORBIT_WEIGHT": 54,
+      "NORMALIZED_PORTFOLIO_SHA256": "a072fd8bdd44cd9b899f30bbac3c3bb854cd7607dde7449e54a2c634cbdcf3a7",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992330,
+      "DELTA_VS_BASELINE": -271558
+    },
+    {
+      "STS_CLASS": "NONCYCLIC",
+      "DELETED_PAIR": [
+        0,
+        12
+      ],
+      "BRIDGE_POINT_A": 3,
+      "TEMPLATE": "K3_3",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          3
+        ],
+        [
+          1,
+          4
+        ]
+      ],
+      "A_ORBIT_SIZE": 3,
+      "B_ORBIT_SIZE": 18,
+      "ORBIT_WEIGHT": 54,
+      "NORMALIZED_PORTFOLIO_SHA256": "c007688ea50ac4c5fa6009ef722f1ed5ce4bd025bc935ec4e9e23a3b6e8c62ba",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992337,
+      "DELTA_VS_BASELINE": -271551
+    },
+    {
+      "STS_CLASS": "NONCYCLIC",
+      "DELETED_PAIR": [
+        2,
+        3
+      ],
+      "BRIDGE_POINT_A": 6,
+      "TEMPLATE": "K3_3",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          3
+        ],
+        [
+          1,
+          4
+        ]
+      ],
+      "A_ORBIT_SIZE": 3,
+      "B_ORBIT_SIZE": 18,
+      "ORBIT_WEIGHT": 54,
+      "NORMALIZED_PORTFOLIO_SHA256": "b373f19f93db9968e5508cfc2916e5c5b346658954b1980e173edf0799c45c61",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992330,
+      "DELTA_VS_BASELINE": -271558
+    },
+    {
+      "STS_CLASS": "NONCYCLIC",
+      "DELETED_PAIR": [
+        2,
+        5
+      ],
+      "BRIDGE_POINT_A": 1,
+      "TEMPLATE": "K3_3",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          3
+        ],
+        [
+          1,
+          4
+        ]
+      ],
+      "A_ORBIT_SIZE": 6,
+      "B_ORBIT_SIZE": 18,
+      "ORBIT_WEIGHT": 108,
+      "NORMALIZED_PORTFOLIO_SHA256": "8ca6776f8c1810a0b930c38c9392c8feda9e326cfd9a0e657107821ff0e87e62",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992330,
+      "DELTA_VS_BASELINE": -271558
+    },
+    {
+      "STS_CLASS": "NONCYCLIC",
+      "DELETED_PAIR": [
+        2,
+        6
+      ],
+      "BRIDGE_POINT_A": 3,
+      "TEMPLATE": "K3_3",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          3
+        ],
+        [
+          1,
+          4
+        ]
+      ],
+      "A_ORBIT_SIZE": 3,
+      "B_ORBIT_SIZE": 18,
+      "ORBIT_WEIGHT": 54,
+      "NORMALIZED_PORTFOLIO_SHA256": "7d38d90811527a56a386f6cbb6a90ed07c2ab1b8cdfd088044fd08c8b591fcd2",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992330,
+      "DELTA_VS_BASELINE": -271558
+    },
+    {
+      "STS_CLASS": "NONCYCLIC",
+      "DELETED_PAIR": [
+        2,
+        7
+      ],
+      "BRIDGE_POINT_A": 9,
+      "TEMPLATE": "K3_3",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          3
+        ],
+        [
+          1,
+          4
+        ]
+      ],
+      "A_ORBIT_SIZE": 3,
+      "B_ORBIT_SIZE": 18,
+      "ORBIT_WEIGHT": 54,
+      "NORMALIZED_PORTFOLIO_SHA256": "a03ef2c5584b7febe3b9fd851f186a5b0e6aebc194c14c5c97d3df7ee3b69962",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992316,
+      "DELTA_VS_BASELINE": -271572
+    },
+    {
+      "STS_CLASS": "NONCYCLIC",
+      "DELETED_PAIR": [
+        3,
+        5
+      ],
+      "BRIDGE_POINT_A": 10,
+      "TEMPLATE": "K3_3",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          3
+        ],
+        [
+          1,
+          4
+        ]
+      ],
+      "A_ORBIT_SIZE": 3,
+      "B_ORBIT_SIZE": 18,
+      "ORBIT_WEIGHT": 54,
+      "NORMALIZED_PORTFOLIO_SHA256": "28521f4e263dab992c6968dbed9c0889564f2b5913485eb30a23a87f0cae5a78",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992323,
+      "DELTA_VS_BASELINE": -271565
+    },
+    {
+      "STS_CLASS": "NONCYCLIC",
+      "DELETED_PAIR": [
+        3,
+        6
+      ],
+      "BRIDGE_POINT_A": 2,
+      "TEMPLATE": "K3_3",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          3
+        ],
+        [
+          1,
+          4
+        ]
+      ],
+      "A_ORBIT_SIZE": 3,
+      "B_ORBIT_SIZE": 18,
+      "ORBIT_WEIGHT": 54,
+      "NORMALIZED_PORTFOLIO_SHA256": "656fbe66dafb8b7f7f4815d9cbe24bc444704eea7f3ff41e1fcb9c6f2082478f",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992330,
+      "DELTA_VS_BASELINE": -271558
+    },
+    {
+      "STS_CLASS": "NONCYCLIC",
+      "DELETED_PAIR": [
+        0,
+        1
+      ],
+      "BRIDGE_POINT_A": 7,
+      "TEMPLATE": "TRIANGULAR_PRISM",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          1
+        ],
+        [
+          2,
+          5
+        ]
+      ],
+      "A_ORBIT_SIZE": 6,
+      "B_ORBIT_SIZE": 6,
+      "ORBIT_WEIGHT": 36,
+      "NORMALIZED_PORTFOLIO_SHA256": "681e6ff7e861e888b6ca33a739238c7ce9dc9d633ece944a15593bf58845e1e5",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992330,
+      "DELTA_VS_BASELINE": -271558
+    },
+    {
+      "STS_CLASS": "NONCYCLIC",
+      "DELETED_PAIR": [
+        0,
+        1
+      ],
+      "BRIDGE_POINT_A": 7,
+      "TEMPLATE": "TRIANGULAR_PRISM",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          1
+        ],
+        [
+          3,
+          4
+        ]
+      ],
+      "A_ORBIT_SIZE": 6,
+      "B_ORBIT_SIZE": 3,
+      "ORBIT_WEIGHT": 18,
+      "NORMALIZED_PORTFOLIO_SHA256": "7ecd6883a42ebcee09228a89466bf26747290327bc4212a1668b9016d7c9788d",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992330,
+      "DELTA_VS_BASELINE": -271558
+    },
+    {
+      "STS_CLASS": "NONCYCLIC",
+      "DELETED_PAIR": [
+        0,
+        1
+      ],
+      "BRIDGE_POINT_A": 7,
+      "TEMPLATE": "TRIANGULAR_PRISM",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          1
+        ],
+        [
+          3,
+          5
+        ]
+      ],
+      "A_ORBIT_SIZE": 6,
+      "B_ORBIT_SIZE": 6,
+      "ORBIT_WEIGHT": 36,
+      "NORMALIZED_PORTFOLIO_SHA256": "d05c8fffbb2f2840c3f6b722ddbd17d8c8a68c517f5783f2fd19fbe81d65993c",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992330,
+      "DELTA_VS_BASELINE": -271558
+    },
+    {
+      "STS_CLASS": "NONCYCLIC",
+      "DELETED_PAIR": [
+        0,
+        1
+      ],
+      "BRIDGE_POINT_A": 7,
+      "TEMPLATE": "TRIANGULAR_PRISM",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          3
+        ],
+        [
+          1,
+          4
+        ]
+      ],
+      "A_ORBIT_SIZE": 6,
+      "B_ORBIT_SIZE": 3,
+      "ORBIT_WEIGHT": 18,
+      "NORMALIZED_PORTFOLIO_SHA256": "64338b025a1bcceb8afb5103f92bc873c7211bc6407a92a6fba651da73767406",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992330,
+      "DELTA_VS_BASELINE": -271558
+    },
+    {
+      "STS_CLASS": "NONCYCLIC",
+      "DELETED_PAIR": [
+        0,
+        2
+      ],
+      "BRIDGE_POINT_A": 4,
+      "TEMPLATE": "TRIANGULAR_PRISM",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          1
+        ],
+        [
+          2,
+          5
+        ]
+      ],
+      "A_ORBIT_SIZE": 6,
+      "B_ORBIT_SIZE": 6,
+      "ORBIT_WEIGHT": 36,
+      "NORMALIZED_PORTFOLIO_SHA256": "a8f72f64e4ff6ac90845202cddb48f2f0c8106cf6e1002c2ac1b7363418ebd0c",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992330,
+      "DELTA_VS_BASELINE": -271558
+    },
+    {
+      "STS_CLASS": "NONCYCLIC",
+      "DELETED_PAIR": [
+        0,
+        2
+      ],
+      "BRIDGE_POINT_A": 4,
+      "TEMPLATE": "TRIANGULAR_PRISM",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          1
+        ],
+        [
+          3,
+          4
+        ]
+      ],
+      "A_ORBIT_SIZE": 6,
+      "B_ORBIT_SIZE": 3,
+      "ORBIT_WEIGHT": 18,
+      "NORMALIZED_PORTFOLIO_SHA256": "86e59daaea5e9fa64bc9e35d4d8582010f2128a480e85984c3b7c8ded3912afd",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992330,
+      "DELTA_VS_BASELINE": -271558
+    },
+    {
+      "STS_CLASS": "NONCYCLIC",
+      "DELETED_PAIR": [
+        0,
+        2
+      ],
+      "BRIDGE_POINT_A": 4,
+      "TEMPLATE": "TRIANGULAR_PRISM",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          1
+        ],
+        [
+          3,
+          5
+        ]
+      ],
+      "A_ORBIT_SIZE": 6,
+      "B_ORBIT_SIZE": 6,
+      "ORBIT_WEIGHT": 36,
+      "NORMALIZED_PORTFOLIO_SHA256": "d7b622439fdf60a58a5a7d076846ccfbe1fb165af2c24126f48a6290265c1733",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992330,
+      "DELTA_VS_BASELINE": -271558
+    },
+    {
+      "STS_CLASS": "NONCYCLIC",
+      "DELETED_PAIR": [
+        0,
+        2
+      ],
+      "BRIDGE_POINT_A": 4,
+      "TEMPLATE": "TRIANGULAR_PRISM",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          3
+        ],
+        [
+          1,
+          4
+        ]
+      ],
+      "A_ORBIT_SIZE": 6,
+      "B_ORBIT_SIZE": 3,
+      "ORBIT_WEIGHT": 18,
+      "NORMALIZED_PORTFOLIO_SHA256": "9c4aea80d5b6819e58613431777efea62afbdbad4c95e77be3625a0700677b72",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992330,
+      "DELTA_VS_BASELINE": -271558
+    },
+    {
+      "STS_CLASS": "NONCYCLIC",
+      "DELETED_PAIR": [
+        0,
+        3
+      ],
+      "BRIDGE_POINT_A": 12,
+      "TEMPLATE": "TRIANGULAR_PRISM",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          1
+        ],
+        [
+          2,
+          5
+        ]
+      ],
+      "A_ORBIT_SIZE": 6,
+      "B_ORBIT_SIZE": 6,
+      "ORBIT_WEIGHT": 36,
+      "NORMALIZED_PORTFOLIO_SHA256": "6f957f5f33258aa43b2a71f1fb5c22984e77f27dbe03ba3a9406d1bb3419a6aa",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992330,
+      "DELTA_VS_BASELINE": -271558
+    },
+    {
+      "STS_CLASS": "NONCYCLIC",
+      "DELETED_PAIR": [
+        0,
+        3
+      ],
+      "BRIDGE_POINT_A": 12,
+      "TEMPLATE": "TRIANGULAR_PRISM",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          1
+        ],
+        [
+          3,
+          4
+        ]
+      ],
+      "A_ORBIT_SIZE": 6,
+      "B_ORBIT_SIZE": 3,
+      "ORBIT_WEIGHT": 18,
+      "NORMALIZED_PORTFOLIO_SHA256": "44b9f79e8a2277eacf1a7f4dfd6531ee2f3621264534d855ec028217c3b29fb3",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992330,
+      "DELTA_VS_BASELINE": -271558
+    },
+    {
+      "STS_CLASS": "NONCYCLIC",
+      "DELETED_PAIR": [
+        0,
+        3
+      ],
+      "BRIDGE_POINT_A": 12,
+      "TEMPLATE": "TRIANGULAR_PRISM",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          1
+        ],
+        [
+          3,
+          5
+        ]
+      ],
+      "A_ORBIT_SIZE": 6,
+      "B_ORBIT_SIZE": 6,
+      "ORBIT_WEIGHT": 36,
+      "NORMALIZED_PORTFOLIO_SHA256": "f43d9228a0ff79f83a7d77fc334c89ae360884bc27cbeac0e9a3720c0f040061",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992330,
+      "DELTA_VS_BASELINE": -271558
+    },
+    {
+      "STS_CLASS": "NONCYCLIC",
+      "DELETED_PAIR": [
+        0,
+        3
+      ],
+      "BRIDGE_POINT_A": 12,
+      "TEMPLATE": "TRIANGULAR_PRISM",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          3
+        ],
+        [
+          1,
+          4
+        ]
+      ],
+      "A_ORBIT_SIZE": 6,
+      "B_ORBIT_SIZE": 3,
+      "ORBIT_WEIGHT": 18,
+      "NORMALIZED_PORTFOLIO_SHA256": "dd70d682e7a76b8922a0c104c7ad7902a93ae7aaa1dbbf3dd841babf87ab65ca",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992330,
+      "DELTA_VS_BASELINE": -271558
+    },
+    {
+      "STS_CLASS": "NONCYCLIC",
+      "DELETED_PAIR": [
+        0,
+        5
+      ],
+      "BRIDGE_POINT_A": 11,
+      "TEMPLATE": "TRIANGULAR_PRISM",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          1
+        ],
+        [
+          2,
+          5
+        ]
+      ],
+      "A_ORBIT_SIZE": 6,
+      "B_ORBIT_SIZE": 6,
+      "ORBIT_WEIGHT": 36,
+      "NORMALIZED_PORTFOLIO_SHA256": "b1ddc5f3f1db361f987b58760e147e5c4ca177c55f59050d3676cb803ced2eaa",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992330,
+      "DELTA_VS_BASELINE": -271558
+    },
+    {
+      "STS_CLASS": "NONCYCLIC",
+      "DELETED_PAIR": [
+        0,
+        5
+      ],
+      "BRIDGE_POINT_A": 11,
+      "TEMPLATE": "TRIANGULAR_PRISM",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          1
+        ],
+        [
+          3,
+          4
+        ]
+      ],
+      "A_ORBIT_SIZE": 6,
+      "B_ORBIT_SIZE": 3,
+      "ORBIT_WEIGHT": 18,
+      "NORMALIZED_PORTFOLIO_SHA256": "8206fcbe9a618a1ed5c574006bdbe585a34aa68dc7a685a989989beab88c9eb4",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992330,
+      "DELTA_VS_BASELINE": -271558
+    },
+    {
+      "STS_CLASS": "NONCYCLIC",
+      "DELETED_PAIR": [
+        0,
+        5
+      ],
+      "BRIDGE_POINT_A": 11,
+      "TEMPLATE": "TRIANGULAR_PRISM",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          1
+        ],
+        [
+          3,
+          5
+        ]
+      ],
+      "A_ORBIT_SIZE": 6,
+      "B_ORBIT_SIZE": 6,
+      "ORBIT_WEIGHT": 36,
+      "NORMALIZED_PORTFOLIO_SHA256": "0a95be93815efe5dc5378be02f9c92e743c7e3a5ed525450a308af2090a4b1b7",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992330,
+      "DELTA_VS_BASELINE": -271558
+    },
+    {
+      "STS_CLASS": "NONCYCLIC",
+      "DELETED_PAIR": [
+        0,
+        5
+      ],
+      "BRIDGE_POINT_A": 11,
+      "TEMPLATE": "TRIANGULAR_PRISM",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          3
+        ],
+        [
+          1,
+          4
+        ]
+      ],
+      "A_ORBIT_SIZE": 6,
+      "B_ORBIT_SIZE": 3,
+      "ORBIT_WEIGHT": 18,
+      "NORMALIZED_PORTFOLIO_SHA256": "5dc159f34c51487aef8f5eaed35cdeb39c41e1238f1d3bd68ef3781e614102e3",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992330,
+      "DELTA_VS_BASELINE": -271558
+    },
+    {
+      "STS_CLASS": "NONCYCLIC",
+      "DELETED_PAIR": [
+        0,
+        6
+      ],
+      "BRIDGE_POINT_A": 8,
+      "TEMPLATE": "TRIANGULAR_PRISM",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          1
+        ],
+        [
+          2,
+          5
+        ]
+      ],
+      "A_ORBIT_SIZE": 6,
+      "B_ORBIT_SIZE": 6,
+      "ORBIT_WEIGHT": 36,
+      "NORMALIZED_PORTFOLIO_SHA256": "28c463a8091689011bb73e2a2a30a08a0381431cffcb3a827f0631b28d1f78a0",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992323,
+      "DELTA_VS_BASELINE": -271565
+    },
+    {
+      "STS_CLASS": "NONCYCLIC",
+      "DELETED_PAIR": [
+        0,
+        6
+      ],
+      "BRIDGE_POINT_A": 8,
+      "TEMPLATE": "TRIANGULAR_PRISM",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          1
+        ],
+        [
+          3,
+          4
+        ]
+      ],
+      "A_ORBIT_SIZE": 6,
+      "B_ORBIT_SIZE": 3,
+      "ORBIT_WEIGHT": 18,
+      "NORMALIZED_PORTFOLIO_SHA256": "0c980478c13cdadca5d4a1ef423c776b3690b1af6321234fc0dd5d8a9f3ce88d",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992323,
+      "DELTA_VS_BASELINE": -271565
+    },
+    {
+      "STS_CLASS": "NONCYCLIC",
+      "DELETED_PAIR": [
+        0,
+        6
+      ],
+      "BRIDGE_POINT_A": 8,
+      "TEMPLATE": "TRIANGULAR_PRISM",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          1
+        ],
+        [
+          3,
+          5
+        ]
+      ],
+      "A_ORBIT_SIZE": 6,
+      "B_ORBIT_SIZE": 6,
+      "ORBIT_WEIGHT": 36,
+      "NORMALIZED_PORTFOLIO_SHA256": "61a341caf56a302dcae5315fa2762be75b55621d875fc8e966223493ea233da2",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992323,
+      "DELTA_VS_BASELINE": -271565
+    },
+    {
+      "STS_CLASS": "NONCYCLIC",
+      "DELETED_PAIR": [
+        0,
+        6
+      ],
+      "BRIDGE_POINT_A": 8,
+      "TEMPLATE": "TRIANGULAR_PRISM",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          3
+        ],
+        [
+          1,
+          4
+        ]
+      ],
+      "A_ORBIT_SIZE": 6,
+      "B_ORBIT_SIZE": 3,
+      "ORBIT_WEIGHT": 18,
+      "NORMALIZED_PORTFOLIO_SHA256": "f790bb1f48d0803c057f4ab0b892eccecbfc91b5c95ba7d2811e71669598ab01",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992323,
+      "DELTA_VS_BASELINE": -271565
+    },
+    {
+      "STS_CLASS": "NONCYCLIC",
+      "DELETED_PAIR": [
+        0,
+        7
+      ],
+      "BRIDGE_POINT_A": 1,
+      "TEMPLATE": "TRIANGULAR_PRISM",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          1
+        ],
+        [
+          2,
+          5
+        ]
+      ],
+      "A_ORBIT_SIZE": 6,
+      "B_ORBIT_SIZE": 6,
+      "ORBIT_WEIGHT": 36,
+      "NORMALIZED_PORTFOLIO_SHA256": "8a3575de7af577c15e2f5e11fa33a741114df0fb64e909efa17f3e1d3b733a34",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992330,
+      "DELTA_VS_BASELINE": -271558
+    },
+    {
+      "STS_CLASS": "NONCYCLIC",
+      "DELETED_PAIR": [
+        0,
+        7
+      ],
+      "BRIDGE_POINT_A": 1,
+      "TEMPLATE": "TRIANGULAR_PRISM",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          1
+        ],
+        [
+          3,
+          4
+        ]
+      ],
+      "A_ORBIT_SIZE": 6,
+      "B_ORBIT_SIZE": 3,
+      "ORBIT_WEIGHT": 18,
+      "NORMALIZED_PORTFOLIO_SHA256": "173d8c17c374d6773afef35e09bcd70ce0211c8f5b59c3b15642c404e1929a73",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992330,
+      "DELTA_VS_BASELINE": -271558
+    },
+    {
+      "STS_CLASS": "NONCYCLIC",
+      "DELETED_PAIR": [
+        0,
+        7
+      ],
+      "BRIDGE_POINT_A": 1,
+      "TEMPLATE": "TRIANGULAR_PRISM",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          1
+        ],
+        [
+          3,
+          5
+        ]
+      ],
+      "A_ORBIT_SIZE": 6,
+      "B_ORBIT_SIZE": 6,
+      "ORBIT_WEIGHT": 36,
+      "NORMALIZED_PORTFOLIO_SHA256": "09d45883c5751c44b4bbb22e4a93d02e5d030fb62f968defcb3c4fa43f4c88ff",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992330,
+      "DELTA_VS_BASELINE": -271558
+    },
+    {
+      "STS_CLASS": "NONCYCLIC",
+      "DELETED_PAIR": [
+        0,
+        7
+      ],
+      "BRIDGE_POINT_A": 1,
+      "TEMPLATE": "TRIANGULAR_PRISM",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          3
+        ],
+        [
+          1,
+          4
+        ]
+      ],
+      "A_ORBIT_SIZE": 6,
+      "B_ORBIT_SIZE": 3,
+      "ORBIT_WEIGHT": 18,
+      "NORMALIZED_PORTFOLIO_SHA256": "5f8d15668601dad9e75755928ca3261ecc954ad4789cf4d4b0f8719b916811a5",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992330,
+      "DELTA_VS_BASELINE": -271558
+    },
+    {
+      "STS_CLASS": "NONCYCLIC",
+      "DELETED_PAIR": [
+        0,
+        8
+      ],
+      "BRIDGE_POINT_A": 6,
+      "TEMPLATE": "TRIANGULAR_PRISM",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          1
+        ],
+        [
+          2,
+          5
+        ]
+      ],
+      "A_ORBIT_SIZE": 3,
+      "B_ORBIT_SIZE": 6,
+      "ORBIT_WEIGHT": 18,
+      "NORMALIZED_PORTFOLIO_SHA256": "dea3c24b9ef3fae03029c9ee31cace63240ccfe5bb19c5100fe4dfec6929331b",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992330,
+      "DELTA_VS_BASELINE": -271558
+    },
+    {
+      "STS_CLASS": "NONCYCLIC",
+      "DELETED_PAIR": [
+        0,
+        8
+      ],
+      "BRIDGE_POINT_A": 6,
+      "TEMPLATE": "TRIANGULAR_PRISM",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          1
+        ],
+        [
+          3,
+          4
+        ]
+      ],
+      "A_ORBIT_SIZE": 3,
+      "B_ORBIT_SIZE": 3,
+      "ORBIT_WEIGHT": 9,
+      "NORMALIZED_PORTFOLIO_SHA256": "1eb144ee5863b66f7d4cd5957a1445eb395efb0931879e3ae52697244d5f2aa8",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992330,
+      "DELTA_VS_BASELINE": -271558
+    },
+    {
+      "STS_CLASS": "NONCYCLIC",
+      "DELETED_PAIR": [
+        0,
+        8
+      ],
+      "BRIDGE_POINT_A": 6,
+      "TEMPLATE": "TRIANGULAR_PRISM",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          1
+        ],
+        [
+          3,
+          5
+        ]
+      ],
+      "A_ORBIT_SIZE": 3,
+      "B_ORBIT_SIZE": 6,
+      "ORBIT_WEIGHT": 18,
+      "NORMALIZED_PORTFOLIO_SHA256": "d6a23d9b7e5356d71e999ed84ab27ad7646184bca612b89632a159cd420ffcaa",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992330,
+      "DELTA_VS_BASELINE": -271558
+    },
+    {
+      "STS_CLASS": "NONCYCLIC",
+      "DELETED_PAIR": [
+        0,
+        8
+      ],
+      "BRIDGE_POINT_A": 6,
+      "TEMPLATE": "TRIANGULAR_PRISM",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          3
+        ],
+        [
+          1,
+          4
+        ]
+      ],
+      "A_ORBIT_SIZE": 3,
+      "B_ORBIT_SIZE": 3,
+      "ORBIT_WEIGHT": 9,
+      "NORMALIZED_PORTFOLIO_SHA256": "4b8f39fc066162f0a1ac1b0fc9ec656df7b064674a1e33d86ee8af7c095242b0",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992330,
+      "DELTA_VS_BASELINE": -271558
+    },
+    {
+      "STS_CLASS": "NONCYCLIC",
+      "DELETED_PAIR": [
+        0,
+        9
+      ],
+      "BRIDGE_POINT_A": 10,
+      "TEMPLATE": "TRIANGULAR_PRISM",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          1
+        ],
+        [
+          2,
+          5
+        ]
+      ],
+      "A_ORBIT_SIZE": 6,
+      "B_ORBIT_SIZE": 6,
+      "ORBIT_WEIGHT": 36,
+      "NORMALIZED_PORTFOLIO_SHA256": "63d39a9dcbf88c0c50a55981c20700cac3eae20d72f9c0fce8a03b850ff59b5c",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992323,
+      "DELTA_VS_BASELINE": -271565
+    },
+    {
+      "STS_CLASS": "NONCYCLIC",
+      "DELETED_PAIR": [
+        0,
+        9
+      ],
+      "BRIDGE_POINT_A": 10,
+      "TEMPLATE": "TRIANGULAR_PRISM",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          1
+        ],
+        [
+          3,
+          4
+        ]
+      ],
+      "A_ORBIT_SIZE": 6,
+      "B_ORBIT_SIZE": 3,
+      "ORBIT_WEIGHT": 18,
+      "NORMALIZED_PORTFOLIO_SHA256": "30b2ee5646cb6200bec4eec35815dedcb7f4b17d37db07dda03cdcb9fe993106",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992323,
+      "DELTA_VS_BASELINE": -271565
+    },
+    {
+      "STS_CLASS": "NONCYCLIC",
+      "DELETED_PAIR": [
+        0,
+        9
+      ],
+      "BRIDGE_POINT_A": 10,
+      "TEMPLATE": "TRIANGULAR_PRISM",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          1
+        ],
+        [
+          3,
+          5
+        ]
+      ],
+      "A_ORBIT_SIZE": 6,
+      "B_ORBIT_SIZE": 6,
+      "ORBIT_WEIGHT": 36,
+      "NORMALIZED_PORTFOLIO_SHA256": "d39024bc25e152fddfae010c4d2472a0663999d0387099399105e49d4b756e44",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992323,
+      "DELTA_VS_BASELINE": -271565
+    },
+    {
+      "STS_CLASS": "NONCYCLIC",
+      "DELETED_PAIR": [
+        0,
+        9
+      ],
+      "BRIDGE_POINT_A": 10,
+      "TEMPLATE": "TRIANGULAR_PRISM",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          3
+        ],
+        [
+          1,
+          4
+        ]
+      ],
+      "A_ORBIT_SIZE": 6,
+      "B_ORBIT_SIZE": 3,
+      "ORBIT_WEIGHT": 18,
+      "NORMALIZED_PORTFOLIO_SHA256": "19457caab6be51602c994e9279f851cb06755583c348d96c9fe60f29989addaa",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992323,
+      "DELTA_VS_BASELINE": -271565
+    },
+    {
+      "STS_CLASS": "NONCYCLIC",
+      "DELETED_PAIR": [
+        0,
+        10
+      ],
+      "BRIDGE_POINT_A": 9,
+      "TEMPLATE": "TRIANGULAR_PRISM",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          1
+        ],
+        [
+          2,
+          5
+        ]
+      ],
+      "A_ORBIT_SIZE": 6,
+      "B_ORBIT_SIZE": 6,
+      "ORBIT_WEIGHT": 36,
+      "NORMALIZED_PORTFOLIO_SHA256": "f34bd637c32eca7c42d962600ddc815e699758ece4b5cb27e61f8f3049fce6e4",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992337,
+      "DELTA_VS_BASELINE": -271551
+    },
+    {
+      "STS_CLASS": "NONCYCLIC",
+      "DELETED_PAIR": [
+        0,
+        10
+      ],
+      "BRIDGE_POINT_A": 9,
+      "TEMPLATE": "TRIANGULAR_PRISM",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          1
+        ],
+        [
+          3,
+          4
+        ]
+      ],
+      "A_ORBIT_SIZE": 6,
+      "B_ORBIT_SIZE": 3,
+      "ORBIT_WEIGHT": 18,
+      "NORMALIZED_PORTFOLIO_SHA256": "4fe333f6cf8c599144204f6d6a7e5ac37a9284e694a27ef8947975e7df076d15",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992337,
+      "DELTA_VS_BASELINE": -271551
+    },
+    {
+      "STS_CLASS": "NONCYCLIC",
+      "DELETED_PAIR": [
+        0,
+        10
+      ],
+      "BRIDGE_POINT_A": 9,
+      "TEMPLATE": "TRIANGULAR_PRISM",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          1
+        ],
+        [
+          3,
+          5
+        ]
+      ],
+      "A_ORBIT_SIZE": 6,
+      "B_ORBIT_SIZE": 6,
+      "ORBIT_WEIGHT": 36,
+      "NORMALIZED_PORTFOLIO_SHA256": "cf3492a8779fbaa0e95e9c1b9464c67355ca768e8be42596c49dbb0ef6b34e98",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992337,
+      "DELTA_VS_BASELINE": -271551
+    },
+    {
+      "STS_CLASS": "NONCYCLIC",
+      "DELETED_PAIR": [
+        0,
+        10
+      ],
+      "BRIDGE_POINT_A": 9,
+      "TEMPLATE": "TRIANGULAR_PRISM",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          3
+        ],
+        [
+          1,
+          4
+        ]
+      ],
+      "A_ORBIT_SIZE": 6,
+      "B_ORBIT_SIZE": 3,
+      "ORBIT_WEIGHT": 18,
+      "NORMALIZED_PORTFOLIO_SHA256": "f6864336e065db4a5c6432bae30bc5377603a9d586d94019648de07703629c63",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992337,
+      "DELTA_VS_BASELINE": -271551
+    },
+    {
+      "STS_CLASS": "NONCYCLIC",
+      "DELETED_PAIR": [
+        0,
+        11
+      ],
+      "BRIDGE_POINT_A": 5,
+      "TEMPLATE": "TRIANGULAR_PRISM",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          1
+        ],
+        [
+          2,
+          5
+        ]
+      ],
+      "A_ORBIT_SIZE": 3,
+      "B_ORBIT_SIZE": 6,
+      "ORBIT_WEIGHT": 18,
+      "NORMALIZED_PORTFOLIO_SHA256": "a88ba4e939d975520c640da4a19ad687c4ba7a2be0e464d68313546be3fe5d20",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992330,
+      "DELTA_VS_BASELINE": -271558
+    },
+    {
+      "STS_CLASS": "NONCYCLIC",
+      "DELETED_PAIR": [
+        0,
+        11
+      ],
+      "BRIDGE_POINT_A": 5,
+      "TEMPLATE": "TRIANGULAR_PRISM",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          1
+        ],
+        [
+          3,
+          4
+        ]
+      ],
+      "A_ORBIT_SIZE": 3,
+      "B_ORBIT_SIZE": 3,
+      "ORBIT_WEIGHT": 9,
+      "NORMALIZED_PORTFOLIO_SHA256": "16b6941bdaa3d582b5cf09b72b02775359e78f083d59a91702b0fd92f2df03dd",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992330,
+      "DELTA_VS_BASELINE": -271558
+    },
+    {
+      "STS_CLASS": "NONCYCLIC",
+      "DELETED_PAIR": [
+        0,
+        11
+      ],
+      "BRIDGE_POINT_A": 5,
+      "TEMPLATE": "TRIANGULAR_PRISM",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          1
+        ],
+        [
+          3,
+          5
+        ]
+      ],
+      "A_ORBIT_SIZE": 3,
+      "B_ORBIT_SIZE": 6,
+      "ORBIT_WEIGHT": 18,
+      "NORMALIZED_PORTFOLIO_SHA256": "762540596048dfc8cdb69f333a8b2704501825af0baf97b5d6aa8646ee09c89e",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992330,
+      "DELTA_VS_BASELINE": -271558
+    },
+    {
+      "STS_CLASS": "NONCYCLIC",
+      "DELETED_PAIR": [
+        0,
+        11
+      ],
+      "BRIDGE_POINT_A": 5,
+      "TEMPLATE": "TRIANGULAR_PRISM",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          3
+        ],
+        [
+          1,
+          4
+        ]
+      ],
+      "A_ORBIT_SIZE": 3,
+      "B_ORBIT_SIZE": 3,
+      "ORBIT_WEIGHT": 9,
+      "NORMALIZED_PORTFOLIO_SHA256": "ef6f80023c386edfb3a45b9a6efb8fc94ef46280bdaf36de96f0b4036cdccd99",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992330,
+      "DELTA_VS_BASELINE": -271558
+    },
+    {
+      "STS_CLASS": "NONCYCLIC",
+      "DELETED_PAIR": [
+        0,
+        12
+      ],
+      "BRIDGE_POINT_A": 3,
+      "TEMPLATE": "TRIANGULAR_PRISM",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          1
+        ],
+        [
+          2,
+          5
+        ]
+      ],
+      "A_ORBIT_SIZE": 3,
+      "B_ORBIT_SIZE": 6,
+      "ORBIT_WEIGHT": 18,
+      "NORMALIZED_PORTFOLIO_SHA256": "1c5b9378e172c638b307206c6462df436460dc8c7dc4b8d8f78ee14887ec9e4a",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992337,
+      "DELTA_VS_BASELINE": -271551
+    },
+    {
+      "STS_CLASS": "NONCYCLIC",
+      "DELETED_PAIR": [
+        0,
+        12
+      ],
+      "BRIDGE_POINT_A": 3,
+      "TEMPLATE": "TRIANGULAR_PRISM",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          1
+        ],
+        [
+          3,
+          4
+        ]
+      ],
+      "A_ORBIT_SIZE": 3,
+      "B_ORBIT_SIZE": 3,
+      "ORBIT_WEIGHT": 9,
+      "NORMALIZED_PORTFOLIO_SHA256": "9b4f92c479a61d7f82f4463730c8fcdd3fc516e0858b7a15df7ff897e6a6f198",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992337,
+      "DELTA_VS_BASELINE": -271551
+    },
+    {
+      "STS_CLASS": "NONCYCLIC",
+      "DELETED_PAIR": [
+        0,
+        12
+      ],
+      "BRIDGE_POINT_A": 3,
+      "TEMPLATE": "TRIANGULAR_PRISM",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          1
+        ],
+        [
+          3,
+          5
+        ]
+      ],
+      "A_ORBIT_SIZE": 3,
+      "B_ORBIT_SIZE": 6,
+      "ORBIT_WEIGHT": 18,
+      "NORMALIZED_PORTFOLIO_SHA256": "f24022a2d125b96202f799a8560b19dc05ff29cc8d39af3666b94aff4c3d97e7",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992337,
+      "DELTA_VS_BASELINE": -271551
+    },
+    {
+      "STS_CLASS": "NONCYCLIC",
+      "DELETED_PAIR": [
+        0,
+        12
+      ],
+      "BRIDGE_POINT_A": 3,
+      "TEMPLATE": "TRIANGULAR_PRISM",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          3
+        ],
+        [
+          1,
+          4
+        ]
+      ],
+      "A_ORBIT_SIZE": 3,
+      "B_ORBIT_SIZE": 3,
+      "ORBIT_WEIGHT": 9,
+      "NORMALIZED_PORTFOLIO_SHA256": "e686f56aa97b8b3e8df7622e4fdd92c280ecdf934f9598148ded71066b7b2931",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992337,
+      "DELTA_VS_BASELINE": -271551
+    },
+    {
+      "STS_CLASS": "NONCYCLIC",
+      "DELETED_PAIR": [
+        2,
+        3
+      ],
+      "BRIDGE_POINT_A": 6,
+      "TEMPLATE": "TRIANGULAR_PRISM",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          1
+        ],
+        [
+          2,
+          5
+        ]
+      ],
+      "A_ORBIT_SIZE": 3,
+      "B_ORBIT_SIZE": 6,
+      "ORBIT_WEIGHT": 18,
+      "NORMALIZED_PORTFOLIO_SHA256": "30abb7a46b520f0a3474f1f2c9d0155294e9d14208a0ff99634da8b0e38502d4",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992330,
+      "DELTA_VS_BASELINE": -271558
+    },
+    {
+      "STS_CLASS": "NONCYCLIC",
+      "DELETED_PAIR": [
+        2,
+        3
+      ],
+      "BRIDGE_POINT_A": 6,
+      "TEMPLATE": "TRIANGULAR_PRISM",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          1
+        ],
+        [
+          3,
+          4
+        ]
+      ],
+      "A_ORBIT_SIZE": 3,
+      "B_ORBIT_SIZE": 3,
+      "ORBIT_WEIGHT": 9,
+      "NORMALIZED_PORTFOLIO_SHA256": "2adcc549cc9220fcf5611ba417342ab4d5d0aed70b2b91f1b69cc6e971064d56",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992330,
+      "DELTA_VS_BASELINE": -271558
+    },
+    {
+      "STS_CLASS": "NONCYCLIC",
+      "DELETED_PAIR": [
+        2,
+        3
+      ],
+      "BRIDGE_POINT_A": 6,
+      "TEMPLATE": "TRIANGULAR_PRISM",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          1
+        ],
+        [
+          3,
+          5
+        ]
+      ],
+      "A_ORBIT_SIZE": 3,
+      "B_ORBIT_SIZE": 6,
+      "ORBIT_WEIGHT": 18,
+      "NORMALIZED_PORTFOLIO_SHA256": "fafa58992117d8c0e849d56d1b528b1b11036cab8c3b39dffe570d320f3afd5e",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992330,
+      "DELTA_VS_BASELINE": -271558
+    },
+    {
+      "STS_CLASS": "NONCYCLIC",
+      "DELETED_PAIR": [
+        2,
+        3
+      ],
+      "BRIDGE_POINT_A": 6,
+      "TEMPLATE": "TRIANGULAR_PRISM",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          3
+        ],
+        [
+          1,
+          4
+        ]
+      ],
+      "A_ORBIT_SIZE": 3,
+      "B_ORBIT_SIZE": 3,
+      "ORBIT_WEIGHT": 9,
+      "NORMALIZED_PORTFOLIO_SHA256": "738d61d3bc28f2b0ca0ddc39f0c0e960e7060d3f1dd37c39cf9047f536a2b0eb",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992330,
+      "DELTA_VS_BASELINE": -271558
+    },
+    {
+      "STS_CLASS": "NONCYCLIC",
+      "DELETED_PAIR": [
+        2,
+        5
+      ],
+      "BRIDGE_POINT_A": 1,
+      "TEMPLATE": "TRIANGULAR_PRISM",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          1
+        ],
+        [
+          2,
+          5
+        ]
+      ],
+      "A_ORBIT_SIZE": 6,
+      "B_ORBIT_SIZE": 6,
+      "ORBIT_WEIGHT": 36,
+      "NORMALIZED_PORTFOLIO_SHA256": "eb4ad561b45df7341ac054d57d8fff9454dd01bfb151ce1ba3c41a9aedf4313f",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992330,
+      "DELTA_VS_BASELINE": -271558
+    },
+    {
+      "STS_CLASS": "NONCYCLIC",
+      "DELETED_PAIR": [
+        2,
+        5
+      ],
+      "BRIDGE_POINT_A": 1,
+      "TEMPLATE": "TRIANGULAR_PRISM",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          1
+        ],
+        [
+          3,
+          4
+        ]
+      ],
+      "A_ORBIT_SIZE": 6,
+      "B_ORBIT_SIZE": 3,
+      "ORBIT_WEIGHT": 18,
+      "NORMALIZED_PORTFOLIO_SHA256": "5c0f4ed83cfdfb066f8a8807bff2544cb214aa7a96abad7aec9ee1a050876a56",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992330,
+      "DELTA_VS_BASELINE": -271558
+    },
+    {
+      "STS_CLASS": "NONCYCLIC",
+      "DELETED_PAIR": [
+        2,
+        5
+      ],
+      "BRIDGE_POINT_A": 1,
+      "TEMPLATE": "TRIANGULAR_PRISM",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          1
+        ],
+        [
+          3,
+          5
+        ]
+      ],
+      "A_ORBIT_SIZE": 6,
+      "B_ORBIT_SIZE": 6,
+      "ORBIT_WEIGHT": 36,
+      "NORMALIZED_PORTFOLIO_SHA256": "e9a0300d68fe7a74fd99483cdedf6a64df118326fd99272fbb503084d6688975",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992330,
+      "DELTA_VS_BASELINE": -271558
+    },
+    {
+      "STS_CLASS": "NONCYCLIC",
+      "DELETED_PAIR": [
+        2,
+        5
+      ],
+      "BRIDGE_POINT_A": 1,
+      "TEMPLATE": "TRIANGULAR_PRISM",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          3
+        ],
+        [
+          1,
+          4
+        ]
+      ],
+      "A_ORBIT_SIZE": 6,
+      "B_ORBIT_SIZE": 3,
+      "ORBIT_WEIGHT": 18,
+      "NORMALIZED_PORTFOLIO_SHA256": "d5ca2712d4e8bbb1faf682197b704107fe6b046ed047710903a7359460c9c440",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992330,
+      "DELTA_VS_BASELINE": -271558
+    },
+    {
+      "STS_CLASS": "NONCYCLIC",
+      "DELETED_PAIR": [
+        2,
+        6
+      ],
+      "BRIDGE_POINT_A": 3,
+      "TEMPLATE": "TRIANGULAR_PRISM",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          1
+        ],
+        [
+          2,
+          5
+        ]
+      ],
+      "A_ORBIT_SIZE": 3,
+      "B_ORBIT_SIZE": 6,
+      "ORBIT_WEIGHT": 18,
+      "NORMALIZED_PORTFOLIO_SHA256": "262f535f9cc43687fb7729abc963006c6927515cea7afb526a530a684e80aea8",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992330,
+      "DELTA_VS_BASELINE": -271558
+    },
+    {
+      "STS_CLASS": "NONCYCLIC",
+      "DELETED_PAIR": [
+        2,
+        6
+      ],
+      "BRIDGE_POINT_A": 3,
+      "TEMPLATE": "TRIANGULAR_PRISM",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          1
+        ],
+        [
+          3,
+          4
+        ]
+      ],
+      "A_ORBIT_SIZE": 3,
+      "B_ORBIT_SIZE": 3,
+      "ORBIT_WEIGHT": 9,
+      "NORMALIZED_PORTFOLIO_SHA256": "ec3f68b91055e2e8b6a33045ef99ef0fb2e6deee0af78ae4f214c3a9a390db92",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992330,
+      "DELTA_VS_BASELINE": -271558
+    },
+    {
+      "STS_CLASS": "NONCYCLIC",
+      "DELETED_PAIR": [
+        2,
+        6
+      ],
+      "BRIDGE_POINT_A": 3,
+      "TEMPLATE": "TRIANGULAR_PRISM",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          1
+        ],
+        [
+          3,
+          5
+        ]
+      ],
+      "A_ORBIT_SIZE": 3,
+      "B_ORBIT_SIZE": 6,
+      "ORBIT_WEIGHT": 18,
+      "NORMALIZED_PORTFOLIO_SHA256": "358806ebf1022355693d891fe8fc540c7bfed00f2f170e41b53629b935c9ce51",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992330,
+      "DELTA_VS_BASELINE": -271558
+    },
+    {
+      "STS_CLASS": "NONCYCLIC",
+      "DELETED_PAIR": [
+        2,
+        6
+      ],
+      "BRIDGE_POINT_A": 3,
+      "TEMPLATE": "TRIANGULAR_PRISM",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          3
+        ],
+        [
+          1,
+          4
+        ]
+      ],
+      "A_ORBIT_SIZE": 3,
+      "B_ORBIT_SIZE": 3,
+      "ORBIT_WEIGHT": 9,
+      "NORMALIZED_PORTFOLIO_SHA256": "c237b8fe31b82b45eec5e7e15152fb0d9843ebfb973635e05c4587cc283267c1",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992330,
+      "DELTA_VS_BASELINE": -271558
+    },
+    {
+      "STS_CLASS": "NONCYCLIC",
+      "DELETED_PAIR": [
+        2,
+        7
+      ],
+      "BRIDGE_POINT_A": 9,
+      "TEMPLATE": "TRIANGULAR_PRISM",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          1
+        ],
+        [
+          2,
+          5
+        ]
+      ],
+      "A_ORBIT_SIZE": 3,
+      "B_ORBIT_SIZE": 6,
+      "ORBIT_WEIGHT": 18,
+      "NORMALIZED_PORTFOLIO_SHA256": "81f495c4b4f85c67cb16548451ad9ef71416230f249da23276fb416fdf1f6b7c",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992316,
+      "DELTA_VS_BASELINE": -271572
+    },
+    {
+      "STS_CLASS": "NONCYCLIC",
+      "DELETED_PAIR": [
+        2,
+        7
+      ],
+      "BRIDGE_POINT_A": 9,
+      "TEMPLATE": "TRIANGULAR_PRISM",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          1
+        ],
+        [
+          3,
+          4
+        ]
+      ],
+      "A_ORBIT_SIZE": 3,
+      "B_ORBIT_SIZE": 3,
+      "ORBIT_WEIGHT": 9,
+      "NORMALIZED_PORTFOLIO_SHA256": "36dbe4b1cfb3846d250e6059ae60e3f21570247eb8cf082574fd81e8e9078b38",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992316,
+      "DELTA_VS_BASELINE": -271572
+    },
+    {
+      "STS_CLASS": "NONCYCLIC",
+      "DELETED_PAIR": [
+        2,
+        7
+      ],
+      "BRIDGE_POINT_A": 9,
+      "TEMPLATE": "TRIANGULAR_PRISM",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          1
+        ],
+        [
+          3,
+          5
+        ]
+      ],
+      "A_ORBIT_SIZE": 3,
+      "B_ORBIT_SIZE": 6,
+      "ORBIT_WEIGHT": 18,
+      "NORMALIZED_PORTFOLIO_SHA256": "d2b6c0bfc192dfefef800e4cc1ab9646d9fb6f22201f3ccd1484f27f351a5c5a",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992316,
+      "DELTA_VS_BASELINE": -271572
+    },
+    {
+      "STS_CLASS": "NONCYCLIC",
+      "DELETED_PAIR": [
+        2,
+        7
+      ],
+      "BRIDGE_POINT_A": 9,
+      "TEMPLATE": "TRIANGULAR_PRISM",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          3
+        ],
+        [
+          1,
+          4
+        ]
+      ],
+      "A_ORBIT_SIZE": 3,
+      "B_ORBIT_SIZE": 3,
+      "ORBIT_WEIGHT": 9,
+      "NORMALIZED_PORTFOLIO_SHA256": "be0815f3eeb588c6549e075344bb3418c295128a11267eb49ca7763d91a8875b",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992316,
+      "DELTA_VS_BASELINE": -271572
+    },
+    {
+      "STS_CLASS": "NONCYCLIC",
+      "DELETED_PAIR": [
+        3,
+        5
+      ],
+      "BRIDGE_POINT_A": 10,
+      "TEMPLATE": "TRIANGULAR_PRISM",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          1
+        ],
+        [
+          2,
+          5
+        ]
+      ],
+      "A_ORBIT_SIZE": 3,
+      "B_ORBIT_SIZE": 6,
+      "ORBIT_WEIGHT": 18,
+      "NORMALIZED_PORTFOLIO_SHA256": "2d3714e88464a28bc9930abb40d5fcf82d6895d693f4719b972490dadf68e8ba",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992323,
+      "DELTA_VS_BASELINE": -271565
+    },
+    {
+      "STS_CLASS": "NONCYCLIC",
+      "DELETED_PAIR": [
+        3,
+        5
+      ],
+      "BRIDGE_POINT_A": 10,
+      "TEMPLATE": "TRIANGULAR_PRISM",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          1
+        ],
+        [
+          3,
+          4
+        ]
+      ],
+      "A_ORBIT_SIZE": 3,
+      "B_ORBIT_SIZE": 3,
+      "ORBIT_WEIGHT": 9,
+      "NORMALIZED_PORTFOLIO_SHA256": "519ae7a69ea7f850aafbd491337f106bcbc2c0cb9497a78d537f197a3cce4f03",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992323,
+      "DELTA_VS_BASELINE": -271565
+    },
+    {
+      "STS_CLASS": "NONCYCLIC",
+      "DELETED_PAIR": [
+        3,
+        5
+      ],
+      "BRIDGE_POINT_A": 10,
+      "TEMPLATE": "TRIANGULAR_PRISM",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          1
+        ],
+        [
+          3,
+          5
+        ]
+      ],
+      "A_ORBIT_SIZE": 3,
+      "B_ORBIT_SIZE": 6,
+      "ORBIT_WEIGHT": 18,
+      "NORMALIZED_PORTFOLIO_SHA256": "52d27321cd294ea0944451fb73f648b744a83a1b2f21f448bcb43424dfc3aaf8",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992323,
+      "DELTA_VS_BASELINE": -271565
+    },
+    {
+      "STS_CLASS": "NONCYCLIC",
+      "DELETED_PAIR": [
+        3,
+        5
+      ],
+      "BRIDGE_POINT_A": 10,
+      "TEMPLATE": "TRIANGULAR_PRISM",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          3
+        ],
+        [
+          1,
+          4
+        ]
+      ],
+      "A_ORBIT_SIZE": 3,
+      "B_ORBIT_SIZE": 3,
+      "ORBIT_WEIGHT": 9,
+      "NORMALIZED_PORTFOLIO_SHA256": "b992b353e8e7401c4d3d6c56f060e53dba3fbca3ced91703eae5409041783a66",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992323,
+      "DELTA_VS_BASELINE": -271565
+    },
+    {
+      "STS_CLASS": "NONCYCLIC",
+      "DELETED_PAIR": [
+        3,
+        6
+      ],
+      "BRIDGE_POINT_A": 2,
+      "TEMPLATE": "TRIANGULAR_PRISM",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          1
+        ],
+        [
+          2,
+          5
+        ]
+      ],
+      "A_ORBIT_SIZE": 3,
+      "B_ORBIT_SIZE": 6,
+      "ORBIT_WEIGHT": 18,
+      "NORMALIZED_PORTFOLIO_SHA256": "8cd4d9d3c7f6fe849281ce11fa2afb7840f87ada1c6ae4b179ef17bfafba13be",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992330,
+      "DELTA_VS_BASELINE": -271558
+    },
+    {
+      "STS_CLASS": "NONCYCLIC",
+      "DELETED_PAIR": [
+        3,
+        6
+      ],
+      "BRIDGE_POINT_A": 2,
+      "TEMPLATE": "TRIANGULAR_PRISM",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          1
+        ],
+        [
+          3,
+          4
+        ]
+      ],
+      "A_ORBIT_SIZE": 3,
+      "B_ORBIT_SIZE": 3,
+      "ORBIT_WEIGHT": 9,
+      "NORMALIZED_PORTFOLIO_SHA256": "ad68a1cd05e95017c32bfee4531981f4d19eaaf1919e3dc8ebe8a20951e7a533",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992330,
+      "DELTA_VS_BASELINE": -271558
+    },
+    {
+      "STS_CLASS": "NONCYCLIC",
+      "DELETED_PAIR": [
+        3,
+        6
+      ],
+      "BRIDGE_POINT_A": 2,
+      "TEMPLATE": "TRIANGULAR_PRISM",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          1
+        ],
+        [
+          3,
+          5
+        ]
+      ],
+      "A_ORBIT_SIZE": 3,
+      "B_ORBIT_SIZE": 6,
+      "ORBIT_WEIGHT": 18,
+      "NORMALIZED_PORTFOLIO_SHA256": "60a8327644c55b055fa6f415e80c6ab4056c1a88940160a0661a1dfea1a3f40d",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992330,
+      "DELTA_VS_BASELINE": -271558
+    },
+    {
+      "STS_CLASS": "NONCYCLIC",
+      "DELETED_PAIR": [
+        3,
+        6
+      ],
+      "BRIDGE_POINT_A": 2,
+      "TEMPLATE": "TRIANGULAR_PRISM",
+      "MARKED_EDGE_PAIR": [
+        [
+          0,
+          3
+        ],
+        [
+          1,
+          4
+        ]
+      ],
+      "A_ORBIT_SIZE": 3,
+      "B_ORBIT_SIZE": 3,
+      "ORBIT_WEIGHT": 9,
+      "NORMALIZED_PORTFOLIO_SHA256": "bfebccb24da80ad3a5d8fab3b4e56fb53043fde31d71a113e0c5361814d23858",
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 312992330,
+      "DELTA_VS_BASELINE": -271558
+    }
+  ],
+  "RELABELING_INVARIANCE_SPOT_CHECKS": [
+    {
+      "STS_CLASS": "CYCLIC",
+      "TEMPLATE": "K3_3",
+      "RAW_DELETED_PAIR": [
+        11,
+        12
+      ],
+      "RAW_MARKED_EDGE_PAIR": [
+        [
+          1,
+          5
+        ],
+        [
+          2,
+          4
+        ]
+      ],
+      "RAW_NORMALIZED_PORTFOLIO_SHA256": "b8c090d651f73f7aadb04c6c4a826278fa45b2dcb8d8d1f953de39f1c13d3f7e",
+      "REPRESENTATIVE_NORMALIZED_PORTFOLIO_SHA256": "6dab93b2468298f1664734574bb188cf649dc0e505027cbe981fd2558cb4db01",
+      "RAW_DIFFERS_FROM_REPRESENTATIVE_AS_LABELED": true,
+      "RAW_COUNT": 312992323,
+      "REPRESENTATIVE_COUNT": 312992323,
+      "STATUS": "PASS"
+    },
+    {
+      "STS_CLASS": "CYCLIC",
+      "TEMPLATE": "TRIANGULAR_PRISM",
+      "RAW_DELETED_PAIR": [
+        11,
+        12
+      ],
+      "RAW_MARKED_EDGE_PAIR": [
+        [
+          2,
+          5
+        ],
+        [
+          3,
+          4
+        ]
+      ],
+      "RAW_NORMALIZED_PORTFOLIO_SHA256": "5534073b464b810bdf264ead007e2ad2db4a59830f097bd657df7361f2d64da3",
+      "REPRESENTATIVE_NORMALIZED_PORTFOLIO_SHA256": "75ca93fe0e064b50a0a525683d2cf2a95ef8f7996ebcfe920dc3a45a21851e1a",
+      "RAW_DIFFERS_FROM_REPRESENTATIVE_AS_LABELED": true,
+      "RAW_COUNT": 312992323,
+      "REPRESENTATIVE_COUNT": 312992323,
+      "STATUS": "PASS"
+    },
+    {
+      "STS_CLASS": "NONCYCLIC",
+      "TEMPLATE": "K3_3",
+      "RAW_DELETED_PAIR": [
+        11,
+        12
+      ],
+      "RAW_MARKED_EDGE_PAIR": [
+        [
+          1,
+          5
+        ],
+        [
+          2,
+          4
+        ]
+      ],
+      "RAW_NORMALIZED_PORTFOLIO_SHA256": "79a57302371eb8d33abb63c949b4492e48f54f56e72d718c1dfd475bee17ac75",
+      "REPRESENTATIVE_NORMALIZED_PORTFOLIO_SHA256": "63594380bc2a14574cf0e6fd47f578b497b9f288021fa91e34b9d8dc2fca6616",
+      "RAW_DIFFERS_FROM_REPRESENTATIVE_AS_LABELED": true,
+      "RAW_COUNT": 312992330,
+      "REPRESENTATIVE_COUNT": 312992330,
+      "STATUS": "PASS"
+    },
+    {
+      "STS_CLASS": "NONCYCLIC",
+      "TEMPLATE": "TRIANGULAR_PRISM",
+      "RAW_DELETED_PAIR": [
+        11,
+        12
+      ],
+      "RAW_MARKED_EDGE_PAIR": [
+        [
+          2,
+          5
+        ],
+        [
+          3,
+          4
+        ]
+      ],
+      "RAW_NORMALIZED_PORTFOLIO_SHA256": "7db26f00721ced30676e1c5a87ab821f22c5ab46f6333efb326e162dba1a1b18",
+      "REPRESENTATIVE_NORMALIZED_PORTFOLIO_SHA256": "681e6ff7e861e888b6ca33a739238c7ce9dc9d633ece944a15593bf58845e1e5",
+      "RAW_DIFFERS_FROM_REPRESENTATIVE_AS_LABELED": true,
+      "RAW_COUNT": 312992330,
+      "REPRESENTATIVE_COUNT": 312992330,
+      "STATUS": "PASS"
+    }
+  ],
+  "BEST_COUNT": 312992337,
+  "BEST_DELTA_VS_BASELINE": -271551,
+  "BEST_NORMALIZED_PORTFOLIO_SHA256": "1c5b9378e172c638b307206c6462df436460dc8c7dc4b8d8f78ee14887ec9e4a",
+  "BEST_IDENTITY": {
+    "STS_CLASS": "NONCYCLIC",
+    "DELETED_PAIR": [
+      0,
+      12
+    ],
+    "BRIDGE_POINT_A": 3,
+    "TEMPLATE": "TRIANGULAR_PRISM",
+    "MARKED_EDGE_PAIR": [
+      [
+        0,
+        1
+      ],
+      [
+        2,
+        5
+      ]
+    ]
+  },
+  "BEST_PORTFOLIO": [
+    [
+      1,
+      2,
+      3,
+      4,
+      16,
+      17
+    ],
+    [
+      1,
+      5,
+      6,
+      7,
+      18,
+      19
+    ],
+    [
+      2,
+      5,
+      8,
+      9,
+      10,
+      49
+    ],
+    [
+      3,
+      8,
+      11,
+      12,
+      18,
+      20
+    ],
+    [
+      1,
+      9,
+      11,
+      13,
+      21,
+      22
+    ],
+    [
+      5,
+      12,
+      13,
+      14,
+      16,
+      23
+    ],
+    [
+      6,
+      8,
+      14,
+      15,
+      17,
+      21
+    ],
+    [
+      2,
+      7,
+      11,
+      15,
+      23,
+      24
+    ],
+    [
+      3,
+      6,
+      10,
+      13,
+      24,
+      25
+    ],
+    [
+      4,
+      7,
+      9,
+      14,
+      20,
+      25
+    ],
+    [
+      4,
+      10,
+      12,
+      15,
+      19,
+      22
+    ],
+    [
+      26,
+      27,
+      32,
+      33,
+      34,
+      49
+    ],
+    [
+      26,
+      28,
+      35,
+      36,
+      37,
+      38
+    ],
+    [
+      26,
+      29,
+      39,
+      40,
+      41,
+      42
+    ],
+    [
+      27,
+      28,
+      39,
+      43,
+      44,
+      45
+    ],
+    [
+      27,
+      30,
+      35,
+      40,
+      46,
+      47
+    ],
+    [
+      28,
+      31,
+      41,
+      46,
+      48,
+      49
+    ],
+    [
+      29,
+      30,
+      32,
+      36,
+      43,
+      48
+    ],
+    [
+      29,
+      31,
+      33,
+      37,
+      44,
+      47
+    ],
+    [
+      30,
+      31,
+      34,
+      38,
+      42,
+      45
+    ]
+  ],
+  "BEST_FRESH_CANONICAL_RECOUNT": 312992337,
+  "CANONICAL_RESCORE": "PASS",
+  "CANONICAL_EVALUATIONS": {
+    "BASELINE_RECOUNT": 1,
+    "REPRESENTATIVES": 95,
+    "RELABELING_SPOT_CHECKS": 4,
+    "BEST_FRESH_RECOUNT": 1,
+    "TOTAL": 101
+  },
+  "FAMILY_COVERAGE_STATUS": "COMPLETE_FOR_DEFINED_FAMILY",
+  "STRICT_GAIN": "NO",
+  "FAMILY_RESULT": "NO_STRICT_GAIN_FOR_DEFINED_FAMILY",
+  "READY_FOR_N1_ASCENT": "NO",
+  "CLAIM_SCOPE": "Only the defined 11+9 single-bridge STS(13) family; not all 11+9 structures; global K20 optimality is not claimed.",
+  "PUSH": "NOT RUN",
+  "PR": "NOT CREATED",
+  "PRODUCTION_MUTATION": "NONE",
+  "GLOBAL_K20_OPTIMUM_STATUS": "UNKNOWN"
+}

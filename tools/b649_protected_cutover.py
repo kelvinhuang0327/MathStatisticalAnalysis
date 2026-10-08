@@ -2607,6 +2607,28 @@ def _reconciled_predecessor_receipt_sha256(
     }.get(text(release_kind))
     if expected_reason is None:
         return None
+    stored_owner = cutover._read_control_owner(config)  # pyright: ignore[reportPrivateUsage]
+    if stored_owner is None:
+        raise ProtectedError("released reconciliation owner is absent")
+    live_owner, _owner_file_identity = stored_owner
+    supplied_owner = {key: value for key, value in owner.items() if key != "worker_state"}
+    if live_owner != supplied_owner:
+        raise ProtectedError("released reconciliation owner changed before predecessor recovery")
+    owner_unsigned = cutover._owner_unsigned(live_owner)  # pyright: ignore[reportPrivateUsage]
+    if (
+        live_owner.get("schema") != cutover.CONTROL_OWNER_SCHEMA
+        or live_owner.get("record_sha256")
+        != cutover._sha256_json(owner_unsigned)  # pyright: ignore[reportPrivateUsage]
+        or live_owner.get("owner_kind") != "protected"
+        or live_owner.get("action") != "apply"
+        or live_owner.get("phase") != "RELEASED"
+        or live_owner.get("mutation_started") is not False
+        or live_owner.get("authorization")
+        != cutover._owner_identity(live_owner)  # pyright: ignore[reportPrivateUsage]
+    ):
+        raise ProtectedError("released reconciliation owner integrity or identity is invalid")
+    owner = live_owner
+    release = record(owner.get("release_evidence"))
     reservation_id = text(owner.get("reservation_id"))
     reconciliation_path = _prestart_reconciliation_record_path(config, reservation_id)
     if release.get("reconciliation_record_path") != str(reconciliation_path):
@@ -2619,6 +2641,13 @@ def _reconciled_predecessor_receipt_sha256(
         or reconciliation.get("reason") != expected_reason
     ):
         raise ProtectedError("released pre-start owner does not bind its reconciliation record")
+    if (
+        release_kind == PRESTART_NOT_STARTED_RELEASE_KIND
+        and reconciliation.get("owner_mutation_started") is not False
+    ):
+        raise ProtectedError(
+            "released NOT_STARTED reconciliation does not prove owner mutation was not started"
+        )
     predecessor = cutover._validate_predecessor_release_evidence(  # pyright: ignore[reportPrivateUsage]
         owner.get("predecessor_release_evidence"), owner
     )

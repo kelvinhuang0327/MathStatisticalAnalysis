@@ -27,6 +27,7 @@ from lottolab.application.b649_sealed_geometry_portfolio import (
     SEALED_GEOMETRY_METHOD_ID,
     SEALED_GEOMETRY_METHOD_VERSION,
     SEALED_GEOMETRY_PORTFOLIOS,
+    canonical_portfolio_sha256,
 )
 
 NEW_HEAD = "1" * 40
@@ -3203,11 +3204,14 @@ def test_production_validator_accepts_exact_released_intermediate_v2_bridge(
 def test_v8_candidate_binding_matches_the_sealed_k20_authority() -> None:
     k20 = SEALED_GEOMETRY_PORTFOLIOS[20]
 
-    assert cutover.V8_SOURCE_HEAD == "9fab2301c1634b36ba694a604a412eafe6430fbc"
-    assert cutover.V8_SOURCE_TREE == "6c49c33fda3cd3d839ebd034beec35184b063508"
+    assert cutover.V8_SOURCE_HEAD == "ef28fecc5d6198465cedc37770a586c3239ce63f"
+    assert cutover.V8_SOURCE_TREE == "601760544573651795e365f8c9d95d59405fbb85"
     assert (
         f"{SEALED_GEOMETRY_METHOD_ID}@{SEALED_GEOMETRY_METHOD_VERSION}"
     ) == cutover.V8_TARGET_METHOD
+    assert k20.ticket_count == 20
+    assert len(k20.tickets) == 20
+    assert canonical_portfolio_sha256(k20.tickets) == cutover.V8_TARGET_K20_SHA256
     assert k20.portfolio_sha256 == cutover.V8_TARGET_K20_SHA256
 
 
@@ -3246,6 +3250,8 @@ def test_production_validator_accepts_exact_v8_candidate_binding(
         "v5_proof_digest",
         "v6_binding",
         "candidate_target",
+        "wrong_head",
+        "wrong_tree",
         "candidate_id_reuse",
         "candidate_operation_reuse",
         "wrong_method",
@@ -3289,6 +3295,20 @@ def test_production_validator_rejects_released_intermediate_v2_corruption(
             candidate_target["tree"] = cutover.V7_SOURCE_TREE
         else:
             candidate_target["head"] = cutover.RELEASED_INTERMEDIATE_TARGET_HEAD
+    elif defect == "wrong_head":
+        candidate_target = _object(retirement["candidate_target"])
+        candidate_target["head"] = (
+            cutover.V7_SOURCE_HEAD
+            if candidate_version == "v8"
+            else cutover.RELEASED_INTERMEDIATE_TARGET_HEAD
+        )
+    elif defect == "wrong_tree":
+        candidate_target = _object(retirement["candidate_target"])
+        candidate_target["tree"] = (
+            cutover.V7_SOURCE_TREE
+            if candidate_version == "v8"
+            else cutover.RELEASED_INTERMEDIATE_TARGET_TREE
+        )
     elif defect == "candidate_id_reuse":
         retirement["candidate_reservation_id"] = cutover.RELEASED_INTERMEDIATE_RESERVATION_ID
     elif defect == "candidate_operation_reuse":

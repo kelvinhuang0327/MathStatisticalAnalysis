@@ -513,6 +513,7 @@ def _make_released_prestart_successor(
     monkeypatch: pytest.MonkeyPatch,
     *,
     renumber_plist_device: bool = False,
+    candidate_version: str = "fixture",
 ) -> ReleasedPrestartSuccessor:
     incident = _make_stranded_prestart_incident(
         harness, monkeypatch, preserve_legacy_parent_behavior=True
@@ -632,29 +633,37 @@ def _make_released_prestart_successor(
         expected=owner_file_identity,
     )
 
-    v7_head, v7_tree = "c" * 40, "9" * 40
-    v7_source = harness.fixture.worktree_parent / f"B649_PRODUCTION_{v7_head}"
-    Fixture.make_source(v7_source)
-    harness.launchd.worktree_identities[v7_source] = (v7_head, v7_tree, True)
-    v7_config = replace(
+    candidate_bindings = {
+        "fixture": ("c" * 40, "9" * 40),
+        "v8": (cutover.V8_SOURCE_HEAD, cutover.V8_SOURCE_TREE),
+    }
+    candidate_head, candidate_tree = candidate_bindings[candidate_version]
+    candidate_source = harness.fixture.worktree_parent / f"B649_PRODUCTION_{candidate_head}"
+    Fixture.make_source(candidate_source)
+    harness.launchd.worktree_identities[candidate_source] = (
+        candidate_head,
+        candidate_tree,
+        True,
+    )
+    candidate_config = replace(
         incident.request.config,
-        source_worktree=v7_source,
-        expected_head=v7_head,
-        expected_tree=v7_tree,
-        durable_ref=f"refs/heads/runtime/b649/{v7_head}",
+        source_worktree=candidate_source,
+        expected_head=candidate_head,
+        expected_tree=candidate_tree,
+        durable_ref=f"refs/heads/runtime/b649/{candidate_head}",
         strict_release_layout=False,
     )
-    v7_plan = cutover.build_plan(v7_config, runner=harness.launchd)
-    assert v7_plan["status"] == "PASS", v7_plan["failures"]
-    v7_plan_file = harness.fixture.root / "v7-release-plan.json"
-    v7_plan_file.write_text(protected.canonical(v7_plan), encoding="utf-8")
-    v7_plan_file.chmod(0o600)
+    candidate_plan = cutover.build_plan(candidate_config, runner=harness.launchd)
+    assert candidate_plan["status"] == "PASS", candidate_plan["failures"]
+    candidate_plan_file = harness.fixture.root / f"{candidate_version}-release-plan.json"
+    candidate_plan_file.write_text(protected.canonical(candidate_plan), encoding="utf-8")
+    candidate_plan_file.chmod(0o600)
     request = protected.make_request(
-        v7_config,
+        candidate_config,
         incident.request.legacy_worktree,
         incident.request.legacy_head,
         incident.request.legacy_tree,
-        v7_plan_file,
+        candidate_plan_file,
         incident.request.claim_root,
         reservation_id=str(uuid4()),
         prior_execution_receipt_sha256=incident.predecessor_sha256,
@@ -662,16 +671,24 @@ def _make_released_prestart_successor(
     return ReleasedPrestartSuccessor(request, release_record_path, incident.predecessor_sha256)
 
 
+@pytest.mark.parametrize("candidate_version", ["fixture", "v8"])
 @pytest.mark.parametrize("renumber_plist_device", [False, True])
 def test_prestart_successor_release_recovers_exact_v5_success_authority(
     harness: Harness,
     monkeypatch: pytest.MonkeyPatch,
     renumber_plist_device: bool,
+    candidate_version: str,
 ) -> None:
     released = _make_released_prestart_successor(
-        harness, monkeypatch, renumber_plist_device=renumber_plist_device
+        harness,
+        monkeypatch,
+        renumber_plist_device=renumber_plist_device,
+        candidate_version=candidate_version,
     )
     request = released.request
+    if candidate_version == "v8":
+        assert request.config.expected_head == cutover.V8_SOURCE_HEAD
+        assert request.config.expected_tree == cutover.V8_SOURCE_TREE
     owner = cutover.inspect_control_owner(request.config)
     assert owner is not None and owner["phase"] == "RELEASED"
     paths = (
@@ -1350,6 +1367,40 @@ def test_exact_released_v7_intermediate_reconstructs_v5_and_binds_v8_candidate(
     assert owner_path.read_bytes() == owner_before
 
 
+def test_new_v7_failed_terminal_candidate_is_refused_without_legacy_retirement(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _incident, request, _fixture_hashlib, _intermediate_owner = (
+        _prepare_exact_released_v7_intermediate_bridge(
+            harness, monkeypatch, candidate_version="v7"
+        )
+    )
+    prior_owner = cutover.inspect_control_owner(request.config)
+    assert prior_owner is not None
+    assert request.config.expected_head == cutover.V7_SOURCE_HEAD
+    assert request.config.expected_tree == cutover.V7_SOURCE_TREE
+
+    retirement_path = request.config.scheduler_root / cutover.FAILED_TERMINAL_RETIREMENT_V2_NAME
+    assert not retirement_path.exists()
+    paths = (
+        request.receipt_path,
+        request.config.receipt_path,
+        cutover._control_owner_path(request.config),  # pyright: ignore[reportPrivateUsage]
+    )
+    before = {path: path.read_bytes() if path.exists() else None for path in paths}
+    mutation_calls_before = list(harness.launchd.mutation_calls)
+
+    with pytest.raises(protected.ProtectedError, match="fresh K20 v8 successor"):
+        protected._require_released_success_evidence(
+            request, prior_owner, runner=harness.launchd
+        )
+
+    assert not retirement_path.exists()
+    assert {path: path.read_bytes() if path.exists() else None for path in paths} == before
+    assert harness.launchd.mutation_calls == mutation_calls_before
+
+
 @pytest.mark.parametrize("candidate_version", ["v7", "v8"])
 def test_v2_evidence_retry_after_interrupted_owner_swap_is_safe(
     harness: Harness,
@@ -1388,6 +1439,15 @@ def test_v2_evidence_retry_after_interrupted_owner_swap_is_safe(
     owner_before = owner_path.read_bytes()
     retirement_path = request.config.scheduler_root / cutover.FAILED_TERMINAL_RETIREMENT_V2_NAME
     retirement_before = retirement_path.read_bytes()
+    if candidate_version == "v7":
+        stored_retirement, _, _ = cutover.read_control_json(retirement_path)
+        assert stored_retirement["candidate_target"] == protected.request_owner_target(request)
+        assert stored_retirement["candidate_method"] == cutover.V7_TARGET_METHOD
+        assert stored_retirement["candidate_k20_sha256"] == cutover.V7_TARGET_K20_SHA256
+        assert stored_retirement["candidate_plan_sha256"] == request.plan_sha256
+        assert stored_retirement["candidate_reservation_id"] == request.reservation_id
+        assert stored_retirement["candidate_operation_id"] == request.operation_id
+        assert stored_retirement["claim_root"] == str(request.claim_root)
     original_save = cutover._save_control_owner  # pyright: ignore[reportPrivateUsage]
     interrupted = False
 

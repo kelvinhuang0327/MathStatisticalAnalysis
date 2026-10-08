@@ -104,8 +104,8 @@ V7_TARGET_METHOD = "B649_SEALED_GEOMETRY_PORTFOLIO@7.0.0"
 V7_TARGET_K20_SHA256 = "0045ac8837fc82e9a585d812173341ac12e05c5de201af7f8fedeacafa19e1ff"
 # Keep the sealed V7 pair readable for existing retirement evidence. New
 # protected candidates bind to the exact K20 V8 source and portfolio.
-V8_SOURCE_HEAD = "9fab2301c1634b36ba694a604a412eafe6430fbc"
-V8_SOURCE_TREE = "6c49c33fda3cd3d839ebd034beec35184b063508"
+V8_SOURCE_HEAD = "ef28fecc5d6198465cedc37770a586c3239ce63f"
+V8_SOURCE_TREE = "601760544573651795e365f8c9d95d59405fbb85"
 V8_TARGET_METHOD = "B649_SEALED_GEOMETRY_PORTFOLIO@8.0.0"
 V8_TARGET_K20_SHA256 = "eaed652900d101881b678a1515d2a366bff9de6723dbec2ec9c82fe0d0d7844c"
 CONTROL_OWNER_NAME = "b649-control-owner-reservation.json"

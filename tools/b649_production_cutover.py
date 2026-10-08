@@ -547,7 +547,14 @@ def _atomic_write(path: Path, data: bytes, *, expected: FileIdentity | None) -> 
             observed is not None and expected is not None and observed.key() != expected.key()
         ):
             raise CutoverSafetyError(f"destination changed before replace: {path}")
-        os.replace(temporary, path)
+        if expected is None:
+            try:
+                os.link(temporary, path)
+            except FileExistsError as exc:
+                raise CutoverSafetyError(f"destination appeared before create: {path}") from exc
+            temporary.unlink()
+        else:
+            os.replace(temporary, path)
         directory_descriptor = os.open(path.parent, os.O_RDONLY)
         try:
             os.fsync(directory_descriptor)
@@ -4822,6 +4829,10 @@ def parser() -> JsonParser:
     commands = cli.add_subparsers(dest="command", required=True)
     plan = commands.add_parser("plan", allow_abbrev=False, help="Read and render a cutover plan.")
     _add_common(plan, source_required=True)
+    plan.add_argument(
+        "--output-file",
+        help="Write the canonical plan to a new private file (mode 0600).",
+    )
     apply_parser = commands.add_parser(
         "apply", allow_abbrev=False, help="Apply one validated plan."
     )
@@ -4928,6 +4939,8 @@ def main(
             return run_managed_child(args, runner=runner)
         if args.command == "plan":
             result = build_plan(_config_from_args(args), runner=runner, now=now)
+            if args.output_file:
+                _write_json(Path(args.output_file), result, expected=None)
             print(_canonical_json(result))
             return 0 if result.get("status") == "PASS" else 1
         if args.command == "apply":

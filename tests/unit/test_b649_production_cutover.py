@@ -508,6 +508,156 @@ def test_plan_is_read_only_and_reports_exact_runtime(fixture: Fixture) -> None:
     assert all(not path.exists() for path in before_paths)
 
 
+def test_cli_plan_output_file_is_private_and_matches_canonical_stdout(
+    fixture: Fixture, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    runner = FakeLaunchd(fixture)
+    output_path = fixture.root / "cutover-plan.json"
+
+    def fake_config(_args: argparse.Namespace) -> cutover.CutoverConfig:
+        return fixture.config
+
+    monkeypatch.setattr(cutover, "_config_from_args", fake_config)
+
+    exit_code = cutover.main(
+        [
+            "plan",
+            "--source-worktree",
+            str(fixture.new),
+            "--output-file",
+            str(output_path),
+        ],
+        runner=runner,
+    )
+
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    result = json.loads(captured.out)
+    canonical_json = cast(Callable[[object], str], vars(cutover)["_canonical_json"])
+    serialized = (canonical_json(result) + "\n").encode("utf-8")
+    assert result["status"] == "PASS"
+    assert output_path.read_bytes() == serialized
+    assert stat.S_IMODE(output_path.lstat().st_mode) == 0o600
+    assert output_path.lstat().st_nlink == 1
+    assert runner.mutation_calls == []
+    _assert_business_state_unchanged(fixture)
+
+
+@pytest.mark.parametrize("mode", [0o600, 0o644])
+def test_cli_plan_output_file_refuses_existing_file_without_rewriting(
+    fixture: Fixture,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    mode: int,
+) -> None:
+    runner = FakeLaunchd(fixture)
+    output_path = fixture.root / "existing-plan.json"
+    original = b"existing plan must be preserved\n"
+    output_path.write_bytes(original)
+    output_path.chmod(mode)
+    before = output_path.lstat()
+
+    def fake_config(_args: argparse.Namespace) -> cutover.CutoverConfig:
+        return fixture.config
+
+    monkeypatch.setattr(cutover, "_config_from_args", fake_config)
+
+    exit_code = cutover.main(
+        [
+            "plan",
+            "--source-worktree",
+            str(fixture.new),
+            "--output-file",
+            str(output_path),
+        ],
+        runner=runner,
+    )
+
+    result = json.loads(capsys.readouterr().out)
+    after = output_path.lstat()
+    assert exit_code == 1
+    assert result["status"] == "NOT_STARTED"
+    assert output_path.read_bytes() == original
+    assert (after.st_dev, after.st_ino, after.st_mode, after.st_mtime_ns) == (
+        before.st_dev,
+        before.st_ino,
+        before.st_mode,
+        before.st_mtime_ns,
+    )
+    assert runner.mutation_calls == []
+
+
+def test_cli_plan_output_file_refuses_symlink_without_touching_target(
+    fixture: Fixture, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    runner = FakeLaunchd(fixture)
+    output_path = fixture.root / "linked-plan.json"
+    target_path = fixture.root / "plan-target.json"
+    original = b"symlink target must be preserved\n"
+    target_path.write_bytes(original)
+    target_path.chmod(0o600)
+    output_path.symlink_to(target_path)
+    before = output_path.lstat()
+
+    def fake_config(_args: argparse.Namespace) -> cutover.CutoverConfig:
+        return fixture.config
+
+    monkeypatch.setattr(cutover, "_config_from_args", fake_config)
+
+    exit_code = cutover.main(
+        [
+            "plan",
+            "--source-worktree",
+            str(fixture.new),
+            "--output-file",
+            str(output_path),
+        ],
+        runner=runner,
+    )
+
+    result = json.loads(capsys.readouterr().out)
+    after = output_path.lstat()
+    assert exit_code == 1
+    assert result["status"] == "NOT_STARTED"
+    assert stat.S_ISLNK(after.st_mode)
+    assert (after.st_dev, after.st_ino, after.st_mtime_ns) == (
+        before.st_dev,
+        before.st_ino,
+        before.st_mtime_ns,
+    )
+    assert target_path.read_bytes() == original
+    assert stat.S_IMODE(target_path.stat().st_mode) == 0o600
+    assert runner.mutation_calls == []
+
+
+def test_private_json_create_does_not_replace_a_file_that_appears_after_check(
+    fixture: Fixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    output_path = fixture.root / "racing-plan.json"
+    original = b"concurrent file must be preserved\n"
+    original_link = os.link
+
+    def create_before_link(
+        source: str | bytes | os.PathLike[str] | os.PathLike[bytes],
+        destination: str | bytes | os.PathLike[str] | os.PathLike[bytes],
+        *,
+        follow_symlinks: bool = True,
+    ) -> None:
+        output_path.write_bytes(original)
+        output_path.chmod(0o600)
+        original_link(source, destination, follow_symlinks=follow_symlinks)
+
+    monkeypatch.setattr(cutover.os, "link", create_before_link)
+
+    write_json = cast(Callable[..., cutover.FileIdentity], vars(cutover)["_write_json"])
+    with pytest.raises(cutover.CutoverSafetyError, match="destination appeared before create"):
+        write_json(output_path, {"status": "PASS"}, expected=None)
+
+    assert output_path.read_bytes() == original
+    assert stat.S_IMODE(output_path.lstat().st_mode) == 0o600
+    assert list(fixture.root.glob(".racing-plan.json.*.tmp")) == []
+
+
 @pytest.mark.parametrize("drift", ["source", "plist"])
 def test_plan_fails_closed_on_source_or_plist_drift(fixture: Fixture, drift: str) -> None:
     runner = FakeLaunchd(fixture)

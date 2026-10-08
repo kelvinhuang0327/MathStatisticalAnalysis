@@ -143,7 +143,7 @@
       "status": "PROVED",
       "test": {
         "path": "tests/unit/test_b649_k1_k8_global_optimality.py",
-        "sha256": "bd8ba4d36c277aeae4a4aa351eefefaf3bb1d43513b0a335518dc37f3daf0eb0"
+        "sha256": "74c073c64f754d03d890fabc761af49cc3d7d93b73e3616f36096f86e9d3e78b"
       }
     },
     "incumbent": {
@@ -153,7 +153,7 @@
       "portfolio_sha256": "13b1126d5b26ce44c9aba24670142eeab49f4a4b51aaf3bbabe7a7f1659ac673",
       "sealed_source": {
         "path": "src/lottolab/application/b649_sealed_geometry_portfolio.py",
-        "sha256": "c0ac22fa5c927e39f0cbff7b6b3aff5e14e34bfeb00399de6ffcc83e176ae59a",
+        "sha256": "bda5320447cb1493e8dff7e87d95678545548a8e8c4b6a0c34d55bebc9bc7956",
         "symbol": "_K10"
       },
       "ticket_count": 10
@@ -176,5 +176,5 @@
     },
     "task_id": "B649_K10_GLOBAL_OPTIMUM_PROOF_MINIMAL_CANONICAL_INTEGRATION_R1"
   },
-  "payload_sha256": "8c150f78ea41dc54f31893e4e2b997032c5614423af1854c87acd8cba6cc08bb"
+  "payload_sha256": "a01810f80c9115847a806bdce15cf74070d8143070be49fe14435c2309b506b2"
 }

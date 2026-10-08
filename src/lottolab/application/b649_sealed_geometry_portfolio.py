@@ -7,10 +7,12 @@ P(at least one ticket wins). K5 is pairwise disjoint. For both OFFICIAL_ANY_PRIZ
 and M3_PLUS, every pairwise-disjoint portfolio of size 1..8 attains the global
 optimum proved in ``lottolab.research.b649_k1_k8_global_optimality``; that
 optimum is not unique. K10 remains the frozen HARD_DIV pairwise-overlap
-radius2 authority from sealed-geometry v2. The v7 K20 is an independently
-exact-verified, sealed durable incumbent establishing 313,239,661 winning
-outcomes (+14 over v6). Neither sweep nor neighborhood completeness is claimed,
-and neither K10 nor K20 is a proven global optimum.
+radius2 authority from sealed-geometry v2.
+K10 OFFICIAL_ANY_PRIZE: PROVEN GLOBAL OPTIMUM by the canonical K10 proof
+certificate. K10 M3_PLUS: GLOBAL OPTIMUM UNKNOWN. The v8 K20 is the exact
+incumbent from the canonical two-ticket ascent result.
+It is proven optimal only within its validated exact local neighborhoods.
+K20: GLOBAL OPTIMUM UNKNOWN.
 There is no historical outcome tuning or predictive signal: the portfolios do
 not depend on the target draw, prediction streams, or historical outcomes.
 Their probabilities are exact counts over the full outcome space, verified by
@@ -34,7 +36,7 @@ from typing import Final
 type Ticket = tuple[int, ...]
 
 SEALED_GEOMETRY_METHOD_ID: Final = "B649_SEALED_GEOMETRY_PORTFOLIO"
-SEALED_GEOMETRY_METHOD_VERSION: Final = "7.0.0"
+SEALED_GEOMETRY_METHOD_VERSION: Final = "8.0.0"
 PROBABILITY_MODEL: Final = "BIG_LOTTO_UNIFORM_FAIR_DRAW"
 PRIZE_EVENT: Final = "OFFICIAL_ANY_PRIZE"
 POOL_SIZE: Final = 49
@@ -129,43 +131,42 @@ _K10 = SealedGeometryPortfolio(
     official_any_prize_probability=Fraction(536005, 1827672),
 )
 
-# OFFICIAL_ANY_PRIZE successor to sealed-geometry v6: the exact-recomputed
-# terminal local optimum of the bounded two-ticket replacement sweep,
-# establishing 313,239,661 winning outcomes (+14 over v6). Global optimality
-# is unknown; no historical outcomes were used for tuning.
+# Canonical exact K20 incumbent from the two-ticket ascent result. The result
+# proves the validated exact two-ticket neighborhood; global optimality is
+# unknown. No historical outcomes were used for tuning.
 _K20 = SealedGeometryPortfolio(
     ticket_count=20,
     tickets=(
-        (1, 2, 34, 41, 42, 45),
-        (1, 17, 22, 30, 33, 43),
-        (2, 5, 33, 35, 40, 48),
-        (3, 4, 10, 15, 26, 27),
-        (3, 8, 13, 28, 31, 36),
-        (3, 9, 12, 16, 29, 39),
-        (4, 7, 36, 39, 46, 49),
-        (4, 18, 20, 24, 28, 29),
-        (5, 17, 25, 32, 41, 47),
-        (6, 7, 9, 13, 18, 26),
-        (6, 10, 11, 16, 24, 36),
-        (6, 14, 20, 31, 37, 39),
-        (7, 8, 10, 14, 19, 29),
-        (8, 9, 11, 15, 20, 46),
-        (11, 12, 18, 23, 27, 49),
-        (13, 15, 19, 24, 37, 49),
-        (16, 19, 23, 26, 28, 46),
-        (21, 25, 30, 38, 45, 48),
-        (21, 32, 40, 42, 43, 44),
-        (22, 34, 35, 38, 44, 47),
+        (1, 2, 3, 4, 5, 21),
+        (1, 6, 7, 8, 9, 22),
+        (1, 11, 14, 18, 19, 26),
+        (2, 7, 14, 16, 17, 24),
+        (2, 10, 11, 12, 13, 22),
+        (3, 6, 10, 14, 15, 23),
+        (3, 8, 13, 17, 20, 26),
+        (4, 6, 12, 19, 20, 24),
+        (4, 8, 10, 16, 18, 25),
+        (5, 7, 11, 15, 20, 25),
+        (5, 9, 12, 17, 18, 23),
+        (9, 13, 15, 16, 19, 21),
+        (27, 29, 30, 31, 32, 33),
+        (27, 34, 35, 36, 37, 38),
+        (27, 39, 40, 41, 42, 43),
+        (28, 29, 34, 39, 44, 45),
+        (28, 30, 35, 40, 46, 47),
+        (28, 31, 36, 41, 48, 49),
+        (32, 37, 42, 44, 46, 48),
+        (33, 38, 43, 45, 47, 49),
     ),
-    portfolio_sha256="0045ac8837fc82e9a585d812173341ac12e05c5de201af7f8fedeacafa19e1ff",
-    source_id="B649_K20_EXACT_TWO_TICKET_JOINT_REPLACEMENT_SWEEP_R1",
+    portfolio_sha256="eaed652900d101881b678a1515d2a366bff9de6723dbec2ec9c82fe0d0d7844c",
+    source_id="B649_K20_12_8_WINNER_TWO_TICKET_ASCENT_R1",
     source_locator=(
         "docs/research/matrix-native-results/"
-        "b649-k20-exact-two-ticket-joint-replacement-terminal-r1.json"
+        "b649-k20-12-8-winner-two-ticket-ascent-r1-result.json"
     ),
-    source_sha256="e7698ff0d76a91c69378bf9bf0badb4ed9ac4f4dd146c71e5c94300bcfbbff9e",
-    m3_plus_probability=Fraction(4807367, 13983816),
-    official_any_prize_probability=Fraction(44748523, 85900584),
+    source_sha256="3d5d3f8f2389b66a9b2c45b0e345b81a0d9dc59d08ca9223519be70a055e5a00",
+    m3_plus_probability=Fraction(1201973, 3495954),
+    official_any_prize_probability=Fraction(1864666, 3579191),
 )
 
 SEALED_GEOMETRY_PORTFOLIOS: Final[Mapping[int, SealedGeometryPortfolio]] = MappingProxyType(

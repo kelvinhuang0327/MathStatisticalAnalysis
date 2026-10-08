@@ -543,6 +543,16 @@ def test_checkpoint_replay_rejects_tampered_first_segment() -> None:
         x.checkpoint_chase(result, monotonic() + 3600)
 
 
+def test_checkpoint_digest_guards_unreplayed_solver_wall_time() -> None:
+    result = json.loads(RESULT.read_text())
+    result["GROUP_ATTEMPTS"][0]["SOLVER_WALL_TIME_SECONDS"] += 1.0
+    with pytest.raises(
+        AssertionError,
+        match="first-segment attempts or steps differ from the sealed checkpoint",
+    ):
+        x.checkpoint_chase(result, monotonic() + 3600)
+
+
 def test_route4_certifies_the_checkpoint_blocker(checkpoint: tuple[x.Chase, x.OldWork]) -> None:
     chase = copy.deepcopy(checkpoint[0])
     row = x.motif_certify(chase, x.CHECKPOINT_OWNER, x.CHECKPOINT_TRIGGER)

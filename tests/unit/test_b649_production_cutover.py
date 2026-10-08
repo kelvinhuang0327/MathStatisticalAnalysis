@@ -23,6 +23,13 @@ import tools.b649_cutover_checkpoint as checkpoint
 import tools.b649_goalc_local_scheduler as scheduler
 import tools.b649_production_cutover as cutover
 
+from lottolab.application.b649_sealed_geometry_portfolio import (
+    SEALED_GEOMETRY_METHOD_ID,
+    SEALED_GEOMETRY_METHOD_VERSION,
+    SEALED_GEOMETRY_PORTFOLIOS,
+    canonical_portfolio_sha256,
+)
+
 NEW_HEAD = "1" * 40
 NEW_TREE = "2" * 40
 OLD_HEAD = "3" * 40
@@ -499,6 +506,156 @@ def test_plan_is_read_only_and_reports_exact_runtime(fixture: Fixture) -> None:
     }
     assert runner.mutation_calls == []
     assert all(not path.exists() for path in before_paths)
+
+
+def test_cli_plan_output_file_is_private_and_matches_canonical_stdout(
+    fixture: Fixture, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    runner = FakeLaunchd(fixture)
+    output_path = fixture.root / "cutover-plan.json"
+
+    def fake_config(_args: argparse.Namespace) -> cutover.CutoverConfig:
+        return fixture.config
+
+    monkeypatch.setattr(cutover, "_config_from_args", fake_config)
+
+    exit_code = cutover.main(
+        [
+            "plan",
+            "--source-worktree",
+            str(fixture.new),
+            "--output-file",
+            str(output_path),
+        ],
+        runner=runner,
+    )
+
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    result = json.loads(captured.out)
+    canonical_json = cast(Callable[[object], str], vars(cutover)["_canonical_json"])
+    serialized = (canonical_json(result) + "\n").encode("utf-8")
+    assert result["status"] == "PASS"
+    assert output_path.read_bytes() == serialized
+    assert stat.S_IMODE(output_path.lstat().st_mode) == 0o600
+    assert output_path.lstat().st_nlink == 1
+    assert runner.mutation_calls == []
+    _assert_business_state_unchanged(fixture)
+
+
+@pytest.mark.parametrize("mode", [0o600, 0o644])
+def test_cli_plan_output_file_refuses_existing_file_without_rewriting(
+    fixture: Fixture,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    mode: int,
+) -> None:
+    runner = FakeLaunchd(fixture)
+    output_path = fixture.root / "existing-plan.json"
+    original = b"existing plan must be preserved\n"
+    output_path.write_bytes(original)
+    output_path.chmod(mode)
+    before = output_path.lstat()
+
+    def fake_config(_args: argparse.Namespace) -> cutover.CutoverConfig:
+        return fixture.config
+
+    monkeypatch.setattr(cutover, "_config_from_args", fake_config)
+
+    exit_code = cutover.main(
+        [
+            "plan",
+            "--source-worktree",
+            str(fixture.new),
+            "--output-file",
+            str(output_path),
+        ],
+        runner=runner,
+    )
+
+    result = json.loads(capsys.readouterr().out)
+    after = output_path.lstat()
+    assert exit_code == 1
+    assert result["status"] == "NOT_STARTED"
+    assert output_path.read_bytes() == original
+    assert (after.st_dev, after.st_ino, after.st_mode, after.st_mtime_ns) == (
+        before.st_dev,
+        before.st_ino,
+        before.st_mode,
+        before.st_mtime_ns,
+    )
+    assert runner.mutation_calls == []
+
+
+def test_cli_plan_output_file_refuses_symlink_without_touching_target(
+    fixture: Fixture, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    runner = FakeLaunchd(fixture)
+    output_path = fixture.root / "linked-plan.json"
+    target_path = fixture.root / "plan-target.json"
+    original = b"symlink target must be preserved\n"
+    target_path.write_bytes(original)
+    target_path.chmod(0o600)
+    output_path.symlink_to(target_path)
+    before = output_path.lstat()
+
+    def fake_config(_args: argparse.Namespace) -> cutover.CutoverConfig:
+        return fixture.config
+
+    monkeypatch.setattr(cutover, "_config_from_args", fake_config)
+
+    exit_code = cutover.main(
+        [
+            "plan",
+            "--source-worktree",
+            str(fixture.new),
+            "--output-file",
+            str(output_path),
+        ],
+        runner=runner,
+    )
+
+    result = json.loads(capsys.readouterr().out)
+    after = output_path.lstat()
+    assert exit_code == 1
+    assert result["status"] == "NOT_STARTED"
+    assert stat.S_ISLNK(after.st_mode)
+    assert (after.st_dev, after.st_ino, after.st_mtime_ns) == (
+        before.st_dev,
+        before.st_ino,
+        before.st_mtime_ns,
+    )
+    assert target_path.read_bytes() == original
+    assert stat.S_IMODE(target_path.stat().st_mode) == 0o600
+    assert runner.mutation_calls == []
+
+
+def test_private_json_create_does_not_replace_a_file_that_appears_after_check(
+    fixture: Fixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    output_path = fixture.root / "racing-plan.json"
+    original = b"concurrent file must be preserved\n"
+    original_link = os.link
+
+    def create_before_link(
+        source: str | bytes | os.PathLike[str] | os.PathLike[bytes],
+        destination: str | bytes | os.PathLike[str] | os.PathLike[bytes],
+        *,
+        follow_symlinks: bool = True,
+    ) -> None:
+        output_path.write_bytes(original)
+        output_path.chmod(0o600)
+        original_link(source, destination, follow_symlinks=follow_symlinks)
+
+    monkeypatch.setattr(cutover.os, "link", create_before_link)
+
+    write_json = cast(Callable[..., cutover.FileIdentity], vars(cutover)["_write_json"])
+    with pytest.raises(cutover.CutoverSafetyError, match="destination appeared before create"):
+        write_json(output_path, {"status": "PASS"}, expected=None)
+
+    assert output_path.read_bytes() == original
+    assert stat.S_IMODE(output_path.lstat().st_mode) == 0o600
+    assert list(fixture.root.glob(".racing-plan.json.*.tmp")) == []
 
 
 @pytest.mark.parametrize("drift", ["source", "plist"])
@@ -2965,6 +3122,8 @@ def test_production_validator_preserves_ordinary_predecessor_proof_shape() -> No
 def _exact_released_intermediate_v2_retirement(
     fixture: Fixture,
     monkeypatch: pytest.MonkeyPatch,
+    *,
+    candidate_version: str = "v7",
 ) -> tuple[dict[str, object], dict[str, object]]:
     digest_json = cast(Callable[[object], str], vars(cutover)["_sha256_json"])
     seal = cast(
@@ -3069,11 +3228,28 @@ def _exact_released_intermediate_v2_retirement(
     v5_proof = cast(
         Callable[[], dict[str, object]], vars(cutover)["_reconstructed_v5_predecessor_proof"]
     )()
+    candidate_bindings = {
+        "v7": (
+            cutover.V7_SOURCE_HEAD,
+            cutover.V7_SOURCE_TREE,
+            cutover.V7_TARGET_METHOD,
+            cutover.V7_TARGET_K20_SHA256,
+        ),
+        "v8": (
+            cutover.V8_SOURCE_HEAD,
+            cutover.V8_SOURCE_TREE,
+            cutover.V8_TARGET_METHOD,
+            cutover.V8_TARGET_K20_SHA256,
+        ),
+    }
+    candidate_head, candidate_tree, candidate_method, candidate_k20_sha256 = candidate_bindings[
+        candidate_version
+    ]
     candidate_target: dict[str, object] = {
         "source_worktree": str(fixture.new),
-        "head": cutover.V7_SOURCE_HEAD,
-        "tree": cutover.V7_SOURCE_TREE,
-        "durable_ref": f"refs/heads/runtime/b649/{cutover.V7_SOURCE_HEAD}",
+        "head": candidate_head,
+        "tree": candidate_tree,
+        "durable_ref": f"refs/heads/runtime/b649/{candidate_head}",
     }
     retirement_unsigned: dict[str, object] = {
         "schema": cutover.FAILED_TERMINAL_RETIREMENT_V2_SCHEMA,
@@ -3125,8 +3301,8 @@ def _exact_released_intermediate_v2_retirement(
         "candidate_reservation_id": "8f66c4b9-f104-40ea-8591-a4deef696c99",
         "candidate_operation_id": "9" * 32,
         "candidate_target": candidate_target,
-        "candidate_method": cutover.V7_TARGET_METHOD,
-        "candidate_k20_sha256": cutover.V7_TARGET_K20_SHA256,
+        "candidate_method": candidate_method,
+        "candidate_k20_sha256": candidate_k20_sha256,
         "claim_root": str(fixture.root / "claims"),
         "claim_store_status": "ABSENT",
         "rollback_receipt_absent": True,
@@ -3175,6 +3351,45 @@ def test_production_validator_accepts_exact_released_intermediate_v2_bridge(
     assert validate(proof, owner) == proof
 
 
+def test_v8_candidate_binding_matches_the_sealed_k20_authority() -> None:
+    k20 = SEALED_GEOMETRY_PORTFOLIOS[20]
+
+    assert cutover.V8_SOURCE_HEAD == "ef28fecc5d6198465cedc37770a586c3239ce63f"
+    assert cutover.V8_SOURCE_TREE == "601760544573651795e365f8c9d95d59405fbb85"
+    assert (
+        f"{SEALED_GEOMETRY_METHOD_ID}@{SEALED_GEOMETRY_METHOD_VERSION}"
+    ) == cutover.V8_TARGET_METHOD
+    assert k20.ticket_count == 20
+    assert len(k20.tickets) == 20
+    assert canonical_portfolio_sha256(k20.tickets) == cutover.V8_TARGET_K20_SHA256
+    assert k20.portfolio_sha256 == cutover.V8_TARGET_K20_SHA256
+
+
+def test_production_validator_accepts_exact_v8_candidate_binding(
+    fixture: Fixture,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    retirement, proof = _exact_released_intermediate_v2_retirement(
+        fixture, monkeypatch, candidate_version="v8"
+    )
+    validate = cast(
+        Callable[[object, dict[str, object]], dict[str, object]],
+        vars(cutover)["_validate_predecessor_release_evidence"],
+    )
+    owner = {
+        "reservation_id": proof["new_reservation_id"],
+        "operation_id": proof["new_operation_id"],
+        "managed_receipt_sha256": cutover.V5_MANAGED_RECEIPT_SHA256,
+        "target": _object(_object(proof["retired_failed_terminal_evidence"])["candidate_target"]),
+    }
+
+    assert retirement["candidate_method"] == cutover.V8_TARGET_METHOD
+    assert retirement["candidate_k20_sha256"] == cutover.V8_TARGET_K20_SHA256
+    assert retirement["v5_protected_receipt_sha256"] == cutover.V5_PROTECTED_RECEIPT_SHA256
+    assert retirement["v5_managed_receipt_sha256"] == cutover.V5_MANAGED_RECEIPT_SHA256
+    assert validate(proof, owner) == proof
+
+
 @pytest.mark.parametrize(
     "defect",
     [
@@ -3185,19 +3400,25 @@ def test_production_validator_accepts_exact_released_intermediate_v2_bridge(
         "v5_proof_digest",
         "v6_binding",
         "candidate_target",
+        "wrong_head",
+        "wrong_tree",
         "candidate_id_reuse",
         "candidate_operation_reuse",
         "wrong_method",
         "wrong_k20",
     ],
 )
+@pytest.mark.parametrize("candidate_version", ["v7", "v8"])
 def test_production_validator_rejects_released_intermediate_v2_corruption(
     fixture: Fixture,
     monkeypatch: pytest.MonkeyPatch,
+    candidate_version: str,
     defect: str,
 ) -> None:
     digest_json = cast(Callable[[object], str], vars(cutover)["_sha256_json"])
-    _retirement, proof = _exact_released_intermediate_v2_retirement(fixture, monkeypatch)
+    _retirement, proof = _exact_released_intermediate_v2_retirement(
+        fixture, monkeypatch, candidate_version=candidate_version
+    )
     corrupted = copy.deepcopy(proof)
     retirement = _object(corrupted["retired_failed_terminal_evidence"])
     if defect in {"owner_file_seal", "owner_record_seal"}:
@@ -3218,15 +3439,38 @@ def test_production_validator_rejects_released_intermediate_v2_corruption(
         release = _object(retirement["intermediate_release_record"])
         _object(release["protected_execution_receipt"])["operation_id"] = "d" * 32
     elif defect == "candidate_target":
-        _object(retirement["candidate_target"])["head"] = cutover.RELEASED_INTERMEDIATE_TARGET_HEAD
+        candidate_target = _object(retirement["candidate_target"])
+        if candidate_version == "v8":
+            candidate_target["head"] = cutover.V7_SOURCE_HEAD
+            candidate_target["tree"] = cutover.V7_SOURCE_TREE
+        else:
+            candidate_target["head"] = cutover.RELEASED_INTERMEDIATE_TARGET_HEAD
+    elif defect == "wrong_head":
+        candidate_target = _object(retirement["candidate_target"])
+        candidate_target["head"] = (
+            cutover.V7_SOURCE_HEAD
+            if candidate_version == "v8"
+            else cutover.RELEASED_INTERMEDIATE_TARGET_HEAD
+        )
+    elif defect == "wrong_tree":
+        candidate_target = _object(retirement["candidate_target"])
+        candidate_target["tree"] = (
+            cutover.V7_SOURCE_TREE
+            if candidate_version == "v8"
+            else cutover.RELEASED_INTERMEDIATE_TARGET_TREE
+        )
     elif defect == "candidate_id_reuse":
         retirement["candidate_reservation_id"] = cutover.RELEASED_INTERMEDIATE_RESERVATION_ID
     elif defect == "candidate_operation_reuse":
         retirement["candidate_operation_id"] = cutover.RELEASED_INTERMEDIATE_OPERATION_ID
     elif defect == "wrong_method":
-        retirement["candidate_method"] = "other"
+        retirement["candidate_method"] = (
+            cutover.V7_TARGET_METHOD if candidate_version == "v8" else "other"
+        )
     else:
-        retirement["candidate_k20_sha256"] = "e" * 64
+        retirement["candidate_k20_sha256"] = (
+            cutover.V7_TARGET_K20_SHA256 if candidate_version == "v8" else "e" * 64
+        )
     retirement["record_sha256"] = ""
     retirement["record_sha256"] = digest_json(
         {key: value for key, value in retirement.items() if key != "record_sha256"}

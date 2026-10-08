@@ -3307,8 +3307,8 @@ def _recover_v2_successor_request(
             if (
                 plan_old.get("head") != cutover.V5_SOURCE_HEAD
                 or plan_old.get("tree") != cutover.V5_SOURCE_TREE
-                or plan_new.get("head") != cutover.V7_SOURCE_HEAD
-                or plan_new.get("tree") != cutover.V7_SOURCE_TREE
+                or plan_new.get("head") != config.expected_head
+                or plan_new.get("tree") != config.expected_tree
                 or plan_new.get("source_worktree") != str(config.source_worktree)
             ):
                 raise ProtectedError(
@@ -3354,8 +3354,8 @@ def _recover_v2_successor_request(
     if (
         plan_old.get("head") != cutover.V5_SOURCE_HEAD
         or plan_old.get("tree") != cutover.V5_SOURCE_TREE
-        or plan_new.get("head") != cutover.V7_SOURCE_HEAD
-        or plan_new.get("tree") != cutover.V7_SOURCE_TREE
+        or plan_new.get("head") != config.expected_head
+        or plan_new.get("tree") != config.expected_tree
         or plan_new.get("source_worktree") != str(config.source_worktree)
     ):
         raise ProtectedError("v2 retirement evidence belongs to a different successor transition")
@@ -3467,6 +3467,47 @@ def _require_released_v7_intermediate_successor_evidence(
     runner: cutover.Runner | None,
 ) -> Record:
     selected_runner = cutover.run_command if runner is None else runner
+    retirement_path = request.config.scheduler_root / cutover.FAILED_TERMINAL_RETIREMENT_V2_NAME
+    stored_retirement: Record | None = None
+    if os.path.lexists(retirement_path):
+        stored_retirement, _, _ = cutover._load_json(  # pyright: ignore[reportPrivateUsage]
+            retirement_path
+        )
+        cutover._validate_failed_terminal_retirement_v2_evidence(  # pyright: ignore[reportPrivateUsage]
+            stored_retirement
+        )
+
+    candidate_target = request_owner_target(request)
+    candidate_binding = (
+        (
+            cutover.V8_SOURCE_HEAD,
+            cutover.V8_SOURCE_TREE,
+            cutover.V8_TARGET_METHOD,
+            cutover.V8_TARGET_K20_SHA256,
+        )
+        if (request.config.expected_head, request.config.expected_tree)
+        == (cutover.V8_SOURCE_HEAD, cutover.V8_SOURCE_TREE)
+        else None
+    )
+    if (
+        candidate_binding is None
+        and (request.config.expected_head, request.config.expected_tree)
+        == (cutover.V7_SOURCE_HEAD, cutover.V7_SOURCE_TREE)
+        and stored_retirement is not None
+        and stored_retirement.get("candidate_target") == candidate_target
+        and stored_retirement.get("candidate_method") == cutover.V7_TARGET_METHOD
+        and stored_retirement.get("candidate_k20_sha256") == cutover.V7_TARGET_K20_SHA256
+        and stored_retirement.get("candidate_plan_sha256") == request.plan_sha256
+        and stored_retirement.get("candidate_reservation_id") == request.reservation_id
+        and stored_retirement.get("candidate_operation_id") == request.operation_id
+        and stored_retirement.get("claim_root") == str(request.claim_root)
+    ):
+        candidate_binding = (
+            cutover.V7_SOURCE_HEAD,
+            cutover.V7_SOURCE_TREE,
+            cutover.V7_TARGET_METHOD,
+            cutover.V7_TARGET_K20_SHA256,
+        )
     if (
         request.reservation_id is None
         or request.reservation_id
@@ -3482,13 +3523,14 @@ def _require_released_v7_intermediate_successor_evidence(
             cutover.RELEASED_INTERMEDIATE_OPERATION_ID,
         }
         or re.fullmatch(r"[0-9a-f]{32}", request.operation_id) is None
-        or (request.config.expected_head, request.config.expected_tree)
-        != (cutover.V7_SOURCE_HEAD, cutover.V7_SOURCE_TREE)
+        or candidate_binding is None
         or request.prior_execution_receipt_sha256 != cutover.V5_PROTECTED_RECEIPT_SHA256
     ):
         raise ProtectedError(
-            "released intermediate permits only a fresh exact canonical v7 successor"
+            "released intermediate permits a fresh K20 v8 successor or its exact sealed v7 retry"
         )
+
+    candidate_head, candidate_tree, candidate_method, candidate_k20_sha256 = candidate_binding
 
     owner, owner_identity, release, release_identity = _released_v7_intermediate_context(
         request.config, prior_owner
@@ -3526,8 +3568,8 @@ def _require_released_v7_intermediate_successor_evidence(
     if (
         plan_old.get("head") != cutover.V5_SOURCE_HEAD
         or plan_old.get("tree") != cutover.V5_SOURCE_TREE
-        or plan_new.get("head") != cutover.V7_SOURCE_HEAD
-        or plan_new.get("tree") != cutover.V7_SOURCE_TREE
+        or plan_new.get("head") != candidate_head
+        or plan_new.get("tree") != candidate_tree
         or plan_new.get("clean") is not True
         or plan_new.get("source_worktree") != str(request.config.source_worktree)
         or request.plan_digest == record(v5_receipt.get("identity")).get("plan_digest")
@@ -3535,7 +3577,9 @@ def _require_released_v7_intermediate_successor_evidence(
         or (request.legacy_head, request.legacy_tree)
         != (cutover.V5_SOURCE_HEAD, cutover.V5_SOURCE_TREE)
     ):
-        raise ProtectedError("candidate plan does not target canonical v7 from exact v5 OLD")
+        raise ProtectedError(
+            "candidate plan does not match its sealed K20 target from exact v5 OLD"
+        )
 
     old_live = _prove_plan_old_live(request.config, candidate_plan, selected_runner)
     if (
@@ -3543,7 +3587,7 @@ def _require_released_v7_intermediate_successor_evidence(
         or record(old_live.get("target_source")) == plan_old
     ):
         raise ProtectedError(
-            "live state does not prove exact v5 OLD and inactive canonical v7 target"
+            "live state does not prove exact v5 OLD and inactive sealed K20 target"
         )
     v5_identity = record(v5_receipt.get("identity"))
     v5_target = record(v5_identity.get("target"))
@@ -3564,7 +3608,6 @@ def _require_released_v7_intermediate_successor_evidence(
         runner=selected_runner,
     )
 
-    retirement_path = request.config.scheduler_root / cutover.FAILED_TERMINAL_RETIREMENT_V2_NAME
     unsigned_retirement: Record = {
         "schema": cutover.FAILED_TERMINAL_RETIREMENT_V2_SCHEMA,
         "receipt_path": str(request.receipt_path),
@@ -3604,9 +3647,9 @@ def _require_released_v7_intermediate_successor_evidence(
         "candidate_plan_sha256": request.plan_sha256,
         "candidate_reservation_id": request.reservation_id,
         "candidate_operation_id": request.operation_id,
-        "candidate_target": request_owner_target(request),
-        "candidate_method": cutover.V7_TARGET_METHOD,
-        "candidate_k20_sha256": cutover.V7_TARGET_K20_SHA256,
+        "candidate_target": candidate_target,
+        "candidate_method": candidate_method,
+        "candidate_k20_sha256": candidate_k20_sha256,
         "claim_root": str(request.claim_root),
         "claim_store_status": "ABSENT",
         "rollback_receipt_absent": True,

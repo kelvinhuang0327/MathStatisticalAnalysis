@@ -102,6 +102,12 @@ RELEASED_INTERMEDIATE_TARGET_REF = (
 )
 V7_TARGET_METHOD = "B649_SEALED_GEOMETRY_PORTFOLIO@7.0.0"
 V7_TARGET_K20_SHA256 = "0045ac8837fc82e9a585d812173341ac12e05c5de201af7f8fedeacafa19e1ff"
+# Keep the sealed V7 pair readable for existing retirement evidence. New
+# protected candidates bind to the exact K20 V8 source and portfolio.
+V8_SOURCE_HEAD = "9fab2301c1634b36ba694a604a412eafe6430fbc"
+V8_SOURCE_TREE = "6c49c33fda3cd3d839ebd034beec35184b063508"
+V8_TARGET_METHOD = "B649_SEALED_GEOMETRY_PORTFOLIO@8.0.0"
+V8_TARGET_K20_SHA256 = "eaed652900d101881b678a1515d2a366bff9de6723dbec2ec9c82fe0d0d7844c"
 CONTROL_OWNER_NAME = "b649-control-owner-reservation.json"
 COMMAND_TIMEOUT = 10
 MAX_OUTPUT_BYTES = 2 * 1024 * 1024
@@ -1460,6 +1466,24 @@ def _reconstructed_v5_predecessor_proof() -> Record:
     return {**unsigned, "evidence_sha256": _sha256_json(unsigned)}
 
 
+def _candidate_k20_binding_matches(
+    candidate_target: Record,
+    candidate_method: object,
+    candidate_k20_sha256: object,
+) -> bool:
+    return (
+        candidate_target.get("head") == V7_SOURCE_HEAD
+        and candidate_target.get("tree") == V7_SOURCE_TREE
+        and candidate_method == V7_TARGET_METHOD
+        and candidate_k20_sha256 == V7_TARGET_K20_SHA256
+    ) or (
+        candidate_target.get("head") == V8_SOURCE_HEAD
+        and candidate_target.get("tree") == V8_SOURCE_TREE
+        and candidate_method == V8_TARGET_METHOD
+        and candidate_k20_sha256 == V8_TARGET_K20_SHA256
+    )
+
+
 def _validate_failed_terminal_retirement_v2_evidence(evidence: Record) -> Record:
     unsigned = {key: item for key, item in evidence.items() if key != "record_sha256"}
     required = {
@@ -1633,10 +1657,11 @@ def _validate_failed_terminal_retirement_v2_evidence(evidence: Record) -> Record
         or evidence.get("failed_operation_managed_receipt_present") is not False
         or evidence.get("archive_status") != "ARCHIVED_UNCHANGED"
         or re.fullmatch(r"[0-9a-f]{64}", str(evidence.get("candidate_plan_sha256"))) is None
-        or candidate_target.get("head") != V7_SOURCE_HEAD
-        or candidate_target.get("tree") != V7_SOURCE_TREE
-        or evidence.get("candidate_method") != V7_TARGET_METHOD
-        or evidence.get("candidate_k20_sha256") != V7_TARGET_K20_SHA256
+        or not _candidate_k20_binding_matches(
+            candidate_target,
+            evidence.get("candidate_method"),
+            evidence.get("candidate_k20_sha256"),
+        )
         or evidence.get("candidate_reservation_id")
         in {
             V5_RESERVATION_ID,

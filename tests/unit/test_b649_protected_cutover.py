@@ -942,6 +942,8 @@ def _fresh_v2_recovery_process(
 def _prepare_exact_failed_terminal_bridge(
     harness: Harness,
     monkeypatch: pytest.MonkeyPatch,
+    *,
+    candidate_version: str = "v7",
 ) -> tuple[StrandedIncident, protected.Request, _FixtureHashlib]:
     v5_config = replace(
         harness.fixture.config,
@@ -1068,36 +1070,41 @@ def _prepare_exact_failed_terminal_bridge(
         protected_receipt_path=incident.request.receipt_path,
     )
 
-    v7_source = harness.fixture.worktree_parent / f"B649_PRODUCTION_{cutover.V7_SOURCE_HEAD}"
-    Fixture.make_source(v7_source)
-    harness.launchd.worktree_identities[v7_source] = (
-        cutover.V7_SOURCE_HEAD,
-        cutover.V7_SOURCE_TREE,
+    candidate_bindings = {
+        "v7": (cutover.V7_SOURCE_HEAD, cutover.V7_SOURCE_TREE),
+        "v8": (cutover.V8_SOURCE_HEAD, cutover.V8_SOURCE_TREE),
+    }
+    candidate_head, candidate_tree = candidate_bindings[candidate_version]
+    candidate_source = harness.fixture.worktree_parent / f"B649_PRODUCTION_{candidate_head}"
+    Fixture.make_source(candidate_source)
+    harness.launchd.worktree_identities[candidate_source] = (
+        candidate_head,
+        candidate_tree,
         True,
     )
-    v7_config = replace(
+    candidate_config = replace(
         incident.request.config,
-        source_worktree=v7_source,
-        expected_head=cutover.V7_SOURCE_HEAD,
-        expected_tree=cutover.V7_SOURCE_TREE,
-        durable_ref=f"refs/heads/runtime/b649/{cutover.V7_SOURCE_HEAD}",
+        source_worktree=candidate_source,
+        expected_head=candidate_head,
+        expected_tree=candidate_tree,
+        durable_ref=f"refs/heads/runtime/b649/{candidate_head}",
         strict_release_layout=False,
     )
-    harness.fixture.config = v7_config
+    harness.fixture.config = candidate_config
     harness.launchd.process_rows = ["1 0 0 S /sbin/launchd"]
     harness.launchd.file_rows = ["p1\nfcwd\nn/"]
-    v7_plan = cutover.build_plan(v7_config, runner=harness.launchd)
-    assert v7_plan["status"] == "PASS", v7_plan["failures"]
-    v7_plan_file = harness.fixture.root / "v7-plan.json"
-    v7_plan_file.write_text(protected.canonical(v7_plan), encoding="utf-8")
-    v7_plan_file.chmod(0o600)
+    candidate_plan = cutover.build_plan(candidate_config, runner=harness.launchd)
+    assert candidate_plan["status"] == "PASS", candidate_plan["failures"]
+    candidate_plan_file = harness.fixture.root / f"{candidate_version}-plan.json"
+    candidate_plan_file.write_text(protected.canonical(candidate_plan), encoding="utf-8")
+    candidate_plan_file.chmod(0o600)
     harness.chain()
     request = protected.make_request(
-        v7_config,
+        candidate_config,
         harness.fixture.new,
         cutover.V5_SOURCE_HEAD,
         cutover.V5_SOURCE_TREE,
-        v7_plan_file,
+        candidate_plan_file,
         incident.request.claim_root,
         reservation_id=str(uuid4()),
         prior_execution_receipt_sha256=cutover.V5_PROTECTED_RECEIPT_SHA256,
@@ -1108,8 +1115,12 @@ def _prepare_exact_failed_terminal_bridge(
 def _prepare_exact_released_v7_intermediate_bridge(
     harness: Harness,
     monkeypatch: pytest.MonkeyPatch,
+    *,
+    candidate_version: str = "v8",
 ) -> tuple[StrandedIncident, protected.Request, _FixtureHashlib, protected.Record]:
-    incident, request, fixture_hashlib = _prepare_exact_failed_terminal_bridge(harness, monkeypatch)
+    incident, request, fixture_hashlib = _prepare_exact_failed_terminal_bridge(
+        harness, monkeypatch, candidate_version=candidate_version
+    )
     failed = protected.ReceiptFile(incident.request.receipt_path).read()
     assert failed is not None
     failed_identity = protected.record(failed.get("identity"))
@@ -1281,7 +1292,7 @@ def _prepare_exact_released_v7_intermediate_bridge(
     return incident, request, fixture_hashlib, owner
 
 
-def test_exact_released_v7_intermediate_reconstructs_v5_and_binds_v6_failure(
+def test_exact_released_v7_intermediate_reconstructs_v5_and_binds_v8_candidate(
     harness: Harness,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -1318,7 +1329,8 @@ def test_exact_released_v7_intermediate_reconstructs_v5_and_binds_v6_failure(
         retirement["intermediate_release_record_file_sha256"]
         == cutover.RELEASED_INTERMEDIATE_RELEASE_RECORD_FILE_SHA256
     )
-    assert protected.record(retirement["candidate_target"])["head"] == cutover.V7_SOURCE_HEAD
+    assert protected.record(retirement["candidate_target"])["head"] == cutover.V8_SOURCE_HEAD
+    assert protected.record(retirement["candidate_target"])["tree"] == cutover.V8_SOURCE_TREE
     assert retirement["candidate_reservation_id"] not in {
         cutover.V5_RESERVATION_ID,
         cutover.FAILED_TERMINAL_RESERVATION_ID,
@@ -1329,8 +1341,8 @@ def test_exact_released_v7_intermediate_reconstructs_v5_and_binds_v6_failure(
         cutover.FAILED_TERMINAL_OPERATION_ID,
         cutover.RELEASED_INTERMEDIATE_OPERATION_ID,
     }
-    assert retirement["candidate_method"] == cutover.V7_TARGET_METHOD
-    assert retirement["candidate_k20_sha256"] == cutover.V7_TARGET_K20_SHA256
+    assert retirement["candidate_method"] == cutover.V8_TARGET_METHOD
+    assert retirement["candidate_k20_sha256"] == cutover.V8_TARGET_K20_SHA256
     assert not incident.request.receipt_path.exists()
     archive_path = Path(protected.text(retirement["archive_path"]))
     assert archive_path.read_bytes() == failed_before
@@ -1338,19 +1350,39 @@ def test_exact_released_v7_intermediate_reconstructs_v5_and_binds_v6_failure(
     assert owner_path.read_bytes() == owner_before
 
 
+@pytest.mark.parametrize("candidate_version", ["v7", "v8"])
 def test_v2_evidence_retry_after_interrupted_owner_swap_is_safe(
     harness: Harness,
     monkeypatch: pytest.MonkeyPatch,
+    candidate_version: str,
 ) -> None:
     _incident, request, _fixture_hashlib, intermediate_owner = (
-        _prepare_exact_released_v7_intermediate_bridge(harness, monkeypatch)
+        _prepare_exact_released_v7_intermediate_bridge(
+            harness, monkeypatch, candidate_version=candidate_version
+        )
     )
     prior_owner = cutover.inspect_control_owner(request.config)
-    proof = protected._require_released_success_evidence(
-        request,
-        prior_owner,
-        runner=harness.launchd,
-    )
+    if candidate_version == "v7":
+        # Create a sealed retirement with the pre-cutover V7 binding, then
+        # restore the current constants before exercising fresh-process recovery.
+        with monkeypatch.context() as legacy_constants:
+            legacy_constants.setattr(cutover, "V8_SOURCE_HEAD", cutover.V7_SOURCE_HEAD)
+            legacy_constants.setattr(cutover, "V8_SOURCE_TREE", cutover.V7_SOURCE_TREE)
+            legacy_constants.setattr(cutover, "V8_TARGET_METHOD", cutover.V7_TARGET_METHOD)
+            legacy_constants.setattr(
+                cutover, "V8_TARGET_K20_SHA256", cutover.V7_TARGET_K20_SHA256
+            )
+            proof = protected._require_released_success_evidence(
+                request,
+                prior_owner,
+                runner=harness.launchd,
+            )
+    else:
+        proof = protected._require_released_success_evidence(
+            request,
+            prior_owner,
+            runner=harness.launchd,
+        )
     assert proof is not None
     owner_path = cutover._control_owner_path(request.config)  # pyright: ignore[reportPrivateUsage]
     owner_before = owner_path.read_bytes()
@@ -1394,31 +1426,43 @@ def test_v2_evidence_retry_after_interrupted_owner_swap_is_safe(
 
     assert owner_path.read_bytes() == owner_before
     assert retirement_path.read_bytes() == retirement_before
+    recovered_request = protected._recover_v2_successor_request(
+        request.config,
+        request.legacy_worktree,
+        request.legacy_head,
+        request.legacy_tree,
+        request.plan_file,
+        request.claim_root,
+        cutover.inspect_control_owner(request.config),
+        prior_execution_receipt_sha256=cutover.V5_PROTECTED_RECEIPT_SHA256,
+        takeover_stale=request.takeover_stale,
+    )
+    assert recovered_request is not None
     retried = protected._require_released_success_evidence(
-        request,
+        recovered_request,
         cutover.inspect_control_owner(request.config),
         runner=harness.launchd,
     )
     assert retried is not None
     assert retried == proof
     owner = cutover.acquire_control_owner(
-        request.config,
+        recovered_request.config,
         action="apply",
-        target=protected.request_owner_target(request),
+        target=protected.request_owner_target(recovered_request),
         owner_kind="protected",
-        reservation_id=str(request.reservation_id),
-        version={"head": request.control_head, "tree": request.control_tree},
-        operation_id=request.operation_id,
-        managed_receipt_sha256=request.managed_receipt_sha256,
+        reservation_id=str(recovered_request.reservation_id),
+        version={"head": recovered_request.control_head, "tree": recovered_request.control_tree},
+        operation_id=recovered_request.operation_id,
+        managed_receipt_sha256=recovered_request.managed_receipt_sha256,
         predecessor_release_evidence=retried,
         predecessor_live_verifier=protected._failed_terminal_bridge_live_verifier(
-            request,
-            cutover.inspect_control_owner(request.config) or intermediate_owner,
+            recovered_request,
+            cutover.inspect_control_owner(recovered_request.config) or intermediate_owner,
             retried,
             runner=harness.launchd,
         ),
     )
-    assert owner["reservation_id"] == request.reservation_id
+    assert owner["reservation_id"] == recovered_request.reservation_id
     assert (
         protected.record(owner["predecessor_release_evidence"])["prior_protected_receipt_sha256"]
         == cutover.V5_PROTECTED_RECEIPT_SHA256

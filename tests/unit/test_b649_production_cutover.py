@@ -23,6 +23,12 @@ import tools.b649_cutover_checkpoint as checkpoint
 import tools.b649_goalc_local_scheduler as scheduler
 import tools.b649_production_cutover as cutover
 
+from lottolab.application.b649_sealed_geometry_portfolio import (
+    SEALED_GEOMETRY_METHOD_ID,
+    SEALED_GEOMETRY_METHOD_VERSION,
+    SEALED_GEOMETRY_PORTFOLIOS,
+)
+
 NEW_HEAD = "1" * 40
 NEW_TREE = "2" * 40
 OLD_HEAD = "3" * 40
@@ -2965,6 +2971,8 @@ def test_production_validator_preserves_ordinary_predecessor_proof_shape() -> No
 def _exact_released_intermediate_v2_retirement(
     fixture: Fixture,
     monkeypatch: pytest.MonkeyPatch,
+    *,
+    candidate_version: str = "v7",
 ) -> tuple[dict[str, object], dict[str, object]]:
     digest_json = cast(Callable[[object], str], vars(cutover)["_sha256_json"])
     seal = cast(
@@ -3069,11 +3077,28 @@ def _exact_released_intermediate_v2_retirement(
     v5_proof = cast(
         Callable[[], dict[str, object]], vars(cutover)["_reconstructed_v5_predecessor_proof"]
     )()
+    candidate_bindings = {
+        "v7": (
+            cutover.V7_SOURCE_HEAD,
+            cutover.V7_SOURCE_TREE,
+            cutover.V7_TARGET_METHOD,
+            cutover.V7_TARGET_K20_SHA256,
+        ),
+        "v8": (
+            cutover.V8_SOURCE_HEAD,
+            cutover.V8_SOURCE_TREE,
+            cutover.V8_TARGET_METHOD,
+            cutover.V8_TARGET_K20_SHA256,
+        ),
+    }
+    candidate_head, candidate_tree, candidate_method, candidate_k20_sha256 = candidate_bindings[
+        candidate_version
+    ]
     candidate_target: dict[str, object] = {
         "source_worktree": str(fixture.new),
-        "head": cutover.V7_SOURCE_HEAD,
-        "tree": cutover.V7_SOURCE_TREE,
-        "durable_ref": f"refs/heads/runtime/b649/{cutover.V7_SOURCE_HEAD}",
+        "head": candidate_head,
+        "tree": candidate_tree,
+        "durable_ref": f"refs/heads/runtime/b649/{candidate_head}",
     }
     retirement_unsigned: dict[str, object] = {
         "schema": cutover.FAILED_TERMINAL_RETIREMENT_V2_SCHEMA,
@@ -3125,8 +3150,8 @@ def _exact_released_intermediate_v2_retirement(
         "candidate_reservation_id": "8f66c4b9-f104-40ea-8591-a4deef696c99",
         "candidate_operation_id": "9" * 32,
         "candidate_target": candidate_target,
-        "candidate_method": cutover.V7_TARGET_METHOD,
-        "candidate_k20_sha256": cutover.V7_TARGET_K20_SHA256,
+        "candidate_method": candidate_method,
+        "candidate_k20_sha256": candidate_k20_sha256,
         "claim_root": str(fixture.root / "claims"),
         "claim_store_status": "ABSENT",
         "rollback_receipt_absent": True,
@@ -3175,6 +3200,42 @@ def test_production_validator_accepts_exact_released_intermediate_v2_bridge(
     assert validate(proof, owner) == proof
 
 
+def test_v8_candidate_binding_matches_the_sealed_k20_authority() -> None:
+    k20 = SEALED_GEOMETRY_PORTFOLIOS[20]
+
+    assert cutover.V8_SOURCE_HEAD == "9fab2301c1634b36ba694a604a412eafe6430fbc"
+    assert cutover.V8_SOURCE_TREE == "6c49c33fda3cd3d839ebd034beec35184b063508"
+    assert (
+        f"{SEALED_GEOMETRY_METHOD_ID}@{SEALED_GEOMETRY_METHOD_VERSION}"
+    ) == cutover.V8_TARGET_METHOD
+    assert k20.portfolio_sha256 == cutover.V8_TARGET_K20_SHA256
+
+
+def test_production_validator_accepts_exact_v8_candidate_binding(
+    fixture: Fixture,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    retirement, proof = _exact_released_intermediate_v2_retirement(
+        fixture, monkeypatch, candidate_version="v8"
+    )
+    validate = cast(
+        Callable[[object, dict[str, object]], dict[str, object]],
+        vars(cutover)["_validate_predecessor_release_evidence"],
+    )
+    owner = {
+        "reservation_id": proof["new_reservation_id"],
+        "operation_id": proof["new_operation_id"],
+        "managed_receipt_sha256": cutover.V5_MANAGED_RECEIPT_SHA256,
+        "target": _object(_object(proof["retired_failed_terminal_evidence"])["candidate_target"]),
+    }
+
+    assert retirement["candidate_method"] == cutover.V8_TARGET_METHOD
+    assert retirement["candidate_k20_sha256"] == cutover.V8_TARGET_K20_SHA256
+    assert retirement["v5_protected_receipt_sha256"] == cutover.V5_PROTECTED_RECEIPT_SHA256
+    assert retirement["v5_managed_receipt_sha256"] == cutover.V5_MANAGED_RECEIPT_SHA256
+    assert validate(proof, owner) == proof
+
+
 @pytest.mark.parametrize(
     "defect",
     [
@@ -3191,13 +3252,17 @@ def test_production_validator_accepts_exact_released_intermediate_v2_bridge(
         "wrong_k20",
     ],
 )
+@pytest.mark.parametrize("candidate_version", ["v7", "v8"])
 def test_production_validator_rejects_released_intermediate_v2_corruption(
     fixture: Fixture,
     monkeypatch: pytest.MonkeyPatch,
+    candidate_version: str,
     defect: str,
 ) -> None:
     digest_json = cast(Callable[[object], str], vars(cutover)["_sha256_json"])
-    _retirement, proof = _exact_released_intermediate_v2_retirement(fixture, monkeypatch)
+    _retirement, proof = _exact_released_intermediate_v2_retirement(
+        fixture, monkeypatch, candidate_version=candidate_version
+    )
     corrupted = copy.deepcopy(proof)
     retirement = _object(corrupted["retired_failed_terminal_evidence"])
     if defect in {"owner_file_seal", "owner_record_seal"}:
@@ -3218,15 +3283,24 @@ def test_production_validator_rejects_released_intermediate_v2_corruption(
         release = _object(retirement["intermediate_release_record"])
         _object(release["protected_execution_receipt"])["operation_id"] = "d" * 32
     elif defect == "candidate_target":
-        _object(retirement["candidate_target"])["head"] = cutover.RELEASED_INTERMEDIATE_TARGET_HEAD
+        candidate_target = _object(retirement["candidate_target"])
+        if candidate_version == "v8":
+            candidate_target["head"] = cutover.V7_SOURCE_HEAD
+            candidate_target["tree"] = cutover.V7_SOURCE_TREE
+        else:
+            candidate_target["head"] = cutover.RELEASED_INTERMEDIATE_TARGET_HEAD
     elif defect == "candidate_id_reuse":
         retirement["candidate_reservation_id"] = cutover.RELEASED_INTERMEDIATE_RESERVATION_ID
     elif defect == "candidate_operation_reuse":
         retirement["candidate_operation_id"] = cutover.RELEASED_INTERMEDIATE_OPERATION_ID
     elif defect == "wrong_method":
-        retirement["candidate_method"] = "other"
+        retirement["candidate_method"] = (
+            cutover.V7_TARGET_METHOD if candidate_version == "v8" else "other"
+        )
     else:
-        retirement["candidate_k20_sha256"] = "e" * 64
+        retirement["candidate_k20_sha256"] = (
+            cutover.V7_TARGET_K20_SHA256 if candidate_version == "v8" else "e" * 64
+        )
     retirement["record_sha256"] = ""
     retirement["record_sha256"] = digest_json(
         {key: value for key, value in retirement.items() if key != "record_sha256"}

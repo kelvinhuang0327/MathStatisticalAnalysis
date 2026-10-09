@@ -71,6 +71,18 @@ class SourceIdentity:
     r30_result_sha256: str
 
 
+@dataclass(frozen=True, slots=True)
+class ProcessIdentity:
+    """Kernel process identity used to anchor the current invocation's lineage."""
+
+    pid: int
+    parent_pid: int
+
+
+def _current_process_identity() -> ProcessIdentity:
+    return ProcessIdentity(pid=os.getpid(), parent_pid=os.getppid())
+
+
 def _git_output(root: Path, *args: str) -> str:
     try:
         result = subprocess.run(
@@ -129,23 +141,29 @@ def _live_legacy_pids(process_lines: Sequence[str]) -> tuple[int, ...]:
     parents: dict[int, int] = {}
     owners: set[int] = set()
     for line in process_lines:
+        if not line.strip():
+            continue
         fields = line.strip().split(maxsplit=2)
-        if len(fields) < 2:
+        if len(fields) < 3:
             if LEGACY_CENSUS_TASK_ID in line or LEGACY_CENSUS_MODULE in line:
                 raise SafetyGateError("cannot parse live legacy census ownership")
-            continue
+            raise SafetyGateError("cannot establish current process lineage from process table")
         try:
             pid = int(fields[0])
             parent_pid = int(fields[1])
         except ValueError as error:
             if LEGACY_CENSUS_TASK_ID in line or LEGACY_CENSUS_MODULE in line:
                 raise SafetyGateError("cannot parse live legacy census ownership") from error
-            continue
+            raise SafetyGateError(
+                "cannot establish current process lineage from process table"
+            ) from error
+        if pid <= 0 or parent_pid < 0:
+            raise SafetyGateError("cannot establish current process lineage from process table")
+        if pid in parents:
+            raise SafetyGateError(
+                "cannot establish current process lineage: duplicate or reused PID"
+            )
         parents[pid] = parent_pid
-        if len(fields) < 3:
-            if LEGACY_CENSUS_TASK_ID in line or LEGACY_CENSUS_MODULE in line:
-                raise SafetyGateError("cannot parse live legacy census ownership")
-            continue
         command = fields[2]
         try:
             argv = shlex.split(command)
@@ -153,7 +171,7 @@ def _live_legacy_pids(process_lines: Sequence[str]) -> tuple[int, ...]:
             if LEGACY_CENSUS_TASK_ID in command or LEGACY_CENSUS_MODULE in command:
                 raise SafetyGateError("cannot parse live legacy census ownership") from error
             continue
-        if pid == os.getpid() or not argv:
+        if not argv:
             continue
 
         is_legacy_run = False
@@ -184,25 +202,51 @@ def _live_legacy_pids(process_lines: Sequence[str]) -> tuple[int, ...]:
         if is_legacy_run:
             owners.add(pid)
 
-    # Include both launcher ancestry and descendants. A wrapper can own the run
-    # before the engine starts, while an engine child can outlive its wrapper.
-    live = set(owners)
-    for owner in owners:
-        current = owner
-        seen = {owner}
-        while current in parents:
-            parent = parents[current]
-            if parent <= 1 or parent in seen or parent == os.getpid():
-                break
-            seen.add(parent)
-            if parent in parents:
-                live.add(parent)
-            current = parent
-    while True:
-        descendants = {pid for pid, parent in parents.items() if parent in live}
-        if descendants <= live:
-            break
-        live.update(descendants)
+    # Anchor self-exclusion to one live kernel identity and its verified tree.
+    # A task ID alone also appears in this invocation's launcher and children.
+    identity = _current_process_identity()
+    if (
+        identity.pid <= 1
+        or identity.parent_pid <= 0
+        or identity.pid not in parents
+        or parents[identity.pid] != identity.parent_pid
+    ):
+        raise SafetyGateError(
+            "cannot establish current process lineage: caller PID is missing or stale"
+        )
+
+    lineage = {identity.pid}
+    current = identity.pid
+    while current != 1:
+        parent = parents.get(current)
+        if parent is None or parent <= 0 or parent not in parents or parent in lineage:
+            raise SafetyGateError("cannot establish current process lineage through its ancestors")
+        lineage.add(parent)
+        current = parent
+
+    children: dict[int, list[int]] = {}
+    for pid, parent in parents.items():
+        children.setdefault(parent, []).append(pid)
+    descendants: set[int] = set()
+    pending = [identity.pid]
+    while pending:
+        current = pending.pop()
+        if current in descendants:
+            continue
+        descendants.add(current)
+        pending.extend(children.get(current, ()))
+    lineage.update(descendants)
+
+    # Keep an independent RUN1 launcher and its children, including an engine
+    # that outlived its launcher. Do not expand through shared ancestors.
+    live = owners.difference(lineage)
+    pending = list(live)
+    while pending:
+        parent = pending.pop()
+        for child in children.get(parent, ()):
+            if child not in lineage and child not in live:
+                live.add(child)
+                pending.append(child)
     return tuple(sorted(live))
 
 

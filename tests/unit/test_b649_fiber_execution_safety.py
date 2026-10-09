@@ -8,6 +8,7 @@ import subprocess
 import sys
 from dataclasses import replace
 from pathlib import Path
+from threading import Event, Thread, local
 
 import pytest
 
@@ -16,6 +17,16 @@ from lottolab.research import b649_k20_fiber_near_top_s3_census as census
 from lottolab.research import b649_k20_fiber_slice1_r30_certificate_reuse as reuse
 
 ROOT = Path(__file__).resolve().parents[2]
+CURRENT_PARENT_PID = 700001
+CURRENT_PID = 700002
+
+
+def _base_process_lines() -> tuple[str, ...]:
+    return (
+        "1 0 /sbin/launchd",
+        f"{CURRENT_PARENT_PID} 1 /usr/bin/ruby codex-fable-wrapper",
+        f"{CURRENT_PID} {CURRENT_PARENT_PID} {sys.executable} guarded-invocation",
+    )
 
 
 @pytest.fixture(autouse=True)
@@ -34,7 +45,12 @@ def authorized_clean_preflight(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) 
     ).stdout.strip()
     monkeypatch.setenv(safety.AUTHORITY_HEAD_ENV, head)
     monkeypatch.setenv(safety.AUTHORITY_TREE_ENV, tree)
-    monkeypatch.setattr(safety, "_process_table", lambda: ())
+    monkeypatch.setattr(safety, "_process_table", _base_process_lines)
+    monkeypatch.setattr(
+        safety,
+        "_current_process_identity",
+        lambda: safety.ProcessIdentity(CURRENT_PID, CURRENT_PARENT_PID),
+    )
     monkeypatch.setattr(
         safety, "DEFAULT_HEAVY_LOCK_PATH", tmp_path / "machine-lock" / "b649-heavy.lock"
     )
@@ -60,19 +76,19 @@ def test_wrong_head_or_tree_fails_closed(
 ) -> None:
     monkeypatch.setenv(variable, bad_value)
     with pytest.raises(safety.SafetyGateError, match="HEAD/TREE differs"):
-        reuse.source_identity_preflight(ROOT, process_lines=())
+        reuse.source_identity_preflight(ROOT, process_lines=_base_process_lines())
 
 
 def test_missing_external_authority_fails_closed(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv(safety.AUTHORITY_HEAD_ENV)
     with pytest.raises(safety.SafetyGateError, match="explicit execution authority"):
-        reuse.source_identity_preflight(ROOT, process_lines=())
+        reuse.source_identity_preflight(ROOT, process_lines=_base_process_lines())
 
 
 def test_wrong_engine_sha_fails_closed() -> None:
     spec = replace(reuse.execution_source_spec(ROOT), engine_sha256="0" * 64)
     with pytest.raises(safety.SafetyGateError, match="engine SHA-256"):
-        safety.preflight_source_identity(spec, process_lines=())
+        safety.preflight_source_identity(spec, process_lines=_base_process_lines())
 
 
 def test_stale_import_path_from_another_worktree_fails_closed() -> None:
@@ -84,7 +100,9 @@ def test_stale_import_path_from_another_worktree_fails_closed() -> None:
         "src/lottolab/research/b649_k20_fiber_near_top_s3_census.py",
     )
     with pytest.raises(safety.SafetyGateError, match="engine module __file__"):
-        safety.preflight_source_identity(replace(spec, module_files=modules), process_lines=())
+        safety.preflight_source_identity(
+            replace(spec, module_files=modules), process_lines=_base_process_lines()
+        )
 
 
 def test_dirty_tracked_source_fails_closed(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -97,7 +115,7 @@ def test_dirty_tracked_source_fails_closed(monkeypatch: pytest.MonkeyPatch) -> N
 
     monkeypatch.setattr(safety, "_git_output", dirty_status)  # pyright: ignore[reportPrivateUsage]
     with pytest.raises(safety.SafetyGateError, match="tracked source is dirty"):
-        reuse.source_identity_preflight(ROOT, process_lines=())
+        reuse.source_identity_preflight(ROOT, process_lines=_base_process_lines())
 
 
 def test_r30_tag_and_result_pin_are_separate_from_the_frozen_census_root(
@@ -106,21 +124,25 @@ def test_r30_tag_and_result_pin_are_separate_from_the_frozen_census_root(
     spec = reuse.execution_source_spec(ROOT)
     with pytest.raises(safety.SafetyGateError, match="R30 source tag"):
         safety.preflight_source_identity(
-            replace(spec, r30_source_tag="wrong-source-tag"), process_lines=()
+            replace(spec, r30_source_tag="wrong-source-tag"),
+            process_lines=_base_process_lines(),
         )
     with pytest.raises(safety.SafetyGateError, match="R30 tagged result SHA-256"):
         safety.preflight_source_identity(
-            replace(spec, r30_result_sha256="0" * 64), process_lines=()
+            replace(spec, r30_result_sha256="0" * 64),
+            process_lines=_base_process_lines(),
         )
     frozen_name = Path(census.DURABLE_RELATIVE).name
     with pytest.raises(safety.SafetyGateError, match="frozen census RUN1 result"):
         safety.preflight_source_identity(
-            spec, durable_root=tmp_path / frozen_name, process_lines=()
+            spec,
+            durable_root=tmp_path / frozen_name,
+            process_lines=_base_process_lines(),
         )
 
 
 def test_valid_exact_source_authority_passes_pure_preflight() -> None:
-    identity = reuse.source_identity_preflight(ROOT, process_lines=())
+    identity = reuse.source_identity_preflight(ROOT, process_lines=_base_process_lines())
     assert identity.head
     assert identity.tree
     assert (
@@ -196,13 +218,14 @@ def test_detached_fable_lock_inode_does_not_hide_live_legacy_engine(
             f"{safety.LEGACY_CENSUS_MODULE} run"
         )
         with pytest.raises(safety.SafetyGateError, match="RUN1 predecessor is still live"):
-            reuse.source_identity_preflight(ROOT, process_lines=(process,))
+            reuse.source_identity_preflight(
+                ROOT, process_lines=(*_base_process_lines(), process)
+            )
     finally:
         os.close(old_descriptor)
 
 
 def test_legacy_launcher_and_its_child_are_both_live_owners() -> None:
-    init = "1 0 /sbin/launchd"
     launcher = (
         "777001 1 ruby task_checkpoint.rb --run "
         f"--task-id {safety.LEGACY_CENSUS_TASK_ID} "
@@ -210,7 +233,9 @@ def test_legacy_launcher_and_its_child_are_both_live_owners() -> None:
     )
     child = f"777002 777001 {sys.executable} -u -c child_worker"
     unrelated = "777003 1 /usr/bin/unrelated"
-    assert safety._live_legacy_pids((init, launcher, child, unrelated)) == (  # pyright: ignore[reportPrivateUsage]
+    assert safety._live_legacy_pids(  # pyright: ignore[reportPrivateUsage]
+        (*_base_process_lines(), launcher, child, unrelated)
+    ) == (
         777001,
         777002,
     )
@@ -222,13 +247,15 @@ def test_orphaned_legacy_engine_child_is_rejected_after_launcher_exit() -> None:
         f"{safety.LEGACY_CENSUS_MODULE} run"
     )
     with pytest.raises(safety.SafetyGateError, match="RUN1 predecessor is still live"):
-        reuse.source_identity_preflight(ROOT, process_lines=(child,))
+        reuse.source_identity_preflight(ROOT, process_lines=(*_base_process_lines(), child))
 
 
 def test_unparseable_live_legacy_owner_fails_closed() -> None:
     process = f"unknown-pid ruby --task-id {safety.LEGACY_CENSUS_TASK_ID}"
     with pytest.raises(safety.SafetyGateError, match="cannot parse live legacy census ownership"):
-        safety._live_legacy_pids((process,))  # pyright: ignore[reportPrivateUsage]
+        safety._live_legacy_pids(  # pyright: ignore[reportPrivateUsage]
+            (*_base_process_lines(), process)
+        )
 
 
 def test_entrypoint_gate_runs_before_manifest_model_or_solver(
@@ -244,4 +271,206 @@ def test_entrypoint_gate_runs_before_manifest_model_or_solver(
     monkeypatch.setattr(census, "load_manifest", forbidden_load)
     with pytest.raises(safety.SafetyGateError, match="explicit execution authority"):
         reuse.main(["run"])
+    assert calls == []
+
+
+def _current_fable_invocation_lines() -> tuple[str, ...]:
+    launcher_pid = 777101
+    current_pid = 777102
+    own_child_pid = 777103
+    return (
+        "1 0 /sbin/launchd",
+        f"{launcher_pid} 1 ruby task_checkpoint.rb --run --task-id "
+        f"{safety.LEGACY_CENSUS_TASK_ID} --execution-id "
+        f"{safety.LEGACY_CENSUS_TASK_ID}_SLICE1_RUN1",
+        f"{current_pid} {launcher_pid} {sys.executable} -u -m "
+        f"{safety.LEGACY_CENSUS_MODULE} run",
+        f"{own_child_pid} {current_pid} {sys.executable} -u -c solver_child --task-id "
+        f"{safety.LEGACY_CENSUS_TASK_ID}",
+    )
+
+
+class _ReachedManifest(Exception):
+    pass
+
+
+def _stop_at_manifest() -> census.Manifest:
+    raise _ReachedManifest
+
+
+def _set_single_thread_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    for name in census.THREAD_ENV:
+        monkeypatch.setenv(name, "1")
+
+
+def test_current_fable_launcher_and_own_child_are_not_run1_predecessors(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setattr(
+        safety,
+        "_current_process_identity",
+        lambda: safety.ProcessIdentity(777102, 777101),
+    )
+    monkeypatch.setattr(safety, "_process_table", _current_fable_invocation_lines)
+    monkeypatch.setattr(census, "load_manifest", _stop_at_manifest)
+    _set_single_thread_environment(monkeypatch)
+
+    with pytest.raises(_ReachedManifest):
+        reuse.main(["legacy-run", "--durable", str(tmp_path / "guarded-run")])
+
+
+def test_independent_original_run1_launcher_still_blocks_admission(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    original_launcher = (
+        f"777201 1 ruby task_checkpoint.rb --run --task-id "
+        f"{safety.LEGACY_CENSUS_TASK_ID} --execution-id "
+        f"{safety.LEGACY_CENSUS_TASK_ID}_SLICE1_RUN1"
+    )
+    original_engine = (
+        f"777202 777201 {sys.executable} -u -m {safety.LEGACY_CENSUS_MODULE} run"
+    )
+    lines = (*_current_fable_invocation_lines(), original_launcher, original_engine)
+    monkeypatch.setattr(safety, "_process_table", lambda: lines)
+    monkeypatch.setattr(
+        safety,
+        "_current_process_identity",
+        lambda: safety.ProcessIdentity(777102, 777101),
+    )
+    monkeypatch.setattr(census, "load_manifest", _stop_at_manifest)
+    _set_single_thread_environment(monkeypatch)
+
+    with pytest.raises(safety.SafetyGateError, match="RUN1 predecessor is still live"):
+        reuse.main(["legacy-run", "--durable", str(tmp_path / "guarded-run")])
+
+
+def test_orphaned_original_run1_engine_blocks_after_launcher_exit(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    orphan = f"777202 1 {sys.executable} -u -m {safety.LEGACY_CENSUS_MODULE} run"
+    lines = (*_base_process_lines(), orphan)
+    monkeypatch.setattr(safety, "_process_table", lambda: lines)
+    monkeypatch.setattr(census, "load_manifest", _stop_at_manifest)
+    _set_single_thread_environment(monkeypatch)
+
+    with pytest.raises(safety.SafetyGateError, match="RUN1 predecessor is still live"):
+        reuse.main(["legacy-run", "--durable", str(tmp_path / "guarded-run")])
+
+
+def test_unknown_or_stale_current_pid_lineage_fails_closed() -> None:
+    missing_caller = ("1 0 /sbin/launchd", f"{CURRENT_PARENT_PID} 1 /usr/bin/ruby wrapper")
+    with pytest.raises(safety.SafetyGateError, match="caller PID is missing or stale"):
+        reuse.source_identity_preflight(ROOT, process_lines=missing_caller)
+
+    stale_parent = (
+        "1 0 /sbin/launchd",
+        f"{CURRENT_PARENT_PID} 1 /usr/bin/ruby wrapper",
+        f"{CURRENT_PID} 700099 {sys.executable} stale-pid-owner",
+        "700099 1 /usr/bin/ruby unrelated-reused-parent",
+    )
+    with pytest.raises(safety.SafetyGateError, match="caller PID is missing or stale"):
+        reuse.source_identity_preflight(ROOT, process_lines=stale_parent)
+
+
+def test_duplicate_process_id_fails_closed_as_reused_pid() -> None:
+    lines = (*_base_process_lines(), f"{CURRENT_PID} {CURRENT_PARENT_PID} stale-row")
+    with pytest.raises(safety.SafetyGateError, match="duplicate or reused PID"):
+        reuse.source_identity_preflight(ROOT, process_lines=lines)
+
+
+def test_independent_guarded_invocations_compete_for_one_global_claim(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    identity_a = safety.ProcessIdentity(790002, 790001)
+    identity_b = safety.ProcessIdentity(790004, 790003)
+    process_lines = (
+        "1 0 /sbin/launchd",
+        "790001 1 /usr/bin/ruby guarded-invocation-a",
+        "790002 790001 /usr/bin/python guarded-invocation-a",
+        "790003 1 /usr/bin/ruby guarded-invocation-b",
+        "790004 790003 /usr/bin/python guarded-invocation-b",
+    )
+    local_identity = local()
+    monkeypatch.setattr(safety, "_current_process_identity", lambda: local_identity.value)
+    lock_path = tmp_path / "machine-lock" / "b649-heavy.lock"
+    entered = Event()
+    release_first = Event()
+    outcomes: list[str] = []
+
+    def invoke(identity: safety.ProcessIdentity, *, hold: bool) -> None:
+        local_identity.value = identity
+        try:
+            with safety.protected_heavy_execution(
+                reuse.execution_source_spec(ROOT),
+                lock_path=lock_path,
+                process_lines=process_lines,
+            ):
+                outcomes.append("acquired")
+                if hold:
+                    entered.set()
+                    if not release_first.wait(timeout=3):
+                        outcomes.append("timed out")
+        except safety.LockCollisionError:
+            outcomes.append("collision")
+
+    first = Thread(target=invoke, args=(identity_a,), kwargs={"hold": True})
+    second = Thread(target=invoke, args=(identity_b,), kwargs={"hold": False})
+    first.start()
+    assert entered.wait(timeout=3)
+    second.start()
+    second.join(timeout=3)
+    release_first.set()
+    first.join(timeout=3)
+
+    assert not first.is_alive()
+    assert not second.is_alive()
+    assert sorted(outcomes) == ["acquired", "collision"]
+
+
+def test_protected_execution_fails_closed_when_lock_inode_is_replaced(
+    tmp_path: Path,
+) -> None:
+    lock_path = tmp_path / "machine-lock" / "b649-heavy.lock"
+    replacement = tmp_path / "replacement-lock"
+    replacement.write_text("replacement", encoding="utf-8")
+
+    with (
+        pytest.raises(safety.LockIntegrityError, match="no longer names the inode"),
+        safety.protected_heavy_execution(
+            reuse.execution_source_spec(ROOT),
+            lock_path=lock_path,
+            process_lines=_base_process_lines(),
+        ),
+    ):
+        os.replace(replacement, lock_path)
+        claim = safety.active_claim()
+        assert claim is not None
+        claim.assert_path_matches_fd()
+
+
+def test_source_engine_mismatch_fails_before_manifest_model_or_solver(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    spec = replace(reuse.execution_source_spec(ROOT), engine_sha256="0" * 64)
+
+    def mismatched_spec(_root: Path | None = None) -> safety.SourceSpec:
+        return spec
+
+    monkeypatch.setattr(reuse, "execution_source_spec", mismatched_spec)
+    calls: list[str] = []
+
+    def forbidden(name: str):
+        def call(*_args: object, **_kwargs: object) -> None:
+            calls.append(name)
+            raise AssertionError(f"{name} must remain behind source identity preflight")
+
+        return call
+
+    monkeypatch.setattr(census, "load_manifest", forbidden("manifest"))
+    monkeypatch.setattr(census, "official_evaluator", forbidden("evaluator"))
+    monkeypatch.setattr(census, "configured_solver", forbidden("model"))
+    monkeypatch.setattr(census, "cp_sat_solve", forbidden("solver"))
+
+    with pytest.raises(safety.SafetyGateError, match="engine SHA-256"):
+        reuse.main(["legacy-run", "--durable", str(tmp_path / "guarded-run")])
     assert calls == []

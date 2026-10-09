@@ -37,7 +37,19 @@ dev = [
 [tool.ruff]
 line-length = 100
 src = ["src", "tests", "tools"]
-extend-exclude = [".task-data"]
+# Frozen Shell-1 R3-R7 / Bonferroni proof sources: immutable scientific artifacts, exact paths only.
+extend-exclude = [
+    ".task-data",
+    "src/lottolab/research/b649_k20_shell1_bonferroni_portable_r1.py",
+    "src/lottolab/research/b649_k20_v8_shell1_r7/common_neighbour_capacity_r7.py",
+    "src/lottolab/research/b649_k20_v8_shell1_r7/constants.py",
+    "src/lottolab/research/b649_k20_v8_shell1_r7/joint_kn1_bound_r6.py",
+    "src/lottolab/research/b649_k20_v8_shell1_r7/k_bound_certify_r3.py",
+    "src/lottolab/research/b649_k20_v8_shell1_r7/k_quad_exact_bound_r4.py",
+    "src/lottolab/research/b649_k20_v8_shell1_r7/n1_lower_bound_r5.py",
+    "src/lottolab/research/b649_k20_v8_shell1_r7/profiles.py",
+    "src/lottolab/research/b649_k20_v8_shell1_r7/profiles_k.py",
+]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
@@ -47,6 +59,18 @@ include = ["src", "tests", "tools"]
 typeCheckingMode = "strict"
 venvPath = "."
 venv = ".venv"
+# Same frozen proof sources as [tool.ruff] extend-exclude: diagnostics suppressed, files still resolved.
+ignore = [
+    "src/lottolab/research/b649_k20_shell1_bonferroni_portable_r1.py",
+    "src/lottolab/research/b649_k20_v8_shell1_r7/common_neighbour_capacity_r7.py",
+    "src/lottolab/research/b649_k20_v8_shell1_r7/constants.py",
+    "src/lottolab/research/b649_k20_v8_shell1_r7/joint_kn1_bound_r6.py",
+    "src/lottolab/research/b649_k20_v8_shell1_r7/k_bound_certify_r3.py",
+    "src/lottolab/research/b649_k20_v8_shell1_r7/k_quad_exact_bound_r4.py",
+    "src/lottolab/research/b649_k20_v8_shell1_r7/n1_lower_bound_r5.py",
+    "src/lottolab/research/b649_k20_v8_shell1_r7/profiles.py",
+    "src/lottolab/research/b649_k20_v8_shell1_r7/profiles_k.py",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

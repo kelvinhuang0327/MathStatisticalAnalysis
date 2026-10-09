@@ -15,6 +15,7 @@ from typing import Any, cast
 
 import pytest
 
+from lottolab.research import b649_fiber_execution_safety as safety
 from lottolab.research import b649_k20_fiber_near_top_s3_census as census
 from lottolab.research import b649_k20_fiber_slice1_r30_certificate_reuse as reuse
 from lottolab.research import b649_k20_fiber_slice1_r30_refutation_overlay as overlay
@@ -40,10 +41,28 @@ def no_flush(_: int) -> None:
 
 
 @pytest.fixture(autouse=True)
-def single_thread_env(monkeypatch: pytest.MonkeyPatch) -> None:
+def single_thread_env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     for name in census.THREAD_ENV:
         monkeypatch.setenv(name, "1")
     monkeypatch.setattr(census, "_full_fsync", no_flush)
+    head = subprocess.run(
+        ["git", "-C", str(ROOT), "rev-parse", "HEAD"],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    tree = subprocess.run(
+        ["git", "-C", str(ROOT), "rev-parse", "HEAD^{tree}"],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    monkeypatch.setenv(safety.AUTHORITY_HEAD_ENV, head)
+    monkeypatch.setenv(safety.AUTHORITY_TREE_ENV, tree)
+    monkeypatch.setattr(safety, "_process_table", lambda: ())
+    monkeypatch.setattr(
+        safety, "DEFAULT_HEAVY_LOCK_PATH", tmp_path / "machine-lock" / "b649-heavy.lock"
+    )
 
 
 @pytest.fixture(scope="module")

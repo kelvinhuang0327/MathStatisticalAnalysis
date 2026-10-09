@@ -39,6 +39,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, cast
 
+from lottolab.research import b649_fiber_execution_safety as safety
 from lottolab.research import b649_k20_fiber_near_top_s3_census as census
 from lottolab.research import b649_k20_fiber_slice1_r30_refutation_overlay as overlay
 
@@ -56,6 +57,69 @@ PRIOR_RUN_EVIDENCE = "CENSUS_RUN1_NOT_CONSUMED"
 # sha256 of the canonical [[profile, T, ceiling, proto-text sha256], ...] list over all 992 cells
 # in manifest order; the census builder and R28 at the R30 task head must both give it.
 EQUIVALENCE_SHA256 = "7bf4bed1d679f302cbaff33c86e4e71d066ac3571d64f2d773a18d764ba4988c"
+R30_SOURCE_TAG = "b649-r30-source-6ba4811304ec6528738a0c0b38969901b264d241"
+
+
+def execution_source_spec(root: Path | None = None) -> safety.SourceSpec:
+    """The published source pins and exact import paths that an Owner must authorize."""
+
+    repository_root = (root or census.repo_root()).resolve()
+    return safety.SourceSpec(
+        repository_root=repository_root,
+        module_files={
+            "successor": (
+                Path(__file__),
+                "src/lottolab/research/b649_k20_fiber_slice1_r30_certificate_reuse.py",
+            ),
+            "engine": (
+                Path(str(census.__file__)),
+                "src/lottolab/research/b649_k20_fiber_near_top_s3_census.py",
+            ),
+            "overlay": (
+                Path(str(overlay.__file__)),
+                "src/lottolab/research/b649_k20_fiber_slice1_r30_refutation_overlay.py",
+            ),
+        },
+        engine_path=Path(str(census.__file__)),
+        manifest_path=repository_root / census.MANIFEST_RELATIVE,
+        overlay_path=repository_root / overlay.OVERLAY_RELATIVE,
+        engine_sha256=overlay.CENSUS_ENGINE_SHA256,
+        manifest_sha256=census.MANIFEST_SHA256,
+        overlay_sha256=overlay.OVERLAY_SHA256,
+        r30_source_tag=R30_SOURCE_TAG,
+        r30_task_head=overlay.R30_TASK_HEAD,
+        r30_result_relative=census.R30_RESULT_RELATIVE,
+        r30_result_sha256=overlay.R30_RESULT_SHA256,
+        census_durable_relative=census.DURABLE_RELATIVE,
+    )
+
+
+def source_identity_preflight(
+    root: Path | None = None,
+    *,
+    durable_root: Path | None = None,
+    environ: Mapping[str, str] | None = None,
+    process_lines: Sequence[str] | None = None,
+) -> safety.SourceIdentity:
+    """Pure preflight: verify identity and predecessor state without taking a lock or solving."""
+
+    return safety.preflight_source_identity(
+        execution_source_spec(root),
+        durable_root=durable_root,
+        environ=environ,
+        process_lines=process_lines,
+    )
+
+
+def _protected_execution(
+    root: Path,
+    *,
+    durable_root: Path | None = None,
+):
+    return safety.protected_heavy_execution(
+        execution_source_spec(root),
+        durable_root=durable_root,
+    )
 
 
 class CertificateError(census.CensusError):
@@ -162,13 +226,14 @@ def manifest_cells(manifest: census.Manifest) -> list[overlay.Cell]:
 def census_model_digests(manifest: census.Manifest) -> list[list[object]]:
     """Each cell's chase model as the census builds it, by proto-text SHA-256."""
 
-    digests: list[list[object]] = []
-    for row in manifest.rows:
-        ceiling = census.wedge_count(row.profile) - 3 * row.cap
-        model: Any = census.support_model((row.profile,), ceiling)[0]
-        proto = hashlib.sha256(str(model.Proto()).encode()).hexdigest()
-        digests.append([row.profile_id, row.cap, ceiling, proto])
-    return digests
+    with _protected_execution(census.repo_root()):
+        digests: list[list[object]] = []
+        for row in manifest.rows:
+            ceiling = census.wedge_count(row.profile) - 3 * row.cap
+            model: Any = census.support_model((row.profile,), ceiling)[0]
+            proto = hashlib.sha256(str(model.Proto()).encode()).hexdigest()
+            digests.append([row.profile_id, row.cap, ceiling, proto])
+        return digests
 
 
 def r30_head_model_digests(root: Path, cells: Sequence[overlay.Cell]) -> list[list[object]]:
@@ -177,6 +242,13 @@ def r30_head_model_digests(root: Path, cells: Sequence[overlay.Cell]) -> list[li
     The child's only ``lottolab`` is that Git tree, and no R30 module may load in it.
     """
 
+    with _protected_execution(root):
+        return _r30_head_model_digests_under_gate(root, cells)
+
+
+def _r30_head_model_digests_under_gate(
+    root: Path, cells: Sequence[overlay.Cell]
+) -> list[list[object]]:
     archive = subprocess.run(
         ["git", "archive", "--format=tar", overlay.R30_TASK_HEAD, *census.R28_SOURCE_PATHS],
         cwd=root,
@@ -227,13 +299,14 @@ def prepare(
 ) -> Certificates:
     """Re-derive the pinned overlay and re-check all 992 models, then bind the certified set."""
 
-    loaded = overlay.load_overlay()
-    overlay.verify_overlay(loaded, manifest, root)
-    r30_side = r30_head_model_digests(root, manifest_cells(manifest))
-    digest = model_equivalence(census_model_digests(manifest), r30_side)
-    if digest != expected_equivalence:
-        raise CertificateError("per-cell model equivalence differs from its pinned digest")
-    return certificates(manifest, loaded, digest)
+    with _protected_execution(root):
+        loaded = overlay.load_overlay()
+        overlay.verify_overlay(loaded, manifest, root)
+        r30_side = r30_head_model_digests(root, manifest_cells(manifest))
+        digest = model_equivalence(census_model_digests(manifest), r30_side)
+        if digest != expected_equivalence:
+            raise CertificateError("per-cell model equivalence differs from its pinned digest")
+        return certificates(manifest, loaded, digest)
 
 
 # Successor census ----------------------------------------------------------------------------
@@ -277,14 +350,64 @@ class CertifiedCensus(census.Census):
         self.certified = certified
         self.solve = solve
         self.evaluate = evaluate or census.official_evaluator()
-        header = successor_header(manifest, certified)
-        self.proof = census.DurableLog(durable / census.PROOF_LOG, {**header, "LOG": "PROOF"})
-        self.witnesses = census.DurableLog(
-            durable / census.WITNESS_LEDGER, {**header, "LOG": "WITNESS"}
-        )
+        self.durable = durable
+        self.root = census.repo_root()
+        self._proof: census.DurableLog | None = None
+        self._witnesses: census.DurableLog | None = None
         self.solver_calls = 0
 
+    @property
+    def proof(self) -> census.DurableLog:
+        if self._proof is None:
+            raise CertificateError("successor proof log is not initialized")
+        return self._proof
+
+    @property
+    def witnesses(self) -> census.DurableLog:
+        if self._witnesses is None:
+            raise CertificateError("successor witness ledger is not initialized")
+        return self._witnesses
+
+    def _open_logs(self) -> None:
+        if self._proof is not None and self._witnesses is not None:
+            return
+        header = successor_header(self.manifest, self.certified)
+        self._proof = census.DurableLog(
+            self.durable / census.PROOF_LOG, {**header, "LOG": "PROOF"}
+        )
+        self._witnesses = census.DurableLog(
+            self.durable / census.WITNESS_LEDGER, {**header, "LOG": "WITNESS"}
+        )
+
+    def run(
+        self, slice_number: int = 1, profile_limit: int | None = None
+    ) -> dict[str, object]:
+        with (
+            _protected_execution(self.root, durable_root=self.durable),
+            census.durable_lock(self.durable),
+        ):
+            self._open_logs()
+            return super().run(slice_number, profile_limit)
+
+    def logged_solve(
+        self, key: census.Key, request: census.SolveRequest
+    ) -> census.SolveOutcome:
+        with _protected_execution(self.root, durable_root=self.durable):
+            claim = safety.active_claim()
+            if claim is None:
+                raise safety.SafetyGateError("census solver requires the active machine claim")
+            claim.assert_path_matches_fd()
+            return super().logged_solve(key, request)
+
     def run_profile(self, row: census.SliceRow) -> dict[str, object]:
+        with _protected_execution(self.root, durable_root=self.durable):
+            if self._proof is None:
+                with census.durable_lock(self.durable):
+                    self._open_logs()
+                    return self._run_profile_under_gate(row)
+            return self._run_profile_under_gate(row)
+
+    def _run_profile_under_gate(self, row: census.SliceRow) -> dict[str, object]:
         cell = overlay.cell_of(row)
         body = self.certified.cells.get(cell)
         recorded = self.proof.get((CERTIFICATE, *cell))
@@ -328,35 +451,36 @@ def main(argv: Sequence[str] | None = None) -> None:
     run.add_argument("--profile-limit", type=int, default=None)
     run.add_argument("--durable", type=Path, default=None)
     args = parser.parse_args(argv)
-    census.require_single_thread_env(os.environ)
     root = census.repo_root()
-    manifest = census.load_manifest()
-    certified = prepare(manifest, root)
-    if args.command == "verify":
-        print(
-            json.dumps(
-                {
-                    "OVERLAY_SHA256": certified.overlay_sha256,
-                    "MODEL_EQUIVALENCE_SHA256": certified.equivalence_sha256,
-                    "CELLS": len(manifest.rows),
-                    "CERTIFIED": len(certified.cells),
-                    "UNREFUTED": [list(c) for c in certified.unrefuted],
-                    "STRICT_GAIN_THRESHOLD": manifest.threshold,
-                }
+    durable = (args.durable or root / DURABLE_RELATIVE) if args.command == "run" else None
+    with _protected_execution(root, durable_root=durable):
+        census.require_single_thread_env(os.environ)
+        manifest = census.load_manifest()
+        certified = prepare(manifest, root)
+        if args.command == "verify":
+            print(
+                json.dumps(
+                    {
+                        "OVERLAY_SHA256": certified.overlay_sha256,
+                        "MODEL_EQUIVALENCE_SHA256": certified.equivalence_sha256,
+                        "CELLS": len(manifest.rows),
+                        "CERTIFIED": len(certified.cells),
+                        "UNREFUTED": [list(c) for c in certified.unrefuted],
+                        "STRICT_GAIN_THRESHOLD": manifest.threshold,
+                    }
+                )
             )
-        )
-        return
-    durable = args.durable or root / DURABLE_RELATIVE
-    refuse_run1_root(durable)
-    evaluate = census.official_evaluator()
-    census.preflight(manifest, root, evaluate)
-    with census.durable_lock(durable):
+            return
+        if durable is None:
+            raise CertificateError("successor durable root was not selected")
+        evaluate = census.official_evaluator()
+        census.preflight(manifest, root, evaluate)
         successor = CertifiedCensus(manifest, certified, durable, census.cp_sat_solve, evaluate)
         summary = successor.run(1, args.profile_limit)
         census.write_atomic(
             durable / census.SUMMARY, (json.dumps(summary, indent=1) + "\n").encode()
         )
-    print(json.dumps({k: v for k, v in summary.items() if k != "GAINS"}, indent=1))
+        print(json.dumps({k: v for k, v in summary.items() if k != "GAINS"}, indent=1))
 
 
 if __name__ == "__main__":

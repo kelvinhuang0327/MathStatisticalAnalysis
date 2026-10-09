@@ -2,7 +2,7 @@
 
 No real cell is solved. Successor flows use an injected fake solver and evaluator over temporary
 roots, with the real frozen manifest and the pinned overlay. The overlay re-derivation and the
-992-cell model comparison run only when R30 task head 6ba48113 is in the local object store.
+992-cell model comparison is a separate heavy test, excluded from focused verification.
 """
 
 from __future__ import annotations
@@ -10,12 +10,14 @@ from __future__ import annotations
 import json
 import subprocess
 from collections.abc import Callable, Sequence
+from dataclasses import replace
 from pathlib import Path
 from typing import Any, cast
 
 import pytest
 
 from lottolab.research import b649_fiber_execution_safety as safety
+from lottolab.research import b649_fiber_t266_closed_form_certificate as theorem
 from lottolab.research import b649_k20_fiber_near_top_s3_census as census
 from lottolab.research import b649_k20_fiber_slice1_r30_certificate_reuse as reuse
 from lottolab.research import b649_k20_fiber_slice1_r30_refutation_overlay as overlay
@@ -63,6 +65,24 @@ def single_thread_env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.setattr(
         safety, "DEFAULT_HEAVY_LOCK_PATH", tmp_path / "machine-lock" / "b649-heavy.lock"
     )
+    # Exercise the real authority/lock chain with fake solves on this uncommitted test tree.
+    # Production still requires clean tracked source; only this test seam reports it clean.
+    git_output = safety._git_output  # pyright: ignore[reportPrivateUsage]
+
+    def clean_test_status(root: Path, *args: str) -> str:
+        if args and args[0] == "status":
+            return ""
+        return git_output(root, *args)
+
+    monkeypatch.setattr(safety, "_git_output", clean_test_status)
+    # Validate source authority once per test, then reuse it for the fake-solver
+    # flow. Repeated Git subprocesses are not part of certificate acceptance.
+    identity = reuse.source_identity_preflight(ROOT, process_lines=())
+
+    def verified_test_identity(*_: object, **__: object) -> safety.SourceIdentity:
+        return identity
+
+    monkeypatch.setattr(safety, "preflight_source_identity", verified_test_identity)
 
 
 @pytest.fixture(scope="module")
@@ -122,7 +142,11 @@ def records(directory: Path) -> list[dict[str, Any]]:
 
 
 def files(directory: Path) -> dict[str, tuple[bytes, int]]:
-    return {p.name: (p.read_bytes(), p.stat().st_mtime_ns) for p in sorted(directory.iterdir())}
+    return {
+        p.name: (p.read_bytes(), p.stat().st_mtime_ns)
+        for p in sorted(directory.iterdir())
+        if p.is_file()
+    }
 
 
 def rechain(lines: Sequence[dict[str, Any]]) -> bytes:
@@ -319,7 +343,7 @@ def test_all_992_cell_models_match_r28_at_the_r30_head(
 # Successor execution -------------------------------------------------------------------------
 
 
-def test_successor_records_990_certificates_and_solves_only_the_two_open_cells(
+def test_successor_records_990_r30_and_one_theorem_and_solves_only_incumbent(
     tmp_path: Path,
     manifest: census.Manifest,
     certified: reuse.Certificates,
@@ -332,10 +356,8 @@ def test_successor_records_990_certificates_and_solves_only_the_two_open_cells(
     assert solved == [
         (*INCUMBENT, census.SOLVE_SECONDS),
         (*INCUMBENT, census.SOLVE_SECONDS),
-        (*OPEN_CELL, census.SOLVE_SECONDS),
-        (*OPEN_CELL, census.RETRY_SECONDS),
     ]
-    assert run.solver_calls == 4
+    assert run.solver_calls == 2
     lines = records(tmp_path)
     assert lines[0]["BODY"] == {
         "TASK_ID": reuse.SUCCESSOR_ID,
@@ -347,12 +369,17 @@ def test_successor_records_990_certificates_and_solves_only_the_two_open_cells(
         "CERTIFIED_IMPORTS_SHA256": json.loads(OVERLAY_FILE.read_bytes())["IMPORTS_SHA256"],
         "CERTIFIED_CELL_COUNT": 990,
         "MODEL_EQUIVALENCE_SHA256": reuse.EQUIVALENCE_SHA256,
+        "THEOREM_MODULE_SHA256": census.sha256_bytes(Path(str(theorem.__file__)).read_bytes()),
+        "THEOREM_CERTIFIED_CELL_COUNT": 1,
+        "THEOREM_CERTIFICATES_SHA256": census.sha256_bytes(
+            census.canonical_json([[*cell, body] for cell, body in run.theorems.items()]).encode()
+        ),
         "PRIOR_RUN_EVIDENCE": reuse.PRIOR_RUN_EVIDENCE,
         "LOG": "PROOF",
     }
     assert reuse.SUCCESSOR_ID != census.TASK_ID
     keys = [tuple(line["KEY"]) for line in lines]
-    assert {k[1] for k in keys if k[0] == "SOLVE"} == {INCUMBENT[0], OPEN_CELL[0]}
+    assert {k[1] for k in keys if k[0] == "SOLVE"} == {INCUMBENT[0]}
     bodies = {tuple(line["KEY"]): line["BODY"] for line in lines}
     for cell, body in certified.cells.items():
         assert bodies[(reuse.CERTIFICATE, *cell)] == dict(body)
@@ -362,16 +389,20 @@ def test_successor_records_990_certificates_and_solves_only_the_two_open_cells(
             "R30_BOUND": next(r.r30_bound for r in manifest.rows if r.profile_id == cell[0]),
         }
     assert sum(k[0] == reuse.CERTIFICATE for k in keys) == 990
+    assert sum(k[0] == theorem.CERTIFICATE for k in keys) == 1
+    assert bodies[(theorem.CERTIFICATE, *OPEN_CELL)] == run.theorems[OPEN_CELL]
+    assert (reuse.CERTIFICATE, *OPEN_CELL) not in bodies
     assert summary["PROFILES_DONE"] == 992 and summary["COMPLETE"] is True
     assert summary["STATUS_COUNTS"] == {
         reuse.CERTIFIED_STATUS: 990,
         "REALIZED": 1,
-        "UNRESOLVED_AFTER_RETRY": 1,
+        theorem.CERTIFIED_STATUS: 1,
     }
-    assert (summary["CERTIFIED_CELLS_RECORDED"], summary["NATIVE_SOLVE_RECORDS"]) == (990, 4)
+    assert (summary["CERTIFIED_CELLS_RECORDED"], summary["NATIVE_SOLVE_RECORDS"]) == (990, 2)
+    assert summary["THEOREM_CERTIFIED_CELLS_RECORDED"] == 1
     assert summary["TASK_ID"] == reuse.SUCCESSOR_ID
     assert summary["PRIOR_RUN_EVIDENCE"] == reuse.PRIOR_RUN_EVIDENCE
-    assert summary["UNREFUTED_CELLS"] == [list(INCUMBENT), list(OPEN_CELL)]
+    assert summary["UNREFUTED_CELLS"] == [list(INCUMBENT)]
     assert (summary["WITNESSES_EVALUATED"], summary["BEST_EXACT_COUNT"]) == (1, census.START_COUNT)
     assert summary["GAINS"] == []
 
@@ -458,7 +489,7 @@ def test_run1_logs_are_never_opened_for_writing_or_consumed(
     )
     before = files(run1)
     with pytest.raises(census.DurableLogError, match="header differs"):
-        successor(manifest, certified, run1, never_solve)
+        successor(manifest, certified, run1, never_solve).run()
     named = tmp_path / Path(census.DURABLE_RELATIVE).name
     with pytest.raises(reuse.CertificateError, match="RUN1 durable root"):
         successor(manifest, certified, named, never_solve)
@@ -477,3 +508,257 @@ def test_slice2_stays_disabled(
 ) -> None:
     with pytest.raises(census.Slice2NotAuthorized):
         successor(manifest, certified, tmp_path, never_solve).run(2)
+
+
+# Exact-profile closed-form theorem -----------------------------------------------------------
+
+
+def test_theorem_arithmetic_and_all_local_parameter_bounds() -> None:
+    arithmetic = theorem.verify_arithmetic()
+    assert arithmetic == {
+        "ACTIVE_VERTICES": 14,
+        "INACTIVE_VERTICES": 6,
+        "DEGREE_6_VERTICES": 4,
+        "MIN_ACTIVE_TRIPLE_DEGREE": 2,
+        "ACTIVE_DOUBLE_INCIDENCE": 18,
+        "M_MIN": 6,
+        "M_MAX": 18,
+        "M_PARITY": "EVEN",
+        "CATEGORY_A": "9+d+m/2-x",
+        "CATEGORY_B": "m-x",
+        "X_BOUND": "0<=x<=6-d; d>=2",
+        "PER_VERTEX_BOUND": "3+3m/2",
+        "PER_VERTEX_MIN": 12,
+        "OPEN_WEDGES_MIN": 48,
+        "W": 831,
+        "T_MAX": 261,
+    }
+    profile = census.decode_profile(OPEN_CELL[0])
+    assert profile.count(6) == 4 and sum(profile) == 22 * 3
+    assert 6 * 6 - 2 * 15 == 6
+    assert census.wedge_count(profile) == 831
+    # Exhaust all arithmetic parameters admitted by the proof, including a superset
+    # of realizable combinations. These are inequalities, not sampled support graphs.
+    for m in range(6, 19, 2):
+        for d in {degree for degree in profile if degree}:
+            for x in range(6 - d + 1):
+                active_non_edges = 91 - (22 * 3 + (18 - m) // 2)
+                missing_u = 13 - (6 + d - x)
+                category_a = active_non_edges - (1 + missing_u - 1)
+                category_b = m - x
+                assert category_a == 9 + d + m // 2 - x
+                assert category_a + category_b >= 3 + 3 * m // 2
+                assert 4 * (category_a + category_b) >= 48
+    assert (831 - 48) // 3 == 261 and 831 - 3 * 266 == 33 < 48
+    assert "cannot have degree 6" in theorem.PROOF
+    assert "pairwise disjoint, even when u itself has degree 6" in theorem.PROOF
+    assert "they may overcount but cannot undercount" in theorem.PROOF
+
+
+def test_exact_theorem_certificate_is_self_contained_and_pinned(
+    manifest: census.Manifest, certified: reuse.Certificates
+) -> None:
+    row = next(r for r in manifest.rows if overlay.cell_of(r) == OPEN_CELL)
+    body = theorem.certificate(manifest, row, certified.equivalence_sha256, ROOT)
+    assert body is not None
+    assert (body["PROFILE_ID"], body["T"], body["CEILING"]) == (*OPEN_CELL, 33)
+    assert body["PROOF_IDENTITY"] == theorem.PROOF_IDENTITY
+    assert body["PROOF_VERSION"] == 1
+    assert body["PROOF"] == theorem.PROOF
+    assert body["PROOF_SHA256"] == census.sha256_bytes(theorem.PROOF.encode())
+    assert body["ARITHMETIC"] == theorem.verify_arithmetic()
+    assert body["NATIVE_SOLVE"] is False
+    assert body["SCOPE"] == "THIS_PROFILE_AT_THIS_T_ONLY"
+    assert body["R28_HEAD"] == census.R28_COMMIT
+    assert body["R28_TREE"] == census.R28_TREE
+    assert body["R28_MODULE_SHA256"] == census.R28_MODULE_SHA256
+    assert body["ENGINE_SHA256"] == overlay.CENSUS_ENGINE_SHA256
+    assert body["MANIFEST_SHA256"] == manifest.sha256
+    assert body["MODEL_EQUIVALENCE_SHA256"] == reuse.EQUIVALENCE_SHA256
+    assert theorem.CERTIFICATE not in (reuse.CERTIFICATE, census.INFEASIBLE)
+    assert not any(k.startswith("R30_") for k in body)
+    assert reuse.execution_source_spec(ROOT).module_files["theorem"][0] == Path(
+        str(theorem.__file__)
+    )
+
+
+@pytest.mark.parametrize("t", [260, 261, 262, 265, 267, 270])
+def test_unsupported_t_has_no_theorem_and_uses_original_solver_path(
+    manifest: census.Manifest, certified: reuse.Certificates, tmp_path: Path, t: int
+) -> None:
+    target = next(r for r in manifest.rows if overlay.cell_of(r) == OPEN_CELL)
+    row = replace(target, cap=t, band=((t, target.r30_bound),))
+    assert theorem.certificate(manifest, row, certified.equivalence_sha256, ROOT) is None
+    requests: list[census.SolveRequest] = []
+
+    def unknown(request: census.SolveRequest) -> census.SolveOutcome:
+        requests.append(request)
+        return census.SolveOutcome("UNKNOWN", None, 0.0)
+
+    run = successor(manifest, certified, tmp_path, unknown)
+    result = run.run_profile(row)
+    assert [r.triangles for r in requests] == [t, t]
+    assert result["STATUS"] == "UNRESOLVED_AFTER_RETRY"
+    assert run.proof.get((theorem.CERTIFICATE, OPEN_CELL[0], t)) is None
+
+
+@pytest.mark.parametrize("t", [261, 265, 267])
+@pytest.mark.parametrize("restart", [False, True])
+def test_unsupported_t_cannot_reuse_theorem_completion_in_same_journal(
+    manifest: census.Manifest,
+    certified: reuse.Certificates,
+    tmp_path: Path,
+    t: int,
+    restart: bool,
+) -> None:
+    target = next(r for r in manifest.rows if overlay.cell_of(r) == OPEN_CELL)
+    run = successor(manifest, certified, tmp_path, never_solve)
+    run.run_profile(target)
+    before = files(tmp_path)
+    if restart:
+        run = successor(manifest, certified, tmp_path, never_solve)
+    unsupported = replace(target, cap=t, band=((t, target.r30_bound),))
+    with pytest.raises(census.DurableLogError, match="unsupported cell cannot reuse"):
+        run.run_profile(unsupported)
+    assert run.solver_calls == 0 and files(tmp_path) == before
+    assert run.proof.get((theorem.CERTIFICATE, target.profile_id, t)) is None
+
+
+def test_wrong_profile_is_not_certified_and_inconsistent_target_row_fails_closed(
+    manifest: census.Manifest, certified: reuse.Certificates, tmp_path: Path
+) -> None:
+    target = next(r for r in manifest.rows if overlay.cell_of(r) == OPEN_CELL)
+    incumbent = manifest.rows[0]
+    assert theorem.certificate(manifest, incumbent, certified.equivalence_sha256, ROOT) is None
+    other = replace(incumbent, cap=266)
+    assert theorem.certificate(manifest, other, certified.equivalence_sha256, ROOT) is None
+    with pytest.raises(theorem.TheoremError, match="cell or manifest"):
+        successor(manifest, certified, tmp_path, never_solve).run_profile(
+            replace(target, profile=incumbent.profile)
+        )
+    with pytest.raises(overlay.OverlayError, match="one profile at one T"):
+        successor(manifest, certified, tmp_path, never_solve).run_profile(
+            replace(target, band=((266, target.r30_bound), (265, target.r30_bound - 1)))
+        )
+
+
+@pytest.mark.parametrize("constant", ["R28_COMMIT", "R28_TREE", "R28_MODULE_SHA256"])
+def test_altered_model_identity_fails_closed_before_any_durable_write(
+    manifest: census.Manifest,
+    certified: reuse.Certificates,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    constant: str,
+) -> None:
+    monkeypatch.setattr(census, constant, "altered")
+    with pytest.raises(theorem.TheoremError, match="authority differs"):
+        successor(manifest, certified, tmp_path / "uncreated", never_solve)
+    assert not (tmp_path / "uncreated").exists()
+
+
+def test_altered_source_manifest_or_equivalence_cannot_authorize_theorem(
+    manifest: census.Manifest, certified: reuse.Certificates, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    row = next(r for r in manifest.rows if overlay.cell_of(r) == OPEN_CELL)
+    with pytest.raises(theorem.TheoremError, match="authority differs"):
+        theorem.certificate(manifest, row, "0" * 64, ROOT)
+    with pytest.raises(theorem.TheoremError, match="authority differs"):
+        theorem.certificate(
+            replace(manifest, sha256="0" * 64), row, certified.equivalence_sha256, ROOT
+        )
+    data = json.loads(census.canonical_json(manifest.data))
+    data["AUTHORITIES"]["MODEL_IDENTITY"]["ORTOOLS_VERSION"] = "altered"
+    with pytest.raises(theorem.TheoremError, match="cell or manifest"):
+        theorem.certificate(replace(manifest, data=data), row, certified.equivalence_sha256, ROOT)
+    with monkeypatch.context() as changed:
+        changed.setattr(census, "engine_sha256", lambda: "0" * 64)
+        with pytest.raises(theorem.TheoremError, match="authority differs"):
+            theorem.certificate(manifest, row, certified.equivalence_sha256, ROOT)
+    with monkeypatch.context() as changed:
+
+        def changed_r28(*_: object) -> bytes:
+            return b"changed R28"
+
+        changed.setattr(census, "git_show", changed_r28)
+        with pytest.raises(theorem.TheoremError, match="R28 source bytes"):
+            theorem.certificate(manifest, row, certified.equivalence_sha256, ROOT)
+
+
+def test_theorem_record_and_interrupted_completion_replay_deterministically(
+    manifest: census.Manifest, certified: reuse.Certificates, tmp_path: Path
+) -> None:
+    row = next(r for r in manifest.rows if overlay.cell_of(r) == OPEN_CELL)
+    first = successor(manifest, certified, tmp_path, never_solve)
+    done = first.run_profile(row)
+    assert done["STATUS"] == theorem.CERTIFIED_STATUS
+    assert first.solver_calls == 0
+    before = files(tmp_path)
+    replay = successor(manifest, certified, tmp_path, never_solve)
+    assert replay.run_profile(row) == done and files(tmp_path) == before
+    proof = before[census.PROOF_LOG][0]
+    (tmp_path / census.PROOF_LOG).write_bytes(proof[: proof.rstrip(b"\n").rfind(b"\n") + 1])
+    resumed = successor(manifest, certified, tmp_path, never_solve)
+    assert resumed.run_profile(row) == done
+    assert (tmp_path / census.PROOF_LOG).read_bytes() == proof
+    assert len([k for k in resumed.proof.records if k[0] == theorem.CERTIFICATE]) == 1
+    assert all(k[0] not in ("SOLVE", reuse.CERTIFICATE) for k in resumed.proof.records)
+
+
+@pytest.mark.parametrize(
+    ("location", "field", "value", "match"),
+    [
+        ("certificate", "PROOF_VERSION", 2, "differs from its proof"),
+        ("certificate", "PROOF_VERSION", True, "differs from its proof"),
+        ("certificate", "PROOF", "forged", "differs from its proof"),
+        ("certificate", "T", 265, "differs from its proof"),
+        ("certificate", "R28_MODULE_SHA256", "0" * 64, "differs from its proof"),
+        ("certificate", "MANIFEST_SHA256", "0" * 64, "differs from its proof"),
+        ("certificate", "NATIVE_SOLVE", True, "differs from its proof"),
+        ("key", "PROFILE_ID", INCUMBENT[0], "differs from its proof"),
+        ("key", "T", 265, "differs from its proof"),
+        ("done", "REFUTED_T", [265, 266], "completion conflicts"),
+        ("done", "STATUS", reuse.CERTIFIED_STATUS, "completion conflicts"),
+    ],
+)
+def test_conflicting_theorem_records_fail_even_with_recomputed_hash_chain(
+    manifest: census.Manifest,
+    certified: reuse.Certificates,
+    tmp_path: Path,
+    location: str,
+    field: str,
+    value: object,
+    match: str,
+) -> None:
+    row = next(r for r in manifest.rows if overlay.cell_of(r) == OPEN_CELL)
+    successor(manifest, certified, tmp_path, never_solve).run_profile(row)
+    lines = records(tmp_path)
+    if location == "key":
+        lines[1]["KEY"][1 if field == "PROFILE_ID" else 2] = value
+    else:
+        lines[1 if location == "certificate" else 2]["BODY"][field] = value
+    (tmp_path / census.PROOF_LOG).write_bytes(rechain(lines))
+    with pytest.raises(census.DurableLogError, match=match):
+        successor(manifest, certified, tmp_path, never_solve).run(profile_limit=0)
+
+
+@pytest.mark.parametrize(
+    "conflict", ["SOLVE", reuse.CERTIFICATE, "WITNESS", "MISSING", "DUPLICATE"]
+)
+def test_theorem_rejects_native_r30_witness_missing_and_duplicate_records(
+    manifest: census.Manifest, certified: reuse.Certificates, tmp_path: Path, conflict: str
+) -> None:
+    row = next(r for r in manifest.rows if overlay.cell_of(r) == OPEN_CELL)
+    run = successor(manifest, certified, tmp_path, never_solve)
+    run.run_profile(row)
+    lines = records(tmp_path)
+    if conflict == "MISSING":
+        lines.pop(1)
+    elif conflict == "DUPLICATE":
+        lines.append(dict(lines[1]))
+    elif conflict == "WITNESS":
+        run.witnesses.append((conflict, *OPEN_CELL, 0), {})
+    else:
+        lines.append({"KEY": [conflict, *OPEN_CELL], "BODY": {"STATUS": "INFEASIBLE"}})
+    (tmp_path / census.PROOF_LOG).write_bytes(rechain(lines))
+    with pytest.raises(census.DurableLogError, match=r"conflict|duplicate"):
+        successor(manifest, certified, tmp_path, never_solve).run(profile_limit=0)

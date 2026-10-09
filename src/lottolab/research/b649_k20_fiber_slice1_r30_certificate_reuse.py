@@ -1,15 +1,15 @@
 """Certificate-aware successor execution of the K20 fiber Slice-1 census.
 
 The frozen Slice-1 census (manifest 4b1df050, engine 479f3163) has 992 cells, one degree profile
-at one T each. A cell is refuted only when R28's exact single-profile support model with at most
-W - 3T open wedges is CP-SAT INFEASIBLE. R30 Segment 2 proved exactly that for 990 cells, and the
+at one T each. Refutations require infeasibility of R28's exact single-profile support model
+with at most W - 3T open wedges. R30 Segment 2 proved that for 990 cells, and the
 committed overlay (6c442007) imports those proofs and nothing else.
 
 This adapter runs the unchanged census engine over its own durable root. For each of the 990
 imported cells it records the R30 certificate, with the overlay's provenance, instead of solving.
-It never solves those cells, and it never records a certificate for any other cell. The
-incumbent cell and 66665555555322000000 at T=266 are solved exactly as the census would. The
-witness rule, the official evaluator and the strict-gain threshold are the census's own.
+It never solves those cells. An independent closed-form theorem certifies only
+66665555555322000000 at T=266, with a distinct certificate type and pinned proof authority.
+The incumbent cell, witness rule, official evaluator and strict-gain threshold follow the census.
 
 Before a run, the overlay is re-derived from the pinned R30 result. Every cell's census model is
 then compared with the model R30's solver built, using R28 code unpacked from the R30 task head.
@@ -40,6 +40,7 @@ from pathlib import Path
 from typing import Any, cast
 
 from lottolab.research import b649_fiber_execution_safety as safety
+from lottolab.research import b649_fiber_t266_closed_form_certificate as theorem
 from lottolab.research import b649_k20_fiber_near_top_s3_census as census
 from lottolab.research import b649_k20_fiber_slice1_r30_refutation_overlay as overlay
 
@@ -78,6 +79,10 @@ def execution_source_spec(root: Path | None = None) -> safety.SourceSpec:
             "overlay": (
                 Path(str(overlay.__file__)),
                 "src/lottolab/research/b649_k20_fiber_slice1_r30_refutation_overlay.py",
+            ),
+            "theorem": (
+                Path(str(theorem.__file__)),
+                "src/lottolab/research/b649_fiber_t266_closed_form_certificate.py",
             ),
         },
         engine_path=Path(str(census.__file__)),
@@ -315,9 +320,47 @@ def prepare(
 def refuse_run1_root(durable: Path) -> None:
     if durable.resolve().name == Path(census.DURABLE_RELATIVE).name:
         raise CertificateError("the successor never opens the census RUN1 durable root")
+    # Reject an existing census journal before even creating a successor lock.
+    # The caller may have renamed or symlinked its directory.
+    proof = durable / census.PROOF_LOG
+    if proof.exists():
+        with proof.open("rb") as handle:
+            first = handle.readline()
+        try:
+            record: object = json.loads(first)
+        except ValueError as error:
+            raise census.DurableLogError("existing proof header is unreadable") from error
+        if isinstance(record, dict):
+            body = cast(dict[str, object], record).get("BODY")
+            if (
+                isinstance(body, dict)
+                and cast(dict[str, object], body).get("TASK_ID") == census.TASK_ID
+            ):
+                raise census.DurableLogError(
+                    "header differs: census RUN1 root must remain untouched"
+                )
 
 
-def successor_header(manifest: census.Manifest, certified: Certificates) -> dict[str, object]:
+def theorem_certificates(
+    manifest: census.Manifest, certified: Certificates
+) -> dict[overlay.Cell, Mapping[str, object]]:
+    cells: dict[overlay.Cell, Mapping[str, object]] = {}
+    for row in manifest.rows:
+        body = theorem.certificate(manifest, row, certified.equivalence_sha256, census.repo_root())
+        if body is not None:
+            cell = overlay.cell_of(row)
+            if cell in certified.cells or cell in cells:
+                raise CertificateError("theorem cell overlaps another certificate")
+            cells[cell] = body
+    return cells
+
+
+def successor_header(
+    manifest: census.Manifest,
+    certified: Certificates,
+    theorems: Mapping[overlay.Cell, Mapping[str, object]] | None = None,
+) -> dict[str, object]:
+    bound = theorem_certificates(manifest, certified) if theorems is None else theorems
     return {
         "TASK_ID": SUCCESSOR_ID,
         "CENSUS_TASK_ID": census.TASK_ID,
@@ -328,6 +371,11 @@ def successor_header(manifest: census.Manifest, certified: Certificates) -> dict
         "CERTIFIED_IMPORTS_SHA256": certified.imports_sha256,
         "CERTIFIED_CELL_COUNT": len(certified.cells),
         "MODEL_EQUIVALENCE_SHA256": certified.equivalence_sha256,
+        "THEOREM_MODULE_SHA256": census.sha256_bytes(Path(str(theorem.__file__)).read_bytes()),
+        "THEOREM_CERTIFIED_CELL_COUNT": len(bound),
+        "THEOREM_CERTIFICATES_SHA256": census.sha256_bytes(
+            census.canonical_json([[*cell, body] for cell, body in sorted(bound.items())]).encode()
+        ),
         "PRIOR_RUN_EVIDENCE": PRIOR_RUN_EVIDENCE,
     }
 
@@ -348,6 +396,7 @@ class CertifiedCensus(census.Census):
         census.require_single_thread_env(os.environ)
         self.manifest = manifest
         self.certified = certified
+        self.theorems = theorem_certificates(manifest, certified)
         self.solve = solve
         self.evaluate = evaluate or census.official_evaluator()
         self.durable = durable
@@ -370,18 +419,46 @@ class CertifiedCensus(census.Census):
 
     def _open_logs(self) -> None:
         if self._proof is not None and self._witnesses is not None:
+            self._validate_theorem_records()
             return
-        header = successor_header(self.manifest, self.certified)
-        self._proof = census.DurableLog(
-            self.durable / census.PROOF_LOG, {**header, "LOG": "PROOF"}
-        )
+        header = successor_header(self.manifest, self.certified, self.theorems)
+        self._proof = census.DurableLog(self.durable / census.PROOF_LOG, {**header, "LOG": "PROOF"})
         self._witnesses = census.DurableLog(
             self.durable / census.WITNESS_LEDGER, {**header, "LOG": "WITNESS"}
         )
+        self._validate_theorem_records()
 
-    def run(
-        self, slice_number: int = 1, profile_limit: int | None = None
-    ) -> dict[str, object]:
+    def _theorem_done(self, cell: overlay.Cell) -> dict[str, object]:
+        row = next(r for r in self.manifest.rows if overlay.cell_of(r) == cell)
+        return {
+            "STATUS": theorem.CERTIFIED_STATUS,
+            "REFUTED_T": [cell[1]],
+            "R30_BOUND": row.r30_bound,
+            "PROOF_IDENTITY": theorem.PROOF_IDENTITY,
+        }
+
+    def _validate_theorem_records(self) -> None:
+        for key, recorded in self.proof.records.items():
+            if key[0] == theorem.CERTIFICATE:
+                body = self.theorems.get(cast(overlay.Cell, key[1:]))
+                if body is None or census.canonical_json(recorded) != census.canonical_json(body):
+                    raise census.DurableLogError(
+                        "logged theorem certificate differs from its proof"
+                    )
+            if key[0] in ("SOLVE", CERTIFICATE) and key[1:3] in self.theorems:
+                raise census.DurableLogError("theorem cell has a conflicting solver/R30 record")
+        for key in self.witnesses.records:
+            if key[0] == "WITNESS" and key[1:3] in self.theorems:
+                raise census.DurableLogError("theorem cell has a conflicting witness")
+        for cell in self.theorems:
+            done = self.proof.get(("PROFILE_DONE", cell[0]))
+            if done is not None and (
+                self.proof.get((theorem.CERTIFICATE, *cell)) is None
+                or census.canonical_json(done) != census.canonical_json(self._theorem_done(cell))
+            ):
+                raise census.DurableLogError("theorem completion conflicts with its certificate")
+
+    def run(self, slice_number: int = 1, profile_limit: int | None = None) -> dict[str, object]:
         with (
             _protected_execution(self.root, durable_root=self.durable),
             census.durable_lock(self.durable),
@@ -389,9 +466,7 @@ class CertifiedCensus(census.Census):
             self._open_logs()
             return super().run(slice_number, profile_limit)
 
-    def logged_solve(
-        self, key: census.Key, request: census.SolveRequest
-    ) -> census.SolveOutcome:
+    def logged_solve(self, key: census.Key, request: census.SolveRequest) -> census.SolveOutcome:
         with _protected_execution(self.root, durable_root=self.durable):
             claim = safety.active_claim()
             if claim is None:
@@ -409,6 +484,29 @@ class CertifiedCensus(census.Census):
 
     def _run_profile_under_gate(self, row: census.SliceRow) -> dict[str, object]:
         cell = overlay.cell_of(row)
+        theorem_body = self.theorems.get(cell)
+        if theorem_body is not None:
+            if (
+                theorem.certificate(
+                    self.manifest, row, self.certified.equivalence_sha256, self.root
+                )
+                != theorem_body
+            ):
+                raise CertificateError("theorem request differs from its certified cell")
+            self._validate_theorem_records()
+            if self.proof.get((theorem.CERTIFICATE, *cell)) is None:
+                self.proof.append((theorem.CERTIFICATE, *cell), theorem_body)
+            done = self.proof.get(("PROFILE_DONE", row.profile_id))
+            if done is not None:
+                return done
+            return self.proof.append(("PROFILE_DONE", row.profile_id), self._theorem_done(cell))
+        # The census completion key contains only the profile, so it cannot serve
+        # a different T from a theorem-certified cell in this same journal.
+        if any(
+            prior[0] == row.profile_id and self.proof.get((theorem.CERTIFICATE, *prior)) is not None
+            for prior in self.theorems
+        ):
+            raise census.DurableLogError("unsupported cell cannot reuse theorem profile completion")
         body = self.certified.cells.get(cell)
         recorded = self.proof.get((CERTIFICATE, *cell))
         if body is None:
@@ -437,8 +535,11 @@ class CertifiedCensus(census.Census):
             "CENSUS_TASK_ID": census.TASK_ID,
             "OVERLAY_SHA256": self.certified.overlay_sha256,
             "CERTIFIED_CELLS_RECORDED": sum(k[0] == CERTIFICATE for k in keys),
+            "THEOREM_CERTIFIED_CELLS_RECORDED": sum(k[0] == theorem.CERTIFICATE for k in keys),
             "NATIVE_SOLVE_RECORDS": sum(k[0] == "SOLVE" for k in keys),
-            "UNREFUTED_CELLS": [list(c) for c in self.certified.unrefuted],
+            "UNREFUTED_CELLS": [
+                list(c) for c in self.certified.unrefuted if c not in self.theorems
+            ],
             "PRIOR_RUN_EVIDENCE": PRIOR_RUN_EVIDENCE,
         }
 

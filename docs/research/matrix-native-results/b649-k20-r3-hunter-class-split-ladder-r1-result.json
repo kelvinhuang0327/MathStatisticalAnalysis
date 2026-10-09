@@ -1,0 +1,4058 @@
+{
+  "BASE_HEAD": "b479c242dab9a57fa8a7608653307cb08d118c66",
+  "BASE_TREE": "758b6857595336bb5245dd17b9468fd8de4a29e3",
+  "CAP17_COUNTEREXAMPLE_STATUS": "PRESERVED_NU_18_CAP17_REFUTED",
+  "CERTIFIED_MEMBER_BOUNDS": {
+    "[0,13][16,5]": {
+      "BOUND": 353091872,
+      "SOURCE": "CERTIFIED_HERE"
+    },
+    "[0,13][5,1][16,4]": {
+      "BOUND": 353095274,
+      "SOURCE": "CERTIFIED_HERE"
+    },
+    "[0,13][5,2][16,3]": {
+      "BOUND": 353097262,
+      "SOURCE": "CERTIFIED_HERE"
+    },
+    "[0,13][5,3][16,2]": {
+      "BOUND": 353097710,
+      "SOURCE": "CERTIFIED_HERE"
+    },
+    "[0,13][5,4][16,1]": {
+      "BOUND": 353098158,
+      "SOURCE": "CARRIED_COMMITTED"
+    },
+    "[0,13][5,5]": {
+      "BOUND": 353098606,
+      "SOURCE": "CERTIFIED_HERE"
+    }
+  },
+  "COLLISION_FLOOR_STATUS": "VERIFIED_80_80_82_85_88_CLASS_MASS_FLOORS_NON_BINDING",
+  "FINITE_MINIMISATION_STATUS": "EXACT_CENSUS_REPRODUCED",
+  "FIRST_MEMBER_CLASS_SPLIT_RESULT": {
+    "CLASS_SPLIT_BOUND": 353098606,
+    "CLASS_SPLIT_CORRECTION": 7790062,
+    "COMMITTED_BOUND": 353516478,
+    "COMMITTED_COMMIT": "93cda12572b56aeba16cb057d4ff096386908e72",
+    "COMMITTED_HOMOGENEOUS_CORRECTION": 7372190,
+    "COMMITTED_RESULT_SHA256": "f657d7fc95f4096d5b34dab37b93ecfa6017011bfecb2ccd146ae89c443daa8a",
+    "HOMOGENEOUS_REPLAY_EQUALS_COMMITTED": true,
+    "IMPROVEMENT": 417872,
+    "MEMBER_ID": "[0,13][5,5]",
+    "STATUS": "VALID_STRICT_IMPROVEMENT"
+  },
+  "LADDER": [
+    "[0,13][5,5]",
+    "[0,13][5,4][16,1]",
+    "[0,13][5,3][16,2]",
+    "[0,13][5,2][16,3]",
+    "[0,13][5,1][16,4]",
+    "[0,13][16,5]"
+  ],
+  "LADDER_MEMBER_COUNT": 6,
+  "MEMBERS_ALREADY_CERTIFIED": [
+    {
+      "CERTIFIED_CORRECTION": 7372190,
+      "CERTIFIED_MEMBER_BOUND": 353516478,
+      "COMMIT": "93cda12572b56aeba16cb057d4ff096386908e72",
+      "MEMBER_ID": "[0,13][5,5]",
+      "RECOMPUTED": false,
+      "RESULT_SHA256": "f657d7fc95f4096d5b34dab37b93ecfa6017011bfecb2ccd146ae89c443daa8a",
+      "ROUTE": "HUNTER_HOMOGENEOUS"
+    },
+    {
+      "CERTIFIED_CORRECTION": 7790062,
+      "CERTIFIED_MEMBER_BOUND": 353098158,
+      "COMMIT": "b479c242dab9a57fa8a7608653307cb08d118c66",
+      "MEMBER_ID": "[0,13][5,4][16,1]",
+      "RECOMPUTED": false,
+      "RESULT_SHA256": "1a43ce6689ca828dd33ef8f09fc31bb580bbef2d55620bc15ba5cd4ad9628269",
+      "ROUTE": "HUNTER_CLASS_SPLIT"
+    }
+  ],
+  "MEMBER_CERTIFICATES": {
+    "[0,13][16,5]": {
+      "CERTIFIED_MEMBER_BOUND": 353091872,
+      "COLLISION_FLOOR": {
+        "CELL_FLOORS": [
+          2,
+          0,
+          0,
+          86
+        ],
+        "CELL_INCIDENCES": [
+          5,
+          0,
+          0,
+          103
+        ],
+        "CLASS_MASS_FLOORS": {
+          "CORE": 2,
+          "OUTSIDE_INCIDENT": 38
+        },
+        "CLASS_MASS_FLOORS_BINDING": false,
+        "MINIMIZER_CLASS_MASSES": {
+          "CORE": 10,
+          "OUTSIDE_INCIDENT": 78
+        },
+        "TOTAL": 88
+      },
+      "CORRECTIONS": {
+        "CERTIFIED_CORRECTION": 7794556,
+        "COMBINATION": "MAX_OF_VALID_LOWER_BOUNDS_NEVER_SUM",
+        "HUNTER_CLASS_SPLIT": 7794556,
+        "HUNTER_HOMOGENEOUS": 7421148,
+        "R14_RATIONAL": 5996207,
+        "R5_FOREST": 5166000,
+        "R6_PAIR_SUM": 1836278,
+        "SELECTED": [
+          "HUNTER_CLASS_SPLIT"
+        ]
+      },
+      "MEMBER_COUNTS": [
+        [
+          0,
+          13
+        ],
+        [
+          16,
+          5
+        ]
+      ],
+      "PAIR_TABLE": {
+        "CLASS_EDGE_COUNTS": {
+          "CORE": 10,
+          "OUTSIDE_INCIDENT": 143
+        },
+        "CLASS_PAIR_FLOORS": {
+          "CORE": [
+            102900,
+            539196,
+            1599493,
+            3270148
+          ],
+          "OUTSIDE_INCIDENT": [
+            107800,
+            568680,
+            1669066,
+            3408685
+          ]
+        },
+        "FLOOR_SETTING_TYPE_PAIRS": {
+          "CORE_0": [
+            [
+              16,
+              16
+            ]
+          ],
+          "CORE_1": [
+            [
+              16,
+              16
+            ]
+          ],
+          "CORE_2": [
+            [
+              16,
+              16
+            ]
+          ],
+          "CORE_3": [
+            [
+              16,
+              16
+            ]
+          ],
+          "OUTSIDE_INCIDENT_0": [
+            [
+              0,
+              0
+            ],
+            [
+              0,
+              16
+            ]
+          ],
+          "OUTSIDE_INCIDENT_1": [
+            [
+              0,
+              16
+            ]
+          ],
+          "OUTSIDE_INCIDENT_2": [
+            [
+              0,
+              16
+            ]
+          ],
+          "OUTSIDE_INCIDENT_3": [
+            [
+              0,
+              16
+            ]
+          ]
+        },
+        "GLOBAL_PAIR_FLOORS": [
+          102900,
+          539196,
+          1599493,
+          3270148
+        ],
+        "ROWS": [
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            107800
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            574000
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            2,
+            1691620
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            3,
+            3451651
+          ],
+          [
+            0,
+            16,
+            0,
+            0,
+            0,
+            0,
+            107800
+          ],
+          [
+            0,
+            16,
+            0,
+            0,
+            0,
+            1,
+            568680
+          ],
+          [
+            0,
+            16,
+            0,
+            0,
+            0,
+            2,
+            1669066
+          ],
+          [
+            0,
+            16,
+            0,
+            0,
+            0,
+            3,
+            3408685
+          ],
+          [
+            16,
+            16,
+            0,
+            0,
+            0,
+            0,
+            102900
+          ],
+          [
+            16,
+            16,
+            0,
+            0,
+            0,
+            1,
+            539196
+          ],
+          [
+            16,
+            16,
+            0,
+            0,
+            0,
+            2,
+            1599493
+          ],
+          [
+            16,
+            16,
+            0,
+            0,
+            0,
+            3,
+            3281859
+          ],
+          [
+            16,
+            16,
+            1,
+            0,
+            0,
+            0,
+            560700
+          ],
+          [
+            16,
+            16,
+            1,
+            0,
+            0,
+            1,
+            1612576
+          ],
+          [
+            16,
+            16,
+            1,
+            0,
+            0,
+            2,
+            3270148
+          ]
+        ],
+        "ROWS_SHA256": "36ee7436f992a8b11f5dc3e6641e449a4e4e5a1e6a79c514c1fcca534e5ee408",
+        "ROW_COUNT": 15,
+        "TYPE_PAIRS": [
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            16
+          ],
+          [
+            16,
+            16
+          ]
+        ],
+        "TYPE_PAIR_EDGE_COUNTS": [
+          [
+            0,
+            0,
+            78
+          ],
+          [
+            0,
+            16,
+            65
+          ],
+          [
+            16,
+            16,
+            10
+          ]
+        ]
+      },
+      "R24_LEDGER_BOUND": 355720428,
+      "RATIONAL_BOUND": 354890221,
+      "RAW_UNION_BOUND_NO_CORRECTION": 360886428,
+      "REDUCTION_FROM_R24_LEDGER": 2628556,
+      "REDUCTION_VS_RATIONAL": 1798349,
+      "RESIDUAL_EVENT_SIZES": [
+        [
+          0,
+          18405317
+        ],
+        [
+          16,
+          17572877
+        ]
+      ],
+      "TREE_MINIMUM": {
+        "CENSUS_SIZE": 138468,
+        "HOMOGENEOUS_CENSUS_SIZE": 600040,
+        "HOMOGENEOUS_MINIMIZER_E": [
+          88,
+          0,
+          0
+        ],
+        "LEVELS": [
+          {
+            "CLASS_MIN_OVERLAP": {
+              "CORE": 0,
+              "OUTSIDE_INCIDENT": 0
+            },
+            "EDGES_AT_MINIMIZER": 153,
+            "RHO_AT_MINIMIZER": 17,
+            "THRESHOLD": 102900,
+            "WIDTH": 102900
+          },
+          {
+            "CLASS_MIN_OVERLAP": {
+              "CORE": 1,
+              "OUTSIDE_INCIDENT": 0
+            },
+            "EDGES_AT_MINIMIZER": 153,
+            "RHO_AT_MINIMIZER": 17,
+            "THRESHOLD": 107800,
+            "WIDTH": 4900
+          },
+          {
+            "CLASS_MIN_OVERLAP": {
+              "CORE": 1,
+              "OUTSIDE_INCIDENT": 1
+            },
+            "EDGES_AT_MINIMIZER": 88,
+            "RHO_AT_MINIMIZER": 13,
+            "THRESHOLD": 539196,
+            "WIDTH": 431396
+          },
+          {
+            "CLASS_MIN_OVERLAP": {
+              "CORE": 2,
+              "OUTSIDE_INCIDENT": 1
+            },
+            "EDGES_AT_MINIMIZER": 78,
+            "RHO_AT_MINIMIZER": 12,
+            "THRESHOLD": 568680,
+            "WIDTH": 29484
+          },
+          {
+            "CLASS_MIN_OVERLAP": {
+              "CORE": 2,
+              "OUTSIDE_INCIDENT": 2
+            },
+            "EDGES_AT_MINIMIZER": 0,
+            "RHO_AT_MINIMIZER": 0,
+            "THRESHOLD": 1599493,
+            "WIDTH": 1030813
+          },
+          {
+            "CLASS_MIN_OVERLAP": {
+              "CORE": 3,
+              "OUTSIDE_INCIDENT": 2
+            },
+            "EDGES_AT_MINIMIZER": 0,
+            "RHO_AT_MINIMIZER": 0,
+            "THRESHOLD": 1669066,
+            "WIDTH": 69573
+          },
+          {
+            "CLASS_MIN_OVERLAP": {
+              "CORE": 3,
+              "OUTSIDE_INCIDENT": 3
+            },
+            "EDGES_AT_MINIMIZER": 0,
+            "RHO_AT_MINIMIZER": 0,
+            "THRESHOLD": 3270148,
+            "WIDTH": 1601082
+          },
+          {
+            "CLASS_MIN_OVERLAP": {
+              "CORE": null,
+              "OUTSIDE_INCIDENT": 3
+            },
+            "EDGES_AT_MINIMIZER": 0,
+            "RHO_AT_MINIMIZER": 0,
+            "THRESHOLD": 3408685,
+            "WIDTH": 138537
+          }
+        ],
+        "MINIMIZER_COUNTS": {
+          "CORE": [
+            10,
+            0,
+            0
+          ],
+          "OUTSIDE_INCIDENT": [
+            78,
+            0,
+            0
+          ]
+        }
+      },
+      "TYPE_CELLS": {
+        "0": [
+          0,
+          0,
+          0,
+          6
+        ],
+        "16": [
+          1,
+          0,
+          0,
+          5
+        ]
+      },
+      "WITNESS": {
+        "CENSUS_OBJECTIVE": 50989169,
+        "CLASS_MASSES": {
+          "CORE": 30,
+          "OUTSIDE_INCIDENT": 352
+        },
+        "COLLISION_MASS": 382,
+        "EXACT_MAXIMUM_TREE_WEIGHT": 58463237,
+        "EXACT_PAIRS_EQUAL_TABLE_ROWS": true,
+        "MAXIMUM_PAIR_OVERLAP": 3,
+        "PHI_TREE_WEIGHT": 57947645,
+        "RESIDUAL_MULTIPLICITY_ON_OUTCOME_SET": 18,
+        "RESIDUAL_TICKETS": [
+          [
+            10,
+            11,
+            12,
+            17,
+            18,
+            19
+          ],
+          [
+            10,
+            11,
+            13,
+            17,
+            20,
+            21
+          ],
+          [
+            10,
+            11,
+            14,
+            17,
+            22,
+            23
+          ],
+          [
+            10,
+            11,
+            15,
+            17,
+            24,
+            25
+          ],
+          [
+            10,
+            11,
+            16,
+            17,
+            26,
+            27
+          ],
+          [
+            10,
+            12,
+            13,
+            17,
+            22,
+            24
+          ],
+          [
+            10,
+            12,
+            14,
+            17,
+            20,
+            25
+          ],
+          [
+            10,
+            12,
+            15,
+            17,
+            21,
+            23
+          ],
+          [
+            10,
+            12,
+            16,
+            17,
+            28,
+            29
+          ],
+          [
+            10,
+            13,
+            14,
+            17,
+            18,
+            26
+          ],
+          [
+            10,
+            13,
+            15,
+            17,
+            19,
+            27
+          ],
+          [
+            10,
+            13,
+            16,
+            17,
+            23,
+            25
+          ],
+          [
+            10,
+            14,
+            15,
+            17,
+            28,
+            30
+          ],
+          [
+            1,
+            10,
+            13,
+            15,
+            21,
+            24
+          ],
+          [
+            1,
+            10,
+            12,
+            16,
+            21,
+            22
+          ],
+          [
+            1,
+            10,
+            12,
+            15,
+            19,
+            20
+          ],
+          [
+            1,
+            10,
+            11,
+            15,
+            16,
+            18
+          ],
+          [
+            1,
+            10,
+            11,
+            12,
+            13,
+            14
+          ]
+        ],
+        "TYPE16_REPLACEMENTS": [
+          [
+            [
+              5,
+              9,
+              11,
+              12,
+              15,
+              18
+            ],
+            [
+              1,
+              10,
+              11,
+              12,
+              13,
+              14
+            ]
+          ],
+          [
+            [
+              4,
+              8,
+              11,
+              12,
+              14,
+              17
+            ],
+            [
+              1,
+              10,
+              11,
+              15,
+              16,
+              18
+            ]
+          ],
+          [
+            [
+              6,
+              9,
+              11,
+              12,
+              13,
+              17
+            ],
+            [
+              1,
+              10,
+              12,
+              15,
+              19,
+              20
+            ]
+          ],
+          [
+            [
+              5,
+              8,
+              10,
+              15,
+              16,
+              17
+            ],
+            [
+              1,
+              10,
+              12,
+              16,
+              21,
+              22
+            ]
+          ],
+          [
+            [
+              4,
+              7,
+              10,
+              14,
+              16,
+              17
+            ],
+            [
+              1,
+              10,
+              13,
+              15,
+              21,
+              24
+            ]
+          ]
+        ]
+      }
+    },
+    "[0,13][5,1][16,4]": {
+      "CERTIFIED_MEMBER_BOUND": 353095274,
+      "COLLISION_FLOOR": {
+        "CELL_FLOORS": [
+          1,
+          0,
+          0,
+          84
+        ],
+        "CELL_INCIDENCES": [
+          4,
+          1,
+          1,
+          102
+        ],
+        "CLASS_MASS_FLOORS": {
+          "CORE": 1,
+          "OUTSIDE_INCIDENT": 38
+        },
+        "CLASS_MASS_FLOORS_BINDING": false,
+        "MINIMIZER_CLASS_MASSES": {
+          "CORE": 10,
+          "OUTSIDE_INCIDENT": 75
+        },
+        "TOTAL": 85
+      },
+      "CORRECTIONS": {
+        "CERTIFIED_CORRECTION": 7791602,
+        "COMBINATION": "MAX_OF_VALID_LOWER_BOUNDS_NEVER_SUM",
+        "HUNTER_CLASS_SPLIT": 7791602,
+        "HUNTER_HOMOGENEOUS": 7393106,
+        "R14_RATIONAL": 5880766,
+        "R5_FOREST": 5166000,
+        "R6_PAIR_SUM": 1836048,
+        "SELECTED": [
+          "HUNTER_CLASS_SPLIT"
+        ]
+      },
+      "MEMBER_COUNTS": [
+        [
+          0,
+          13
+        ],
+        [
+          5,
+          1
+        ],
+        [
+          16,
+          4
+        ]
+      ],
+      "PAIR_TABLE": {
+        "CLASS_EDGE_COUNTS": {
+          "CORE": 10,
+          "OUTSIDE_INCIDENT": 143
+        },
+        "CLASS_PAIR_FLOORS": {
+          "CORE": [
+            102760,
+            537082,
+            1592605,
+            3266116
+          ],
+          "OUTSIDE_INCIDENT": [
+            107800,
+            568610,
+            1667932,
+            3406165
+          ]
+        },
+        "FLOOR_SETTING_TYPE_PAIRS": {
+          "CORE_0": [
+            [
+              5,
+              16
+            ]
+          ],
+          "CORE_1": [
+            [
+              5,
+              16
+            ]
+          ],
+          "CORE_2": [
+            [
+              5,
+              16
+            ]
+          ],
+          "CORE_3": [
+            [
+              5,
+              16
+            ]
+          ],
+          "OUTSIDE_INCIDENT_0": [
+            [
+              0,
+              0
+            ],
+            [
+              0,
+              5
+            ],
+            [
+              0,
+              16
+            ]
+          ],
+          "OUTSIDE_INCIDENT_1": [
+            [
+              0,
+              5
+            ]
+          ],
+          "OUTSIDE_INCIDENT_2": [
+            [
+              0,
+              5
+            ]
+          ],
+          "OUTSIDE_INCIDENT_3": [
+            [
+              0,
+              5
+            ]
+          ]
+        },
+        "GLOBAL_PAIR_FLOORS": [
+          102760,
+          537082,
+          1592605,
+          3266116
+        ],
+        "ROWS": [
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            107800
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            574000
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            2,
+            1691620
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            3,
+            3451651
+          ],
+          [
+            0,
+            5,
+            0,
+            0,
+            0,
+            0,
+            107800
+          ],
+          [
+            0,
+            5,
+            0,
+            0,
+            0,
+            1,
+            568610
+          ],
+          [
+            0,
+            5,
+            0,
+            0,
+            0,
+            2,
+            1667932
+          ],
+          [
+            0,
+            5,
+            0,
+            0,
+            0,
+            3,
+            3406165
+          ],
+          [
+            0,
+            16,
+            0,
+            0,
+            0,
+            0,
+            107800
+          ],
+          [
+            0,
+            16,
+            0,
+            0,
+            0,
+            1,
+            568680
+          ],
+          [
+            0,
+            16,
+            0,
+            0,
+            0,
+            2,
+            1669066
+          ],
+          [
+            0,
+            16,
+            0,
+            0,
+            0,
+            3,
+            3408685
+          ],
+          [
+            5,
+            16,
+            0,
+            0,
+            0,
+            0,
+            102760
+          ],
+          [
+            5,
+            16,
+            0,
+            0,
+            0,
+            1,
+            537082
+          ],
+          [
+            5,
+            16,
+            0,
+            0,
+            0,
+            2,
+            1592605
+          ],
+          [
+            5,
+            16,
+            0,
+            0,
+            0,
+            3,
+            3266116
+          ],
+          [
+            16,
+            16,
+            0,
+            0,
+            0,
+            0,
+            102900
+          ],
+          [
+            16,
+            16,
+            0,
+            0,
+            0,
+            1,
+            539196
+          ],
+          [
+            16,
+            16,
+            0,
+            0,
+            0,
+            2,
+            1599493
+          ],
+          [
+            16,
+            16,
+            0,
+            0,
+            0,
+            3,
+            3281859
+          ],
+          [
+            16,
+            16,
+            1,
+            0,
+            0,
+            0,
+            560700
+          ],
+          [
+            16,
+            16,
+            1,
+            0,
+            0,
+            1,
+            1612576
+          ],
+          [
+            16,
+            16,
+            1,
+            0,
+            0,
+            2,
+            3270148
+          ]
+        ],
+        "ROWS_SHA256": "c0ad3a9e0079bfdfb18825b77235456c6a43a91628a95ecfc75f5cfb1b7295b2",
+        "ROW_COUNT": 23,
+        "TYPE_PAIRS": [
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            5
+          ],
+          [
+            0,
+            16
+          ],
+          [
+            5,
+            16
+          ],
+          [
+            16,
+            16
+          ]
+        ],
+        "TYPE_PAIR_EDGE_COUNTS": [
+          [
+            0,
+            0,
+            78
+          ],
+          [
+            0,
+            5,
+            13
+          ],
+          [
+            0,
+            16,
+            52
+          ],
+          [
+            5,
+            16,
+            4
+          ],
+          [
+            16,
+            16,
+            6
+          ]
+        ]
+      },
+      "R24_LEDGER_BOUND": 355720876,
+      "RATIONAL_BOUND": 355006110,
+      "RAW_UNION_BOUND_NO_CORRECTION": 360886876,
+      "REDUCTION_FROM_R24_LEDGER": 2625602,
+      "REDUCTION_VS_RATIONAL": 1910836,
+      "RESIDUAL_EVENT_SIZES": [
+        [
+          0,
+          18405317
+        ],
+        [
+          5,
+          17573325
+        ],
+        [
+          16,
+          17572877
+        ]
+      ],
+      "TREE_MINIMUM": {
+        "CENSUS_SIZE": 127813,
+        "HOMOGENEOUS_CENSUS_SIZE": 602020,
+        "HOMOGENEOUS_MINIMIZER_E": [
+          85,
+          0,
+          0
+        ],
+        "LEVELS": [
+          {
+            "CLASS_MIN_OVERLAP": {
+              "CORE": 0,
+              "OUTSIDE_INCIDENT": 0
+            },
+            "EDGES_AT_MINIMIZER": 153,
+            "RHO_AT_MINIMIZER": 17,
+            "THRESHOLD": 102760,
+            "WIDTH": 102760
+          },
+          {
+            "CLASS_MIN_OVERLAP": {
+              "CORE": 1,
+              "OUTSIDE_INCIDENT": 0
+            },
+            "EDGES_AT_MINIMIZER": 153,
+            "RHO_AT_MINIMIZER": 17,
+            "THRESHOLD": 107800,
+            "WIDTH": 5040
+          },
+          {
+            "CLASS_MIN_OVERLAP": {
+              "CORE": 1,
+              "OUTSIDE_INCIDENT": 1
+            },
+            "EDGES_AT_MINIMIZER": 85,
+            "RHO_AT_MINIMIZER": 13,
+            "THRESHOLD": 537082,
+            "WIDTH": 429282
+          },
+          {
+            "CLASS_MIN_OVERLAP": {
+              "CORE": 2,
+              "OUTSIDE_INCIDENT": 1
+            },
+            "EDGES_AT_MINIMIZER": 75,
+            "RHO_AT_MINIMIZER": 12,
+            "THRESHOLD": 568610,
+            "WIDTH": 31528
+          },
+          {
+            "CLASS_MIN_OVERLAP": {
+              "CORE": 2,
+              "OUTSIDE_INCIDENT": 2
+            },
+            "EDGES_AT_MINIMIZER": 0,
+            "RHO_AT_MINIMIZER": 0,
+            "THRESHOLD": 1592605,
+            "WIDTH": 1023995
+          },
+          {
+            "CLASS_MIN_OVERLAP": {
+              "CORE": 3,
+              "OUTSIDE_INCIDENT": 2
+            },
+            "EDGES_AT_MINIMIZER": 0,
+            "RHO_AT_MINIMIZER": 0,
+            "THRESHOLD": 1667932,
+            "WIDTH": 75327
+          },
+          {
+            "CLASS_MIN_OVERLAP": {
+              "CORE": 3,
+              "OUTSIDE_INCIDENT": 3
+            },
+            "EDGES_AT_MINIMIZER": 0,
+            "RHO_AT_MINIMIZER": 0,
+            "THRESHOLD": 3266116,
+            "WIDTH": 1598184
+          },
+          {
+            "CLASS_MIN_OVERLAP": {
+              "CORE": null,
+              "OUTSIDE_INCIDENT": 3
+            },
+            "EDGES_AT_MINIMIZER": 0,
+            "RHO_AT_MINIMIZER": 0,
+            "THRESHOLD": 3406165,
+            "WIDTH": 140049
+          }
+        ],
+        "MINIMIZER_COUNTS": {
+          "CORE": [
+            10,
+            0,
+            0
+          ],
+          "OUTSIDE_INCIDENT": [
+            75,
+            0,
+            0
+          ]
+        }
+      },
+      "TYPE_CELLS": {
+        "0": [
+          0,
+          0,
+          0,
+          6
+        ],
+        "16": [
+          1,
+          0,
+          0,
+          5
+        ],
+        "5": [
+          0,
+          1,
+          1,
+          4
+        ]
+      },
+      "WITNESS": {
+        "CENSUS_OBJECTIVE": 50951873,
+        "CLASS_MASSES": {
+          "CORE": 25,
+          "OUTSIDE_INCIDENT": 359
+        },
+        "COLLISION_MASS": 384,
+        "EXACT_MAXIMUM_TREE_WEIGHT": 58460717,
+        "EXACT_PAIRS_EQUAL_TABLE_ROWS": true,
+        "MAXIMUM_PAIR_OVERLAP": 3,
+        "PHI_TREE_WEIGHT": 57904805,
+        "RESIDUAL_MULTIPLICITY_ON_OUTCOME_SET": 18,
+        "RESIDUAL_TICKETS": [
+          [
+            10,
+            11,
+            12,
+            17,
+            18,
+            19
+          ],
+          [
+            10,
+            11,
+            13,
+            17,
+            20,
+            21
+          ],
+          [
+            10,
+            11,
+            14,
+            17,
+            22,
+            23
+          ],
+          [
+            10,
+            11,
+            15,
+            17,
+            24,
+            25
+          ],
+          [
+            10,
+            11,
+            16,
+            17,
+            26,
+            27
+          ],
+          [
+            10,
+            12,
+            13,
+            17,
+            22,
+            24
+          ],
+          [
+            10,
+            12,
+            14,
+            17,
+            20,
+            25
+          ],
+          [
+            10,
+            12,
+            15,
+            17,
+            21,
+            23
+          ],
+          [
+            10,
+            12,
+            16,
+            17,
+            28,
+            29
+          ],
+          [
+            10,
+            13,
+            14,
+            17,
+            18,
+            26
+          ],
+          [
+            10,
+            13,
+            15,
+            17,
+            19,
+            27
+          ],
+          [
+            10,
+            13,
+            16,
+            17,
+            23,
+            25
+          ],
+          [
+            10,
+            14,
+            15,
+            17,
+            28,
+            30
+          ],
+          [
+            4,
+            7,
+            10,
+            14,
+            16,
+            17
+          ],
+          [
+            1,
+            10,
+            12,
+            16,
+            21,
+            22
+          ],
+          [
+            1,
+            10,
+            12,
+            15,
+            19,
+            20
+          ],
+          [
+            1,
+            10,
+            11,
+            15,
+            16,
+            18
+          ],
+          [
+            1,
+            10,
+            11,
+            12,
+            13,
+            14
+          ]
+        ],
+        "TYPE16_REPLACEMENTS": [
+          [
+            [
+              5,
+              9,
+              11,
+              12,
+              15,
+              18
+            ],
+            [
+              1,
+              10,
+              11,
+              12,
+              13,
+              14
+            ]
+          ],
+          [
+            [
+              4,
+              8,
+              11,
+              12,
+              14,
+              17
+            ],
+            [
+              1,
+              10,
+              11,
+              15,
+              16,
+              18
+            ]
+          ],
+          [
+            [
+              6,
+              9,
+              11,
+              12,
+              13,
+              17
+            ],
+            [
+              1,
+              10,
+              12,
+              15,
+              19,
+              20
+            ]
+          ],
+          [
+            [
+              5,
+              8,
+              10,
+              15,
+              16,
+              17
+            ],
+            [
+              1,
+              10,
+              12,
+              16,
+              21,
+              22
+            ]
+          ]
+        ]
+      }
+    },
+    "[0,13][5,2][16,3]": {
+      "CERTIFIED_MEMBER_BOUND": 353097262,
+      "COLLISION_FLOOR": {
+        "CELL_FLOORS": [
+          0,
+          0,
+          0,
+          82
+        ],
+        "CELL_INCIDENCES": [
+          3,
+          2,
+          2,
+          101
+        ],
+        "CLASS_MASS_FLOORS": {
+          "CORE": 0,
+          "OUTSIDE_INCIDENT": 38
+        },
+        "CLASS_MASS_FLOORS_BINDING": false,
+        "MINIMIZER_CLASS_MASSES": {
+          "CORE": 10,
+          "OUTSIDE_INCIDENT": 72
+        },
+        "TOTAL": 82
+      },
+      "CORRECTIONS": {
+        "CERTIFIED_CORRECTION": 7790062,
+        "COMBINATION": "MAX_OF_VALID_LOWER_BOUNDS_NEVER_SUM",
+        "HUNTER_CLASS_SPLIT": 7790062,
+        "HUNTER_HOMOGENEOUS": 7372190,
+        "R14_RATIONAL": 5772188,
+        "R5_FOREST": 5166000,
+        "R6_PAIR_SUM": 1835817,
+        "SELECTED": [
+          "HUNTER_CLASS_SPLIT"
+        ]
+      },
+      "MEMBER_COUNTS": [
+        [
+          0,
+          13
+        ],
+        [
+          5,
+          2
+        ],
+        [
+          16,
+          3
+        ]
+      ],
+      "PAIR_TABLE": {
+        "CLASS_EDGE_COUNTS": {
+          "CORE": 10,
+          "OUTSIDE_INCIDENT": 143
+        },
+        "CLASS_PAIR_FLOORS": {
+          "CORE": [
+            102536,
+            535542,
+            1588965,
+            3260138
+          ],
+          "OUTSIDE_INCIDENT": [
+            107800,
+            568610,
+            1667932,
+            3406165
+          ]
+        },
+        "FLOOR_SETTING_TYPE_PAIRS": {
+          "CORE_0": [
+            [
+              5,
+              5
+            ]
+          ],
+          "CORE_1": [
+            [
+              5,
+              5
+            ]
+          ],
+          "CORE_2": [
+            [
+              5,
+              5
+            ]
+          ],
+          "CORE_3": [
+            [
+              5,
+              5
+            ]
+          ],
+          "OUTSIDE_INCIDENT_0": [
+            [
+              0,
+              0
+            ],
+            [
+              0,
+              5
+            ],
+            [
+              0,
+              16
+            ]
+          ],
+          "OUTSIDE_INCIDENT_1": [
+            [
+              0,
+              5
+            ]
+          ],
+          "OUTSIDE_INCIDENT_2": [
+            [
+              0,
+              5
+            ]
+          ],
+          "OUTSIDE_INCIDENT_3": [
+            [
+              0,
+              5
+            ]
+          ]
+        },
+        "GLOBAL_PAIR_FLOORS": [
+          102536,
+          535542,
+          1588965,
+          3260138
+        ],
+        "ROWS": [
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            107800
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            574000
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            2,
+            1691620
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            3,
+            3451651
+          ],
+          [
+            0,
+            5,
+            0,
+            0,
+            0,
+            0,
+            107800
+          ],
+          [
+            0,
+            5,
+            0,
+            0,
+            0,
+            1,
+            568610
+          ],
+          [
+            0,
+            5,
+            0,
+            0,
+            0,
+            2,
+            1667932
+          ],
+          [
+            0,
+            5,
+            0,
+            0,
+            0,
+            3,
+            3406165
+          ],
+          [
+            0,
+            16,
+            0,
+            0,
+            0,
+            0,
+            107800
+          ],
+          [
+            0,
+            16,
+            0,
+            0,
+            0,
+            1,
+            568680
+          ],
+          [
+            0,
+            16,
+            0,
+            0,
+            0,
+            2,
+            1669066
+          ],
+          [
+            0,
+            16,
+            0,
+            0,
+            0,
+            3,
+            3408685
+          ],
+          [
+            5,
+            5,
+            0,
+            0,
+            0,
+            0,
+            102536
+          ],
+          [
+            5,
+            5,
+            0,
+            0,
+            0,
+            1,
+            535542
+          ],
+          [
+            5,
+            5,
+            0,
+            0,
+            0,
+            2,
+            1588965
+          ],
+          [
+            5,
+            5,
+            0,
+            0,
+            0,
+            3,
+            3260138
+          ],
+          [
+            5,
+            5,
+            0,
+            0,
+            1,
+            0,
+            548744
+          ],
+          [
+            5,
+            5,
+            0,
+            0,
+            1,
+            1,
+            1603910
+          ],
+          [
+            5,
+            5,
+            0,
+            0,
+            1,
+            2,
+            3266564
+          ],
+          [
+            5,
+            5,
+            0,
+            1,
+            0,
+            0,
+            548744
+          ],
+          [
+            5,
+            5,
+            0,
+            1,
+            0,
+            1,
+            1603910
+          ],
+          [
+            5,
+            5,
+            0,
+            1,
+            0,
+            2,
+            3266564
+          ],
+          [
+            5,
+            5,
+            0,
+            1,
+            1,
+            0,
+            1620388
+          ],
+          [
+            5,
+            5,
+            0,
+            1,
+            1,
+            1,
+            3282755
+          ],
+          [
+            5,
+            16,
+            0,
+            0,
+            0,
+            0,
+            102760
+          ],
+          [
+            5,
+            16,
+            0,
+            0,
+            0,
+            1,
+            537082
+          ],
+          [
+            5,
+            16,
+            0,
+            0,
+            0,
+            2,
+            1592605
+          ],
+          [
+            5,
+            16,
+            0,
+            0,
+            0,
+            3,
+            3266116
+          ],
+          [
+            16,
+            16,
+            0,
+            0,
+            0,
+            0,
+            102900
+          ],
+          [
+            16,
+            16,
+            0,
+            0,
+            0,
+            1,
+            539196
+          ],
+          [
+            16,
+            16,
+            0,
+            0,
+            0,
+            2,
+            1599493
+          ],
+          [
+            16,
+            16,
+            0,
+            0,
+            0,
+            3,
+            3281859
+          ],
+          [
+            16,
+            16,
+            1,
+            0,
+            0,
+            0,
+            560700
+          ],
+          [
+            16,
+            16,
+            1,
+            0,
+            0,
+            1,
+            1612576
+          ],
+          [
+            16,
+            16,
+            1,
+            0,
+            0,
+            2,
+            3270148
+          ]
+        ],
+        "ROWS_SHA256": "1bb9f747bb4be5d0785061c5ba5f1496312db889f747e687241ce9ee814fb22c",
+        "ROW_COUNT": 35,
+        "TYPE_PAIRS": [
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            5
+          ],
+          [
+            0,
+            16
+          ],
+          [
+            5,
+            5
+          ],
+          [
+            5,
+            16
+          ],
+          [
+            16,
+            16
+          ]
+        ],
+        "TYPE_PAIR_EDGE_COUNTS": [
+          [
+            0,
+            0,
+            78
+          ],
+          [
+            0,
+            5,
+            26
+          ],
+          [
+            0,
+            16,
+            39
+          ],
+          [
+            5,
+            5,
+            1
+          ],
+          [
+            5,
+            16,
+            6
+          ],
+          [
+            16,
+            16,
+            3
+          ]
+        ]
+      },
+      "R24_LEDGER_BOUND": 355721324,
+      "RATIONAL_BOUND": 355115136,
+      "RAW_UNION_BOUND_NO_CORRECTION": 360887324,
+      "REDUCTION_FROM_R24_LEDGER": 2624062,
+      "REDUCTION_VS_RATIONAL": 2017874,
+      "RESIDUAL_EVENT_SIZES": [
+        [
+          0,
+          18405317
+        ],
+        [
+          5,
+          17573325
+        ],
+        [
+          16,
+          17572877
+        ]
+      ],
+      "TREE_MINIMUM": {
+        "CENSUS_SIZE": 117590,
+        "HOMOGENEOUS_CENSUS_SIZE": 603869,
+        "HOMOGENEOUS_MINIMIZER_E": [
+          82,
+          0,
+          0
+        ],
+        "LEVELS": [
+          {
+            "CLASS_MIN_OVERLAP": {
+              "CORE": 0,
+              "OUTSIDE_INCIDENT": 0
+            },
+            "EDGES_AT_MINIMIZER": 153,
+            "RHO_AT_MINIMIZER": 17,
+            "THRESHOLD": 102536,
+            "WIDTH": 102536
+          },
+          {
+            "CLASS_MIN_OVERLAP": {
+              "CORE": 1,
+              "OUTSIDE_INCIDENT": 0
+            },
+            "EDGES_AT_MINIMIZER": 153,
+            "RHO_AT_MINIMIZER": 17,
+            "THRESHOLD": 107800,
+            "WIDTH": 5264
+          },
+          {
+            "CLASS_MIN_OVERLAP": {
+              "CORE": 1,
+              "OUTSIDE_INCIDENT": 1
+            },
+            "EDGES_AT_MINIMIZER": 82,
+            "RHO_AT_MINIMIZER": 13,
+            "THRESHOLD": 535542,
+            "WIDTH": 427742
+          },
+          {
+            "CLASS_MIN_OVERLAP": {
+              "CORE": 2,
+              "OUTSIDE_INCIDENT": 1
+            },
+            "EDGES_AT_MINIMIZER": 72,
+            "RHO_AT_MINIMIZER": 12,
+            "THRESHOLD": 568610,
+            "WIDTH": 33068
+          },
+          {
+            "CLASS_MIN_OVERLAP": {
+              "CORE": 2,
+              "OUTSIDE_INCIDENT": 2
+            },
+            "EDGES_AT_MINIMIZER": 0,
+            "RHO_AT_MINIMIZER": 0,
+            "THRESHOLD": 1588965,
+            "WIDTH": 1020355
+          },
+          {
+            "CLASS_MIN_OVERLAP": {
+              "CORE": 3,
+              "OUTSIDE_INCIDENT": 2
+            },
+            "EDGES_AT_MINIMIZER": 0,
+            "RHO_AT_MINIMIZER": 0,
+            "THRESHOLD": 1667932,
+            "WIDTH": 78967
+          },
+          {
+            "CLASS_MIN_OVERLAP": {
+              "CORE": 3,
+              "OUTSIDE_INCIDENT": 3
+            },
+            "EDGES_AT_MINIMIZER": 0,
+            "RHO_AT_MINIMIZER": 0,
+            "THRESHOLD": 3260138,
+            "WIDTH": 1592206
+          },
+          {
+            "CLASS_MIN_OVERLAP": {
+              "CORE": null,
+              "OUTSIDE_INCIDENT": 3
+            },
+            "EDGES_AT_MINIMIZER": 0,
+            "RHO_AT_MINIMIZER": 0,
+            "THRESHOLD": 3406165,
+            "WIDTH": 146027
+          }
+        ],
+        "MINIMIZER_COUNTS": {
+          "CORE": [
+            10,
+            0,
+            0
+          ],
+          "OUTSIDE_INCIDENT": [
+            72,
+            0,
+            0
+          ]
+        }
+      },
+      "TYPE_CELLS": {
+        "0": [
+          0,
+          0,
+          0,
+          6
+        ],
+        "16": [
+          1,
+          0,
+          0,
+          5
+        ],
+        "5": [
+          0,
+          1,
+          1,
+          4
+        ]
+      },
+      "WITNESS": {
+        "CENSUS_OBJECTIVE": 52544079,
+        "CLASS_MASSES": {
+          "CORE": 23,
+          "OUTSIDE_INCIDENT": 367
+        },
+        "COLLISION_MASS": 390,
+        "EXACT_MAXIMUM_TREE_WEIGHT": 58458197,
+        "EXACT_PAIRS_EQUAL_TABLE_ROWS": true,
+        "MAXIMUM_PAIR_OVERLAP": 3,
+        "PHI_TREE_WEIGHT": 57904805,
+        "RESIDUAL_MULTIPLICITY_ON_OUTCOME_SET": 18,
+        "RESIDUAL_TICKETS": [
+          [
+            10,
+            11,
+            12,
+            17,
+            18,
+            19
+          ],
+          [
+            10,
+            11,
+            13,
+            17,
+            20,
+            21
+          ],
+          [
+            10,
+            11,
+            14,
+            17,
+            22,
+            23
+          ],
+          [
+            10,
+            11,
+            15,
+            17,
+            24,
+            25
+          ],
+          [
+            10,
+            11,
+            16,
+            17,
+            26,
+            27
+          ],
+          [
+            10,
+            12,
+            13,
+            17,
+            22,
+            24
+          ],
+          [
+            10,
+            12,
+            14,
+            17,
+            20,
+            25
+          ],
+          [
+            10,
+            12,
+            15,
+            17,
+            21,
+            23
+          ],
+          [
+            10,
+            12,
+            16,
+            17,
+            28,
+            29
+          ],
+          [
+            10,
+            13,
+            14,
+            17,
+            18,
+            26
+          ],
+          [
+            10,
+            13,
+            15,
+            17,
+            19,
+            27
+          ],
+          [
+            10,
+            13,
+            16,
+            17,
+            23,
+            25
+          ],
+          [
+            10,
+            14,
+            15,
+            17,
+            28,
+            30
+          ],
+          [
+            4,
+            7,
+            10,
+            14,
+            16,
+            17
+          ],
+          [
+            5,
+            8,
+            10,
+            15,
+            16,
+            17
+          ],
+          [
+            1,
+            10,
+            12,
+            15,
+            19,
+            20
+          ],
+          [
+            1,
+            10,
+            11,
+            15,
+            16,
+            18
+          ],
+          [
+            1,
+            10,
+            11,
+            12,
+            13,
+            14
+          ]
+        ],
+        "TYPE16_REPLACEMENTS": [
+          [
+            [
+              5,
+              9,
+              11,
+              12,
+              15,
+              18
+            ],
+            [
+              1,
+              10,
+              11,
+              12,
+              13,
+              14
+            ]
+          ],
+          [
+            [
+              4,
+              8,
+              11,
+              12,
+              14,
+              17
+            ],
+            [
+              1,
+              10,
+              11,
+              15,
+              16,
+              18
+            ]
+          ],
+          [
+            [
+              6,
+              9,
+              11,
+              12,
+              13,
+              17
+            ],
+            [
+              1,
+              10,
+              12,
+              15,
+              19,
+              20
+            ]
+          ]
+        ]
+      }
+    },
+    "[0,13][5,3][16,2]": {
+      "CERTIFIED_MEMBER_BOUND": 353097710,
+      "COLLISION_FLOOR": {
+        "CELL_FLOORS": [
+          0,
+          0,
+          0,
+          80
+        ],
+        "CELL_INCIDENCES": [
+          2,
+          3,
+          3,
+          100
+        ],
+        "CLASS_MASS_FLOORS": {
+          "CORE": 0,
+          "OUTSIDE_INCIDENT": 38
+        },
+        "CLASS_MASS_FLOORS_BINDING": false,
+        "MINIMIZER_CLASS_MASSES": {
+          "CORE": 10,
+          "OUTSIDE_INCIDENT": 70
+        },
+        "TOTAL": 80
+      },
+      "CORRECTIONS": {
+        "CERTIFIED_CORRECTION": 7790062,
+        "COMBINATION": "MAX_OF_VALID_LOWER_BOUNDS_NEVER_SUM",
+        "HUNTER_CLASS_SPLIT": 7790062,
+        "HUNTER_HOMOGENEOUS": 7372190,
+        "R14_RATIONAL": 5675884,
+        "R5_FOREST": 5166000,
+        "R6_PAIR_SUM": 1835587,
+        "SELECTED": [
+          "HUNTER_CLASS_SPLIT"
+        ]
+      },
+      "MEMBER_COUNTS": [
+        [
+          0,
+          13
+        ],
+        [
+          5,
+          3
+        ],
+        [
+          16,
+          2
+        ]
+      ],
+      "PAIR_TABLE": {
+        "CLASS_EDGE_COUNTS": {
+          "CORE": 10,
+          "OUTSIDE_INCIDENT": 143
+        },
+        "CLASS_PAIR_FLOORS": {
+          "CORE": [
+            102536,
+            535542,
+            1588965,
+            3260138
+          ],
+          "OUTSIDE_INCIDENT": [
+            107800,
+            568610,
+            1667932,
+            3406165
+          ]
+        },
+        "FLOOR_SETTING_TYPE_PAIRS": {
+          "CORE_0": [
+            [
+              5,
+              5
+            ]
+          ],
+          "CORE_1": [
+            [
+              5,
+              5
+            ]
+          ],
+          "CORE_2": [
+            [
+              5,
+              5
+            ]
+          ],
+          "CORE_3": [
+            [
+              5,
+              5
+            ]
+          ],
+          "OUTSIDE_INCIDENT_0": [
+            [
+              0,
+              0
+            ],
+            [
+              0,
+              5
+            ],
+            [
+              0,
+              16
+            ]
+          ],
+          "OUTSIDE_INCIDENT_1": [
+            [
+              0,
+              5
+            ]
+          ],
+          "OUTSIDE_INCIDENT_2": [
+            [
+              0,
+              5
+            ]
+          ],
+          "OUTSIDE_INCIDENT_3": [
+            [
+              0,
+              5
+            ]
+          ]
+        },
+        "GLOBAL_PAIR_FLOORS": [
+          102536,
+          535542,
+          1588965,
+          3260138
+        ],
+        "ROWS": [
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            107800
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            574000
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            2,
+            1691620
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            3,
+            3451651
+          ],
+          [
+            0,
+            5,
+            0,
+            0,
+            0,
+            0,
+            107800
+          ],
+          [
+            0,
+            5,
+            0,
+            0,
+            0,
+            1,
+            568610
+          ],
+          [
+            0,
+            5,
+            0,
+            0,
+            0,
+            2,
+            1667932
+          ],
+          [
+            0,
+            5,
+            0,
+            0,
+            0,
+            3,
+            3406165
+          ],
+          [
+            0,
+            16,
+            0,
+            0,
+            0,
+            0,
+            107800
+          ],
+          [
+            0,
+            16,
+            0,
+            0,
+            0,
+            1,
+            568680
+          ],
+          [
+            0,
+            16,
+            0,
+            0,
+            0,
+            2,
+            1669066
+          ],
+          [
+            0,
+            16,
+            0,
+            0,
+            0,
+            3,
+            3408685
+          ],
+          [
+            5,
+            5,
+            0,
+            0,
+            0,
+            0,
+            102536
+          ],
+          [
+            5,
+            5,
+            0,
+            0,
+            0,
+            1,
+            535542
+          ],
+          [
+            5,
+            5,
+            0,
+            0,
+            0,
+            2,
+            1588965
+          ],
+          [
+            5,
+            5,
+            0,
+            0,
+            0,
+            3,
+            3260138
+          ],
+          [
+            5,
+            5,
+            0,
+            0,
+            1,
+            0,
+            548744
+          ],
+          [
+            5,
+            5,
+            0,
+            0,
+            1,
+            1,
+            1603910
+          ],
+          [
+            5,
+            5,
+            0,
+            0,
+            1,
+            2,
+            3266564
+          ],
+          [
+            5,
+            5,
+            0,
+            1,
+            0,
+            0,
+            548744
+          ],
+          [
+            5,
+            5,
+            0,
+            1,
+            0,
+            1,
+            1603910
+          ],
+          [
+            5,
+            5,
+            0,
+            1,
+            0,
+            2,
+            3266564
+          ],
+          [
+            5,
+            5,
+            0,
+            1,
+            1,
+            0,
+            1620388
+          ],
+          [
+            5,
+            5,
+            0,
+            1,
+            1,
+            1,
+            3282755
+          ],
+          [
+            5,
+            16,
+            0,
+            0,
+            0,
+            0,
+            102760
+          ],
+          [
+            5,
+            16,
+            0,
+            0,
+            0,
+            1,
+            537082
+          ],
+          [
+            5,
+            16,
+            0,
+            0,
+            0,
+            2,
+            1592605
+          ],
+          [
+            5,
+            16,
+            0,
+            0,
+            0,
+            3,
+            3266116
+          ],
+          [
+            16,
+            16,
+            0,
+            0,
+            0,
+            0,
+            102900
+          ],
+          [
+            16,
+            16,
+            0,
+            0,
+            0,
+            1,
+            539196
+          ],
+          [
+            16,
+            16,
+            0,
+            0,
+            0,
+            2,
+            1599493
+          ],
+          [
+            16,
+            16,
+            0,
+            0,
+            0,
+            3,
+            3281859
+          ],
+          [
+            16,
+            16,
+            1,
+            0,
+            0,
+            0,
+            560700
+          ],
+          [
+            16,
+            16,
+            1,
+            0,
+            0,
+            1,
+            1612576
+          ],
+          [
+            16,
+            16,
+            1,
+            0,
+            0,
+            2,
+            3270148
+          ]
+        ],
+        "ROWS_SHA256": "1bb9f747bb4be5d0785061c5ba5f1496312db889f747e687241ce9ee814fb22c",
+        "ROW_COUNT": 35,
+        "TYPE_PAIRS": [
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            5
+          ],
+          [
+            0,
+            16
+          ],
+          [
+            5,
+            5
+          ],
+          [
+            5,
+            16
+          ],
+          [
+            16,
+            16
+          ]
+        ],
+        "TYPE_PAIR_EDGE_COUNTS": [
+          [
+            0,
+            0,
+            78
+          ],
+          [
+            0,
+            5,
+            39
+          ],
+          [
+            0,
+            16,
+            26
+          ],
+          [
+            5,
+            5,
+            3
+          ],
+          [
+            5,
+            16,
+            6
+          ],
+          [
+            16,
+            16,
+            1
+          ]
+        ]
+      },
+      "R24_LEDGER_BOUND": 355721772,
+      "RATIONAL_BOUND": 355211888,
+      "RAW_UNION_BOUND_NO_CORRECTION": 360887772,
+      "REDUCTION_FROM_R24_LEDGER": 2624062,
+      "REDUCTION_VS_RATIONAL": 2114178,
+      "RESIDUAL_EVENT_SIZES": [
+        [
+          0,
+          18405317
+        ],
+        [
+          5,
+          17573325
+        ],
+        [
+          16,
+          17572877
+        ]
+      ],
+      "TREE_MINIMUM": {
+        "CENSUS_SIZE": 111012,
+        "HOMOGENEOUS_CENSUS_SIZE": 605031,
+        "HOMOGENEOUS_MINIMIZER_E": [
+          80,
+          0,
+          0
+        ],
+        "LEVELS": [
+          {
+            "CLASS_MIN_OVERLAP": {
+              "CORE": 0,
+              "OUTSIDE_INCIDENT": 0
+            },
+            "EDGES_AT_MINIMIZER": 153,
+            "RHO_AT_MINIMIZER": 17,
+            "THRESHOLD": 102536,
+            "WIDTH": 102536
+          },
+          {
+            "CLASS_MIN_OVERLAP": {
+              "CORE": 1,
+              "OUTSIDE_INCIDENT": 0
+            },
+            "EDGES_AT_MINIMIZER": 153,
+            "RHO_AT_MINIMIZER": 17,
+            "THRESHOLD": 107800,
+            "WIDTH": 5264
+          },
+          {
+            "CLASS_MIN_OVERLAP": {
+              "CORE": 1,
+              "OUTSIDE_INCIDENT": 1
+            },
+            "EDGES_AT_MINIMIZER": 80,
+            "RHO_AT_MINIMIZER": 13,
+            "THRESHOLD": 535542,
+            "WIDTH": 427742
+          },
+          {
+            "CLASS_MIN_OVERLAP": {
+              "CORE": 2,
+              "OUTSIDE_INCIDENT": 1
+            },
+            "EDGES_AT_MINIMIZER": 70,
+            "RHO_AT_MINIMIZER": 12,
+            "THRESHOLD": 568610,
+            "WIDTH": 33068
+          },
+          {
+            "CLASS_MIN_OVERLAP": {
+              "CORE": 2,
+              "OUTSIDE_INCIDENT": 2
+            },
+            "EDGES_AT_MINIMIZER": 0,
+            "RHO_AT_MINIMIZER": 0,
+            "THRESHOLD": 1588965,
+            "WIDTH": 1020355
+          },
+          {
+            "CLASS_MIN_OVERLAP": {
+              "CORE": 3,
+              "OUTSIDE_INCIDENT": 2
+            },
+            "EDGES_AT_MINIMIZER": 0,
+            "RHO_AT_MINIMIZER": 0,
+            "THRESHOLD": 1667932,
+            "WIDTH": 78967
+          },
+          {
+            "CLASS_MIN_OVERLAP": {
+              "CORE": 3,
+              "OUTSIDE_INCIDENT": 3
+            },
+            "EDGES_AT_MINIMIZER": 0,
+            "RHO_AT_MINIMIZER": 0,
+            "THRESHOLD": 3260138,
+            "WIDTH": 1592206
+          },
+          {
+            "CLASS_MIN_OVERLAP": {
+              "CORE": null,
+              "OUTSIDE_INCIDENT": 3
+            },
+            "EDGES_AT_MINIMIZER": 0,
+            "RHO_AT_MINIMIZER": 0,
+            "THRESHOLD": 3406165,
+            "WIDTH": 146027
+          }
+        ],
+        "MINIMIZER_COUNTS": {
+          "CORE": [
+            10,
+            0,
+            0
+          ],
+          "OUTSIDE_INCIDENT": [
+            70,
+            0,
+            0
+          ]
+        }
+      },
+      "TYPE_CELLS": {
+        "0": [
+          0,
+          0,
+          0,
+          6
+        ],
+        "16": [
+          1,
+          0,
+          0,
+          5
+        ],
+        "5": [
+          0,
+          1,
+          1,
+          4
+        ]
+      },
+      "WITNESS": {
+        "CENSUS_OBJECTIVE": 50951873,
+        "CLASS_MASSES": {
+          "CORE": 20,
+          "OUTSIDE_INCIDENT": 369
+        },
+        "COLLISION_MASS": 389,
+        "EXACT_MAXIMUM_TREE_WEIGHT": 58455677,
+        "EXACT_PAIRS_EQUAL_TABLE_ROWS": true,
+        "MAXIMUM_PAIR_OVERLAP": 3,
+        "PHI_TREE_WEIGHT": 57904805,
+        "RESIDUAL_MULTIPLICITY_ON_OUTCOME_SET": 18,
+        "RESIDUAL_TICKETS": [
+          [
+            10,
+            11,
+            12,
+            17,
+            18,
+            19
+          ],
+          [
+            10,
+            11,
+            13,
+            17,
+            20,
+            21
+          ],
+          [
+            10,
+            11,
+            14,
+            17,
+            22,
+            23
+          ],
+          [
+            10,
+            11,
+            15,
+            17,
+            24,
+            25
+          ],
+          [
+            10,
+            11,
+            16,
+            17,
+            26,
+            27
+          ],
+          [
+            10,
+            12,
+            13,
+            17,
+            22,
+            24
+          ],
+          [
+            10,
+            12,
+            14,
+            17,
+            20,
+            25
+          ],
+          [
+            10,
+            12,
+            15,
+            17,
+            21,
+            23
+          ],
+          [
+            10,
+            12,
+            16,
+            17,
+            28,
+            29
+          ],
+          [
+            10,
+            13,
+            14,
+            17,
+            18,
+            26
+          ],
+          [
+            10,
+            13,
+            15,
+            17,
+            19,
+            27
+          ],
+          [
+            10,
+            13,
+            16,
+            17,
+            23,
+            25
+          ],
+          [
+            10,
+            14,
+            15,
+            17,
+            28,
+            30
+          ],
+          [
+            4,
+            7,
+            10,
+            14,
+            16,
+            17
+          ],
+          [
+            5,
+            8,
+            10,
+            15,
+            16,
+            17
+          ],
+          [
+            6,
+            9,
+            11,
+            12,
+            13,
+            17
+          ],
+          [
+            1,
+            10,
+            11,
+            15,
+            16,
+            18
+          ],
+          [
+            1,
+            10,
+            11,
+            12,
+            13,
+            14
+          ]
+        ],
+        "TYPE16_REPLACEMENTS": [
+          [
+            [
+              5,
+              9,
+              11,
+              12,
+              15,
+              18
+            ],
+            [
+              1,
+              10,
+              11,
+              12,
+              13,
+              14
+            ]
+          ],
+          [
+            [
+              4,
+              8,
+              11,
+              12,
+              14,
+              17
+            ],
+            [
+              1,
+              10,
+              11,
+              15,
+              16,
+              18
+            ]
+          ]
+        ]
+      }
+    },
+    "[0,13][5,5]": {
+      "CERTIFIED_MEMBER_BOUND": 353098606,
+      "COLLISION_FLOOR": {
+        "CELL_FLOORS": [
+          0,
+          2,
+          2,
+          76
+        ],
+        "CELL_INCIDENCES": [
+          0,
+          5,
+          5,
+          98
+        ],
+        "CLASS_MASS_FLOORS": {
+          "CORE": 4,
+          "OUTSIDE_INCIDENT": 38
+        },
+        "CLASS_MASS_FLOORS_BINDING": false,
+        "MINIMIZER_CLASS_MASSES": {
+          "CORE": 10,
+          "OUTSIDE_INCIDENT": 70
+        },
+        "TOTAL": 80
+      },
+      "CORRECTIONS": {
+        "CERTIFIED_CORRECTION": 7790062,
+        "COMBINATION": "MAX_OF_VALID_LOWER_BOUNDS_NEVER_SUM",
+        "HUNTER_CLASS_SPLIT": 7790062,
+        "HUNTER_HOMOGENEOUS": 7372190,
+        "R14_RATIONAL": 5483247,
+        "R5_FOREST": 5166000,
+        "R6_PAIR_SUM": 1835127,
+        "SELECTED": [
+          "HUNTER_CLASS_SPLIT"
+        ]
+      },
+      "MEMBER_COUNTS": [
+        [
+          0,
+          13
+        ],
+        [
+          5,
+          5
+        ]
+      ],
+      "PAIR_TABLE": {
+        "CLASS_EDGE_COUNTS": {
+          "CORE": 10,
+          "OUTSIDE_INCIDENT": 143
+        },
+        "CLASS_PAIR_FLOORS": {
+          "CORE": [
+            102536,
+            535542,
+            1588965,
+            3260138
+          ],
+          "OUTSIDE_INCIDENT": [
+            107800,
+            568610,
+            1667932,
+            3406165
+          ]
+        },
+        "FLOOR_SETTING_TYPE_PAIRS": {
+          "CORE_0": [
+            [
+              5,
+              5
+            ]
+          ],
+          "CORE_1": [
+            [
+              5,
+              5
+            ]
+          ],
+          "CORE_2": [
+            [
+              5,
+              5
+            ]
+          ],
+          "CORE_3": [
+            [
+              5,
+              5
+            ]
+          ],
+          "OUTSIDE_INCIDENT_0": [
+            [
+              0,
+              0
+            ],
+            [
+              0,
+              5
+            ]
+          ],
+          "OUTSIDE_INCIDENT_1": [
+            [
+              0,
+              5
+            ]
+          ],
+          "OUTSIDE_INCIDENT_2": [
+            [
+              0,
+              5
+            ]
+          ],
+          "OUTSIDE_INCIDENT_3": [
+            [
+              0,
+              5
+            ]
+          ]
+        },
+        "GLOBAL_PAIR_FLOORS": [
+          102536,
+          535542,
+          1588965,
+          3260138
+        ],
+        "ROWS": [
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            107800
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            574000
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            2,
+            1691620
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            3,
+            3451651
+          ],
+          [
+            0,
+            5,
+            0,
+            0,
+            0,
+            0,
+            107800
+          ],
+          [
+            0,
+            5,
+            0,
+            0,
+            0,
+            1,
+            568610
+          ],
+          [
+            0,
+            5,
+            0,
+            0,
+            0,
+            2,
+            1667932
+          ],
+          [
+            0,
+            5,
+            0,
+            0,
+            0,
+            3,
+            3406165
+          ],
+          [
+            5,
+            5,
+            0,
+            0,
+            0,
+            0,
+            102536
+          ],
+          [
+            5,
+            5,
+            0,
+            0,
+            0,
+            1,
+            535542
+          ],
+          [
+            5,
+            5,
+            0,
+            0,
+            0,
+            2,
+            1588965
+          ],
+          [
+            5,
+            5,
+            0,
+            0,
+            0,
+            3,
+            3260138
+          ],
+          [
+            5,
+            5,
+            0,
+            0,
+            1,
+            0,
+            548744
+          ],
+          [
+            5,
+            5,
+            0,
+            0,
+            1,
+            1,
+            1603910
+          ],
+          [
+            5,
+            5,
+            0,
+            0,
+            1,
+            2,
+            3266564
+          ],
+          [
+            5,
+            5,
+            0,
+            1,
+            0,
+            0,
+            548744
+          ],
+          [
+            5,
+            5,
+            0,
+            1,
+            0,
+            1,
+            1603910
+          ],
+          [
+            5,
+            5,
+            0,
+            1,
+            0,
+            2,
+            3266564
+          ],
+          [
+            5,
+            5,
+            0,
+            1,
+            1,
+            0,
+            1620388
+          ],
+          [
+            5,
+            5,
+            0,
+            1,
+            1,
+            1,
+            3282755
+          ]
+        ],
+        "ROWS_SHA256": "8944ab579ceef79e130bb34594ffc74b8dddd61ac6f8fcb41b4cc04d15a04807",
+        "ROW_COUNT": 20,
+        "TYPE_PAIRS": [
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            5
+          ],
+          [
+            5,
+            5
+          ]
+        ],
+        "TYPE_PAIR_EDGE_COUNTS": [
+          [
+            0,
+            0,
+            78
+          ],
+          [
+            0,
+            5,
+            65
+          ],
+          [
+            5,
+            5,
+            10
+          ]
+        ]
+      },
+      "R24_LEDGER_BOUND": 355722668,
+      "RATIONAL_BOUND": 355405421,
+      "RAW_UNION_BOUND_NO_CORRECTION": 360888668,
+      "REDUCTION_FROM_R24_LEDGER": 2624062,
+      "REDUCTION_VS_RATIONAL": 2306815,
+      "RESIDUAL_EVENT_SIZES": [
+        [
+          0,
+          18405317
+        ],
+        [
+          5,
+          17573325
+        ]
+      ],
+      "TREE_MINIMUM": {
+        "CENSUS_SIZE": 111012,
+        "HOMOGENEOUS_CENSUS_SIZE": 605031,
+        "HOMOGENEOUS_MINIMIZER_E": [
+          80,
+          0,
+          0
+        ],
+        "LEVELS": [
+          {
+            "CLASS_MIN_OVERLAP": {
+              "CORE": 0,
+              "OUTSIDE_INCIDENT": 0
+            },
+            "EDGES_AT_MINIMIZER": 153,
+            "RHO_AT_MINIMIZER": 17,
+            "THRESHOLD": 102536,
+            "WIDTH": 102536
+          },
+          {
+            "CLASS_MIN_OVERLAP": {
+              "CORE": 1,
+              "OUTSIDE_INCIDENT": 0
+            },
+            "EDGES_AT_MINIMIZER": 153,
+            "RHO_AT_MINIMIZER": 17,
+            "THRESHOLD": 107800,
+            "WIDTH": 5264
+          },
+          {
+            "CLASS_MIN_OVERLAP": {
+              "CORE": 1,
+              "OUTSIDE_INCIDENT": 1
+            },
+            "EDGES_AT_MINIMIZER": 80,
+            "RHO_AT_MINIMIZER": 13,
+            "THRESHOLD": 535542,
+            "WIDTH": 427742
+          },
+          {
+            "CLASS_MIN_OVERLAP": {
+              "CORE": 2,
+              "OUTSIDE_INCIDENT": 1
+            },
+            "EDGES_AT_MINIMIZER": 70,
+            "RHO_AT_MINIMIZER": 12,
+            "THRESHOLD": 568610,
+            "WIDTH": 33068
+          },
+          {
+            "CLASS_MIN_OVERLAP": {
+              "CORE": 2,
+              "OUTSIDE_INCIDENT": 2
+            },
+            "EDGES_AT_MINIMIZER": 0,
+            "RHO_AT_MINIMIZER": 0,
+            "THRESHOLD": 1588965,
+            "WIDTH": 1020355
+          },
+          {
+            "CLASS_MIN_OVERLAP": {
+              "CORE": 3,
+              "OUTSIDE_INCIDENT": 2
+            },
+            "EDGES_AT_MINIMIZER": 0,
+            "RHO_AT_MINIMIZER": 0,
+            "THRESHOLD": 1667932,
+            "WIDTH": 78967
+          },
+          {
+            "CLASS_MIN_OVERLAP": {
+              "CORE": 3,
+              "OUTSIDE_INCIDENT": 3
+            },
+            "EDGES_AT_MINIMIZER": 0,
+            "RHO_AT_MINIMIZER": 0,
+            "THRESHOLD": 3260138,
+            "WIDTH": 1592206
+          },
+          {
+            "CLASS_MIN_OVERLAP": {
+              "CORE": null,
+              "OUTSIDE_INCIDENT": 3
+            },
+            "EDGES_AT_MINIMIZER": 0,
+            "RHO_AT_MINIMIZER": 0,
+            "THRESHOLD": 3406165,
+            "WIDTH": 146027
+          }
+        ],
+        "MINIMIZER_COUNTS": {
+          "CORE": [
+            10,
+            0,
+            0
+          ],
+          "OUTSIDE_INCIDENT": [
+            70,
+            0,
+            0
+          ]
+        }
+      },
+      "TYPE_CELLS": {
+        "0": [
+          0,
+          0,
+          0,
+          6
+        ],
+        "5": [
+          0,
+          1,
+          1,
+          4
+        ]
+      },
+      "WITNESS": {
+        "CENSUS_OBJECTIVE": 50872906,
+        "CLASS_MASSES": {
+          "CORE": 20,
+          "OUTSIDE_INCIDENT": 353
+        },
+        "COLLISION_MASS": 373,
+        "EXACT_MAXIMUM_TREE_WEIGHT": 58450637,
+        "EXACT_PAIRS_EQUAL_TABLE_ROWS": true,
+        "MAXIMUM_PAIR_OVERLAP": 3,
+        "PHI_TREE_WEIGHT": 57904805,
+        "RESIDUAL_MULTIPLICITY_ON_OUTCOME_SET": 18,
+        "RESIDUAL_TICKETS": [
+          [
+            10,
+            11,
+            12,
+            17,
+            18,
+            19
+          ],
+          [
+            10,
+            11,
+            13,
+            17,
+            20,
+            21
+          ],
+          [
+            10,
+            11,
+            14,
+            17,
+            22,
+            23
+          ],
+          [
+            10,
+            11,
+            15,
+            17,
+            24,
+            25
+          ],
+          [
+            10,
+            11,
+            16,
+            17,
+            26,
+            27
+          ],
+          [
+            10,
+            12,
+            13,
+            17,
+            22,
+            24
+          ],
+          [
+            10,
+            12,
+            14,
+            17,
+            20,
+            25
+          ],
+          [
+            10,
+            12,
+            15,
+            17,
+            21,
+            23
+          ],
+          [
+            10,
+            12,
+            16,
+            17,
+            28,
+            29
+          ],
+          [
+            10,
+            13,
+            14,
+            17,
+            18,
+            26
+          ],
+          [
+            10,
+            13,
+            15,
+            17,
+            19,
+            27
+          ],
+          [
+            10,
+            13,
+            16,
+            17,
+            23,
+            25
+          ],
+          [
+            10,
+            14,
+            15,
+            17,
+            28,
+            30
+          ],
+          [
+            4,
+            7,
+            10,
+            14,
+            16,
+            17
+          ],
+          [
+            5,
+            8,
+            10,
+            15,
+            16,
+            17
+          ],
+          [
+            6,
+            9,
+            11,
+            12,
+            13,
+            17
+          ],
+          [
+            4,
+            8,
+            11,
+            12,
+            14,
+            17
+          ],
+          [
+            5,
+            9,
+            11,
+            12,
+            15,
+            18
+          ]
+        ],
+        "TYPE16_REPLACEMENTS": []
+      }
+    }
+  },
+  "NEW_HEAVY_SOLVER_STARTED": "NO",
+  "NEW_MEMBER_CERTIFICATES": [
+    "[0,13][5,3][16,2]",
+    "[0,13][5,2][16,3]",
+    "[0,13][5,1][16,4]",
+    "[0,13][16,5]"
+  ],
+  "NEXT_LOAD_BEARING_MEMBER": [
+    {
+      "BOUND": 355274920,
+      "CARRIED_R24_FINAL_BOUND": 355274920,
+      "MEMBER_ID": "[0,11][1,1][2,1][4,1][5,4]",
+      "RAW": true,
+      "REPRESENTED_VECTOR_COUNT": 1
+    },
+    {
+      "BOUND": 355274920,
+      "CARRIED_R24_FINAL_BOUND": 355274920,
+      "MEMBER_ID": "[0,11][1,1][4,1][5,4][8,1]",
+      "RAW": true,
+      "REPRESENTED_VECTOR_COUNT": 1
+    },
+    {
+      "BOUND": 355274920,
+      "CARRIED_R24_FINAL_BOUND": 355274920,
+      "MEMBER_ID": "[0,11][1,2][2,1][5,4]",
+      "RAW": true,
+      "REPRESENTED_VECTOR_COUNT": 1
+    },
+    {
+      "BOUND": 355274920,
+      "CARRIED_R24_FINAL_BOUND": 355274920,
+      "MEMBER_ID": "[0,11][2,1][4,2][5,4]",
+      "RAW": true,
+      "REPRESENTED_VECTOR_COUNT": 2
+    },
+    {
+      "BOUND": 355274920,
+      "CARRIED_R24_FINAL_BOUND": 355274920,
+      "MEMBER_ID": "[0,11][4,2][5,4][8,1]",
+      "RAW": true,
+      "REPRESENTED_VECTOR_COUNT": 1
+    }
+  ],
+  "NU_LE_17": "ν <= 17 REFUTED",
+  "PAIR_OVERLAP_LIMITS": {
+    "CELL_RANGES": "max(0,c+d-capacity) <= x <= min(c,d) in each of 3,3,3,40 labels",
+    "FAMILY_SOURCE_CEILING": 3,
+    "R6_OVERLAP_VECTORS_EQUAL": true
+  },
+  "PAIR_TABLE_STATUS": "VERIFIED_20_35_35_23_15_ROWS_INDEPENDENT_REPLAY_EQUALS_R8",
+  "PRODUCTION_MUTATION": "NONE",
+  "R3_BOUND_CLAIM": "NONE",
+  "R3_DURABLE_BOUND": 355734631,
+  "R3_FORMULA": "max(STATE_TERMS, UNCLASSIFIED_TAIL_BOUND, MAX_CLASSIFIED_TAIL_VECTOR_BOUND)",
+  "R3_GLOBAL_BOUND_UNCHANGED": true,
+  "R3_WITH_REFINED_STATE_TERM": 355734631,
+  "REFINED_STATE_BOUND": 355274920,
+  "REGION": {
+    "COMPRESSED_MEMBERS": 582,
+    "COMPRESSED_MEMBERS_WITH_MULTIPLE_VECTORS": 49,
+    "COMPRESSED_TREATMENT": "carried at the R24 final bound; the ladder certificates cover only single-vector members and refuse a compressed one",
+    "LADDER_RULE": "certified bound <= carried R24 final bound for every ladder member",
+    "MAX_COMPRESSED_MEMBER_BOUND": 355274920,
+    "NEXT_RAW_REGION_LEVEL": 355274920,
+    "NON_LADDER_RULE": "carried R24 final bound, unchanged",
+    "R24_CERTIFIED_MEMBER_COUNT": 211,
+    "TOP_LEVELS_AFTER_REFINEMENT": [
+      {
+        "BOUND": 355274920,
+        "MEMBERS": 5,
+        "VECTORS": 6
+      },
+      {
+        "BOUND": 355274472,
+        "MEMBERS": 5,
+        "VECTORS": 6
+      },
+      {
+        "BOUND": 355274024,
+        "MEMBERS": 5,
+        "VECTORS": 6
+      },
+      {
+        "BOUND": 355273576,
+        "MEMBERS": 5,
+        "VECTORS": 6
+      }
+    ],
+    "VECTORS": 633,
+    "VECTORS_IN_COMPRESSED_MEMBERS": 100
+  },
+  "REGION_SHA256": "132cef5c91f5d6cf4798c8d8f65dba98d3851f33ec3d45b5d37fb7f61145ef15",
+  "SOURCE_FINGERPRINT": {
+    "MODULE": "src/lottolab/research/b649_k20_r3_hunter_class_split_ladder_r1.py",
+    "MODULE_SHA256": "83efa8299b46ef17fc4cf394fb229e7b1d400fccee65c85d1a2cb29a550edde0"
+  },
+  "START_STATE_BOUND": 355722668,
+  "STATE_ID": "state:s2-12692531-s3-681744",
+  "STATE_TERM_CLAIM": "state:s2-12692531-s3-681744 only, over all 582 members",
+  "STATE_TERM_DROP": 447748,
+  "TASK_BRANCH": "codex/b649-k20-r3-hunter-class-split-ladder-r1",
+  "TASK_ID": "B649_K20_R3_HUNTER_CLASS_SPLIT_LADDER_R1",
+  "TASK_STATUS": "CERTIFIED_LADDER_CLASS_SPLIT_AND_REFINED_STATE_TERM",
+  "TREE_RANK_PROOF": {
+    "HUNTER_EXHAUSTIVE_SMALL_FAMILY_TREE_CHECKS": 77824,
+    "REGRESSIONS_BY_MEMBER": {
+      "[0,13][16,5]": {
+        "CLASS_THRESHOLD_TREE_EXHAUSTIVE_K4_LABELLINGS": 20480,
+        "EXACT_MASS_REDUCTION_K4_FLOORS_CHECKED": 95,
+        "RANK_ALGEBRA_ROWS": 154,
+        "RANK_FLOOR_EXHAUSTIVE_GRAPHS_ON_6_VERTICES": 32768
+      },
+      "[0,13][5,1][16,4]": {
+        "CLASS_THRESHOLD_TREE_EXHAUSTIVE_K4_LABELLINGS": 20480,
+        "EXACT_MASS_REDUCTION_K4_FLOORS_CHECKED": 95,
+        "RANK_ALGEBRA_ROWS": 154,
+        "RANK_FLOOR_EXHAUSTIVE_GRAPHS_ON_6_VERTICES": 32768
+      },
+      "[0,13][5,2][16,3]": {
+        "CLASS_THRESHOLD_TREE_EXHAUSTIVE_K4_LABELLINGS": 20480,
+        "EXACT_MASS_REDUCTION_K4_FLOORS_CHECKED": 95,
+        "RANK_ALGEBRA_ROWS": 154,
+        "RANK_FLOOR_EXHAUSTIVE_GRAPHS_ON_6_VERTICES": 32768
+      },
+      "[0,13][5,3][16,2]": {
+        "CLASS_THRESHOLD_TREE_EXHAUSTIVE_K4_LABELLINGS": 20480,
+        "EXACT_MASS_REDUCTION_K4_FLOORS_CHECKED": 95,
+        "RANK_ALGEBRA_ROWS": 154,
+        "RANK_FLOOR_EXHAUSTIVE_GRAPHS_ON_6_VERTICES": 32768
+      },
+      "[0,13][5,5]": {
+        "CLASS_THRESHOLD_TREE_EXHAUSTIVE_K4_LABELLINGS": 20480,
+        "EXACT_MASS_REDUCTION_K4_FLOORS_CHECKED": 95,
+        "RANK_ALGEBRA_ROWS": 154,
+        "RANK_FLOOR_EXHAUSTIVE_GRAPHS_ON_6_VERTICES": 32768
+      }
+    },
+    "SOURCE": "committed class threshold-tree lemma of src/lottolab/research/b649_k20_r3_hunter_next_sibling_certificate_r1.py"
+  },
+  "TREE_RANK_STATUS": "PROVED_CLASS_THRESHOLD_TREE_WITH_EXHAUSTIVE_REGRESSION",
+  "UPSTREAM_SHA256": {
+    "docs/research/matrix-native-results/b649-k20-r3-hunter-next-sibling-certificate-r1-result.json": "1a43ce6689ca828dd33ef8f09fc31bb580bbef2d55620bc15ba5cd4ad9628269",
+    "docs/research/matrix-native-results/b649-k20-r3-hunter-tree-member-certificate-r1-result.json": "f657d7fc95f4096d5b34dab37b93ecfa6017011bfecb2ccd146ae89c443daa8a",
+    "docs/research/matrix-native-results/b649-k20-r3-tail-crossover-state-dynamic-chase-r24-result.json": "32182a3c3c803d95b3a7aee448f8ade3fadb291771affc9dca8beaab8147fc71",
+    "src/lottolab/research/b649_k20_heavy_pair_r3plus_global_bound_r3.py": "379f55ef87c2f7ffddc00caf7a7b5756810e1a3490ba3eb0d32327684f111139",
+    "src/lottolab/research/b649_k20_outside_min_s2_global_penalty_bound_r1.py": "7706e57e77df6e786e77c4824f3c72663fdae73b20aa5f6797192689f2b6ea62",
+    "src/lottolab/research/b649_k20_r3_anchor_incidence_bound_r5.py": "569d525f1e9905d043fe0f6132c936d5b260ba3d4b3a376da6c961db8aa5c435",
+    "src/lottolab/research/b649_k20_r3_exact_anchor_neighborhood_envelope_r6.py": "a83f6f2a7091aedf034e0905d80993df5001382fedc297fdd503202665e6622c",
+    "src/lottolab/research/b649_k20_r3_frontier_realizability_bound_r8.py": "14884faf5b2e66c1f30d4e04e453ba5838b7f95815d70d8b7d45be47c5e9bd2b",
+    "src/lottolab/research/b649_k20_r3_hunter_next_sibling_certificate_r1.py": "752d78c4e322f40a4cc79508df9c639ae8ba9b2da6d7c117975bdbe4ef45ced2",
+    "src/lottolab/research/b649_k20_r3_hunter_tree_member_certificate_r1.py": "bddcd5b9f979ee2e2b620d3b3c9ff7a13f56cc4edc267a5715e8b4722c97ac53",
+    "src/lottolab/research/b649_k20_r3_joint_residual_envelope_r7.py": "f376899a25bc287e45b80c3f5d9116db97f4c09de31ec81d0ccd2badf4222c50",
+    "src/lottolab/research/b649_k20_r3_state_tail_owner_chase_r14.py": "b30f6420eca033bc051ef35457993fc2588ee2e26cc1041363ced5d2c775ce99",
+    "src/lottolab/research/b649_k20_r3_tail_crossover_state_dynamic_chase_r24.py": "2a5e57a7319bd215f8cbc7f4db26453308a74c3f540c25787c44604aa39c8fd7"
+  },
+  "WITNESS_MEANING": "On a legal member portfolio: certificate <= census objective <= phi-tree weight <= exact maximum tree weight <= true union correction",
+  "WITNESS_OUTCOME_SET": [
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16
+  ],
+  "WITNESS_SOUNDNESS_STATUS": "CONSISTENT",
+  "WORKTREE_DISPOSITION": "RETAIN"
+}

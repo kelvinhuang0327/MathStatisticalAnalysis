@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import fcntl
 import os
 import subprocess
 import sys
@@ -37,6 +38,14 @@ def authorized_clean_preflight(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) 
     monkeypatch.setattr(
         safety, "DEFAULT_HEAVY_LOCK_PATH", tmp_path / "machine-lock" / "b649-heavy.lock"
     )
+    git_output = safety._git_output  # pyright: ignore[reportPrivateUsage]
+
+    def clean_test_status(root: Path, *args: str) -> str:
+        if args and args[0] == "status":
+            return ""
+        return git_output(root, *args)
+
+    monkeypatch.setattr(safety, "_git_output", clean_test_status)  # pyright: ignore[reportPrivateUsage]
 
 
 @pytest.mark.parametrize(
@@ -150,6 +159,17 @@ def test_global_lock_collision_fails_and_claim_fd_matches_path_inode(tmp_path: P
         owner.release()
 
 
+def test_released_global_lock_can_be_acquired_again(tmp_path: Path) -> None:
+    lock_path = tmp_path / "locks" / "b649-heavy.lock"
+    first = safety.acquire_machine_heavy_claim(lock_path)
+    first.release()
+    second = safety.acquire_machine_heavy_claim(lock_path)
+    try:
+        second.assert_path_matches_fd()
+    finally:
+        second.release()
+
+
 def test_replaced_lock_path_is_rejected(tmp_path: Path) -> None:
     lock_path = tmp_path / "locks" / "b649-heavy.lock"
     owner = safety.acquire_machine_heavy_claim(lock_path)
@@ -161,13 +181,54 @@ def test_replaced_lock_path_is_rejected(tmp_path: Path) -> None:
         owner.release()
 
 
-def test_live_legacy_run1_process_is_rejected() -> None:
-    process = (
-        f"999999 {sys.executable} -u -m "
+def test_detached_fable_lock_inode_does_not_hide_live_legacy_engine(
+    tmp_path: Path,
+) -> None:
+    fable_lock = tmp_path / ".fable" / "checkpoints" / "legacy" / "execution.lock"
+    fable_lock.parent.mkdir(parents=True)
+    old_descriptor = os.open(fable_lock, os.O_CREAT | os.O_RDWR, 0o600)
+    try:
+        fcntl.flock(old_descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        fable_lock.unlink()
+        assert not fable_lock.exists()
+        process = (
+            f"999999 1 {sys.executable} -u -m "
+            f"{safety.LEGACY_CENSUS_MODULE} run"
+        )
+        with pytest.raises(safety.SafetyGateError, match="RUN1 predecessor is still live"):
+            reuse.source_identity_preflight(ROOT, process_lines=(process,))
+    finally:
+        os.close(old_descriptor)
+
+
+def test_legacy_launcher_and_its_child_are_both_live_owners() -> None:
+    init = "1 0 /sbin/launchd"
+    launcher = (
+        "777001 1 ruby task_checkpoint.rb --run "
+        f"--task-id {safety.LEGACY_CENSUS_TASK_ID} "
+        f"--execution-id {safety.LEGACY_CENSUS_TASK_ID}_SLICE1_RUN1"
+    )
+    child = f"777002 777001 {sys.executable} -u -c child_worker"
+    unrelated = "777003 1 /usr/bin/unrelated"
+    assert safety._live_legacy_pids((init, launcher, child, unrelated)) == (  # pyright: ignore[reportPrivateUsage]
+        777001,
+        777002,
+    )
+
+
+def test_orphaned_legacy_engine_child_is_rejected_after_launcher_exit() -> None:
+    child = (
+        f"777002 1 {sys.executable} -u -m "
         f"{safety.LEGACY_CENSUS_MODULE} run"
     )
     with pytest.raises(safety.SafetyGateError, match="RUN1 predecessor is still live"):
-        reuse.source_identity_preflight(ROOT, process_lines=(process,))
+        reuse.source_identity_preflight(ROOT, process_lines=(child,))
+
+
+def test_unparseable_live_legacy_owner_fails_closed() -> None:
+    process = f"unknown-pid ruby --task-id {safety.LEGACY_CENSUS_TASK_ID}"
+    with pytest.raises(safety.SafetyGateError, match="cannot parse live legacy census ownership"):
+        safety._live_legacy_pids((process,))  # pyright: ignore[reportPrivateUsage]
 
 
 def test_entrypoint_gate_runs_before_manifest_model_or_solver(

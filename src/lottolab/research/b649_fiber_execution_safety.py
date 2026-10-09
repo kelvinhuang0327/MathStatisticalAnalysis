@@ -23,6 +23,8 @@ DEFAULT_HEAVY_LOCK_PATH = (
     Path.home() / ".codex" / "locks" / "b649-heavy-execution.lock"
 )
 LEGACY_CENSUS_MODULE = "lottolab.research.b649_k20_fiber_near_top_s3_census"
+LEGACY_CENSUS_TASK_ID = "B649_K20_FIBER_NEAR_TOP_S3_BAND_REALIZATION_CENSUS_R1"
+LEGACY_CENSUS_SCRIPT = "b649_k20_fiber_near_top_s3_census.py"
 R30_TAG_PREFIX = "b649-r30-source-"
 
 
@@ -124,41 +126,90 @@ def _git_blob(root: Path, revision: str, relative_path: str, label: str) -> byte
 
 
 def _live_legacy_pids(process_lines: Sequence[str]) -> tuple[int, ...]:
-    pids: list[int] = []
+    parents: dict[int, int] = {}
+    owners: set[int] = set()
     for line in process_lines:
-        pid_text, separator, command = line.strip().partition(" ")
-        if not separator:
+        fields = line.strip().split(maxsplit=2)
+        if len(fields) < 2:
+            if LEGACY_CENSUS_TASK_ID in line or LEGACY_CENSUS_MODULE in line:
+                raise SafetyGateError("cannot parse live legacy census ownership")
             continue
         try:
-            pid = int(pid_text)
+            pid = int(fields[0])
+            parent_pid = int(fields[1])
+        except ValueError as error:
+            if LEGACY_CENSUS_TASK_ID in line or LEGACY_CENSUS_MODULE in line:
+                raise SafetyGateError("cannot parse live legacy census ownership") from error
+            continue
+        parents[pid] = parent_pid
+        if len(fields) < 3:
+            if LEGACY_CENSUS_TASK_ID in line or LEGACY_CENSUS_MODULE in line:
+                raise SafetyGateError("cannot parse live legacy census ownership")
+            continue
+        command = fields[2]
+        try:
             argv = shlex.split(command)
-        except ValueError:
+        except ValueError as error:
+            if LEGACY_CENSUS_TASK_ID in command or LEGACY_CENSUS_MODULE in command:
+                raise SafetyGateError("cannot parse live legacy census ownership") from error
             continue
         if pid == os.getpid() or not argv:
             continue
-        if not Path(argv[0]).name.lower().startswith("python"):
-            continue
+
+        is_legacy_run = False
         for index, token in enumerate(argv[:-2]):
             if (
                 token == "-m"
                 and argv[index + 1] == LEGACY_CENSUS_MODULE
                 and argv[index + 2] == "run"
             ):
-                pids.append(pid)
+                is_legacy_run = True
                 break
             if (
-                argv[index].endswith("b649_k20_fiber_near_top_s3_census.py")
-                and argv[index + 1] == "run"
+                Path(token).name == LEGACY_CENSUS_SCRIPT and argv[index + 1] == "run"
             ):
-                pids.append(pid)
+                is_legacy_run = True
                 break
-    return tuple(sorted(set(pids)))
+        if not is_legacy_run:
+            for index, token in enumerate(argv[:-1]):
+                if token == "--task-id" and argv[index + 1] == LEGACY_CENSUS_TASK_ID:
+                    is_legacy_run = True
+                    break
+                if token == "--execution-id":
+                    execution_id = argv[index + 1]
+                    is_run1 = execution_id.startswith(f"{LEGACY_CENSUS_TASK_ID}_")
+                    if is_run1 and execution_id.endswith("_RUN1"):
+                        is_legacy_run = True
+                        break
+        if is_legacy_run:
+            owners.add(pid)
+
+    # Include both launcher ancestry and descendants. A wrapper can own the run
+    # before the engine starts, while an engine child can outlive its wrapper.
+    live = set(owners)
+    for owner in owners:
+        current = owner
+        seen = {owner}
+        while current in parents:
+            parent = parents[current]
+            if parent <= 1 or parent in seen or parent == os.getpid():
+                break
+            seen.add(parent)
+            if parent in parents:
+                live.add(parent)
+            current = parent
+    while True:
+        descendants = {pid for pid, parent in parents.items() if parent in live}
+        if descendants <= live:
+            break
+        live.update(descendants)
+    return tuple(sorted(live))
 
 
 def _process_table() -> tuple[str, ...]:
     try:
         result = subprocess.run(
-            ["ps", "-Ao", "pid=,command="],
+            ["ps", "-Ao", "pid=,ppid=,command="],
             check=True,
             capture_output=True,
             text=True,

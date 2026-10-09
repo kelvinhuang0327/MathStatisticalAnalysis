@@ -544,6 +544,91 @@ class CertifiedCensus(census.Census):
         }
 
 
+def _active_machine_claim() -> safety.MachineHeavyClaim:
+    claim = safety.active_claim()
+    if claim is None:
+        raise safety.SafetyGateError("legacy census requires the active machine-level claim")
+    claim.assert_path_matches_fd()
+    return claim
+
+
+class _ClaimCheckedDurableLog(census.DurableLog):
+    """Preserve the frozen log format while checking the global claim before every append."""
+
+    def append(self, key: census.Key, body: Mapping[str, object]) -> dict[str, object]:
+        _active_machine_claim()
+        return super().append(key, body)
+
+
+class GuardedLegacyCensus(census.Census):
+    """Run the frozen census implementation under the same machine-wide admission claim."""
+
+    def __init__(
+        self,
+        root: Path,
+        manifest: census.Manifest,
+        durable: Path,
+        solve: Any = census.cp_sat_solve,
+        evaluate: Any = None,
+    ) -> None:
+        _active_machine_claim()
+        census.require_single_thread_env(os.environ)
+        self.root = root
+        self.durable = durable
+        self.manifest = manifest
+        self.solve = solve
+        self.evaluate = evaluate or census.official_evaluator()
+        header: dict[str, object] = {
+            "TASK_ID": census.TASK_ID,
+            "MANIFEST_SHA256": manifest.sha256,
+            "ENGINE_SHA256": census.engine_sha256(),
+        }
+        with census.durable_lock(durable):
+            self.proof = _ClaimCheckedDurableLog(
+                durable / census.PROOF_LOG, {**header, "LOG": "PROOF"}
+            )
+            self.witnesses = _ClaimCheckedDurableLog(
+                durable / census.WITNESS_LEDGER, {**header, "LOG": "WITNESS"}
+            )
+        self.solver_calls = 0
+
+    def run(self, slice_number: int = 1, profile_limit: int | None = None) -> dict[str, object]:
+        return self._run_with_optional_summary(slice_number, profile_limit, persist_summary=False)
+
+    def run_and_write_summary(
+        self, slice_number: int = 1, profile_limit: int | None = None
+    ) -> dict[str, object]:
+        return self._run_with_optional_summary(slice_number, profile_limit, persist_summary=True)
+
+    def _run_with_optional_summary(
+        self,
+        slice_number: int,
+        profile_limit: int | None,
+        *,
+        persist_summary: bool,
+    ) -> dict[str, object]:
+        with (
+            _protected_execution(self.root, durable_root=self.durable),
+            census.durable_lock(self.durable),
+        ):
+            summary = super().run(slice_number, profile_limit)
+            if persist_summary:
+                _active_machine_claim()
+                census.write_atomic(
+                    self.durable / census.SUMMARY,
+                    (json.dumps(summary, indent=1) + "\n").encode(),
+                )
+            return summary
+
+    def logged_solve(self, key: census.Key, request: census.SolveRequest) -> census.SolveOutcome:
+        _active_machine_claim()
+        return super().logged_solve(key, request)
+
+    def run_profile(self, row: census.SliceRow) -> dict[str, object]:
+        _active_machine_claim()
+        return super().run_profile(row)
+
+
 def main(argv: Sequence[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0] if __doc__ else None)
     commands = parser.add_subparsers(dest="command", required=True)
@@ -551,12 +636,40 @@ def main(argv: Sequence[str] | None = None) -> None:
     run = commands.add_parser("run")
     run.add_argument("--profile-limit", type=int, default=None)
     run.add_argument("--durable", type=Path, default=None)
+    legacy_run = commands.add_parser(
+        "legacy-run",
+        help=(
+            "guarded legacy entrypoint for authorized Fable --run/--recover-run argv; "
+            "the raw legacy CLI remains unenforced"
+        ),
+    )
+    legacy_run.add_argument("--slice", type=int, default=1)
+    legacy_run.add_argument("--profile-limit", type=int, default=None)
+    legacy_run.add_argument("--durable", type=Path, required=True)
     args = parser.parse_args(argv)
     root = census.repo_root()
-    durable = (args.durable or root / DURABLE_RELATIVE) if args.command == "run" else None
+    if args.command == "legacy-run" and not args.durable.is_absolute():
+        raise CertificateError("legacy-run requires an absolute --durable path")
+    if args.command == "run":
+        durable = args.durable or root / DURABLE_RELATIVE
+    elif args.command == "legacy-run":
+        durable = args.durable
+    else:
+        durable = None
+    if args.command == "legacy-run" and args.slice != 1:
+        raise census.Slice2NotAuthorized("only Slice 1 is authorized; Slice 2 is disabled")
     with _protected_execution(root, durable_root=durable):
         census.require_single_thread_env(os.environ)
         manifest = census.load_manifest()
+        if args.command == "legacy-run":
+            evaluate = census.official_evaluator()
+            census.preflight(manifest, root, evaluate)
+            if durable is None:
+                raise CertificateError("legacy census durable root was not selected")
+            legacy = GuardedLegacyCensus(root, manifest, durable, census.cp_sat_solve, evaluate)
+            summary = legacy.run_and_write_summary(args.slice, args.profile_limit)
+            print(json.dumps({k: v for k, v in summary.items() if k != "GAINS"}, indent=1))
+            return
         certified = prepare(manifest, root)
         if args.command == "verify":
             print(

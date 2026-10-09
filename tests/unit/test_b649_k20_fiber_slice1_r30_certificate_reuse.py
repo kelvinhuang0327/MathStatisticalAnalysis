@@ -503,6 +503,112 @@ def test_run1_logs_are_never_opened_for_writing_or_consumed(
     assert files(run1) == before
 
 
+def test_guarded_legacy_cli_uses_global_claim_without_successor_imports(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    durable = tmp_path / "authorized-legacy-run"
+
+    def unexpected_prepare(*_: object, **__: object) -> reuse.Certificates:
+        raise AssertionError("legacy-run must not prepare successor certificates")
+
+    monkeypatch.setattr(reuse, "prepare", unexpected_prepare)
+    monkeypatch.setattr(census, "official_evaluator", lambda: lambda _: census.START_COUNT)
+    monkeypatch.setattr(census, "preflight", lambda *_: {"STATUS": "PASS"})
+    monkeypatch.setattr(census, "cp_sat_solve", never_solve)
+    append = reuse._ClaimCheckedDurableLog.append
+    write_atomic = census.write_atomic
+
+    def append_while_task_locked(
+        log: reuse._ClaimCheckedDurableLog, key: census.Key, body: dict[str, object]
+    ) -> dict[str, object]:
+        with (
+            pytest.raises(census.CensusError, match="another census writer"),
+            census.durable_lock(log.path.parent),
+        ):
+            pytest.fail("durable log append must hold the task-local lock")
+        return append(log, key, body)
+
+    def write_summary_while_task_locked(path: Path, data: bytes) -> None:
+        with (
+            pytest.raises(census.CensusError, match="another census writer"),
+            census.durable_lock(path.parent),
+        ):
+            pytest.fail("summary write must hold the task-local lock")
+        write_atomic(path, data)
+
+    monkeypatch.setattr(reuse._ClaimCheckedDurableLog, "append", append_while_task_locked)
+    monkeypatch.setattr(census, "write_atomic", write_summary_while_task_locked)
+
+    reuse.main(["legacy-run", "--durable", str(durable), "--profile-limit", "0"])
+
+    summary = json.loads(capsys.readouterr().out)
+    assert summary["TASK_ID"] == census.TASK_ID
+    assert summary["PROFILES_DONE"] == 0
+    assert (durable / census.PROOF_LOG).is_file()
+    assert (durable / census.WITNESS_LEDGER).is_file()
+    assert (durable / census.SUMMARY).is_file()
+
+
+def test_legacy_run_help_marks_fable_route_and_raw_cli_boundary(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    with pytest.raises(SystemExit) as result:
+        reuse.main(["--help"])
+
+    assert result.value.code == 0
+    help_text = " ".join(capsys.readouterr().out.split())
+    assert "legacy-run" in help_text
+    assert "authorized Fable --run/--recover-run argv" in help_text
+    assert "raw legacy CLI remains unenforced" in help_text
+
+
+def test_guarded_legacy_cli_rejects_slice2_before_durable_writes(tmp_path: Path) -> None:
+    durable = tmp_path / "unauthorized-slice"
+
+    with pytest.raises(census.Slice2NotAuthorized, match="only Slice 1 is authorized"):
+        reuse.main(["legacy-run", "--durable", str(durable), "--slice", "2"])
+
+    assert not durable.exists()
+
+
+def test_guarded_legacy_log_requires_machine_claim_before_any_write(
+    tmp_path: Path, manifest: census.Manifest
+) -> None:
+    durable = tmp_path / "must-stay-absent"
+
+    with pytest.raises(safety.SafetyGateError, match="active machine-level claim"):
+        reuse.GuardedLegacyCensus(
+            ROOT, manifest, durable, never_solve, lambda _: census.START_COUNT
+        )
+
+    assert not durable.exists()
+
+
+def test_guarded_legacy_log_refuses_detached_machine_lock_before_append(
+    tmp_path: Path, manifest: census.Manifest
+) -> None:
+    durable = tmp_path / "guarded-run"
+    lock_path = safety.DEFAULT_HEAVY_LOCK_PATH
+    lock_path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    lock_path.parent.chmod(0o700)
+    with (
+        pytest.raises(safety.LockIntegrityError, match="no longer names the inode"),
+        reuse._protected_execution(ROOT, durable_root=durable),
+    ):
+        legacy = reuse.GuardedLegacyCensus(
+            ROOT, manifest, durable, never_solve, lambda _: census.START_COUNT
+        )
+        proof_before = (durable / census.PROOF_LOG).read_bytes()
+        lock_path.unlink()
+        lock_path.write_text("replacement", encoding="utf-8")
+        legacy.proof.append(("FAULT_INJECTION",), {})
+        pytest.fail("append must reject a detached machine lock inode")
+
+    assert (durable / census.PROOF_LOG).read_bytes() == proof_before
+
+
 def test_slice2_stays_disabled(
     tmp_path: Path, manifest: census.Manifest, certified: reuse.Certificates
 ) -> None:

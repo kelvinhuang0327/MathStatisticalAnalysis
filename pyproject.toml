@@ -37,7 +37,7 @@ dev = [
 [tool.ruff]
 line-length = 100
 src = ["src", "tests", "tools"]
-extend-exclude = [".task-data"]
+extend-exclude = [".task-data", "research-archive"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]

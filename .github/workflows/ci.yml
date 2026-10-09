@@ -14,6 +14,30 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - name: Record source and test checkout identity
+        env:
+          PR_SOURCE_HEAD: ${{ github.event.pull_request.head.sha }}
+          EVENT_SHA: ${{ github.sha }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          source_head="${PR_SOURCE_HEAD:-$EVENT_SHA}"
+          actual_checkout_head="$(git rev-parse HEAD)"
+          actual_checkout_tree="$(git rev-parse 'HEAD^{tree}')"
+
+          printf 'CI_SOURCE_HEAD=%s\n' "$source_head"
+          printf 'CI_EVENT_SHA=%s\n' "$EVENT_SHA"
+          printf 'CI_ACTUAL_CHECKOUT_HEAD=%s\n' "$actual_checkout_head"
+          printf 'CI_ACTUAL_CHECKOUT_TREE=%s\n' "$actual_checkout_tree"
+          if [[ "$EVENT_NAME" == "pull_request" ]]; then
+            printf 'CI_TEST_CHECKOUT_ROLE=PR_MERGE_INTEGRATION\n'
+          else
+            printf 'CI_TEST_CHECKOUT_ROLE=PUSH_COMMIT\n'
+          fi
+
+          if [[ "$actual_checkout_head" != "$EVENT_SHA" ]]; then
+            echo "::error::actions/checkout HEAD does not match the GitHub event SHA"
+            exit 1
+          fi
       - uses: astral-sh/setup-uv@v5
       - run: uv sync --frozen --extra research
       - run: uv run ruff check .
@@ -27,6 +51,30 @@ jobs:
         working-directory: frontend
     steps:
       - uses: actions/checkout@v4
+      - name: Record source and test checkout identity
+        env:
+          PR_SOURCE_HEAD: ${{ github.event.pull_request.head.sha }}
+          EVENT_SHA: ${{ github.sha }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          source_head="${PR_SOURCE_HEAD:-$EVENT_SHA}"
+          actual_checkout_head="$(git rev-parse HEAD)"
+          actual_checkout_tree="$(git rev-parse 'HEAD^{tree}')"
+
+          printf 'CI_SOURCE_HEAD=%s\n' "$source_head"
+          printf 'CI_EVENT_SHA=%s\n' "$EVENT_SHA"
+          printf 'CI_ACTUAL_CHECKOUT_HEAD=%s\n' "$actual_checkout_head"
+          printf 'CI_ACTUAL_CHECKOUT_TREE=%s\n' "$actual_checkout_tree"
+          if [[ "$EVENT_NAME" == "pull_request" ]]; then
+            printf 'CI_TEST_CHECKOUT_ROLE=PR_MERGE_INTEGRATION\n'
+          else
+            printf 'CI_TEST_CHECKOUT_ROLE=PUSH_COMMIT\n'
+          fi
+
+          if [[ "$actual_checkout_head" != "$EVENT_SHA" ]]; then
+            echo "::error::actions/checkout HEAD does not match the GitHub event SHA"
+            exit 1
+          fi
       - uses: actions/setup-node@v4
         with:
           node-version: 20

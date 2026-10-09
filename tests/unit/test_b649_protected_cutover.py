@@ -3531,6 +3531,226 @@ def _configure_reconcile_cli(
     monkeypatch.setattr(cutover, "run_command", harness.runner)
 
 
+def _prepare_reconciled_prestart_successor(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    *,
+    not_started: bool,
+) -> tuple[StrandedIncident, protected.Record]:
+    incident = _make_stranded_prestart_incident(
+        harness,
+        monkeypatch,
+        preserve_legacy_parent_behavior=not not_started,
+        same_control_version=not_started,
+        not_started_result=not_started,
+    )
+    if not_started:
+        _configure_not_started_reconcile_cli(harness, monkeypatch, incident)
+        argv = _not_started_reconciliation_argv(incident)
+    else:
+        _configure_reconcile_cli(harness, monkeypatch, incident)
+        argv = _incident_reconciliation_argv(incident)
+    assert protected.main(argv) == 0
+    capsys.readouterr()
+    owner = cutover.inspect_control_owner(incident.request.config)
+    assert owner is not None and owner["phase"] == "RELEASED"
+    assert owner["mutation_started"] is False
+    return incident, owner
+
+
+def _reconciled_successor_request(incident: StrandedIncident) -> protected.Request:
+    request = incident.request
+    return protected.make_request(
+        request.config,
+        request.legacy_worktree,
+        request.legacy_head,
+        request.legacy_tree,
+        request.plan_file,
+        request.claim_root,
+        reservation_id=str(uuid4()),
+        prior_execution_receipt_sha256=incident.predecessor_sha256,
+    )
+
+
+def _rewrite_reconciliation_and_owner_binding(
+    incident: StrandedIncident,
+    *,
+    updates: dict[str, object] | None = None,
+    remove_keys: tuple[str, ...] = (),
+) -> protected.Record:
+    config = incident.request.config
+    path = protected._prestart_reconciliation_record_path(
+        config, str(incident.request.reservation_id)
+    )
+    reconciliation, identity = protected._load_prestart_reconciliation(path)
+    unsigned = {key: value for key, value in reconciliation.items() if key != "record_sha256"}
+    unsigned.update(updates or {})
+    for key in remove_keys:
+        unsigned.pop(key, None)
+    sealed = {**unsigned, "record_sha256": protected.digest(unsigned)}
+    reconciliation_identity = cutover._write_json(path, sealed, expected=identity)
+
+    stored_owner = cutover._read_control_owner(config)
+    assert stored_owner is not None
+    owner, owner_identity = stored_owner
+    release = protected.record(owner.get("release_evidence"))
+    release["reconciliation_record_sha256"] = reconciliation_identity.sha256
+    return cutover._save_control_owner(
+        config,
+        {**owner, "release_evidence": release},
+        expected=owner_identity,
+    )
+
+
+def _assert_resealed_mutated_released_owner_is_rejected(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    *,
+    not_started: bool,
+) -> None:
+    incident, owner = _prepare_reconciled_prestart_successor(
+        harness, monkeypatch, capsys, not_started=not_started
+    )
+    successor = _reconciled_successor_request(incident)
+    assert protected._reconciled_predecessor_receipt_sha256(
+        incident.request.config, owner
+    ) == incident.predecessor_sha256
+    assert protected._require_released_success_evidence(
+        successor, owner, runner=harness.launchd
+    ) is not None
+
+    stored_owner = cutover._read_control_owner(incident.request.config)
+    assert stored_owner is not None
+    current_owner, owner_identity = stored_owner
+    mutated_owner = cutover._save_control_owner(
+        incident.request.config,
+        {**current_owner, "mutation_started": True},
+        expected=owner_identity,
+    )
+    assert mutated_owner["mutation_started"] is True
+    owner_path = cutover._control_owner_path(incident.request.config)
+    before_failed_verification = owner_path.read_bytes()
+
+    with pytest.raises(protected.ProtectedError, match="released reconciliation owner"):
+        protected._reconciled_predecessor_receipt_sha256(
+            incident.request.config, mutated_owner
+        )
+    with pytest.raises(protected.ProtectedError, match="released reconciliation owner"):
+        protected._require_released_success_evidence(
+            successor, mutated_owner, runner=harness.launchd
+        )
+    assert owner_path.read_bytes() == before_failed_verification
+
+
+def test_not_started_reconciliation_rejects_resealed_released_owner_after_mutation_started(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    _assert_resealed_mutated_released_owner_is_rejected(
+        harness, monkeypatch, capsys, not_started=True
+    )
+
+
+def test_prestart_failure_reconciliation_rejects_resealed_released_owner_after_mutation_started(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    _assert_resealed_mutated_released_owner_is_rejected(
+        harness, monkeypatch, capsys, not_started=False
+    )
+
+
+def test_not_started_reconciliation_requires_sealed_owner_mutation_false(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    incident, owner = _prepare_reconciled_prestart_successor(
+        harness, monkeypatch, capsys, not_started=True
+    )
+    successor = _reconciled_successor_request(incident)
+    assert protected._require_released_success_evidence(
+        successor, owner, runner=harness.launchd
+    ) is not None
+
+    rewritten_owner = _rewrite_reconciliation_and_owner_binding(
+        incident, updates={"owner_mutation_started": True}
+    )
+    with pytest.raises(protected.ProtectedError, match="owner mutation was not started"):
+        protected._reconciled_predecessor_receipt_sha256(
+            incident.request.config, rewritten_owner
+        )
+    with pytest.raises(protected.ProtectedError, match="owner mutation was not started"):
+        protected._require_released_success_evidence(
+            successor, rewritten_owner, runner=harness.launchd
+        )
+
+
+def test_not_started_reconciliation_requires_owner_mutation_field_in_sealed_record(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    incident, owner = _prepare_reconciled_prestart_successor(
+        harness, monkeypatch, capsys, not_started=True
+    )
+    successor = _reconciled_successor_request(incident)
+    assert protected._require_released_success_evidence(
+        successor, owner, runner=harness.launchd
+    ) is not None
+
+    rewritten_owner = _rewrite_reconciliation_and_owner_binding(
+        incident, remove_keys=("owner_mutation_started",)
+    )
+    with pytest.raises(protected.ProtectedError, match="owner mutation was not started"):
+        protected._reconciled_predecessor_receipt_sha256(
+            incident.request.config, rewritten_owner
+        )
+    with pytest.raises(protected.ProtectedError, match="owner mutation was not started"):
+        protected._require_released_success_evidence(
+            successor, rewritten_owner, runner=harness.launchd
+        )
+
+
+@pytest.mark.parametrize("authorization_binding", ["owner", "reconciliation"])
+def test_reconciled_successor_rejects_owner_or_record_authorization_mismatch(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    authorization_binding: str,
+) -> None:
+    incident, _owner = _prepare_reconciled_prestart_successor(
+        harness, monkeypatch, capsys, not_started=True
+    )
+    if authorization_binding == "owner":
+        stored_owner = cutover._read_control_owner(incident.request.config)
+        assert stored_owner is not None
+        current_owner, owner_identity = stored_owner
+        authorization = protected.record(current_owner.get("authorization"))
+        authorization["action"] = "rollback"
+        mismatched_owner = cutover._save_control_owner(
+            incident.request.config,
+            {**current_owner, "authorization": authorization},
+            expected=owner_identity,
+        )
+        with pytest.raises(cutover.CutoverSafetyError, match="authorization"):
+            protected._reconciled_predecessor_receipt_sha256(
+                incident.request.config, mismatched_owner
+            )
+    else:
+        mismatched_owner = _rewrite_reconciliation_and_owner_binding(
+            incident, updates={"owner_authorization": {"action": "rollback"}}
+        )
+        with pytest.raises(protected.ProtectedError, match="NOT_STARTED evidence differs"):
+            protected._reconciled_predecessor_receipt_sha256(
+                incident.request.config, mismatched_owner
+            )
+
+
 def test_not_started_terminal_is_preserved_and_reconciles_to_successor_authority(
     harness: Harness,
     monkeypatch: pytest.MonkeyPatch,

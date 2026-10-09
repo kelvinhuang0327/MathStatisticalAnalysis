@@ -1,0 +1,82 @@
+{
+  "BONFERRONI": {
+    "BOUND_DIRECTION": "UNION_COUNT <= S1 - S2 + S3",
+    "PER_OUTCOME_IDENTITY": "m-C(m,2)+C(m,3)=0 if m=0; else 1+C(m-1,3)",
+    "multiplicities_checked": 21
+  },
+  "CANONICAL_K20_COUNT": 313263888,
+  "CONSTANTS": {
+    "OUTCOME_UNIVERSE": 601304088,
+    "PAIR_Q0": 107800,
+    "PAIR_Q1": 574000,
+    "S1": 372228640,
+    "S1_MINUS_S2": 307923840,
+    "S2": 64304800,
+    "SINGLE_TICKET_WINNING_OUTCOMES": 18611432,
+    "TRIPLE_PATH": 2800,
+    "TRIPLE_STAR": 7000,
+    "TRIPLE_TRIANGLE": 20272
+  },
+  "COUNTING_METHOD": "7set_venn_region_exact_integer_dp_v1",
+  "METHOD_PROPERTIES": {
+    "enumerates_full_outcome_universe": false,
+    "event_definition": "|T&D| >= 3 or (|T&D| == 2 and special in T)",
+    "imports_original_co_win": false,
+    "outcome_fiber_size_per_seven_set": 7,
+    "seven_set_map": "R = D union {special}; ticket event is |T&R| >= 3",
+    "stdlib_only": true
+  },
+  "MOTIF_DEFINITIONS": {
+    "TRIPLE_PATH": {
+      "definition": "A-B and B-C overlap in distinct labels; A and C are disjoint",
+      "venn_region_sizes_by_ticket_mask": {
+        "0": 33,
+        "1": 5,
+        "2": 4,
+        "3": 1,
+        "4": 5,
+        "5": 0,
+        "6": 1,
+        "7": 0
+      }
+    },
+    "TRIPLE_STAR": {
+      "definition": "all three tickets contain the same one label; no other overlaps",
+      "venn_region_sizes_by_ticket_mask": {
+        "0": 33,
+        "1": 5,
+        "2": 5,
+        "3": 0,
+        "4": 5,
+        "5": 0,
+        "6": 0,
+        "7": 1
+      }
+    },
+    "TRIPLE_TRIANGLE": {
+      "definition": "each ticket pair overlaps once, on three distinct labels",
+      "venn_region_sizes_by_ticket_mask": {
+        "0": 34,
+        "1": 4,
+        "2": 4,
+        "3": 1,
+        "4": 4,
+        "5": 1,
+        "6": 1,
+        "7": 0
+      }
+    }
+  },
+  "SHA256": {
+    "canonical_k20": "eaed652900d101881b678a1515d2a366bff9de6723dbec2ec9c82fe0d0d7844c",
+    "verifier": "680b84dcb294afc41ae26803dbdddffec4065296a2d9baf1b85aaf2c7cdfb22d"
+  },
+  "SHELL1_PAIR_CLASS_COUNTS": {
+    "overlap_one_pairs": 94,
+    "overlap_zero_pairs": 96,
+    "ticket_count": 20,
+    "total_pairs": 190
+  },
+  "STATUS": "PASS",
+  "TASK_ID": "B649_K20_SHELL1_BONFERRONI_PORTABLE_VERIFIER_R1"
+}

@@ -1,0 +1,376 @@
+{
+ "TASK_ID": "B649_K20_V8_SHELL1_K_BOUND_VALIDATION_CONTINUATION_R2",
+ "CREATED": "2026-10-08T15:43:48+08:00",
+ "BASE": "b9e0937fe0a6d9802eedfdad92518a257a2d7de9",
+ "CANONICAL": {
+  "K20_COUNT": 313263888,
+  "K20_SHA256": "eaed652900d101881b678a1515d2a366bff9de6723dbec2ec9c82fe0d0d7844c",
+  "S1_MINUS_S2_SHELL1": 307923840,
+  "S3_THRESHOLD": 5340048
+ },
+ "FROZEN_INPUTS_SHA256": {
+  "constants.py": "7a04ce5f17f9e4c7422c601b5a884c2a2ecf97f412a0da9beaa7553e0151d251",
+  "profiles.py": "f106f9c106d99d91b745bfdece1f07d44e955adba1d355daa93e73a479c63739",
+  "profiles_k.py": "bb6927c10023df07a81dc514304dada433862693a942b694e03431d74b081312",
+  "survivors.json": "c7287b11ba801f195372fb8db98e52a80c3b975e3cb478795cc95308457dfec2",
+  "VERIFIED": true
+ },
+ "DEFINITIONS": {
+  "PROVENANCE": "R1 never persisted K/Q/N1 (profiles_k.py was written but never run; derivation only in redacted reasoning). Reconstructed here as the reading under which the stated identity is a theorem.",
+  "B_y": "tickets containing label y; d_y = |B_y|",
+  "m_y(u)": "for ticket u not containing y: number of tickets in B_y that u meets",
+  "T_true": "ticket triples pairwise meeting in three distinct labels (graph triangles minus TSTAR)",
+  "K": "#{(y,u): m_y(u)=3} over ALL labels y (trio labels AND, in P_C, the quad label)",
+  "Q": "#{(y,u): m_y(u)=4} (P_C quad label only; 0 in P_A)",
+  "N1": "#{(y,u): m_y(u)=1}"
+ },
+ "IDENTITY": {
+  "STATUS": "VALID",
+  "STATEMENT": "6*T_true = 10E + 3K + 8Q - N1 for any 6-uniform family with pairwise overlap <= 1 and label frequency <= 4; Shell-1 has E = sum C(d,2) = 94 for both P_A and P_C, so 10E = 940.",
+  "PROOF": [
+   "3*T_true = sum_y sum_{u notin B_y} C(m_y(u),2): a true triangle {u,b,c} is counted exactly once per edge label y = b&c",
+   "2*C(m,2) = m - [m=1] + 3[m=3] + 8[m=4] for m in 0..4 (max frequency 4 => m <= 4)",
+   "sum_y sum_{u notin B_y} m_y(u) = sum_y sum_{b in B_y} (deg_b - (d_y - 1)) = 6*sum(deg) - 2E = 10E"
+  ],
+  "BRUTE_FORCE": {
+   "P_A_LEGAL_CONFIGS": 200,
+   "P_C_LEGAL_CONFIGS": 300,
+   "GENERIC_LINEAR_FAMILIES": 300,
+   "GENERIC_E_RANGE": [
+    5,
+    157
+   ],
+   "FAILURES": 0
+  },
+  "COWIN_CROSSCHECK": {
+   "DP_TYPE_WEIGHTS_ON_LEGAL_P_C": {
+    "STAR": [
+     7000
+    ],
+    "TRIANGLE": [
+     20272
+    ],
+    "PATH": [
+     2800
+    ],
+    "LE1_EDGE": [
+     0
+    ]
+   },
+   "S3_DIRECT_DP": 3998624,
+   "S3_FORMULA_2800W_11872T3_M13272TSTAR": 3998624,
+   "CANONICAL_EVALUATOR_TRUE_TRIANGLE": 20272,
+   "CANONICAL_EVALUATOR_QUAD_STAR": 7000,
+   "CANONICAL_PAIR_UNION_OVERLAP1": 36648864
+  }
+ },
+ "BOUND_ADMISSIBILITY": {
+  "KMAX_LEMMA": "PROVED: per trio, apex count <= min_{v in trio} deg_v - 2; fix degree-descending order, charge each trio to its last vertex; x_v <= t_v, x_v <= floor(r_v/2) (linear trios), prefix sums <= min(D(r+1), floor(prefix t / 3), ntrip) with D = Schonheim/Spencer packing numbers; caps non-decreasing and weights deg-2 > 0 non-increasing => greedy prefix sums dominate (Abel summation). Valid for any tie-break.",
+  "P_A": "PROVED (Q=0, K = K_trio <= kmax(deg,t,23))",
+  "P_C_EXISTING": "BOUND_NOT_PROVED: profiles_k.py bounds 3K+8Q by 3*kmax(trios only)+8*qmax, omitting 3*K_quad (quad-label m=3 apexes). K_quad>0 in 297/300 random legal P_C configs.",
+  "P_C_STEP_COUNTEREXAMPLE": {
+   "tickets": [
+    [
+     1,
+     7,
+     8,
+     9,
+     10,
+     11
+    ],
+    [
+     1,
+     12,
+     13,
+     14,
+     15,
+     16
+    ],
+    [
+     1,
+     17,
+     18,
+     19,
+     20,
+     21
+    ],
+    [
+     1,
+     2,
+     3,
+     4,
+     5,
+     6
+    ],
+    [
+     2,
+     7,
+     12,
+     17,
+     25,
+     44
+    ],
+    [
+     3,
+     8,
+     13,
+     17,
+     23,
+     26
+    ],
+    [
+     4,
+     9,
+     14,
+     18,
+     26,
+     46
+    ],
+    [
+     5,
+     10,
+     15,
+     18,
+     22,
+     47
+    ],
+    [
+     6,
+     11,
+     16,
+     19,
+     22,
+     48
+    ],
+    [
+     7,
+     16,
+     20,
+     23,
+     24,
+     47
+    ],
+    [
+     8,
+     12,
+     19,
+     36,
+     39,
+     42
+    ],
+    [
+     9,
+     13,
+     20,
+     25,
+     38,
+     45
+    ],
+    [
+     10,
+     14,
+     21,
+     23,
+     37,
+     43
+    ],
+    [
+     11,
+     15,
+     21,
+     26,
+     41,
+     49
+    ],
+    [
+     27,
+     30,
+     32,
+     34,
+     39,
+     48
+    ],
+    [
+     24,
+     25,
+     32,
+     35,
+     40,
+     43
+    ],
+    [
+     24,
+     29,
+     33,
+     34,
+     41,
+     44
+    ],
+    [
+     27,
+     29,
+     31,
+     35,
+     38,
+     46
+    ],
+    [
+     22,
+     28,
+     31,
+     37,
+     42,
+     45
+    ],
+    [
+     28,
+     30,
+     33,
+     36,
+     40,
+     49
+    ]
+   ],
+   "quad_t": [
+    5,
+    5,
+    5,
+    0
+   ],
+   "K_QUAD": 5,
+   "Q": 5,
+   "TRUE_3KQUAD_PLUS_8Q": 55,
+   "CODE_8_QMAX": 40,
+   "NOTE": "falsifies the proof step only; the full code bound still held here (1454 >= 852)"
+  },
+  "P_C_REPAIRED": "PROVED HERE: 3*K_quad + 8Q <= 8M + 3*floor((S-4M)/3), M = min_q(deg_q-3), S = sum_q(deg_q-3) (Q <= M; 3*K_quad + 4Q <= S; objective increasing in Q). Tight on the counterexample (55)."
+ },
+ "COUNTS": {
+  "INPUT_CANDIDATES": 58480,
+  "EXISTING_BOUND_AS_CODED": {
+   "P_A_PRUNED": 3515,
+   "P_A_REMAINING": 1090,
+   "P_C_PRUNED": 0,
+   "P_C_REMAINING": 53875,
+   "P_C_WOULD_PRUNE_IF_TRUSTED_NOT_APPLIED": 48666
+  },
+  "BEST_VALID_REPAIRED_PLUS_INTEGRALITY_FLOOR": {
+   "P_A_PRUNED": 3614,
+   "P_A_REMAINING": 991,
+   "P_C_PRUNED": 48025,
+   "P_C_REMAINING": 5850,
+   "P_C_REPAIRED_RATIONAL_PRUNED": 47196
+  }
+ },
+ "MAX_VALID_UPPER_BOUND": {
+  "EXISTING_BOUNDS_ONLY": {
+   "UB": 313585552,
+   "EXCESS": 321664,
+   "ARGMAX": {
+    "index": 0,
+    "KIND": "P_C",
+    "SPECIAL": [
+     5,
+     5,
+     4,
+     4
+    ],
+    "REST": [
+     6,
+     6,
+     6,
+     6,
+     6,
+     6,
+     6,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ]
+   },
+   "P_A_MAX_UB": "940174424/3"
+  },
+  "WITH_REPAIRED_P_C_AND_FLOOR": {
+   "UB": 313445776,
+   "EXCESS": 181888,
+   "ARGMAX": {
+    "index": 462,
+    "KIND": "P_C",
+    "SPECIAL": [
+     4,
+     4,
+     4,
+     4
+    ],
+    "REST": [
+     6,
+     6,
+     6,
+     6,
+     6,
+     5,
+     5,
+     4,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ]
+   },
+   "P_A_MAX_UB": 313388488
+  }
+ },
+ "UNRESOLVED_LOCATOR": {
+  "SOURCE": "survivors.json (0-based array index), predicate = bound UB > 313263888",
+  "EXISTING_BOUNDS_ONLY": {
+   "COUNT": 54965,
+   "INDEX_LIST_SHA256": "acc7e55255adbd0e000f15b364217a5f97b81d283205112772fc5c242c6003b4"
+  },
+  "WITH_REPAIRED_P_C_AND_FLOOR": {
+   "COUNT": 6841,
+   "INDEX_LIST_SHA256": "e1db41d1c1ea6fda0456f989b68ecab1fc4a26e2e14b020f576a14efc3f07d3b",
+   "TOP5": [
+    {
+     "index": 462,
+     "KIND": "P_C",
+     "UB": "313445776"
+    },
+    {
+     "index": 282,
+     "KIND": "P_C",
+     "UB": "313439504"
+    },
+    {
+     "index": 451,
+     "KIND": "P_C",
+     "UB": "313433904"
+    },
+    {
+     "index": 472,
+     "KIND": "P_C",
+     "UB": "313433904"
+    },
+    {
+     "index": 565,
+     "KIND": "P_C",
+     "UB": "313431104"
+    }
+   ]
+  },
+  "INDEX_LIST_ENCODING": "sha256 of ascii comma-joined ascending indices"
+ },
+ "COVERAGE_NOTE": "Non-survivors were pruned by T3 <= floor(W/3) alone (R1 log: SURVIVE_W3 == SURVIVE_W3_EDGE for both kinds); broad enumeration not rerun.",
+ "SCIENTIFIC_STATUS": "PARTIAL_BOUND_VALIDATED",
+ "CPU_SECONDS": 11.5,
+ "NO_CPSAT": true
+}

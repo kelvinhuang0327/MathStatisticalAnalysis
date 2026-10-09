@@ -1,0 +1,6925 @@
+{
+ "TASK_ID": "B649_K20_V8_SHELL1_COMMON_NEIGHBOUR_CAPACITY_R7",
+ "CREATED": "2026-10-09T11:49:11+0800",
+ "BASE": "b9e0937fe0a6d9802eedfdad92518a257a2d7de9",
+ "CANONICAL": {
+  "K20_COUNT": 313263888,
+  "K20_SHA256": "eaed652900d101881b678a1515d2a366bff9de6723dbec2ec9c82fe0d0d7844c",
+  "S1_MINUS_S2_SHELL1": 307923840,
+  "S3_THRESHOLD": 5340048
+ },
+ "FROZEN_INPUTS_SHA256": {
+  "joint_kn1_bound_r6.py": "a68da9d322da16de83b5c95cb2a6ec621e5631765f94236b344c9c49fa8d124f",
+  "joint_kn1_bound_r6.json": "a156cb2fe90af2068029c49d82a113e243ed53a73ce4072a2e05f3fa2dbffc78",
+  "n1_lower_bound_r5.py": "e7e708b68fb8f10282874260399ea22f11001cf3e606d36a540ab93995836700",
+  "n1_lower_bound_r5.json": "8ce144b1ec78eb1f868c8d6f76814a54dad232e1c9750c21de22df7466c97ed9",
+  "k_quad_exact_bound_r4.py": "e9d7f55cdb991f0f3c3a6dd8405375e30eaba152f969b351505d0098bd1c6f22",
+  "k_quad_exact_bound_r4.json": "a243c8e99cb4c7e5a18e641f59b341e2c66147cf767fdb201665ce9faf3420fd",
+  "k_bound_certify_r3.py": "12f59d58ec77b9e64df02524bb62c910c6ac75ddc7353541e7882ddf2f5091b0",
+  "k_bound_certification_r3.json": "669d18a0395e5472dac7c8ec4f7d8fbd25070e3437d20c3e4449c774f5dbbc74",
+  "k_bound_validation_r2.json": "2ca0110a611938acfe30259baaf922c9fa802f424538c86e2539123cebe70c06",
+  "constants.py": "7a04ce5f17f9e4c7422c601b5a884c2a2ecf97f412a0da9beaa7553e0151d251",
+  "profiles.py": "f106f9c106d99d91b745bfdece1f07d44e955adba1d355daa93e73a479c63739",
+  "profiles_k.py": "bb6927c10023df07a81dc514304dada433862693a942b694e03431d74b081312",
+  "survivors.json": "c7287b11ba801f195372fb8db98e52a80c3b975e3cb478795cc95308457dfec2"
+ },
+ "IMPLEMENTATION": {
+  "PATH": "common_neighbour_capacity_r7.py",
+  "SHA256": "b905334b5e119d5f2c7c9dfc3210e4a1284ca40c14b9881a86e4606ce7b212b9"
+ },
+ "PREDECESSOR_R6": {
+  "RESULT": "joint_kn1_bound_r6.json",
+  "INPUT_PROFILES": 69,
+  "P_A": 28,
+  "P_C": 41,
+  "INDEX_LIST_SHA256": "72488acae13dd5cd9e17995a722ca6cd8753cdc99a31973b1517e12df8300f5b",
+  "MAX_UB_R6": 313324200,
+  "MAX_UB_R6_INDEX": 2607
+ },
+ "PROVENANCE": {
+  "PRIOR_R7_SESSION": "interrupted (Agent quota); no R7 file was ever written to TASK_ROOT; its scratch in a volatile session directory was read (not executed for any result here) and is not persisted",
+  "PRIOR_SCRATCH_SHA256": {
+   "tb3.py": "41d65553854e7571a8346a9c4dbc19f6726452f9ebcf2d41c03d696b2f15deea",
+   "val3.py": "d74c4cfceda6ccb8105c325db92f0d158d9db7e2f28fcd28778c6e78b665ba64",
+   "c9blocks.json": "e34750d017f114176568c87b68d8c45db85ae30ee4b9d4d6b0b29d5121cd1244",
+   "rows69.json": "98af9999e8a5e125c0d4a289ee75f060ad85911917295de97fd7dfe3a09ecf38"
+  },
+  "THIS_IMPLEMENTATION": "independent rewrite of the narrow R7 extension from the derivation in PROOF; during development its EG-off variant reproduced the prior candidate's T on all 69 profiles and its EG-on variant equals the prior candidate with all options (dev cross-check); C9_BLOCKS is the prior session's K13 - C9 triangle decomposition, re-verified here"
+ },
+ "DEFINITIONS": {
+  "CONFIG": "legal Shell-1 configuration: 20 tickets of 6 labels from 1..49, pairwise overlap <= 1, histogram P_A {1:1, 2:25, 3:23} or P_C {2:28, 3:20, 4:1} (sum C(d,2) = 94)",
+  "GRAPH": "G: u ~ v iff tickets u, v share a label; overlap <= 1 gives every edge a unique label lab(uv); B_y = tickets holding y; the edges of label y form the clique on B_y",
+  "CLASSES": "t_v = #trio labels (d = 3) on v; F = edges with a trio label, R = all other edges (pair-label or quad-label); deg_F(v) = 2 t_v, r_v = deg v - 2 t_v = deg_R(v), p_v = r_v - 3[v quad] = #pair-label edges at v",
+  "CORE_Z": "C = {v : t_v >= 1}, Z = {v : t_v = 0}, nc = |C|, nz = |Z|, qC = #quad tickets in C. SCOPE: every quad ticket lies in C (checked on all 69 profiles; r7_bound fails closed otherwise)",
+  "L": "L = pairs inside C that are not F-edges, ell_v = nc - 1 - 2 t_v (L-degree), |L| = C(nc,2) - 3*ntrip",
+  "ASSIGNMENT": "v in C: j_v = #pair-label neighbours in C, qc_v = qC - 1 if v quad else 0, rC_v = j_v + qc_v (R-neighbours in C), rZ_v = p_v - j_v (neighbours in Z). z in Z: k_z = #neighbours in C, dint_z = r_z - k_z (neighbours in Z)",
+  "TRUE_TRIANGLE": "three pairwise adjacent tickets with no label common to all three (R3 analyze: T_TRUE)"
+ },
+ "FORMULA": {
+  "PSI": "Psi(j,k) = FFF0 + W_R + A + min(B_Z, B_EDGE) + C_ZZ + D_ZZZ",
+  "FFF0": "C(nc,3) - |L|(nc-2) + sum_C C(ell_v,2) - ntrip",
+  "W_R": "(1/2) sum_C rC_v (nc - 2 ell_v)",
+  "A": "sum_C C(rC_v,2) - C(qC,3)",
+  "B_Z": "sum_Z C(k_z,2)",
+  "B_EDGE": "sum_{theta>=1} min(EF(U_theta) + ER(U_theta), C(|U_theta|,2)), U_theta = {v in C : rZ_v >= theta}, EF(U) = level_program(U, complement, t, quad, g_any(U)), ER(U) = floor(sum_U min(rC_v,|U|-1)/2)",
+  "G_ANY": "g_any(U) = min(packing(|U|), ntrip, floor(t(U)/3))  (R6's prefix cap G(U) is NOT used here)",
+  "C_ZZ": "sum_C min(C(s,2), max(0, e_Z - (sum of the m smallest dint) + C(m,2))), s = rZ_v, m = nz - s, e_Z = sum(dint)/2",
+  "D_ZZZ": "C(nz,3) - (sum mu/2)(nz-2) + sum_Z C(mu_z,2), mu_z = nz - 1 - dint_z",
+  "FEASIBLE": "max(0, p_v - nz) <= j_v <= min(p_v, ell_v - qc_v); max(0, r_z - nz + 1) <= k_z <= min(r_z, nc); (j_v) and (dint_z) pass Erdos-Gallai (incl. even sum); sum_C rZ = sum_Z k; Gale-Ryser on (rZ, k)",
+  "T7": "floor(max Psi over FEASIBLE), enumerated as per-class multisets (class = equal (t,p,quad) in C, equal r in Z)",
+  "UB_R7": "307923840 + 2800*W + 11872*T7 - 1400*Tstar;  UB = min(UB_R6, UB_R7);  prune iff UB <= 313263888"
+ },
+ "PROOF": {
+  "STARS_VS_TRUE": "Two edges of a triangle with the same label y share a vertex and their other ends lie in B_y, so the third edge is also y. A triangle is therefore a star (inside one B_y, d_y >= 3: the ntrip trio stars and, for P_C, the 4 quad stars) or has three pairwise distinct labels (true).",
+  "PARTITION": "F-edges join two tickets that each carry a trio label, so both ends lie in C and Z-tickets meet only R-edges. Each true triangle has 3, 2, 1 or 0 F-edges; with one F-edge its apex (the vertex off the F-edge) lies in C or Z; with none it has 0..3 Z-vertices. The 8 classes FFF, FFR, FRR_C, FRR_Z, RRR_CCC, RRR_CCZ, RRR_CZZ, RRR_ZZZ partition the true triangles: T_true is their sum and no triangle is counted twice.",
+  "FFF_EXACT": "Triangles of the F-graph on C = C(nc,3) - #(triples with >= 1 L-pair) and, by inclusion-exclusion (a triple with k L-pairs gives k - C(k,2) + [k=3] = 1), #(triples with >= 1 L-pair) = |L|(nc-2) - sum C(ell_v,2) + T_L, T_L = #triples of C with all three pairs in L. F-triangles are the ntrip trio stars plus the true FFF triangles (STARS_VS_TRUE), so FFF = FFF0 - T_L.",
+  "FFR_EXACT": "An FFR triangle has exactly one R-edge uw, inside C. Its third vertex x is F-adjacent to u and w; among the nc-2 other core tickets, ell_u - 1 are L-partners of u and ell_w - 1 of w, so #x = nc - ell_u - ell_w + lambda_L(uw), lambda_L(uw) = #x with xu, xw in L. The labels are distinct (STARS_VS_TRUE). FFR = W_R + sum_{uw in R_CC} lambda_L(uw); W_R = sum_{uw}(nc - ell_u - ell_w) = (1/2) sum_C rC_v (nc - 2 ell_v).",
+  "A": "Cherries (v; u, w) with v, u, w in C and vu, vw in R number sum_C C(rC_v,2). If uw is F the triangle is FRR_C with apex v (vu, vw cannot share a label, else uw would carry it), one cherry each. If uw is R, the triple is an L-triple with 3 R-edges (a true RRR_CCC or one of the C(qC,3) quad stars inside C) and gives 3 cherries. If uw is a non-edge it is an L-triple with exactly 2 R-edges, 1 cherry. sum_{uw in R_CC} lambda_L(uw) = sum over L-triples of #R-edges, so sum lambda_L - T_L = sum over L-triples of (#R - 1). Hence sum_C C(rC_v,2) - C(qC,3) - (sum lambda_L - T_L + FRR_C + RRR_CCC) = #L-triples with no edge >= 0 (checked as an equality on every test configuration). With FFF_EXACT and FFR_EXACT: FFF + FFR + FRR_C + RRR_CCC <= FFF0 + W_R + A.",
+  "B": "FRR_Z and RRR_CCZ triangles are exactly the triangles {u, w, z} with u, w in C, z in Z (uz, wz are R; uw any edge). (i) Each gives one cherry at z with both ends in C: <= B_Z. (ii) Their number is sum over edges uw inside C of |N_Z(u) & N_Z(w)| <= sum_uw min(rZ_u, rZ_w) = sum_theta e(U_theta) (layer cake). e(U) = e_F(U) + e_R(U), e_R(U) <= ER(U) (v has <= min(rC_v, |U|-1) R-neighbours in U, each edge counted twice), e_F(U) <= EF(U) (ARBITRARY_SUBSET_LEVEL_PROGRAM) and e(U) <= C(|U|,2). So FRR_Z + RRR_CCZ <= min(B_Z, B_EDGE).",
+  "C": "An RRR_CZZ triangle has one core vertex v and its two Z-vertices are adjacent neighbours of v, so RRR_CZZ <= sum_C e(G[N_Z(v)]). For S = N_Z(v), |S| = s, m = nz - s: e(G[S]) <= C(s,2) and e(G[S]) = e_Z - (sum_{Z-S} dint - e(G[Z-S])) <= e_Z - (sum of the m smallest dint) + C(m,2).",
+  "D": "Z-internal edges are pair-label edges (no quad ticket in Z), so RRR_ZZZ = #triangles of G[Z] = C(nz,3) - |M|(nz-2) + sum C(mu_z,2) - T_M <= D_ZZZ (M = non-edges inside Z, T_M >= 0).",
+  "RELAXATION": "Summing: T_true <= Psi evaluated at the configuration's own (j, k), and Psi depends on the configuration only through (j, k) and the profile. Every legal (j, k) is FEASIBLE: rC_v <= ell_v (R-neighbours in C are L-partners), 0 <= rZ_v <= nz, 0 <= k_z <= min(r_z, nc), dint_z <= nz - 1; the pair-label edges inside C form a simple graph with degrees j and G[Z] one with degrees dint (Erdos-Gallai necessity incl. even sums); the C-Z edges form a simple bipartite graph with degrees (rZ, k) (equal sums, Gale-Ryser necessity). Psi and the filters only depend on the multiset of (t, p, quad, j) over C and of (r, k) over Z, so per-class multisets enumerate every legal (j, k). T_true <= max Psi; 2*Psi is an integer (sum_C rC_v is even), so T_true <= floor(max Psi) = T7. An empty FEASIBLE set would mean the profile has no legal configuration (never happens on the 69).",
+  "ARBITRARY_SUBSET_LEVEL_PROGRAM": "For ANY ticket set U with complement D and T_i = #trio labels with exactly i members in U, every legal configuration satisfies: the identities t(U) = 3T3+2T2+T1, t(D) = 3T0+2T1+T2, e_F(U) = 3T3+T2, e_F(D) = 3T0+T1 (a trio with i members in U has C(i,2) F-edges in U and C(3-i,2) in D); (a') T3 <= g_any(U): the trios inside U form a linear 3-graph on |U| points (two trios sharing two tickets would give overlap 2), so T3 <= D(|U|) <= packing(|U|) (R3 PACKING_UPPER_BOUND), T3 <= ntrip and 3T3 <= t(U); (b) 3T3 <= sum_U min(t_v, floor(avail_U(v)/2)); (c) e_F(X) <= floor(sum_X min(2t_v, avail_X(v))/2) for X in {U, D}. (b), (c) are R6's arguments verbatim: they never used that U is a prefix. level_program enumerates every integer (T0..T3) meeting these, so its maximum is >= e_F(U) (and it is infeasible only if no legal configuration exists). Only R6's (a) T3 <= G(U) relies on U being a degree-descending prefix (R3 KMAX_LEMMA); R7 never passes G to a non-prefix set.",
+  "UB": "R3: S3 = 2800*W + 11872*T_true - 1400*Tstar on every Shell-1 configuration (constants re-evaluated here, CONSTANTS_REEVALUATED); T_true <= T7 gives S3 <= 2800*W + 11872*T7 - 1400*Tstar; Bonferroni-3: union <= S1 - S2 + S3 = UB_R7. UB_R6 stays valid, so UB = min(UB_R6, UB_R7). A profile with UB <= 313263888 cannot hold a strict gain (equality would be a tie).",
+  "NO_DOUBLE_COUNTING": "Each true triangle is in exactly one class (PARTITION) and each class is bounded once. A uses cherries centred in C with both ends in C, C_ZZ cherries centred in C with both ends in Z, B_Z cherries centred in Z: disjoint cherry sets. No capacity is shared between two terms: every term is an upper bound on a different class count, evaluated at the same (j, k).",
+  "INTEGER_DIRECTION": "Floors are applied only to quantities that upper-bound integers (EF, ER, cap(X), packing, T7) or to exact even sums (e_Z, |M|, W_R enforced by the parity filters); max(0, .) and min(., C(s,2)) only enlarge or keep valid caps."
+ },
+ "R6_INVARIANTS_UNDER_ARBITRARY_SUBSET_RESTRICTION": {
+  "IDENTITIES_T_U_T_D_E_F": "REMAIN TRUE for every partition U | D of the 20 tickets",
+  "A_PREFIX_CAP_G_U": "PREFIX-ONLY (R3 KMAX_LEMMA along the degree-descending order); NOT generalized; replaced by g_any(U) = min(packing(|U|), ntrip, floor(t(U)/3)), valid for every U",
+  "B_IN3": "REMAINS TRUE for every U (partners of v inside U are distinct across v's trios)",
+  "C_CAP_U_CAP_D": "REMAINS TRUE for every X (F-neighbours of v inside X are eligible members of X - v)",
+  "LEVEL_PROGRAM_WITH_G_ANY": "valid upper bound on e_F(U) for arbitrary U; used only inside B_EDGE"
+ },
+ "PROOF_ASSUMPTIONS": [
+  "Shell-1 := 20 tickets of 6 labels from 1..49, pairwise overlap <= 1, sum_y C(d_y,2) = 94 (histograms P_A, P_C).",
+  "Objective = OFFICIAL_ANY_PRIZE union count; Bonferroni-3 upper bound S1 - S2 + S3. S1 - S2 = 307923840 and the S3 weights (PATH 2800, STAR 7000, TRIANGLE 20272) are re-evaluated here by the frozen constants.co_win DP and were independently verified on 2026-10-08 by four methods.",
+  "D(k) <= packing(k) = Schonheim - [k = 5 mod 6] (R3 PROOF.PACKING_UPPER_BOUND, parity argument).",
+  "Scope: every quad ticket has t >= 1 on the 69 profiles (checked); the bound fails closed otherwise.",
+  "R1-R6 are inherited byte-identical: profile domain and W >= W0 survivor set (R3 certified DP), R3-R6 pruning (R6's 2193 NO_LEGAL_TRIO_SYSTEM exclusions independently re-proved 2026-10-09). R7 only re-evaluates R6's 69.",
+  "Erdos-Gallai and Gale-Ryser are used only in their elementary necessary direction (double counting, proved in the docstrings). EG is not load-bearing: all 69 are pruned with EG off (ACCOUNTING.LOAD_BEARING.EG)."
+ ],
+ "CONSTANTS_REEVALUATED": {
+  "SINGLE": 18611432,
+  "Q0": 107800,
+  "Q1": 574000,
+  "PATH": 2800,
+  "STAR": 7000,
+  "TRIANGLE": 20272,
+  "S1_MINUS_S2": 307923840,
+  "S3_WEDGE_COEF": 2800,
+  "S3_TRUE_COEF": 11872,
+  "S3_STAR_COEF": -1400,
+  "S3_FORMULA": "S3 = PATH*paths + STAR*stars + TRIANGLE*true, paths = W - 3*(stars + true) => S3 = 2800*W + 11872*T_true - 1400*Tstar",
+  "MATCHES_R3": true
+ },
+ "ACCOUNTING": {
+  "INPUT_PROFILES": 69,
+  "BY_KIND": {
+   "P_A": {
+    "BOUND_PRUNED": 28,
+    "BOUND_PRUNED_AT_EQUALITY": 0,
+    "INPUT": 28,
+    "NEWLY_PRUNED": 28,
+    "PRUNED_WITHOUT_BEDGE": 27,
+    "PRUNED_WITHOUT_CIND": 27,
+    "PRUNED_WITHOUT_EG": 28
+   },
+   "P_C": {
+    "BOUND_PRUNED": 41,
+    "BOUND_PRUNED_AT_EQUALITY": 0,
+    "INPUT": 41,
+    "NEWLY_PRUNED": 41,
+    "PRUNED_WITHOUT_BEDGE": 41,
+    "PRUNED_WITHOUT_CIND": 40,
+    "PRUNED_WITHOUT_EG": 41
+   }
+  },
+  "P_A_NEWLY_PRUNED": 28,
+  "P_A_REMAINING": 0,
+  "P_C_NEWLY_PRUNED": 41,
+  "P_C_REMAINING": 0,
+  "TOTAL_NEWLY_PRUNED": 69,
+  "TOTAL_REMAINING": 0,
+  "REMAINING_INDICES": [],
+  "REMAINING_INDEX_LIST_SHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "LOAD_BEARING": {
+   "EG": [],
+   "BEDGE_ARBITRARY_SUBSET_LEVEL_PROGRAM": [
+    2606
+   ],
+   "CIND": [
+    2606,
+    4129
+   ]
+  },
+  "T_UNITS_BELOW_THRESHOLD_HISTOGRAM": {
+   "0": 6,
+   "1": 1,
+   "2": 5,
+   "3": 2,
+   "4": 8,
+   "5": 10,
+   "6": 8,
+   "7": 2,
+   "8": 8,
+   "9": 4,
+   "10": 2,
+   "11": 2,
+   "13": 1,
+   "15": 1,
+   "16": 1,
+   "17": 2,
+   "19": 1,
+   "20": 1,
+   "21": 1,
+   "24": 1,
+   "26": 1,
+   "31": 1
+  },
+  "NOTE": "Applied once to R6's 69 open profiles (R1-R6-pruned profiles stay pruned). UB = min(UB_R6, UB_R7); prune iff UB <= 313263888 (equality would be a tie, never a strict gain)."
+ },
+ "PROFILES": [
+  {
+   "index": 1454,
+   "KIND": "P_A",
+   "SPECIAL": [
+    0
+   ],
+   "REST": [
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    5,
+    5,
+    5,
+    4,
+    4,
+    4,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "W": 862,
+   "NC": 13,
+   "NZ": 7,
+   "UB_R6": 313285112,
+   "T_MAX_FOR_NO_GAIN": 249,
+   "R6_T_TRUE_CAP": 251,
+   "T7": 243,
+   "T7_NO_EG": 244,
+   "T7_NO_BEDGE": 243,
+   "T7_NO_CIND": 243,
+   "UB_R7": 313190136,
+   "UB": 313190136,
+   "T_UNITS_BELOW_THRESHOLD": 6,
+   "ARGMAX": {
+    "J_BY_CORE_CLASS_T_P_QUAD": {
+     "4,2,0": [
+      1,
+      2,
+      2
+     ],
+     "5,1,0": [
+      1,
+      1,
+      1
+     ],
+     "6,0,0": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "K_BY_Z_CLASS_R": {
+     "5": [
+      0
+     ],
+     "6": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      1
+     ]
+    },
+    "FFF0": 185,
+    "W_R": 26,
+    "A": 2,
+    "B_Z": 0,
+    "B_EDGE": 0,
+    "C_ZZ": 0,
+    "D_ZZZ": 30
+   },
+   "STATUS": "BOUND_PRUNED"
+  },
+  {
+   "index": 1455,
+   "KIND": "P_A",
+   "SPECIAL": [
+    0
+   ],
+   "REST": [
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    3,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "W": 862,
+   "NC": 13,
+   "NZ": 7,
+   "UB_R6": 313320728,
+   "T_MAX_FOR_NO_GAIN": 249,
+   "R6_T_TRUE_CAP": 254,
+   "T7": 244,
+   "T7_NO_EG": 245,
+   "T7_NO_BEDGE": 244,
+   "T7_NO_CIND": 244,
+   "UB_R7": 313202008,
+   "UB": 313202008,
+   "T_UNITS_BELOW_THRESHOLD": 5,
+   "ARGMAX": {
+    "J_BY_CORE_CLASS_T_P_QUAD": {
+     "3,3,0": [
+      2
+     ],
+     "5,1,0": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "6,0,0": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "K_BY_Z_CLASS_R": {
+     "5": [
+      0
+     ],
+     "6": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      1
+     ]
+    },
+    "FFF0": 185,
+    "W_R": 28,
+    "A": 1,
+    "B_Z": 0,
+    "B_EDGE": 0,
+    "C_ZZ": 0,
+    "D_ZZZ": 30
+   },
+   "STATUS": "BOUND_PRUNED"
+  },
+  {
+   "index": 1482,
+   "KIND": "P_A",
+   "SPECIAL": [
+    0
+   ],
+   "REST": [
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    5,
+    5,
+    5,
+    5,
+    5,
+    4,
+    4,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "W": 861,
+   "NC": 13,
+   "NZ": 7,
+   "UB_R6": 313306056,
+   "T_MAX_FOR_NO_GAIN": 249,
+   "R6_T_TRUE_CAP": 253,
+   "T7": 242,
+   "T7_NO_EG": 243,
+   "T7_NO_BEDGE": 242,
+   "T7_NO_CIND": 242,
+   "UB_R7": 313175464,
+   "UB": 313175464,
+   "T_UNITS_BELOW_THRESHOLD": 7,
+   "ARGMAX": {
+    "J_BY_CORE_CLASS_T_P_QUAD": {
+     "4,2,0": [
+      1,
+      2
+     ],
+     "5,1,0": [
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "6,0,0": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "K_BY_Z_CLASS_R": {
+     "5": [
+      0
+     ],
+     "6": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      1
+     ]
+    },
+    "FFF0": 181,
+    "W_R": 30,
+    "A": 1,
+    "B_Z": 0,
+    "B_EDGE": 0,
+    "C_ZZ": 0,
+    "D_ZZZ": 30
+   },
+   "STATUS": "BOUND_PRUNED"
+  },
+  {
+   "index": 2567,
+   "KIND": "P_A",
+   "SPECIAL": [
+    0
+   ],
+   "REST": [
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    2,
+    1,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "W": 860,
+   "NC": 14,
+   "NZ": 6,
+   "UB_R6": 313279512,
+   "T_MAX_FOR_NO_GAIN": 249,
+   "R6_T_TRUE_CAP": 251,
+   "T7": 239,
+   "T7_NO_EG": 239,
+   "T7_NO_BEDGE": 242,
+   "T7_NO_CIND": 239,
+   "UB_R7": 313137048,
+   "UB": 313137048,
+   "T_UNITS_BELOW_THRESHOLD": 10,
+   "ARGMAX": {
+    "J_BY_CORE_CLASS_T_P_QUAD": {
+     "1,5,0": [
+      0
+     ],
+     "2,4,0": [
+      0
+     ],
+     "5,1,0": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "6,0,0": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "K_BY_Z_CLASS_R": {
+     "5": [
+      2
+     ],
+     "6": [
+      1,
+      1,
+      1,
+      2,
+      2
+     ]
+    },
+    "FFF0": 186,
+    "W_R": 24,
+    "A": 0,
+    "B_Z": 3,
+    "B_EDGE": 0,
+    "C_ZZ": 16,
+    "D_ZZZ": 13
+   },
+   "STATUS": "BOUND_PRUNED"
+  },
+  {
+   "index": 2568,
+   "KIND": "P_A",
+   "SPECIAL": [
+    0
+   ],
+   "REST": [
+    6,
+    6,
+    6,
+    6,
+    6,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    4,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "W": 860,
+   "NC": 13,
+   "NZ": 7,
+   "UB_R6": 313315128,
+   "T_MAX_FOR_NO_GAIN": 249,
+   "R6_T_TRUE_CAP": 254,
+   "T7": 241,
+   "T7_NO_EG": 242,
+   "T7_NO_BEDGE": 241,
+   "T7_NO_CIND": 241,
+   "UB_R7": 313160792,
+   "UB": 313160792,
+   "T_UNITS_BELOW_THRESHOLD": 8,
+   "ARGMAX": {
+    "J_BY_CORE_CLASS_T_P_QUAD": {
+     "4,2,0": [
+      1
+     ],
+     "5,1,0": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "6,0,0": [
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "K_BY_Z_CLASS_R": {
+     "5": [
+      0
+     ],
+     "6": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      1
+     ]
+    },
+    "FFF0": 177,
+    "W_R": 34,
+    "A": 0,
+    "B_Z": 0,
+    "B_EDGE": 0,
+    "C_ZZ": 0,
+    "D_ZZZ": 30
+   },
+   "STATUS": "BOUND_PRUNED"
+  },
+  {
+   "index": 2606,
+   "KIND": "P_A",
+   "SPECIAL": [
+    0
+   ],
+   "REST": [
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    1,
+    1,
+    1,
+    0,
+    0,
+    0,
+    0
+   ],
+   "W": 859,
+   "NC": 15,
+   "NZ": 5,
+   "UB_R6": 313264840,
+   "T_MAX_FOR_NO_GAIN": 249,
+   "R6_T_TRUE_CAP": 250,
+   "T7": 248,
+   "T7_NO_EG": 248,
+   "T7_NO_BEDGE": 263,
+   "T7_NO_CIND": 257,
+   "UB_R7": 313241096,
+   "UB": 313241096,
+   "T_UNITS_BELOW_THRESHOLD": 1,
+   "ARGMAX": {
+    "J_BY_CORE_CLASS_T_P_QUAD": {
+     "1,5,0": [
+      0,
+      0,
+      0
+     ],
+     "5,1,0": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "6,0,0": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "K_BY_Z_CLASS_R": {
+     "5": [
+      3
+     ],
+     "6": [
+      3,
+      3,
+      3,
+      3
+     ]
+    },
+    "FFF0": 204,
+    "W_R": 21,
+    "A": 0,
+    "B_Z": 15,
+    "B_EDGE": 0,
+    "C_ZZ": 21,
+    "D_ZZZ": 2
+   },
+   "STATUS": "BOUND_PRUNED"
+  },
+  {
+   "index": 2607,
+   "KIND": "P_A",
+   "SPECIAL": [
+    0
+   ],
+   "REST": [
+    6,
+    6,
+    6,
+    6,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "W": 859,
+   "NC": 13,
+   "NZ": 7,
+   "UB_R6": 313324200,
+   "T_MAX_FOR_NO_GAIN": 249,
+   "R6_T_TRUE_CAP": 255,
+   "T7": 239,
+   "T7_NO_EG": 240,
+   "T7_NO_BEDGE": 239,
+   "T7_NO_CIND": 239,
+   "UB_R7": 313134248,
+   "UB": 313134248,
+   "T_UNITS_BELOW_THRESHOLD": 10,
+   "ARGMAX": {
+    "J_BY_CORE_CLASS_T_P_QUAD": {
+     "5,1,0": [
+      0,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "6,0,0": [
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "K_BY_Z_CLASS_R": {
+     "5": [
+      0
+     ],
+     "6": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      1
+     ]
+    },
+    "FFF0": 173,
+    "W_R": 36,
+    "A": 0,
+    "B_Z": 0,
+    "B_EDGE": 0,
+    "C_ZZ": 0,
+    "D_ZZZ": 30
+   },
+   "STATUS": "BOUND_PRUNED"
+  },
+  {
+   "index": 2616,
+   "KIND": "P_A",
+   "SPECIAL": [
+    1
+   ],
+   "REST": [
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    5,
+    5,
+    5,
+    5,
+    3,
+    3,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "W": 859,
+   "NC": 14,
+   "NZ": 6,
+   "UB_R6": 313264840,
+   "T_MAX_FOR_NO_GAIN": 249,
+   "R6_T_TRUE_CAP": 250,
+   "T7": 232,
+   "T7_NO_EG": 232,
+   "T7_NO_BEDGE": 232,
+   "T7_NO_CIND": 232,
+   "UB_R7": 313051144,
+   "UB": 313051144,
+   "T_UNITS_BELOW_THRESHOLD": 17,
+   "ARGMAX": {
+    "J_BY_CORE_CLASS_T_P_QUAD": {
+     "1,4,0": [
+      0
+     ],
+     "3,3,0": [
+      1,
+      3
+     ],
+     "5,1,0": [
+      1,
+      1,
+      1,
+      1
+     ],
+     "6,0,0": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "K_BY_Z_CLASS_R": {
+     "6": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+     ]
+    },
+    "FFF0": 186,
+    "W_R": 16,
+    "A": 3,
+    "B_Z": 0,
+    "B_EDGE": 0,
+    "C_ZZ": 7,
+    "D_ZZZ": 20
+   },
+   "STATUS": "BOUND_PRUNED"
+  },
+  {
+   "index": 2617,
+   "KIND": "P_A",
+   "SPECIAL": [
+    1
+   ],
+   "REST": [
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    2,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "W": 859,
+   "NC": 14,
+   "NZ": 6,
+   "UB_R6": 313288584,
+   "T_MAX_FOR_NO_GAIN": 249,
+   "R6_T_TRUE_CAP": 252,
+   "T7": 238,
+   "T7_NO_EG": 238,
+   "T7_NO_BEDGE": 240,
+   "T7_NO_CIND": 238,
+   "UB_R7": 313122376,
+   "UB": 313122376,
+   "T_UNITS_BELOW_THRESHOLD": 11,
+   "ARGMAX": {
+    "J_BY_CORE_CLASS_T_P_QUAD": {
+     "1,4,0": [
+      0
+     ],
+     "2,4,0": [
+      0
+     ],
+     "5,1,0": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "6,0,0": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "K_BY_Z_CLASS_R": {
+     "6": [
+      1,
+      1,
+      1,
+      1,
+      2,
+      2
+     ]
+    },
+    "FFF0": 186,
+    "W_R": 24,
+    "A": 0,
+    "B_Z": 2,
+    "B_EDGE": 0,
+    "C_ZZ": 12,
+    "D_ZZZ": 16
+   },
+   "STATUS": "BOUND_PRUNED"
+  },
+  {
+   "index": 2628,
+   "KIND": "P_A",
+   "SPECIAL": [
+    3
+   ],
+   "REST": [
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "W": 859,
+   "NC": 13,
+   "NZ": 7,
+   "UB_R6": 313300456,
+   "T_MAX_FOR_NO_GAIN": 249,
+   "R6_T_TRUE_CAP": 253,
+   "T7": 249,
+   "T7_NO_EG": 249,
+   "T7_NO_BEDGE": 249,
+   "T7_NO_CIND": 249,
+   "UB_R7": 313252968,
+   "UB": 313252968,
+   "T_UNITS_BELOW_THRESHOLD": 0,
+   "ARGMAX": {
+    "J_BY_CORE_CLASS_T_P_QUAD": {
+     "3,2,0": [
+      2
+     ],
+     "5,1,0": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "6,0,0": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "K_BY_Z_CLASS_R": {
+     "6": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "FFF0": 185,
+    "W_R": 28,
+    "A": 1,
+    "B_Z": 0,
+    "B_EDGE": 0,
+    "C_ZZ": 0,
+    "D_ZZZ": 35
+   },
+   "STATUS": "BOUND_PRUNED"
+  },
+  {
+   "index": 2633,
+   "KIND": "P_A",
+   "SPECIAL": [
+    4
+   ],
+   "REST": [
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    5,
+    5,
+    5,
+    5,
+    3,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "W": 859,
+   "NC": 13,
+   "NZ": 7,
+   "UB_R6": 313276712,
+   "T_MAX_FOR_NO_GAIN": 249,
+   "R6_T_TRUE_CAP": 251,
+   "T7": 249,
+   "T7_NO_EG": 249,
+   "T7_NO_BEDGE": 249,
+   "T7_NO_CIND": 249,
+   "UB_R7": 313252968,
+   "UB": 313252968,
+   "T_UNITS_BELOW_THRESHOLD": 0,
+   "ARGMAX": {
+    "J_BY_CORE_CLASS_T_P_QUAD": {
+     "3,3,0": [
+      3
+     ],
+     "4,1,0": [
+      1
+     ],
+     "5,1,0": [
+      1,
+      1,
+      1,
+      1
+     ],
+     "6,0,0": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "K_BY_Z_CLASS_R": {
+     "6": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "FFF0": 189,
+    "W_R": 22,
+    "A": 3,
+    "B_Z": 0,
+    "B_EDGE": 0,
+    "C_ZZ": 0,
+    "D_ZZZ": 35
+   },
+   "STATUS": "BOUND_PRUNED"
+  },
+  {
+   "index": 2667,
+   "KIND": "P_A",
+   "SPECIAL": [
+    2
+   ],
+   "REST": [
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    1,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "W": 858,
+   "NC": 14,
+   "NZ": 6,
+   "UB_R6": 313273912,
+   "T_MAX_FOR_NO_GAIN": 250,
+   "R6_T_TRUE_CAP": 251,
+   "T7": 239,
+   "T7_NO_EG": 239,
+   "T7_NO_BEDGE": 241,
+   "T7_NO_CIND": 239,
+   "UB_R7": 313131448,
+   "UB": 313131448,
+   "T_UNITS_BELOW_THRESHOLD": 11,
+   "ARGMAX": {
+    "J_BY_CORE_CLASS_T_P_QUAD": {
+     "1,5,0": [
+      0
+     ],
+     "2,3,0": [
+      0
+     ],
+     "5,1,0": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "6,0,0": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "K_BY_Z_CLASS_R": {
+     "6": [
+      1,
+      1,
+      1,
+      1,
+      2,
+      2
+     ]
+    },
+    "FFF0": 186,
+    "W_R": 24,
+    "A": 0,
+    "B_Z": 2,
+    "B_EDGE": 0,
+    "C_ZZ": 13,
+    "D_ZZZ": 16
+   },
+   "STATUS": "BOUND_PRUNED"
+  },
+  {
+   "index": 2883,
+   "KIND": "P_C",
+   "SPECIAL": [
+    4,
+    4,
+    4,
+    2
+   ],
+   "REST": [
+    6,
+    6,
+    6,
+    6,
+    5,
+    5,
+    5,
+    5,
+    2,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "W": 860,
+   "NC": 13,
+   "NZ": 7,
+   "UB_R6": 313278112,
+   "T_MAX_FOR_NO_GAIN": 249,
+   "R6_T_TRUE_CAP": 251,
+   "T7": 249,
+   "T7_NO_EG": 249,
+   "T7_NO_BEDGE": 249,
+   "T7_NO_CIND": 249,
+   "UB_R7": 313254368,
+   "UB": 313254368,
+   "T_UNITS_BELOW_THRESHOLD": 0,
+   "ARGMAX": {
+    "J_BY_CORE_CLASS_T_P_QUAD": {
+     "2,3,1": [
+      3
+     ],
+     "2,4,0": [
+      4
+     ],
+     "4,1,1": [
+      1,
+      1,
+      1
+     ],
+     "5,1,0": [
+      1,
+      1,
+      1,
+      1
+     ],
+     "6,0,0": [
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "K_BY_Z_CLASS_R": {
+     "6": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "FFF0": 146,
+    "W_R": 33,
+    "A": 35,
+    "B_Z": 0,
+    "B_EDGE": 0,
+    "C_ZZ": 0,
+    "D_ZZZ": 35
+   },
+   "STATUS": "BOUND_PRUNED"
+  },
+  {
+   "index": 2943,
+   "KIND": "P_C",
+   "SPECIAL": [
+    4,
+    4,
+    4,
+    3
+   ],
+   "REST": [
+    6,
+    6,
+    6,
+    6,
+    5,
+    5,
+    5,
+    4,
+    2,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "W": 860,
+   "NC": 13,
+   "NZ": 7,
+   "UB_R6": 313289984,
+   "T_MAX_FOR_NO_GAIN": 249,
+   "R6_T_TRUE_CAP": 252,
+   "T7": 249,
+   "T7_NO_EG": 249,
+   "T7_NO_BEDGE": 249,
+   "T7_NO_CIND": 249,
+   "UB_R7": 313254368,
+   "UB": 313254368,
+   "T_UNITS_BELOW_THRESHOLD": 0,
+   "ARGMAX": {
+    "J_BY_CORE_CLASS_T_P_QUAD": {
+     "2,4,0": [
+      4
+     ],
+     "3,2,1": [
+      2
+     ],
+     "4,1,1": [
+      1,
+      1,
+      1
+     ],
+     "4,2,0": [
+      2
+     ],
+     "5,1,0": [
+      1,
+      1,
+      1
+     ],
+     "6,0,0": [
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "K_BY_Z_CLASS_R": {
+     "6": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "FFF0": 138,
+    "W_R": 45,
+    "A": 31,
+    "B_Z": 0,
+    "B_EDGE": 0,
+    "C_ZZ": 0,
+    "D_ZZZ": 35
+   },
+   "STATUS": "BOUND_PRUNED"
+  },
+  {
+   "index": 2998,
+   "KIND": "P_C",
+   "SPECIAL": [
+    4,
+    4,
+    4,
+    4
+   ],
+   "REST": [
+    6,
+    6,
+    6,
+    5,
+    5,
+    5,
+    5,
+    4,
+    2,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "W": 860,
+   "NC": 13,
+   "NZ": 7,
+   "UB_R6": 313289984,
+   "T_MAX_FOR_NO_GAIN": 249,
+   "R6_T_TRUE_CAP": 252,
+   "T7": 249,
+   "T7_NO_EG": 249,
+   "T7_NO_BEDGE": 249,
+   "T7_NO_CIND": 249,
+   "UB_R7": 313254368,
+   "UB": 313254368,
+   "T_UNITS_BELOW_THRESHOLD": 0,
+   "ARGMAX": {
+    "J_BY_CORE_CLASS_T_P_QUAD": {
+     "2,4,0": [
+      4
+     ],
+     "4,1,1": [
+      1,
+      1,
+      1,
+      1
+     ],
+     "4,2,0": [
+      2
+     ],
+     "5,1,0": [
+      1,
+      1,
+      1,
+      1
+     ],
+     "6,0,0": [
+      0,
+      0,
+      0
+     ]
+    },
+    "K_BY_Z_CLASS_R": {
+     "6": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "FFF0": 130,
+    "W_R": 57,
+    "A": 27,
+    "B_Z": 0,
+    "B_EDGE": 0,
+    "C_ZZ": 0,
+    "D_ZZZ": 35
+   },
+   "STATUS": "BOUND_PRUNED"
+  },
+  {
+   "index": 3326,
+   "KIND": "P_C",
+   "SPECIAL": [
+    4,
+    4,
+    4,
+    1
+   ],
+   "REST": [
+    6,
+    6,
+    6,
+    6,
+    5,
+    5,
+    5,
+    5,
+    3,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "W": 859,
+   "NC": 13,
+   "NZ": 7,
+   "UB_R6": 313275312,
+   "T_MAX_FOR_NO_GAIN": 250,
+   "R6_T_TRUE_CAP": 251,
+   "T7": 248,
+   "T7_NO_EG": 248,
+   "T7_NO_BEDGE": 248,
+   "T7_NO_CIND": 248,
+   "UB_R7": 313239696,
+   "UB": 313239696,
+   "T_UNITS_BELOW_THRESHOLD": 2,
+   "ARGMAX": {
+    "J_BY_CORE_CLASS_T_P_QUAD": {
+     "1,4,1": [
+      4
+     ],
+     "3,3,0": [
+      3
+     ],
+     "4,1,1": [
+      1,
+      1,
+      1
+     ],
+     "5,1,0": [
+      1,
+      1,
+      1,
+      1
+     ],
+     "6,0,0": [
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "K_BY_Z_CLASS_R": {
+     "6": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "FFF0": 150,
+    "W_R": 25,
+    "A": 38,
+    "B_Z": 0,
+    "B_EDGE": 0,
+    "C_ZZ": 0,
+    "D_ZZZ": 35
+   },
+   "STATUS": "BOUND_PRUNED"
+  },
+  {
+   "index": 3389,
+   "KIND": "P_C",
+   "SPECIAL": [
+    4,
+    4,
+    3,
+    3
+   ],
+   "REST": [
+    6,
+    6,
+    6,
+    6,
+    5,
+    5,
+    5,
+    5,
+    2,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "W": 859,
+   "NC": 13,
+   "NZ": 7,
+   "UB_R6": 313287184,
+   "T_MAX_FOR_NO_GAIN": 250,
+   "R6_T_TRUE_CAP": 252,
+   "T7": 248,
+   "T7_NO_EG": 248,
+   "T7_NO_BEDGE": 248,
+   "T7_NO_CIND": 248,
+   "UB_R7": 313239696,
+   "UB": 313239696,
+   "T_UNITS_BELOW_THRESHOLD": 2,
+   "ARGMAX": {
+    "J_BY_CORE_CLASS_T_P_QUAD": {
+     "2,4,0": [
+      4
+     ],
+     "3,2,1": [
+      2,
+      2
+     ],
+     "4,1,1": [
+      1,
+      1
+     ],
+     "5,1,0": [
+      1,
+      1,
+      1,
+      1
+     ],
+     "6,0,0": [
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "K_BY_Z_CLASS_R": {
+     "6": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "FFF0": 142,
+    "W_R": 37,
+    "A": 34,
+    "B_Z": 0,
+    "B_EDGE": 0,
+    "C_ZZ": 0,
+    "D_ZZZ": 35
+   },
+   "STATUS": "BOUND_PRUNED"
+  },
+  {
+   "index": 3456,
+   "KIND": "P_C",
+   "SPECIAL": [
+    4,
+    4,
+    4,
+    3
+   ],
+   "REST": [
+    6,
+    6,
+    6,
+    5,
+    5,
+    5,
+    5,
+    5,
+    2,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "W": 859,
+   "NC": 13,
+   "NZ": 7,
+   "UB_R6": 313299056,
+   "T_MAX_FOR_NO_GAIN": 250,
+   "R6_T_TRUE_CAP": 253,
+   "T7": 248,
+   "T7_NO_EG": 248,
+   "T7_NO_BEDGE": 248,
+   "T7_NO_CIND": 248,
+   "UB_R7": 313239696,
+   "UB": 313239696,
+   "T_UNITS_BELOW_THRESHOLD": 2,
+   "ARGMAX": {
+    "J_BY_CORE_CLASS_T_P_QUAD": {
+     "2,4,0": [
+      4
+     ],
+     "3,2,1": [
+      2
+     ],
+     "4,1,1": [
+      1,
+      1,
+      1
+     ],
+     "5,1,0": [
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "6,0,0": [
+      0,
+      0,
+      0
+     ]
+    },
+    "K_BY_Z_CLASS_R": {
+     "6": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "FFF0": 134,
+    "W_R": 49,
+    "A": 30,
+    "B_Z": 0,
+    "B_EDGE": 0,
+    "C_ZZ": 0,
+    "D_ZZZ": 35
+   },
+   "STATUS": "BOUND_PRUNED"
+  },
+  {
+   "index": 3521,
+   "KIND": "P_C",
+   "SPECIAL": [
+    4,
+    4,
+    4,
+    4
+   ],
+   "REST": [
+    6,
+    6,
+    6,
+    5,
+    5,
+    5,
+    5,
+    3,
+    3,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "W": 859,
+   "NC": 13,
+   "NZ": 7,
+   "UB_R6": 313287184,
+   "T_MAX_FOR_NO_GAIN": 250,
+   "R6_T_TRUE_CAP": 252,
+   "T7": 248,
+   "T7_NO_EG": 248,
+   "T7_NO_BEDGE": 248,
+   "T7_NO_CIND": 248,
+   "UB_R7": 313239696,
+   "UB": 313239696,
+   "T_UNITS_BELOW_THRESHOLD": 2,
+   "ARGMAX": {
+    "J_BY_CORE_CLASS_T_P_QUAD": {
+     "3,3,0": [
+      3,
+      3
+     ],
+     "4,1,1": [
+      1,
+      1,
+      1,
+      1
+     ],
+     "5,1,0": [
+      1,
+      1,
+      1,
+      1
+     ],
+     "6,0,0": [
+      0,
+      0,
+      0
+     ]
+    },
+    "K_BY_Z_CLASS_R": {
+     "6": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "FFF0": 126,
+    "W_R": 61,
+    "A": 26,
+    "B_Z": 0,
+    "B_EDGE": 0,
+    "C_ZZ": 0,
+    "D_ZZZ": 35
+   },
+   "STATUS": "BOUND_PRUNED"
+  },
+  {
+   "index": 3522,
+   "KIND": "P_C",
+   "SPECIAL": [
+    4,
+    4,
+    4,
+    4
+   ],
+   "REST": [
+    6,
+    6,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    2,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "W": 859,
+   "NC": 13,
+   "NZ": 7,
+   "UB_R6": 313299056,
+   "T_MAX_FOR_NO_GAIN": 250,
+   "R6_T_TRUE_CAP": 253,
+   "T7": 248,
+   "T7_NO_EG": 248,
+   "T7_NO_BEDGE": 248,
+   "T7_NO_CIND": 248,
+   "UB_R7": 313239696,
+   "UB": 313239696,
+   "T_UNITS_BELOW_THRESHOLD": 2,
+   "ARGMAX": {
+    "J_BY_CORE_CLASS_T_P_QUAD": {
+     "2,4,0": [
+      4
+     ],
+     "4,1,1": [
+      1,
+      1,
+      1,
+      1
+     ],
+     "5,1,0": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "6,0,0": [
+      0,
+      0
+     ]
+    },
+    "K_BY_Z_CLASS_R": {
+     "6": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "FFF0": 126,
+    "W_R": 61,
+    "A": 26,
+    "B_Z": 0,
+    "B_EDGE": 0,
+    "C_ZZ": 0,
+    "D_ZZZ": 35
+   },
+   "STATUS": "BOUND_PRUNED"
+  },
+  {
+   "index": 4060,
+   "KIND": "P_C",
+   "SPECIAL": [
+    4,
+    4,
+    4,
+    3
+   ],
+   "REST": [
+    6,
+    6,
+    6,
+    5,
+    5,
+    5,
+    5,
+    5,
+    1,
+    1,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "W": 858,
+   "NC": 14,
+   "NZ": 6,
+   "UB_R6": 313272512,
+   "T_MAX_FOR_NO_GAIN": 250,
+   "R6_T_TRUE_CAP": 251,
+   "T7": 246,
+   "T7_NO_EG": 246,
+   "T7_NO_BEDGE": 250,
+   "T7_NO_CIND": 248,
+   "UB_R7": 313213152,
+   "UB": 313213152,
+   "T_UNITS_BELOW_THRESHOLD": 4,
+   "ARGMAX": {
+    "J_BY_CORE_CLASS_T_P_QUAD": {
+     "1,5,0": [
+      0,
+      0
+     ],
+     "3,2,1": [
+      2
+     ],
+     "4,1,1": [
+      1,
+      1,
+      1
+     ],
+     "5,1,0": [
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "6,0,0": [
+      0,
+      0,
+      0
+     ]
+    },
+    "K_BY_Z_CLASS_R": {
+     "6": [
+      1,
+      1,
+      2,
+      2,
+      2,
+      2
+     ]
+    },
+    "FFF0": 148,
+    "W_R": 44,
+    "A": 24,
+    "B_Z": 4,
+    "B_EDGE": 0,
+    "C_ZZ": 18,
+    "D_ZZZ": 12
+   },
+   "STATUS": "BOUND_PRUNED"
+  },
+  {
+   "index": 4129,
+   "KIND": "P_C",
+   "SPECIAL": [
+    4,
+    4,
+    4,
+    4
+   ],
+   "REST": [
+    6,
+    6,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    1,
+    1,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "W": 858,
+   "NC": 14,
+   "NZ": 6,
+   "UB_R6": 313272512,
+   "T_MAX_FOR_NO_GAIN": 250,
+   "R6_T_TRUE_CAP": 251,
+   "T7": 250,
+   "T7_NO_EG": 250,
+   "T7_NO_BEDGE": 250,
+   "T7_NO_CIND": 252,
+   "UB_R7": 313260640,
+   "UB": 313260640,
+   "T_UNITS_BELOW_THRESHOLD": 0,
+   "ARGMAX": {
+    "J_BY_CORE_CLASS_T_P_QUAD": {
+     "1,5,0": [
+      0,
+      0
+     ],
+     "4,1,1": [
+      1,
+      1,
+      1,
+      1
+     ],
+     "5,1,0": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "6,0,0": [
+      0,
+      0
+     ]
+    },
+    "K_BY_Z_CLASS_R": {
+     "6": [
+      1,
+      1,
+      2,
+      2,
+      2,
+      2
+     ]
+    },
+    "FFF0": 140,
+    "W_R": 56,
+    "A": 20,
+    "B_Z": 4,
+    "B_EDGE": 5,
+    "C_ZZ": 18,
+    "D_ZZZ": 12
+   },
+   "STATUS": "BOUND_PRUNED"
+  },
+  {
+   "index": 4335,
+   "KIND": "P_A",
+   "SPECIAL": [
+    0
+   ],
+   "REST": [
+    6,
+    6,
+    6,
+    6,
+    6,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    3,
+    1,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "W": 857,
+   "NC": 14,
+   "NZ": 6,
+   "UB_R6": 313271112,
+   "T_MAX_FOR_NO_GAIN": 250,
+   "R6_T_TRUE_CAP": 251,
+   "T7": 235,
+   "T7_NO_EG": 235,
+   "T7_NO_BEDGE": 235,
+   "T7_NO_CIND": 235,
+   "UB_R7": 313081160,
+   "UB": 313081160,
+   "T_UNITS_BELOW_THRESHOLD": 15,
+   "ARGMAX": {
+    "J_BY_CORE_CLASS_T_P_QUAD": {
+     "1,5,0": [
+      0
+     ],
+     "3,3,0": [
+      3
+     ],
+     "5,1,0": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "6,0,0": [
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "K_BY_Z_CLASS_R": {
+     "5": [
+      0
+     ],
+     "6": [
+      1,
+      1,
+      1,
+      1,
+      1
+     ]
+    },
+    "FFF0": 174,
+    "W_R": 28,
+    "A": 3,
+    "B_Z": 0,
+    "B_EDGE": 0,
+    "C_ZZ": 10,
+    "D_ZZZ": 20
+   },
+   "STATUS": "BOUND_PRUNED"
+  },
+  {
+   "index": 4346,
+   "KIND": "P_A",
+   "SPECIAL": [
+    1
+   ],
+   "REST": [
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    5,
+    5,
+    5,
+    5,
+    5,
+    4,
+    3,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "W": 857,
+   "NC": 14,
+   "NZ": 6,
+   "UB_R6": 313271112,
+   "T_MAX_FOR_NO_GAIN": 250,
+   "R6_T_TRUE_CAP": 251,
+   "T7": 230,
+   "T7_NO_EG": 230,
+   "T7_NO_BEDGE": 230,
+   "T7_NO_CIND": 230,
+   "UB_R7": 313021800,
+   "UB": 313021800,
+   "T_UNITS_BELOW_THRESHOLD": 20,
+   "ARGMAX": {
+    "J_BY_CORE_CLASS_T_P_QUAD": {
+     "1,4,0": [
+      0
+     ],
+     "3,3,0": [
+      1
+     ],
+     "4,2,0": [
+      2
+     ],
+     "5,1,0": [
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "6,0,0": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "K_BY_Z_CLASS_R": {
+     "6": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+     ]
+    },
+    "FFF0": 178,
+    "W_R": 24,
+    "A": 1,
+    "B_Z": 0,
+    "B_EDGE": 2,
+    "C_ZZ": 7,
+    "D_ZZZ": 20
+   },
+   "STATUS": "BOUND_PRUNED"
+  },
+  {
+   "index": 4366,
+   "KIND": "P_A",
+   "SPECIAL": [
+    4
+   ],
+   "REST": [
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    5,
+    5,
+    5,
+    5,
+    5,
+    4,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "W": 857,
+   "NC": 13,
+   "NZ": 7,
+   "UB_R6": 313271112,
+   "T_MAX_FOR_NO_GAIN": 250,
+   "R6_T_TRUE_CAP": 251,
+   "T7": 247,
+   "T7_NO_EG": 247,
+   "T7_NO_BEDGE": 247,
+   "T7_NO_CIND": 247,
+   "UB_R7": 313223624,
+   "UB": 313223624,
+   "T_UNITS_BELOW_THRESHOLD": 3,
+   "ARGMAX": {
+    "J_BY_CORE_CLASS_T_P_QUAD": {
+     "4,1,0": [
+      1
+     ],
+     "4,2,0": [
+      2
+     ],
+     "5,1,0": [
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "6,0,0": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "K_BY_Z_CLASS_R": {
+     "6": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "FFF0": 181,
+    "W_R": 30,
+    "A": 1,
+    "B_Z": 0,
+    "B_EDGE": 0,
+    "C_ZZ": 0,
+    "D_ZZZ": 35
+   },
+   "STATUS": "BOUND_PRUNED"
+  },
+  {
+   "index": 4373,
+   "KIND": "P_A",
+   "SPECIAL": [
+    5
+   ],
+   "REST": [
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    5,
+    5,
+    5,
+    5,
+    5,
+    3,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "W": 857,
+   "NC": 13,
+   "NZ": 7,
+   "UB_R6": 313282984,
+   "T_MAX_FOR_NO_GAIN": 250,
+   "R6_T_TRUE_CAP": 252,
+   "T7": 247,
+   "T7_NO_EG": 247,
+   "T7_NO_BEDGE": 247,
+   "T7_NO_CIND": 247,
+   "UB_R7": 313223624,
+   "UB": 313223624,
+   "T_UNITS_BELOW_THRESHOLD": 3,
+   "ARGMAX": {
+    "J_BY_CORE_CLASS_T_P_QUAD": {
+     "3,3,0": [
+      3
+     ],
+     "5,0,0": [
+      0
+     ],
+     "5,1,0": [
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "6,0,0": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "K_BY_Z_CLASS_R": {
+     "6": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "FFF0": 185,
+    "W_R": 24,
+    "A": 3,
+    "B_Z": 0,
+    "B_EDGE": 0,
+    "C_ZZ": 0,
+    "D_ZZZ": 35
+   },
+   "STATUS": "BOUND_PRUNED"
+  },
+  {
+   "index": 4394,
+   "KIND": "P_A",
+   "SPECIAL": [
+    0
+   ],
+   "REST": [
+    6,
+    6,
+    6,
+    6,
+    6,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    4,
+    4,
+    1,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "W": 856,
+   "NC": 14,
+   "NZ": 6,
+   "UB_R6": 313268312,
+   "T_MAX_FOR_NO_GAIN": 250,
+   "R6_T_TRUE_CAP": 251,
+   "T7": 234,
+   "T7_NO_EG": 234,
+   "T7_NO_BEDGE": 234,
+   "T7_NO_CIND": 234,
+   "UB_R7": 313066488,
+   "UB": 313066488,
+   "T_UNITS_BELOW_THRESHOLD": 16,
+   "ARGMAX": {
+    "J_BY_CORE_CLASS_T_P_QUAD": {
+     "1,5,0": [
+      0
+     ],
+     "4,2,0": [
+      2,
+      2
+     ],
+     "5,1,0": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "6,0,0": [
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "K_BY_Z_CLASS_R": {
+     "5": [
+      0
+     ],
+     "6": [
+      1,
+      1,
+      1,
+      1,
+      1
+     ]
+    },
+    "FFF0": 170,
+    "W_R": 32,
+    "A": 2,
+    "B_Z": 0,
+    "B_EDGE": 0,
+    "C_ZZ": 10,
+    "D_ZZZ": 20
+   },
+   "STATUS": "BOUND_PRUNED"
+  },
+  {
+   "index": 4408,
+   "KIND": "P_A",
+   "SPECIAL": [
+    1
+   ],
+   "REST": [
+    6,
+    6,
+    6,
+    6,
+    6,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    3,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "W": 856,
+   "NC": 14,
+   "NZ": 6,
+   "UB_R6": 313280184,
+   "T_MAX_FOR_NO_GAIN": 250,
+   "R6_T_TRUE_CAP": 252,
+   "T7": 229,
+   "T7_NO_EG": 229,
+   "T7_NO_BEDGE": 229,
+   "T7_NO_CIND": 229,
+   "UB_R7": 313007128,
+   "UB": 313007128,
+   "T_UNITS_BELOW_THRESHOLD": 21,
+   "ARGMAX": {
+    "J_BY_CORE_CLASS_T_P_QUAD": {
+     "1,4,0": [
+      0
+     ],
+     "3,3,0": [
+      1
+     ],
+     "5,1,0": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "6,0,0": [
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "K_BY_Z_CLASS_R": {
+     "6": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+     ]
+    },
+    "FFF0": 174,
+    "W_R": 28,
+    "A": 0,
+    "B_Z": 0,
+    "B_EDGE": 2,
+    "C_ZZ": 7,
+    "D_ZZZ": 20
+   },
+   "STATUS": "BOUND_PRUNED"
+  },
+  {
+   "index": 4432,
+   "KIND": "P_A",
+   "SPECIAL": [
+    4
+   ],
+   "REST": [
+    6,
+    6,
+    6,
+    6,
+    6,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "W": 856,
+   "NC": 13,
+   "NZ": 7,
+   "UB_R6": 313280184,
+   "T_MAX_FOR_NO_GAIN": 250,
+   "R6_T_TRUE_CAP": 252,
+   "T7": 246,
+   "T7_NO_EG": 246,
+   "T7_NO_BEDGE": 246,
+   "T7_NO_CIND": 246,
+   "UB_R7": 313208952,
+   "UB": 313208952,
+   "T_UNITS_BELOW_THRESHOLD": 4,
+   "ARGMAX": {
+    "J_BY_CORE_CLASS_T_P_QUAD": {
+     "4,1,0": [
+      1
+     ],
+     "5,1,0": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "6,0,0": [
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "K_BY_Z_CLASS_R": {
+     "6": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "FFF0": 177,
+    "W_R": 34,
+    "A": 0,
+    "B_Z": 0,
+    "B_EDGE": 0,
+    "C_ZZ": 0,
+    "D_ZZZ": 35
+   },
+   "STATUS": "BOUND_PRUNED"
+  },
+  {
+   "index": 4439,
+   "KIND": "P_A",
+   "SPECIAL": [
+    5
+   ],
+   "REST": [
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    5,
+    5,
+    5,
+    5,
+    4,
+    4,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "W": 856,
+   "NC": 13,
+   "NZ": 7,
+   "UB_R6": 313268312,
+   "T_MAX_FOR_NO_GAIN": 250,
+   "R6_T_TRUE_CAP": 251,
+   "T7": 246,
+   "T7_NO_EG": 246,
+   "T7_NO_BEDGE": 246,
+   "T7_NO_CIND": 246,
+   "UB_R7": 313208952,
+   "UB": 313208952,
+   "T_UNITS_BELOW_THRESHOLD": 4,
+   "ARGMAX": {
+    "J_BY_CORE_CLASS_T_P_QUAD": {
+     "4,2,0": [
+      2,
+      2
+     ],
+     "5,0,0": [
+      0
+     ],
+     "5,1,0": [
+      1,
+      1,
+      1,
+      1
+     ],
+     "6,0,0": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "K_BY_Z_CLASS_R": {
+     "6": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "FFF0": 181,
+    "W_R": 28,
+    "A": 2,
+    "B_Z": 0,
+    "B_EDGE": 0,
+    "C_ZZ": 0,
+    "D_ZZZ": 35
+   },
+   "STATUS": "BOUND_PRUNED"
+  },
+  {
+   "index": 4460,
+   "KIND": "P_A",
+   "SPECIAL": [
+    0
+   ],
+   "REST": [
+    6,
+    6,
+    6,
+    6,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    4,
+    1,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "W": 855,
+   "NC": 14,
+   "NZ": 6,
+   "UB_R6": 313277384,
+   "T_MAX_FOR_NO_GAIN": 250,
+   "R6_T_TRUE_CAP": 252,
+   "T7": 233,
+   "T7_NO_EG": 233,
+   "T7_NO_BEDGE": 233,
+   "T7_NO_CIND": 233,
+   "UB_R7": 313051816,
+   "UB": 313051816,
+   "T_UNITS_BELOW_THRESHOLD": 17,
+   "ARGMAX": {
+    "J_BY_CORE_CLASS_T_P_QUAD": {
+     "1,5,0": [
+      0
+     ],
+     "4,2,0": [
+      2
+     ],
+     "5,1,0": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "6,0,0": [
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "K_BY_Z_CLASS_R": {
+     "5": [
+      0
+     ],
+     "6": [
+      1,
+      1,
+      1,
+      1,
+      1
+     ]
+    },
+    "FFF0": 166,
+    "W_R": 36,
+    "A": 1,
+    "B_Z": 0,
+    "B_EDGE": 0,
+    "C_ZZ": 10,
+    "D_ZZZ": 20
+   },
+   "STATUS": "BOUND_PRUNED"
+  },
+  {
+   "index": 4474,
+   "KIND": "P_A",
+   "SPECIAL": [
+    1
+   ],
+   "REST": [
+    6,
+    6,
+    6,
+    6,
+    6,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    4,
+    4,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "W": 855,
+   "NC": 14,
+   "NZ": 6,
+   "UB_R6": 313277384,
+   "T_MAX_FOR_NO_GAIN": 250,
+   "R6_T_TRUE_CAP": 252,
+   "T7": 226,
+   "T7_NO_EG": 226,
+   "T7_NO_BEDGE": 226,
+   "T7_NO_CIND": 226,
+   "UB_R7": 312968712,
+   "UB": 312968712,
+   "T_UNITS_BELOW_THRESHOLD": 24,
+   "ARGMAX": {
+    "J_BY_CORE_CLASS_T_P_QUAD": {
+     "1,4,0": [
+      0
+     ],
+     "4,2,0": [
+      0,
+      2
+     ],
+     "5,1,0": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "6,0,0": [
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "K_BY_Z_CLASS_R": {
+     "6": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+     ]
+    },
+    "FFF0": 170,
+    "W_R": 28,
+    "A": 1,
+    "B_Z": 0,
+    "B_EDGE": 2,
+    "C_ZZ": 7,
+    "D_ZZZ": 20
+   },
+   "STATUS": "BOUND_PRUNED"
+  },
+  {
+   "index": 4510,
+   "KIND": "P_A",
+   "SPECIAL": [
+    5
+   ],
+   "REST": [
+    6,
+    6,
+    6,
+    6,
+    6,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    4,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "W": 855,
+   "NC": 13,
+   "NZ": 7,
+   "UB_R6": 313277384,
+   "T_MAX_FOR_NO_GAIN": 250,
+   "R6_T_TRUE_CAP": 252,
+   "T7": 245,
+   "T7_NO_EG": 245,
+   "T7_NO_BEDGE": 245,
+   "T7_NO_CIND": 245,
+   "UB_R7": 313194280,
+   "UB": 313194280,
+   "T_UNITS_BELOW_THRESHOLD": 5,
+   "ARGMAX": {
+    "J_BY_CORE_CLASS_T_P_QUAD": {
+     "4,2,0": [
+      2
+     ],
+     "5,0,0": [
+      0
+     ],
+     "5,1,0": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "6,0,0": [
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "K_BY_Z_CLASS_R": {
+     "6": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "FFF0": 177,
+    "W_R": 32,
+    "A": 1,
+    "B_Z": 0,
+    "B_EDGE": 0,
+    "C_ZZ": 0,
+    "D_ZZZ": 35
+   },
+   "STATUS": "BOUND_PRUNED"
+  },
+  {
+   "index": 4803,
+   "KIND": "P_C",
+   "SPECIAL": [
+    4,
+    4,
+    3,
+    2
+   ],
+   "REST": [
+    6,
+    6,
+    6,
+    6,
+    5,
+    5,
+    5,
+    5,
+    3,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "W": 857,
+   "NC": 13,
+   "NZ": 7,
+   "UB_R6": 313269712,
+   "T_MAX_FOR_NO_GAIN": 250,
+   "R6_T_TRUE_CAP": 251,
+   "T7": 246,
+   "T7_NO_EG": 246,
+   "T7_NO_BEDGE": 246,
+   "T7_NO_CIND": 246,
+   "UB_R7": 313210352,
+   "UB": 313210352,
+   "T_UNITS_BELOW_THRESHOLD": 4,
+   "ARGMAX": {
+    "J_BY_CORE_CLASS_T_P_QUAD": {
+     "2,3,1": [
+      3
+     ],
+     "3,2,1": [
+      2
+     ],
+     "3,3,0": [
+      3
+     ],
+     "4,1,1": [
+      1,
+      1
+     ],
+     "5,1,0": [
+      1,
+      1,
+      1,
+      1
+     ],
+     "6,0,0": [
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "K_BY_Z_CLASS_R": {
+     "6": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "FFF0": 142,
+    "W_R": 33,
+    "A": 36,
+    "B_Z": 0,
+    "B_EDGE": 0,
+    "C_ZZ": 0,
+    "D_ZZZ": 35
+   },
+   "STATUS": "BOUND_PRUNED"
+  },
+  {
+   "index": 4874,
+   "KIND": "P_C",
+   "SPECIAL": [
+    4,
+    4,
+    4,
+    2
+   ],
+   "REST": [
+    6,
+    6,
+    6,
+    5,
+    5,
+    5,
+    5,
+    5,
+    3,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "W": 857,
+   "NC": 13,
+   "NZ": 7,
+   "UB_R6": 313269712,
+   "T_MAX_FOR_NO_GAIN": 250,
+   "R6_T_TRUE_CAP": 251,
+   "T7": 246,
+   "T7_NO_EG": 246,
+   "T7_NO_BEDGE": 246,
+   "T7_NO_CIND": 246,
+   "UB_R7": 313210352,
+   "UB": 313210352,
+   "T_UNITS_BELOW_THRESHOLD": 4,
+   "ARGMAX": {
+    "J_BY_CORE_CLASS_T_P_QUAD": {
+     "2,3,1": [
+      3
+     ],
+     "3,3,0": [
+      3
+     ],
+     "4,1,1": [
+      1,
+      1,
+      1
+     ],
+     "5,1,0": [
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "6,0,0": [
+      0,
+      0,
+      0
+     ]
+    },
+    "K_BY_Z_CLASS_R": {
+     "6": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "FFF0": 134,
+    "W_R": 45,
+    "A": 32,
+    "B_Z": 0,
+    "B_EDGE": 0,
+    "C_ZZ": 0,
+    "D_ZZZ": 35
+   },
+   "STATUS": "BOUND_PRUNED"
+  },
+  {
+   "index": 4880,
+   "KIND": "P_C",
+   "SPECIAL": [
+    4,
+    4,
+    3,
+    3
+   ],
+   "REST": [
+    6,
+    6,
+    6,
+    6,
+    5,
+    5,
+    5,
+    4,
+    3,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "W": 857,
+   "NC": 13,
+   "NZ": 7,
+   "UB_R6": 313269712,
+   "T_MAX_FOR_NO_GAIN": 250,
+   "R6_T_TRUE_CAP": 251,
+   "T7": 246,
+   "T7_NO_EG": 246,
+   "T7_NO_BEDGE": 246,
+   "T7_NO_CIND": 246,
+   "UB_R7": 313210352,
+   "UB": 313210352,
+   "T_UNITS_BELOW_THRESHOLD": 4,
+   "ARGMAX": {
+    "J_BY_CORE_CLASS_T_P_QUAD": {
+     "3,2,1": [
+      2,
+      2
+     ],
+     "3,3,0": [
+      3
+     ],
+     "4,1,1": [
+      1,
+      1
+     ],
+     "4,2,0": [
+      2
+     ],
+     "5,1,0": [
+      1,
+      1,
+      1
+     ],
+     "6,0,0": [
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "K_BY_Z_CLASS_R": {
+     "6": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "FFF0": 134,
+    "W_R": 45,
+    "A": 32,
+    "B_Z": 0,
+    "B_EDGE": 0,
+    "C_ZZ": 0,
+    "D_ZZZ": 35
+   },
+   "STATUS": "BOUND_PRUNED"
+  },
+  {
+   "index": 4962,
+   "KIND": "P_C",
+   "SPECIAL": [
+    4,
+    4,
+    4,
+    3
+   ],
+   "REST": [
+    6,
+    6,
+    6,
+    5,
+    5,
+    5,
+    5,
+    4,
+    3,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "W": 857,
+   "NC": 13,
+   "NZ": 7,
+   "UB_R6": 313269712,
+   "T_MAX_FOR_NO_GAIN": 250,
+   "R6_T_TRUE_CAP": 251,
+   "T7": 246,
+   "T7_NO_EG": 246,
+   "T7_NO_BEDGE": 246,
+   "T7_NO_CIND": 246,
+   "UB_R7": 313210352,
+   "UB": 313210352,
+   "T_UNITS_BELOW_THRESHOLD": 4,
+   "ARGMAX": {
+    "J_BY_CORE_CLASS_T_P_QUAD": {
+     "3,2,1": [
+      2
+     ],
+     "3,3,0": [
+      3
+     ],
+     "4,1,1": [
+      1,
+      1,
+      1
+     ],
+     "4,2,0": [
+      2
+     ],
+     "5,1,0": [
+      1,
+      1,
+      1,
+      1
+     ],
+     "6,0,0": [
+      0,
+      0,
+      0
+     ]
+    },
+    "K_BY_Z_CLASS_R": {
+     "6": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "FFF0": 126,
+    "W_R": 57,
+    "A": 28,
+    "B_Z": 0,
+    "B_EDGE": 0,
+    "C_ZZ": 0,
+    "D_ZZZ": 35
+   },
+   "STATUS": "BOUND_PRUNED"
+  },
+  {
+   "index": 5041,
+   "KIND": "P_C",
+   "SPECIAL": [
+    4,
+    4,
+    4,
+    4
+   ],
+   "REST": [
+    6,
+    6,
+    5,
+    5,
+    5,
+    5,
+    5,
+    4,
+    3,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "W": 857,
+   "NC": 13,
+   "NZ": 7,
+   "UB_R6": 313269712,
+   "T_MAX_FOR_NO_GAIN": 250,
+   "R6_T_TRUE_CAP": 251,
+   "T7": 246,
+   "T7_NO_EG": 246,
+   "T7_NO_BEDGE": 246,
+   "T7_NO_CIND": 246,
+   "UB_R7": 313210352,
+   "UB": 313210352,
+   "T_UNITS_BELOW_THRESHOLD": 4,
+   "ARGMAX": {
+    "J_BY_CORE_CLASS_T_P_QUAD": {
+     "3,3,0": [
+      3
+     ],
+     "4,1,1": [
+      1,
+      1,
+      1,
+      1
+     ],
+     "4,2,0": [
+      2
+     ],
+     "5,1,0": [
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "6,0,0": [
+      0,
+      0
+     ]
+    },
+    "K_BY_Z_CLASS_R": {
+     "6": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "FFF0": 118,
+    "W_R": 69,
+    "A": 24,
+    "B_Z": 0,
+    "B_EDGE": 0,
+    "C_ZZ": 0,
+    "D_ZZZ": 35
+   },
+   "STATUS": "BOUND_PRUNED"
+  },
+  {
+   "index": 5565,
+   "KIND": "P_C",
+   "SPECIAL": [
+    4,
+    4,
+    4,
+    1
+   ],
+   "REST": [
+    6,
+    6,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "W": 856,
+   "NC": 13,
+   "NZ": 7,
+   "UB_R6": 313290656,
+   "T_MAX_FOR_NO_GAIN": 250,
+   "R6_T_TRUE_CAP": 253,
+   "T7": 245,
+   "T7_NO_EG": 245,
+   "T7_NO_BEDGE": 245,
+   "T7_NO_CIND": 245,
+   "UB_R7": 313195680,
+   "UB": 313195680,
+   "T_UNITS_BELOW_THRESHOLD": 5,
+   "ARGMAX": {
+    "J_BY_CORE_CLASS_T_P_QUAD": {
+     "1,4,1": [
+      4
+     ],
+     "4,1,1": [
+      1,
+      1,
+      1
+     ],
+     "5,1,0": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "6,0,0": [
+      0,
+      0
+     ]
+    },
+    "K_BY_Z_CLASS_R": {
+     "6": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "FFF0": 138,
+    "W_R": 37,
+    "A": 35,
+    "B_Z": 0,
+    "B_EDGE": 0,
+    "C_ZZ": 0,
+    "D_ZZZ": 35
+   },
+   "STATUS": "BOUND_PRUNED"
+  },
+  {
+   "index": 5575,
+   "KIND": "P_C",
+   "SPECIAL": [
+    4,
+    3,
+    3,
+    3
+   ],
+   "REST": [
+    6,
+    6,
+    6,
+    6,
+    5,
+    5,
+    5,
+    5,
+    3,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "W": 856,
+   "NC": 13,
+   "NZ": 7,
+   "UB_R6": 313266912,
+   "T_MAX_FOR_NO_GAIN": 250,
+   "R6_T_TRUE_CAP": 251,
+   "T7": 245,
+   "T7_NO_EG": 245,
+   "T7_NO_BEDGE": 245,
+   "T7_NO_CIND": 245,
+   "UB_R7": 313195680,
+   "UB": 313195680,
+   "T_UNITS_BELOW_THRESHOLD": 5,
+   "ARGMAX": {
+    "J_BY_CORE_CLASS_T_P_QUAD": {
+     "3,2,1": [
+      2,
+      2,
+      2
+     ],
+     "3,3,0": [
+      3
+     ],
+     "4,1,1": [
+      1
+     ],
+     "5,1,0": [
+      1,
+      1,
+      1,
+      1
+     ],
+     "6,0,0": [
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "K_BY_Z_CLASS_R": {
+     "6": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "FFF0": 138,
+    "W_R": 37,
+    "A": 35,
+    "B_Z": 0,
+    "B_EDGE": 0,
+    "C_ZZ": 0,
+    "D_ZZZ": 35
+   },
+   "STATUS": "BOUND_PRUNED"
+  },
+  {
+   "index": 5657,
+   "KIND": "P_C",
+   "SPECIAL": [
+    4,
+    4,
+    4,
+    2
+   ],
+   "REST": [
+    6,
+    6,
+    6,
+    5,
+    5,
+    5,
+    5,
+    4,
+    4,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "W": 856,
+   "NC": 13,
+   "NZ": 7,
+   "UB_R6": 313266912,
+   "T_MAX_FOR_NO_GAIN": 250,
+   "R6_T_TRUE_CAP": 251,
+   "T7": 245,
+   "T7_NO_EG": 245,
+   "T7_NO_BEDGE": 245,
+   "T7_NO_CIND": 245,
+   "UB_R7": 313195680,
+   "UB": 313195680,
+   "T_UNITS_BELOW_THRESHOLD": 5,
+   "ARGMAX": {
+    "J_BY_CORE_CLASS_T_P_QUAD": {
+     "2,3,1": [
+      3
+     ],
+     "4,1,1": [
+      1,
+      1,
+      1
+     ],
+     "4,2,0": [
+      2,
+      2
+     ],
+     "5,1,0": [
+      1,
+      1,
+      1,
+      1
+     ],
+     "6,0,0": [
+      0,
+      0,
+      0
+     ]
+    },
+    "K_BY_Z_CLASS_R": {
+     "6": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "FFF0": 130,
+    "W_R": 49,
+    "A": 31,
+    "B_Z": 0,
+    "B_EDGE": 0,
+    "C_ZZ": 0,
+    "D_ZZZ": 35
+   },
+   "STATUS": "BOUND_PRUNED"
+  },
+  {
+   "index": 5664,
+   "KIND": "P_C",
+   "SPECIAL": [
+    4,
+    4,
+    3,
+    3
+   ],
+   "REST": [
+    6,
+    6,
+    6,
+    5,
+    5,
+    5,
+    5,
+    5,
+    3,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "W": 856,
+   "NC": 13,
+   "NZ": 7,
+   "UB_R6": 313278784,
+   "T_MAX_FOR_NO_GAIN": 250,
+   "R6_T_TRUE_CAP": 252,
+   "T7": 245,
+   "T7_NO_EG": 245,
+   "T7_NO_BEDGE": 245,
+   "T7_NO_CIND": 245,
+   "UB_R7": 313195680,
+   "UB": 313195680,
+   "T_UNITS_BELOW_THRESHOLD": 5,
+   "ARGMAX": {
+    "J_BY_CORE_CLASS_T_P_QUAD": {
+     "3,2,1": [
+      2,
+      2
+     ],
+     "3,3,0": [
+      3
+     ],
+     "4,1,1": [
+      1,
+      1
+     ],
+     "5,1,0": [
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "6,0,0": [
+      0,
+      0,
+      0
+     ]
+    },
+    "K_BY_Z_CLASS_R": {
+     "6": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "FFF0": 130,
+    "W_R": 49,
+    "A": 31,
+    "B_Z": 0,
+    "B_EDGE": 0,
+    "C_ZZ": 0,
+    "D_ZZZ": 35
+   },
+   "STATUS": "BOUND_PRUNED"
+  },
+  {
+   "index": 5761,
+   "KIND": "P_C",
+   "SPECIAL": [
+    4,
+    4,
+    4,
+    3
+   ],
+   "REST": [
+    6,
+    6,
+    6,
+    5,
+    5,
+    5,
+    4,
+    4,
+    4,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "W": 856,
+   "NC": 13,
+   "NZ": 7,
+   "UB_R6": 313266912,
+   "T_MAX_FOR_NO_GAIN": 250,
+   "R6_T_TRUE_CAP": 251,
+   "T7": 245,
+   "T7_NO_EG": 245,
+   "T7_NO_BEDGE": 245,
+   "T7_NO_CIND": 245,
+   "UB_R7": 313195680,
+   "UB": 313195680,
+   "T_UNITS_BELOW_THRESHOLD": 5,
+   "ARGMAX": {
+    "J_BY_CORE_CLASS_T_P_QUAD": {
+     "3,2,1": [
+      2
+     ],
+     "4,1,1": [
+      1,
+      1,
+      1
+     ],
+     "4,2,0": [
+      2,
+      2,
+      2
+     ],
+     "5,1,0": [
+      1,
+      1,
+      1
+     ],
+     "6,0,0": [
+      0,
+      0,
+      0
+     ]
+    },
+    "K_BY_Z_CLASS_R": {
+     "6": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "FFF0": 122,
+    "W_R": 61,
+    "A": 27,
+    "B_Z": 0,
+    "B_EDGE": 0,
+    "C_ZZ": 0,
+    "D_ZZZ": 35
+   },
+   "STATUS": "BOUND_PRUNED"
+  },
+  {
+   "index": 5762,
+   "KIND": "P_C",
+   "SPECIAL": [
+    4,
+    4,
+    4,
+    3
+   ],
+   "REST": [
+    6,
+    6,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    3,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "W": 856,
+   "NC": 13,
+   "NZ": 7,
+   "UB_R6": 313278784,
+   "T_MAX_FOR_NO_GAIN": 250,
+   "R6_T_TRUE_CAP": 252,
+   "T7": 245,
+   "T7_NO_EG": 245,
+   "T7_NO_BEDGE": 245,
+   "T7_NO_CIND": 245,
+   "UB_R7": 313195680,
+   "UB": 313195680,
+   "T_UNITS_BELOW_THRESHOLD": 5,
+   "ARGMAX": {
+    "J_BY_CORE_CLASS_T_P_QUAD": {
+     "3,2,1": [
+      2
+     ],
+     "3,3,0": [
+      3
+     ],
+     "4,1,1": [
+      1,
+      1,
+      1
+     ],
+     "5,1,0": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "6,0,0": [
+      0,
+      0
+     ]
+    },
+    "K_BY_Z_CLASS_R": {
+     "6": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "FFF0": 122,
+    "W_R": 61,
+    "A": 27,
+    "B_Z": 0,
+    "B_EDGE": 0,
+    "C_ZZ": 0,
+    "D_ZZZ": 35
+   },
+   "STATUS": "BOUND_PRUNED"
+  },
+  {
+   "index": 5856,
+   "KIND": "P_C",
+   "SPECIAL": [
+    4,
+    4,
+    4,
+    4
+   ],
+   "REST": [
+    6,
+    6,
+    5,
+    5,
+    5,
+    5,
+    4,
+    4,
+    4,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "W": 856,
+   "NC": 13,
+   "NZ": 7,
+   "UB_R6": 313266912,
+   "T_MAX_FOR_NO_GAIN": 250,
+   "R6_T_TRUE_CAP": 251,
+   "T7": 245,
+   "T7_NO_EG": 245,
+   "T7_NO_BEDGE": 245,
+   "T7_NO_CIND": 245,
+   "UB_R7": 313195680,
+   "UB": 313195680,
+   "T_UNITS_BELOW_THRESHOLD": 5,
+   "ARGMAX": {
+    "J_BY_CORE_CLASS_T_P_QUAD": {
+     "4,1,1": [
+      1,
+      1,
+      1,
+      1
+     ],
+     "4,2,0": [
+      2,
+      2,
+      2
+     ],
+     "5,1,0": [
+      1,
+      1,
+      1,
+      1
+     ],
+     "6,0,0": [
+      0,
+      0
+     ]
+    },
+    "K_BY_Z_CLASS_R": {
+     "6": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "FFF0": 114,
+    "W_R": 73,
+    "A": 23,
+    "B_Z": 0,
+    "B_EDGE": 0,
+    "C_ZZ": 0,
+    "D_ZZZ": 35
+   },
+   "STATUS": "BOUND_PRUNED"
+  },
+  {
+   "index": 5857,
+   "KIND": "P_C",
+   "SPECIAL": [
+    4,
+    4,
+    4,
+    4
+   ],
+   "REST": [
+    6,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    3,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "W": 856,
+   "NC": 13,
+   "NZ": 7,
+   "UB_R6": 313278784,
+   "T_MAX_FOR_NO_GAIN": 250,
+   "R6_T_TRUE_CAP": 252,
+   "T7": 245,
+   "T7_NO_EG": 245,
+   "T7_NO_BEDGE": 245,
+   "T7_NO_CIND": 245,
+   "UB_R7": 313195680,
+   "UB": 313195680,
+   "T_UNITS_BELOW_THRESHOLD": 5,
+   "ARGMAX": {
+    "J_BY_CORE_CLASS_T_P_QUAD": {
+     "3,3,0": [
+      3
+     ],
+     "4,1,1": [
+      1,
+      1,
+      1,
+      1
+     ],
+     "5,1,0": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "6,0,0": [
+      0
+     ]
+    },
+    "K_BY_Z_CLASS_R": {
+     "6": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "FFF0": 114,
+    "W_R": 73,
+    "A": 23,
+    "B_Z": 0,
+    "B_EDGE": 0,
+    "C_ZZ": 0,
+    "D_ZZZ": 35
+   },
+   "STATUS": "BOUND_PRUNED"
+  },
+  {
+   "index": 6374,
+   "KIND": "P_C",
+   "SPECIAL": [
+    4,
+    4,
+    2,
+    2
+   ],
+   "REST": [
+    6,
+    6,
+    6,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "W": 855,
+   "NC": 13,
+   "NZ": 7,
+   "UB_R6": 313264112,
+   "T_MAX_FOR_NO_GAIN": 250,
+   "R6_T_TRUE_CAP": 251,
+   "T7": 244,
+   "T7_NO_EG": 244,
+   "T7_NO_BEDGE": 244,
+   "T7_NO_CIND": 244,
+   "UB_R7": 313181008,
+   "UB": 313181008,
+   "T_UNITS_BELOW_THRESHOLD": 6,
+   "ARGMAX": {
+    "J_BY_CORE_CLASS_T_P_QUAD": {
+     "2,3,1": [
+      3,
+      3
+     ],
+     "4,1,1": [
+      1,
+      1
+     ],
+     "5,1,0": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "6,0,0": [
+      0,
+      0,
+      0
+     ]
+    },
+    "K_BY_Z_CLASS_R": {
+     "6": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "FFF0": 142,
+    "W_R": 29,
+    "A": 38,
+    "B_Z": 0,
+    "B_EDGE": 0,
+    "C_ZZ": 0,
+    "D_ZZZ": 35
+   },
+   "STATUS": "BOUND_PRUNED"
+  },
+  {
+   "index": 6461,
+   "KIND": "P_C",
+   "SPECIAL": [
+    4,
+    4,
+    3,
+    2
+   ],
+   "REST": [
+    6,
+    6,
+    6,
+    5,
+    5,
+    5,
+    5,
+    5,
+    4,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "W": 855,
+   "NC": 13,
+   "NZ": 7,
+   "UB_R6": 313275984,
+   "T_MAX_FOR_NO_GAIN": 250,
+   "R6_T_TRUE_CAP": 252,
+   "T7": 244,
+   "T7_NO_EG": 244,
+   "T7_NO_BEDGE": 244,
+   "T7_NO_CIND": 244,
+   "UB_R7": 313181008,
+   "UB": 313181008,
+   "T_UNITS_BELOW_THRESHOLD": 6,
+   "ARGMAX": {
+    "J_BY_CORE_CLASS_T_P_QUAD": {
+     "2,3,1": [
+      3
+     ],
+     "3,2,1": [
+      2
+     ],
+     "4,1,1": [
+      1,
+      1
+     ],
+     "4,2,0": [
+      2
+     ],
+     "5,1,0": [
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "6,0,0": [
+      0,
+      0,
+      0
+     ]
+    },
+    "K_BY_Z_CLASS_R": {
+     "6": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "FFF0": 134,
+    "W_R": 41,
+    "A": 34,
+    "B_Z": 0,
+    "B_EDGE": 0,
+    "C_ZZ": 0,
+    "D_ZZZ": 35
+   },
+   "STATUS": "BOUND_PRUNED"
+  },
+  {
+   "index": 6466,
+   "KIND": "P_C",
+   "SPECIAL": [
+    4,
+    3,
+    3,
+    3
+   ],
+   "REST": [
+    6,
+    6,
+    6,
+    6,
+    5,
+    5,
+    5,
+    4,
+    4,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "W": 855,
+   "NC": 13,
+   "NZ": 7,
+   "UB_R6": 313264112,
+   "T_MAX_FOR_NO_GAIN": 250,
+   "R6_T_TRUE_CAP": 251,
+   "T7": 244,
+   "T7_NO_EG": 244,
+   "T7_NO_BEDGE": 244,
+   "T7_NO_CIND": 244,
+   "UB_R7": 313181008,
+   "UB": 313181008,
+   "T_UNITS_BELOW_THRESHOLD": 6,
+   "ARGMAX": {
+    "J_BY_CORE_CLASS_T_P_QUAD": {
+     "3,2,1": [
+      2,
+      2,
+      2
+     ],
+     "4,1,1": [
+      1
+     ],
+     "4,2,0": [
+      2,
+      2
+     ],
+     "5,1,0": [
+      1,
+      1,
+      1
+     ],
+     "6,0,0": [
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "K_BY_Z_CLASS_R": {
+     "6": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "FFF0": 134,
+    "W_R": 41,
+    "A": 34,
+    "B_Z": 0,
+    "B_EDGE": 0,
+    "C_ZZ": 0,
+    "D_ZZZ": 35
+   },
+   "STATUS": "BOUND_PRUNED"
+  },
+  {
+   "index": 6558,
+   "KIND": "P_C",
+   "SPECIAL": [
+    4,
+    4,
+    4,
+    2
+   ],
+   "REST": [
+    6,
+    6,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    4,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "W": 855,
+   "NC": 13,
+   "NZ": 7,
+   "UB_R6": 313275984,
+   "T_MAX_FOR_NO_GAIN": 250,
+   "R6_T_TRUE_CAP": 252,
+   "T7": 244,
+   "T7_NO_EG": 244,
+   "T7_NO_BEDGE": 244,
+   "T7_NO_CIND": 244,
+   "UB_R7": 313181008,
+   "UB": 313181008,
+   "T_UNITS_BELOW_THRESHOLD": 6,
+   "ARGMAX": {
+    "J_BY_CORE_CLASS_T_P_QUAD": {
+     "2,3,1": [
+      3
+     ],
+     "4,1,1": [
+      1,
+      1,
+      1
+     ],
+     "4,2,0": [
+      2
+     ],
+     "5,1,0": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "6,0,0": [
+      0,
+      0
+     ]
+    },
+    "K_BY_Z_CLASS_R": {
+     "6": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "FFF0": 126,
+    "W_R": 53,
+    "A": 30,
+    "B_Z": 0,
+    "B_EDGE": 0,
+    "C_ZZ": 0,
+    "D_ZZZ": 35
+   },
+   "STATUS": "BOUND_PRUNED"
+  },
+  {
+   "index": 6565,
+   "KIND": "P_C",
+   "SPECIAL": [
+    4,
+    4,
+    3,
+    3
+   ],
+   "REST": [
+    6,
+    6,
+    6,
+    5,
+    5,
+    5,
+    5,
+    4,
+    4,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "W": 855,
+   "NC": 13,
+   "NZ": 7,
+   "UB_R6": 313264112,
+   "T_MAX_FOR_NO_GAIN": 250,
+   "R6_T_TRUE_CAP": 251,
+   "T7": 244,
+   "T7_NO_EG": 244,
+   "T7_NO_BEDGE": 244,
+   "T7_NO_CIND": 244,
+   "UB_R7": 313181008,
+   "UB": 313181008,
+   "T_UNITS_BELOW_THRESHOLD": 6,
+   "ARGMAX": {
+    "J_BY_CORE_CLASS_T_P_QUAD": {
+     "3,2,1": [
+      2,
+      2
+     ],
+     "4,1,1": [
+      1,
+      1
+     ],
+     "4,2,0": [
+      2,
+      2
+     ],
+     "5,1,0": [
+      1,
+      1,
+      1,
+      1
+     ],
+     "6,0,0": [
+      0,
+      0,
+      0
+     ]
+    },
+    "K_BY_Z_CLASS_R": {
+     "6": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "FFF0": 126,
+    "W_R": 53,
+    "A": 30,
+    "B_Z": 0,
+    "B_EDGE": 0,
+    "C_ZZ": 0,
+    "D_ZZZ": 35
+   },
+   "STATUS": "BOUND_PRUNED"
+  },
+  {
+   "index": 6665,
+   "KIND": "P_C",
+   "SPECIAL": [
+    4,
+    4,
+    4,
+    3
+   ],
+   "REST": [
+    6,
+    6,
+    5,
+    5,
+    5,
+    5,
+    5,
+    4,
+    4,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "W": 855,
+   "NC": 13,
+   "NZ": 7,
+   "UB_R6": 313275984,
+   "T_MAX_FOR_NO_GAIN": 250,
+   "R6_T_TRUE_CAP": 252,
+   "T7": 244,
+   "T7_NO_EG": 244,
+   "T7_NO_BEDGE": 244,
+   "T7_NO_CIND": 244,
+   "UB_R7": 313181008,
+   "UB": 313181008,
+   "T_UNITS_BELOW_THRESHOLD": 6,
+   "ARGMAX": {
+    "J_BY_CORE_CLASS_T_P_QUAD": {
+     "3,2,1": [
+      2
+     ],
+     "4,1,1": [
+      1,
+      1,
+      1
+     ],
+     "4,2,0": [
+      2,
+      2
+     ],
+     "5,1,0": [
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "6,0,0": [
+      0,
+      0
+     ]
+    },
+    "K_BY_Z_CLASS_R": {
+     "6": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "FFF0": 118,
+    "W_R": 65,
+    "A": 26,
+    "B_Z": 0,
+    "B_EDGE": 0,
+    "C_ZZ": 0,
+    "D_ZZZ": 35
+   },
+   "STATUS": "BOUND_PRUNED"
+  },
+  {
+   "index": 6768,
+   "KIND": "P_C",
+   "SPECIAL": [
+    4,
+    4,
+    4,
+    4
+   ],
+   "REST": [
+    6,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    4,
+    4,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "W": 855,
+   "NC": 13,
+   "NZ": 7,
+   "UB_R6": 313275984,
+   "T_MAX_FOR_NO_GAIN": 250,
+   "R6_T_TRUE_CAP": 252,
+   "T7": 244,
+   "T7_NO_EG": 244,
+   "T7_NO_BEDGE": 244,
+   "T7_NO_CIND": 244,
+   "UB_R7": 313181008,
+   "UB": 313181008,
+   "T_UNITS_BELOW_THRESHOLD": 6,
+   "ARGMAX": {
+    "J_BY_CORE_CLASS_T_P_QUAD": {
+     "4,1,1": [
+      1,
+      1,
+      1,
+      1
+     ],
+     "4,2,0": [
+      2,
+      2
+     ],
+     "5,1,0": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "6,0,0": [
+      0
+     ]
+    },
+    "K_BY_Z_CLASS_R": {
+     "6": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "FFF0": 110,
+    "W_R": 77,
+    "A": 22,
+    "B_Z": 0,
+    "B_EDGE": 0,
+    "C_ZZ": 0,
+    "D_ZZZ": 35
+   },
+   "STATUS": "BOUND_PRUNED"
+  },
+  {
+   "index": 7037,
+   "KIND": "P_A",
+   "SPECIAL": [
+    0
+   ],
+   "REST": [
+    6,
+    6,
+    6,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    1,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "W": 854,
+   "NC": 14,
+   "NZ": 6,
+   "UB_R6": 313286456,
+   "T_MAX_FOR_NO_GAIN": 251,
+   "R6_T_TRUE_CAP": 253,
+   "T7": 232,
+   "T7_NO_EG": 232,
+   "T7_NO_BEDGE": 232,
+   "T7_NO_CIND": 232,
+   "UB_R7": 313037144,
+   "UB": 313037144,
+   "T_UNITS_BELOW_THRESHOLD": 19,
+   "ARGMAX": {
+    "J_BY_CORE_CLASS_T_P_QUAD": {
+     "1,5,0": [
+      0
+     ],
+     "5,1,0": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "6,0,0": [
+      0,
+      0,
+      0
+     ]
+    },
+    "K_BY_Z_CLASS_R": {
+     "5": [
+      0
+     ],
+     "6": [
+      1,
+      1,
+      1,
+      1,
+      1
+     ]
+    },
+    "FFF0": 162,
+    "W_R": 40,
+    "A": 0,
+    "B_Z": 0,
+    "B_EDGE": 0,
+    "C_ZZ": 10,
+    "D_ZZZ": 20
+   },
+   "STATUS": "BOUND_PRUNED"
+  },
+  {
+   "index": 7054,
+   "KIND": "P_A",
+   "SPECIAL": [
+    1
+   ],
+   "REST": [
+    6,
+    6,
+    6,
+    6,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    4,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "W": 854,
+   "NC": 14,
+   "NZ": 6,
+   "UB_R6": 313286456,
+   "T_MAX_FOR_NO_GAIN": 251,
+   "R6_T_TRUE_CAP": 253,
+   "T7": 225,
+   "T7_NO_EG": 225,
+   "T7_NO_BEDGE": 225,
+   "T7_NO_CIND": 225,
+   "UB_R7": 312954040,
+   "UB": 312954040,
+   "T_UNITS_BELOW_THRESHOLD": 26,
+   "ARGMAX": {
+    "J_BY_CORE_CLASS_T_P_QUAD": {
+     "1,4,0": [
+      0
+     ],
+     "4,2,0": [
+      0
+     ],
+     "5,1,0": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "6,0,0": [
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "K_BY_Z_CLASS_R": {
+     "6": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+     ]
+    },
+    "FFF0": 166,
+    "W_R": 32,
+    "A": 0,
+    "B_Z": 0,
+    "B_EDGE": 2,
+    "C_ZZ": 7,
+    "D_ZZZ": 20
+   },
+   "STATUS": "BOUND_PRUNED"
+  },
+  {
+   "index": 7096,
+   "KIND": "P_A",
+   "SPECIAL": [
+    5
+   ],
+   "REST": [
+    6,
+    6,
+    6,
+    6,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "W": 854,
+   "NC": 13,
+   "NZ": 7,
+   "UB_R6": 313298328,
+   "T_MAX_FOR_NO_GAIN": 251,
+   "R6_T_TRUE_CAP": 254,
+   "T7": 244,
+   "T7_NO_EG": 244,
+   "T7_NO_BEDGE": 244,
+   "T7_NO_CIND": 244,
+   "UB_R7": 313179608,
+   "UB": 313179608,
+   "T_UNITS_BELOW_THRESHOLD": 7,
+   "ARGMAX": {
+    "J_BY_CORE_CLASS_T_P_QUAD": {
+     "5,0,0": [
+      0
+     ],
+     "5,1,0": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "6,0,0": [
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "K_BY_Z_CLASS_R": {
+     "6": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "FFF0": 173,
+    "W_R": 36,
+    "A": 0,
+    "B_Z": 0,
+    "B_EDGE": 0,
+    "C_ZZ": 0,
+    "D_ZZZ": 35
+   },
+   "STATUS": "BOUND_PRUNED"
+  },
+  {
+   "index": 7148,
+   "KIND": "P_A",
+   "SPECIAL": [
+    1
+   ],
+   "REST": [
+    6,
+    6,
+    6,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "W": 853,
+   "NC": 14,
+   "NZ": 6,
+   "UB_R6": 313295528,
+   "T_MAX_FOR_NO_GAIN": 251,
+   "R6_T_TRUE_CAP": 254,
+   "T7": 220,
+   "T7_NO_EG": 220,
+   "T7_NO_BEDGE": 220,
+   "T7_NO_CIND": 220,
+   "UB_R7": 312891880,
+   "UB": 312891880,
+   "T_UNITS_BELOW_THRESHOLD": 31,
+   "ARGMAX": {
+    "J_BY_CORE_CLASS_T_P_QUAD": {
+     "1,4,0": [
+      0
+     ],
+     "5,1,0": [
+      0,
+      0,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "6,0,0": [
+      0,
+      0,
+      0
+     ]
+    },
+    "K_BY_Z_CLASS_R": {
+     "6": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+     ]
+    },
+    "FFF0": 162,
+    "W_R": 32,
+    "A": 0,
+    "B_Z": 0,
+    "B_EDGE": 3,
+    "C_ZZ": 6,
+    "D_ZZZ": 20
+   },
+   "STATUS": "BOUND_PRUNED"
+  },
+  {
+   "index": 7673,
+   "KIND": "P_C",
+   "SPECIAL": [
+    4,
+    3,
+    3,
+    2
+   ],
+   "REST": [
+    6,
+    6,
+    6,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "W": 854,
+   "NC": 13,
+   "NZ": 7,
+   "UB_R6": 313273184,
+   "T_MAX_FOR_NO_GAIN": 251,
+   "R6_T_TRUE_CAP": 252,
+   "T7": 243,
+   "T7_NO_EG": 243,
+   "T7_NO_BEDGE": 243,
+   "T7_NO_CIND": 243,
+   "UB_R7": 313166336,
+   "UB": 313166336,
+   "T_UNITS_BELOW_THRESHOLD": 8,
+   "ARGMAX": {
+    "J_BY_CORE_CLASS_T_P_QUAD": {
+     "2,3,1": [
+      3
+     ],
+     "3,2,1": [
+      2,
+      2
+     ],
+     "4,1,1": [
+      1
+     ],
+     "5,1,0": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "6,0,0": [
+      0,
+      0,
+      0
+     ]
+    },
+    "K_BY_Z_CLASS_R": {
+     "6": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "FFF0": 138,
+    "W_R": 33,
+    "A": 37,
+    "B_Z": 0,
+    "B_EDGE": 0,
+    "C_ZZ": 0,
+    "D_ZZZ": 35
+   },
+   "STATUS": "BOUND_PRUNED"
+  },
+  {
+   "index": 7771,
+   "KIND": "P_C",
+   "SPECIAL": [
+    4,
+    4,
+    3,
+    2
+   ],
+   "REST": [
+    6,
+    6,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "W": 854,
+   "NC": 13,
+   "NZ": 7,
+   "UB_R6": 313285056,
+   "T_MAX_FOR_NO_GAIN": 251,
+   "R6_T_TRUE_CAP": 253,
+   "T7": 243,
+   "T7_NO_EG": 243,
+   "T7_NO_BEDGE": 243,
+   "T7_NO_CIND": 243,
+   "UB_R7": 313166336,
+   "UB": 313166336,
+   "T_UNITS_BELOW_THRESHOLD": 8,
+   "ARGMAX": {
+    "J_BY_CORE_CLASS_T_P_QUAD": {
+     "2,3,1": [
+      3
+     ],
+     "3,2,1": [
+      2
+     ],
+     "4,1,1": [
+      1,
+      1
+     ],
+     "5,1,0": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "6,0,0": [
+      0,
+      0
+     ]
+    },
+    "K_BY_Z_CLASS_R": {
+     "6": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "FFF0": 130,
+    "W_R": 45,
+    "A": 33,
+    "B_Z": 0,
+    "B_EDGE": 0,
+    "C_ZZ": 0,
+    "D_ZZZ": 35
+   },
+   "STATUS": "BOUND_PRUNED"
+  },
+  {
+   "index": 7777,
+   "KIND": "P_C",
+   "SPECIAL": [
+    4,
+    3,
+    3,
+    3
+   ],
+   "REST": [
+    6,
+    6,
+    6,
+    5,
+    5,
+    5,
+    5,
+    5,
+    4,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "W": 854,
+   "NC": 13,
+   "NZ": 7,
+   "UB_R6": 313285056,
+   "T_MAX_FOR_NO_GAIN": 251,
+   "R6_T_TRUE_CAP": 253,
+   "T7": 243,
+   "T7_NO_EG": 243,
+   "T7_NO_BEDGE": 243,
+   "T7_NO_CIND": 243,
+   "UB_R7": 313166336,
+   "UB": 313166336,
+   "T_UNITS_BELOW_THRESHOLD": 8,
+   "ARGMAX": {
+    "J_BY_CORE_CLASS_T_P_QUAD": {
+     "3,2,1": [
+      2,
+      2,
+      2
+     ],
+     "4,1,1": [
+      1
+     ],
+     "4,2,0": [
+      2
+     ],
+     "5,1,0": [
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "6,0,0": [
+      0,
+      0,
+      0
+     ]
+    },
+    "K_BY_Z_CLASS_R": {
+     "6": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "FFF0": 130,
+    "W_R": 45,
+    "A": 33,
+    "B_Z": 0,
+    "B_EDGE": 0,
+    "C_ZZ": 0,
+    "D_ZZZ": 35
+   },
+   "STATUS": "BOUND_PRUNED"
+  },
+  {
+   "index": 7876,
+   "KIND": "P_C",
+   "SPECIAL": [
+    4,
+    4,
+    4,
+    2
+   ],
+   "REST": [
+    6,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "W": 854,
+   "NC": 13,
+   "NZ": 7,
+   "UB_R6": 313285056,
+   "T_MAX_FOR_NO_GAIN": 251,
+   "R6_T_TRUE_CAP": 253,
+   "T7": 243,
+   "T7_NO_EG": 243,
+   "T7_NO_BEDGE": 243,
+   "T7_NO_CIND": 243,
+   "UB_R7": 313166336,
+   "UB": 313166336,
+   "T_UNITS_BELOW_THRESHOLD": 8,
+   "ARGMAX": {
+    "J_BY_CORE_CLASS_T_P_QUAD": {
+     "2,3,1": [
+      3
+     ],
+     "4,1,1": [
+      1,
+      1,
+      1
+     ],
+     "5,1,0": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "6,0,0": [
+      0
+     ]
+    },
+    "K_BY_Z_CLASS_R": {
+     "6": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "FFF0": 122,
+    "W_R": 57,
+    "A": 29,
+    "B_Z": 0,
+    "B_EDGE": 0,
+    "C_ZZ": 0,
+    "D_ZZZ": 35
+   },
+   "STATUS": "BOUND_PRUNED"
+  },
+  {
+   "index": 7886,
+   "KIND": "P_C",
+   "SPECIAL": [
+    4,
+    4,
+    3,
+    3
+   ],
+   "REST": [
+    6,
+    6,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    4,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "W": 854,
+   "NC": 13,
+   "NZ": 7,
+   "UB_R6": 313285056,
+   "T_MAX_FOR_NO_GAIN": 251,
+   "R6_T_TRUE_CAP": 253,
+   "T7": 243,
+   "T7_NO_EG": 243,
+   "T7_NO_BEDGE": 243,
+   "T7_NO_CIND": 243,
+   "UB_R7": 313166336,
+   "UB": 313166336,
+   "T_UNITS_BELOW_THRESHOLD": 8,
+   "ARGMAX": {
+    "J_BY_CORE_CLASS_T_P_QUAD": {
+     "3,2,1": [
+      2,
+      2
+     ],
+     "4,1,1": [
+      1,
+      1
+     ],
+     "4,2,0": [
+      2
+     ],
+     "5,1,0": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "6,0,0": [
+      0,
+      0
+     ]
+    },
+    "K_BY_Z_CLASS_R": {
+     "6": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "FFF0": 122,
+    "W_R": 57,
+    "A": 29,
+    "B_Z": 0,
+    "B_EDGE": 0,
+    "C_ZZ": 0,
+    "D_ZZZ": 35
+   },
+   "STATUS": "BOUND_PRUNED"
+  },
+  {
+   "index": 8005,
+   "KIND": "P_C",
+   "SPECIAL": [
+    4,
+    4,
+    4,
+    3
+   ],
+   "REST": [
+    6,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    4,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "W": 854,
+   "NC": 13,
+   "NZ": 7,
+   "UB_R6": 313285056,
+   "T_MAX_FOR_NO_GAIN": 251,
+   "R6_T_TRUE_CAP": 253,
+   "T7": 243,
+   "T7_NO_EG": 243,
+   "T7_NO_BEDGE": 243,
+   "T7_NO_CIND": 243,
+   "UB_R7": 313166336,
+   "UB": 313166336,
+   "T_UNITS_BELOW_THRESHOLD": 8,
+   "ARGMAX": {
+    "J_BY_CORE_CLASS_T_P_QUAD": {
+     "3,2,1": [
+      2
+     ],
+     "4,1,1": [
+      1,
+      1,
+      1
+     ],
+     "4,2,0": [
+      2
+     ],
+     "5,1,0": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "6,0,0": [
+      0
+     ]
+    },
+    "K_BY_Z_CLASS_R": {
+     "6": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "FFF0": 114,
+    "W_R": 69,
+    "A": 25,
+    "B_Z": 0,
+    "B_EDGE": 0,
+    "C_ZZ": 0,
+    "D_ZZZ": 35
+   },
+   "STATUS": "BOUND_PRUNED"
+  },
+  {
+   "index": 8118,
+   "KIND": "P_C",
+   "SPECIAL": [
+    4,
+    4,
+    4,
+    4
+   ],
+   "REST": [
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    4,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "W": 854,
+   "NC": 13,
+   "NZ": 7,
+   "UB_R6": 313285056,
+   "T_MAX_FOR_NO_GAIN": 251,
+   "R6_T_TRUE_CAP": 253,
+   "T7": 243,
+   "T7_NO_EG": 243,
+   "T7_NO_BEDGE": 243,
+   "T7_NO_CIND": 243,
+   "UB_R7": 313166336,
+   "UB": 313166336,
+   "T_UNITS_BELOW_THRESHOLD": 8,
+   "ARGMAX": {
+    "J_BY_CORE_CLASS_T_P_QUAD": {
+     "4,1,1": [
+      1,
+      1,
+      1,
+      1
+     ],
+     "4,2,0": [
+      2
+     ],
+     "5,1,0": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+     ]
+    },
+    "K_BY_Z_CLASS_R": {
+     "6": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "FFF0": 106,
+    "W_R": 81,
+    "A": 21,
+    "B_Z": 0,
+    "B_EDGE": 0,
+    "C_ZZ": 0,
+    "D_ZZZ": 35
+   },
+   "STATUS": "BOUND_PRUNED"
+  },
+  {
+   "index": 8827,
+   "KIND": "P_C",
+   "SPECIAL": [
+    3,
+    3,
+    3,
+    3
+   ],
+   "REST": [
+    6,
+    6,
+    6,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "W": 853,
+   "NC": 13,
+   "NZ": 7,
+   "UB_R6": 313282256,
+   "T_MAX_FOR_NO_GAIN": 251,
+   "R6_T_TRUE_CAP": 253,
+   "T7": 242,
+   "T7_NO_EG": 242,
+   "T7_NO_BEDGE": 242,
+   "T7_NO_CIND": 242,
+   "UB_R7": 313151664,
+   "UB": 313151664,
+   "T_UNITS_BELOW_THRESHOLD": 9,
+   "ARGMAX": {
+    "J_BY_CORE_CLASS_T_P_QUAD": {
+     "3,2,1": [
+      2,
+      2,
+      2,
+      2
+     ],
+     "5,1,0": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "6,0,0": [
+      0,
+      0,
+      0
+     ]
+    },
+    "K_BY_Z_CLASS_R": {
+     "6": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "FFF0": 134,
+    "W_R": 37,
+    "A": 36,
+    "B_Z": 0,
+    "B_EDGE": 0,
+    "C_ZZ": 0,
+    "D_ZZZ": 35
+   },
+   "STATUS": "BOUND_PRUNED"
+  },
+  {
+   "index": 8940,
+   "KIND": "P_C",
+   "SPECIAL": [
+    4,
+    3,
+    3,
+    3
+   ],
+   "REST": [
+    6,
+    6,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "W": 853,
+   "NC": 13,
+   "NZ": 7,
+   "UB_R6": 313306000,
+   "T_MAX_FOR_NO_GAIN": 251,
+   "R6_T_TRUE_CAP": 255,
+   "T7": 242,
+   "T7_NO_EG": 242,
+   "T7_NO_BEDGE": 242,
+   "T7_NO_CIND": 242,
+   "UB_R7": 313151664,
+   "UB": 313151664,
+   "T_UNITS_BELOW_THRESHOLD": 9,
+   "ARGMAX": {
+    "J_BY_CORE_CLASS_T_P_QUAD": {
+     "3,2,1": [
+      2,
+      2,
+      2
+     ],
+     "4,1,1": [
+      1
+     ],
+     "5,1,0": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "6,0,0": [
+      0,
+      0
+     ]
+    },
+    "K_BY_Z_CLASS_R": {
+     "6": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "FFF0": 126,
+    "W_R": 49,
+    "A": 32,
+    "B_Z": 0,
+    "B_EDGE": 0,
+    "C_ZZ": 0,
+    "D_ZZZ": 35
+   },
+   "STATUS": "BOUND_PRUNED"
+  },
+  {
+   "index": 9071,
+   "KIND": "P_C",
+   "SPECIAL": [
+    4,
+    4,
+    3,
+    3
+   ],
+   "REST": [
+    6,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "W": 853,
+   "NC": 13,
+   "NZ": 7,
+   "UB_R6": 313306000,
+   "T_MAX_FOR_NO_GAIN": 251,
+   "R6_T_TRUE_CAP": 255,
+   "T7": 242,
+   "T7_NO_EG": 242,
+   "T7_NO_BEDGE": 242,
+   "T7_NO_CIND": 242,
+   "UB_R7": 313151664,
+   "UB": 313151664,
+   "T_UNITS_BELOW_THRESHOLD": 9,
+   "ARGMAX": {
+    "J_BY_CORE_CLASS_T_P_QUAD": {
+     "3,2,1": [
+      2,
+      2
+     ],
+     "4,1,1": [
+      1,
+      1
+     ],
+     "5,1,0": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "6,0,0": [
+      0
+     ]
+    },
+    "K_BY_Z_CLASS_R": {
+     "6": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "FFF0": 118,
+    "W_R": 61,
+    "A": 28,
+    "B_Z": 0,
+    "B_EDGE": 0,
+    "C_ZZ": 0,
+    "D_ZZZ": 35
+   },
+   "STATUS": "BOUND_PRUNED"
+  },
+  {
+   "index": 9207,
+   "KIND": "P_C",
+   "SPECIAL": [
+    4,
+    4,
+    4,
+    3
+   ],
+   "REST": [
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "W": 853,
+   "NC": 13,
+   "NZ": 7,
+   "UB_R6": 313306000,
+   "T_MAX_FOR_NO_GAIN": 251,
+   "R6_T_TRUE_CAP": 255,
+   "T7": 242,
+   "T7_NO_EG": 242,
+   "T7_NO_BEDGE": 242,
+   "T7_NO_CIND": 242,
+   "UB_R7": 313151664,
+   "UB": 313151664,
+   "T_UNITS_BELOW_THRESHOLD": 9,
+   "ARGMAX": {
+    "J_BY_CORE_CLASS_T_P_QUAD": {
+     "3,2,1": [
+      2
+     ],
+     "4,1,1": [
+      1,
+      1,
+      1
+     ],
+     "5,1,0": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+     ]
+    },
+    "K_BY_Z_CLASS_R": {
+     "6": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "FFF0": 110,
+    "W_R": 73,
+    "A": 24,
+    "B_Z": 0,
+    "B_EDGE": 0,
+    "C_ZZ": 0,
+    "D_ZZZ": 35
+   },
+   "STATUS": "BOUND_PRUNED"
+  },
+  {
+   "index": 24996,
+   "KIND": "P_A",
+   "SPECIAL": [
+    1
+   ],
+   "REST": [
+    6,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    1,
+    1,
+    0,
+    0,
+    0,
+    0
+   ],
+   "W": 843,
+   "NC": 16,
+   "NZ": 4,
+   "UB_R6": 313267528,
+   "T_MAX_FOR_NO_GAIN": 253,
+   "R6_T_TRUE_CAP": 254,
+   "T7": 240,
+   "T7_NO_EG": 240,
+   "T7_NO_BEDGE": 240,
+   "T7_NO_CIND": 252,
+   "UB_R7": 313101320,
+   "UB": 313101320,
+   "T_UNITS_BELOW_THRESHOLD": 13,
+   "ARGMAX": {
+    "J_BY_CORE_CLASS_T_P_QUAD": {
+     "1,4,0": [
+      0
+     ],
+     "1,5,0": [
+      1,
+      1
+     ],
+     "5,1,0": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "6,0,0": [
+      0
+     ]
+    },
+    "K_BY_Z_CLASS_R": {
+     "6": [
+      3,
+      3,
+      3,
+      3
+     ]
+    },
+    "FFF0": 180,
+    "W_R": 26,
+    "A": 0,
+    "B_Z": 12,
+    "B_EDGE": 12,
+    "C_ZZ": 18,
+    "D_ZZZ": 4
+   },
+   "STATUS": "BOUND_PRUNED"
+  }
+ ],
+ "FOCUS_PROFILES": {
+  "2607": {
+   "KIND": "P_A",
+   "SPECIAL": [
+    0
+   ],
+   "REST": [
+    6,
+    6,
+    6,
+    6,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "W": 859,
+   "NC": 13,
+   "NZ": 7,
+   "UB_R6": 313324200,
+   "R6_T_TRUE_CAP": 255,
+   "T_MAX_FOR_NO_GAIN": 249,
+   "T7": 239,
+   "T7_NO_EG": 240,
+   "T7_NO_BEDGE": 239,
+   "T7_NO_CIND": 239,
+   "UB_R7": 313134248,
+   "UB": 313134248,
+   "STATUS": "BOUND_PRUNED",
+   "ARGMAX": {
+    "J_BY_CORE_CLASS_T_P_QUAD": {
+     "5,1,0": [
+      0,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "6,0,0": [
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "K_BY_Z_CLASS_R": {
+     "5": [
+      0
+     ],
+     "6": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      1
+     ]
+    },
+    "FFF0": 173,
+    "W_R": 36,
+    "A": 0,
+    "B_Z": 0,
+    "B_EDGE": 0,
+    "C_ZZ": 0,
+    "D_ZZZ": 30
+   },
+   "GENERATED_LEGAL_CONFIGS_ON_PROFILE_T_TRUE": [],
+   "NAMED_CONFIG": "C9_ON_PROFILE_2607: T_TRUE 239 = T7 239 (EG on): equality"
+  },
+  "4129": {
+   "KIND": "P_C",
+   "SPECIAL": [
+    4,
+    4,
+    4,
+    4
+   ],
+   "REST": [
+    6,
+    6,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    1,
+    1,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "W": 858,
+   "NC": 14,
+   "NZ": 6,
+   "UB_R6": 313272512,
+   "R6_T_TRUE_CAP": 251,
+   "T_MAX_FOR_NO_GAIN": 250,
+   "T7": 250,
+   "T7_NO_EG": 250,
+   "T7_NO_BEDGE": 250,
+   "T7_NO_CIND": 252,
+   "UB_R7": 313260640,
+   "UB": 313260640,
+   "STATUS": "BOUND_PRUNED",
+   "ARGMAX": {
+    "J_BY_CORE_CLASS_T_P_QUAD": {
+     "1,5,0": [
+      0,
+      0
+     ],
+     "4,1,1": [
+      1,
+      1,
+      1,
+      1
+     ],
+     "5,1,0": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "6,0,0": [
+      0,
+      0
+     ]
+    },
+    "K_BY_Z_CLASS_R": {
+     "6": [
+      1,
+      1,
+      2,
+      2,
+      2,
+      2
+     ]
+    },
+    "FFF0": 140,
+    "W_R": 56,
+    "A": 20,
+    "B_Z": 4,
+    "B_EDGE": 5,
+    "C_ZZ": 18,
+    "D_ZZZ": 12
+   },
+   "GENERATED_LEGAL_CONFIGS_ON_PROFILE_T_TRUE": []
+  },
+  "4060": {
+   "KIND": "P_C",
+   "SPECIAL": [
+    4,
+    4,
+    4,
+    3
+   ],
+   "REST": [
+    6,
+    6,
+    6,
+    5,
+    5,
+    5,
+    5,
+    5,
+    1,
+    1,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "W": 858,
+   "NC": 14,
+   "NZ": 6,
+   "UB_R6": 313272512,
+   "R6_T_TRUE_CAP": 251,
+   "T_MAX_FOR_NO_GAIN": 250,
+   "T7": 246,
+   "T7_NO_EG": 246,
+   "T7_NO_BEDGE": 250,
+   "T7_NO_CIND": 248,
+   "UB_R7": 313213152,
+   "UB": 313213152,
+   "STATUS": "BOUND_PRUNED",
+   "ARGMAX": {
+    "J_BY_CORE_CLASS_T_P_QUAD": {
+     "1,5,0": [
+      0,
+      0
+     ],
+     "3,2,1": [
+      2
+     ],
+     "4,1,1": [
+      1,
+      1,
+      1
+     ],
+     "5,1,0": [
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "6,0,0": [
+      0,
+      0,
+      0
+     ]
+    },
+    "K_BY_Z_CLASS_R": {
+     "6": [
+      1,
+      1,
+      2,
+      2,
+      2,
+      2
+     ]
+    },
+    "FFF0": 148,
+    "W_R": 44,
+    "A": 24,
+    "B_Z": 4,
+    "B_EDGE": 0,
+    "C_ZZ": 18,
+    "D_ZZZ": 12
+   },
+   "GENERATED_LEGAL_CONFIGS_ON_PROFILE_T_TRUE": []
+  },
+  "2606": {
+   "KIND": "P_A",
+   "SPECIAL": [
+    0
+   ],
+   "REST": [
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    1,
+    1,
+    1,
+    0,
+    0,
+    0,
+    0
+   ],
+   "W": 859,
+   "NC": 15,
+   "NZ": 5,
+   "UB_R6": 313264840,
+   "R6_T_TRUE_CAP": 250,
+   "T_MAX_FOR_NO_GAIN": 249,
+   "T7": 248,
+   "T7_NO_EG": 248,
+   "T7_NO_BEDGE": 263,
+   "T7_NO_CIND": 257,
+   "UB_R7": 313241096,
+   "UB": 313241096,
+   "STATUS": "BOUND_PRUNED",
+   "ARGMAX": {
+    "J_BY_CORE_CLASS_T_P_QUAD": {
+     "1,5,0": [
+      0,
+      0,
+      0
+     ],
+     "5,1,0": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "6,0,0": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "K_BY_Z_CLASS_R": {
+     "5": [
+      3
+     ],
+     "6": [
+      3,
+      3,
+      3,
+      3
+     ]
+    },
+    "FFF0": 204,
+    "W_R": 21,
+    "A": 0,
+    "B_Z": 15,
+    "B_EDGE": 0,
+    "C_ZZ": 21,
+    "D_ZZZ": 2
+   },
+   "GENERATED_LEGAL_CONFIGS_ON_PROFILE_T_TRUE": [],
+   "NAMED_CONFIG": "K12_E_ON_PROFILE_2606: T_TRUE 223 <= Psi = T7 248; B_EDGE and the CIND cap bind and are tight; the 25-unit gap is A's slack (edgeless core triples)"
+  }
+ },
+ "FALSIFICATION": {
+  "NAMED": {
+   "K12_K8_LIFT": {
+    "KIND": "P_A",
+    "SPECIAL": [
+     2
+    ],
+    "REST": [
+     5,
+     5,
+     5,
+     5,
+     5,
+     5,
+     5,
+     5,
+     5,
+     5,
+     5,
+     5,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "W": 828,
+    "T_TRUE": 253,
+    "SCOPE": "IN_SCOPE",
+    "SURVIVORS_INDEX": null,
+    "IN_R6_REMAINING_69": false,
+    "TYPES": {
+     "FFF": 140,
+     "FFR": 64,
+     "FRR_C": 37,
+     "RRR_CCC": 12
+    },
+    "PSI_AT_ACTUAL_ASSIGNMENT": 253,
+    "T7": 253,
+    "T7_NO_EG": 253,
+    "ALL_CHECKS_PASS": true,
+    "FAILED": [],
+    "TIGHT": {
+     "A": true,
+     "B": true,
+     "C": true,
+     "C_WITH_CIND_BINDING": false,
+     "B_WITH_BEDGE_BINDING": false,
+     "D": true,
+     "PSI": true
+    },
+    "EQUALITY_T_TRUE_EQ_T7": true,
+    "NAIVE_PREFIX_CAP_VIOLATIONS": []
+   },
+   "C9_ON_PROFILE_2607": {
+    "KIND": "P_A",
+    "SPECIAL": [
+     0
+    ],
+    "REST": [
+     6,
+     6,
+     6,
+     6,
+     5,
+     5,
+     5,
+     5,
+     5,
+     5,
+     5,
+     5,
+     5,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "W": 859,
+    "T_TRUE": 239,
+    "SCOPE": "IN_SCOPE",
+    "SURVIVORS_INDEX": 2607,
+    "IN_R6_REMAINING_69": true,
+    "TYPES": {
+     "FFF": 173,
+     "FFR": 36,
+     "RRR_ZZZ": 30
+    },
+    "PSI_AT_ACTUAL_ASSIGNMENT": 239,
+    "T7": 239,
+    "T7_NO_EG": 240,
+    "ALL_CHECKS_PASS": true,
+    "FAILED": [],
+    "TIGHT": {
+     "A": true,
+     "B": true,
+     "C": true,
+     "C_WITH_CIND_BINDING": false,
+     "B_WITH_BEDGE_BINDING": false,
+     "D": true,
+     "PSI": true
+    },
+    "EQUALITY_T_TRUE_EQ_T7": true,
+    "NAIVE_PREFIX_CAP_VIOLATIONS": []
+   },
+   "K12_E_ON_PROFILE_2606": {
+    "KIND": "P_A",
+    "SPECIAL": [
+     0
+    ],
+    "REST": [
+     6,
+     6,
+     6,
+     6,
+     6,
+     6,
+     5,
+     5,
+     5,
+     5,
+     5,
+     5,
+     1,
+     1,
+     1,
+     0,
+     0,
+     0,
+     0
+    ],
+    "W": 859,
+    "T_TRUE": 223,
+    "SCOPE": "IN_SCOPE",
+    "SURVIVORS_INDEX": 2606,
+    "IN_R6_REMAINING_69": true,
+    "TYPES": {
+     "FFF": 170,
+     "FFR": 30,
+     "RRR_CZZ": 21,
+     "RRR_ZZZ": 2
+    },
+    "PSI_AT_ACTUAL_ASSIGNMENT": 248,
+    "T7": 248,
+    "T7_NO_EG": 248,
+    "ALL_CHECKS_PASS": true,
+    "FAILED": [],
+    "TIGHT": {
+     "A": false,
+     "B": true,
+     "C": true,
+     "C_WITH_CIND_BINDING": true,
+     "B_WITH_BEDGE_BINDING": true,
+     "D": true,
+     "PSI": false
+    },
+    "EQUALITY_T_TRUE_EQ_T7": false,
+    "NAIVE_PREFIX_CAP_VIOLATIONS": []
+   },
+   "R2_P_C_STEP_COUNTEREXAMPLE": {
+    "KIND": "P_C",
+    "SPECIAL": [
+     5,
+     5,
+     5,
+     0
+    ],
+    "REST": [
+     5,
+     5,
+     4,
+     4,
+     4,
+     4,
+     4,
+     4,
+     4,
+     3,
+     2,
+     1,
+     1,
+     0,
+     0,
+     0
+    ],
+    "W": 838,
+    "T_TRUE": 142,
+    "SCOPE": "OUT_OF_SCOPE:QUAD_TICKET_WITH_T0",
+    "SURVIVORS_INDEX": 57359,
+    "IN_R6_REMAINING_69": false
+   }
+  },
+  "PRIOR_1203_LEGAL_CONFIGS": "NOT_PRESERVED: generated in memory by the interrupted R7 session, never written",
+  "GENERATED": {
+   "SEED": 20261010,
+   "CONFIGS_PER_CELL": 120,
+   "T7_COST_CAP": 5000,
+   "COUNTS": {
+    "DESIGN_R6:P_A:ALL_CHECKS_PASS": 120,
+    "DESIGN_R6:P_A:CONFIGS": 120,
+    "DESIGN_R6:P_A:FAIL:A": 0,
+    "DESIGN_R6:P_A:FAIL:A_SLACK_EQ_INDEPENDENT_CORE_TRIPLES": 0,
+    "DESIGN_R6:P_A:FAIL:B_EDGE_COUNT": 0,
+    "DESIGN_R6:P_A:FAIL:B_Z": 0,
+    "DESIGN_R6:P_A:FAIL:C": 0,
+    "DESIGN_R6:P_A:FAIL:D": 0,
+    "DESIGN_R6:P_A:FAIL:DINT_PARITY_EG": 0,
+    "DESIGN_R6:P_A:FAIL:ELL": 0,
+    "DESIGN_R6:P_A:FAIL:FFF_EXACT": 0,
+    "DESIGN_R6:P_A:FAIL:FFR_EXACT": 0,
+    "DESIGN_R6:P_A:FAIL:GALE_RYSER": 0,
+    "DESIGN_R6:P_A:FAIL:J_PARITY_EG": 0,
+    "DESIGN_R6:P_A:FAIL:J_RANGE": 0,
+    "DESIGN_R6:P_A:FAIL:K_RANGE": 0,
+    "DESIGN_R6:P_A:FAIL:LEVEL_CAP_D": 0,
+    "DESIGN_R6:P_A:FAIL:LEVEL_CAP_U": 0,
+    "DESIGN_R6:P_A:FAIL:LEVEL_EF_LE_LP_MAX": 0,
+    "DESIGN_R6:P_A:FAIL:LEVEL_ER_LE_CAP": 0,
+    "DESIGN_R6:P_A:FAIL:LEVEL_G_ANY": 0,
+    "DESIGN_R6:P_A:FAIL:LEVEL_IDENTITIES": 0,
+    "DESIGN_R6:P_A:FAIL:LEVEL_IN3": 0,
+    "DESIGN_R6:P_A:FAIL:T_TRUE_CLASS_SUM": 0,
+    "DESIGN_R6:P_A:FAIL:T_TRUE_LE_PSI": 0,
+    "DESIGN_R6:P_A:FAIL:W_R_FORMULA": 0,
+    "DESIGN_R6:P_A:FAIL:Z_EDGES_ARE_R": 0,
+    "DESIGN_R6:P_A:IN_R6_REMAINING_69": 51,
+    "DESIGN_R6:P_A:IN_SCOPE": 120,
+    "DESIGN_R6:P_A:IN_SURVIVORS": 79,
+    "DESIGN_R6:P_A:LP_LEVELS_TIGHT": 62,
+    "DESIGN_R6:P_A:PSI_LE_T7": 104,
+    "DESIGN_R6:P_A:T7_COST_SKIPPED": 16,
+    "DESIGN_R6:P_A:T7_EVALUATED": 104,
+    "DESIGN_R6:P_A:TIGHT:A": 11,
+    "DESIGN_R6:P_A:TIGHT:B": 61,
+    "DESIGN_R6:P_A:TIGHT:B_WITH_BEDGE_BINDING": 0,
+    "DESIGN_R6:P_A:TIGHT:C": 95,
+    "DESIGN_R6:P_A:TIGHT:C_WITH_CIND_BINDING": 0,
+    "DESIGN_R6:P_A:TIGHT:D": 110,
+    "DESIGN_R6:P_A:TIGHT:PSI": 10,
+    "DESIGN_R6:P_A:T_TRUE_LE_T7": 104,
+    "DESIGN_R6:P_C:ALL_CHECKS_PASS": 28,
+    "DESIGN_R6:P_C:CONFIGS": 120,
+    "DESIGN_R6:P_C:FAIL:A": 0,
+    "DESIGN_R6:P_C:FAIL:A_SLACK_EQ_INDEPENDENT_CORE_TRIPLES": 0,
+    "DESIGN_R6:P_C:FAIL:B_EDGE_COUNT": 0,
+    "DESIGN_R6:P_C:FAIL:B_Z": 0,
+    "DESIGN_R6:P_C:FAIL:C": 0,
+    "DESIGN_R6:P_C:FAIL:D": 0,
+    "DESIGN_R6:P_C:FAIL:DINT_PARITY_EG": 0,
+    "DESIGN_R6:P_C:FAIL:ELL": 0,
+    "DESIGN_R6:P_C:FAIL:FFF_EXACT": 0,
+    "DESIGN_R6:P_C:FAIL:FFR_EXACT": 0,
+    "DESIGN_R6:P_C:FAIL:GALE_RYSER": 0,
+    "DESIGN_R6:P_C:FAIL:J_PARITY_EG": 0,
+    "DESIGN_R6:P_C:FAIL:J_RANGE": 0,
+    "DESIGN_R6:P_C:FAIL:K_RANGE": 0,
+    "DESIGN_R6:P_C:FAIL:LEVEL_CAP_D": 0,
+    "DESIGN_R6:P_C:FAIL:LEVEL_CAP_U": 0,
+    "DESIGN_R6:P_C:FAIL:LEVEL_EF_LE_LP_MAX": 0,
+    "DESIGN_R6:P_C:FAIL:LEVEL_ER_LE_CAP": 0,
+    "DESIGN_R6:P_C:FAIL:LEVEL_G_ANY": 0,
+    "DESIGN_R6:P_C:FAIL:LEVEL_IDENTITIES": 0,
+    "DESIGN_R6:P_C:FAIL:LEVEL_IN3": 0,
+    "DESIGN_R6:P_C:FAIL:T_TRUE_CLASS_SUM": 0,
+    "DESIGN_R6:P_C:FAIL:T_TRUE_LE_PSI": 0,
+    "DESIGN_R6:P_C:FAIL:W_R_FORMULA": 0,
+    "DESIGN_R6:P_C:FAIL:Z_EDGES_ARE_R": 0,
+    "DESIGN_R6:P_C:IN_R6_REMAINING_69": 0,
+    "DESIGN_R6:P_C:IN_SCOPE": 28,
+    "DESIGN_R6:P_C:IN_SURVIVORS": 3,
+    "DESIGN_R6:P_C:LP_LEVELS_TIGHT": 6,
+    "DESIGN_R6:P_C:OUT_OF_SCOPE_QUAD_T0": 92,
+    "DESIGN_R6:P_C:PSI_LE_T7": 12,
+    "DESIGN_R6:P_C:T7_COST_SKIPPED": 16,
+    "DESIGN_R6:P_C:T7_EVALUATED": 12,
+    "DESIGN_R6:P_C:TIGHT:A": 0,
+    "DESIGN_R6:P_C:TIGHT:B": 7,
+    "DESIGN_R6:P_C:TIGHT:B_WITH_BEDGE_BINDING": 0,
+    "DESIGN_R6:P_C:TIGHT:C": 28,
+    "DESIGN_R6:P_C:TIGHT:C_WITH_CIND_BINDING": 0,
+    "DESIGN_R6:P_C:TIGHT:D": 28,
+    "DESIGN_R6:P_C:TIGHT:PSI": 0,
+    "DESIGN_R6:P_C:T_TRUE_LE_T7": 12,
+    "NAMED:TIGHT:A": 2,
+    "NAMED:TIGHT:B": 3,
+    "NAMED:TIGHT:B_WITH_BEDGE_BINDING": 1,
+    "NAMED:TIGHT:C": 3,
+    "NAMED:TIGHT:C_WITH_CIND_BINDING": 1,
+    "NAMED:TIGHT:D": 3,
+    "NAMED:TIGHT:PSI": 2,
+    "RANDOM_R5:P_A:ALL_CHECKS_PASS": 120,
+    "RANDOM_R5:P_A:CONFIGS": 120,
+    "RANDOM_R5:P_A:FAIL:A": 0,
+    "RANDOM_R5:P_A:FAIL:A_SLACK_EQ_INDEPENDENT_CORE_TRIPLES": 0,
+    "RANDOM_R5:P_A:FAIL:B_EDGE_COUNT": 0,
+    "RANDOM_R5:P_A:FAIL:B_Z": 0,
+    "RANDOM_R5:P_A:FAIL:C": 0,
+    "RANDOM_R5:P_A:FAIL:D": 0,
+    "RANDOM_R5:P_A:FAIL:DINT_PARITY_EG": 0,
+    "RANDOM_R5:P_A:FAIL:ELL": 0,
+    "RANDOM_R5:P_A:FAIL:FFF_EXACT": 0,
+    "RANDOM_R5:P_A:FAIL:FFR_EXACT": 0,
+    "RANDOM_R5:P_A:FAIL:GALE_RYSER": 0,
+    "RANDOM_R5:P_A:FAIL:J_PARITY_EG": 0,
+    "RANDOM_R5:P_A:FAIL:J_RANGE": 0,
+    "RANDOM_R5:P_A:FAIL:K_RANGE": 0,
+    "RANDOM_R5:P_A:FAIL:LEVEL_CAP_D": 0,
+    "RANDOM_R5:P_A:FAIL:LEVEL_CAP_U": 0,
+    "RANDOM_R5:P_A:FAIL:LEVEL_EF_LE_LP_MAX": 0,
+    "RANDOM_R5:P_A:FAIL:LEVEL_ER_LE_CAP": 0,
+    "RANDOM_R5:P_A:FAIL:LEVEL_G_ANY": 0,
+    "RANDOM_R5:P_A:FAIL:LEVEL_IDENTITIES": 0,
+    "RANDOM_R5:P_A:FAIL:LEVEL_IN3": 0,
+    "RANDOM_R5:P_A:FAIL:T_TRUE_CLASS_SUM": 0,
+    "RANDOM_R5:P_A:FAIL:T_TRUE_LE_PSI": 0,
+    "RANDOM_R5:P_A:FAIL:W_R_FORMULA": 0,
+    "RANDOM_R5:P_A:FAIL:Z_EDGES_ARE_R": 0,
+    "RANDOM_R5:P_A:IN_R6_REMAINING_69": 0,
+    "RANDOM_R5:P_A:IN_SCOPE": 120,
+    "RANDOM_R5:P_A:IN_SURVIVORS": 0,
+    "RANDOM_R5:P_A:LP_LEVELS_TIGHT": 1,
+    "RANDOM_R5:P_A:PSI_LE_T7": 114,
+    "RANDOM_R5:P_A:T7_COST_SKIPPED": 6,
+    "RANDOM_R5:P_A:T7_EVALUATED": 114,
+    "RANDOM_R5:P_A:TIGHT:A": 0,
+    "RANDOM_R5:P_A:TIGHT:B": 87,
+    "RANDOM_R5:P_A:TIGHT:B_WITH_BEDGE_BINDING": 0,
+    "RANDOM_R5:P_A:TIGHT:C": 120,
+    "RANDOM_R5:P_A:TIGHT:C_WITH_CIND_BINDING": 0,
+    "RANDOM_R5:P_A:TIGHT:D": 120,
+    "RANDOM_R5:P_A:TIGHT:PSI": 0,
+    "RANDOM_R5:P_A:T_TRUE_LE_T7": 114,
+    "RANDOM_R5:P_C:ALL_CHECKS_PASS": 85,
+    "RANDOM_R5:P_C:CONFIGS": 120,
+    "RANDOM_R5:P_C:FAIL:A": 0,
+    "RANDOM_R5:P_C:FAIL:A_SLACK_EQ_INDEPENDENT_CORE_TRIPLES": 0,
+    "RANDOM_R5:P_C:FAIL:B_EDGE_COUNT": 0,
+    "RANDOM_R5:P_C:FAIL:B_Z": 0,
+    "RANDOM_R5:P_C:FAIL:C": 0,
+    "RANDOM_R5:P_C:FAIL:D": 0,
+    "RANDOM_R5:P_C:FAIL:DINT_PARITY_EG": 0,
+    "RANDOM_R5:P_C:FAIL:ELL": 0,
+    "RANDOM_R5:P_C:FAIL:FFF_EXACT": 0,
+    "RANDOM_R5:P_C:FAIL:FFR_EXACT": 0,
+    "RANDOM_R5:P_C:FAIL:GALE_RYSER": 0,
+    "RANDOM_R5:P_C:FAIL:J_PARITY_EG": 0,
+    "RANDOM_R5:P_C:FAIL:J_RANGE": 0,
+    "RANDOM_R5:P_C:FAIL:K_RANGE": 0,
+    "RANDOM_R5:P_C:FAIL:LEVEL_CAP_D": 0,
+    "RANDOM_R5:P_C:FAIL:LEVEL_CAP_U": 0,
+    "RANDOM_R5:P_C:FAIL:LEVEL_EF_LE_LP_MAX": 0,
+    "RANDOM_R5:P_C:FAIL:LEVEL_ER_LE_CAP": 0,
+    "RANDOM_R5:P_C:FAIL:LEVEL_G_ANY": 0,
+    "RANDOM_R5:P_C:FAIL:LEVEL_IDENTITIES": 0,
+    "RANDOM_R5:P_C:FAIL:LEVEL_IN3": 0,
+    "RANDOM_R5:P_C:FAIL:T_TRUE_CLASS_SUM": 0,
+    "RANDOM_R5:P_C:FAIL:T_TRUE_LE_PSI": 0,
+    "RANDOM_R5:P_C:FAIL:W_R_FORMULA": 0,
+    "RANDOM_R5:P_C:FAIL:Z_EDGES_ARE_R": 0,
+    "RANDOM_R5:P_C:IN_R6_REMAINING_69": 0,
+    "RANDOM_R5:P_C:IN_SCOPE": 85,
+    "RANDOM_R5:P_C:IN_SURVIVORS": 0,
+    "RANDOM_R5:P_C:LP_LEVELS_TIGHT": 2,
+    "RANDOM_R5:P_C:OUT_OF_SCOPE_QUAD_T0": 35,
+    "RANDOM_R5:P_C:PSI_LE_T7": 56,
+    "RANDOM_R5:P_C:T7_COST_SKIPPED": 29,
+    "RANDOM_R5:P_C:T7_EVALUATED": 56,
+    "RANDOM_R5:P_C:TIGHT:A": 0,
+    "RANDOM_R5:P_C:TIGHT:B": 43,
+    "RANDOM_R5:P_C:TIGHT:B_WITH_BEDGE_BINDING": 0,
+    "RANDOM_R5:P_C:TIGHT:C": 85,
+    "RANDOM_R5:P_C:TIGHT:C_WITH_CIND_BINDING": 0,
+    "RANDOM_R5:P_C:TIGHT:D": 85,
+    "RANDOM_R5:P_C:TIGHT:PSI": 0,
+    "RANDOM_R5:P_C:T_TRUE_LE_T7": 56
+   },
+   "MIN_T7_MINUS_T_TRUE": {
+    "RANDOM_R5:P_A": 92,
+    "RANDOM_R5:P_C": 95,
+    "DESIGN_R6:P_A": 12,
+    "DESIGN_R6:P_C": 96
+   },
+   "NAIVE_PREFIX_CAP_EXAMPLES": []
+  },
+  "MUTANTS": {
+   "RULE": "a -1 strengthening of a term is caught if it lowers T7 below T_TRUE of an equality configuration, or if the term is tight (and binding) on a named or generated legal configuration",
+   "ALL_CAUGHT": true,
+   "T7_MINUS_1": {
+    "CAUGHT_BY_EQUALITY_CONFIGS": [
+     "K12_K8_LIFT",
+     "C9_ON_PROFILE_2607"
+    ],
+    "COMPONENT_TIGHT_ON_LEGAL_CONFIGS": 12
+   },
+   "FFF0_MINUS_1": {
+    "CAUGHT_BY_EQUALITY_CONFIGS": [
+     "K12_K8_LIFT",
+     "C9_ON_PROFILE_2607"
+    ],
+    "COMPONENT_TIGHT_ON_LEGAL_CONFIGS": 12
+   },
+   "A_MINUS_1": {
+    "CAUGHT_BY_EQUALITY_CONFIGS": [
+     "K12_K8_LIFT",
+     "C9_ON_PROFILE_2607"
+    ],
+    "COMPONENT_TIGHT_ON_LEGAL_CONFIGS": 13
+   },
+   "BZ_MINUS_1": {
+    "CAUGHT_BY_EQUALITY_CONFIGS": [
+     "K12_K8_LIFT",
+     "C9_ON_PROFILE_2607"
+    ],
+    "COMPONENT_TIGHT_ON_LEGAL_CONFIGS": 201
+   },
+   "BEDGE_MINUS_1": {
+    "CAUGHT_BY_EQUALITY_CONFIGS": [
+     "K12_K8_LIFT",
+     "C9_ON_PROFILE_2607"
+    ],
+    "COMPONENT_TIGHT_ON_LEGAL_CONFIGS": 1
+   },
+   "CIND_MINUS_1": {
+    "CAUGHT_BY_EQUALITY_CONFIGS": [],
+    "COMPONENT_TIGHT_ON_LEGAL_CONFIGS": 1
+   },
+   "D_MINUS_1": {
+    "CAUGHT_BY_EQUALITY_CONFIGS": [
+     "K12_K8_LIFT",
+     "C9_ON_PROFILE_2607"
+    ],
+    "COMPONENT_TIGHT_ON_LEGAL_CONFIGS": 346
+   }
+  },
+  "SMALL_EXHAUSTIVE_LEVEL_CONSTRAINT_SEARCH": {
+   "N_MAX": 6,
+   "LINEAR_3_GRAPHS_N3": 1,
+   "CASES": 195624,
+   "LINEAR_3_GRAPHS_N4": 4,
+   "LINEAR_3_GRAPHS_N5": 25,
+   "LINEAR_3_GRAPHS_N6": 270,
+   "FAILURES": 0,
+   "SMALLEST_COUNTEREXAMPLE": null
+  }
+ },
+ "CHECKS": {
+  "FROZEN_INPUTS": true,
+  "R6_RESULT_INHERITED": true,
+  "R6_UB_REPRODUCED_ON_69": true,
+  "CONSTANTS_REEVALUATED": true,
+  "SCOPE_ALL_QUAD_TICKETS_IN_CORE_ON_69": true,
+  "NAMED_CONFIGS_ALL_INEQUALITIES": true,
+  "K12_E_EXERCISES_BINDING_BEDGE_AND_CIND": true,
+  "EQUALITY_K12_K8_AND_C9": true,
+  "GENERATED_CONFIGS_ALL_INEQUALITIES_AND_T_LE_T7": true,
+  "SMALL_LEVEL_SEARCH_NO_COUNTEREXAMPLE": true,
+  "ACCOUNTING_CLOSES": true
+ },
+ "MAX_VALID_UPPER_BOUND": 313260640,
+ "MAX_VALID_UPPER_BOUND_INDEX": 4129,
+ "GAP_VS_313263888": -3248,
+ "REMAINING_PROOF_GAPS": [],
+ "SCOPE_CAVEATS": [
+  "Shell-1 only: max pairwise overlap <= 1 and sum C(d,2) = 94. No claim about other shells or global K20 optimality.",
+  "Bonferroni-3 is an upper bound on the union count; a pruned profile cannot beat 313263888, but no exact union count of any Shell-1 portfolio was computed."
+ ],
+ "R7_STATUS": "COMPLETE",
+ "R7_BOUND_STATUS": "PROVED",
+ "BONFERRONI_AUTHORITY_STATUS": "INDEPENDENTLY_VERIFIED_2026-10-08_AND_REEVALUATED_HERE",
+ "SHELL1_STATUS": "PROVED_NO_STRICT_GAIN_WITHIN_DEFINED_SHELL1",
+ "NO_CPSAT": true,
+ "MULTIPROCESSING": false,
+ "CPU_SECONDS": 16.24,
+ "PAYLOAD_SHA256_EXCLUDING_THIS_FIELD": "b4ba254f782cf6a49a9c7bbfc1cd7a590affa6217170a12d86e240c2ec85a5b7"
+}

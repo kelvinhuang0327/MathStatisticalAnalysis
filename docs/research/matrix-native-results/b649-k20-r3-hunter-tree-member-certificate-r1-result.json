@@ -1,0 +1,625 @@
+{
+  "ADDITIONAL_REDUCTION": 1888943,
+  "BASE_HEAD": "27614636ac4c20392619b3d9364d22bf2af9cff4",
+  "BASE_TREE": "cd99dee2289867b45bc6142baed87d5e0dbab96a",
+  "CAP17_COUNTEREXAMPLE": {
+    "ANCHORS": [
+      [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      [
+        1,
+        2,
+        3,
+        7,
+        8,
+        9
+      ]
+    ],
+    "ANCHOR_HITS_ON_OUTCOME_SET": [
+      0,
+      0
+    ],
+    "MAXIMUM_PAIR_OVERLAP": 3,
+    "MEMBER_COUNTS": [
+      [
+        0,
+        13
+      ],
+      [
+        5,
+        5
+      ]
+    ],
+    "OUTCOME_SET": [
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16
+    ],
+    "RESIDUAL_MULTIPLICITY": 18,
+    "RESIDUAL_TICKETS": [
+      [
+        10,
+        11,
+        12,
+        17,
+        18,
+        19
+      ],
+      [
+        10,
+        11,
+        13,
+        17,
+        20,
+        21
+      ],
+      [
+        10,
+        11,
+        14,
+        17,
+        22,
+        23
+      ],
+      [
+        10,
+        11,
+        15,
+        17,
+        24,
+        25
+      ],
+      [
+        10,
+        11,
+        16,
+        17,
+        26,
+        27
+      ],
+      [
+        10,
+        12,
+        13,
+        17,
+        22,
+        24
+      ],
+      [
+        10,
+        12,
+        14,
+        17,
+        20,
+        25
+      ],
+      [
+        10,
+        12,
+        15,
+        17,
+        21,
+        23
+      ],
+      [
+        10,
+        12,
+        16,
+        17,
+        28,
+        29
+      ],
+      [
+        10,
+        13,
+        14,
+        17,
+        18,
+        26
+      ],
+      [
+        10,
+        13,
+        15,
+        17,
+        19,
+        27
+      ],
+      [
+        10,
+        13,
+        16,
+        17,
+        23,
+        25
+      ],
+      [
+        10,
+        14,
+        15,
+        17,
+        28,
+        30
+      ],
+      [
+        4,
+        7,
+        10,
+        14,
+        16,
+        17
+      ],
+      [
+        5,
+        8,
+        10,
+        15,
+        16,
+        17
+      ],
+      [
+        6,
+        9,
+        11,
+        12,
+        13,
+        17
+      ],
+      [
+        4,
+        8,
+        11,
+        12,
+        14,
+        17
+      ],
+      [
+        5,
+        9,
+        11,
+        12,
+        15,
+        18
+      ]
+    ]
+  },
+  "CAP17_COUNTEREXAMPLE_STATUS": "REPRODUCED_NU_18_CAP17_REFUTED",
+  "CERTIFICATE_SCOPE": "state:s2-12692531-s3-681744 member [0,13][5,5] only",
+  "CERTIFIED_MEMBER_BOUND": 353516478,
+  "COLLISION_FLOOR": {
+    "BALANCED_MASS_EXHAUSTIVE_ROWS": 455,
+    "CELL_FLOORS": [
+      0,
+      2,
+      2,
+      76
+    ],
+    "CELL_INCIDENCES": [
+      0,
+      5,
+      5,
+      98
+    ],
+    "CELL_LABELS": [
+      3,
+      3,
+      3,
+      40
+    ],
+    "CONVEXITY": "balanced frequencies minimise sum C(d,2) for a fixed total",
+    "IDENTITY": "sum_{i<j} t_ij = sum_x C(d_x,2) over all 49 labels; for t in 0..3, t = [t>=1]+[t>=2]+[t>=3], so the sum equals e1+e2+e3",
+    "TOTAL": 80
+  },
+  "COLLISION_FLOOR_STATUS": "VERIFIED_80",
+  "CORRECTIONS": {
+    "CERTIFIED_CORRECTION": 7372190,
+    "COMBINATION": "MAX_OF_VALID_LOWER_BOUNDS_NEVER_SUM",
+    "HUNTER_TREE": 7372190,
+    "R14_RATIONAL": 5483247,
+    "R5_FOREST": 5166000,
+    "R6_PAIR_SUM": 1835127
+  },
+  "EVENT_DEFINITION": {
+    "ANCHOR_PAIR_S2": 8542800,
+    "ANCHOR_TERMS_COUNTED_ONCE": "Anchor intersections enter only |E_A u E_B| and each |R_C|; pair rows count |R_C n R_D| of the same anchor-excluded events (four-set inclusion-exclusion with the quadruple add-back); the tree subtracts only residual-residual overlaps",
+    "ANCHOR_TRIPLE_S3": 672770,
+    "ANCHOR_UNION": 33752922,
+    "IDENTITY": "|union E| = |E_A u E_B| + |union R_C|; |R_C| = N - I(s+a) - I(s+b) + J is recounted per type, and the sum equals R14 joint_constant - S2 + S3",
+    "OUTCOME_MODEL": {
+      "OUTCOME_LEVEL_REPLAY": "R1 pair_intersection_count(0..6) matches exactly",
+      "PAIR_INTERSECTION_BY_OVERLAP": [
+        107800,
+        574000,
+        1695988,
+        3469942,
+        6224512,
+        10776332,
+        18611432
+      ],
+      "RULE": "any prize <=> |T n (D u {s})| >= 3; (D,s) -> D u {s} is 7-to-1 onto 7-sets",
+      "SINGLE_TICKET_OUTCOMES": 18611432
+    },
+    "RAW_UNION_BOUND_NO_CORRECTION": 360888668,
+    "RESIDUAL_EVENT": "R_C = E_C minus (E_A union E_B): 7-sets X with |C n X| >= 3, |A n X| <= 2 and |B n X| <= 2, times 7 outcomes",
+    "RESIDUAL_EVENT_SIZES": [
+      [
+        0,
+        18405317
+      ],
+      [
+        5,
+        17573325
+      ]
+    ],
+    "RESIDUAL_SUM": 327135746
+  },
+  "EVENT_DEFINITION_STATUS": "VERIFIED_EXACT_SAME_RESIDUAL_EVENTS",
+  "EXISTING_RATIONAL_BOUND": 355405421,
+  "HUNTER_CORRECTION": 7372190,
+  "MEMBER_COUNTS": [
+    [
+      0,
+      13
+    ],
+    [
+      5,
+      5
+    ]
+  ],
+  "MEMBER_ID": "[0,13][5,5]",
+  "MEMBER_TYPE_CELLS": {
+    "0": [
+      0,
+      0,
+      0,
+      6
+    ],
+    "5": [
+      0,
+      1,
+      1,
+      4
+    ]
+  },
+  "NEW_HEAVY_SOLVER_STARTED": "NO",
+  "NU_LE_17": "ν <= 17 REFUTED",
+  "PAIR_OVERLAP_COVERAGE": {
+    "ABOVE_THREE": "EXCLUDED_BY_FAMILY_DEFINITION: Family A splits by the exact portfolio maximum overlap r (heavy_pair_case); R3 is r = 3, so every pair, residual pairs included, overlaps in at most 3 labels (R5 PAIRWISE_MAXIMUM_OVERLAP); threshold_edge_counts rejects t > 3",
+    "CELL_RANGES": "max(0,c+d-capacity) <= x <= min(c,d) in each of 3,3,3,40 labels",
+    "COVERED_TOTALS": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "FAMILY_SOURCE_CEILING": 3,
+    "HEAVY_PAIR_R3_PROFILE_COUNT": 30,
+    "R6_OVERLAP_VECTORS_EQUAL": true
+  },
+  "PAIR_TABLE": {
+    "FLOOR_RULE": "phi(t) = min of every exact row with total overlap t",
+    "PAIR_FLOOR_BY_TOTAL_OVERLAP": [
+      102536,
+      535542,
+      1588965,
+      3260138
+    ],
+    "ROWS": [
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        107800
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        574000
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        2,
+        1691620
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        3,
+        3451651
+      ],
+      [
+        0,
+        5,
+        0,
+        0,
+        0,
+        0,
+        107800
+      ],
+      [
+        0,
+        5,
+        0,
+        0,
+        0,
+        1,
+        568610
+      ],
+      [
+        0,
+        5,
+        0,
+        0,
+        0,
+        2,
+        1667932
+      ],
+      [
+        0,
+        5,
+        0,
+        0,
+        0,
+        3,
+        3406165
+      ],
+      [
+        5,
+        5,
+        0,
+        0,
+        0,
+        0,
+        102536
+      ],
+      [
+        5,
+        5,
+        0,
+        0,
+        0,
+        1,
+        535542
+      ],
+      [
+        5,
+        5,
+        0,
+        0,
+        0,
+        2,
+        1588965
+      ],
+      [
+        5,
+        5,
+        0,
+        0,
+        0,
+        3,
+        3260138
+      ],
+      [
+        5,
+        5,
+        0,
+        0,
+        1,
+        0,
+        548744
+      ],
+      [
+        5,
+        5,
+        0,
+        0,
+        1,
+        1,
+        1603910
+      ],
+      [
+        5,
+        5,
+        0,
+        0,
+        1,
+        2,
+        3266564
+      ],
+      [
+        5,
+        5,
+        0,
+        1,
+        0,
+        0,
+        548744
+      ],
+      [
+        5,
+        5,
+        0,
+        1,
+        0,
+        1,
+        1603910
+      ],
+      [
+        5,
+        5,
+        0,
+        1,
+        0,
+        2,
+        3266564
+      ],
+      [
+        5,
+        5,
+        0,
+        1,
+        1,
+        0,
+        1620388
+      ],
+      [
+        5,
+        5,
+        0,
+        1,
+        1,
+        1,
+        3282755
+      ]
+    ],
+    "ROWS_SHA256": "8944ab579ceef79e130bb34594ffc74b8dddd61ac6f8fcb41b4cc04d15a04807",
+    "ROW_COLUMNS": [
+      "left",
+      "right",
+      "shared",
+      "a_only",
+      "b_only",
+      "outside",
+      "value"
+    ],
+    "ROW_COUNT": 20,
+    "TYPE_PAIRS": [
+      [
+        0,
+        0
+      ],
+      [
+        0,
+        5
+      ],
+      [
+        5,
+        5
+      ]
+    ]
+  },
+  "PAIR_TABLE_STATUS": "VERIFIED_20_ROWS_INDEPENDENT_REPLAY_EQUALS_R8",
+  "PRODUCTION_MUTATION": "NONE",
+  "R24_LEDGER": {
+    "LADDER_FINAL_BOUNDS": [
+      355722668,
+      355722220,
+      355721772,
+      355721324,
+      355720876,
+      355720428
+    ],
+    "MEMBER_FINAL_BOUND": 355722668,
+    "MEMBER_RAW_BOUND": 355722668,
+    "MEMBER_REPRESENTED_VECTOR_COUNT": 1,
+    "NEXT_RAW_REGION_LEVEL": 355274920,
+    "REGION_COMPRESSED_MEMBERS": 582,
+    "REGION_TYPE_VECTORS": 633,
+    "STATE_TERM": 355722668
+  },
+  "R3_BOUND_CLAIM": "NONE",
+  "REDUCTION_FROM_R24_LEDGER": 2206190,
+  "REGION_SHA256": "132cef5c91f5d6cf4798c8d8f65dba98d3851f33ec3d45b5d37fb7f61145ef15",
+  "SOURCE_FINGERPRINT": {
+    "MODULE": "src/lottolab/research/b649_k20_r3_hunter_tree_member_certificate_r1.py",
+    "MODULE_SHA256": "bddcd5b9f979ee2e2b620d3b3c9ff7a13f56cc4edc267a5715e8b4722c97ac53"
+  },
+  "STATE_ID": "state:s2-12692531-s3-681744",
+  "STATE_TERM_CLAIM": "NONE",
+  "TASK_BRANCH": "codex/b649-k20-r3-hunter-tree-member-certificate-r1",
+  "TASK_ID": "B649_K20_R3_HUNTER_TREE_MEMBER_CERTIFICATE_R1",
+  "TASK_STATUS": "CERTIFIED_SINGLE_MEMBER_HUNTER_TREE_BOUND",
+  "THRESHOLDS": {
+    "CROSSES_NEXT_RAW_REGION_LEVEL": true,
+    "CROSSES_SIBLING": true,
+    "NEXT_RAW_REGION_LEVEL": 355274920,
+    "SIBLING_ID": "[0,13][5,4][16,1]",
+    "SIBLING_RATIONAL_BOUND": 355308650
+  },
+  "TREE_MINIMUM": {
+    "CENSUS": "153 >= e1 >= e2 >= e3 >= 0, e1 + e2 + e3 >= 80",
+    "CENSUS_SIZE": 605031,
+    "FORMULA": "17*phi(0) + sum_k (phi(k) - phi(k-1)) * rho(e_k)",
+    "MINIMIZER_E": [
+      80,
+      0,
+      0
+    ],
+    "MINIMIZER_RHO": [
+      13,
+      0,
+      0
+    ]
+  },
+  "TREE_RANK_PROOF": {
+    "HUNTER": "Root T anywhere and order vertices so parents come first; |U R| = sum_i |R_i minus U_{j<i} R_j| <= |R_root| + sum_{i != root} |R_i minus R_parent(i)|",
+    "HUNTER_EXHAUSTIVE_SMALL_FAMILY_TREE_CHECKS": 77824,
+    "NESTED_TREE": "Extend a spanning forest of G_3 to one of G_2, G_1 and K_18; the tree holds rank(G_k) edges with overlap >= k, so its phi-weight is 17 phi(0) + sum_k (phi(k)-phi(k-1)) rank(G_k), phi nondecreasing",
+    "RANK_ALGEBRA_ROWS": 154,
+    "RANK_FLOOR": "Components n_1..n_c with rank r = sum (n_i - 1) hold at most sum C(n_i,2) <= C(r+1,2) edges, as C(a+1,2)+C(b+1,2)+ab = C(a+b+1,2); so rank(G_t) >= rho(e_t), rho(e) = min{r : C(r+1,2) >= e}",
+    "RANK_FLOOR_EXHAUSTIVE_GRAPHS_ON_6_VERTICES": 32768,
+    "THRESHOLD_TREE_EXHAUSTIVE_K4_LABELLINGS": 4096
+  },
+  "TREE_RANK_PROOF_STATUS": "PROVED_WITH_EXHAUSTIVE_SMALL_CASE_REGRESSION",
+  "UPSTREAM_SHA256": {
+    "docs/research/matrix-native-results/b649-k20-r3-tail-crossover-state-dynamic-chase-r24-result.json": "32182a3c3c803d95b3a7aee448f8ade3fadb291771affc9dca8beaab8147fc71",
+    "src/lottolab/research/b649_k20_heavy_pair_r3plus_global_bound_r3.py": "379f55ef87c2f7ffddc00caf7a7b5756810e1a3490ba3eb0d32327684f111139",
+    "src/lottolab/research/b649_k20_outside_min_s2_global_penalty_bound_r1.py": "7706e57e77df6e786e77c4824f3c72663fdae73b20aa5f6797192689f2b6ea62",
+    "src/lottolab/research/b649_k20_r3_anchor_incidence_bound_r5.py": "569d525f1e9905d043fe0f6132c936d5b260ba3d4b3a376da6c961db8aa5c435",
+    "src/lottolab/research/b649_k20_r3_exact_anchor_neighborhood_envelope_r6.py": "a83f6f2a7091aedf034e0905d80993df5001382fedc297fdd503202665e6622c",
+    "src/lottolab/research/b649_k20_r3_frontier_realizability_bound_r8.py": "14884faf5b2e66c1f30d4e04e453ba5838b7f95815d70d8b7d45be47c5e9bd2b",
+    "src/lottolab/research/b649_k20_r3_joint_residual_envelope_r7.py": "f376899a25bc287e45b80c3f5d9116db97f4c09de31ec81d0ccd2badf4222c50",
+    "src/lottolab/research/b649_k20_r3_state_tail_owner_chase_r14.py": "b30f6420eca033bc051ef35457993fc2588ee2e26cc1041363ced5d2c775ce99",
+    "src/lottolab/research/b649_k20_r3_tail_crossover_state_dynamic_chase_r24.py": "2a5e57a7319bd215f8cbc7f4db26453308a74c3f540c25787c44604aa39c8fd7"
+  },
+  "WITNESS_SOUNDNESS": {
+    "COLLISION_MASS": 373,
+    "EDGE_COUNTS": [
+      151,
+      137,
+      85
+    ],
+    "EXACT_MAXIMUM_TREE_WEIGHT": 58450637,
+    "EXACT_PAIRS_EQUAL_TABLE_ROWS": true,
+    "GRAPH_RANKS": [
+      17,
+      17,
+      17
+    ],
+    "LABEL_COLLISION_MASS": 373,
+    "MEANING": "On a real member portfolio: certificate <= phi-tree weight <= exact maximum tree weight <= true union correction",
+    "OVERLAP_HISTOGRAM_0_TO_3": [
+      2,
+      14,
+      52,
+      85
+    ],
+    "PHI_TREE_WEIGHT": 55422346
+  },
+  "WITNESS_SOUNDNESS_STATUS": "CONSISTENT",
+  "WORKTREE_DISPOSITION": "RETAIN"
+}

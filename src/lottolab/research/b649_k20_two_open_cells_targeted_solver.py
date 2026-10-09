@@ -35,10 +35,18 @@ The search differs from the census in four ways.
   313,263,888 incumbent. The cells' mathematical upper bounds (CELL_A 313,449,032 and CELL_B
   313,453,272) are recorded as bounds only. Neither is a witness.
 
+The grant also chooses the model. NONE is the original model, unchanged. The optional
+DEGREE_BLOCK_ADJACENT_TRANSPOSITION_LEX_LEADER_V1 reduction adds lex-leader constraints for the
+model's own ticket relabelling group, the permutations inside each equal-degree block. Each
+generator is first verified on the model proto as an exact automorphism, and the reduced
+model is pinned. The reduction keeps a member of every isomorphism class. Canonical
+deduplication stays the correctness backstop in both modes.
+
 OPTIMAL, FEASIBLE, INFEASIBLE and UNKNOWN are recorded as returned. INFEASIBLE without
-exclusions refutes the cell at T, and INFEASIBLE after exclusions proves the labelled
-realization space exhausted. UNKNOWN only ends the current session's work on a cell; a later
-session re-attempts it with the same exclusions. Every attempt, class and duplicate goes to one
+exclusions refutes the cell at T. INFEASIBLE after exclusions proves the labelled realization
+space exhausted on the original model, and every isomorphism class accepted on the reduced
+one. UNKNOWN only ends the current session's work on a cell; a later session re-attempts it
+with the same exclusions. Every attempt, class and duplicate goes to one
 hash-chained, fsynced JSONL log (``census.DurableLog``) before it is used. A resumed run replays
 the log and recomputes every request digest and class identity. It completes any attempt left
 unclassified by an interruption, and it never re-solves a logged attempt or accepts a class
@@ -53,13 +61,14 @@ import json
 import math
 import os
 import platform
+import re
 import time
 from collections import Counter
 from collections.abc import Callable, Generator, Iterable, Mapping, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from importlib import import_module
-from itertools import combinations
+from itertools import combinations, pairwise
 from pathlib import Path
 from typing import Any, cast
 
@@ -103,9 +112,16 @@ UNKNOWN = "UNKNOWN"
 REALIZED = (OPTIMAL, FEASIBLE)
 STATUSES = (OPTIMAL, FEASIBLE, INFEASIBLE, UNKNOWN)
 
+# The optional model-side symmetry reduction. NONE is the original model; nothing defaults to
+# the reduction, which a grant must name explicitly.
+SYMMETRY_NONE = "NONE"
+SYMMETRY_LEX_LEADER = "DEGREE_BLOCK_ADJACENT_TRANSPOSITION_LEX_LEADER_V1"
+SYMMETRY_MODES = (SYMMETRY_NONE, SYMMETRY_LEX_LEADER)
+
 # Terminal cell states, and the reasons a session stops working on a cell.
 REFUTED_AT_T = "REFUTED_AT_T"
 LABELED_SPACE_EXHAUSTED = "LABELED_SPACE_EXHAUSTED"
+CLASS_SPACE_EXHAUSTED = "ISOMORPHISM_CLASS_SPACE_EXHAUSTED"
 UNRESOLVED_UNKNOWN = "UNRESOLVED_UNKNOWN_THIS_SESSION"
 DISTINCT_CAP_REACHED = "DISTINCT_WITNESS_CAP_REACHED"
 ATTEMPT_BUDGET_REACHED = "ATTEMPT_BUDGET_REACHED"
@@ -138,6 +154,10 @@ class WitnessError(TwoCellError):
 
 class CanonicalFormError(TwoCellError):
     """The canonical labelling could not be completed or verified."""
+
+
+class SymmetryError(TwoCellError):
+    """A proposed relabelling is not an exact automorphism of the model: nothing is reduced."""
 
 
 class SolverContractError(TwoCellError):
@@ -182,6 +202,11 @@ MODEL_PROTO_SHA256 = {
     "CELL_A": "381ee9ef753d6b1904fb7c5f8037a01eee0183f96963411e1eb56b303760fe89",
     "CELL_B": "f2d5946a254086e26ea843da8b49f083947a2d6faf89ea85adad74f840a71600",
 }
+# The same model after add_symmetry_reduction, still with no exclusions.
+REDUCED_MODEL_PROTO_SHA256 = {
+    "CELL_A": "0d6ecffa80aef175af62bf8b40521e876199dde06ad26858a5a51861e5804e72",
+    "CELL_B": "12aa9f4a5b569ed496e8b37efe3c678a872763561e7efde1d05f25311bb559cf",
+}
 # The witness identity of the incumbent's isomorphism class (canonical start portfolio).
 INCUMBENT_WITNESS_ID = "ef74855715fd27889606328cc6dedf48dfc77b7b7de228deaa8e1c477d753830"
 
@@ -204,6 +229,7 @@ class SelectedCell:
             "REALIZED_BY_INCUMBENT": self.cell.realized_by_incumbent,
             "CENSUS_CHASE_REQUEST_SHA256": self.census_chase_request_sha256,
             "MODEL_PROTO_SHA256": MODEL_PROTO_SHA256[self.cell.name],
+            "REDUCED_MODEL_PROTO_SHA256": REDUCED_MODEL_PROTO_SHA256[self.cell.name],
         }
 
 
@@ -294,6 +320,21 @@ def verify_cell_models() -> dict[str, str]:
     return observed
 
 
+def verify_reduced_cell_models() -> dict[str, str]:
+    """Each cell's reduced model: its generators verified on the pinned model, then pinned."""
+
+    observed: dict[str, str] = {}
+    for cell in TARGET_CELLS:
+        model, triples, pairs = census.k20_model(cell.profile, cell.ceiling)
+        if census.sha256_bytes(str(model.Proto()).encode()) != MODEL_PROTO_SHA256[cell.name]:
+            raise SourceIdentityError(f"{cell.name}: support model differs from its pin")
+        add_symmetry_reduction(model, triples, pairs, cell.profile)
+        observed[cell.name] = census.sha256_bytes(str(model.Proto()).encode())
+    if observed != REDUCED_MODEL_PROTO_SHA256:
+        raise SourceIdentityError("a target cell's reduced model differs from its pin")
+    return observed
+
+
 # Solver configuration and the Owner resource grant -----------------------------------------
 
 
@@ -313,11 +354,16 @@ def _positive_seconds(value: object, name: str) -> float:
 
 @dataclass(frozen=True, slots=True)
 class SolverConfig:
-    """CP-SAT settings for one attempt. Only num_search_workers is set: both is MODEL_INVALID."""
+    """CP-SAT settings for one attempt. Only num_search_workers is set: both is MODEL_INVALID.
+
+    ``symmetry`` selects the model. The original model's JSON (and so every request digest) is
+    unchanged; only a reduced attempt records SYMMETRY_REDUCTION.
+    """
 
     num_search_workers: int
     solve_seconds: float
     random_seed: int = census.RANDOM_SEED
+    symmetry: str = SYMMETRY_NONE
 
     def __post_init__(self) -> None:
         _positive_int(self.num_search_workers, "NUM_SEARCH_WORKERS")
@@ -326,15 +372,20 @@ class SolverConfig:
         _positive_seconds(self.solve_seconds, "SOLVE_SECONDS")
         if type(self.random_seed) is not int:
             raise GrantError("RANDOM_SEED must be an integer")
+        if self.symmetry not in SYMMETRY_MODES:
+            raise GrantError(f"SYMMETRY_REDUCTION must be one of {list(SYMMETRY_MODES)}")
 
     def as_json(self) -> dict[str, object]:
-        return {
+        data: dict[str, object] = {
             "NUM_SEARCH_WORKERS": self.num_search_workers,
             "NUM_WORKERS": "UNSET",
             "MAX_TIME_IN_SECONDS": self.solve_seconds,
             "RANDOM_SEED": self.random_seed,
             "LOG_SEARCH_PROGRESS": False,
         }
+        if self.symmetry != SYMMETRY_NONE:
+            data["SYMMETRY_REDUCTION"] = self.symmetry
+        return data
 
     def digest(self) -> str:
         return census.sha256_bytes(census.canonical_json(self.as_json()).encode())
@@ -346,6 +397,7 @@ class SolverConfig:
             cast(int, data["NUM_SEARCH_WORKERS"]),
             cast(float, data["MAX_TIME_IN_SECONDS"]),
             cast(int, data["RANDOM_SEED"]),
+            cast(str, data.get("SYMMETRY_REDUCTION", SYMMETRY_NONE)),
         )
         if config.as_json() != data:
             raise census.DurableLogError("logged solver configuration is not canonical")
@@ -397,6 +449,7 @@ GRANT_FIELDS = (
     "MAX_ATTEMPTS_PER_CELL",
     "DISTINCT_WITNESS_CAP",
     "WALL_BUDGET_SECONDS",
+    "SYMMETRY_REDUCTION",
 )
 
 
@@ -440,6 +493,7 @@ def grant_template() -> dict[str, object]:
         "MAX_ATTEMPTS_PER_CELL": None,
         "DISTINCT_WITNESS_CAP": None,
         "WALL_BUDGET_SECONDS": None,
+        "SYMMETRY_REDUCTION": None,
     }
 
 
@@ -474,10 +528,13 @@ def load_grant(path: Path | None, *, cpu_count: int | None = None) -> ResourceGr
         raise GrantError("grant names a different engine; the code changed since the grant")
     if grant["TARGET_CELLS"] != [list(cell) for cell in TARGET_KEYS]:
         raise GrantError("grant must name exactly CELL_A and CELL_B in order")
+    if grant["SYMMETRY_REDUCTION"] not in SYMMETRY_MODES:
+        raise GrantError(f"SYMMETRY_REDUCTION must be one of {list(SYMMETRY_MODES)}")
     cpus = cpu_count if cpu_count is not None else os.cpu_count() or 1
     config = SolverConfig(
         _positive_int(grant["NUM_SEARCH_WORKERS"], "NUM_SEARCH_WORKERS", cpus),
         _positive_seconds(grant["SOLVE_SECONDS"], "SOLVE_SECONDS"),
+        symmetry=cast(str, grant["SYMMETRY_REDUCTION"]),
     )
     wall = _positive_seconds(grant["WALL_BUDGET_SECONDS"], "WALL_BUDGET_SECONDS")
     if wall < config.solve_seconds:
@@ -762,6 +819,271 @@ def isomorphism(
     return mapping
 
 
+# Proven model symmetry and the optional lex-leader reduction ------------------------------
+#
+# The group. A ticket relabelling sigma acts on the model by renaming every variable through
+# sigma: d{v}, t(a, b, c), b(a, b), e(a, b) and o{c}_{a}_{b} go to the same kind on sigma's
+# images. The model fixes d{v} to profile[v], so sigma can preserve it only if it maps every
+# ticket onto one of equal triple degree. Every other constraint is written uniformly over all
+# tickets, pairs and triples on degree-positive tickets, so each block-preserving sigma maps the
+# constraint set onto itself. G = Sym(B_1) x ... x Sym(B_k) over the equal-degree blocks is
+# therefore the whole group of ticket relabellings preserving the model. Its adjacent
+# transpositions generate it. The 49 numbers are not model variables: a structure is a set of
+# lines, so number labels are already quotiented out, and no ticket outside a block is moved.
+#
+# The proof is mechanical. Each generator is checked on the model proto as built, before any
+# addition: the renaming must be a bijection, keep every domain, and map the multiset of
+# normalized constraints onto itself. Anything the check cannot normalize is refused.
+#
+# The reduction. For each generator sigma, the constraint sigma.y <=_lex y over one fixed line
+# order keeps every orbit's lexicographic maximum, which is still a solution. Every isomorphism
+# class therefore keeps a member. An excluded structure always belongs to an accepted class, so
+# the no-goods never remove a member of an unaccepted class. INFEASIBLE without exclusions
+# still refutes the cell. INFEASIBLE after exclusions means that every isomorphism class has
+# been accepted (CLASS_SPACE_EXHAUSTED), not that every labelled structure was seen.
+
+
+_VARIABLE_NAME = re.compile(
+    r"d(\d+)|t\((\d+), (\d+), (\d+)\)|([be])\((\d+), (\d+)\)|o(\d+)_(\d+)_(\d+)"
+)
+_ModelConstraint = tuple[str, tuple[int, ...], tuple[object, ...]]
+
+
+def degree_blocks(profile: Sequence[int]) -> tuple[tuple[int, ...], ...]:
+    """The maximal runs of equal triple degree in a non-increasing profile."""
+
+    if tuple(sorted(profile, reverse=True)) != tuple(profile):
+        raise SymmetryError("a degree profile must be non-increasing")
+    blocks: list[list[int]] = []
+    for v, degree in enumerate(profile):
+        if blocks and profile[blocks[-1][0]] == degree:
+            blocks[-1].append(v)
+        else:
+            blocks.append([v])
+    return tuple(tuple(block) for block in blocks)
+
+
+def symmetry_generators(profile: Sequence[int]) -> tuple[Labeling, ...]:
+    """The adjacent transpositions inside each block: they generate the block stabilizer G."""
+
+    generators: list[Labeling] = []
+    for block in degree_blocks(profile):
+        for v, w in pairwise(block):
+            sigma = list(range(len(profile)))
+            sigma[v], sigma[w] = w, v
+            generators.append(tuple(sigma))
+    return tuple(generators)
+
+
+def lex_order(profile: Sequence[int]) -> tuple[Line, ...]:
+    """The model's own line order: triples on degree-positive tickets, then all pairs."""
+
+    active = [v for v, degree in enumerate(profile) if degree]
+    return (*combinations(active, 3), *combinations(range(len(profile)), 2))
+
+
+def _image_name(name: str, sigma: Sequence[int]) -> str:
+    match = _VARIABLE_NAME.fullmatch(name)
+    if match is None:
+        raise SymmetryError(f"model variable {name!r} has no known relabelling")
+    d, t1, t2, t3, kind, p1, p2, center, end1, end2 = match.groups()
+    image = [sigma[int(x)] for x in match.groups() if x is not None and x.isdecimal()]
+    if d is not None:
+        return f"d{image[0]}"
+    if t1 is not None and t2 is not None and t3 is not None:
+        return f"t{tuple(sorted(image))}"
+    if kind is not None and p1 is not None and p2 is not None:
+        return f"{kind}{tuple(sorted(image))}"
+    if center is None or end1 is None or end2 is None:
+        raise SymmetryError(f"model variable {name!r} has no known relabelling")
+    a, b = sorted(image[1:])
+    return f"o{image[0]}_{a}_{b}"
+
+
+def _literal(permutation: Sequence[int], ref: int) -> int:
+    return permutation[ref] if ref >= 0 else -permutation[-ref - 1] - 1
+
+
+def _normalized(constraint: _ModelConstraint, permutation: Sequence[int]) -> tuple[object, ...]:
+    """A renamed constraint in a form that ignores term, literal, column and row order."""
+
+    kind, enforcement, body = constraint
+    literals = tuple(sorted(_literal(permutation, ref) for ref in enforcement))
+    if kind == "LINEAR":
+        terms, domain = cast(tuple[tuple[tuple[int, int], ...], tuple[int, ...]], body)
+        return kind, literals, tuple(sorted((permutation[v], k) for v, k in terms)), domain
+    columns, values, negated = cast(tuple[tuple[int, ...], tuple[int, ...], bool], body)
+    renamed = [permutation[v] for v in columns]
+    rows = (values[i : i + len(columns)] for i in range(0, len(values), len(columns)))
+    table = (tuple(sorted(zip(renamed, row, strict=True))) for row in rows)
+    return kind, literals, tuple(sorted(table)), negated
+
+
+@dataclass(frozen=True, slots=True)
+class ModelForm:
+    """A CP-SAT model reduced to what a relabelling must preserve."""
+
+    names: tuple[str, ...]
+    domains: tuple[tuple[int, ...], ...]
+    constraints: tuple[_ModelConstraint, ...]
+    vertex_count: int
+    normal_form: Counter[tuple[object, ...]]
+
+    @staticmethod
+    def of(proto: Any) -> ModelForm:
+        if (
+            proto.has_objective()
+            or proto.has_floating_point_objective()
+            or proto.has_solution_hint()
+            or proto.has_symmetry()
+            or len(proto.search_strategy)
+            or len(proto.assumptions)
+        ):
+            raise SymmetryError(
+                "the model has an objective, hint, strategy, assumption or symmetry field"
+            )
+        helper: Any = import_module("ortools.sat.python.cp_model_helper")
+        kinds = [name for name in dir(helper.ConstraintProto) if name.startswith("has_")]
+        constraints: list[_ModelConstraint] = []
+        for constraint in proto.constraints:
+            present = [name for name in kinds if getattr(constraint, name)()]
+            enforcement = tuple(constraint.enforcement_literal)
+            if present == ["has_linear"]:
+                terms = tuple(zip(constraint.linear.vars, constraint.linear.coeffs, strict=True))
+                if any(v < 0 for v, _ in terms):
+                    raise SymmetryError("a linear term is not a positive variable reference")
+                domain = tuple(constraint.linear.domain)
+                constraints.append(("LINEAR", enforcement, (terms, domain)))
+            elif present == ["has_table"] and not len(constraint.table.vars):
+                exprs = list(constraint.table.exprs)
+                if any(
+                    len(e.vars) != 1 or list(e.coeffs) != [1] or e.offset != 0 or e.vars[0] < 0
+                    for e in exprs
+                ) or len(constraint.table.values) % max(len(exprs), 1):
+                    raise SymmetryError("a table column is not a plain variable")
+                columns = tuple(e.vars[0] for e in exprs)
+                body = (columns, tuple(constraint.table.values), bool(constraint.table.negated))
+                constraints.append(("TABLE", enforcement, body))
+            else:
+                raise SymmetryError(f"constraint kind {present} cannot be checked for symmetry")
+        names = tuple(v.name for v in proto.variables)
+        if len(set(names)) != len(names):
+            raise SymmetryError("model variable names are not unique")
+        vertex_count = sum(bool(re.fullmatch(r"d\d+", name)) for name in names)
+        domains = tuple(tuple(v.domain) for v in proto.variables)
+        identity = range(len(names))
+        normal_form = Counter(_normalized(c, identity) for c in constraints)
+        return ModelForm(names, domains, tuple(constraints), vertex_count, normal_form)
+
+    def automorphism(self, sigma: Sequence[int]) -> tuple[int, ...]:
+        """The variable renaming of ticket relabelling ``sigma``, if it maps the model onto
+        itself; otherwise SymmetryError."""
+
+        if sorted(sigma) != list(range(self.vertex_count)):
+            raise SymmetryError("a relabelling must permute the model's tickets")
+        index = {name: i for i, name in enumerate(self.names)}
+        try:
+            permutation = tuple(index[_image_name(name, sigma)] for name in self.names)
+        except (KeyError, IndexError) as error:
+            raise SymmetryError(f"relabelling maps a variable outside the model: {error}") from None
+        identity = range(len(self.names))
+        if sorted(permutation) != list(identity) or any(
+            self.domains[permutation[i]] != self.domains[i] for i in identity
+        ):
+            raise SymmetryError("relabelling does not preserve the variable domains")
+        if Counter(_normalized(c, permutation) for c in self.constraints) != self.normal_form:
+            raise SymmetryError("relabelling does not map the constraint set onto itself")
+        return permutation
+
+
+@dataclass(frozen=True, slots=True)
+class SymmetryReduction:
+    generators: tuple[Labeling, ...]
+    compared_lines: tuple[int, ...]
+
+
+def _add_lex_leader(
+    model: Any, order: Sequence[Line], variables: Mapping[Line, Any], sigma: Labeling, tag: int
+) -> int:
+    """sigma.y <=_lex y: at the first line in ``order`` where y and its image differ, y has it.
+
+    ``equal`` is exactly "every compared line before this one agrees". Lines that sigma fixes
+    always agree and are skipped. For an involution, the second line of a swapped pair repeats
+    the first comparison in reverse, so it is skipped too.
+    """
+
+    inverse = _invert(sigma)
+    involution = all(sigma[sigma[v]] == v for v in range(len(sigma)))
+    compared: list[tuple[Any, Any]] = []
+    seen: set[Line] = set()
+    for line in order:
+        source = tuple(sorted(inverse[v] for v in line))
+        if source == line or (involution and source in seen):
+            continue
+        if source not in variables:
+            raise SymmetryError("the relabelling moves a line outside the model")
+        seen.add(line)
+        compared.append((variables[line], variables[source]))
+    prefix: Any = None
+    for i, (mine, image) in enumerate(compared):
+        guarded = [model.Add(image <= mine)]
+        equal: Any = None
+        if i < len(compared) - 1:
+            equal = model.NewBoolVar(f"lex{tag}_{i}")
+            model.Add(mine == image).OnlyEnforceIf(equal)
+            guarded.append(model.AddBoolOr([mine.Not(), image.Not(), equal]))
+            guarded.append(model.AddBoolOr([mine, image, equal]))
+            if prefix is not None:
+                model.AddImplication(equal, prefix)
+        if prefix is not None:
+            for constraint in guarded:
+                constraint.OnlyEnforceIf(prefix)
+        prefix = equal
+    return len(compared)
+
+
+def add_symmetry_reduction(
+    model: Any, triples: Mapping[Line, Any], pairs: Mapping[Line, Any], profile: Sequence[int]
+) -> SymmetryReduction:
+    """Verify every generator on ``model`` as it stands, then add their lex-leader constraints.
+
+    Call this on the bare model, before any no-good: the check is over the model as passed.
+    """
+
+    order = lex_order(profile)
+    if (*triples, *pairs) != order:
+        raise SymmetryError("the model's lines are not the profile's line order")
+    generators = symmetry_generators(profile)
+    form = ModelForm.of(model.Proto())
+    if form.vertex_count != len(profile):
+        raise SymmetryError("the model's ticket count differs from the profile")
+    for sigma in generators:
+        form.automorphism(sigma)
+    variables: dict[Line, Any] = {**triples, **pairs}
+    compared = tuple(
+        _add_lex_leader(model, order, variables, sigma, tag) for tag, sigma in enumerate(generators)
+    )
+    return SymmetryReduction(generators, compared)
+
+
+def lex_leader_violation(profile: Sequence[int], structure: census.Structure) -> Labeling | None:
+    """The first generator whose image of ``structure`` is lexicographically larger, or None.
+
+    This is the reduced model's region recomputed in Python, independently of the encoding.
+    """
+
+    lines = {*structure.triples, *structure.pairs}
+    order = lex_order(profile)
+    for sigma in symmetry_generators(profile):
+        image = {tuple(sorted(sigma[v] for v in line)) for line in lines}
+        for line in order:
+            if (line in lines) != (line in image):
+                if line in image:
+                    return sigma
+                break
+    return None
+
+
 # Attempts, the CP-SAT solve and the exact evaluator --------------------------------------
 
 
@@ -795,9 +1117,17 @@ Solver = Callable[[AttemptRequest], census.SolveOutcome]
 
 
 def cp_sat_solve(request: AttemptRequest) -> census.SolveOutcome:
-    """The census chase model plus the census no-goods, under the granted configuration."""
+    """The census chase model plus the census no-goods, under the granted configuration.
+
+    A granted reduction is verified on the bare model and pinned before any no-good is added.
+    """
 
     model, triples, pairs = census.k20_model(request.cell.profile, request.cell.ceiling)
+    if request.config.symmetry == SYMMETRY_LEX_LEADER:
+        add_symmetry_reduction(model, triples, pairs, request.cell.profile)
+        reduced = census.sha256_bytes(str(model.Proto()).encode())
+        if reduced != REDUCED_MODEL_PROTO_SHA256.get(request.cell.name):
+            raise SourceIdentityError(f"{request.cell.name}: reduced model differs from its pin")
     for structure in request.excluded:
         census.add_nogood(model, triples, pairs, structure)
     solver = configured_solver(request.config)
@@ -884,7 +1214,7 @@ class CellSearch:
             )
             self._check_outcome(request, outcome)
             self.attempts += 1
-            self._absorb(request.attempt, outcome)
+            self._absorb(request, outcome)
         accepted = {k[2] for k in self.log.records if k[:2] == ("ACCEPTED", self.cell.name)}
         duplicated = {k[2] for k in self.log.records if k[:2] == ("DUPLICATE", self.cell.name)}
         if accepted != set(self.classes) or duplicated != set(self.duplicates):
@@ -899,6 +1229,12 @@ class CellSearch:
             raise SolverContractError("a realized status must carry exactly one structure")
         if outcome.structure is not None and outcome.structure in request.excluded:
             raise SolverContractError("solver returned an excluded structure")
+        if (
+            outcome.structure is not None
+            and request.config.symmetry == SYMMETRY_LEX_LEADER
+            and lex_leader_violation(self.cell.profile, outcome.structure) is not None
+        ):
+            raise SolverContractError("a reduced attempt returned a structure outside its region")
 
     def next_attempt(self, config: SolverConfig) -> census.SolveOutcome:
         if self.terminal is not None:
@@ -923,10 +1259,10 @@ class CellSearch:
             },
         )
         self.attempts += 1
-        self._absorb(request.attempt, outcome)
+        self._absorb(request, outcome)
         return outcome
 
-    def _absorb(self, attempt: int, outcome: census.SolveOutcome) -> None:
+    def _absorb(self, request: AttemptRequest, outcome: census.SolveOutcome) -> None:
         self.status_counts[outcome.status] += 1
         if outcome.status == UNKNOWN:
             return
@@ -935,9 +1271,14 @@ class CellSearch:
                 raise ContradictionError(
                     f"{self.cell.name}: INFEASIBLE although the incumbent realizes it"
                 )
-            self.terminal = LABELED_SPACE_EXHAUSTED if self.excluded else REFUTED_AT_T
+            if not self.excluded:
+                self.terminal = REFUTED_AT_T
+            elif request.config.symmetry == SYMMETRY_NONE:
+                self.terminal = LABELED_SPACE_EXHAUSTED
+            else:
+                self.terminal = CLASS_SPACE_EXHAUSTED
             return
-        self._classify(attempt, outcome.structure)
+        self._classify(request.attempt, outcome.structure)
         self.excluded.append(outcome.structure)
 
     def _classify(self, attempt: int, structure: census.Structure) -> None:
@@ -1183,6 +1524,8 @@ def main(argv: Sequence[str] | None = None) -> None:
                     "ENGINE_SHA256": engine_sha256(),
                     "SOURCES": sources,
                     "TARGET_CELLS": [s.as_json() for s in selected],
+                    "REDUCED_MODEL_PROTO_SHA256": verify_reduced_cell_models(),
+                    "SYMMETRY_MODES": list(SYMMETRY_MODES),
                     "RESOURCE_GRANT_REQUIRED": True,
                     "GRANT_TEMPLATE": grant_template(),
                 },
@@ -1193,6 +1536,8 @@ def main(argv: Sequence[str] | None = None) -> None:
     grant = load_grant(args.grant)
     census.require_single_thread_env(os.environ)
     selected, sources = prepared_inputs()
+    if grant.config.symmetry != SYMMETRY_NONE:
+        verify_reduced_cell_models()
     if observed_search_workers(grant.config) != grant.config.num_search_workers:
         raise census.PreflightError("CP-SAT does not run the granted worker count")
     evaluate = exact_evaluator()

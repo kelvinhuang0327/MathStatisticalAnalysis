@@ -1,9 +1,12 @@
 """Focused, non-heavy tests for the two-open-cell targeted K20 solver.
 
-No target cell is solved: engine flows use an injected fake solver. CP-SAT runs only the
-one-variable worker probe. The official evaluator recounts only the canonical start, its
-canonical relabelling and one synthetic class. The synthetic same-T classes are pair-switches
-of the incumbent at T = 255, built in pure Python.
+No target cell is solved: engine flows use an injected fake solver. CP-SAT runs the
+one-variable worker probe, exhaustive enumerations of small synthetic members of the census
+model family (n = 7 or 8 tickets of three numbers), and fixed-assignment membership checks on
+the synthetic T = 255 cell. The two target cells' models are only built and checked. The
+official evaluator recounts only the canonical start, its canonical relabelling and one
+synthetic class. The synthetic same-T classes are pair-switches of the incumbent at T = 255,
+built in pure Python.
 """
 
 from __future__ import annotations
@@ -13,9 +16,10 @@ import math
 import random
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import replace
+from importlib import import_module
 from itertools import combinations
 from pathlib import Path
-from typing import cast
+from typing import Any, cast
 
 import pytest
 
@@ -164,6 +168,7 @@ def write_grant(path: Path, **changes: object) -> Path:
         "MAX_ATTEMPTS_PER_CELL": 8,
         "DISTINCT_WITNESS_CAP": 4,
         "WALL_BUDGET_SECONDS": 3600,
+        "SYMMETRY_REDUCTION": two.SYMMETRY_NONE,
     }
     for name, value in changes.items():
         if value is DROP:
@@ -330,6 +335,21 @@ def test_solver_configuration_is_explicit_and_deterministic(tmp_path: Path) -> N
         with pytest.raises(two.GrantError):
             two.SolverConfig(cast(int, workers), cast(float, seconds))
 
+    # The original model's configuration and request digests are the baseline's, byte for byte.
+    assert first.config.symmetry == two.SYMMETRY_NONE and first.config.digest() == (
+        "4c8f9e226878583a92ff0c34407c83498dcba777a3c7b84bcd7a862ac0dedddb"
+    )
+    assert request.digest() == "218f0d229fb84009947ba197905325233abbe6ffe2b54077a1371baf39143c77"
+    reduced = grant(tmp_path, SYMMETRY_REDUCTION=two.SYMMETRY_LEX_LEADER).config
+    assert reduced == two.SolverConfig(4, 30.0, symmetry=two.SYMMETRY_LEX_LEADER)
+    assert reduced.as_json() == {**first.config.as_json(), "SYMMETRY_REDUCTION": reduced.symmetry}
+    assert two.SolverConfig.from_json(reduced.as_json()) == reduced
+    assert two.AttemptRequest(CELL_B, 0, (), reduced).digest() != request.digest()
+    with pytest.raises(census.DurableLogError):
+        two.SolverConfig.from_json({**first.config.as_json(), "SYMMETRY_REDUCTION": "NONE"})
+    with pytest.raises(two.GrantError, match="SYMMETRY_REDUCTION"):
+        two.SolverConfig(4, 30.0, symmetry="LEX")
+
 
 @pytest.mark.parametrize("workers", [1, 3])
 def test_cp_sat_runs_exactly_the_configured_worker_count(workers: int) -> None:
@@ -363,6 +383,10 @@ def test_cp_sat_runs_exactly_the_configured_worker_count(workers: int) -> None:
         ({"TARGET_CELLS": [list(two.TARGET_KEYS[1]), list(two.TARGET_KEYS[0])]}, "CELL_A"),
         ({"TARGET_CELLS": [["66666665332221111111", 269]]}, "CELL_A"),
         ({"EXTRA": 1}, "unknown"),
+        ({"SYMMETRY_REDUCTION": DROP}, "SYMMETRY_REDUCTION"),
+        ({"SYMMETRY_REDUCTION": None}, "SYMMETRY_REDUCTION"),
+        ({"SYMMETRY_REDUCTION": "LEX_LEADER"}, "SYMMETRY_REDUCTION"),
+        ({"SYMMETRY_REDUCTION": True}, "SYMMETRY_REDUCTION"),
     ],
 )
 def test_an_invalid_grant_is_refused(
@@ -717,3 +741,381 @@ def test_wall_budget_foreign_roots_and_single_writer(
         two.exclusive_lock(tmp_path / "locked"),
     ):
         pass
+
+
+# Model symmetry and the optional lex-leader reduction -----------------------------------------
+
+LEX = two.SYMMETRY_LEX_LEADER
+T255 = two.TargetCell("SYNTHETIC_T255", CELL_A.profile_id, 255, 10**12, False)
+Lines = dict[two.Line, Any]
+
+
+def family_model(profile: Sequence[int], capacity: int, ceiling: int) -> tuple[Any, Lines, Lines]:
+    """census.support_model for one profile, with ticket count and capacity as parameters.
+
+    At 20 tickets of six numbers it is both pinned cell models byte for byte; small members
+    are the synthetic instances.
+    """
+
+    n = len(profile)
+    cp_model: Any = import_module("ortools.sat.python.cp_model")
+    model: Any = cp_model.CpModel()
+    degrees = [model.NewIntVar(profile[v], profile[v], f"d{v}") for v in range(n)]
+    model.AddAllowedAssignments(degrees, (tuple(profile),))
+    active = [v for v in range(n) if profile[v]]
+    triples: Lines = {t: model.NewBoolVar(f"t{t}") for t in combinations(active, 3)}
+    doubles: Lines = {p: model.NewBoolVar(f"b{p}") for p in combinations(range(n), 2)}
+    by_pair: dict[two.Line, list[Any]] = {p: [] for p in doubles}
+    for t, variable in triples.items():
+        for pair in combinations(t, 2):
+            by_pair[pair].append(variable)
+    for v, degree in enumerate(degrees):
+        model.Add(sum(x for t, x in triples.items() if v in t) == degree)
+        model.Add(sum(x for p, x in doubles.items() if v in p) == capacity - degree)
+    model.Add(sum(triples.values()) == sum(profile) // 3)
+    model.Add(sum(doubles.values()) == (n * capacity - sum(profile)) // 2)
+    edges: Lines = {}
+    for p, double in doubles.items():
+        model.Add(sum(by_pair[p]) + double <= 1)
+        edges[p] = model.NewBoolVar(f"e{p}")
+        model.Add(edges[p] == sum(by_pair[p]) + double)
+    indicators: list[Any] = []
+    by_ends: dict[two.Line, list[Any]] = {p: [] for p in doubles}
+    for center in range(n):
+        for a, b in combinations((v for v in range(n) if v != center), 2):
+            x = model.NewBoolVar(f"o{center}_{a}_{b}")
+            model.Add(
+                x
+                >= edges[(min(center, a), max(center, a))]
+                + edges[(min(center, b), max(center, b))]
+                - edges[(a, b)]
+                - 1
+            )
+            indicators.append(x)
+            by_ends[(a, b)].append(x)
+    # A non-adjacent pair has at least (c + d_a) + (c + d_b) - (n - 2) common neighbours.
+    offset = (n - 2) - 2 * capacity
+    for (a, b), edge in edges.items():
+        model.Add(sum(by_ends[(a, b)]) >= degrees[a] + degrees[b] - offset).OnlyEnforceIf(
+            edge.Not()
+        )
+    model.Add(sum(indicators) <= ceiling)
+    return model, triples, doubles
+
+
+def proto_sha256(model: Any) -> str:
+    return census.sha256_bytes(str(model.Proto()).encode())
+
+
+def solve(model: Any) -> tuple[str, Any]:
+    cp_model: Any = import_module("ortools.sat.python.cp_model")
+    solver: Any = cp_model.CpSolver()
+    solver.parameters.num_search_workers = 1
+    solver.parameters.max_time_in_seconds = 30.0
+    solver.parameters.random_seed = census.RANDOM_SEED
+    return str(solver.StatusName(solver.Solve(model))), solver
+
+
+def synthetic_model(
+    profile: Sequence[int], t: int, *, reduce: bool, capacity: int = 3
+) -> tuple[Any, Lines, Lines]:
+    wedges = sum(math.comb(capacity + d, 2) for d in profile)
+    model, triples, pairs = family_model(profile, capacity, wedges - 3 * t)
+    if reduce:
+        two.add_symmetry_reduction(model, triples, pairs, profile)
+    return model, triples, pairs
+
+
+def enumerate_structures(profile: Sequence[int], t: int, *, reduce: bool) -> list[census.Structure]:
+    """Every labelled structure of a synthetic cell, by census no-goods until INFEASIBLE."""
+
+    model, triples, pairs = synthetic_model(profile, t, reduce=reduce)
+    found: list[census.Structure] = []
+    while True:
+        status, solver = solve(model)
+        if status == two.INFEASIBLE:
+            return found
+        assert status in two.REALIZED  # an UNKNOWN never counts as exhaustion
+        typed = cast(Mapping[census.Triple, Any], triples), cast(Mapping[census.Pair, Any], pairs)
+        found.append(census.decode_structure(solver, *typed))
+        census.add_nogood(model, *typed, found[-1])
+
+
+def class_of(profile: Sequence[int], structure: census.Structure) -> tuple[two.Line, ...]:
+    return two.canonical_form(len(profile), (*structure.triples, *structure.pairs)).lines
+
+
+def lex_leader_representative(
+    profile: Sequence[int], structure: census.Structure
+) -> census.Structure:
+    """Apply a violated generator until none is. Each step is strictly lex-larger, so this ends,
+    inside the reduced region and inside the structure's class."""
+
+    while (sigma := two.lex_leader_violation(profile, structure)) is not None:
+        structure = two.relabel(structure, sigma)
+    return structure
+
+
+def test_synthetic_family_is_the_pinned_census_model_at_k20_parameters() -> None:
+    for cell in two.TARGET_CELLS:
+        model, _, _ = family_model(cell.profile, census.TICKET_CAPACITY, cell.ceiling)
+        assert proto_sha256(model) == two.MODEL_PROTO_SHA256[cell.name]
+    # Both reduced models: every generator verified on the pinned model, then pinned.
+    assert two.verify_reduced_cell_models() == two.REDUCED_MODEL_PROTO_SHA256
+
+
+def test_the_symmetry_group_is_exactly_the_degree_block_stabilizer() -> None:
+    blocks = {
+        "CELL_A": (tuple(range(12)), tuple(range(12, 18)), (18, 19)),
+        "CELL_B": (tuple(range(4)), tuple(range(4, 11)), (11,), (12, 13), tuple(range(14, 20))),
+    }
+    orders = {"CELL_A": 689_762_304_000, "CELL_B": 174_182_400}
+    crossings = {"CELL_A": ((11, 12), (17, 18), (0, 19)), "CELL_B": ((3, 4), (10, 11), (13, 14))}
+    for cell in two.TARGET_CELLS:
+        assert two.degree_blocks(cell.profile) == blocks[cell.name]
+        assert math.prod(math.factorial(len(b)) for b in blocks[cell.name]) == orders[cell.name]
+        generators = two.symmetry_generators(cell.profile)
+        assert len(generators) == sum(len(b) - 1 for b in blocks[cell.name])
+        # Adjacent transpositions inside a block generate that block's whole symmetric group.
+        moved = [tuple(u for u in range(census.TICKET_COUNT) if s[u] != u) for s in generators]
+        assert moved == [(b[i], b[i + 1]) for b in blocks[cell.name] for i in range(len(b) - 1)]
+
+        model, _, _ = census.k20_model(cell.profile, cell.ceiling)
+        form = two.ModelForm.of(model.Proto())
+        for sigma in generators:
+            form.automorphism(sigma)
+        reverse = list(range(census.TICKET_COUNT))
+        for block in blocks[cell.name]:
+            for v, w in zip(block, reversed(block), strict=True):
+                reverse[v] = w
+        form.automorphism(reverse)  # a group element that is not a generator
+        # Any move between blocks breaks the model, at the degree domains or the triple lines.
+        for v, w in crossings[cell.name]:
+            swap = list(range(census.TICKET_COUNT))
+            swap[v], swap[w] = w, v
+            with pytest.raises(two.SymmetryError, match=r"domains|outside the model"):
+                form.automorphism(swap)
+
+
+def test_the_automorphism_check_refuses_what_it_cannot_prove(incumbent: census.Structure) -> None:
+    fano = (3,) * 7
+    cp_model: Any = import_module("ortools.sat.python.cp_model")
+
+    def built() -> tuple[Any, Lines, Lines]:
+        return family_model(fano, 3, 0)
+
+    model, triples, pairs = built()
+    two.add_symmetry_reduction(model, triples, pairs, fano)
+    with pytest.raises(two.SymmetryError, match="cannot be checked"):
+        two.add_symmetry_reduction(model, triples, pairs, fano)  # never stacked or re-checked
+    model, triples, pairs = built()
+    model.Add(triples[(0, 1, 2)] == 1)
+    with pytest.raises(two.SymmetryError, match="constraint set"):
+        two.add_symmetry_reduction(model, triples, pairs, fano)
+    model, triples, pairs = built()
+    model.Minimize(triples[(0, 1, 2)])
+    with pytest.raises(two.SymmetryError, match="objective"):
+        two.add_symmetry_reduction(model, triples, pairs, fano)
+    model, triples, pairs = built()
+    model.AddAllDifferent([pairs[(0, 1)], pairs[(0, 2)]])
+    with pytest.raises(two.SymmetryError, match="cannot be checked"):
+        two.add_symmetry_reduction(model, triples, pairs, fano)
+    model, triples, pairs = built()
+    model.NewBoolVar("z")
+    with pytest.raises(two.SymmetryError, match="no known relabelling"):
+        two.add_symmetry_reduction(model, triples, pairs, fano)
+    with pytest.raises(two.SymmetryError, match="line order"):
+        two.add_symmetry_reduction(model, triples, pairs, (3, 3, 3, 3, 3, 3, 0))
+
+    # Domains alone decide here: no constraint mentions either ticket.
+    bare: Any = cp_model.CpModel()
+    bare.NewIntVar(5, 5, "d0")
+    bare.NewIntVar(1, 1, "d1")
+    with pytest.raises(two.SymmetryError, match="domains"):
+        two.ModelForm.of(bare.Proto()).automorphism((1, 0))
+    two.ModelForm.of(bare.Proto()).automorphism((0, 1))
+
+    # A no-good is not symmetric: the check runs on the bare model, before any exclusion.
+    model, triples, pairs = census.k20_model(CELL_A.profile, CELL_A.ceiling)
+    census.add_nogood(model, triples, pairs, incumbent)
+    with pytest.raises(two.SymmetryError, match="constraint set"):
+        two.add_symmetry_reduction(model, triples, pairs, CELL_A.profile)
+
+
+SYNTHETIC_CELLS = [
+    # profile, T, labelled structures, reduced structures, isomorphism classes
+    ((2, 2, 2, 1, 1, 1, 0), 0, 84, 14, 4),
+    ((2, 2, 2, 1, 1, 1, 0), 11, 78, 13, 3),
+    ((2, 2, 2, 1, 1, 1, 0), 12, 0, 0, 0),
+    ((3, 2, 2, 2, 1, 1, 1, 0), 0, 216, 36, 8),
+    ((3, 2, 2, 2, 1, 1, 1, 0), 14, 96, 16, 4),
+    ((1, 1, 1, 0, 0, 0, 0), 0, 228, 8, 5),
+    ((3, 3, 3, 3, 3, 3, 3), 0, 30, 1, 1),
+]
+
+
+@pytest.mark.parametrize(("profile", "t", "labelled", "reduced", "classes"), SYNTHETIC_CELLS)
+def test_reduction_keeps_every_isomorphism_class_of_exhaustive_synthetic_cells(
+    profile: tuple[int, ...], t: int, labelled: int, reduced: int, classes: int
+) -> None:
+    base = enumerate_structures(profile, t, reduce=False)
+    kept = enumerate_structures(profile, t, reduce=True)
+    assert (len(base), len(kept)) == (labelled, reduced)
+    assert len(set(base)) == len(base) and len(set(kept)) == len(kept)
+    # The group maps the base solution set onto itself.
+    generators = two.symmetry_generators(profile)
+    assert {two.relabel(s, sigma) for s in base for sigma in generators} <= set(base)
+    # Exactly the base structures inside the lex-leader region: no false infeasibility and no
+    # structure the region excludes.
+    assert set(kept) == {s for s in base if two.lex_leader_violation(profile, s) is None}
+    base_classes = {class_of(profile, s) for s in base}
+    assert {class_of(profile, s) for s in kept} == base_classes
+    assert len(base_classes) == classes
+    # Every labelled member reaches a kept representative of its own class.
+    for structure in base:
+        representative = lex_leader_representative(profile, structure)
+        assert representative in kept
+        assert class_of(profile, representative) == class_of(profile, structure)
+
+
+@pytest.mark.parametrize("profile", [(2, 2, 2, 1, 1, 1, 0), (1, 1, 1, 0, 0, 0, 0), (3,) * 7])
+def test_lex_auxiliaries_are_exactly_the_equal_prefix_indicators(
+    profile: tuple[int, ...],
+) -> None:
+    """Fixing a kept structure fixes every lex auxiliary: no second completion exists."""
+
+    for structure in enumerate_structures(profile, 0, reduce=True):
+        model, triples, pairs = synthetic_model(profile, 0, reduce=True)
+        present = {*structure.triples, *structure.pairs}
+        for key, x in {**triples, **pairs}.items():
+            model.Add(x == int(key in present))
+        status, solver = solve(model)
+        assert status in two.REALIZED
+        names = [v.name for v in model.Proto().variables]
+        aux = [model.GetBoolVarFromProtoIndex(i) for i, n in enumerate(names) if n[:3] == "lex"]
+        assert aux
+        model.AddBoolOr([x.Not() if solver.BooleanValue(x) else x for x in aux])
+        assert solve(model)[0] == two.INFEASIBLE
+
+
+def test_every_fixture_class_keeps_a_member_in_the_reduced_k20_model(
+    incumbent: census.Structure,
+    t255_classes: list[census.Structure],
+    official: census.Evaluator,
+) -> None:
+    profile = T255.profile
+    base, base_triples, base_pairs = census.k20_model(profile, T255.ceiling)
+    reduced, triples, pairs = census.k20_model(profile, T255.ceiling)
+    two.add_symmetry_reduction(reduced, triples, pairs, profile)
+
+    def admits(model: Any, lines: Mapping[Any, Any], structure: census.Structure) -> bool:
+        """Membership only: every triple and pair variable is fixed on a copy of the model."""
+
+        present = {*structure.triples, *structure.pairs}
+        fixed: Any = model.Clone()
+        for key, x in lines.items():
+            fixed.Add(fixed.GetBoolVarFromProtoIndex(x.Index()) == int(key in present))
+        status, _ = solve(fixed)
+        assert status != two.UNKNOWN
+        return status in two.REALIZED
+
+    base_lines = {**base_triples, **base_pairs}
+    reduced_lines = {**triples, **pairs}
+    representatives: list[census.Structure] = []
+    outside = 0
+    for structure in (incumbent, *t255_classes):
+        canonical = two.canonicalize(profile, structure).structure
+        for labelled in (structure, *relabelings(structure, 1)):
+            representative = lex_leader_representative(profile, labelled)
+            # The engine evaluates this canonical portfolio, so the exact count is unchanged.
+            assert two.canonicalize(profile, representative).structure == canonical
+            assert admits(base, base_lines, labelled)
+            assert admits(reduced, reduced_lines, representative)
+            inside = two.lex_leader_violation(profile, labelled) is None
+            assert admits(reduced, reduced_lines, labelled) is inside
+            outside += not inside
+        representatives.append(lex_leader_representative(profile, structure))
+    assert outside > 0
+    # The incumbent class and the seven same-invariant classes all stay apart.
+    identities = {two.canonicalize(profile, r).witness_id for r in representatives}
+    assert len(identities) == 8 and two.INCUMBENT_WITNESS_ID in identities
+    synthetic = representatives[1]
+    assert official(census.portfolio(synthetic)) == official(census.portfolio(t255_classes[0]))
+
+
+def test_reduced_attempts_end_on_classes_and_never_upgrade_unknown(
+    tmp_path: Path, incumbent: census.Structure, t255_classes: list[census.Structure]
+) -> None:
+    profile = T255.profile
+    leaders = [lex_leader_representative(profile, s) for s in t255_classes]
+    script: list[census.Structure | str] = [two.UNKNOWN, *leaders, two.INFEASIBLE]
+    reduced, base = two.SolverConfig(2, 5.0, symmetry=LEX), two.SolverConfig(2, 5.0)
+    header = {"TEST": "REDUCED"}
+    for config, terminal in (
+        (reduced, two.CLASS_SPACE_EXHAUSTED),
+        (base, two.LABELED_SPACE_EXHAUSTED),
+    ):
+        path = tmp_path / f"{terminal}.jsonl"
+        search = two.CellSearch(
+            T255, census.DurableLog(path, header), FakeSolver({T255.name: script}), FakeEvaluator()
+        )
+        assert search.next_attempt(config).status == two.UNKNOWN
+        assert search.terminal is None and not search.classes and not search.excluded
+        while search.terminal is None:
+            search.next_attempt(config)
+        assert search.terminal == terminal and search.summary()["CELL_STATE"] == terminal
+        assert len(search.classes) == 7 and not search.duplicates
+        replayed = FakeSolver({})
+        again = two.CellSearch(T255, census.DurableLog(path, header), replayed, FakeEvaluator())
+        assert again.terminal == terminal and set(again.classes) == set(search.classes)
+        assert not replayed.calls
+
+    # A reduced attempt may only return a member of its region; the original model may not care.
+    outside = next(
+        s for s in relabelings(t255_classes[0], 8) if two.lex_leader_violation(profile, s)
+    )
+    log = census.DurableLog(tmp_path / "outside.jsonl", header)
+    strict = two.CellSearch(T255, log, FakeSolver({T255.name: [outside]}), FakeEvaluator())
+    with pytest.raises(two.SolverContractError, match="outside its region"):
+        strict.next_attempt(reduced)
+    assert ("ATTEMPT", T255.name, 0) not in log.records
+    loose = two.CellSearch(T255, log, FakeSolver({T255.name: [outside]}), FakeEvaluator())
+    loose.next_attempt(base)
+    assert len(loose.classes) == 1
+
+    # INFEASIBLE with no exclusion still contradicts the incumbent in the reduced model.
+    log = census.DurableLog(tmp_path / "cell-a.jsonl", header)
+    contradiction = two.CellSearch(
+        CELL_A, log, FakeSolver({"CELL_A": [two.INFEASIBLE]}), FakeEvaluator()
+    )
+    with pytest.raises(two.ContradictionError):
+        contradiction.next_attempt(reduced)
+    assert lex_leader_representative(CELL_A.profile, incumbent) != incumbent
+
+
+def test_the_reduced_model_is_pinned_and_refused_before_any_solve(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    calls: list[object] = []
+
+    def spy(*args: object) -> object:
+        calls.append(args)
+        raise AssertionError("no solve may start")
+
+    monkeypatch.setattr(two, "configured_solver", spy)
+    request = two.AttemptRequest(CELL_B, 0, (), two.SolverConfig(1, 5.0, symmetry=LEX))
+    with pytest.raises(AssertionError, match="no solve"):
+        two.cp_sat_solve(request)  # the reduced model matches its pin and reaches the solver
+    assert len(calls) == 1
+
+    monkeypatch.setitem(two.REDUCED_MODEL_PROTO_SHA256, "CELL_B", "0" * 64)
+    with pytest.raises(two.SourceIdentityError, match="reduced model"):
+        two.cp_sat_solve(request)
+    monkeypatch.setattr(two, "observed_search_workers", spy)
+    monkeypatch.setattr(two, "exact_evaluator", spy)
+    path = write_grant(tmp_path / "grant.json", SYMMETRY_REDUCTION=LEX)
+    durable = tmp_path / "run"
+    with pytest.raises(two.SourceIdentityError, match="reduced model"):
+        two.main(["run", "--grant", str(path), "--durable", str(durable)])
+    assert len(calls) == 1 and not durable.exists()
+    assert two.grant_template()["SYMMETRY_REDUCTION"] is None

@@ -3,10 +3,11 @@
 No target cell is solved: engine flows use an injected fake solver. CP-SAT runs the
 one-variable worker probe, exhaustive enumerations of small synthetic members of the census
 model family (n = 7 or 8 tickets of three numbers), and fixed-assignment membership checks on
-the synthetic T = 255 cell. The two target cells' models are only built and checked. The
-official evaluator recounts only the canonical start, its canonical relabelling and one
-synthetic class. The synthetic same-T classes are pair-switches of the incumbent at T = 255,
-built in pure Python.
+the synthetic T = 255 cell. CELL_A's model is only built and checked. CELL_B is a recorded
+theorem: its certificate is re-derived without a solver, and the engine builds no model for it
+and gives it no Solve call (only the tests build its model, to pin it). The official evaluator
+recounts only the canonical start, its canonical relabelling and one synthetic class. The
+synthetic same-T classes are pair-switches of the incumbent at T = 255, built in pure Python.
 """
 
 from __future__ import annotations
@@ -14,6 +15,7 @@ from __future__ import annotations
 import json
 import math
 import random
+import subprocess
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import replace
 from importlib import import_module
@@ -288,7 +290,8 @@ def test_sources_cell_models_and_header_bind_the_frozen_inputs(
     with pytest.raises(two.SourceIdentityError, match="R30 proof log"):
         two.verify_sources(manifest, replace(loaded, data={**loaded.data, "R30": r30}))
 
-    assert two.verify_cell_models() == two.MODEL_PROTO_SHA256
+    # Only CELL_A's model is built; CELL_B's pin is bound by its certificate, not by a build.
+    assert two.verify_cell_models() == {"CELL_A": two.MODEL_PROTO_SHA256["CELL_A"]}
     # The census pinned the incumbent profile's model at ceiling 6, which is CELL_A's ceiling.
     assert (CELL_A.profile_id, CELL_A.ceiling, two.MODEL_PROTO_SHA256["CELL_A"]) in (
         census.MODEL_PROBES
@@ -637,25 +640,23 @@ def test_unknown_is_never_treated_as_infeasible(
 ) -> None:
     durable = tmp_path / "run"
     resource = grant(tmp_path)
-    first = FakeSolver({"CELL_A": [two.UNKNOWN], "CELL_B": [two.UNKNOWN]})
+    first = FakeSolver({"CELL_A": [two.UNKNOWN]})
     summary = engine(durable, selected, sources, resource, first, FakeEvaluator()).run()
-    for name in ("CELL_A", "CELL_B"):
-        cell = cell_summary(summary, name)
-        assert cell["SESSION_END"] == two.UNRESOLVED_UNKNOWN
-        assert cell["CELL_STATE"] == "UNRESOLVED" and cell["REALIZED_AT_T"] is False
-        assert cast(dict[str, int], cell["STATUS_COUNTS"])[two.UNKNOWN] == 1
+    a = cell_summary(summary, "CELL_A")
+    assert a["SESSION_END"] == two.UNRESOLVED_UNKNOWN
+    assert a["CELL_STATE"] == "UNRESOLVED" and a["REALIZED_AT_T"] is False
+    assert cast(dict[str, int], a["STATUS_COUNTS"])[two.UNKNOWN] == 1
 
-    # A later session re-attempts both cells with the same (empty) exclusions.
-    second = FakeSolver({"CELL_A": [two.UNKNOWN, incumbent], "CELL_B": [two.UNKNOWN, "INFEASIBLE"]})
+    # A later session re-attempts CELL_A with the same (empty) exclusions. CELL_B is a theorem:
+    # a scripted INFEASIBLE for it is never consumed and never counted as a solver status.
+    second = FakeSolver({"CELL_A": [two.UNKNOWN, incumbent], "CELL_B": ["INFEASIBLE"]})
     run = engine(durable, selected, sources, resource, second, FakeEvaluator())
     summary = run.run()
-    assert [(c.cell.name, c.attempt, c.excluded) for c in second.calls[:2]] == [
-        ("CELL_A", 1, ()),
-        ("CELL_B", 1, ()),
-    ]
+    assert [(c.cell.name, c.attempt, c.excluded) for c in second.calls[:1]] == [("CELL_A", 1, ())]
     b = cell_summary(summary, "CELL_B")
-    assert b["CELL_STATE"] == two.REFUTED_AT_T and b["SESSION_END"] == two.REFUTED_AT_T
-    assert b["STATUS_COUNTS"] == {"OPTIMAL": 0, "FEASIBLE": 0, "INFEASIBLE": 1, "UNKNOWN": 1}
+    assert b["CELL_STATE"] == two.PROVEN_INFEASIBLE_CLOSED_FORM
+    assert b["SESSION_END"] == two.CERTIFICATE_NO_SOLVE
+    assert b["STATUS_COUNTS"] == {"OPTIMAL": 0, "FEASIBLE": 0, "INFEASIBLE": 0, "UNKNOWN": 0}
     assert cell_summary(summary, "CELL_A")["CELL_STATE"] == "REALIZED_SEARCH_OPEN"
     assert summary["SESSIONS"] == 2
 
@@ -665,12 +666,13 @@ def test_unknown_is_never_treated_as_infeasible(
     )
     with pytest.raises(two.ContradictionError):
         contradiction.next_attempt(resource.config)
+    fresh = census.DurableLog(tmp_path / "y.jsonl", {"TEST": "STATUS"})
     invalid = two.CellSearch(
-        CELL_B, log, FakeSolver({"CELL_B": ["MODEL_INVALID"]}), FakeEvaluator()
+        CELL_A, fresh, FakeSolver({"CELL_A": ["MODEL_INVALID"]}), FakeEvaluator()
     )
     with pytest.raises(two.SolverContractError, match="MODEL_INVALID"):
         invalid.next_attempt(resource.config)
-    assert ("ATTEMPT", "CELL_B", 0) not in log.records
+    assert ("ATTEMPT", "CELL_A", 0) not in fresh.records
 
 
 def test_resume_never_accepts_a_witness_twice(
@@ -721,15 +723,18 @@ def test_wall_budget_foreign_roots_and_single_writer(
     tmp_path: Path,
     selected: tuple[two.SelectedCell, ...],
     sources: dict[str, object],
+    incumbent: census.Structure,
 ) -> None:
     resource = grant(tmp_path, SOLVE_SECONDS=600, WALL_BUDGET_SECONDS=900)
-    ticks = iter([0.0, 0.0, 400.0, 400.0])
-    solve = FakeSolver({"CELL_A": [two.UNKNOWN], "CELL_B": [two.UNKNOWN]})
+    ticks = iter([0.0, 0.0, 400.0])
+    solve = FakeSolver({"CELL_A": [incumbent], "CELL_B": ["INFEASIBLE"]})
     summary = engine(
         tmp_path / "run", selected, sources, resource, solve, FakeEvaluator(), lambda: next(ticks)
     ).run()
+    # One CELL_A attempt fits the budget; the second would end at 400 + 600 > 900.
     assert [c.cell.name for c in solve.calls] == ["CELL_A"]
-    assert cell_summary(summary, "CELL_B")["SESSION_END"] == two.WALL_BUDGET_REACHED
+    assert cell_summary(summary, "CELL_A")["SESSION_END"] == two.WALL_BUDGET_REACHED
+    assert cell_summary(summary, "CELL_B")["SESSION_END"] == two.CERTIFICATE_NO_SOLVE
 
     for name in two.FOREIGN_DURABLE_NAMES:
         with pytest.raises(two.TwoCellError, match="never opens"):
@@ -860,8 +865,13 @@ def test_synthetic_family_is_the_pinned_census_model_at_k20_parameters() -> None
     for cell in two.TARGET_CELLS:
         model, _, _ = family_model(cell.profile, census.TICKET_CAPACITY, cell.ceiling)
         assert proto_sha256(model) == two.MODEL_PROTO_SHA256[cell.name]
-    # Both reduced models: every generator verified on the pinned model, then pinned.
-    assert two.verify_reduced_cell_models() == two.REDUCED_MODEL_PROTO_SHA256
+    # The searched cell's reduced model: every generator verified on the pinned model, then pinned.
+    assert two.verify_reduced_cell_models() == {"CELL_A": two.REDUCED_MODEL_PROTO_SHA256["CELL_A"]}
+    # CELL_B's reduced pin is history: the reduction code is unchanged, but the engine builds
+    # nothing for CELL_B. This build lives only in the test.
+    model, triples, pairs = census.k20_model(CELL_B.profile, CELL_B.ceiling)
+    two.add_symmetry_reduction(model, triples, pairs, CELL_B.profile)
+    assert proto_sha256(model) == two.REDUCED_MODEL_PROTO_SHA256["CELL_B"]
 
 
 def test_the_symmetry_group_is_exactly_the_degree_block_stabilizer() -> None:
@@ -1103,12 +1113,12 @@ def test_the_reduced_model_is_pinned_and_refused_before_any_solve(
         raise AssertionError("no solve may start")
 
     monkeypatch.setattr(two, "configured_solver", spy)
-    request = two.AttemptRequest(CELL_B, 0, (), two.SolverConfig(1, 5.0, symmetry=LEX))
+    request = two.AttemptRequest(CELL_A, 0, (), two.SolverConfig(1, 5.0, symmetry=LEX))
     with pytest.raises(AssertionError, match="no solve"):
         two.cp_sat_solve(request)  # the reduced model matches its pin and reaches the solver
     assert len(calls) == 1
 
-    monkeypatch.setitem(two.REDUCED_MODEL_PROTO_SHA256, "CELL_B", "0" * 64)
+    monkeypatch.setitem(two.REDUCED_MODEL_PROTO_SHA256, "CELL_A", "0" * 64)
     with pytest.raises(two.SourceIdentityError, match="reduced model"):
         two.cp_sat_solve(request)
     monkeypatch.setattr(two, "observed_search_workers", spy)
@@ -1119,3 +1129,410 @@ def test_the_reduced_model_is_pinned_and_refused_before_any_solve(
         two.main(["run", "--grant", str(path), "--durable", str(durable)])
     assert len(calls) == 1 and not durable.exists()
     assert two.grant_template()["SYMMETRY_REDUCTION"] is None
+
+
+# The CELL_B closed-form certificate and the certificate-aware CELL_A search ----------------------
+
+CERTIFICATE_SHA256 = "911628a1dfbaf8878d7291037ec378ea4e04010392db804b801f984c8269ea5b"
+CELL_B_MODEL_SHA256 = "f2d5946a254086e26ea843da8b49f083947a2d6faf89ea85adad74f840a71600"
+PARENT_ENGINE_SHA256 = "d9977ccc4dab599f10c2d8e29844ceca6f1141ba8e87828a015e63426081438c"
+THEOREM_STATUS = "PROVEN_INFEASIBLE_CLOSED_FORM"
+
+
+def certificate_module() -> Any:
+    return import_module(f"lottolab.research.{two.CERTIFICATE_MODULE}")
+
+
+def seal(record: Mapping[str, object]) -> dict[str, object]:
+    """A mutated certificate re-hashed the way the certificate module hashes its record."""
+
+    body = {k: v for k, v in record.items() if k != "CERTIFICATE_SHA256"}
+    digest = census.sha256_bytes(json.dumps(body, sort_keys=True, separators=(",", ":")).encode())
+    return {**body, "CERTIFICATE_SHA256": digest}
+
+
+def refusing(calls: list[object], message: str) -> Callable[..., object]:
+    def spy(*args: object) -> object:
+        calls.append(args)
+        raise AssertionError(message)
+
+    return spy
+
+
+def test_cell_b_certificate_is_accepted_for_the_exact_pinned_cell() -> None:
+    record = two.verify_cell_b_certificate()
+    assert record["CELL"] == "CELL_B" and record["CELL_STATUS"] == THEOREM_STATUS
+    assert record["PROOF_KIND"] == "CLOSED_FORM_THEOREM_NOT_A_SOLVER_RESULT"
+    assert (record["PROFILE_ID"], record["T"], record["CEILING"]) == (
+        "66665555555322000000",
+        266,
+        33,
+    )
+    assert record["CERTIFICATE_SHA256"] == CERTIFICATE_SHA256
+    assert record["CERTIFICATE_TASK_ID"] == "B649_K20_CELL_B_T266_OPEN_WEDGE_CERTIFICATE_R1"
+    assert record["CERTIFICATE_COMMIT"] == "4b9ac3b3d38828ea0ebce1b1a74f02d7c5b95ed8"
+    assert record["MODEL_PROTO_SHA256"] == CELL_B_MODEL_SHA256 == two.MODEL_PROTO_SHA256["CELL_B"]
+    assert record["PARENT_ENGINE_SHA256"] == PARENT_ENGINE_SHA256 != two.engine_sha256()
+    # At least 48 open wedges against a ceiling of 33: at most 261 triangles, below T = 266.
+    assert (record["OPEN_WEDGE_LOWER_BOUND"], record["MAX_TRIANGLES"]) == (48, 261)
+    assert CELL_B.ceiling < 48 and CELL_B.t > 261
+    # A theorem is not a solver result: nothing here is, or claims to be, a CP-SAT INFEASIBLE.
+    assert record["SOLVER_USED"] is False and record["CP_SAT_INFEASIBLE_RECORDED"] is False
+    assert two.INFEASIBLE not in record.values()
+    assert json.loads(json.dumps(record)) == record
+
+    derived = certificate_module().certificate()
+    assert derived["CERTIFICATE_SHA256"] == CERTIFICATE_SHA256
+    assert derived["FROZEN_REFERENCES"]["CELL_B_MODEL_PROTO_SHA256"] == CELL_B_MODEL_SHA256
+    assert derived["FROZEN_REFERENCES"]["CENSUS_ENGINE_SHA256"] == two.CENSUS_ENGINE_SHA256
+
+
+@pytest.mark.parametrize(
+    "pin",
+    [
+        "CERTIFICATE_SHA256",
+        "CERTIFICATE_MODULE_SHA256",
+        "CERTIFICATE_TASK_ID",
+        "CERTIFICATE_VERDICT",
+        "PARENT_ENGINE_COMMIT",
+        "PARENT_ENGINE_SHA256",
+        "CENSUS_ENGINE_SHA256",
+    ],
+)
+def test_every_certificate_pin_is_load_bearing(pin: str, monkeypatch: pytest.MonkeyPatch) -> None:
+    assert two.verify_cell_b_certificate()
+    monkeypatch.setattr(two, pin, "0" * len(cast(str, getattr(two, pin))))
+    with pytest.raises(two.CertificateError):
+        two.verify_cell_b_certificate()
+
+
+@pytest.mark.parametrize(
+    "cell",
+    [
+        replace(CELL_B, t=265),
+        replace(CELL_B, t=267),
+        replace(CELL_B, profile_id=CELL_A.profile_id),
+        CELL_A,
+    ],
+)
+def test_the_certificate_applies_only_to_the_exact_pinned_cell(
+    cell: two.TargetCell, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(two, "CELL_B", cell)
+    with pytest.raises(two.CertificateError):
+        two.verify_cell_b_certificate()
+
+
+def test_the_certificate_is_bound_to_cell_b_model_pin(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setitem(two.MODEL_PROTO_SHA256, "CELL_B", "0" * 64)
+    with pytest.raises(two.CertificateError, match="certificate authorities"):
+        two.verify_cell_b_certificate()
+
+
+SEALED_CASES: list[tuple[str, object, str]] = [
+    ("VERDICT", "PROOF_INCOMPLETE", "certificate verdict"),
+    ("SOLVER_USED", True, "solver-free"),
+    ("SOLVER_USED", 0, "solver-free"),  # an int is not the bool the proof records
+    ("TARGET_T", 265, "certificate T"),
+    ("PROFILE_ID", "55555555555511111100", "certificate profile"),
+    ("TASK_ID", "SOME_OTHER_TASK", "certificate task"),
+    ("W", 830, "wedge count"),
+    ("OPEN_WEDGE_CEILING", 34, "open-wedge ceiling"),
+    ("INCUMBENT_COUNT", 313_263_889, "certificate incumbent"),
+    ("FROZEN_REFERENCES", {}, "certificate authorities"),
+    ("OPEN_WEDGE_LOWER_BOUND", 33, "does not exclude"),
+    ("MAX_TRIANGLES", 266, "does not exclude"),
+    # A bound that is not an int is refused even where the comparison would still hold.
+    ("OPEN_WEDGE_LOWER_BOUND", 48.0, "does not exclude"),
+    ("OPEN_WEDGE_LOWER_BOUND", None, "does not exclude"),
+    ("MAX_TRIANGLES", 261.0, "does not exclude"),
+    ("MAX_TRIANGLES", None, "does not exclude"),
+]
+
+
+@pytest.mark.parametrize(("field", "value", "message"), SEALED_CASES)
+def test_each_certificate_check_is_load_bearing_on_its_own(
+    field: str, value: object, message: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The mutated record is re-sealed and its hash re-pinned, so only this check can fire."""
+
+    module = certificate_module()
+    sealed = seal({**module.certificate(), field: value})
+    monkeypatch.setattr(module, "certificate", lambda: sealed)
+    monkeypatch.setattr(two, "CERTIFICATE_SHA256", sealed["CERTIFICATE_SHA256"])
+    with pytest.raises(two.CertificateError, match=message):
+        two.verify_cell_b_certificate()
+
+
+def test_a_forged_identity_altered_content_or_failed_derivation_is_refused(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = certificate_module()
+    real = module.certificate()
+
+    def broken() -> object:
+        raise module.CertificateError("premises contradicted")
+
+    for patched, message in (
+        (lambda: {**real, "CERTIFICATE_SHA256": "0" * 64}, "certificate identity"),
+        (lambda: {**real, "MAX_TRIANGLES": 262}, "certificate content"),  # hash field kept
+        (broken, "could not be derived"),
+    ):
+        with monkeypatch.context() as patch:
+            patch.setattr(module, "certificate", patched)
+            with pytest.raises(two.CertificateError, match=message):
+                two.verify_cell_b_certificate()
+    assert two.verify_cell_b_certificate()["CERTIFICATE_SHA256"] == CERTIFICATE_SHA256
+
+
+@pytest.mark.parametrize(
+    ("change", "message"), [("missing", "is missing"), ("altered", "differs from its pin")]
+)
+def test_a_missing_or_altered_certificate_refuses_every_entry_before_any_work(
+    change: str,
+    message: str,
+    tmp_path: Path,
+    selected: tuple[two.SelectedCell, ...],
+    sources: dict[str, object],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    if change == "missing":
+        monkeypatch.setattr(two, "CERTIFICATE_MODULE", "b649_k20_cell_b_no_such_certificate")
+    else:
+        monkeypatch.setattr(two, "CERTIFICATE_MODULE_SHA256", "0" * 64)
+    resource = grant(tmp_path)
+    calls: list[object] = []
+    for name in ("cp_sat_solve", "observed_search_workers", "exact_evaluator"):
+        monkeypatch.setattr(two, name, refusing(calls, "nothing may run without the certificate"))
+    solve = FakeSolver({"CELL_A": [two.UNKNOWN], "CELL_B": [two.UNKNOWN]})
+    durable = tmp_path / "run"
+
+    with pytest.raises(two.CertificateError, match=message):
+        two.verify_cell_b_certificate()
+    with pytest.raises(two.CertificateError, match=message):
+        two.prepared_inputs()
+    with pytest.raises(two.CertificateError, match=message):
+        engine(durable, selected, sources, resource, solve, FakeEvaluator())
+    path = write_grant(tmp_path / "again.json")
+    for argv in (["verify"], ["run", "--grant", str(path), "--durable", str(durable)]):
+        with pytest.raises(two.CertificateError, match=message):
+            two.main(argv)
+    # Refused, not degraded: no solve of either cell, no probe, no evaluator, no durable root.
+    assert not calls and not solve.calls and not durable.exists()
+
+
+def test_cell_b_is_a_recorded_theorem_and_never_receives_a_solve_call(
+    tmp_path: Path,
+    selected: tuple[two.SelectedCell, ...],
+    sources: dict[str, object],
+    incumbent: census.Structure,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    built: list[tuple[census.Profile, int]] = []
+    real_support = census.support_model
+
+    def tracked(profiles: Sequence[census.Profile], ceiling: int) -> Any:
+        built.append((profiles[0], ceiling))
+        return real_support(profiles, ceiling)
+
+    monkeypatch.setattr(census, "support_model", tracked)
+    two.prepared_inputs()
+    two.verify_cell_models()
+    two.verify_reduced_cell_models()
+
+    # CELL_B's scripted answers are decoys: they must never be consumed.
+    solve = FakeSolver({"CELL_A": [incumbent, two.UNKNOWN], "CELL_B": ["INFEASIBLE", "OPTIMAL"]})
+    durable = tmp_path / "run"
+    resource = grant(tmp_path)
+    run = engine(durable, selected, sources, resource, solve, FakeEvaluator())
+    summary = run.run()
+    certificate = two.verify_cell_b_certificate()
+
+    # Only CELL_A's model is ever built, and only CELL_A is ever solved.
+    assert built and set(built) == {(CELL_A.profile, CELL_A.ceiling)}
+    assert [c.cell.name for c in solve.calls] == ["CELL_A", "CELL_A"]
+    assert summary["SOLVER_CALLS_BY_CELL"] == {"CELL_A": 2, "CELL_B": 0}
+    assert summary["SOLVER_CALLS_THIS_PROCESS"] == 2
+    assert len(run.searches) == 1 and run.searches[0].cell is CELL_A
+
+    b = cell_summary(summary, "CELL_B")
+    assert b["CELL_STATE"] == THEOREM_STATUS and b["SESSION_END"] == two.CERTIFICATE_NO_SOLVE
+    assert b["ATTEMPTS"] == 0 and b["REALIZED_AT_T"] is False and b["WITNESS_IDS"] == []
+    assert b["STATUS_COUNTS"] == dict.fromkeys(two.STATUSES, 0)  # not even an INFEASIBLE count
+    # UNKNOWN stays UNKNOWN for the one cell that is still open.
+    a = cell_summary(summary, "CELL_A")
+    assert a["SESSION_END"] == two.UNRESOLVED_UNKNOWN and a["CELL_STATE"] == "REALIZED_SEARCH_OPEN"
+    assert cast(dict[str, int], a["STATUS_COUNTS"])[two.UNKNOWN] == 1
+    assert summary["SCIENTIFIC_GAIN_FOUND"] is False
+    assert summary["GLOBAL_K20_OPTIMUM_STATUS"] == "UNKNOWN"
+    assert summary["CELL_CERTIFICATES"] == {"CELL_B": certificate}
+
+    # The durable evidence names both ordered cells, records CELL_B once as a theorem, and
+    # holds no CELL_B attempt and no solver INFEASIBLE.
+    header = run.log.records[("HEADER",)]
+    assert header["CELL_CERTIFICATES"] == {"CELL_B": certificate}
+    flags = {
+        c["NAME"]: (c["CELL_STATUS"], c["SOLVE_PERMITTED"])
+        for c in cast(list[dict[str, object]], header["CELLS"])
+    }
+    assert flags == {
+        "CELL_A": ("OPEN_SEARCH_TARGET", True),
+        "CELL_B": (THEOREM_STATUS, False),
+    }
+    assert [k for k in run.log.records if k[0] == "CERTIFIED"] == [("CERTIFIED", "CELL_B")]
+    assert run.log.records[("CERTIFIED", "CELL_B")] == certificate
+    assert not records(run.log, "ATTEMPT", "CELL_B") and not records(run.log, "ACCEPTED", "CELL_B")
+    assert not any(body.get("STATUS") == two.INFEASIBLE for body in run.log.records.values())
+
+    # A later session replays the same certificate without a second record.
+    later = engine(durable, selected, sources, resource, FakeSolver({}), FakeEvaluator())
+    assert later.run()["SESSIONS"] == 2
+    assert [k for k in later.log.records if k[0] == "CERTIFIED"] == [("CERTIFIED", "CELL_B")]
+    # A recomputation that disagrees with the logged certificate is a durable-log error.
+    tampered = engine(durable, selected, sources, resource, FakeSolver({}), FakeEvaluator())
+    tampered.certificates = {"CELL_B": {**certificate, "MAX_TRIANGLES": 262}}
+    with pytest.raises(census.DurableLogError, match="differs from its recomputation"):
+        tampered.run()
+
+
+def test_a_certified_cell_is_refused_at_every_solve_entry(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    calls: list[object] = []
+    monkeypatch.setattr(census, "support_model", refusing(calls, "no model may be built"))
+    monkeypatch.setattr(two, "configured_solver", refusing(calls, "no solve may start"))
+    for config in (two.SolverConfig(1, 5.0), two.SolverConfig(1, 5.0, symmetry=LEX)):
+        with pytest.raises(two.CertifiedCellError, match=THEOREM_STATUS):
+            two.cp_sat_solve(two.AttemptRequest(CELL_B, 0, (), config))
+
+    log = census.DurableLog(tmp_path / "b.jsonl", {"TEST": "CERTIFIED"})
+    solve = FakeSolver({"CELL_B": [two.UNKNOWN]})
+    alias = two.TargetCell("CELL_B_ALIAS", CELL_B.profile_id, CELL_B.t, CELL_B.upper_bound, False)
+    for cell in (CELL_B, alias):  # the refusal is the certificate's exact (profile, T)
+        with pytest.raises(two.CertifiedCellError):
+            two.CellSearch(cell, log, solve, FakeEvaluator())
+    assert not calls and not solve.calls and ("ATTEMPT", "CELL_B", 0) not in log.records
+    # The same profile at another T is outside the certificate's scope, so it is not refused.
+    two.CellSearch(replace(CELL_B, name="OTHER_T", t=265), log, solve, FakeEvaluator())
+
+
+def test_cell_a_model_configuration_and_evaluator_are_the_parent_baseline(
+    incumbent: census.Structure, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Literals below were computed with the parent engine d9977ccc loaded beside this one."""
+
+    assert two.SEARCH_CELLS == (CELL_A,) and (CELL_B.key,) == two.CERTIFIED_KEYS
+    assert (CELL_A.profile_id, CELL_A.t, CELL_A.ceiling, CELL_A.upper_bound) == (
+        "55555555555511111100",
+        270,
+        6,
+        313_449_032,
+    )
+    assert two.MODEL_PROTO_SHA256["CELL_A"] == (
+        "381ee9ef753d6b1904fb7c5f8037a01eee0183f96963411e1eb56b303760fe89"
+    )
+    assert two.REDUCED_MODEL_PROTO_SHA256["CELL_A"] == (
+        "0d6ecffa80aef175af62bf8b40521e876199dde06ad26858a5a51861e5804e72"
+    )
+    assert two.verify_cell_models() == {"CELL_A": two.MODEL_PROTO_SHA256["CELL_A"]}
+    assert two.verify_reduced_cell_models() == {"CELL_A": two.REDUCED_MODEL_PROTO_SHA256["CELL_A"]}
+    assert two.EVALUATOR_SHA256 == (
+        "92dcb836254cc6dbcd6c2ad907e619a5eb8cf3917197a8f6de3e5f989825cf66"
+    )
+    assert two.evaluator_module_sha256() == two.EVALUATOR_SHA256 == census.EVALUATOR_SHA256
+    assert (two.INCUMBENT_COUNT, two.STRICT_GAIN_THRESHOLD) == (313_263_888, 313_263_889)
+
+    original, reduced = two.SolverConfig(4, 30.0), two.SolverConfig(4, 30.0, symmetry=LEX)
+    assert original.digest() == "4c8f9e226878583a92ff0c34407c83498dcba777a3c7b84bcd7a862ac0dedddb"
+    assert reduced.digest() == "b1ce146da4b8083417e33b3ce134b29da6cc870d06f31f7e9c56ac455e5f73bd"
+    for config, expected in (
+        (original, "aa2b9909f3daa4c0ae35b02651754c4804aeed78508a85971eebe77b982c8889"),
+        (reduced, "70ab3bca82b4a82b2151d22de9a7c612869d67f7e66b605fe7be75dc100b1d0b"),
+    ):
+        assert two.AttemptRequest(CELL_A, 0, (), config).digest() == expected
+    assert two.AttemptRequest(CELL_A, 1, (incumbent,), original).digest() == (
+        "acaac4b299eaf36fdacd940a8128dbcad1fb98a55b60ac796234d8bb4ff333d4"
+    )
+
+    # Both symmetry modes still reach the solver for CELL_A, after their pin checks.
+    for config in (original, reduced):
+        calls: list[object] = []
+        with monkeypatch.context() as patch:
+            patch.setattr(two, "configured_solver", refusing(calls, "no solve may start"))
+            with pytest.raises(AssertionError, match="no solve"):
+                two.cp_sat_solve(two.AttemptRequest(CELL_A, 0, (), config))
+        assert len(calls) == 1
+
+
+def test_the_new_engine_hash_needs_a_new_owner_grant(tmp_path: Path) -> None:
+    assert two.PARENT_ENGINE_SHA256 == PARENT_ENGINE_SHA256 != two.engine_sha256()
+    assert two.grant_template()["ENGINE_SHA256"] == two.engine_sha256()
+    with pytest.raises(two.GrantError, match="different engine"):
+        grant(tmp_path, ENGINE_SHA256=PARENT_ENGINE_SHA256)
+    # The interface still names both ordered cells, for evidence compatibility; CELL_A alone
+    # is not the grant, although only CELL_A is ever solved.
+    assert grant(tmp_path).target_cells == two.TARGET_KEYS
+    with pytest.raises(two.GrantError, match="exactly CELL_A and CELL_B"):
+        grant(tmp_path, TARGET_CELLS=[list(two.TARGET_KEYS[0])])
+    with pytest.raises(two.GrantError, match="required"):
+        two.load_grant(None)
+
+
+def test_historic_results_are_not_rewritten(
+    manifest: census.Manifest, loaded: overlay.Overlay, selected: tuple[two.SelectedCell, ...]
+) -> None:
+    """The theorem lives in this engine's own evidence log; the frozen R30 data is untouched."""
+
+    assert manifest.sha256 == two.MANIFEST_SHA256 and loaded.sha256 == two.OVERLAY_SHA256
+    assert len(loaded.imports) == 990 and set(two.TARGET_KEYS).isdisjoint(loaded.imports)
+    open_in_overlay = {
+        (str(entry[0]), cast(int, entry[1]))
+        for entry in cast(list[list[object]], loaded.data["NOT_IMPORTED"])
+    }
+    assert open_in_overlay == set(two.TARGET_KEYS)  # CELL_B stays an open R30 cell on record
+    assert [s.manifest_bound for s in selected] == [313_588_232, 313_582_744]
+    assert [s.cell.upper_bound for s in selected] == [313_449_032, 313_453_272]
+    assert not (ROOT / two.DURABLE_RELATIVE).exists()
+
+
+def test_verify_reports_the_certificate_and_searches_only_cell_a(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    two.main(["verify"])
+    report = cast(dict[str, Any], json.loads(capsys.readouterr().out))
+    assert report["CELL_B_CERTIFICATE"] == two.verify_cell_b_certificate()
+    assert [
+        (c["NAME"], c["CELL_STATUS"], c["SOLVE_PERMITTED"]) for c in report["TARGET_CELLS"]
+    ] == [
+        ("CELL_A", "OPEN_SEARCH_TARGET", True),
+        ("CELL_B", THEOREM_STATUS, False),
+    ]
+    assert set(report["REDUCED_MODEL_PROTO_SHA256"]) == {"CELL_A"}
+    assert report["GRANT_TEMPLATE"]["ENGINE_SHA256"] == two.engine_sha256()
+    assert report["GRANT_TEMPLATE"]["TARGET_CELLS"] == [list(key) for key in two.TARGET_KEYS]
+
+
+def committed_sha256(commit: str, path: str) -> str | None:
+    """SHA-256 of ``path`` as committed at ``commit``; None when this clone cannot show it."""
+
+    try:
+        shown = subprocess.run(
+            ["git", "show", f"{commit}:{path}"], cwd=ROOT, capture_output=True, check=True
+        )
+    except (OSError, subprocess.CalledProcessError):
+        return None
+    return census.sha256_bytes(shown.stdout)
+
+
+def test_the_recorded_commits_hold_exactly_the_pinned_bytes() -> None:
+    """The parent engine and the certificate module are not live bytes any more: the parent
+    differs from this engine by design, and the certificate is only hash-checked at run time."""
+
+    package = "src/lottolab/research"
+    observed = (
+        committed_sha256(two.PARENT_ENGINE_COMMIT, f"{package}/{Path(two.__file__).name}"),
+        committed_sha256(two.CERTIFICATE_COMMIT, f"{package}/{two.CERTIFICATE_MODULE}.py"),
+    )
+    if None in observed:
+        pytest.skip("the pinned commits are not in this clone's history")
+    assert observed == (two.PARENT_ENGINE_SHA256, two.CERTIFICATE_MODULE_SHA256)

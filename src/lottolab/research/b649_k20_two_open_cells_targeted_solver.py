@@ -9,11 +9,18 @@ cells remain open:
 * CELL_B, 66665555555322000000 at T = 266. R30 returned UNKNOWN twice, and no realization is
   known.
 
-This engine searches exactly those two cells and no other. Each attempt solves the census's own
-single-profile support model (R28 ``support_union_model`` via ``census.support_model``) at the
-cell's open-wedge ceiling W - 3T. It excludes every labelled structure already returned in that
-cell, which is the census no-good. The model, its constraints and the exact objective are
-unchanged. The model protos of the two cells are pinned.
+This engine names exactly those two cells and no other, but only CELL_A is searched. CELL_B is
+closed by the closed-form open-wedge certificate (commit 4b9ac3b3, sha 911628a1): every structure
+of its profile has at least 48 open wedges, and its model at T = 266 allows 33. The engine
+checks that certificate against its pins and against the cell, and refuses to run on any
+difference. It records CELL_B as PROVEN_INFEASIBLE_CLOSED_FORM, which is a theorem and not a
+CP-SAT INFEASIBLE, and never builds its model or gives it a Solve call.
+
+Each CELL_A attempt solves the census's own single-profile support model (R28
+``support_union_model`` via ``census.support_model``) at the cell's open-wedge ceiling W - 3T.
+It excludes every labelled structure already returned in that cell, which is the census no-good.
+The model, its constraints and the exact objective are unchanged. The model protos of the two
+cells are pinned.
 
 The search differs from the census in four ways.
 
@@ -96,6 +103,17 @@ R30_TASK_HEAD = "6ba4811304ec6528738a0c0b38969901b264d241"
 R30_RESULT_SHA256 = "9ed94532cc2bff5de1569f10561fb8340238ff3b1b1c3ae129e6a4929014f6fe"
 R30_PROOF_LOG_SHA256 = "4258c2c6a85bc4bdcbdee401ce83767fc03471d8853169f4fbf7f1603ccf3d26"
 EVALUATOR_SHA256 = "92dcb836254cc6dbcd6c2ad907e619a5eb8cf3917197a8f6de3e5f989825cf66"
+# The CELL_B closed-form certificate. Commits are recorded provenance; the hashes are checked.
+CERTIFICATE_MODULE = "b649_k20_cell_b_t266_open_wedge_certificate"
+CERTIFICATE_TASK_ID = "B649_K20_CELL_B_T266_OPEN_WEDGE_CERTIFICATE_R1"
+CERTIFICATE_COMMIT = "4b9ac3b3d38828ea0ebce1b1a74f02d7c5b95ed8"
+CERTIFICATE_SHA256 = "911628a1dfbaf8878d7291037ec378ea4e04010392db804b801f984c8269ea5b"
+CERTIFICATE_MODULE_SHA256 = "ba2a57dba4cafaa686eb2e20c6cc8412d3f1a762596208df644d1370586090c7"
+CERTIFICATE_VERDICT = "CELL_B_T266_CLOSED_FORM_INFEASIBLE"
+# The symmetry engine the certificate was proved against; this engine is its certificate-aware
+# successor, so its own hash differs and its grant is new.
+PARENT_ENGINE_COMMIT = "f1f4e37719928ceff8020dca78eb1e90a2ed545e"
+PARENT_ENGINE_SHA256 = "d9977ccc4dab599f10c2d8e29844ceca6f1141ba8e87828a015e63426081438c"
 SLICE1_CELL_COUNT = 992
 IMPORTED_CELL_COUNT = 990
 
@@ -117,6 +135,12 @@ STATUSES = (OPTIMAL, FEASIBLE, INFEASIBLE, UNKNOWN)
 SYMMETRY_NONE = "NONE"
 SYMMETRY_LEX_LEADER = "DEGREE_BLOCK_ADJACENT_TRANSPOSITION_LEX_LEADER_V1"
 SYMMETRY_MODES = (SYMMETRY_NONE, SYMMETRY_LEX_LEADER)
+
+# A cell closed by a theorem is neither searched nor refuted by CP-SAT.
+OPEN_SEARCH_TARGET = "OPEN_SEARCH_TARGET"
+PROVEN_INFEASIBLE_CLOSED_FORM = "PROVEN_INFEASIBLE_CLOSED_FORM"
+CERTIFICATE_NO_SOLVE = "CLOSED_FORM_CERTIFICATE_NO_SOLVE"
+PROOF_KIND = "CLOSED_FORM_THEOREM_NOT_A_SOLVER_RESULT"
 
 # Terminal cell states, and the reasons a session stops working on a cell.
 REFUTED_AT_T = "REFUTED_AT_T"
@@ -141,7 +165,15 @@ class SourceIdentityError(TwoCellError):
 
 
 class TargetError(TwoCellError):
-    """Only the two exact open cells may be searched."""
+    """Only the two exact open cells may be named, and only CELL_A may be searched."""
+
+
+class CertifiedCellError(TargetError):
+    """A cell closed by its theorem was asked for a model build or a Solve call."""
+
+
+class CertificateError(SourceIdentityError):
+    """The CELL_B certificate is missing or differs from its pins or from the cell."""
 
 
 class GrantError(TwoCellError):
@@ -197,6 +229,10 @@ TARGET_CELLS = (
     TargetCell("CELL_B", "66665555555322000000", 266, 313_453_272, False),
 )
 TARGET_KEYS: tuple[Cell, ...] = tuple(cell.key for cell in TARGET_CELLS)
+CELL_A, CELL_B = TARGET_CELLS
+# CELL_B is closed by its certificate and never receives a Solve call; CELL_A is the only target.
+CERTIFIED_KEYS: tuple[Cell, ...] = (CELL_B.key,)
+SEARCH_CELLS = (CELL_A,)
 # sha256 of str(Proto()) for census.support_model((profile,), W - 3T) with no exclusions.
 MODEL_PROTO_SHA256 = {
     "CELL_A": "381ee9ef753d6b1904fb7c5f8037a01eee0183f96963411e1eb56b303760fe89",
@@ -218,11 +254,14 @@ class SelectedCell:
     census_chase_request_sha256: str
 
     def as_json(self) -> dict[str, object]:
+        certified = self.cell.key in CERTIFIED_KEYS
         return {
             "NAME": self.cell.name,
             "PROFILE_ID": self.cell.profile_id,
             "T": self.cell.t,
             "CEILING": self.cell.ceiling,
+            "CELL_STATUS": PROVEN_INFEASIBLE_CLOSED_FORM if certified else OPEN_SEARCH_TARGET,
+            "SOLVE_PERMITTED": not certified,
             "UPPER_BOUND": self.cell.upper_bound,
             "BOUND_ROLE": BOUND_ROLE,
             "MANIFEST_R30_BAND_BOUND": self.manifest_bound,
@@ -309,28 +348,124 @@ def select_cells(manifest: census.Manifest, loaded: overlay.Overlay) -> tuple[Se
     return tuple(selected)
 
 
+def _same_pin(observed: object, expected: object) -> bool:
+    """Equality that never lets True equal 1 or a tuple equal a list."""
+
+    return type(observed) is type(expected) and observed == expected
+
+
+def _certificate_module() -> Any:
+    """The certificate module, only if its bytes are the pinned bytes."""
+
+    try:
+        module: Any = import_module(f"lottolab.research.{CERTIFICATE_MODULE}")
+    except ImportError as error:
+        raise CertificateError("the CELL_B certificate module is missing") from error
+    path = getattr(module, "__file__", None)
+    if not isinstance(path, str) or census.sha256_bytes(Path(path).read_bytes()) != (
+        CERTIFICATE_MODULE_SHA256
+    ):
+        raise CertificateError("the CELL_B certificate module differs from its pin")
+    return module
+
+
+def verify_cell_b_certificate() -> dict[str, object]:
+    """The closed-form CELL_B certificate against every pin and against the exact cell.
+
+    The certificate is re-derived from the profile alone, with no solver, and its content is
+    re-hashed here. Anything that differs refuses the certificate-aware run: this never falls
+    back to solving CELL_B. The result is a theorem, never a CP-SAT INFEASIBLE.
+    """
+
+    cell = CELL_B
+    module = _certificate_module()
+    try:
+        record = cast(dict[str, object], module.certificate())
+    except ValueError as error:
+        raise CertificateError("the CELL_B certificate could not be derived") from error
+    body = {name: value for name, value in record.items() if name != "CERTIFICATE_SHA256"}
+    references = {
+        "SYMMETRY_ENGINE_COMMIT": PARENT_ENGINE_COMMIT,
+        "TWO_CELL_ENGINE_SHA256": PARENT_ENGINE_SHA256,
+        "CENSUS_ENGINE_SHA256": CENSUS_ENGINE_SHA256,
+        "CELL_B_MODEL_PROTO_SHA256": MODEL_PROTO_SHA256[cell.name],
+    }
+    checks = (
+        (record.get("CERTIFICATE_SHA256"), CERTIFICATE_SHA256, "certificate identity"),
+        (
+            census.sha256_bytes(json.dumps(body, sort_keys=True, separators=(",", ":")).encode()),
+            CERTIFICATE_SHA256,
+            "certificate content",
+        ),
+        (record.get("TASK_ID"), CERTIFICATE_TASK_ID, "certificate task"),
+        (record.get("PROFILE_ID"), cell.profile_id, "certificate profile"),
+        (record.get("TARGET_T"), cell.t, "certificate T"),
+        (record.get("VERDICT"), CERTIFICATE_VERDICT, "certificate verdict"),
+        (record.get("SOLVER_USED"), False, "certificate solver-free proof"),
+        (record.get("FROZEN_REFERENCES"), references, "certificate authorities"),
+        (record.get("INCUMBENT_COUNT"), INCUMBENT_COUNT, "certificate incumbent"),
+        (record.get("W"), census.wedge_count(cell.profile), "certificate wedge count"),
+        (record.get("OPEN_WEDGE_CEILING"), cell.ceiling, "certificate open-wedge ceiling"),
+    )
+    for observed, expected, name in checks:
+        if not _same_pin(observed, expected):
+            raise CertificateError(f"{name} differs from its pin or from {cell.name}")
+    lower, most = record.get("OPEN_WEDGE_LOWER_BOUND"), record.get("MAX_TRIANGLES")
+    if type(lower) is not int or type(most) is not int or lower <= cell.ceiling or most >= cell.t:
+        raise CertificateError(f"the certificate does not exclude T = {cell.t} for {cell.name}")
+    return {
+        "CELL": cell.name,
+        "CELL_STATUS": PROVEN_INFEASIBLE_CLOSED_FORM,
+        "PROOF_KIND": PROOF_KIND,
+        "PROFILE_ID": cell.profile_id,
+        "T": cell.t,
+        "CEILING": cell.ceiling,
+        "CERTIFICATE_TASK_ID": CERTIFICATE_TASK_ID,
+        "CERTIFICATE_COMMIT": CERTIFICATE_COMMIT,
+        "CERTIFICATE_SHA256": CERTIFICATE_SHA256,
+        "CERTIFICATE_MODULE_SHA256": CERTIFICATE_MODULE_SHA256,
+        "PARENT_ENGINE_COMMIT": PARENT_ENGINE_COMMIT,
+        "PARENT_ENGINE_SHA256": PARENT_ENGINE_SHA256,
+        "MODEL_PROTO_SHA256": MODEL_PROTO_SHA256[cell.name],
+        "OPEN_WEDGE_LOWER_BOUND": lower,
+        "MAX_TRIANGLES": most,
+        "SOLVER_USED": False,
+        "CP_SAT_INFEASIBLE_RECORDED": False,
+    }
+
+
+def refuse_certified(cell: TargetCell) -> None:
+    """A cell closed by its theorem reaches neither a model build nor a Solve call."""
+
+    if cell.key in CERTIFIED_KEYS:
+        raise CertifiedCellError(f"{cell.name} is {PROVEN_INFEASIBLE_CLOSED_FORM}: never solved")
+
+
 def verify_cell_models() -> dict[str, str]:
-    """Each target cell's model is the census chase model, byte for byte."""
+    """Each searched cell's model is the census chase model, byte for byte.
+
+    CELL_B's model is not built: its pin is bound to its certificate instead.
+    """
 
     observed = {
-        cell.name: census.model_proto_sha256(cell.profile_id, cell.ceiling) for cell in TARGET_CELLS
+        cell.name: census.model_proto_sha256(cell.profile_id, cell.ceiling) for cell in SEARCH_CELLS
     }
-    if observed != MODEL_PROTO_SHA256:
+    if observed != {cell.name: MODEL_PROTO_SHA256[cell.name] for cell in SEARCH_CELLS}:
         raise SourceIdentityError("a target cell's support model differs from its pin")
     return observed
 
 
 def verify_reduced_cell_models() -> dict[str, str]:
-    """Each cell's reduced model: its generators verified on the pinned model, then pinned."""
+    """Each searched cell's reduced model: generators verified on the pinned model, then pinned."""
 
     observed: dict[str, str] = {}
-    for cell in TARGET_CELLS:
+    for cell in SEARCH_CELLS:
         model, triples, pairs = census.k20_model(cell.profile, cell.ceiling)
         if census.sha256_bytes(str(model.Proto()).encode()) != MODEL_PROTO_SHA256[cell.name]:
             raise SourceIdentityError(f"{cell.name}: support model differs from its pin")
         add_symmetry_reduction(model, triples, pairs, cell.profile)
         observed[cell.name] = census.sha256_bytes(str(model.Proto()).encode())
-    if observed != REDUCED_MODEL_PROTO_SHA256:
+    if observed != {cell.name: REDUCED_MODEL_PROTO_SHA256[cell.name] for cell in SEARCH_CELLS}:
         raise SourceIdentityError("a target cell's reduced model differs from its pin")
     return observed
 
@@ -1120,8 +1255,10 @@ def cp_sat_solve(request: AttemptRequest) -> census.SolveOutcome:
     """The census chase model plus the census no-goods, under the granted configuration.
 
     A granted reduction is verified on the bare model and pinned before any no-good is added.
+    A certified cell is refused before any model is built.
     """
 
+    refuse_certified(request.cell)
     model, triples, pairs = census.k20_model(request.cell.profile, request.cell.ceiling)
     if request.config.symmetry == SYMMETRY_LEX_LEADER:
         add_symmetry_reduction(model, triples, pairs, request.cell.profile)
@@ -1180,6 +1317,7 @@ class CellSearch:
         solve: Solver,
         evaluate: census.Evaluator,
     ) -> None:
+        refuse_certified(cell)
         self.cell = cell
         self.log = log
         self.solve = solve
@@ -1403,13 +1541,16 @@ def exclusive_lock(directory: Path) -> Generator[None]:
 
 
 def evidence_header(
-    selected: Sequence[SelectedCell], sources: Mapping[str, object]
+    selected: Sequence[SelectedCell],
+    sources: Mapping[str, object],
+    certificates: Mapping[str, object],
 ) -> dict[str, object]:
     return {
         "TASK_ID": TASK_ID,
         "LOG": "EVIDENCE",
         "ENGINE_SHA256": engine_sha256(),
         "SOURCES": dict(sources),
+        "CELL_CERTIFICATES": dict(certificates),
         "CELLS": [s.as_json() for s in selected],
         "CANONICAL_FORM": CANONICAL_FORM,
         "INCUMBENT_COUNT": INCUMBENT_COUNT,
@@ -1419,7 +1560,10 @@ def evidence_header(
 
 
 class TwoCellEngine:
-    """Exactly CELL_A and CELL_B, one attempt per cell per round, under one Owner grant."""
+    """CELL_A and CELL_B are named; only CELL_A is searched, under one Owner grant.
+
+    CELL_B is closed by its verified certificate: it is recorded, never given a Solve call.
+    """
 
     def __init__(
         self,
@@ -1439,9 +1583,18 @@ class TwoCellEngine:
             raise GrantError("the grant does not name exactly CELL_A and CELL_B")
         self.grant = grant
         self.clock = clock
-        self.log = census.DurableLog(durable / EVIDENCE_LOG, evidence_header(selected, sources))
+        # No valid certificate, no run: this precedes the durable log and every solver or
+        # evaluator construction, and nothing falls back to solving CELL_B.
+        self.certificates = {CELL_B.name: verify_cell_b_certificate()}
+        self.log = census.DurableLog(
+            durable / EVIDENCE_LOG, evidence_header(selected, sources, self.certificates)
+        )
         evaluator = evaluate or exact_evaluator()
-        self.searches = tuple(CellSearch(s.cell, self.log, solve, evaluator) for s in selected)
+        self.searches = tuple(
+            CellSearch(s.cell, self.log, solve, evaluator)
+            for s in selected
+            if s.cell.key not in CERTIFIED_KEYS
+        )
 
     @property
     def sessions(self) -> int:
@@ -1462,6 +1615,9 @@ class TwoCellEngine:
             },
         )
         ends: dict[str, str] = {}
+        for name, certificate in self.certificates.items():
+            self._record_certified(name, certificate)
+            ends[name] = CERTIFICATE_NO_SOLVE
         active = list(self.searches)
         while active:
             for search in tuple(active):
@@ -1479,31 +1635,74 @@ class TwoCellEngine:
         self.log.append(("SESSION_END", session), {"CELL_ENDS": ends})
         return self.summary(ends)
 
+    def _record_certified(self, name: str, certificate: Mapping[str, object]) -> None:
+        """Log the certificate once; a later session recomputes it and must match."""
+
+        key = ("CERTIFIED", name)
+        recorded = self.log.get(key)
+        if recorded is None:
+            self.log.append(key, certificate)
+        elif not _same(recorded, certificate):
+            raise census.DurableLogError(f"logged {key} differs from its recomputation")
+
+    def _certified_summary(self, cell: TargetCell) -> dict[str, object]:
+        return {
+            "NAME": cell.name,
+            "PROFILE_ID": cell.profile_id,
+            "T": cell.t,
+            "CELL_STATE": PROVEN_INFEASIBLE_CLOSED_FORM,
+            "REALIZED_AT_T": False,
+            "ATTEMPTS": 0,
+            "STATUS_COUNTS": dict.fromkeys(STATUSES, 0),
+            "DISTINCT_WITNESSES": 0,
+            "ISOMORPHIC_DUPLICATES": 0,
+            "WITNESS_IDS": [],
+            "BEST_EXACT_COUNT": None,
+            "GAIN_WITNESS_IDS": [],
+            "UPPER_BOUND": cell.upper_bound,
+            "BOUND_ROLE": BOUND_ROLE,
+        }
+
     def summary(self, ends: Mapping[str, str] | None = None) -> dict[str, object]:
-        cells = [s.summary() for s in self.searches]
+        searched = {s.cell.name: s for s in self.searches}
+        cells = [
+            searched[cell.name].summary()
+            if cell.name in searched
+            else self._certified_summary(cell)
+            for cell in TARGET_CELLS
+        ]
         for cell in cells:
             cell["SESSION_END"] = None if ends is None else ends.get(str(cell["NAME"]))
         return {
             "TASK_ID": TASK_ID,
             "SESSIONS": self.sessions,
             "CELLS": cells,
+            "CELL_CERTIFICATES": dict(self.certificates),
             "INCUMBENT_COUNT": INCUMBENT_COUNT,
             "STRICT_GAIN_THRESHOLD": STRICT_GAIN_THRESHOLD,
             "SCIENTIFIC_GAIN_FOUND": any(c["GAIN_WITNESS_IDS"] for c in cells),
             "GLOBAL_K20_OPTIMUM_STATUS": "UNKNOWN",
             "SOLVER_CALLS_THIS_PROCESS": sum(s.solver_calls for s in self.searches),
+            "SOLVER_CALLS_BY_CELL": {
+                cell.name: searched[cell.name].solver_calls if cell.name in searched else 0
+                for cell in TARGET_CELLS
+            },
             "EVALUATOR_CALLS_THIS_PROCESS": sum(s.evaluator_calls for s in self.searches),
         }
 
 
 def prepared_inputs() -> tuple[tuple[SelectedCell, ...], dict[str, object]]:
-    """Pins, the two-cell selection and both pinned cell models; no solve, no evaluation."""
+    """Pins, the two-cell selection, CELL_A's pinned model and the CELL_B certificate.
+
+    No solve, no evaluation, and no CELL_B model build.
+    """
 
     manifest = census.load_manifest()
     loaded = overlay.load_overlay()
     sources = verify_sources(manifest, loaded)
     selected = select_cells(manifest, loaded)
     verify_cell_models()
+    verify_cell_b_certificate()
     return selected, sources
 
 
@@ -1524,6 +1723,7 @@ def main(argv: Sequence[str] | None = None) -> None:
                     "ENGINE_SHA256": engine_sha256(),
                     "SOURCES": sources,
                     "TARGET_CELLS": [s.as_json() for s in selected],
+                    "CELL_B_CERTIFICATE": verify_cell_b_certificate(),
                     "REDUCED_MODEL_PROTO_SHA256": verify_reduced_cell_models(),
                     "SYMMETRY_MODES": list(SYMMETRY_MODES),
                     "RESOURCE_GRANT_REQUIRED": True,

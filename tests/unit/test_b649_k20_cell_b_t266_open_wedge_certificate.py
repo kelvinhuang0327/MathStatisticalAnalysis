@@ -261,7 +261,11 @@ def test_cell_b_profile_target_and_ceiling_match_the_frozen_engine() -> None:
     (cell_b,) = [cell for cell in engine.TARGET_CELLS if cell.name == "CELL_B"]
     references = cert.FROZEN_REFERENCES
     assert (cell_b.profile_id, cell_b.t) == (cert.PROFILE_ID, cert.TARGET_T)
-    assert engine.engine_sha256() == references["TWO_CELL_ENGINE_SHA256"]
+    # The certificate was proved against the parent engine. The live engine is its
+    # certificate-aware successor, so its bytes differ and it carries the parent's pins.
+    assert references["TWO_CELL_ENGINE_SHA256"] == engine.PARENT_ENGINE_SHA256
+    assert references["SYMMETRY_ENGINE_COMMIT"] == engine.PARENT_ENGINE_COMMIT
+    assert engine.engine_sha256() != references["TWO_CELL_ENGINE_SHA256"]
     assert census.engine_sha256() == references["CENSUS_ENGINE_SHA256"]
     assert engine.MODEL_PROTO_SHA256["CELL_B"] == references["CELL_B_MODEL_PROTO_SHA256"]
     assert engine.INCUMBENT_COUNT == cert.INCUMBENT_COUNT

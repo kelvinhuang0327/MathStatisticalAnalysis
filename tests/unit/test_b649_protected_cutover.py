@@ -3065,8 +3065,178 @@ def test_changed_execution_digest_cannot_control_ownership(harness: Harness) -> 
         str(protected.CONTROL_ROOT),
         harness.request.sources,
     )
-    with pytest.raises(checkpoint.Unverifiable, match="immutable identity"):
+    with pytest.raises(checkpoint.Unverifiable, match="identity digest mismatch"):
         proof.verify({}, UID)
+
+
+def _controlled_execution_fixture(
+    harness: Harness, monkeypatch: pytest.MonkeyPatch
+) -> tuple[
+    checkpoint.ControlledExecution,
+    dict[int, checkpoint.Process],
+    dict[str, object],
+    int,
+    int,
+]:
+    parent_pid, child_pid = 900101, 900102
+    owner_id = str(uuid4())
+    request = harness.request
+    proof = checkpoint.ControlledExecution(
+        claim_root=request.claim_root,
+        task_key=protected.TASK_KEY,
+        execution_id=request.execution_id,
+        owner_id=owner_id,
+        child_argv=tuple(request.managed_argv()),
+        owner_argv=tuple(request.owner_argv()),
+        owner_cwd=str(protected.CONTROL_ROOT),
+        sources=request.sources,
+    )
+    claim: dict[str, object] = {
+        "status": "ACTIVE",
+        "owner_alive": True,
+        "child_alive": True,
+        "owner_id": owner_id,
+        "owner_pid": parent_pid,
+        "child_pid": child_pid,
+        "command": list(proof.child_argv),
+        "cwd": proof.owner_cwd,
+    }
+    def inspect_claim(_store: claims.ClaimStore, _task_key: str) -> dict[str, object]:
+        return dict(claim)
+
+    def current_pid() -> int:
+        return child_pid
+
+    def parent_process_id() -> int:
+        return parent_pid
+
+    monkeypatch.setattr(checkpoint.ClaimStore, "inspect", inspect_claim)
+    monkeypatch.setattr(checkpoint.os, "getpid", current_pid)
+    monkeypatch.setattr(checkpoint.os, "getppid", parent_process_id)
+    image = Path(sys.executable).resolve()
+
+    def process_image(_pid: int) -> Path:
+        return image
+
+    monkeypatch.setattr(checkpoint, "process_image", process_image)
+    processes = {
+        parent_pid: checkpoint.Process(
+            parent_pid,
+            1,
+            UID,
+            " ".join(proof.owner_argv),
+            cwd=proof.owner_cwd,
+        ),
+        child_pid: checkpoint.Process(
+            child_pid,
+            parent_pid,
+            UID,
+            " ".join(proof.child_argv),
+            cwd=proof.owner_cwd,
+        ),
+    }
+    return proof, processes, claim, parent_pid, child_pid
+
+
+def test_controlled_execution_accepts_exact_parent_child_proof(
+    harness: Harness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    proof, processes, _claim, parent_pid, child_pid = _controlled_execution_fixture(
+        harness, monkeypatch
+    )
+
+    result = proof.verify(processes, UID)
+
+    assert result["supervisor_pid"] == parent_pid
+    assert result["gated_child_pid"] == child_pid
+
+
+@pytest.mark.parametrize(
+    ("defect", "expected"),
+    [
+        ("missing_parent", "protected process identity failed: parent missing from snapshot"),
+        ("missing_child", "protected process identity failed: child missing from snapshot"),
+        ("wrong_parent_uid", "protected process identity failed: parent UID mismatch"),
+        ("wrong_child_uid", "protected process identity failed: child UID mismatch"),
+        ("changed_parent_argv", "protected process identity failed: parent argv mismatch"),
+        ("changed_child_argv", "protected process identity failed: child argv mismatch"),
+        (
+            "parent_executable_image",
+            "protected process identity failed: parent executable image mismatch",
+        ),
+        (
+            "child_executable_image",
+            "protected process identity failed: child executable image mismatch",
+        ),
+        ("missing_parent_cwd", "protected process identity failed: parent cwd missing"),
+        ("changed_parent_cwd", "protected process identity failed: parent cwd mismatch"),
+        ("missing_child_cwd", "protected process identity failed: child cwd missing"),
+        ("changed_child_cwd", "protected process identity failed: child cwd mismatch"),
+        ("parent_child_chain", "protected process chain failed: child parent PID mismatch"),
+        ("claim_identity", "protected ClaimStore owner identity mismatch"),
+    ],
+)
+def test_controlled_execution_reports_exact_redacted_guard(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    defect: str,
+    expected: str,
+) -> None:
+    proof, processes, claim, parent_pid, child_pid = _controlled_execution_fixture(
+        harness, monkeypatch
+    )
+    if defect == "missing_parent":
+        processes.pop(parent_pid)
+    elif defect == "missing_child":
+        processes.pop(child_pid)
+    elif defect == "wrong_parent_uid":
+        processes[parent_pid].uid += 1
+    elif defect == "wrong_child_uid":
+        processes[child_pid].uid += 1
+    elif defect == "changed_parent_argv":
+        processes[parent_pid].command += " --changed"
+    elif defect == "changed_child_argv":
+        processes[child_pid].command += " --changed"
+    elif defect in {"parent_executable_image", "child_executable_image"}:
+        image = Path(sys.executable).resolve()
+
+        image_checks = 0
+
+        def process_image(pid: int) -> Path:
+            nonlocal image_checks
+            image_checks += 1
+            mismatched = (
+                pid == parent_pid
+                if defect == "parent_executable_image"
+                else image_checks == 4
+            )
+            return Path("/different-image") if mismatched else image
+
+        monkeypatch.setattr(
+            checkpoint, "process_image", process_image
+        )
+    elif defect == "missing_parent_cwd":
+        processes[parent_pid].cwd = None
+    elif defect == "changed_parent_cwd":
+        processes[parent_pid].cwd = "/unrelated"
+    elif defect == "missing_child_cwd":
+        processes[child_pid].cwd = None
+    elif defect == "changed_child_cwd":
+        processes[child_pid].cwd = "/unrelated"
+    elif defect == "parent_child_chain":
+        processes[child_pid].ppid = parent_pid + 1
+    else:
+        claim["owner_id"] = str(uuid4())
+
+    with pytest.raises(checkpoint.Unverifiable) as raised:
+        proof.verify(processes, UID)
+
+    assert str(raised.value) == expected
+    assert proof.child_argv[-3] not in str(raised.value)
+    assert str(proof.claim_root) not in str(raised.value)
+    assert proof.owner_id not in str(raised.value)
+    assert str(parent_pid) not in str(raised.value)
+    assert str(child_pid) not in str(raised.value)
 
 
 def test_base_parent_behavior_strands_prestart_exec_failure(

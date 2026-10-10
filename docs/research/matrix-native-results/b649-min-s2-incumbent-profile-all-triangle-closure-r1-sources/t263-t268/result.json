@@ -1,0 +1,534 @@
+{
+  "AUTHORITY": {
+    "CANONICAL_COUNT": 313263888,
+    "PORTFOLIO_SHA256": "eaed652900d101881b678a1515d2a366bff9de6723dbec2ec9c82fe0d0d7844c"
+  },
+  "CELL_DOMAIN": {
+    "GRAPH_DEGREES": "11^12, 7^6, 6^2",
+    "MAX_PAIRWISE_OVERLAP": 1,
+    "POOL": "1..49",
+    "SUPPORT": {
+      "PAIR_LABELS": 27,
+      "TRIPLE_LABELS": 22
+    },
+    "TICKETS": 20,
+    "TICKET_SIZE": 6,
+    "TRIPLE_DEGREE_PROFILE": "55555555555511111100",
+    "T_MEANING": "ALL_OVERLAP_GRAPH_TRIANGLES",
+    "T_VALUES": [
+      263,
+      264,
+      265,
+      266,
+      267,
+      268
+    ],
+    "W": 816
+  },
+  "COUNTEREXAMPLE_IF_ANY": null,
+  "EXACT_TESTS": {
+    "CONCRETE_DEGREE_VALID_GRAPHS": {
+      "ARM4_TIGHTNESS_WITNESS": {
+        "C": 34,
+        "MIN_HL_ARM": 4,
+        "O": 414,
+        "SEED": 20261011,
+        "STEP": 166,
+        "T": 134
+      },
+      "BY_C": {
+        "0": {
+          "GRAPHS": 28,
+          "MAX_T": 270,
+          "MIN_H_HH": 0,
+          "MIN_H_HL": 0,
+          "MIN_O": 6
+        },
+        "10": {
+          "GRAPHS": 141,
+          "MAX_T": 217,
+          "MIN_H_HH": 30,
+          "MIN_H_HL": 74,
+          "MIN_O": 165
+        },
+        "12": {
+          "GRAPHS": 112,
+          "MAX_T": 213,
+          "MIN_H_HH": 30,
+          "MIN_H_HL": 82,
+          "MIN_O": 177
+        },
+        "2": {
+          "GRAPHS": 181,
+          "MAX_T": 255,
+          "MIN_H_HH": 10,
+          "MIN_H_HL": 20,
+          "MIN_O": 51
+        },
+        "34": {
+          "GRAPHS": 1,
+          "MAX_T": 134,
+          "MIN_H_HH": 101,
+          "MIN_H_HL": 192,
+          "MIN_O": 414
+        },
+        "4": {
+          "GRAPHS": 182,
+          "MAX_T": 244,
+          "MIN_H_HH": 18,
+          "MIN_H_HL": 36,
+          "MIN_O": 84
+        },
+        "6": {
+          "GRAPHS": 185,
+          "MAX_T": 231,
+          "MIN_H_HH": 24,
+          "MIN_H_HL": 52,
+          "MIN_O": 123
+        },
+        "8": {
+          "GRAPHS": 171,
+          "MAX_T": 223,
+          "MIN_H_HH": 28,
+          "MIN_H_HL": 66,
+          "MIN_O": 147
+        }
+      },
+      "REALIZED_CATALOGUE_BY_M": {
+        "1": {
+          "F_TRIED": 15,
+          "GRAPHS_CHECKED": 30,
+          "UNREALIZED_F": []
+        },
+        "2": {
+          "F_TRIED": 15,
+          "GRAPHS_CHECKED": 30,
+          "UNREALIZED_F": []
+        },
+        "3": {
+          "F_TRIED": 16,
+          "GRAPHS_CHECKED": 32,
+          "UNREALIZED_F": []
+        },
+        "4": {
+          "F_TRIED": 18,
+          "GRAPHS_CHECKED": 36,
+          "UNREALIZED_F": []
+        },
+        "5": {
+          "F_TRIED": 18,
+          "GRAPHS_CHECKED": 36,
+          "UNREALIZED_F": []
+        },
+        "6": {
+          "F_TRIED": 20,
+          "GRAPHS_CHECKED": 40,
+          "UNREALIZED_F": []
+        }
+      },
+      "SHORT_WALKS": {
+        "ACCEPTED_SWITCHES": 810,
+        "CELL_VISITS": 0,
+        "FULL_CHECKS_C_LE_12": 768,
+        "LIGHT_CHECKS_C_GE_14": 42,
+        "NON_LOAD_BEARING": true,
+        "RESTARTS": 150,
+        "SEED": 20261010,
+        "STEPS_PER_RESTART": 16
+      }
+    },
+    "F_DEGREE_SEQUENCE_SCAN": {
+      "1": {
+        "CASE_BOUND_USED": 30,
+        "GRAPHIC_SEQUENCES": 1,
+        "MIN_A_PLUS_B": 18,
+        "MIN_A_PLUS_C": 30,
+        "MIN_H_INTERNAL_LB": 10,
+        "MIN_LEMMA_B_MIXED_LB": 8,
+        "MIN_LEMMA_C_MIXED_LB": 20,
+        "M_TIMES_11_MINUS_M": 10
+      },
+      "2": {
+        "CASE_BOUND_USED": 30,
+        "GRAPHIC_SEQUENCES": 2,
+        "MIN_A_PLUS_B": 32,
+        "MIN_A_PLUS_C": 52,
+        "MIN_H_INTERNAL_LB": 18,
+        "MIN_LEMMA_B_MIXED_LB": 14,
+        "MIN_LEMMA_C_MIXED_LB": 32,
+        "M_TIMES_11_MINUS_M": 18
+      },
+      "3": {
+        "CASE_BOUND_USED": 36,
+        "GRAPHIC_SEQUENCES": 5,
+        "MIN_A_PLUS_B": 42,
+        "MIN_A_PLUS_C": 66,
+        "MIN_H_INTERNAL_LB": 24,
+        "MIN_LEMMA_B_MIXED_LB": 18,
+        "MIN_LEMMA_C_MIXED_LB": 36,
+        "M_TIMES_11_MINUS_M": 24
+      },
+      "4": {
+        "CASE_BOUND_USED": 28,
+        "GRAPHIC_SEQUENCES": 9,
+        "MIN_A_PLUS_B": 48,
+        "MIN_A_PLUS_C": 72,
+        "MIN_H_INTERNAL_LB": 28,
+        "MIN_LEMMA_B_MIXED_LB": 20,
+        "MIN_LEMMA_C_MIXED_LB": 32,
+        "M_TIMES_11_MINUS_M": 28
+      },
+      "5": {
+        "CASE_BOUND_USED": 30,
+        "GRAPHIC_SEQUENCES": 17,
+        "MIN_A_PLUS_B": 50,
+        "MIN_A_PLUS_C": 84,
+        "MIN_H_INTERNAL_LB": 30,
+        "MIN_LEMMA_B_MIXED_LB": 20,
+        "MIN_LEMMA_C_MIXED_LB": 38,
+        "M_TIMES_11_MINUS_M": 30
+      },
+      "6": {
+        "CASE_BOUND_USED": 30,
+        "GRAPHIC_SEQUENCES": 31,
+        "MIN_A_PLUS_B": 54,
+        "MIN_A_PLUS_C": 88,
+        "MIN_H_INTERNAL_LB": 30,
+        "MIN_LEMMA_B_MIXED_LB": 24,
+        "MIN_LEMMA_C_MIXED_LB": 42,
+        "M_TIMES_11_MINUS_M": 30
+      }
+    },
+    "LABELLED_F_M_LE_3": {
+      "1": {
+        "BRUTE_FORCE_CROSS_CHECK": true,
+        "LABELLED_F": 66,
+        "MIN_EXACT_H_INTERNAL": 10
+      },
+      "2": {
+        "BRUTE_FORCE_CROSS_CHECK": true,
+        "LABELLED_F": 2145,
+        "MIN_EXACT_H_INTERNAL": 18
+      },
+      "3": {
+        "BRUTE_FORCE_CROSS_CHECK": false,
+        "LABELLED_F": 45760,
+        "MIN_EXACT_H_INTERNAL": 24
+      }
+    }
+  },
+  "FOCUSED_CHECKS": {
+    "ARM_BOUND_4_ATTAINED_BY_A_REAL_GRAPH": true,
+    "ARM_IDENTITY_SUM_EQUALS_2O": true,
+    "C0_FORCES_T270": true,
+    "CELL_GRAPHS_FOUND": 0,
+    "DEG_L_EQUALS_DEG_F_ON_H": true,
+    "FLOOR_AND_PARITY_C_SET_0_TO_12_EVEN": true,
+    "LEMMA_A_EQUALS_CLASS_H_HH_SUM": true,
+    "LEMMA_B_SUM_EQUALS_CLASS_H_HL": true,
+    "MUTATION_CONTROLS_FAIL_AS_EXPECTED": true,
+    "PACKET_CANDIDATE_BOUNDS_CONFIRMED": true,
+    "STATUS": "PASS",
+    "WEDGE_CLASSES_DISJOINT_AND_PARTITION_O": true
+  },
+  "GRAPH_GAP_PROOF": {
+    "PHASE1_ARITHMETIC_AND_CASES": {
+      "CAPACITY": {
+        "0": {
+          "EDGES_IN_H": 66,
+          "EDGES_IN_L": 27,
+          "L_NON_EDGES": 1,
+          "M_H_NON_EDGES": 0
+        },
+        "10": {
+          "EDGES_IN_H": 61,
+          "EDGES_IN_L": 22,
+          "L_NON_EDGES": 6,
+          "M_H_NON_EDGES": 5
+        },
+        "12": {
+          "EDGES_IN_H": 60,
+          "EDGES_IN_L": 21,
+          "L_NON_EDGES": 7,
+          "M_H_NON_EDGES": 6
+        },
+        "2": {
+          "EDGES_IN_H": 65,
+          "EDGES_IN_L": 26,
+          "L_NON_EDGES": 2,
+          "M_H_NON_EDGES": 1
+        },
+        "4": {
+          "EDGES_IN_H": 64,
+          "EDGES_IN_L": 25,
+          "L_NON_EDGES": 3,
+          "M_H_NON_EDGES": 2
+        },
+        "6": {
+          "EDGES_IN_H": 63,
+          "EDGES_IN_L": 24,
+          "L_NON_EDGES": 4,
+          "M_H_NON_EDGES": 3
+        },
+        "8": {
+          "EDGES_IN_H": 62,
+          "EDGES_IN_L": 23,
+          "L_NON_EDGES": 5,
+          "M_H_NON_EDGES": 4
+        }
+      },
+      "CASE_BOUNDS": {
+        "10": {
+          "H_INTERNAL_LB": 30,
+          "M": 5,
+          "MIXED_LB": 0,
+          "O_LOWER_BOUND": 30,
+          "RULE": "LEMMA_A alone"
+        },
+        "12": {
+          "H_INTERNAL_LB": 30,
+          "M": 6,
+          "MIXED_LB": 0,
+          "O_LOWER_BOUND": 30,
+          "RULE": "LEMMA_A alone"
+        },
+        "2": {
+          "H_INTERNAL_LB": 10,
+          "M": 1,
+          "MIXED_LB": 20,
+          "O_LOWER_BOUND": 30,
+          "RULE": "LEMMA_A + LEMMA_C(s=2): 2 H-L edges x 10"
+        },
+        "4": {
+          "H_INTERNAL_LB": 18,
+          "M": 2,
+          "MIXED_LB": 12,
+          "O_LOWER_BOUND": 30,
+          "RULE": "LEMMA_A + LEMMA_B: 4 H-L edges x (5-2)"
+        },
+        "6": {
+          "H_INTERNAL_LB": 24,
+          "M": 3,
+          "MIXED_LB": 12,
+          "O_LOWER_BOUND": 36,
+          "RULE": "LEMMA_A + LEMMA_B: 6 H-L edges x (5-3)"
+        },
+        "8": {
+          "H_INTERNAL_LB": 28,
+          "M": 4,
+          "MIXED_LB": 0,
+          "O_LOWER_BOUND": 28,
+          "RULE": "LEMMA_A alone"
+        }
+      },
+      "CELLS": {
+        "T263": {
+          "C_ADMISSIBLE_AFTER_PARITY": [
+            0,
+            2,
+            4,
+            6,
+            8,
+            10,
+            12
+          ],
+          "C_MAX_FROM_4C_LE_2O": 13,
+          "EXCLUSION_BY_C": {
+            "0": "FORCES_K12_UNION_K8_MINUS_E_T270",
+            "10": "O>=30>27",
+            "12": "O>=30>27",
+            "2": "O>=30>27",
+            "4": "O>=30>27",
+            "6": "O>=36>27",
+            "8": "O>=28>27"
+          },
+          "O": 27,
+          "STATUS": "PROVED_EMPTY"
+        },
+        "T264": {
+          "C_ADMISSIBLE_AFTER_PARITY": [
+            0,
+            2,
+            4,
+            6,
+            8,
+            10,
+            12
+          ],
+          "C_MAX_FROM_4C_LE_2O": 12,
+          "EXCLUSION_BY_C": {
+            "0": "FORCES_K12_UNION_K8_MINUS_E_T270",
+            "10": "O>=30>24",
+            "12": "O>=30>24",
+            "2": "O>=30>24",
+            "4": "O>=30>24",
+            "6": "O>=36>24",
+            "8": "O>=28>24"
+          },
+          "O": 24,
+          "STATUS": "PROVED_EMPTY"
+        },
+        "T265": {
+          "C_ADMISSIBLE_AFTER_PARITY": [
+            0,
+            2,
+            4,
+            6,
+            8,
+            10
+          ],
+          "C_MAX_FROM_4C_LE_2O": 10,
+          "EXCLUSION_BY_C": {
+            "0": "FORCES_K12_UNION_K8_MINUS_E_T270",
+            "10": "O>=30>21",
+            "2": "O>=30>21",
+            "4": "O>=30>21",
+            "6": "O>=36>21",
+            "8": "O>=28>21"
+          },
+          "O": 21,
+          "STATUS": "PROVED_EMPTY"
+        },
+        "T266": {
+          "C_ADMISSIBLE_AFTER_PARITY": [
+            0,
+            2,
+            4,
+            6,
+            8
+          ],
+          "C_MAX_FROM_4C_LE_2O": 9,
+          "EXCLUSION_BY_C": {
+            "0": "FORCES_K12_UNION_K8_MINUS_E_T270",
+            "2": "O>=30>18",
+            "4": "O>=30>18",
+            "6": "O>=36>18",
+            "8": "O>=28>18"
+          },
+          "O": 18,
+          "STATUS": "PROVED_EMPTY"
+        },
+        "T267": {
+          "C_ADMISSIBLE_AFTER_PARITY": [
+            0,
+            2,
+            4,
+            6
+          ],
+          "C_MAX_FROM_4C_LE_2O": 7,
+          "EXCLUSION_BY_C": {
+            "0": "FORCES_K12_UNION_K8_MINUS_E_T270",
+            "2": "O>=30>15",
+            "4": "O>=30>15",
+            "6": "O>=36>15"
+          },
+          "O": 15,
+          "STATUS": "PROVED_EMPTY"
+        },
+        "T268": {
+          "C_ADMISSIBLE_AFTER_PARITY": [
+            0,
+            2,
+            4,
+            6
+          ],
+          "C_MAX_FROM_4C_LE_2O": 6,
+          "EXCLUSION_BY_C": {
+            "0": "FORCES_K12_UNION_K8_MINUS_E_T270",
+            "2": "O>=30>12",
+            "4": "O>=30>12",
+            "6": "O>=36>12"
+          },
+          "O": 12,
+          "STATUS": "PROVED_EMPTY"
+        }
+      },
+      "C_UNION_AFTER_FLOOR_AND_PARITY": [
+        0,
+        2,
+        4,
+        6,
+        8,
+        10,
+        12
+      ],
+      "HL_ARM_TERM_LOWER_BOUND": 4,
+      "MIN_CASE_BOUND": 28,
+      "O_BY_T": {
+        "263": 27,
+        "264": 24,
+        "265": 21,
+        "266": 18,
+        "267": 15,
+        "268": 12
+      },
+      "PACKET_CANDIDATES_CONFIRMED": {
+        "10": 30,
+        "12": 30,
+        "2": 30,
+        "4": 30,
+        "6": 36,
+        "8": 28
+      },
+      "PARAMETER_LEMMAS": {
+        "LEMMA_A_HOLDS_TIGHT_PLUS1_FAILS": true,
+        "LEMMA_B_HOLDS_TIGHT_PLUS1_FAILS": true,
+        "LEMMA_C_HOLDS_TIGHT_PLUS1_FAILS": true
+      },
+      "TEETH": {
+        "T262_NOT_CLOSED": true,
+        "T270_INCUMBENT_NOT_CLOSED": true
+      },
+      "W": 816
+    },
+    "PROOF": {
+      "L0_DEGREE": "Cell domain as in the T270/T269 results: 22 triple labels + 27 pair labels cover 1..49, so every number has frequency 2 or 3; overlap <= 1 makes the numbers of a ticket reach disjoint neighbour sets, so deg(v) = 6 + t(v). Profile 5^12 1^6 0^2 gives degrees 11^12, 7^6, 6^2, |E| = 93. T counts all triangles of the overlap graph G. The argument uses only G, so it excludes every simple graph with these degrees, whether or not tickets realise it.",
+      "REMARK_NOT_A_CELL_CLAIM": "S2 alone gives O >= 2c >= 28 for c >= 14, so the same lemmas show every graph with these degrees has T = 270 or T <= 262. This task reports cell statuses only for T = 263..268.",
+      "S10_RESULT": "For T in 263..268 the only admissible c is 0 (S2-S3, S9), and c = 0 forces T = 270 (S4). Hence no graph with degrees 11^12 7^6 6^2 has T in {263,...,268}: all six cells are empty.",
+      "S1_WEDGES": "W = 12*55 + 6*21 + 2*15 = 816. A wedge is closed iff it lies in a triangle, each triangle closes exactly 3 wedges, so O = W - 3T. For T = 263..268, O = 27, 24, 21, 18, 15, 12; in every cell O <= 27.",
+      "S2_ARM": "For an edge uv, the open wedges with arm uv number (deg u - 1 - k) + (deg v - 1 - k), k = |N(u) & N(v)|; each open wedge has two arms, so these terms (all >= 0) sum to 2O. H = the 12 degree-11 vertices, L = the other 8, c = e(H, L). For u in H, x in L: k <= deg x - 1, so the term is >= 11 - deg x >= 4. Hence 4c <= 2O <= 54 and c <= floor(54/4) = 13 (per cell: c <= floor(O/2) = 13, 12, 10, 9, 7, 6).",
+      "S3_PARITY": "sum_{u in H} deg u = 132 = 2 e(H) + c and sum_{x in L} deg x = 54 = 2 e(L) + c, so c is even: c in {0, 2, 4, 6, 8, 10, 12}.",
+      "S4_C0": "c = 0: e(H) = 66 = C(12,2), so G[H] = K12; e(L) = 27 = C(8,2) - 1, and the degrees 7^6 6^2 force the one missing L pair to join the two degree-6 vertices. G = K12 + (K8 - e), T = 220 + (56 - 6) = 270, not in 263..268.",
+      "S5_F": "c > 0: m = c/2 = 66 - e(H) pairs of H are non-adjacent; F = graph of these pairs on H, 1 <= m <= 6. For u in H, 11 = deg u = (11 - d_F(u)) + deg_L(u), so deg_L(u) = d_F(u): the H vertices with an L-neighbour are exactly S = non-isolated vertices of F, s = |S| <= 2m. d_F(u) <= m. For an F-edge xz the F-edges at x or z are d_F(x) + d_F(z) - 1 distinct edges, so d_F(x) + d_F(z) <= m + 1.",
+      "S6_LEMMA_A": "Class H:HH (centre in H, both ends in H). For an F-edge xz: of the 10 vertices of H - {x,z}, x is non-adjacent to the d_F(x) - 1 vertices of N_F(x) - {z}, z to d_F(z) - 1, so at least 12 - d_F(x) - d_F(z) >= 11 - m >= 5 are common neighbours w, each giving the open wedge x-w-z (x, z non-adjacent). The wedge determines its end pair {x,z}, so different F-edges give different wedges: class H:HH >= m(11 - m).",
+      "S7_LEMMA_B": "Class H:HL (centre in H, one end in H, one in L). For an H-L edge ux: N_H(u) has 11 - d_F(u) vertices; those adjacent to x lie in N(x) - {u}, at most deg x - 1 <= 6, so at least max(0, 5 - d_F(u)) >= 5 - m vertices w give the open wedge w-u-x. Such a wedge has exactly one H-L arm (u-x), so different H-L edges give different wedges, and it has an end in L, so it is not in class H:HH. For m <= 5: class H:HL >= c(5 - m).",
+      "S8_LEMMA_C": "Support refinement of S7: N(x) & H lies in S (S5) and N_H(u) misses u and N_F(u), so the w in N_H(u) adjacent to x number at most min(deg x - 1, s - 1 - d_F(u)). For c = 2, F = {ab}, S = {a, b}, s - 1 - d_F = 0: each of the two H-L edges gives all 10 w in H - {a,b}.",
+      "S9_CASES": "c=2: H:HH = 10 (m(11-m) = 10) + H:HL >= 2*10 -> O >= 30. c=4: 2*9 = 18 + 4*(5-2) = 12 -> 30. c=6: 3*8 = 24 + 6*(5-3) = 12 -> 36. c=8: 4*7 = 28. c=10: 5*6 = 30. c=12: 6*5 = 30. Classes H:HH and H:HL are disjoint, so in every case O >= 28 > 27 >= O, a contradiction."
+    },
+    "STATUS": "PROVED"
+  },
+  "GRAPH_GAP_PROOF_STATUS": "PROVED",
+  "PREDECESSOR": {
+    "RERUN": "NONE",
+    "T269_READ_ONLY_HASH_CHECK": "MATCH",
+    "T269_RESULT_SHA256": "3bb366d7f53cf3ec922dc806932e28ec8780ae4f3c89bad2149716b171159180",
+    "T269_STATUS": "PROVED_EMPTY_T269_CELL",
+    "T270_READ_ONLY_HASH_CHECK": "MATCH",
+    "T270_RESULT_SHA256": "cd136425601d69c4cf1f437ea11a2c2bd25ff9d295e2cc2f670092aeb20176b8"
+  },
+  "PROVED_EMPTY_COUNT": 6,
+  "RESOURCE": {
+    "CPU_RLIMIT_SECONDS": 90,
+    "CPU_SECONDS": 0.524,
+    "FIBER_RUN1_TOUCHED": "NONE",
+    "MAX_RSS_MIB": 22.3,
+    "NICE": 15,
+    "NO_CP_SAT": true,
+    "NO_K20_OUTCOME_CENSUS": true,
+    "THREADS": 1,
+    "WALL_SECONDS": 0.53,
+    "WORKERS": 1
+  },
+  "SCHEMA_VERSION": "B649_K20_FIBER_SAME_PROFILE_T263_T268_GRAPH_GAP_R1_V1",
+  "SCRIPT_SHA256": "2c392887d74de685afc8d88629c8ccd2fa6aeceee21709ff13667976a7fabe87",
+  "T263_STATUS": "PROVED_EMPTY",
+  "T264_STATUS": "PROVED_EMPTY",
+  "T265_STATUS": "PROVED_EMPTY",
+  "T266_STATUS": "PROVED_EMPTY",
+  "T267_STATUS": "PROVED_EMPTY",
+  "T268_STATUS": "PROVED_EMPTY",
+  "TASK_ID": "B649_K20_FIBER_SAME_PROFILE_T263_T268_GRAPH_GAP_R1",
+  "TASK_STATUS": "PROVED_EMPTY_T263_T268_CELLS",
+  "UNPROVED_ITEMS": [],
+  "UNRESOLVED_CELLS": []
+}

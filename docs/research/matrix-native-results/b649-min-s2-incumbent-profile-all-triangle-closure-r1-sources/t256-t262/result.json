@@ -1,0 +1,759 @@
+{
+  "ARITHMETIC": {
+    "C_MAX_EVEN_BY_T": {
+      "256": 24,
+      "257": 22,
+      "258": 20,
+      "259": 18,
+      "260": 18,
+      "261": 16,
+      "262": 14
+    },
+    "HL_ARM_TERM_LOWER_BOUND": 4,
+    "M_12_ADMISSIBLE_ONLY_AT": [
+      256
+    ],
+    "M_MAX_BY_T": {
+      "256": 12,
+      "257": 11,
+      "258": 10,
+      "259": 9,
+      "260": 9,
+      "261": 8,
+      "262": 7
+    },
+    "O_BY_T": {
+      "256": 48,
+      "257": 45,
+      "258": 42,
+      "259": 39,
+      "260": 36,
+      "261": 33,
+      "262": 30
+    },
+    "W": 816
+  },
+  "AUTHORITY": {
+    "COUNT_AND_PORTFOLIO_SOURCE": "frozen Owner packet; no portfolio recomputation",
+    "CURRENT_REFERENCE_MAIN": "3f1ba09511f5879193c62c82d323b12776f2008e",
+    "K20_COUNT": 313263888,
+    "K20_PORTFOLIO_SHA256": "eaed652900d101881b678a1515d2a366bff9de6723dbec2ec9c82fe0d0d7844c",
+    "REPOSITORY": "kelvinhuang0327/MathStatisticalAnalysis",
+    "WORKTREE_HEAD": "d079d4add8715a1034f2b7a0cd62e00cab59f656",
+    "WORKTREE_TREE": "0d511efeed51ca7b94f6dd302ee371f07fd4b940"
+  },
+  "BOUNDED_CASE_ACCOUNTING": {
+    "0": {
+      "C": 0,
+      "EXACT": true,
+      "M": 0,
+      "PROVED_T": 270
+    },
+    "1": {
+      "C": 2,
+      "F_ARGMAX_SEQUENCES": [
+        [
+          1,
+          1
+        ]
+      ],
+      "F_SEQUENCE_COUNT": 1,
+      "JOINT_REALIZABILITY_CLAIMED": false,
+      "M": 1,
+      "M_ARGMAX_SEQUENCES": [
+        [
+          2,
+          1,
+          1
+        ]
+      ],
+      "M_SEQUENCE_COUNT": 2,
+      "PROVED_BOUND": 255,
+      "RELAXED_BOUND": 256,
+      "U_F": 2,
+      "V_M": 4
+    },
+    "10": {
+      "C": 20,
+      "F_ARGMAX_SEQUENCES": [
+        [
+          8,
+          3,
+          2,
+          2,
+          1,
+          1,
+          1,
+          1,
+          1
+        ]
+      ],
+      "F_SEQUENCE_COUNT": 195,
+      "JOINT_REALIZABILITY_CLAIMED": false,
+      "M": 10,
+      "M_ARGMAX_SEQUENCES": [
+        [
+          7,
+          5,
+          2,
+          2,
+          2,
+          2,
+          1,
+          1
+        ]
+      ],
+      "M_SEQUENCE_COUNT": 85,
+      "PROVED_BOUND": 246,
+      "RELAXED_BOUND": 246,
+      "U_F": 86,
+      "V_M": 90
+    },
+    "11": {
+      "C": 22,
+      "F_ARGMAX_SEQUENCES": [
+        [
+          8,
+          4,
+          2,
+          2,
+          2,
+          1,
+          1,
+          1,
+          1
+        ],
+        [
+          8,
+          3,
+          3,
+          3,
+          1,
+          1,
+          1,
+          1,
+          1
+        ]
+      ],
+      "F_SEQUENCE_COUNT": 281,
+      "JOINT_REALIZABILITY_CLAIMED": false,
+      "M": 11,
+      "M_ARGMAX_SEQUENCES": [
+        [
+          7,
+          6,
+          2,
+          2,
+          2,
+          2,
+          2,
+          1
+        ]
+      ],
+      "M_SEQUENCE_COUNT": 97,
+      "PROVED_BOUND": 249,
+      "RELAXED_BOUND": 249,
+      "U_F": 96,
+      "V_M": 103
+    },
+    "12": {
+      "C": 24,
+      "F_ARGMAX_SEQUENCES": [
+        [
+          8,
+          5,
+          2,
+          2,
+          2,
+          2,
+          1,
+          1,
+          1
+        ]
+      ],
+      "F_SEQUENCE_COUNT": 394,
+      "JOINT_REALIZABILITY_CLAIMED": false,
+      "M": 12,
+      "M_ARGMAX_SEQUENCES": [
+        [
+          7,
+          7,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2
+        ]
+      ],
+      "M_SEQUENCE_COUNT": 102,
+      "PROVED_BOUND": 255,
+      "RELAXED_BOUND": 256,
+      "U_F": 108,
+      "V_M": 118
+    },
+    "2": {
+      "C": 4,
+      "F_ARGMAX_SEQUENCES": [
+        [
+          2,
+          1,
+          1
+        ]
+      ],
+      "F_SEQUENCE_COUNT": 2,
+      "JOINT_REALIZABILITY_CLAIMED": false,
+      "M": 2,
+      "M_ARGMAX_SEQUENCES": [
+        [
+          3,
+          1,
+          1,
+          1
+        ]
+      ],
+      "M_SEQUENCE_COUNT": 5,
+      "PROVED_BOUND": 246,
+      "RELAXED_BOUND": 246,
+      "U_F": 6,
+      "V_M": 10
+    },
+    "3": {
+      "C": 6,
+      "F_ARGMAX_SEQUENCES": [
+        [
+          3,
+          1,
+          1,
+          1
+        ],
+        [
+          2,
+          2,
+          2
+        ]
+      ],
+      "F_SEQUENCE_COUNT": 5,
+      "JOINT_REALIZABILITY_CLAIMED": false,
+      "M": 3,
+      "M_ARGMAX_SEQUENCES": [
+        [
+          4,
+          1,
+          1,
+          1,
+          1
+        ]
+      ],
+      "M_SEQUENCE_COUNT": 9,
+      "PROVED_BOUND": 240,
+      "RELAXED_BOUND": 240,
+      "U_F": 12,
+      "V_M": 18
+    },
+    "4": {
+      "C": 8,
+      "F_ARGMAX_SEQUENCES": [
+        [
+          4,
+          1,
+          1,
+          1,
+          1
+        ]
+      ],
+      "F_SEQUENCE_COUNT": 9,
+      "JOINT_REALIZABILITY_CLAIMED": false,
+      "M": 4,
+      "M_ARGMAX_SEQUENCES": [
+        [
+          5,
+          1,
+          1,
+          1,
+          1,
+          1
+        ]
+      ],
+      "M_SEQUENCE_COUNT": 15,
+      "PROVED_BOUND": 238,
+      "RELAXED_BOUND": 238,
+      "U_F": 20,
+      "V_M": 28
+    },
+    "5": {
+      "C": 10,
+      "F_ARGMAX_SEQUENCES": [
+        [
+          5,
+          1,
+          1,
+          1,
+          1,
+          1
+        ]
+      ],
+      "F_SEQUENCE_COUNT": 17,
+      "JOINT_REALIZABILITY_CLAIMED": false,
+      "M": 5,
+      "M_ARGMAX_SEQUENCES": [
+        [
+          6,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ]
+      ],
+      "M_SEQUENCE_COUNT": 24,
+      "PROVED_BOUND": 240,
+      "RELAXED_BOUND": 240,
+      "U_F": 30,
+      "V_M": 40
+    },
+    "6": {
+      "C": 12,
+      "F_ARGMAX_SEQUENCES": [
+        [
+          6,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ]
+      ],
+      "F_SEQUENCE_COUNT": 31,
+      "JOINT_REALIZABILITY_CLAIMED": false,
+      "M": 6,
+      "M_ARGMAX_SEQUENCES": [
+        [
+          7,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ]
+      ],
+      "M_SEQUENCE_COUNT": 35,
+      "PROVED_BOUND": 246,
+      "RELAXED_BOUND": 246,
+      "U_F": 42,
+      "V_M": 54
+    },
+    "7": {
+      "C": 14,
+      "F_ARGMAX_SEQUENCES": [
+        [
+          7,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ]
+      ],
+      "F_SEQUENCE_COUNT": 52,
+      "JOINT_REALIZABILITY_CLAIMED": false,
+      "M": 7,
+      "M_ARGMAX_SEQUENCES": [
+        [
+          7,
+          2,
+          2,
+          1,
+          1,
+          1,
+          1,
+          1
+        ]
+      ],
+      "M_SEQUENCE_COUNT": 45,
+      "PROVED_BOUND": 246,
+      "RELAXED_BOUND": 246,
+      "U_F": 56,
+      "V_M": 60
+    },
+    "8": {
+      "C": 16,
+      "F_ARGMAX_SEQUENCES": [
+        [
+          8,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ]
+      ],
+      "F_SEQUENCE_COUNT": 83,
+      "JOINT_REALIZABILITY_CLAIMED": false,
+      "M": 8,
+      "M_ARGMAX_SEQUENCES": [
+        [
+          7,
+          3,
+          2,
+          2,
+          1,
+          1,
+          1,
+          1
+        ]
+      ],
+      "M_SEQUENCE_COUNT": 59,
+      "PROVED_BOUND": 250,
+      "RELAXED_BOUND": 250,
+      "U_F": 72,
+      "V_M": 68
+    },
+    "9": {
+      "C": 18,
+      "F_ARGMAX_SEQUENCES": [
+        [
+          8,
+          2,
+          2,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ]
+      ],
+      "F_SEQUENCE_COUNT": 131,
+      "JOINT_REALIZABILITY_CLAIMED": false,
+      "M": 9,
+      "M_ARGMAX_SEQUENCES": [
+        [
+          7,
+          4,
+          2,
+          2,
+          2,
+          1,
+          1,
+          1
+        ],
+        [
+          7,
+          3,
+          3,
+          3,
+          1,
+          1,
+          1,
+          1
+        ]
+      ],
+      "M_SEQUENCE_COUNT": 74,
+      "PROVED_BOUND": 246,
+      "RELAXED_BOUND": 246,
+      "U_F": 78,
+      "V_M": 78
+    }
+  },
+  "CPU_MICROSECONDS": 61421,
+  "CPU_SECONDS": "0.061421",
+  "DOMAIN": {
+    "DEGREES": [
+      11,
+      11,
+      11,
+      11,
+      11,
+      11,
+      11,
+      11,
+      11,
+      11,
+      11,
+      11,
+      7,
+      7,
+      7,
+      7,
+      7,
+      7,
+      6,
+      6
+    ],
+    "PROFILE": "55555555555511111100",
+    "TARGET_M_RANGE": [
+      0,
+      12
+    ],
+    "TARGET_T": [
+      256,
+      257,
+      258,
+      259,
+      260,
+      261,
+      262
+    ],
+    "VERTICES": 20,
+    "W": 816
+  },
+  "EQUALITY_INTERPRETATION": "The relaxed upper-bound equality T=256 is impossible in both cases",
+  "EQUALITY_M1": "PROVED",
+  "EQUALITY_M12": "PROVED",
+  "EXACT_TRIANGLE_IDENTITY": "T=270-20m+S_F+S_M-Y-t_F-t_M-Z_FB-Z_MB",
+  "FIBER_RUN1_MUTATION": "NONE",
+  "FOCUSED_CHECKS": [
+    "integer arithmetic and arm bounds",
+    "complete necessary-degree partition scan",
+    "both equality contradictions",
+    "T255 graph degrees and four-way triangle count",
+    "controlled invalid-degree fixture rejected",
+    "original draft prefix preserved",
+    "three predecessor SHA256 checks without execution"
+  ],
+  "FOCUSED_TEST_STATUS": "PASS",
+  "HIGHER_WINNING_COUNT_CLAIMED": false,
+  "IMPLEMENTATION_ATTEMPTS": [
+    {
+      "ACTION": "read-only arithmetic diagnostic with CPU/RLIMIT_AS caps",
+      "ATTEMPT": 1,
+      "CPU_LIMIT_SECONDS": 30,
+      "ERROR": "macOS RLIMIT_AS ValueError",
+      "STATUS": "STOPPED_BEFORE_MODULE_IMPORT",
+      "WRITES": []
+    },
+    {
+      "ACTION": "read-only arithmetic diagnostic with CPU cap and observed peak RSS",
+      "ATTEMPT": 2,
+      "CPU_SECONDS": "1.902413",
+      "PEAK_RSS_BYTES": 21659648,
+      "STATUS": "PASS",
+      "WRITES": []
+    }
+  ],
+  "MATHEMATICAL_IDENTITY": "PROVED",
+  "NEWLY_CLOSED_CELLS": [
+    {
+      "PROFILE": "55555555555511111100",
+      "T": 256
+    },
+    {
+      "PROFILE": "55555555555511111100",
+      "T": 257
+    },
+    {
+      "PROFILE": "55555555555511111100",
+      "T": 258
+    },
+    {
+      "PROFILE": "55555555555511111100",
+      "T": 259
+    },
+    {
+      "PROFILE": "55555555555511111100",
+      "T": 260
+    },
+    {
+      "PROFILE": "55555555555511111100",
+      "T": 261
+    },
+    {
+      "PROFILE": "55555555555511111100",
+      "T": 262
+    }
+  ],
+  "NEXT_TASK": "Only any substantive disagreement with the independent proof, or the next uncovered K20 family",
+  "OBSERVED_NICE": 15,
+  "OUTER_M_TAIL": {
+    "METHOD": "O>=4m and O=816-3T",
+    "M_MIN": 13,
+    "T_UPPER_BOUND": 254
+  },
+  "OWNERSHIP_EVIDENCE": {
+    "CURRENT_WRITER_CHAT": "01a12150-791d-70b1-a1b1-f871a2c13874",
+    "ORIGINAL_PREFIX_PRESERVED_BYTE_IDENTICALLY": true,
+    "ORIGINAL_SESSION_TERMINATION_USED_AS_OWNERSHIP_PROOF": false,
+    "OVERLAPPING_PROCESS_OR_OPEN_FILE_FOUND": false,
+    "PREEXISTING_FILES": [
+      "t256_t262_graph_bound.py"
+    ],
+    "PREEXISTING_SCRIPT_BYTES": 11919,
+    "PREEXISTING_SCRIPT_SHA256": "92ae4554a63bc7576af2454fd329c300a4ecb731d202bd04ef3e46a33a45e979",
+    "SCRIPT_SHA_AND_MTIME_STABLE_ACROSS_OBSERVATIONS": true,
+    "SEPARATE_CHAT_SCOPE": "READ_ONLY; explicitly no writes to this worktree",
+    "SEPARATE_INDEPENDENT_PROOF_CHAT": "01a12150-e659-7dd2-9b7e-809dac61a2bd",
+    "TASK_OWNER_LOCK_OR_CHECKPOINT_FOUND": false
+  },
+  "OWNER_STATUS": "OWNER_AUTHORIZED_CONTINUATION_AFTER_STABLE_NO_OBSERVED_OVERLAPPING_WRITER",
+  "PEAK_RSS_BYTES": 22528000,
+  "PREDECESSOR_CHECKS": {
+    "T263_T268": {
+      "EXECUTED": false,
+      "PATH": "/Users/kelvin/.codex/worktrees/b649-k20-fiber-t263-t268-gap-r1/MathStatisticalAnalysis/.task-data/B649_K20_FIBER_SAME_PROFILE_T263_T268_GRAPH_GAP_R1/result.json",
+      "SHA256": "8ad5419f57ff23342a6503a1579631b133a5d7aa19a8026b63792f7480550e3e"
+    },
+    "T269": {
+      "EXECUTED": false,
+      "PATH": "/Users/kelvin/.codex/worktrees/b649-k20-fiber-t269-structural-r1/MathStatisticalAnalysis/.task-data/B649_K20_FIBER_T269_STRUCTURAL_EXCLUSION_R1/result.json",
+      "SHA256": "3bb366d7f53cf3ec922dc806932e28ec8780ae4f3c89bad2149716b171159180"
+    },
+    "T270": {
+      "EXECUTED": false,
+      "PATH": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.task-data/B649_K20_FIBER_INCUMBENT_T270_STRUCTURAL_EXACT_CLOSURE_R1/result.json",
+      "SHA256": "cd136425601d69c4cf1f437ea11a2c2bd25ff9d295e2cc2f670092aeb20176b8"
+    }
+  },
+  "PRIOR_DIAGNOSTIC_CPU_SECONDS": "1.902413 (plus subsecond failed setup)",
+  "PROOF": {
+    "ARM_BOUND_AND_EXHAUSTIVE_M_RANGE": "W=sum C(deg_G(v),2)=816, and each triangle occupies three centered wedges, so O=816-3T. For an edge hl let k be its common-neighbor count. Its open-wedge arm count is 11+deg_G(l)-2-2k. Since k<=deg_G(l)-1, this is at least 4 for degree 7 and at least 5 for degree 6. Each open wedge has two arms, so 4c<=2O, hence O>=4m. For T>=256, O<=48 and m<=12 (c<=24). For m>=13, T<=floor((816-52)/3)=254. Therefore the m=0..12 table together with this tail covers every graph, not just a sampled range.",
+    "BOTH_CROSS_TRIANGLE_TYPES": "For each l in L, its b_l neighbors in H supply C(b_l,2) pairs. Subtract the pairs in F: Z_FB=sum_{hh' in F}|N_B(h) intersect N_B(h')|. Thus C_HHL=sum_l C(b_l,2)-Z_FB. Likewise C_HLL=sum_h C(a_h,2)-Z_MB, where Z_MB=sum_{ll' in M}|N_B(l) intersect N_B(l')|. These count the two disjoint cross-triangle types exactly, including every incidence and internal adjacency.",
+    "CLIQUE_MINUS_MISSING_EDGES": "For any missing-edge graph Q on n vertices, each missing edge lies in n-2 triples. Two missing edges share a triple exactly when they share a vertex; there are A_Q=sum_v C(deg_Q(v),2) such pairs. Three missing edges share a triple exactly for a triangle of Q. No triple has more than three edges. Inclusion-exclusion therefore gives triangles(K_n-Q)=C(n,3)-(n-2)|Q|+A_Q-t_Q. Applying this to F and M gives T_H=220-10m+A_F-t_F and T_L=50-6m+A_M-t_M.",
+    "CONCLUSION": "For m=2..11 the certified relaxed upper bounds are respectively 246,240,238,240,246,246,250,246,246,249. The two boundary arguments lower m=1 and m=12 from 256 to 255. The tail m>=13 is at most 254, and m=0 is exactly 270. Consequently every graph with degree sequence 11^12,7^6,6^2 has T=270 or T<=255. The non-270 ceiling 255 is sharp at graph level. Hence all T256..T262 cells of the specified profile are empty. A graph witness at 255 is not a ticket-portfolio realization or an improvement of the canonical winning count.",
+    "DEFINITIONS_AND_SIMULTANEOUS_CONSTRAINTS": "G is a simple undirected graph with H of size 12 and L of size 8. F=K12-G[H], M=K8-G[L], and B=G[H,L]. Put a_h=deg_F(h), q_l=deg_M(l), delta_l=7-deg_G(l), b_l=deg_B(l). Delta is 1 at exactly the two degree-6 vertices and 0 elsewhere. Degree equations give deg_B(h)=a_h<=8 and b_l=q_l-delta_l>=0, with q_l<=7, b_l<=12 and q_l>=1 at both delta vertices. Summing the H equations gives c=2|F|=2m. Summing L gives 54=2|G[L]|+c, so |G[L]|=27-m and |M|=m+1. Thus sum a=sum b=2m and sum q=2m+2. All equations hold simultaneously in the same graph; B must be a binary incidence matrix with these row and column sums. Independent maxima below are only upper relaxations, never certificates of joint feasibility.",
+    "DEGREE_SEQUENCE_CERTIFICATE_COMPLETENESS": "Sort the positive degrees of F or M; pad with zero degrees to 12 or 8 vertices. For a graph with e edges this is a nonincreasing integer partition of 2e, with at most n parts and each part at most the degree cap. The partitions recursion enumerates every such partition exactly: choose the first positive part p, then recurse on total-p with next cap p and one fewer available part; induction on the remaining total proves completeness. For any k vertices of largest degrees, their degree sum is at most k(k-1)+sum_{i>k}min(d_i,k), by counting internal and external edges. Hence every graph passes all inequalities in erdos_gallai. Filtering by these necessary inequalities cannot remove a valid graph; sufficiency of the inequalities is not needed for the proof. The Havel-Hakimi comparison is only a consistency check. The scan maximizes S_F with 2m total and cap 8, and S_M-q_y1-q_y2 with 2m+2 total and cap 7. Both delta vertices have positive q, so subtracting the two smallest positive parts safely upper-bounds the latter quantity for every placement. Thus T<=270-20m+U_F(m)+V_M(m+1), with no claim that separate maximizers share a feasible B. This is exhaustive bounded degree accounting justified by necessary conditions; it is not a full graph census, random test, or replacement for the identity proof.",
+    "EXACT_IDENTITY_DERIVATION": "Let Y=q_y1+q_y2, S_F=sum a_h^2, S_M=sum q_l^2, Z=t_F+t_M+Z_FB+Z_MB. Since delta is 0 or 1, C(q-delta,2)=C(q,2)-delta*(q-1), so sum_l C(b_l,2)=A_M-Y+2. Adding all four triangle types yields T=270-16m+A_F+A_M-t_F-t_M+C_HHL+C_HLL =272-16m+2A_F+2A_M-Y-Z. Since 2A_F=S_F-2m and 2A_M=S_M-2m-2, this is exactly T=270-20m+S_F+S_M-Y-Z. Every term of Z is nonnegative. This is an algebraic proof for every graph in the domain, independent of example checks. The packet's tentative formula with negative A_F,A_M and negative actual cross-triangle counts has incorrect signs and is replaced by the proved identities above.",
+    "M0": "When m=0, B is empty, F is empty and M has one edge. The two delta vertices both have q>=1 and sum q=2, so this edge joins exactly those two vertices. Therefore T=C(12,3)+C(8,3)-6=270.",
+    "M12_EQUALITY_CONTRADICTION": "The necessary-degree scan gives U_F(12)=108 and V_M(13)=118, so the relaxed upper bound is 256. T=256 would force both maxima and Z=0. The sole M degree sequence maximizing V_M is (7,7,2,2,2,2,2,2). In any simple graph with this sequence, the two degree-7 vertices are adjacent to all other seven vertices. Their edge with each of the six others forms a distinct triangle, so t_M>=6, contradicting Z=0. This uses mandatory adjacency, not failure to construct a graph. Independently, the sole F maximizer (8,5,2,2,2,2,1,1,1) requires an H vertex with all eight L neighbors, including both degree-6 vertices. At T=256 and m=12, 4c=2O=96 would require every cross arm to equal 4; each such degree-6 incidence has at least 5 arms, also a contradiction. Thus the maxima cannot simultaneously produce a valid equality case, and T<=255 for m=12.",
+    "M1_EQUALITY_CONTRADICTION": "The relaxed upper bound is 256: S_F=2 and S_M-Y<=4. If T=256, equality forces M degree sequence (2,1,1), both delta vertices on its leaves, and Z=0. (The only other two-edge graph is two disjoint edges, giving S_M-Y=2.) Let x be the path center. Then b_x=2 and all other L columns are zero. The two endpoints u,v of the sole F edge each have a=1, so B must contain ux,vx. Consequently Z_FB=1, contradicting Z=0. Thus T<=255 for m=1. The supplied m=1 graph certificate attains 255 and verifies all simultaneous degree and incidence constraints."
+  },
+  "REMAINING_TASK_REQUIRED_MODEL": "最強模型",
+  "RESOURCE_CONTRACT": {
+    "CP_SAT": false,
+    "FULL_GRAPH_CENSUS": false,
+    "MAX_MEMORY_BYTES": 1073741824,
+    "MAX_TOTAL_CPU_SECONDS": 120,
+    "MEMORY_CHECK": "observed peak RSS below cap",
+    "NICE_MIN": 15,
+    "WORKERS": 1
+  },
+  "RESULT_PATH": "/Users/kelvin/.codex/worktrees/b649-k20-fiber-t256-t262-bound-r1/MathStatisticalAnalysis/.task-data/B649_K20_FIBER_SAME_PROFILE_T256_T262_GRAPH_BOUND_R1/result.json",
+  "RUNTIME_TRANSITION_OCCURRED": false,
+  "SCRIPT_PATH": "/Users/kelvin/.codex/worktrees/b649-k20-fiber-t256-t262-bound-r1/MathStatisticalAnalysis/.task-data/B649_K20_FIBER_SAME_PROFILE_T256_T262_GRAPH_BOUND_R1/t256_t262_graph_bound.py",
+  "SCRIPT_SHA256": "ba67e397fe90d514cf458fec9d7345f4000158f646f0bfcf780c63a3f295f4ff",
+  "SHARPNESS_GRAPH_T255": {
+    "ADJACENCY_BITMASKS": [
+      8188,
+      8188,
+      4091,
+      4087,
+      4079,
+      4063,
+      4031,
+      3967,
+      3839,
+      3583,
+      3071,
+      2047,
+      253955,
+      1036288,
+      1028096,
+      1011712,
+      978944,
+      913408,
+      778240,
+      516096
+    ],
+    "DEGREES": [
+      11,
+      11,
+      11,
+      11,
+      11,
+      11,
+      11,
+      11,
+      11,
+      11,
+      11,
+      11,
+      7,
+      7,
+      7,
+      7,
+      7,
+      7,
+      6,
+      6
+    ],
+    "HL_EDGES": [
+      [
+        0,
+        12
+      ],
+      [
+        1,
+        12
+      ]
+    ],
+    "H_MISSING_EDGES": [
+      [
+        0,
+        1
+      ]
+    ],
+    "IDENTITY_TERMS": {
+      "A_F": 0,
+      "A_M": 1,
+      "C": 2,
+      "C_HHL": 0,
+      "C_HLL": 0,
+      "M": 1,
+      "S_F": 2,
+      "S_R": 6,
+      "T": 255,
+      "T_F": 0,
+      "T_FORMULA": 255,
+      "T_H": 210,
+      "T_L": 45,
+      "T_R": 0,
+      "Y": 2,
+      "Z": 1,
+      "Z_FX": 1,
+      "Z_RU": 0
+    },
+    "L_MISSING_EDGES": [
+      [
+        12,
+        18
+      ],
+      [
+        12,
+        19
+      ]
+    ]
+  },
+  "STRONGEST_PROVED_TRIANGLE_BOUND": "T=270 (m=0) or T<=255 (m>=1); 255 attained by a legal graph",
+  "T256_STATUS": "PROVED_EMPTY",
+  "T257_STATUS": "PROVED_EMPTY",
+  "T258_STATUS": "PROVED_EMPTY",
+  "T259_STATUS": "PROVED_EMPTY",
+  "T260_STATUS": "PROVED_EMPTY",
+  "T261_STATUS": "PROVED_EMPTY",
+  "T262_STATUS": "PROVED_EMPTY",
+  "TARGET_GRAPH_CERTIFICATE": null,
+  "TASK_ID": "B649_K20_FIBER_SAME_PROFILE_T256_T262_GRAPH_BOUND_R1",
+  "TASK_STATUS": "COMPLETE",
+  "TENTATIVE_PACKET_IDENTITY": "INCORRECT_AS_WRITTEN; corrected by first-principles proof",
+  "TICKET_PORTFOLIO_REALIZABILITY_CLAIMED": false,
+  "UNRESOLVED_CELLS": [],
+  "WORKTREE_STATUS": {
+    "COMMIT_PUSH_PR_MERGE": "NOT RUN",
+    "FILES_CHANGED": [
+      "t256_t262_graph_bound.py (append only)",
+      "result.json (new)"
+    ],
+    "PATH": "/Users/kelvin/.codex/worktrees/b649-k20-fiber-t256-t262-bound-r1/MathStatisticalAnalysis",
+    "TASK_FILES_GIT_IGNORED": true,
+    "TRACKED_WORKTREE_CLEAN": true
+  }
+}

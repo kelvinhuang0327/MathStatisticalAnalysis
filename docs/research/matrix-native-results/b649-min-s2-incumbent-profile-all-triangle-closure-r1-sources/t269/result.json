@@ -1,0 +1,226 @@
+{
+  "EXACT_CELL_DOMAIN": {
+    "MAX_PAIRWISE_OVERLAP": 1,
+    "OVERLAP_GRAPH_TRIANGLES_T_ALL_TRIANGLES": 269,
+    "POOL": "1..49",
+    "SUPPORT": {
+      "PAIR_LABELS": 27,
+      "TRIPLE_LABELS": 22
+    },
+    "TICKETS": 20,
+    "TICKET_SIZE": 6,
+    "TRIPLE_DEGREE_PROFILE": "55555555555511111100"
+  },
+  "EXACT_GRAPH_TESTS": {
+    "C0": {
+      "C": 0,
+      "CASE": "C0",
+      "DEGREE_VALID_GRAPHS": 28,
+      "GRAPHS_ENUMERATED": 28,
+      "H_INTERNAL_OPEN_WEDGES": 0,
+      "MAX_T": 270,
+      "MIN_O": 6,
+      "REDUCED_BY_SYM_L": true,
+      "T269_GRAPHS": 0,
+      "T_DECOMPOSITION": {
+        "K12": 220,
+        "K8_MINUS_E": 50
+      },
+      "T_HISTOGRAM": {
+        "270": 28
+      }
+    },
+    "C2": {
+      "FULL": {
+        "C": 2,
+        "CASE": "C2_FULL",
+        "DEGREE_VALID_GRAPHS": 3360,
+        "GRAPHS_ENUMERATED": 24192,
+        "H_INTERNAL_OPEN_WEDGES": 10,
+        "MAX_T": 255,
+        "MIN_O": 51,
+        "REDUCED_BY_SYM_L": false,
+        "T269_GRAPHS": 0,
+        "T_HISTOGRAM": {
+          "254": 2520,
+          "255": 840
+        }
+      },
+      "REDUCED": {
+        "C": 2,
+        "CASE": "C2_REDUCED",
+        "DEGREE_VALID_GRAPHS": 78,
+        "GRAPHS_ENUMERATED": 756,
+        "H_INTERNAL_OPEN_WEDGES": 10,
+        "MAX_T": 255,
+        "MIN_O": 51,
+        "REDUCED_BY_SYM_L": true,
+        "T269_GRAPHS": 0,
+        "T_HISTOGRAM": {
+          "254": 45,
+          "255": 33
+        }
+      }
+    },
+    "C4_ADJACENT": {
+      "C": 4,
+      "CASE": "C4_ADJACENT",
+      "DEGREE_VALID_GRAPHS": 718,
+      "GRAPHS_ENUMERATED": 32760,
+      "H_INTERNAL_OPEN_WEDGES": 18,
+      "MAX_T": 244,
+      "MIN_O": 84,
+      "REDUCED_BY_SYM_L": true,
+      "T269_GRAPHS": 0,
+      "T_HISTOGRAM": {
+        "239": 18,
+        "240": 224,
+        "241": 324,
+        "242": 107,
+        "243": 40,
+        "244": 5
+      }
+    },
+    "C4_DISJOINT": {
+      "C": 4,
+      "CASE": "C4_DISJOINT",
+      "DEGREE_VALID_GRAPHS": 864,
+      "GRAPHS_ENUMERATED": 49140,
+      "H_INTERNAL_OPEN_WEDGES": 20,
+      "MAX_T": 243,
+      "MIN_O": 87,
+      "REDUCED_BY_SYM_L": true,
+      "T269_GRAPHS": 0,
+      "T_HISTOGRAM": {
+        "238": 90,
+        "239": 216,
+        "240": 324,
+        "241": 94,
+        "242": 80,
+        "243": 60
+      }
+    },
+    "H_INTERNAL_GATES": {
+      "C2_ONE_MISSING_EDGE": 10,
+      "C4_ADJACENT_MISSING_EDGES": 18,
+      "C4_DISJOINT_MISSING_EDGES": 20
+    }
+  },
+  "FOCUSED_CHECKS": {
+    "ARM_BOUND_4_TIGHT_MUTATION_5_FAILS": true,
+    "ARM_IDENTITY_SUM_EQUALS_2O_ON_ALL_VALID_GRAPHS": true,
+    "C0_FORCES_K12_UNION_K8_MINUS_E_T270": true,
+    "C2_FULL_VS_SYM_REDUCED_T_SETS_EQUAL": true,
+    "H_INTERNAL_OPEN_WEDGES_10_18_20": true,
+    "NO_VACUOUS_CASE": true,
+    "OPEN_WEDGE_COUNT_TWO_INDEPENDENT_WAYS": true,
+    "STATUS": "PASS",
+    "T269_GRAPHS_FOUND": 0
+  },
+  "PREDECESSOR": {
+    "T270_RESULT_SHA256": "cd136425601d69c4cf1f437ea11a2c2bd25ff9d295e2cc2f670092aeb20176b8"
+  },
+  "RESOURCE": {
+    "CPU_RLIMIT_SECONDS": 60,
+    "CPU_SECONDS": 3.588,
+    "FIBER_RUN1_TOUCHED": "NONE",
+    "NICE": 15,
+    "NO_CP_SAT": true,
+    "SCIENTIFIC_WORKERS": 1,
+    "WALL_SECONDS": 3.65
+  },
+  "SCHEMA_VERSION": "B649_K20_FIBER_T269_STRUCTURAL_EXCLUSION_R1_V1",
+  "SCRIPT_SHA256": "57cd0ac838e2da3e1a7cd35e7e63f5975dabc443d20ce91cd101d9f29dd96d5d",
+  "STRICT_GAIN": "NO",
+  "STRUCTURAL_EXCLUSION_PROOF": {
+    "PHASE1_ARITHMETIC": {
+      "CASES": {
+        "0": {
+          "EDGES_IN_H": 66,
+          "EDGES_IN_L": 27,
+          "H_NON_EDGES": 0,
+          "L_NON_EDGES": 1
+        },
+        "2": {
+          "EDGES_IN_H": 65,
+          "EDGES_IN_L": 26,
+          "H_NON_EDGES": 1,
+          "L_NON_EDGES": 2
+        },
+        "4": {
+          "EDGES_IN_H": 64,
+          "EDGES_IN_L": 25,
+          "H_NON_EDGES": 2,
+          "L_NON_EDGES": 3
+        }
+      },
+      "C_FEASIBLE_AFTER_PARITY": [
+        0,
+        2,
+        4
+      ],
+      "C_UPPER_FROM_4C_LE_2O": 4,
+      "EDGES": 93,
+      "EDGE_SUM_EQUALS_2O": 18,
+      "GRAPH_DEGREES": "11^12, 7^6, 6^2",
+      "HL_EDGE_TERM_LOWER_BOUND": 4,
+      "H_DEGREE_SUM": 132,
+      "L_DEGREE_SUM": 54,
+      "OPEN_WEDGES_O": 9,
+      "THREE_T": 807,
+      "W": 816
+    },
+    "PROOF": {
+      "L0_DEGREE": "Cell domain as in the T270 result: 22 triple labels + 27 pair labels cover 1..49, so every number has frequency 2 or 3; overlap <= 1 makes the numbers of a ticket reach disjoint neighbour sets, so deg(v) = 6 + t(v). Profile 5^12 1^6 0^2 gives degrees 11^12, 7^6, 6^2, |E| = 93. The argument below uses only the overlap graph G, so it excludes every simple graph with these degrees, whether or not it is realised by tickets.",
+      "P1_S1_WEDGES": "W = 12*55 + 6*21 + 2*15 = 816. Each triangle closes exactly 3 wedges and each closed wedge lies in exactly one triangle, so O = W - 3T = 816 - 807 = 9 at T = 269.",
+      "P1_S2_EDGE_IDENTITY": "For an edge uv the open wedges with arm uv are: centre u, other end w in N(u)-{v}, w not in N(v), numbering (deg u - 1) - |N(u)&N(v)|; symmetrically for centre v. An open wedge has exactly two arms, so sum over edges of [deg u + deg v - 2 - 2|N(u)&N(v)|] = 2O = 18, every summand >= 0.",
+      "P1_S3_HL_BOUND": "H = the 12 degree-11 vertices, L = the other 8, c = e(H,L). For an edge uv with u in H, v in L: N(u)&N(v) is a subset of N(v)-{u}, so |N(u)&N(v)| <= deg v - 1, and the two terms sum to (10 - k) + (deg v - 1 - k) >= 11 - deg v >= 4 for deg v in {6,7}, k = |N(u)&N(v)|. Dropping the other (nonnegative) summands: 4c <= 18, so c <= 4.",
+      "P1_S4_PARITY": "sum_{u in H} deg u = 132 = 2e(H) + c, so c is even: c in {0, 2, 4}. Then e(H) = 66, 65, 64 and e(L) = (54 - c)/2 = 27, 26, 25.",
+      "P1_S5_C0": "c = 0: e(H) = 66 = C(12,2) so G[H] = K12; e(L) = 27 = C(8,2) - 1 so G[L] = K8 - e, and the degrees 7^6 6^2 force e to join the two degree-6 vertices. G = K12 disjoint-union (K8 - e), T = C(12,3) + (C(8,3) - 6) = 220 + 50 = 270 != 269. No graph with c = 0 has T = 269.",
+      "P1_S6_C2": "c = 2: e(H) = 65 = C(12,2) - 1, so exactly one pair x,y in H is non-adjacent, and each of the other 10 vertices of H is adjacent to both: 10 distinct open wedges x-z-y with all three vertices in H (x,y non-adjacent in G because adjacency inside H is G[H]). O >= 10 > 9, a contradiction.",
+      "P1_S7_C4": "c = 4: e(H) = 64 = C(12,2) - 2, so G[H] is K12 minus two edges. Adjacent missing edges ab, ac: the non-adjacent pairs are {a,b} and {a,c}; for {a,b} the 9 vertices outside {a,b,c} are adjacent to both (c is not adjacent to a), likewise for {a,c}: 9 + 9 = 18 open wedges. Disjoint missing edges ab, cd: {a,b} has all 10 other H vertices adjacent to both, likewise {c,d}: 10 + 10 = 20. Wedges with different end pairs are different wedges, so no wedge is counted twice. O >= 18 > 9 in both sub-cases, a contradiction.",
+      "P1_S8_RESULT": "c in {0,2,4} are the only possibilities (S3, S4); c = 0 gives T = 270 exactly, c = 2 and c = 4 give O >= 10 and O >= 18, i.e. T <= 268 and T <= 266. Hence no graph with degrees 11^12 7^6 6^2 has T = 269: the cell is empty."
+    },
+    "STATUS": "PROVED"
+  },
+  "SWITCH_WALK_SANITY": {
+    "ACCEPTED_SWITCHES": 8549,
+    "ARM_BOUND_4C_LE_2O_HELD_EVERY_VISIT": true,
+    "MAX_C_VISITED": 50,
+    "MAX_T_BY_C": {
+      "10": 204,
+      "12": 194,
+      "14": 187,
+      "16": 175,
+      "18": 172,
+      "2": 254,
+      "20": 165,
+      "22": 161,
+      "24": 152,
+      "26": 147,
+      "28": 147,
+      "30": 144,
+      "32": 146,
+      "34": 149,
+      "36": 146,
+      "38": 148,
+      "4": 239,
+      "40": 144,
+      "42": 146,
+      "44": 145,
+      "46": 142,
+      "48": 142,
+      "50": 141,
+      "6": 225,
+      "8": 213
+    },
+    "NON_LOAD_BEARING": true,
+    "SEED": 20261009,
+    "STEPS": 40000,
+    "T269_VISITS": 0
+  },
+  "T269_CELL_STATUS": "PROVED_EMPTY",
+  "TASK_ID": "B649_K20_FIBER_T269_STRUCTURAL_EXCLUSION_R1",
+  "TASK_STATUS": "PROVED_EMPTY_T269_CELL",
+  "UNPROVED_ITEMS": []
+}

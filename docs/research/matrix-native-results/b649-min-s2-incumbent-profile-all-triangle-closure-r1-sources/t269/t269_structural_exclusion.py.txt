@@ -1,0 +1,503 @@
+"""B649 K20 Fiber cell 55555555555511111100 / T=269: structural exclusion (R1).
+
+Claim: no simple graph with degrees 11^12, 7^6, 6^2 has exactly 269 triangles, so the
+Fiber cell (profile 55555555555511111100, T=269) is empty. The written proof is stored
+in result.json; every step is also checked mechanically on concrete graphs below.
+Pure standard library, single worker, no solver.
+
+    nice -n 15 <repo>/.venv/bin/python <task-root>/t269_structural_exclusion.py
+"""
+
+from __future__ import annotations
+
+import sys
+
+sys.dont_write_bytecode = True
+
+import hashlib  # noqa: E402
+import itertools  # noqa: E402
+import json  # noqa: E402
+import os  # noqa: E402
+import random  # noqa: E402
+import resource  # noqa: E402
+import time  # noqa: E402
+from collections import Counter  # noqa: E402
+from math import comb  # noqa: E402
+from pathlib import Path  # noqa: E402
+from typing import Any  # noqa: E402
+
+TASK_ID = "B649_K20_FIBER_T269_STRUCTURAL_EXCLUSION_R1"
+TASK_ROOT = Path(__file__).resolve().parent
+RESULT_PATH = TASK_ROOT / "result.json"
+CPU_LIMIT_SECONDS = 60
+T270_RESULT_SHA256 = "cd136425601d69c4cf1f437ea11a2c2bd25ff9d295e2cc2f670092aeb20176b8"
+
+PROFILE = "55555555555511111100"
+CELL_T = 269
+N_H, N_L = 12, 8
+N = N_H + N_L
+H = range(N_H)
+L = range(N_H, N)
+DEGREES = [6 + int(ch) for ch in PROFILE]  # overlap degree of a ticket = 6 + triple degree
+DEG_SORTED = sorted(DEGREES)
+H_DEG, L_DEGS = 11, (7, 6)
+SEED = 20261009
+WALK_STEPS = 40_000
+
+
+def popcount(x: int) -> int:
+    return x.bit_count()
+
+
+# --------------------------------------------------------------------------- graph kernel
+
+
+def build(h_missing, hl_edges, l_missing) -> list[int]:
+    """Adjacency bitmasks: H = K12 minus h_missing, L = K8 minus l_missing, plus hl_edges."""
+    adj = [0] * N
+
+    def add(u: int, v: int) -> None:
+        adj[u] |= 1 << v
+        adj[v] |= 1 << u
+
+    hm = {frozenset(e) for e in h_missing}
+    lm = {frozenset(e) for e in l_missing}
+    for u, v in itertools.combinations(H, 2):
+        if frozenset((u, v)) not in hm:
+            add(u, v)
+    for u, v in itertools.combinations(L, 2):
+        if frozenset((u, v)) not in lm:
+            add(u, v)
+    for u, v in hl_edges:
+        add(u, v)
+    return adj
+
+
+def edges_of(adj: list[int]) -> list[tuple[int, int]]:
+    return [(u, v) for u in range(N) for v in range(u + 1, N) if adj[u] >> v & 1]
+
+
+def degrees(adj: list[int]) -> list[int]:
+    return [popcount(a) for a in adj]
+
+
+def triangles(adj: list[int]) -> int:
+    return sum(popcount(adj[u] & adj[v]) for u, v in edges_of(adj)) // 3
+
+
+def wedges(adj: list[int]) -> int:
+    return sum(comb(d, 2) for d in degrees(adj))
+
+
+def open_wedges_direct(adj: list[int]) -> int:
+    """Count open wedges centre-by-centre: neighbour pairs of v that are non-adjacent."""
+    total = 0
+    for v in range(N):
+        nb = adj[v]
+        d = popcount(nb)
+        closed = 0
+        for u in range(N):
+            if nb >> u & 1:
+                closed += popcount(adj[u] & nb)
+        total += comb(d, 2) - closed // 2
+    return total
+
+
+def arm_count(adj: list[int], u: int, v: int) -> int:
+    """Open wedges having edge uv as an arm: deg u + deg v - 2 - 2 |N(u) & N(v)|."""
+    return popcount(adj[u]) + popcount(adj[v]) - 2 - 2 * popcount(adj[u] & adj[v])
+
+
+def arm_count_by_definition(adj: list[int], u: int, v: int) -> int:
+    n = 0
+    for centre, other in ((u, v), (v, u)):
+        for w in range(N):
+            if w not in (centre, other) and adj[centre] >> w & 1 and not adj[other] >> w & 1:
+                n += 1
+    return n
+
+
+def h_internal_open_wedges(adj: list[int]) -> int:
+    """Open wedges whose centre and both ends all lie in H (forced by G[H] alone)."""
+    n = 0
+    for centre in H:
+        for a, b in itertools.combinations(H, 2):
+            if a != centre and b != centre and adj[centre] >> a & 1 and adj[centre] >> b & 1:
+                if not adj[a] >> b & 1:
+                    n += 1
+    return n
+
+
+def hl_edge_count(adj: list[int]) -> int:
+    return sum(popcount(adj[u] >> N_H) for u in H)
+
+
+W_EXPECTED = sum(comb(d, 2) for d in DEGREES)
+O_EXPECTED = W_EXPECTED - 3 * CELL_T
+
+
+# --------------------------------------------------------------------------- phase 1 gates
+
+
+def arm_lemma_min(bound: int) -> dict[str, Any]:
+    """Exhaustive parameter check of the H-L arm lower bound; fails when bound is too high."""
+    worst = None
+    for dy in L_DEGS:
+        for codeg in range(dy):  # N(x)&N(y) is inside N(y)-{x}: codeg <= dy - 1
+            term = (H_DEG - 1 - codeg) + (dy - 1 - codeg)
+            worst = term if worst is None else min(worst, term)
+    return {"MIN_TERM": worst, "HOLDS": worst is not None and worst >= bound}
+
+
+def phase1() -> dict[str, Any]:
+    out: dict[str, Any] = {}
+    assert DEG_SORTED == [6, 6] + [7] * 6 + [11] * 12
+    deg_sum = sum(DEGREES)
+    out["GRAPH_DEGREES"] = "11^12, 7^6, 6^2"
+    out["EDGES"] = deg_sum // 2
+    assert deg_sum // 2 == 93 == 3 * 22 + 27
+    out["W"] = W_EXPECTED
+    assert W_EXPECTED == 816
+    out["THREE_T"] = 3 * CELL_T
+    out["OPEN_WEDGES_O"] = O_EXPECTED
+    assert O_EXPECTED == 9
+    out["EDGE_SUM_EQUALS_2O"] = 2 * O_EXPECTED
+    lemma = arm_lemma_min(4)
+    assert lemma["HOLDS"] and lemma["MIN_TERM"] == 4
+    assert not arm_lemma_min(5)["HOLDS"]  # mutation control: bound 4 is tight
+    out["HL_EDGE_TERM_LOWER_BOUND"] = lemma["MIN_TERM"]
+    c_max = (2 * O_EXPECTED) // lemma["MIN_TERM"]
+    out["C_UPPER_FROM_4C_LE_2O"] = c_max
+    assert c_max == 4
+    h_deg_sum = N_H * H_DEG
+    l_deg_sum = sum(d for d in DEGREES if d < 11)
+    assert (h_deg_sum, l_deg_sum) == (132, 54)
+    out["H_DEGREE_SUM"], out["L_DEGREE_SUM"] = h_deg_sum, l_deg_sum
+    feasible = [c for c in range(c_max + 1) if (h_deg_sum - c) % 2 == 0 and (l_deg_sum - c) % 2 == 0]
+    out["C_FEASIBLE_AFTER_PARITY"] = feasible
+    assert feasible == [0, 2, 4]
+    cases = {}
+    for c in feasible:
+        e_h, e_l = (h_deg_sum - c) // 2, (l_deg_sum - c) // 2
+        cases[str(c)] = {
+            "EDGES_IN_H": e_h,
+            "H_NON_EDGES": comb(N_H, 2) - e_h,
+            "EDGES_IN_L": e_l,
+            "L_NON_EDGES": comb(N_L, 2) - e_l,
+        }
+    assert cases["0"]["H_NON_EDGES"] == 0 and cases["0"]["L_NON_EDGES"] == 1
+    assert cases["2"]["H_NON_EDGES"] == 1 and cases["4"]["H_NON_EDGES"] == 2
+    out["CASES"] = cases
+    return out
+
+
+# --------------------------------------------------------------------------- exact enumeration
+
+
+def restricted_growth(k: int):
+    """Set partitions of k slots as restricted growth strings (first-appearance labelling)."""
+
+    def rec(prefix: list[int], top: int):
+        if len(prefix) == k:
+            yield tuple(prefix)
+            return
+        for v in range(top + 2):
+            yield from rec(prefix + [v], max(top, v))
+
+    yield from rec([0], 0) if k else iter([()])
+
+
+def check_valid_graph(adj: list[int], c_expected: int, record: dict[str, Any]) -> int:
+    """All per-graph identities on a graph that realises the degree sequence; returns T."""
+    t = triangles(adj)
+    o = open_wedges_direct(adj)
+    assert wedges(adj) == W_EXPECTED
+    assert o == W_EXPECTED - 3 * t  # open wedges counted two independent ways
+    assert hl_edge_count(adj) == c_expected
+    arm_sum = 0
+    for u, v in edges_of(adj):
+        a = arm_count(adj, u, v)
+        assert a == arm_count_by_definition(adj, u, v) and a >= 0
+        arm_sum += a
+        if u in H and v in L:
+            assert a >= 4  # P1_S3: every H-L edge contributes at least 4
+    assert arm_sum == 2 * o
+    assert 4 * c_expected <= 2 * o
+    record["MIN_O"] = min(record.get("MIN_O", o), o)
+    return t
+
+
+def enumerate_case(
+    name: str,
+    h_missing,
+    slots: tuple[int, ...],
+    l_missing_count: int,
+    c: int,
+    reduced: bool,
+) -> dict[str, Any]:
+    """Every graph with the given H structure, slot->L attachment and L non-edges.
+
+    slots lists the H endpoint of each H-L edge. reduced=True attaches slots through
+    restricted growth strings (L is relabelled by Sym(8), the L non-edges stay fully
+    labelled); reduced=False tries all L assignments.
+    """
+    assert len(slots) == c
+    l_pairs = list(itertools.combinations(L, 2))
+    if reduced:
+        patterns = [tuple(N_H + g for g in rgs) for rgs in restricted_growth(len(slots))]
+    else:
+        patterns = list(itertools.product(L, repeat=len(slots)))
+    graphs = valid = 0
+    hist: Counter[int] = Counter()
+    record: dict[str, Any] = {}
+    h_internal = None
+    for pat in patterns:
+        hl = list(zip(slots, pat, strict=True))
+        if len({frozenset(e) for e in hl}) != len(hl):  # repeated H-L pair: not simple
+            continue
+        for l_missing in itertools.combinations(l_pairs, l_missing_count):
+            graphs += 1
+            adj = build(h_missing, hl, l_missing)
+            if sorted(degrees(adj)) != DEG_SORTED:
+                continue
+            valid += 1
+            hist[check_valid_graph(adj, c, record)] += 1
+            h_internal = h_internal if h_internal is not None else h_internal_open_wedges(adj)
+    return {
+        "CASE": name,
+        "C": c,
+        "REDUCED_BY_SYM_L": reduced,
+        "GRAPHS_ENUMERATED": graphs,
+        "DEGREE_VALID_GRAPHS": valid,
+        "T_HISTOGRAM": {str(t): n for t, n in sorted(hist.items())},
+        "MAX_T": max(hist) if hist else None,
+        "T269_GRAPHS": hist.get(CELL_T, 0),
+        "H_INTERNAL_OPEN_WEDGES": h_internal,
+        "MIN_O": record.get("MIN_O"),
+    }
+
+
+def c0_case() -> dict[str, Any]:
+    out = enumerate_case("C0", [], (), 1, 0, reduced=True)
+    # G[H] = K12 and G[L] = K8 - e are forced; every one of the 28 labelled e is valid.
+    assert out["GRAPHS_ENUMERATED"] == 28 == out["DEGREE_VALID_GRAPHS"]
+    assert out["T_HISTOGRAM"] == {"270": 28}
+    adj = build([], [], [(12, 13)])
+    assert triangles(adj) == 220 + (comb(8, 3) - 6) == 270
+    assert open_wedges_direct(adj) == 6
+    out["T_DECOMPOSITION"] = {"K12": 220, "K8_MINUS_E": comb(8, 3) - 6}
+    return out
+
+
+def h_internal_gate(h_missing, expected: int) -> int:
+    adj = build(h_missing, [], [])
+    n = h_internal_open_wedges(adj)
+    assert n == expected, (h_missing, n, expected)
+    return n
+
+
+def phase2() -> dict[str, Any]:
+    out: dict[str, Any] = {"C0": c0_case()}
+    out["H_INTERNAL_GATES"] = {
+        "C2_ONE_MISSING_EDGE": h_internal_gate([(0, 1)], 10),
+        "C4_ADJACENT_MISSING_EDGES": h_internal_gate([(0, 1), (0, 2)], 18),
+        "C4_DISJOINT_MISSING_EDGES": h_internal_gate([(0, 1), (2, 3)], 20),
+    }
+    assert all(v > O_EXPECTED for v in out["H_INTERNAL_GATES"].values())
+    # Gate has teeth: the same bounds do not exclude T=268 (O=12) for c=2.
+    assert not (10 > W_EXPECTED - 3 * 268)
+    # c=2: H = K12 - {0,1}; vertices 0 and 1 each need exactly one L neighbour.
+    full2 = enumerate_case("C2_FULL", [(0, 1)], (0, 1), 2, 2, reduced=False)
+    red2 = enumerate_case("C2_REDUCED", [(0, 1)], (0, 1), 2, 2, reduced=True)
+    assert set(full2["T_HISTOGRAM"]) == set(red2["T_HISTOGRAM"])  # reduction is lossless here
+    assert full2["GRAPHS_ENUMERATED"] == 64 * comb(28, 2)
+    out["C2"] = {"FULL": full2, "REDUCED": red2}
+    # c=4: vertex v needs exactly (number of missing edges at v) L neighbours.
+    out["C4_ADJACENT"] = enumerate_case(
+        "C4_ADJACENT", [(0, 1), (0, 2)], (0, 0, 1, 2), 3, 4, reduced=True
+    )
+    out["C4_DISJOINT"] = enumerate_case(
+        "C4_DISJOINT", [(0, 1), (2, 3)], (0, 1, 2, 3), 3, 4, reduced=True
+    )
+    for key in ("C2", "C4_ADJACENT", "C4_DISJOINT"):
+        for part in (out[key].values() if key == "C2" else [out[key]]):
+            assert part["T269_GRAPHS"] == 0
+            assert part["DEGREE_VALID_GRAPHS"] > 0  # not vacuous
+            assert part["MAX_T"] is not None and part["MAX_T"] <= (W_EXPECTED - part["H_INTERNAL_OPEN_WEDGES"]) // 3
+    return out
+
+
+# --------------------------------------------------------------------------- sanity walk
+
+
+def switch_walk(steps: int, seed: int) -> dict[str, Any]:
+    """Degree-preserving edge-switch walk from K12 + (K8-e); T=269 must never appear.
+
+    Not load-bearing for the proof: it only probes graphs with c >= 6 that the
+    arm-incidence bound excludes algebraically.
+    """
+    rng = random.Random(seed)
+    adj = build([], [], [(12, 13)])
+    edges = edges_of(adj)
+    seen: Counter[tuple[int, int]] = Counter()
+    accepted = 0
+    for _ in range(steps):
+        i, j = rng.sample(range(len(edges)), 2)
+        a, b = edges[i]
+        c_, d = edges[j]
+        if rng.random() < 0.5:
+            c_, d = d, c_
+        if len({a, b, c_, d}) < 4 or adj[a] >> d & 1 or adj[c_] >> b & 1:
+            continue
+        for x, y in ((a, b), (c_, d)):
+            adj[x] &= ~(1 << y)
+            adj[y] &= ~(1 << x)
+        for x, y in ((a, d), (c_, b)):
+            adj[x] |= 1 << y
+            adj[y] |= 1 << x
+        edges[i], edges[j] = (min(a, d), max(a, d)), (min(c_, b), max(c_, b))
+        accepted += 1
+        assert sorted(degrees(adj)) == DEG_SORTED
+        t = triangles(adj)
+        cc = hl_edge_count(adj)
+        seen[(cc, t)] += 1
+        assert t != CELL_T
+        assert 4 * cc <= 2 * (W_EXPECTED - 3 * t)
+    by_c: dict[int, int] = {}
+    for (cc, t), _n in seen.items():
+        by_c[cc] = max(by_c.get(cc, 0), t)
+    return {
+        "SEED": seed,
+        "STEPS": steps,
+        "ACCEPTED_SWITCHES": accepted,
+        "T269_VISITS": sum(n for (_, t), n in seen.items() if t == CELL_T),
+        "MAX_T_BY_C": {str(k): v for k, v in sorted(by_c.items())},
+        "MAX_C_VISITED": max(by_c) if by_c else None,
+        "ARM_BOUND_4C_LE_2O_HELD_EVERY_VISIT": True,
+        "NON_LOAD_BEARING": True,
+    }
+
+
+# --------------------------------------------------------------------------- driver
+
+
+def cpu_seconds() -> float:
+    s = resource.getrusage(resource.RUSAGE_SELF)
+    c = resource.getrusage(resource.RUSAGE_CHILDREN)
+    return s.ru_utime + s.ru_stime + c.ru_utime + c.ru_stime
+
+
+PROOF = {
+    "L0_DEGREE": (
+        "Cell domain as in the T270 result: 22 triple labels + 27 pair labels cover 1..49, so every "
+        "number has frequency 2 or 3; overlap <= 1 makes the numbers of a ticket reach disjoint "
+        "neighbour sets, so deg(v) = 6 + t(v). Profile 5^12 1^6 0^2 gives degrees 11^12, 7^6, 6^2, "
+        "|E| = 93. The argument below uses only the overlap graph G, so it excludes every simple "
+        "graph with these degrees, whether or not it is realised by tickets."
+    ),
+    "P1_S1_WEDGES": (
+        "W = 12*55 + 6*21 + 2*15 = 816. Each triangle closes exactly 3 wedges and each closed wedge "
+        "lies in exactly one triangle, so O = W - 3T = 816 - 807 = 9 at T = 269."
+    ),
+    "P1_S2_EDGE_IDENTITY": (
+        "For an edge uv the open wedges with arm uv are: centre u, other end w in N(u)-{v}, w not in "
+        "N(v), numbering (deg u - 1) - |N(u)&N(v)|; symmetrically for centre v. An open wedge has "
+        "exactly two arms, so sum over edges of [deg u + deg v - 2 - 2|N(u)&N(v)|] = 2O = 18, every "
+        "summand >= 0."
+    ),
+    "P1_S3_HL_BOUND": (
+        "H = the 12 degree-11 vertices, L = the other 8, c = e(H,L). For an edge uv with u in H, v in "
+        "L: N(u)&N(v) is a subset of N(v)-{u}, so |N(u)&N(v)| <= deg v - 1, and the two terms sum to "
+        "(10 - k) + (deg v - 1 - k) >= 11 - deg v >= 4 for deg v in {6,7}, k = |N(u)&N(v)|. Dropping "
+        "the other (nonnegative) summands: 4c <= 18, so c <= 4."
+    ),
+    "P1_S4_PARITY": (
+        "sum_{u in H} deg u = 132 = 2e(H) + c, so c is even: c in {0, 2, 4}. Then e(H) = 66, 65, 64 "
+        "and e(L) = (54 - c)/2 = 27, 26, 25."
+    ),
+    "P1_S5_C0": (
+        "c = 0: e(H) = 66 = C(12,2) so G[H] = K12; e(L) = 27 = C(8,2) - 1 so G[L] = K8 - e, and the "
+        "degrees 7^6 6^2 force e to join the two degree-6 vertices. G = K12 disjoint-union (K8 - e), "
+        "T = C(12,3) + (C(8,3) - 6) = 220 + 50 = 270 != 269. No graph with c = 0 has T = 269."
+    ),
+    "P1_S6_C2": (
+        "c = 2: e(H) = 65 = C(12,2) - 1, so exactly one pair x,y in H is non-adjacent, and each of "
+        "the other 10 vertices of H is adjacent to both: 10 distinct open wedges x-z-y with all "
+        "three vertices in H (x,y non-adjacent in G because adjacency inside H is G[H]). O >= 10 > 9, "
+        "a contradiction."
+    ),
+    "P1_S7_C4": (
+        "c = 4: e(H) = 64 = C(12,2) - 2, so G[H] is K12 minus two edges. Adjacent missing edges ab, "
+        "ac: the non-adjacent pairs are {a,b} and {a,c}; for {a,b} the 9 vertices outside {a,b,c} "
+        "are adjacent to both (c is not adjacent to a), likewise for {a,c}: 9 + 9 = 18 open wedges. "
+        "Disjoint missing edges ab, cd: {a,b} has all 10 other H vertices adjacent to both, likewise "
+        "{c,d}: 10 + 10 = 20. Wedges with different end pairs are different wedges, so no wedge is "
+        "counted twice. O >= 18 > 9 in both sub-cases, a contradiction."
+    ),
+    "P1_S8_RESULT": (
+        "c in {0,2,4} are the only possibilities (S3, S4); c = 0 gives T = 270 exactly, c = 2 and "
+        "c = 4 give O >= 10 and O >= 18, i.e. T <= 268 and T <= 266. Hence no graph with degrees "
+        "11^12 7^6 6^2 has T = 269: the cell is empty."
+    ),
+}
+
+
+def main() -> None:
+    resource.setrlimit(resource.RLIMIT_CPU, (CPU_LIMIT_SECONDS, CPU_LIMIT_SECONDS))
+    started = time.time()
+    p1 = phase1()
+    p2 = phase2()
+    walk = switch_walk(WALK_STEPS, SEED)
+    assert walk["T269_VISITS"] == 0
+    for case in (p2["C2"]["FULL"], p2["C2"]["REDUCED"], p2["C4_ADJACENT"], p2["C4_DISJOINT"]):
+        assert case["T269_GRAPHS"] == 0
+    cpu = cpu_seconds()
+    assert cpu < CPU_LIMIT_SECONDS
+    result = {
+        "SCHEMA_VERSION": f"{TASK_ID}_V1",
+        "TASK_ID": TASK_ID,
+        "TASK_STATUS": "PROVED_EMPTY_T269_CELL",
+        "T269_CELL_STATUS": "PROVED_EMPTY",
+        "EXACT_CELL_DOMAIN": {
+            "TRIPLE_DEGREE_PROFILE": PROFILE,
+            "OVERLAP_GRAPH_TRIANGLES_T_ALL_TRIANGLES": CELL_T,
+            "TICKETS": 20,
+            "TICKET_SIZE": 6,
+            "MAX_PAIRWISE_OVERLAP": 1,
+            "POOL": "1..49",
+            "SUPPORT": {"TRIPLE_LABELS": 22, "PAIR_LABELS": 27},
+        },
+        "PREDECESSOR": {"T270_RESULT_SHA256": T270_RESULT_SHA256},
+        "STRUCTURAL_EXCLUSION_PROOF": {"PHASE1_ARITHMETIC": p1, "PROOF": PROOF, "STATUS": "PROVED"},
+        "EXACT_GRAPH_TESTS": p2,
+        "SWITCH_WALK_SANITY": walk,
+        "FOCUSED_CHECKS": {
+            "STATUS": "PASS",
+            "ARM_BOUND_4_TIGHT_MUTATION_5_FAILS": True,
+            "C0_FORCES_K12_UNION_K8_MINUS_E_T270": True,
+            "H_INTERNAL_OPEN_WEDGES_10_18_20": True,
+            "OPEN_WEDGE_COUNT_TWO_INDEPENDENT_WAYS": True,
+            "ARM_IDENTITY_SUM_EQUALS_2O_ON_ALL_VALID_GRAPHS": True,
+            "C2_FULL_VS_SYM_REDUCED_T_SETS_EQUAL": True,
+            "NO_VACUOUS_CASE": True,
+            "T269_GRAPHS_FOUND": 0,
+        },
+        "STRICT_GAIN": "NO",
+        "UNPROVED_ITEMS": [],
+        "RESOURCE": {
+            "CPU_RLIMIT_SECONDS": CPU_LIMIT_SECONDS,
+            "CPU_SECONDS": round(cpu, 3),
+            "WALL_SECONDS": round(time.time() - started, 2),
+            "NICE": os.getpriority(os.PRIO_PROCESS, 0),
+            "SCIENTIFIC_WORKERS": 1,
+            "NO_CP_SAT": True,
+            "FIBER_RUN1_TOUCHED": "NONE",
+        },
+        "SCRIPT_SHA256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+    }
+    RESULT_PATH.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n")
+    print(json.dumps({"STATUS": result["T269_CELL_STATUS"], "CPU_SECONDS": result["RESOURCE"]["CPU_SECONDS"]}))
+
+
+if __name__ == "__main__":
+    main()

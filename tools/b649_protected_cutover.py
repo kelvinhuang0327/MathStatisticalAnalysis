@@ -3188,6 +3188,7 @@ def _recover_v2_successor_request(
     *,
     prior_execution_receipt_sha256: str | None | _Unset,
     takeover_stale: bool = False,
+    expected_retirement_file_sha256: str | None = None,
 ) -> Request | None:
     """Rebuild only the successor identity sealed by matching v2 retirement evidence.
 
@@ -3198,7 +3199,19 @@ def _recover_v2_successor_request(
     retirement_path = config.scheduler_root / cutover.FAILED_TERMINAL_RETIREMENT_V2_NAME
     if not os.path.lexists(retirement_path):
         return None
-    retirement, _, _ = cutover._load_json(retirement_path)  # pyright: ignore[reportPrivateUsage]
+    retirement, retirement_identity, _ = cutover._load_json(  # pyright: ignore[reportPrivateUsage]
+        retirement_path
+    )
+    if (
+        expected_retirement_file_sha256 is not None
+        and retirement_identity.sha256 != expected_retirement_file_sha256
+    ):
+        raise ProtectedError("v2 retirement evidence changed during recovery")
+    frozen_retirement_file_sha256 = (
+        retirement_identity.sha256
+        if expected_retirement_file_sha256 is None
+        else expected_retirement_file_sha256
+    )
     cutover._validate_failed_terminal_retirement_v2_evidence(  # pyright: ignore[reportPrivateUsage]
         retirement
     )
@@ -3251,6 +3264,11 @@ def _recover_v2_successor_request(
                 raise ProtectedError(
                     "v2 retirement evidence belongs to a different successor target"
                 )
+            cutover._verify_failed_terminal_retirement_v2_archived_inputs(  # pyright: ignore[reportPrivateUsage]
+                config,
+                retirement,
+                expected_retirement_file_sha256=frozen_retirement_file_sha256,
+            )
             request = make_request(
                 config,
                 legacy_worktree,
@@ -3325,17 +3343,27 @@ def _recover_v2_successor_request(
         raise ProtectedError("v2 retirement evidence conflicts with its current successor owner")
 
     if _is_abandoned_lineage_owner(prior_owner):
-        # An abandoned successor of the sealed candidate continues this retirement
-        # lineage. Its own no-mutation proof is re-verified by the released-owner
-        # path before any reservation, so this gate only confirms the lineage root.
         lineage_owner = cast(Record, prior_owner)
-        root = _lineage_candidate_hop(config, lineage_owner)
+        root = _verify_abandoned_lineage_v2_candidate(
+            config,
+            lineage_owner,
+            plan_file,
+            claim_root,
+            retirement,
+            expected_retirement_file_sha256=frozen_retirement_file_sha256,
+        )
         if (
-            root["reservation_id"] != candidate_reservation_id
-            or root["operation_id"] != candidate_operation_id
-            or retirement.get("claim_root") != str(claim_root)
+            lineage_owner.get("owner_kind") != "protected"
+            or lineage_owner.get("action") != "apply"
+            or lineage_owner.get("target") != retirement.get("candidate_target")
+            or lineage_owner.get("managed_receipt_sha256")
+            != cutover.V5_MANAGED_RECEIPT_SHA256
+            or root.get("plan_sha256") != retirement.get("candidate_plan_sha256")
+            or root.get("target") != lineage_owner.get("target")
+            or prior_execution_receipt_sha256 != cutover.V5_PROTECTED_RECEIPT_SHA256
+            or (legacy_head, legacy_tree) != (cutover.V5_SOURCE_HEAD, cutover.V5_SOURCE_TREE)
         ):
-            raise ProtectedError("v2 retirement evidence conflicts with its abandoned lineage")
+            raise ProtectedError("v2 retirement evidence is outside the exact abandoned retry")
         if lineage_owner.get("phase") in {"AUTHORIZATION_PENDING", "AUTHORIZED_PENDING"} and (
             claims.ClaimStore(claim_root).inspect(TASK_KEY).get("status") != "ABSENT"
         ):
@@ -3848,13 +3876,140 @@ def _lineage_candidate_hop(config: cutover.CutoverConfig, owner: Record) -> Reco
         or reconciliation.get("unchanged_managed_receipt_sha256") != managed_sha
     ):
         raise ProtectedError("abandoned lineage root does not bind its sealed reconciliation")
+    receipt_path = config.scheduler_root / RECEIPT_NAME
+    archive_path = Path(text(reconciliation.get("stranded_protected_receipt_archive")))
+    archived, archive_identity, _ = cutover.read_control_json(archive_path)
+    archived_identity = record(archived.get("identity"))
+    authorization = record(reconciliation.get("owner_authorization"))
+    reconciliation_control = record(reconciliation.get("control_identity"))
+    target = cutover._normalized_owner_target(  # pyright: ignore[reportPrivateUsage]
+        archived_identity.get("target")
+    )
+    release_fields = {
+        "kind": PRESTART_NOT_STARTED_RELEASE_KIND,
+        "verified": True,
+        "reconciliation_record_path": str(reconciliation_path),
+        "reconciliation_record_sha256": reconciliation_identity.sha256,
+        "stranded_protected_receipt_sha256": reconciliation.get(
+            "stranded_protected_receipt_sha256"
+        ),
+        "protected_receipt_sha256": protected_sha,
+        "predecessor_protected_receipt_sha256": protected_sha,
+        "managed_receipt_sha256": managed_sha,
+    }
+    if (
+        set(release) != set(release_fields)
+        or release != release_fields
+        or reconciliation.get("stranded_protected_receipt_path") != str(receipt_path)
+        or archive_path.parent != receipt_path.parent
+        or archive_path.name
+        != f"{receipt_path.stem}.{archived.get('execution_id')}.superseded.json"
+        or archive_identity.sha256 != reconciliation.get("stranded_protected_receipt_sha256")
+        or archived.get("schema_version") != SCHEMA
+        or archived.get("task_key") != TASK_KEY
+        or archived.get("phase") != "COMPLETED"
+        or archived.get("execution_id") != digest(archived_identity)
+        or archived.get("receipt_sha256")
+        != digest({key: value for key, value in archived.items() if key != "receipt_sha256"})
+        or archived.get("managed_receipt") is not None
+        or (archived.get("status"), archived.get("result_status"))
+        not in {
+            ("FAILED", "NOT_STARTED"),
+            ("INCOMPLETE_OR_AMBIGUOUS", "INCOMPLETE_OR_AMBIGUOUS"),
+        }
+        or archived_identity.get("reservation_id") != reservation_id
+        or archived_identity.get("operation_id") != operation_id
+        or archived_identity.get("action") != "apply"
+        or archived_identity.get("execution_receipt_path") != str(receipt_path)
+        or archived_identity.get("managed_receipt_path") != str(config.receipt_path)
+        or archived_identity.get("managed_receipt_sha256") != managed_sha
+        or archived_identity.get("prior_execution_receipt_sha256") != protected_sha
+        or archived_identity.get("plan_sha256") != reconciliation.get("plan_sha256")
+        or archived_identity.get("plan_digest") != reconciliation.get("plan_digest")
+        or archived_identity.get("control_head") != reconciliation_control.get("head")
+        or archived_identity.get("control_tree") != reconciliation_control.get("tree")
+        or authorization.get("reservation_id") != reservation_id
+        or authorization.get("operation_id") != operation_id
+        or authorization.get("managed_receipt_sha256") != managed_sha
+        or authorization.get("control_head") != archived_identity.get("control_head")
+        or authorization.get("control_tree") != archived_identity.get("control_tree")
+        or authorization.get("action") != "apply"
+        or authorization.get("target") != target
+        or archived_identity.get("target") != target
+        or reconciliation.get("claim_store_status") != "ABSENT"
+        or reconciliation.get("rollback_receipt_absent") is not True
+        or reconciliation.get("owner_mutation_started") is not False
+    ):
+        raise ProtectedError("abandoned lineage root archive differs from its sealed operation")
+    cutover._verify_protected_owner_receipt(  # pyright: ignore[reportPrivateUsage]
+        archived,
+        path=receipt_path,
+        bound_identity={
+            "reservation_id": reservation_id,
+            "operation_id": operation_id,
+            "managed_receipt_sha256": managed_sha,
+            "control_head": archived_identity.get("control_head"),
+            "control_tree": archived_identity.get("control_tree"),
+            "action": "apply",
+            "target": target,
+        },
+        successful=False,
+    )
     return {
         "reservation_id": reservation_id,
         "operation_id": operation_id,
         "plan_sha256": text(reconciliation.get("plan_sha256")),
+        "target": target,
         "anchor_sha256": protected_sha,
         "managed_sha256": managed_sha,
     }
+
+
+def _verify_abandoned_lineage_v2_candidate(
+    config: cutover.CutoverConfig,
+    owner: Record,
+    plan_file: Path,
+    claim_root: Path,
+    retirement: Record,
+    *,
+    expected_retirement_file_sha256: str | None = None,
+) -> Record:
+    """Bind the v2 candidate to the archived not-started root of an abandoned chain."""
+    root = _lineage_candidate_hop(config, owner)
+    plan, plan_identity, _ = cutover.read_control_json(plan_file)
+    source = record(plan.get("source"))
+    old_source = record(source.get("old"))
+    new_source = record(source.get("new"))
+    candidate_target = cutover._normalized_owner_target(  # pyright: ignore[reportPrivateUsage]
+        retirement.get("candidate_target")
+    )
+    expected_target = {
+        "source_worktree": str(config.source_worktree),
+        "head": config.expected_head,
+        "tree": config.expected_tree,
+        "durable_ref": config.durable_ref,
+    }
+    if (
+        root.get("reservation_id") != retirement.get("candidate_reservation_id")
+        or root.get("operation_id") != retirement.get("candidate_operation_id")
+        or root.get("plan_sha256") != retirement.get("candidate_plan_sha256")
+        or root.get("target") != candidate_target
+        or candidate_target != expected_target
+        or plan_identity.sha256 != retirement.get("candidate_plan_sha256")
+        or old_source.get("head") != cutover.V5_SOURCE_HEAD
+        or old_source.get("tree") != cutover.V5_SOURCE_TREE
+        or new_source.get("head") != config.expected_head
+        or new_source.get("tree") != config.expected_tree
+        or new_source.get("source_worktree") != str(config.source_worktree)
+        or retirement.get("claim_root") != str(claim_root)
+    ):
+        raise ProtectedError("v2 retirement candidate differs from the abandoned lineage root")
+    cutover._verify_failed_terminal_retirement_v2_archived_inputs(  # pyright: ignore[reportPrivateUsage]
+        config,
+        retirement,
+        expected_retirement_file_sha256=expected_retirement_file_sha256,
+    )
+    return root
 
 
 def _verify_abandoned_lineage_continuation(
@@ -3967,11 +4122,46 @@ def _abandoned_lineage_anchor_sha256(
 def _require_abandoned_lineage_successor_evidence(
     request: Request,
     prior_owner: Record,
+    *,
+    expected_retirement_file_sha256: str | None = None,
 ) -> Record:
     """Seal the continuation of an abandoned lineage. Explicit authorization still follows."""
     facts = _verify_abandoned_lineage_continuation(
         request.config, prior_owner, claim_root=request.claim_root
     )
+    retirement_path = (
+        request.config.scheduler_root / cutover.FAILED_TERMINAL_RETIREMENT_V2_NAME
+    )
+    if os.path.lexists(retirement_path):
+        retirement, retirement_identity, _ = cutover._load_json(  # pyright: ignore[reportPrivateUsage]
+            retirement_path
+        )
+        if (
+            expected_retirement_file_sha256 is not None
+            and retirement_identity.sha256 != expected_retirement_file_sha256
+        ):
+            raise ProtectedError("v2 retirement evidence changed before abandoned owner CAS")
+        frozen_retirement_file_sha256 = (
+            retirement_identity.sha256
+            if expected_retirement_file_sha256 is None
+            else expected_retirement_file_sha256
+        )
+        root = _verify_abandoned_lineage_v2_candidate(
+            request.config,
+            prior_owner,
+            request.plan_file,
+            request.claim_root,
+            retirement,
+            expected_retirement_file_sha256=frozen_retirement_file_sha256,
+        )
+        if (
+            request.plan_sha256 != retirement.get("candidate_plan_sha256")
+            or request_owner_target(request) != retirement.get("candidate_target")
+            or root.get("plan_sha256") != request.plan_sha256
+        ):
+            raise ProtectedError("abandoned lineage successor differs from its v2 candidate")
+    elif expected_retirement_file_sha256 is not None:
+        raise ProtectedError("v2 retirement evidence disappeared before abandoned owner CAS")
     if (
         request.reservation_id is None
         or request.reservation_id
@@ -4025,6 +4215,7 @@ def _require_released_success_evidence(
     prior_owner: Record | None,
     *,
     runner: cutover.Runner | None = None,
+    expected_retirement_file_sha256: str | None = None,
 ) -> Record | None:
     """Classify current-success eligibility and freeze its release proof pre-reservation.
 
@@ -4051,7 +4242,9 @@ def _require_released_success_evidence(
         "phase"
     ) == "RELEASED":
         return _require_abandoned_lineage_successor_evidence(
-            request, cast(Record, prior_owner)
+            request,
+            cast(Record, prior_owner),
+            expected_retirement_file_sha256=expected_retirement_file_sha256,
         )
     if prior_owner is not None and _is_prestart_successor_released_owner(prior_owner):
         return _require_prestart_successor_success_evidence(request, prior_owner, runner=runner)
@@ -4509,6 +4702,45 @@ def _failed_terminal_bridge_live_verifier(
         if current_proof != expected_proof:
             raise ProtectedError(
                 "failed terminal predecessor or live state changed before owner reservation"
+            )
+
+    return verify
+
+
+def _abandoned_lineage_live_verifier(
+    request: Request,
+    prior_owner: Record,
+    expected_proof: Record,
+    *,
+    retirement_was_present: bool,
+    expected_retirement_file_sha256: str | None,
+) -> Callable[[], None]:
+    """Recheck the sealed lineage and its v2 candidate at the serialized owner CAS."""
+    retirement_path = (
+        request.config.scheduler_root / cutover.FAILED_TERMINAL_RETIREMENT_V2_NAME
+    )
+
+    def verify() -> None:
+        if retirement_was_present:
+            if not os.path.lexists(retirement_path):
+                raise ProtectedError(
+                    "v2 retirement evidence disappeared before abandoned owner CAS"
+                )
+            _, identity, _ = cutover._load_json(  # pyright: ignore[reportPrivateUsage]
+                retirement_path
+            )
+            if identity.sha256 != expected_retirement_file_sha256:
+                raise ProtectedError("v2 retirement evidence changed before abandoned owner CAS")
+        elif os.path.lexists(retirement_path):
+            raise ProtectedError("v2 retirement evidence appeared before abandoned owner CAS")
+        current_proof = _require_abandoned_lineage_successor_evidence(
+            request,
+            prior_owner,
+            expected_retirement_file_sha256=expected_retirement_file_sha256,
+        )
+        if current_proof != expected_proof:
+            raise ProtectedError(
+                "abandoned lineage or live state changed before owner reservation"
             )
 
     return verify
@@ -6157,11 +6389,17 @@ def main(argv: Sequence[str] | None = None) -> int:
         retirement_v2_path = (
             reservation_config.scheduler_root / cutover.FAILED_TERMINAL_RETIREMENT_V2_NAME
         )
-        if os.path.lexists(retirement_v2_path):
+        retirement_v2_was_present = os.path.lexists(retirement_v2_path)
+        retirement_v2_file_sha256: str | None = None
+        if retirement_v2_was_present:
             if args.action != "apply":
                 raise ProtectedError(
                     "v2 retirement evidence permits only its exact apply successor"
                 )
+            _retirement_snapshot, retirement_v2_identity, _ = cutover._load_json(  # pyright: ignore[reportPrivateUsage]
+                retirement_v2_path
+            )
+            retirement_v2_file_sha256 = retirement_v2_identity.sha256
             retired_v2_request = _recover_v2_successor_request(
                 reservation_config,
                 Path(args.legacy_worktree),
@@ -6172,6 +6410,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 prior_owner,
                 prior_execution_receipt_sha256=cutover.V5_PROTECTED_RECEIPT_SHA256,
                 takeover_stale=args.takeover_stale,
+                expected_retirement_file_sha256=retirement_v2_file_sha256,
             )
         prior_execution_path = reservation_config.scheduler_root / (
             ROLLBACK_RECEIPT_NAME if args.action == "rollback" else RECEIPT_NAME
@@ -6257,7 +6496,9 @@ def main(argv: Sequence[str] | None = None) -> int:
                     prior_execution_receipt_sha256=recovered_predecessor_sha,
                 )
             predecessor_release_evidence = _require_released_success_evidence(
-                prepared_request, prior_owner
+                prepared_request,
+                prior_owner,
+                expected_retirement_file_sha256=retirement_v2_file_sha256,
             )
         if prior_owner is not None and prior_owner.get("phase") != "RELEASED":
             reservation_id = text(prior_owner.get("reservation_id"))
@@ -6283,15 +6524,24 @@ def main(argv: Sequence[str] | None = None) -> int:
                 if (
                     prior_owner is not None
                     and predecessor_release_evidence is not None
-                    and predecessor_release_evidence.get("retired_failed_terminal_evidence")
-                    is not None
                 ):
-                    predecessor_live_verifier = _failed_terminal_bridge_live_verifier(
-                        prepared_request,
-                        prior_owner,
-                        predecessor_release_evidence,
-                        runner=cutover.run_command,
-                    )
+                    if _is_abandoned_lineage_owner(prior_owner):
+                        predecessor_live_verifier = _abandoned_lineage_live_verifier(
+                            prepared_request,
+                            prior_owner,
+                            predecessor_release_evidence,
+                            retirement_was_present=retirement_v2_was_present,
+                            expected_retirement_file_sha256=retirement_v2_file_sha256,
+                        )
+                    elif predecessor_release_evidence.get(
+                        "retired_failed_terminal_evidence"
+                    ) is not None:
+                        predecessor_live_verifier = _failed_terminal_bridge_live_verifier(
+                            prepared_request,
+                            prior_owner,
+                            predecessor_release_evidence,
+                            runner=cutover.run_command,
+                        )
                 owner = cutover.acquire_control_owner(
                     reservation_config,
                     action=args.action,
@@ -6303,6 +6553,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                     managed_receipt_sha256=prepared_request.managed_receipt_sha256,
                     predecessor_release_evidence=predecessor_release_evidence,
                     predecessor_live_verifier=predecessor_live_verifier,
+                    predecessor_claim_root=prepared_request.claim_root,
                 )
                 reservation_id = text(owner.get("reservation_id"))
             else:

@@ -7755,14 +7755,6 @@ def test_rebooted_current_success_still_refuses_runtime_drift(
 ABANDON_RELEASE: protected.Record = {"kind": "EXPLICIT_ABANDON_NO_MUTATION", "verified": True}
 
 
-def _accept_v2_evidence(evidence: protected.Record) -> protected.Record:
-    return evidence
-
-
-def _accept_v2_inputs(_config: cutover.CutoverConfig, _retirement: protected.Record) -> None:
-    return None
-
-
 def _owned_claim(_self: claims.ClaimStore, _key: str) -> dict[str, object]:
     return {"status": "OWNED"}
 
@@ -7841,6 +7833,169 @@ def _abandoned_lineage_fixture(
     return incident, continuation, abandoned
 
 
+def _abandoned_v2_candidate_fixture(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+) -> tuple[protected.Request, protected.Record, protected.Record, str]:
+    """Create a real v2 archive whose candidate is the not-started lineage root."""
+    _incident, candidate, _fixture_hashlib, intermediate_owner = (
+        _prepare_exact_released_v7_intermediate_bridge(harness, monkeypatch)
+    )
+    v2_proof = protected._require_released_success_evidence(  # pyright: ignore[reportPrivateUsage]
+        candidate, intermediate_owner, runner=harness.launchd
+    )
+    assert v2_proof is not None
+    retirement = protected.record(v2_proof["retired_failed_terminal_evidence"])
+    retirement_path = (
+        candidate.config.scheduler_root / cutover.FAILED_TERMINAL_RETIREMENT_V2_NAME
+    )
+    _, retirement_identity, _ = cutover.read_control_json(retirement_path)
+
+    root_identity = candidate.identity
+    root_receipt_unsigned: protected.Record = {
+        "schema_version": protected.SCHEMA,
+        "task_key": protected.TASK_KEY,
+        "identity": root_identity,
+        "execution_id": candidate.execution_id,
+        "phase": "COMPLETED",
+        "status": "FAILED",
+        "exit_code": 1,
+        "child_exit_code": None,
+        "result_status": "NOT_STARTED",
+        "managed_receipt": None,
+    }
+    root_receipt = {
+        **root_receipt_unsigned,
+        "receipt_sha256": protected.digest(root_receipt_unsigned),
+    }
+    receipt_path = candidate.receipt_path
+    archive_path = receipt_path.with_name(
+        f"{receipt_path.stem}.{candidate.execution_id}.superseded.json"
+    )
+    cutover._write_json(archive_path, root_receipt, expected=None)  # pyright: ignore[reportPrivateUsage]
+    _, root_receipt_identity, _ = cutover.read_control_json(archive_path)
+
+    root_authorization = protected.request_owner_authorization(candidate)
+    reconciliation_path = protected._prestart_reconciliation_record_path(  # pyright: ignore[reportPrivateUsage]
+        candidate.config, str(candidate.reservation_id)
+    )
+    reconciliation_unsigned: protected.Record = {
+        "schema": protected.PRESTART_NOT_STARTED_RECONCILIATION_SCHEMA,
+        "reason": protected.PRESTART_NOT_STARTED_RELEASE_KIND,
+        "stranded_protected_receipt_sha256": root_receipt_identity.sha256,
+        "stranded_protected_receipt_path": str(receipt_path),
+        "stranded_protected_receipt_archive": str(archive_path),
+        "reservation_id": candidate.reservation_id,
+        "operation_id": candidate.operation_id,
+        "plan_sha256": candidate.plan_sha256,
+        "plan_digest": candidate.plan_digest,
+        "control_identity": {"head": candidate.control_head, "tree": candidate.control_tree},
+        "predecessor_protected_receipt_sha256": cutover.V5_PROTECTED_RECEIPT_SHA256,
+        "unchanged_managed_receipt_sha256": cutover.V5_MANAGED_RECEIPT_SHA256,
+        "owner_authorization": root_authorization,
+        "claim_store_status": "ABSENT",
+        "rollback_receipt_absent": True,
+        "owner_mutation_started": False,
+        "old_live_state": {"verified": True},
+        "reconciled_at": "2026-10-10T00:00:00Z",
+    }
+    reconciliation = {
+        **reconciliation_unsigned,
+        "record_sha256": protected.digest(reconciliation_unsigned),
+    }
+    cutover._write_json(  # pyright: ignore[reportPrivateUsage]
+        reconciliation_path, reconciliation, expected=None
+    )
+    _, reconciliation_identity, _ = cutover.read_control_json(reconciliation_path)
+    root_release = {
+        "kind": protected.PRESTART_NOT_STARTED_RELEASE_KIND,
+        "verified": True,
+        "reconciliation_record_path": str(reconciliation_path),
+        "reconciliation_record_sha256": reconciliation_identity.sha256,
+        "stranded_protected_receipt_sha256": root_receipt_identity.sha256,
+        "protected_receipt_sha256": cutover.V5_PROTECTED_RECEIPT_SHA256,
+        "predecessor_protected_receipt_sha256": cutover.V5_PROTECTED_RECEIPT_SHA256,
+        "managed_receipt_sha256": cutover.V5_MANAGED_RECEIPT_SHA256,
+    }
+    abandoned_reservation = str(uuid4())
+    abandoned_operation = uuid4().hex
+    predecessor_unsigned: protected.Record = {
+        "schema": cutover.PROTECTED_PREDECESSOR_RELEASE_SCHEMA,
+        "prior_reservation_id": candidate.reservation_id,
+        "prior_operation_id": candidate.operation_id,
+        "prior_authorization_sha256": protected.digest(root_authorization),
+        "prior_release_evidence": root_release,
+        "prior_protected_receipt_sha256": cutover.V5_PROTECTED_RECEIPT_SHA256,
+        "prior_managed_receipt_sha256": cutover.V5_MANAGED_RECEIPT_SHA256,
+        "new_reservation_id": abandoned_reservation,
+        "new_operation_id": abandoned_operation,
+    }
+    predecessor = {
+        **predecessor_unsigned,
+        "evidence_sha256": protected.digest(predecessor_unsigned),
+    }
+    abandoned_owner: protected.Record = {
+        "schema": cutover.CONTROL_OWNER_SCHEMA,
+        "reservation_id": abandoned_reservation,
+        "owner_kind": "protected",
+        "owner_pid": os.getpid(),
+        "action": "apply",
+        "target": protected.request_owner_target(candidate),
+        "control_head": candidate.control_head,
+        "control_tree": candidate.control_tree,
+        "operation_id": abandoned_operation,
+        "managed_receipt_sha256": cutover.V5_MANAGED_RECEIPT_SHA256,
+        "phase": "RELEASED",
+        "created_at": "2026-10-10T00:00:00Z",
+        "updated_at": "2026-10-10T00:00:00Z",
+        "authorization": None,
+        "mutation_started": False,
+        "terminal": None,
+        "release_evidence": ABANDON_RELEASE,
+        "predecessor_release_evidence": predecessor,
+    }
+    abandoned_owner["authorization"] = cutover._owner_identity(  # pyright: ignore[reportPrivateUsage]
+        abandoned_owner
+    )
+    owner_snapshot = cutover._read_control_owner(candidate.config)  # pyright: ignore[reportPrivateUsage]
+    assert owner_snapshot is not None
+    _intermediate, owner_identity = owner_snapshot
+    abandoned_owner = cutover._save_control_owner(  # pyright: ignore[reportPrivateUsage]
+        candidate.config, abandoned_owner, expected=owner_identity
+    )
+    assert cutover.inspect_control_owner(candidate.config) is not None
+    return candidate, abandoned_owner, retirement, retirement_identity.sha256
+
+
+def _abandoned_v2_continuation_request(candidate: protected.Request) -> protected.Request:
+    return protected.make_request(
+        candidate.config,
+        candidate.legacy_worktree,
+        candidate.legacy_head,
+        candidate.legacy_tree,
+        candidate.plan_file,
+        candidate.claim_root,
+        reservation_id=str(uuid4()),
+        prior_execution_receipt_sha256=cutover.V5_PROTECTED_RECEIPT_SHA256,
+    )
+
+
+def _abandoned_v2_snapshot(request: protected.Request) -> dict[Path, bytes | None]:
+    paths = {
+        *request.config.scheduler_root.iterdir(),
+        request.config.receipt_path,
+        request.receipt_path,
+        request.plan_file,
+        cutover._control_owner_path(request.config),  # pyright: ignore[reportPrivateUsage]
+        claims.ClaimStore(request.claim_root).location(protected.TASK_KEY),
+        request.claim_root / ".coordination.lock",
+    }
+    return {
+        path: path.read_bytes() if path.is_file() else None
+        for path in paths
+    }
+
+
 def test_abandoned_lineage_continuation_is_sealed_and_still_needs_authorization(
     harness: Harness,
     monkeypatch: pytest.MonkeyPatch,
@@ -7887,6 +8042,14 @@ def test_abandoned_lineage_continuation_is_sealed_and_still_needs_authorization(
         operation_id=continuation.operation_id,
         managed_receipt_sha256=continuation.managed_receipt_sha256,
         predecessor_release_evidence=proof,
+        predecessor_live_verifier=protected._abandoned_lineage_live_verifier(
+            continuation,
+            abandoned,
+            proof,
+            retirement_was_present=False,
+            expected_retirement_file_sha256=None,
+        ),
+        predecessor_claim_root=continuation.claim_root,
     )
     # The continuation is reserved but not authorized: no apply without a new authorization.
     assert reserved["phase"] == "AUTHORIZATION_PENDING"
@@ -7913,53 +8076,193 @@ def test_abandoned_lineage_continuation_is_sealed_and_still_needs_authorization(
 def test_v2_gate_admits_abandoned_lineage_only_when_rooted_at_sealed_candidate(
     harness: Harness,
     monkeypatch: pytest.MonkeyPatch,
-    capsys: pytest.CaptureFixture[str],
 ) -> None:
-    incident, _continuation, abandoned = _abandoned_lineage_fixture(harness, monkeypatch, capsys)
-    config = incident.request.config
-    retirement_path = config.scheduler_root / cutover.FAILED_TERMINAL_RETIREMENT_V2_NAME
-    sealed: protected.Record = {
-        "schema": cutover.FAILED_TERMINAL_RETIREMENT_V2_SCHEMA,
-        "candidate_reservation_id": str(incident.request.reservation_id),
-        "candidate_operation_id": incident.request.operation_id,
-        "candidate_plan_sha256": incident.plan_sha256,
-        "candidate_target": protected.request_owner_target(incident.request),
-        "claim_root": str(harness.request.claim_root),
-    }
-    cutover._write_json(retirement_path, sealed, expected=None)  # pyright: ignore[reportPrivateUsage]
-    # The v2 validators pin the historical v5/v7 constants; this fixture exercises the
-    # lineage gate itself, so only the constant-bound validators are replaced.
-    monkeypatch.setattr(
-        cutover,
-        "_validate_failed_terminal_retirement_v2_evidence",
-        _accept_v2_evidence,
+    candidate, abandoned, retirement, retirement_sha = _abandoned_v2_candidate_fixture(
+        harness, monkeypatch
     )
-    monkeypatch.setattr(
-        cutover,
-        "_verify_failed_terminal_retirement_v2_inputs",
-        _accept_v2_inputs,
+    config = candidate.config
+    recovered = protected._recover_v2_successor_request(
+        config,
+        candidate.legacy_worktree,
+        candidate.legacy_head,
+        candidate.legacy_tree,
+        candidate.plan_file,
+        candidate.claim_root,
+        abandoned,
+        prior_execution_receipt_sha256=cutover.V5_PROTECTED_RECEIPT_SHA256,
+        expected_retirement_file_sha256=retirement_sha,
     )
-    legacy = incident.request
+    assert recovered is None
 
-    def gate(prior_owner: protected.Record) -> protected.Request | None:
-        return protected._recover_v2_successor_request(
-            config,
-            legacy.legacy_worktree,
-            legacy.legacy_head,
-            legacy.legacy_tree,
-            legacy.plan_file,
-            harness.request.claim_root,
-            prior_owner,
-            prior_execution_receipt_sha256=incident.predecessor_sha256,
+    continuation = protected.make_request(
+        config,
+        candidate.legacy_worktree,
+        candidate.legacy_head,
+        candidate.legacy_tree,
+        candidate.plan_file,
+        candidate.claim_root,
+        reservation_id=str(uuid4()),
+        prior_execution_receipt_sha256=cutover.V5_PROTECTED_RECEIPT_SHA256,
+    )
+    proof = protected._require_released_success_evidence(
+        continuation,
+        abandoned,
+        expected_retirement_file_sha256=retirement_sha,
+    )
+    assert proof is not None
+    reserved = cutover.acquire_control_owner(
+        config,
+        action="apply",
+        target=protected.request_owner_target(continuation),
+        owner_kind="protected",
+        reservation_id=str(continuation.reservation_id),
+        version={"head": continuation.control_head, "tree": continuation.control_tree},
+        operation_id=continuation.operation_id,
+        managed_receipt_sha256=continuation.managed_receipt_sha256,
+        predecessor_release_evidence=proof,
+        predecessor_live_verifier=protected._abandoned_lineage_live_verifier(
+            continuation,
+            abandoned,
+            proof,
+            retirement_was_present=True,
+            expected_retirement_file_sha256=retirement_sha,
+        ),
+        predecessor_claim_root=continuation.claim_root,
+    )
+    assert reserved["phase"] == "AUTHORIZATION_PENDING"
+    assert reserved["authorization"] is None
+    assert reserved["predecessor_release_evidence"] == proof
+    assert retirement["candidate_plan_sha256"] == candidate.plan_sha256
+    assert retirement["candidate_target"] == protected.request_owner_target(candidate)
+
+
+@pytest.mark.parametrize("field", ["candidate_plan_sha256", "candidate_target"])
+def test_v2_abandoned_lineage_rejects_resealed_candidate_drift_without_writes(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    field: str,
+) -> None:
+    candidate, abandoned, _retirement, _retirement_sha = _abandoned_v2_candidate_fixture(
+        harness, monkeypatch
+    )
+    retirement_path = candidate.config.scheduler_root / cutover.FAILED_TERMINAL_RETIREMENT_V2_NAME
+    stored, identity, _ = cutover.read_control_json(retirement_path)
+    unsigned = {key: value for key, value in stored.items() if key != "record_sha256"}
+    if field == "candidate_plan_sha256":
+        unsigned[field] = "0" * 64
+    else:
+        target = protected.record(unsigned[field])
+        unsigned[field] = {**target, "durable_ref": f"{target['durable_ref']}-foreign"}
+    tampered = {**unsigned, "record_sha256": protected.digest(unsigned)}
+    cutover._write_json(retirement_path, tampered, expected=identity)  # pyright: ignore[reportPrivateUsage]
+    before = _abandoned_v2_snapshot(candidate)
+    mutation_calls = list(harness.launchd.mutation_calls)
+
+    with pytest.raises(protected.ProtectedError, match="candidate differs"):
+        protected._recover_v2_successor_request(  # pyright: ignore[reportPrivateUsage]
+            candidate.config,
+            candidate.legacy_worktree,
+            candidate.legacy_head,
+            candidate.legacy_tree,
+            candidate.plan_file,
+            candidate.claim_root,
+            abandoned,
+            prior_execution_receipt_sha256=cutover.V5_PROTECTED_RECEIPT_SHA256,
         )
 
-    assert gate(abandoned) is None
+    assert _abandoned_v2_snapshot(candidate) == before
+    assert harness.launchd.mutation_calls == mutation_calls
 
-    sealed["candidate_reservation_id"] = str(uuid4())
-    retirement_path.unlink()
-    cutover._write_json(retirement_path, sealed, expected=None)  # pyright: ignore[reportPrivateUsage]
-    with pytest.raises(protected.ProtectedError, match="abandoned lineage"):
-        gate(abandoned)
+
+@pytest.mark.parametrize(
+    "hazard",
+    [
+        "failed_archive",
+        "intermediate_release",
+        "owner_drift",
+        "active_claim",
+        "managed_receipt",
+        "reconciliation_no_mutation",
+    ],
+)
+def test_abandoned_v2_owner_cas_rechecks_live_evidence_without_writes(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    hazard: str,
+) -> None:
+    candidate, abandoned, retirement, retirement_sha = _abandoned_v2_candidate_fixture(
+        harness, monkeypatch
+    )
+    continuation = _abandoned_v2_continuation_request(candidate)
+    proof = protected._require_released_success_evidence(
+        continuation,
+        abandoned,
+        expected_retirement_file_sha256=retirement_sha,
+    )
+    assert proof is not None
+    if hazard == "failed_archive":
+        archive_path = Path(protected.text(retirement["archive_path"]))
+        archive_path.write_bytes(archive_path.read_bytes() + b" ")
+    elif hazard == "intermediate_release":
+        Path(protected.text(retirement["intermediate_release_record_path"])).write_bytes(
+            Path(protected.text(retirement["intermediate_release_record_path"])).read_bytes()
+            + b" "
+        )
+    elif hazard == "owner_drift":
+        owner_path = cutover._control_owner_path(candidate.config)  # pyright: ignore[reportPrivateUsage]
+        current, identity, _ = cutover.read_control_json(owner_path)
+        cutover._save_control_owner(  # pyright: ignore[reportPrivateUsage]
+            candidate.config,
+            {**current, "terminal": {"drift": True}},
+            expected=identity,
+        )
+    elif hazard == "active_claim":
+        monkeypatch.setattr(claims.ClaimStore, "inspect", _owned_claim)
+    elif hazard == "managed_receipt":
+        with candidate.config.receipt_path.open("ab") as stream:
+            stream.write(b" ")
+    else:
+        reconciliation_path = protected._prestart_reconciliation_record_path(  # pyright: ignore[reportPrivateUsage]
+            candidate.config, str(candidate.reservation_id)
+        )
+        reconciliation, identity = protected._load_prestart_reconciliation(  # pyright: ignore[reportPrivateUsage]
+            reconciliation_path
+        )
+        unsigned = {
+            key: value for key, value in reconciliation.items() if key != "record_sha256"
+        }
+        unsigned["owner_mutation_started"] = True
+        cutover._write_json(  # pyright: ignore[reportPrivateUsage]
+            reconciliation_path,
+            {**unsigned, "record_sha256": protected.digest(unsigned)},
+            expected=identity,
+        )
+    before = _abandoned_v2_snapshot(candidate)
+    mutation_calls = list(harness.launchd.mutation_calls)
+
+    with pytest.raises((protected.ProtectedError, cutover.CutoverSafetyError)):
+        cutover.acquire_control_owner(
+            candidate.config,
+            action="apply",
+            target=protected.request_owner_target(continuation),
+            owner_kind="protected",
+            reservation_id=str(continuation.reservation_id),
+            version={"head": continuation.control_head, "tree": continuation.control_tree},
+            operation_id=continuation.operation_id,
+            managed_receipt_sha256=continuation.managed_receipt_sha256,
+            predecessor_release_evidence=proof,
+            predecessor_live_verifier=protected._abandoned_lineage_live_verifier(
+                continuation,
+                abandoned,
+                proof,
+                retirement_was_present=True,
+                expected_retirement_file_sha256=retirement_sha,
+            ),
+            predecessor_claim_root=continuation.claim_root,
+        )
+
+    assert _abandoned_v2_snapshot(candidate) == before
+    assert harness.launchd.mutation_calls == mutation_calls
 
 
 def _reseal_abandoned_proof(proof: protected.Record, **link_updates: object) -> protected.Record:

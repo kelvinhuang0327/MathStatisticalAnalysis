@@ -2032,10 +2032,28 @@ def _verify_failed_terminal_retirement_v2_inputs(
     config: CutoverConfig,
     evidence: Record,
 ) -> None:
+    _verify_failed_terminal_retirement_v2_archived_inputs(config, evidence)
+    _verify_failed_terminal_retirement_v2_intermediate_owner(config, evidence)
+
+
+def _verify_failed_terminal_retirement_v2_archived_inputs(
+    config: CutoverConfig,
+    evidence: Record,
+    *,
+    expected_retirement_file_sha256: str | None = None,
+) -> None:
+    """Revalidate immutable v2 archives without requiring the old owner to remain current."""
     retirement_path = _control_owner_path(config).with_name(FAILED_TERMINAL_RETIREMENT_V2_NAME)
-    stored, _retirement_identity, _ = _load_json(retirement_path)
-    if stored != evidence:
+    stored, retirement_identity, _ = _load_json(retirement_path)
+    if (
+        stored != evidence
+        or (
+            expected_retirement_file_sha256 is not None
+            and retirement_identity.sha256 != expected_retirement_file_sha256
+        )
+    ):
         raise CutoverSafetyError("v2 failed terminal retirement evidence changed before owner CAS")
+    _validate_failed_terminal_retirement_v2_evidence(stored)
 
     receipt_path = config.scheduler_root / FAILED_TERMINAL_RECEIPT_NAME
     archive_path = Path(_text(evidence.get("archive_path"), "failed receipt archive path"))
@@ -2102,22 +2120,6 @@ def _verify_failed_terminal_retirement_v2_inputs(
         and cast(Record, failed_link).get("operation_id") == FAILED_TERMINAL_OPERATION_ID
     ):
         raise CutoverSafetyError("failed v6 operation unexpectedly has a managed receipt")
-
-    owner_snapshot = _read_control_owner(config)
-    if owner_snapshot is None:
-        raise CutoverSafetyError(
-            "released intermediate owner disappeared before successor owner CAS"
-        )
-    current_owner, owner_identity = owner_snapshot
-    recorded_owner = _record(
-        evidence.get("intermediate_owner_record"), "released intermediate owner"
-    )
-    if (
-        current_owner != recorded_owner
-        or owner_identity.sha256 != RELEASED_INTERMEDIATE_OWNER_FILE_SHA256
-        or current_owner.get("record_sha256") != RELEASED_INTERMEDIATE_OWNER_RECORD_SHA256
-    ):
-        raise CutoverSafetyError("released intermediate owner changed before successor owner CAS")
 
     release_path = config.scheduler_root / (
         f"b649-prestart-successor-release-{RELEASED_INTERMEDIATE_RESERVATION_ID}.json"
@@ -2236,6 +2238,28 @@ def _verify_failed_terminal_retirement_v2_inputs(
             raise CutoverSafetyError(
                 "released intermediate unexpectedly has a protected execution receipt"
             )
+
+
+def _verify_failed_terminal_retirement_v2_intermediate_owner(
+    config: CutoverConfig,
+    evidence: Record,
+) -> None:
+    """Check the owner identity only while that historical owner is still current."""
+    owner_snapshot = _read_control_owner(config)
+    if owner_snapshot is None:
+        raise CutoverSafetyError(
+            "released intermediate owner disappeared before successor owner CAS"
+        )
+    current_owner, owner_identity = owner_snapshot
+    recorded_owner = _record(
+        evidence.get("intermediate_owner_record"), "released intermediate owner"
+    )
+    if (
+        current_owner != recorded_owner
+        or owner_identity.sha256 != RELEASED_INTERMEDIATE_OWNER_FILE_SHA256
+        or current_owner.get("record_sha256") != RELEASED_INTERMEDIATE_OWNER_RECORD_SHA256
+    ):
+        raise CutoverSafetyError("released intermediate owner changed before successor owner CAS")
 
 def _read_control_owner(config: CutoverConfig) -> tuple[Record, FileIdentity] | None:
     path = _control_owner_path(config)
@@ -2505,6 +2529,7 @@ def acquire_control_owner(
     managed_receipt_sha256: str | None = None,
     predecessor_release_evidence: Record | None = None,
     predecessor_live_verifier: Callable[[], None] | None = None,
+    predecessor_claim_root: Path | None = None,
 ) -> Record:
     """Atomically reserve the shared control boundary before receipt capture."""
     if action not in {"apply", "rollback"} or owner_kind not in {"managed", "protected"}:
@@ -2530,6 +2555,7 @@ def acquire_control_owner(
         raise CutoverSafetyError("managed receipt SHA256 is invalid")
     with CutoverLock(_control_owner_lock_path(config)):
         current = _read_control_owner(config)
+        require_predecessor_revalidation = False
         if current is not None:
             value, identity = current
             failed_signature = (
@@ -2645,7 +2671,11 @@ def acquire_control_owner(
                             raise CutoverSafetyError(
                                 "failed terminal successor requires live predecessor revalidation"
                             )
-                        predecessor_live_verifier()
+                        if predecessor_claim_root is None:
+                            predecessor_claim_root = Path(
+                                _text(retirement.get("claim_root"), "retirement claim root")
+                            )
+                        require_predecessor_revalidation = True
                     elif exact_released_intermediate:
                         if (
                             owner_kind != "protected"
@@ -2686,7 +2716,11 @@ def acquire_control_owner(
                             raise CutoverSafetyError(
                                 "released intermediate successor requires live v5 revalidation"
                             )
-                        predecessor_live_verifier()
+                        if predecessor_claim_root is None:
+                            predecessor_claim_root = Path(
+                                _text(retirement.get("claim_root"), "retirement claim root")
+                            )
+                        require_predecessor_revalidation = True
                     elif (
                         retirement_value is not None
                         or owner_kind != "protected"
@@ -2705,6 +2739,15 @@ def acquire_control_owner(
                         _require_abandoned_lineage_binds_owner(
                             predecessor[ABANDONED_LINEAGE_LINK_KEY], value
                         )
+                        if predecessor_live_verifier is None:
+                            raise CutoverSafetyError(
+                                "abandoned lineage successor requires live predecessor revalidation"
+                            )
+                        if predecessor_claim_root is None:
+                            raise CutoverSafetyError(
+                                "abandoned lineage successor requires its ClaimStore root"
+                            )
+                        require_predecessor_revalidation = True
                 elif exact_failed_owner:
                     raise CutoverSafetyError(
                         "failed terminal owner requires a verified successor predecessor proof"
@@ -2766,7 +2809,27 @@ def acquire_control_owner(
         if predecessor_release_evidence is not None:
             created["predecessor_release_evidence"] = predecessor_release_evidence
             _validate_predecessor_release_evidence(predecessor_release_evidence, created)
-        return _save_control_owner(config, created, expected=expected)
+        if require_predecessor_revalidation and predecessor_claim_root is None:
+            raise CutoverSafetyError(
+                "successor reservation requires ClaimStore synchronization at owner CAS"
+            )
+        if require_predecessor_revalidation and predecessor_live_verifier is None:
+            raise CutoverSafetyError("successor reservation requires live predecessor revalidation")
+
+        def save_owner() -> Record:
+            if predecessor_live_verifier is not None:
+                predecessor_live_verifier()
+            return _save_control_owner(config, created, expected=expected)
+
+        if require_predecessor_revalidation:
+            if predecessor_claim_root is None:
+                raise CutoverSafetyError(
+                    "successor reservation requires ClaimStore synchronization at owner CAS"
+                )
+            claim_store = ClaimStore(predecessor_claim_root)
+            with claim_store._transaction():  # pyright: ignore[reportPrivateUsage]
+                return save_owner()
+        return save_owner()
 
 
 def resume_control_owner(

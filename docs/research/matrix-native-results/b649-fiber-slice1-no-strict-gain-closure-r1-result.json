@@ -1,0 +1,303 @@
+{
+ "EVALUATOR": {
+  "FIELD": "official_any_prize_outcome_count",
+  "FUNCTION": "evaluate_portfolio",
+  "GIT_BLOB": "3d053b2d9bc2182fc00b22889e837be5d0ba10aa",
+  "PATH": "src/lottolab/research/b649_official_any_prize_exact.py",
+  "SHA256": "92dcb836254cc6dbcd6c2ad907e619a5eb8cf3917197a8f6de3e5f989825cf66"
+ },
+ "EVIDENCE_BOUNDARY": {
+  "CP_SAT_SOLVES": 0,
+  "MODELS_BUILT": 0,
+  "PORTFOLIOS_COUNTED": "FIVE_CLASS_REPRESENTATIVES_AND_THE_CANONICAL_START",
+  "SEARCH": "NONE"
+ },
+ "FROZEN_SLICE1_NO_STRICT_GAIN": "PASS",
+ "GLOBAL_K20_OPTIMUM": "UNKNOWN",
+ "MANIFEST": {
+  "PROFILES_SHA256": "40d0cdfd082c1800ac4e9e34079929f807ec5af763a9125ffb9bdd3e0b08fb8d",
+  "RELATIVE": "docs/research/matrix-native-results/b649-k20-fiber-near-top-s3-census-slice1-manifest.json",
+  "SHA256": "4b1df0503ab0c4a780e56b6189821f1d2f9080c2124dc6951d8663580e79e64f"
+ },
+ "MAX_OFFICIAL_EXACT_COUNT": 313263888,
+ "PARTITION": {
+  "DISJOINT_AND_COVERING": true,
+  "MANIFEST_CELLS": 992,
+  "ONE_T_PER_CELL": true,
+  "R30_CP_SAT_INFEASIBLE": 990,
+  "T266_CLOSED_FORM_THEOREM": 1,
+  "T266_MANIFEST_INDEX": 522,
+  "T270_EXACT_CLOSURE": 1,
+  "T270_MANIFEST_INDEX": 0
+ },
+ "R30_CERTIFICATES": {
+  "ATTEMPTS_RECHECKED": 990,
+  "CERTIFICATE": "CP_SAT_INFEASIBLE",
+  "CERTIFIED_CELLS": 990,
+  "IMPORTS_SHA256": "b53cfdd66800b766861dd109a6891e0859e184c1ee9588a3f6df97bcf8e59951",
+  "OVERLAY_REDERIVED_FROM_R30_RESULT": true,
+  "OVERLAY_RELATIVE": "docs/research/matrix-native-results/b649-k20-fiber-slice1-r30-exact-refutation-overlay-r1.json",
+  "OVERLAY_SHA256": "6c44200780ea742efadb1e5d161744a7665f99b13822b1613a07fc804d016b19",
+  "PER_CELL_MODEL_EQUIVALENCE": "PINNED_DIGEST_NOT_RERUN",
+  "PER_CELL_MODEL_EQUIVALENCE_SHA256": "7bf4bed1d679f302cbaff33c86e4e71d066ac3571d64f2d773a18d764ba4988c",
+  "R30_RESULT_SHA256": "9ed94532cc2bff5de1569f10561fb8340238ff3b1b1c3ae129e6a4929014f6fe",
+  "R30_TASK_HEAD": "6ba4811304ec6528738a0c0b38969901b264d241"
+ },
+ "RUN1_EVIDENCE": {
+  "CENSUS_RUN1_LEDGERS_READ": false,
+  "NOTE": "a scientific closure; RUN1 execution state is neither read nor changed",
+  "RUN1_RECORDS_USED": false
+ },
+ "RUN1_EXECUTION_TERMINAL": "NOT_CLAIMED",
+ "SCHEMA_VERSION": 1,
+ "SCOPE": {
+  "CLAIM": "no fiber structure in the 992 frozen Slice-1 cells has an official exact count of at least the strict-gain threshold",
+  "GLOBAL_MIN_S2_FAMILY": "NOT_CLAIMED",
+  "LOWER_T_CELLS": "NOT_CLAIMED",
+  "OFF_FIBER": "NOT_CLAIMED",
+  "SLICE2": "NOT_CLAIMED"
+ },
+ "SLICE1_SCIENTIFIC_DISPOSITION": "PROVED_NO_STRICT_GAIN",
+ "SLICE1_SCIENTIFIC_NO_STRICT_GAIN": "PROVED",
+ "START_COUNT": 313263888,
+ "STRICT_GAIN_THRESHOLD": 313263889,
+ "T266_CERTIFICATE": {
+  "CELL": [
+   "66665555555322000000",
+   266
+  ],
+  "CENSUS_CHASE_REQUEST_SHA256": "d2eb06019af0b2854af4507436275968807655ffdeecdbbf6886fc4eb1ee9b8b",
+  "CERTIFICATE": "CLOSED_FORM_THEOREM_CERTIFICATE",
+  "MODULE_SHA256": "0f5b9b3acb830ecf2c997e05c7271b1df3a1a17f7ea0f477fca41d40731596c9",
+  "OPEN_WEDGES_MIN": 48,
+  "OPEN_WEDGE_CEILING_AT_T": 33,
+  "PROOF_IDENTITY": "B649_66665555555322000000_OPEN_WEDGE_BOUND_V1",
+  "PROOF_SHA256": "716816d2769ba50c0006106bd846869cf9a3f03b12af428309f9ae7799d26885",
+  "SOURCE_COMMIT": "55c504908efd39793f639a148520ea4175a4bf38",
+  "T_MAX": 261,
+  "W": 831
+ },
+ "T270_EXACT_CLOSURE": {
+  "ARCHIVE": {
+   "COMMIT": "2f2054da69a327a5b14a4f39d4e623b364edf321",
+   "DIRECTORY": "research-archive/B649_K20_FIBER_INCUMBENT_T270_STRUCTURAL_EXACT_CLOSURE_R1",
+   "FILES_SHA256": {
+    "result.json": "cd136425601d69c4cf1f437ea11a2c2bd25ff9d295e2cc2f670092aeb20176b8",
+    "t270_structural_closure.py": "45ee56d3426c363137c74ce76f8762d50e10d180d20220fd994b336c04dfce07",
+    "test_t270_structural_closure.py": "4ac139d0c00d2dc9015de016351b7fe928109fea83506ba913976e6eda2a2894"
+   },
+   "IN_TREE_COPY": "docs/research/matrix-native-results/b649-fiber-t270-structural-exact-closure-r1-result.json",
+   "IN_TREE_COPY_BYTE_IDENTICAL": true
+  },
+  "CELL": [
+   "55555555555511111100",
+   270
+  ],
+  "EXACT_CELL_MAX": 313263888,
+  "ISOMORPHISM_CLASS_COUNT": 5,
+  "MAX_ATTAINED_BY": [
+   "NONCYCLIC/orbit0",
+   "NONCYCLIC/orbit3"
+  ],
+  "RECORDED_CLASS_TABLE_MATCHES": true,
+  "REPRESENTATIVES": [
+   {
+    "CLASS_ID": "CYCLIC/orbit0",
+    "DELETED_POINT_ORBIT": [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5,
+     6,
+     7,
+     8,
+     9,
+     10,
+     11,
+     12
+    ],
+    "GRAPH_TRIANGLES": 270,
+    "OFFICIAL_EXACT_COUNT": 313263867,
+    "OPEN_WEDGES": 6,
+    "PORTFOLIO_SHA256": "9ca36ce5eda1b35205351838c540a9aaf5c947bcfcf62821b321377672e1b3e3",
+    "STS_CLASS": "CYCLIC"
+   },
+   {
+    "CLASS_ID": "NONCYCLIC/orbit0",
+    "DELETED_POINT_ORBIT": [
+     0,
+     1,
+     4,
+     8,
+     11,
+     12
+    ],
+    "GRAPH_TRIANGLES": 270,
+    "OFFICIAL_EXACT_COUNT": 313263888,
+    "OPEN_WEDGES": 6,
+    "PORTFOLIO_SHA256": "d4c199fc32d5d6b4905382d0c805fab307f121767c794cd6c508ce837d12f1a3",
+    "STS_CLASS": "NONCYCLIC"
+   },
+   {
+    "CLASS_ID": "NONCYCLIC/orbit2",
+    "DELETED_POINT_ORBIT": [
+     2,
+     7,
+     9
+    ],
+    "GRAPH_TRIANGLES": 270,
+    "OFFICIAL_EXACT_COUNT": 313263881,
+    "OPEN_WEDGES": 6,
+    "PORTFOLIO_SHA256": "3d5942373b6112630a72292dd663a8d01a464853f6134cee871bdb4185aaf270",
+    "STS_CLASS": "NONCYCLIC"
+   },
+   {
+    "CLASS_ID": "NONCYCLIC/orbit3",
+    "DELETED_POINT_ORBIT": [
+     3,
+     5,
+     10
+    ],
+    "GRAPH_TRIANGLES": 270,
+    "OFFICIAL_EXACT_COUNT": 313263888,
+    "OPEN_WEDGES": 6,
+    "PORTFOLIO_SHA256": "15f55f19a4def0a3dfa0ddbcaef9bbec19c8a9ab39fe683d53f717bd81e7eb47",
+    "STS_CLASS": "NONCYCLIC"
+   },
+   {
+    "CLASS_ID": "NONCYCLIC/orbit6",
+    "DELETED_POINT_ORBIT": [
+     6
+    ],
+    "GRAPH_TRIANGLES": 270,
+    "OFFICIAL_EXACT_COUNT": 313263881,
+    "OPEN_WEDGES": 6,
+    "PORTFOLIO_SHA256": "f96b1b03020cb0a7de745b2303281267ebdeb092df1e16cb4e079eaa81c98317",
+    "STS_CLASS": "NONCYCLIC"
+   }
+  ],
+  "RESULT_SHA256": "cd136425601d69c4cf1f437ea11a2c2bd25ff9d295e2cc2f670092aeb20176b8",
+  "SOURCE_STATUS": "PROVED_NO_STRICT_GAIN_WITHIN_DEFINED_PROFILE_T270_CELL",
+  "SOURCE_TASK_ID": "B649_K20_FIBER_INCUMBENT_T270_STRUCTURAL_EXACT_CLOSURE_R1",
+  "START": {
+   "CLASS_ID": "NONCYCLIC/orbit3",
+   "COUNT": 313263888,
+   "FIELD": "SEARCH_START_TICKETS",
+   "FILE_SHA256": "3d5d3f8f2389b66a9b2c45b0e345b81a0d9dc59d08ca9223519be70a055e5a00",
+   "GRAPH_TRIANGLES": 270,
+   "NORMALIZED_SHA256": "eaed652900d101881b678a1515d2a366bff9de6723dbec2ec9c82fe0d0d7844c",
+   "PATH": "docs/research/matrix-native-results/b649-k20-12-8-winner-two-ticket-ascent-r1-result.json",
+   "PROFILE_ID": "55555555555511111100"
+  },
+  "STRUCTURAL_ARITHMETIC": {
+   "CELL_AT_LEAST_CAP_EQUALS_CELL_AT_CAP": true,
+   "DEGREES": "11^12, 7^6, 6^2",
+   "EDGES": 93,
+   "HL_EDGE_TERM_LOWER_BOUND": 4,
+   "H_DEGREE_SUM": 132,
+   "L_DEGREE_SUM": 54,
+   "REALIZABLE_T": [
+    270
+   ],
+   "TRIANGLES_OF_K12_PLUS_K8_MINUS_E": 270,
+   "T_TRACE": [
+    {
+     "ADMITTED_C": [
+      0
+     ],
+     "OPEN_WEDGES": 6,
+     "T": 270
+    },
+    {
+     "ADMITTED_C": [],
+     "OPEN_WEDGES": 3,
+     "T": 271
+    },
+    {
+     "ADMITTED_C": [],
+     "OPEN_WEDGES": 0,
+     "T": 272
+    }
+   ],
+   "W": 816
+  },
+  "STRUCTURAL_PROOF_STEPS": [
+   "L0_DEGREE",
+   "P1_S1_WEDGES",
+   "P1_S2_EDGE_IDENTITY",
+   "P1_S3_HL_BOUND",
+   "P1_S4_PARITY",
+   "P1_S5_C_EQUALS_2_EXCLUDED",
+   "P1_S6_RESULT",
+   "P2_S1_LABEL_SIDES",
+   "P2_S2_MATCHING",
+   "P2_S3_STS13",
+   "P2_S4_L_UNIQUE",
+   "P2_S5_INVARIANCE",
+   "P2_S6_COVERAGE",
+   "P3_ACCOUNTING"
+  ],
+  "STS13_CLASSIFICATION": {
+   "CLASSES": {
+    "CYCLIC": {
+     "AUTOMORPHISM_GROUP_ORDER": 39,
+     "LABELED_MASS": 159667200,
+     "PASCH_COUNT": 13,
+     "POINT_ORBITS": [
+      [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5,
+       6,
+       7,
+       8,
+       9,
+       10,
+       11,
+       12
+      ]
+     ]
+    },
+    "NONCYCLIC": {
+     "AUTOMORPHISM_GROUP_ORDER": 6,
+     "LABELED_MASS": 1037836800,
+     "PASCH_COUNT": 8,
+     "POINT_ORBITS": [
+      [
+       0,
+       1,
+       4,
+       8,
+       11,
+       12
+      ],
+      [
+       2,
+       7,
+       9
+      ],
+      [
+       3,
+       5,
+       10
+      ],
+      [
+       6
+      ]
+     ]
+    }
+   },
+   "COMPLETE": true,
+   "CROSS_ISOMORPHISMS": 0,
+   "FIXED_MATCHING_COMPLETIONS": 115200,
+   "LABELED_STS13_TOTAL": 1197504000,
+   "PERFECT_MATCHINGS_OF_12": 10395
+  }
+ },
+ "TASK_ID": "B649_FIBER_SLICE1_PROVEN_NO_STRICT_GAIN_CLOSURE_R1"
+}

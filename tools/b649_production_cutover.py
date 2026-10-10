@@ -46,7 +46,8 @@ RECEIPT_SCHEMA_VERSION = "b649-managed-production-cutover-receipt-v1"
 CONTROL_OWNER_SCHEMA = "b649-durable-control-owner-v1"
 PROTECTED_PREDECESSOR_RELEASE_SCHEMA = "b649-protected-predecessor-release-v1"
 PRESTART_SUCCESSOR_PREDECESSOR_SCHEMA = "b649-protected-prestart-successor-predecessor-v1"
-VERSIONED_TARGET_TRANSITION_SCHEMA = "b649-v8-sealed-target-transition-v1"
+LEGACY_VERSIONED_TARGET_TRANSITION_SCHEMA = "b649-v8-sealed-target-transition-v1"
+VERSIONED_TARGET_TRANSITION_SCHEMA = "b649-v8-sealed-target-transition-v2"
 FAILED_TERMINAL_RETIREMENT_SCHEMA = "b649-protected-failed-terminal-retirement-v1"
 FAILED_TERMINAL_RETIREMENT_NAME = (
     "b649-failed-terminal-retirement-27e1039be8f511114e06fcae200fcc2f.json"
@@ -1864,7 +1865,7 @@ def _validate_predecessor_release_evidence(value: object, owner: Record) -> Reco
             transition_unsigned = {
                 key: item for key, item in transition.items() if key != "evidence_sha256"
             }
-            transition_fields = {
+            transition_fields_v1 = {
                 "schema",
                 "predecessor_owner_path",
                 "predecessor_owner_file_sha256",
@@ -1892,6 +1893,12 @@ def _validate_predecessor_release_evidence(value: object, owner: Record) -> Reco
                 "operation_id",
                 "evidence_sha256",
             }
+            transition_schema = transition.get("schema")
+            transition_fields = (
+                transition_fields_v1 | {"loaded_old_target"}
+                if transition_schema == VERSIONED_TARGET_TRANSITION_SCHEMA
+                else transition_fields_v1
+            )
             predecessor_authorization = _record(
                 transition.get("predecessor_authorization"),
                 "transition predecessor authorization",
@@ -1900,6 +1907,11 @@ def _validate_predecessor_release_evidence(value: object, owner: Record) -> Reco
                 transition.get("predecessor_target")
             )
             transition_target = _normalized_owner_target(transition.get("target"))
+            loaded_old_target = (
+                _normalized_owner_target(transition.get("loaded_old_target"))
+                if transition_schema == VERSIONED_TARGET_TRANSITION_SCHEMA
+                else None
+            )
             hash_fields = (
                 "predecessor_owner_file_sha256",
                 "predecessor_owner_record_sha256",
@@ -1918,7 +1930,11 @@ def _validate_predecessor_release_evidence(value: object, owner: Record) -> Reco
             )
             if (
                 set(transition) != transition_fields
-                or transition.get("schema") != VERSIONED_TARGET_TRANSITION_SCHEMA
+                or transition_schema
+                not in {
+                    LEGACY_VERSIONED_TARGET_TRANSITION_SCHEMA,
+                    VERSIONED_TARGET_TRANSITION_SCHEMA,
+                }
                 or transition.get("evidence_sha256") != _sha256_json(transition_unsigned)
                 or set(predecessor_authorization)
                 != {
@@ -1973,6 +1989,18 @@ def _validate_predecessor_release_evidence(value: object, owner: Record) -> Reco
                 or transition_prior_target != prior_target
                 or transition_target != new_target
                 or transition_target == transition_prior_target
+                or (
+                    transition_schema == VERSIONED_TARGET_TRANSITION_SCHEMA
+                    and (
+                        loaded_old_target is None
+                        or (
+                            loaded_old_target.get("head"),
+                            loaded_old_target.get("tree"),
+                        )
+                        != (V5_SOURCE_HEAD, V5_SOURCE_TREE)
+                        or loaded_old_target in (transition_prior_target, transition_target)
+                    )
+                )
                 or transition.get("protected_success_anchor_sha256")
                 != evidence.get("prior_protected_receipt_sha256")
                 or transition.get("managed_success_receipt_sha256")

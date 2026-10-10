@@ -108,6 +108,12 @@ V8_SOURCE_HEAD = "ef28fecc5d6198465cedc37770a586c3239ce63f"
 V8_SOURCE_TREE = "601760544573651795e365f8c9d95d59405fbb85"
 V8_TARGET_METHOD = "B649_SEALED_GEOMETRY_PORTFOLIO@8.0.0"
 V8_TARGET_K20_SHA256 = "eaed652900d101881b678a1515d2a366bff9de6723dbec2ec9c82fe0d0d7844c"
+# A released owner whose operation was explicitly abandoned before mutation. It
+# has no protected apply receipt, so its continuation is proven by a link that
+# embeds the abandoned owner's sealed predecessor instead of a receipt SHA.
+EXPLICIT_ABANDON_RELEASE_KIND = "EXPLICIT_ABANDON_NO_MUTATION"
+ABANDONED_LINEAGE_LINK_KEY = "abandoned_lineage_link"
+ABANDONED_LINEAGE_LINK_SCHEMA = "b649-protected-abandoned-lineage-link-v1"
 CONTROL_OWNER_NAME = "b649-control-owner-reservation.json"
 COMMAND_TIMEOUT = 10
 MAX_OUTPUT_BYTES = 2 * 1024 * 1024
@@ -1698,6 +1704,55 @@ def _validate_failed_terminal_retirement_v2_evidence(evidence: Record) -> Record
         raise CutoverSafetyError("successor operation identity is invalid")
     return evidence
 
+
+def _validate_abandoned_lineage_link(
+    link_value: object,
+    evidence: Record,
+    prior_release: Record,
+) -> None:
+    """Bind an explicit-abandon predecessor to its own sealed predecessor chain.
+
+    The abandoned owner carried no protected receipt, so the only carried
+    SUCCESS identity is the chain's protected receipt SHA. The embedded
+    predecessor must reach that same SHA and the same managed receipt.
+    """
+    link = _record(link_value, "abandoned lineage link")
+    if (
+        set(prior_release) != {"kind", "verified"}
+        or prior_release.get("verified") is not True
+        or set(link)
+        != {
+            "schema",
+            "abandoned_record_sha256",
+            "abandoned_authorization",
+            "abandoned_target",
+            "predecessor_evidence",
+            "protected_receipt_sha256",
+            "managed_receipt_sha256",
+        }
+        or link.get("schema") != ABANDONED_LINEAGE_LINK_SCHEMA
+        or re.fullmatch(r"[0-9a-f]{64}", str(link.get("abandoned_record_sha256"))) is None
+        or _sha256_json(link.get("abandoned_authorization"))
+        != evidence.get("prior_authorization_sha256")
+        or link.get("protected_receipt_sha256") != evidence.get("prior_protected_receipt_sha256")
+        or link.get("managed_receipt_sha256") != evidence.get("prior_managed_receipt_sha256")
+    ):
+        raise CutoverSafetyError("abandoned lineage link is invalid")
+    inner = _validate_predecessor_release_evidence(
+        link.get("predecessor_evidence"),
+        {
+            "reservation_id": evidence.get("prior_reservation_id"),
+            "operation_id": evidence.get("prior_operation_id"),
+            "managed_receipt_sha256": evidence.get("prior_managed_receipt_sha256"),
+            "target": link.get("abandoned_target"),
+        },
+    )
+    if inner.get("prior_protected_receipt_sha256") != evidence.get(
+        "prior_protected_receipt_sha256"
+    ) or inner.get("prior_managed_receipt_sha256") != evidence.get("prior_managed_receipt_sha256"):
+        raise CutoverSafetyError("abandoned lineage link changes the carried SUCCESS predecessor")
+
+
 def _validate_predecessor_release_evidence(value: object, owner: Record) -> Record:
     evidence = _record(value, "protected predecessor release evidence")
     unsigned = {key: item for key, item in evidence.items() if key != "evidence_sha256"}
@@ -1719,9 +1774,12 @@ def _validate_predecessor_release_evidence(value: object, owner: Record) -> Reco
         frozenset(required),
         frozenset(required | {"retired_failed_terminal_evidence"}),
         frozenset(required | {prestart_link_key}),
+        frozenset(required | {ABANDONED_LINEAGE_LINK_KEY}),
     }
     prestart_link = evidence.get(prestart_link_key)
     prestart_successor_release = prior_release.get("kind") == "PRESTART_SUCCESSOR_NO_MUTATION"
+    abandoned_release = prior_release.get("kind") == EXPLICIT_ABANDON_RELEASE_KIND
+    abandoned_link = evidence.get(ABANDONED_LINEAGE_LINK_KEY)
     if (
         frozenset(evidence) not in allowed
         or evidence.get("schema") != PROTECTED_PREDECESSOR_RELEASE_SCHEMA
@@ -1730,10 +1788,16 @@ def _validate_predecessor_release_evidence(value: object, owner: Record) -> Reco
         or evidence.get("new_operation_id") != owner.get("operation_id")
         or evidence.get("prior_managed_receipt_sha256") != owner.get("managed_receipt_sha256")
         or prior_release.get("verified") is not True
-        or prior_release.get("managed_receipt_sha256")
-        != evidence.get("prior_managed_receipt_sha256")
+        # An explicit abandon carries no managed hash; its managed binding is the link's.
+        or (
+            not abandoned_release
+            and prior_release.get("managed_receipt_sha256")
+            != evidence.get("prior_managed_receipt_sha256")
+        )
         or prestart_successor_release != (prestart_link is not None)
         or (prestart_link_key in evidence) != (prestart_link is not None)
+        or abandoned_release != (abandoned_link is not None)
+        or (ABANDONED_LINEAGE_LINK_KEY in evidence) != (abandoned_link is not None)
     ):
         raise CutoverSafetyError("protected predecessor release evidence is invalid")
     if prestart_successor_release:
@@ -1780,6 +1844,8 @@ def _validate_predecessor_release_evidence(value: object, owner: Record) -> Reco
             raise CutoverSafetyError("pre-start successor predecessor link is invalid")
         _text(link.get("predecessor_reservation_id"), "predecessor reservation id")
         _text(link.get("predecessor_operation_id"), "predecessor operation id")
+    elif abandoned_release:
+        _validate_abandoned_lineage_link(abandoned_link, evidence, prior_release)
     elif prior_release.get("protected_receipt_sha256") != evidence.get(
         "prior_protected_receipt_sha256"
     ):
@@ -2415,6 +2481,18 @@ def _verify_protected_owner_receipt(
         raise CutoverSafetyError("protected failure receipt is not terminal")
 
 
+def _require_abandoned_lineage_binds_owner(link_value: object, owner: Record) -> None:
+    """The continuation must embed exactly the abandoned owner now being replaced."""
+    link = _record(link_value, "abandoned lineage link")
+    if (
+        link.get("abandoned_record_sha256") != owner.get("record_sha256")
+        or link.get("abandoned_authorization") != owner.get("authorization")
+        or link.get("abandoned_target") != owner.get("target")
+        or link.get("predecessor_evidence") != owner.get("predecessor_release_evidence")
+    ):
+        raise CutoverSafetyError("abandoned lineage owner changed before successor reservation")
+
+
 def acquire_control_owner(
     config: CutoverConfig,
     *,
@@ -2623,6 +2701,10 @@ def acquire_control_owner(
                         raise CutoverSafetyError(
                             "released predecessor changed before successor reservation"
                         )
+                    if ABANDONED_LINEAGE_LINK_KEY in predecessor:
+                        _require_abandoned_lineage_binds_owner(
+                            predecessor[ABANDONED_LINEAGE_LINK_KEY], value
+                        )
                 elif exact_failed_owner:
                     raise CutoverSafetyError(
                         "failed terminal owner requires a verified successor predecessor proof"
@@ -2630,6 +2712,14 @@ def acquire_control_owner(
                 elif exact_released_intermediate:
                     raise CutoverSafetyError(
                         "released intermediate requires a verified v2 successor predecessor proof"
+                    )
+                elif value.get("predecessor_release_evidence") is not None and (
+                    failed_release == {"kind": EXPLICIT_ABANDON_RELEASE_KIND, "verified": True}
+                ):
+                    # Without this guard an abandoned lineage owner would be replaced
+                    # silently, dropping the chain its continuation must preserve.
+                    raise CutoverSafetyError(
+                        "abandoned lineage owner requires a verified continuation proof"
                     )
             elif (
                 value["reservation_id"] == selected_id
@@ -3079,7 +3169,7 @@ def reconcile_control_owner(
                 **value,
                 "phase": "RELEASED",
                 "release_evidence": {
-                    "kind": "EXPLICIT_ABANDON_NO_MUTATION",
+                    "kind": EXPLICIT_ABANDON_RELEASE_KIND,
                     "verified": True,
                 },
             },

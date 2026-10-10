@@ -7841,6 +7841,282 @@ def _abandoned_lineage_fixture(
     return incident, continuation, abandoned
 
 
+@dataclass(frozen=True)
+class V7RootV8AbandonedScenario:
+    v7_request: protected.Request
+    v7_incident: StrandedIncident
+    v7_root_owner: protected.Record
+    v8_request: protected.Request
+    abandoned_v8_owner: protected.Record
+    retirement_path: Path
+    reconciliation_path: Path
+
+
+def _prepare_v7_root_v8_abandoned_scenario(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> V7RootV8AbandonedScenario:
+    """Build V7 retirement lineage with an explicitly abandoned V8 successor.
+
+    The fixture keeps launchd/runtime operations behind FakeLaunchd and the
+    protected child behind Harness. The retirement, predecessor, and lineage
+    validators remain the real production implementations.
+    """
+    prestart_failure_evidence = protected._prestart_failure_evidence  # pyright: ignore[reportPrivateUsage]
+    _prior_incident, v7_request, _fixture_hashlib, intermediate_owner = (
+        _prepare_exact_released_v7_intermediate_bridge(
+            harness, monkeypatch, candidate_version="v7"
+        )
+    )
+    # Recreate the prior V7 retirement era with the real validators, then
+    # restore the current V8 constants before exercising continuation.
+    with monkeypatch.context() as legacy_v7_constants:
+        legacy_v7_constants.setattr(cutover, "V8_SOURCE_HEAD", cutover.V7_SOURCE_HEAD)
+        legacy_v7_constants.setattr(cutover, "V8_SOURCE_TREE", cutover.V7_SOURCE_TREE)
+        legacy_v7_constants.setattr(cutover, "V8_TARGET_METHOD", cutover.V7_TARGET_METHOD)
+        legacy_v7_constants.setattr(
+            cutover, "V8_TARGET_K20_SHA256", cutover.V7_TARGET_K20_SHA256
+        )
+        v7_proof = protected._require_released_success_evidence(  # pyright: ignore[reportPrivateUsage]
+            v7_request, intermediate_owner, runner=harness.launchd
+        )
+    assert v7_proof is not None
+    retirement = protected.record(v7_proof["retired_failed_terminal_evidence"])
+    retirement_path = v7_request.config.scheduler_root / (
+        cutover.FAILED_TERMINAL_RETIREMENT_V2_NAME
+    )
+    assert protected.record(retirement["candidate_target"])["head"] == cutover.V7_SOURCE_HEAD
+
+    harness.fixture.config = v7_request.config
+    harness.request = v7_request
+    control_identity = (v7_request.control_head, v7_request.control_tree)
+    monkeypatch.setattr(protected, "repository_claim_root", lambda: v7_request.claim_root)
+    monkeypatch.setattr(protected, "control_identity", lambda: control_identity)
+    monkeypatch.setattr(
+        cutover,
+        "control_version",
+        lambda: {"head": control_identity[0], "tree": control_identity[1]},
+    )
+    monkeypatch.setattr(
+        protected, "build_reservation_config", _fixed_reservation_config(harness)
+    )
+    monkeypatch.setattr(cutover, "run_command", harness.runner)
+    harness.launchd.process_rows = ["1 0 0 S /sbin/launchd"]
+    harness.launchd.file_rows = ["p1\nfcwd\nn/"]
+
+    v7_argv = v7_request.owner_argv()[2:]
+    prior_launches = harness.launches
+    prior_mutations = tuple(harness.launchd.mutation_calls)
+    assert protected.main(v7_argv) == claims.REFUSED
+    v7_pending = protected.record(json.loads(capsys.readouterr().out.splitlines()[-1]))
+    assert v7_pending["status"] == "AUTHORIZATION_PENDING"
+    assert v7_pending["reservation_id"] == retirement["candidate_reservation_id"]
+    assert protected.record(v7_pending["authorization"])["operation_id"] == (
+        retirement["candidate_operation_id"]
+    )
+    assert harness.launches == prior_launches
+    assert tuple(harness.launchd.mutation_calls) == prior_mutations
+
+    v7_authorization = _authorization_envelope(v7_pending)
+    assert protected.main(_authorize_argv(v7_authorization)) == 0
+    capsys.readouterr()
+    harness.chain()
+
+    def not_started_apply(
+        _config: cutover.CutoverConfig,
+        *,
+        plan: cutover.Record,
+        runner: cutover.Runner,
+    ) -> cutover.Record:
+        del plan, runner
+        result: protected.Record = {
+            "command": "apply",
+            "task": cutover.TASK_ID,
+            "status": "NOT_STARTED",
+            "failures": ["fixture no mutation"],
+            "actions": [],
+            "mutation_summary": {
+                "launchd": False,
+                "plist": False,
+                "control_files": False,
+            },
+        }
+        print(protected.canonical(result))
+        print("fixture child stderr", file=sys.stderr)
+        return result
+
+    monkeypatch.setattr(cutover, "apply", not_started_apply)
+    monkeypatch.setattr(
+        protected, "_prestart_failure_evidence", prestart_failure_evidence
+    )
+    harness.exec_failed = False
+    harness.exit_override = None
+    v7_mutations_before = tuple(harness.launchd.mutation_calls)
+    assert harness.launch()["exit_code"] == 1
+    assert tuple(harness.launchd.mutation_calls) == v7_mutations_before
+    v7_incident = StrandedIncident(
+        request=v7_request,
+        predecessor_sha256=cutover.V5_PROTECTED_RECEIPT_SHA256,
+        managed_sha256=cutover.V5_MANAGED_RECEIPT_SHA256,
+        plan_sha256=v7_request.plan_sha256,
+        old_plist_bytes=harness.fixture.plist_path.read_bytes(),
+        mutations_before=v7_mutations_before,
+    )
+    _configure_not_started_reconcile_cli(harness, monkeypatch, v7_incident)
+    assert protected.main(_not_started_reconciliation_argv(v7_incident)) == 0
+    capsys.readouterr()
+    monkeypatch.setattr(protected, "repository_claim_root", lambda: v7_request.claim_root)
+    monkeypatch.setattr(protected, "control_identity", lambda: control_identity)
+    monkeypatch.setattr(
+        cutover,
+        "control_version",
+        lambda: {"head": control_identity[0], "tree": control_identity[1]},
+    )
+    v7_root_owner = cutover.inspect_control_owner(v7_request.config)
+    assert v7_root_owner is not None
+    assert v7_root_owner["phase"] == "RELEASED"
+    assert v7_root_owner["reservation_id"] == retirement["candidate_reservation_id"]
+    assert v7_root_owner["operation_id"] == retirement["candidate_operation_id"]
+    assert protected.record(v7_root_owner["target"])["head"] == cutover.V7_SOURCE_HEAD
+    assert protected.record(v7_root_owner["release_evidence"])["kind"] == (
+        protected.PRESTART_NOT_STARTED_RELEASE_KIND
+    )
+
+    v8_source = harness.fixture.worktree_parent / f"B649_PRODUCTION_{cutover.V8_SOURCE_HEAD}"
+    Fixture.make_source(v8_source)
+    harness.launchd.worktree_identities[v8_source] = (
+        cutover.V8_SOURCE_HEAD,
+        cutover.V8_SOURCE_TREE,
+        True,
+    )
+    harness.launchd.process_rows = ["1 0 0 S /sbin/launchd"]
+    harness.launchd.file_rows = ["p1\nfcwd\nn/"]
+    v8_config = replace(
+        v7_request.config,
+        source_worktree=v8_source,
+        expected_head=cutover.V8_SOURCE_HEAD,
+        expected_tree=cutover.V8_SOURCE_TREE,
+        durable_ref=f"refs/heads/runtime/b649/{cutover.V8_SOURCE_HEAD}",
+        strict_release_layout=False,
+    )
+    v8_plan = cutover.build_plan(v8_config, runner=harness.launchd)
+    assert v8_plan["status"] == "PASS", v8_plan["failures"]
+    v8_plan_file = harness.fixture.root / "v8-plan.json"
+    v8_plan_file.write_text(protected.canonical(v8_plan), encoding="utf-8")
+    v8_plan_file.chmod(0o600)
+    v8_request = protected.make_request(
+        v8_config,
+        v7_request.legacy_worktree,
+        v7_request.legacy_head,
+        v7_request.legacy_tree,
+        v8_plan_file,
+        v7_request.claim_root,
+        reservation_id=str(uuid4()),
+        prior_execution_receipt_sha256=cutover.V5_PROTECTED_RECEIPT_SHA256,
+        managed_receipt_sha256=cutover.V5_MANAGED_RECEIPT_SHA256,
+    )
+    v8_proof = protected._require_released_success_evidence(  # pyright: ignore[reportPrivateUsage]
+        v8_request, v7_root_owner, runner=harness.launchd
+    )
+    assert v8_proof is not None
+    version: cutover.Record = {
+        "head": v8_request.control_head,
+        "tree": v8_request.control_tree,
+    }
+    v8_owner = cutover.acquire_control_owner(
+        v8_config,
+        action="apply",
+        target=protected.request_owner_target(v8_request),
+        owner_kind="protected",
+        reservation_id=str(v8_request.reservation_id),
+        version=version,
+        operation_id=v8_request.operation_id,
+        managed_receipt_sha256=v8_request.managed_receipt_sha256,
+        predecessor_release_evidence=v8_proof,
+    )
+    assert v8_owner["phase"] == "AUTHORIZATION_PENDING"
+    v8_owner = cutover.bind_control_owner(
+        v8_config,
+        str(v8_request.reservation_id),
+        action="apply",
+        target=protected.request_owner_target(v8_request),
+        operation_id=v8_request.operation_id,
+        managed_receipt_sha256=v8_request.managed_receipt_sha256,
+        version=version,
+    )
+    cutover.authorize_control_owner(
+        v8_config,
+        str(v8_request.reservation_id),
+        protected.request_owner_authorization(v8_request),
+    )
+    cutover.reconcile_control_owner(
+        v8_config,
+        str(v8_request.reservation_id),
+        disposition="ABANDON_BEFORE_MUTATION",
+        version=version,
+    )
+    abandoned_v8_owner = cutover.reconcile_control_owner(
+        v8_config,
+        str(v8_request.reservation_id),
+        disposition="RELEASE_ABANDONED",
+        version=version,
+    )
+    assert abandoned_v8_owner["phase"] == "RELEASED"
+    assert protected.record(abandoned_v8_owner["release_evidence"]) == {
+        "kind": cutover.EXPLICIT_ABANDON_RELEASE_KIND,
+        "verified": True,
+    }
+    assert protected.record(abandoned_v8_owner["target"])["head"] == cutover.V8_SOURCE_HEAD
+    assert protected.record(abandoned_v8_owner["predecessor_release_evidence"])[
+        "prior_reservation_id"
+    ] == v7_root_owner["reservation_id"]
+
+    root_facts = protected._lineage_candidate_hop(  # pyright: ignore[reportPrivateUsage]
+        v8_config, abandoned_v8_owner
+    )
+    assert root_facts["reservation_id"] == retirement["candidate_reservation_id"]
+    assert root_facts["operation_id"] == retirement["candidate_operation_id"]
+    assert protected.record(retirement["candidate_target"])["head"] != protected.record(
+        abandoned_v8_owner["target"]
+    )["head"]
+    harness.fixture.config = v8_config
+    harness.request = v8_request
+    return V7RootV8AbandonedScenario(
+        v7_request=v7_request,
+        v7_incident=v7_incident,
+        v7_root_owner=v7_root_owner,
+        v8_request=v8_request,
+        abandoned_v8_owner=abandoned_v8_owner,
+        retirement_path=retirement_path,
+        reconciliation_path=protected._prestart_reconciliation_record_path(
+            v7_request.config, str(v7_request.reservation_id)
+        ),
+    )
+
+
+def _continuation_protected_state_bytes(
+    config: cutover.CutoverConfig,
+    claim_root: Path,
+    *,
+    include_owner: bool,
+) -> dict[Path, bytes | None]:
+    paths = {
+        config.receipt_path,
+        config.scheduler_root / protected.RECEIPT_NAME,
+        config.scheduler_root / protected.ROLLBACK_RECEIPT_NAME,
+        config.plist_path,
+        config.cutover_lock_path,
+        config.primary_lock_path,
+        config.shadow_lock_path,
+        claims.ClaimStore(claim_root).location(protected.TASK_KEY),
+        *config.scheduler_root.glob("*.superseded.json"),
+    }
+    if include_owner:
+        paths.add(cutover._control_owner_path(config))  # pyright: ignore[reportPrivateUsage]
+    return {path: path.read_bytes() if path.exists() else None for path in paths}
+
+
 def test_abandoned_lineage_continuation_is_sealed_and_still_needs_authorization(
     harness: Harness,
     monkeypatch: pytest.MonkeyPatch,
@@ -8163,6 +8439,200 @@ def test_continuation_link_binds_only_the_abandoned_owner_it_embeds(
     link = proof[cutover.ABANDONED_LINEAGE_LINK_KEY]
 
     cutover._require_abandoned_lineage_binds_owner(link, abandoned)  # pyright: ignore[reportPrivateUsage]
-    other_owner = {**abandoned, "record_sha256": "0" * 64}
+    config = continuation.config
+    owner_snapshot = cutover._read_control_owner(config)  # pyright: ignore[reportPrivateUsage]
+    assert owner_snapshot is not None
+    stored_owner, owner_identity = owner_snapshot
+    other_owner = cutover._save_control_owner(  # pyright: ignore[reportPrivateUsage]
+        config,
+        {**stored_owner, "owner_pid": os.getpid() + 1},
+        expected=owner_identity,
+    )
+    assert other_owner["record_sha256"] != abandoned["record_sha256"]
+    before = _continuation_protected_state_bytes(
+        config, continuation.claim_root, include_owner=True
+    )
     with pytest.raises(cutover.CutoverSafetyError, match="changed before successor reservation"):
-        cutover._require_abandoned_lineage_binds_owner(link, other_owner)  # pyright: ignore[reportPrivateUsage]
+        cutover.acquire_control_owner(
+            config,
+            action="apply",
+            target=protected.request_owner_target(continuation),
+            owner_kind="protected",
+            reservation_id=str(continuation.reservation_id),
+            version={"head": continuation.control_head, "tree": continuation.control_tree},
+            operation_id=continuation.operation_id,
+            managed_receipt_sha256=continuation.managed_receipt_sha256,
+            predecessor_release_evidence=proof,
+        )
+    assert _continuation_protected_state_bytes(
+        config, continuation.claim_root, include_owner=True
+    ) == before
+
+
+def test_v7_retirement_root_v8_abandoned_continuation_cli_is_fail_closed_and_plan_bound(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    scenario = _prepare_v7_root_v8_abandoned_scenario(harness, monkeypatch, capsys)
+    v7_config = scenario.v7_request.config
+    v8_config = scenario.v8_request.config
+    control_before = (
+        harness.launches,
+        tuple(harness.launchd.mutation_calls),
+    )
+
+    def config_for_args(
+        args: argparse.Namespace, *, for_action: str
+    ) -> cutover.CutoverConfig:
+        del for_action
+        return v7_config if args.expected_head == cutover.V7_SOURCE_HEAD else v8_config
+
+    monkeypatch.setattr(protected, "build_reservation_config", config_for_args)
+    monkeypatch.setattr(
+        protected, "repository_claim_root", lambda: scenario.v8_request.claim_root
+    )
+    monkeypatch.setattr(
+        protected,
+        "control_identity",
+        lambda: (scenario.v8_request.control_head, scenario.v8_request.control_tree),
+    )
+    monkeypatch.setattr(
+        cutover,
+        "control_version",
+        lambda: {
+            "head": scenario.v8_request.control_head,
+            "tree": scenario.v8_request.control_tree,
+        },
+    )
+    monkeypatch.setattr(cutover, "run_command", harness.runner)
+    v8_argv = scenario.v8_request.owner_argv()[2:]
+    v7_argv = scenario.v7_request.owner_argv()[2:]
+
+    # A different target cannot reuse the abandoned V8 owner's continuation.
+    before_wrong_target = _continuation_protected_state_bytes(
+        v8_config, scenario.v8_request.claim_root, include_owner=True
+    )
+    assert protected.main(v7_argv) == claims.UNVERIFIABLE
+    wrong_target = _last_json_line(capsys)
+    assert wrong_target["status"] == "INCOMPLETE_OR_AMBIGUOUS"
+    assert _continuation_protected_state_bytes(
+        v8_config, scenario.v8_request.claim_root, include_owner=True
+    ) == before_wrong_target
+
+    # Stale retirement integrity evidence must be refused before a reservation.
+    retirement_before = scenario.retirement_path.read_bytes()
+    retirement = json.loads(retirement_before)
+    retirement["candidate_target"] = {
+        **protected.record(retirement["candidate_target"]),
+        "head": "0" * 40,
+    }
+    scenario.retirement_path.write_text(protected.canonical(retirement), encoding="utf-8")
+    try:
+        before_bad_retirement = _continuation_protected_state_bytes(
+            v8_config, scenario.v8_request.claim_root, include_owner=True
+        )
+        assert protected.main(v8_argv) == claims.UNVERIFIABLE
+        bad_retirement = _last_json_line(capsys)
+        assert bad_retirement["status"] == "INCOMPLETE_OR_AMBIGUOUS"
+        assert scenario.retirement_path.read_bytes() != retirement_before
+        assert _continuation_protected_state_bytes(
+            v8_config, scenario.v8_request.claim_root, include_owner=True
+        ) == before_bad_retirement
+    finally:
+        scenario.retirement_path.write_bytes(retirement_before)
+
+    # A correctly resealed but wrong root ID is still rejected by the lineage walk.
+    reconciliation_before = scenario.reconciliation_path.read_bytes()
+    reconciliation = json.loads(reconciliation_before)
+    unsigned_reconciliation = {
+        key: value for key, value in reconciliation.items() if key != "record_sha256"
+    }
+    unsigned_reconciliation["reservation_id"] = str(uuid4())
+    bad_reconciliation = {
+        **unsigned_reconciliation,
+        "record_sha256": protected.digest(unsigned_reconciliation),
+    }
+    scenario.reconciliation_path.write_text(
+        protected.canonical(bad_reconciliation), encoding="utf-8"
+    )
+    try:
+        before_wrong_root = _continuation_protected_state_bytes(
+            v8_config, scenario.v8_request.claim_root, include_owner=True
+        )
+        assert protected.main(v8_argv) == claims.UNVERIFIABLE
+        wrong_root = _last_json_line(capsys)
+        assert wrong_root["status"] == "INCOMPLETE_OR_AMBIGUOUS"
+        assert scenario.reconciliation_path.read_bytes() != reconciliation_before
+        assert _continuation_protected_state_bytes(
+            v8_config, scenario.v8_request.claim_root, include_owner=True
+        ) == before_wrong_root
+    finally:
+        scenario.reconciliation_path.write_bytes(reconciliation_before)
+
+    assert (harness.launches, tuple(harness.launchd.mutation_calls)) == control_before
+
+    # The real CLI accepts the same V8 continuation only as a fresh pending reservation.
+    before_runtime_state = _continuation_protected_state_bytes(
+        v8_config, scenario.v8_request.claim_root, include_owner=False
+    )
+    assert protected.main(v8_argv) == claims.REFUSED
+    pending = _last_json_line(capsys)
+    assert pending["status"] == "AUTHORIZATION_PENDING"
+    authorization = _authorization_envelope(pending)
+    pending_owner = cutover.inspect_control_owner(v8_config)
+    assert pending_owner is not None
+    assert pending_owner["phase"] == "AUTHORIZATION_PENDING"
+    assert pending_owner["authorization"] is None
+    assert protected.record(pending_owner["predecessor_release_evidence"])[
+        cutover.ABANDONED_LINEAGE_LINK_KEY
+    ]
+    assert _continuation_protected_state_bytes(
+        v8_config, scenario.v8_request.claim_root, include_owner=False
+    ) == before_runtime_state
+    assert (harness.launches, tuple(harness.launchd.mutation_calls)) == control_before
+
+    # Re-entry with identical plan bytes preserves the reservation and authorization.
+    assert protected.main(v8_argv) == claims.REFUSED
+    repeated = _last_json_line(capsys)
+    assert repeated["status"] == "AUTHORIZATION_PENDING"
+    assert repeated["reservation_id"] == pending["reservation_id"]
+    assert repeated["authorization"] == authorization
+    assert (harness.launches, tuple(harness.launchd.mutation_calls)) == control_before
+
+    assert protected.main(_authorize_argv(authorization)) == 0
+    capsys.readouterr()
+    authorized_owner_before = cutover.inspect_control_owner(v8_config)
+    assert authorized_owner_before is not None
+    assert authorized_owner_before["phase"] == "AUTHORIZED_PENDING"
+    authorized_state_before = _continuation_protected_state_bytes(
+        v8_config, scenario.v8_request.claim_root, include_owner=True
+    )
+
+    # Identical plan content with different bytes derives a different operation identity.
+    alternate_plan = harness.fixture.root / "v8-plan-alternate.json"
+    alternate_plan.write_bytes(scenario.v8_request.plan_file.read_bytes() + b"\n")
+    alternate_plan.chmod(0o600)
+    alternate_request = protected.make_request(
+        v8_config,
+        scenario.v8_request.legacy_worktree,
+        scenario.v8_request.legacy_head,
+        scenario.v8_request.legacy_tree,
+        alternate_plan,
+        scenario.v8_request.claim_root,
+        reservation_id=str(pending["reservation_id"]),
+        prior_execution_receipt_sha256=cutover.V5_PROTECTED_RECEIPT_SHA256,
+    )
+    assert alternate_request.plan_sha256 != scenario.v8_request.plan_sha256
+    assert alternate_request.operation_id != authorization["operation_id"]
+    alternate_argv = list(v8_argv)
+    alternate_argv[alternate_argv.index("--plan-file") + 1] = str(alternate_plan)
+    assert protected.main(alternate_argv) == claims.UNVERIFIABLE
+    changed_plan = _last_json_line(capsys)
+    assert "operation" in str(changed_plan.get("error"))
+    assert _continuation_protected_state_bytes(
+        v8_config, scenario.v8_request.claim_root, include_owner=True
+    ) == authorized_state_before
+    owner_after_refusal = cutover.inspect_control_owner(v8_config)
+    assert owner_after_refusal == authorized_owner_before
+    assert (harness.launches, tuple(harness.launchd.mutation_calls)) == control_before

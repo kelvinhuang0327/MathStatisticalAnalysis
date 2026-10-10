@@ -6254,7 +6254,11 @@ def main(argv: Sequence[str] | None = None) -> int:
                     takeover_stale=args.takeover_stale,
                     reservation_id=reservation_id,
                     owner_id_argument=False,
-                    prior_execution_receipt_sha256=recovered_predecessor_sha,
+                    prior_execution_receipt_sha256=(
+                        recovered_predecessor_sha
+                        if isinstance(recovered_predecessor_sha, str)
+                        else _UNSET
+                    ),
                 )
             predecessor_release_evidence = _require_released_success_evidence(
                 prepared_request, prior_owner
@@ -6267,11 +6271,6 @@ def main(argv: Sequence[str] | None = None) -> int:
                 target=reservation_target,
                 owner_kind="protected",
                 reservation_id=reservation_id,
-                version=version,
-            )
-            owner = cutover.resume_control_owner(
-                reservation_config,
-                reservation_id,
                 version=version,
             )
         elif prior_owner is not None and released_replay:
@@ -6367,9 +6366,23 @@ def main(argv: Sequence[str] | None = None) -> int:
                         if already_bound
                         else _UNSET
                     ),
+                    prior_execution_receipt_sha256=(
+                        recovered_predecessor_sha
+                        if _is_abandoned_lineage_owner(prior_owner)
+                        and isinstance(recovered_predecessor_sha, str)
+                        else _UNSET
+                    ),
                 )
             if already_bound and request.operation_id != bound_operation_id:
                 raise ProtectedError("bound operation identity differs from plan/prior receipt")
+        if prior_owner is not None and prior_owner.get("phase") != "RELEASED":
+            # Validate the caller's current plan-derived identity before refreshing
+            # owner metadata. A rejected resume must not rewrite protected state.
+            owner = cutover.resume_control_owner(
+                reservation_config,
+                reservation_id,
+                version=version,
+            )
         if owner.get("phase") != "RELEASED":
             owner = cutover.bind_control_owner(
                 reservation_config,

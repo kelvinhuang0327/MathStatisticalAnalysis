@@ -7750,3 +7750,419 @@ def test_rebooted_current_success_still_refuses_runtime_drift(
     assert harness.launches == 2
     _assert_retired_once(path, raw, result)
     assert protected.record(result["identity"])["operation_id"] == authorization["operation_id"]
+
+
+ABANDON_RELEASE: protected.Record = {"kind": "EXPLICIT_ABANDON_NO_MUTATION", "verified": True}
+
+
+def _accept_v2_evidence(evidence: protected.Record) -> protected.Record:
+    return evidence
+
+
+def _accept_v2_inputs(_config: cutover.CutoverConfig, _retirement: protected.Record) -> None:
+    return None
+
+
+def _owned_claim(_self: claims.ClaimStore, _key: str) -> dict[str, object]:
+    return {"status": "OWNED"}
+
+
+def _reserve_then_abandon_successor(
+    harness: Harness,
+    incident: StrandedIncident,
+) -> tuple[protected.Request, protected.Record]:
+    """Reserve a successor of the released not-started candidate, then abandon it.
+
+    The two reconcile calls are the ones ``cmd_abandon`` makes, so the resulting
+    RELEASED owner is the same explicit-abandon shape the live state carries.
+    """
+    config = incident.request.config
+    prior = cutover.inspect_control_owner(config)
+    assert prior is not None and prior["phase"] == "RELEASED"
+    successor = _reconciled_successor_request(incident)
+    proof = protected._require_released_success_evidence(successor, prior, runner=harness.launchd)
+    assert proof is not None
+    reservation_id = str(successor.reservation_id)
+    version = cutover.control_version()
+    reserved = cutover.acquire_control_owner(
+        config,
+        action="apply",
+        target=protected.request_owner_target(successor),
+        owner_kind="protected",
+        reservation_id=reservation_id,
+        version=version,
+        operation_id=successor.operation_id,
+        managed_receipt_sha256=successor.managed_receipt_sha256,
+        predecessor_release_evidence=proof,
+    )
+    assert reserved["phase"] == "AUTHORIZATION_PENDING"
+    cutover.bind_control_owner(
+        config,
+        reservation_id,
+        action="apply",
+        target=protected.request_owner_target(successor),
+        operation_id=successor.operation_id,
+        managed_receipt_sha256=successor.managed_receipt_sha256,
+        version=version,
+    )
+    cutover.authorize_control_owner(
+        config,
+        reservation_id,
+        protected.request_owner_authorization(successor),
+    )
+    cutover.reconcile_control_owner(
+        config,
+        reservation_id,
+        disposition="ABANDON_BEFORE_MUTATION",
+        version=version,
+    )
+    released = cutover.reconcile_control_owner(
+        config,
+        reservation_id,
+        disposition="RELEASE_ABANDONED",
+        version=version,
+    )
+    assert released["phase"] == "RELEASED"
+    assert released["release_evidence"] == ABANDON_RELEASE
+    assert released["mutation_started"] is False
+    return successor, released
+
+
+def _abandoned_lineage_fixture(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> tuple[StrandedIncident, protected.Request, protected.Record]:
+    incident, _owner = _prepare_reconciled_prestart_successor(
+        harness, monkeypatch, capsys, not_started=True
+    )
+    _successor, abandoned = _reserve_then_abandon_successor(harness, incident)
+    continuation = _reconciled_successor_request(incident)
+    return incident, continuation, abandoned
+
+
+def test_abandoned_lineage_continuation_is_sealed_and_still_needs_authorization(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    incident, continuation, abandoned = _abandoned_lineage_fixture(harness, monkeypatch, capsys)
+    config = incident.request.config
+    owner_path = cutover._control_owner_path(config)  # pyright: ignore[reportPrivateUsage]
+    owner_before = owner_path.read_bytes()
+
+    status = cast(protected.Record, protected.status_report(config)["recovery_eligibility"])
+    assert status["status"] == "CONTINUATION_REQUIRES_EXPLICIT_AUTHORIZATION"
+    assert status["anchor_sha256"] == incident.predecessor_sha256
+
+    proof = protected._require_released_success_evidence(
+        continuation, abandoned, runner=harness.launchd
+    )
+    assert proof is not None
+    assert proof["prior_reservation_id"] == abandoned["reservation_id"]
+    assert proof["prior_operation_id"] == abandoned["operation_id"]
+    assert proof["prior_release_evidence"] == ABANDON_RELEASE
+    assert proof["prior_protected_receipt_sha256"] == incident.predecessor_sha256
+    assert proof["prior_managed_receipt_sha256"] == continuation.managed_receipt_sha256
+    link = protected.record(proof[cutover.ABANDONED_LINEAGE_LINK_KEY])
+    assert link["predecessor_evidence"] == abandoned["predecessor_release_evidence"]
+    assert link["abandoned_record_sha256"] == abandoned["record_sha256"]
+    # Same live state gives the same sealed proof: no drift between calls.
+    assert (
+        protected._require_released_success_evidence(
+            continuation, abandoned, runner=harness.launchd
+        )
+        == proof
+    )
+    assert owner_path.read_bytes() == owner_before
+
+    version = cutover.control_version()
+    reserved = cutover.acquire_control_owner(
+        config,
+        action="apply",
+        target=protected.request_owner_target(continuation),
+        owner_kind="protected",
+        reservation_id=str(continuation.reservation_id),
+        version=version,
+        operation_id=continuation.operation_id,
+        managed_receipt_sha256=continuation.managed_receipt_sha256,
+        predecessor_release_evidence=proof,
+    )
+    # The continuation is reserved but not authorized: no apply without a new authorization.
+    assert reserved["phase"] == "AUTHORIZATION_PENDING"
+    assert reserved["authorization"] is None
+    assert reserved["predecessor_release_evidence"] == proof
+    # A repeated reserve returns the same durable owner rather than a second writer.
+    repeated = cutover.acquire_control_owner(
+        config,
+        action="apply",
+        target=protected.request_owner_target(continuation),
+        owner_kind="protected",
+        reservation_id=str(continuation.reservation_id),
+        version=version,
+        operation_id=continuation.operation_id,
+        managed_receipt_sha256=continuation.managed_receipt_sha256,
+        predecessor_release_evidence=proof,
+    )
+    assert repeated == reserved
+    stored_after = cutover.inspect_control_owner(config)
+    assert stored_after is not None
+    assert {key: value for key, value in stored_after.items() if key != "worker_state"} == reserved
+
+
+def test_v2_gate_admits_abandoned_lineage_only_when_rooted_at_sealed_candidate(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    incident, _continuation, abandoned = _abandoned_lineage_fixture(harness, monkeypatch, capsys)
+    config = incident.request.config
+    retirement_path = config.scheduler_root / cutover.FAILED_TERMINAL_RETIREMENT_V2_NAME
+    sealed: protected.Record = {
+        "schema": cutover.FAILED_TERMINAL_RETIREMENT_V2_SCHEMA,
+        "candidate_reservation_id": str(incident.request.reservation_id),
+        "candidate_operation_id": incident.request.operation_id,
+        "candidate_plan_sha256": incident.plan_sha256,
+        "candidate_target": protected.request_owner_target(incident.request),
+        "claim_root": str(harness.request.claim_root),
+    }
+    cutover._write_json(retirement_path, sealed, expected=None)  # pyright: ignore[reportPrivateUsage]
+    # The v2 validators pin the historical v5/v7 constants; this fixture exercises the
+    # lineage gate itself, so only the constant-bound validators are replaced.
+    monkeypatch.setattr(
+        cutover,
+        "_validate_failed_terminal_retirement_v2_evidence",
+        _accept_v2_evidence,
+    )
+    monkeypatch.setattr(
+        cutover,
+        "_verify_failed_terminal_retirement_v2_inputs",
+        _accept_v2_inputs,
+    )
+    legacy = incident.request
+
+    def gate(prior_owner: protected.Record) -> protected.Request | None:
+        return protected._recover_v2_successor_request(
+            config,
+            legacy.legacy_worktree,
+            legacy.legacy_head,
+            legacy.legacy_tree,
+            legacy.plan_file,
+            harness.request.claim_root,
+            prior_owner,
+            prior_execution_receipt_sha256=incident.predecessor_sha256,
+        )
+
+    assert gate(abandoned) is None
+
+    sealed["candidate_reservation_id"] = str(uuid4())
+    retirement_path.unlink()
+    cutover._write_json(retirement_path, sealed, expected=None)  # pyright: ignore[reportPrivateUsage]
+    with pytest.raises(protected.ProtectedError, match="abandoned lineage"):
+        gate(abandoned)
+
+
+def _reseal_abandoned_proof(proof: protected.Record, **link_updates: object) -> protected.Record:
+    """Rewrite the embedded link and re-seal, so only the tampered field is wrong."""
+    link = {**protected.record(proof[cutover.ABANDONED_LINEAGE_LINK_KEY]), **link_updates}
+    unsigned = {key: value for key, value in proof.items() if key != "evidence_sha256"}
+    unsigned[cutover.ABANDONED_LINEAGE_LINK_KEY] = link
+    return {**unsigned, "evidence_sha256": protected.digest(unsigned)}
+
+
+@pytest.mark.parametrize("hazard", ["mutation_started", "active_claim", "live_receipt"])
+def test_abandoned_lineage_refuses_unproven_no_mutation_without_writes(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    hazard: str,
+) -> None:
+    incident, continuation, abandoned = _abandoned_lineage_fixture(harness, monkeypatch, capsys)
+    config = incident.request.config
+    owner_path = cutover._control_owner_path(config)  # pyright: ignore[reportPrivateUsage]
+    owner_arg = abandoned
+    if hazard == "mutation_started":
+        stored = cutover._read_control_owner(config)  # pyright: ignore[reportPrivateUsage]
+        assert stored is not None
+        current, identity = stored
+        owner_arg = cutover._save_control_owner(  # pyright: ignore[reportPrivateUsage]
+            config, {**current, "mutation_started": True}, expected=identity
+        )
+    elif hazard == "active_claim":
+        monkeypatch.setattr(claims.ClaimStore, "inspect", _owned_claim)
+    else:
+        (config.scheduler_root / protected.RECEIPT_NAME).write_text("{}", encoding="utf-8")
+    paths = (owner_path, config.receipt_path, config.scheduler_root / protected.RECEIPT_NAME)
+    before = {path: path.read_bytes() for path in paths if path.exists()}
+    mutation_calls = list(harness.launchd.mutation_calls)
+    expected_refusal = {
+        "mutation_started": "not an exact no-mutation release",
+        "active_claim": "claim is still owned",
+        "live_receipt": "live protected receipt exists",
+    }[hazard]
+
+    with pytest.raises(protected.ProtectedError, match=expected_refusal):
+        protected._require_released_success_evidence(  # pyright: ignore[reportPrivateUsage]
+            continuation, owner_arg, runner=harness.launchd
+        )
+
+    assert {path: path.read_bytes() for path in paths if path.exists()} == before
+    assert harness.launchd.mutation_calls == mutation_calls
+
+
+@pytest.mark.parametrize(
+    "tamper",
+    ["owner_target", "owner_managed", "reconciliation_plan", "link_authorization"],
+)
+def test_abandoned_lineage_refuses_tampered_or_foreign_evidence_without_writes(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    tamper: str,
+) -> None:
+    incident, continuation, abandoned = _abandoned_lineage_fixture(harness, monkeypatch, capsys)
+    config = incident.request.config
+    owner_path = cutover._control_owner_path(config)  # pyright: ignore[reportPrivateUsage]
+    owner_arg = abandoned
+    proof: protected.Record | None = None
+    if tamper == "owner_target":
+        # Re-derive the authorization, so the owner stays self-consistent and only
+        # the successor's target (the request's) disagrees with the sealed owner.
+        stored = cutover._read_control_owner(config)  # pyright: ignore[reportPrivateUsage]
+        assert stored is not None
+        current, identity = stored
+        target = protected.record(current.get("target"))
+        foreign_target = {**target, "source_worktree": f"{target['source_worktree']}-x"}
+        resealed = {**current, "target": foreign_target}
+        resealed["authorization"] = cutover._owner_identity(resealed)  # pyright: ignore[reportPrivateUsage]
+        owner_arg = cutover._save_control_owner(  # pyright: ignore[reportPrivateUsage]
+            config, resealed, expected=identity
+        )
+    elif tamper == "owner_managed":
+        # Re-derived authorization keeps the owner self-consistent; only the managed
+        # receipt it names is no longer the chain's unchanged SUCCESS.
+        stored = cutover._read_control_owner(config)  # pyright: ignore[reportPrivateUsage]
+        assert stored is not None
+        current, identity = stored
+        resealed = {**current, "managed_receipt_sha256": "f" * 64}
+        resealed["authorization"] = cutover._owner_identity(resealed)  # pyright: ignore[reportPrivateUsage]
+        owner_arg = cutover._save_control_owner(  # pyright: ignore[reportPrivateUsage]
+            config, resealed, expected=identity
+        )
+    elif tamper == "reconciliation_plan":
+        path = protected._prestart_reconciliation_record_path(  # pyright: ignore[reportPrivateUsage]
+            config, str(incident.request.reservation_id)
+        )
+        reconciliation, identity = protected._load_prestart_reconciliation(path)  # pyright: ignore[reportPrivateUsage]
+        unsigned = {key: value for key, value in reconciliation.items() if key != "record_sha256"}
+        unsigned["plan_sha256"] = "0" * 64
+        cutover._write_json(  # pyright: ignore[reportPrivateUsage]
+            path, {**unsigned, "record_sha256": protected.digest(unsigned)}, expected=identity
+        )
+    else:
+        proof = protected._require_released_success_evidence(  # pyright: ignore[reportPrivateUsage]
+            continuation, abandoned, runner=harness.launchd
+        )
+        assert proof is not None
+        proof = _reseal_abandoned_proof(proof, abandoned_authorization={"foreign": True})
+    paths = (owner_path, config.receipt_path)
+    before = {path: path.read_bytes() for path in paths}
+    mutation_calls = list(harness.launchd.mutation_calls)
+
+    if proof is None:
+        # owner_managed is refused by the predecessor validator, which binds the
+        # owner's managed receipt; both refusal types are fail-closed.
+        expected_refusal = {
+            "owner_target": "successor differs from its sealed continuation",
+            "owner_managed": "protected predecessor release evidence is invalid",
+            "reconciliation_plan": "does not bind its sealed reconciliation",
+        }[tamper]
+        with pytest.raises(
+            (protected.ProtectedError, cutover.CutoverSafetyError), match=expected_refusal
+        ):
+            protected._require_released_success_evidence(  # pyright: ignore[reportPrivateUsage]
+                continuation, owner_arg, runner=harness.launchd
+            )
+    else:
+        with pytest.raises(cutover.CutoverSafetyError, match="abandoned lineage link is invalid"):
+            cutover.acquire_control_owner(
+                config,
+                action="apply",
+                target=protected.request_owner_target(continuation),
+                owner_kind="protected",
+                reservation_id=str(continuation.reservation_id),
+                version=cutover.control_version(),
+                operation_id=continuation.operation_id,
+                managed_receipt_sha256=continuation.managed_receipt_sha256,
+                predecessor_release_evidence=proof,
+            )
+
+    assert {path: path.read_bytes() for path in paths} == before
+    assert harness.launchd.mutation_calls == mutation_calls
+
+
+def test_abandoned_lineage_owner_is_never_replaced_without_its_continuation_proof(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Before this fix a RELEASED abandon with lineage was silently overwritten.
+
+    That silently dropped the retirement lineage it must continue.
+    """
+    incident, continuation, _abandoned = _abandoned_lineage_fixture(
+        harness, monkeypatch, capsys
+    )
+    config = incident.request.config
+    owner_path = cutover._control_owner_path(config)  # pyright: ignore[reportPrivateUsage]
+    before = owner_path.read_bytes()
+
+    with pytest.raises(cutover.CutoverSafetyError, match="verified continuation proof"):
+        cutover.acquire_control_owner(
+            config,
+            action="apply",
+            target=protected.request_owner_target(continuation),
+            owner_kind="protected",
+            reservation_id=str(uuid4()),
+            version=cutover.control_version(),
+            operation_id=uuid4().hex,
+            managed_receipt_sha256=continuation.managed_receipt_sha256,
+            predecessor_release_evidence=None,
+        )
+    assert owner_path.read_bytes() == before
+
+
+def test_readiness_reports_refusal_through_the_same_verifier_when_claim_is_active(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    incident, _continuation, _abandoned = _abandoned_lineage_fixture(
+        harness, monkeypatch, capsys
+    )
+    monkeypatch.setattr(claims.ClaimStore, "inspect", _owned_claim)
+    status = cast(
+        protected.Record,
+        protected.status_report(incident.request.config)["recovery_eligibility"],
+    )
+    assert status["status"] == "REFUSED"
+    assert "claim" in str(status["reason"])
+
+
+def test_continuation_link_binds_only_the_abandoned_owner_it_embeds(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """A continuation proof for one abandoned owner must not attach to another."""
+    _incident, continuation, abandoned = _abandoned_lineage_fixture(harness, monkeypatch, capsys)
+    proof = protected._require_released_success_evidence(  # pyright: ignore[reportPrivateUsage]
+        continuation, abandoned, runner=harness.launchd
+    )
+    assert proof is not None
+    link = proof[cutover.ABANDONED_LINEAGE_LINK_KEY]
+
+    cutover._require_abandoned_lineage_binds_owner(link, abandoned)  # pyright: ignore[reportPrivateUsage]
+    other_owner = {**abandoned, "record_sha256": "0" * 64}
+    with pytest.raises(cutover.CutoverSafetyError, match="changed before successor reservation"):
+        cutover._require_abandoned_lineage_binds_owner(link, other_owner)  # pyright: ignore[reportPrivateUsage]

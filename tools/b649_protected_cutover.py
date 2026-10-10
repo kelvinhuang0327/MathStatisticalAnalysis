@@ -3324,6 +3324,23 @@ def _recover_v2_successor_request(
             return None
         raise ProtectedError("v2 retirement evidence conflicts with its current successor owner")
 
+    if _is_abandoned_lineage_owner(prior_owner):
+        # An abandoned successor of the sealed candidate continues this retirement
+        # lineage. Its own no-mutation proof is re-verified by the released-owner
+        # path before any reservation, so this gate only confirms the lineage root.
+        lineage_owner = cast(Record, prior_owner)
+        root = _lineage_candidate_hop(config, lineage_owner)
+        if (
+            root["reservation_id"] != candidate_reservation_id
+            or root["operation_id"] != candidate_operation_id
+            or retirement.get("claim_root") != str(claim_root)
+        ):
+            raise ProtectedError("v2 retirement evidence conflicts with its abandoned lineage")
+        if lineage_owner.get("phase") in {"AUTHORIZATION_PENDING", "AUTHORIZED_PENDING"} and (
+            claims.ClaimStore(claim_root).inspect(TASK_KEY).get("status") != "ABSENT"
+        ):
+            raise ProtectedError("ClaimStore changed before the abandoned lineage resumed")
+        return None
     if (
         prior_owner is None
         or prior_owner.get("reservation_id") != cutover.RELEASED_INTERMEDIATE_RESERVATION_ID
@@ -3756,6 +3773,253 @@ def _require_released_v7_intermediate_successor_evidence(
     return proof
 
 
+# Shared recovery eligibility for READINESS (status), RESERVE (apply before a new
+# reservation) and APPLY (v2 retirement gate). Every path asks these predicates
+# and verifiers, so no path keeps its own continuation rule.
+_CONTINUATION_PENDING_PHASES = frozenset(
+    {
+        "AUTHORIZATION_PENDING",
+        "AUTHORIZED_PENDING",
+        "MUTATION_IN_PROGRESS",
+        "TERMINAL_CAPTURE_PENDING",
+    }
+)
+_MAX_LINEAGE_HOPS = 8
+
+
+def _abandon_release_evidence() -> Record:
+    return {"kind": cutover.EXPLICIT_ABANDON_RELEASE_KIND, "verified": True}
+
+
+def _is_abandoned_lineage_owner(owner: Record | None) -> bool:
+    """Select the abandoned-lineage proof path; every requirement is verified separately."""
+    if owner is None or owner.get("predecessor_release_evidence") is None:
+        return False
+    if owner.get("phase") == "RELEASED":
+        return record(owner.get("release_evidence")) == _abandon_release_evidence()
+    if owner.get("phase") in _CONTINUATION_PENDING_PHASES:
+        predecessor = record(owner.get("predecessor_release_evidence"))
+        return (
+            record(predecessor.get("prior_release_evidence")).get("kind")
+            == cutover.EXPLICIT_ABANDON_RELEASE_KIND
+        )
+    return False
+
+
+def _lineage_candidate_hop(config: cutover.CutoverConfig, owner: Record) -> Record:
+    """Walk abandoned links to the sealed not-started candidate hop (read-only).
+
+    The production validator checks each hop recursively. The root must be a
+    PRESTART_NOT_STARTED release whose sealed reconciliation record binds the
+    same carried SUCCESS and managed receipts. The walk is bounded.
+    """
+    hop = cutover._validate_predecessor_release_evidence(  # pyright: ignore[reportPrivateUsage]
+        owner.get("predecessor_release_evidence"), owner
+    )
+    for _ in range(_MAX_LINEAGE_HOPS):
+        if record(hop.get("prior_release_evidence")).get("kind") != (
+            cutover.EXPLICIT_ABANDON_RELEASE_KIND
+        ):
+            break
+        hop = record(
+            record(hop.get(cutover.ABANDONED_LINEAGE_LINK_KEY)).get("predecessor_evidence")
+        )
+    else:
+        raise ProtectedError("abandoned lineage exceeds the bounded recovery depth")
+    release = record(hop.get("prior_release_evidence"))
+    if release.get("kind") != PRESTART_NOT_STARTED_RELEASE_KIND:
+        raise ProtectedError("abandoned lineage does not root at a sealed not-started candidate")
+    reservation_id = text(hop.get("prior_reservation_id"))
+    operation_id = text(hop.get("prior_operation_id"))
+    protected_sha = text(hop.get("prior_protected_receipt_sha256"))
+    managed_sha = text(hop.get("prior_managed_receipt_sha256"))
+    reconciliation_path = _prestart_reconciliation_record_path(config, reservation_id)
+    if release.get("reconciliation_record_path") != str(reconciliation_path):
+        raise ProtectedError("abandoned lineage root points to a different reconciliation record")
+    reconciliation, reconciliation_identity = _load_prestart_reconciliation(reconciliation_path)
+    if (
+        release.get("reconciliation_record_sha256") != reconciliation_identity.sha256
+        or release.get("protected_receipt_sha256") != protected_sha
+        or reconciliation.get("reservation_id") != reservation_id
+        or reconciliation.get("operation_id") != operation_id
+        or reconciliation.get("reason") != PRESTART_NOT_STARTED_RELEASE_KIND
+        or reconciliation.get("owner_mutation_started") is not False
+        or reconciliation.get("predecessor_protected_receipt_sha256") != protected_sha
+        or reconciliation.get("unchanged_managed_receipt_sha256") != managed_sha
+    ):
+        raise ProtectedError("abandoned lineage root does not bind its sealed reconciliation")
+    return {
+        "reservation_id": reservation_id,
+        "operation_id": operation_id,
+        "plan_sha256": text(reconciliation.get("plan_sha256")),
+        "anchor_sha256": protected_sha,
+        "managed_sha256": managed_sha,
+    }
+
+
+def _verify_abandoned_lineage_continuation(
+    config: cutover.CutoverConfig,
+    owner: Record,
+    *,
+    claim_root: Path,
+) -> Record:
+    """Prove a RELEASED explicit abandon is a safe continuation point (read-only).
+
+    The no-mutation fact is not inferred from receipt absence. It needs the
+    sealed owner unchanged, mutation_started false, an absent ClaimStore claim,
+    the managed receipt still the unchanged SUCCESS of the carried anchor, and no
+    live protected or rollback receipt.
+    """
+    stored = cutover._read_control_owner(config)  # pyright: ignore[reportPrivateUsage]
+    if stored is None:
+        raise ProtectedError("abandoned lineage owner is absent")
+    live_owner, _live_identity = stored
+    if live_owner != {key: value for key, value in owner.items() if key != "worker_state"}:
+        raise ProtectedError("abandoned lineage owner changed before continuation")
+    if (
+        live_owner.get("schema") != cutover.CONTROL_OWNER_SCHEMA
+        or live_owner.get("record_sha256")
+        != cutover._sha256_json(cutover._owner_unsigned(live_owner))  # pyright: ignore[reportPrivateUsage]
+        or live_owner.get("owner_kind") != "protected"
+        or live_owner.get("action") != "apply"
+        or live_owner.get("phase") != "RELEASED"
+        or live_owner.get("mutation_started") is not False
+        or live_owner.get("authorization") != cutover._owner_identity(live_owner)  # pyright: ignore[reportPrivateUsage]
+        or record(live_owner.get("release_evidence")) != _abandon_release_evidence()
+    ):
+        raise ProtectedError("abandoned lineage owner is not an exact no-mutation release")
+    root = _lineage_candidate_hop(config, live_owner)
+    managed, managed_identity, _ = cutover.read_control_json(config.receipt_path)
+    if (
+        managed_identity.sha256 != root["managed_sha256"]
+        or live_owner.get("managed_receipt_sha256") != root["managed_sha256"]
+        or managed.get("status") != "SUCCESS"
+        or managed.get("phase") != "COMPLETED"
+    ):
+        raise ProtectedError("managed receipt is not the unchanged SUCCESS of the lineage")
+    anchor_sha = root["anchor_sha256"]
+    slot_path = config.scheduler_root / RECEIPT_NAME
+    archived = _find_archived_prior_receipt(slot_path, lambda sha: sha == anchor_sha)
+    if archived is None:
+        raise ProtectedError("archived protected SUCCESS anchor is absent")
+    anchor, anchor_identity, _ = cutover.read_control_json(Path(text(archived.get("path"))))
+    if anchor_identity.sha256 != anchor_sha:
+        raise ProtectedError("archived protected SUCCESS anchor SHA changed")
+    identity = record(anchor.get("identity"))
+    anchor_link = record(anchor.get("managed_receipt"))
+    if (
+        anchor.get("status") != "SUCCESS"
+        or anchor.get("result_status") not in {"SUCCESS", "ALREADY_APPLIED"}
+        or identity.get("action") != "apply"
+        or identity.get("execution_receipt_path") != str(slot_path)
+        or managed.get("operation_id") != identity.get("operation_id")
+        or anchor_link.get("path") != str(config.receipt_path)
+        or anchor_link.get("sha256") != managed_identity.sha256
+        or anchor_link.get("status") != "SUCCESS"
+    ):
+        raise ProtectedError(
+            "archived SUCCESS anchor is not linked to the unchanged managed receipt"
+        )
+    cutover._verify_protected_owner_receipt(  # pyright: ignore[reportPrivateUsage]
+        anchor,
+        path=slot_path,
+        bound_identity={
+            "reservation_id": identity.get("reservation_id"),
+            "operation_id": identity.get("operation_id"),
+            "managed_receipt_sha256": identity.get("managed_receipt_sha256"),
+            "control_head": identity.get("control_head"),
+            "control_tree": identity.get("control_tree"),
+            "action": "apply",
+            "target": identity.get("target"),
+        },
+        successful=True,
+    )
+    if os.path.lexists(slot_path) or os.path.lexists(
+        config.scheduler_root / ROLLBACK_RECEIPT_NAME
+    ):
+        raise ProtectedError("a live protected receipt exists; continuation requires none")
+    if claims.ClaimStore(claim_root).inspect(TASK_KEY).get("status") != "ABSENT":
+        raise ProtectedError("protected execution claim is still owned or uncertain")
+    return {
+        "anchor_sha256": anchor_sha,
+        "managed_sha256": managed_identity.sha256,
+        "candidate_reservation_id": root["reservation_id"],
+        "candidate_operation_id": root["operation_id"],
+    }
+
+
+def _abandoned_lineage_anchor_sha256(
+    config: cutover.CutoverConfig,
+    owner: Record,
+    *,
+    claim_root: Path,
+) -> str:
+    """The carried SUCCESS anchor a lineage successor must bind (deterministic)."""
+    if owner.get("phase") == "RELEASED":
+        return text(
+            _verify_abandoned_lineage_continuation(config, owner, claim_root=claim_root)[
+                "anchor_sha256"
+            ]
+        )
+    return text(_lineage_candidate_hop(config, owner)["anchor_sha256"])
+
+
+def _require_abandoned_lineage_successor_evidence(
+    request: Request,
+    prior_owner: Record,
+) -> Record:
+    """Seal the continuation of an abandoned lineage. Explicit authorization still follows."""
+    facts = _verify_abandoned_lineage_continuation(
+        request.config, prior_owner, claim_root=request.claim_root
+    )
+    if (
+        request.reservation_id is None
+        or request.reservation_id
+        in {prior_owner.get("reservation_id"), facts["candidate_reservation_id"]}
+        or request.operation_id
+        in {prior_owner.get("operation_id"), facts["candidate_operation_id"]}
+        or request.managed_receipt_sha256 != facts["managed_sha256"]
+        or request.prior_execution_receipt_sha256 != facts["anchor_sha256"]
+        or request_owner_target(request) != prior_owner.get("target")
+    ):
+        raise ProtectedError("abandoned lineage successor differs from its sealed continuation")
+    unsigned = {
+        "schema": cutover.PROTECTED_PREDECESSOR_RELEASE_SCHEMA,
+        "prior_reservation_id": prior_owner["reservation_id"],
+        "prior_operation_id": prior_owner["operation_id"],
+        "prior_authorization_sha256": digest(prior_owner["authorization"]),
+        "prior_release_evidence": _abandon_release_evidence(),
+        "prior_protected_receipt_sha256": facts["anchor_sha256"],
+        "prior_managed_receipt_sha256": facts["managed_sha256"],
+        "new_reservation_id": request.reservation_id,
+        "new_operation_id": request.operation_id,
+        cutover.ABANDONED_LINEAGE_LINK_KEY: {
+            "schema": cutover.ABANDONED_LINEAGE_LINK_SCHEMA,
+            "abandoned_record_sha256": prior_owner["record_sha256"],
+            "abandoned_authorization": prior_owner["authorization"],
+            "abandoned_target": prior_owner["target"],
+            "predecessor_evidence": prior_owner["predecessor_release_evidence"],
+            "protected_receipt_sha256": facts["anchor_sha256"],
+            "managed_receipt_sha256": facts["managed_sha256"],
+        },
+    }
+    return {**unsigned, "evidence_sha256": digest(unsigned)}
+
+
+def _recovery_eligibility(config: cutover.CutoverConfig) -> Record:
+    """READINESS verdict from the same verifier that RESERVE and APPLY use (read-only)."""
+    owner = cutover.inspect_control_owner(config)
+    if owner is None or owner.get("phase") != "RELEASED" or not _is_abandoned_lineage_owner(owner):
+        return {"status": "NOT_APPLICABLE"}
+    try:
+        facts = _verify_abandoned_lineage_continuation(
+            config, owner, claim_root=repository_claim_root()
+        )
+    except (ProtectedError, cutover.CutoverSafetyError) as exc:
+        return {"status": "REFUSED", "reason": str(exc)}
+    return {"status": "CONTINUATION_REQUIRES_EXPLICIT_AUTHORIZATION", **facts}
+
+
 def _require_released_success_evidence(
     request: Request,
     prior_owner: Record | None,
@@ -3782,6 +4046,12 @@ def _require_released_success_evidence(
             )
         return _require_failed_terminal_successor_evidence(
             request, cast(Record, prior_owner), runner=runner
+        )
+    if _is_abandoned_lineage_owner(prior_owner) and cast(Record, prior_owner).get(
+        "phase"
+    ) == "RELEASED":
+        return _require_abandoned_lineage_successor_evidence(
+            request, cast(Record, prior_owner)
         )
     if prior_owner is not None and _is_prestart_successor_released_owner(prior_owner):
         return _require_prestart_successor_success_evidence(request, prior_owner, runner=runner)
@@ -5678,6 +5948,7 @@ def status_report(config: cutover.CutoverConfig) -> Record:
             "sha256": rollback_sha,
             "exists": rollback_sha is not None,
         },
+        "recovery_eligibility": _recovery_eligibility(config),
     }
 
 
@@ -5956,9 +6227,16 @@ def main(argv: Sequence[str] | None = None) -> int:
         elif args.action == "apply" and prestart_successor_predecessor_sha is not None:
             recovered_predecessor_sha = prestart_successor_predecessor_sha
         elif args.action == "apply" and not os.path.lexists(prior_execution_path):
-            recovered_predecessor_sha = _reconciled_predecessor_receipt_sha256(
-                reservation_config, prior_owner
-            )
+            if _is_abandoned_lineage_owner(prior_owner):
+                recovered_predecessor_sha = _abandoned_lineage_anchor_sha256(
+                    reservation_config,
+                    cast(Record, prior_owner),
+                    claim_root=repository_claim_root(),
+                )
+            else:
+                recovered_predecessor_sha = _reconciled_predecessor_receipt_sha256(
+                    reservation_config, prior_owner
+                )
         if args.action == "apply" and (
             prior_owner is None or (prior_owner.get("phase") == "RELEASED" and not released_replay)
         ):

@@ -38,7 +38,7 @@ import stat
 import sys
 import time
 from collections.abc import Callable, Mapping, Sequence
-from contextlib import redirect_stderr, redirect_stdout, suppress
+from contextlib import ExitStack, redirect_stderr, redirect_stdout, suppress
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -94,6 +94,8 @@ V8_EXIT2_PLAN_SHA256 = "1566128298fd4d8e834a70028611326264daf5ac8028d7391565810e
 V8_EXIT2_PLAN_DIGEST = "8289e27b06d0395796eae9b6cfdd34847006d9ed54dcc8ca17faaea661b7af25"
 V8_EXIT2_ORIGINAL_CONTROL_HEAD = "bf649119de0ed252ee5e35587d47991a1aaa216d"
 V8_EXIT2_ORIGINAL_CONTROL_TREE = "66ae9260ec7f480eaf578819cf4d77187452ea7c"
+V8_EXIT2_CAPTURED_STDOUT_SHA256 = "b9531ccd3257ff249d7e6a0cb1f5f07491f37de441f0cd6604c073d1bb150b5c"
+V8_EXIT2_CAPTURED_STDOUT_BYTES = 184
 V8_EXIT2_RECONCILIATION_SCHEMA = "b649-protected-v8-exit2-no-mutation-reconciliation-v1"
 V8_EXIT2_AUTHORIZATION_SCHEMA = "b649-protected-v8-exit2-reconciliation-owner-authorization-v1"
 V8_EXIT2_RELEASE_KIND = "V8_EXIT2_NO_MUTATION_RECONCILED"
@@ -287,6 +289,7 @@ class Request:
     control_tree: str = ""
     owner_id_argument: bool = False
     prior_execution_receipt_sha256: str | None = None
+    control_worktree: Path | None = None
 
     @property
     def action(self) -> str:
@@ -327,7 +330,9 @@ class Request:
             "managed_receipt_path": str(self.config.receipt_path),
             "execution_receipt_path": str(self.receipt_path),
             "claim_root": str(self.claim_root),
-            "control_worktree": str(CONTROL_ROOT),
+            "control_worktree": str(
+                CONTROL_ROOT if self.control_worktree is None else self.control_worktree
+            ),
             "control_head": self.control_head,
             "control_tree": self.control_tree,
             "reservation_id": self.reservation_id,
@@ -349,9 +354,10 @@ class Request:
         return digest(self.identity)
 
     def owner_argv(self) -> list[str]:
+        control_worktree = CONTROL_ROOT if self.control_worktree is None else self.control_worktree
         return [
             sys.executable,
-            str(LAUNCHER),
+            str(control_worktree / "tools/b649_protected_cutover.py"),
             "apply",
             "--source-worktree",
             str(self.config.source_worktree),
@@ -372,10 +378,11 @@ class Request:
         ]
 
     def managed_argv(self) -> list[str]:
+        control_worktree = CONTROL_ROOT if self.control_worktree is None else self.control_worktree
         wire = {"identity": self.identity, "takeover_stale": self.takeover_stale}
         return [
             sys.executable,
-            str(MANAGED),
+            str(control_worktree / "tools/b649_production_cutover.py"),
             "apply",
             "--source-worktree",
             str(self.config.source_worktree),
@@ -793,6 +800,22 @@ def request_owner_authorization(
                 if transition_sha256 is not None:
                     authorization["transition_evidence_sha256"] = transition_sha256
     return authorization
+
+
+def _assert_owner_admits_claim(request: Request | RollbackRequest) -> None:
+    owner = cutover.inspect_control_owner(request.config)
+    if owner is None:
+        raise ProtectedError("durable protected Owner disappeared before ClaimStore admission")
+    expected = request_owner_authorization(request, owner)
+    if (
+        owner.get("owner_kind") != "protected"
+        or owner.get("phase") != "AUTHORIZED_PENDING"
+        or owner.get("mutation_started") is not False
+        or cutover._owner_identity(owner)  # pyright: ignore[reportPrivateUsage]
+        != expected
+        or owner.get("authorization") != expected
+    ):
+        raise ProtectedError("durable protected Owner changed before ClaimStore admission")
 
 
 @dataclass(frozen=True)
@@ -2960,7 +2983,9 @@ def _reconciled_predecessor_receipt_sha256(
             }
             or stranded_operation != incident_operation
             or reconciliation.get("process_identity_failure")
-            != _v8_exit2_process_identity_failure(stranded)
+            != _v8_exit2_process_identity_failure(
+                stranded, receipt_sha256=stranded_identity.sha256
+            )
         ):
             raise ProtectedError("released exit-2 archive differs from its sealed incident")
     return predecessor_sha
@@ -6438,7 +6463,7 @@ def _v8_exit2_stream_text(value: object, label: str) -> str:
     return result
 
 
-def _v8_exit2_process_identity_failure(stranded: Record) -> str:
+def _v8_exit2_process_identity_failure(stranded: Record, *, receipt_sha256: str) -> str:
     output = _v8_exit2_stream_text(stranded.get("process_stdout"), "process stdout")
     errors = _v8_exit2_stream_text(stranded.get("process_stderr"), "process stderr")
     if errors != "":
@@ -6457,9 +6482,29 @@ def _v8_exit2_process_identity_failure(stranded: Record) -> str:
     failures = result.get("failures")
     failure_values = cast(list[object], failures) if isinstance(failures, list) else []
     failure = failure_values[0] if len(failure_values) == 1 else None
+    newer_identity_failures = {
+        f"Unverifiable: protected process identity failed: {role} {reason}"
+        for role in ("parent", "child")
+        for reason in (
+            "missing from snapshot",
+            "UID mismatch",
+            "argv mismatch",
+            "executable image unobservable",
+            "executable image mismatch",
+            "cwd missing",
+            "cwd mismatch",
+        )
+    }
+    newer_identity_failures.update(
+        {
+            "Unverifiable: protected process chain failed: child parent PID mismatch",
+            "Unverifiable: protected process chain failed: owner and child PIDs are identical",
+        }
+    )
+    legacy_failure = "Unverifiable: protected execution process identity is unverified"
     incident_identity = record(stranded.get("identity"))
     exact_legacy_failure = (
-        failure == "Unverifiable: protected execution process identity is unverified"
+        failure == legacy_failure
         and incident_identity.get("reservation_id") == V8_EXIT2_RESERVATION_ID
         and incident_identity.get("operation_id") == V8_EXIT2_OPERATION_ID
         and incident_identity.get("control_head") == V8_EXIT2_ORIGINAL_CONTROL_HEAD
@@ -6471,11 +6516,19 @@ def _v8_exit2_process_identity_failure(stranded: Record) -> str:
         and incident_identity.get("action") == "apply"
         and incident_identity.get("task_key") == TASK_KEY
     )
-    supported = isinstance(failure, str) and (
-        failure.startswith("Unverifiable: protected process identity failed:")
-        or failure.startswith("Unverifiable: protected process chain failed:")
-        or exact_legacy_failure
-    )
+    if failure == legacy_failure:
+        output_bytes = output.encode("utf-8")
+        if (
+            receipt_sha256 != V8_EXIT2_FAILED_RECEIPT_SHA256
+            or len(output_bytes) != V8_EXIT2_CAPTURED_STDOUT_BYTES
+            or hashlib.sha256(output_bytes).hexdigest() != V8_EXIT2_CAPTURED_STDOUT_SHA256
+        ):
+            raise ProtectedError(
+                "legacy identity failure is not the exact sealed historical capture"
+            )
+        supported = exact_legacy_failure
+    else:
+        supported = isinstance(failure, str) and failure in newer_identity_failures
     if (
         set(result) != {"actions", "command", "failures", "status", "task"}
         or result.get("command") != "apply"
@@ -6591,6 +6644,13 @@ def _v8_exit2_load_context(
         control_head=V8_EXIT2_ORIGINAL_CONTROL_HEAD,
         control_tree=V8_EXIT2_ORIGINAL_CONTROL_TREE,
     )
+    historical_control_worktree = _validate_cross_control_historical_provenance(
+        stranded,
+        stranded_identity,
+        V8_EXIT2_ORIGINAL_CONTROL_HEAD,
+        V8_EXIT2_ORIGINAL_CONTROL_TREE,
+    )
+    request = replace(request, control_worktree=Path(historical_control_worktree))
     if request.identity != stranded_identity:
         raise ProtectedError("exit-2 protected receipt identity differs from all explicit inputs")
 
@@ -6606,6 +6666,11 @@ def _v8_exit2_load_context(
     ):
         raise ProtectedError("running recovery control identity is not exact")
     recovery_control = {"head": live_control["head"], "tree": live_control["tree"]}
+    if recovery_control == {
+        "head": V8_EXIT2_ORIGINAL_CONTROL_HEAD,
+        "tree": V8_EXIT2_ORIGINAL_CONTROL_TREE,
+    }:
+        raise ProtectedError("recovery control identity must remain separate from original control")
 
     owner_snapshot = cutover._read_control_owner(config)  # pyright: ignore[reportPrivateUsage]
     if owner_snapshot is None:
@@ -6669,7 +6734,7 @@ def _v8_exit2_load_context(
         or stranded.get("direct_argv") != request.managed_argv()
     ):
         raise ProtectedError("receipt is not the immutable exact exit-2 incomplete terminal")
-    _v8_exit2_process_identity_failure(stranded)
+    _v8_exit2_process_identity_failure(stranded, receipt_sha256=stranded_sha)
     claim_owner = record(stranded.get("claim_owner"))
     owner_pid = claim_owner.get("owner_pid")
     child_pid = claim_owner.get("child_pid")
@@ -7026,9 +7091,16 @@ def cmd_reconcile_v8_exit2_no_mutation(
 ) -> Record:
     selected_runner = cutover.run_command if runner is None else runner
     config = build_reservation_config(args, for_action="apply")
-    with cutover.CutoverLock(  # pyright: ignore[reportPrivateUsage]
-        cutover._control_owner_lock_path(config)  # pyright: ignore[reportPrivateUsage]
-    ):
+    with ExitStack() as lock_stack:
+        lock_stack.enter_context(
+            cutover.CutoverLock(  # pyright: ignore[reportPrivateUsage]
+                cutover._control_owner_lock_path(config)  # pyright: ignore[reportPrivateUsage]
+            )
+        )
+        initial_context = _v8_exit2_load_context(args, runner=selected_runner)
+        claim_store = claims.ClaimStore(initial_context.request.claim_root)
+        lock_stack.enter_context(claim_store.admission_transaction())
+        # Recompute the complete incident proof after ClaimStore admission is frozen.
         context = _v8_exit2_load_context(args, runner=selected_runner)
         reconciliation_path = _prestart_reconciliation_record_path(
             config, V8_EXIT2_RESERVATION_ID
@@ -7048,7 +7120,10 @@ def cmd_reconcile_v8_exit2_no_mutation(
             expected_sha256=text(args.owner_authorization_sha256),
             existing_reconciliation=existing_reconciliation,
         )
-        failure = _v8_exit2_process_identity_failure(context.stranded)
+        failure = _v8_exit2_process_identity_failure(
+            context.stranded,
+            receipt_sha256=hashlib.sha256(context.stranded_raw).hexdigest(),
+        )
 
         if os.path.lexists(context.request.receipt_path):
             ReceiptFile(context.request.receipt_path).archive_to(
@@ -7345,6 +7420,7 @@ def launch(
         request.managed_argv(),
         takeover_stale=request.takeover_stale,
         capture_output=store.capture_process_output,
+        validate_admission=lambda: _assert_owner_admits_claim(request),
     )
     process_stdout = store.process_stdout.evidence()
     process_stderr = store.process_stderr.evidence()

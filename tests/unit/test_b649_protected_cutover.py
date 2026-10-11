@@ -23,9 +23,9 @@ import subprocess
 import sys
 import threading
 import traceback
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Generator, Sequence
 from concurrent.futures import ThreadPoolExecutor
-from contextlib import redirect_stderr, redirect_stdout
+from contextlib import contextmanager, redirect_stderr, redirect_stdout
 from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime, timedelta
 from multiprocessing.connection import Connection
@@ -9786,6 +9786,7 @@ def _v8_exit2_command_argv(
     authorization_id: str | None = None,
     authorization_sha256: str | None = None,
     plan_sha256: str | None = None,
+    plan_digest: str | None = None,
     confirmation: str | None = None,
 ) -> list[str]:
     request = incident.request
@@ -9818,7 +9819,7 @@ def _v8_exit2_command_argv(
         "--plan-sha256",
         protected.V8_EXIT2_PLAN_SHA256 if plan_sha256 is None else plan_sha256,
         "--plan-digest",
-        protected.V8_EXIT2_PLAN_DIGEST,
+        protected.V8_EXIT2_PLAN_DIGEST if plan_digest is None else plan_digest,
     ]
     if authorization_id is not None:
         argv.extend(("--owner-authorization-id", authorization_id))
@@ -9832,15 +9833,22 @@ def _v8_exit2_command_argv(
 def _prepare_v8_exit2_recovery_fixture(
     harness: Harness,
     monkeypatch: pytest.MonkeyPatch,
+    *,
+    failure_text: str = "Unverifiable: protected execution process identity is unverified",
 ) -> StrandedIncident:
     failure_result = {
         "actions": [],
         "command": "apply",
-        "failures": ["Unverifiable: protected execution process identity is unverified"],
+        "failures": [failure_text],
         "status": "FAIL",
         "task": cutover.TASK_ID,
     }
     harness.process_stdout = (protected.canonical(failure_result) + "\n").encode()
+    if failure_text == "Unverifiable: protected execution process identity is unverified":
+        assert len(harness.process_stdout) == protected.V8_EXIT2_CAPTURED_STDOUT_BYTES
+        assert hashlib.sha256(harness.process_stdout).hexdigest() == (
+            protected.V8_EXIT2_CAPTURED_STDOUT_SHA256
+        )
     harness.process_stderr = b""
     incident = _make_stranded_prestart_incident(
         harness,
@@ -9944,12 +9952,32 @@ def _v8_exit2_state_snapshot(incident: StrandedIncident) -> dict[Path, bytes | N
     return {path: path.read_bytes() if path.exists() else None for path in paths}
 
 
+def test_v8_exit2_pins_the_original_historical_control_identity() -> None:
+    assert protected.V8_EXIT2_ORIGINAL_CONTROL_HEAD == (
+        "bf649119de0ed252ee5e35587d47991a1aaa216d"
+    )
+    assert protected.V8_EXIT2_ORIGINAL_CONTROL_TREE == (
+        "66ae9260ec7f480eaf578819cf4d77187452ea7c"
+    )
+
+
+@pytest.mark.parametrize(
+    "failure_text",
+    [
+        "Unverifiable: protected execution process identity is unverified",
+        "Unverifiable: protected process identity failed: child argv mismatch",
+        "Unverifiable: protected process chain failed: child parent PID mismatch",
+    ],
+)
 def test_v8_exit2_no_mutation_recovery_requires_fresh_owner_auth_and_preserves_receipt(
+    failure_text: str,
     harness: Harness,
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    incident = _prepare_v8_exit2_recovery_fixture(harness, monkeypatch)
+    incident = _prepare_v8_exit2_recovery_fixture(
+        harness, monkeypatch, failure_text=failure_text
+    )
     request = incident.request
     receipt_before = request.receipt_path.read_bytes()
     managed_before = request.config.receipt_path.read_bytes()
@@ -10019,6 +10047,16 @@ def test_v8_exit2_no_mutation_recovery_requires_fresh_owner_auth_and_preserves_r
     assert result["status"] == "RECONCILED"
     assert result["kind"] == protected.V8_EXIT2_RELEASE_KIND
     assert result["verified"] is True
+    reconciliation, _, _ = cutover.read_control_json(
+        Path(result["reconciliation_record_path"])
+    )
+    assert reconciliation["process_identity_failure"] == failure_text
+    assert reconciliation["control_identity"] == {
+        "head": protected.V8_EXIT2_ORIGINAL_CONTROL_HEAD,
+        "tree": protected.V8_EXIT2_ORIGINAL_CONTROL_TREE,
+    }
+    assert reconciliation["recovery_control_identity"] == {"head": "a" * 40, "tree": "b" * 40}
+    assert reconciliation["control_identity"] != reconciliation["recovery_control_identity"]
 
     execution_id = protected.text(
         cutover.read_control_json(
@@ -10049,6 +10087,110 @@ def test_v8_exit2_no_mutation_recovery_requires_fresh_owner_auth_and_preserves_r
     assert _v8_exit2_state_snapshot(incident) == released_state_before
 
 
+def test_v8_exit2_claim_admission_waiting_on_reconciliation_rechecks_owner(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    incident = _prepare_v8_exit2_recovery_fixture(harness, monkeypatch)
+    request = incident.request
+    stranded_receipt = request.receipt_path.read_bytes()
+    mutations_before = tuple(harness.launchd.mutation_calls)
+    stranded_record = protected.ReceiptFile(request.receipt_path).read()
+    assert stranded_record is not None
+    execution_id = protected.text(stranded_record.get("execution_id"))
+    authorization_argv = _v8_exit2_command_argv(
+        "authorize-v8-exit2-reconciliation",
+        incident,
+        confirmation=protected.V8_EXIT2_OWNER_CONFIRMATION,
+    )
+    assert protected.main(authorization_argv) == 0
+    authorization = json.loads(capsys.readouterr().out.splitlines()[-1])
+    reconcile_argv = _v8_exit2_command_argv(
+        "reconcile-v8-exit2-no-mutation",
+        incident,
+        authorization_id=authorization["authorization_id"],
+        authorization_sha256=authorization["authorization_sha256"],
+    )
+
+    reconciliation_holds_claim_lock = threading.Event()
+    claimant_waiting_for_claim_lock = threading.Event()
+    allow_reconciliation = threading.Event()
+    original_transaction = claims.ClaimStore._transaction
+
+    @contextmanager
+    def coordinated_transaction(store: claims.ClaimStore) -> Generator[None]:
+        thread_name = threading.current_thread().name
+        if thread_name == "v8-exit2-reconciler":
+            with original_transaction(store):
+                reconciliation_holds_claim_lock.set()
+                if not allow_reconciliation.wait(timeout=10):
+                    raise AssertionError("test did not release reconciliation lock")
+                yield
+            return
+        if thread_name == "v8-exit2-claimant":
+            claimant_waiting_for_claim_lock.set()
+        with original_transaction(store):
+            yield
+
+    monkeypatch.setattr(claims.ClaimStore, "_transaction", coordinated_transaction)
+    reconciliation_results: list[int] = []
+    reconciliation_errors: list[BaseException] = []
+    claimant_results: list[int] = []
+    claimant_errors: list[BaseException] = []
+
+    def reconcile() -> None:
+        try:
+            reconciliation_results.append(protected.main(reconcile_argv))
+        except BaseException as exc:
+            reconciliation_errors.append(exc)
+
+    def admit_prebound_claim() -> None:
+        try:
+            claimant_results.append(
+                claims.ClaimStore(request.claim_root).run(
+                    protected.TASK_KEY,
+                    [sys.executable, "-c", "pass"],
+                    validate_admission=lambda: protected._assert_owner_admits_claim(request),
+                )
+            )
+        except BaseException as exc:
+            claimant_errors.append(exc)
+
+    reconciliation_thread = threading.Thread(target=reconcile, name="v8-exit2-reconciler")
+    claimant_thread = threading.Thread(target=admit_prebound_claim, name="v8-exit2-claimant")
+    reconciliation_thread.start()
+    try:
+        assert reconciliation_holds_claim_lock.wait(timeout=10)
+        claimant_thread.start()
+        assert claimant_waiting_for_claim_lock.wait(timeout=10)
+    finally:
+        allow_reconciliation.set()
+        reconciliation_thread.join(timeout=15)
+        if claimant_thread.ident is not None:
+            claimant_thread.join(timeout=15)
+
+    assert not reconciliation_thread.is_alive()
+    assert not claimant_thread.is_alive()
+    assert reconciliation_errors == []
+    assert reconciliation_results == [0]
+    assert claimant_results == []
+    assert len(claimant_errors) == 1
+    assert isinstance(claimant_errors[0], protected.ProtectedError)
+    assert "Owner changed before ClaimStore admission" in str(claimant_errors[0])
+
+    released_owner = cutover.inspect_control_owner(request.config)
+    assert released_owner is not None and released_owner["phase"] == "RELEASED"
+    assert claims.ClaimStore(request.claim_root).inspect(protected.TASK_KEY)["status"] == "ABSENT"
+    archive_path = request.receipt_path.with_name(
+        f"{request.receipt_path.stem}.{execution_id}.superseded.json"
+    )
+    assert not request.receipt_path.exists()
+    assert archive_path.read_bytes() == stranded_receipt
+    assert tuple(harness.launchd.mutation_calls) == mutations_before
+    capsys.readouterr()
+
+
 @pytest.mark.parametrize(
     "defect",
     [
@@ -10072,6 +10214,14 @@ def test_v8_exit2_no_mutation_recovery_requires_fresh_owner_auth_and_preserves_r
         "wrong_target_tree",
         "wrong_owner_confirmation",
         "other_exit_code",
+        "changed_plan_digest",
+        "wrong_original_control_main",
+        "recovery_control_used_as_original",
+        "unrelated_legacy_receipt",
+        "tampered_stdout_capture",
+        "changed_receipt_hash",
+        "missing_fresh_owner_authorization",
+        "changed_owner_target",
         "missing_receipt",
     ],
 )
@@ -10083,56 +10233,87 @@ def test_v8_exit2_recovery_refuses_each_unproven_incident_without_authority_writ
 ) -> None:
     incident = _prepare_v8_exit2_recovery_fixture(harness, monkeypatch)
     request = incident.request
-    if defect in {"unsupported_process_error", "nonempty_actions", "other_exit_code"}:
+    if defect in {
+        "unsupported_process_error",
+        "nonempty_actions",
+        "other_exit_code",
+        "unrelated_legacy_receipt",
+        "tampered_stdout_capture",
+    }:
         stranded = protected.ReceiptFile(request.receipt_path).read()
         assert stranded is not None
-        if defect == "unsupported_process_error":
-            failure_result = {
-                "actions": [],
-                "command": "apply",
-                "failures": ["Unverifiable: process table could not be parsed"],
-                "status": "FAIL",
-                "task": cutover.TASK_ID,
-            }
-        elif defect == "nonempty_actions":
-            failure_result = {
-                "actions": [{"name": "plist-write", "mutation": True}],
-                "command": "apply",
-                "failures": [
-                    "Unverifiable: protected process identity failed: child argv mismatch"
-                ],
-                "status": "FAIL",
-                "task": cutover.TASK_ID,
-            }
+        if defect == "tampered_stdout_capture":
+            changed_capture = dict(protected.record(stranded.get("process_stdout")))
+            changed_capture["text"] = str(changed_capture["text"]) + "tampered"
+            changed = {**stranded, "process_stdout": changed_capture}
+            saved = protected.ReceiptFile(request.receipt_path).write(
+                changed, expected=stranded
+            )
+            monkeypatch.setattr(
+                protected,
+                "V8_EXIT2_FAILED_RECEIPT_SHA256",
+                hashlib.sha256((protected.canonical(saved) + "\n").encode()).hexdigest(),
+            )
         else:
-            failure_result = {
-                "actions": [],
-                "command": "apply",
-                "failures": [
-                    "Unverifiable: protected process identity failed: child argv mismatch"
-                ],
-                "status": "FAIL",
-                "task": cutover.TASK_ID,
+            if defect == "unsupported_process_error":
+                failure_result = {
+                    "actions": [],
+                    "command": "apply",
+                    "failures": ["Unverifiable: process table could not be parsed"],
+                    "status": "FAIL",
+                    "task": cutover.TASK_ID,
+                }
+            elif defect == "nonempty_actions":
+                failure_result = {
+                    "actions": [{"name": "plist-write", "mutation": True}],
+                    "command": "apply",
+                    "failures": [
+                        "Unverifiable: protected process identity failed: child argv mismatch"
+                    ],
+                    "status": "FAIL",
+                    "task": cutover.TASK_ID,
+                }
+            elif defect == "unrelated_legacy_receipt":
+                failure_result = {
+                    "actions": [],
+                    "command": "apply",
+                    "failures": [
+                        "Unverifiable: protected execution process identity is unverified"
+                    ],
+                    "status": "FAIL",
+                    "task": cutover.TASK_ID,
+                }
+            else:
+                failure_result = {
+                    "actions": [],
+                    "command": "apply",
+                    "failures": [
+                        "Unverifiable: protected process identity failed: child argv mismatch"
+                    ],
+                    "status": "FAIL",
+                    "task": cutover.TASK_ID,
+                }
+            stdout_text = protected.canonical(failure_result) + "\n"
+            changed = {
+                **stranded,
+                "process_stdout": {
+                    "text": stdout_text,
+                    "bytes": len(stdout_text.encode()),
+                    "sha256": hashlib.sha256(stdout_text.encode()).hexdigest(),
+                    "truncated": False,
+                },
             }
-        changed = {
-            **stranded,
-            "process_stdout": {
-                "text": protected.canonical(failure_result) + "\n",
-                "bytes": len((protected.canonical(failure_result) + "\n").encode()),
-                "sha256": hashlib.sha256(
-                    (protected.canonical(failure_result) + "\n").encode()
-                ).hexdigest(),
-                "truncated": False,
-            },
-        }
-        if defect == "other_exit_code":
-            changed["exit_code"] = 1
-        saved = protected.ReceiptFile(request.receipt_path).write(changed, expected=stranded)
-        monkeypatch.setattr(
-            protected,
-            "V8_EXIT2_FAILED_RECEIPT_SHA256",
-            hashlib.sha256((protected.canonical(saved) + "\n").encode()).hexdigest(),
-        )
+            if defect == "other_exit_code":
+                changed["exit_code"] = 1
+            saved = protected.ReceiptFile(request.receipt_path).write(
+                changed, expected=stranded
+            )
+            if defect != "unrelated_legacy_receipt":
+                monkeypatch.setattr(
+                    protected,
+                    "V8_EXIT2_FAILED_RECEIPT_SHA256",
+                    hashlib.sha256((protected.canonical(saved) + "\n").encode()).hexdigest(),
+                )
     elif defect == "changed_managed_receipt":
         managed, file_identity, _ = cutover.read_control_json(request.config.receipt_path)
         cutover._write_json(
@@ -10227,6 +10408,47 @@ def test_v8_exit2_recovery_refuses_each_unproven_incident_without_authority_writ
         request.receipt_path.unlink()
     elif defect == "changed_plan":
         request.plan_file.write_bytes(request.plan_file.read_bytes() + b"\n")
+    elif defect == "changed_receipt_hash":
+        monkeypatch.setattr(protected, "V8_EXIT2_FAILED_RECEIPT_SHA256", "f" * 64)
+    elif defect == "wrong_original_control_main":
+        monkeypatch.setattr(
+            protected, "V8_EXIT2_ORIGINAL_CONTROL_HEAD", "bec1647c12bd6f51dfb55b91e0dd33469ba9bd53"
+        )
+        monkeypatch.setattr(
+            protected, "V8_EXIT2_ORIGINAL_CONTROL_TREE", "57e6e65ba230ab83cdef87bcc2430e41961e1e04"
+        )
+    elif defect == "recovery_control_used_as_original":
+        monkeypatch.setattr(protected, "V8_EXIT2_ORIGINAL_CONTROL_HEAD", "a" * 40)
+        monkeypatch.setattr(protected, "V8_EXIT2_ORIGINAL_CONTROL_TREE", "b" * 40)
+    elif defect == "changed_owner_target":
+        owner_snapshot = cutover._read_control_owner(request.config)  # pyright: ignore[reportPrivateUsage]
+        assert owner_snapshot is not None
+        owner, owner_identity = owner_snapshot
+        changed_owner = {
+            **owner,
+            "target": {**protected.record(owner["target"]), "head": "f" * 40},
+        }
+        changed_owner["authorization"] = cutover._owner_identity(  # pyright: ignore[reportPrivateUsage]
+            changed_owner
+        )
+        cutover._save_control_owner(  # pyright: ignore[reportPrivateUsage]
+            request.config, changed_owner, expected=owner_identity
+        )
+
+    if defect == "missing_fresh_owner_authorization":
+        before = _v8_exit2_state_snapshot(incident)
+        with pytest.raises(SystemExit):
+            protected.main(
+                _v8_exit2_command_argv("reconcile-v8-exit2-no-mutation", incident)
+            )
+        capsys.readouterr()
+        assert _v8_exit2_state_snapshot(incident) == before
+        assert not list(
+            request.config.scheduler_root.glob(
+                "b649-v8-exit2-owner-authorization-*.json"
+            )
+        )
+        return
 
     argv = _v8_exit2_command_argv(
         "authorize-v8-exit2-reconciliation",
@@ -10237,6 +10459,7 @@ def test_v8_exit2_recovery_refuses_each_unproven_incident_without_authority_writ
             else protected.V8_EXIT2_OWNER_CONFIRMATION
         ),
         plan_sha256=("f" * 64 if defect == "incorrect_plan_hash" else None),
+        plan_digest=("f" * 64 if defect == "changed_plan_digest" else None),
     )
     if defect == "missing_plan":
         argv[argv.index("--plan-file") + 1] = str(request.plan_file.with_name("missing-plan.json"))

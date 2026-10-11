@@ -45,6 +45,35 @@ CAP_INDEX = 2981
 RESULT_FILENAME = "b649-k20-min-s2-owner-66655555555440000000-motif-r1-result.json"
 RESULT_PATH = base.ROOT / prior.RESULT_DIRECTORY / RESULT_FILENAME
 WEIGHTS = {"K": 679, "A": 448, "D": 112, "ZERO": 0}
+HISTORICAL_SOURCE_NAMES = (
+    "b649_k20_min_s2_class_dominance_or_descent_r13",
+    "b649_k20_min_s2_closed_form_owner_plateau_r31",
+    "b649_k20_min_s2_continued_multi_plateau_descent_r12",
+    "b649_k20_min_s2_current_bound_owner_refinement_r15",
+    "b649_k20_min_s2_current_cursor_class_owner_chase_r28",
+    "b649_k20_min_s2_current_cursor_dynamic_family_max_r30",
+    "b649_k20_min_s2_cursor_plateau_closure_r18",
+    "b649_k20_min_s2_dangerous_core_realizability_r5",
+    "b649_k20_min_s2_higher_order_closure_r2",
+    "b649_k20_min_s2_load_bearing_plateau_descent_r16",
+    "b649_k20_min_s2_nb_degree_cap_frontier_r1",
+    "b649_k20_min_s2_nb_w807_w786_batch_certificate_r1",
+    "b649_k20_min_s2_nb_w808_frontier_r1",
+    "b649_k20_min_s2_next_active_profile_exact_bound_r8",
+    "b649_k20_min_s2_next_distinct_plateau_r10",
+    "b649_k20_min_s2_r16_freeze_and_owner_refinement_r17",
+    "b649_k20_min_s2_realizable_core_class_bound_r4",
+    "b649_k20_min_s2_resolved_above_cursor_owner_chase_r20",
+    "b649_k20_min_s2_route_b_current_owner_refinement_r32",
+    "b649_k20_min_s2_six_owner_batch_refinement_r26",
+    "b649_k20_min_s2_six_owner_cursor_crossover_r26",
+    "b649_k20_min_s2_split_cap_current_owner_chase_r1",
+    "b649_k20_min_s2_ss332_owner_class_to_cursor_r29",
+    "b649_k20_min_s2_successive_class_dominance_r14",
+    "b649_k20_min_s2_topw12_coverage_repair_r1",
+    "b649_k20_min_s2_topw12_split_cap_certificate_r1",
+    "b649_official_any_prize_exact",
+)
 Pair = tuple[int, int]
 Support = tuple[int, ...]
 integer, object_row, rows = base.integer, base.object_row, base.rows
@@ -282,21 +311,31 @@ class Authority:
     provenance: dict[str, str]
 
 
+def historical_provenance() -> dict[str, str]:
+    """Verify exactly the 27 historical sources used by this certificate's replay."""
+    provenance: dict[str, str] = {}
+    for name in HISTORICAL_SOURCE_NAMES:
+        module = sys.modules.get(f"{__package__}.{name}")
+        if module is None or module.__file__ is None:
+            raise AssertionError(f"historical source module missing: {name}")
+        relative = f"src/lottolab/research/{name}.py"
+        path = Path(module.__file__).resolve()
+        if path != (base.ROOT / relative).resolve():
+            raise AssertionError(f"historical source identity mismatch: {name}")
+        committed = base.git("show", f"{BASE_HEAD}:{relative}")
+        if path.read_bytes() != committed:
+            raise AssertionError(f"reused module differs from base: {relative}")
+        provenance[relative] = hashlib.sha256(committed).hexdigest()
+    return provenance
+
+
 @cache
 def load_authority() -> Authority:
     """Replay the existing ledger, then install only the base's sealed split-cap rows."""
     if base.git("rev-parse", f"{BASE_HEAD}^{{tree}}").decode().strip() != BASE_TREE:
         raise AssertionError("base tree mismatch")
     sealed = pinned_result(base.RESULT_FILENAME, BASE_RESULT_SHA256)
-    provenance: dict[str, str] = {}
-    for name, module in sorted(sys.modules.copy().items()):
-        if name.startswith("lottolab.research.") and name != __name__ and module.__file__:
-            path = Path(module.__file__).resolve()
-            relative = path.relative_to(base.ROOT).as_posix()
-            committed = base.git("show", f"{BASE_HEAD}:{relative}")
-            if path.read_bytes() != committed:
-                raise AssertionError(f"reused module differs from base: {relative}")
-            provenance[relative] = hashlib.sha256(committed).hexdigest()
+    provenance = historical_provenance()
     inherited = base.load_authority()
     ledger = dict(inherited.ledger)
     for index, raw in enumerate(rows(sealed["CERTIFICATES"])):

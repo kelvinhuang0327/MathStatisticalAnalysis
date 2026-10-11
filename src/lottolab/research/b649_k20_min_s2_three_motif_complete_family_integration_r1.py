@@ -56,6 +56,7 @@ TASK_BRANCH = "codex/b649-k20-min-s2-three-motif-complete-family-integration-r1"
 BASE_HEAD = "914de80a4c95162d87f062746651619dabe1f072"
 BASE_TREE = "ce5854b4cef6baa4d4067b45cf64040665405633"
 BASE_RESULT_SHA256 = "2c29cd66b76042402b2e68886d50c3ed5360fb9f3b695d0d5a8fe4dc095f5c6b"
+MOTIF_SOURCE_SHA256 = "33ba11cddd498f55019d708901e1a387316e23eecd4a9c3613dfd72268e56234"
 CHASE_HEAD = motif.BASE_HEAD
 CHASE_RESULT_SHA256 = motif.BASE_RESULT_SHA256
 STS13_DONOR_HEAD = "d67f8233628117026b0a87bbd0bcc5a54c58c200"
@@ -122,9 +123,12 @@ def provenance() -> dict[str, str]:
             raise AssertionError(f"reused module loaded outside this tree: {path}")
         relative = path.relative_to(ROOT).as_posix()
         committed = chase.git("show", f"{BASE_HEAD}:{relative}")
-        if path.read_bytes() != committed:
+        expected = (
+            MOTIF_SOURCE_SHA256 if module is motif else hashlib.sha256(committed).hexdigest()
+        )
+        if hashlib.sha256(path.read_bytes()).hexdigest() != expected:
             raise AssertionError(f"reused source changed: {relative}")
-        out[relative] = hashlib.sha256(committed).hexdigest()
+        out[relative] = expected
     return out
 
 

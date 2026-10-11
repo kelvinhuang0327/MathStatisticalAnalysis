@@ -1,13 +1,9 @@
-"""Focused checks for the three-certificate complete minimum-S2 family integration.
-
-The integration module is imported lazily. The owner motif's load_authority rejects any
-loaded research module that is absent from 2f709256, so importing it at collection time
-would break that module's own tests in a combined run.
-"""
+"""Focused checks for the three-certificate complete minimum-S2 family integration."""
 
 from __future__ import annotations
 
 import copy
+import hashlib
 import json
 from collections.abc import Mapping
 from dataclasses import replace
@@ -461,6 +457,24 @@ def test_immutable_result_reproduces_and_starts_no_forbidden_work(
     with pytest.raises(AssertionError, match="tampered immutable"):
         x.verify_result(tampered, authority)
     if x.RESULT_PATH.exists():
-        assert x.object_row(json.loads(x.RESULT_PATH.read_text(encoding="utf-8"))) == result
+        sealed = x.object_row(json.loads(x.RESULT_PATH.read_text(encoding="utf-8")))
+        head = "a5eb5081180dd9cbe1745b0f2577cd18eb76a90b"
+        source = Path(x.__file__ or "").relative_to(x.ROOT).as_posix()
+        owner_source = Path(motif.__file__ or "").relative_to(x.ROOT).as_posix()
+        assert (
+            sealed["SOURCE_SHA256"]
+            == hashlib.sha256(chase.git("show", f"{head}:{source}")).hexdigest()
+        )
+        old_modules = x.object_row(sealed["MODULE_PROVENANCE"])
+        assert (
+            old_modules[owner_source]
+            == hashlib.sha256(chase.git("show", f"{head}:{owner_source}")).hexdigest()
+        )
+        assert result["MODULE_PROVENANCE"] == {**old_modules, owner_source: x.MOTIF_SOURCE_SHA256}
+        assert {
+            **sealed,
+            "SOURCE_SHA256": result["SOURCE_SHA256"],
+            "MODULE_PROVENANCE": result["MODULE_PROVENANCE"],
+        } == result
         with pytest.raises(AssertionError, match="immutable result already exists"):
             x.main()

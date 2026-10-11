@@ -403,6 +403,35 @@ def interpreter_command_matches(process: Process, argv: tuple[str, ...]) -> bool
     )
 
 
+def _process_identity_failure(process: Process, argv: tuple[str, ...], role: str) -> str | None:
+    """Return one safe, stable diagnostic without copying observed argv or paths."""
+    if not argv:
+        return f"protected process identity failed: {role} argv mismatch"
+    suffix = " " + " ".join(argv[1:])
+    if not process.command.endswith(suffix):
+        return f"protected process identity failed: {role} argv mismatch"
+    executable = Path(process.command[: -len(suffix)])
+    try:
+        expected_image = process_image(os.getpid())
+    except (OSError, RuntimeError, ValueError):
+        return f"protected process identity failed: {role} executable image unobservable"
+    if not executable.is_absolute():
+        return f"protected process identity failed: {role} executable image mismatch"
+    try:
+        command_image = executable.resolve(strict=True)
+    except (OSError, RuntimeError, ValueError):
+        return f"protected process identity failed: {role} executable image unobservable"
+    if command_image != expected_image:
+        return f"protected process identity failed: {role} executable image mismatch"
+    try:
+        actual_image = process_image(process.pid)
+    except (OSError, RuntimeError, ValueError):
+        return f"protected process identity failed: {role} executable image unobservable"
+    if actual_image != expected_image:
+        return f"protected process identity failed: {role} executable image mismatch"
+    return None
+
+
 @dataclass(frozen=True)
 class ControlledExecution:
     """Claim-bound proof inputs; never a caller-supplied PID exemption."""
@@ -471,44 +500,68 @@ class ControlledExecution:
                 identity.get("source_tree"),
             ),
         )
-        if (
-            identity_digest != self.execution_id
-            or identity.get("task_key") != self.task_key
-            or identity.get("action") != "apply"
-            or identity.get("claim_root") != str(self.claim_root)
-            or identity.get("control_worktree") != str(root)
-            or self.owner_cwd != str(root)
-            or self.owner_argv != expected_owner
-            or self.sources != expected_sources
-        ):
-            raise Unverifiable("protected execution proof is not bound to its immutable identity")
+        if identity_digest != self.execution_id:
+            raise Unverifiable("protected execution identity digest mismatch")
+        if identity.get("task_key") != self.task_key:
+            raise Unverifiable("protected execution task identity mismatch")
+        if identity.get("action") != "apply":
+            raise Unverifiable("protected execution action identity mismatch")
+        if identity.get("claim_root") != str(self.claim_root):
+            raise Unverifiable("protected execution claim-root identity mismatch")
+        if identity.get("control_worktree") != str(root):
+            raise Unverifiable("protected execution control-worktree identity mismatch")
+        if self.owner_cwd != str(root):
+            raise Unverifiable("protected execution parent cwd identity mismatch")
+        if self.owner_argv != expected_owner:
+            raise Unverifiable("protected execution parent argv identity mismatch")
+        if self.sources != expected_sources:
+            raise Unverifiable("protected execution source identity mismatch")
         claim = ClaimStore(self.claim_root).inspect(self.task_key)
         child, owner = os.getpid(), os.getppid()
-        if (
-            claim.get("status") != "ACTIVE"
-            or claim.get("owner_alive") is not True
-            or claim.get("child_alive") is not True
-            or claim.get("owner_id") != self.owner_id
-            or claim.get("owner_pid") != owner
-            or claim.get("child_pid") != child
-            or claim.get("command") != list(self.child_argv)
-            or claim.get("cwd") != self.owner_cwd
-            or not re.fullmatch(r"[0-9a-f]{64}", self.execution_id)
-            or "--protected-execution" not in self.child_argv
-            or self.child_argv[-1] != self.execution_id
+        if claim.get("status") != "ACTIVE":
+            raise Unverifiable("protected ClaimStore status mismatch")
+        if claim.get("owner_alive") is not True:
+            raise Unverifiable("protected ClaimStore owner liveness is unverified")
+        if claim.get("child_alive") is not True:
+            raise Unverifiable("protected ClaimStore child liveness is unverified")
+        if claim.get("owner_id") != self.owner_id:
+            raise Unverifiable("protected ClaimStore owner identity mismatch")
+        if claim.get("owner_pid") != owner:
+            raise Unverifiable("protected ClaimStore owner PID mismatch")
+        if claim.get("child_pid") != child:
+            raise Unverifiable("protected ClaimStore child PID mismatch")
+        if claim.get("command") != list(self.child_argv):
+            raise Unverifiable("protected ClaimStore child argv identity mismatch")
+        if claim.get("cwd") != self.owner_cwd:
+            raise Unverifiable("protected ClaimStore cwd identity mismatch")
+        if not re.fullmatch(r"[0-9a-f]{64}", self.execution_id):
+            raise Unverifiable("protected execution ID is malformed")
+        if "--protected-execution" not in self.child_argv:
+            raise Unverifiable("protected child argv is missing its execution marker")
+        if self.child_argv[-1] != self.execution_id:
+            raise Unverifiable("protected child argv execution ID mismatch")
+        for pid, argv, role in (
+            (owner, self.owner_argv, "parent"),
+            (child, self.child_argv, "child"),
         ):
-            raise Unverifiable("protected execution claim/identity does not match this child")
-        for pid, argv in ((owner, self.owner_argv), (child, self.child_argv)):
             process = processes.get(pid)
-            if (
-                process is None
-                or process.uid != uid
-                or not interpreter_command_matches(process, argv)
-                or process.cwd != self.owner_cwd
-            ):
-                raise Unverifiable("protected execution process identity is unverified")
-        if processes[child].ppid != owner or owner == child:
-            raise Unverifiable("protected execution parent/child chain changed")
+            if process is None:
+                raise Unverifiable(
+                    f"protected process identity failed: {role} missing from snapshot"
+                )
+            if process.uid != uid:
+                raise Unverifiable(f"protected process identity failed: {role} UID mismatch")
+            failure = _process_identity_failure(process, argv, role)
+            if failure is not None:
+                raise Unverifiable(failure)
+            if process.cwd is None:
+                raise Unverifiable(f"protected process identity failed: {role} cwd missing")
+            if process.cwd != self.owner_cwd:
+                raise Unverifiable(f"protected process identity failed: {role} cwd mismatch")
+        if processes[child].ppid != owner:
+            raise Unverifiable("protected process chain failed: child parent PID mismatch")
+        if owner == child:
+            raise Unverifiable("protected process chain failed: owner and child PIDs are identical")
         return {
             "execution_id": self.execution_id,
             "owner_id": self.owner_id,

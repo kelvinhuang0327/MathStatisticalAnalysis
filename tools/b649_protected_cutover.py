@@ -854,17 +854,40 @@ class RollbackControlledExecution(checkpoint.ControlledExecution):
             raise checkpoint.Unverifiable(
                 "protected rollback claim/identity does not match this child"
             )
-        for pid, argv in ((owner, self.owner_argv), (child, self.child_argv)):
+        for pid, argv, role in (
+            (owner, self.owner_argv, "parent"),
+            (child, self.child_argv, "child"),
+        ):
             process = processes.get(pid)
-            if (
-                process is None
-                or process.uid != uid
-                or not checkpoint.interpreter_command_matches(process, argv)
-                or process.cwd != self.owner_cwd
-            ):
-                raise checkpoint.Unverifiable("protected rollback process identity is unverified")
-        if processes[child].ppid != owner or owner == child:
-            raise checkpoint.Unverifiable("protected rollback parent/child chain changed")
+            if process is None:
+                raise checkpoint.Unverifiable(
+                    f"protected process identity failed: {role} missing from snapshot"
+                )
+            if process.uid != uid:
+                raise checkpoint.Unverifiable(
+                    f"protected process identity failed: {role} UID mismatch"
+                )
+            failure = checkpoint._process_identity_failure(  # pyright: ignore[reportPrivateUsage]
+                process, argv, role
+            )
+            if failure is not None:
+                raise checkpoint.Unverifiable(failure)
+            if process.cwd is None:
+                raise checkpoint.Unverifiable(
+                    f"protected process identity failed: {role} cwd missing"
+                )
+            if process.cwd != self.owner_cwd:
+                raise checkpoint.Unverifiable(
+                    f"protected process identity failed: {role} cwd mismatch"
+                )
+        if processes[child].ppid != owner:
+            raise checkpoint.Unverifiable(
+                "protected process chain failed: child parent PID mismatch"
+            )
+        if owner == child:
+            raise checkpoint.Unverifiable(
+                "protected process chain failed: owner and child PIDs are identical"
+            )
         return {
             "execution_id": self.execution_id,
             "owner_id": self.owner_id,

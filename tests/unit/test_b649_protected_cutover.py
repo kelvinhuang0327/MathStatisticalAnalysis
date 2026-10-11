@@ -3101,6 +3101,7 @@ def _controlled_execution_fixture(
         "command": list(proof.child_argv),
         "cwd": proof.owner_cwd,
     }
+
     def inspect_claim(_store: claims.ClaimStore, _task_key: str) -> dict[str, object]:
         return dict(claim)
 
@@ -3149,6 +3150,74 @@ def test_controlled_execution_accepts_exact_parent_child_proof(
 
     assert result["supervisor_pid"] == parent_pid
     assert result["gated_child_pid"] == child_pid
+
+
+def test_rollback_controlled_execution_redacts_parent_image_observation_error(
+    rollback_harness: Harness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    parent_pid, child_pid = 900101, 900102
+    owner_id = str(uuid4())
+    request = rollback_harness.request
+    proof = protected.RollbackControlledExecution(
+        claim_root=request.claim_root,
+        task_key=protected.TASK_KEY,
+        execution_id=request.execution_id,
+        owner_id=owner_id,
+        child_argv=tuple(request.managed_argv()),
+        owner_argv=tuple(request.owner_argv()),
+        owner_cwd=str(protected.CONTROL_ROOT),
+        sources=request.sources,
+    )
+    claim: dict[str, object] = {
+        "status": "ACTIVE",
+        "owner_alive": True,
+        "child_alive": True,
+        "owner_id": owner_id,
+        "owner_pid": parent_pid,
+        "child_pid": child_pid,
+        "command": list(proof.child_argv),
+        "cwd": proof.owner_cwd,
+    }
+    def inspect_claim(_store: claims.ClaimStore, _task_key: str) -> dict[str, object]:
+        return dict(claim)
+
+    monkeypatch.setattr(checkpoint.ClaimStore, "inspect", inspect_claim)
+    monkeypatch.setattr(checkpoint.os, "getpid", lambda: child_pid)
+    monkeypatch.setattr(checkpoint.os, "getppid", lambda: parent_pid)
+    image = Path(sys.executable).resolve()
+
+    def process_image(pid: int) -> Path:
+        if pid == parent_pid:
+            raise FileNotFoundError(2, "No such file or directory", f"/proc/{pid}/exe")
+        return image
+
+    monkeypatch.setattr(checkpoint, "process_image", process_image)
+    processes = {
+        parent_pid: checkpoint.Process(
+            parent_pid,
+            1,
+            UID,
+            " ".join(proof.owner_argv),
+            cwd=proof.owner_cwd,
+        ),
+        child_pid: checkpoint.Process(
+            child_pid,
+            parent_pid,
+            UID,
+            " ".join(proof.child_argv),
+            cwd=proof.owner_cwd,
+        ),
+    }
+
+    with pytest.raises(checkpoint.Unverifiable) as raised:
+        proof.verify(processes, UID)
+
+    assert str(raised.value) == (
+        "protected process identity failed: parent executable image unobservable"
+    )
+    assert "/proc" not in str(raised.value)
+    assert str(parent_pid) not in str(raised.value)
+    assert str(child_pid) not in str(raised.value)
 
 
 @pytest.mark.parametrize(

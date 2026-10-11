@@ -38,7 +38,7 @@ import stat
 import sys
 import time
 from collections.abc import Callable, Mapping, Sequence
-from contextlib import redirect_stderr, redirect_stdout, suppress
+from contextlib import ExitStack, redirect_stderr, redirect_stdout, suppress
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -799,6 +799,22 @@ def request_owner_authorization(
                 if transition_sha256 is not None:
                     authorization["transition_evidence_sha256"] = transition_sha256
     return authorization
+
+
+def _assert_owner_admits_claim(request: Request | RollbackRequest) -> None:
+    owner = cutover.inspect_control_owner(request.config)
+    if owner is None:
+        raise ProtectedError("durable protected Owner disappeared before ClaimStore admission")
+    expected = request_owner_authorization(request, owner)
+    if (
+        owner.get("owner_kind") != "protected"
+        or owner.get("phase") != "AUTHORIZED_PENDING"
+        or owner.get("mutation_started") is not False
+        or cutover._owner_identity(owner)  # pyright: ignore[reportPrivateUsage]
+        != expected
+        or owner.get("authorization") != expected
+    ):
+        raise ProtectedError("durable protected Owner changed before ClaimStore admission")
 
 
 @dataclass(frozen=True)
@@ -7060,9 +7076,16 @@ def cmd_reconcile_v8_exit2_no_mutation(
 ) -> Record:
     selected_runner = cutover.run_command if runner is None else runner
     config = build_reservation_config(args, for_action="apply")
-    with cutover.CutoverLock(  # pyright: ignore[reportPrivateUsage]
-        cutover._control_owner_lock_path(config)  # pyright: ignore[reportPrivateUsage]
-    ):
+    with ExitStack() as lock_stack:
+        lock_stack.enter_context(
+            cutover.CutoverLock(  # pyright: ignore[reportPrivateUsage]
+                cutover._control_owner_lock_path(config)  # pyright: ignore[reportPrivateUsage]
+            )
+        )
+        initial_context = _v8_exit2_load_context(args, runner=selected_runner)
+        claim_store = claims.ClaimStore(initial_context.request.claim_root)
+        lock_stack.enter_context(claim_store.admission_transaction())
+        # Recompute the complete incident proof after ClaimStore admission is frozen.
         context = _v8_exit2_load_context(args, runner=selected_runner)
         reconciliation_path = _prestart_reconciliation_record_path(
             config, V8_EXIT2_RESERVATION_ID
@@ -7382,6 +7405,7 @@ def launch(
         request.managed_argv(),
         takeover_stale=request.takeover_stale,
         capture_output=store.capture_process_output,
+        validate_admission=lambda: _assert_owner_admits_claim(request),
     )
     process_stdout = store.process_stdout.evidence()
     process_stderr = store.process_stderr.evidence()

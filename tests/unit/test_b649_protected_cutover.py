@@ -23,9 +23,9 @@ import subprocess
 import sys
 import threading
 import traceback
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Generator, Sequence
 from concurrent.futures import ThreadPoolExecutor
-from contextlib import redirect_stderr, redirect_stdout
+from contextlib import contextmanager, redirect_stderr, redirect_stdout
 from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime, timedelta
 from multiprocessing.connection import Connection
@@ -10033,6 +10033,110 @@ def test_v8_exit2_no_mutation_recovery_requires_fresh_owner_auth_and_preserves_r
     capsys.readouterr()
     assert Path(result["reconciliation_record_path"]).read_bytes() == sealed_reconciliation_before
     assert _v8_exit2_state_snapshot(incident) == released_state_before
+
+
+def test_v8_exit2_claim_admission_waiting_on_reconciliation_rechecks_owner(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    incident = _prepare_v8_exit2_recovery_fixture(harness, monkeypatch)
+    request = incident.request
+    stranded_receipt = request.receipt_path.read_bytes()
+    mutations_before = tuple(harness.launchd.mutation_calls)
+    stranded_record = protected.ReceiptFile(request.receipt_path).read()
+    assert stranded_record is not None
+    execution_id = protected.text(stranded_record.get("execution_id"))
+    authorization_argv = _v8_exit2_command_argv(
+        "authorize-v8-exit2-reconciliation",
+        incident,
+        confirmation=protected.V8_EXIT2_OWNER_CONFIRMATION,
+    )
+    assert protected.main(authorization_argv) == 0
+    authorization = json.loads(capsys.readouterr().out.splitlines()[-1])
+    reconcile_argv = _v8_exit2_command_argv(
+        "reconcile-v8-exit2-no-mutation",
+        incident,
+        authorization_id=authorization["authorization_id"],
+        authorization_sha256=authorization["authorization_sha256"],
+    )
+
+    reconciliation_holds_claim_lock = threading.Event()
+    claimant_waiting_for_claim_lock = threading.Event()
+    allow_reconciliation = threading.Event()
+    original_transaction = claims.ClaimStore._transaction
+
+    @contextmanager
+    def coordinated_transaction(store: claims.ClaimStore) -> Generator[None]:
+        thread_name = threading.current_thread().name
+        if thread_name == "v8-exit2-reconciler":
+            with original_transaction(store):
+                reconciliation_holds_claim_lock.set()
+                if not allow_reconciliation.wait(timeout=10):
+                    raise AssertionError("test did not release reconciliation lock")
+                yield
+            return
+        if thread_name == "v8-exit2-claimant":
+            claimant_waiting_for_claim_lock.set()
+        with original_transaction(store):
+            yield
+
+    monkeypatch.setattr(claims.ClaimStore, "_transaction", coordinated_transaction)
+    reconciliation_results: list[int] = []
+    reconciliation_errors: list[BaseException] = []
+    claimant_results: list[int] = []
+    claimant_errors: list[BaseException] = []
+
+    def reconcile() -> None:
+        try:
+            reconciliation_results.append(protected.main(reconcile_argv))
+        except BaseException as exc:
+            reconciliation_errors.append(exc)
+
+    def admit_prebound_claim() -> None:
+        try:
+            claimant_results.append(
+                claims.ClaimStore(request.claim_root).run(
+                    protected.TASK_KEY,
+                    [sys.executable, "-c", "pass"],
+                    validate_admission=lambda: protected._assert_owner_admits_claim(request),
+                )
+            )
+        except BaseException as exc:
+            claimant_errors.append(exc)
+
+    reconciliation_thread = threading.Thread(target=reconcile, name="v8-exit2-reconciler")
+    claimant_thread = threading.Thread(target=admit_prebound_claim, name="v8-exit2-claimant")
+    reconciliation_thread.start()
+    try:
+        assert reconciliation_holds_claim_lock.wait(timeout=10)
+        claimant_thread.start()
+        assert claimant_waiting_for_claim_lock.wait(timeout=10)
+    finally:
+        allow_reconciliation.set()
+        reconciliation_thread.join(timeout=15)
+        if claimant_thread.ident is not None:
+            claimant_thread.join(timeout=15)
+
+    assert not reconciliation_thread.is_alive()
+    assert not claimant_thread.is_alive()
+    assert reconciliation_errors == []
+    assert reconciliation_results == [0]
+    assert claimant_results == []
+    assert len(claimant_errors) == 1
+    assert isinstance(claimant_errors[0], protected.ProtectedError)
+    assert "Owner changed before ClaimStore admission" in str(claimant_errors[0])
+
+    released_owner = cutover.inspect_control_owner(request.config)
+    assert released_owner is not None and released_owner["phase"] == "RELEASED"
+    assert claims.ClaimStore(request.claim_root).inspect(protected.TASK_KEY)["status"] == "ABSENT"
+    archive_path = request.receipt_path.with_name(
+        f"{request.receipt_path.stem}.{execution_id}.superseded.json"
+    )
+    assert not request.receipt_path.exists()
+    assert archive_path.read_bytes() == stranded_receipt
+    assert tuple(harness.launchd.mutation_calls) == mutations_before
+    capsys.readouterr()
 
 
 @pytest.mark.parametrize(

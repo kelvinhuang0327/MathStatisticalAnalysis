@@ -10294,6 +10294,10 @@ def test_v8_exit2_recovery_refuses_each_unproven_incident_without_authority_writ
                     "task": cutover.TASK_ID,
                 }
             stdout_text = protected.canonical(failure_result) + "\n"
+            if defect == "unrelated_legacy_receipt":
+                # Keep the same parsed legacy failure, but make its captured
+                # bytes differ from the one immutable historical incident.
+                stdout_text = " " + stdout_text
             changed = {
                 **stranded,
                 "process_stdout": {

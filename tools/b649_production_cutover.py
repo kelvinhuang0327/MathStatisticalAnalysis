@@ -46,6 +46,8 @@ RECEIPT_SCHEMA_VERSION = "b649-managed-production-cutover-receipt-v1"
 CONTROL_OWNER_SCHEMA = "b649-durable-control-owner-v1"
 PROTECTED_PREDECESSOR_RELEASE_SCHEMA = "b649-protected-predecessor-release-v1"
 PRESTART_SUCCESSOR_PREDECESSOR_SCHEMA = "b649-protected-prestart-successor-predecessor-v1"
+LEGACY_VERSIONED_TARGET_TRANSITION_SCHEMA = "b649-v8-sealed-target-transition-v1"
+VERSIONED_TARGET_TRANSITION_SCHEMA = "b649-v8-sealed-target-transition-v2"
 FAILED_TERMINAL_RETIREMENT_SCHEMA = "b649-protected-failed-terminal-retirement-v1"
 FAILED_TERMINAL_RETIREMENT_NAME = (
     "b649-failed-terminal-retirement-27e1039be8f511114e06fcae200fcc2f.json"
@@ -1770,16 +1772,19 @@ def _validate_predecessor_release_evidence(value: object, owner: Record) -> Reco
     }
     prior_release = _record(evidence.get("prior_release_evidence"), "prior release evidence")
     prestart_link_key = "prestart_successor_predecessor_evidence"
+    target_transition_key = "versioned_target_transition"
     allowed = {
         frozenset(required),
         frozenset(required | {"retired_failed_terminal_evidence"}),
         frozenset(required | {prestart_link_key}),
         frozenset(required | {ABANDONED_LINEAGE_LINK_KEY}),
+        frozenset(required | {ABANDONED_LINEAGE_LINK_KEY, target_transition_key}),
     }
     prestart_link = evidence.get(prestart_link_key)
     prestart_successor_release = prior_release.get("kind") == "PRESTART_SUCCESSOR_NO_MUTATION"
     abandoned_release = prior_release.get("kind") == EXPLICIT_ABANDON_RELEASE_KIND
     abandoned_link = evidence.get(ABANDONED_LINEAGE_LINK_KEY)
+    target_transition = evidence.get(target_transition_key)
     if (
         frozenset(evidence) not in allowed
         or evidence.get("schema") != PROTECTED_PREDECESSOR_RELEASE_SCHEMA
@@ -1798,6 +1803,7 @@ def _validate_predecessor_release_evidence(value: object, owner: Record) -> Reco
         or (prestart_link_key in evidence) != (prestart_link is not None)
         or abandoned_release != (abandoned_link is not None)
         or (ABANDONED_LINEAGE_LINK_KEY in evidence) != (abandoned_link is not None)
+        or (target_transition is not None and not abandoned_release)
     ):
         raise CutoverSafetyError("protected predecessor release evidence is invalid")
     if prestart_successor_release:
@@ -1846,6 +1852,163 @@ def _validate_predecessor_release_evidence(value: object, owner: Record) -> Reco
         _text(link.get("predecessor_operation_id"), "predecessor operation id")
     elif abandoned_release:
         _validate_abandoned_lineage_link(abandoned_link, evidence, prior_release)
+        link = _record(abandoned_link, "abandoned lineage link")
+        prior_target = _normalized_owner_target(link.get("abandoned_target"))
+        new_target = _normalized_owner_target(owner.get("target"))
+        if target_transition is None:
+            if new_target != prior_target:
+                raise CutoverSafetyError(
+                    "distinct abandoned-lineage target requires versioned transition evidence"
+                )
+        else:
+            transition = _record(target_transition, "versioned target transition evidence")
+            transition_unsigned = {
+                key: item for key, item in transition.items() if key != "evidence_sha256"
+            }
+            transition_fields_v1 = {
+                "schema",
+                "predecessor_owner_path",
+                "predecessor_owner_file_sha256",
+                "predecessor_owner_record_sha256",
+                "predecessor_authorization",
+                "predecessor_authorization_sha256",
+                "predecessor_reservation_id",
+                "predecessor_operation_id",
+                "predecessor_evidence_sha256",
+                "predecessor_target",
+                "historical_retirement_path",
+                "historical_retirement_file_sha256",
+                "historical_retirement_record_sha256",
+                "historical_reconciliation_path",
+                "historical_reconciliation_sha256",
+                "historical_root_receipt_archive_path",
+                "historical_root_receipt_archive_sha256",
+                "protected_success_anchor_sha256",
+                "managed_success_receipt_sha256",
+                "target",
+                "plan_sha256",
+                "plan_digest",
+                "prestate_digest",
+                "reservation_id",
+                "operation_id",
+                "evidence_sha256",
+            }
+            transition_schema = transition.get("schema")
+            transition_fields = (
+                transition_fields_v1 | {"loaded_old_target"}
+                if transition_schema == VERSIONED_TARGET_TRANSITION_SCHEMA
+                else transition_fields_v1
+            )
+            predecessor_authorization = _record(
+                transition.get("predecessor_authorization"),
+                "transition predecessor authorization",
+            )
+            transition_prior_target = _normalized_owner_target(
+                transition.get("predecessor_target")
+            )
+            transition_target = _normalized_owner_target(transition.get("target"))
+            loaded_old_target = (
+                _normalized_owner_target(transition.get("loaded_old_target"))
+                if transition_schema == VERSIONED_TARGET_TRANSITION_SCHEMA
+                else None
+            )
+            hash_fields = (
+                "predecessor_owner_file_sha256",
+                "predecessor_owner_record_sha256",
+                "predecessor_authorization_sha256",
+                "predecessor_evidence_sha256",
+                "historical_retirement_file_sha256",
+                "historical_retirement_record_sha256",
+                "historical_reconciliation_sha256",
+                "historical_root_receipt_archive_sha256",
+                "protected_success_anchor_sha256",
+                "managed_success_receipt_sha256",
+                "plan_sha256",
+                "plan_digest",
+                "prestate_digest",
+                "evidence_sha256",
+            )
+            if (
+                set(transition) != transition_fields
+                or transition_schema
+                not in {
+                    LEGACY_VERSIONED_TARGET_TRANSITION_SCHEMA,
+                    VERSIONED_TARGET_TRANSITION_SCHEMA,
+                }
+                or transition.get("evidence_sha256") != _sha256_json(transition_unsigned)
+                or set(predecessor_authorization)
+                != {
+                    "reservation_id",
+                    "operation_id",
+                    "managed_receipt_sha256",
+                    "control_head",
+                    "control_tree",
+                    "action",
+                    "target",
+                }
+                or any(
+                    re.fullmatch(r"[0-9a-f]{64}", str(transition.get(key))) is None
+                    for key in hash_fields
+                )
+                or transition.get("predecessor_owner_record_sha256")
+                != link.get("abandoned_record_sha256")
+                or transition.get("predecessor_authorization")
+                != link.get("abandoned_authorization")
+                or _sha256_json(predecessor_authorization)
+                != transition.get("predecessor_authorization_sha256")
+                or predecessor_authorization.get("reservation_id")
+                != evidence.get("prior_reservation_id")
+                or predecessor_authorization.get("operation_id")
+                != evidence.get("prior_operation_id")
+                or predecessor_authorization.get("managed_receipt_sha256")
+                != evidence.get("prior_managed_receipt_sha256")
+                or predecessor_authorization.get("action") != "apply"
+                or _normalized_owner_target(predecessor_authorization.get("target"))
+                != prior_target
+                or re.fullmatch(r"[0-9a-f]{40}", str(predecessor_authorization.get("control_head")))
+                is None
+                or re.fullmatch(r"[0-9a-f]{40}", str(predecessor_authorization.get("control_tree")))
+                is None
+                or any(
+                    not Path(_text(transition.get(key), key)).is_absolute()
+                    for key in (
+                        "predecessor_owner_path",
+                        "historical_retirement_path",
+                        "historical_reconciliation_path",
+                        "historical_root_receipt_archive_path",
+                    )
+                )
+                or transition.get("predecessor_reservation_id")
+                != evidence.get("prior_reservation_id")
+                or transition.get("predecessor_operation_id")
+                != evidence.get("prior_operation_id")
+                or transition.get("predecessor_evidence_sha256")
+                != _record(link.get("predecessor_evidence"), "abandoned predecessor proof").get(
+                    "evidence_sha256"
+                )
+                or transition_prior_target != prior_target
+                or transition_target != new_target
+                or transition_target == transition_prior_target
+                or (
+                    transition_schema == VERSIONED_TARGET_TRANSITION_SCHEMA
+                    and (
+                        loaded_old_target is None
+                        or (
+                            loaded_old_target.get("head"),
+                            loaded_old_target.get("tree"),
+                        )
+                        != (V5_SOURCE_HEAD, V5_SOURCE_TREE)
+                        or loaded_old_target in (transition_prior_target, transition_target)
+                    )
+                )
+                or transition.get("protected_success_anchor_sha256")
+                != evidence.get("prior_protected_receipt_sha256")
+                or transition.get("managed_success_receipt_sha256")
+                != evidence.get("prior_managed_receipt_sha256")
+                or transition.get("reservation_id") != owner.get("reservation_id")
+                or transition.get("operation_id") != owner.get("operation_id")
+            ):
+                raise CutoverSafetyError("versioned target transition evidence is invalid")
     elif prior_release.get("protected_receipt_sha256") != evidence.get(
         "prior_protected_receipt_sha256"
     ):
@@ -2032,10 +2195,28 @@ def _verify_failed_terminal_retirement_v2_inputs(
     config: CutoverConfig,
     evidence: Record,
 ) -> None:
+    _verify_failed_terminal_retirement_v2_archived_inputs(config, evidence)
+    _verify_failed_terminal_retirement_v2_intermediate_owner(config, evidence)
+
+
+def _verify_failed_terminal_retirement_v2_archived_inputs(
+    config: CutoverConfig,
+    evidence: Record,
+    *,
+    expected_retirement_file_sha256: str | None = None,
+) -> None:
+    """Revalidate immutable v2 archives without requiring the old owner to remain current."""
     retirement_path = _control_owner_path(config).with_name(FAILED_TERMINAL_RETIREMENT_V2_NAME)
-    stored, _retirement_identity, _ = _load_json(retirement_path)
-    if stored != evidence:
+    stored, retirement_identity, _ = _load_json(retirement_path)
+    if (
+        stored != evidence
+        or (
+            expected_retirement_file_sha256 is not None
+            and retirement_identity.sha256 != expected_retirement_file_sha256
+        )
+    ):
         raise CutoverSafetyError("v2 failed terminal retirement evidence changed before owner CAS")
+    _validate_failed_terminal_retirement_v2_evidence(stored)
 
     receipt_path = config.scheduler_root / FAILED_TERMINAL_RECEIPT_NAME
     archive_path = Path(_text(evidence.get("archive_path"), "failed receipt archive path"))
@@ -2102,22 +2283,6 @@ def _verify_failed_terminal_retirement_v2_inputs(
         and cast(Record, failed_link).get("operation_id") == FAILED_TERMINAL_OPERATION_ID
     ):
         raise CutoverSafetyError("failed v6 operation unexpectedly has a managed receipt")
-
-    owner_snapshot = _read_control_owner(config)
-    if owner_snapshot is None:
-        raise CutoverSafetyError(
-            "released intermediate owner disappeared before successor owner CAS"
-        )
-    current_owner, owner_identity = owner_snapshot
-    recorded_owner = _record(
-        evidence.get("intermediate_owner_record"), "released intermediate owner"
-    )
-    if (
-        current_owner != recorded_owner
-        or owner_identity.sha256 != RELEASED_INTERMEDIATE_OWNER_FILE_SHA256
-        or current_owner.get("record_sha256") != RELEASED_INTERMEDIATE_OWNER_RECORD_SHA256
-    ):
-        raise CutoverSafetyError("released intermediate owner changed before successor owner CAS")
 
     release_path = config.scheduler_root / (
         f"b649-prestart-successor-release-{RELEASED_INTERMEDIATE_RESERVATION_ID}.json"
@@ -2237,6 +2402,28 @@ def _verify_failed_terminal_retirement_v2_inputs(
                 "released intermediate unexpectedly has a protected execution receipt"
             )
 
+
+def _verify_failed_terminal_retirement_v2_intermediate_owner(
+    config: CutoverConfig,
+    evidence: Record,
+) -> None:
+    """Check the owner identity only while that historical owner is still current."""
+    owner_snapshot = _read_control_owner(config)
+    if owner_snapshot is None:
+        raise CutoverSafetyError(
+            "released intermediate owner disappeared before successor owner CAS"
+        )
+    current_owner, owner_identity = owner_snapshot
+    recorded_owner = _record(
+        evidence.get("intermediate_owner_record"), "released intermediate owner"
+    )
+    if (
+        current_owner != recorded_owner
+        or owner_identity.sha256 != RELEASED_INTERMEDIATE_OWNER_FILE_SHA256
+        or current_owner.get("record_sha256") != RELEASED_INTERMEDIATE_OWNER_RECORD_SHA256
+    ):
+        raise CutoverSafetyError("released intermediate owner changed before successor owner CAS")
+
 def _read_control_owner(config: CutoverConfig) -> tuple[Record, FileIdentity] | None:
     path = _control_owner_path(config)
     if not os.path.lexists(path):
@@ -2314,16 +2501,7 @@ def _read_control_owner(config: CutoverConfig) -> tuple[Record, FileIdentity] | 
     if authorization is not None:
         authorization_record = _record(authorization, "owner authorization")
         if (
-            set(authorization_record)
-            != {
-                "reservation_id",
-                "operation_id",
-                "managed_receipt_sha256",
-                "control_head",
-                "control_tree",
-                "action",
-                "target",
-            }
+            set(authorization_record) != set(_owner_identity(value))
             or authorization_record != _owner_identity(value)
             or value.get("operation_id") is None
             or value.get("target") is None
@@ -2406,7 +2584,7 @@ def inspect_control_owner(config: CutoverConfig) -> Record | None:
 
 
 def _owner_identity(value: Record) -> Record:
-    return {
+    identity: Record = {
         "reservation_id": value["reservation_id"],
         "operation_id": value["operation_id"],
         "managed_receipt_sha256": value["managed_receipt_sha256"],
@@ -2415,6 +2593,13 @@ def _owner_identity(value: Record) -> Record:
         "action": value["action"],
         "target": value["target"],
     }
+    predecessor = value.get("predecessor_release_evidence")
+    if isinstance(predecessor, dict):
+        transition_value = cast(Record, predecessor).get("versioned_target_transition")
+        if isinstance(transition_value, dict):
+            transition = cast(Record, transition_value)
+            identity["transition_evidence_sha256"] = transition.get("evidence_sha256")
+    return identity
 
 
 def _verify_protected_owner_receipt(
@@ -2505,6 +2690,7 @@ def acquire_control_owner(
     managed_receipt_sha256: str | None = None,
     predecessor_release_evidence: Record | None = None,
     predecessor_live_verifier: Callable[[], None] | None = None,
+    predecessor_claim_root: Path | None = None,
 ) -> Record:
     """Atomically reserve the shared control boundary before receipt capture."""
     if action not in {"apply", "rollback"} or owner_kind not in {"managed", "protected"}:
@@ -2530,6 +2716,7 @@ def acquire_control_owner(
         raise CutoverSafetyError("managed receipt SHA256 is invalid")
     with CutoverLock(_control_owner_lock_path(config)):
         current = _read_control_owner(config)
+        require_predecessor_revalidation = False
         if current is not None:
             value, identity = current
             failed_signature = (
@@ -2645,7 +2832,11 @@ def acquire_control_owner(
                             raise CutoverSafetyError(
                                 "failed terminal successor requires live predecessor revalidation"
                             )
-                        predecessor_live_verifier()
+                        if predecessor_claim_root is None:
+                            predecessor_claim_root = Path(
+                                _text(retirement.get("claim_root"), "retirement claim root")
+                            )
+                        require_predecessor_revalidation = True
                     elif exact_released_intermediate:
                         if (
                             owner_kind != "protected"
@@ -2686,7 +2877,11 @@ def acquire_control_owner(
                             raise CutoverSafetyError(
                                 "released intermediate successor requires live v5 revalidation"
                             )
-                        predecessor_live_verifier()
+                        if predecessor_claim_root is None:
+                            predecessor_claim_root = Path(
+                                _text(retirement.get("claim_root"), "retirement claim root")
+                            )
+                        require_predecessor_revalidation = True
                     elif (
                         retirement_value is not None
                         or owner_kind != "protected"
@@ -2705,6 +2900,15 @@ def acquire_control_owner(
                         _require_abandoned_lineage_binds_owner(
                             predecessor[ABANDONED_LINEAGE_LINK_KEY], value
                         )
+                        if predecessor_live_verifier is None:
+                            raise CutoverSafetyError(
+                                "abandoned lineage successor requires live predecessor revalidation"
+                            )
+                        if predecessor_claim_root is None:
+                            raise CutoverSafetyError(
+                                "abandoned lineage successor requires its ClaimStore root"
+                            )
+                        require_predecessor_revalidation = True
                 elif exact_failed_owner:
                     raise CutoverSafetyError(
                         "failed terminal owner requires a verified successor predecessor proof"
@@ -2766,7 +2970,27 @@ def acquire_control_owner(
         if predecessor_release_evidence is not None:
             created["predecessor_release_evidence"] = predecessor_release_evidence
             _validate_predecessor_release_evidence(predecessor_release_evidence, created)
-        return _save_control_owner(config, created, expected=expected)
+        if require_predecessor_revalidation and predecessor_claim_root is None:
+            raise CutoverSafetyError(
+                "successor reservation requires ClaimStore synchronization at owner CAS"
+            )
+        if require_predecessor_revalidation and predecessor_live_verifier is None:
+            raise CutoverSafetyError("successor reservation requires live predecessor revalidation")
+
+        def save_owner() -> Record:
+            if predecessor_live_verifier is not None:
+                predecessor_live_verifier()
+            return _save_control_owner(config, created, expected=expected)
+
+        if require_predecessor_revalidation:
+            if predecessor_claim_root is None:
+                raise CutoverSafetyError(
+                    "successor reservation requires ClaimStore synchronization at owner CAS"
+                )
+            claim_store = ClaimStore(predecessor_claim_root)
+            with claim_store._transaction():  # pyright: ignore[reportPrivateUsage]
+                return save_owner()
+        return save_owner()
 
 
 def resume_control_owner(
@@ -2882,8 +3106,11 @@ def authorize_control_owner(
     config: CutoverConfig,
     reservation_id: str,
     authorization: Record,
+    *,
+    authorization_live_verifier: Callable[[Record], None] | None = None,
+    authorization_claim_root: Path | None = None,
 ) -> Record:
-    expected_fields = {
+    legacy_fields = {
         "reservation_id",
         "operation_id",
         "managed_receipt_sha256",
@@ -2892,8 +3119,15 @@ def authorize_control_owner(
         "action",
         "target",
     }
-    if set(authorization) != expected_fields:
+    if frozenset(authorization) not in {
+        frozenset(legacy_fields),
+        frozenset(legacy_fields | {"transition_evidence_sha256"}),
+    }:
         raise CutoverSafetyError("owner authorization binding is incomplete")
+    if (authorization_live_verifier is None) != (authorization_claim_root is None):
+        raise CutoverSafetyError(
+            "owner authorization revalidation requires ClaimStore synchronization"
+        )
     with CutoverLock(_control_owner_lock_path(config)):
         current = _read_control_owner(config)
         if current is None:
@@ -2916,11 +3150,34 @@ def authorize_control_owner(
             raise CutoverSafetyError("owner authorization identity differs")
         if value["authorization"] is not None and value["authorization"] != expected:
             raise CutoverSafetyError("durable owner authorization changed")
-        return _save_control_owner(
-            config,
-            {**value, "authorization": expected, "phase": "AUTHORIZED_PENDING"},
-            expected=identity,
+        predecessor = value.get("predecessor_release_evidence")
+        transition = (
+            cast(Record, predecessor).get("versioned_target_transition")
+            if isinstance(predecessor, dict)
+            else None
         )
+        if isinstance(transition, dict) and authorization_live_verifier is None:
+            raise CutoverSafetyError(
+                "versioned target authorization requires live transition revalidation"
+            )
+
+        def save_authorization() -> Record:
+            if authorization_live_verifier is not None:
+                authorization_live_verifier(value)
+            return _save_control_owner(
+                config,
+                {**value, "authorization": expected, "phase": "AUTHORIZED_PENDING"},
+                expected=identity,
+            )
+
+        if authorization_live_verifier is None:
+            return save_authorization()
+        if authorization_claim_root is None:
+            raise CutoverSafetyError(
+                "owner authorization revalidation requires ClaimStore synchronization"
+            )
+        with ClaimStore(authorization_claim_root)._transaction():  # pyright: ignore[reportPrivateUsage]
+            return save_authorization()
 
 
 def _verify_control_owner_binding(

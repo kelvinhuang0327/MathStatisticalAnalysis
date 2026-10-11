@@ -9954,12 +9954,27 @@ def test_v8_exit2_no_mutation_recovery_requires_fresh_owner_auth_and_preserves_r
     receipt_before = request.receipt_path.read_bytes()
     managed_before = request.config.receipt_path.read_bytes()
     plist_before = request.config.plist_path.read_bytes()
-    mutation_calls_before = tuple(harness.launchd.mutation_calls)
+    control_before = (harness.launches, tuple(harness.launchd.mutation_calls))
+
+    unauthorized_argv = _v8_exit2_command_argv(
+        "reconcile-v8-exit2-no-mutation",
+        incident,
+        authorization_id="0" * 32,
+        authorization_sha256="0" * 64,
+    )
+    unauthorized_state = _v8_exit2_state_snapshot(incident)
+    assert protected.main(unauthorized_argv) == claims.UNVERIFIABLE
+    capsys.readouterr()
+    assert _v8_exit2_state_snapshot(incident) == unauthorized_state
+    unauthorized_owner = cutover.inspect_control_owner(request.config)
+    assert unauthorized_owner is not None and unauthorized_owner["phase"] == "AUTHORIZED_PENDING"
+    assert (harness.launches, tuple(harness.launchd.mutation_calls)) == control_before
 
     assert protected.main(_not_started_reconciliation_argv(incident)) == claims.UNVERIFIABLE
     owner_before = cutover.inspect_control_owner(request.config)
     assert owner_before is not None and owner_before["phase"] == "AUTHORIZED_PENDING"
     assert request.receipt_path.read_bytes() == receipt_before
+    assert (harness.launches, tuple(harness.launchd.mutation_calls)) == control_before
 
     transition_owner_authorization = protected.record(owner_before.get("authorization"))
     transition_authorization_id = uuid4().hex
@@ -9983,6 +9998,7 @@ def test_v8_exit2_no_mutation_recovery_requires_fresh_owner_auth_and_preserves_r
     ) == claims.UNVERIFIABLE
     capsys.readouterr()
     assert _v8_exit2_state_snapshot(incident) == before_cross_authorization
+    assert (harness.launches, tuple(harness.launchd.mutation_calls)) == control_before
 
     authorize_argv = _v8_exit2_command_argv(
         "authorize-v8-exit2-reconciliation",
@@ -10016,7 +10032,7 @@ def test_v8_exit2_no_mutation_recovery_requires_fresh_owner_auth_and_preserves_r
     assert archive_path.read_bytes() == receipt_before
     assert request.config.receipt_path.read_bytes() == managed_before
     assert request.config.plist_path.read_bytes() == plist_before
-    assert tuple(harness.launchd.mutation_calls) == mutation_calls_before
+    assert (harness.launches, tuple(harness.launchd.mutation_calls)) == control_before
     released_owner = cutover.inspect_control_owner(request.config)
     assert released_owner is not None and released_owner["phase"] == "RELEASED"
     assert released_owner["mutation_started"] is False
@@ -10038,15 +10054,22 @@ def test_v8_exit2_no_mutation_recovery_requires_fresh_owner_auth_and_preserves_r
     [
         "unsupported_process_error",
         "nonempty_actions",
+        "changed_receipt",
         "changed_managed_receipt",
         "changed_plist",
         "v8_loaded",
         "active_claim",
+        "claim_owner_identity_drift",
         "live_inherited_child",
         "invalid_owner_identity",
         "invalid_predecessor_binding",
         "changed_original_control",
         "incorrect_plan_hash",
+        "changed_plan",
+        "missing_plan",
+        "wrong_operation_id",
+        "wrong_target_head",
+        "wrong_target_tree",
         "wrong_owner_confirmation",
         "other_exit_code",
         "missing_receipt",
@@ -10117,6 +10140,8 @@ def test_v8_exit2_recovery_refuses_each_unproven_incident_without_authority_writ
             {**managed, "observed_at": "changed-synthetic-managed-receipt"},
             expected=file_identity,
         )
+    elif defect == "changed_receipt":
+        request.receipt_path.write_bytes(request.receipt_path.read_bytes() + b"\n")
     elif defect == "changed_plist":
         request.config.plist_path.write_bytes(b"changed synthetic plist\n")
     elif defect == "v8_loaded":
@@ -10132,6 +10157,23 @@ def test_v8_exit2_recovery_refuses_each_unproven_incident_without_authority_writ
             return state
 
         monkeypatch.setattr(claims.ClaimStore, "inspect", active_claim)
+    elif defect == "claim_owner_identity_drift":
+        stranded = protected.ReceiptFile(request.receipt_path).read()
+        assert stranded is not None
+        claim_owner = protected.record(stranded["claim_owner"])
+        changed = {
+            **stranded,
+            "claim_owner": {**claim_owner, "task_key": "different-task"},
+        }
+        unsigned = {key: value for key, value in changed.items() if key != "receipt_sha256"}
+        saved = {**unsigned, "receipt_sha256": protected.digest(unsigned)}
+        receipt_bytes = (protected.canonical(saved) + "\n").encode()
+        request.receipt_path.write_bytes(receipt_bytes)
+        monkeypatch.setattr(
+            protected,
+            "V8_EXIT2_FAILED_RECEIPT_SHA256",
+            hashlib.sha256(receipt_bytes).hexdigest(),
+        )
     elif defect == "live_inherited_child":
 
         def child_is_live(pid: int) -> str:
@@ -10183,6 +10225,8 @@ def test_v8_exit2_recovery_refuses_each_unproven_incident_without_authority_writ
         )
     elif defect == "missing_receipt":
         request.receipt_path.unlink()
+    elif defect == "changed_plan":
+        request.plan_file.write_bytes(request.plan_file.read_bytes() + b"\n")
 
     argv = _v8_exit2_command_argv(
         "authorize-v8-exit2-reconciliation",
@@ -10194,8 +10238,33 @@ def test_v8_exit2_recovery_refuses_each_unproven_incident_without_authority_writ
         ),
         plan_sha256=("f" * 64 if defect == "incorrect_plan_hash" else None),
     )
+    if defect == "missing_plan":
+        argv[argv.index("--plan-file") + 1] = str(request.plan_file.with_name("missing-plan.json"))
+    elif defect == "wrong_operation_id":
+        argv[argv.index("--operation-id") + 1] = "f" * 32
+    elif defect in {"wrong_target_head", "wrong_target_tree"}:
+        config = request.config
+        changed_config = replace(
+            config,
+            expected_head=("f" * 40 if defect == "wrong_target_head" else config.expected_head),
+            expected_tree=("e" * 40 if defect == "wrong_target_tree" else config.expected_tree),
+        )
+
+        def drifted_config(
+            _args: argparse.Namespace, *, for_action: str
+        ) -> cutover.CutoverConfig:
+            del for_action
+            return changed_config
+
+        monkeypatch.setattr(
+            protected,
+            "build_reservation_config",
+            drifted_config,
+        )
+    control_before = (harness.launches, tuple(harness.launchd.mutation_calls))
     before = _v8_exit2_state_snapshot(incident)
     assert protected.main(argv) == claims.UNVERIFIABLE
     capsys.readouterr()
     assert _v8_exit2_state_snapshot(incident) == before
     assert not list(request.config.scheduler_root.glob("b649-v8-exit2-owner-authorization-*.json"))
+    assert (harness.launches, tuple(harness.launchd.mutation_calls)) == control_before

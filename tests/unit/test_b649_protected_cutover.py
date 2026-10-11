@@ -51,6 +51,8 @@ from tools import b649_production_cutover as cutover
 from tools import b649_protected_cutover as protected
 from tools import task_execution_claim as claims
 
+REAL_POPEN = subprocess.Popen
+
 
 @dataclass
 class Harness:
@@ -352,6 +354,14 @@ def _make_stranded_prestart_incident(
     predecessor_sha256_override: str | None = None,
     same_control_version: bool = False,
     not_started_result: bool = False,
+    original_control_head: str | None = None,
+    original_control_tree: str | None = None,
+    target_head: str | None = None,
+    target_tree: str | None = None,
+    reservation_id_override: str | None = None,
+    operation_id_override: str | None = None,
+    process_stdout: bytes | None = None,
+    process_stderr: bytes | None = None,
 ) -> StrandedIncident:
     v5 = harness.launch()
     assert v5["status"] == "SUCCESS"
@@ -366,8 +376,8 @@ def _make_stranded_prestart_incident(
     harness.launchd.process_rows = [f"424242 1 {UID} S /usr/bin/fixture-shell"]
     harness.launchd.file_rows = ["p424242", "fcwd", "n/tmp"]
 
-    v6_head = "e" * 40
-    v6_tree = "d" * 40
+    v6_head = "e" * 40 if target_head is None else target_head
+    v6_tree = "d" * 40 if target_tree is None else target_tree
     v6_source = harness.fixture.worktree_parent / f"B649_PRODUCTION_{v6_head}"
     Fixture.make_source(v6_source)
     harness.launchd.worktree_identities[v6_source] = (v6_head, v6_tree, True)
@@ -385,7 +395,9 @@ def _make_stranded_prestart_incident(
     plan_file.write_text(protected.canonical(plan), encoding="utf-8")
     plan_file.chmod(0o600)
 
-    if same_control_version:
+    if original_control_head is not None or original_control_tree is not None:
+        assert original_control_head is not None and original_control_tree is not None
+    elif same_control_version:
         original_control_head, original_control_tree = protected.control_identity()
     else:
         original_control_head = "d32620eda04e3e01c1cb135d822bb21e41f0de34"
@@ -405,12 +417,18 @@ def _make_stranded_prestart_incident(
         plan_file,
         harness.request.claim_root,
         reservation_id=(
-            str(uuid4())
+            reservation_id_override
+            if reservation_id_override is not None
+            else str(uuid4())
             if same_control_version
             else "fb748f08-cd90-4bec-89e1-31364d98143d"
         ),
         operation_id=(
-            uuid4().hex if same_control_version else "27e1039be8f511114e06fcae200fcc2f"
+            operation_id_override
+            if operation_id_override is not None
+            else uuid4().hex
+            if same_control_version
+            else "27e1039be8f511114e06fcae200fcc2f"
         ),
         prior_execution_receipt_sha256=(
             predecessor_sha256
@@ -483,6 +501,10 @@ def _make_stranded_prestart_incident(
     else:
         harness.exec_failed = True
         harness.exit_override = terminal_exit_code
+    if process_stdout is not None:
+        harness.process_stdout = process_stdout
+    if process_stderr is not None:
+        harness.process_stderr = process_stderr
     if preserve_legacy_parent_behavior:
         monkeypatch.setattr(
             protected,
@@ -499,6 +521,58 @@ def _make_stranded_prestart_incident(
         old_plist_bytes=old_plist_bytes,
         mutations_before=mutations_before,
     )
+
+
+def _make_identity_gate_incident(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+) -> StrandedIncident:
+    captured_failure = (
+        protected.canonical(
+            {
+                "command": "apply",
+                "task": cutover.TASK_ID,
+                "status": "FAIL",
+                "failures": [protected.PRESTART_IDENTITY_FAILURE_ERROR],
+                "actions": [],
+            }
+        )
+        + "\n"
+    )
+    original = protected.PRESTART_IDENTITY_FAILURE_BINDING
+    incident = _make_stranded_prestart_incident(
+        harness,
+        monkeypatch,
+        preserve_legacy_parent_behavior=True,
+        terminal_exit_code=2,
+        original_control_head=str(original["original_control_head"]),
+        original_control_tree=str(original["original_control_tree"]),
+        target_head=str(original["target_head"]),
+        target_tree="d" * 40,
+        reservation_id_override=str(original["reservation_id"]),
+        operation_id_override=str(original["operation_id"]),
+        process_stdout=captured_failure.encode("utf-8"),
+        process_stderr=b"",
+    )
+    stranded = protected.ReceiptFile(incident.request.receipt_path).read()
+    assert stranded is not None
+    assert incident.request.reservation_id is not None
+    monkeypatch.setattr(
+        protected,
+        "PRESTART_IDENTITY_FAILURE_BINDING",
+        {
+            **original,
+            "reservation_id": incident.request.reservation_id,
+            "operation_id": incident.request.operation_id,
+            "stranded_protected_receipt_sha256": hashlib.sha256(
+                incident.request.receipt_path.read_bytes()
+            ).hexdigest(),
+            "execution_id": stranded["execution_id"],
+            "managed_receipt_sha256": incident.managed_sha256,
+            "plan_sha256": incident.plan_sha256,
+        },
+    )
+    return incident
 
 
 @dataclass(frozen=True)
@@ -3418,6 +3492,24 @@ def _incident_reconciliation_argv(incident: StrandedIncident) -> list[str]:
     return _reconcile_prestart_argv(incident)
 
 
+def _identity_failure_reconciliation_argv(
+    incident: StrandedIncident,
+    *,
+    recovery_head: str = "a" * 40,
+    recovery_tree: str = "b" * 40,
+) -> list[str]:
+    argv = _reconcile_prestart_argv(
+        incident,
+        recovery_head=recovery_head,
+        recovery_tree=recovery_tree,
+    )
+    argv[0] = "reconcile-prestart-identity-failure"
+    binding = protected.PRESTART_IDENTITY_FAILURE_BINDING
+    argv[argv.index("--original-control-head") + 1] = str(binding["original_control_head"])
+    argv[argv.index("--original-control-tree") + 1] = str(binding["original_control_tree"])
+    return argv
+
+
 def _not_started_reconciliation_argv(incident: StrandedIncident) -> list[str]:
     request = incident.request
     stranded = protected.ReceiptFile(request.receipt_path).read()
@@ -3664,6 +3756,10 @@ def _write_snapshot(harness: Harness, incident: StrandedIncident) -> dict[Path, 
         protected._prestart_reconciliation_record_path(
             config, str(incident.request.reservation_id)
         ),
+        protected._prestart_identity_failure_record_path(
+            config,
+            str(incident.request.reservation_id),
+        ),
         cutover._control_owner_path(config),
         cutover._control_owner_lock_path(config),
         config.scheduler_root / protected.ROLLBACK_RECEIPT_NAME,
@@ -3693,6 +3789,34 @@ def _configure_reconcile_cli(
         "build_reservation_config",
         fixed_config,
     )
+    monkeypatch.setattr(
+        cutover,
+        "control_version",
+        lambda: {"head": recovery_head, "tree": recovery_tree},
+    )
+    monkeypatch.setattr(cutover, "run_command", harness.runner)
+
+
+def _configure_identity_failure_cli(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    incident: StrandedIncident,
+    *,
+    recovery_head: str = "a" * 40,
+    recovery_tree: str = "b" * 40,
+) -> None:
+    def fixed_config(args: argparse.Namespace, *, for_action: str) -> cutover.CutoverConfig:
+        del for_action
+        return replace(
+            incident.request.config,
+            source_worktree=Path(args.source_worktree),
+            expected_head=args.expected_head,
+            expected_tree=args.expected_tree,
+            durable_ref=f"refs/heads/runtime/b649/{args.expected_head}",
+        )
+
+    monkeypatch.setattr(protected, "build_reservation_config", fixed_config)
+    monkeypatch.setattr(protected, "control_identity", lambda: (recovery_head, recovery_tree))
     monkeypatch.setattr(
         cutover,
         "control_version",
@@ -8806,3 +8930,285 @@ def test_v7_retirement_root_v8_abandoned_continuation_cli_is_fail_closed_and_pla
     owner_after_refusal = cutover.inspect_control_owner(v8_config)
     assert owner_after_refusal == authorized_owner_before
     assert (harness.launches, tuple(harness.launchd.mutation_calls)) == control_before
+
+
+def _refresh_identity_failure_receipt_hash(
+    incident: StrandedIncident,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    binding = dict(protected.PRESTART_IDENTITY_FAILURE_BINDING)
+    binding["stranded_protected_receipt_sha256"] = hashlib.sha256(
+        incident.request.receipt_path.read_bytes()
+    ).hexdigest()
+    monkeypatch.setattr(protected, "PRESTART_IDENTITY_FAILURE_BINDING", binding)
+
+
+def _run_identity_failure_reconciliation(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    incident: StrandedIncident,
+    capsys: pytest.CaptureFixture[str],
+    argv: list[str] | None = None,
+) -> tuple[int, protected.Record]:
+    # Synthetic child runs are finished, so allow the read-only Git provenance check.
+    monkeypatch.setattr(subprocess, "Popen", REAL_POPEN)
+    result = protected.main(
+        _identity_failure_reconciliation_argv(incident) if argv is None else argv
+    )
+    lines = [line for line in capsys.readouterr().out.splitlines() if line.strip()]
+    return result, protected.record(json.loads(lines[-1]))
+
+
+def test_prestart_identity_failure_records_exact_proof_without_releasing_owner(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    incident = _make_identity_gate_incident(harness, monkeypatch)
+    _configure_identity_failure_cli(harness, monkeypatch, incident)
+    argv = _identity_failure_reconciliation_argv(incident)
+    owner_path = cutover._control_owner_path(incident.request.config)
+    receipt_before = incident.request.receipt_path.read_bytes()
+    owner_before = owner_path.read_bytes()
+    managed_before = incident.request.config.receipt_path.read_bytes()
+    record_path = protected._prestart_identity_failure_record_path(
+        incident.request.config,
+        str(incident.request.reservation_id),
+    )
+
+    code, result = _run_identity_failure_reconciliation(
+        harness,
+        monkeypatch,
+        incident,
+        capsys,
+        argv,
+    )
+
+    assert code == 0, result
+    assert result["status"] == "PROOF_RECORDED"
+    assert result["owner_release"] == "NOT_AUTHORIZED"
+    assert incident.request.receipt_path.read_bytes() == receipt_before
+    assert owner_path.read_bytes() == owner_before
+    assert incident.request.config.receipt_path.read_bytes() == managed_before
+    owner = cutover.inspect_control_owner(incident.request.config)
+    assert owner is not None and owner["phase"] == "AUTHORIZED_PENDING"
+    assert owner["mutation_started"] is False
+
+    reconciliation, _ = protected._load_prestart_identity_failure_record(record_path)
+    process_evidence = protected.record(reconciliation["process_evidence"])
+    assert process_evidence["process_spawned"] is True
+    assert process_evidence["protected_started_protocol"] is False
+    assert process_evidence["business_mutation_started"] is False
+    assert process_evidence["child_terminal_capture"] is False
+    assert process_evidence["captured_error"] == protected.PRESTART_IDENTITY_FAILURE_ERROR
+    assert process_evidence["captured_actions"] == []
+
+    second_code, second_result = _run_identity_failure_reconciliation(
+        harness,
+        monkeypatch,
+        incident,
+        capsys,
+        argv,
+    )
+    assert second_code == 0
+    assert second_result["status"] == "ALREADY_PROVEN"
+    assert incident.request.receipt_path.read_bytes() == receipt_before
+    assert owner_path.read_bytes() == owner_before
+
+
+def _rewrite_identity_failure_receipt(
+    incident: StrandedIncident,
+    updates: dict[str, object],
+    monkeypatch: pytest.MonkeyPatch,
+) -> protected.Record:
+    receipt_file = protected.ReceiptFile(incident.request.receipt_path)
+    stranded = receipt_file.read()
+    assert stranded is not None
+    rewritten = receipt_file.write({**stranded, **updates}, expected=stranded)
+    _refresh_identity_failure_receipt_hash(incident, monkeypatch)
+    return rewritten
+
+
+def _rewrite_identity_failure_process_output(
+    incident: StrandedIncident,
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    failures: list[str] | None = None,
+    actions: list[object] | None = None,
+    truncated: bool = False,
+) -> None:
+    receipt_file = protected.ReceiptFile(incident.request.receipt_path)
+    stranded = receipt_file.read()
+    assert stranded is not None
+    stream = protected.record(stranded["process_stdout"])
+    output = (
+        protected.canonical(
+            {
+                "command": "apply",
+                "task": cutover.TASK_ID,
+                "status": "FAIL",
+                "failures": (
+                    [protected.PRESTART_IDENTITY_FAILURE_ERROR] if failures is None else failures
+                ),
+                "actions": [] if actions is None else actions,
+            }
+        )
+        + "\n"
+    )
+    encoded = output.encode("utf-8")
+    rewritten_stream = {
+        **stream,
+        "text": output,
+        "bytes": len(encoded),
+        "sha256": hashlib.sha256(encoded).hexdigest(),
+        "truncated": truncated,
+    }
+    receipt_file.write(
+        {**stranded, "process_stdout": rewritten_stream},
+        expected=stranded,
+    )
+    _refresh_identity_failure_receipt_hash(incident, monkeypatch)
+
+
+@pytest.mark.parametrize(
+    "defect",
+    [
+        "unrelated_exit_two_failure",
+        "empty_actions_without_program_order",
+        "changed_owner_control",
+        "changed_owner_authorization",
+        "changed_reservation",
+        "changed_operation",
+        "changed_target",
+        "changed_historical_plan_sha",
+        "resealed_altered_execution_id",
+        "active_claim",
+        "changed_managed_receipt",
+        "business_mutation_child_evidence",
+        "incomplete_process_capture",
+        "unbound_recovery_control",
+    ],
+)
+def test_prestart_identity_failure_reconciliation_rejects_unproven_incidents_without_writes(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    defect: str,
+) -> None:
+    incident = _make_identity_gate_incident(harness, monkeypatch)
+    _configure_identity_failure_cli(harness, monkeypatch, incident)
+    argv = _identity_failure_reconciliation_argv(incident)
+    config = incident.request.config
+    owner_path = cutover._control_owner_path(config)
+
+    if defect == "unrelated_exit_two_failure":
+        _rewrite_identity_failure_process_output(
+            incident,
+            monkeypatch,
+            failures=["Unrelated failure before protected execution"],
+        )
+    elif defect == "empty_actions_without_program_order":
+        monkeypatch.setattr(
+            protected,
+            "PRESTART_IDENTITY_FAILURE_SOURCE_BLOBS",
+            {
+                **protected.PRESTART_IDENTITY_FAILURE_SOURCE_BLOBS,
+                "tools/b649_protected_cutover.py": "f" * 40,
+            },
+        )
+    elif defect in {"changed_owner_control", "changed_owner_authorization"}:
+        owner_snapshot = cutover._read_control_owner(config)
+        assert owner_snapshot is not None
+        owner, owner_identity = owner_snapshot
+        if defect == "changed_owner_control":
+            changed_control = "f" * 40
+            authorization = {
+                **protected.record(owner["authorization"]),
+                "control_head": changed_control,
+            }
+            changed_owner = {
+                **owner,
+                "control_head": changed_control,
+                "authorization": authorization,
+            }
+        else:
+            authorization = {
+                **protected.record(owner["authorization"]),
+                "operation_id": "f" * 32,
+            }
+            changed_owner = {**owner, "authorization": authorization}
+        cutover._save_control_owner(config, changed_owner, expected=owner_identity)
+    elif defect == "changed_reservation":
+        argv[argv.index("--reservation-id") + 1] = "11111111-1111-4111-8111-111111111111"
+    elif defect == "changed_operation":
+        argv[argv.index("--operation-id") + 1] = "f" * 32
+    elif defect == "changed_target":
+        argv[argv.index("--expected-tree") + 1] = "f" * 40
+    elif defect == "changed_historical_plan_sha":
+        # This is the other frozen v8 plan family, never the incident's historical PLAN.
+        argv[argv.index("--plan-sha256") + 1] = "da404e2d" + "0" * 56
+    elif defect == "resealed_altered_execution_id":
+        stranded = protected.ReceiptFile(incident.request.receipt_path).read()
+        assert stranded is not None
+        altered_identity = {
+            **protected.record(stranded["identity"]),
+            "source_tree": "f" * 40,
+        }
+        _rewrite_identity_failure_receipt(
+            incident,
+            {
+                "identity": altered_identity,
+                "execution_id": protected.digest(altered_identity),
+            },
+            monkeypatch,
+        )
+    elif defect == "active_claim":
+        timestamp = datetime.now(UTC).isoformat()
+        store = claims.ClaimStore(incident.request.claim_root)
+        store._write(
+            {
+                "schema_version": 1,
+                "task_key": protected.TASK_KEY,
+                "owner_id": str(uuid4()),
+                "owner_pid": os.getpid(),
+                "child_pid": os.getpid(),
+                "hostname": socket.gethostname(),
+                "started_at_utc": timestamp,
+                "heartbeat_at_utc": timestamp,
+                "cwd": str(Path.cwd()),
+                "command": ["synthetic-active-claim"],
+                "claim_root": str(incident.request.claim_root),
+            }
+        )
+        assert store.inspect(protected.TASK_KEY)["status"] == "ACTIVE"
+    elif defect == "changed_managed_receipt":
+        managed_path = config.receipt_path
+        managed_path.write_bytes(managed_path.read_bytes() + b" ")
+    elif defect == "business_mutation_child_evidence":
+        _rewrite_identity_failure_process_output(
+            incident,
+            monkeypatch,
+            actions=[{"name": "install-plist", "mutation": True, "status": "PASS"}],
+        )
+    elif defect == "incomplete_process_capture":
+        _rewrite_identity_failure_process_output(incident, monkeypatch, truncated=True)
+    elif defect == "unbound_recovery_control":
+        argv[argv.index("--current-recovery-control-head") + 1] = "c" * 40
+
+    before = _write_snapshot(harness, incident)
+    owner_before = owner_path.read_bytes()
+    receipt_before = incident.request.receipt_path.read_bytes()
+
+    code, result = _run_identity_failure_reconciliation(
+        harness,
+        monkeypatch,
+        incident,
+        capsys,
+        argv,
+    )
+
+    assert code == claims.UNVERIFIABLE
+    assert result["status"] == "INCOMPLETE_OR_AMBIGUOUS"
+    assert _write_snapshot(harness, incident) == before
+    assert owner_path.read_bytes() == owner_before
+    assert incident.request.receipt_path.read_bytes() == receipt_before

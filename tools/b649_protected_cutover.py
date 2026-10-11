@@ -52,6 +52,8 @@ from tools import b649_cutover_checkpoint as checkpoint
 from tools import b649_production_cutover as cutover
 from tools import task_execution_claim as claims
 
+_CONTROL_GIT_RUNNER = cutover.run_command
+
 SCHEMA = "b649-protected-cutover-execution-receipt-v1"
 TASK_KEY = checkpoint.PROTECTED_TASK_KEY
 RECEIPT_NAME = "b649-protected-cutover-execution-receipt.json"
@@ -70,6 +72,31 @@ PRESTART_NOT_STARTED_RECONCILIATION_SCHEMA = (
     "b649-protected-prestart-not-started-reconciliation-v1"
 )
 PRESTART_NOT_STARTED_RELEASE_KIND = "PRESTART_NOT_STARTED_NO_MUTATION"
+PRESTART_IDENTITY_FAILURE_SCHEMA = "b649-protected-prestart-identity-failure-reconciliation-v1"
+PRESTART_IDENTITY_FAILURE_REASON = "PRESTART_IDENTITY_GATE_NO_MUTATION"
+PRESTART_IDENTITY_FAILURE_ERROR = (
+    "Unverifiable: protected execution process identity is unverified"
+)
+PRESTART_IDENTITY_FAILURE_BINDING: dict[str, object] = {
+    "reservation_id": "bd9143f4-bb87-4016-a872-b213f9a715e3",
+    "operation_id": "9de7d162024ee3cd40c68a67679c4f3a",
+    "stranded_protected_receipt_sha256": (
+        "1c6aab763eaace8588b321b4dff456fec38b88115aab8ede1784f1bf6b9be2ba"
+    ),
+    "execution_id": "1eef6c446708c9db3f65493e0912e173ab9bd05c2532ccb6a54033c81c9dcb2e",
+    "managed_receipt_sha256": (
+        "6a2bb0ba29085e900f62e318e0f6caac96ec234611867f2fdb5556467868a83a"
+    ),
+    "plan_sha256": "1566128298fd4d8e834a70028611326264daf5ac8028d7391565810ef661cd32",
+    "original_control_head": "bf649119de0ed252ee5e35587d47991a1aaa216d",
+    "original_control_tree": "66ae9260ec7f480eaf578819cf4d77187452ea7c",
+    "target_head": "ef28fecc5d6198465cedc37770a586c3239ce63f",
+}
+PRESTART_IDENTITY_FAILURE_SOURCE_BLOBS = {
+    "tools/b649_cutover_checkpoint.py": "97f11c87c527b44f26862b465c6c603fe89983cc",
+    "tools/b649_production_cutover.py": "14b0cb1bfbb655850de467e1163a3cf050ddfcf9",
+    "tools/b649_protected_cutover.py": "016a250e26ac14cdd95960f29076d1f2e6686cb2",
+}
 QUIESCENCE_SECONDS = 5.0
 ROLLBACK_SUCCESS = "ROLLBACK_SUCCESS"
 ROLLBACK_FAILED = "ROLLBACK_FAILED"
@@ -2227,6 +2254,205 @@ def _prestart_reconciliation_record_path(
     reservation_id: str,
 ) -> Path:
     return config.scheduler_root / f"b649-prestart-reconciliation-{reservation_id}.json"
+
+
+def _prestart_identity_failure_record_path(
+    config: cutover.CutoverConfig,
+    reservation_id: str,
+) -> Path:
+    return config.scheduler_root / f"b649-prestart-identity-reconciliation-{reservation_id}.json"
+
+
+def _load_prestart_identity_failure_record(path: Path) -> tuple[Record, cutover.FileIdentity]:
+    value, identity, _ = cutover._load_json(path)  # pyright: ignore[reportPrivateUsage]
+    unsigned = {key: item for key, item in value.items() if key != "record_sha256"}
+    expected_keys = {
+        "schema",
+        "reason",
+        "reservation_id",
+        "operation_id",
+        "execution_id",
+        "stranded_protected_receipt_path",
+        "stranded_protected_receipt_sha256",
+        "stranded_protected_receipt_archive",
+        "owner_record_sha256",
+        "owner_authorization",
+        "owner_phase",
+        "owner_mutation_started",
+        "managed_receipt_sha256",
+        "predecessor_protected_receipt_sha256",
+        "plan_sha256",
+        "plan_digest",
+        "original_control_identity",
+        "recovery_control_identity",
+        "recovery_executable_identity",
+        "process_evidence",
+        "claim_store_status",
+        "active_protected_writer",
+        "old_live_state",
+        "owner_release",
+        "recorded_at",
+        "record_sha256",
+    }
+    if (
+        set(value) != expected_keys
+        or value.get("schema") != PRESTART_IDENTITY_FAILURE_SCHEMA
+        or value.get("reason") != PRESTART_IDENTITY_FAILURE_REASON
+        or value.get("record_sha256") != digest(unsigned)
+        or value.get("owner_phase") != "AUTHORIZED_PENDING"
+        or value.get("owner_mutation_started") is not False
+        or value.get("claim_store_status") != "ABSENT"
+        or value.get("active_protected_writer") is not False
+        or value.get("owner_release") != "NOT_AUTHORIZED"
+    ):
+        raise ProtectedError("pre-start identity-failure reconciliation seal is invalid")
+    return value, identity
+
+
+def _captured_stream_text(value: object, label: str) -> str:
+    evidence = record(value)
+    if set(evidence) != {"text", "sha256", "bytes", "truncated"}:
+        raise ProtectedError(f"{label} capture shape is incomplete")
+    captured_value = evidence.get("text")
+    if not isinstance(captured_value, str):
+        raise ProtectedError(f"{label} capture text is not a string")
+    captured = captured_value
+    encoded = captured.encode("utf-8")
+    byte_count = evidence.get("bytes")
+    sha256 = evidence.get("sha256")
+    if (
+        type(byte_count) is not int
+        or byte_count != len(encoded)
+        or byte_count > MAX_STREAM_BYTES
+        or not isinstance(sha256, str)
+        or re.fullmatch(r"[0-9a-f]{64}", sha256) is None
+        or sha256 != hashlib.sha256(encoded).hexdigest()
+        or evidence.get("truncated") is not False
+    ):
+        raise ProtectedError(f"{label} capture digest or completeness is invalid")
+    return captured
+
+
+def _prestart_identity_failure_error(stranded: Record) -> str:
+    """Prove the exact historical process-identity gate error, not code/actions alone."""
+    owner = record(stranded.get("claim_owner"))
+    child_pid = stranded.get("gated_child_pid")
+    supervisor_pid = stranded.get("supervisor_pid")
+    if (
+        type(child_pid) is not int
+        or child_pid <= 0
+        or type(supervisor_pid) is not int
+        or supervisor_pid <= 0
+        or owner.get("child_pid") != child_pid
+        or owner.get("owner_pid") != supervisor_pid
+        or owner.get("command") != stranded.get("direct_argv")
+        or not isinstance(stranded.get("direct_argv"), list)
+        or stranded.get("child_exit_code") is not None
+        or "child_started_at" in stranded
+        or "child_completed_at" in stranded
+        or stranded.get("stdout") is not None
+        or stranded.get("stderr") is not None
+        or "quiescence" in stranded
+    ):
+        raise ProtectedError("process-spawn or pre-STARTED child-capture evidence is incomplete")
+    output = _captured_stream_text(stranded.get("process_stdout"), "process stdout")
+    error_output = _captured_stream_text(stranded.get("process_stderr"), "process stderr")
+    if error_output != "":
+        raise ProtectedError("identity-gate failure has unexpected process stderr")
+    try:
+        result_value = json.loads(output, object_pairs_hook=unique_object)
+    except (TypeError, ValueError) as exc:
+        raise ProtectedError("identity-gate process result is not exact JSON") from exc
+    result = record(result_value)
+    if (
+        output != canonical(result) + "\n"
+        or set(result) != {"command", "task", "status", "failures", "actions"}
+        or result.get("command") != "apply"
+        or result.get("task") != cutover.TASK_ID
+        or result.get("status") != "FAIL"
+        or result.get("failures") != [PRESTART_IDENTITY_FAILURE_ERROR]
+        or result.get("actions") != []
+    ):
+        raise ProtectedError("captured process error is not the exact identity-gate failure")
+    return PRESTART_IDENTITY_FAILURE_ERROR
+
+
+def _historical_identity_gate_program_order(
+    original_control: Record,
+) -> Record:
+    binding = PRESTART_IDENTITY_FAILURE_BINDING
+    if (
+        original_control.get("head") != binding["original_control_head"]
+        or original_control.get("tree") != binding["original_control_tree"]
+    ):
+        raise ProtectedError("original control identity is outside the accepted incident")
+    try:
+        observed_tree = checkpoint.git_value(
+            _CONTROL_GIT_RUNNER,
+            str(CONTROL_ROOT),
+            f"{text(original_control.get('head'))}^{{tree}}",
+        )
+        observed_blobs = {
+            path: checkpoint.git_value(
+                _CONTROL_GIT_RUNNER,
+                str(CONTROL_ROOT),
+                f"{text(original_control.get('head'))}:{path}",
+            )
+            for path in PRESTART_IDENTITY_FAILURE_SOURCE_BLOBS
+        }
+    except (OSError, ValueError, checkpoint.Unverifiable) as exc:
+        raise ProtectedError("original identity-gate source provenance is unavailable") from exc
+    if (
+        observed_tree != original_control.get("tree")
+        or observed_blobs != PRESTART_IDENTITY_FAILURE_SOURCE_BLOBS
+    ):
+        raise ProtectedError("original source does not prove the exact pre-STARTED identity gate")
+    return {
+        "head": original_control["head"],
+        "tree": original_control["tree"],
+        "source_blobs": dict(observed_blobs),
+        "identity_gate_error": PRESTART_IDENTITY_FAILURE_ERROR,
+        "program_order": [
+            "controlled process identity verification",
+            "protected STARTED protocol write",
+            "business apply mutation",
+        ],
+        "failure_precedes_started_and_apply": True,
+    }
+
+
+def _recovery_executable_identity(control: Record) -> Record:
+    modules = (
+        ("tools/b649_protected_cutover.py", Path(__file__)),
+        ("tools/b649_production_cutover.py", Path(cutover.__file__)),
+        ("tools/b649_cutover_checkpoint.py", Path(checkpoint.__file__)),
+    )
+    files: list[Record] = []
+    for relative, loaded_path in modules:
+        expected_path = CONTROL_ROOT / relative
+        try:
+            actual_path = loaded_path.resolve(strict=True)
+            expected_resolved = expected_path.resolve(strict=True)
+        except (OSError, RuntimeError, ValueError) as exc:
+            raise ProtectedError("recovery control executable path is unavailable") from exc
+        if actual_path != expected_resolved:
+            raise ProtectedError("recovery control executable path differs from its control root")
+        file_identity, raw = cutover._file_identity(  # pyright: ignore[reportPrivateUsage]
+            actual_path,
+            missing_ok=False,
+        )
+        if file_identity is None or raw is None:
+            raise ProtectedError("recovery control executable identity is unavailable")
+        files.append(
+            {
+                "path": str(actual_path),
+                "sha256": file_identity.sha256,
+                "device": file_identity.device,
+                "inode": file_identity.inode,
+                "size": file_identity.size,
+            }
+        )
+    return {"control": dict(control), "files": files}
 
 
 def _load_prestart_reconciliation(path: Path) -> tuple[Record, cutover.FileIdentity]:
@@ -4518,13 +4744,14 @@ def cmd_reconcile_prestart_failure(
     args: argparse.Namespace,
     *,
     runner: cutover.Runner | None = None,
+    identity_gate_proof_only: bool = False,
 ) -> Record:
-    """Retire one explicitly identified pre-STARTED failure after full proof.
+    """Reconcile an explicitly identified pre-STARTED failure after full proof.
 
-    The command is the sole cross-control-version exception. It validates the
-    original owner version and the currently running recovery version, then
-    archives the stranded slot, seals proof, and releases that exact owner.
-    Every proof is complete before the first evidence write.
+    Legacy reconciliation archives the stranded slot, seals proof, and releases
+    that exact owner. Identity-gate reconciliation records separate proof while
+    retaining the original receipt and pending owner. Both validate the
+    original and recovery control identities before writing evidence.
     """
     selected_runner = cutover.run_command if runner is None else runner
     config = build_reservation_config(args, for_action="apply")
@@ -4546,11 +4773,11 @@ def cmd_reconcile_prestart_failure(
     for label, value in supplied_hashes.items():
         if re.fullmatch(r"[0-9a-f]{64}", value) is None:
             raise ProtectedError(f"{label} must be a lowercase SHA256")
-    original_control = {
+    original_control: Record = {
         "head": text(args.original_control_head),
         "tree": text(args.original_control_tree),
     }
-    recovery_control = {
+    recovery_control: Record = {
         "head": text(args.current_recovery_control_head),
         "tree": text(args.current_recovery_control_tree),
     }
@@ -4560,10 +4787,34 @@ def cmd_reconcile_prestart_failure(
     running_control = cutover.control_version()
     if running_control != recovery_control or recovery_control == original_control:
         raise ProtectedError("running recovery control identity differs from explicit arguments")
+    original_program_order: Record | None = None
+    recovery_executables: Record | None = None
+    if identity_gate_proof_only:
+        expected_binding = PRESTART_IDENTITY_FAILURE_BINDING
+        exact_arguments = {
+            "reservation_id": reservation_id,
+            "operation_id": operation_id,
+            "stranded_protected_receipt_sha256": supplied_hashes[
+                "stranded_protected_receipt_sha256"
+            ],
+            "managed_receipt_sha256": supplied_hashes["managed_receipt_sha256"],
+            "plan_sha256": supplied_hashes["plan_sha256"],
+            "original_control_head": original_control["head"],
+            "original_control_tree": original_control["tree"],
+        }
+        if any(expected_binding.get(key) != value for key, value in exact_arguments.items()):
+            raise ProtectedError(
+                "identity-failure request differs from the exact historical incident"
+            )
+        if control_identity() != (recovery_control["head"], recovery_control["tree"]):
+            raise ProtectedError("executable recovery control differs from its bound identity")
+        original_program_order = _historical_identity_gate_program_order(original_control)
+        recovery_executables = _recovery_executable_identity(recovery_control)
 
     receipt_path = config.scheduler_root / RECEIPT_NAME
     receipt_file = ReceiptFile(receipt_path)
     reservation_record_path = _prestart_reconciliation_record_path(config, reservation_id)
+    identity_record_path = _prestart_identity_failure_record_path(config, reservation_id)
     with cutover.CutoverLock(  # pyright: ignore[reportPrivateUsage]
         cutover._control_owner_lock_path(config)  # pyright: ignore[reportPrivateUsage]
     ):
@@ -4571,12 +4822,17 @@ def cmd_reconcile_prestart_failure(
         if owner_snapshot is None:
             raise ProtectedError("durable owner is absent")
         owner, owner_file_identity = owner_snapshot
+        allowed_owner_phases = (
+            {"AUTHORIZED_PENDING"}
+            if identity_gate_proof_only
+            else {"AUTHORIZED_PENDING", "RELEASED"}
+        )
         if (
             owner.get("reservation_id") != reservation_id
             or owner.get("operation_id") != operation_id
             or owner.get("owner_kind") != "protected"
             or owner.get("action") != "apply"
-            or owner.get("phase") not in {"AUTHORIZED_PENDING", "RELEASED"}
+            or owner.get("phase") not in allowed_owner_phases
             or owner.get("mutation_started") is not False
             or (owner.get("control_head"), owner.get("control_tree"))
             != (original_control["head"], original_control["tree"])
@@ -4590,6 +4846,12 @@ def cmd_reconcile_prestart_failure(
             "tree": config.expected_tree,
             "durable_ref": config.durable_ref,
         }
+        expected_identity_failure_target_head = PRESTART_IDENTITY_FAILURE_BINDING.get("target_head")
+        if (
+            identity_gate_proof_only
+            and config.expected_head != expected_identity_failure_target_head
+        ):
+            raise ProtectedError("protected target differs from the exact historical incident")
         expected_owner_identity = {
             "reservation_id": reservation_id,
             "operation_id": operation_id,
@@ -4619,6 +4881,8 @@ def cmd_reconcile_prestart_failure(
             stranded = slot_value
             observed_stranded_sha = slot_sha
         else:
+            if identity_gate_proof_only:
+                raise ProtectedError("identity-failure receipt must remain in its original slot")
             # A prior interrupted reconciliation may have completed the
             # archive but not yet sealed its owner-release record.
             archive_candidate: Record | None = None
@@ -4649,6 +4913,19 @@ def cmd_reconcile_prestart_failure(
             stranded = archive_candidate
             observed_stranded_sha = supplied_hashes["stranded_protected_receipt_sha256"]
 
+        stranded_file_identity: cutover.FileIdentity | None = None
+        if identity_gate_proof_only:
+            stranded_file_identity, _ = cutover._file_identity(  # pyright: ignore[reportPrivateUsage]
+                receipt_path,
+                missing_ok=False,
+                require_mode=0o600,
+            )
+            if (
+                stranded_file_identity is None
+                or stranded_file_identity.sha256 != observed_stranded_sha
+            ):
+                raise ProtectedError("identity-failure receipt file identity differs")
+
         stranded_identity = record(stranded.get("identity"))
         execution_id = text(stranded.get("execution_id"))
         archive_path = receipt_path.with_name(f"{receipt_path.stem}.{execution_id}.superseded.json")
@@ -4663,16 +4940,29 @@ def cmd_reconcile_prestart_failure(
             or stranded.get("status") != "INCOMPLETE_OR_AMBIGUOUS"
             or stranded.get("result_status") != "INCOMPLETE_OR_AMBIGUOUS"
             or type(stranded.get("exit_code")) is not int
-            or cast(int, stranded.get("exit_code")) not in PRESTART_EXEC_FAILURE_CODES
-            or stranded.get("child_exit_code") is not None
-            or "child_started_at" in stranded
-            or "child_completed_at" in stranded
             or type(stranded.get("gated_child_pid")) is not int
             or cast(int, stranded.get("gated_child_pid")) <= 0
             or record(stranded.get("claim_owner")).get("child_pid")
             != stranded.get("gated_child_pid")
         ):
-            raise ProtectedError("stranded receipt is not a proven completed pre-STARTED failure")
+            raise ProtectedError("stranded receipt terminal identity is invalid")
+        if identity_gate_proof_only:
+            if cast(
+                int, stranded.get("exit_code")
+            ) != 2 or execution_id != PRESTART_IDENTITY_FAILURE_BINDING.get("execution_id"):
+                raise ProtectedError("stranded receipt is not the exact identity-gate execution")
+            captured_identity_error = _prestart_identity_failure_error(stranded)
+        else:
+            if (
+                cast(int, stranded.get("exit_code")) not in PRESTART_EXEC_FAILURE_CODES
+                or stranded.get("child_exit_code") is not None
+                or "child_started_at" in stranded
+                or "child_completed_at" in stranded
+            ):
+                raise ProtectedError(
+                    "stranded receipt is not a proven completed pre-STARTED failure"
+                )
+            captured_identity_error = None
         if (
             stranded_identity.get("reservation_id") != reservation_id
             or stranded_identity.get("operation_id") != operation_id
@@ -4698,8 +4988,24 @@ def cmd_reconcile_prestart_failure(
         ):
             raise ProtectedError("stranded receipt identity differs from explicit arguments")
 
+        if identity_gate_proof_only and (
+            stranded_identity.get("source_head")
+            != PRESTART_IDENTITY_FAILURE_BINDING.get("target_head")
+            or _validate_cross_control_historical_provenance(
+                stranded,
+                stranded_identity,
+                text(original_control["head"]),
+                text(original_control["tree"]),
+            )
+            != stranded_identity.get("control_worktree")
+        ):
+            raise ProtectedError("stranded identity is outside the exact historical process gate")
+
         plan, plan_identity, _ = cutover.read_control_json(Path(args.plan_file))
-        if plan_identity.sha256 != supplied_hashes["plan_sha256"]:
+        if plan_identity.sha256 != supplied_hashes["plan_sha256"] or (
+            identity_gate_proof_only
+            and plan_identity.sha256 != PRESTART_IDENTITY_FAILURE_BINDING.get("plan_sha256")
+        ):
             raise ProtectedError("stranded plan SHA differs from the explicit value")
         cutover.validate_protected_plan(config, plan)
         plan_old = record(record(plan.get("source")).get("old"))
@@ -4808,6 +5114,16 @@ def cmd_reconcile_prestart_failure(
             or record(old_live.get("target_runtime")) == record(old_live.get("runtime"))
         ):
             raise ProtectedError("live state does not prove OLD runtime with target still inactive")
+        if identity_gate_proof_only:
+            ownership = cutover._ownership_snapshot(  # pyright: ignore[reportPrivateUsage]
+                config,
+                selected_runner,
+                plan_old,
+            )
+            cutover._assert_idle(  # pyright: ignore[reportPrivateUsage]
+                ownership,
+                include_runtime=False,
+            )
         prior_config = replace(
             config,
             source_worktree=Path(text(predecessor_target.get("source_worktree"))),
@@ -4824,6 +5140,204 @@ def cmd_reconcile_prestart_failure(
             successor_old_plist_identity=record(plan.get("prestate")).get("old_plist_identity"),
             runner=selected_runner,
         )
+
+        if identity_gate_proof_only:
+            if (
+                stranded_file_identity is None
+                or original_program_order is None
+                or recovery_executables is None
+                or captured_identity_error != PRESTART_IDENTITY_FAILURE_ERROR
+            ):
+                raise ProtectedError("identity-gate reconciliation proof is incomplete")
+            if os.path.lexists(archive_path):
+                raise ProtectedError("identity-failure receipt already has a conflicting archive")
+            if os.path.lexists(config.scheduler_root / ROLLBACK_RECEIPT_NAME):
+                raise ProtectedError(
+                    "a protected rollback receipt makes predecessor history ambiguous"
+                )
+            ownership = cutover._ownership_snapshot(  # pyright: ignore[reportPrivateUsage]
+                config,
+                selected_runner,
+                plan_old,
+            )
+            cutover._assert_idle(  # pyright: ignore[reportPrivateUsage]
+                ownership,
+                include_runtime=False,
+            )
+            process_stdout = record(stranded.get("process_stdout"))
+            process_stderr = record(stranded.get("process_stderr"))
+            unsigned_identity_reconciliation: Record = {
+                "schema": PRESTART_IDENTITY_FAILURE_SCHEMA,
+                "reason": PRESTART_IDENTITY_FAILURE_REASON,
+                "reservation_id": reservation_id,
+                "operation_id": operation_id,
+                "execution_id": execution_id,
+                "stranded_protected_receipt_path": str(receipt_path),
+                "stranded_protected_receipt_sha256": observed_stranded_sha,
+                "stranded_protected_receipt_archive": None,
+                "owner_record_sha256": owner_file_identity.sha256,
+                "owner_authorization": expected_owner_identity,
+                "owner_phase": owner.get("phase"),
+                "owner_mutation_started": owner.get("mutation_started"),
+                "managed_receipt_sha256": managed_identity.sha256,
+                "predecessor_protected_receipt_sha256": predecessor_sha,
+                "plan_sha256": plan_identity.sha256,
+                "plan_digest": plan.get("plan_digest"),
+                "original_control_identity": original_control,
+                "recovery_control_identity": recovery_control,
+                "recovery_executable_identity": recovery_executables,
+                "process_evidence": {
+                    "process_spawned": True,
+                    "supervisor_pid": stranded.get("supervisor_pid"),
+                    "child_pid": stranded.get("gated_child_pid"),
+                    "claim_owner_id": record(stranded.get("claim_owner")).get("owner_id"),
+                    "protected_started_protocol": False,
+                    "business_mutation_started": False,
+                    "child_terminal_capture": False,
+                    "parent_terminal_phase": stranded.get("phase"),
+                    "exit_code": stranded.get("exit_code"),
+                    "captured_error": captured_identity_error,
+                    "captured_actions": [],
+                    "process_stdout_sha256": process_stdout.get("sha256"),
+                    "process_stdout_bytes": process_stdout.get("bytes"),
+                    "process_stderr_sha256": process_stderr.get("sha256"),
+                    "process_stderr_bytes": process_stderr.get("bytes"),
+                    "original_program_order": original_program_order,
+                },
+                "claim_store_status": "ABSENT",
+                "active_protected_writer": False,
+                "old_live_state": old_live,
+                "owner_release": "NOT_AUTHORIZED",
+            }
+            if os.path.lexists(identity_record_path):
+                existing_identity_record, existing_identity = (
+                    _load_prestart_identity_failure_record(identity_record_path)
+                )
+                if any(
+                    existing_identity_record.get(key) != value
+                    for key, value in unsigned_identity_reconciliation.items()
+                ):
+                    raise ProtectedError("identity-failure record exists with conflicting proof")
+                return {
+                    "status": "ALREADY_PROVEN",
+                    "reconciliation_record_path": str(identity_record_path),
+                    "reconciliation_record_sha256": existing_identity.sha256,
+                    "owner_release": "NOT_AUTHORIZED",
+                }
+
+            identity_unsigned = {**unsigned_identity_reconciliation, "recorded_at": now()}
+            identity_reconciliation = {
+                **identity_unsigned,
+                "record_sha256": digest(identity_unsigned),
+            }
+
+            def revalidate_identity_inputs_before_write() -> None:
+                if (
+                    cutover.control_version() != recovery_control
+                    or control_identity() != (recovery_control["head"], recovery_control["tree"])
+                    or _recovery_executable_identity(recovery_control) != recovery_executables
+                    or _historical_identity_gate_program_order(original_control)
+                    != original_program_order
+                ):
+                    raise ProtectedError("control provenance changed before proof write")
+                latest_owner = cutover._read_control_owner(  # pyright: ignore[reportPrivateUsage]
+                    config
+                )
+                if (
+                    latest_owner is None
+                    or latest_owner[0] != owner
+                    or latest_owner[1].key() != owner_file_identity.key()
+                ):
+                    raise ProtectedError("owner identity changed before proof write")
+                latest_stranded, latest_stranded_sha = receipt_file.read_with_sha256()
+                latest_receipt_identity, _ = cutover._file_identity(  # pyright: ignore[reportPrivateUsage]
+                    receipt_path,
+                    missing_ok=False,
+                    require_mode=0o600,
+                )
+                if (
+                    latest_stranded != stranded
+                    or latest_stranded_sha != supplied_hashes["stranded_protected_receipt_sha256"]
+                    or latest_receipt_identity is None
+                    or latest_receipt_identity.key() != stranded_file_identity.key()
+                ):
+                    raise ProtectedError("protected receipt identity changed before proof write")
+                latest_plan, latest_plan_identity, _ = cutover.read_control_json(
+                    Path(args.plan_file)
+                )
+                if latest_plan != plan or latest_plan_identity.key() != plan_identity.key():
+                    raise ProtectedError("historical PLAN changed before proof write")
+                latest_managed, latest_managed_identity, _ = cutover.read_control_json(
+                    config.receipt_path
+                )
+                if (
+                    latest_managed != managed
+                    or latest_managed_identity.key() != managed_identity.key()
+                ):
+                    raise ProtectedError("managed receipt changed before proof write")
+                latest_predecessor, latest_predecessor_identity, _ = cutover.read_control_json(
+                    predecessor_path
+                )
+                if (
+                    latest_predecessor != predecessor
+                    or latest_predecessor_identity.key() != predecessor_identity.key()
+                    or latest_predecessor_identity.sha256 != predecessor_sha
+                ):
+                    raise ProtectedError("predecessor SUCCESS changed before proof write")
+                if claims.ClaimStore(claim_root).inspect(TASK_KEY).get("status") != "ABSENT":
+                    raise ProtectedError("ClaimStore became active before proof write")
+                if os.path.lexists(config.scheduler_root / ROLLBACK_RECEIPT_NAME):
+                    raise ProtectedError("rollback receipt appeared before proof write")
+                latest_old_live = _prove_plan_old_live(config, plan, selected_runner)
+                if latest_old_live != old_live:
+                    raise ProtectedError("OLD runtime/plist identity changed before proof write")
+                cutover.verify_completed_receipt_live(
+                    prior_config,
+                    managed,
+                    successor_old_plist_identity=record(plan.get("prestate")).get(
+                        "old_plist_identity"
+                    ),
+                    runner=selected_runner,
+                )
+                current_ownership = cutover._ownership_snapshot(  # pyright: ignore[reportPrivateUsage]
+                    config,
+                    selected_runner,
+                    plan_old,
+                )
+                cutover._assert_idle(  # pyright: ignore[reportPrivateUsage]
+                    current_ownership,
+                    include_runtime=False,
+                )
+
+            revalidate_identity_inputs_before_write()
+            cutover._write_json(  # pyright: ignore[reportPrivateUsage]
+                identity_record_path,
+                identity_reconciliation,
+                expected=None,
+            )
+            identity_record, identity_file_identity = _load_prestart_identity_failure_record(
+                identity_record_path
+            )
+            if identity_record != identity_reconciliation:
+                raise ProtectedError("identity-failure reconciliation readback differs")
+            latest_owner = cutover._read_control_owner(config)  # pyright: ignore[reportPrivateUsage]
+            latest_stranded, latest_stranded_sha = receipt_file.read_with_sha256()
+            if (
+                latest_owner is None
+                or latest_owner[0] != owner
+                or latest_owner[1].key() != owner_file_identity.key()
+                or latest_stranded != stranded
+                or latest_stranded_sha != supplied_hashes["stranded_protected_receipt_sha256"]
+            ):
+                raise ProtectedError("owner or historical receipt changed after proof write")
+            return {
+                "status": "PROOF_RECORDED",
+                "reconciliation_record_path": str(identity_record_path),
+                "reconciliation_record_sha256": identity_file_identity.sha256,
+                "owner_release": "NOT_AUTHORIZED",
+                "owner_phase": owner.get("phase"),
+                "protected_receipt_sha256": observed_stranded_sha,
+            }
 
         expected_archive_path = receipt_path.with_name(
             f"{receipt_path.stem}.{execution_id}.superseded.json"
@@ -6087,6 +6601,30 @@ def parser() -> argparse.ArgumentParser:
         "plan-sha256",
     ):
         reconcile_parser.add_argument("--" + name, required=True)
+    identity_reconcile_parser = commands.add_parser(
+        "reconcile-prestart-identity-failure",
+        allow_abbrev=False,
+    )
+    for name in (
+        "source-worktree",
+        "expected-head",
+        "expected-tree",
+        "legacy-worktree",
+        "legacy-head",
+        "legacy-tree",
+        "plan-file",
+        "reservation-id",
+        "operation-id",
+        "stranded-protected-receipt-sha256",
+        "managed-receipt-sha256",
+        "predecessor-protected-receipt-sha256",
+        "original-control-head",
+        "original-control-tree",
+        "current-recovery-control-head",
+        "current-recovery-control-tree",
+        "plan-sha256",
+    ):
+        identity_reconcile_parser.add_argument("--" + name, required=True)
     not_started_parser = commands.add_parser("reconcile-prestart-not-started", allow_abbrev=False)
     for name in (
         "source-worktree",
@@ -6132,6 +6670,10 @@ def main(argv: Sequence[str] | None = None) -> int:
             result = cmd_reconcile_prestart_failure(args)
             print(canonical(result))
             return 0 if result["status"] in {"RECONCILED", "ALREADY_RECONCILED"} else 74
+        if args.action == "reconcile-prestart-identity-failure":
+            result = cmd_reconcile_prestart_failure(args, identity_gate_proof_only=True)
+            print(canonical(result))
+            return 0 if result["status"] in {"PROOF_RECORDED", "ALREADY_PROVEN"} else 74
         if args.action == "reconcile-prestart-not-started":
             result = cmd_reconcile_prestart_not_started(args)
             print(canonical(result))

@@ -1562,10 +1562,61 @@ class ReceiptClaimStore(claims.ClaimStore):
         self.gated = not initial
 
 
+def _v8_exit2_plist_identity_matches_except_device(recorded: object, current: object) -> bool:
+    """Allow only boot-assigned device renumbering for the no-mutation Exit-2 proof."""
+    stable: list[Record] = []
+    for value in (recorded, current):
+        if isinstance(value, cutover.FileIdentity):
+            identity = value
+        else:
+            try:
+                identity = cutover.FileIdentity.from_value(value)
+            except cutover.CutoverSafetyError:
+                return False
+            if identity.to_dict() != value:
+                return False
+        stable.append(
+            {key: item for key, item in identity.to_dict().items() if key != "device"}
+        )
+    return stable[0] == stable[1]
+
+
+def _v8_exit2_verify_predecessor_live(
+    config: cutover.CutoverConfig,
+    receipt: Record,
+    plan_old_plist_identity: object,
+    expected_plist_bytes: bytes,
+    runner: cutover.Runner,
+) -> None:
+    """Verify the V5 SUCCESS and successor OLD plist across device renumbering only."""
+    cutover._reconcile_completed_receipt(  # pyright: ignore[reportPrivateUsage]
+        config, receipt, runner=runner
+    )
+    after = record(receipt.get("after"))
+    after_plist = record(after.get("plist"))
+    sealed_identity = after_plist.get("identity")
+    live_identity, live_bytes = cutover._file_identity(  # pyright: ignore[reportPrivateUsage]
+        config.plist_path,
+        missing_ok=False,
+        require_mode=0o600,
+    )
+    if (
+        live_identity is None
+        or live_bytes != expected_plist_bytes
+        or not _v8_exit2_plist_identity_matches_except_device(sealed_identity, live_identity)
+        or not _v8_exit2_plist_identity_matches_except_device(
+            plan_old_plist_identity, live_identity
+        )
+    ):
+        raise ProtectedError("V5 SUCCESS plist differs beyond device-only identity continuity")
+
+
 def _prove_plan_old_live(
     config: cutover.CutoverConfig,
     plan: Record,
     runner: cutover.Runner,
+    *,
+    allow_device_only_drift: bool = False,
 ) -> Record:
     prestate = record(plan.get("prestate"))
     sources = record(plan.get("source"))
@@ -1591,11 +1642,28 @@ def _prove_plan_old_live(
     old_plist_identity = cutover._identity_from_record(  # pyright: ignore[reportPrivateUsage]
         prestate.get("old_plist_identity"), "old plist identity"
     )
-    live_plist_identity, _ = cutover._assert_expected_plist(  # pyright: ignore[reportPrivateUsage]
-        config.plist_path,
-        old_plist_identity,
-        expected_bytes=old_plist_bytes,
-    )
+    if allow_device_only_drift:
+        live_plist_identity, live_plist_bytes = cutover._file_identity(  # pyright: ignore[reportPrivateUsage]
+            config.plist_path,
+            missing_ok=False,
+            require_mode=0o600,
+        )
+        if (
+            live_plist_identity is None
+            or live_plist_bytes != old_plist_bytes
+            or not _v8_exit2_plist_identity_matches_except_device(
+                old_plist_identity, live_plist_identity
+            )
+        ):
+            raise ProtectedError(
+                "Exit-2 plan OLD plist differs beyond device-only identity continuity"
+            )
+    else:
+        live_plist_identity, _ = cutover._assert_expected_plist(  # pyright: ignore[reportPrivateUsage]
+            config.plist_path,
+            old_plist_identity,
+            expected_bytes=old_plist_bytes,
+        )
     launch = cutover._assert_runtime_binding(  # pyright: ignore[reportPrivateUsage]
         config, runner, old_source, old_runtime
     )
@@ -6404,6 +6472,7 @@ class V8Exit2RecoveryContext:
     owner: Record
     owner_file_identity: cutover.FileIdentity
     stranded: Record
+    historical_execution_identity: Record
     stranded_raw: bytes
     archive_path: Path
     archive_already_present: bool
@@ -6538,6 +6607,43 @@ def _v8_exit2_read_failed_receipt(
     return value, sha256, raw, archive, True
 
 
+def _v8_exit2_validate_predecessor_lineage(
+    config: cutover.CutoverConfig,
+    owner: Record,
+) -> Record:
+    """Validate the exact abandoned immediate hop and its sealed V5 root."""
+    proof = cutover._validate_predecessor_release_evidence(  # pyright: ignore[reportPrivateUsage]
+        owner.get("predecessor_release_evidence"), owner
+    )
+    if (
+        proof.get("prior_protected_receipt_sha256")
+        != cutover.V5_PROTECTED_RECEIPT_SHA256
+        or proof.get("prior_managed_receipt_sha256") != V8_EXIT2_MANAGED_RECEIPT_SHA256
+    ):
+        raise ProtectedError("Owner predecessor proof does not carry the exact V5 SUCCESS")
+
+    immediate_ids = (
+        proof.get("prior_reservation_id"),
+        proof.get("prior_operation_id"),
+    )
+    expected_abandoned_ids = (
+        V8_TARGET_TRANSITION_PREDECESSOR_RESERVATION_ID,
+        V8_TARGET_TRANSITION_PREDECESSOR_OPERATION_ID,
+    )
+    if (
+        immediate_ids != expected_abandoned_ids
+        or record(proof.get("prior_release_evidence")) != _abandon_release_evidence()
+    ):
+        raise ProtectedError("Owner predecessor proof skips or changes the immediate lineage hop")
+    root = _lineage_candidate_hop(config, owner)
+    if (
+        root.get("anchor_sha256") != cutover.V5_PROTECTED_RECEIPT_SHA256
+        or root.get("managed_sha256") != V8_EXIT2_MANAGED_RECEIPT_SHA256
+    ):
+        raise ProtectedError("abandoned predecessor lineage does not root at the exact V5 SUCCESS")
+    return proof
+
+
 def _v8_exit2_load_context(
     args: argparse.Namespace,
     *,
@@ -6591,8 +6697,33 @@ def _v8_exit2_load_context(
         control_head=V8_EXIT2_ORIGINAL_CONTROL_HEAD,
         control_tree=V8_EXIT2_ORIGINAL_CONTROL_TREE,
     )
-    if request.identity != stranded_identity:
-        raise ProtectedError("exit-2 protected receipt identity differs from all explicit inputs")
+    historical_control_worktree = _validate_cross_control_historical_provenance(
+        stranded,
+        stranded_identity,
+        V8_EXIT2_ORIGINAL_CONTROL_HEAD,
+        V8_EXIT2_ORIGINAL_CONTROL_TREE,
+    )
+    historical_interpreter = text(stranded_identity.get("interpreter"))
+    historical_execution_identity = {
+        **request.identity,
+        "control_worktree": historical_control_worktree,
+        "interpreter": historical_interpreter,
+    }
+    if historical_execution_identity != stranded_identity:
+        raise ProtectedError("historical execution identity differs from explicit incident inputs")
+    historical_direct_argv = request.managed_argv()
+    historical_direct_argv[0] = historical_interpreter
+    historical_direct_argv[1] = str(
+        Path(historical_control_worktree) / "tools" / "b649_production_cutover.py"
+    )
+    historical_direct_argv[
+        historical_direct_argv.index("--protected-request") + 1
+    ] = canonical({"identity": historical_execution_identity, "takeover_stale": False})
+    historical_direct_argv[
+        historical_direct_argv.index("--protected-execution") + 1
+    ] = digest(historical_execution_identity)
+    if stranded.get("direct_argv") != historical_direct_argv:
+        raise ProtectedError("historical direct argv differs from all explicit execution inputs")
 
     live_control = cutover.control_version()
     source_control = control_identity()
@@ -6666,7 +6797,6 @@ def _v8_exit2_load_context(
             "sha256": V8_EXIT2_MANAGED_RECEIPT_SHA256,
             "status": "SUCCESS",
         }
-        or stranded.get("direct_argv") != request.managed_argv()
     ):
         raise ProtectedError("receipt is not the immutable exact exit-2 incomplete terminal")
     _v8_exit2_process_identity_failure(stranded)
@@ -6681,7 +6811,7 @@ def _v8_exit2_load_context(
         or owner_pid == child_pid
         or claim_owner.get("task_key") != TASK_KEY
         or claim_owner.get("claim_root") != str(claim_root)
-        or claim_owner.get("command") != request.managed_argv()
+        or claim_owner.get("command") != historical_direct_argv
         or owner_pid != stranded.get("supervisor_pid")
         or owner_pid != owner.get("owner_pid")
         or child_pid != stranded.get("gated_child_pid")
@@ -6713,18 +6843,7 @@ def _v8_exit2_load_context(
     ):
         raise ProtectedError("managed receipt is not the unchanged V5 SUCCESS")
 
-    predecessor_proof = cutover._validate_predecessor_release_evidence(  # pyright: ignore[reportPrivateUsage]
-        owner.get("predecessor_release_evidence"), owner
-    )
-    if (
-        predecessor_proof.get("prior_protected_receipt_sha256")
-        != cutover.V5_PROTECTED_RECEIPT_SHA256
-        or predecessor_proof.get("prior_managed_receipt_sha256")
-        != V8_EXIT2_MANAGED_RECEIPT_SHA256
-        or predecessor_proof.get("prior_reservation_id") != cutover.V5_RESERVATION_ID
-        or predecessor_proof.get("prior_operation_id") != cutover.V5_OPERATION_ID
-    ):
-        raise ProtectedError("Owner predecessor proof does not bind the exact V5 SUCCESS")
+    predecessor_proof = _v8_exit2_validate_predecessor_lineage(config, owner)
     predecessor_archive = _find_archived_prior_receipt(
         receipt_path, lambda sha: sha == cutover.V5_PROTECTED_RECEIPT_SHA256
     )
@@ -6746,9 +6865,6 @@ def _v8_exit2_load_context(
         "action": "apply",
         "target": predecessor_target,
     }
-    predecessor_authorization = {
-        key: value for key, value in predecessor_owner_identity.items() if key != "owner_kind"
-    }
     predecessor_release = record(predecessor_proof.get("prior_release_evidence"))
     predecessor_link = record(predecessor.get("managed_receipt"))
     if (
@@ -6767,12 +6883,7 @@ def _v8_exit2_load_context(
         or predecessor_target.get("head") != cutover.V5_SOURCE_HEAD
         or predecessor_target.get("tree") != cutover.V5_SOURCE_TREE
         or predecessor_target.get("source_worktree") != str(request.legacy_worktree)
-        or predecessor_proof.get("prior_authorization_sha256") != digest(predecessor_authorization)
-        or predecessor_release.get("verified") is not True
-        or predecessor_release.get("protected_receipt_sha256")
-        != cutover.V5_PROTECTED_RECEIPT_SHA256
-        or predecessor_release.get("managed_receipt_sha256")
-        != V8_EXIT2_MANAGED_RECEIPT_SHA256
+        or predecessor_release != _abandon_release_evidence()
         or predecessor_link.get("path") != str(config.receipt_path)
         or predecessor_link.get("sha256") != V8_EXIT2_MANAGED_RECEIPT_SHA256
         or predecessor_link.get("status") != "SUCCESS"
@@ -6835,16 +6946,22 @@ def _v8_exit2_load_context(
         strict_release_layout=False,
     )
     cutover.validate_protected_plan(v5_config, cutover.receipt_to_plan(v5_config, managed))
-    cutover.verify_completed_receipt_live(
+    old_plist_bytes = cutover._decode_bytes(  # pyright: ignore[reportPrivateUsage]
+        prestate.get("old_plist_bytes_b64"), "old plist"
+    )
+    _v8_exit2_verify_predecessor_live(
         v5_config,
         managed,
-        successor_old_plist_identity=prestate.get("old_plist_identity"),
-        runner=runner,
+        prestate.get("old_plist_identity"),
+        old_plist_bytes,
+        runner,
     )
     if claims.ClaimStore(claim_root).inspect(TASK_KEY).get("status") != "ABSENT":
         raise ProtectedError("ClaimStore appeared during predecessor validation")
 
-    old_live = _prove_plan_old_live(config, plan, runner)
+    old_live = _prove_plan_old_live(
+        config, plan, runner, allow_device_only_drift=True
+    )
     if record(old_live.get("source")) != plan_old or record(old_live.get("runtime")) != record(
         record(plan.get("runtime")).get("old")
     ):
@@ -6870,6 +6987,7 @@ def _v8_exit2_load_context(
         owner=owner,
         owner_file_identity=owner_file_identity,
         stranded=stranded,
+        historical_execution_identity=historical_execution_identity,
         stranded_raw=stranded_raw,
         archive_path=archive_path,
         archive_already_present=archive_present,
@@ -6885,7 +7003,7 @@ def _v8_exit2_load_context(
 
 def _v8_exit2_incident_identity(context: V8Exit2RecoveryContext) -> Record:
     return {
-        "operation_identity": context.request.identity,
+        "operation_identity": context.historical_execution_identity,
         "stranded_protected_receipt_sha256": V8_EXIT2_FAILED_RECEIPT_SHA256,
         "managed_receipt_sha256": V8_EXIT2_MANAGED_RECEIPT_SHA256,
         "predecessor_protected_receipt_sha256": cutover.V5_PROTECTED_RECEIPT_SHA256,

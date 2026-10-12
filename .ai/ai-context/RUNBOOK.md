@@ -126,6 +126,21 @@ upgrades a dependency alongside unrelated work is rejected outright. `[Confirmed
 `[Inferred]` from this bootstrap task's own operating constraints; not yet formalized
 as a standing repository policy document.
 
+## Post-merge status maintenance
+
+- After merging a PR, the merger (person or agent) checks status text the PR may have made
+  stale, such as conditional wording like "after X is merged" in
+  `.ai/ai-context/PROJECT_CONTEXT.md`. If the condition now holds, rewrite it as current
+  status with the date and source commit; a plan whose condition is still unmet may stay
+  conditional.
+- `.ai/ai-memory/MEMORY_LOG.md` is append-only: add a new dated entry citing current
+  evidence, only when the task authorizes memory writes. Never edit older entries.
+- List anything not checked in the handoff. A merge does not update other branches or
+  worktrees; they get the fix only after updating onto the new `main`.
+
+`[Inferred]` from the 2026-10-12 Replay status follow-up; not yet a standing repository
+policy document.
+
 ## Deployment, registry, publication
 
 Deployment process, artifact registry, publication steps, and external-notification

@@ -156,7 +156,7 @@ def local_outcomes(n, shared, pool=49, ticket_size=6, selected=7, threshold=3):
         if used + sum(needed) > selected:
             continue
         polynomial = {used: 1}
-        for capacity, minimum in zip(private, needed):
+        for capacity, minimum in zip(private, needed, strict=True):
             next_polynomial = {}
             for degree, coefficient in polynomial.items():
                 for count in range(minimum, min(capacity, selected - degree) + 1):
@@ -229,7 +229,7 @@ def profile_statistics(degrees):
     g = [d + 6 for d in degrees]
     w = sum(comb(v, 2) for v in g)
     u = sum(comb(v, 3) for v in g)
-    b = sum(d * (v - 2) for d, v in zip(degrees, g))
+    b = sum(d * (v - 2) for d, v in zip(degrees, g, strict=True))
     return g, w, u, b
 
 
@@ -323,8 +323,8 @@ def check_realization(composite, donor, lookup, mismatches):
         require(len(contained) <= 1, "quartet has at most one triple support")
         mark = sum(1 << i for i, v in enumerate(quartet) if contained and v in contained[0])
         row = lookup[edge_mask, mark]
-        totals = [a + c for a, c in zip(totals, row[:4])]
-        motifs = [a + c for a, c in zip(motifs, row[4])]
+        totals = [a + c for a, c in zip(totals, row[:4], strict=True)]
+        motifs = [a + c for a, c in zip(motifs, row[4], strict=True)]
     require(totals[:3] == [u, ell, b_direct] and b_direct == b, "global incidence additivity")
     require(0 <= triangles <= 264 and ell <= (max(g) - 2) * (w - 3 * triangles),
             "realized incidence bound direction")
@@ -389,7 +389,7 @@ def verify_data(composite, donor):
     compare(cert["G"], [6 + d for d in cert["D"]], "GRAPH_DEGREES", mismatches)
     compare(cert["TERM_COLUMNS"], ["T", "BOUND", "K4_FLOOR", "CONTAINED_K4_CAP", "S4", "S3"],
             "TERM_COLUMNS", mismatches)
-    for actual, frozen in zip(rebuilt, stored):
+    for actual, frozen in zip(rebuilt, stored, strict=True):
         compare(actual, frozen, "T=" + str(actual[0]), mismatches)
     lower = rebuilt[:-1]
     aggregates = {
@@ -419,10 +419,13 @@ def verify_data(composite, donor):
         "INDEPENDENT_ARITHMETIC_RECOUNT": "PASS" if not mismatches else "FAIL",
         "FORMULA_OR_APPLICABILITY_INCONSISTENCY": "NONE" if not mismatches else "SEE_MISMATCHES",
         "FROZEN_INPUT_REPRODUCTION": "PASS",
-        "T_TERMS_RECOUNTED": {"COUNT": len(rebuilt), "RANGE": [22, 264],
-                               "SIX_INTEGER_COLUMNS_PER_TERM": 6, "ALL_TERMS_SHA256": digest(rebuilt),
-                               "RETAINED_TERMS_SHA256": digest(lower),
-                               "SAMPLES": [row for row in rebuilt if row[0] in (22, 238, 263, 264)]},
+        "T_TERMS_RECOUNTED": {
+            "COUNT": len(rebuilt), "RANGE": [22, 264],
+            "SIX_INTEGER_COLUMNS_PER_TERM": 6,
+            "ALL_TERMS_SHA256": digest(rebuilt),
+            "RETAINED_TERMS_SHA256": digest(lower),
+            "SAMPLES": [row for row in rebuilt if row[0] in (22, 238, 263, 264)],
+        },
         "REFERENCE_SCOPE_CAVEAT": {
             "STATUS": "217_TERM_ATTRIBUTION_MISMATCH",
             "217_TERMS_BELONG_TO": "Prior five-row Cap238 certificate, T22..238, Certificate E",
@@ -439,25 +442,31 @@ def verify_data(composite, donor):
                             "LOCAL_WEIGHTS_RECOUNTED": sorted({r[-1] for r in primitive}),
                             "OWNER_REALIZATION": realization},
         "INTEGER_ARITHMETIC_RESULT": {**aggregates, "EVENT_CONSTANTS_RECOUNTED": counts,
-                                       "MAXIMIZING_T": [row[0] for row in rebuilt
-                                                        if row[1] == aggregates["CERTIFIED_PROFILE_BOUND"]],
-                                       "ROUNDING": "ceil((7*(S1-S2+S3)-4*S4)/7); integer only",
-                                       "DIRECTION_CHECKS": "K lower; A,L upper; S4 max; union upper"},
+            "MAXIMIZING_T": [
+                row[0] for row in rebuilt
+                if row[1] == aggregates["CERTIFIED_PROFILE_BOUND"]
+            ],
+            "ROUNDING": "ceil((7*(S1-S2+S3)-4*S4)/7); integer only",
+            "DIRECTION_CHECKS": "K lower; A,L upper; S4 max; union upper",
+        },
         "MISMATCHES": mismatches,
         "SCIENTIFIC_CLAIM_SUPPORTED": "NONE" if mismatches else
                                       "Certificate F's conditional T22..264 arithmetic and local "
                                       "incidence identities match the frozen certificate. "
-                                      "No six-certificate VERIFIED verdict or strict winning outcome.",
+                                      "No six-certificate VERIFIED verdict or strict winning "
+                                      "outcome.",
         "PRESERVED_SCIENTIFIC_BASELINE": {"INCUMBENT": composite["INCUMBENT"],
             "SIX_ROW_FAMILY_UPPER_BOUND": composite["FAMILY_BOUND_AFTER"],
             "REMAINING_GAP": composite["GAP_TO_INCUMBENT"], "CERTIFICATES_COMPOSED": 6,
             "DONOR_JUDGE_STATUS": "SELF_CHECK_ONLY", "GLOBAL_K20_OPTIMUM": "UNKNOWN",
             "WHOLE_FAMILY_REPLAYED": False},
         "UNVERIFIED_ASSUMPTIONS": [
-            "Universal triangle cap264 relies on inherited CP-SAT infeasibility; solver proof not rerun.",
+            "Universal triangle cap264 relies on inherited CP-SAT infeasibility; "
+            "solver proof not rerun.",
             "Inherited S4>=112 existence theorem is accepted, not independently reproved here.",
-            "Complete MIN-S2 partition/ledger and all other certificates, including Cap238's 217 terms, "
-            "are not revalidated; one fixed realization does not prove universal coverage.",
+            "Complete MIN-S2 partition/ledger and all other certificates, including Cap238's "
+            "217 terms, are not revalidated; one fixed realization does not "
+            "prove universal coverage.",
             "Global K20 optimality remains UNKNOWN; T256 theorem is outside this PR/task.",
         ],
     }
@@ -484,13 +493,23 @@ def verify_frozen(root=ROOT):
         "TASK_ID": "B649_MIN_S2_CERTIFICATE_F_INDEPENDENT_ARITHMETIC_R1",
         "JUDGE_MODE": "SELF_CHECK_ONLY",
         "FROZEN_SOURCE_HEAD_AND_TREE": {"HEAD": HEAD, "TREE": TREE},
-        "CERTIFICATE_F_SOURCE_IDENTITY": {"PROFILE_ID": PROFILE, "COMPOSITE_JSON_POINTER": "/CERTIFICATE_F",
-            "DONOR_JSON_POINTER": "/OWNER_CERTIFICATE", "DONOR_HEAD": DONOR_HEAD,
-            "DONOR_TREE": DONOR_TREE, "FROZEN_INPUT_SHA256": PINS, "FORMULA_SOURCES": sources},
-        "FORMULA_INDEPENDENCE": {"DONOR_CODE_IMPORTED_OR_EXECUTED": False,
-            "INTEGER_ONLY": True, "METHOD": "Shared-label subset and private-label polynomial "
-            "coefficient counts; explicit incidence tuple sets; integer finite minimization "
-            "for Route-B S4; independent numerator ceiling; frozen results used only for comparison."},
+        "CERTIFICATE_F_SOURCE_IDENTITY": {
+            "PROFILE_ID": PROFILE,
+            "COMPOSITE_JSON_POINTER": "/CERTIFICATE_F",
+            "DONOR_JSON_POINTER": "/OWNER_CERTIFICATE",
+            "DONOR_HEAD": DONOR_HEAD,
+            "DONOR_TREE": DONOR_TREE,
+            "FROZEN_INPUT_SHA256": PINS,
+            "FORMULA_SOURCES": sources,
+        },
+        "FORMULA_INDEPENDENCE": {
+            "DONOR_CODE_IMPORTED_OR_EXECUTED": False,
+            "INTEGER_ONLY": True,
+            "METHOD": "Shared-label subset and private-label polynomial "
+                      "coefficient counts; explicit incidence tuple sets; integer finite "
+                      "minimization for Route-B S4; independent numerator ceiling; frozen "
+                      "results used only for comparison.",
+        },
         "EXECUTION": {"CPU_LIMIT_SECONDS": 120, "CPU_BOUND_PROCESSES": 1,
             "VERIFIER_CPU_NANOSECONDS": time.process_time_ns() - started,
             "PYTHON": sys.version, "PYTHON_EXECUTABLE": sys.executable,
@@ -502,10 +521,16 @@ def verify_frozen(root=ROOT):
                 "tests/unit/test_b649_min_s2_certificate_f_independent_arithmetic_r1.py",
             )
         },
-        "PRODUCTION_MUTATION": "NONE", "RUNTIME_TRANSITION_OCCURRED": False,
-        "HEAVY_PROCESS_STARTED": "NO", "REMOTE_WRITE": "NONE", "ORIGINAL_RESEARCH_FILES_MODIFIED": False,
-        "REMAINING_TASK_MODEL": {"最強模型": "後續單一 family owner 的 exact improvement／證書改進研究。",
-            "強模型": "已驗證數學結果的工程正確性整合。", "中弱模型": "固定證據的機械性記錄及發布。"},
+        "PRODUCTION_MUTATION": "NONE",
+        "RUNTIME_TRANSITION_OCCURRED": False,
+        "HEAVY_PROCESS_STARTED": "NO",
+        "REMOTE_WRITE": "NONE",
+        "ORIGINAL_RESEARCH_FILES_MODIFIED": False,
+        "REMAINING_TASK_MODEL": {
+            "最強模型": "後續單一 family owner 的 exact improvement/證書改進研究。",
+            "強模型": "已驗證數學結果的工程正確性整合。",
+            "中弱模型": "固定證據的機械性記錄及發布。",
+        },
     })
     return report
 

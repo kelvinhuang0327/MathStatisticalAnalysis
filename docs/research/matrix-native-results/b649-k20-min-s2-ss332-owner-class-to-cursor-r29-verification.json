@@ -1,0 +1,77 @@
+{
+  "TASK_ID": "B649_K20_MIN_S2_SS332_OWNER_CLASS_TO_CURSOR_R29",
+  "BASE_HEAD": "155f6f1cc083f4dcd17918484e26be0810c08854",
+  "BASE_TREE": "548fdbe01805b52b447318f18fca4e83100dd0e2",
+  "FOCUSED_TESTS": {
+    "STATUS": "PASS",
+    "PASSED": 29,
+    "WALL_SECONDS": 15.01,
+    "FILES": [
+      "tests/unit/test_b649_k20_min_s2_ss332_owner_class_to_cursor_r29.py",
+      "tests/unit/test_b649_k20_min_s2_current_cursor_class_owner_chase_r28.py"
+    ]
+  },
+  "RUFF": {
+    "STATUS": "PASS",
+    "CHECK": "All checks passed!",
+    "FORMAT": "2 files already formatted"
+  },
+  "PYRIGHT": {
+    "STATUS": "PASS",
+    "MODE": "strict from pyproject.toml",
+    "RESULT": "0 errors, 0 warnings, 0 informations",
+    "PYTHON_EXECUTABLE": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/python",
+    "VENV_NOTE": "Worktree has no .venv; --pythonpath explicitly selects the preflighted shared Python runtime."
+  },
+  "FALSIFIABILITY_CHECK": {
+    "STATUS": "CONFIRMED",
+    "MUTATION": "Disabled strict stronger-cap/one-triangle guard",
+    "EXPECTED_FAILURE": "DID NOT RAISE for a sealed cap",
+    "MUTATED_EXIT_CODE": 1,
+    "RESTORE": "PASS",
+    "FINAL_REVERIFY": "PASS"
+  },
+  "R28_SEALED_FINGERPRINT": "PASS",
+  "EXACT_30_OWNER_RECONSTRUCTION": "PASS",
+  "THRESHOLD_672_784_ARITHMETIC": "PASS",
+  "COMPLETE_934_ROW_FINAL_LEDGER_REPLAY": "PASS",
+  "OWNER_SWITCH_REGRESSION": "PASS",
+  "NO_OLD_PROFILE_RERUN_GUARD": "PASS",
+  "NO_WORK_BELOW_FAMILY_MAX_GUARD": "PASS",
+  "CANONICAL_PRIMITIVES": "PASS",
+  "MODEL_IDENTITY_AND_WITNESS_NONVACUITY": "PASS",
+  "REFINEMENT_SOLVER_ATTEMPTS": {
+    "INFEASIBLE": 39,
+    "UNKNOWN": 2,
+    "UNKNOWN_ADOPTED": 0,
+    "OLD_PROOFS_RERUN": 0,
+    "CURSOR_SOLVES": 0
+  },
+  "SOURCE_SHA256": "78a2781f771115473230aec0541fdc96eaf49a5023030fdbff515c433a016888",
+  "TESTS_SHA256": "06af66087f82a575af4ad75e19a7b59f8cfd8b320c6cc64adc4c751ef37ab317",
+  "SEALED_RESULT_SHA256": "f7a081c0455c367984c156ec38e6bc80f2fae96038c4267a5b5c845d6b81951e",
+  "FINAL_FAMILY_CHECK": {
+    "STATUS": "PASS",
+    "MAX_RESOLVED_BOUND": 313611304,
+    "CURSOR_BOUND": 313611976,
+    "FAMILY_UPPER_BOUND": 313611976,
+    "REMAINING_GAP": 372315
+  },
+  "MUTATION_AND_ATTEMPT_ACCOUNTING": [
+    "Phase 0 read-only summary initially used NEXT_CURSOR_BOUND; R28 names the same field NEXT_ACTIVE_BOUND. Corrected and passed before worktree creation.",
+    "Existing goal already exactly matched the Packet; no duplicate goal was created.",
+    "Created only the exact authorized worktree and branch at BASE_HEAD.",
+    "Initial lint/type checks found line length and object-to-string collection typing; fixed before final verification.",
+    "One 30-member union and one 9-member union returned UNKNOWN; neither certified a bound.",
+    "39 strictly stronger current-owner member refutations returned INFEASIBLE; every change rebuilt the full ledger.",
+    "Temporarily disabled the strict cap guard; the focused regression failed with DID NOT RAISE; restored and passed.",
+    "Final next-competing field is recomputed from the remaining complete ledger; the original 313612088 competitor is preserved separately.",
+    "Runtime artifacts and mutation-probe evidence are confined to the retained worktree .task-data/r29; no production mutation or publication occurred."
+  ],
+  "WORKTREE_DISPOSITION": "RETAIN",
+  "NEW_PORTFOLIO_SEARCH_STARTED": "NO",
+  "PRODUCTION_MUTATION": "NONE",
+  "RUNTIME_TRANSITION_OCCURRED": "NO",
+  "JUDGE_MODE": "NOT_APPLICABLE",
+  "JUDGE_DISPATCH": "SUPPRESSED"
+}

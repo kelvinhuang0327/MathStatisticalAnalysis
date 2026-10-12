@@ -1,0 +1,204 @@
+{
+  "ANCHOR_PAIR_BOUND": {
+    "CASES": {
+      "3": {
+        "anchor_pair_intersection": 3469942,
+        "local_s3_recovery_ceiling": 28542402,
+        "maximum_net_recovery_per_third_ticket": -206115,
+        "maximum_pair_overlap": 3,
+        "maximum_triple_recovery_per_third_ticket": 1585689,
+        "net_maximizing_profile": {
+          "left_only_labels": 0,
+          "left_overlap": 0,
+          "net_recovery": -206115,
+          "outside_labels": 6,
+          "pair_cost_recovery": 215600,
+          "right_only_labels": 0,
+          "right_overlap": 0,
+          "shared_labels": 0,
+          "triple_recovery": 9485
+        },
+        "s2_floor": 65802142,
+        "s3_maximizing_profile": {
+          "left_only_labels": 0,
+          "left_overlap": 3,
+          "net_recovery": -5354195,
+          "outside_labels": 3,
+          "pair_cost_recovery": 6939884,
+          "right_only_labels": 0,
+          "right_overlap": 3,
+          "shared_labels": 3,
+          "triple_recovery": 1585689
+        },
+        "upper_bound": 357241548
+      },
+      "4": {
+        "anchor_pair_intersection": 6224512,
+        "local_s3_recovery_ceiling": 81721836,
+        "maximum_net_recovery_per_third_ticket": -189840,
+        "maximum_pair_overlap": 4,
+        "maximum_triple_recovery_per_third_ticket": 4540102,
+        "net_maximizing_profile": {
+          "left_only_labels": 0,
+          "left_overlap": 0,
+          "net_recovery": -189840,
+          "outside_labels": 6,
+          "pair_cost_recovery": 215600,
+          "right_only_labels": 0,
+          "right_overlap": 0,
+          "shared_labels": 0,
+          "triple_recovery": 25760
+        },
+        "s2_floor": 68090512,
+        "s3_maximizing_profile": {
+          "left_only_labels": 0,
+          "left_overlap": 4,
+          "net_recovery": -7908922,
+          "outside_labels": 2,
+          "pair_cost_recovery": 12449024,
+          "right_only_labels": 0,
+          "right_overlap": 4,
+          "shared_labels": 4,
+          "triple_recovery": 4540102
+        },
+        "upper_bound": 354779928
+      },
+      "5": {
+        "anchor_pair_intersection": 10776332,
+        "local_s3_recovery_ceiling": 180542376,
+        "maximum_net_recovery_per_third_ticket": -159250,
+        "maximum_pair_overlap": 5,
+        "maximum_triple_recovery_per_third_ticket": 10030132,
+        "net_maximizing_profile": {
+          "left_only_labels": 0,
+          "left_overlap": 0,
+          "net_recovery": -159250,
+          "outside_labels": 6,
+          "pair_cost_recovery": 215600,
+          "right_only_labels": 0,
+          "right_overlap": 0,
+          "shared_labels": 0,
+          "triple_recovery": 56350
+        },
+        "s2_floor": 72176132,
+        "s3_maximizing_profile": {
+          "left_only_labels": 0,
+          "left_overlap": 5,
+          "net_recovery": -11522532,
+          "outside_labels": 1,
+          "pair_cost_recovery": 21552664,
+          "right_only_labels": 0,
+          "right_overlap": 5,
+          "shared_labels": 5,
+          "triple_recovery": 10030132
+        },
+        "upper_bound": 350778728
+      },
+      "6": {
+        "anchor_pair_intersection": 18611432,
+        "local_s3_recovery_ceiling": 335005776,
+        "maximum_net_recovery_per_third_ticket": -107800,
+        "maximum_pair_overlap": 6,
+        "maximum_triple_recovery_per_third_ticket": 18611432,
+        "net_maximizing_profile": {
+          "left_only_labels": 0,
+          "left_overlap": 0,
+          "net_recovery": -107800,
+          "outside_labels": 6,
+          "pair_cost_recovery": 215600,
+          "right_only_labels": 0,
+          "right_overlap": 0,
+          "shared_labels": 0,
+          "triple_recovery": 107800
+        },
+        "s2_floor": 79545032,
+        "s3_maximizing_profile": {
+          "left_only_labels": 0,
+          "left_overlap": 6,
+          "net_recovery": -18611432,
+          "outside_labels": 0,
+          "pair_cost_recovery": 37222864,
+          "right_only_labels": 0,
+          "right_overlap": 6,
+          "shared_labels": 6,
+          "triple_recovery": 18611432
+        },
+        "upper_bound": 343869728
+      }
+    },
+    "IDENTITY": "|A union B| + sum_C |C \\ (A union B)|; |C \\ (A union B)| = N-I(a)-I(b)+J(r,a,b,c)",
+    "LOCAL_PROFILE": "c shared anchor labels, u left-only, v right-only, and 6-c-u-v outside labels; c<=r, u,v<=6-r, c+u<=r, c+v<=r",
+    "LOCAL_S3_RECOVERY_CEILING_BY_R": {
+      "3": 28542402,
+      "4": 81721836,
+      "5": 180542376,
+      "6": 335005776
+    },
+    "SHARED_LABEL_INCIDENCE_CAP_BY_R": {
+      "3": 54,
+      "4": 72,
+      "5": 90,
+      "6": 108
+    },
+    "THIRD_TICKETS": 18
+  },
+  "BASE_HEAD": "12c4e62ae377b6808eb971bd6dd906bc83987918",
+  "FAMILY_A_BOUND": 357241548,
+  "FAMILY_A_STATUS": "TIGHTENED_OPEN",
+  "IMPROVEMENT_VS_PRIOR_BOUND": 599797,
+  "INCUMBENT": 313239661,
+  "NEW_PORTFOLIO_SEARCH_STARTED": "NO",
+  "PAIR_COST_CONVEXITY_EXCESS": [
+    0,
+    0,
+    655788,
+    1963542,
+    4251912,
+    8337532,
+    15706432
+  ],
+  "PAIR_INTERSECTION_COUNTS_BY_OVERLAP": [
+    107800,
+    574000,
+    1695988,
+    3469942,
+    6224512,
+    10776332,
+    18611432
+  ],
+  "PRIOR_FAMILY_A_BOUND": 357841345,
+  "PRODUCTION_MUTATION": "NONE",
+  "R3_BOUND": 357241548,
+  "R4_BOUND": 354779928,
+  "R5_BOUND": 350778728,
+  "R6_BOUND": 343869728,
+  "REMAINING_GAP": 44001887,
+  "S2_FREQUENCY_FLOOR": {
+    "BASELINE": 63838600,
+    "BY_MAXIMUM_OVERLAP": {
+      "3": 65802142,
+      "4": 68090512,
+      "5": 72176132,
+      "6": 79545032
+    },
+    "FREQUENCY_HISTOGRAM": {
+      "2": 27,
+      "3": 22
+    },
+    "PAIR_OVERLAP_MASS_FLOOR": 93,
+    "POOL_SIZE": 49,
+    "TICKET_LABEL_INCIDENCES": 120
+  },
+  "SUCCESS_A": false,
+  "SUCCESS_B": true,
+  "TASK_BRANCH": "codex/b649-k20-heavy-pair-r3plus-global-bound-r3",
+  "TASK_ID": "B649_K20_HEAVY_PAIR_R3PLUS_GLOBAL_BOUND_R3",
+  "TASK_STATUS": "CERTIFIED_FAMILY_A_BOUND_TIGHTENED",
+  "VERIFICATION": {
+    "EXACT_I_R_RECOMPUTATION": "PASS: independent combinatorial pair-count formula agrees for overlaps 0..6",
+    "FOCUSED_TESTS": "PASS: 6 passed",
+    "PYRIGHT": "PASS: scoped module and test, 0 errors",
+    "RUFF": "PASS: scoped module and test",
+    "SMALL_EXHAUSTIVE_LOCAL_HEAVY_PAIR_TOY_CASES": "PASS: all toy pair/triple event counts and every four-ticket anchor case checked"
+  }
+}

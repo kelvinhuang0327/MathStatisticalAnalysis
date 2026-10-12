@@ -1,0 +1,83 @@
+{
+  "TASK_ID": "B649_K20_OUTSIDE_MIN_S2_GLOBAL_PENALTY_BOUND_R1",
+  "TASK_STATUS": "BOUNDED_WITH_ONE_UNRESOLVED_FAMILY",
+  "SUCCESS_A": false,
+  "SUCCESS_B": true,
+  "DEPENDENCY": {
+    "K10_CANONICAL_INTEGRATION_COMMIT": "e217cba44ba77893a64ea239acf272731fbe2f79",
+    "IS_ANCESTOR_OF_RUN_HEAD": true,
+    "RUN_HEAD": "a124f55d2713b7ecb7fa071abb4c224a5b8853e5"
+  },
+  "DEVIATION_FAMILY_COUNT": 2,
+  "CLOSED_FAMILY_COUNT": 1,
+  "MIN_EXTRA_S2": 466200,
+  "MIN_EXTRA_S2_INTERPRETATION": "certified lower bound over all outside-minimum-S2 portfolios; the <=1-overlap family has L>=94, while the >=2-overlap family has a convexity penalty >=655788",
+  "S1": 364421560,
+  "S2_MINIMUM": 63838600,
+  "PAIR_INTERSECTION_COUNTS_BY_TICKET_OVERLAP": [
+    107800,
+    574000,
+    1695988,
+    3469942,
+    6224512,
+    10776332,
+    18611432
+  ],
+  "PAIR_COST_CONVEXITY_EXCESS_BY_OVERLAP": [
+    0,
+    0,
+    655788,
+    1963542,
+    4251912,
+    8337532,
+    15706432
+  ],
+  "NUMBER_FREQUENCY_MINIMUM": {
+    "INCIDENCES": 120,
+    "POOL_SIZE": 49,
+    "PAIR_OVERLAP_MASS": 93,
+    "FREQUENCIES": {
+      "2": 27,
+      "3": 22
+    }
+  },
+  "MAX_HIGHER_ORDER_RECOVERY": 23110080,
+  "MAX_HIGHER_ORDER_RECOVERY_SCOPE": "raw S3 upper bound in the pairwise-overlap-at-most-one family; its maximum occurs at L=190",
+  "MAX_NET_HIGHER_ORDER_RECOVERY_AFTER_S2_PENALTY": 10852333,
+  "OVERLAP_EDGE_COUNT_AT_MAX_NET_RECOVERY": 94,
+  "FAMILIES": [
+    {
+      "FAMILY": "all ticket-pair intersections are at most one",
+      "OUTSIDE_MIN_S2_CONDITION": "L>=94, where L=sum over ticket pairs of their intersection size",
+      "MIN_EXTRA_S2": 466200,
+      "TRIPLE_CAP_TWO_OVERLAP_EDGES": 2800,
+      "TRIPLE_CAP_THREE_OVERLAP_EDGES": 20272,
+      "TRIPLE_CAP_WITH_FEWER_THAN_TWO_OVERLAP_EDGES": 0,
+      "S3_GRAPH_BOUND": "S3 <= floor(20272 * W / 3), W=sum_v binom(degree(v),2); this follows because each triangle contributes three wedges and non-triangle wedges are bounded by 2800",
+      "MAX_NET_S3_AFTER_S2_PENALTY": 10852333,
+      "AT_EDGE_COUNT": 94,
+      "UPPER_BOUND": 311435293,
+      "STATUS": "CLOSED_BELOW_INCUMBENT"
+    },
+    {
+      "FAMILY": "at least one ticket pair has intersection size >=2",
+      "MIN_EXTRA_S2": 655788,
+      "MIN_S2": 64494388,
+      "HUNTER_STAR_LOWER_BOUND": 6449439,
+      "UPPER_BOUND": 357972121,
+      "STATUS": "UNRESOLVED"
+    }
+  ],
+  "OUTSIDE_FAMILY_UPPER_BOUND": 357972121,
+  "UNRESOLVED_FAMILY": "at least one ticket pair has intersection size >= 2",
+  "REMAINING_GAP": 44732460,
+  "INCUMBENT": 313239661,
+  "NEW_PORTFOLIO_SEARCH_STARTED": "NO",
+  "PRODUCTION_MUTATION": "NONE",
+  "VERIFICATION": {
+    "FOCUSED_TESTS": "PASS: 4 passed; toy exhaustive pair counts and all distinct 3-ticket portfolios over pool=7, draw=3 were checked against the structural counts",
+    "RUFF": "PASS: scoped source and test files",
+    "PYRIGHT": "PASS: scoped source and test files, 0 errors"
+  },
+  "LIMITATION": "Success B only. The unresolved >=2-overlap family has a finite Hunter-style bound, but that bound exceeds the incumbent by 44732460 outcomes. No complete portfolios were enumerated."
+}

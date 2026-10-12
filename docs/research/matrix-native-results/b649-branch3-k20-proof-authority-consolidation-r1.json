@@ -1,0 +1,105 @@
+{
+  "TASK_ID": "B649_BRANCH3_K20_PROOF_AUTHORITY_CONSOLIDATION_R1",
+  "AUTHORITY_ROLE": "Current consolidated branch3 proof state for K20 successors",
+  "TASK_BRANCH": "codex/b649-branch3-k20-proof-authority-consolidation-r1",
+  "BASE_HEAD": "0b2822fc544d504367e79397de493a020506c0a7",
+  "BASE_TREE": "d9b85c7bd5fae756804d7fb9c9c7bde8411c0e29",
+  "SOURCE_MANIFEST": "docs/research/matrix-native-results/b649-branch3-k20-proof-authority-consolidation-r1-sources.json",
+  "K10_GLOBAL_OPTIMUM_STATUS": "PROVEN",
+  "K10_REMAINING_GAP": 0,
+  "K20_INCUMBENT": 313239661,
+  "K20_MIN_S2_BOUND": 313916056,
+  "K20_MIN_S2_REMAINING_GAP": 676395,
+  "K20_MIN_S2_STATUS": "OPEN",
+  "K20_OUTSIDE_PAIR_LE1_BOUND": 311435293,
+  "K20_OUTSIDE_PAIR_LE1_STATUS": "CLOSED",
+  "K20_FAMILY_A_BOUND": 357241548,
+  "K20_FAMILY_A_STATUS": "OPEN",
+  "K20_FAMILY_B_BOUND": 357794343,
+  "K20_FAMILY_B_STATUS": "OPEN",
+  "K20_FAMILY_C_BOUND": 311499152,
+  "K20_FAMILY_C_STATUS": "CLOSED",
+  "K20_GLOBAL_CERTIFIED_BOUND": 357794343,
+  "K20_REMAINING_GAP": 44554682,
+  "AUTHORITIES": {
+    "K10": {
+      "source": "A",
+      "module": "src/lottolab/research/b649_k10_nonlinear_p4_p14_higher_order_bound_r1.py",
+      "record": "docs/research/matrix-native-results/b649-k10-nonlinear-p4-p14-higher-order-bound-r1.json",
+      "prior_profile_record": "docs/research/matrix-native-results/b649-k10-profile-42-3-4-exact-closure-r1.json",
+      "baseline_shell_record": "docs/research/matrix-native-results/b649-k10-overlap-mass11-mass12-proof-certificate-r1.json",
+      "verification_entry_point": "verify_bound_artifact"
+    },
+    "K20_MIN_S2": {
+      "source": "B",
+      "module": "src/lottolab/research/b649_k20_min_s2_higher_order_closure_r2.py",
+      "verification_entry_point": "k20_min_s2_family_official_any_prize_upper_bound",
+      "frozen_terms": {
+        "S1": 372228640,
+        "S2": 63838600,
+        "S3_UPPER": 5526080,
+        "S4_LOWER": 112,
+        "FOURTH_ORDER_CREDIT": 64
+      },
+      "record_note": "The verified frozen source contains only the proof module and focused test, with no standalone JSON result. Its frozen terms and bound are recorded here; no certificate was regenerated."
+    },
+    "K20_OUTSIDE_PAIR_LE1": {
+      "source": "A",
+      "module": "src/lottolab/research/b649_k20_outside_min_s2_global_penalty_bound_r1.py",
+      "record": "docs/research/matrix-native-results/b649-k20-outside-min-s2-global-penalty-bound-r1.json",
+      "record_selection": "FAMILIES[0] (pairwise overlap at most one), not the historical unresolved heavy-family upper bound"
+    },
+    "K20_FAMILY_A": {
+      "source": "C",
+      "module": "src/lottolab/research/b649_k20_heavy_pair_r3plus_global_bound_r3.py",
+      "record": "docs/research/matrix-native-results/b649-k20-heavy-pair-r3plus-global-bound-r3-result.json",
+      "definition": "maximum ticket-pair overlap >=3"
+    },
+    "K20_FAMILY_B": {
+      "source": "D",
+      "module": "src/lottolab/research/b649_k20_multi_r2_defect_global_bound_r3.py",
+      "record": "docs/research/matrix-native-results/b649-k20-multi-r2-defect-global-bound-r3-result.json",
+      "record_selection": "CERTIFICATES.FAMILY_B_BOUND",
+      "definition": "maximum pair overlap=2 with at least two overlap-2 pairs",
+      "open_residual": "THREE_OR_MORE_HEAVY_PAIRS_WITH_OVERLAP_MASS_AT_LEAST_94"
+    },
+    "K20_FAMILY_C": {
+      "source": "D",
+      "module": "src/lottolab/research/b649_k20_heavy_pair_defect_global_bound_r2.py",
+      "record": "docs/research/matrix-native-results/b649-k20-heavy-pair-defect-global-bound-r2-result.json",
+      "record_selection": "FAMILIES.C.WEDGE_CERTIFICATE",
+      "definition": "exactly one overlap-2 pair, with every other pair overlap <=1"
+    }
+  },
+  "BOUND_AGGREGATION": "Maximum of the frozen minimum-S2 bound, outside pair<=1 bound, and current A/B/C bounds; gap is global bound minus incumbent.",
+  "HISTORICAL_RECORD_POLICY": "Source records are immutable. Earlier UNKNOWN or looser family bounds are historical scoped results; the fields in this consolidation select the current authorities above.",
+  "FOCUSED_TEST_SUITES": [
+    "tests/unit/test_b649_k10_nonlinear_p4_p14_higher_order_bound_r1.py",
+    "tests/unit/test_b649_k10_profile_42_3_4_exact_closure_r1.py",
+    "tests/unit/test_b649_k20_heavy_pair_defect_global_bound_r2.py",
+    "tests/unit/test_b649_k20_heavy_pair_r3plus_global_bound_r3.py",
+    "tests/unit/test_b649_k20_min_s2_higher_order_closure_r2.py",
+    "tests/unit/test_b649_k20_multi_r2_defect_global_bound_r3.py",
+    "tests/unit/test_b649_k20_outside_min_s2_global_penalty_bound_r1.py",
+    "tests/unit/test_b649_branch3_k20_proof_authority_consolidation_r1.py"
+  ],
+  "NEW_PORTFOLIO_SEARCH_STARTED": "NO",
+  "RESEARCH_ENUMERATION": "NOT_RUN",
+  "CP_SAT": "NOT_RUN",
+  "FULL_SUITE": "NOT_RUN",
+  "JUDGE": "NOT_RUN",
+  "PRODUCTION_MUTATION": "NONE",
+  "WORKTREE_DISPOSITION": "RETAIN",
+  "VERIFICATION": {
+    "UV_SYNC": "PASS: uv sync --frozen --extra research",
+    "FOCUSED_TESTS": "PASS: 40 passed across the 8 listed suites",
+    "RUFF": "PASS: ruff check on all 15 changed Python files",
+    "RUFF_FORMAT_CHECK": "ADVISORY: 13 byte-for-byte imported source files differ from current formatter output",
+    "PYRIGHT": "PASS: scoped strict Pyright, 0 errors",
+    "RESEARCH_ENUMERATION": "NOT RUN",
+    "CP_SAT": "NOT RUN",
+    "FULL_SUITE": "NOT RUN",
+    "JUDGE": "NOT RUN",
+    "FALSIFIABILITY_CHECK": "PASS: hash, Family B bound, and global bound mutations each failed their guarded test"
+  }
+}

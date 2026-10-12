@@ -1,0 +1,78 @@
+{
+  "TASK_ID": "B649_K20_MIN_S2_TOP_ENVELOPE_REALIZABILITY_R6",
+  "TASK_STATUS": "SUCCESS_B_OPEN_STRICTLY_TIGHTENED",
+  "BASE_HEAD": "0b2fad50957fb1355d829e945fbd3fb975e63cd1",
+  "BASE_TREE": "05740a1aa9caf2ee32aec4b1620ee6bf02bcb96a",
+  "TASK_BRANCH": "codex/b649-k20-min-s2-top-envelope-realizability-r6",
+  "WORKTREE_PATH": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_K20_MIN_S2_TOP_ENVELOPE_REALIZABILITY_R6",
+  "WORKTREE_DISPOSITION": "RETAIN",
+  "RANKED_DANGEROUS_PROFILE_COUNT": 4850,
+  "EXACTLY_ANALYZED_PROFILE_COUNT": 5,
+  "CLOSED_PROFILE_COUNT": 4,
+  "PREVIOUSLY_CLOSED_PROFILE_COUNT": 3,
+  "NEWLY_CLOSED_PROFILE_COUNT": 1,
+  "REALIZABLE_TOP_PROFILE_COUNT": 4,
+  "TOP_ENVELOPE_WEDGE_COUNT": 837,
+  "TOP_PROFILE_RESOLUTIONS": [
+    {
+      "DEGREE_PROFILE": [6, 6, 6, 6, 6, 6, 6, 4, 4, 4, 4, 4, 4, 0, 0, 0, 0, 0, 0, 0],
+      "STATUS": "REALIZABLE",
+      "FULL_SUPPORT_WITNESS_IN_PROOF_MODULE": true
+    },
+    {
+      "DEGREE_PROFILE": [6, 6, 6, 6, 6, 6, 5, 5, 5, 4, 4, 4, 3, 0, 0, 0, 0, 0, 0, 0],
+      "STATUS": "REALIZABLE",
+      "FULL_SUPPORT_WITNESS_IN_PROOF_MODULE": true
+    },
+    {
+      "DEGREE_PROFILE": [6, 6, 6, 6, 6, 5, 5, 5, 5, 5, 5, 4, 1, 1, 0, 0, 0, 0, 0, 0],
+      "STATUS": "UNREALIZABLE",
+      "OBSTRUCTION": {
+        "TRIPLE_SHADOW_DEGREES_SORTED": [12, 12, 12, 12, 12, 10, 10, 10, 10, 10, 10, 8, 2, 2, 0, 0, 0, 0, 0, 0],
+        "ERDOS_GALLAI_PREFIX_K": 5,
+        "LEFT_HAND_SIDE": 60,
+        "RIGHT_HAND_SIDE": 59
+      }
+    },
+    {
+      "DEGREE_PROFILE": [6, 6, 6, 6, 6, 5, 5, 5, 5, 5, 5, 3, 3, 0, 0, 0, 0, 0, 0, 0],
+      "STATUS": "REALIZABLE",
+      "FULL_SUPPORT_WITNESS_IN_PROOF_MODULE": true
+    },
+    {
+      "DEGREE_PROFILE": [6, 6, 6, 6, 5, 5, 5, 5, 5, 5, 5, 5, 2, 0, 0, 0, 0, 0, 0, 0],
+      "STATUS": "REALIZABLE",
+      "FULL_SUPPORT_WITNESS_IN_PROOF_MODULE": true
+    }
+  ],
+  "TOP_SURVIVING_PROFILE": [6, 6, 6, 6, 6, 6, 6, 4, 4, 4, 4, 4, 4, 0, 0, 0, 0, 0, 0, 0],
+  "TOP_SURVIVING_MOTIF_CLASS": "Four realizable profiles tied at W=837; each full support graph is non-cluster, so total triangles <=278 and noncore triangles <=256.",
+  "MOTIF_BOUNDS": {
+    "FULL_GRAPH_TRIANGLES_UPPER_BOUND": 278,
+    "NONCORE_TRIANGLES_UPPER_BOUND": 256,
+    "LOOSE_THREE_CYCLES_UPPER_BOUND": 256,
+    "SHARED_VERTEX_SUPPORT_PAIRS_EXACT": 141,
+    "PASCH_LIKE_FOUR_SUPPORT_UPPER_BOUND": 64,
+    "OTHER_S3_TRIANGLES_WITH_SIZE_TWO_SUPPORTS_UPPER_BOUND": 256
+  },
+  "S3_S4_ENVELOPE": {
+    "S3_BOUND": 5352032,
+    "S4_LOWER_BOUND": 112,
+    "FOURTH_ORDER_CREDIT": 64
+  },
+  "FAMILY_UPPER_BOUND": 313742008,
+  "INCUMBENT": 313239661,
+  "REMAINING_FAMILY_GAP": 502347,
+  "FAMILY_STATUS": "OPEN_STRICTLY_TIGHTENED",
+  "NEXT_UNPROCESSED_PROFILE": [6, 6, 6, 6, 6, 6, 6, 5, 4, 4, 4, 4, 2, 1, 0, 0, 0, 0, 0, 0],
+  "NEXT_UNPROCESSED_PROFILE_UPPER_BOUND": 313739208,
+  "SOLVER_STATUS": "Full-support CP-SAT feasibility: OPTIMAL for four profiles; INFEASIBLE for one; corroborates the analytic shadow obstruction.",
+  "SOLVER_CONFIGURED_WALL_LIMIT": "90s hard external; 12s per profile; one worker.",
+  "SOLVER_ACTUAL_WALL_TIME": "About 2.0s external across triple-only and full-support runs; final CP-SAT-reported sum 0.107s.",
+  "SOLVER_CERTIFIED_BOUND": "Feasibility only; analytic S3 upper bound 5352032.",
+  "FOCUSED_TESTS": "PASS: 5 passed.",
+  "RUFF": "PASS: ruff 0.15.21.",
+  "PYRIGHT": "PASS: pyright 1.1.411, Python 3.13, 0 errors and 0 warnings.",
+  "NEW_PORTFOLIO_SEARCH_STARTED": "NO",
+  "PRODUCTION_MUTATION": "NONE"
+}

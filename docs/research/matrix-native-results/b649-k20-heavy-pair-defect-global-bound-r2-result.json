@@ -1,0 +1,191 @@
+{
+  "AB_TIGHTENING_ATTEMPT": {
+    "CERTIFIED_JOINT_AB_UPPER_BOUND": 10657850062,
+    "CP_SAT": {
+      "certified_objective_bound": 10657850062,
+      "objective": 7670213536,
+      "status": "FEASIBLE",
+      "time_limit_seconds": 120.0,
+      "upper_bound": 10657850062,
+      "workers": 1
+    },
+    "METHOD": "joint overlap-cost CP-SAT relaxation; repeated-label frequency histogram; exact 343-profile S3 ceilings",
+    "STATUS": "NO_IMPROVEMENT"
+  },
+  "BASE_HEAD": "909697cbb1fc53b9f9653f6d4a17c875297787b9",
+  "CLOSED_FAMILIES": [
+    "C"
+  ],
+  "CP_SAT_CERTIFIED_BOUND": 316521078,
+  "CP_SAT_CERTIFIED_COVERAGE_BOUNDS": {
+    "AB_JOINT": 10657850062,
+    "C_CP_SAT": 316521078,
+    "C_FINAL_WEDGE_CERTIFICATE": 311499152
+  },
+  "CP_SAT_OBJECTIVE": -36397648,
+  "CP_SAT_OBJECTIVE_SEMANTICS": "S3_max-(I(1)-I(0))*ordinary_edge_count; the feasible objective was not used as proof",
+  "CP_SAT_RUNS": {
+    "AB_TIGHTENING": {
+      "certified_objective_bound": 10657850062,
+      "objective": 7670213536,
+      "status": "FEASIBLE",
+      "time_limit_seconds": 120.0,
+      "upper_bound": 10657850062,
+      "workers": 1
+    },
+    "C_PRELIMINARY": {
+      "certified_objective_bound": -25830294,
+      "objective": -36397648,
+      "status": "FEASIBLE",
+      "time_limit_seconds": 120.0,
+      "upper_bound": 316521078,
+      "workers": 1
+    }
+  },
+  "CP_SAT_STATUS": "FEASIBLE",
+  "FAMILIES": {
+    "A": {
+      "DEFINITION": "at least one pair overlap >=3",
+      "HUNTER_STAR_LOWER_BOUND": 6580215,
+      "PRELIMINARY_UPPER_BOUND": 357841345,
+      "S2_FLOOR": 65802142,
+      "STATUS": "UNRESOLVED",
+      "TIGHTENED_UPPER_BOUND": 357841345,
+      "UPPER_BOUND": 357841345
+    },
+    "B": {
+      "DEFINITION": "at least two heavy pairs with overlap >=2",
+      "HUNTER_STAR_LOWER_BOUND": 6515018,
+      "PRELIMINARY_UPPER_BOUND": 357906542,
+      "S2_FLOOR": 65150176,
+      "STATUS": "UNRESOLVED",
+      "TIGHTENED_UPPER_BOUND": 357906542,
+      "UPPER_BOUND": 357906542
+    },
+    "C": {
+      "CERTIFICATE_FORMULAS": {
+        "COVERAGE_CEILING": "S1-S2+S3",
+        "DOMAIN": "E=91..189 ordinary edges; x=0..36 heavy-endpoint spokes; t=max(0,x-18)..min(18,floor(x/2)); 0<=2E-x<=342",
+        "S2_EXACT": "190*I(0)+(I(2)-I(0))+(I(1)-I(0))*E",
+        "S3_CEILING": "floor(20272*(W-t)/3) + 2240*(18-x+t) + 14420*(x-2t) + 56126*t",
+        "WEDGE_DEGREE_CEILING": "W <= C(min(x,18),2)+C(x-min(x,18),2) + q*C(19,2)+C(r,2), where (q,r)=divmod(2E-x,19)"
+      },
+      "CP_SAT": {
+        "certified_objective_bound": -25830294,
+        "objective": -36397648,
+        "status": "FEASIBLE",
+        "time_limit_seconds": 120.0,
+        "upper_bound": 316521078,
+        "workers": 1
+      },
+      "DEFINITION": "exactly one pair overlap=2 and every other pair overlap<=1",
+      "PRELIMINARY_UPPER_BOUND": 311499152,
+      "REFERENCE_BOUND_DOMINATED": true,
+      "REFERENCE_BOUND_REPRODUCED_EXACTLY": false,
+      "S2_FLOOR": 64494388,
+      "STATUS": "CLOSED",
+      "SUPPLIED_REFERENCE_BOUND": 312807298,
+      "UPPER_BOUND": 311499152,
+      "WEDGE_CERTIFICATE": {
+        "common_neighbors": 18,
+        "heavy_endpoint_spokes": 36,
+        "ordinary_edge_count": 91,
+        "regular_wedge_count_upper": 1563,
+        "s2_at_maximum": 64494388,
+        "s3_upper_bound": 11571980,
+        "special_triple_recovery_upper": 1010268,
+        "upper_bound": 311499152,
+        "wedge_count_upper": 1581
+      }
+    }
+  },
+  "FAMILY_A_BOUND": 357841345,
+  "FAMILY_B_BOUND": 357906542,
+  "FAMILY_C_BOUND": 311499152,
+  "FAMILY_S2_FLOORS": {
+    "A": 65802142,
+    "B": 65150176,
+    "C": 64494388
+  },
+  "HEAVY_FAMILY_UPPER_BOUND": 357906542,
+  "HEAVY_PAIR_EXCESS_MIN": 655788,
+  "INCUMBENT": 313239661,
+  "MIN_EXTRA_S2_OUTSIDE_MINIMUM": 466200,
+  "NEW_PORTFOLIO_SEARCH_STARTED": "NO",
+  "OBSERVED_HEAD_BEFORE_AB_ATTEMPT": "909697cbb1fc53b9f9653f6d4a17c875297787b9",
+  "OUTSIDE_MIN_S2_STATUS": "OPEN",
+  "OUTSIDE_MIN_S2_UPPER_BOUND": 357906542,
+  "PAIR_COST_CONVEXITY_EXCESS": [
+    0,
+    0,
+    655788,
+    1963542,
+    4251912,
+    8337532,
+    15706432
+  ],
+  "PAIR_INTERSECTION_COSTS": [
+    107800,
+    574000,
+    1695988,
+    3469942,
+    6224512,
+    10776332,
+    18611432
+  ],
+  "PAIR_INTERSECTION_COUNTS_BY_OVERLAP": [
+    107800,
+    574000,
+    1695988,
+    3469942,
+    6224512,
+    10776332,
+    18611432
+  ],
+  "PORTFOLIO_S1": 364421560,
+  "PRELIMINARY_GAP": 44666881,
+  "PRELIMINARY_HEAVY_FAMILY_UPPER_BOUND": 357906542,
+  "PRELIMINARY_OUTSIDE_MIN_S2_UPPER_BOUND": 357906542,
+  "PRODUCTION_MUTATION": "NONE",
+  "R1_PAIR_OVERLAP_AT_MOST_ONE_FAMILY": {
+    "RECOMPUTED": false,
+    "STATUS": "CLOSED",
+    "UPPER_BOUND": 311435293
+  },
+  "REMAINING_GAP": 44666881,
+  "REPEATED_LABEL_FREQUENCY_FLOOR": {
+    "FREQUENCIES": {
+      "2": 27,
+      "3": 22
+    },
+    "INCIDENCES": 120,
+    "PAIR_OVERLAP_MASS": 93,
+    "POOL_SIZE": 49
+  },
+  "SUCCESS_A": false,
+  "SUCCESS_B": true,
+  "TASK_BRANCH": "codex/b649-k20-heavy-pair-defect-global-bound-r2",
+  "TASK_HEAD_AT_RESULT_WRITE": "909697cbb1fc53b9f9653f6d4a17c875297787b9",
+  "TASK_ID": "B649_K20_HEAVY_PAIR_DEFECT_GLOBAL_BOUND_R2",
+  "TASK_STATUS": "BOUNDED_WITH_OPEN_A_OR_B_SUCCESS_B",
+  "TICKET_PAIR_COUNT": 190,
+  "TICKET_TRIPLE_COUNT": 1140,
+  "TRIPLE_PROFILE_TABLE": {
+    "CANONICAL_ORDER": "AB_AC_BC, each coordinate 0..6",
+    "PROFILE_COUNT": 343,
+    "SHA256_CANONICAL_JSON": "fabbd522204dee9c8dd3790f733ef11dc717c5efb632220e2861abd755635cd8"
+  },
+  "UNRESOLVED_FAMILY": [
+    "A",
+    "B"
+  ],
+  "VERIFICATION": {
+    "AB_TIGHTENING_ATTEMPT": "PASS: one fixed 120-second, one-worker joint attempt; BestObjectiveBound gave 10,657,850,062 and did not improve A/B; runtime not extended",
+    "FOCUSED_TESTS": "PASS: 6 passed; independent pair counts, all 343 triple profiles, and exhaustive pool=7 toy cases",
+    "PRELIMINARY_RECORD_DURABLE_BEFORE_ATTEMPT": "PASS",
+    "PYRIGHT": "PASS: scoped module and tests, 0 errors",
+    "RUFF": "PASS: scoped module and tests",
+    "UV_SYNC": "PASS: uv sync --frozen --extra research"
+  },
+  "WORKTREE_DISPOSITION": "RETAIN"
+}

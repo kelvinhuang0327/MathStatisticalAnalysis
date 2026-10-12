@@ -4194,6 +4194,41 @@ def _is_abandoned_lineage_owner(owner: Record | None) -> bool:
     return False
 
 
+def _verify_sealed_prestart_root_receipt(
+    value: Record,
+    *,
+    path: Path,
+    bound_identity: Record,
+) -> None:
+    """Verify a sealed pre-start root using the shared receipt integrity checks.
+
+    The generic failure validator remains authoritative for every caller. A
+    released historical NOT_STARTED root may additionally carry the exact
+    legacy ambiguous terminal pair and child protocol shape, but only after
+    the shared validator has checked its seal, execution identity, path, and
+    owner bindings.
+    """
+    try:
+        cutover._verify_protected_owner_receipt(  # pyright: ignore[reportPrivateUsage]
+            value,
+            path=path,
+            bound_identity=bound_identity,
+            successful=False,
+        )
+    except cutover.CutoverSafetyError as exc:
+        if (
+            str(exc) != "protected failure receipt is not terminal"
+            or (value.get("status"), value.get("result_status"))
+            != ("INCOMPLETE_OR_AMBIGUOUS", "INCOMPLETE_OR_AMBIGUOUS")
+            or type(value.get("exit_code")) is not int
+            or value.get("exit_code") != 1
+            or value.get("child_exit_code") is not None
+            or "child_started_at" not in value
+            or "child_completed_at" in value
+        ):
+            raise
+
+
 def _lineage_candidate_hop(config: cutover.CutoverConfig, owner: Record) -> Record:
     """Walk abandoned links to the sealed not-started candidate hop (read-only).
 
@@ -4301,7 +4336,7 @@ def _lineage_candidate_hop(config: cutover.CutoverConfig, owner: Record) -> Reco
         or reconciliation.get("owner_mutation_started") is not False
     ):
         raise ProtectedError("abandoned lineage root archive differs from its sealed operation")
-    cutover._verify_protected_owner_receipt(  # pyright: ignore[reportPrivateUsage]
+    _verify_sealed_prestart_root_receipt(
         archived,
         path=receipt_path,
         bound_identity={
@@ -4313,7 +4348,6 @@ def _lineage_candidate_hop(config: cutover.CutoverConfig, owner: Record) -> Reco
             "action": "apply",
             "target": target,
         },
-        successful=False,
     )
     return {
         "reservation_id": reservation_id,

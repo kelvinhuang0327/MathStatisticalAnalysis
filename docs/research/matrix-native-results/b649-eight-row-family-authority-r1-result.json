@@ -98,9 +98,31 @@
     "DONOR_FUNCTIONS_EXECUTED": "NO",
     "DONOR_WORKTREE_MUTATION": "NONE",
     "HEAD": "b78b59f1525d5c701dd7f48a73b47979d2e16403",
+    "PROOF_FIELD": "PROOF",
+    "PROOF_FIELD_SCHEMA": "TOP_LEVEL_NONEMPTY_UTF8_TEXT",
+    "PROOF_FIELD_SHA256": "1360ce406e6328a173236c5eec2bdd20290e473a6b7cfc8fde01f8c014c67ba0",
     "RESULT_PATH": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_SEVEN_ROW_NEXT_OWNER_BOUND_R1/docs/research/matrix-native-results/b649-seven-row-next-owner-bound-r1-result.json",
     "RESULT_SHA256": "fd884c4c6c0d1ca97e5be10282f75c148a0f485abc6e2efbf67dc6547207ce0f",
     "TREE": "5764cfa5392bf1ad775442c842ccf5aa49e1b38e"
+  },
+  "EIGHTH_PROFILE_CERTIFICATE": {
+    "APPLICABILITY": "FULL_PROFILE",
+    "CLAIM": "A_LE_192",
+    "JUDGE_UPGRADE": "NONE",
+    "OWNER_BOUND": 313397476,
+    "PROFILE_ID": "66655555555521000000",
+    "PROOF_REFERENCE": {
+      "FIELD_SHA256": "1360ce406e6328a173236c5eec2bdd20290e473a6b7cfc8fde01f8c014c67ba0",
+      "HEAD": "b78b59f1525d5c701dd7f48a73b47979d2e16403",
+      "RESULT_FIELD": "PROOF",
+      "RESULT_PATH": "docs/research/matrix-native-results/b649-seven-row-next-owner-bound-r1-result.json",
+      "RESULT_SHA256": "fd884c4c6c0d1ca97e5be10282f75c148a0f485abc6e2efbf67dc6547207ce0f",
+      "TREE": "5764cfa5392bf1ad775442c842ccf5aa49e1b38e"
+    },
+    "SCHEMA": "B649_EIGHTH_PROFILE_FULL_PROFILE_BOUND_V1",
+    "SOURCE_JUDGE_STATUS": "SELF_CHECK_ONLY",
+    "T_CAP": 264,
+    "T_TERM_COUNT": 243
   },
   "EXACTLY_ONE_OWNER_UPDATED": "YES",
   "EXISTING_CERTIFICATE_IDENTITIES_UNCHANGED": "YES",
@@ -134,12 +156,497 @@
   },
   "GLOBAL_K20_OPTIMUM": "UNKNOWN",
   "INCUMBENT": 313263888,
+  "INHERITED_JUDGE_STATUS": "SELF_CHECK_ONLY",
   "INTEGER_RECOUNT": {
     "K4_DIRECTION": "ceil(max(0, C - 10*O)/4)",
     "NO_T_CAP_STRENGTHENING": "YES",
     "ROUNDING_CHECKED_FOR_EVERY_T": "YES",
     "S4_CEILING_DIRECTION": "ceil(N - 4*S4/7) = N - floor(4*S4/7)",
     "T_TERMS_CHECKED": 243
+  },
+  "LEDGER_OVERLAY": {
+    "BOUNDS_DIGEST_AFTER": "86be66f8d67ea77920f1ce1dd77856ce873d5e8cef2d3a607dd076bf853e51d8",
+    "BOUNDS_DIGEST_BEFORE": "5ab591996b98daac3d14c1468970f8c0e7dd015e5b37d5445e2097bf9b59598a",
+    "CHANGED_PROFILE_IDS": [
+      "66655555555521000000"
+    ],
+    "CHANGED_ROW_COUNT": 1,
+    "CHANGED_TARGET_FIELDS": [
+      "bound",
+      "source"
+    ],
+    "FROZEN_BEFORE_MUTATED": "NO",
+    "FULL_DIGEST_AFTER": "08cb2063678d3202609d1dcce38da149577724c02bee9cae5978435dab145ab4",
+    "FULL_DIGEST_BEFORE": "70e2c1bb28f223566cb54799fd1b325368b90d58c5fc5001cacfbba9d2996de6",
+    "PRESERVED_TARGET_FIELDS": [
+      "cap",
+      "s4_base",
+      "realization"
+    ],
+    "PROFILE_KEY_SET_UNCHANGED": "YES",
+    "ROWS_AFTER": 4647,
+    "ROWS_BEFORE": 4647,
+    "TARGET_ROW_AFTER": {
+      "bound": 313397476,
+      "cap": 264,
+      "realization": [
+        [
+          [
+            0,
+            1,
+            13
+          ],
+          [
+            0,
+            2,
+            9
+          ],
+          [
+            0,
+            3,
+            5
+          ],
+          [
+            0,
+            4,
+            10
+          ],
+          [
+            0,
+            6,
+            7
+          ],
+          [
+            0,
+            8,
+            11
+          ],
+          [
+            1,
+            2,
+            4
+          ],
+          [
+            1,
+            3,
+            7
+          ],
+          [
+            1,
+            5,
+            11
+          ],
+          [
+            1,
+            6,
+            9
+          ],
+          [
+            1,
+            8,
+            10
+          ],
+          [
+            2,
+            3,
+            10
+          ],
+          [
+            2,
+            5,
+            6
+          ],
+          [
+            2,
+            7,
+            8
+          ],
+          [
+            2,
+            11,
+            12
+          ],
+          [
+            3,
+            4,
+            9
+          ],
+          [
+            3,
+            6,
+            8
+          ],
+          [
+            4,
+            5,
+            8
+          ],
+          [
+            4,
+            6,
+            11
+          ],
+          [
+            5,
+            7,
+            9
+          ],
+          [
+            7,
+            10,
+            12
+          ],
+          [
+            9,
+            10,
+            11
+          ]
+        ],
+        [
+          [
+            3,
+            12
+          ],
+          [
+            4,
+            13
+          ],
+          [
+            5,
+            15
+          ],
+          [
+            6,
+            19
+          ],
+          [
+            7,
+            18
+          ],
+          [
+            8,
+            15
+          ],
+          [
+            9,
+            16
+          ],
+          [
+            10,
+            19
+          ],
+          [
+            11,
+            18
+          ],
+          [
+            12,
+            16
+          ],
+          [
+            12,
+            17
+          ],
+          [
+            12,
+            18
+          ],
+          [
+            13,
+            14
+          ],
+          [
+            13,
+            15
+          ],
+          [
+            13,
+            16
+          ],
+          [
+            13,
+            17
+          ],
+          [
+            14,
+            15
+          ],
+          [
+            14,
+            16
+          ],
+          [
+            14,
+            17
+          ],
+          [
+            14,
+            18
+          ],
+          [
+            14,
+            19
+          ],
+          [
+            15,
+            16
+          ],
+          [
+            15,
+            19
+          ],
+          [
+            16,
+            17
+          ],
+          [
+            17,
+            18
+          ],
+          [
+            17,
+            19
+          ],
+          [
+            18,
+            19
+          ]
+        ]
+      ],
+      "s4_base": 112,
+      "source": "docs/research/matrix-native-results/b649-eight-row-family-authority-r1-result.json:EIGHTH_PROFILE_CERTIFICATE"
+    },
+    "TARGET_ROW_BEFORE": {
+      "bound": 313398532,
+      "cap": 264,
+      "realization": [
+        [
+          [
+            0,
+            1,
+            13
+          ],
+          [
+            0,
+            2,
+            9
+          ],
+          [
+            0,
+            3,
+            5
+          ],
+          [
+            0,
+            4,
+            10
+          ],
+          [
+            0,
+            6,
+            7
+          ],
+          [
+            0,
+            8,
+            11
+          ],
+          [
+            1,
+            2,
+            4
+          ],
+          [
+            1,
+            3,
+            7
+          ],
+          [
+            1,
+            5,
+            11
+          ],
+          [
+            1,
+            6,
+            9
+          ],
+          [
+            1,
+            8,
+            10
+          ],
+          [
+            2,
+            3,
+            10
+          ],
+          [
+            2,
+            5,
+            6
+          ],
+          [
+            2,
+            7,
+            8
+          ],
+          [
+            2,
+            11,
+            12
+          ],
+          [
+            3,
+            4,
+            9
+          ],
+          [
+            3,
+            6,
+            8
+          ],
+          [
+            4,
+            5,
+            8
+          ],
+          [
+            4,
+            6,
+            11
+          ],
+          [
+            5,
+            7,
+            9
+          ],
+          [
+            7,
+            10,
+            12
+          ],
+          [
+            9,
+            10,
+            11
+          ]
+        ],
+        [
+          [
+            3,
+            12
+          ],
+          [
+            4,
+            13
+          ],
+          [
+            5,
+            15
+          ],
+          [
+            6,
+            19
+          ],
+          [
+            7,
+            18
+          ],
+          [
+            8,
+            15
+          ],
+          [
+            9,
+            16
+          ],
+          [
+            10,
+            19
+          ],
+          [
+            11,
+            18
+          ],
+          [
+            12,
+            16
+          ],
+          [
+            12,
+            17
+          ],
+          [
+            12,
+            18
+          ],
+          [
+            13,
+            14
+          ],
+          [
+            13,
+            15
+          ],
+          [
+            13,
+            16
+          ],
+          [
+            13,
+            17
+          ],
+          [
+            14,
+            15
+          ],
+          [
+            14,
+            16
+          ],
+          [
+            14,
+            17
+          ],
+          [
+            14,
+            18
+          ],
+          [
+            14,
+            19
+          ],
+          [
+            15,
+            16
+          ],
+          [
+            15,
+            19
+          ],
+          [
+            16,
+            17
+          ],
+          [
+            17,
+            18
+          ],
+          [
+            17,
+            19
+          ],
+          [
+            18,
+            19
+          ]
+        ]
+      ],
+      "s4_base": 112,
+      "source": "b649-k20-min-s2-nb-degree-cap-frontier-r1-result.json:NB_CERTIFICATES[1198]"
+    },
+    "UNCHANGED_ROW_COMPARISONS": 4646
   },
   "LEDGER_ROWS": 4647,
   "LEDGER_ROW_COUNT_PRESERVED": "YES",
@@ -164,7 +671,7 @@
   ],
   "NEIGHBOUR_TRIPLE_SUM": 2356,
   "NEW_A_CAP": 192,
-  "NEW_CERTIFICATE_JUDGE_STATUS": "NOT_A_JUDGE; NO_INHERITED_AUTHORITY_UPGRADE",
+  "NEW_CERTIFICATE_JUDGE_STATUS": "SELF_CHECK_ONLY",
   "NEW_ENVELOPE_PEAK": {
     "A_CAP": 192,
     "BOUND": 313397476,
@@ -2733,6 +3240,13 @@
     "TASK_ID": "B649_MIN_S2_SIX_ROW_EXISTING_S4_CERTIFIED_AUTHORITY_R1",
     "TASK_STATUS": "SIX_ROW_CERTIFIED_FAMILY_AUTHORITY"
   },
+  "PRIOR_INTEGRATION_HISTORY": {
+    "HEAD": "bcaee8911daea0916ccf3cf9f9af3612c12a42a0",
+    "PARENT_HISTORY_PRESERVED": "YES",
+    "RESULT_SHA256": "48f71d9223f71d847e697e3b4a8a27d3bf85771304774e22111f40fe7e29468f",
+    "TREE": "41f11af6eae6dc0e623849168373beb63bc3e1c0",
+    "VERDICT": "REFUTED"
+  },
   "PRODUCTION_MUTATION": "NONE",
   "PROFILE_DEGREE_DISTRIBUTION": {
     "0": 6,
@@ -2745,7 +3259,7 @@
   "PROOF_SCOPE": "FULL_PROFILE",
   "PR_MUTATION": "NONE",
   "PUSH": "NOT_RUN",
-  "REVIEW_ROUTE": "NEW_CONTEXT_INDEPENDENT_REVIEW",
+  "REVIEW_ROUTE": "FRESH_CONTEXT_DELTA_JUDGE",
   "ROW_UPDATE": {
     "AFTER_BOUND": 313397476,
     "BEFORE_BOUND": 313398532,
@@ -2753,7 +3267,7 @@
     "CAP_BEFORE": 264,
     "S4_BASE_AFTER": 112,
     "S4_BASE_BEFORE": 112,
-    "SOURCE_AFTER": "docs/research/matrix-native-results/b649-eight-row-family-authority-r1-result.json:OWNER_CERTIFICATE",
+    "SOURCE_AFTER": "docs/research/matrix-native-results/b649-eight-row-family-authority-r1-result.json:EIGHTH_PROFILE_CERTIFICATE",
     "SOURCE_BEFORE": "b649-k20-min-s2-nb-degree-cap-frontier-r1-result.json:NB_CERTIFICATES[1198]"
   },
   "S1": 372228640,
@@ -2768,7 +3282,7 @@
     "TRIPLE_SUPPORTS": 22
   },
   "TASK_ID": "B649_EIGHT_ROW_FAMILY_AUTHORITY_R1",
-  "TASK_STATUS": "EIGHT_ROW_FULL_PROFILE_BOUND_INTEGRATED",
+  "TASK_STATUS": "EIGHT_ROW_CANDIDATE_CORRECTED_PENDING_DELTA_JUDGE",
   "T_CAP": 264,
   "T_CAP_STATUS": "UNCHANGED_FROZEN_ACCEPTED_PREMISE",
   "WEDGE_COUNT": 832

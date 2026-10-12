@@ -12,16 +12,23 @@ import hashlib
 import json
 import subprocess
 from collections import Counter, defaultdict
-from itertools import product
+from collections.abc import Iterable, Mapping
+from dataclasses import asdict, replace
+from itertools import pairwise, product
 from math import comb
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
+
+from . import b649_min_s2_next_owner_core_zero_t256_cert_r1 as seven
 
 TASK_ID = "B649_EIGHT_ROW_FAMILY_AUTHORITY_R1"
 PROFILE_ID = "66655555555521000000"
 FROZEN_HEAD = "6569a9667d5e2094c8542cdff9905c3fd89f9e44"
 FROZEN_TREE = "986d20859c86be9036b2321ac47e2e9622786a3b"
-FROZEN_INPUT = "docs/research/matrix-native-results/b649-min-s2-next-owner-core-zero-t256-cert-r1-result.json"
+FROZEN_INPUT = (
+    "docs/research/matrix-native-results/"
+    "b649-min-s2-next-owner-core-zero-t256-cert-r1-result.json"
+)
 FROZEN_INPUT_SHA256 = "880a672a7330a567cc4544170cdeb0f7aa4d3dc5b5e3603c89ef50663cd71743"
 DONOR_ROOT = Path(
     "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/"
@@ -32,6 +39,15 @@ DONOR_TREE = "5764cfa5392bf1ad775442c842ccf5aa49e1b38e"
 DONOR_RESULT = "docs/research/matrix-native-results/b649-seven-row-next-owner-bound-r1-result.json"
 DONOR_RESULT_SHA256 = "fd884c4c6c0d1ca97e5be10282f75c148a0f485abc6e2efbf67dc6547207ce0f"
 RESULT_PATH = "docs/research/matrix-native-results/b649-eight-row-family-authority-r1-result.json"
+SEVEN_ROW_COUNT = 4647
+SEVEN_ROW_CERTIFICATE_COUNT = 7
+SEVEN_ROW_FULL_DIGEST = "70e2c1bb28f223566cb54799fd1b325368b90d58c5fc5001cacfbba9d2996de6"
+SEVEN_ROW_BOUNDS_DIGEST = "5ab591996b98daac3d14c1468970f8c0e7dd015e5b37d5445e2097bf9b59598a"
+DONOR_PROOF_FIELD = "PROOF"
+EIGHTH_CERTIFICATE_SCHEMA = "B649_EIGHTH_PROFILE_FULL_PROFILE_BOUND_V1"
+PRIOR_INTEGRATION_RESULT_SHA256 = "48f71d9223f71d847e697e3b4a8a27d3bf85771304774e22111f40fe7e29468f"
+PRIOR_INTEGRATION_HEAD = "bcaee8911daea0916ccf3cf9f9af3612c12a42a0"
+PRIOR_INTEGRATION_TREE = "41f11af6eae6dc0e623849168373beb63bc3e1c0"
 TICKET_COUNT = 20
 TICKET_CAPACITY = 6
 LABEL_COUNT = 49
@@ -52,6 +68,16 @@ ROOT = Path(__file__).resolve().parents[3]
 def require(condition: bool, message: str) -> None:
     if not condition:
         raise ValueError(message)
+
+
+def require_profile_ids(value: Any, message: str) -> list[str]:
+    require(
+        type(value) is list and all(type(profile_id) is str for profile_id in value),
+        message,
+    )
+    profile_ids = cast(list[str], value)
+    require(len(set(profile_ids)) == len(profile_ids), message)
+    return profile_ids
 
 
 def sha256(data: bytes) -> str:
@@ -117,6 +143,7 @@ def validate_source_identity(
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise ValueError("pinned authority JSON is invalid") from exc
 
+    validate_donor_proof(donor)
     require(
         donor.get("PROFILE_ID") == PROFILE_ID
         and donor.get("PROOF_SCOPE") == "FULL_PROFILE"
@@ -133,10 +160,358 @@ def validate_source_identity(
     return frozen, donor
 
 
+def validate_donor_proof(donor: Mapping[str, Any]) -> None:
+    """Fail closed on donor schema, scope, and the actual top-level proof field."""
+    proof = donor.get(DONOR_PROOF_FIELD)
+    require(
+        type(proof) is str and bool(proof.strip()),
+        "donor proof field PROOF is missing or empty",
+    )
+    require(
+        donor.get("TASK_ID") == "B649_SEVEN_ROW_NEXT_OWNER_BOUND_R1"
+        and donor.get("PROFILE_ID") == PROFILE_ID
+        and donor.get("PROOF_SCOPE") == "FULL_PROFILE"
+        and donor.get("JUDGE_MODE") == "SELF_CHECK_ONLY"
+        and donor.get("FROZEN_HEAD") == FROZEN_HEAD
+        and donor.get("FROZEN_TREE") == FROZEN_TREE
+        and donor.get("INPUT_PATH") == FROZEN_INPUT
+        and donor.get("INPUT_SHA256") == FROZEN_INPUT_SHA256
+        and donor.get("NEW_INEQUALITY") == "A <= 188+m+3e <= 192"
+        and donor.get("NEW_CONTAINED_K4_CAP") == 192
+        and donor.get("NEW_ADMISSIBLE_BOUND") == 313397476
+        and donor.get("T_CAP") == T_FROZEN_CAP
+        and donor.get("T_TERMS_CHECKED") == T_FROZEN_CAP - T_MIN + 1
+        and donor.get("UNPROVED_ASSUMPTIONS") == []
+        and donor.get("GLOBAL_K20_OPTIMUM") == "UNKNOWN",
+        "donor proof identity, applicability, or scope mismatch",
+    )
+
+
+def index_ledger_rows(records: Iterable[tuple[str, seven.Row]]) -> dict[str, seven.Row]:
+    """Index the complete frozen row stream, rejecting missing, extra, or duplicate IDs."""
+    items = list(records)
+    require(len(items) == SEVEN_ROW_COUNT, "ledger row count mismatch")
+    profile_ids = [profile_id for profile_id, _row in items]
+    require(
+        all(type(profile_id) is str for profile_id in profile_ids),
+        "ledger profile ID is not text",
+    )
+    require(
+        len(set(profile_ids)) == SEVEN_ROW_COUNT,
+        "duplicate ledger profile ID",
+    )
+    require(
+        all(isinstance(row, seven.Row) for _profile_id, row in items),
+        "ledger row has the wrong schema",
+    )
+    return dict(items)
+
+
+def load_seven_row_ledger(frozen: Mapping[str, Any]) -> dict[str, seven.Row]:
+    """Rebuild the frozen seven-row ledger using its validated authority entrypoints."""
+    require(
+        frozen.get("TASK_ID") == seven.TASK_ID
+        and frozen.get("LEDGER_ROWS") == SEVEN_ROW_COUNT
+        and frozen.get("CERTIFICATES_COMPOSED") == SEVEN_ROW_CERTIFICATE_COUNT,
+        "frozen seven-row result identity mismatch",
+    )
+    certificate_ids = require_profile_ids(
+        frozen.get("CERTIFICATE_PROFILE_IDS"),
+        "frozen seven-certificate profile IDs mismatch",
+    )
+    require(
+        len(certificate_ids) == SEVEN_ROW_CERTIFICATE_COUNT,
+        "frozen seven-certificate profile IDs mismatch",
+    )
+
+    six_result, six_ledger = seven.six_row_authority()
+    before_seventh = index_ledger_rows(six_ledger.items())
+    six_certificate_ids = require_profile_ids(
+        six_result.get("CERTIFICATE_PROFILE_IDS"),
+        "frozen six-certificate profile IDs mismatch",
+    )
+    require(
+        certificate_ids == [*six_certificate_ids, seven.TARGET_PROFILE]
+        and PROFILE_ID not in certificate_ids,
+        "frozen seven-certificate lineage mismatch",
+    )
+    profile_bound = frozen.get("PROFILE_BOUND_AFTER")
+    require(type(profile_bound) is int, "frozen profile bound is not an integer")
+    seven_ledger = seven.apply_seventh(
+        before_seventh,
+        cast(int, profile_bound),
+        seven.PROPOSED_CAP,
+        f"{seven.TASK_ID}:CORE_ZERO_T256_THEOREM",
+    )
+    rows = index_ledger_rows(seven_ledger.items())
+    full = seven.two.full_digest(rows)
+    bounds = seven.two.bounds_digest(rows)
+    require(
+        full == SEVEN_ROW_FULL_DIGEST == frozen.get("FULL_ROWS_SHA256_AFTER")
+        and bounds == SEVEN_ROW_BOUNDS_DIGEST == frozen.get("BOUNDS_SHA256_AFTER"),
+        "frozen seven-row before digest mismatch",
+    )
+    family_bound, family_owners, next_bound = seven.three.family(rows)
+    require(
+        (family_bound, family_owners, next_bound)
+        == (
+            frozen.get("FAMILY_BOUND_AFTER"),
+            frozen.get("NEXT_OWNER_IDS"),
+            frozen.get("NEXT_COMPETING_BOUND"),
+        ),
+        "frozen seven-row family replay mismatch",
+    )
+    frozen_row = frozen.get("NEW_OWNER_ROWS", {}).get(PROFILE_ID)
+    require(
+        type(frozen_row) is dict
+        and json.loads(json.dumps(asdict(rows[PROFILE_ID]))) == frozen_row,
+        "frozen target row does not match the rebuilt ledger",
+    )
+    return rows
+
+
+def verify_ledger_overlay(
+    before: Mapping[str, seven.Row],
+    after: Mapping[str, seven.Row],
+    new_bound: int,
+    source: str,
+) -> dict[str, Any]:
+    """Compare every row and certify that only bound/source on the target changed."""
+    before_rows = index_ledger_rows(before.items())
+    after_rows = index_ledger_rows(after.items())
+    require(set(before_rows) == set(after_rows), "ledger profile key set changed")
+    before_full = seven.two.full_digest(before_rows)
+    before_bounds = seven.two.bounds_digest(before_rows)
+    require(
+        before_full == SEVEN_ROW_FULL_DIGEST
+        and before_bounds == SEVEN_ROW_BOUNDS_DIGEST,
+        "frozen seven-row before digest mismatch",
+    )
+    original = before_rows[PROFILE_ID]
+    updated = after_rows[PROFILE_ID]
+    require(
+        (original.bound, original.cap, original.s4_base)
+        == (313398532, T_FROZEN_CAP, GLOBAL_S4_FLOOR),
+        "frozen target row baseline mismatch",
+    )
+    require(
+        type(new_bound) is int
+        and new_bound < original.bound
+        and updated.bound == new_bound
+        and updated.cap == original.cap
+        and updated.s4_base == original.s4_base
+        and updated.realization == original.realization
+        and updated.source == source,
+        "target row update or preserved metadata mismatch",
+    )
+    before_target = asdict(original)
+    after_target = asdict(updated)
+    changed_fields = sorted(
+        field for field in before_target if before_target[field] != after_target[field]
+    )
+    require(changed_fields == ["bound", "source"], "target row changed a protected field")
+    changed_profiles = [
+        profile_id
+        for profile_id in before_rows
+        if before_rows[profile_id] != after_rows[profile_id]
+    ]
+    require(
+        changed_profiles == [PROFILE_ID],
+        "overlay changed a profile outside the designated owner",
+    )
+    unchanged_count = sum(
+        before_rows[profile_id] == after_rows[profile_id]
+        for profile_id in before_rows
+        if profile_id != PROFILE_ID
+    )
+    require(unchanged_count == SEVEN_ROW_COUNT - 1, "unchanged row comparison count mismatch")
+    return {
+        "ROWS_BEFORE": len(before_rows),
+        "ROWS_AFTER": len(after_rows),
+        "PROFILE_KEY_SET_UNCHANGED": "YES",
+        "FULL_DIGEST_BEFORE": before_full,
+        "BOUNDS_DIGEST_BEFORE": before_bounds,
+        "FULL_DIGEST_AFTER": seven.two.full_digest(after_rows),
+        "BOUNDS_DIGEST_AFTER": seven.two.bounds_digest(after_rows),
+        "CHANGED_ROW_COUNT": len(changed_profiles),
+        "CHANGED_PROFILE_IDS": changed_profiles,
+        "UNCHANGED_ROW_COMPARISONS": unchanged_count,
+        "CHANGED_TARGET_FIELDS": changed_fields,
+        "PRESERVED_TARGET_FIELDS": [
+            field for field in before_target if field not in {"bound", "source"}
+        ],
+        "TARGET_ROW_BEFORE": before_target,
+        "TARGET_ROW_AFTER": after_target,
+        "FROZEN_BEFORE_MUTATED": "NO",
+    }
+
+
+def apply_eighth_overlay(
+    ledger: Mapping[str, seven.Row], new_bound: int, source: str
+) -> tuple[dict[str, seven.Row], dict[str, Any]]:
+    """Apply the eighth certificate to a copy of the complete frozen ledger."""
+    before = index_ledger_rows(ledger.items())
+    original = dict(before)
+    before_full = seven.two.full_digest(before)
+    before_bounds = seven.two.bounds_digest(before)
+    require(
+        before_full == SEVEN_ROW_FULL_DIGEST
+        and before_bounds == SEVEN_ROW_BOUNDS_DIGEST,
+        "frozen seven-row before digest mismatch",
+    )
+    target = before[PROFILE_ID]
+    require(
+        type(new_bound) is int
+        and new_bound < target.bound
+        and type(source) is str
+        and source == f"{RESULT_PATH}:EIGHTH_PROFILE_CERTIFICATE",
+        "eighth profile update is not a fresh, scoped certificate",
+    )
+    after = dict(before)
+    after[PROFILE_ID] = replace(target, bound=new_bound, source=source)
+    summary = verify_ledger_overlay(before, after, new_bound, source)
+    require(
+        before == original
+        and seven.two.full_digest(ledger) == before_full
+        and seven.two.bounds_digest(ledger) == before_bounds,
+        "frozen before ledger was mutated",
+    )
+    return after, summary
+
+
+def build_eighth_profile_certificate(donor: Mapping[str, Any]) -> dict[str, Any]:
+    """Bind the full-profile claim to the donor's real PROOF field and exact result."""
+    validate_donor_proof(donor)
+    proof = donor[DONOR_PROOF_FIELD]
+    return {
+        "SCHEMA": EIGHTH_CERTIFICATE_SCHEMA,
+        "PROFILE_ID": PROFILE_ID,
+        "APPLICABILITY": "FULL_PROFILE",
+        "CLAIM": "A_LE_192",
+        "OWNER_BOUND": donor["NEW_ADMISSIBLE_BOUND"],
+        "T_CAP": donor["T_CAP"],
+        "T_TERM_COUNT": donor["T_TERMS_CHECKED"],
+        "PROOF_REFERENCE": {
+            "HEAD": DONOR_HEAD,
+            "TREE": DONOR_TREE,
+            "RESULT_PATH": DONOR_RESULT,
+            "RESULT_SHA256": DONOR_RESULT_SHA256,
+            "RESULT_FIELD": DONOR_PROOF_FIELD,
+            "FIELD_SHA256": sha256(proof.encode()),
+        },
+        "SOURCE_JUDGE_STATUS": "SELF_CHECK_ONLY",
+        "JUDGE_UPGRADE": "NONE",
+    }
+
+
+def validate_certificate_pointer(
+    result: Mapping[str, Any], donor: Mapping[str, Any]
+) -> None:
+    expected_certificate = build_eighth_profile_certificate(donor)
+    require(
+        result.get("EIGHTH_PROFILE_CERTIFICATE") == expected_certificate,
+        "donor proof pointer, identity, or applicability mismatch",
+    )
+    update = result.get("ROW_UPDATE")
+    require(
+        type(update) is dict
+        and update.get("SOURCE_AFTER") == f"{RESULT_PATH}:EIGHTH_PROFILE_CERTIFICATE",
+        "row source does not point to the eighth profile certificate",
+    )
+
+
+def validate_authority_result(
+    result: Mapping[str, Any],
+    donor: Mapping[str, Any],
+    frozen: Mapping[str, Any],
+    before: Mapping[str, seven.Row],
+) -> None:
+    """Recompute the emitted envelope and family summary from the full ledger."""
+    require(
+        result.get("PROFILE_ID") == PROFILE_ID
+        and result.get("PROOF_SCOPE") == "FULL_PROFILE",
+        "result profile or proof applicability mismatch",
+    )
+    target = before[PROFILE_ID]
+    degrees = validate_profile_id(PROFILE_ID)
+    local = local_intersection_weights()
+    expected_terms = envelope_terms(T_FROZEN_CAP, 192, target.s4_base, local)
+    old_a_cap = sum(d * (4 + d) for d in degrees) // 3
+    old_terms = envelope_terms(T_FROZEN_CAP, old_a_cap, target.s4_base, local)
+    old_peak = max(old_terms, key=lambda item: item["BOUND"])
+    new_peak = max(expected_terms, key=lambda item: item["BOUND"])
+    require(
+        result.get("NEW_ENVELOPE_TERMS") == expected_terms
+        and result.get("NEW_ENVELOPE_PEAK") == new_peak
+        and result.get("T_CAP") == target.cap == T_FROZEN_CAP
+        and result.get("OLD_A_CAP") == old_a_cap
+        and result.get("NEW_A_CAP") == 192
+        and result.get("OLD_OWNER_BOUND") == old_peak["BOUND"] == target.bound
+        and result.get("NEW_OWNER_BOUND") == new_peak["BOUND"]
+        and result.get("OWNER_DELTA") == old_peak["BOUND"] - new_peak["BOUND"]
+        and len(expected_terms) == 243
+        and [term["T"] for term in expected_terms] == list(range(T_MIN, T_FROZEN_CAP + 1)),
+        "owner bound, cap, or integer envelope mismatch",
+    )
+    source = f"{RESULT_PATH}:EIGHTH_PROFILE_CERTIFICATE"
+    after, overlay = apply_eighth_overlay(before, new_peak["BOUND"], source)
+    require(
+        result.get("LEDGER_OVERLAY") == overlay,
+        "result does not report the recomputed full-ledger overlay",
+    )
+    before_family = seven.three.family(before)
+    after_family = seven.three.family(after)
+    family_delta = before_family[0] - after_family[0]
+    gap = after_family[0] - INCUMBENT
+    require(
+        (before_family[0], before_family[1], before_family[2])
+        == (
+            frozen.get("FAMILY_BOUND_AFTER"),
+            frozen.get("NEXT_OWNER_IDS"),
+            frozen.get("NEXT_COMPETING_BOUND"),
+        )
+        and result.get("FAMILY_BOUND_AFTER") == after_family[0]
+        and result.get("FROZEN_FAMILY_BOUND_BEFORE") == before_family[0]
+        and result.get("NEXT_COMPETING_BOUND") == before_family[2]
+        and result.get("FAMILY_BOUND_DELTA") == family_delta
+        and result.get("NEXT_TIED_OWNERS") == after_family[1] == NEXT_TIED_OWNERS
+        and (new_peak["BOUND"], after_family[0], family_delta, gap)
+        == (313397476, 313398248, 284, 134360)
+        and result.get("EXPECTED_REMAINING_GAP") == gap,
+        "full-ledger family maximum or tied owners mismatch",
+    )
+    before_ids = require_profile_ids(
+        frozen.get("CERTIFICATE_PROFILE_IDS"),
+        "frozen seven-certificate profile IDs mismatch",
+    )
+    require(
+        result.get("CERTIFICATE_PROFILE_IDS_BEFORE") == before_ids
+        and result.get("CERTIFICATE_PROFILE_IDS_AFTER") == [*before_ids, PROFILE_ID]
+        and result.get("CERTIFICATES_BEFORE") == SEVEN_ROW_CERTIFICATE_COUNT
+        and result.get("CERTIFICATES_AFTER") == SEVEN_ROW_CERTIFICATE_COUNT + 1,
+        "eighth certificate profile set mismatch",
+    )
+    require(
+        len(result["CERTIFICATE_PROFILE_IDS_AFTER"]) == SEVEN_ROW_CERTIFICATE_COUNT + 1
+        and len(set(result["CERTIFICATE_PROFILE_IDS_AFTER"]))
+        == SEVEN_ROW_CERTIFICATE_COUNT + 1,
+        "eighth certificate was duplicated",
+    )
+    require(
+        result.get("PRESERVED_SIX_ROW_STATUS") == frozen.get("PRESERVED_SIX_ROW_STATUS")
+        and result.get("INHERITED_JUDGE_STATUS") == "SELF_CHECK_ONLY"
+        and result.get("NEW_CERTIFICATE_JUDGE_STATUS") == "SELF_CHECK_ONLY",
+        "inherited status or caveats were upgraded",
+    )
+    validate_certificate_pointer(result, donor)
+
+
 def validate_realization(realization: list[Any]) -> dict[str, Any]:
     """Check the pinned witness against the stated support model; not a proof."""
     require(type(realization) is list and len(realization) == 2, "invalid realization shape")
     triples, pairs = realization
+    triples = cast(list[Any], triples)
+    pairs = cast(list[Any], pairs)
     require(
         type(triples) is list
         and type(pairs) is list
@@ -152,20 +527,22 @@ def validate_realization(realization: list[Any]) -> dict[str, Any]:
         (triples, 3, True),
         (pairs, 2, False),
     ):
-        for support in supports:
+        for raw_support in supports:
+            require(type(raw_support) is list, "invalid support in frozen realization")
+            support = cast(list[Any], raw_support)
             require(
-                type(support) is list
-                and len(support) == support_size
+                len(support) == support_size
                 and all(type(v) is int and 0 <= v < TICKET_COUNT for v in support)
                 and len(set(support)) == support_size,
                 "invalid support in frozen realization",
             )
-            for vertex in support:
+            support_values = cast(list[int], support)
+            for vertex in support_values:
                 label_degree[vertex] += 1
                 triple_degree[vertex] += int(is_triple)
-            for i, left in enumerate(support):
-                for right in support[i + 1 :]:
-                    edge = tuple(sorted((left, right)))
+            for i, left in enumerate(support_values):
+                for right in support_values[i + 1 :]:
+                    edge = (min(left, right), max(left, right))
                     require(edge not in used_ticket_pairs, "reused ticket pair in realization")
                     used_ticket_pairs.add(edge)
                     edge_count += 1
@@ -340,7 +717,7 @@ def local_intersection_weights() -> dict[str, int]:
 def verify_bonferroni_multiplicity(max_winners: int = 7) -> list[dict[str, int]]:
     """Check the integer numerator inequality used by S1-S2+S3-4*S4/7."""
     require(max_winners == 7, "winner multiplicity is outside the frozen proof")
-    table = []
+    table: list[dict[str, int]] = []
     for winners in range(1, max_winners + 1):
         numerator = (
             7 * (winners - comb(winners, 2) + comb(winners, 3))
@@ -419,14 +796,15 @@ def build_authority(
 ) -> dict[str, Any]:
     validate_profile_id(profile_id)
     frozen, donor = validate_source_identity(frozen_blob, donor_blob, identity)
-    row = frozen.get("NEW_OWNER_ROWS", {}).get(PROFILE_ID)
-    require(type(row) is dict, "frozen owner row is missing")
+    ledger_before = load_seven_row_ledger(frozen)
+    row = frozen["NEW_OWNER_ROWS"][PROFILE_ID]
 
-    old_ids = frozen.get("CERTIFICATE_PROFILE_IDS")
+    old_ids = require_profile_ids(
+        frozen.get("CERTIFICATE_PROFILE_IDS"),
+        "frozen seven-certificate identities mismatch",
+    )
     require(
-        type(old_ids) is list
-        and len(old_ids) == 7
-        and len(set(old_ids)) == 7
+        len(old_ids) == 7
         and PROFILE_ID not in old_ids
         and frozen.get("CERTIFICATES_COMPOSED") == 7,
         "frozen seven-certificate identities mismatch",
@@ -466,12 +844,18 @@ def build_authority(
         and old_peak["BOUND"] == row["bound"] == 313398532
         and old_peak["T"] == T_FROZEN_CAP
         and (new_peak["BOUND"], new_peak["T"]) == (313397476, T_FROZEN_CAP)
-        and all(a["BOUND"] < b["BOUND"] for a, b in zip(new_terms, new_terms[1:])),
+        and all(a["BOUND"] < b["BOUND"] for a, b in pairwise(new_terms)),
         "full frozen T envelope mismatch",
     )
     owner_delta = old_peak["BOUND"] - new_peak["BOUND"]
-    family_after = max(new_peak["BOUND"], frozen["NEXT_COMPETING_BOUND"])
-    family_delta = frozen["FAMILY_BOUND_AFTER"] - family_after
+    source_after = f"{RESULT_PATH}:EIGHTH_PROFILE_CERTIFICATE"
+    ledger_after, ledger_overlay = apply_eighth_overlay(
+        ledger_before, new_peak["BOUND"], source_after
+    )
+    family_before = seven.three.family(ledger_before)
+    family_after_recomputed = seven.three.family(ledger_after)
+    family_after = family_after_recomputed[0]
+    family_delta = family_before[0] - family_after
     gap = family_after - INCUMBENT
     require(
         (owner_delta, family_after, family_delta, gap)
@@ -479,10 +863,17 @@ def build_authority(
         "family maximum or remaining gap mismatch",
     )
 
-    return {
+    result = {
         "TASK_ID": TASK_ID,
-        "TASK_STATUS": "EIGHT_ROW_FULL_PROFILE_BOUND_INTEGRATED",
-        "REVIEW_ROUTE": "NEW_CONTEXT_INDEPENDENT_REVIEW",
+        "TASK_STATUS": "EIGHT_ROW_CANDIDATE_CORRECTED_PENDING_DELTA_JUDGE",
+        "REVIEW_ROUTE": "FRESH_CONTEXT_DELTA_JUDGE",
+        "PRIOR_INTEGRATION_HISTORY": {
+            "VERDICT": "REFUTED",
+            "HEAD": PRIOR_INTEGRATION_HEAD,
+            "TREE": PRIOR_INTEGRATION_TREE,
+            "RESULT_SHA256": PRIOR_INTEGRATION_RESULT_SHA256,
+            "PARENT_HISTORY_PRESERVED": "YES",
+        },
         "PROOF_SCOPE": "FULL_PROFILE",
         "PROFILE_ID": PROFILE_ID,
         "PROFILE_DEGREE_DISTRIBUTION": profile_degree_distribution(degrees),
@@ -507,6 +898,9 @@ def build_authority(
             "TREE": DONOR_TREE,
             "RESULT_PATH": str(DONOR_ROOT / DONOR_RESULT),
             "RESULT_SHA256": DONOR_RESULT_SHA256,
+            "PROOF_FIELD": DONOR_PROOF_FIELD,
+            "PROOF_FIELD_SCHEMA": "TOP_LEVEL_NONEMPTY_UTF8_TEXT",
+            "PROOF_FIELD_SHA256": sha256(donor[DONOR_PROOF_FIELD].encode()),
             "DONOR_WORKTREE_MUTATION": "NONE",
             "DONOR_FUNCTIONS_EXECUTED": "NO",
         },
@@ -544,9 +938,10 @@ def build_authority(
         "CERTIFICATES_BEFORE": 7,
         "CERTIFICATES_AFTER": 8,
         "CERTIFICATE_PROFILE_IDS_BEFORE": old_ids,
-        "CERTIFICATE_PROFILE_IDS_AFTER": old_ids + [PROFILE_ID],
+        "CERTIFICATE_PROFILE_IDS_AFTER": [*old_ids, PROFILE_ID],
         "LEDGER_ROWS": 4647,
         "LEDGER_ROW_COUNT_PRESERVED": "YES",
+        "LEDGER_OVERLAY": ledger_overlay,
         "CHANGED_PROFILE_COUNT": 1,
         "CHANGED_PROFILE_ID": PROFILE_ID,
         "EXACTLY_ONE_OWNER_UPDATED": "YES",
@@ -558,22 +953,24 @@ def build_authority(
             "S4_BASE_BEFORE": row["s4_base"],
             "S4_BASE_AFTER": row["s4_base"],
             "SOURCE_BEFORE": row["source"],
-            "SOURCE_AFTER": f"{RESULT_PATH}:OWNER_CERTIFICATE",
+            "SOURCE_AFTER": source_after,
         },
         "OTHER_PROFILES_UNCHANGED": "YES",
         "EXISTING_CERTIFICATE_IDENTITIES_UNCHANGED": "YES",
-        "FROZEN_FAMILY_BOUND_BEFORE": frozen["FAMILY_BOUND_AFTER"],
-        "NEXT_COMPETING_BOUND": frozen["NEXT_COMPETING_BOUND"],
+        "FROZEN_FAMILY_BOUND_BEFORE": family_before[0],
+        "NEXT_COMPETING_BOUND": family_before[2],
         "FAMILY_BOUND_AFTER": family_after,
         "FAMILY_BOUND_DELTA": family_delta,
-        "NEXT_TIED_OWNERS": frozen["NEXT_COMPETING_OWNER_IDS"],
+        "NEXT_TIED_OWNERS": family_after_recomputed[1],
         "INCUMBENT": INCUMBENT,
         "EXPECTED_REMAINING_GAP": gap,
         "NEW_STRICT_WINNING_OUTCOMES": 0,
         "OUTCOME_SEARCH": "NOT_RUN; NO WINNING OUTCOME CLAIMED",
         "GLOBAL_K20_OPTIMUM": "UNKNOWN",
         "PRESERVED_SIX_ROW_STATUS": inherited,
-        "NEW_CERTIFICATE_JUDGE_STATUS": "NOT_A_JUDGE; NO_INHERITED_AUTHORITY_UPGRADE",
+        "INHERITED_JUDGE_STATUS": "SELF_CHECK_ONLY",
+        "EIGHTH_PROFILE_CERTIFICATE": build_eighth_profile_certificate(donor),
+        "NEW_CERTIFICATE_JUDGE_STATUS": "SELF_CHECK_ONLY",
         "FORMAL_LEDGER_MUTATED": "NO",
         "CERTIFICATE_F_MUTATED": "NO",
         "PR365_MUTATED": "NO",
@@ -587,6 +984,14 @@ def build_authority(
             "T outside the frozen proof range",
         ],
     }
+    validate_authority_result(result, donor, frozen, ledger_before)
+    return result
+
+
+def compute_result() -> dict[str, Any]:
+    """Load pinned sources and compute the result through the complete ledger path."""
+    frozen_blob, donor_blob, identity = load_live_sources()
+    return build_authority(frozen_blob, donor_blob, identity)
 
 
 def serialize_result(result: dict[str, Any]) -> bytes:
@@ -594,12 +999,21 @@ def serialize_result(result: dict[str, Any]) -> bytes:
 
 
 def write_result(result: dict[str, Any]) -> tuple[str, str]:
-    """Create only the authorized new result path; refuse any changed overwrite."""
+    """Replace only the exact REFUTED predecessor at the authorized result path."""
     destination = ROOT / RESULT_PATH
     encoded = serialize_result(result)
     if destination.exists():
-        require(destination.read_bytes() == encoded, "refusing to overwrite a different result")
-        action = "ALREADY_MATCHED"
+        existing = destination.read_bytes()
+        if existing == encoded:
+            action = "ALREADY_MATCHED"
+        else:
+            require(
+                sha256(existing) == PRIOR_INTEGRATION_RESULT_SHA256,
+                "refusing to replace a result other than the pinned REFUTED predecessor",
+            )
+            destination.write_bytes(encoded)
+            require(destination.read_bytes() == encoded, "result write did not round-trip")
+            action = "REPLACED_PINNED_REFUTED_PREDECESSOR"
     else:
         with destination.open("xb") as stream:
             stream.write(encoded)
@@ -611,8 +1025,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--write-result", action="store_true")
     args = parser.parse_args()
-    frozen_blob, donor_blob, identity = load_live_sources()
-    result = build_authority(frozen_blob, donor_blob, identity)
+    result = compute_result()
     if args.write_result:
         action, digest = write_result(result)
     else:

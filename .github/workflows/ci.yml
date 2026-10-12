@@ -79,8 +79,11 @@ jobs:
             fi
             # Copy verified commits and their trees/blobs into pytest's actual repository.
             # Checkout-local refs retain the objects after the probe directory is removed.
+            probe_ref="refs/ci/verified-provenance/$sha"
+            env -u GIT_OBJECT_DIRECTORY -u GIT_ALTERNATE_OBJECT_DIRECTORIES -u GIT_COMMON_DIR \
+              git --git-dir="$probe_repo" update-ref "$probe_ref" "$sha"
             checkout_ref="refs/ci/historical-provenance/$sha"
-            git fetch --no-tags "$probe_repo" "$sha:$checkout_ref"
+            git fetch --no-tags "$probe_repo" "$probe_ref:$checkout_ref"
             actual_commit="$(git rev-parse --verify "${checkout_ref}^{commit}")"
             actual_tree="$(git rev-parse --verify "${sha}^{tree}")"
             if [[ "$actual_commit" != "$sha" || "$actual_tree" != "$expected_tree" ]]; then

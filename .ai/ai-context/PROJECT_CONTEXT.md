@@ -56,14 +56,24 @@ directly for current phase/PR/parity-evidence per capability.
 
 ### Replay status
 
-`lottery.replay.read_models` is currently `phase: INVENTORIED` in the migration ledger
-(no PR, no parity evidence — "only catalog/lifecycle metadata is in the P600B pilot").
-`[Confirmed]` (docs/migration/migration-ledger.yaml)
+`lottery.replay.read_models` remains `phase: INVENTORIED` in the migration ledger;
+its `pr` and `parity_evidence` fields are both `null`, and the ledger says the
+P600B pilot includes only catalog/lifecycle metadata. `[Confirmed]`
+(docs/migration/migration-ledger.yaml)
 
-**Replay implementation and parity evidence are not yet complete.** The bootstrap is merged into
-`origin/main`; it does not change that status and does not constitute or claim any Replay validation.
-`[Inferred]` The next safe planning step is a separate read-only Replay architecture-fit review
-against current `main`. This is a planning recommendation, not an existing repository milestone.
+Replay execution, history, scoring, API, and UI components already exist in the
+repository (for example, `src/lottolab/application/use_cases/replay_historical_predictions.py`,
+`src/lottolab/domain/replay_history.py`, `src/lottolab/domain/replay_scoring.py`,
+`src/lottolab/interfaces/api/replay_execution.py`, and
+`frontend/src/features/replay-history/ReplayHistoryPage.vue`). `[Confirmed]`
+This code inventory is separate from the migration/parity status of the
+`lottery.replay.read_models` capability.
+
+The bootstrap is merged into `origin/main`; it does not change that ledger
+status or provide PR/parity evidence for this capability. `[Confirmed]`
+`[Inferred]` The next safe planning step is a separate read-only Replay
+architecture-fit review against current `main`. This is a planning
+recommendation, not an existing repository milestone.
 
 ## Reproducibility
 

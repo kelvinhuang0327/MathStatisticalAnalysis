@@ -29,8 +29,10 @@ APPROVED_TAG_TARGETS: dict[str, tuple[str, str]] = {
         "0b089eb90884f14283679528be40295098a5d3ef",
     ),
 }
+MIN_S2_CERTIFICATE_B_COMMIT = "22747b6ebab1c1ded8773d39edf9e5a44eb70769"
+MIN_S2_CERTIFICATE_B_TREE = "af0c469501fce7b6002b92065ad2c236845edab1"
 RESTRICTED_TAG_REF = (
-    "refs/tags/research/provenance/pr-364/22747b6ebab1c1ded8773d39edf9e5a44eb70769"
+    f"refs/tags/research/provenance/pr-364/{MIN_S2_CERTIFICATE_B_COMMIT}"
 )
 _GIT_ENVIRONMENT_KEYS_TO_CLEAR = (
     "GIT_DIR",
@@ -148,6 +150,53 @@ def verify_provenance(
     return errors
 
 
+def fetch_exact_commit(
+    remote_url: str,
+    expected_commit: str,
+    expected_tree: str,
+    *,
+    git_dir: Path | None = None,
+) -> list[str]:
+    for label, object_id in (
+        ("COMMIT", expected_commit),
+        ("TREE", expected_tree),
+    ):
+        if len(object_id) != 40 or any(char not in "0123456789abcdef" for char in object_id):
+            return [f"INVALID_EXPECTED_{label}_SHA: {object_id}"]
+
+    try:
+        _run_git(
+            ["fetch", "--depth=1", "--no-tags", remote_url, expected_commit],
+            git_dir=git_dir,
+        )
+    except GitCommandError as error:
+        return [f"HISTORICAL_OBJECT_FETCH_FAILED: {expected_commit}: {error}"]
+
+    try:
+        actual_commit = _run_git(
+            ["rev-parse", "--verify", "FETCH_HEAD^{commit}"],
+            git_dir=git_dir,
+        )
+        actual_tree = _run_git(
+            ["rev-parse", "--verify", "FETCH_HEAD^{tree}"],
+            git_dir=git_dir,
+        )
+    except GitCommandError as error:
+        return [f"HISTORICAL_OBJECT_VALIDATION_FAILED: {expected_commit}: {error}"]
+
+    errors: list[str] = []
+    if actual_commit != expected_commit:
+        errors.append(
+            f"HISTORICAL_COMMIT_MISMATCH: fetched {actual_commit}; "
+            f"expected {expected_commit}"
+        )
+    if actual_tree != expected_tree:
+        errors.append(
+            f"HISTORICAL_TREE_MISMATCH: fetched {actual_tree}; expected {expected_tree}"
+        )
+    return errors
+
+
 def main() -> int:
     try:
         remote_url = _run_git(["remote", "get-url", "origin"])
@@ -161,9 +210,23 @@ def main() -> int:
             print(f"::error::{error}", file=sys.stderr)
         return 1
 
+    errors = fetch_exact_commit(
+        remote_url,
+        MIN_S2_CERTIFICATE_B_COMMIT,
+        MIN_S2_CERTIFICATE_B_TREE,
+    )
+    if errors:
+        for error in errors:
+            print(f"::error::{error}", file=sys.stderr)
+        return 1
+
     for tag_ref, (commit, tree) in APPROVED_TAG_TARGETS.items():
         print(f"PASS: {tag_ref} -> {commit} (tree {tree})")
     print(f"PASS: restricted tag absent: {RESTRICTED_TAG_REF}")
+    print(
+        "PASS: MIN-S2 certificate B object fetched without creating a provenance ref: "
+        f"{MIN_S2_CERTIFICATE_B_COMMIT} (tree {MIN_S2_CERTIFICATE_B_TREE})"
+    )
     return 0
 
 

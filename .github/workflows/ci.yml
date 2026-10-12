@@ -48,6 +48,71 @@ jobs:
           (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
           github.event_name == 'pull_request'
         run: uv run python tools/verify_b649_pr364_provenance.py
+      - name: Materialize historical Git provenance in test checkout
+        run: |
+          set -euo pipefail
+          invalid=0
+          remote_url="$(git remote get-url origin)"
+          checkout_head="$(git rev-parse HEAD)"
+          checkout_tree="$(git rev-parse 'HEAD^{tree}')"
+          probe_root="$(mktemp -d)"
+          trap 'rm -rf "$probe_root"' EXIT
+          # A fresh object database per pin proves origin can still provide the source.
+          # Fetch by SHA; the approved-tag and restricted-tag policy above stays intact.
+          while read -r sha expected_tree; do
+            probe_repo="$probe_root/$sha.git"
+            git init --quiet --bare "$probe_repo"
+            if ! env -u GIT_OBJECT_DIRECTORY -u GIT_ALTERNATE_OBJECT_DIRECTORIES -u GIT_COMMON_DIR \
+              git --git-dir="$probe_repo" fetch --no-tags "$remote_url" "$sha"; then
+              echo "::error::MISSING_PROVENANCE: origin cannot provide pinned commit $sha (expected tree $expected_tree)"
+              invalid=1
+              continue
+            fi
+            actual_commit="$(env -u GIT_OBJECT_DIRECTORY -u GIT_ALTERNATE_OBJECT_DIRECTORIES -u GIT_COMMON_DIR \
+              git --git-dir="$probe_repo" rev-parse --verify 'FETCH_HEAD^{commit}')"
+            actual_tree="$(env -u GIT_OBJECT_DIRECTORY -u GIT_ALTERNATE_OBJECT_DIRECTORIES -u GIT_COMMON_DIR \
+              git --git-dir="$probe_repo" rev-parse --verify 'FETCH_HEAD^{tree}')"
+            if [[ "$actual_commit" != "$sha" || "$actual_tree" != "$expected_tree" ]]; then
+              echo "::error::PROVENANCE_IDENTITY_MISMATCH: expected $sha (tree $expected_tree), got $actual_commit (tree $actual_tree)"
+              invalid=1
+              continue
+            fi
+            # Copy verified commits and their trees/blobs into pytest's actual repository.
+            # Checkout-local refs retain the objects after the probe directory is removed.
+            probe_ref="refs/ci/verified-provenance/$sha"
+            env -u GIT_OBJECT_DIRECTORY -u GIT_ALTERNATE_OBJECT_DIRECTORIES -u GIT_COMMON_DIR \
+              git --git-dir="$probe_repo" update-ref "$probe_ref" "$sha"
+            checkout_ref="refs/ci/historical-provenance/$sha"
+            git fetch --no-tags "$probe_repo" "$probe_ref:$checkout_ref"
+            actual_commit="$(git rev-parse --verify "${checkout_ref}^{commit}")"
+            actual_tree="$(git rev-parse --verify "${sha}^{tree}")"
+            if [[ "$actual_commit" != "$sha" || "$actual_tree" != "$expected_tree" ]]; then
+              echo "::error::CHECKOUT_PROVENANCE_IDENTITY_MISMATCH: expected $sha (tree $expected_tree), got $actual_commit (tree $actual_tree)"
+              invalid=1
+              continue
+            fi
+            printf 'CI_CHECKOUT_PROVENANCE=%s tree=%s ref=%s\n' "$sha" "$actual_tree" "$checkout_ref"
+          done <<'EOF'
+          2f70925698cb28758fdf29a62bc5e91028c03a81 216bd91dee0afa58f8186a38aec52b1d47781ef8
+          cc493492701d19ad433bba967f14c2f27f844c3e 82e3f6ca1660282906a55a9f32302c826bb97fe1
+          038eb9f040a34d2e6a8220caf28f164f94bf1edc 8c1f35844d727ffe0df8fe4c5ebc220cf327e8b7
+          5cb67b536c225e53cbf29d3fe5334cfa82a1c652 38b5ad8cace1f0d28323f0dcea3b866dda71286d
+          e44a635f1932166734aaa3f64f9469c0e63c7520 8d1b5d168157e8cea47ac44f9ca7537ace053c31
+          827a29132ba77bc01bc18307ba822ed75a29751a 1b5c577e34ef31f73a071e466ccc56968ea64585
+          4e2fa8a560d6538c2b05b499f99d639e356c6cfa a452a2a868abce481d3ea02fcfa47ba865981a65
+          22747b6ebab1c1ded8773d39edf9e5a44eb70769 af0c469501fce7b6002b92065ad2c236845edab1
+          7683a4853929b32506a1343f8659427abb4f1ecc 39b1de3977495fdfee7cd64eb8cdeb0f1a2123e0
+          9c9d309f89b6050e7b4cb49155fc72ff168f7ef8 3972a602f45062c36d0bac8716a739ca47e95478
+          eb2e23902c72720722cd7f12343b5f2b476dd6cc ffac7fbe81470cd0a85ffa01d052ca7779278953
+          f2ad83b4e07571a6842ac301d336360cec805a6a 0b089eb90884f14283679528be40295098a5d3ef
+          EOF
+          if [[ "$invalid" -ne 0 ]]; then
+            exit 1
+          fi
+          if [[ "$(git rev-parse HEAD)" != "$checkout_head" || "$(git rev-parse 'HEAD^{tree}')" != "$checkout_tree" ]]; then
+            echo "::error::CHECKOUT_IDENTITY_CHANGED: provenance materialization changed the test checkout"
+            exit 1
+          fi
       - run: uv run pytest
 
   frontend:

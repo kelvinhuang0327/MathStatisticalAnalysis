@@ -8085,9 +8085,28 @@ def _abandoned_lineage_fixture(
     return incident, continuation, abandoned
 
 
+def _abandoned_legacy_incomplete_lineage_fixture(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> tuple[StrandedIncident, protected.Record]:
+    incident = _make_legacy_not_started_incident(harness, monkeypatch)
+    _configure_not_started_reconcile_cli(harness, monkeypatch, incident)
+    assert protected.main(_not_started_reconciliation_argv(incident)) == 0
+    capsys.readouterr()
+    owner = cutover.inspect_control_owner(incident.request.config)
+    assert owner is not None and owner["phase"] == "RELEASED"
+    assert owner["mutation_started"] is False
+    _successor, abandoned = _reserve_then_abandon_successor(harness, incident)
+    return incident, abandoned
+
+
 def _abandoned_v2_candidate_fixture(
     harness: Harness,
     monkeypatch: pytest.MonkeyPatch,
+    *,
+    root_status: tuple[str, str] = ("FAILED", "NOT_STARTED"),
+    root_exit_code: object = 1,
 ) -> tuple[protected.Request, protected.Record, protected.Record, str]:
     """Create a real v2 archive whose candidate is the not-started lineage root."""
     _incident, candidate, _fixture_hashlib, intermediate_owner = (
@@ -8110,10 +8129,10 @@ def _abandoned_v2_candidate_fixture(
         "identity": root_identity,
         "execution_id": candidate.execution_id,
         "phase": "COMPLETED",
-        "status": "FAILED",
-        "exit_code": 1,
+        "status": root_status[0],
+        "exit_code": root_exit_code,
         "child_exit_code": None,
-        "result_status": "NOT_STARTED",
+        "result_status": root_status[1],
         "managed_receipt": None,
     }
     root_receipt = {
@@ -8217,6 +8236,182 @@ def _abandoned_v2_candidate_fixture(
     )
     assert cutover.inspect_control_owner(candidate.config) is not None
     return candidate, abandoned_owner, retirement, retirement_identity.sha256
+
+
+def test_abandoned_lineage_accepts_exact_sealed_legacy_incomplete_root_without_writes(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    incident, abandoned = _abandoned_legacy_incomplete_lineage_fixture(
+        harness, monkeypatch, capsys
+    )
+    config = incident.request.config
+    reconciliation_path = protected._prestart_reconciliation_record_path(  # pyright: ignore[reportPrivateUsage]
+        config, str(incident.request.reservation_id)
+    )
+    reconciliation, _ = protected._load_prestart_reconciliation(reconciliation_path)  # pyright: ignore[reportPrivateUsage]
+    archive_path = Path(protected.text(reconciliation["stranded_protected_receipt_archive"]))
+    archived, archive_identity, _ = cutover.read_control_json(archive_path)
+    assert (archived["status"], archived["result_status"]) == (
+        "INCOMPLETE_OR_AMBIGUOUS",
+        "INCOMPLETE_OR_AMBIGUOUS",
+    )
+    assert archived["exit_code"] == 1
+    assert archived["child_exit_code"] is None
+    assert "child_started_at" in archived and "child_completed_at" not in archived
+    assert reconciliation["owner_mutation_started"] is False
+    assert reconciliation["claim_store_status"] == "ABSENT"
+
+    before = _continuation_protected_state_bytes(
+        config, incident.request.claim_root, include_owner=True
+    )
+    before[reconciliation_path] = reconciliation_path.read_bytes()
+    before[incident.request.plan_file] = incident.request.plan_file.read_bytes()
+    mutation_calls = tuple(harness.launchd.mutation_calls)
+
+    root = protected._lineage_candidate_hop(config, abandoned)  # pyright: ignore[reportPrivateUsage]
+
+    assert root["reservation_id"] == incident.request.reservation_id
+    assert root["operation_id"] == incident.request.operation_id
+    assert root["root_receipt_archive_sha256"] == archive_identity.sha256
+    assert root["anchor_sha256"] == incident.predecessor_sha256
+    assert _continuation_protected_state_bytes(
+        config, incident.request.claim_root, include_owner=True
+    ) | {
+        reconciliation_path: reconciliation_path.read_bytes(),
+        incident.request.plan_file: incident.request.plan_file.read_bytes(),
+    } == before
+    assert tuple(harness.launchd.mutation_calls) == mutation_calls
+
+
+def test_generic_protected_receipt_verifier_keeps_success_and_failure_contracts(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    candidate, abandoned, _retirement, _retirement_sha = _abandoned_v2_candidate_fixture(
+        harness, monkeypatch
+    )
+    reconciliation_path = protected._prestart_reconciliation_record_path(  # pyright: ignore[reportPrivateUsage]
+        candidate.config, str(candidate.reservation_id)
+    )
+    reconciliation, _ = protected._load_prestart_reconciliation(reconciliation_path)  # pyright: ignore[reportPrivateUsage]
+    archive_path = Path(protected.text(reconciliation["stranded_protected_receipt_archive"]))
+    archived, _, _ = cutover.read_control_json(archive_path)
+    identity = protected.record(archived["identity"])
+    bound_identity = {
+        key: identity[key]
+        for key in (
+            "reservation_id",
+            "operation_id",
+            "managed_receipt_sha256",
+            "control_head",
+            "control_tree",
+            "action",
+            "target",
+        )
+    }
+
+    root = protected._lineage_candidate_hop(candidate.config, abandoned)  # pyright: ignore[reportPrivateUsage]
+    assert root["reservation_id"] == candidate.reservation_id
+    cutover._verify_protected_owner_receipt(  # pyright: ignore[reportPrivateUsage]
+        archived,
+        path=candidate.receipt_path,
+        bound_identity=bound_identity,
+        successful=False,
+    )
+
+    def reseal(value: protected.Record) -> protected.Record:
+        unsigned = {key: item for key, item in value.items() if key != "receipt_sha256"}
+        return {**unsigned, "receipt_sha256": protected.digest(unsigned)}
+
+    ambiguous = reseal(
+        {
+            **archived,
+            "status": "INCOMPLETE_OR_AMBIGUOUS",
+            "result_status": "INCOMPLETE_OR_AMBIGUOUS",
+        }
+    )
+    with pytest.raises(
+        cutover.CutoverSafetyError,
+        match="protected failure receipt is not terminal",
+    ):
+        cutover._verify_protected_owner_receipt(  # pyright: ignore[reportPrivateUsage]
+            ambiguous,
+            path=candidate.receipt_path,
+            bound_identity=bound_identity,
+            successful=False,
+        )
+
+    successful = reseal(
+        {
+            **archived,
+            "status": "SUCCESS",
+            "exit_code": 0,
+            "child_exit_code": 0,
+            "result_status": "SUCCESS",
+        }
+    )
+    cutover._verify_protected_owner_receipt(  # pyright: ignore[reportPrivateUsage]
+        successful,
+        path=candidate.receipt_path,
+        bound_identity=bound_identity,
+        successful=True,
+    )
+
+
+@pytest.mark.parametrize(
+    "root_status",
+    [
+        ("INCOMPLETE_OR_AMBIGUOUS", "FAILED"),
+        ("FAILED", "INCOMPLETE_OR_AMBIGUOUS"),
+        ("INCOMPLETE_OR_AMBIGUOUS", "NOT_STARTED"),
+    ],
+)
+def test_abandoned_lineage_rejects_resealed_altered_root_terminal_status_without_writes(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    root_status: tuple[str, str],
+) -> None:
+    candidate, abandoned, _retirement, _retirement_sha = _abandoned_v2_candidate_fixture(
+        harness, monkeypatch, root_status=root_status
+    )
+    before = _abandoned_v2_snapshot(candidate)
+    mutation_calls = tuple(harness.launchd.mutation_calls)
+
+    with pytest.raises(
+        protected.ProtectedError,
+        match="abandoned lineage root archive differs from its sealed operation",
+    ):
+        protected._lineage_candidate_hop(candidate.config, abandoned)  # pyright: ignore[reportPrivateUsage]
+
+    assert _abandoned_v2_snapshot(candidate) == before
+    assert tuple(harness.launchd.mutation_calls) == mutation_calls
+
+
+@pytest.mark.parametrize("root_exit_code", [0, 2, "1"])
+def test_abandoned_lineage_rejects_unrelated_ambiguous_root_exit_code_without_writes(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    root_exit_code: object,
+) -> None:
+    candidate, abandoned, _retirement, _retirement_sha = _abandoned_v2_candidate_fixture(
+        harness,
+        monkeypatch,
+        root_status=("INCOMPLETE_OR_AMBIGUOUS", "INCOMPLETE_OR_AMBIGUOUS"),
+        root_exit_code=root_exit_code,
+    )
+    before = _abandoned_v2_snapshot(candidate)
+    mutation_calls = tuple(harness.launchd.mutation_calls)
+
+    with pytest.raises(
+        cutover.CutoverSafetyError,
+        match="protected failure receipt is not terminal",
+    ):
+        protected._lineage_candidate_hop(candidate.config, abandoned)  # pyright: ignore[reportPrivateUsage]
+
+    assert _abandoned_v2_snapshot(candidate) == before
+    assert tuple(harness.launchd.mutation_calls) == mutation_calls
 
 
 def _abandoned_v2_continuation_request(candidate: protected.Request) -> protected.Request:

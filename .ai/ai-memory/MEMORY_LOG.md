@@ -22,3 +22,15 @@
   read-only Replay architecture-fit review based on the then-current `main` branch.
 - This task does not authorize Replay implementation, Replay architecture-fit work, or
   local-main reconciliation of `ae1bee5…`.
+
+## 2026-10-12 — Replay planning status follow-up (post-bootstrap merge)
+
+- `[Confirmed]` Bootstrap commit `f23b18747adecb241ccd0bdcbb3c121ac2635b3a` is an ancestor
+  of the observed `origin/main` at `30d455a35f3e662441b7fd6d704d95fda554abae`; the earlier
+  "after this bootstrap is merged" wording is now outdated.
+- `[Confirmed]` `lottery.replay.read_models` remains `INVENTORIED` in
+  `docs/migration/migration-ledger.yaml`, with no PR or parity evidence. This note updates
+  planning context only; it records no Replay implementation or validation.
+- `[Inferred]` The next safe planning step remains a separate read-only Replay
+  architecture-fit review against current `main`. This recommendation does not authorize
+  Replay implementation.

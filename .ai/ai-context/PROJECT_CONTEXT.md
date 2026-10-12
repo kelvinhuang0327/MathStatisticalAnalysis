@@ -60,11 +60,10 @@ directly for current phase/PR/parity-evidence per capability.
 (no PR, no parity evidence — "only catalog/lifecycle metadata is in the P600B pilot").
 `[Confirmed]` (docs/migration/migration-ledger.yaml)
 
-**Replay implementation and parity evidence are not yet complete.** This bootstrap does
-not change that status and does not constitute or claim any Replay validation.
-`[Inferred]` After this bootstrap is reviewed and merged, the next safe planning step is
-a separate read-only Replay architecture-fit review based on the then-current `main`
-branch. This is a planning recommendation, not an existing repository milestone.
+**Replay implementation and parity evidence are not yet complete.** The bootstrap is merged into
+`origin/main`; it does not change that status and does not constitute or claim any Replay validation.
+`[Inferred]` The next safe planning step is a separate read-only Replay architecture-fit review
+against current `main`. This is a planning recommendation, not an existing repository milestone.
 
 ## Reproducibility
 

@@ -191,6 +191,7 @@ class EightRowFamilyAuthorityTests(unittest.TestCase):
 
     def test_donor_certificate_pointer_fails_closed(self) -> None:
         donor = json.loads(self.donor_blob)
+        self.assertNotIn("OWNER_CERTIFICATE", donor)
         mutations = (
             ("PROFILE_ID", "0" * 20),
             ("APPLICABILITY", "ONE_REALIZATION"),
@@ -208,6 +209,37 @@ class EightRowFamilyAuthorityTests(unittest.TestCase):
                     ValueError, "proof pointer, identity, or applicability"
                 ):
                     authority.validate_certificate_pointer(candidate, donor)
+
+    def test_row_source_locator_and_emitted_ledger_digest_fail_closed(self) -> None:
+        donor = json.loads(self.donor_blob)
+        frozen = json.loads(self.frozen_blob)
+        source = f"{authority.RESULT_PATH}:EIGHTH_PROFILE_CERTIFICATE"
+        legacy_source = (
+            "b649-k20-min-s2-nb-degree-cap-frontier-r1-result.json:"
+            "NB_CERTIFICATES[1198]"
+        )
+
+        self.assertEqual(self.result["ROW_UPDATE"]["SOURCE_BEFORE"], legacy_source)
+        self.assertEqual(
+            self.result["ROW_UPDATE"]["SOURCE_BEFORE"],
+            self.before[authority.PROFILE_ID].source,
+        )
+        after, overlay = authority.apply_eighth_overlay(self.before, 313397476, source)
+        self.assertEqual(after[authority.PROFILE_ID].source, source)
+        self.assertEqual(self.result["ROW_UPDATE"]["SOURCE_AFTER"], source)
+        self.assertEqual(self.result["LEDGER_OVERLAY"], overlay)
+
+        invalid_source = deepcopy(self.result)
+        invalid_source["ROW_UPDATE"]["SOURCE_AFTER"] = f"{source}:wrong-certificate"
+        with self.assertRaisesRegex(ValueError, "row source does not point"):
+            authority.validate_certificate_pointer(invalid_source, donor)
+
+        invalid_digest = deepcopy(self.result)
+        invalid_digest["LEDGER_OVERLAY"]["FULL_DIGEST_AFTER"] = "0" * 64
+        with self.assertRaisesRegex(ValueError, "result does not report the recomputed"):
+            authority.validate_authority_result(
+                invalid_digest, donor, frozen, self.before
+            )
 
     def test_missing_or_invalid_donor_proof_identity_is_rejected(self) -> None:
         donor = json.loads(self.donor_blob)

@@ -38,7 +38,7 @@ import stat
 import sys
 import time
 from collections.abc import Callable, Mapping, Sequence
-from contextlib import redirect_stderr, redirect_stdout, suppress
+from contextlib import ExitStack, redirect_stderr, redirect_stdout, suppress
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -793,6 +793,22 @@ def request_owner_authorization(
                 if transition_sha256 is not None:
                     authorization["transition_evidence_sha256"] = transition_sha256
     return authorization
+
+
+def _assert_owner_admits_claim(request: Request | RollbackRequest) -> None:
+    owner = cutover.inspect_control_owner(request.config)
+    if owner is None:
+        raise ProtectedError("durable protected Owner disappeared before ClaimStore admission")
+    expected = request_owner_authorization(request, owner)
+    if (
+        owner.get("owner_kind") != "protected"
+        or owner.get("phase") != "AUTHORIZED_PENDING"
+        or owner.get("mutation_started") is not False
+        or cutover._owner_identity(owner)  # pyright: ignore[reportPrivateUsage]
+        != expected
+        or owner.get("authorization") != expected
+    ):
+        raise ProtectedError("durable protected Owner changed before ClaimStore admission")
 
 
 @dataclass(frozen=True)
@@ -2862,6 +2878,8 @@ def _reconciled_predecessor_receipt_sha256(
     if release_kind == V8_EXIT2_RELEASE_KIND and (
         reconciliation.get("stranded_protected_receipt_sha256")
         != V8_EXIT2_FAILED_RECEIPT_SHA256
+        or reconciliation.get("plan_sha256") != V8_EXIT2_PLAN_SHA256
+        or reconciliation.get("plan_digest") != V8_EXIT2_PLAN_DIGEST
         or reconciliation.get("predecessor_protected_receipt_sha256") != predecessor_sha
         or reconciliation.get("unchanged_managed_receipt_sha256")
         != V8_EXIT2_MANAGED_RECEIPT_SHA256
@@ -3044,14 +3062,28 @@ def _require_reconciled_success_evidence(
     predecessor_proof = cutover._validate_predecessor_release_evidence(  # pyright: ignore[reportPrivateUsage]
         prior_owner.get("predecessor_release_evidence"), prior_owner
     )
+    owner_release = record(prior_owner.get("release_evidence"))
+    if owner_release.get("kind") == V8_EXIT2_RELEASE_KIND:
+        v5_proof, _v5_receipt, _v5_managed, _v5_archive_path = (
+            _require_reconstructed_v5_proof(request)
+        )
+        expected_managed_sha = text(v5_proof.get("prior_managed_receipt_sha256"))
+        if (
+            predecessor_proof.get("prior_protected_receipt_sha256") != predecessor_sha
+            or predecessor_proof.get("prior_managed_receipt_sha256") != expected_managed_sha
+            or expected_managed_sha != cutover.V5_MANAGED_RECEIPT_SHA256
+        ):
+            raise ProtectedError("reconciled owner lineage differs from the frozen v5 SUCCESS")
+    else:
+        v5_proof = predecessor_proof
+        expected_managed_sha = text(predecessor_proof.get("prior_managed_receipt_sha256"))
     managed, managed_identity, _ = cutover.read_control_json(request.config.receipt_path)
-    expected_managed_sha = text(predecessor_proof.get("prior_managed_receipt_sha256"))
     if (
         managed_identity.sha256 != expected_managed_sha
         or managed_identity.sha256 != request.managed_receipt_sha256
         or managed.get("status") != "SUCCESS"
         or managed.get("phase") != "COMPLETED"
-        or managed.get("operation_id") != predecessor_proof.get("prior_operation_id")
+        or managed.get("operation_id") != v5_proof.get("prior_operation_id")
     ):
         raise ProtectedError(
             "unchanged managed SUCCESS receipt differs from the archived predecessor"
@@ -3083,11 +3115,11 @@ def _require_reconciled_success_evidence(
     if (
         prior.get("status") != "SUCCESS"
         or prior.get("result_status") not in {"SUCCESS", "ALREADY_APPLIED"}
-        or identity.get("reservation_id") != predecessor_proof.get("prior_reservation_id")
-        or identity.get("operation_id") != predecessor_proof.get("prior_operation_id")
+        or identity.get("reservation_id") != v5_proof.get("prior_reservation_id")
+        or identity.get("operation_id") != v5_proof.get("prior_operation_id")
         or identity.get("action") != "apply"
         or identity.get("execution_receipt_path") != str(request.receipt_path)
-        or predecessor_proof.get("prior_authorization_sha256")
+        or v5_proof.get("prior_authorization_sha256")
         != digest(expected_prior_authorization)
     ):
         raise ProtectedError("archived predecessor identity differs from its saved release proof")
@@ -3121,10 +3153,13 @@ def _require_reconciled_success_evidence(
     ):
         raise ProtectedError("archived protected SUCCESS is not the live plan OLD predecessor")
     owner_authorization = record(prior_owner.get("authorization"))
-    owner_release = record(prior_owner.get("release_evidence"))
     if (
         owner_release.get("kind")
-        not in {"PRESTART_FAILURE_NO_MUTATION", PRESTART_NOT_STARTED_RELEASE_KIND}
+        not in {
+            "PRESTART_FAILURE_NO_MUTATION",
+            PRESTART_NOT_STARTED_RELEASE_KIND,
+            V8_EXIT2_RELEASE_KIND,
+        }
         or owner_release.get("verified") is not True
         or owner_release.get("protected_receipt_sha256") != predecessor_sha
         or owner_release.get("managed_receipt_sha256") != expected_managed_sha
@@ -3498,6 +3533,23 @@ def _recover_v2_successor_request(
     cutover._validate_failed_terminal_retirement_v2_evidence(  # pyright: ignore[reportPrivateUsage]
         retirement
     )
+    if (
+        prior_owner is not None
+        and prior_owner.get("phase") == "RELEASED"
+        and record(prior_owner.get("release_evidence")).get("kind") == V8_EXIT2_RELEASE_KIND
+        and prior_execution_receipt_sha256 == cutover.V5_PROTECTED_RECEIPT_SHA256
+        and (legacy_head, legacy_tree) == (cutover.V5_SOURCE_HEAD, cutover.V5_SOURCE_TREE)
+        and retirement.get("claim_root") == str(claim_root)
+        and _is_frozen_v8_transition_plan(config, plan_file)
+        and _reconciled_predecessor_receipt_sha256(config, prior_owner)
+        == cutover.V5_PROTECTED_RECEIPT_SHA256
+    ):
+        cutover._verify_failed_terminal_retirement_v2_archived_inputs(  # pyright: ignore[reportPrivateUsage]
+            config,
+            retirement,
+            expected_retirement_file_sha256=frozen_retirement_file_sha256,
+        )
+        return None
     candidate_reservation_id = text(retirement.get("candidate_reservation_id"))
     candidate_operation_id = text(retirement.get("candidate_operation_id"))
     if (
@@ -4896,7 +4948,10 @@ def _require_released_success_evidence(
         recovered_sha = _reconciled_predecessor_receipt_sha256(request.config, prior_owner)
         if recovered_sha is not None:
             return _require_reconciled_success_evidence(request, cast(Record, prior_owner))
-        return None
+    if prior_owner is not None and prior_owner.get("phase") == "RELEASED":
+        release = record(prior_owner.get("release_evidence"))
+        if "reconciliation_record_path" in release:
+            return _require_reconciled_success_evidence(request, prior_owner)
     if not os.path.lexists(request.config.receipt_path):
         return None
     prior, slot_sha256 = ReceiptFile(request.receipt_path).read_with_sha256()
@@ -7144,9 +7199,16 @@ def cmd_reconcile_v8_exit2_no_mutation(
 ) -> Record:
     selected_runner = cutover.run_command if runner is None else runner
     config = build_reservation_config(args, for_action="apply")
-    with cutover.CutoverLock(  # pyright: ignore[reportPrivateUsage]
-        cutover._control_owner_lock_path(config)  # pyright: ignore[reportPrivateUsage]
-    ):
+    with ExitStack() as lock_stack:
+        lock_stack.enter_context(
+            cutover.CutoverLock(  # pyright: ignore[reportPrivateUsage]
+                cutover._control_owner_lock_path(config)  # pyright: ignore[reportPrivateUsage]
+            )
+        )
+        initial_context = _v8_exit2_load_context(args, runner=selected_runner)
+        claim_store = claims.ClaimStore(initial_context.request.claim_root)
+        lock_stack.enter_context(claim_store.admission_transaction())
+        # Recompute the complete incident proof after ClaimStore admission is frozen.
         context = _v8_exit2_load_context(args, runner=selected_runner)
         reconciliation_path = _prestart_reconciliation_record_path(
             config, V8_EXIT2_RESERVATION_ID
@@ -7463,6 +7525,7 @@ def launch(
         request.managed_argv(),
         takeover_stale=request.takeover_stale,
         capture_output=store.capture_process_output,
+        validate_admission=lambda: _assert_owner_admits_claim(request),
     )
     process_stdout = store.process_stdout.evidence()
     process_stderr = store.process_stderr.evidence()

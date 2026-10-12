@@ -23,9 +23,9 @@ import subprocess
 import sys
 import threading
 import traceback
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Generator, Sequence
 from concurrent.futures import ThreadPoolExecutor
-from contextlib import redirect_stderr, redirect_stdout
+from contextlib import contextmanager, redirect_stderr, redirect_stdout
 from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime, timedelta
 from multiprocessing.connection import Connection
@@ -326,6 +326,7 @@ class StrandedIncident:
     plan_sha256: str
     old_plist_bytes: bytes
     mutations_before: tuple[tuple[str, ...], ...]
+    versioned_successor_request: protected.Request | None = None
 
 
 def _preserve_legacy_prestart_result(
@@ -8234,6 +8235,9 @@ def _abandoned_v2_continuation_request(candidate: protected.Request) -> protecte
 def _versioned_target_transition_fixture(
     harness: Harness,
     monkeypatch: pytest.MonkeyPatch,
+    *,
+    reservation_id: str | None = None,
+    operation_id: str | None = None,
 ) -> tuple[protected.Request, protected.Record, protected.Request, str]:
     """Build a distinct-target transition on real synthetic v2 archive evidence."""
     candidate, prior_owner, _retirement, retirement_sha = _abandoned_v2_candidate_fixture(
@@ -8289,7 +8293,8 @@ def _versioned_target_transition_fixture(
         candidate.legacy_tree,
         plan_path,
         candidate.claim_root,
-        reservation_id=str(uuid4()),
+        reservation_id=reservation_id or str(uuid4()),
+        operation_id=operation_id,
         prior_execution_receipt_sha256=cutover.V5_PROTECTED_RECEIPT_SHA256,
         managed_receipt_sha256=cutover.V5_MANAGED_RECEIPT_SHA256,
     )
@@ -9842,6 +9847,153 @@ def _prepare_v8_exit2_recovery_fixture(
     return incident
 
 
+def _prepare_v8_exit2_versioned_predecessor_fixture(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+) -> tuple[StrandedIncident, protected.Record]:
+    """Strand exit-2 evidence after the exact frozen-target transition owner."""
+    candidate, abandoned, versioned_successor_request, retirement_sha = (
+        _versioned_target_transition_fixture(harness, monkeypatch)
+    )
+    request = protected.make_request(
+        candidate.config,
+        candidate.legacy_worktree,
+        candidate.legacy_head,
+        candidate.legacy_tree,
+        candidate.plan_file,
+        candidate.claim_root,
+        reservation_id=str(uuid4()),
+        prior_execution_receipt_sha256=cutover.V5_PROTECTED_RECEIPT_SHA256,
+        managed_receipt_sha256=cutover.V5_MANAGED_RECEIPT_SHA256,
+    )
+    assert request.reservation_id is not None
+    monkeypatch.setattr(protected, "V8_EXIT2_RESERVATION_ID", request.reservation_id)
+    monkeypatch.setattr(protected, "V8_EXIT2_OPERATION_ID", request.operation_id)
+    original_control = (request.control_head, request.control_tree)
+    predecessor_sha256 = request.prior_execution_receipt_sha256
+    managed_sha256 = request.managed_receipt_sha256
+    assert predecessor_sha256 is not None and managed_sha256 is not None
+    monkeypatch.setattr(protected, "V8_EXIT2_ORIGINAL_CONTROL_HEAD", original_control[0])
+    monkeypatch.setattr(protected, "V8_EXIT2_ORIGINAL_CONTROL_TREE", original_control[1])
+    monkeypatch.setattr(protected, "control_identity", lambda: original_control)
+    monkeypatch.setattr(
+        cutover,
+        "control_version",
+        lambda: {"head": original_control[0], "tree": original_control[1]},
+    )
+    predecessor_proof = protected._require_released_success_evidence(  # pyright: ignore[reportPrivateUsage]
+        request,
+        abandoned,
+        expected_retirement_file_sha256=retirement_sha,
+        runner=harness.launchd,
+    )
+    assert predecessor_proof is not None
+    version: protected.Record = {"head": original_control[0], "tree": original_control[1]}
+    cutover.acquire_control_owner(
+        request.config,
+        action="apply",
+        target=protected.request_owner_target(request),
+        owner_kind="protected",
+        reservation_id=str(request.reservation_id),
+        version=version,
+        operation_id=request.operation_id,
+        managed_receipt_sha256=managed_sha256,
+        predecessor_release_evidence=predecessor_proof,
+        predecessor_live_verifier=protected._abandoned_lineage_live_verifier(
+            request,
+            abandoned,
+            predecessor_proof,
+            retirement_was_present=True,
+            expected_retirement_file_sha256=retirement_sha,
+        ),
+        predecessor_claim_root=request.claim_root,
+    )
+    bound = cutover.bind_control_owner(
+        request.config,
+        str(request.reservation_id),
+        action="apply",
+        target=protected.request_owner_target(request),
+        operation_id=request.operation_id,
+        managed_receipt_sha256=managed_sha256,
+        version=version,
+    )
+
+    cutover.authorize_control_owner(
+        request.config,
+        str(request.reservation_id),
+        protected.request_owner_authorization(request, bound),
+    )
+    monkeypatch.setattr(cutover, "V8_SOURCE_HEAD", request.config.expected_head)
+    monkeypatch.setattr(cutover, "V8_SOURCE_TREE", request.config.expected_tree)
+
+    harness.fixture.config = request.config
+    harness.request = request
+    harness.chain()
+    failure_result = {
+        "actions": [],
+        "command": "apply",
+        "failures": ["Unverifiable: protected execution process identity is unverified"],
+        "status": "FAIL",
+        "task": cutover.TASK_ID,
+    }
+    harness.process_stdout = (protected.canonical(failure_result) + "\n").encode()
+    harness.process_stderr = b""
+    harness.launchd.process_rows = [f"424242 1 {UID} S /usr/bin/fixture-shell"]
+    harness.launchd.file_rows = ["p424242", "fcwd", "n/tmp", "f0", "n/dev/null"]
+
+    def stale_pid(_pid: int) -> str:
+        return "STALE_PROCESS"
+
+    monkeypatch.setattr(cutover, "_pid_state", stale_pid)
+    monkeypatch.setattr(
+        protected, "_prestart_failure_evidence", _preserve_legacy_prestart_result
+    )
+    harness.exec_failed = True
+    harness.exit_override = 2
+    mutations_before = tuple(harness.launchd.mutation_calls)
+    old_plist_bytes = request.config.plist_path.read_bytes()
+    failed = harness.launch()
+    assert failed["exit_code"] == 2
+
+    recovery_control = ("a" * 40, "b" * 40)
+
+    def recovery_config(
+        _args: argparse.Namespace, *, for_action: str
+    ) -> cutover.CutoverConfig:
+        del for_action
+        return request.config
+
+    monkeypatch.setattr(protected, "build_reservation_config", recovery_config)
+    monkeypatch.setattr(protected, "repository_claim_root", lambda: request.claim_root)
+    monkeypatch.setattr(protected, "control_identity", lambda: recovery_control)
+    monkeypatch.setattr(
+        cutover,
+        "control_version",
+        lambda: {"head": recovery_control[0], "tree": recovery_control[1]},
+    )
+    monkeypatch.setattr(cutover, "run_command", harness.runner)
+    monkeypatch.setattr(cutover, "V8_SOURCE_HEAD", request.config.expected_head)
+    monkeypatch.setattr(cutover, "V8_SOURCE_TREE", request.config.expected_tree)
+    incident = StrandedIncident(
+        request=request,
+        predecessor_sha256=predecessor_sha256,
+        managed_sha256=managed_sha256,
+        plan_sha256=request.plan_sha256,
+        old_plist_bytes=old_plist_bytes,
+        mutations_before=mutations_before,
+        versioned_successor_request=versioned_successor_request,
+    )
+    _pin_v8_exit2_failed_receipt_sha(incident, monkeypatch)
+    monkeypatch.setattr(protected, "V8_EXIT2_MANAGED_RECEIPT_SHA256", managed_sha256)
+    monkeypatch.setattr(protected, "V8_EXIT2_PLAN_SHA256", request.plan_sha256)
+    monkeypatch.setattr(protected, "V8_EXIT2_PLAN_DIGEST", request.plan_digest)
+    owner = cutover.inspect_control_owner(request.config)
+    assert owner is not None
+    assert claims.ClaimStore(request.claim_root).inspect(protected.TASK_KEY)["status"] == "ABSENT"
+    assert tuple(harness.launchd.mutation_calls) == mutations_before
+    return incident, abandoned
+
+
 def _v8_exit2_state_snapshot(incident: StrandedIncident) -> dict[Path, bytes | None]:
     config = incident.request.config
     paths = {
@@ -9859,6 +10011,62 @@ def _v8_exit2_state_snapshot(incident: StrandedIncident) -> dict[Path, bytes | N
         *config.scheduler_root.glob("b649-v8-exit2-owner-authorization-*.json"),
     }
     return {path: path.read_bytes() if path.exists() else None for path in paths}
+
+
+def _release_v8_exit2_predecessor_for_successor_test(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> tuple[StrandedIncident, protected.Record, protected.Record]:
+    incident, abandoned = _prepare_v8_exit2_versioned_predecessor_fixture(
+        harness, monkeypatch
+    )
+    historical_control_worktree = (
+        incident.request.config.scheduler_root.parent / "historical-control-v7"
+    )
+    _reseal_historical_control_provenance(
+        incident,
+        historical_control_worktree,
+        interpreter="/historical/python",
+    )
+    _pin_v8_exit2_failed_receipt_sha(incident, monkeypatch)
+    authorize_argv = _v8_exit2_command_argv(
+        "authorize-v8-exit2-reconciliation",
+        incident,
+        confirmation=protected.V8_EXIT2_OWNER_CONFIRMATION,
+    )
+    capsys.readouterr()
+    assert protected.main(authorize_argv) == 0
+    authorization = _last_json_line(capsys)
+    reconcile_argv = _v8_exit2_command_argv(
+        "reconcile-v8-exit2-no-mutation",
+        incident,
+        authorization_id=protected.text(authorization["authorization_id"]),
+        authorization_sha256=protected.text(authorization["authorization_sha256"]),
+    )
+    capsys.readouterr()
+    assert protected.main(reconcile_argv) == 0
+    assert _last_json_line(capsys)["status"] == "RECONCILED"
+    owner = cutover.inspect_control_owner(incident.request.config)
+    assert owner is not None and owner.get("phase") == "RELEASED"
+    return incident, abandoned, owner
+
+
+def _fresh_reconciled_v8_successor_request(
+    incident: StrandedIncident,
+) -> protected.Request:
+    request = incident.versioned_successor_request or incident.request
+    return protected.make_request(
+        request.config,
+        request.legacy_worktree,
+        request.legacy_head,
+        request.legacy_tree,
+        request.plan_file,
+        request.claim_root,
+        reservation_id=str(uuid4()),
+        prior_execution_receipt_sha256=incident.predecessor_sha256,
+        managed_receipt_sha256=incident.managed_sha256,
+    )
 
 
 def _pin_v8_exit2_failed_receipt_sha(
@@ -10185,6 +10393,390 @@ def test_v8_exit2_no_mutation_recovery_requires_fresh_owner_auth_and_preserves_r
     capsys.readouterr()
     assert Path(result["reconciliation_record_path"]).read_bytes() == sealed_reconciliation_before
     assert _v8_exit2_state_snapshot(incident) == released_state_before
+
+
+def test_v8_exit2_claim_admission_waiting_on_reconciliation_rechecks_owner(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    incident = _prepare_v8_exit2_recovery_fixture(harness, monkeypatch, capsys)
+    request = incident.request
+    stranded_receipt = request.receipt_path.read_bytes()
+    mutations_before = tuple(harness.launchd.mutation_calls)
+    stranded_record = protected.ReceiptFile(request.receipt_path).read()
+    assert stranded_record is not None
+    execution_id = protected.text(stranded_record.get("execution_id"))
+    authorization_argv = _v8_exit2_command_argv(
+        "authorize-v8-exit2-reconciliation",
+        incident,
+        confirmation=protected.V8_EXIT2_OWNER_CONFIRMATION,
+    )
+    assert protected.main(authorization_argv) == 0
+    authorization = json.loads(capsys.readouterr().out.splitlines()[-1])
+    reconcile_argv = _v8_exit2_command_argv(
+        "reconcile-v8-exit2-no-mutation",
+        incident,
+        authorization_id=authorization["authorization_id"],
+        authorization_sha256=authorization["authorization_sha256"],
+    )
+
+    reconciliation_holds_claim_lock = threading.Event()
+    claimant_waiting_for_claim_lock = threading.Event()
+    allow_reconciliation = threading.Event()
+    original_transaction = claims.ClaimStore._transaction
+
+    @contextmanager
+    def coordinated_transaction(store: claims.ClaimStore) -> Generator[None]:
+        thread_name = threading.current_thread().name
+        if thread_name == "v8-exit2-reconciler":
+            with original_transaction(store):
+                reconciliation_holds_claim_lock.set()
+                if not allow_reconciliation.wait(timeout=10):
+                    raise AssertionError("test did not release reconciliation lock")
+                yield
+            return
+        if thread_name == "v8-exit2-claimant":
+            claimant_waiting_for_claim_lock.set()
+        with original_transaction(store):
+            yield
+
+    monkeypatch.setattr(claims.ClaimStore, "_transaction", coordinated_transaction)
+    reconciliation_results: list[int] = []
+    reconciliation_errors: list[BaseException] = []
+    claimant_results: list[int] = []
+    claimant_errors: list[BaseException] = []
+
+    def reconcile() -> None:
+        try:
+            reconciliation_results.append(protected.main(reconcile_argv))
+        except BaseException as exc:
+            reconciliation_errors.append(exc)
+
+    def admit_prebound_claim() -> None:
+        try:
+            claimant_results.append(
+                claims.ClaimStore(request.claim_root).run(
+                    protected.TASK_KEY,
+                    [sys.executable, "-c", "pass"],
+                    validate_admission=lambda: protected._assert_owner_admits_claim(request),
+                )
+            )
+        except BaseException as exc:
+            claimant_errors.append(exc)
+
+    reconciliation_thread = threading.Thread(target=reconcile, name="v8-exit2-reconciler")
+    claimant_thread = threading.Thread(target=admit_prebound_claim, name="v8-exit2-claimant")
+    reconciliation_thread.start()
+    try:
+        assert reconciliation_holds_claim_lock.wait(timeout=10)
+        claimant_thread.start()
+        assert claimant_waiting_for_claim_lock.wait(timeout=10)
+    finally:
+        allow_reconciliation.set()
+        reconciliation_thread.join(timeout=15)
+        if claimant_thread.ident is not None:
+            claimant_thread.join(timeout=15)
+
+    assert not reconciliation_thread.is_alive()
+    assert not claimant_thread.is_alive()
+    assert reconciliation_errors == []
+    assert reconciliation_results == [0]
+    assert claimant_results == []
+    assert len(claimant_errors) == 1
+    assert isinstance(claimant_errors[0], protected.ProtectedError)
+    assert "Owner changed before ClaimStore admission" in str(claimant_errors[0])
+
+    released_owner = cutover.inspect_control_owner(request.config)
+    assert released_owner is not None and released_owner["phase"] == "RELEASED"
+    assert claims.ClaimStore(request.claim_root).inspect(protected.TASK_KEY)["status"] == "ABSENT"
+    archive_path = request.receipt_path.with_name(
+        f"{request.receipt_path.stem}.{execution_id}.superseded.json"
+    )
+    assert not request.receipt_path.exists()
+    assert archive_path.read_bytes() == stranded_receipt
+    assert tuple(harness.launchd.mutation_calls) == mutations_before
+    capsys.readouterr()
+
+
+def test_v8_exit2_reconciled_predecessor_reserves_and_authorizes_a_fresh_frozen_v8_successor(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    incident, abandoned, released_owner = _release_v8_exit2_predecessor_for_successor_test(
+        harness, monkeypatch, capsys
+    )
+    request = _fresh_reconciled_v8_successor_request(incident)
+    assert protected.record(released_owner["release_evidence"])["kind"] == (
+        protected.V8_EXIT2_RELEASE_KIND
+    )
+    assert protected._reconciled_predecessor_receipt_sha256(  # pyright: ignore[reportPrivateUsage]
+        request.config, released_owner
+    ) == incident.predecessor_sha256
+    managed, managed_identity, _ = cutover.read_control_json(request.config.receipt_path)
+    assert (
+        managed_identity.sha256,
+        request.managed_receipt_sha256,
+        managed.get("status"),
+        managed.get("phase"),
+        managed.get("operation_id"),
+    ) == (
+        incident.managed_sha256,
+        incident.managed_sha256,
+        "SUCCESS",
+        "COMPLETED",
+        cutover.V5_OPERATION_ID,
+    )
+    plan = request.load_plan()
+    source = protected.record(plan["source"])
+    plan_old = protected.record(source["old"])
+    plan_new = protected.record(source["new"])
+
+    assert (request.legacy_head, request.legacy_tree) == (
+        cutover.V5_SOURCE_HEAD,
+        cutover.V5_SOURCE_TREE,
+    )
+    assert harness.launchd.loaded_source == request.legacy_worktree
+    assert (plan_old["head"], plan_old["tree"]) == (
+        cutover.V5_SOURCE_HEAD,
+        cutover.V5_SOURCE_TREE,
+    )
+    assert protected.record(abandoned["target"])["head"] == (
+        protected.V8_TARGET_TRANSITION_OLD_HEAD
+    )
+    assert protected.record(abandoned["target"])["tree"] == (
+        protected.V8_TARGET_TRANSITION_OLD_TREE
+    )
+    assert (plan_new["head"], plan_new["tree"]) == (
+        protected.V8_TARGET_TRANSITION_NEW_HEAD,
+        protected.V8_TARGET_TRANSITION_NEW_TREE,
+    )
+    assert (request.plan_sha256, request.plan_digest) == (
+        protected.V8_TARGET_TRANSITION_PLAN_SHA256,
+        protected.V8_TARGET_TRANSITION_PLAN_DIGEST,
+    )
+    plan_bytes = request.plan_file.read_bytes()
+    managed_bytes = request.config.receipt_path.read_bytes()
+    claim_store = claims.ClaimStore(request.claim_root)
+    assert claim_store.inspect(protected.TASK_KEY)["status"] == "ABSENT"
+
+    harness.fixture.config = request.config
+    harness.request = replace(request, reservation_id=None, owner_id_argument=False)
+    harness.chain()
+    _reserve_argv, new_authorization = _drive_reserve_authorize(
+        harness, monkeypatch, capsys
+    )
+    authorized_target = protected.record(new_authorization["target"])
+    assert new_authorization["reservation_id"] != protected.V8_EXIT2_RESERVATION_ID
+    assert new_authorization["operation_id"] != protected.V8_EXIT2_OPERATION_ID
+    assert new_authorization["reservation_id"] != abandoned["reservation_id"]
+    assert new_authorization["operation_id"] != abandoned["operation_id"]
+    assert authorized_target["head"] == protected.V8_TARGET_TRANSITION_NEW_HEAD
+    assert authorized_target["tree"] == protected.V8_TARGET_TRANSITION_NEW_TREE
+    assert new_authorization["managed_receipt_sha256"] == incident.managed_sha256
+
+    pending_owner = cutover.inspect_control_owner(request.config)
+    assert pending_owner is not None and pending_owner["phase"] == "AUTHORIZATION_PENDING"
+    proof = protected.record(pending_owner["predecessor_release_evidence"])
+    assert proof["prior_reservation_id"] == released_owner["reservation_id"]
+    assert proof["prior_operation_id"] == released_owner["operation_id"]
+    assert proof["prior_release_evidence"] == released_owner["release_evidence"]
+    assert proof["prior_protected_receipt_sha256"] == incident.predecessor_sha256
+    assert proof["new_reservation_id"] == new_authorization["reservation_id"]
+    assert proof["new_operation_id"] == new_authorization["operation_id"]
+
+    before_replay = _v8_exit2_state_snapshot(incident)
+    historical_authorization = protected.record(released_owner["authorization"])
+    assert protected.main(_authorize_argv(historical_authorization)) == claims.UNVERIFIABLE
+    capsys.readouterr()
+    assert _v8_exit2_state_snapshot(incident) == before_replay
+
+    assert protected.main(_authorize_argv(new_authorization)) == 0
+    capsys.readouterr()
+    authorized_owner = cutover.inspect_control_owner(request.config)
+    assert authorized_owner is not None and authorized_owner["phase"] == "AUTHORIZED_PENDING"
+    assert authorized_owner["reservation_id"] == new_authorization["reservation_id"]
+    assert authorized_owner["operation_id"] == new_authorization["operation_id"]
+    assert authorized_owner["authorization"] != released_owner["authorization"]
+    assert request.plan_file.read_bytes() == plan_bytes
+    assert request.config.receipt_path.read_bytes() == managed_bytes
+    assert claim_store.inspect(protected.TASK_KEY)["status"] == "ABSENT"
+    assert not request.receipt_path.exists()
+    assert tuple(harness.launchd.mutation_calls) == incident.mutations_before
+
+
+@pytest.mark.parametrize(
+    "release_kind", ["UNRECOGNIZED_RELEASE", "PRESTART_NOT_STARTED_NO_MUTATION"]
+)
+def test_v8_exit2_successor_rejects_unknown_or_altered_release_kind_without_writes(
+    release_kind: str,
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    incident, _abandoned, released_owner = _release_v8_exit2_predecessor_for_successor_test(
+        harness, monkeypatch, capsys
+    )
+    request = _fresh_reconciled_v8_successor_request(incident)
+    stored = cutover._read_control_owner(request.config)
+    assert stored is not None
+    current_owner, owner_identity = stored
+    release = protected.record(current_owner["release_evidence"])
+    release["kind"] = release_kind
+    altered_owner = cutover._save_control_owner(
+        request.config,
+        {**current_owner, "release_evidence": release},
+        expected=owner_identity,
+    )
+    before = _v8_exit2_state_snapshot(incident)
+
+    with pytest.raises(protected.ProtectedError):
+        protected._require_released_success_evidence(
+            request, altered_owner, runner=harness.launchd
+        )
+    assert _v8_exit2_state_snapshot(incident) == before
+    assert protected.record(released_owner["release_evidence"])["kind"] == (
+        protected.V8_EXIT2_RELEASE_KIND
+    )
+
+
+@pytest.mark.parametrize("tamper", ["failed_archive", "v5_success", "managed_receipt"])
+def test_v8_exit2_successor_rejects_tampered_historical_receipts_without_writes(
+    tamper: str,
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    incident, _abandoned, released_owner = _release_v8_exit2_predecessor_for_successor_test(
+        harness, monkeypatch, capsys
+    )
+    request = _fresh_reconciled_v8_successor_request(incident)
+    reconciliation_path = protected._prestart_reconciliation_record_path(
+        request.config, protected.V8_EXIT2_RESERVATION_ID
+    )
+    reconciliation, _, _ = cutover.read_control_json(reconciliation_path)
+    if tamper == "failed_archive":
+        path = Path(protected.text(reconciliation["stranded_protected_receipt_archive"]))
+    elif tamper == "v5_success":
+        archived = protected._find_archived_prior_receipt(
+            request.receipt_path,
+            lambda sha: sha == incident.predecessor_sha256,
+        )
+        assert archived is not None
+        path = Path(protected.text(archived["path"]))
+    else:
+        path = request.config.receipt_path
+    path.write_bytes(path.read_bytes() + b"tampered\n")
+    before = _v8_exit2_state_snapshot(incident)
+
+    with pytest.raises((protected.ProtectedError, cutover.CutoverError, ValueError)):
+        protected._require_released_success_evidence(
+            request, released_owner, runner=harness.launchd
+        )
+    assert _v8_exit2_state_snapshot(incident) == before
+
+
+@pytest.mark.parametrize(
+    "tamper", ["historical_control", "historical_target", "plan_sha256", "plan_digest"]
+)
+def test_v8_exit2_successor_rejects_wrong_sealed_control_target_or_plan_without_writes(
+    tamper: str,
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    incident, _abandoned, _released_owner = _release_v8_exit2_predecessor_for_successor_test(
+        harness, monkeypatch, capsys
+    )
+    request = _fresh_reconciled_v8_successor_request(incident)
+    reconciliation_path = protected._prestart_reconciliation_record_path(
+        request.config, protected.V8_EXIT2_RESERVATION_ID
+    )
+    reconciliation, _, _ = cutover.read_control_json(reconciliation_path)
+    updates: dict[str, object]
+    if tamper == "historical_control":
+        incident_identity = protected.record(reconciliation["incident_identity"])
+        updates = {
+            "incident_identity": {
+                **incident_identity,
+                "original_control_identity": {"head": "0" * 40, "tree": "1" * 40},
+            }
+        }
+    elif tamper == "historical_target":
+        incident_identity = protected.record(reconciliation["incident_identity"])
+        operation_identity = protected.record(incident_identity["operation_identity"])
+        target = protected.record(operation_identity["target"])
+        updates = {
+            "incident_identity": {
+                **incident_identity,
+                "operation_identity": {
+                    **operation_identity,
+                    "target": {**target, "head": "0" * 40},
+                },
+            }
+        }
+    else:
+        updates = {tamper: "f" * 64}
+    altered_owner = _rewrite_reconciliation_and_owner_binding(incident, updates=updates)
+    before = _v8_exit2_state_snapshot(incident)
+
+    with pytest.raises(protected.ProtectedError):
+        protected._require_released_success_evidence(
+            request, altered_owner, runner=harness.launchd
+        )
+    assert _v8_exit2_state_snapshot(incident) == before
+
+
+def test_v8_exit2_successor_reservation_rejects_owner_identity_change_at_final_cas(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    incident, _abandoned, released_owner = _release_v8_exit2_predecessor_for_successor_test(
+        harness, monkeypatch, capsys
+    )
+    request = _fresh_reconciled_v8_successor_request(incident)
+    proof = protected._require_reconciled_success_evidence(request, released_owner)
+    before = _v8_exit2_state_snapshot(incident)
+    original_save = cutover._save_control_owner
+    owner_reidentified = False
+
+    def reidentify_owner_before_cas(
+        config: cutover.CutoverConfig,
+        value: protected.Record,
+        *,
+        expected: cutover.FileIdentity | None,
+    ) -> protected.Record:
+        nonlocal owner_reidentified
+        if value.get("phase") == "AUTHORIZATION_PENDING" and not owner_reidentified:
+            owner_path = cutover._control_owner_path(config)
+            original_bytes = owner_path.read_bytes()
+            replacement = owner_path.with_name(f"{owner_path.name}.identity-race")
+            replacement.write_bytes(original_bytes)
+            replacement.chmod(stat.S_IMODE(owner_path.stat().st_mode))
+            os.replace(replacement, owner_path)
+            assert owner_path.read_bytes() == original_bytes
+            owner_reidentified = True
+        return original_save(config, value, expected=expected)
+
+    monkeypatch.setattr(cutover, "_save_control_owner", reidentify_owner_before_cas)
+    with pytest.raises(cutover.CutoverSafetyError):
+        cutover.acquire_control_owner(
+            request.config,
+            action="apply",
+            target=protected.request_owner_target(request),
+            owner_kind="protected",
+            reservation_id=protected.text(request.reservation_id),
+            version={"head": request.control_head, "tree": request.control_tree},
+            operation_id=request.operation_id,
+            managed_receipt_sha256=request.managed_receipt_sha256,
+            predecessor_release_evidence=proof,
+            predecessor_claim_root=request.claim_root,
+        )
+    assert owner_reidentified
+    assert _v8_exit2_state_snapshot(incident) == before
+    assert claims.ClaimStore(request.claim_root).inspect(protected.TASK_KEY)["status"] == "ABSENT"
 
 
 @pytest.mark.parametrize(

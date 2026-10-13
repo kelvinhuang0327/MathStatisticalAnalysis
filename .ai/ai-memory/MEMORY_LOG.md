@@ -34,3 +34,11 @@
 - `[Inferred]` The next safe planning step remains a separate read-only Replay
   architecture-fit review against current `main`. This recommendation does not authorize
   Replay implementation.
+
+## 2026-10-13 — BIG_LOTTO capture-conversion pilot merge status
+
+- `[Confirmed]` PR #373 merged into `main` at `a895e02f0f3a71c29c33bee6612a73ff0bd9fac8`. Its PR CI run [38338693595](https://github.com/kelvinhuang0327/MathStatisticalAnalysis/actions/runs/38338693595) and main push CI run [38347945573](https://github.com/kelvinhuang0327/MathStatisticalAnalysis/actions/runs/38347945573) both completed successfully.
+- `[Confirmed]` The pilot converted one captured BIG_LOTTO record through canonical snapshot/scoring artifacts and checked the target GET response for eight mapped fields: ordinal, target draw number/date, strategy ID, predicted main numbers, source prediction status, main-number hit count, and special-number hit. It establishes captured-record conversion parity only.
+- `[Unknown]` The original dataset/version, identity of the original 635 history rows, capture-time strategy/runtime identity, and original legacy HTTP response remain unknown or unverified. Prediction regeneration was not run.
+- `[Inferred]` The next bounded step is one `CANDIDATE_REPRODUCTION` using an identified candidate history and declared strategy/runtime. Candidate agreement cannot establish original-source identity or historical regeneration.
+- `[Confirmed]` The migration-ledger entry `lottery.replay.read_models` remains `INVENTORIED`; this pilot does not change its phase or parity-evidence field.

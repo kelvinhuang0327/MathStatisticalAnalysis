@@ -70,10 +70,16 @@ This code inventory is separate from the migration/parity status of the
 `lottery.replay.read_models` capability.
 
 The bootstrap is merged into `origin/main`; it does not change that ledger
-status or provide PR/parity evidence for this capability. `[Confirmed]`
-`[Inferred]` The next safe planning step is a separate read-only Replay
-architecture-fit review against current `main`. This is a planning
-recommendation, not an existing repository milestone.
+status. `[Confirmed]`
+
+### Separate BIG_LOTTO captured-record pilot
+
+The single-record BIG_LOTTO capture-conversion pilot ([PR #373](https://github.com/kelvinhuang0327/MathStatisticalAnalysis/pull/373)) merged on 2026-10-13 at `a895e02f0f3a71c29c33bee6612a73ff0bd9fac8`. It converted one captured record through the canonical snapshot and scoring artifacts, then checked the target GET response against eight mapped fields: ordinal, target draw number/date, strategy ID, predicted main numbers, source prediction status, main-number hit count, and special-number hit. `[Confirmed]` (data/manifests/biglotto-single-endpoint-pilot-r1.json)
+
+The original dataset/version, identity of the original 635 history rows, capture-time strategy/runtime identity, and original legacy HTTP response remain unknown or unverified; prediction regeneration was not run. `[Confirmed]` (data/manifests/biglotto-single-endpoint-pilot-r1.json)
+`[Inferred]` The next bounded step is one explicitly labeled `CANDIDATE_REPRODUCTION` using an identified candidate history and declared strategy/runtime. It is a candidate comparison, not regeneration of the original prediction or verification of its source.
+
+This pilot does not change `lottery.replay.read_models`: its migration-ledger phase remains `INVENTORIED`, with no PR or parity-evidence entry. `[Confirmed]` (docs/migration/migration-ledger.yaml)
 
 ## Reproducibility
 

@@ -1,0 +1,157 @@
+{
+  "SCHEMA_VERSION": 1,
+  "OVERLAY_TYPE": "INDEPENDENTLY_ACCEPTED_EXACT_MIN_S2_MATHEMATICAL_CLOSURES",
+  "REGISTRATION_DATE": "2026-10-13",
+  "REGISTRATION_AUTHORITY": "Owner CTO handoff and explicit registration instruction in this chat.",
+  "BASE_AUTHORITY": {
+    "REPOSITORY": "kelvinhuang0327/MathStatisticalAnalysis",
+    "SOURCE_HEAD": "9fcfcb717ab72e67948286959e549e9f68d9d6aa",
+    "SOURCE_TREE": "0b7ad0a91429f0ecd8ac95a5b7e6e16de2800ddf",
+    "RESULT_PATH": "docs/research/matrix-native-results/b649-min-s2-six-row-existing-s4-family-authority-r1-result.json",
+    "RESULT_SHA256": "1f94b064ab7392b88cf4c18ca4d3cb164305601ea9bc2b0f2174c0cddb185e5f",
+    "MODE": "READ_ONLY_PINNED_GIT_BLOB",
+    "NOTE": "This sparse overlay composes over the pinned six-row family authority without rewriting it or replaying the frozen ledger."
+  },
+  "COUNTING_KEY": "PROFILE_ID",
+  "COUNTING_RULE": "Count unique keys in ACCEPTED_PROFILES. Re-adopting an already registered profile is a no-op, regardless of the number of evidence references or acceptance-history records.",
+  "INDEPENDENT_ACCEPTED_PROFILE_IDS": [
+    "66555555555431100000"
+  ],
+  "INDEPENDENT_ACCEPTED_PROFILE_COUNT": 1,
+  "NEW_INDEPENDENT_ACCEPTED_PROFILE_COUNT": 1,
+  "ACCEPTED_PROFILES": {
+    "66555555555431100000": {
+      "PROFILE_ID": "66555555555431100000",
+      "ACCEPTANCE_TASK_ID": "B649_K20_665555555554311_INDEPENDENT_ACCEPTANCE_R1",
+      "SCIENTIFIC_STATUS": "COMPLETE_ACCEPTED",
+      "MATHEMATICS_VERDICT": "ACCEPTED",
+      "ARTIFACT_VERDICT": "PASS",
+      "RESOURCE_VERDICT": "FAIL",
+      "EXACT_TOTAL_CPU": "UNKNOWN",
+      "PROFILE_CLOSURE": "CLOSED_NO_STRICT_GAIN",
+      "PROFILE_NO_STRICT_GAIN": "ACCEPTED",
+      "FULL_PROFILE_NO_STRICT_GAIN": "ACCEPTED",
+      "CTO_ACCEPTANCE_DECISION": "ACCEPT_SCIENTIFIC_RESULT",
+      "E": 93,
+      "W": 825,
+      "GOODMAN_IDENTITY": "T + I = 291",
+      "ACTIVE_CORE": 15,
+      "ZERO_TICKETS": 5,
+      "M_RANGE": [
+        0,
+        7
+      ],
+      "INDEPENDENT_I_FLOORS": [
+        53,
+        52,
+        50,
+        45,
+        45,
+        43,
+        43,
+        40
+      ],
+      "MIN_CERTIFIED_I": 40,
+      "MAX_CERTIFIED_T": 251,
+      "MAX_VALID_U64": 313246808,
+      "K20_INCUMBENT": 313263888,
+      "K20_PORTFOLIO_SHA256": "eaed652900d101881b678a1515d2a366bff9de6723dbec2ec9c82fe0d0d7844c",
+      "MARGIN_BELOW_INCUMBENT": 17080,
+      "ZERO_GRAPH_ISOMORPHISM_CLASSES": 30,
+      "RELEVANT_LABELLED_ZERO_GRAPHS": 968,
+      "OLD_CERTIFIED_T_CAP": 266,
+      "NEW_CERTIFIED_T_CAP": 251,
+      "OLD_EFFECTIVE_BOUND": 313394776,
+      "NEW_VALID_BOUND": 313246808,
+      "BOUND_IMPROVEMENT": 147968,
+      "PROVED_THRESHOLDS": [
+        {
+          "I_LOWER_BOUND": 39,
+          "T_UPPER_BOUND": 252,
+          "U64_UPPER_BOUND": 313257336,
+          "MARGIN_BELOW_INCUMBENT": 6552,
+          "SELECTED": false
+        },
+        {
+          "I_LOWER_BOUND": 40,
+          "T_UPPER_BOUND": 251,
+          "U64_UPPER_BOUND": 313246808,
+          "MARGIN_BELOW_INCUMBENT": 17080,
+          "SELECTED": true
+        }
+      ],
+      "T251_ATTAINMENT": "NOT_CLAIMED",
+      "GLOBAL_K20_OPTIMUM": "NOT_PROVED",
+      "FROZEN_SOURCE": {
+        "REPOSITORY": "kelvinhuang0327/MathStatisticalAnalysis",
+        "HEAD": "9fcfcb717ab72e67948286959e549e9f68d9d6aa",
+        "TREE": "0b7ad0a91429f0ecd8ac95a5b7e6e16de2800ddf",
+        "WORKTREE": "/Users/kelvin/.codex/worktrees/b649-k20-665555555554311-structural-r1/MathStatisticalAnalysis",
+        "TASK_ROOT": ".task-data/B649_K20_665555555554311_STRUCTURAL_BOUND_R1/",
+        "VERIFIER": {
+          "PATH": "/Users/kelvin/.codex/worktrees/b649-k20-665555555554311-structural-r1/MathStatisticalAnalysis/.task-data/B649_K20_665555555554311_STRUCTURAL_BOUND_R1/verify_structural_bound.py",
+          "SHA256": "b2d1856bdd4d9d79630591ba3df18037a255ff14a6433a8a5f860db50e3eeb14"
+        },
+        "RESULT": {
+          "PATH": "/Users/kelvin/.codex/worktrees/b649-k20-665555555554311-structural-r1/MathStatisticalAnalysis/.task-data/B649_K20_665555555554311_STRUCTURAL_BOUND_R1/result.json",
+          "SHA256": "3f5483e8991e2a5685ea1f7f5d4fbd7a0d16408513bf3a89b2f0376b1357ffa3"
+        },
+        "SCIENTIFIC_PAYLOAD_SHA256": "0aabfbd1a26a563994faf193a310ae90e9d91af76610a2e97593dcff649438e6"
+      },
+      "ACCEPTANCE_HISTORY": {
+        "B649_K20_665555555554311_INDEPENDENT_ACCEPTANCE_R1": {
+          "TASK_ID": "B649_K20_665555555554311_INDEPENDENT_ACCEPTANCE_R1",
+          "SCIENTIFIC_STATUS": "COMPLETE_ACCEPTED",
+          "MATHEMATICS_VERDICT": "ACCEPTED",
+          "ARTIFACT_VERDICT": "PASS",
+          "RESOURCE_VERDICT": "FAIL",
+          "EXACT_TOTAL_CPU": "UNKNOWN",
+          "SCIENCE_WORK_ELAPSED_SECONDS": 676,
+          "TOTAL_WALL_ELAPSED_SECONDS": 1119.255,
+          "OUTER_WALL_LIMIT_SECONDS": 900,
+          "WALL_OVERRUN_SECONDS": 219.255,
+          "INSTRUMENTED_CPU_SUBTOTAL_SECONDS": 4.058096,
+          "RESOURCE_FAILURE_REASON": "The complete acceptance, including report delivery, exceeded the 900-second outer wall limit. The exact cumulative CPU total was not fully instrumented; no total-CPU PASS is claimed.",
+          "RESOURCE_FAILURE_RECORD": "PERMANENT_PRESERVE",
+          "JUDGE_OVERALL_VERDICT": "REFUTED (resource conformance only)",
+          "CTO_ACCEPTANCE_DECISION": "ACCEPT_SCIENTIFIC_RESULT",
+          "RESOURCE_FAILURE_IS_MATHEMATICAL_COUNTEREXAMPLE": false,
+          "RESOURCE_FAILURE_REOPENS_PROFILE": false,
+          "ADDITIONAL_MATHEMATICAL_VERIFICATION": "NOT_REQUIRED",
+          "WORKER_CHECK_EXIT_CODE": 0,
+          "WORKER_CHECK_OUTPUT": "RECOVERED",
+          "ACCEPTANCE_REPORT": {
+            "PATH": "/Users/kelvin/.codex/verification/B649_K20_665555555554311_INDEPENDENT_ACCEPTANCE_R1_20261013T015134Z/acceptance-report.txt",
+            "SHA256": "a530ec559f6698ecc9e229582ed950e63267d9cf3c15bbad11bb1a87854cd3df"
+          },
+          "ACCEPTANCE_RESULT": {
+            "PATH": "/Users/kelvin/.codex/verification/B649_K20_665555555554311_INDEPENDENT_ACCEPTANCE_R1_20261013T015134Z/acceptance.json",
+            "SHA256": "e8b0aa36a33f7a566cc51f5a741247c0b7eaae59dfa40dfdc5263070d40a9a16"
+          }
+        }
+      }
+    }
+  },
+  "RESOLVED_ROW_BOUND_OVERRIDES": {
+    "66555555555431100000": 313246808
+  },
+  "CERTIFIED_T_CAP_OVERRIDES": {
+    "66555555555431100000": 251
+  },
+  "APPLICATION_RULES": {
+    "ROW_BOUND": "For this profile, use the minimum of the pinned base bound and the independently accepted override.",
+    "PROFILE_CLOSURE": "CLOSED_NO_STRICT_GAIN follows the independently accepted full-profile theorem.",
+    "RESOURCE_HISTORY": "Preserve the acceptance history keyed by TASK_ID. RESOURCE_VERDICT=FAIL and EXACT_TOTAL_CPU=UNKNOWN are immutable historical facts; future adoptions may append history but may not erase or upgrade this record.",
+    "VERDICT_SEPARATION": "Resource nonconformance does not revoke the accepted mathematical theorem or reopen this profile.",
+    "GLOBAL_ACCOUNTING": "This file records one distinct accepted profile. No full-family replay, global still-open recount or global K20 optimality conclusion is performed."
+  },
+  "FROZEN_LEDGER_REWRITE": "NOT_RUN",
+  "FROZEN_LEDGER_MUTATED": "NO",
+  "MATHEMATICAL_VERIFICATION_RERUN": "NOT_RUN",
+  "WORKER_CHECK_RERUN": "NOT_RUN",
+  "NEW_RESEARCH_STARTED": "NO",
+  "OTHER_PROFILE_STARTED": "NO",
+  "FOLLOW_UP_STARTED": "NO",
+  "AUTOMATIC_SUBSEQUENT_EXECUTION": "NO",
+  "PR_OR_MERGE": "NOT_RUN"
+}

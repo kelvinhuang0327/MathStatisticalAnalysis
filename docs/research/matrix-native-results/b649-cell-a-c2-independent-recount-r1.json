@@ -1,0 +1,327 @@
+{
+  "SCHEMA": "B649_CELL_A_C2_INDEPENDENT_RECOUNT_R1_V1",
+  "TASK_ID": "B649_CELL_A_C2_INDEPENDENT_RECOUNT_R1",
+  "TASK_STATUS": "PASS",
+  "SOURCE_IDENTITIES": {
+    "donor": {
+      "commit": "82e88ada111bf6d0999ac9c0c167a160a6ae5df8",
+      "tree": "8c0dec4d5631ded577b27bff11a9a3b6d19d537d",
+      "constructor": {
+        "path": "src/lottolab/research/b649_k20_overlap_block_repartition_12_8_exhaustive_r1.py",
+        "git_blob_sha1": "b5d9dd41481762bad815e14119c6e7c39ce1d8e3",
+        "content_sha256": "852c210bcf3b1916c4dad74ca44847eade5c71269e985644724dbc17e1192daa",
+        "loaded_module_path": "/Users/kelvin/.codex/worktrees/b649-cell-a-c2-independent-recount-r1/MathStatisticalAnalysis/src/lottolab/research/b649_k20_overlap_block_repartition_12_8_exhaustive_r1.py"
+      },
+      "result": {
+        "path": "docs/research/matrix-native-results/b649-k20-overlap-block-repartition-12-8-exhaustive-r1-result.json",
+        "git_blob_sha1": "73920c95b918f74771e9a4f003f61a3959760c4b",
+        "content_sha256": "0d948aa4556e9493e0c55d9fb8436c7b0aaaa9f2744bb9ecf85f16405c23cc1c",
+        "loaded_from": "/Users/kelvin/.codex/worktrees/b649-cell-a-c2-independent-recount-r1/MathStatisticalAnalysis/docs/research/matrix-native-results/b649-k20-overlap-block-repartition-12-8-exhaustive-r1-result.json"
+      },
+      "canonical_evaluator": {
+        "path": "src/lottolab/research/b649_official_any_prize_exact.py",
+        "git_blob_sha1": "3d053b2d9bc2182fc00b22889e837be5d0ba10aa",
+        "content_sha256": "92dcb836254cc6dbcd6c2ad907e619a5eb8cf3917197a8f6de3e5f989825cf66",
+        "loaded_module_path": "/Users/kelvin/.codex/worktrees/b649-cell-a-c2-independent-recount-r1/MathStatisticalAnalysis/src/lottolab/research/b649_official_any_prize_exact.py"
+      }
+    },
+    "canonicalizer": {
+      "commit": "03b5691fac02c3a125c91cf4120b6219c3143b5e",
+      "tree": "8f8bc7ba24db5f3d8f77e108029af93c1466da75",
+      "census_module": {
+        "path": "src/lottolab/research/b649_k20_fiber_near_top_s3_census.py",
+        "loaded_module_path": "git-blob://03b5691fac02c3a125c91cf4120b6219c3143b5e/src/lottolab/research/b649_k20_fiber_near_top_s3_census.py",
+        "git_blob_sha1": "c660faec6d7c916057df0c924c930460aca5697e",
+        "content_sha256": "479f3163659a91234d23637b697527224e947ae3268e49515cd609ca82ca6276"
+      },
+      "overlay_module": {
+        "path": "src/lottolab/research/b649_k20_fiber_slice1_r30_refutation_overlay.py",
+        "loaded_module_path": "git-blob://03b5691fac02c3a125c91cf4120b6219c3143b5e/src/lottolab/research/b649_k20_fiber_slice1_r30_refutation_overlay.py",
+        "git_blob_sha1": "cc1873c2f458b8576b5afaca42895ee8a3f3103f",
+        "content_sha256": "2d7ca183b7a1038b4f69bdebdb5fb0f09453f4bbe55ab292f9016633a67262bc"
+      },
+      "canonicalizer_module": {
+        "path": "src/lottolab/research/b649_k20_two_open_cells_targeted_solver.py",
+        "loaded_module_path": "git-blob://03b5691fac02c3a125c91cf4120b6219c3143b5e/src/lottolab/research/b649_k20_two_open_cells_targeted_solver.py",
+        "git_blob_sha1": "1334605792bf6b46ceeed7b2806ba593b7548841",
+        "content_sha256": "40e8881168512768257bdd03260008ea8e00b4fb8a56540536d76f35df307628"
+      },
+      "incumbent_start_portfolio": {
+        "path": "docs/research/matrix-native-results/b649-k20-12-8-winner-two-ticket-ascent-r1-result.json",
+        "git_blob_sha1": "404e35563564a40bdd228dafa25fdf5b82e45812",
+        "content_sha256": "3d5d3f8f2389b66a9b2c45b0e345b81a0d9dc59d08ca9223519be70a055e5a00",
+        "field": "SEARCH_START_TICKETS",
+        "pinned_sha256": "3d5d3f8f2389b66a9b2c45b0e345b81a0d9dc59d08ca9223519be70a055e5a00"
+      }
+    }
+  },
+  "EXECUTION": {
+    "worktree": "/Users/kelvin/.codex/worktrees/b649-cell-a-c2-independent-recount-r1/MathStatisticalAnalysis",
+    "branch": "agent/b649-cell-a-c2-independent-recount-r1",
+    "base_commit": "82e88ada111bf6d0999ac9c0c167a160a6ae5df8",
+    "canonical_process": {
+      "pid": 40592,
+      "python_executable": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/python",
+      "python_version": "3.13.8 (main, Oct  7 2025, 12:01:51) [Clang 17.0.0 (clang-1700.3.19.1)]",
+      "implementation": "CPython",
+      "numpy_version": "2.5.2",
+      "numpy_module_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/lib/python3.13/site-packages/numpy/__init__.py",
+      "worktree": "/Users/kelvin/.codex/worktrees/b649-cell-a-c2-independent-recount-r1/MathStatisticalAnalysis",
+      "branch": "agent/b649-cell-a-c2-independent-recount-r1",
+      "head": "82e88ada111bf6d0999ac9c0c167a160a6ae5df8",
+      "canonical_evaluator_calls": 1,
+      "independent_7set_calls": 0,
+      "cp_sat_calls": 0
+    },
+    "independent_7set_process": {
+      "process_id": 51606,
+      "python_executable": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/python",
+      "python_version": "3.13.8 (main, Oct 7 2025, 12:01:51) [Clang 17.0.0 (clang-1700.3.19.1)]",
+      "implementation": "CPython",
+      "numpy_version": "2.5.2",
+      "numpy_module_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/lib/python3.13/site-packages/numpy/__init__.py",
+      "loaded_module_path": "/Users/kelvin/.codex/worktrees/b649-cell-a-c2-independent-recount-r1/MathStatisticalAnalysis/src/lottolab/research/b649_k20_overlap_block_repartition_12_8_exhaustive_r1.py",
+      "method": "lottolab.research.b649_k20_overlap_block_repartition_12_8_exhaustive_r1.independent_7set_recount",
+      "underlying_method": "count_winning_subsets(pool_size=49, subset_size=7, minimum_matches=3)",
+      "direct_successful_7set_count": 44751984,
+      "method_return_count_times_7": 313263888,
+      "underlying_subset_counter_calls": 1,
+      "canonical_evaluator_calls": 0,
+      "cp_sat_calls": 0,
+      "c2_ordered_sha256": "6a537ea56c2741e1208dbbb4abf1064bc74508f2d356712920d348d11e3a4a24",
+      "c2_frequency_profile": {
+        "F3": 22,
+        "F2": 27
+      }
+    },
+    "cp_sat_calls": 0
+  },
+  "C2": {
+    "sts_class": "NONCYCLIC",
+    "deleted_point": 0,
+    "full_portfolio": [
+      [
+        1,
+        2,
+        3,
+        4,
+        5,
+        21
+      ],
+      [
+        1,
+        6,
+        7,
+        8,
+        9,
+        22
+      ],
+      [
+        2,
+        6,
+        10,
+        11,
+        12,
+        23
+      ],
+      [
+        3,
+        10,
+        13,
+        14,
+        15,
+        22
+      ],
+      [
+        1,
+        11,
+        13,
+        16,
+        17,
+        24
+      ],
+      [
+        4,
+        6,
+        14,
+        16,
+        18,
+        25
+      ],
+      [
+        7,
+        10,
+        17,
+        18,
+        19,
+        21
+      ],
+      [
+        2,
+        8,
+        13,
+        19,
+        20,
+        25
+      ],
+      [
+        3,
+        7,
+        12,
+        16,
+        20,
+        26
+      ],
+      [
+        5,
+        8,
+        11,
+        15,
+        18,
+        26
+      ],
+      [
+        5,
+        9,
+        12,
+        14,
+        19,
+        24
+      ],
+      [
+        4,
+        9,
+        15,
+        17,
+        20,
+        23
+      ],
+      [
+        27,
+        29,
+        30,
+        31,
+        32,
+        33
+      ],
+      [
+        27,
+        34,
+        35,
+        36,
+        37,
+        38
+      ],
+      [
+        27,
+        39,
+        40,
+        41,
+        42,
+        43
+      ],
+      [
+        28,
+        29,
+        34,
+        39,
+        44,
+        45
+      ],
+      [
+        28,
+        30,
+        35,
+        40,
+        46,
+        47
+      ],
+      [
+        28,
+        31,
+        36,
+        41,
+        48,
+        49
+      ],
+      [
+        32,
+        37,
+        42,
+        44,
+        46,
+        48
+      ],
+      [
+        33,
+        38,
+        43,
+        45,
+        47,
+        49
+      ]
+    ],
+    "ordered_sha256": "6a537ea56c2741e1208dbbb4abf1064bc74508f2d356712920d348d11e3a4a24",
+    "normalized_sha256": "2372afa39eea13bc3f31788a4e1f11166663da85580c0bd50c8064f2f96929a5",
+    "serialization": {
+      "ordered": "compact UTF-8 JSON array in donor ticket order; each ticket contains ascending integers; separators=(',', ':')",
+      "normalized": "sort integers within each ticket, then lexicographically sort ticket arrays; compact UTF-8 JSON; separators=(',', ':')"
+    },
+    "raw_donor_candidate": {
+      "DELETED_POINT": 0,
+      "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT": 313263888,
+      "PORTFOLIO_SHA256": "6a537ea56c2741e1208dbbb4abf1064bc74508f2d356712920d348d11e3a4a24",
+      "STS_CLASS": "NONCYCLIC"
+    },
+    "raw_donor_identity_match": true,
+    "legal_unique_ticket_count": 20,
+    "legal_distinct_tickets": true,
+    "all_number_frequencies_are_2_or_3": true,
+    "frequency_counts": {
+      "F3": 22,
+      "F2": 27
+    },
+    "profile_id": "55555555555511111100",
+    "profile_matches_cell_a": true,
+    "T": 270,
+    "open_wedges": 6,
+    "pairwise_overlap_histogram": {
+      "0": 97,
+      "1": 93
+    },
+    "maximum_pairwise_overlap": 1,
+    "canonical_form": "INDIVIDUALIZATION_REFINEMENT_MIN_LEAF_CERTIFICATE_V1",
+    "canonical_id": "e4b1941183c0583d479c1467d7ce9aadf164190a07734ec592a8cf6f45ee07d7",
+    "canonical_search_nodes": 758
+  },
+  "C4": {
+    "identity": "pinned incumbent canonical start portfolio",
+    "source_path": "docs/research/matrix-native-results/b649-k20-12-8-winner-two-ticket-ascent-r1-result.json",
+    "source_field": "SEARCH_START_TICKETS",
+    "source_sha256_matches_pin": true,
+    "start_serialized_sha256_matches_pin": true,
+    "profile_id": "55555555555511111100",
+    "T": 270,
+    "canonical_id": "ef74855715fd27889606328cc6dedf48dfc77b7b7de228deaa8e1c477d753830",
+    "solver_pinned_incumbent_id": "ef74855715fd27889606328cc6dedf48dfc77b7b7de228deaa8e1c477d753830",
+    "canonical_search_nodes": 576,
+    "canonical_id_matches_solver_pin": true
+  },
+  "NONISOMORPHISM_STATUS": "PASS",
+  "COUNTS": {
+    "canonical_evaluator_count": 313263888,
+    "canonical_evaluator_calls": 1,
+    "independent_successful_7set_count": 44751984,
+    "independent_7set_method_count_times_7": 313263888,
+    "arithmetic_check": "44751984 * 7 = 313263888",
+    "parity_status": "PASS"
+  },
+  "NEW_EXACT_CALL_COUNTS": {
+    "canonical_evaluator": 1,
+    "independent_7set_method": 1,
+    "underlying_7set_subset_counter": 1,
+    "cp_sat": 0
+  },
+  "CURRENT_INCUMBENT_CHANGED": "NO",
+  "GLOBAL_K20_OPTIMUM_STATUS": "UNKNOWN"
+}

@@ -2915,6 +2915,11 @@ def _reconciled_predecessor_receipt_sha256(
         legacy_terminal = (
             stranded.get("status") == "INCOMPLETE_OR_AMBIGUOUS"
             and stranded.get("result_status") == "INCOMPLETE_OR_AMBIGUOUS"
+            and type(stranded.get("exit_code")) is int
+            and stranded.get("exit_code") == 1
+            and stranded.get("child_exit_code") is None
+            and "child_started_at" in stranded
+            and "child_completed_at" not in stranded
         )
         if (
             stranded_identity.sha256 != stranded_sha
@@ -6231,6 +6236,7 @@ def cmd_reconcile_prestart_not_started(
             stranded.get("status") == "INCOMPLETE_OR_AMBIGUOUS"
             and stranded.get("result_status") == "INCOMPLETE_OR_AMBIGUOUS"
             and type(stranded.get("exit_code")) is int
+            and stranded.get("exit_code") == 1
             and stranded.get("child_exit_code") is None
             and "child_started_at" in stranded
             and "child_completed_at" not in stranded

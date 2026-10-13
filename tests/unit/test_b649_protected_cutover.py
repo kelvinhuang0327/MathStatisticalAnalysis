@@ -3749,6 +3749,7 @@ def _write_snapshot(harness: Harness, incident: StrandedIncident) -> dict[Path, 
     }
     claim_location = claims.ClaimStore(incident.request.claim_root).location(protected.TASK_KEY)
     paths.add(claim_location)
+    paths.add(incident.request.claim_root / ".coordination.lock")
     return {path: path.read_bytes() if path.exists() else None for path in paths}
 
 
@@ -4141,6 +4142,173 @@ def test_legacy_masked_not_started_terminal_reconciles_from_saved_process_output
     )
     assert successor_proof is not None
     assert successor_proof["prior_protected_receipt_sha256"] == incident.predecessor_sha256
+
+
+@pytest.mark.parametrize(
+    "exit_code",
+    [0, 2, -1, True, "1"],
+    ids=["zero", "two", "negative-one", "bool-true", "string-one"],
+)
+def test_general_prestart_reconciliation_rejects_legacy_incomplete_wrong_exit_code_without_writes(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    exit_code: object,
+) -> None:
+    incident = _make_legacy_not_started_incident(harness, monkeypatch)
+    receipt_file = protected.ReceiptFile(incident.request.receipt_path)
+    stranded = receipt_file.read()
+    assert stranded is not None
+    receipt_file.write({**stranded, "exit_code": exit_code}, expected=stranded)
+    _configure_not_started_reconcile_cli(harness, monkeypatch, incident)
+    before = _write_snapshot(harness, incident)
+    launchd_before = (
+        harness.launchd.loaded,
+        harness.launchd.loaded_source,
+        harness.launchd.enabled,
+        tuple(harness.launchd.mutation_calls),
+    )
+    launches_before = harness.launches
+
+    assert protected.main(_not_started_reconciliation_argv(incident)) == claims.UNVERIFIABLE
+    capsys.readouterr()
+
+    assert _write_snapshot(harness, incident) == before
+    assert (
+        harness.launchd.loaded,
+        harness.launchd.loaded_source,
+        harness.launchd.enabled,
+        tuple(harness.launchd.mutation_calls),
+    ) == launchd_before
+    assert harness.launches == launches_before
+
+
+@pytest.mark.parametrize(
+    "status_field",
+    ["status", "result_status"],
+)
+def test_general_prestart_reconciliation_rejects_wrong_legacy_status_pair_without_writes(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    status_field: str,
+) -> None:
+    incident = _make_legacy_not_started_incident(harness, monkeypatch)
+    receipt_file = protected.ReceiptFile(incident.request.receipt_path)
+    stranded = receipt_file.read()
+    assert stranded is not None
+    receipt_file.write({**stranded, status_field: "FAILED"}, expected=stranded)
+    _configure_not_started_reconcile_cli(harness, monkeypatch, incident)
+    before = _write_snapshot(harness, incident)
+    launchd_before = (
+        harness.launchd.loaded,
+        harness.launchd.loaded_source,
+        harness.launchd.enabled,
+        tuple(harness.launchd.mutation_calls),
+    )
+
+    assert protected.main(_not_started_reconciliation_argv(incident)) == claims.UNVERIFIABLE
+    capsys.readouterr()
+
+    assert _write_snapshot(harness, incident) == before
+    assert (
+        harness.launchd.loaded,
+        harness.launchd.loaded_source,
+        harness.launchd.enabled,
+        tuple(harness.launchd.mutation_calls),
+    ) == launchd_before
+
+
+@pytest.mark.parametrize(
+    "exit_code",
+    [0, 2, -1, True, "1"],
+    ids=["zero", "two", "negative-one", "bool-true", "string-one"],
+)
+def test_released_reconciliation_consumer_rejects_resealed_legacy_incomplete_wrong_exit_code(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    exit_code: object,
+) -> None:
+    incident = _make_legacy_not_started_incident(harness, monkeypatch)
+    _configure_not_started_reconcile_cli(harness, monkeypatch, incident)
+    assert protected.main(_not_started_reconciliation_argv(incident)) == 0
+    capsys.readouterr()
+    owner = cutover.inspect_control_owner(incident.request.config)
+    assert owner is not None and owner.get("phase") == "RELEASED"
+    assert protected._reconciled_predecessor_receipt_sha256(
+        incident.request.config, owner
+    ) == incident.predecessor_sha256
+
+    reconciliation_path = protected._prestart_reconciliation_record_path(
+        incident.request.config, str(incident.request.reservation_id)
+    )
+    reconciliation, reconciliation_identity = protected._load_prestart_reconciliation(
+        reconciliation_path
+    )
+    archive_path = Path(str(reconciliation.get("stranded_protected_receipt_archive")))
+    archived, archive_identity, _ = cutover.read_control_json(archive_path)
+    archived_unsigned = {
+        key: value for key, value in archived.items() if key != "receipt_sha256"
+    }
+    archived_unsigned["exit_code"] = exit_code
+    resealed_archive = {
+        **archived_unsigned,
+        "receipt_sha256": protected.digest(archived_unsigned),
+    }
+    cutover._write_json(archive_path, resealed_archive, expected=archive_identity)
+    _, resealed_archive_identity, _ = cutover.read_control_json(archive_path)
+
+    reconciliation_unsigned = {
+        key: value for key, value in reconciliation.items() if key != "record_sha256"
+    }
+    reconciliation_unsigned["stranded_protected_receipt_sha256"] = (
+        resealed_archive_identity.sha256
+    )
+    resealed_reconciliation = {
+        **reconciliation_unsigned,
+        "record_sha256": protected.digest(reconciliation_unsigned),
+    }
+    resealed_reconciliation_identity = cutover._write_json(
+        reconciliation_path,
+        resealed_reconciliation,
+        expected=reconciliation_identity,
+    )
+
+    owner_snapshot = cutover._read_control_owner(incident.request.config)
+    assert owner_snapshot is not None
+    stored_owner, owner_identity = owner_snapshot
+    release = protected.record(stored_owner.get("release_evidence"))
+    release["stranded_protected_receipt_sha256"] = resealed_archive_identity.sha256
+    release["reconciliation_record_sha256"] = resealed_reconciliation_identity.sha256
+    resealed_owner = cutover._save_control_owner(
+        incident.request.config,
+        {**stored_owner, "release_evidence": release},
+        expected=owner_identity,
+    )
+
+    before = _write_snapshot(harness, incident)
+    launchd_before = (
+        harness.launchd.loaded,
+        harness.launchd.loaded_source,
+        harness.launchd.enabled,
+        tuple(harness.launchd.mutation_calls),
+    )
+    with pytest.raises(
+        protected.ProtectedError,
+        match="released NOT_STARTED archive differs from its sealed operation",
+    ):
+        protected._reconciled_predecessor_receipt_sha256(
+            incident.request.config, resealed_owner
+        )
+
+    assert _write_snapshot(harness, incident) == before
+    assert (
+        harness.launchd.loaded,
+        harness.launchd.loaded_source,
+        harness.launchd.enabled,
+        tuple(harness.launchd.mutation_calls),
+    ) == launchd_before
 
 
 @pytest.mark.parametrize(

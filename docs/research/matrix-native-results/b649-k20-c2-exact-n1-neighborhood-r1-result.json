@@ -1,0 +1,1489 @@
+{
+  "SCHEMA_VERSION": "B649_K20_C2_EXACT_N1_NEIGHBORHOOD_RESULT_R1",
+  "TASK_ID": "B649_K20_C2_EXACT_N1_NEIGHBORHOOD_R1",
+  "TASK_STATUS": "COMPLETE",
+  "EXECUTION_ID": "B649_K20_C2_EXACT_N1_NEIGHBORHOOD_R1_RUN1",
+  "SOURCE_HEAD": "a2246ced0940ba11441f5eda38eaf67f8b6883e9",
+  "SOURCE_TREE": "1e648415b88dc4f86d7d6f013d9a96004eee9c32",
+  "START": {
+    "ARTIFACT": "a2246ced0940ba11441f5eda38eaf67f8b6883e9:docs/research/matrix-native-results/b649-cell-a-c2-independent-recount-r1.json",
+    "ARTIFACT_FILE_SHA256": "0e2391f738ce68782f117b299a393506990014ded77d4b48878f1423f7e4a095",
+    "TICKETS_ORDERED": [
+      [
+        1,
+        2,
+        3,
+        4,
+        5,
+        21
+      ],
+      [
+        1,
+        6,
+        7,
+        8,
+        9,
+        22
+      ],
+      [
+        2,
+        6,
+        10,
+        11,
+        12,
+        23
+      ],
+      [
+        3,
+        10,
+        13,
+        14,
+        15,
+        22
+      ],
+      [
+        1,
+        11,
+        13,
+        16,
+        17,
+        24
+      ],
+      [
+        4,
+        6,
+        14,
+        16,
+        18,
+        25
+      ],
+      [
+        7,
+        10,
+        17,
+        18,
+        19,
+        21
+      ],
+      [
+        2,
+        8,
+        13,
+        19,
+        20,
+        25
+      ],
+      [
+        3,
+        7,
+        12,
+        16,
+        20,
+        26
+      ],
+      [
+        5,
+        8,
+        11,
+        15,
+        18,
+        26
+      ],
+      [
+        5,
+        9,
+        12,
+        14,
+        19,
+        24
+      ],
+      [
+        4,
+        9,
+        15,
+        17,
+        20,
+        23
+      ],
+      [
+        27,
+        29,
+        30,
+        31,
+        32,
+        33
+      ],
+      [
+        27,
+        34,
+        35,
+        36,
+        37,
+        38
+      ],
+      [
+        27,
+        39,
+        40,
+        41,
+        42,
+        43
+      ],
+      [
+        28,
+        29,
+        34,
+        39,
+        44,
+        45
+      ],
+      [
+        28,
+        30,
+        35,
+        40,
+        46,
+        47
+      ],
+      [
+        28,
+        31,
+        36,
+        41,
+        48,
+        49
+      ],
+      [
+        32,
+        37,
+        42,
+        44,
+        46,
+        48
+      ],
+      [
+        33,
+        38,
+        43,
+        45,
+        47,
+        49
+      ]
+    ],
+    "TICKETS_NORMALIZED": [
+      [
+        1,
+        2,
+        3,
+        4,
+        5,
+        21
+      ],
+      [
+        1,
+        6,
+        7,
+        8,
+        9,
+        22
+      ],
+      [
+        1,
+        11,
+        13,
+        16,
+        17,
+        24
+      ],
+      [
+        2,
+        6,
+        10,
+        11,
+        12,
+        23
+      ],
+      [
+        2,
+        8,
+        13,
+        19,
+        20,
+        25
+      ],
+      [
+        3,
+        7,
+        12,
+        16,
+        20,
+        26
+      ],
+      [
+        3,
+        10,
+        13,
+        14,
+        15,
+        22
+      ],
+      [
+        4,
+        6,
+        14,
+        16,
+        18,
+        25
+      ],
+      [
+        4,
+        9,
+        15,
+        17,
+        20,
+        23
+      ],
+      [
+        5,
+        8,
+        11,
+        15,
+        18,
+        26
+      ],
+      [
+        5,
+        9,
+        12,
+        14,
+        19,
+        24
+      ],
+      [
+        7,
+        10,
+        17,
+        18,
+        19,
+        21
+      ],
+      [
+        27,
+        29,
+        30,
+        31,
+        32,
+        33
+      ],
+      [
+        27,
+        34,
+        35,
+        36,
+        37,
+        38
+      ],
+      [
+        27,
+        39,
+        40,
+        41,
+        42,
+        43
+      ],
+      [
+        28,
+        29,
+        34,
+        39,
+        44,
+        45
+      ],
+      [
+        28,
+        30,
+        35,
+        40,
+        46,
+        47
+      ],
+      [
+        28,
+        31,
+        36,
+        41,
+        48,
+        49
+      ],
+      [
+        32,
+        37,
+        42,
+        44,
+        46,
+        48
+      ],
+      [
+        33,
+        38,
+        43,
+        45,
+        47,
+        49
+      ]
+    ],
+    "POSITION_INDEXING": "POSITION fields index TICKETS_NORMALIZED (u3.normalize_portfolio order)",
+    "ORDERED_SHA256": "6a537ea56c2741e1208dbbb4abf1064bc74508f2d356712920d348d11e3a4a24",
+    "SORTED_SHA256": "2372afa39eea13bc3f31788a4e1f11166663da85580c0bd50c8064f2f96929a5",
+    "CANONICAL_CLASS_ID": "e4b1941183c0583d479c1467d7ce9aadf164190a07734ec592a8cf6f45ee07d7",
+    "CANONICAL_CLASS_ID_RECOMPUTED": "e4b1941183c0583d479c1467d7ce9aadf164190a07734ec592a8cf6f45ee07d7",
+    "CANONICAL_CLASS_SEARCH_NODES": 758,
+    "CANONICALIZER_COMMIT": "03b5691fac02c3a125c91cf4120b6219c3143b5e",
+    "CLASS_IS_C4": false,
+    "CANONICAL_RECOUNT": 313263888,
+    "CANONICAL_EXACT_FRACTION": "1864666/3579191",
+    "ENGINE_RECOUNT": 313263888
+  },
+  "ENGINE_AUTHORITY": {
+    "ALGORITHM_DONOR_TASK": "B649_K20_EXACT_SINGLE_TICKET_BEST_RESPONSE_SWEEP_R1",
+    "C4_N1_DONOR_USE": "fd5f8f75 B649_K20_12_8_WINNER_SINGLE_TICKET_ASCENT_R1",
+    "DONOR_DRIVER_SHA256": "043a0f35a5ff7246d8f9409a8a4250d8f623c9d95f5e290b6c05eabebba59c67",
+    "TASK_DRIVER_SHA256": "650c410c8fe6feaeb3dfc6c993c998379b83b4825aa66bb734cf420fcb23d2f1",
+    "TASK_DRIVER_DELTA_SHA256": "4d699036d34e3011d8b4dc892312658b48865691e90ae0de5d7a4eb8ec567bbd",
+    "ENGINE_SOURCE_SHA256": "1ef595c57d81b63c56635d3172af66165a978c13edf3eff944466d8a44fd4bec",
+    "ENGINE_BINARY_SHA256": "808b06595768d1ec59d9f7550217741907ffb9d3f08a2a6db162b37cc8096df2",
+    "EVALUATOR_PATH": "src/lottolab/research/b649_official_any_prize_exact.py",
+    "EVALUATOR_SHA256": "92dcb836254cc6dbcd6c2ad907e619a5eb8cf3917197a8f6de3e5f989825cf66",
+    "C4_CACHED_RESULTS_REUSED": false,
+    "TIE_BREAK": "among equal maximal gains, lowest u3.portfolio_sha256(normalize_portfolio(resulting portfolio)); per-position top uses the same rule",
+    "CONTRACT_SHA256": "c5d3ebc5e6e96af3b8bdf40472404c054ffcdfa27025e7da16924e89fb8f42a9"
+  },
+  "NEIGHBORHOOD_ACCOUNTING": {
+    "RAW_REPLACEMENT_UNIVERSE": 279676320,
+    "FULLY_ACCOUNTED_CANDIDATES": 279676320,
+    "EXACTLY_SCORED_CANDIDATES": 279676320,
+    "SOUNDLY_PRUNED_CANDIDATES": 0,
+    "UNFINISHED_CANDIDATES": 0,
+    "IDENTITY_MOVES_SCORED_DELTA_ZERO": 20,
+    "DUPLICATE_TICKET_MOVES_SCORED_ILLEGAL": 380,
+    "LEGAL_NON_IDENTITY_MOVES": 279675920,
+    "ARGMAX_DOMAIN": "legal non-identity moves (engine excludes the 20 incumbent ranks per slot after scoring them; their gains are verified as identity / 0)",
+    "CELL_A_RESTRICTION": "NONE (every ticket in C(49,6) is scored for every slot)",
+    "COUNT_STRICTLY_IMPROVING_MOVES": 0,
+    "COUNT_EQUAL_NONINCUMBENT_MOVES": 14
+  },
+  "POSITION_SUMMARIES": [
+    {
+      "POSITION": 0,
+      "REMOVED_TICKET": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        21
+      ],
+      "GAIN_IDENTITY_7SETS": 1769749,
+      "MAX_GAIN_NONINCUMBENT_7SETS": 1769749,
+      "BEST_DELTA_OUTCOME_COUNT": 0,
+      "ARGMAX_COUNT": 3,
+      "COUNT_STRICTLY_IMPROVING_MOVES": 0,
+      "COUNT_EQUAL_NONINCUMBENT_MOVES": 3,
+      "TOP_ADDED_TICKET": [
+        21,
+        22,
+        23,
+        24,
+        25,
+        26
+      ],
+      "TOP_ADDED_TICKET_LEX_RANK": 13508796,
+      "TOP_RESULTING_PORTFOLIO_SHA256": "452d671af3dc065a7f0a0c34dac4f61a22c3feea8149b362c9e5112a9f01e694",
+      "TOP_ENGINE_OUTCOME_COUNT": 313263888,
+      "CANDIDATES_EVALUATED": 13983816
+    },
+    {
+      "POSITION": 1,
+      "REMOVED_TICKET": [
+        1,
+        6,
+        7,
+        8,
+        9,
+        22
+      ],
+      "GAIN_IDENTITY_7SETS": 1769749,
+      "MAX_GAIN_NONINCUMBENT_7SETS": 1769748,
+      "BEST_DELTA_OUTCOME_COUNT": -7,
+      "ARGMAX_COUNT": 1,
+      "COUNT_STRICTLY_IMPROVING_MOVES": 0,
+      "COUNT_EQUAL_NONINCUMBENT_MOVES": 0,
+      "TOP_ADDED_TICKET": [
+        21,
+        22,
+        23,
+        24,
+        25,
+        26
+      ],
+      "TOP_ADDED_TICKET_LEX_RANK": 13508796,
+      "TOP_RESULTING_PORTFOLIO_SHA256": "d8ac67ed75b4a27629bc8367c62004ecb1e1bbb0ef6ec21389f51bb9303d5b97",
+      "TOP_ENGINE_OUTCOME_COUNT": 313263881,
+      "CANDIDATES_EVALUATED": 13983816
+    },
+    {
+      "POSITION": 2,
+      "REMOVED_TICKET": [
+        1,
+        11,
+        13,
+        16,
+        17,
+        24
+      ],
+      "GAIN_IDENTITY_7SETS": 1769749,
+      "MAX_GAIN_NONINCUMBENT_7SETS": 1769749,
+      "BEST_DELTA_OUTCOME_COUNT": 0,
+      "ARGMAX_COUNT": 1,
+      "COUNT_STRICTLY_IMPROVING_MOVES": 0,
+      "COUNT_EQUAL_NONINCUMBENT_MOVES": 1,
+      "TOP_ADDED_TICKET": [
+        21,
+        22,
+        23,
+        24,
+        25,
+        26
+      ],
+      "TOP_ADDED_TICKET_LEX_RANK": 13508796,
+      "TOP_RESULTING_PORTFOLIO_SHA256": "67f1de5e9208fc3b7728aca411f0fb27b88d5cf207a9417d93926b14d11bdc9c",
+      "TOP_ENGINE_OUTCOME_COUNT": 313263888,
+      "CANDIDATES_EVALUATED": 13983816
+    },
+    {
+      "POSITION": 3,
+      "REMOVED_TICKET": [
+        2,
+        6,
+        10,
+        11,
+        12,
+        23
+      ],
+      "GAIN_IDENTITY_7SETS": 1769749,
+      "MAX_GAIN_NONINCUMBENT_7SETS": 1769749,
+      "BEST_DELTA_OUTCOME_COUNT": 0,
+      "ARGMAX_COUNT": 3,
+      "COUNT_STRICTLY_IMPROVING_MOVES": 0,
+      "COUNT_EQUAL_NONINCUMBENT_MOVES": 3,
+      "TOP_ADDED_TICKET": [
+        11,
+        12,
+        21,
+        22,
+        23,
+        25
+      ],
+      "TOP_ADDED_TICKET_LEX_RANK": 10763488,
+      "TOP_RESULTING_PORTFOLIO_SHA256": "008dbba16270a0d8b3d5deab103793677de25ab407c22fd1e9703345dc7ab2bc",
+      "TOP_ENGINE_OUTCOME_COUNT": 313263888,
+      "CANDIDATES_EVALUATED": 13983816
+    },
+    {
+      "POSITION": 4,
+      "REMOVED_TICKET": [
+        2,
+        8,
+        13,
+        19,
+        20,
+        25
+      ],
+      "GAIN_IDENTITY_7SETS": 1769749,
+      "MAX_GAIN_NONINCUMBENT_7SETS": 1769749,
+      "BEST_DELTA_OUTCOME_COUNT": 0,
+      "ARGMAX_COUNT": 1,
+      "COUNT_STRICTLY_IMPROVING_MOVES": 0,
+      "COUNT_EQUAL_NONINCUMBENT_MOVES": 1,
+      "TOP_ADDED_TICKET": [
+        21,
+        22,
+        23,
+        24,
+        25,
+        26
+      ],
+      "TOP_ADDED_TICKET_LEX_RANK": 13508796,
+      "TOP_RESULTING_PORTFOLIO_SHA256": "190fbe5639b4ce87b3b348852c0e501cf29c188fbea847f6e271f1a3382c4fe1",
+      "TOP_ENGINE_OUTCOME_COUNT": 313263888,
+      "CANDIDATES_EVALUATED": 13983816
+    },
+    {
+      "POSITION": 5,
+      "REMOVED_TICKET": [
+        3,
+        7,
+        12,
+        16,
+        20,
+        26
+      ],
+      "GAIN_IDENTITY_7SETS": 1769750,
+      "MAX_GAIN_NONINCUMBENT_7SETS": 1769749,
+      "BEST_DELTA_OUTCOME_COUNT": -7,
+      "ARGMAX_COUNT": 1,
+      "COUNT_STRICTLY_IMPROVING_MOVES": 0,
+      "COUNT_EQUAL_NONINCUMBENT_MOVES": 0,
+      "TOP_ADDED_TICKET": [
+        21,
+        22,
+        23,
+        24,
+        25,
+        26
+      ],
+      "TOP_ADDED_TICKET_LEX_RANK": 13508796,
+      "TOP_RESULTING_PORTFOLIO_SHA256": "5b7f50741f8b0f32c72f1137ccf05c8de64ba549f88bf72425bf916609be6c5d",
+      "TOP_ENGINE_OUTCOME_COUNT": 313263881,
+      "CANDIDATES_EVALUATED": 13983816
+    },
+    {
+      "POSITION": 6,
+      "REMOVED_TICKET": [
+        3,
+        10,
+        13,
+        14,
+        15,
+        22
+      ],
+      "GAIN_IDENTITY_7SETS": 1769749,
+      "MAX_GAIN_NONINCUMBENT_7SETS": 1769749,
+      "BEST_DELTA_OUTCOME_COUNT": 0,
+      "ARGMAX_COUNT": 3,
+      "COUNT_STRICTLY_IMPROVING_MOVES": 0,
+      "COUNT_EQUAL_NONINCUMBENT_MOVES": 3,
+      "TOP_ADDED_TICKET": [
+        3,
+        10,
+        15,
+        22,
+        24,
+        25
+      ],
+      "TOP_ADDED_TICKET_LEX_RANK": 3991614,
+      "TOP_RESULTING_PORTFOLIO_SHA256": "030e499d151019725c69f0a2e41c21b2863c8774670819d7f67b411c9959ce30",
+      "TOP_ENGINE_OUTCOME_COUNT": 313263888,
+      "CANDIDATES_EVALUATED": 13983816
+    },
+    {
+      "POSITION": 7,
+      "REMOVED_TICKET": [
+        4,
+        6,
+        14,
+        16,
+        18,
+        25
+      ],
+      "GAIN_IDENTITY_7SETS": 1769750,
+      "MAX_GAIN_NONINCUMBENT_7SETS": 1769749,
+      "BEST_DELTA_OUTCOME_COUNT": -7,
+      "ARGMAX_COUNT": 1,
+      "COUNT_STRICTLY_IMPROVING_MOVES": 0,
+      "COUNT_EQUAL_NONINCUMBENT_MOVES": 0,
+      "TOP_ADDED_TICKET": [
+        21,
+        22,
+        23,
+        24,
+        25,
+        26
+      ],
+      "TOP_ADDED_TICKET_LEX_RANK": 13508796,
+      "TOP_RESULTING_PORTFOLIO_SHA256": "97944591f9cd34be27b82a7af2b4329b0ef0f750be88b1ed726a5732f22503f4",
+      "TOP_ENGINE_OUTCOME_COUNT": 313263881,
+      "CANDIDATES_EVALUATED": 13983816
+    },
+    {
+      "POSITION": 8,
+      "REMOVED_TICKET": [
+        4,
+        9,
+        15,
+        17,
+        20,
+        23
+      ],
+      "GAIN_IDENTITY_7SETS": 1769748,
+      "MAX_GAIN_NONINCUMBENT_7SETS": 1769748,
+      "BEST_DELTA_OUTCOME_COUNT": 0,
+      "ARGMAX_COUNT": 1,
+      "COUNT_STRICTLY_IMPROVING_MOVES": 0,
+      "COUNT_EQUAL_NONINCUMBENT_MOVES": 1,
+      "TOP_ADDED_TICKET": [
+        21,
+        22,
+        23,
+        24,
+        25,
+        26
+      ],
+      "TOP_ADDED_TICKET_LEX_RANK": 13508796,
+      "TOP_RESULTING_PORTFOLIO_SHA256": "bad61ccc826e6c6deb7d5f4d00e98241e1c3391941cef4f84c3918cfd57cee47",
+      "TOP_ENGINE_OUTCOME_COUNT": 313263888,
+      "CANDIDATES_EVALUATED": 13983816
+    },
+    {
+      "POSITION": 9,
+      "REMOVED_TICKET": [
+        5,
+        8,
+        11,
+        15,
+        18,
+        26
+      ],
+      "GAIN_IDENTITY_7SETS": 1769748,
+      "MAX_GAIN_NONINCUMBENT_7SETS": 1769748,
+      "BEST_DELTA_OUTCOME_COUNT": 0,
+      "ARGMAX_COUNT": 1,
+      "COUNT_STRICTLY_IMPROVING_MOVES": 0,
+      "COUNT_EQUAL_NONINCUMBENT_MOVES": 1,
+      "TOP_ADDED_TICKET": [
+        21,
+        22,
+        23,
+        24,
+        25,
+        26
+      ],
+      "TOP_ADDED_TICKET_LEX_RANK": 13508796,
+      "TOP_RESULTING_PORTFOLIO_SHA256": "0842d0c1d82b680ab814aa820dd582753e38ae99dda4cffc12fb95d33b879035",
+      "TOP_ENGINE_OUTCOME_COUNT": 313263888,
+      "CANDIDATES_EVALUATED": 13983816
+    },
+    {
+      "POSITION": 10,
+      "REMOVED_TICKET": [
+        5,
+        9,
+        12,
+        14,
+        19,
+        24
+      ],
+      "GAIN_IDENTITY_7SETS": 1769749,
+      "MAX_GAIN_NONINCUMBENT_7SETS": 1769749,
+      "BEST_DELTA_OUTCOME_COUNT": 0,
+      "ARGMAX_COUNT": 1,
+      "COUNT_STRICTLY_IMPROVING_MOVES": 0,
+      "COUNT_EQUAL_NONINCUMBENT_MOVES": 1,
+      "TOP_ADDED_TICKET": [
+        21,
+        22,
+        23,
+        24,
+        25,
+        26
+      ],
+      "TOP_ADDED_TICKET_LEX_RANK": 13508796,
+      "TOP_RESULTING_PORTFOLIO_SHA256": "6743eb780eb0c4593687ae6990491f3626c01daf39b0c7aa57e83a2d935b8856",
+      "TOP_ENGINE_OUTCOME_COUNT": 313263888,
+      "CANDIDATES_EVALUATED": 13983816
+    },
+    {
+      "POSITION": 11,
+      "REMOVED_TICKET": [
+        7,
+        10,
+        17,
+        18,
+        19,
+        21
+      ],
+      "GAIN_IDENTITY_7SETS": 1769749,
+      "MAX_GAIN_NONINCUMBENT_7SETS": 1769748,
+      "BEST_DELTA_OUTCOME_COUNT": -7,
+      "ARGMAX_COUNT": 1,
+      "COUNT_STRICTLY_IMPROVING_MOVES": 0,
+      "COUNT_EQUAL_NONINCUMBENT_MOVES": 0,
+      "TOP_ADDED_TICKET": [
+        21,
+        22,
+        23,
+        24,
+        25,
+        26
+      ],
+      "TOP_ADDED_TICKET_LEX_RANK": 13508796,
+      "TOP_RESULTING_PORTFOLIO_SHA256": "bc35909d710475e2f7c510e115fd430e202a3174a54d5ce4d710307a84932e09",
+      "TOP_ENGINE_OUTCOME_COUNT": 313263881,
+      "CANDIDATES_EVALUATED": 13983816
+    },
+    {
+      "POSITION": 12,
+      "REMOVED_TICKET": [
+        27,
+        29,
+        30,
+        31,
+        32,
+        33
+      ],
+      "GAIN_IDENTITY_7SETS": 1953622,
+      "MAX_GAIN_NONINCUMBENT_7SETS": 1942462,
+      "BEST_DELTA_OUTCOME_COUNT": -78120,
+      "ARGMAX_COUNT": 6,
+      "COUNT_STRICTLY_IMPROVING_MOVES": 0,
+      "COUNT_EQUAL_NONINCUMBENT_MOVES": 0,
+      "TOP_ADDED_TICKET": [
+        24,
+        29,
+        30,
+        31,
+        32,
+        33
+      ],
+      "TOP_ADDED_TICKET_LEX_RANK": 13786367,
+      "TOP_RESULTING_PORTFOLIO_SHA256": "3a004795d1952230a3ecddfea7775bac74b7356bb9b6844c34c8cfd80ab0175b",
+      "TOP_ENGINE_OUTCOME_COUNT": 313185768,
+      "CANDIDATES_EVALUATED": 13983816
+    },
+    {
+      "POSITION": 13,
+      "REMOVED_TICKET": [
+        27,
+        34,
+        35,
+        36,
+        37,
+        38
+      ],
+      "GAIN_IDENTITY_7SETS": 1953622,
+      "MAX_GAIN_NONINCUMBENT_7SETS": 1942462,
+      "BEST_DELTA_OUTCOME_COUNT": -78120,
+      "ARGMAX_COUNT": 6,
+      "COUNT_STRICTLY_IMPROVING_MOVES": 0,
+      "COUNT_EQUAL_NONINCUMBENT_MOVES": 0,
+      "TOP_ADDED_TICKET": [
+        25,
+        34,
+        35,
+        36,
+        37,
+        38
+      ],
+      "TOP_ADDED_TICKET_LEX_RANK": 13844852,
+      "TOP_RESULTING_PORTFOLIO_SHA256": "175fc2b575ea88c197461afd4c7214d2f7c03051728065ff790313bfa7f0cf2e",
+      "TOP_ENGINE_OUTCOME_COUNT": 313185768,
+      "CANDIDATES_EVALUATED": 13983816
+    },
+    {
+      "POSITION": 14,
+      "REMOVED_TICKET": [
+        27,
+        39,
+        40,
+        41,
+        42,
+        43
+      ],
+      "GAIN_IDENTITY_7SETS": 1953622,
+      "MAX_GAIN_NONINCUMBENT_7SETS": 1942462,
+      "BEST_DELTA_OUTCOME_COUNT": -78120,
+      "ARGMAX_COUNT": 6,
+      "COUNT_STRICTLY_IMPROVING_MOVES": 0,
+      "COUNT_EQUAL_NONINCUMBENT_MOVES": 0,
+      "TOP_ADDED_TICKET": [
+        26,
+        39,
+        40,
+        41,
+        42,
+        43
+      ],
+      "TOP_ADDED_TICKET_LEX_RANK": 13882407,
+      "TOP_RESULTING_PORTFOLIO_SHA256": "093385113acebea956b70406c572e68cab63abf586bf3866596d31948607f61f",
+      "TOP_ENGINE_OUTCOME_COUNT": 313185768,
+      "CANDIDATES_EVALUATED": 13983816
+    },
+    {
+      "POSITION": 15,
+      "REMOVED_TICKET": [
+        28,
+        29,
+        34,
+        39,
+        44,
+        45
+      ],
+      "GAIN_IDENTITY_7SETS": 1953622,
+      "MAX_GAIN_NONINCUMBENT_7SETS": 1942462,
+      "BEST_DELTA_OUTCOME_COUNT": -78120,
+      "ARGMAX_COUNT": 6,
+      "COUNT_STRICTLY_IMPROVING_MOVES": 0,
+      "COUNT_EQUAL_NONINCUMBENT_MOVES": 0,
+      "TOP_ADDED_TICKET": [
+        24,
+        29,
+        34,
+        39,
+        44,
+        45
+      ],
+      "TOP_ADDED_TICKET_LEX_RANK": 13789712,
+      "TOP_RESULTING_PORTFOLIO_SHA256": "3569872f8cbe59d927b3f6b6fb53710a00efdf990e99000a40b487ad67d17aa0",
+      "TOP_ENGINE_OUTCOME_COUNT": 313185768,
+      "CANDIDATES_EVALUATED": 13983816
+    },
+    {
+      "POSITION": 16,
+      "REMOVED_TICKET": [
+        28,
+        30,
+        35,
+        40,
+        46,
+        47
+      ],
+      "GAIN_IDENTITY_7SETS": 1953622,
+      "MAX_GAIN_NONINCUMBENT_7SETS": 1942462,
+      "BEST_DELTA_OUTCOME_COUNT": -78120,
+      "ARGMAX_COUNT": 6,
+      "COUNT_STRICTLY_IMPROVING_MOVES": 0,
+      "COUNT_EQUAL_NONINCUMBENT_MOVES": 0,
+      "TOP_ADDED_TICKET": [
+        21,
+        30,
+        35,
+        40,
+        46,
+        47
+      ],
+      "TOP_ADDED_TICKET_LEX_RANK": 13594357,
+      "TOP_RESULTING_PORTFOLIO_SHA256": "22b7f39bab742f89c0201fb472792ddc71aca7e4d6343e132a9c88151ab740c5",
+      "TOP_ENGINE_OUTCOME_COUNT": 313185768,
+      "CANDIDATES_EVALUATED": 13983816
+    },
+    {
+      "POSITION": 17,
+      "REMOVED_TICKET": [
+        28,
+        31,
+        36,
+        41,
+        48,
+        49
+      ],
+      "GAIN_IDENTITY_7SETS": 1953622,
+      "MAX_GAIN_NONINCUMBENT_7SETS": 1942462,
+      "BEST_DELTA_OUTCOME_COUNT": -78120,
+      "ARGMAX_COUNT": 6,
+      "COUNT_STRICTLY_IMPROVING_MOVES": 0,
+      "COUNT_EQUAL_NONINCUMBENT_MOVES": 0,
+      "TOP_ADDED_TICKET": [
+        25,
+        31,
+        36,
+        41,
+        48,
+        49
+      ],
+      "TOP_ADDED_TICKET_LEX_RANK": 13839880,
+      "TOP_RESULTING_PORTFOLIO_SHA256": "478626a483bbe7f06329a11b8f0f708dcf2e689b0c2aedf1ec8f4e6d47acec99",
+      "TOP_ENGINE_OUTCOME_COUNT": 313185768,
+      "CANDIDATES_EVALUATED": 13983816
+    },
+    {
+      "POSITION": 18,
+      "REMOVED_TICKET": [
+        32,
+        37,
+        42,
+        44,
+        46,
+        48
+      ],
+      "GAIN_IDENTITY_7SETS": 2010310,
+      "MAX_GAIN_NONINCUMBENT_7SETS": 1955752,
+      "BEST_DELTA_OUTCOME_COUNT": -381906,
+      "ARGMAX_COUNT": 6,
+      "COUNT_STRICTLY_IMPROVING_MOVES": 0,
+      "COUNT_EQUAL_NONINCUMBENT_MOVES": 0,
+      "TOP_ADDED_TICKET": [
+        32,
+        38,
+        42,
+        44,
+        46,
+        48
+      ],
+      "TOP_ADDED_TICKET_LEX_RANK": 13970928,
+      "TOP_RESULTING_PORTFOLIO_SHA256": "0cc9dd8080ae127e44f06dcd1716b13173cf3f42ab27af552fe79e93b2361b9e",
+      "TOP_ENGINE_OUTCOME_COUNT": 312881982,
+      "CANDIDATES_EVALUATED": 13983816
+    },
+    {
+      "POSITION": 19,
+      "REMOVED_TICKET": [
+        33,
+        38,
+        43,
+        45,
+        47,
+        49
+      ],
+      "GAIN_IDENTITY_7SETS": 2010310,
+      "MAX_GAIN_NONINCUMBENT_7SETS": 1955752,
+      "BEST_DELTA_OUTCOME_COUNT": -381906,
+      "ARGMAX_COUNT": 6,
+      "COUNT_STRICTLY_IMPROVING_MOVES": 0,
+      "COUNT_EQUAL_NONINCUMBENT_MOVES": 0,
+      "TOP_ADDED_TICKET": [
+        33,
+        38,
+        43,
+        45,
+        46,
+        49
+      ],
+      "TOP_ADDED_TICKET_LEX_RANK": 13975323,
+      "TOP_RESULTING_PORTFOLIO_SHA256": "1211a96c01fdf19aa050b94a1ae0ba91e18e68c24a98654cc7327cba1e12bf6c",
+      "TOP_ENGINE_OUTCOME_COUNT": 312881982,
+      "CANDIDATES_EVALUATED": 13983816
+    }
+  ],
+  "POSITION_TOP_CANONICAL_CHECKS": [
+    {
+      "POSITION": 0,
+      "REMOVED_TICKET": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        21
+      ],
+      "TOP_ADDED_TICKET": [
+        21,
+        22,
+        23,
+        24,
+        25,
+        26
+      ],
+      "TOP_RESULTING_PORTFOLIO_SHA256": "452d671af3dc065a7f0a0c34dac4f61a22c3feea8149b362c9e5112a9f01e694",
+      "ENGINE_OUTCOME_COUNT": 313263888,
+      "CANONICAL_OUTCOME_COUNT": 313263888,
+      "CANONICAL_EXACT_FRACTION": "1864666/3579191",
+      "MATCH": true
+    },
+    {
+      "POSITION": 1,
+      "REMOVED_TICKET": [
+        1,
+        6,
+        7,
+        8,
+        9,
+        22
+      ],
+      "TOP_ADDED_TICKET": [
+        21,
+        22,
+        23,
+        24,
+        25,
+        26
+      ],
+      "TOP_RESULTING_PORTFOLIO_SHA256": "d8ac67ed75b4a27629bc8367c62004ecb1e1bbb0ef6ec21389f51bb9303d5b97",
+      "ENGINE_OUTCOME_COUNT": 313263881,
+      "CANONICAL_OUTCOME_COUNT": 313263881,
+      "CANONICAL_EXACT_FRACTION": "44751983/85900584",
+      "MATCH": true
+    },
+    {
+      "POSITION": 2,
+      "REMOVED_TICKET": [
+        1,
+        11,
+        13,
+        16,
+        17,
+        24
+      ],
+      "TOP_ADDED_TICKET": [
+        21,
+        22,
+        23,
+        24,
+        25,
+        26
+      ],
+      "TOP_RESULTING_PORTFOLIO_SHA256": "67f1de5e9208fc3b7728aca411f0fb27b88d5cf207a9417d93926b14d11bdc9c",
+      "ENGINE_OUTCOME_COUNT": 313263888,
+      "CANONICAL_OUTCOME_COUNT": 313263888,
+      "CANONICAL_EXACT_FRACTION": "1864666/3579191",
+      "MATCH": true
+    },
+    {
+      "POSITION": 3,
+      "REMOVED_TICKET": [
+        2,
+        6,
+        10,
+        11,
+        12,
+        23
+      ],
+      "TOP_ADDED_TICKET": [
+        11,
+        12,
+        21,
+        22,
+        23,
+        25
+      ],
+      "TOP_RESULTING_PORTFOLIO_SHA256": "008dbba16270a0d8b3d5deab103793677de25ab407c22fd1e9703345dc7ab2bc",
+      "ENGINE_OUTCOME_COUNT": 313263888,
+      "CANONICAL_OUTCOME_COUNT": 313263888,
+      "CANONICAL_EXACT_FRACTION": "1864666/3579191",
+      "MATCH": true
+    },
+    {
+      "POSITION": 4,
+      "REMOVED_TICKET": [
+        2,
+        8,
+        13,
+        19,
+        20,
+        25
+      ],
+      "TOP_ADDED_TICKET": [
+        21,
+        22,
+        23,
+        24,
+        25,
+        26
+      ],
+      "TOP_RESULTING_PORTFOLIO_SHA256": "190fbe5639b4ce87b3b348852c0e501cf29c188fbea847f6e271f1a3382c4fe1",
+      "ENGINE_OUTCOME_COUNT": 313263888,
+      "CANONICAL_OUTCOME_COUNT": 313263888,
+      "CANONICAL_EXACT_FRACTION": "1864666/3579191",
+      "MATCH": true
+    },
+    {
+      "POSITION": 5,
+      "REMOVED_TICKET": [
+        3,
+        7,
+        12,
+        16,
+        20,
+        26
+      ],
+      "TOP_ADDED_TICKET": [
+        21,
+        22,
+        23,
+        24,
+        25,
+        26
+      ],
+      "TOP_RESULTING_PORTFOLIO_SHA256": "5b7f50741f8b0f32c72f1137ccf05c8de64ba549f88bf72425bf916609be6c5d",
+      "ENGINE_OUTCOME_COUNT": 313263881,
+      "CANONICAL_OUTCOME_COUNT": 313263881,
+      "CANONICAL_EXACT_FRACTION": "44751983/85900584",
+      "MATCH": true
+    },
+    {
+      "POSITION": 6,
+      "REMOVED_TICKET": [
+        3,
+        10,
+        13,
+        14,
+        15,
+        22
+      ],
+      "TOP_ADDED_TICKET": [
+        3,
+        10,
+        15,
+        22,
+        24,
+        25
+      ],
+      "TOP_RESULTING_PORTFOLIO_SHA256": "030e499d151019725c69f0a2e41c21b2863c8774670819d7f67b411c9959ce30",
+      "ENGINE_OUTCOME_COUNT": 313263888,
+      "CANONICAL_OUTCOME_COUNT": 313263888,
+      "CANONICAL_EXACT_FRACTION": "1864666/3579191",
+      "MATCH": true
+    },
+    {
+      "POSITION": 7,
+      "REMOVED_TICKET": [
+        4,
+        6,
+        14,
+        16,
+        18,
+        25
+      ],
+      "TOP_ADDED_TICKET": [
+        21,
+        22,
+        23,
+        24,
+        25,
+        26
+      ],
+      "TOP_RESULTING_PORTFOLIO_SHA256": "97944591f9cd34be27b82a7af2b4329b0ef0f750be88b1ed726a5732f22503f4",
+      "ENGINE_OUTCOME_COUNT": 313263881,
+      "CANONICAL_OUTCOME_COUNT": 313263881,
+      "CANONICAL_EXACT_FRACTION": "44751983/85900584",
+      "MATCH": true
+    },
+    {
+      "POSITION": 8,
+      "REMOVED_TICKET": [
+        4,
+        9,
+        15,
+        17,
+        20,
+        23
+      ],
+      "TOP_ADDED_TICKET": [
+        21,
+        22,
+        23,
+        24,
+        25,
+        26
+      ],
+      "TOP_RESULTING_PORTFOLIO_SHA256": "bad61ccc826e6c6deb7d5f4d00e98241e1c3391941cef4f84c3918cfd57cee47",
+      "ENGINE_OUTCOME_COUNT": 313263888,
+      "CANONICAL_OUTCOME_COUNT": 313263888,
+      "CANONICAL_EXACT_FRACTION": "1864666/3579191",
+      "MATCH": true
+    },
+    {
+      "POSITION": 9,
+      "REMOVED_TICKET": [
+        5,
+        8,
+        11,
+        15,
+        18,
+        26
+      ],
+      "TOP_ADDED_TICKET": [
+        21,
+        22,
+        23,
+        24,
+        25,
+        26
+      ],
+      "TOP_RESULTING_PORTFOLIO_SHA256": "0842d0c1d82b680ab814aa820dd582753e38ae99dda4cffc12fb95d33b879035",
+      "ENGINE_OUTCOME_COUNT": 313263888,
+      "CANONICAL_OUTCOME_COUNT": 313263888,
+      "CANONICAL_EXACT_FRACTION": "1864666/3579191",
+      "MATCH": true
+    },
+    {
+      "POSITION": 10,
+      "REMOVED_TICKET": [
+        5,
+        9,
+        12,
+        14,
+        19,
+        24
+      ],
+      "TOP_ADDED_TICKET": [
+        21,
+        22,
+        23,
+        24,
+        25,
+        26
+      ],
+      "TOP_RESULTING_PORTFOLIO_SHA256": "6743eb780eb0c4593687ae6990491f3626c01daf39b0c7aa57e83a2d935b8856",
+      "ENGINE_OUTCOME_COUNT": 313263888,
+      "CANONICAL_OUTCOME_COUNT": 313263888,
+      "CANONICAL_EXACT_FRACTION": "1864666/3579191",
+      "MATCH": true
+    },
+    {
+      "POSITION": 11,
+      "REMOVED_TICKET": [
+        7,
+        10,
+        17,
+        18,
+        19,
+        21
+      ],
+      "TOP_ADDED_TICKET": [
+        21,
+        22,
+        23,
+        24,
+        25,
+        26
+      ],
+      "TOP_RESULTING_PORTFOLIO_SHA256": "bc35909d710475e2f7c510e115fd430e202a3174a54d5ce4d710307a84932e09",
+      "ENGINE_OUTCOME_COUNT": 313263881,
+      "CANONICAL_OUTCOME_COUNT": 313263881,
+      "CANONICAL_EXACT_FRACTION": "44751983/85900584",
+      "MATCH": true
+    },
+    {
+      "POSITION": 12,
+      "REMOVED_TICKET": [
+        27,
+        29,
+        30,
+        31,
+        32,
+        33
+      ],
+      "TOP_ADDED_TICKET": [
+        24,
+        29,
+        30,
+        31,
+        32,
+        33
+      ],
+      "TOP_RESULTING_PORTFOLIO_SHA256": "3a004795d1952230a3ecddfea7775bac74b7356bb9b6844c34c8cfd80ab0175b",
+      "ENGINE_OUTCOME_COUNT": 313185768,
+      "CANONICAL_OUTCOME_COUNT": 313185768,
+      "CANONICAL_EXACT_FRACTION": "1864201/3579191",
+      "MATCH": true
+    },
+    {
+      "POSITION": 13,
+      "REMOVED_TICKET": [
+        27,
+        34,
+        35,
+        36,
+        37,
+        38
+      ],
+      "TOP_ADDED_TICKET": [
+        25,
+        34,
+        35,
+        36,
+        37,
+        38
+      ],
+      "TOP_RESULTING_PORTFOLIO_SHA256": "175fc2b575ea88c197461afd4c7214d2f7c03051728065ff790313bfa7f0cf2e",
+      "ENGINE_OUTCOME_COUNT": 313185768,
+      "CANONICAL_OUTCOME_COUNT": 313185768,
+      "CANONICAL_EXACT_FRACTION": "1864201/3579191",
+      "MATCH": true
+    },
+    {
+      "POSITION": 14,
+      "REMOVED_TICKET": [
+        27,
+        39,
+        40,
+        41,
+        42,
+        43
+      ],
+      "TOP_ADDED_TICKET": [
+        26,
+        39,
+        40,
+        41,
+        42,
+        43
+      ],
+      "TOP_RESULTING_PORTFOLIO_SHA256": "093385113acebea956b70406c572e68cab63abf586bf3866596d31948607f61f",
+      "ENGINE_OUTCOME_COUNT": 313185768,
+      "CANONICAL_OUTCOME_COUNT": 313185768,
+      "CANONICAL_EXACT_FRACTION": "1864201/3579191",
+      "MATCH": true
+    },
+    {
+      "POSITION": 15,
+      "REMOVED_TICKET": [
+        28,
+        29,
+        34,
+        39,
+        44,
+        45
+      ],
+      "TOP_ADDED_TICKET": [
+        24,
+        29,
+        34,
+        39,
+        44,
+        45
+      ],
+      "TOP_RESULTING_PORTFOLIO_SHA256": "3569872f8cbe59d927b3f6b6fb53710a00efdf990e99000a40b487ad67d17aa0",
+      "ENGINE_OUTCOME_COUNT": 313185768,
+      "CANONICAL_OUTCOME_COUNT": 313185768,
+      "CANONICAL_EXACT_FRACTION": "1864201/3579191",
+      "MATCH": true
+    },
+    {
+      "POSITION": 16,
+      "REMOVED_TICKET": [
+        28,
+        30,
+        35,
+        40,
+        46,
+        47
+      ],
+      "TOP_ADDED_TICKET": [
+        21,
+        30,
+        35,
+        40,
+        46,
+        47
+      ],
+      "TOP_RESULTING_PORTFOLIO_SHA256": "22b7f39bab742f89c0201fb472792ddc71aca7e4d6343e132a9c88151ab740c5",
+      "ENGINE_OUTCOME_COUNT": 313185768,
+      "CANONICAL_OUTCOME_COUNT": 313185768,
+      "CANONICAL_EXACT_FRACTION": "1864201/3579191",
+      "MATCH": true
+    },
+    {
+      "POSITION": 17,
+      "REMOVED_TICKET": [
+        28,
+        31,
+        36,
+        41,
+        48,
+        49
+      ],
+      "TOP_ADDED_TICKET": [
+        25,
+        31,
+        36,
+        41,
+        48,
+        49
+      ],
+      "TOP_RESULTING_PORTFOLIO_SHA256": "478626a483bbe7f06329a11b8f0f708dcf2e689b0c2aedf1ec8f4e6d47acec99",
+      "ENGINE_OUTCOME_COUNT": 313185768,
+      "CANONICAL_OUTCOME_COUNT": 313185768,
+      "CANONICAL_EXACT_FRACTION": "1864201/3579191",
+      "MATCH": true
+    },
+    {
+      "POSITION": 18,
+      "REMOVED_TICKET": [
+        32,
+        37,
+        42,
+        44,
+        46,
+        48
+      ],
+      "TOP_ADDED_TICKET": [
+        32,
+        38,
+        42,
+        44,
+        46,
+        48
+      ],
+      "TOP_RESULTING_PORTFOLIO_SHA256": "0cc9dd8080ae127e44f06dcd1716b13173cf3f42ab27af552fe79e93b2361b9e",
+      "ENGINE_OUTCOME_COUNT": 312881982,
+      "CANONICAL_OUTCOME_COUNT": 312881982,
+      "CANONICAL_EXACT_FRACTION": "7449571/14316764",
+      "MATCH": true
+    },
+    {
+      "POSITION": 19,
+      "REMOVED_TICKET": [
+        33,
+        38,
+        43,
+        45,
+        47,
+        49
+      ],
+      "TOP_ADDED_TICKET": [
+        33,
+        38,
+        43,
+        45,
+        46,
+        49
+      ],
+      "TOP_RESULTING_PORTFOLIO_SHA256": "1211a96c01fdf19aa050b94a1ae0ba91e18e68c24a98654cc7327cba1e12bf6c",
+      "ENGINE_OUTCOME_COUNT": 312881982,
+      "CANONICAL_OUTCOME_COUNT": 312881982,
+      "CANONICAL_EXACT_FRACTION": "7449571/14316764",
+      "MATCH": true
+    }
+  ],
+  "BEST_EXACT_COUNT": 313263888,
+  "BEST_DELTA": 0,
+  "BEST_EXACT_FRACTION": "1864666/3579191",
+  "BEST_POSITION": 3,
+  "BEST_REMOVED_TICKET": [
+    2,
+    6,
+    10,
+    11,
+    12,
+    23
+  ],
+  "BEST_ADDED_TICKET": [
+    11,
+    12,
+    21,
+    22,
+    23,
+    25
+  ],
+  "BEST_NORMALIZED_SHA256": "008dbba16270a0d8b3d5deab103793677de25ab407c22fd1e9703345dc7ab2bc",
+  "BEST_IS_GAIN": false,
+  "CANONICAL_WINNER_RECOUNT": "NOT_APPLICABLE_NO_POSITIVE_DELTA",
+  "WINNER": null,
+  "N1_LOCAL_CLOSURE_STATUS": "C2_N1_LOCAL_CLOSURE_PROVEN_FOR_EXACT_SINGLE_TICKET_REPLACEMENT_NEIGHBORHOOD_ONLY",
+  "VERIFICATION": {
+    "G1": "PASS",
+    "G2": "NOT_APPLICABLE_ZERO_ACCEPTED_MOVES",
+    "G3_OR_POSITION_TOP_CANONICAL": "PASS",
+    "G4": {
+      "STATUS": "PASS",
+      "SEED": 64921,
+      "SAMPLE_COUNT": 200,
+      "MISMATCHES": 0,
+      "RECORDS_COMPACT_JSON": "[{\"MOVE_INDEX\":168862654,\"POSITION\":12,\"ADDED_TICKET_LEX_RANK\":1056862,\"ENGINE_OUTCOME_COUNT\":307729618,\"CANONICAL_OUTCOME_COUNT\":307729618,\"MATCH\":true},{\"MOVE_INDEX\":147895742,\"POSITION\":10,\"ADDED_TICKET_LEX_RANK\":8057582,\"ENGINE_OUTCOME_COUNT\":310857386,\"CANONICAL_OUTCOME_COUNT\":310857386,\"MATCH\":true},{\"MOVE_INDEX\":115050363,\"POSITION\":8,\"ADDED_TICKET_LEX_RANK\":3179835,\"ENGINE_OUTCOME_COUNT\":311033415,\"CANONICAL_OUTCOME_COUNT\":311033415,\"MATCH\":true},{\"MOVE_INDEX\":203105400,\"POSITION\":14,\"ADDED_TICKET_LEX_RANK\":7331976,\"ENGINE_OUTCOME_COUNT\":309139348,\"CANONICAL_OUTCOME_COUNT\":309139348,\"MATCH\":true},{\"MOVE_INDEX\":28658289,\"POSITION\":2,\"ADDED_TICKET_LEX_RANK\":690657,\"ENGINE_OUTCOME_COUNT\":311188654,\"CANONICAL_OUTCOME_COUNT\":311188654,\"MATCH\":true},{\"MOVE_INDEX\":44925727,\"POSITION\":3,\"ADDED_TICKET_LEX_RANK\":2974279,\"ENGINE_OUTCOME_COUNT\":310575888,\"CANONICAL_OUTCOME_COUNT\":310575888,\"MATCH\":true},{\"MOVE_INDEX\":215847623,\"POSITION\":15,\"ADDED_TICKET_LEX_RANK\":6090383,\"ENGINE_OUTCOME_COUNT\":308876596,\"CANONICAL_OUTCOME_COUNT\":308876596,\"MATCH\":true},{\"MOVE_INDEX\":53135740,\"POSITION\":3,\"ADDED_TICKET_LEX_RANK\":11184292,\"ENGINE_OUTCOME_COUNT\":311566563,\"CANONICAL_OUTCOME_COUNT\":311566563,\"MATCH\":true},{\"MOVE_INDEX\":61520662,\"POSITION\":4,\"ADDED_TICKET_LEX_RANK\":5585398,\"ENGINE_OUTCOME_COUNT\":309886983,\"CANONICAL_OUTCOME_COUNT\":309886983,\"MATCH\":true},{\"MOVE_INDEX\":192500066,\"POSITION\":13,\"ADDED_TICKET_LEX_RANK\":10710458,\"ENGINE_OUTCOME_COUNT\":310098859,\"CANONICAL_OUTCOME_COUNT\":310098859,\"MATCH\":true},{\"MOVE_INDEX\":51593982,\"POSITION\":3,\"ADDED_TICKET_LEX_RANK\":9642534,\"ENGINE_OUTCOME_COUNT\":310187339,\"CANONICAL_OUTCOME_COUNT\":310187339,\"MATCH\":true},{\"MOVE_INDEX\":7700444,\"POSITION\":0,\"ADDED_TICKET_LEX_RANK\":7700444,\"ENGINE_OUTCOME_COUNT\":310043398,\"CANONICAL_OUTCOME_COUNT\":310043398,\"MATCH\":true},{\"MOVE_INDEX\":160066917,\"POSITION\":11,\"ADDED_TICKET_LEX_RANK\":6244941,\"ENGINE_OUTCOME_COUNT\":309853838,\"CANONICAL_OUTCOME_COUNT\":309853838,\"MATCH\":true},{\"MOVE_INDEX\":205536321,\"POSITION\":14,\"ADDED_TICKET_LEX_RANK\":9762897,\"ENGINE_OUTCOME_COUNT\":309854230,\"CANONICAL_OUTCOME_COUNT\":309854230,\"MATCH\":true},{\"MOVE_INDEX\":174189908,\"POSITION\":12,\"ADDED_TICKET_LEX_RANK\":6384116,\"ENGINE_OUTCOME_COUNT\":308896504,\"CANONICAL_OUTCOME_COUNT\":308896504,\"MATCH\":true},{\"MOVE_INDEX\":271527820,\"POSITION\":19,\"ADDED_TICKET_LEX_RANK\":5835316,\"ENGINE_OUTCOME_COUNT\":309388135,\"CANONICAL_OUTCOME_COUNT\":309388135,\"MATCH\":true},{\"MOVE_INDEX\":78708232,\"POSITION\":5,\"ADDED_TICKET_LEX_RANK\":8789152,\"ENGINE_OUTCOME_COUNT\":308201271,\"CANONICAL_OUTCOME_COUNT\":308201271,\"MATCH\":true},{\"MOVE_INDEX\":200089024,\"POSITION\":14,\"ADDED_TICKET_LEX_RANK\":4315600,\"ENGINE_OUTCOME_COUNT\":309636187,\"CANONICAL_OUTCOME_COUNT\":309636187,\"MATCH\":true},{\"MOVE_INDEX\":143300911,\"POSITION\":10,\"ADDED_TICKET_LEX_RANK\":3462751,\"ENGINE_OUTCOME_COUNT\":311317909,\"CANONICAL_OUTCOME_COUNT\":311317909,\"MATCH\":true},{\"MOVE_INDEX\":271173539,\"POSITION\":19,\"ADDED_TICKET_LEX_RANK\":5481035,\"ENGINE_OUTCOME_COUNT\":307575779,\"CANONICAL_OUTCOME_COUNT\":307575779,\"MATCH\":true},{\"MOVE_INDEX\":4698987,\"POSITION\":0,\"ADDED_TICKET_LEX_RANK\":4698987,\"ENGINE_OUTCOME_COUNT\":310360183,\"CANONICAL_OUTCOME_COUNT\":310360183,\"MATCH\":true},{\"MOVE_INDEX\":69268748,\"POSITION\":4,\"ADDED_TICKET_LEX_RANK\":13333484,\"ENGINE_OUTCOME_COUNT\":311044020,\"CANONICAL_OUTCOME_COUNT\":311044020,\"MATCH\":true},{\"MOVE_INDEX\":67738229,\"POSITION\":4,\"ADDED_TICKET_LEX_RANK\":11802965,\"ENGINE_OUTCOME_COUNT\":310375975,\"CANONICAL_OUTCOME_COUNT\":310375975,\"MATCH\":true},{\"MOVE_INDEX\":89319762,\"POSITION\":6,\"ADDED_TICKET_LEX_RANK\":5416866,\"ENGINE_OUTCOME_COUNT\":307910610,\"CANONICAL_OUTCOME_COUNT\":307910610,\"MATCH\":true},{\"MOVE_INDEX\":104522921,\"POSITION\":7,\"ADDED_TICKET_LEX_RANK\":6636209,\"ENGINE_OUTCOME_COUNT\":309058183,\"CANONICAL_OUTCOME_COUNT\":309058183,\"MATCH\":true},{\"MOVE_INDEX\":5241217,\"POSITION\":0,\"ADDED_TICKET_LEX_RANK\":5241217,\"ENGINE_OUTCOME_COUNT\":311038462,\"CANONICAL_OUTCOME_COUNT\":311038462,\"MATCH\":true},{\"MOVE_INDEX\":88684912,\"POSITION\":6,\"ADDED_TICKET_LEX_RANK\":4782016,\"ENGINE_OUTCOME_COUNT\":308850017,\"CANONICAL_OUTCOME_COUNT\":308850017,\"MATCH\":true},{\"MOVE_INDEX\":72823176,\"POSITION\":5,\"ADDED_TICKET_LEX_RANK\":2904096,\"ENGINE_OUTCOME_COUNT\":311432604,\"CANONICAL_OUTCOME_COUNT\":311432604,\"MATCH\":true},{\"MOVE_INDEX\":129897715,\"POSITION\":9,\"ADDED_TICKET_LEX_RANK\":4043371,\"ENGINE_OUTCOME_COUNT\":309301041,\"CANONICAL_OUTCOME_COUNT\":309301041,\"MATCH\":true},{\"MOVE_INDEX\":139858542,\"POSITION\":10,\"ADDED_TICKET_LEX_RANK\":20382,\"ENGINE_OUTCOME_COUNT\":307051087,\"CANONICAL_OUTCOME_COUNT\":307051087,\"MATCH\":true},{\"MOVE_INDEX\":273184972,\"POSITION\":19,\"ADDED_TICKET_LEX_RANK\":7492468,\"ENGINE_OUTCOME_COUNT\":309062320,\"CANONICAL_OUTCOME_COUNT\":309062320,\"MATCH\":true},{\"MOVE_INDEX\":137374258,\"POSITION\":9,\"ADDED_TICKET_LEX_RANK\":11519914,\"ENGINE_OUTCOME_COUNT\":309658573,\"CANONICAL_OUTCOME_COUNT\":309658573,\"MATCH\":true},{\"MOVE_INDEX\":167025684,\"POSITION\":11,\"ADDED_TICKET_LEX_RANK\":13203708,\"ENGINE_OUTCOME_COUNT\":310567474,\"CANONICAL_OUTCOME_COUNT\":310567474,\"MATCH\":true},{\"MOVE_INDEX\":230292684,\"POSITION\":16,\"ADDED_TICKET_LEX_RANK\":6551628,\"ENGINE_OUTCOME_COUNT\":308353570,\"CANONICAL_OUTCOME_COUNT\":308353570,\"MATCH\":true},{\"MOVE_INDEX\":87699786,\"POSITION\":6,\"ADDED_TICKET_LEX_RANK\":3796890,\"ENGINE_OUTCOME_COUNT\":310664144,\"CANONICAL_OUTCOME_COUNT\":310664144,\"MATCH\":true},{\"MOVE_INDEX\":63118294,\"POSITION\":4,\"ADDED_TICKET_LEX_RANK\":7183030,\"ENGINE_OUTCOME_COUNT\":308813659,\"CANONICAL_OUTCOME_COUNT\":308813659,\"MATCH\":true},{\"MOVE_INDEX\":26471862,\"POSITION\":1,\"ADDED_TICKET_LEX_RANK\":12488046,\"ENGINE_OUTCOME_COUNT\":309598436,\"CANONICAL_OUTCOME_COUNT\":309598436,\"MATCH\":true},{\"MOVE_INDEX\":70141920,\"POSITION\":5,\"ADDED_TICKET_LEX_RANK\":222840,\"ENGINE_OUTCOME_COUNT\":310152801,\"CANONICAL_OUTCOME_COUNT\":310152801,\"MATCH\":true},{\"MOVE_INDEX\":181286765,\"POSITION\":12,\"ADDED_TICKET_LEX_RANK\":13480973,\"ENGINE_OUTCOME_COUNT\":309508206,\"CANONICAL_OUTCOME_COUNT\":309508206,\"MATCH\":true},{\"MOVE_INDEX\":89192257,\"POSITION\":6,\"ADDED_TICKET_LEX_RANK\":5289361,\"ENGINE_OUTCOME_COUNT\":310385495,\"CANONICAL_OUTCOME_COUNT\":310385495,\"MATCH\":true},{\"MOVE_INDEX\":103735973,\"POSITION\":7,\"ADDED_TICKET_LEX_RANK\":5849261,\"ENGINE_OUTCOME_COUNT\":309831158,\"CANONICAL_OUTCOME_COUNT\":309831158,\"MATCH\":true},{\"MOVE_INDEX\":215021829,\"POSITION\":15,\"ADDED_TICKET_LEX_RANK\":5264589,\"ENGINE_OUTCOME_COUNT\":309417990,\"CANONICAL_OUTCOME_COUNT\":309417990,\"MATCH\":true},{\"MOVE_INDEX\":77770567,\"POSITION\":5,\"ADDED_TICKET_LEX_RANK\":7851487,\"ENGINE_OUTCOME_COUNT\":312055506,\"CANONICAL_OUTCOME_COUNT\":312055506,\"MATCH\":true},{\"MOVE_INDEX\":70779616,\"POSITION\":5,\"ADDED_TICKET_LEX_RANK\":860536,\"ENGINE_OUTCOME_COUNT\":310679565,\"CANONICAL_OUTCOME_COUNT\":310679565,\"MATCH\":true},{\"MOVE_INDEX\":18175308,\"POSITION\":1,\"ADDED_TICKET_LEX_RANK\":4191492,\"ENGINE_OUTCOME_COUNT\":309754928,\"CANONICAL_OUTCOME_COUNT\":309754928,\"MATCH\":true},{\"MOVE_INDEX\":115259403,\"POSITION\":8,\"ADDED_TICKET_LEX_RANK\":3388875,\"ENGINE_OUTCOME_COUNT\":308897666,\"CANONICAL_OUTCOME_COUNT\":308897666,\"MATCH\":true},{\"MOVE_INDEX\":234828576,\"POSITION\":16,\"ADDED_TICKET_LEX_RANK\":11087520,\"ENGINE_OUTCOME_COUNT\":309161041,\"CANONICAL_OUTCOME_COUNT\":309161041,\"MATCH\":true},{\"MOVE_INDEX\":46896859,\"POSITION\":3,\"ADDED_TICKET_LEX_RANK\":4945411,\"ENGINE_OUTCOME_COUNT\":309391404,\"CANONICAL_OUTCOME_COUNT\":309391404,\"MATCH\":true},{\"MOVE_INDEX\":45902623,\"POSITION\":3,\"ADDED_TICKET_LEX_RANK\":3951175,\"ENGINE_OUTCOME_COUNT\":309548736,\"CANONICAL_OUTCOME_COUNT\":309548736,\"MATCH\":true},{\"MOVE_INDEX\":129646706,\"POSITION\":9,\"ADDED_TICKET_LEX_RANK\":3792362,\"ENGINE_OUTCOME_COUNT\":310850911,\"CANONICAL_OUTCOME_COUNT\":310850911,\"MATCH\":true},{\"MOVE_INDEX\":198662670,\"POSITION\":14,\"ADDED_TICKET_LEX_RANK\":2889246,\"ENGINE_OUTCOME_COUNT\":309251474,\"CANONICAL_OUTCOME_COUNT\":309251474,\"MATCH\":true},{\"MOVE_INDEX\":221629103,\"POSITION\":15,\"ADDED_TICKET_LEX_RANK\":11871863,\"ENGINE_OUTCOME_COUNT\":309460319,\"CANONICAL_OUTCOME_COUNT\":309460319,\"MATCH\":true},{\"MOVE_INDEX\":183544201,\"POSITION\":13,\"ADDED_TICKET_LEX_RANK\":1754593,\"ENGINE_OUTCOME_COUNT\":307286007,\"CANONICAL_OUTCOME_COUNT\":307286007,\"MATCH\":true},{\"MOVE_INDEX\":226717414,\"POSITION\":16,\"ADDED_TICKET_LEX_RANK\":2976358,\"ENGINE_OUTCOME_COUNT\":310494142,\"CANONICAL_OUTCOME_COUNT\":310494142,\"MATCH\":true},{\"MOVE_INDEX\":188028058,\"POSITION\":13,\"ADDED_TICKET_LEX_RANK\":6238450,\"ENGINE_OUTCOME_COUNT\":308658581,\"CANONICAL_OUTCOME_COUNT\":308658581,\"MATCH\":true},{\"MOVE_INDEX\":226475384,\"POSITION\":16,\"ADDED_TICKET_LEX_RANK\":2734328,\"ENGINE_OUTCOME_COUNT\":308937342,\"CANONICAL_OUTCOME_COUNT\":308937342,\"MATCH\":true},{\"MOVE_INDEX\":163887734,\"POSITION\":11,\"ADDED_TICKET_LEX_RANK\":10065758,\"ENGINE_OUTCOME_COUNT\":310720802,\"CANONICAL_OUTCOME_COUNT\":310720802,\"MATCH\":true},{\"MOVE_INDEX\":159171959,\"POSITION\":11,\"ADDED_TICKET_LEX_RANK\":5349983,\"ENGINE_OUTCOME_COUNT\":309560286,\"CANONICAL_OUTCOME_COUNT\":309560286,\"MATCH\":true},{\"MOVE_INDEX\":221532578,\"POSITION\":15,\"ADDED_TICKET_LEX_RANK\":11775338,\"ENGINE_OUTCOME_COUNT\":309907864,\"CANONICAL_OUTCOME_COUNT\":309907864,\"MATCH\":true},{\"MOVE_INDEX\":259786643,\"POSITION\":18,\"ADDED_TICKET_LEX_RANK\":8077955,\"ENGINE_OUTCOME_COUNT\":310744427,\"CANONICAL_OUTCOME_COUNT\":310744427,\"MATCH\":true},{\"MOVE_INDEX\":36188513,\"POSITION\":2,\"ADDED_TICKET_LEX_RANK\":8220881,\"ENGINE_OUTCOME_COUNT\":311696966,\"CANONICAL_OUTCOME_COUNT\":311696966,\"MATCH\":true},{\"MOVE_INDEX\":250324450,\"POSITION\":17,\"ADDED_TICKET_LEX_RANK\":12599578,\"ENGINE_OUTCOME_COUNT\":310241897,\"CANONICAL_OUTCOME_COUNT\":310241897,\"MATCH\":true},{\"MOVE_INDEX\":15630171,\"POSITION\":1,\"ADDED_TICKET_LEX_RANK\":1646355,\"ENGINE_OUTCOME_COUNT\":311555097,\"CANONICAL_OUTCOME_COUNT\":311555097,\"MATCH\":true},{\"MOVE_INDEX\":273558290,\"POSITION\":19,\"ADDED_TICKET_LEX_RANK\":7865786,\"ENGINE_OUTCOME_COUNT\":306284118,\"CANONICAL_OUTCOME_COUNT\":306284118,\"MATCH\":true},{\"MOVE_INDEX\":189528890,\"POSITION\":13,\"ADDED_TICKET_LEX_RANK\":7739282,\"ENGINE_OUTCOME_COUNT\":309051603,\"CANONICAL_OUTCOME_COUNT\":309051603,\"MATCH\":true},{\"MOVE_INDEX\":214487330,\"POSITION\":15,\"ADDED_TICKET_LEX_RANK\":4730090,\"ENGINE_OUTCOME_COUNT\":309156078,\"CANONICAL_OUTCOME_COUNT\":309156078,\"MATCH\":true},{\"MOVE_INDEX\":10351025,\"POSITION\":0,\"ADDED_TICKET_LEX_RANK\":10351025,\"ENGINE_OUTCOME_COUNT\":308489181,\"CANONICAL_OUTCOME_COUNT\":308489181,\"MATCH\":true},{\"MOVE_INDEX\":87767872,\"POSITION\":6,\"ADDED_TICKET_LEX_RANK\":3864976,\"ENGINE_OUTCOME_COUNT\":308901019,\"CANONICAL_OUTCOME_COUNT\":308901019,\"MATCH\":true},{\"MOVE_INDEX\":173244911,\"POSITION\":12,\"ADDED_TICKET_LEX_RANK\":5439119,\"ENGINE_OUTCOME_COUNT\":309635732,\"CANONICAL_OUTCOME_COUNT\":309635732,\"MATCH\":true},{\"MOVE_INDEX\":53021322,\"POSITION\":3,\"ADDED_TICKET_LEX_RANK\":11069874,\"ENGINE_OUTCOME_COUNT\":310694160,\"CANONICAL_OUTCOME_COUNT\":310694160,\"MATCH\":true},{\"MOVE_INDEX\":142317426,\"POSITION\":10,\"ADDED_TICKET_LEX_RANK\":2479266,\"ENGINE_OUTCOME_COUNT\":309336160,\"CANONICAL_OUTCOME_COUNT\":309336160,\"MATCH\":true},{\"MOVE_INDEX\":43988291,\"POSITION\":3,\"ADDED_TICKET_LEX_RANK\":2036843,\"ENGINE_OUTCOME_COUNT\":307993826,\"CANONICAL_OUTCOME_COUNT\":307993826,\"MATCH\":true},{\"MOVE_INDEX\":125696838,\"POSITION\":8,\"ADDED_TICKET_LEX_RANK\":13826310,\"ENGINE_OUTCOME_COUNT\":310334794,\"CANONICAL_OUTCOME_COUNT\":310334794,\"MATCH\":true},{\"MOVE_INDEX\":31548806,\"POSITION\":2,\"ADDED_TICKET_LEX_RANK\":3581174,\"ENGINE_OUTCOME_COUNT\":309702407,\"CANONICAL_OUTCOME_COUNT\":309702407,\"MATCH\":true},{\"MOVE_INDEX\":264402505,\"POSITION\":18,\"ADDED_TICKET_LEX_RANK\":12693817,\"ENGINE_OUTCOME_COUNT\":307387640,\"CANONICAL_OUTCOME_COUNT\":307387640,\"MATCH\":true},{\"MOVE_INDEX\":263902874,\"POSITION\":18,\"ADDED_TICKET_LEX_RANK\":12194186,\"ENGINE_OUTCOME_COUNT\":308395983,\"CANONICAL_OUTCOME_COUNT\":308395983,\"MATCH\":true},{\"MOVE_INDEX\":198049657,\"POSITION\":14,\"ADDED_TICKET_LEX_RANK\":2276233,\"ENGINE_OUTCOME_COUNT\":309884386,\"CANONICAL_OUTCOME_COUNT\":309884386,\"MATCH\":true},{\"MOVE_INDEX\":173927850,\"POSITION\":12,\"ADDED_TICKET_LEX_RANK\":6122058,\"ENGINE_OUTCOME_COUNT\":309487787,\"CANONICAL_OUTCOME_COUNT\":309487787,\"MATCH\":true},{\"MOVE_INDEX\":167606553,\"POSITION\":11,\"ADDED_TICKET_LEX_RANK\":13784577,\"ENGINE_OUTCOME_COUNT\":308888426,\"CANONICAL_OUTCOME_COUNT\":308888426,\"MATCH\":true},{\"MOVE_INDEX\":79917828,\"POSITION\":5,\"ADDED_TICKET_LEX_RANK\":9998748,\"ENGINE_OUTCOME_COUNT\":310842028,\"CANONICAL_OUTCOME_COUNT\":310842028,\"MATCH\":true},{\"MOVE_INDEX\":164616495,\"POSITION\":11,\"ADDED_TICKET_LEX_RANK\":10794519,\"ENGINE_OUTCOME_COUNT\":308595399,\"CANONICAL_OUTCOME_COUNT\":308595399,\"MATCH\":true},{\"MOVE_INDEX\":248834635,\"POSITION\":17,\"ADDED_TICKET_LEX_RANK\":11109763,\"ENGINE_OUTCOME_COUNT\":310263009,\"CANONICAL_OUTCOME_COUNT\":310263009,\"MATCH\":true},{\"MOVE_INDEX\":110282724,\"POSITION\":7,\"ADDED_TICKET_LEX_RANK\":12396012,\"ENGINE_OUTCOME_COUNT\":311181269,\"CANONICAL_OUTCOME_COUNT\":311181269,\"MATCH\":true},{\"MOVE_INDEX\":141028428,\"POSITION\":10,\"ADDED_TICKET_LEX_RANK\":1190268,\"ENGINE_OUTCOME_COUNT\":309438703,\"CANONICAL_OUTCOME_COUNT\":309438703,\"MATCH\":true},{\"MOVE_INDEX\":271783931,\"POSITION\":19,\"ADDED_TICKET_LEX_RANK\":6091427,\"ENGINE_OUTCOME_COUNT\":308358876,\"CANONICAL_OUTCOME_COUNT\":308358876,\"MATCH\":true},{\"MOVE_INDEX\":160895051,\"POSITION\":11,\"ADDED_TICKET_LEX_RANK\":7073075,\"ENGINE_OUTCOME_COUNT\":307677027,\"CANONICAL_OUTCOME_COUNT\":307677027,\"MATCH\":true},{\"MOVE_INDEX\":265553587,\"POSITION\":18,\"ADDED_TICKET_LEX_RANK\":13844899,\"ENGINE_OUTCOME_COUNT\":308468510,\"CANONICAL_OUTCOME_COUNT\":308468510,\"MATCH\":true},{\"MOVE_INDEX\":197608572,\"POSITION\":14,\"ADDED_TICKET_LEX_RANK\":1835148,\"ENGINE_OUTCOME_COUNT\":308006678,\"CANONICAL_OUTCOME_COUNT\":308006678,\"MATCH\":true},{\"MOVE_INDEX\":91078968,\"POSITION\":6,\"ADDED_TICKET_LEX_RANK\":7176072,\"ENGINE_OUTCOME_COUNT\":309922893,\"CANONICAL_OUTCOME_COUNT\":309922893,\"MATCH\":true},{\"MOVE_INDEX\":172828072,\"POSITION\":12,\"ADDED_TICKET_LEX_RANK\":5022280,\"ENGINE_OUTCOME_COUNT\":310584176,\"CANONICAL_OUTCOME_COUNT\":310584176,\"MATCH\":true},{\"MOVE_INDEX\":116910560,\"POSITION\":8,\"ADDED_TICKET_LEX_RANK\":5040032,\"ENGINE_OUTCOME_COUNT\":310315481,\"CANONICAL_OUTCOME_COUNT\":310315481,\"MATCH\":true},{\"MOVE_INDEX\":134589175,\"POSITION\":9,\"ADDED_TICKET_LEX_RANK\":8734831,\"ENGINE_OUTCOME_COUNT\":310308684,\"CANONICAL_OUTCOME_COUNT\":310308684,\"MATCH\":true},{\"MOVE_INDEX\":80719682,\"POSITION\":5,\"ADDED_TICKET_LEX_RANK\":10800602,\"ENGINE_OUTCOME_COUNT\":309278543,\"CANONICAL_OUTCOME_COUNT\":309278543,\"MATCH\":true},{\"MOVE_INDEX\":215603750,\"POSITION\":15,\"ADDED_TICKET_LEX_RANK\":5846510,\"ENGINE_OUTCOME_COUNT\":308967806,\"CANONICAL_OUTCOME_COUNT\":308967806,\"MATCH\":true},{\"MOVE_INDEX\":272897083,\"POSITION\":19,\"ADDED_TICKET_LEX_RANK\":7204579,\"ENGINE_OUTCOME_COUNT\":307895994,\"CANONICAL_OUTCOME_COUNT\":307895994,\"MATCH\":true},{\"MOVE_INDEX\":107293196,\"POSITION\":7,\"ADDED_TICKET_LEX_RANK\":9406484,\"ENGINE_OUTCOME_COUNT\":310682316,\"CANONICAL_OUTCOME_COUNT\":310682316,\"MATCH\":true},{\"MOVE_INDEX\":271651185,\"POSITION\":19,\"ADDED_TICKET_LEX_RANK\":5958681,\"ENGINE_OUTCOME_COUNT\":309986012,\"CANONICAL_OUTCOME_COUNT\":309986012,\"MATCH\":true},{\"MOVE_INDEX\":96460569,\"POSITION\":6,\"ADDED_TICKET_LEX_RANK\":12557673,\"ENGINE_OUTCOME_COUNT\":311384514,\"CANONICAL_OUTCOME_COUNT\":311384514,\"MATCH\":true},{\"MOVE_INDEX\":200249540,\"POSITION\":14,\"ADDED_TICKET_LEX_RANK\":4476116,\"ENGINE_OUTCOME_COUNT\":308603666,\"CANONICAL_OUTCOME_COUNT\":308603666,\"MATCH\":true},{\"MOVE_INDEX\":231331437,\"POSITION\":16,\"ADDED_TICKET_LEX_RANK\":7590381,\"ENGINE_OUTCOME_COUNT\":309107407,\"CANONICAL_OUTCOME_COUNT\":309107407,\"MATCH\":true},{\"MOVE_INDEX\":28635901,\"POSITION\":2,\"ADDED_TICKET_LEX_RANK\":668269,\"ENGINE_OUTCOME_COUNT\":310260545,\"CANONICAL_OUTCOME_COUNT\":310260545,\"MATCH\":true},{\"MOVE_INDEX\":38480079,\"POSITION\":2,\"ADDED_TICKET_LEX_RANK\":10512447,\"ENGINE_OUTCOME_COUNT\":309358245,\"CANONICAL_OUTCOME_COUNT\":309358245,\"MATCH\":true},{\"MOVE_INDEX\":63349452,\"POSITION\":4,\"ADDED_TICKET_LEX_RANK\":7414188,\"ENGINE_OUTCOME_COUNT\":310046555,\"CANONICAL_OUTCOME_COUNT\":310046555,\"MATCH\":true},{\"MOVE_INDEX\":102635899,\"POSITION\":7,\"ADDED_TICKET_LEX_RANK\":4749187,\"ENGINE_OUTCOME_COUNT\":310691703,\"CANONICAL_OUTCOME_COUNT\":310691703,\"MATCH\":true},{\"MOVE_INDEX\":21660224,\"POSITION\":1,\"ADDED_TICKET_LEX_RANK\":7676408,\"ENGINE_OUTCOME_COUNT\":311679354,\"CANONICAL_OUTCOME_COUNT\":311679354,\"MATCH\":true},{\"MOVE_INDEX\":233103674,\"POSITION\":16,\"ADDED_TICKET_LEX_RANK\":9362618,\"ENGINE_OUTCOME_COUNT\":308877072,\"CANONICAL_OUTCOME_COUNT\":308877072,\"MATCH\":true},{\"MOVE_INDEX\":244852346,\"POSITION\":17,\"ADDED_TICKET_LEX_RANK\":7127474,\"ENGINE_OUTCOME_COUNT\":308263403,\"CANONICAL_OUTCOME_COUNT\":308263403,\"MATCH\":true},{\"MOVE_INDEX\":164135130,\"POSITION\":11,\"ADDED_TICKET_LEX_RANK\":10313154,\"ENGINE_OUTCOME_COUNT\":310801512,\"CANONICAL_OUTCOME_COUNT\":310801512,\"MATCH\":true},{\"MOVE_INDEX\":14666394,\"POSITION\":1,\"ADDED_TICKET_LEX_RANK\":682578,\"ENGINE_OUTCOME_COUNT\":311713661,\"CANONICAL_OUTCOME_COUNT\":311713661,\"MATCH\":true},{\"MOVE_INDEX\":146167725,\"POSITION\":10,\"ADDED_TICKET_LEX_RANK\":6329565,\"ENGINE_OUTCOME_COUNT\":310763320,\"CANONICAL_OUTCOME_COUNT\":310763320,\"MATCH\":true},{\"MOVE_INDEX\":68563638,\"POSITION\":4,\"ADDED_TICKET_LEX_RANK\":12628374,\"ENGINE_OUTCOME_COUNT\":309799938,\"CANONICAL_OUTCOME_COUNT\":309799938,\"MATCH\":true},{\"MOVE_INDEX\":150918188,\"POSITION\":10,\"ADDED_TICKET_LEX_RANK\":11080028,\"ENGINE_OUTCOME_COUNT\":311181668,\"CANONICAL_OUTCOME_COUNT\":311181668,\"MATCH\":true},{\"MOVE_INDEX\":101778928,\"POSITION\":7,\"ADDED_TICKET_LEX_RANK\":3892216,\"ENGINE_OUTCOME_COUNT\":310559004,\"CANONICAL_OUTCOME_COUNT\":310559004,\"MATCH\":true},{\"MOVE_INDEX\":14339355,\"POSITION\":1,\"ADDED_TICKET_LEX_RANK\":355539,\"ENGINE_OUTCOME_COUNT\":310795933,\"CANONICAL_OUTCOME_COUNT\":310795933,\"MATCH\":true},{\"MOVE_INDEX\":262945199,\"POSITION\":18,\"ADDED_TICKET_LEX_RANK\":11236511,\"ENGINE_OUTCOME_COUNT\":308294644,\"CANONICAL_OUTCOME_COUNT\":308294644,\"MATCH\":true},{\"MOVE_INDEX\":245110553,\"POSITION\":17,\"ADDED_TICKET_LEX_RANK\":7385681,\"ENGINE_OUTCOME_COUNT\":307921089,\"CANONICAL_OUTCOME_COUNT\":307921089,\"MATCH\":true},{\"MOVE_INDEX\":244590587,\"POSITION\":17,\"ADDED_TICKET_LEX_RANK\":6865715,\"ENGINE_OUTCOME_COUNT\":309231895,\"CANONICAL_OUTCOME_COUNT\":309231895,\"MATCH\":true},{\"MOVE_INDEX\":178158328,\"POSITION\":12,\"ADDED_TICKET_LEX_RANK\":10352536,\"ENGINE_OUTCOME_COUNT\":308862036,\"CANONICAL_OUTCOME_COUNT\":308862036,\"MATCH\":true},{\"MOVE_INDEX\":61577056,\"POSITION\":4,\"ADDED_TICKET_LEX_RANK\":5641792,\"ENGINE_OUTCOME_COUNT\":310068920,\"CANONICAL_OUTCOME_COUNT\":310068920,\"MATCH\":true},{\"MOVE_INDEX\":87592903,\"POSITION\":6,\"ADDED_TICKET_LEX_RANK\":3690007,\"ENGINE_OUTCOME_COUNT\":310457091,\"CANONICAL_OUTCOME_COUNT\":310457091,\"MATCH\":true},{\"MOVE_INDEX\":180726845,\"POSITION\":12,\"ADDED_TICKET_LEX_RANK\":12921053,\"ENGINE_OUTCOME_COUNT\":308307503,\"CANONICAL_OUTCOME_COUNT\":308307503,\"MATCH\":true},{\"MOVE_INDEX\":26349063,\"POSITION\":1,\"ADDED_TICKET_LEX_RANK\":12365247,\"ENGINE_OUTCOME_COUNT\":309564353,\"CANONICAL_OUTCOME_COUNT\":309564353,\"MATCH\":true},{\"MOVE_INDEX\":234688310,\"POSITION\":16,\"ADDED_TICKET_LEX_RANK\":10947254,\"ENGINE_OUTCOME_COUNT\":307083217,\"CANONICAL_OUTCOME_COUNT\":307083217,\"MATCH\":true},{\"MOVE_INDEX\":170055127,\"POSITION\":12,\"ADDED_TICKET_LEX_RANK\":2249335,\"ENGINE_OUTCOME_COUNT\":307965217,\"CANONICAL_OUTCOME_COUNT\":307965217,\"MATCH\":true},{\"MOVE_INDEX\":210619290,\"POSITION\":15,\"ADDED_TICKET_LEX_RANK\":862050,\"ENGINE_OUTCOME_COUNT\":307977166,\"CANONICAL_OUTCOME_COUNT\":307977166,\"MATCH\":true},{\"MOVE_INDEX\":196461498,\"POSITION\":14,\"ADDED_TICKET_LEX_RANK\":688074,\"ENGINE_OUTCOME_COUNT\":308788991,\"CANONICAL_OUTCOME_COUNT\":308788991,\"MATCH\":true},{\"MOVE_INDEX\":154435666,\"POSITION\":11,\"ADDED_TICKET_LEX_RANK\":613690,\"ENGINE_OUTCOME_COUNT\":310480030,\"CANONICAL_OUTCOME_COUNT\":310480030,\"MATCH\":true},{\"MOVE_INDEX\":51801615,\"POSITION\":3,\"ADDED_TICKET_LEX_RANK\":9850167,\"ENGINE_OUTCOME_COUNT\":310290729,\"CANONICAL_OUTCOME_COUNT\":310290729,\"MATCH\":true},{\"MOVE_INDEX\":45460128,\"POSITION\":3,\"ADDED_TICKET_LEX_RANK\":3508680,\"ENGINE_OUTCOME_COUNT\":309566740,\"CANONICAL_OUTCOME_COUNT\":309566740,\"MATCH\":true},{\"MOVE_INDEX\":15952244,\"POSITION\":1,\"ADDED_TICKET_LEX_RANK\":1968428,\"ENGINE_OUTCOME_COUNT\":309501430,\"CANONICAL_OUTCOME_COUNT\":309501430,\"MATCH\":true},{\"MOVE_INDEX\":141975354,\"POSITION\":10,\"ADDED_TICKET_LEX_RANK\":2137194,\"ENGINE_OUTCOME_COUNT\":310797935,\"CANONICAL_OUTCOME_COUNT\":310797935,\"MATCH\":true},{\"MOVE_INDEX\":85129265,\"POSITION\":6,\"ADDED_TICKET_LEX_RANK\":1226369,\"ENGINE_OUTCOME_COUNT\":310669170,\"CANONICAL_OUTCOME_COUNT\":310669170,\"MATCH\":true},{\"MOVE_INDEX\":274480173,\"POSITION\":19,\"ADDED_TICKET_LEX_RANK\":8787669,\"ENGINE_OUTCOME_COUNT\":309210083,\"CANONICAL_OUTCOME_COUNT\":309210083,\"MATCH\":true},{\"MOVE_INDEX\":218311871,\"POSITION\":15,\"ADDED_TICKET_LEX_RANK\":8554631,\"ENGINE_OUTCOME_COUNT\":309566117,\"CANONICAL_OUTCOME_COUNT\":309566117,\"MATCH\":true},{\"MOVE_INDEX\":75222735,\"POSITION\":5,\"ADDED_TICKET_LEX_RANK\":5303655,\"ENGINE_OUTCOME_COUNT\":309236732,\"CANONICAL_OUTCOME_COUNT\":309236732,\"MATCH\":true},{\"MOVE_INDEX\":270228820,\"POSITION\":19,\"ADDED_TICKET_LEX_RANK\":4536316,\"ENGINE_OUTCOME_COUNT\":310580886,\"CANONICAL_OUTCOME_COUNT\":310580886,\"MATCH\":true},{\"MOVE_INDEX\":220039326,\"POSITION\":15,\"ADDED_TICKET_LEX_RANK\":10282086,\"ENGINE_OUTCOME_COUNT\":308356916,\"CANONICAL_OUTCOME_COUNT\":308356916,\"MATCH\":true},{\"MOVE_INDEX\":210225615,\"POSITION\":15,\"ADDED_TICKET_LEX_RANK\":468375,\"ENGINE_OUTCOME_COUNT\":307769133,\"CANONICAL_OUTCOME_COUNT\":307769133,\"MATCH\":true},{\"MOVE_INDEX\":87735280,\"POSITION\":6,\"ADDED_TICKET_LEX_RANK\":3832384,\"ENGINE_OUTCOME_COUNT\":310219511,\"CANONICAL_OUTCOME_COUNT\":310219511,\"MATCH\":true},{\"MOVE_INDEX\":249643355,\"POSITION\":17,\"ADDED_TICKET_LEX_RANK\":11918483,\"ENGINE_OUTCOME_COUNT\":308873460,\"CANONICAL_OUTCOME_COUNT\":308873460,\"MATCH\":true},{\"MOVE_INDEX\":228618446,\"POSITION\":16,\"ADDED_TICKET_LEX_RANK\":4877390,\"ENGINE_OUTCOME_COUNT\":308426965,\"CANONICAL_OUTCOME_COUNT\":308426965,\"MATCH\":true},{\"MOVE_INDEX\":126834679,\"POSITION\":9,\"ADDED_TICKET_LEX_RANK\":980335,\"ENGINE_OUTCOME_COUNT\":309874866,\"CANONICAL_OUTCOME_COUNT\":309874866,\"MATCH\":true},{\"MOVE_INDEX\":230625489,\"POSITION\":16,\"ADDED_TICKET_LEX_RANK\":6884433,\"ENGINE_OUTCOME_COUNT\":309381912,\"CANONICAL_OUTCOME_COUNT\":309381912,\"MATCH\":true},{\"MOVE_INDEX\":242507023,\"POSITION\":17,\"ADDED_TICKET_LEX_RANK\":4782151,\"ENGINE_OUTCOME_COUNT\":307940598,\"CANONICAL_OUTCOME_COUNT\":307940598,\"MATCH\":true},{\"MOVE_INDEX\":2979422,\"POSITION\":0,\"ADDED_TICKET_LEX_RANK\":2979422,\"ENGINE_OUTCOME_COUNT\":309496474,\"CANONICAL_OUTCOME_COUNT\":309496474,\"MATCH\":true},{\"MOVE_INDEX\":264463061,\"POSITION\":18,\"ADDED_TICKET_LEX_RANK\":12754373,\"ENGINE_OUTCOME_COUNT\":308476322,\"CANONICAL_OUTCOME_COUNT\":308476322,\"MATCH\":true},{\"MOVE_INDEX\":98504107,\"POSITION\":7,\"ADDED_TICKET_LEX_RANK\":617395,\"ENGINE_OUTCOME_COUNT\":310353113,\"CANONICAL_OUTCOME_COUNT\":310353113,\"MATCH\":true},{\"MOVE_INDEX\":58525294,\"POSITION\":4,\"ADDED_TICKET_LEX_RANK\":2590030,\"ENGINE_OUTCOME_COUNT\":309747865,\"CANONICAL_OUTCOME_COUNT\":309747865,\"MATCH\":true},{\"MOVE_INDEX\":90176365,\"POSITION\":6,\"ADDED_TICKET_LEX_RANK\":6273469,\"ENGINE_OUTCOME_COUNT\":309552278,\"CANONICAL_OUTCOME_COUNT\":309552278,\"MATCH\":true},{\"MOVE_INDEX\":192651653,\"POSITION\":13,\"ADDED_TICKET_LEX_RANK\":10862045,\"ENGINE_OUTCOME_COUNT\":309605674,\"CANONICAL_OUTCOME_COUNT\":309605674,\"MATCH\":true},{\"MOVE_INDEX\":221041031,\"POSITION\":15,\"ADDED_TICKET_LEX_RANK\":11283791,\"ENGINE_OUTCOME_COUNT\":308213801,\"CANONICAL_OUTCOME_COUNT\":308213801,\"MATCH\":true},{\"MOVE_INDEX\":236435983,\"POSITION\":16,\"ADDED_TICKET_LEX_RANK\":12694927,\"ENGINE_OUTCOME_COUNT\":308439432,\"CANONICAL_OUTCOME_COUNT\":308439432,\"MATCH\":true},{\"MOVE_INDEX\":199684283,\"POSITION\":14,\"ADDED_TICKET_LEX_RANK\":3910859,\"ENGINE_OUTCOME_COUNT\":308445389,\"CANONICAL_OUTCOME_COUNT\":308445389,\"MATCH\":true},{\"MOVE_INDEX\":228374359,\"POSITION\":16,\"ADDED_TICKET_LEX_RANK\":4633303,\"ENGINE_OUTCOME_COUNT\":308262724,\"CANONICAL_OUTCOME_COUNT\":308262724,\"MATCH\":true},{\"MOVE_INDEX\":106234569,\"POSITION\":7,\"ADDED_TICKET_LEX_RANK\":8347857,\"ENGINE_OUTCOME_COUNT\":310860501,\"CANONICAL_OUTCOME_COUNT\":310860501,\"MATCH\":true},{\"MOVE_INDEX\":176946061,\"POSITION\":12,\"ADDED_TICKET_LEX_RANK\":9140269,\"ENGINE_OUTCOME_COUNT\":309193339,\"CANONICAL_OUTCOME_COUNT\":309193339,\"MATCH\":true},{\"MOVE_INDEX\":158822959,\"POSITION\":11,\"ADDED_TICKET_LEX_RANK\":5000983,\"ENGINE_OUTCOME_COUNT\":309712340,\"CANONICAL_OUTCOME_COUNT\":309712340,\"MATCH\":true},{\"MOVE_INDEX\":55532015,\"POSITION\":3,\"ADDED_TICKET_LEX_RANK\":13580567,\"ENGINE_OUTCOME_COUNT\":308885570,\"CANONICAL_OUTCOME_COUNT\":308885570,\"MATCH\":true},{\"MOVE_INDEX\":145485195,\"POSITION\":10,\"ADDED_TICKET_LEX_RANK\":5647035,\"ENGINE_OUTCOME_COUNT\":308584857,\"CANONICAL_OUTCOME_COUNT\":308584857,\"MATCH\":true},{\"MOVE_INDEX\":153466570,\"POSITION\":10,\"ADDED_TICKET_LEX_RANK\":13628410,\"ENGINE_OUTCOME_COUNT\":311091480,\"CANONICAL_OUTCOME_COUNT\":311091480,\"MATCH\":true},{\"MOVE_INDEX\":66322189,\"POSITION\":4,\"ADDED_TICKET_LEX_RANK\":10386925,\"ENGINE_OUTCOME_COUNT\":310861761,\"CANONICAL_OUTCOME_COUNT\":310861761,\"MATCH\":true},{\"MOVE_INDEX\":213145939,\"POSITION\":15,\"ADDED_TICKET_LEX_RANK\":3388699,\"ENGINE_OUTCOME_COUNT\":309396010,\"CANONICAL_OUTCOME_COUNT\":309396010,\"MATCH\":true},{\"MOVE_INDEX\":36800399,\"POSITION\":2,\"ADDED_TICKET_LEX_RANK\":8832767,\"ENGINE_OUTCOME_COUNT\":310522184,\"CANONICAL_OUTCOME_COUNT\":310522184,\"MATCH\":true},{\"MOVE_INDEX\":267758374,\"POSITION\":19,\"ADDED_TICKET_LEX_RANK\":2065870,\"ENGINE_OUTCOME_COUNT\":308404033,\"CANONICAL_OUTCOME_COUNT\":308404033,\"MATCH\":true},{\"MOVE_INDEX\":143058408,\"POSITION\":10,\"ADDED_TICKET_LEX_RANK\":3220248,\"ENGINE_OUTCOME_COUNT\":309007251,\"CANONICAL_OUTCOME_COUNT\":309007251,\"MATCH\":true},{\"MOVE_INDEX\":272173542,\"POSITION\":19,\"ADDED_TICKET_LEX_RANK\":6481038,\"ENGINE_OUTCOME_COUNT\":308149548,\"CANONICAL_OUTCOME_COUNT\":308149548,\"MATCH\":true},{\"MOVE_INDEX\":223745847,\"POSITION\":16,\"ADDED_TICKET_LEX_RANK\":4791,\"ENGINE_OUTCOME_COUNT\":307304123,\"CANONICAL_OUTCOME_COUNT\":307304123,\"MATCH\":true},{\"MOVE_INDEX\":277833222,\"POSITION\":19,\"ADDED_TICKET_LEX_RANK\":12140718,\"ENGINE_OUTCOME_COUNT\":309033522,\"CANONICAL_OUTCOME_COUNT\":309033522,\"MATCH\":true},{\"MOVE_INDEX\":104735494,\"POSITION\":7,\"ADDED_TICKET_LEX_RANK\":6848782,\"ENGINE_OUTCOME_COUNT\":310833726,\"CANONICAL_OUTCOME_COUNT\":310833726,\"MATCH\":true},{\"MOVE_INDEX\":201728212,\"POSITION\":14,\"ADDED_TICKET_LEX_RANK\":5954788,\"ENGINE_OUTCOME_COUNT\":309881061,\"CANONICAL_OUTCOME_COUNT\":309881061,\"MATCH\":true},{\"MOVE_INDEX\":179643290,\"POSITION\":12,\"ADDED_TICKET_LEX_RANK\":11837498,\"ENGINE_OUTCOME_COUNT\":309129086,\"CANONICAL_OUTCOME_COUNT\":309129086,\"MATCH\":true},{\"MOVE_INDEX\":50743121,\"POSITION\":3,\"ADDED_TICKET_LEX_RANK\":8791673,\"ENGINE_OUTCOME_COUNT\":309693503,\"CANONICAL_OUTCOME_COUNT\":309693503,\"MATCH\":true},{\"MOVE_INDEX\":13602894,\"POSITION\":0,\"ADDED_TICKET_LEX_RANK\":13602894,\"ENGINE_OUTCOME_COUNT\":310038337,\"CANONICAL_OUTCOME_COUNT\":310038337,\"MATCH\":true},{\"MOVE_INDEX\":31993498,\"POSITION\":2,\"ADDED_TICKET_LEX_RANK\":4025866,\"ENGINE_OUTCOME_COUNT\":309879059,\"CANONICAL_OUTCOME_COUNT\":309879059,\"MATCH\":true},{\"MOVE_INDEX\":161707874,\"POSITION\":11,\"ADDED_TICKET_LEX_RANK\":7885898,\"ENGINE_OUTCOME_COUNT\":309779316,\"CANONICAL_OUTCOME_COUNT\":309779316,\"MATCH\":true},{\"MOVE_INDEX\":246004236,\"POSITION\":17,\"ADDED_TICKET_LEX_RANK\":8279364,\"ENGINE_OUTCOME_COUNT\":308979608,\"CANONICAL_OUTCOME_COUNT\":308979608,\"MATCH\":true},{\"MOVE_INDEX\":78721263,\"POSITION\":5,\"ADDED_TICKET_LEX_RANK\":8802183,\"ENGINE_OUTCOME_COUNT\":310019255,\"CANONICAL_OUTCOME_COUNT\":310019255,\"MATCH\":true},{\"MOVE_INDEX\":73013585,\"POSITION\":5,\"ADDED_TICKET_LEX_RANK\":3094505,\"ENGINE_OUTCOME_COUNT\":311178497,\"CANONICAL_OUTCOME_COUNT\":311178497,\"MATCH\":true},{\"MOVE_INDEX\":1985330,\"POSITION\":0,\"ADDED_TICKET_LEX_RANK\":1985330,\"ENGINE_OUTCOME_COUNT\":311934364,\"CANONICAL_OUTCOME_COUNT\":311934364,\"MATCH\":true},{\"MOVE_INDEX\":74671418,\"POSITION\":5,\"ADDED_TICKET_LEX_RANK\":4752338,\"ENGINE_OUTCOME_COUNT\":310307914,\"CANONICAL_OUTCOME_COUNT\":310307914,\"MATCH\":true},{\"MOVE_INDEX\":169359683,\"POSITION\":12,\"ADDED_TICKET_LEX_RANK\":1553891,\"ENGINE_OUTCOME_COUNT\":311298477,\"CANONICAL_OUTCOME_COUNT\":311298477,\"MATCH\":true},{\"MOVE_INDEX\":144049236,\"POSITION\":10,\"ADDED_TICKET_LEX_RANK\":4211076,\"ENGINE_OUTCOME_COUNT\":309552341,\"CANONICAL_OUTCOME_COUNT\":309552341,\"MATCH\":true},{\"MOVE_INDEX\":251726192,\"POSITION\":18,\"ADDED_TICKET_LEX_RANK\":17504,\"ENGINE_OUTCOME_COUNT\":306339796,\"CANONICAL_OUTCOME_COUNT\":306339796,\"MATCH\":true},{\"MOVE_INDEX\":101144487,\"POSITION\":7,\"ADDED_TICKET_LEX_RANK\":3257775,\"ENGINE_OUTCOME_COUNT\":309550997,\"CANONICAL_OUTCOME_COUNT\":309550997,\"MATCH\":true},{\"MOVE_INDEX\":90762096,\"POSITION\":6,\"ADDED_TICKET_LEX_RANK\":6859200,\"ENGINE_OUTCOME_COUNT\":311314990,\"CANONICAL_OUTCOME_COUNT\":311314990,\"MATCH\":true},{\"MOVE_INDEX\":216756393,\"POSITION\":15,\"ADDED_TICKET_LEX_RANK\":6999153,\"ENGINE_OUTCOME_COUNT\":308780479,\"CANONICAL_OUTCOME_COUNT\":308780479,\"MATCH\":true},{\"MOVE_INDEX\":254705332,\"POSITION\":18,\"ADDED_TICKET_LEX_RANK\":2996644,\"ENGINE_OUTCOME_COUNT\":308702744,\"CANONICAL_OUTCOME_COUNT\":308702744,\"MATCH\":true},{\"MOVE_INDEX\":129051874,\"POSITION\":9,\"ADDED_TICKET_LEX_RANK\":3197530,\"ENGINE_OUTCOME_COUNT\":309859312,\"CANONICAL_OUTCOME_COUNT\":309859312,\"MATCH\":true},{\"MOVE_INDEX\":10299993,\"POSITION\":0,\"ADDED_TICKET_LEX_RANK\":10299993,\"ENGINE_OUTCOME_COUNT\":309980251,\"CANONICAL_OUTCOME_COUNT\":309980251,\"MATCH\":true},{\"MOVE_INDEX\":267501156,\"POSITION\":19,\"ADDED_TICKET_LEX_RANK\":1808652,\"ENGINE_OUTCOME_COUNT\":308812847,\"CANONICAL_OUTCOME_COUNT\":308812847,\"MATCH\":true},{\"MOVE_INDEX\":144354031,\"POSITION\":10,\"ADDED_TICKET_LEX_RANK\":4515871,\"ENGINE_OUTCOME_COUNT\":310680692,\"CANONICAL_OUTCOME_COUNT\":310680692,\"MATCH\":true},{\"MOVE_INDEX\":14459197,\"POSITION\":1,\"ADDED_TICKET_LEX_RANK\":475381,\"ENGINE_OUTCOME_COUNT\":311226496,\"CANONICAL_OUTCOME_COUNT\":311226496,\"MATCH\":true},{\"MOVE_INDEX\":113181399,\"POSITION\":8,\"ADDED_TICKET_LEX_RANK\":1310871,\"ENGINE_OUTCOME_COUNT\":310353260,\"CANONICAL_OUTCOME_COUNT\":310353260,\"MATCH\":true},{\"MOVE_INDEX\":80165765,\"POSITION\":5,\"ADDED_TICKET_LEX_RANK\":10246685,\"ENGINE_OUTCOME_COUNT\":309032864,\"CANONICAL_OUTCOME_COUNT\":309032864,\"MATCH\":true},{\"MOVE_INDEX\":107157891,\"POSITION\":7,\"ADDED_TICKET_LEX_RANK\":9271179,\"ENGINE_OUTCOME_COUNT\":311286318,\"CANONICAL_OUTCOME_COUNT\":311286318,\"MATCH\":true},{\"MOVE_INDEX\":153592341,\"POSITION\":10,\"ADDED_TICKET_LEX_RANK\":13754181,\"ENGINE_OUTCOME_COUNT\":312413374,\"CANONICAL_OUTCOME_COUNT\":312413374,\"MATCH\":true},{\"MOVE_INDEX\":85681551,\"POSITION\":6,\"ADDED_TICKET_LEX_RANK\":1778655,\"ENGINE_OUTCOME_COUNT\":310109814,\"CANONICAL_OUTCOME_COUNT\":310109814,\"MATCH\":true},{\"MOVE_INDEX\":185145082,\"POSITION\":13,\"ADDED_TICKET_LEX_RANK\":3355474,\"ENGINE_OUTCOME_COUNT\":308128989,\"CANONICAL_OUTCOME_COUNT\":308128989,\"MATCH\":true},{\"MOVE_INDEX\":231724998,\"POSITION\":16,\"ADDED_TICKET_LEX_RANK\":7983942,\"ENGINE_OUTCOME_COUNT\":308855463,\"CANONICAL_OUTCOME_COUNT\":308855463,\"MATCH\":true},{\"MOVE_INDEX\":14956883,\"POSITION\":1,\"ADDED_TICKET_LEX_RANK\":973067,\"ENGINE_OUTCOME_COUNT\":310232573,\"CANONICAL_OUTCOME_COUNT\":310232573,\"MATCH\":true}]",
+      "RECORDS_SHA256": "3e9120ad2b74dee1fff45054a9389421938074ed13492816e7197f10de0f74f1"
+    }
+  },
+  "RUN_LOCATORS": {
+    "RUN_DIR": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_K20_C2_EXACT_N1_NEIGHBORHOOD_R1/.task-data/B649_K20_C2_EXACT_N1_NEIGHBORHOOD_R1/run1",
+    "RUN_RESULT_SHA256": "8378de33f0409fdaa0f50b476ed56222391f23ab1a645f686bd935cacf84ff44",
+    "CHECKPOINT_PATH": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_K20_C2_EXACT_N1_NEIGHBORHOOD_R1/.task-data/B649_K20_C2_EXACT_N1_NEIGHBORHOOD_R1/run1/checkpoint.json",
+    "CHECKPOINT_SHA256": "44a46645ca138208b45ed2da7b1456d9b6836875aa423ed1015c3f532305631e"
+  },
+  "ITERATIONS_RUN": 1,
+  "N2_STATUS": "NOT_RUN",
+  "GLOBAL_K20_OPTIMUM_STATUS": "UNKNOWN",
+  "PUSH": "NOT RUN",
+  "PR": "NOT CREATED",
+  "PRODUCTION_MUTATION": "NONE"
+}

@@ -16,7 +16,8 @@ comparison is independent and never proves historical identity or original parit
 --preflight-only --dependency-root /absolute/site-packages checks only the pinned
 CPython/NumPy/SciPy runtime and emits JSON to stdout without creating files.
 Both modes explicitly add the dependency root without processing .pth files;
-receipt mode uses the same dependency loader in its isolated recorder child.
+receipt mode checks distribution metadata without importing numerical modules;
+the pinned recorder loads them only after its fresh-interpreter/input guards.
 A passing preflight establishes candidate readiness only, never original parity.
 
 Use a trusted, quiescent filesystem/runtime, as required by the recorder. Hash
@@ -34,6 +35,7 @@ import argparse
 import base64
 import hashlib
 import importlib
+import importlib.metadata
 import json
 import os
 import re
@@ -74,6 +76,49 @@ def required_path(value):
 
 
 NUMERIC_PINS = {"numpy": "1.26.2", "scipy": "1.12.0"}
+
+
+def numeric_dependency_metadata(dependency_root):
+    """Check only metadata from the explicit root; do not import numeric modules."""
+    if sys.implementation.name != "cpython" or sys.version_info[:3] != (3, 9, 6):
+        raise ValueError("Candidate interpreter pin requires CPython 3.9.6")
+    if not sys.flags.isolated or not sys.dont_write_bytecode:
+        raise ValueError("Candidate dependencies require -I -B")
+    root = Path(required_path(dependency_root)).resolve(strict=True)
+    if not root.is_dir():
+        raise ValueError("Dependency root must be an existing directory")
+    packages = {}
+    for distribution in importlib.metadata.distributions(path=[str(root)]):
+        name = (distribution.metadata["Name"] or "").lower()
+        if name not in NUMERIC_PINS:
+            continue
+        if name in packages or distribution.version != NUMERIC_PINS[name]:
+            raise ValueError("Missing, ambiguous or mismatched dependency metadata: " + name)
+        packages[name] = distribution.version
+    if set(packages) != set(NUMERIC_PINS):
+        raise ValueError("Pinned dependency metadata missing from explicit root")
+    return {"dependency_root": str(root), "packages": packages}
+
+
+def prepare_recorder_dependencies(dependency_root):
+    metadata = numeric_dependency_metadata(dependency_root)
+    # The recorder owns the first numeric import, after its unchanged guards.
+    sys.path.insert(0, metadata["dependency_root"])
+
+
+def verify_recorded_dependencies(receipt_bytes, metadata):
+    root = Path(metadata["dependency_root"])
+    for row in (json.loads(line) for line in receipt_bytes.splitlines()):
+        if row["phase"] not in ("READY_TO_INVOKE", "TERMINAL"):
+            continue
+        actual = row["runtime"]["dependencies"]
+        for name, version in metadata["packages"].items():
+            if (actual[name]["module_version"] != version
+                    or actual[name]["distribution_version"] != version):
+                raise ValueError("Recorded dependency differs from pinned metadata: " + name)
+        for name in ("numpy", "scipy", "scipy.fft"):
+            Path(actual[name]["__file__"]).resolve(strict=True).relative_to(
+                root / name.split(".")[0])
 
 
 def load_numeric_dependencies(dependency_root):
@@ -174,10 +219,11 @@ def main():
     source_root = Path(args.source_root).resolve(strict=True)
     if not source_root.is_dir():
         raise ValueError("Source root must be an existing directory")
+    metadata = numeric_dependency_metadata(args.dependency_root)
     # Pass fixed inputs and pins through unchanged; the recorder validates their bytes.
     bootstrap = ("import runpy,sys; "
                  "runner=runpy.run_path(sys.argv[1]); "
-                 "runner['load_numeric_dependencies'](sys.argv[2]); "
+                 "runner['prepare_recorder_dependencies'](sys.argv[2]); "
                  "sys.argv=sys.argv[3:]; "
                  "runpy.run_path(sys.argv[0],run_name='__main__')")
     command = [str(interpreter), "-I", "-B", "-c", bootstrap,
@@ -221,6 +267,7 @@ def main():
                 "accepted": False, "reason": "Receipt not evaluated", "execution_id": None,
             },
             "comparison": {"status": "NOT_EVALUATED", "scope": "candidate_output_fields_only"},
+            "dependency_metadata": metadata, "dependency_pins_verified": False,
             "errors": [],
         }
         completed = None
@@ -257,6 +304,16 @@ def main():
                 "execution_id": verdict["execution_id"],
             }
             summary["comparison"] = verdict["comparison"]
+            if verdict["accepted"]:
+                try:
+                    if numeric_dependency_metadata(args.dependency_root) != metadata:
+                        raise ValueError("Dependency metadata changed during invocation")
+                    verify_recorded_dependencies(receipt_bytes, metadata)
+                    summary["dependency_pins_verified"] = True
+                except (OSError, ValueError, KeyError, TypeError) as exc:
+                    summary["errors"].append(f"{type(exc).__name__}: {exc}")
+                    summary["receipt_acceptance"]["accepted"] = False
+                    summary["receipt_acceptance"]["reason"] = "Recorded dependency pins not established"
         else:
             summary["receipt_acceptance"]["reason"] = "Observed process exit code or receipt bytes unavailable"
 

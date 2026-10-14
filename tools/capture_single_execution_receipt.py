@@ -54,12 +54,24 @@ LOTTERY = "BIG_LOTTO"
 COMMIT = "520c3922a7c8f47e5b6196fb4b0d54716fa5fd9f"
 TREE = "6e45b343df5e67f9891378f1b005dd7d149ef238"
 PINS = {
-    "lottery_api/models/__init__.py": "2ffe2a4600851a8a1b316108d48961f76ac83012f735bb3189b9d2e02365e86e",
-    "lottery_api/models/replay_strategy_registry.py": "c6c0352868f93c27e68c230e14b1b1c8f8c6a4f2feb021574d2f7cc49170976e",
-    "lottery_api/requirements.txt": "2046dd0aa9cc084352a2fb1a664e032fba23ac81f0b1e7d3f1d70ff9d1a1e130",
-    "tools/backtest_biglotto_enhancements.py": "b0bf78ef7e32ef1e07825251af45846076dbd331f6a1f2f8c89a08a1f301696e",
-    "scripts/p14b_biglotto_single_strategy_replay_dry_run.py": "313e1741bd39eef068a13bf31cf7f0bbdc7bbe73997c67b4e3a8c2be74e60777",
-    "outputs/replay/p14b_biglotto_single_strategy_replay_dry_run_20260520.json": "accb87648f0d9f619c0c235566e8330d75fe7d71b40f08889f1128daa2f8d5a2",
+    "lottery_api/models/__init__.py": (
+        "2ffe2a4600851a8a1b316108d48961f76ac83012f735bb3189b9d2e02365e86e"
+    ),
+    "lottery_api/models/replay_strategy_registry.py": (
+        "c6c0352868f93c27e68c230e14b1b1c8f8c6a4f2feb021574d2f7cc49170976e"
+    ),
+    "lottery_api/requirements.txt": (
+        "2046dd0aa9cc084352a2fb1a664e032fba23ac81f0b1e7d3f1d70ff9d1a1e130"
+    ),
+    "tools/backtest_biglotto_enhancements.py": (
+        "b0bf78ef7e32ef1e07825251af45846076dbd331f6a1f2f8c89a08a1f301696e"
+    ),
+    "scripts/p14b_biglotto_single_strategy_replay_dry_run.py": (
+        "313e1741bd39eef068a13bf31cf7f0bbdc7bbe73997c67b4e3a8c2be74e60777"
+    ),
+    "outputs/replay/p14b_biglotto_single_strategy_replay_dry_run_20260520.json": (
+        "accb87648f0d9f619c0c235566e8330d75fe7d71b40f08889f1128daa2f8d5a2"
+    ),
 }
 CAPTURE_PATH = "outputs/replay/p14b_biglotto_single_strategy_replay_dry_run_20260520.json"
 MODULE_PATHS = {
@@ -124,16 +136,25 @@ def accept_receipt(receipt_bytes, expected_sha256, observed_exit_code=None):
         phases = ("RESERVED", "INPUTS_VERIFIED", "READY_TO_INVOKE", "TERMINAL")
         require(len(lines) == len(phases), "Receipt must contain exactly four records")
         records = [decode_json(line) for line in lines]
-        keys = set("schema execution_id status phase sequence output_path candidate_only "
-                   "original_source_identity_established original_reproduction_claimed "
-                   "historical_input_identity historical_runtime_identity comparison "
-                   "candidate_provenance adapter_call_attempts reserved_file request recorded_at_utc".split())
-        additions = (set(), set("recorder inputs source_root source_files candidate_source "
-                                "target reference_capture call runtime".split()),
-                     {"loaded_modules_before_call", "crash_semantics"},
-                     {"loaded_modules_after_call", "result"})
+        keys = {
+            "schema", "execution_id", "status", "phase", "sequence", "output_path",
+            "candidate_only",
+            "original_source_identity_established", "original_reproduction_claimed",
+            "historical_input_identity", "historical_runtime_identity", "comparison",
+            "candidate_provenance", "adapter_call_attempts", "reserved_file", "request",
+            "recorded_at_utc",
+        }
+        additions = (
+            set(),
+            {"recorder", "inputs", "source_root", "source_files", "candidate_source",
+             "target", "reference_capture", "call", "runtime"},
+            {"loaded_modules_before_call", "crash_semantics"},
+            {"loaded_modules_after_call", "result"},
+        )
         execution_id = None
-        for index, (record, phase) in enumerate(zip(records, phases), 1):
+        # The four-record length guard above makes indexed pairing exact on Python 3.9.
+        for index, record in enumerate(records, 1):
+            phase = phases[index - 1]
             keys |= additions[index - 1]
             require(isinstance(record, dict) and set(record) == keys,
                     "Incomplete or unknown receipt record fields")
@@ -185,7 +206,8 @@ def accept_receipt(receipt_bytes, expected_sha256, observed_exit_code=None):
                     and re.fullmatch(r"[0-9a-f]{64}", snapshot["sha256"]) is not None
                     and isinstance(snapshot["raw_base64"], str)
                     and isinstance(snapshot["parsed_canonical_sha256"], str)
-                    and re.fullmatch(r"[0-9a-f]{64}", snapshot["parsed_canonical_sha256"]) is not None,
+                    and re.fullmatch(
+                        r"[0-9a-f]{64}", snapshot["parsed_canonical_sha256"]) is not None,
                     "Invalid recorded snapshot metadata: " + name)
             raw = base64.b64decode(snapshot["raw_base64"], validate=True)
             require(len(raw) == snapshot["bytes"] and sha(raw) == snapshot["sha256"],
@@ -317,7 +339,8 @@ def validate_inputs(history, target, reference):
         require(isinstance(row, dict) and set(row) == {"draw", "date", "numbers", "special"},
                 "History row keys must exactly match documented schema")
         draw, date = draw_value(row["draw"]), date_value(row["date"])
-        require(previous_draw < draw < target_draw, "History must be strictly ascending and pre-target")
+        require(previous_draw < draw < target_draw,
+                "History must be strictly ascending and pre-target")
         require(date < target_date and (previous_date is None or previous_date <= date),
                 "History dates must be ordered and pre-target")
         require(numbers_ok(row["numbers"]), "Invalid history numbers")
@@ -328,7 +351,8 @@ def validate_inputs(history, target, reference):
 
 
 def pinned_sources(identity, root):
-    require(identity.get("schema") == "biglotto-strategy-input-identity-r1", "Unknown identity schema")
+    require(identity.get("schema") == "biglotto-strategy-input-identity-r1",
+            "Unknown identity schema")
     source = identity["candidate_source"]
     require(source["commit"] == COMMIT and source["tree"] == TREE,
             "UNKNOWN: identity differs from supported candidate commit/tree")
@@ -413,7 +437,8 @@ def dependencies(root):
 
 
 def main():
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     for argument in ("history", "history-sha256", "target", "target-sha256",
                      "identity", "identity-sha256", "source-root", "output"):
         parser.add_argument("--" + argument, required=True)
@@ -442,7 +467,9 @@ def main():
         require((visible_stat.st_dev, visible_stat.st_ino)
                 == (reserved_stat.st_dev, reserved_stat.st_ino), "Reserved output identity changed")
         state["sequence"] += 1
-        state["recorded_at_utc"] = datetime.now(timezone.utc).isoformat()
+        state["recorded_at_utc"] = datetime.now(
+            timezone.utc,  # noqa: UP017 -- datetime.UTC is unavailable on Python 3.9.
+        ).isoformat()
         encoded = canonical(state) + b"\n"
         try:
             remaining = memoryview(encoded)
@@ -469,7 +496,8 @@ def main():
         tool_path = Path(__file__).resolve(strict=True)
         state["recorder"] = {"path": str(tool_path), "sha256": sha(tool_path.read_bytes())}
         require(not any(name == prefix or name.startswith(prefix + ".")
-                        for name in sys.modules for prefix in ("lottery_api", "tools", "numpy", "scipy")),
+                        for name in sys.modules
+                        for prefix in ("lottery_api", "tools", "numpy", "scipy")),
                 "Fresh interpreter required; candidate/dependency modules already loaded")
         root = Path(args.source_root).resolve(strict=True)
         require(root.is_dir(), "Source root must be a directory")
@@ -482,26 +510,33 @@ def main():
         reference = decode_json(blobs[CAPTURE_PATH])["candidates_sample"][0]
         require(reference == identity["capture"]["target_row"], "Identity/capture row mismatch")
         require(reference["strategy_id"] == STRATEGY
-                and target["draw_number"] == identity["scope"]["draw_number"], "Target identity mismatch")
+                and target["draw_number"] == identity["scope"]["draw_number"],
+                "Target identity mismatch")
         validate_inputs(history, target, reference)
         history_hash = sha(canonical(history))
         state.update({
             "phase": "INPUTS_VERIFIED", "source_root": str(root), "source_files": sources,
-            "candidate_source": {"commit_claimed_by_identity": COMMIT, "tree_claimed_by_identity": TREE,
+            "candidate_source": {"commit_claimed_by_identity": COMMIT,
+                                 "tree_claimed_by_identity": TREE,
                                  "verification": "six_file_sha256_only_not_full_git_tree"},
             "target": target, "reference_capture": {"path": CAPTURE_PATH,
-                "sha256": PINS[CAPTURE_PATH], "json_pointer": "/candidates_sample/0", "row": reference},
+                "sha256": PINS[CAPTURE_PATH], "json_pointer": "/candidates_sample/0",
+                "row": reference},
             "call": {"entrypoint": "lottery_api.models.replay_strategy_registry.get_adapter",
                 "strategy_id": STRATEGY, "method": "get_one_bet", "lottery_type": LOTTERY,
                 "history_count": len(history), "history_canonical_sha256": history_hash,
                 "target_passed_to_adapter": False, "outcome_passed_to_adapter": False,
                 "implicit_windows": {"fourier": 500, "cold": 100, "tail": 100},
-                "random_seed": None, "random_seed_reason": "No RNG in inspected candidate call path"},
-            "runtime": {"python_version": sys.version, "implementation": platform.python_implementation(),
-                "executable": sys.executable, "executable_sha256": sha(Path(sys.executable).read_bytes()),
+                "random_seed": None,
+                "random_seed_reason": "No RNG in inspected candidate call path"},
+            "runtime": {"python_version": sys.version,
+                "implementation": platform.python_implementation(),
+                "executable": sys.executable,
+                "executable_sha256": sha(Path(sys.executable).read_bytes()),
                 "platform": platform.platform(), "machine": platform.machine(),
                 "python_flags": str(sys.flags), "sys_path_before_candidate_imports": list(sys.path),
-                "dependency_build_lock": "UNKNOWN; recorded package files/versions are not a full binary lock"},
+                "dependency_build_lock": (
+                    "UNKNOWN; recorded package files/versions are not a full binary lock")},
         })
         append()
         state["phase"] = "IMPORTS"
@@ -525,18 +560,21 @@ def main():
         state["runtime"]["sys_path_at_call"] = list(sys.path)
         state["candidate_provenance"] = "VERIFIED_FOR_THIS_CANDIDATE_CALL"
         state["phase"] = "READY_TO_INVOKE"
-        state["crash_semantics"] = "Without a terminal record, actual call count is UNKNOWN (0 or 1); do not retry"
+        state["crash_semantics"] = (
+            "Without a terminal record, actual call count is UNKNOWN (0 or 1); do not retry")
         append()  # Durable PREPARED, including actual loaded provenance, BEFORE invocation.
         state["phase"] = "INVOKING"
         state["adapter_call_attempts"] = 1
-        predicted_numbers, predicted_special = adapter.get_one_bet(history, LOTTERY)  # ONLY strategy invocation.
+        # ONLY strategy invocation.
+        predicted_numbers, predicted_special = adapter.get_one_bet(history, LOTTERY)
         state["phase"] = "POST_CALL_VERIFICATION"
         require(sha(canonical(history)) == history_hash, "Adapter mutated history")
         state["loaded_modules_after_call"] = module_evidence(modules, sources)
         # Recheck all six pins and dependencies; a provenance failure must not yield MATCH.
         _, after_sources = pinned_sources(identity, root)
         require(after_sources == sources, "Pinned sources changed during call")
-        require(dependencies(root) == state["runtime"]["dependencies"], "Dependencies changed during call")
+        require(dependencies(root) == state["runtime"]["dependencies"],
+                "Dependencies changed during call")
         require(numbers_ok(predicted_numbers) and predicted_numbers == sorted(predicted_numbers)
                 and predicted_special is None, "Unexpected adapter result")
         hits = sorted(set(predicted_numbers) & set(target["actual_numbers"]))
@@ -544,12 +582,14 @@ def main():
             "predicted_numbers": predicted_numbers, "predicted_special": predicted_special,
             "prediction_status": "READY", "hit_numbers": hits, "hit_count": len(hits),
             "special_hit": False, "source_trace": f"{STRATEGY}:get_one_bet:hist={len(history)}",
-            "provenance_hash": sha(f"{STRATEGY}:{target['draw_number']}:{sorted(predicted_numbers)}".encode())[:16],
+            "provenance_hash": sha(
+                f"{STRATEGY}:{target['draw_number']}:{sorted(predicted_numbers)}".encode())[:16],
         }
         state["result"] = result
         mismatches = [key for key, value in result.items() if value != reference[key]]
         state["comparison"] = {"status": "MISMATCH" if mismatches else "MATCH",
-                               "scope": "candidate_output_fields_only", "mismatched_fields": mismatches,
+                               "scope": "candidate_output_fields_only",
+                               "mismatched_fields": mismatches,
                                "historical_reproduction_proven": False}
         state["status"], state["phase"] = "COMPLETED", "TERMINAL"
         append()

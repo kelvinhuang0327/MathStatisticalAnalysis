@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import cast
+
 import pytest
 
 from lottolab.research.b649_k20_destroy5_result_semantics import (
@@ -42,7 +44,7 @@ def test_candidate_classification_at_both_thresholds(
 @pytest.mark.parametrize("count", [True, -1, 1.5, "313263889"])
 def test_invalid_candidate_counts_fail_closed(count: object) -> None:
     with pytest.raises(ValueError, match="candidate count must be a non-negative integer"):
-        classify_candidate(count, INITIAL_INCUMBENT_AUTHORITY)
+        classify_candidate(cast(int, count), INITIAL_INCUMBENT_AUTHORITY)
 
 
 def test_execution_authority_keeps_incumbent_out_of_frozen_manifest() -> None:
@@ -140,7 +142,7 @@ def test_invalid_or_wrong_launch_authority_fails_closed(
     authority: object,
 ) -> None:
     with pytest.raises(ValueError, match="CURRENT_INCUMBENT_UNRESOLVED"):
-        classify_candidate(313_263_889, authority)
+        classify_candidate(313_263_889, cast(IncumbentAuthority, authority))
 
 
 def test_unverified_claim_above_base_is_rejected_even_after_verified_gain() -> None:

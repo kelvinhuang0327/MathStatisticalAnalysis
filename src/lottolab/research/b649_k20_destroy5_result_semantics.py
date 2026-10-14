@@ -51,7 +51,7 @@ INITIAL_INCUMBENT_AUTHORITY = IncumbentAuthority(
 )
 
 
-def _valid_count(value: int, *, field: str) -> int:
+def _valid_count(value: object, *, field: str) -> int:
     if isinstance(value, bool) or not isinstance(value, int) or value < 0:
         raise ValueError(f"{field} must be a non-negative integer")
     return value
@@ -117,7 +117,7 @@ def resolve_launch_time_incumbent(
     return current
 
 
-def execution_authority_fields(authority: IncumbentAuthority) -> dict[str, int | str]:
+def execution_authority_fields(authority: object) -> dict[str, int | str]:
     """Fields to persist in execution authority, outside the frozen manifest."""
 
     if not isinstance(authority, IncumbentAuthority):

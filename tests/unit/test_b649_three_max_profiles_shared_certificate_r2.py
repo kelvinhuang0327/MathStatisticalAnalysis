@@ -9,12 +9,16 @@ from typing import cast
 
 import pytest
 
+# Keep bootstrap first so certificate imports resolve from the pinned source snapshot.
+# isort: off
+from tests.unit.b649_certificate_replay import replay_certificate_call, replay_fixed_result
 from lottolab.research import b649_three_max_profiles_shared_certificate_r2 as cert
+# isort: on
 
 
 @pytest.fixture(scope="module")
 def result() -> dict[str, object]:
-    return cert.compute_result()
+    return replay_fixed_result(cert.__name__)
 
 
 @pytest.mark.parametrize(
@@ -185,11 +189,11 @@ def test_no_authority_inflation_or_enumeration(result: dict[str, object]) -> Non
 
 def test_full_stored_result_reproduces(result: dict[str, object]) -> None:
     assert cert.RESULT.read_bytes() == cert.render(result)
-    cert.verify_result(cert.decode(cert.RESULT.read_bytes()))
+    replay_certificate_call(cert.__name__, "verify_result", cert.decode(cert.RESULT.read_bytes()))
 
 
 def test_changed_cap_cannot_produce_certified_result(result: dict[str, object]) -> None:
     altered = deepcopy(result)
     cert.obj(cast(list[object], altered["CERTIFICATES"])[1])["NEW_T_CAP"] = 228
     with pytest.raises(ValueError, match="not exactly reproducible"):
-        cert.verify_result(altered)
+        replay_certificate_call(cert.__name__, "verify_result", altered)

@@ -1,0 +1,2156 @@
+{
+  "ALL_T_TERMS": [
+    [
+      22,
+      310677576,
+      0,
+      0,
+      112,
+      2287600
+    ],
+    [
+      23,
+      310689448,
+      0,
+      0,
+      112,
+      2299472
+    ],
+    [
+      24,
+      310701320,
+      0,
+      0,
+      112,
+      2311344
+    ],
+    [
+      25,
+      310713192,
+      0,
+      0,
+      112,
+      2323216
+    ],
+    [
+      26,
+      310725064,
+      0,
+      0,
+      112,
+      2335088
+    ],
+    [
+      27,
+      310736936,
+      0,
+      0,
+      112,
+      2346960
+    ],
+    [
+      28,
+      310748808,
+      0,
+      0,
+      112,
+      2358832
+    ],
+    [
+      29,
+      310760680,
+      0,
+      0,
+      112,
+      2370704
+    ],
+    [
+      30,
+      310772552,
+      0,
+      0,
+      112,
+      2382576
+    ],
+    [
+      31,
+      310784424,
+      0,
+      0,
+      112,
+      2394448
+    ],
+    [
+      32,
+      310796296,
+      0,
+      0,
+      112,
+      2406320
+    ],
+    [
+      33,
+      310808168,
+      0,
+      0,
+      112,
+      2418192
+    ],
+    [
+      34,
+      310820040,
+      0,
+      0,
+      112,
+      2430064
+    ],
+    [
+      35,
+      310831912,
+      0,
+      0,
+      112,
+      2441936
+    ],
+    [
+      36,
+      310843784,
+      0,
+      0,
+      112,
+      2453808
+    ],
+    [
+      37,
+      310855656,
+      0,
+      0,
+      112,
+      2465680
+    ],
+    [
+      38,
+      310867528,
+      0,
+      0,
+      112,
+      2477552
+    ],
+    [
+      39,
+      310879400,
+      0,
+      0,
+      112,
+      2489424
+    ],
+    [
+      40,
+      310891272,
+      0,
+      0,
+      112,
+      2501296
+    ],
+    [
+      41,
+      310903144,
+      0,
+      0,
+      112,
+      2513168
+    ],
+    [
+      42,
+      310915016,
+      0,
+      0,
+      112,
+      2525040
+    ],
+    [
+      43,
+      310926888,
+      0,
+      0,
+      112,
+      2536912
+    ],
+    [
+      44,
+      310938760,
+      0,
+      0,
+      112,
+      2548784
+    ],
+    [
+      45,
+      310950632,
+      0,
+      0,
+      112,
+      2560656
+    ],
+    [
+      46,
+      310962504,
+      0,
+      0,
+      112,
+      2572528
+    ],
+    [
+      47,
+      310974376,
+      0,
+      0,
+      112,
+      2584400
+    ],
+    [
+      48,
+      310986248,
+      0,
+      0,
+      112,
+      2596272
+    ],
+    [
+      49,
+      310998120,
+      0,
+      0,
+      112,
+      2608144
+    ],
+    [
+      50,
+      311009992,
+      0,
+      0,
+      112,
+      2620016
+    ],
+    [
+      51,
+      311021864,
+      0,
+      0,
+      112,
+      2631888
+    ],
+    [
+      52,
+      311033736,
+      0,
+      0,
+      112,
+      2643760
+    ],
+    [
+      53,
+      311045608,
+      0,
+      0,
+      112,
+      2655632
+    ],
+    [
+      54,
+      311057480,
+      0,
+      0,
+      112,
+      2667504
+    ],
+    [
+      55,
+      311069352,
+      0,
+      0,
+      112,
+      2679376
+    ],
+    [
+      56,
+      311081224,
+      0,
+      0,
+      112,
+      2691248
+    ],
+    [
+      57,
+      311093096,
+      0,
+      0,
+      112,
+      2703120
+    ],
+    [
+      58,
+      311104968,
+      0,
+      0,
+      112,
+      2714992
+    ],
+    [
+      59,
+      311116840,
+      0,
+      0,
+      112,
+      2726864
+    ],
+    [
+      60,
+      311128712,
+      0,
+      0,
+      112,
+      2738736
+    ],
+    [
+      61,
+      311140584,
+      0,
+      0,
+      112,
+      2750608
+    ],
+    [
+      62,
+      311152456,
+      0,
+      0,
+      112,
+      2762480
+    ],
+    [
+      63,
+      311164328,
+      0,
+      0,
+      112,
+      2774352
+    ],
+    [
+      64,
+      311176200,
+      0,
+      0,
+      112,
+      2786224
+    ],
+    [
+      65,
+      311188072,
+      0,
+      0,
+      112,
+      2798096
+    ],
+    [
+      66,
+      311199944,
+      0,
+      0,
+      112,
+      2809968
+    ],
+    [
+      67,
+      311211816,
+      0,
+      0,
+      112,
+      2821840
+    ],
+    [
+      68,
+      311223688,
+      0,
+      0,
+      112,
+      2833712
+    ],
+    [
+      69,
+      311235560,
+      0,
+      0,
+      112,
+      2845584
+    ],
+    [
+      70,
+      311247432,
+      0,
+      0,
+      112,
+      2857456
+    ],
+    [
+      71,
+      311259304,
+      0,
+      0,
+      112,
+      2869328
+    ],
+    [
+      72,
+      311271176,
+      0,
+      0,
+      112,
+      2881200
+    ],
+    [
+      73,
+      311283048,
+      0,
+      0,
+      112,
+      2893072
+    ],
+    [
+      74,
+      311294920,
+      0,
+      0,
+      112,
+      2904944
+    ],
+    [
+      75,
+      311306792,
+      0,
+      0,
+      112,
+      2916816
+    ],
+    [
+      76,
+      311318664,
+      0,
+      0,
+      112,
+      2928688
+    ],
+    [
+      77,
+      311330536,
+      0,
+      0,
+      112,
+      2940560
+    ],
+    [
+      78,
+      311342408,
+      0,
+      0,
+      112,
+      2952432
+    ],
+    [
+      79,
+      311354280,
+      0,
+      0,
+      112,
+      2964304
+    ],
+    [
+      80,
+      311366152,
+      0,
+      0,
+      112,
+      2976176
+    ],
+    [
+      81,
+      311378024,
+      0,
+      0,
+      112,
+      2988048
+    ],
+    [
+      82,
+      311389896,
+      0,
+      0,
+      112,
+      2999920
+    ],
+    [
+      83,
+      311401768,
+      0,
+      0,
+      112,
+      3011792
+    ],
+    [
+      84,
+      311413640,
+      0,
+      0,
+      112,
+      3023664
+    ],
+    [
+      85,
+      311425512,
+      0,
+      0,
+      112,
+      3035536
+    ],
+    [
+      86,
+      311437384,
+      0,
+      0,
+      112,
+      3047408
+    ],
+    [
+      87,
+      311449256,
+      0,
+      0,
+      112,
+      3059280
+    ],
+    [
+      88,
+      311461128,
+      0,
+      0,
+      112,
+      3071152
+    ],
+    [
+      89,
+      311473000,
+      0,
+      0,
+      112,
+      3083024
+    ],
+    [
+      90,
+      311484872,
+      0,
+      0,
+      112,
+      3094896
+    ],
+    [
+      91,
+      311496744,
+      0,
+      0,
+      112,
+      3106768
+    ],
+    [
+      92,
+      311508616,
+      0,
+      0,
+      112,
+      3118640
+    ],
+    [
+      93,
+      311520488,
+      0,
+      0,
+      112,
+      3130512
+    ],
+    [
+      94,
+      311532360,
+      0,
+      0,
+      112,
+      3142384
+    ],
+    [
+      95,
+      311544232,
+      0,
+      0,
+      112,
+      3154256
+    ],
+    [
+      96,
+      311556104,
+      0,
+      0,
+      112,
+      3166128
+    ],
+    [
+      97,
+      311567976,
+      0,
+      0,
+      112,
+      3178000
+    ],
+    [
+      98,
+      311579848,
+      0,
+      0,
+      112,
+      3189872
+    ],
+    [
+      99,
+      311591720,
+      0,
+      0,
+      112,
+      3201744
+    ],
+    [
+      100,
+      311603592,
+      0,
+      0,
+      112,
+      3213616
+    ],
+    [
+      101,
+      311615464,
+      0,
+      0,
+      112,
+      3225488
+    ],
+    [
+      102,
+      311627336,
+      0,
+      0,
+      112,
+      3237360
+    ],
+    [
+      103,
+      311639208,
+      0,
+      0,
+      112,
+      3249232
+    ],
+    [
+      104,
+      311651080,
+      0,
+      0,
+      112,
+      3261104
+    ],
+    [
+      105,
+      311662952,
+      0,
+      0,
+      112,
+      3272976
+    ],
+    [
+      106,
+      311674824,
+      0,
+      0,
+      112,
+      3284848
+    ],
+    [
+      107,
+      311686696,
+      0,
+      0,
+      112,
+      3296720
+    ],
+    [
+      108,
+      311698568,
+      0,
+      0,
+      112,
+      3308592
+    ],
+    [
+      109,
+      311710440,
+      0,
+      0,
+      112,
+      3320464
+    ],
+    [
+      110,
+      311722312,
+      0,
+      0,
+      112,
+      3332336
+    ],
+    [
+      111,
+      311734184,
+      0,
+      0,
+      112,
+      3344208
+    ],
+    [
+      112,
+      311746056,
+      0,
+      0,
+      112,
+      3356080
+    ],
+    [
+      113,
+      311757928,
+      0,
+      0,
+      112,
+      3367952
+    ],
+    [
+      114,
+      311769800,
+      0,
+      0,
+      112,
+      3379824
+    ],
+    [
+      115,
+      311781672,
+      0,
+      0,
+      112,
+      3391696
+    ],
+    [
+      116,
+      311793544,
+      0,
+      0,
+      112,
+      3403568
+    ],
+    [
+      117,
+      311805416,
+      0,
+      0,
+      112,
+      3415440
+    ],
+    [
+      118,
+      311817288,
+      0,
+      0,
+      112,
+      3427312
+    ],
+    [
+      119,
+      311829160,
+      0,
+      0,
+      112,
+      3439184
+    ],
+    [
+      120,
+      311841032,
+      0,
+      0,
+      112,
+      3451056
+    ],
+    [
+      121,
+      311852904,
+      0,
+      0,
+      112,
+      3462928
+    ],
+    [
+      122,
+      311864776,
+      0,
+      0,
+      112,
+      3474800
+    ],
+    [
+      123,
+      311876648,
+      0,
+      0,
+      112,
+      3486672
+    ],
+    [
+      124,
+      311888520,
+      0,
+      0,
+      112,
+      3498544
+    ],
+    [
+      125,
+      311900392,
+      0,
+      0,
+      112,
+      3510416
+    ],
+    [
+      126,
+      311912264,
+      0,
+      0,
+      112,
+      3522288
+    ],
+    [
+      127,
+      311924136,
+      0,
+      0,
+      112,
+      3534160
+    ],
+    [
+      128,
+      311936008,
+      0,
+      0,
+      112,
+      3546032
+    ],
+    [
+      129,
+      311947880,
+      0,
+      0,
+      112,
+      3557904
+    ],
+    [
+      130,
+      311959752,
+      0,
+      0,
+      112,
+      3569776
+    ],
+    [
+      131,
+      311971624,
+      0,
+      0,
+      112,
+      3581648
+    ],
+    [
+      132,
+      311983496,
+      0,
+      0,
+      112,
+      3593520
+    ],
+    [
+      133,
+      311995368,
+      0,
+      0,
+      112,
+      3605392
+    ],
+    [
+      134,
+      312007240,
+      0,
+      0,
+      112,
+      3617264
+    ],
+    [
+      135,
+      312019112,
+      0,
+      0,
+      112,
+      3629136
+    ],
+    [
+      136,
+      312030984,
+      0,
+      0,
+      112,
+      3641008
+    ],
+    [
+      137,
+      312042856,
+      0,
+      0,
+      112,
+      3652880
+    ],
+    [
+      138,
+      312054728,
+      0,
+      0,
+      112,
+      3664752
+    ],
+    [
+      139,
+      312066600,
+      0,
+      0,
+      112,
+      3676624
+    ],
+    [
+      140,
+      312078472,
+      0,
+      0,
+      112,
+      3688496
+    ],
+    [
+      141,
+      312090344,
+      0,
+      0,
+      112,
+      3700368
+    ],
+    [
+      142,
+      312102216,
+      0,
+      0,
+      112,
+      3712240
+    ],
+    [
+      143,
+      312114088,
+      0,
+      0,
+      112,
+      3724112
+    ],
+    [
+      144,
+      312125960,
+      0,
+      0,
+      112,
+      3735984
+    ],
+    [
+      145,
+      312137832,
+      0,
+      0,
+      112,
+      3747856
+    ],
+    [
+      146,
+      312149704,
+      0,
+      0,
+      112,
+      3759728
+    ],
+    [
+      147,
+      312161576,
+      0,
+      0,
+      112,
+      3771600
+    ],
+    [
+      148,
+      312173448,
+      0,
+      0,
+      112,
+      3783472
+    ],
+    [
+      149,
+      312185320,
+      0,
+      0,
+      112,
+      3795344
+    ],
+    [
+      150,
+      312197192,
+      0,
+      0,
+      112,
+      3807216
+    ],
+    [
+      151,
+      312209064,
+      0,
+      0,
+      112,
+      3819088
+    ],
+    [
+      152,
+      312220936,
+      0,
+      0,
+      112,
+      3830960
+    ],
+    [
+      153,
+      312232808,
+      0,
+      0,
+      112,
+      3842832
+    ],
+    [
+      154,
+      312244680,
+      0,
+      0,
+      112,
+      3854704
+    ],
+    [
+      155,
+      312256552,
+      0,
+      0,
+      112,
+      3866576
+    ],
+    [
+      156,
+      312268424,
+      0,
+      0,
+      112,
+      3878448
+    ],
+    [
+      157,
+      312280296,
+      0,
+      0,
+      112,
+      3890320
+    ],
+    [
+      158,
+      312292168,
+      0,
+      0,
+      112,
+      3902192
+    ],
+    [
+      159,
+      312304040,
+      0,
+      0,
+      112,
+      3914064
+    ],
+    [
+      160,
+      312315912,
+      0,
+      0,
+      112,
+      3925936
+    ],
+    [
+      161,
+      312327784,
+      0,
+      0,
+      112,
+      3937808
+    ],
+    [
+      162,
+      312339656,
+      0,
+      0,
+      112,
+      3949680
+    ],
+    [
+      163,
+      312351528,
+      0,
+      0,
+      112,
+      3961552
+    ],
+    [
+      164,
+      312363400,
+      0,
+      0,
+      112,
+      3973424
+    ],
+    [
+      165,
+      312375272,
+      0,
+      0,
+      112,
+      3985296
+    ],
+    [
+      166,
+      312387144,
+      0,
+      0,
+      112,
+      3997168
+    ],
+    [
+      167,
+      312399016,
+      0,
+      0,
+      112,
+      4009040
+    ],
+    [
+      168,
+      312410888,
+      0,
+      0,
+      112,
+      4020912
+    ],
+    [
+      169,
+      312422760,
+      0,
+      0,
+      112,
+      4032784
+    ],
+    [
+      170,
+      312434632,
+      0,
+      0,
+      112,
+      4044656
+    ],
+    [
+      171,
+      312446504,
+      0,
+      0,
+      112,
+      4056528
+    ],
+    [
+      172,
+      312458376,
+      0,
+      0,
+      112,
+      4068400
+    ],
+    [
+      173,
+      312470248,
+      0,
+      0,
+      112,
+      4080272
+    ],
+    [
+      174,
+      312482120,
+      0,
+      0,
+      112,
+      4092144
+    ],
+    [
+      175,
+      312493992,
+      0,
+      0,
+      112,
+      4104016
+    ],
+    [
+      176,
+      312505864,
+      0,
+      0,
+      112,
+      4115888
+    ],
+    [
+      177,
+      312517736,
+      0,
+      0,
+      112,
+      4127760
+    ],
+    [
+      178,
+      312529608,
+      0,
+      0,
+      112,
+      4139632
+    ],
+    [
+      179,
+      312541480,
+      0,
+      0,
+      112,
+      4151504
+    ],
+    [
+      180,
+      312553352,
+      0,
+      0,
+      112,
+      4163376
+    ],
+    [
+      181,
+      312565224,
+      0,
+      0,
+      112,
+      4175248
+    ],
+    [
+      182,
+      312577096,
+      0,
+      0,
+      112,
+      4187120
+    ],
+    [
+      183,
+      312588968,
+      0,
+      0,
+      112,
+      4198992
+    ],
+    [
+      184,
+      312600840,
+      0,
+      0,
+      112,
+      4210864
+    ],
+    [
+      185,
+      312612712,
+      0,
+      0,
+      112,
+      4222736
+    ],
+    [
+      186,
+      312624584,
+      0,
+      0,
+      112,
+      4234608
+    ],
+    [
+      187,
+      312636456,
+      0,
+      0,
+      112,
+      4246480
+    ],
+    [
+      188,
+      312648328,
+      0,
+      0,
+      112,
+      4258352
+    ],
+    [
+      189,
+      312660200,
+      0,
+      0,
+      112,
+      4270224
+    ],
+    [
+      190,
+      312672072,
+      0,
+      0,
+      112,
+      4282096
+    ],
+    [
+      191,
+      312683944,
+      0,
+      0,
+      112,
+      4293968
+    ],
+    [
+      192,
+      312695816,
+      0,
+      0,
+      112,
+      4305840
+    ],
+    [
+      193,
+      312707688,
+      0,
+      0,
+      112,
+      4317712
+    ],
+    [
+      194,
+      312719560,
+      0,
+      0,
+      112,
+      4329584
+    ],
+    [
+      195,
+      312731432,
+      0,
+      0,
+      112,
+      4341456
+    ],
+    [
+      196,
+      312743304,
+      0,
+      0,
+      112,
+      4353328
+    ],
+    [
+      197,
+      312755176,
+      0,
+      0,
+      112,
+      4365200
+    ],
+    [
+      198,
+      312767048,
+      0,
+      0,
+      112,
+      4377072
+    ],
+    [
+      199,
+      312778216,
+      3,
+      3,
+      1344,
+      4388944
+    ],
+    [
+      200,
+      312788040,
+      11,
+      11,
+      4928,
+      4400816
+    ],
+    [
+      201,
+      312798120,
+      18,
+      18,
+      8064,
+      4412688
+    ],
+    [
+      202,
+      312807944,
+      26,
+      26,
+      11648,
+      4424560
+    ],
+    [
+      203,
+      312818024,
+      33,
+      33,
+      14784,
+      4436432
+    ],
+    [
+      204,
+      312827848,
+      41,
+      41,
+      18368,
+      4448304
+    ],
+    [
+      205,
+      312837928,
+      48,
+      48,
+      21504,
+      4460176
+    ],
+    [
+      206,
+      312847752,
+      56,
+      56,
+      25088,
+      4472048
+    ],
+    [
+      207,
+      312857832,
+      63,
+      63,
+      28224,
+      4483920
+    ],
+    [
+      208,
+      312867656,
+      71,
+      71,
+      31808,
+      4495792
+    ],
+    [
+      209,
+      312877736,
+      78,
+      78,
+      34944,
+      4507664
+    ],
+    [
+      210,
+      312887560,
+      86,
+      86,
+      38528,
+      4519536
+    ],
+    [
+      211,
+      312897640,
+      93,
+      93,
+      41664,
+      4531408
+    ],
+    [
+      212,
+      312907464,
+      101,
+      101,
+      45248,
+      4543280
+    ],
+    [
+      213,
+      312917544,
+      108,
+      108,
+      48384,
+      4555152
+    ],
+    [
+      214,
+      312927368,
+      116,
+      116,
+      51968,
+      4567024
+    ],
+    [
+      215,
+      312937448,
+      123,
+      123,
+      55104,
+      4578896
+    ],
+    [
+      216,
+      312947272,
+      131,
+      131,
+      58688,
+      4590768
+    ],
+    [
+      217,
+      312957352,
+      138,
+      138,
+      61824,
+      4602640
+    ],
+    [
+      218,
+      312967176,
+      146,
+      146,
+      65408,
+      4614512
+    ],
+    [
+      219,
+      312977256,
+      153,
+      153,
+      68544,
+      4626384
+    ],
+    [
+      220,
+      312987080,
+      161,
+      161,
+      72128,
+      4638256
+    ],
+    [
+      221,
+      312997160,
+      168,
+      168,
+      75264,
+      4650128
+    ],
+    [
+      222,
+      313006984,
+      176,
+      176,
+      78848,
+      4662000
+    ],
+    [
+      223,
+      313017064,
+      183,
+      183,
+      81984,
+      4673872
+    ],
+    [
+      224,
+      313026888,
+      191,
+      191,
+      85568,
+      4685744
+    ],
+    [
+      225,
+      313036968,
+      198,
+      198,
+      88704,
+      4697616
+    ],
+    [
+      226,
+      313045736,
+      206,
+      198,
+      94136,
+      4709488
+    ],
+    [
+      227,
+      313054892,
+      213,
+      198,
+      98889,
+      4721360
+    ],
+    [
+      228,
+      313063660,
+      221,
+      198,
+      104321,
+      4733232
+    ],
+    [
+      229,
+      313072816,
+      228,
+      198,
+      109074,
+      4745104
+    ],
+    [
+      230,
+      313081584,
+      236,
+      198,
+      114506,
+      4756976
+    ],
+    [
+      231,
+      313090740,
+      243,
+      198,
+      119259,
+      4768848
+    ],
+    [
+      232,
+      313099508,
+      251,
+      198,
+      124691,
+      4780720
+    ],
+    [
+      233,
+      313108664,
+      258,
+      198,
+      129444,
+      4792592
+    ],
+    [
+      234,
+      313117432,
+      266,
+      198,
+      134876,
+      4804464
+    ],
+    [
+      235,
+      313126588,
+      273,
+      198,
+      139629,
+      4816336
+    ],
+    [
+      236,
+      313135356,
+      281,
+      198,
+      145061,
+      4828208
+    ]
+  ],
+  "ANALYTIC_CERTIFICATE": {
+    "ARGMAX_A": 0,
+    "CHAIN": "T<=234-6a+sum s(s-4)+sum q^2<=234-6a+|Q|(|Q|+1)<=234-6a+e(e+1)<=236",
+    "DEGREE_SQUARE_LEMMA": {
+      "EQUALITY_GRAPHS": 192,
+      "GRAPHS_CHECKED": 32768
+    },
+    "E_MAX": "e=floor((a+2)/2) from 2|Q|=a+s_1+s_2-6<=a+2",
+    "MAXIMUM": 236,
+    "PER_A_BOUND": [
+      [
+        0,
+        1,
+        236
+      ],
+      [
+        1,
+        1,
+        230
+      ],
+      [
+        2,
+        2,
+        228
+      ],
+      [
+        3,
+        2,
+        222
+      ],
+      [
+        4,
+        3,
+        222
+      ],
+      [
+        5,
+        3,
+        216
+      ],
+      [
+        6,
+        4,
+        218
+      ],
+      [
+        7,
+        4,
+        212
+      ],
+      [
+        8,
+        5,
+        216
+      ],
+      [
+        9,
+        5,
+        210
+      ],
+      [
+        10,
+        6,
+        216
+      ]
+    ]
+  },
+  "ARGMAX_TERM": [
+    236,
+    313135356,
+    281,
+    198,
+    145061,
+    4828208
+  ],
+  "A_MAX": 198,
+  "BELOW_CURSOR": true,
+  "BELOW_NEXT_COMPETITOR_313395344": true,
+  "COMPLEMENT_EDGES": 97,
+  "CORE_VERTICES": 14,
+  "COUNTEREXAMPLE_STATUS": "NONE: no relaxation state exceeds 236; seeded legal supports satisfy (I)",
+  "CPU_BUDGET_SECONDS": 120,
+  "CPU_PROCESS_COUNT": 1,
+  "CPU_PROCESS_COUNT_MEANING": "Maximum simultaneous CPU-bound task processes",
+  "CPU_SECONDS": 0.761693,
+  "CPU_SECONDS_MEANING": "Measured delivery/test process CPU; excludes bounded preliminary processes",
+  "CURSOR_BOUND": 313394584,
+  "CURSOR_THRESHOLD": 264,
+  "DEGREE_PROFILE": "6^2,5^10,2^2,0^6",
+  "DEGREE_SQUARE_SUM": 330,
+  "DEGREE_SUM": 66,
+  "DELIVERY_PROCESS_CPU_HARD_LIMIT_SECONDS": 60,
+  "EXACT_RATIONAL_CROSSCHECK": "PASS_ALL_T_22_TO_265",
+  "EXACT_TRIANGLE_IDENTITY": "T=294-t(H), t(H)=54+11r-sum sigma(7-d+sigma)-sum zeta^2+P; T=234-6a+s1(s1-4)+s2(s2-4)+sum_Z deg_Q^2-P",
+  "FAMILY_BOUND_GAIN_CLAIMED": 0,
+  "FAMILY_NOTE": "Tied row 66555555555441000000 keeps 313395448 in the frozen ledger; no family update is made here",
+  "FOCUSED_TEST_COMMAND": "PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python3.13 tests/unit/test_b649_new_frontier_owner_b_bounded_r1.py --write-result",
+  "FOCUSED_TEST_COUNT": 13,
+  "FOCUSED_TEST_EXIT_CODE": 0,
+  "GLOBAL_K20_OPTIMUM": "UNKNOWN",
+  "GOODMAN_CONSTANT": 294,
+  "GRAPH_EDGES": 93,
+  "HEAVY_SOLVER_STARTED": "NO",
+  "INCUMBENT": 313263888,
+  "INCUMBENT_CLOSURE_THRESHOLD": 250,
+  "JUDGE_MODE": "SELF_CHECK_ONLY",
+  "LOAD_BEARING_INEQUALITY": "sum_u deg_Q(u)^2<=|Q|(|Q|+1) (edge-sum lemma), with P>=0 and s(s-4)<=0",
+  "LOAD_BEARING_PREMISES": [
+    "Exact identity (I) with P>=0",
+    "Low pair-label cap s<=4; omitting it gives 270>264",
+    "Edge-sum lemma; or, independently, exhaustive six-vertex zero-graph domain"
+  ],
+  "LOCAL_COMMIT_IDENTITY_LOCATION": "Final handoff (embedding the containing commit/tree would be self-referential)",
+  "MERGE": "NOT_RUN",
+  "NEGATIVE_CASES": {
+    "INTERPRETATION": "Relaxation maxima without one premise; not legal-support counterexamples",
+    "OMIT_LOW_PAIR_LABEL_CAP": {
+      "ARGMAX": [
+        {
+          "a": 0,
+          "low": [
+            6,
+            6
+          ],
+          "q": [
+            0,
+            0,
+            0,
+            2,
+            2,
+            2
+          ]
+        },
+        {
+          "a": 0,
+          "low": [
+            6,
+            6
+          ],
+          "q": [
+            0,
+            0,
+            1,
+            1,
+            1,
+            3
+          ]
+        }
+      ],
+      "BOUND": 270,
+      "PREMISE": "sigma<=6-d at d=2 replaced by sigma<=|Z|=6"
+    },
+    "OMIT_ZERO_GRAPHICALITY": {
+      "ARGMAX": [
+        {
+          "a": 0,
+          "low": [
+            4,
+            4
+          ],
+          "q": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            2
+          ]
+        },
+        {
+          "a": 2,
+          "low": [
+            4,
+            4
+          ],
+          "q": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            4
+          ]
+        }
+      ],
+      "BOUND": 238,
+      "PREMISE": "q only even-sum in 0..5, not a graph degree sequence"
+    },
+    "WRONG_GOODMAN_298": {
+      "BOUND": 240,
+      "PREMISE": "Goodman constant 298 (another profile) instead of 294"
+    }
+  },
+  "NEGATIVE_TEST_COUNT": 52,
+  "NEW_ADMISSIBLE_BOUND": 313135356,
+  "NEW_WINNING_OUTCOMES": 0,
+  "NEXT_COMPETING_BOUND": 313395344,
+  "NEXT_COMPETITOR_THRESHOLD": 264,
+  "NONNEGATIVE_REMAINDER": "P=t(M)+t(Q)+sum_M c_Z+sum_Q c_K; four nonnegative cardinalities",
+  "OLD_ARGMAX_TERM": [
+    265,
+    313395448,
+    498,
+    198,
+    292404,
+    5172496
+  ],
+  "OLD_BOUND": 313395448,
+  "OWNER_BOUND_DELTA": -260092,
+  "PRELIMINARY_CPU_ACCOUNTING": "Sequential, one process at a time: seeded realization construction stopped at 20 s process CPU (RLIMIT 40 s); relaxation/ablation prototypes under 5 s each; 9 single-mutant focused-test runs of about 2 s each (all mutants killed)",
+  "PRODUCTION_MUTATION": "NONE",
+  "PROFILE_ID": "66555555555522000000",
+  "PROOF": "Full-profile triangle cap T<=236 for 66555555555522000000; no solver or family update.\n\nSupport premises: 20 tickets of capacity 6, 22 triple labels, 27 pair labels,\nand distinct ticket pairs across all supports. Thus G has 93 edges and\ndeg_G(x)=6+d_x. The profile is (6^2,5^10,2^2,0^6), sum d=66, sum d^2=330.\nH=complement(G) has degree 13-d and 97 edges. Counting triples by their H\nedges gives t(G)+t(H)=1140-18*97+sum C(13-d,2)=1140-1746+900=294.\nIndependently, Goodman gives 1140-sum (6+d)(13-d)/2=1140-846=294.\n\nLet K={d>0}, Z={d=0}, of sizes 14 and 6; M=H[K], Q=H[Z].\nsigma_x=|N_G(x) intersect Z|, zeta_u=|N_G(u) intersect K|, and\nr=sum sigma=sum zeta. Only pair labels reach Z: 0<=sigma_x<=6-d_x, so\nsigma=0 at d=6, sigma<=1 at d=5 and sigma<=4 at d=2. A zero has six distinct\nG neighbours and at most five of them are zeros, so q_u=deg_Q(u)=zeta_u-1>=0\nand Q is a simple graph on six vertices. deg_M(x)=7-d_x+sigma_x,\n|M|=(32+r)/2 and |Q|=(r-6)/2. Each mixed H triangle has exactly one\nsame-part edge. For xy in M its zero apices number\n6-sigma_x-sigma_y+|N_G(x) intersect N_G(y) intersect Z|;\nfor uv in Q its core apices number\n14-zeta_u-zeta_v+|N_G(u) intersect N_G(v) intersect K|. Therefore\n\n t(H)=54+11r-sum sigma_x(7-d_x+sigma_x)-sum zeta_u^2+P,\n P=t(M)+t(Q)+sum_M c_Z(xy)+sum_Q c_K(uv)>=0.\n\nWrite a for the number of d=5 vertices with sigma=1 and s_1,s_2 for the two\nd=2 sigmas. Then r=a+s_1+s_2=6+2|Q| and zeta=q+1, so\n\n T=t(G)=234-6a+s_1(s_1-4)+s_2(s_2-4)+sum_u q_u^2-P.                (I)\n\nThe load-bearing inequality is the edge-sum lemma for Q. Since\nsum_u q_u^2=sum_{uv in Q}(q_u+q_v), and q_u+q_v-1<=|Q| counts the distinct Q\nedges meeting u or v, sum_u q_u^2<=|Q|(|Q|+1). Since s_i<=4, s_i(s_i-4)<=0\nand 2|Q|=a+s_1+s_2-6<=a+2. With P>=0 this gives\n\n T<=234-6a+e(e+1), e=floor((a+2)/2), 0<=a<=10.\n\nThe maximum over a is 236, at a=0 and e=1 only.\n\nIndependent complete finite relaxation: a is 0..10, the sorted lows are in\n[0,4]^2, and q is the sorted degree sequence of each of the 2^15 labelled\ngraphs on six vertices (102 sequences), with a+s_1+s_2=6+2|Q|. Every legal\nsupport structure maps to this set, because sorting the lows or the zeros\nleaves (I) unchanged. No cross-graph Gale-Ryser condition, realizability of\nM, or joint compatibility is assumed; omitting them only enlarges the set.\nThe exact maximum of (I) at P=0 over the set is 236, uniquely at a=0,\ns=(4,4), q=(1,1,0,0,0,0). Both arguments prove T<=236 for the full profile.\nAttainment is not asserted: at that argmax both zeros of the Q edge see both\nlows, so c_K>=2.\n\nRoute B is evaluated separately at every integer 22<=T<=cap. Its frozen\nopen-wedge K4 floor is ceil((U-(g_max-2)(W-3T))/4), truncated at zero.\nU=2322, W=828, g_max=12. The contained-triple K4 cap is\nfloor(sum d(d+4)/3)=198. S4=max(112,679*K4-231*min(K4,198));\nS3=2800*828+11872*(T-22)-30800. The integer union bound is\n372228640-63838600+S3-floor(4*S4/7), the ceiling of its rational bound.\nThe old envelope reproduces the recorded 313395448 at 265. Cap 264 is the\nlargest cap that reduces the row strictly, and also the largest that reaches\nthe next competitor 313395344 and the cursor 313394584. The new envelope\npeaks at 236 with 313135356. No other row is refined.\n",
+  "PROOF_SCOPE": "FULL_PROFILE",
+  "PROVED_T_CAP": 236,
+  "PROVED_T_CAP_MEANING": "Triangle cap for every legal support of the profile; attainment not asserted",
+  "PUBLICATION": "LOCAL_COMMIT_ONLY",
+  "PUSH": "NOT_RUN",
+  "REALIZATION_IDENTITY_CHECKS": [
+    {
+      "F": 194,
+      "P_TERMS": [
+        9,
+        1,
+        7,
+        4
+      ],
+      "STATE": {
+        "a": 8,
+        "low": [
+          3,
+          3
+        ],
+        "q": [
+          0,
+          1,
+          1,
+          2,
+          2,
+          2
+        ]
+      },
+      "T": 173
+    },
+    {
+      "F": 219,
+      "P_TERMS": [
+        6,
+        0,
+        5,
+        2
+      ],
+      "STATE": {
+        "a": 3,
+        "low": [
+          3,
+          4
+        ],
+        "q": [
+          0,
+          0,
+          0,
+          1,
+          1,
+          2
+        ]
+      },
+      "T": 206
+    }
+  ],
+  "RELAXATION": {
+    "ARGMAX": [
+      {
+        "a": 0,
+        "low": [
+          4,
+          4
+        ],
+        "q": [
+          0,
+          0,
+          0,
+          0,
+          1,
+          1
+        ]
+      }
+    ],
+    "ATTAINMENT": "NOT_ASSERTED",
+    "EXACT_MAXIMUM": 236,
+    "HISTOGRAM": {
+      "174": 1,
+      "176": 2,
+      "178": 4,
+      "179": 1,
+      "180": 7,
+      "181": 2,
+      "182": 6,
+      "183": 3,
+      "184": 5,
+      "185": 4,
+      "186": 8,
+      "187": 3,
+      "188": 10,
+      "189": 6,
+      "190": 9,
+      "191": 6,
+      "192": 9,
+      "193": 5,
+      "194": 11,
+      "195": 5,
+      "196": 10,
+      "197": 6,
+      "198": 10,
+      "199": 4,
+      "200": 6,
+      "201": 7,
+      "202": 5,
+      "203": 6,
+      "204": 10,
+      "205": 3,
+      "206": 9,
+      "207": 4,
+      "208": 4,
+      "209": 3,
+      "210": 7,
+      "211": 2,
+      "212": 6,
+      "213": 3,
+      "214": 3,
+      "215": 1,
+      "216": 4,
+      "217": 1,
+      "218": 3,
+      "219": 1,
+      "220": 2,
+      "221": 1,
+      "222": 3,
+      "225": 1,
+      "226": 1,
+      "227": 1,
+      "228": 2,
+      "230": 1,
+      "236": 1
+    },
+    "STATE_COUNT": 238,
+    "ZERO_DEGREE_SIGNATURES": 102,
+    "ZERO_LABELLED_GRAPHS": 32768
+  },
+  "RELAXATION_COMPLETENESS": "Every legal support maps to an enumerated state; omitted compatibility (cross Gale-Ryser, M realizability) only enlarges the domain",
+  "RELAXATION_DOMAIN": "a in 0..10; sorted lows in [0,4]^2; q=sorted degrees of all 2^15 labelled six-vertex graphs; a+s1+s2=6+2|Q|",
+  "RESULT_SHA256_LOCATION": "Final handoff (a file cannot embed its own SHA256)",
+  "ROUNDING_CHECK": {
+    "A_MAX": "exact: 594/3=198",
+    "BOUND": "integer bound equals ceil(rational bound) at every T in 22..265",
+    "K4_CEILING_STRICT_T_COUNT": 33,
+    "K4_CEILING_STRICT_T_RANGE": [
+      200,
+      264
+    ],
+    "S4_CREDIT": "exact: 7 divides 112, 679 and 231, so floor(4*S4/7)=4*S4/7",
+    "STATUS": "PASS_EXACT_RATIONAL_ALL_T"
+  },
+  "ROUTE_B_INTEGER_RECOUNT": "PASS",
+  "ROW_BOUND_AT_OR_BELOW_INCUMBENT": true,
+  "SOURCE": {
+    "CATALOG_CAP_LOCATOR": "b649-k20-min-s2-current-cursor-dynamic-family-max-r30-result.json:GROUP_ATTEMPTS[3073] (CP_SAT INFEASIBLE at T=266)",
+    "CURSOR": {
+      "BOUND": 313394584,
+      "ID": "66544333333333332222"
+    },
+    "FROZEN_FAMILY_BOUND": 313398532,
+    "FROZEN_HEAD": "MATCH",
+    "FROZEN_RESULT_SHA256": "MATCH",
+    "FROZEN_TREE": "MATCH",
+    "HEAD": "6569a9667d5e2094c8542cdff9905c3fd89f9e44",
+    "NEXT_COMPETITOR_BOUND": 313395344,
+    "OLD_ENVELOPE": [
+      265,
+      313395448,
+      498,
+      198,
+      292404,
+      5172496
+    ],
+    "PRE_NB_BOUND": 313562472,
+    "RECORDED_BOUND_LOCATOR": "b649-min-s2-six-row-existing-s4-family-authority-r1-result.json:RESOLVED_ROW_BOUNDS[66555555555522000000]; unchanged by frozen seven-row result",
+    "RESULT_SHA256": "880a672a7330a567cc4544170cdeb0f7aa4d3dc5b5e3603c89ef50663cd71743",
+    "SOURCE_CAP_COMPONENTS": {
+      "CATALOG": 265,
+      "NB": 271,
+      "R18": 274
+    },
+    "SOURCE_INDEX_RECOVERY": "NB-only candidate adoptions subset original; equal count 1790",
+    "SOURCE_LOCATOR": "b649-k20-min-s2-nb-degree-cap-frontier-r1-result.json:NB_CERTIFICATES[1444]",
+    "SOURCE_ROW_BOUND": 313395448,
+    "SOURCE_S4_BASE": 112,
+    "SOURCE_T_CAP": 265,
+    "TIED_ROW_IDS": [
+      "66555555555441000000",
+      "66555555555522000000"
+    ],
+    "TREE": "986d20859c86be9036b2321ac47e2e9622786a3b"
+  },
+  "STRICT_REDUCTION_THRESHOLD": 264,
+  "SUM_GRAPH_DEGREE_CHOOSE_3": 2322,
+  "SUPPORT_MODEL": {
+    "PAIR_OVERLAP_MAX": 1,
+    "PAIR_SUPPORTS": 27,
+    "TRIPLE_SUPPORTS": 22
+  },
+  "SUPPORT_PREMISES": [
+    "Exact full profile; linear 22-triple/27-pair support model; deg_G=6+d",
+    "Only pair labels reach Z: 0<=sigma<=6-d (0 at d=6, <=1 at d=5, <=4 at d=2)",
+    "Zeros have six distinct G neighbours: Q=H[Z] simple, deg_Q=zeta-1 in 0..5",
+    "Cross sums equal: a+s1+s2=sum zeta=6+2|Q|"
+  ],
+  "TASK_ID": "B649_NEW_FRONTIER_OWNER_B_BOUNDED_RESEARCH_R1",
+  "TASK_STATUS": "PASS_FULL_PROFILE_SELF_CHECK_ONLY",
+  "TERM_COLUMNS": [
+    "T",
+    "BOUND",
+    "K4",
+    "CONTAINED",
+    "S4",
+    "S3"
+  ],
+  "T_TERM_COUNT": 215,
+  "UNPROVED_ASSUMPTIONS": [],
+  "WEDGES": 828,
+  "WORKTREE_DISPOSITION": "RETAIN",
+  "ZERO_VERTICES": 6
+}

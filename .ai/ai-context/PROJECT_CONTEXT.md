@@ -1,6 +1,6 @@
 # Project Context
 
-Status: bootstrap R1 · 2026-07-20 · fixed base `origin/main` 8d5af3c86544d7bceb1cf444422e5162759da661
+Status: Replay evidence as of 2026-10-14 · merged base `b16cd98dc30c2459701c53024c8bf9b2328da925`
 
 ## Layering and dependency direction
 
@@ -77,7 +77,12 @@ status. `[Confirmed]`
 The single-record BIG_LOTTO capture-conversion pilot ([PR #373](https://github.com/kelvinhuang0327/MathStatisticalAnalysis/pull/373)) merged on 2026-10-13 at `a895e02f0f3a71c29c33bee6612a73ff0bd9fac8`. It converted one captured record through the canonical snapshot and scoring artifacts, then checked the target GET response against eight mapped fields: ordinal, target draw number/date, strategy ID, predicted main numbers, source prediction status, main-number hit count, and special-number hit. `[Confirmed]` (data/manifests/biglotto-single-endpoint-pilot-r1.json)
 
 The original dataset/version, identity of the original 635 history rows, capture-time strategy/runtime identity, and original legacy HTTP response remain unknown or unverified; prediction regeneration was not run. `[Confirmed]` (data/manifests/biglotto-single-endpoint-pilot-r1.json)
-`[Inferred]` The next bounded step is one explicitly labeled `CANDIDATE_REPRODUCTION` using an identified candidate history and declared strategy/runtime. It is a candidate comparison, not regeneration of the original prediction or verification of its source.
+
+`[Confirmed]` As of 2026-10-14, old r7 evidence records exit 0, `accepted: true`, and candidate `MATCH` for commit `560503e9e0ab897c603205151368b10d33af94c4` / tree `bf43fa58a2bb2b5c9c0d337b6a0c7e90e3c42a41`; this applies only to those old tool bytes.
+
+`[Confirmed]` [PR #379](https://github.com/kelvinhuang0327/MathStatisticalAnalysis/pull/379) merged at 2026-10-14T09:47:50Z into commit `b16cd98dc30c2459701c53024c8bf9b2328da925` / tree `d09c71985187a3151eb1641804bc592da9a635ba`. [CI run 38532436278](https://github.com/kelvinhuang0327/MathStatisticalAnalysis/actions/runs/38532436278) succeeded for backend and frontend. The merged tool bytes have not run through the fixed CPython 3.9.6 receipt path; neither old r7 nor CI validates that runtime.
+
+`[Unknown]` Original execution source, complete ordered history, dataset/snapshot, runtime, and loaded-module identity remain `UNKNOWN`; the original legacy HTTP response remains unverified. Historical parity is incomplete; CTO progress remains 5/6 (83.3%). Resolving those identities/parity and executing the merged bytes through the fixed receipt path remain outstanding.
 
 This pilot does not change `lottery.replay.read_models`: its migration-ledger phase remains `INVENTORIED`, with no PR or parity-evidence entry. `[Confirmed]` (docs/migration/migration-ledger.yaml)
 

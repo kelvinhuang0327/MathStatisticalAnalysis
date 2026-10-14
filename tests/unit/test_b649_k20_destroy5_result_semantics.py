@@ -5,6 +5,8 @@ import pytest
 from lottolab.research.b649_k20_destroy5_result_semantics import (
     INITIAL_INCUMBENT_AUTHORITY,
     INITIAL_VERIFIED_INCUMBENT_COUNT,
+    INITIAL_VERIFIED_INCUMBENT_SOURCE_COMMIT,
+    IncumbentAuthority,
     IncumbentEvidence,
     classify_candidate,
     execution_authority_fields,
@@ -37,6 +39,12 @@ def test_candidate_classification_at_both_thresholds(
     }
 
 
+@pytest.mark.parametrize("count", [True, -1, 1.5, "313263889"])
+def test_invalid_candidate_counts_fail_closed(count: object) -> None:
+    with pytest.raises(ValueError, match="candidate count must be a non-negative integer"):
+        classify_candidate(count, INITIAL_INCUMBENT_AUTHORITY)
+
+
 def test_execution_authority_keeps_incumbent_out_of_frozen_manifest() -> None:
     fields = execution_authority_fields(INITIAL_INCUMBENT_AUTHORITY)
 
@@ -60,7 +68,7 @@ def test_unverified_higher_incumbent_is_rejected() -> None:
     candidate = IncumbentEvidence(
         count=INITIAL_VERIFIED_INCUMBENT_COUNT + 1,
         sha256="0" * 64,
-        artifact_locator="result.json",
+        artifact_locator=f"git:{'b' * 40}:result.json",
         source_commit="b" * 40,
         terminal=True,
         canonical_verified=False,
@@ -76,7 +84,7 @@ def test_verified_newer_comparable_terminal_can_replace_launch_authority() -> No
     candidate = IncumbentEvidence(
         count=INITIAL_VERIFIED_INCUMBENT_COUNT + 1,
         sha256="a" * 64,
-        artifact_locator="docs/research/result.json",
+        artifact_locator=f"git:{'b' * 40}:docs/research/result.json",
         source_commit="b" * 40,
         terminal=True,
         canonical_verified=True,
@@ -88,14 +96,58 @@ def test_verified_newer_comparable_terminal_can_replace_launch_authority() -> No
 
     assert selected.count == INITIAL_VERIFIED_INCUMBENT_COUNT + 1
     assert selected.sha256 == "a" * 64
-    assert selected.artifact_locator == "docs/research/result.json"
+    assert selected.artifact_locator == f"git:{'b' * 40}:docs/research/result.json"
+    assert selected.source_commit == "b" * 40
+
+
+def test_candidate_artifact_source_must_match_source_commit() -> None:
+    candidate = IncumbentEvidence(
+        count=INITIAL_VERIFIED_INCUMBENT_COUNT + 1,
+        sha256="a" * 64,
+        artifact_locator=f"git:{'a' * 40}:docs/research/result.json",
+        source_commit="b" * 40,
+        terminal=True,
+        canonical_verified=True,
+        directly_comparable=True,
+        newer=True,
+    )
+
+    with pytest.raises(ValueError, match="CURRENT_INCUMBENT_UNRESOLVED"):
+        resolve_launch_time_incumbent([candidate])
+
+
+@pytest.mark.parametrize(
+    "authority",
+    [
+        None,
+        IncumbentAuthority(
+            count=INITIAL_VERIFIED_INCUMBENT_COUNT - 1,
+            sha256="a" * 64,
+            artifact_locator=(
+                f"git:{INITIAL_VERIFIED_INCUMBENT_SOURCE_COMMIT}:docs/research/result.json"
+            ),
+            source_commit=INITIAL_VERIFIED_INCUMBENT_SOURCE_COMMIT,
+        ),
+        IncumbentAuthority(
+            count=INITIAL_VERIFIED_INCUMBENT_COUNT + 1,
+            sha256="a" * 64,
+            artifact_locator=f"git:{'a' * 40}:docs/research/result.json",
+            source_commit="b" * 40,
+        ),
+    ],
+)
+def test_invalid_or_wrong_launch_authority_fails_closed(
+    authority: object,
+) -> None:
+    with pytest.raises(ValueError, match="CURRENT_INCUMBENT_UNRESOLVED"):
+        classify_candidate(313_263_889, authority)
 
 
 def test_unverified_claim_above_base_is_rejected_even_after_verified_gain() -> None:
     verified = IncumbentEvidence(
         count=INITIAL_VERIFIED_INCUMBENT_COUNT + 2,
         sha256="a" * 64,
-        artifact_locator="docs/research/newer.json",
+        artifact_locator=f"git:{'c' * 40}:docs/research/newer.json",
         source_commit="c" * 40,
         terminal=True,
         canonical_verified=True,
@@ -105,7 +157,7 @@ def test_unverified_claim_above_base_is_rejected_even_after_verified_gain() -> N
     unverified = IncumbentEvidence(
         count=INITIAL_VERIFIED_INCUMBENT_COUNT + 1,
         sha256="0" * 64,
-        artifact_locator="docs/research/unresolved.json",
+        artifact_locator=f"git:{'b' * 40}:docs/research/unresolved.json",
         source_commit="b" * 40,
         terminal=True,
         canonical_verified=False,
@@ -151,3 +203,20 @@ def test_global_gain_can_terminate_before_all_sets_complete() -> None:
         sets_completed=1,
         sample_count=2_048,
     ) == "IMPROVED_VS_CURRENT_VERIFIED_INCUMBENT"
+
+
+@pytest.mark.parametrize(
+    ("sets_completed", "sample_count"),
+    [(0, 0), (2, 1), (-1, 1), (1, -1)],
+)
+def test_invalid_campaign_counts_fail_closed(
+    sets_completed: int,
+    sample_count: int,
+) -> None:
+    with pytest.raises(ValueError):
+        terminal_scientific_result(
+            best_canonically_verified_count=INITIAL_VERIFIED_INCUMBENT_COUNT,
+            launch_time_incumbent=INITIAL_INCUMBENT_AUTHORITY,
+            sets_completed=sets_completed,
+            sample_count=sample_count,
+        )

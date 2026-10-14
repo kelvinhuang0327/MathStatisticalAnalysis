@@ -12,7 +12,11 @@ from typing import cast
 
 import pytest
 
+# Keep bootstrap first so certificate imports resolve from the pinned source snapshot.
+# isort: off
+from tests.unit.b649_certificate_replay import replay_certificate_call, replay_fixed_result
 from lottolab.research import b649_cursor_41_owner_shared_bound_r1 as cert
+# isort: on
 
 S1_MINUS_S2 = 372_228_640 - 63_838_600
 TOP_EIGHT = [
@@ -29,7 +33,7 @@ TOP_EIGHT = [
 
 @pytest.fixture(scope="module")
 def result() -> dict[str, object]:
-    return cert.compute_result()
+    return replay_fixed_result(cert.__name__)
 
 
 @pytest.fixture
@@ -320,7 +324,7 @@ def test_tampered_result_rejected(result: dict[str, object], field: str, value: 
     changed = deepcopy(result)
     changed[field] = value
     with pytest.raises(ValueError, match="not exactly reproducible"):
-        cert.verify_result(changed)
+        replay_certificate_call(cert.__name__, "verify_result", changed)
 
 
 def test_family_recompute_and_no_authority_inflation(result: dict[str, object]) -> None:

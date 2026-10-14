@@ -12,7 +12,11 @@ from typing import cast
 
 import pytest
 
+# Keep bootstrap first so certificate imports resolve from the pinned source snapshot.
+# isort: off
+from tests.unit.b649_certificate_replay import replay_certificate_call, replay_fixed_result
 from lottolab.research import b649_next_resolved_frontier_shared_bound_r1 as cert
+# isort: on
 
 PROFILE_IDS = (
     "65555555555541000000",
@@ -44,7 +48,7 @@ S1_MINUS_S2 = 372_228_640 - 63_838_600
 
 @pytest.fixture(scope="module")
 def result() -> dict[str, object]:
-    return cert.compute_result()
+    return replay_fixed_result(cert.__name__)
 
 
 def test_input_identity_accepts_pinned_base_or_direct_candidate_child(
@@ -387,4 +391,4 @@ def test_family_delta_uses_every_row_and_does_not_copy_the_top_row_delta(
 
 
 def test_result_bytes_reproduce() -> None:
-    assert cert.verify_result() is None
+    assert replay_certificate_call(cert.__name__, "verify_result") is None

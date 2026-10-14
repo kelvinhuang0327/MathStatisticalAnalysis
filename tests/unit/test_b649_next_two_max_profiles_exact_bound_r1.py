@@ -12,7 +12,11 @@ from typing import cast
 
 import pytest
 
+# Keep bootstrap first so certificate imports resolve from the pinned source snapshot.
+# isort: off
+from tests.unit.b649_certificate_replay import replay_certificate_call, replay_fixed_result
 from lottolab.research import b649_next_two_max_profiles_exact_bound_r1 as cert
+# isort: on
 
 A, B = cert.TARGETS
 CAPS = {A: 228, B: 252}
@@ -20,7 +24,7 @@ CAPS = {A: 228, B: 252}
 
 @pytest.fixture(scope="module")
 def result() -> dict[str, object]:
-    return cert.compute_result()
+    return replay_fixed_result(cert.__name__)
 
 
 def realize(target: list[int], rng: random.Random, tries: int) -> cert.Realization | None:
@@ -311,38 +315,29 @@ def test_duplicate_and_missing_resolved_row_rejected(result: dict[str, object]) 
         cert.decode(b'{"row":1,"row":2}')
 
 
-def test_pin_and_source_damage_rejected(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_pin_and_source_damage_rejected() -> None:
     with pytest.raises(ValueError, match="blob pin"):
         cert.blob(cert.CERTIFICATE_HEAD, cert.R2_RESULT, "0" * 64)
     with pytest.raises(ValueError, match="tree pin"):
         cert.identity(cert.CERTIFICATE_HEAD, cert.IMPLEMENTATION_TREE)
-    original = cert.r2.git
-
-    def damaged(*args: str) -> bytes:
-        raw = original(*args)
-        if args[0] == "show" and args[1].endswith(cert.r2.SOURCE):
-            return raw + b"\n"
-        return raw
-
-    monkeypatch.setattr(cert.r2, "git", damaged)
     with pytest.raises(ValueError, match="blob pin"):
-        cert.r2_fixed_input()
+        replay_certificate_call(
+            cert.__name__,
+            "r2_fixed_input",
+            git_damage=(cert.r2.__name__, cert.r2.SOURCE),
+        )
 
 
-def test_evaluator_source_drift_rejected(monkeypatch: pytest.MonkeyPatch) -> None:
-    original = cert.r2.git
-
-    def damaged(*args: str) -> bytes:
-        raw = original(*args)
-        if args[0] == "show" and args[1].endswith(
-            "src/lottolab/research/b649_k20_min_s2_route_b_current_owner_refinement_r32.py"
-        ):
-            return raw + b"\n"
-        return raw
-
-    monkeypatch.setattr(cert.r2, "git", damaged)
+def test_evaluator_source_drift_rejected() -> None:
     with pytest.raises(ValueError, match="evaluator differs"):
-        cert.r2.source_pins()
+        replay_certificate_call(
+            cert.r2.__name__,
+            "source_pins",
+            git_damage=(
+                cert.r2.__name__,
+                "src/lottolab/research/b649_k20_min_s2_route_b_current_owner_refinement_r32.py",
+            ),
+        )
 
 
 def test_family_scans_all_rows_and_preserves_cursor(result: dict[str, object]) -> None:
@@ -384,4 +379,4 @@ def test_changed_cap_cannot_produce_certified_result(result: dict[str, object]) 
     altered = deepcopy(result)
     cert.obj(cast(list[object], altered["CERTIFICATES"])[1])["NEW_T_CAP"] = 251
     with pytest.raises(ValueError, match="not exactly reproducible"):
-        cert.verify_result(altered)
+        replay_certificate_call(cert.__name__, "verify_result", altered)

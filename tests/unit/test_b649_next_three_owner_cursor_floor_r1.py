@@ -15,9 +15,16 @@ from typing import Any, cast
 
 import pytest
 
+# The certificate is introduced by the current math input commit, newer than
+# its INPUT_HEAD. Keep the shared replay bootstrap first, then bind that source.
+# isort: off
+from tests.unit.b649_certificate_replay import replay_certificate_call, replay_fixed_result
 from lottolab.research import b649_next_three_owner_cursor_floor_r1 as cert
+# isort: on
 
 type Record = dict[str, Any]
+_CERTIFICATE_SOURCE_HEAD = "2159f5257e8c0742662bc087f4cf9bb275a515a5"
+_CERTIFICATE_SOURCE_TREE = "2018f025de0a5d47c0542bfa00cc5d8bba6ac8de"
 IDS = ("65555555555531100000", "66555555554441100000", "66555555555422100000")
 HISTS = (
     {0: 5, 1: 2, 3: 1, 5: 11, 6: 1},
@@ -28,7 +35,16 @@ HISTS = (
 
 @pytest.fixture(scope="module")
 def result() -> Record:
-    return cert.compute_result()
+    return cast(
+        Record,
+        replay_fixed_result(
+            cert.__name__,
+            source_head=_CERTIFICATE_SOURCE_HEAD,
+            source_tree=_CERTIFICATE_SOURCE_TREE,
+            operation_head=_CERTIFICATE_SOURCE_HEAD,
+            operation_tree=_CERTIFICATE_SOURCE_TREE,
+        ),
+    )
 
 
 def independent_term(pid: str, t: int, floor: int = 112) -> list[int]:
@@ -362,44 +378,102 @@ def test_actual_sha_profile_cap_and_authority_gates() -> None:
 
 
 def test_real_single_parent_child(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, result: Record
+    tmp_path: Path, result: Record
 ) -> None:
     """Disposable bare Git objects in OS temp; no extra retained branch/worktree."""
+    environment = os.environ.copy()
+    for name in tuple(environment):
+        if name.startswith("GIT_"):
+            environment.pop(name)
+
     scratch = tmp_path / "child.git"
-    subprocess.run(["git", "init", "--bare", "--quiet", str(scratch)], check=True)
-    common = Path(cert.git("rev-parse", "--git-common-dir"))
+    subprocess.run(
+        ["git", "init", "--bare", "--quiet", str(scratch)], check=True, env=environment
+    )
+    common = Path(
+        subprocess.check_output(
+            ["git", "rev-parse", "--git-common-dir"], cwd=cert.ROOT, env=environment, text=True
+        ).strip()
+    )
     if not common.is_absolute():
         common = cert.ROOT / common
-    monkeypatch.setenv("GIT_ALTERNATE_OBJECT_DIRECTORIES", str(common.resolve() / "objects"))
-    monkeypatch.setenv("GIT_INDEX_FILE", str(tmp_path / "isolated.index"))
+    environment["GIT_ALTERNATE_OBJECT_DIRECTORIES"] = str(common.resolve() / "objects")
+    environment["GIT_INDEX_FILE"] = str(tmp_path / "isolated.index")
 
     def run(*args: str, data: bytes | None = None) -> str:
         return (
-            subprocess.check_output(["git", *args], cwd=scratch, input=data, env=os.environ.copy())
+            subprocess.check_output(["git", *args], cwd=scratch, input=data, env=environment)
             .decode()
             .strip()
         )
 
-    run("read-tree", cert.INPUT_HEAD)
-    for path in (cert.SOURCE, cert.TEST, cert.RESULT):
-        contents = cert.render(result) if path == cert.RESULT else (cert.ROOT / path).read_bytes()
-        oid = run("hash-object", "-w", "--stdin", data=contents)
-        run("update-index", "--add", "--cacheinfo", "100644", oid, path)
-    tree = run("write-tree")
-    child = run(
-        "-c",
-        "user.name=Verifier fixture",
-        "-c",
-        "user.email=fixture@invalid",
-        "commit-tree",
-        tree,
-        "-p",
-        cert.INPUT_HEAD,
-        data=b"Disposable child fixture\n",
+    def commit_result(contents: bytes, message: bytes) -> str:
+        run("read-tree", cert.INPUT_HEAD)
+        for path in (cert.SOURCE, cert.TEST, cert.RESULT):
+            blob_contents = (
+                contents
+                if path == cert.RESULT
+                else subprocess.check_output(
+                    ["git", "show", f"{_CERTIFICATE_SOURCE_HEAD}:{path}"],
+                    cwd=cert.ROOT,
+                    env={
+                        name: value
+                        for name, value in environment.items()
+                        if not name.startswith("GIT_")
+                    },
+                )
+            )
+            oid = run("hash-object", "-w", "--stdin", data=blob_contents)
+            run("update-index", "--add", "--cacheinfo", "100644", oid, path)
+        tree = run("write-tree")
+        return run(
+            "-c",
+            "user.name=Verifier fixture",
+            "-c",
+            "user.email=fixture@invalid",
+            "commit-tree",
+            tree,
+            "-p",
+            cert.INPUT_HEAD,
+            data=message,
+        )
+
+    child = commit_result(cert.render(result), b"Disposable child fixture\n")
+    assert (
+        replay_certificate_call(
+            cert.__name__,
+            "verify_result",
+            child,
+            repo=scratch,
+            source_head=_CERTIFICATE_SOURCE_HEAD,
+            source_tree=_CERTIFICATE_SOURCE_TREE,
+            operation_head=_CERTIFICATE_SOURCE_HEAD,
+            operation_tree=_CERTIFICATE_SOURCE_TREE,
+        )
+        is None
     )
-    assert cert.verify_identity(child, scratch) == "FIXED_DIRECT_CHILD"
-    cert.verify_result(child, scratch)
+
+    invalid_result = cert.render({**result, "NEGATIVE_FIXTURE": True})
+    invalid_child = commit_result(invalid_result, b"Disposable invalid result fixture\n")
+    with pytest.raises(ValueError, match="stored result differs from complete exact recomputation"):
+        replay_certificate_call(
+            cert.__name__,
+            "verify_result",
+            invalid_child,
+            repo=scratch,
+            source_head=_CERTIFICATE_SOURCE_HEAD,
+            source_tree=_CERTIFICATE_SOURCE_TREE,
+            operation_head=_CERTIFICATE_SOURCE_HEAD,
+            operation_tree=_CERTIFICATE_SOURCE_TREE,
+        )
 
 
 def test_stored_exact_result() -> None:
-    cert.verify_result()
+    assert replay_certificate_call(
+        cert.__name__,
+        "verify_result",
+        source_head=_CERTIFICATE_SOURCE_HEAD,
+        source_tree=_CERTIFICATE_SOURCE_TREE,
+        operation_head=_CERTIFICATE_SOURCE_HEAD,
+        operation_tree=_CERTIFICATE_SOURCE_TREE,
+    ) is None

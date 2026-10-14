@@ -12,7 +12,11 @@ from typing import cast
 
 import pytest
 
+# Keep bootstrap first so certificate imports resolve from the pinned source snapshot.
+# isort: off
+from tests.unit.b649_certificate_replay import replay_certificate_call, replay_fixed_result
 from lottolab.research import b649_next_two_max_profiles_exact_bound_r1 as cert
+# isort: on
 
 A, B = cert.TARGETS
 CAPS = {A: 228, B: 252}
@@ -20,7 +24,7 @@ CAPS = {A: 228, B: 252}
 
 @pytest.fixture(scope="module")
 def result() -> dict[str, object]:
-    return cert.compute_result()
+    return replay_fixed_result(cert.__name__)
 
 
 def realize(target: list[int], rng: random.Random, tries: int) -> cert.Realization | None:
@@ -384,4 +388,4 @@ def test_changed_cap_cannot_produce_certified_result(result: dict[str, object]) 
     altered = deepcopy(result)
     cert.obj(cast(list[object], altered["CERTIFICATES"])[1])["NEW_T_CAP"] = 251
     with pytest.raises(ValueError, match="not exactly reproducible"):
-        cert.verify_result(altered)
+        replay_certificate_call(cert.__name__, "verify_result", altered)

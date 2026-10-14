@@ -46,8 +46,9 @@ import re
 import sys
 import types
 import uuid
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
+from typing import NoReturn, Protocol, cast
 
 STRATEGY = "ts3_regime_3bet"
 LOTTERY = "BIG_LOTTO"
@@ -82,36 +83,58 @@ MODULE_PATHS = {
 TARGET_KEYS = {"lottery_type", "draw_number", "draw_date", "actual_numbers", "actual_special"}
 
 
-def require(condition, message):
+# Dynamic JSON stays object-valued until the existing runtime checks use it.
+# Casts describe those boundaries without coercing, copying, or validating data.
+class AdapterMetadata(Protocol):
+    strategy_id: str
+    strategy_version: str
+    min_history: int
+    status: str
+    supported_lottery_types: list[str]
+
+
+class Adapter(Protocol):
+    meta: AdapterMetadata
+
+    def get_one_bet(self, history: object, lottery: str) -> tuple[list[int], object]: ...
+
+
+class AdapterFactory(Protocol):
+    def __call__(self, strategy: str) -> Adapter: ...
+
+
+def require(condition: object, message: str) -> None:
     if not condition:
         raise ValueError(message)
 
 
-def sha(data):
+def sha(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
-def canonical(value):
+def canonical(value: object) -> bytes:
     return json.dumps(value, ensure_ascii=False, sort_keys=True,
                       separators=(",", ":"), allow_nan=False).encode("utf-8")
 
 
-def decode_json(data):
-    def pairs(items):
-        result = {}
+def decode_json(data: bytes) -> object:
+    def pairs(items: list[tuple[str, object]]) -> dict[str, object]:
+        result: dict[str, object] = {}
         for key, value in items:
             require(key not in result, "Duplicate JSON key: " + key)
             result[key] = value
         return result
 
-    def bad_constant(value):
+    def bad_constant(value: str) -> NoReturn:
         raise ValueError("Non-finite JSON value: " + value)
 
     return json.loads(data.decode("utf-8"), object_pairs_hook=pairs,
                       parse_constant=bad_constant)
 
 
-def accept_receipt(receipt_bytes, expected_sha256, observed_exit_code=None):
+def accept_receipt(
+    receipt_bytes: object, expected_sha256: object, observed_exit_code: object = None,
+) -> dict[str, object]:
     """Read-only v1 journal acceptance; never infer an exit code or run/retry a call.
 
     The caller supplies immutable bytes, their independently pinned digest and
@@ -119,7 +142,7 @@ def accept_receipt(receipt_bytes, expected_sha256, observed_exit_code=None):
     from receipt acceptance; neither establishes original parity or durability.
     Invalid/incomplete evidence returns accepted=False, without reading files.
     """
-    verdict = {
+    verdict: dict[str, object] = {
         "accepted": False, "reason": None, "execution_id": None,
         "comparison": {"status": "NOT_EVALUATED", "scope": "candidate_output_fields_only"},
         "candidate_only": True, "original_source_identity_established": False,
@@ -127,6 +150,7 @@ def accept_receipt(receipt_bytes, expected_sha256, observed_exit_code=None):
     }
     try:
         require(type(receipt_bytes) is bytes, "Receipt must be immutable bytes")
+        receipt_bytes = cast(bytes, receipt_bytes)
         require(isinstance(expected_sha256, str)
                 and re.fullmatch(r"[0-9a-f]{64}", expected_sha256) is not None,
                 "Expected receipt SHA256 must be 64 lowercase hex characters")
@@ -144,7 +168,7 @@ def accept_receipt(receipt_bytes, expected_sha256, observed_exit_code=None):
             "candidate_provenance", "adapter_call_attempts", "reserved_file", "request",
             "recorded_at_utc",
         }
-        additions = (
+        additions: tuple[set[str], ...] = (
             set(),
             {"recorder", "inputs", "source_root", "source_files", "candidate_source",
              "target", "reference_capture", "call", "runtime"},
@@ -156,8 +180,9 @@ def accept_receipt(receipt_bytes, expected_sha256, observed_exit_code=None):
         for index, record in enumerate(records, 1):
             phase = phases[index - 1]
             keys |= additions[index - 1]
-            require(isinstance(record, dict) and set(record) == keys,
+            require(isinstance(record, dict) and set(cast(dict[str, object], record)) == keys,
                     "Incomplete or unknown receipt record fields")
+            record = cast(dict[str, object], record)
             require(canonical(record) == lines[index - 1], "Noncanonical receipt record")
             require(record["schema"] == "biglotto-single-execution-receipt-v1",
                     "Unknown receipt schema")
@@ -187,16 +212,18 @@ def accept_receipt(receipt_bytes, expected_sha256, observed_exit_code=None):
                 require(record["comparison"] == {
                     "status": "NOT_EVALUATED", "scope": "candidate_output_fields_only"},
                     "Comparison before completion")
-        terminal = records[-1]
+        terminal = cast(dict[str, object], records[-1])
         snapshot_keys = {"path", "bytes", "sha256", "raw_base64", "parsed_canonical_sha256"}
         input_keys = {"identity", "history", "target"}
-        inputs = records[1]["inputs"]
+        inputs = cast(dict[str, dict[str, object]],
+                      cast(dict[str, object], records[1])["inputs"])
         require(type(inputs) is dict and set(inputs) == input_keys,
                 "Incomplete recorded input snapshots")
-        require(all(canonical(record["inputs"]) == canonical(inputs) for record in records[2:]),
+        require(all(canonical(cast(dict[str, object], record)["inputs"]) == canonical(inputs)
+                    for record in records[2:]),
                 "Recorded input snapshots changed during execution")
 
-        def decode_recorded_snapshot(name):
+        def decode_recorded_snapshot(name: str) -> object:
             snapshot = inputs[name]
             require(type(snapshot) is dict and set(snapshot) == snapshot_keys,
                     "Incomplete recorded snapshot: " + name)
@@ -209,7 +236,7 @@ def accept_receipt(receipt_bytes, expected_sha256, observed_exit_code=None):
                     and re.fullmatch(
                         r"[0-9a-f]{64}", snapshot["parsed_canonical_sha256"]) is not None,
                     "Invalid recorded snapshot metadata: " + name)
-            raw = base64.b64decode(snapshot["raw_base64"], validate=True)
+            raw = base64.b64decode(cast(str, snapshot["raw_base64"]), validate=True)
             require(len(raw) == snapshot["bytes"] and sha(raw) == snapshot["sha256"],
                     "Recorded snapshot bytes/hash mismatch: " + name)
             value = decode_json(raw)
@@ -217,32 +244,33 @@ def accept_receipt(receipt_bytes, expected_sha256, observed_exit_code=None):
                     "Recorded snapshot canonical hash mismatch: " + name)
             return value
 
-        identity = decode_recorded_snapshot("identity")
-        history = decode_recorded_snapshot("history")
+        identity = cast(dict[str, object], decode_recorded_snapshot("identity"))
+        history = cast(list[object], decode_recorded_snapshot("history"))
         target_snapshot = decode_recorded_snapshot("target")
         require(canonical(target_snapshot) == canonical(terminal["target"]),
                 "Target differs from recorded input bytes")
-        identity_source = identity["candidate_source"]
-        identity_scope = identity["scope"]
+        identity_source = cast(dict[str, object], identity["candidate_source"])
+        identity_scope = cast(dict[str, object], identity["scope"])
         require(identity["schema"] == "biglotto-strategy-input-identity-r1"
                 and identity_source["commit"] == COMMIT and identity_source["tree"] == TREE
                 and identity_scope["strategy_id"] == STRATEGY
                 and identity_scope["lottery_type"] == LOTTERY,
                 "Recorded identity does not match the pinned candidate")
-        reference_capture = terminal["reference_capture"]
+        reference_capture = cast(dict[str, object], terminal["reference_capture"])
         require(reference_capture["path"] == CAPTURE_PATH
                 and reference_capture["sha256"] == PINS[CAPTURE_PATH]
                 and reference_capture["json_pointer"] == "/candidates_sample/0"
-                and reference_capture["row"] == identity["capture"]["target_row"],
+                and reference_capture["row"]
+                == cast(dict[str, object], identity["capture"])["target_row"],
                 "Recorded capture reference does not match identity")
-        target = terminal["target"]
-        reference = reference_capture["row"]
+        target = cast(dict[str, object], terminal["target"])
+        reference = cast(dict[str, object], reference_capture["row"])
         validate_inputs(history, target, reference)
-        request = records[0]["request"]
+        request = cast(dict[str, object], cast(dict[str, object], records[0])["request"])
         for name in input_keys:
             require(request[name + "_sha256"] == inputs[name]["sha256"],
                     "Request pin differs from recorded snapshot: " + name)
-        call = terminal["call"]
+        call = cast(dict[str, object], terminal["call"])
         require(call["strategy_id"] == STRATEGY and call["method"] == "get_one_bet"
                 and call["lottery_type"] == LOTTERY and call["history_count"] == len(history)
                 and call["history_canonical_sha256"] == sha(canonical(history))
@@ -252,33 +280,37 @@ def accept_receipt(receipt_bytes, expected_sha256, observed_exit_code=None):
         result = terminal["result"]
         result_keys = {"predicted_numbers", "predicted_special", "prediction_status",
                        "hit_numbers", "hit_count", "special_hit", "source_trace", "provenance_hash"}
-        require(isinstance(result, dict) and set(result) == result_keys,
+        require(isinstance(result, dict) and set(cast(dict[str, object], result)) == result_keys,
                 "Incomplete completed result")
-        predicted = result["predicted_numbers"]
+        result = cast(dict[str, object], result)
+        predicted = cast(list[int], result["predicted_numbers"])
         require(numbers_ok(predicted) and predicted == sorted(predicted)
                 and result["predicted_special"] is None and result["prediction_status"] == "READY"
                 and result["special_hit"] is False, "Invalid completed prediction")
-        hits = sorted(set(predicted) & set(target["actual_numbers"]))
+        hits = sorted(set(predicted) & set(cast(list[int], target["actual_numbers"])))
         require(type(result["hit_numbers"]) is list
-                and all(type(number) is int for number in result["hit_numbers"])
+                and all(type(number) is int for number in cast(list[object], result["hit_numbers"]))
                 and result["hit_numbers"] == hits and type(result["hit_count"]) is int
                 and result["hit_count"] == len(hits)
                 and result["source_trace"] == f"{STRATEGY}:get_one_bet:hist=635"
                 and result["provenance_hash"] == sha(
                     f"{STRATEGY}:{target['draw_number']}:{predicted}".encode())[:16],
                 "Invalid completed derived fields")
-        reference = terminal["reference_capture"]["row"]
+        reference = cast(dict[str, object],
+                         cast(dict[str, object], terminal["reference_capture"])["row"])
         mismatches = sorted(key for key in result_keys if result[key] != reference[key])
         comparison = terminal["comparison"]
-        require(isinstance(comparison, dict) and set(comparison) == {
+        require(isinstance(comparison, dict) and set(cast(dict[str, object], comparison)) == {
             "status", "scope", "mismatched_fields", "historical_reproduction_proven"},
             "Incomplete completed comparison")
+        comparison = cast(dict[str, object], comparison)
         require(comparison["scope"] == "candidate_output_fields_only"
                 and comparison["historical_reproduction_proven"] is False
                 and comparison["status"] == ("MISMATCH" if mismatches else "MATCH")
                 and isinstance(comparison["mismatched_fields"], list)
-                and all(isinstance(key, str) for key in comparison["mismatched_fields"])
-                and sorted(comparison["mismatched_fields"]) == mismatches,
+                and all(isinstance(key, str)
+                        for key in cast(list[object], comparison["mismatched_fields"]))
+                and sorted(cast(list[str], comparison["mismatched_fields"])) == mismatches,
                 "Invalid candidate comparison")
         verdict["execution_id"] = execution_id
         verdict["comparison"] = comparison
@@ -291,7 +323,7 @@ def accept_receipt(receipt_bytes, expected_sha256, observed_exit_code=None):
     return verdict
 
 
-def snapshot(path, expected):
+def snapshot(path: str, expected: str) -> tuple[object, dict[str, object]]:
     require(re.fullmatch(r"[0-9a-f]{64}", expected) is not None,
             "Expected SHA256 must be 64 lowercase hex characters")
     resolved = Path(path).resolve(strict=True)
@@ -303,41 +335,44 @@ def snapshot(path, expected):
                    "parsed_canonical_sha256": sha(canonical(value))}
 
 
-def numbers_ok(value):
-    return (isinstance(value, list) and len(value) == 6
-            and all(type(n) is int and 1 <= n <= 49 for n in value)
-            and len(set(value)) == 6)
+def numbers_ok(value: object) -> bool:
+    return (isinstance(value, list) and len(cast(list[object], value)) == 6
+            and all(type(n) is int and 1 <= n <= 49 for n in cast(list[object], value))
+            and len(set(cast(list[int], value))) == 6)
 
 
-def date_value(value):
+def date_value(value: object) -> date:
     require(isinstance(value, str) and re.fullmatch(r"[0-9]{4}/[0-9]{2}/[0-9]{2}", value),
             "Date must be YYYY/MM/DD")
-    return datetime.strptime(value, "%Y/%m/%d").date()
+    return datetime.strptime(cast(str, value), "%Y/%m/%d").date()
 
 
-def draw_value(value):
+def draw_value(value: object) -> int:
     require(isinstance(value, str) and re.fullmatch(r"[0-9]+", value),
             "Draw identity must be a decimal string")
-    return int(value)
+    return int(cast(str, value))
 
 
-def validate_inputs(history, target, reference):
-    require(isinstance(target, dict) and set(target) == TARGET_KEYS,
+def validate_inputs(history: object, target: object, reference: dict[str, object]) -> None:
+    require(isinstance(target, dict) and set(cast(dict[str, object], target)) == TARGET_KEYS,
             "Target keys must exactly match documented schema")
+    target = cast(dict[str, object], target)
     require(target == {key: reference[key] for key in TARGET_KEYS},
             "Target/outcome does not match this identity's capture")
     require(target["lottery_type"] == LOTTERY and numbers_ok(target["actual_numbers"]),
             "Invalid target lottery/numbers")
     special = target["actual_special"]
     require(type(special) is int and 1 <= special <= 49
-            and special not in target["actual_numbers"], "Invalid target special")
+            and special not in cast(list[int], target["actual_numbers"]), "Invalid target special")
     target_draw, target_date = draw_value(target["draw_number"]), date_value(target["draw_date"])
-    require(isinstance(history, list) and len(history) == 635,
+    require(isinstance(history, list) and len(cast(list[object], history)) == 635,
             "This capture comparison requires exactly 635 caller-frozen history rows")
     previous_draw, previous_date = -1, None
-    for row in history:
-        require(isinstance(row, dict) and set(row) == {"draw", "date", "numbers", "special"},
+    for row in cast(list[object], history):
+        require(isinstance(row, dict)
+                and set(cast(dict[str, object], row)) == {"draw", "date", "numbers", "special"},
                 "History row keys must exactly match documented schema")
+        row = cast(dict[str, object], row)
         draw, date = draw_value(row["draw"]), date_value(row["date"])
         require(previous_draw < draw < target_draw,
                 "History must be strictly ascending and pre-target")
@@ -346,24 +381,28 @@ def validate_inputs(history, target, reference):
         require(numbers_ok(row["numbers"]), "Invalid history numbers")
         special = row["special"]
         require(special is None or (type(special) is int and 1 <= special <= 49
-                                   and special not in row["numbers"]), "Invalid history special")
+                                   and special not in cast(list[int], row["numbers"])),
+                "Invalid history special")
         previous_draw, previous_date = draw, date
 
 
-def pinned_sources(identity, root):
+def pinned_sources(
+    identity: dict[str, object], root: Path,
+) -> tuple[dict[str, bytes], dict[str, dict[str, object]]]:
     require(identity.get("schema") == "biglotto-strategy-input-identity-r1",
             "Unknown identity schema")
-    source = identity["candidate_source"]
+    source = cast(dict[str, object], identity["candidate_source"])
     require(source["commit"] == COMMIT and source["tree"] == TREE,
             "UNKNOWN: identity differs from supported candidate commit/tree")
-    require(identity["scope"]["strategy_id"] == STRATEGY
-            and identity["scope"]["lottery_type"] == LOTTERY,
+    require(cast(dict[str, object], identity["scope"])["strategy_id"] == STRATEGY
+            and cast(dict[str, object], identity["scope"])["lottery_type"] == LOTTERY,
             "Identity strategy/lottery mismatch")
-    entries = identity["files"]
+    entries = cast(list[dict[str, object]], identity["files"])
     require(len(entries) == len(PINS), "Identity must contain exactly six pinned files")
-    by_path = {item["source_path"]: item for item in entries}
+    by_path = {cast(str, item["source_path"]): item for item in entries}
     require(set(by_path) == set(PINS), "Identity pinned path set mismatch")
-    blobs, evidence = {}, {}
+    blobs: dict[str, bytes] = {}
+    evidence: dict[str, dict[str, object]] = {}
     for relative, expected in PINS.items():
         item = by_path[relative]
         require(item["sha256"] == expected and item["source_commit"] == COMMIT,
@@ -379,7 +418,7 @@ def pinned_sources(identity, root):
     return blobs, evidence
 
 
-def namespace(name):
+def namespace(name: str) -> None:
     # Empty search paths prevent loading unpinned package initializers.
     module = types.ModuleType(name)
     module.__path__ = []
@@ -389,12 +428,12 @@ def namespace(name):
     sys.modules[name] = module
 
 
-def load_pinned(name, path, data):
+def load_pinned(name: str, path: Path, data: bytes) -> types.ModuleType:
     # Compile the verified in-memory bytes; never execute cached .pyc or reread source.
     package = name == "lottery_api.models"
     spec = importlib.util.spec_from_file_location(
         name, str(path), submodule_search_locations=[] if package else None)
-    module = importlib.util.module_from_spec(spec)
+    module = importlib.util.module_from_spec(cast(importlib.machinery.ModuleSpec, spec))
     sys.modules[name] = module
     parent, _, child = name.rpartition(".")
     setattr(sys.modules[parent], child, module)
@@ -402,15 +441,18 @@ def load_pinned(name, path, data):
     return module
 
 
-def module_evidence(modules, sources):
-    observed = {}
+def module_evidence(
+    modules: dict[str, types.ModuleType], sources: dict[str, dict[str, object]],
+) -> dict[str, dict[str, object]]:
+    observed: dict[str, dict[str, object]] = {}
     for name, relative in MODULE_PATHS.items():
         module = modules[name]
         expected = sources[relative]
         require(sys.modules.get(name) is module, "Loaded module was replaced: " + name)
         require(module.__file__ == expected["path"], "Loaded __file__ mismatch: " + name)
-        require(module.__spec__.origin == expected["path"], "Loaded origin mismatch: " + name)
-        actual = sha(Path(module.__file__).read_bytes())
+        require(cast(importlib.machinery.ModuleSpec, module.__spec__).origin == expected["path"],
+                "Loaded origin mismatch: " + name)
+        actual = sha(Path(cast(str, module.__file__)).read_bytes())
         require(actual == expected["sha256"], "Loaded source changed: " + name)
         observed[name] = {"__file__": module.__file__, "sha256": actual,
                           "executed_snapshot_sha256": expected["sha256"],
@@ -418,11 +460,11 @@ def module_evidence(modules, sources):
     return observed
 
 
-def dependencies(root):
-    observed = {}
+def dependencies(root: Path) -> dict[str, dict[str, object]]:
+    observed: dict[str, dict[str, object]] = {}
     for name in ("numpy", "scipy", "scipy.fft"):
         module = importlib.import_module(name)
-        path = Path(module.__file__).resolve(strict=True)
+        path = Path(cast(str, module.__file__)).resolve(strict=True)
         require(root not in path.parents, "Dependency resolved inside candidate source: " + name)
         observed[name] = {"__file__": str(path), "sha256": sha(path.read_bytes())}
         if name != "scipy.fft":
@@ -436,7 +478,7 @@ def dependencies(root):
     return observed
 
 
-def main():
+def main() -> int:
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     for argument in ("history", "history-sha256", "target", "target-sha256",
@@ -448,7 +490,7 @@ def main():
     output = requested.parent.resolve(strict=True) / requested.name
     fd = os.open(str(output), os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_APPEND, 0o600)
     reserved_stat = os.fstat(fd)
-    state = {
+    state: dict[str, object] = {
         "schema": "biglotto-single-execution-receipt-v1", "execution_id": str(uuid.uuid4()),
         "status": "PREPARED", "phase": "RESERVED", "sequence": 0,
         "output_path": str(output), "candidate_only": True,
@@ -461,12 +503,12 @@ def main():
     }
     append_failed = False
 
-    def append():
+    def append() -> None:
         nonlocal append_failed
         visible_stat = output.lstat()
         require((visible_stat.st_dev, visible_stat.st_ino)
                 == (reserved_stat.st_dev, reserved_stat.st_ino), "Reserved output identity changed")
-        state["sequence"] += 1
+        state["sequence"] = cast(int, state["sequence"]) + 1
         state["recorded_at_utc"] = datetime.now(
             timezone.utc,  # noqa: UP017 -- datetime.UTC is unavailable on Python 3.9.
         ).isoformat()
@@ -501,16 +543,22 @@ def main():
                 "Fresh interpreter required; candidate/dependency modules already loaded")
         root = Path(args.source_root).resolve(strict=True)
         require(root.is_dir(), "Source root must be a directory")
-        identity, identity_snapshot = snapshot(args.identity, args.identity_sha256)
-        history, history_snapshot = snapshot(args.history, args.history_sha256)
-        target, target_snapshot = snapshot(args.target, args.target_sha256)
+        identity_value, identity_snapshot = snapshot(args.identity, args.identity_sha256)
+        identity = cast(dict[str, object], identity_value)
+        history_value, history_snapshot = snapshot(args.history, args.history_sha256)
+        history = cast(list[object], history_value)
+        target_value, target_snapshot = snapshot(args.target, args.target_sha256)
+        target = cast(dict[str, object], target_value)
         state["inputs"] = {"identity": identity_snapshot, "history": history_snapshot,
                            "target": target_snapshot}
         blobs, sources = pinned_sources(identity, root)
-        reference = decode_json(blobs[CAPTURE_PATH])["candidates_sample"][0]
-        require(reference == identity["capture"]["target_row"], "Identity/capture row mismatch")
+        capture = cast(dict[str, object], decode_json(blobs[CAPTURE_PATH]))
+        reference = cast(list[dict[str, object]], capture["candidates_sample"])[0]
+        require(reference == cast(dict[str, object], identity["capture"])["target_row"],
+                "Identity/capture row mismatch")
+        identity_scope = cast(dict[str, object], identity["scope"])
         require(reference["strategy_id"] == STRATEGY
-                and target["draw_number"] == identity["scope"]["draw_number"],
+                and target["draw_number"] == identity_scope["draw_number"],
                 "Target identity mismatch")
         validate_inputs(history, target, reference)
         history_hash = sha(canonical(history))
@@ -540,24 +588,26 @@ def main():
         })
         append()
         state["phase"] = "IMPORTS"
-        state["runtime"]["dependencies"] = dependencies(root)
+        cast(dict[str, object], state["runtime"])["dependencies"] = dependencies(root)
         namespace("lottery_api")
         namespace("tools")
-        modules = {}
+        modules: dict[str, types.ModuleType] = {}
         for name, relative in MODULE_PATHS.items():
-            modules[name] = load_pinned(name, Path(sources[relative]["path"]), blobs[relative])
+            modules[name] = load_pinned(
+                name, Path(cast(str, sources[relative]["path"])), blobs[relative])
         state["loaded_modules_before_call"] = module_evidence(modules, sources)
         registry = modules["lottery_api.models.replay_strategy_registry"]
-        adapter = registry.get_adapter(STRATEGY)
+        adapter = cast(AdapterFactory, registry.get_adapter)(STRATEGY)
         require(adapter.meta.strategy_id == STRATEGY and adapter.meta.strategy_version == "v0.1"
                 and adapter.meta.min_history == 100 and adapter.meta.status == "ONLINE"
                 and adapter.meta.supported_lottery_types == [LOTTERY], "Adapter metadata mismatch")
         require(type(adapter).__module__ == registry.__name__
                 and type(adapter).__name__ == "_BigLottoTs3Regime3BetAdapter",
                 "Unexpected adapter class")
-        state["call"]["adapter_class"] = type(adapter).__module__ + "." + type(adapter).__name__
-        state["call"]["strategy_version"] = adapter.meta.strategy_version
-        state["runtime"]["sys_path_at_call"] = list(sys.path)
+        cast(dict[str, object], state["call"])["adapter_class"] = (
+            type(adapter).__module__ + "." + type(adapter).__name__)
+        cast(dict[str, object], state["call"])["strategy_version"] = adapter.meta.strategy_version
+        cast(dict[str, object], state["runtime"])["sys_path_at_call"] = list(sys.path)
         state["candidate_provenance"] = "VERIFIED_FOR_THIS_CANDIDATE_CALL"
         state["phase"] = "READY_TO_INVOKE"
         state["crash_semantics"] = (
@@ -573,12 +623,12 @@ def main():
         # Recheck all six pins and dependencies; a provenance failure must not yield MATCH.
         _, after_sources = pinned_sources(identity, root)
         require(after_sources == sources, "Pinned sources changed during call")
-        require(dependencies(root) == state["runtime"]["dependencies"],
+        require(dependencies(root) == cast(dict[str, object], state["runtime"])["dependencies"],
                 "Dependencies changed during call")
         require(numbers_ok(predicted_numbers) and predicted_numbers == sorted(predicted_numbers)
                 and predicted_special is None, "Unexpected adapter result")
-        hits = sorted(set(predicted_numbers) & set(target["actual_numbers"]))
-        result = {
+        hits = sorted(set(predicted_numbers) & set(cast(list[int], target["actual_numbers"])))
+        result: dict[str, object] = {
             "predicted_numbers": predicted_numbers, "predicted_special": predicted_special,
             "prediction_status": "READY", "hit_numbers": hits, "hit_count": len(hits),
             "special_hit": False, "source_trace": f"{STRATEGY}:get_one_bet:hist={len(history)}",

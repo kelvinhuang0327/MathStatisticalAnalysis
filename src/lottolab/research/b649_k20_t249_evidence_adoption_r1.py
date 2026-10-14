@@ -31,6 +31,22 @@ OLD_BOUND, NEW_BOUND, IMPROVEMENT = 313256489, 313121137, 135352
 OLD_ROW_BOUND, NEW_ROW_BOUND, ROW_IMPROVEMENT = OLD_BOUND, NEW_BOUND, IMPROVEMENT
 INCUMBENT, INCUMBENT_MARGIN = 313263888, 142751
 R30_INDEX = 3397
+ROW_BOUND_SOURCE_COLUMN = "BOUND"
+ROW_BOUND_SOURCE_METHOD = "Maximum of stored per-T BOUND fields; no formula recomputation."
+FULL_FAMILY_CLOSURE_STATUS = "NOT_CLAIMED"
+RESULT_SOURCE_IDENTITY = {
+    "TASK_ID": "B649_K20_E6FEE5EB_T249_EVIDENCE_ADOPTION_R1",
+    "FROZEN_HEAD": FROZEN_HEAD,
+    "FROZEN_TREE": FROZEN_TREE,
+    "FROZEN_RESULT_PATH": FROZEN_RESULT_PATH,
+    "FROZEN_RESULT_SHA256": FROZEN_RESULT_SHA256,
+    "PROOF_SOURCE_PATH": CERTIFICATE_RESULT_PATH,
+    "PROOF_SOURCE_SHA256": CERTIFICATE_RESULT_SHA256,
+    "R30_LEDGER_PATH": R30_RESULT_PATH,
+    "R30_LEDGER_SHA256": R30_RESULT_SHA256,
+    "HISTORICAL_R30_LOCATOR": f"GROUP_ATTEMPTS[{R30_INDEX}]",
+    "HISTORICAL_T_CAP": OLD_CAP,
+}
 ZERO_GRAPH_CASE_FLOORS = {0: 84, 1: 84, 2: 84, 3: 84, 4: 84, 5: 80, 6: 78}
 
 
@@ -148,8 +164,9 @@ def verify_adoption(
           "historical R30 cap certificate mismatch")
 
     columns = cert["TERM_COLUMNS"]
-    _need(columns.count("T") == columns.count("BOUND") == 1, "per-T columns must name T and BOUND")
-    ti, bi = columns.index("T"), columns.index("BOUND")
+    _need(columns.count("T") == columns.count(ROW_BOUND_SOURCE_COLUMN) == 1,
+          "per-T columns must name T and BOUND")
+    ti, bi = columns.index("T"), columns.index(ROW_BOUND_SOURCE_COLUMN)
     by_t = {}
     for row in active["ALL_T_TERMS"]:
         t = row[ti]
@@ -193,7 +210,12 @@ def validate_result_status(result: dict[str, Any], evidence: dict[str, Any]) -> 
         "LOCAL_ARTIFACT_VERDICT": "SELF_CHECK_ONLY", "NEW_ARTIFACT_RESOURCE": "FAIL",
     }
     for key, expected in statuses.items():
-        _need(result.get(key) == expected, f"status preservation failed: {key}")
+        actual = result.get(key)
+        _need(type(actual) is str and actual == expected, f"status preservation failed: {key}")
+    for key, expected in RESULT_SOURCE_IDENTITY.items():
+        actual = result.get(key)
+        _need(type(actual) is type(expected) and actual == expected,
+              f"result source identity mismatch: {key}")
     fields = {
         "PROFILE_ID": "PROFILE_ID", "OLD_CAP": "ORIGINAL_CAP", "NEW_CAP": "NEW_CAP",
         "OW_LOWER_BOUND": "OW_LOWER_BOUND", "PER_T_BEFORE_COUNT": "PER_T_BEFORE_COUNT",
@@ -202,5 +224,22 @@ def validate_result_status(result: dict[str, Any], evidence: dict[str, Any]) -> 
         "INCUMBENT_MARGIN": "INCUMBENT_MARGIN",
     }
     for result_key, evidence_key in fields.items():
-        _need(result.get(result_key) == evidence[evidence_key], f"result record mismatch: {result_key}")
-    _need(result.get("OTHER_ROWS_UNCHANGED") == "YES", "other profile rows must remain unchanged")
+        actual, expected = result.get(result_key), evidence[evidence_key]
+        _need(type(actual) is type(expected) and actual == expected,
+              f"result record mismatch: {result_key}")
+    row_bound = result.get("ROW_BOUND_EVIDENCE")
+    _need(type(row_bound) is dict, "result record mismatch: ROW_BOUND_EVIDENCE")
+    row_bound_fields = {
+        "SOURCE_METHOD": ROW_BOUND_SOURCE_METHOD,
+        "SOURCE_COLUMN": ROW_BOUND_SOURCE_COLUMN,
+    }
+    for key, expected in row_bound_fields.items():
+        actual = row_bound.get(key)
+        _need(type(actual) is type(expected) and actual == expected,
+              f"result record evidence mismatch: ROW_BOUND_EVIDENCE.{key}")
+    closure = result.get("FULL_FAMILY_CLOSURE")
+    _need(type(closure) is str and closure == FULL_FAMILY_CLOSURE_STATUS,
+          "result proof scope mismatch: FULL_FAMILY_CLOSURE")
+    unchanged = result.get("OTHER_ROWS_UNCHANGED")
+    _need(type(unchanged) is str and unchanged == "YES",
+          "other profile rows must remain unchanged")

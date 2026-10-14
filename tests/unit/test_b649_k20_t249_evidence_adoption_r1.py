@@ -129,3 +129,125 @@ def test_original_resource_cannot_be_promoted(
 def test_wrong_new_row_bound_rejected(sources: adoption.PinnedSources) -> None:
     with pytest.raises(adoption.AdoptionError, match="new row bound"):
         adoption.verify_adoption(sources, declared_new_row_bound=313121138)
+
+
+@pytest.mark.parametrize(
+    "field",
+    ("FROZEN_RESULT_SHA256", "PROOF_SOURCE_SHA256", "R30_LEDGER_SHA256"),
+)
+def test_each_pinned_input_sha_is_bound(
+    evidence: dict[str, object], result_record: dict[str, object], field: str,
+) -> None:
+    changed = dict(result_record)
+    changed[field] = "0" * 64
+    with pytest.raises(adoption.AdoptionError, match=field):
+        adoption.validate_result_status(changed, evidence)
+
+
+@pytest.mark.parametrize(
+    "field",
+    (
+        "TASK_ID", "FROZEN_HEAD", "FROZEN_TREE", "FROZEN_RESULT_PATH",
+        "PROOF_SOURCE_PATH", "R30_LEDGER_PATH", "HISTORICAL_R30_LOCATOR",
+        "HISTORICAL_T_CAP",
+    ),
+)
+def test_fixed_source_identity_is_bound(
+    evidence: dict[str, object], result_record: dict[str, object], field: str,
+) -> None:
+    changed = dict(result_record)
+    current = changed[field]
+    changed[field] = current + 1 if type(current) is int else f"{current}-changed"
+    with pytest.raises(adoption.AdoptionError, match=field):
+        adoption.validate_result_status(changed, evidence)
+
+
+@pytest.mark.parametrize(
+    ("path_field", "sha_field"),
+    (
+        ("FROZEN_RESULT_PATH", "FROZEN_RESULT_SHA256"),
+        ("PROOF_SOURCE_PATH", "PROOF_SOURCE_SHA256"),
+        ("R30_LEDGER_PATH", "R30_LEDGER_SHA256"),
+    ),
+)
+def test_mutually_changed_source_path_and_sha_still_fail_closed(
+    evidence: dict[str, object], result_record: dict[str, object],
+    path_field: str, sha_field: str,
+) -> None:
+    changed = dict(result_record)
+    changed[path_field] = f"untrusted/{path_field.lower()}.json"
+    changed[sha_field] = "f" * 64
+    with pytest.raises(adoption.AdoptionError):
+        adoption.validate_result_status(changed, evidence)
+
+
+@pytest.mark.parametrize(
+    ("field", "replacement"),
+    (
+        ("SOURCE_METHOD", "Recompute the formula from adjacent bounds."),
+        ("SOURCE_COLUMN", "T"),
+    ),
+)
+def test_row_bound_method_and_column_are_bound(
+    evidence: dict[str, object], result_record: dict[str, object],
+    field: str, replacement: str,
+) -> None:
+    changed = dict(result_record)
+    changed["ROW_BOUND_EVIDENCE"] = dict(result_record["ROW_BOUND_EVIDENCE"])
+    changed["ROW_BOUND_EVIDENCE"][field] = replacement
+    with pytest.raises(adoption.AdoptionError, match=field):
+        adoption.validate_result_status(changed, evidence)
+
+
+def test_full_family_closure_cannot_be_promoted(
+    evidence: dict[str, object], result_record: dict[str, object],
+) -> None:
+    changed = dict(result_record)
+    changed["FULL_FAMILY_CLOSURE"] = "CLAIMED"
+    with pytest.raises(adoption.AdoptionError, match="FULL_FAMILY_CLOSURE"):
+        adoption.validate_result_status(changed, evidence)
+
+
+BOUND_RESULT_FIELDS = (
+    "TASK_ID", "FROZEN_HEAD", "FROZEN_TREE", "FROZEN_RESULT_PATH",
+    "FROZEN_RESULT_SHA256", "PROOF_SOURCE_PATH", "PROOF_SOURCE_SHA256",
+    "R30_LEDGER_PATH", "R30_LEDGER_SHA256", "HISTORICAL_R30_LOCATOR",
+    "HISTORICAL_T_CAP", "ROW_BOUND_EVIDENCE.SOURCE_METHOD",
+    "ROW_BOUND_EVIDENCE.SOURCE_COLUMN", "FULL_FAMILY_CLOSURE",
+)
+
+
+@pytest.mark.parametrize("field", BOUND_RESULT_FIELDS)
+def test_required_source_method_column_and_scope_fields_cannot_be_missing(
+    evidence: dict[str, object], result_record: dict[str, object], field: str,
+) -> None:
+    changed = dict(result_record)
+    if field.startswith("ROW_BOUND_EVIDENCE."):
+        del changed["ROW_BOUND_EVIDENCE"][field.split(".", 1)[1]]
+    else:
+        del changed[field]
+    with pytest.raises(adoption.AdoptionError):
+        adoption.validate_result_status(changed, evidence)
+
+
+@pytest.mark.parametrize("field", BOUND_RESULT_FIELDS)
+def test_required_source_method_column_and_scope_fields_reject_wrong_types(
+    evidence: dict[str, object], result_record: dict[str, object], field: str,
+) -> None:
+    changed = dict(result_record)
+    if field.startswith("ROW_BOUND_EVIDENCE."):
+        changed["ROW_BOUND_EVIDENCE"] = dict(result_record["ROW_BOUND_EVIDENCE"])
+        changed["ROW_BOUND_EVIDENCE"][field.split(".", 1)[1]] = 1
+    else:
+        changed[field] = "265" if field == "HISTORICAL_T_CAP" else 1
+    with pytest.raises(adoption.AdoptionError):
+        adoption.validate_result_status(changed, evidence)
+
+
+def test_row_bound_evidence_must_be_an_object(
+    evidence: dict[str, object], result_record: dict[str, object],
+) -> None:
+    changed = dict(result_record)
+    changed["ROW_BOUND_EVIDENCE"] = []
+    with pytest.raises(adoption.AdoptionError, match="ROW_BOUND_EVIDENCE"):
+        adoption.validate_result_status(changed, evidence)

@@ -19,6 +19,7 @@ import sys
 import tempfile
 import time
 from pathlib import Path
+from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 TASK_ID = "B649_C2_N2_EQUALITY_SEVEN_PAIR_BATCH_R2"
@@ -36,6 +37,10 @@ RESULT = ROOT / RESULT_REL
 TEST_NAME = "test_b649_c2_n2_equality_seven_pair_batch_r2.py"
 SOURCE_COVERAGE_7SET, SOURCE_OUTCOME_COUNT, SET_SIZE = 44751984, 313263888, 7
 SERIALIZATION = "compact JSON separators=(',',':'), ensure_ascii=False, trailing newline"
+SUMMARY_FIELDS = (
+    "PAIR_ORDERED", "PAIR_ENGINE", "ORBIT_INDEX", "ORBIT_SIZE", "STATUS", "E",
+    "HISTOGRAM_SHA256", "COMPLEMENTARY_TABLE_SHA256",
+)
 
 
 def load_core(path=ROOT / CORE_REL, expected=CORE_SHA):
@@ -51,19 +56,25 @@ def load_core(path=ROOT / CORE_REL, expected=CORE_SHA):
 core = load_core()
 
 
-def encode(result) -> bytes:
+def encode(result: dict[str, Any]) -> bytes:
     return json.dumps(result, ensure_ascii=False, separators=(",", ":")).encode() + b"\n"
 
 
 @functools.cache
-def equality_count():
+def equality_count() -> Any:
     return core.pilot_namespace()["equality_count"]
 
 
-def verify_reparsed(data, result):
+def verify_reparsed(
+    data: bytes, result: dict[str, Any], *, parsed: dict[str, Any] | None = None,
+) -> None:
     # Compact bytes must reparse to the same histogram, table, C_ij and E; E/SHAs recomputed from the bytes.
-    parsed = json.loads(data)
-    for row, back in zip(result["SEVEN_PAIRS"], parsed["SEVEN_PAIRS"], strict=True):
+    reparsed: dict[str, Any] = json.loads(data) if parsed is None else parsed
+    rows, reparsed_rows = result["SEVEN_PAIRS"], reparsed["SEVEN_PAIRS"]
+    if len(rows) != len(reparsed_rows):
+        raise core.StopBatch("ARCHIVE_REPARSE_MISMATCH")
+    for index in range(len(rows)):
+        row, back = rows[index], reparsed_rows[index]
         if row["STATUS"] != "COMPLETE":
             continue
         exact, table = equality_count()(back["HISTOGRAM"], back["C_ij"], complete=back["HISTOGRAM_COMPLETE"])
@@ -75,31 +86,99 @@ def verify_reparsed(data, result):
             raise core.StopBatch("ARCHIVE_REPARSE_MISMATCH")
 
 
-def archive(result, path, folder, *, result_limit=core.RESULT_LIMIT, temp_limit=core.TEMP_LIMIT, deadline=None, peaks=None):
+def _has_payload(row: dict[str, Any]) -> bool:
+    return "HISTOGRAM" in row and "COMPLEMENTARY_BUCKET_TABLE" in row
+
+
+def _completed_summary(row: dict[str, Any], path: str | Path) -> dict[str, Any]:
+    return {**{key: row[key] for key in SUMMARY_FIELDS}, "FILE_LOCATOR": str(Path(path).resolve())}
+
+
+def _summary_matches(summary: dict[str, Any], archived: dict[str, Any], path: str | Path) -> bool:
+    return (summary.get("FILE_LOCATOR") == str(Path(path).resolve()) and
+            all(summary.get(key) == archived.get(key) for key in SUMMARY_FIELDS))
+
+
+def materialize_completed_rows(
+    result: dict[str, Any], path: str | Path,
+    row_metadata: dict[int, dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    """Reload summarized COMPLETE rows from the last seal and validate its bytes."""
+    rows = result["SEVEN_PAIRS"]
+    needs_reload = any(row["STATUS"] == "COMPLETE" and not _has_payload(row) for row in rows)
+    if not needs_reload:
+        return result
+    try:
+        data = Path(path).read_bytes()
+        archived = json.loads(data)
+        verify_reparsed(data, archived, parsed=archived)
+        archived_rows = archived["SEVEN_PAIRS"]
+        if len(rows) != len(archived_rows):
+            raise core.StopBatch("ARCHIVE_SUMMARY_MISMATCH")
+        materialized: list[dict[str, Any]] = []
+        for index in range(len(rows)):
+            row, saved = rows[index], archived_rows[index]
+            if row["STATUS"] == "COMPLETE" and not _has_payload(row):
+                if saved["STATUS"] != "COMPLETE" or not _summary_matches(row, saved, path):
+                    raise core.StopBatch("ARCHIVE_SUMMARY_MISMATCH")
+                restored = dict(saved)
+                if row_metadata and index in row_metadata:
+                    restored.update(row_metadata[index])
+                materialized.append(restored)
+            else:
+                materialized.append(row)
+        return {**result, "SEVEN_PAIRS": materialized}
+    except core.StopBatch:
+        raise
+    except (OSError, json.JSONDecodeError, KeyError, TypeError, ValueError) as exc:
+        raise core.StopBatch("ARCHIVE_REPARSE_MISMATCH") from exc
+
+
+def archive(
+    result: dict[str, Any], path: str | Path, folder: str | Path, *,
+    result_limit: int = core.RESULT_LIMIT, temp_limit: int = core.TEMP_LIMIT,
+    deadline: float | None = None, peaks: dict[str, int] | None = None,
+    row_metadata: dict[int, dict[str, Any]] | None = None,
+) -> int:
     # core.archive with the serializer replaced and a reparse check; same caps, scratch, fsync and readback.
-    data = encode(result)
+    full_result = materialize_completed_rows(result, path, row_metadata)
+    data = encode(full_result)
     if len(data) > result_limit:
         raise core.StopBatch("RESULT_CAPACITY")
     scratch = Path(folder)/"seal.json"
     scratch_peak = core.folder_bytes(folder) + len(data)
     if scratch_peak > temp_limit:
         raise core.StopBatch("TEMP_CAPACITY")
-    verify_reparsed(data, result)
+    verify_reparsed(data, full_result)
     if deadline is not None:
         core.check_limits(deadline, folder)
-    with scratch.open("xb") as f:
-        f.write(data); f.flush(); os.fsync(f.fileno())
-    if peaks is not None:
-        peaks["RESULT"] = max(peaks["RESULT"], len(data))
-        peaks["TEMP"] = max(peaks["TEMP"], scratch_peak)
-    if scratch.read_bytes() != data:
-        raise core.StopBatch("ARCHIVE_READBACK_MISMATCH")
-    os.replace(scratch, path)
-    with Path(path).open("rb") as f:
-        if f.read() != data:
+    scratch_created = False
+    try:
+        with scratch.open("xb") as f:
+            scratch_created = True
+            f.write(data); f.flush(); os.fsync(f.fileno())
+        if peaks is not None:
+            peaks["RESULT"] = max(peaks["RESULT"], len(data))
+            peaks["TEMP"] = max(peaks["TEMP"], scratch_peak)
+        if scratch.read_bytes() != data:
             raise core.StopBatch("ARCHIVE_READBACK_MISMATCH")
-    if deadline is not None:
-        core.check_limits(deadline, folder)
+        os.replace(scratch, path)
+        with Path(path).open("rb") as f:
+            if f.read() != data:
+                raise core.StopBatch("ARCHIVE_READBACK_MISMATCH")
+        if deadline is not None:
+            core.check_limits(deadline, folder)
+    except Exception:
+        if scratch_created and scratch.exists():
+            scratch.unlink()
+        raise
+    result_rows, full_rows = result["SEVEN_PAIRS"], full_result["SEVEN_PAIRS"]
+    for index in range(len(result_rows)):
+        row, full_row = result_rows[index], full_rows[index]
+        if full_row["STATUS"] == "COMPLETE":
+            summary = _completed_summary(full_row, path)
+            row.clear()
+            row.update(summary)
     return len(data)
 
 
@@ -175,7 +254,9 @@ def main():
     print(tests.stderr, flush=True)
     development_wall = time.monotonic()-development_start
     test_count_match = re.search(r"Ran (\d+) tests", tests.stderr)
-    result = {"TASK_ID": TASK_ID, "TASK_STATUS": "BLOCKED_PRELAUNCH", "BASE_HEAD": R2_BASE, "BASE_TREE": R2_BASE_TREE,
+    result: dict[str, Any] = {
+        "TASK_ID": TASK_ID, "TASK_STATUS": "BLOCKED_PRELAUNCH", "BASE_HEAD": R2_BASE,
+        "BASE_TREE": R2_BASE_TREE,
               "IMMUTABLE_INPUT_BASE": {"HEAD": core.BASE, "TREE": core.BASE_TREE},
               "SOURCE_HEAD": core.git("rev-parse", "HEAD"), "SOURCE_TREE": core.git("rev-parse", "HEAD^{tree}"),
               "MEASUREMENT_ADAPTER_SHA256": core.sha(Path(__file__).read_bytes()),
@@ -209,6 +290,7 @@ def main():
     temp_peak = 0
     peaks = {"RESULT": 0, "TEMP": 0}
     current = None
+    pair_archive_times: dict[int, dict[str, Any]] = {}
     with tempfile.TemporaryDirectory(prefix=TASK_ID+"-") as tmp:
         try:
             if tests.returncode:
@@ -237,14 +319,24 @@ def main():
                 row = core.measured_row(lib, tmp, identity, pilot, deadline-core.RESERVE, pair_deadline)
                 temp_peak = max(temp_peak, row["TEMP_PEAK_BYTES"])
                 core.check_limits(pair_deadline, tmp)
-                candidate = {**result, "SEVEN_PAIRS": list(result["SEVEN_PAIRS"])}
+                candidate: dict[str, Any] = {**result, "SEVEN_PAIRS": list(result["SEVEN_PAIRS"])}
                 candidate["SEVEN_PAIRS"][i] = row
                 candidate["TASK_STATUS"] = "COMPLETE" if i == 6 else "PARTIAL"
-                archive(candidate, RESULT, tmp, deadline=pair_deadline, peaks=peaks)
-                row["PAIR_TOTAL_WALL_THROUGH_ARCHIVE_SECONDS"] = time.monotonic()-pair_start
+                pair_log_fields = ("PAIR_ORDERED", "STATUS", "C_ij", "E", "ELAPSED_SECONDS")
+                pair_log = {key: row[key] for key in pair_log_fields}
+                try:
+                    archive(candidate, RESULT, tmp, deadline=pair_deadline, peaks=peaks,
+                            row_metadata=pair_archive_times)
+                except Exception:
+                    row.clear()
+                    candidate["SEVEN_PAIRS"][i] = result["SEVEN_PAIRS"][i]
+                    raise
+                pair_archive_times[i] = {
+                    "PAIR_TOTAL_WALL_THROUGH_ARCHIVE_SECONDS": time.monotonic()-pair_start,
+                }
                 result = candidate
                 current = None
-                print(json.dumps({"PAIR_ORDERED": row["PAIR_ORDERED"], "STATUS": row["STATUS"], "C_ij": row["C_ij"], "E": row["E"], "ELAPSED_SECONDS": row["ELAPSED_SECONDS"]}), flush=True)
+                print(json.dumps(pair_log), flush=True)
             core.load_inputs()  # immutable/sealed inputs must remain identical
             r1_preserved()
             core.check_limits(deadline, tmp)
@@ -272,10 +364,13 @@ def main():
             result["RESULT_PEAK_BYTES"] = max(result["RESULT_PEAK_BYTES"], size)
             result["TEMP_PEAK_BYTES"] = max(result["TEMP_PEAK_BYTES"], core.folder_bytes(tmp)+size)
         try:
-            archive(result, RESULT, tmp, deadline=deadline, peaks=peaks)
+            archive(
+                result, RESULT, tmp, deadline=deadline, peaks=peaks,
+                row_metadata=pair_archive_times,
+            )
         except core.StopBatch as exc:
             core.mark_partial(result, None, str(exc))
-            archive(result, RESULT, tmp, peaks=peaks)
+            archive(result, RESULT, tmp, peaks=peaks, row_metadata=pair_archive_times)
     print(json.dumps({"TASK_STATUS": result["TASK_STATUS"], "COMPLETED_REPRESENTATIVES": result["COMPLETED_REPRESENTATIVES"], "COVERED_ORIGINAL_PAIRS": result["COVERED_ORIGINAL_PAIRS"], "BATCH_WALL_SECONDS": time.monotonic()-batch_start, "RESULT_SHA256": core.sha(RESULT.read_bytes())}), flush=True)
 
 

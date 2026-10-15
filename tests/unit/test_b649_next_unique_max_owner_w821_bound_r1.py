@@ -10,21 +10,61 @@ from copy import deepcopy
 from fractions import Fraction
 from itertools import combinations, product
 from math import comb
-from pathlib import Path
-from typing import Any
+from typing import Any, Literal, cast
 
 import pytest
+from tests.unit.b649_certificate_replay import replay_certificate_call, replay_fixed_result
 
 from lottolab.research import b649_next_unique_max_owner_w821_bound_r1 as cert
 
 type Record = dict[str, Any]
 type Adjacency = list[set[int]]
+type W821BlobDamage = Literal[
+    "w821_input_result",
+    "w821_direct_source",
+    "w821_base_result",
+    "w821_r30_result",
+    "w821_stored_bytes",
+    "w821_stored_source_hash",
+    "w821_stored_test_hash",
+    "w821_stored_family",
+]
+_W821_CANDIDATE_HEAD = "1f8c3334bd27ca5fb37a5dd7958437d15d901e73"
+_W821_CANDIDATE_TREE = "dc3cc48f934c627ff4ec041f1b21cbb48458ba52"
 P = cert.PROFILE
+
+
+def replay_w821_call(
+    operation: Literal["compute_result", "verify_result"],
+    *arguments: object,
+    corrupt_input_tree: bool = False,
+    blob_damage: W821BlobDamage | None = None,
+) -> object:
+    return replay_certificate_call(
+        cert.__name__,
+        operation,
+        *arguments,
+        source_head=_W821_CANDIDATE_HEAD,
+        source_tree=_W821_CANDIDATE_TREE,
+        operation_head=_W821_CANDIDATE_HEAD,
+        operation_tree=_W821_CANDIDATE_TREE,
+        corrupt_input_tree=corrupt_input_tree,
+        blob_damage=blob_damage,
+    )
 
 
 @pytest.fixture(scope="module")
 def result() -> Record:
-    return cert.compute_result()
+    return cast(
+        Record,
+        replay_fixed_result(
+            cert.__name__,
+            source_head=_W821_CANDIDATE_HEAD,
+            source_tree=_W821_CANDIDATE_TREE,
+            operation_head=_W821_CANDIDATE_HEAD,
+            operation_tree=_W821_CANDIDATE_TREE,
+        ),
+    )
 
 
 def ceiling(value: Fraction) -> int:
@@ -167,7 +207,14 @@ def test_input_pins_and_complete_frontier(result: Record) -> None:
     assert result["FAMILY_BEFORE"]["ALL_MAX_OWNERS"] == [P]
     assert result["FAMILY_BEFORE"]["NEXT_DISTINCT_BOUND"] == 313391172
     assert result["FAMILY_BEFORE"]["ALL_NEXT_DISTINCT_OWNERS"] == ["65555555555511111000"]
-    assert result["EVALUATOR_SOURCE_PINS"] == cert.upstream.r2.source_pins()
+    assert result["EVALUATOR_SOURCE_PINS"] == replay_certificate_call(
+        "lottolab.research.b649_three_max_profiles_shared_certificate_r2",
+        "source_pins",
+        source_head=_W821_CANDIDATE_HEAD,
+        source_tree=_W821_CANDIDATE_TREE,
+        operation_head=_W821_CANDIDATE_HEAD,
+        operation_tree=_W821_CANDIDATE_TREE,
+    )
 
 
 def test_independent_profile_facts(result: Record) -> None:
@@ -511,33 +558,19 @@ def test_negative_duplicate_json() -> None:
 
 
 @pytest.mark.parametrize("kind", ["git", "input_result", "direct_source", "base", "r30"])
-def test_negative_live_pin_corruption(kind: str, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_negative_live_pin_corruption(kind: str) -> None:
     if kind == "git":
-        original = cert.git
-
-        def damaged_git(*args: str, repo: Path = cert.ROOT) -> str:
-            raw = original(*args, repo=repo)
-            return "0" * 40 if args == ("rev-parse", cert.BASE_HEAD + "^{tree}") else raw
-
-        monkeypatch.setattr(cert, "git", damaged_git)
         with pytest.raises(ValueError, match="Git TREE pin"):
-            cert.compute_result()
+            replay_w821_call("compute_result", corrupt_input_tree=True)
         return
-    target = {
-        "input_result": cert.INPUT_RESULT,
-        "direct_source": cert.direct.SOURCE,
-        "base": cert.BASE_RESULT,
-        "r30": cert.R30_PATH,
-    }[kind]
-    original_blob = cert.blob
-
-    def damaged_blob(head: str, path: str, repo: Path = cert.ROOT) -> bytes:
-        raw = original_blob(head, path, repo)
-        return raw + b"\n" if path == target else raw
-
-    monkeypatch.setattr(cert, "blob", damaged_blob)
+    blob_cases: dict[str, W821BlobDamage] = {
+        "input_result": "w821_input_result",
+        "direct_source": "w821_direct_source",
+        "base": "w821_base_result",
+        "r30": "w821_r30_result",
+    }
     with pytest.raises(ValueError, match="SHA pin"):
-        cert.compute_result()
+        replay_w821_call("compute_result", blob_damage=blob_cases[kind])
 
 
 @pytest.mark.parametrize(
@@ -583,37 +616,18 @@ def test_negative_complete_payload(result: Record, case: str) -> None:
 
 
 def test_stored_result_exact_recomputation(result: Record) -> None:
-    cert.verify_result()
+    replay_w821_call("verify_result")
     stored = json.loads((cert.ROOT / cert.RESULT).read_bytes())
     assert cert.render(stored) == cert.render(result)
 
 
 @pytest.mark.parametrize("case", ["bytes", "source_hash", "test_hash", "family"])
-def test_negative_stored_result_corruption(
-    result: Record, case: str, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    bad = deepcopy(result)
-    if case == "source_hash":
-        bad["SOURCE_SHA256"] = "0" * 64
-    elif case == "test_hash":
-        bad["TEST_SHA256"] = "0" * 64
-    elif case == "family":
-        bad["FAMILY_AFTER"]["MAXIMUM"] -= 1
-    damaged = cert.render(bad) + (b"\n" if case == "bytes" else b"")
-    original = Path.read_bytes
-
-    def damaged_read(path: Path) -> bytes:
-        return damaged if path == cert.ROOT / cert.RESULT else original(path)
-
-    # Use the actual verify_result reader; no committed or working file is changed.
-    if cert.git("rev-parse", "HEAD") == cert.INPUT_HEAD:
-        monkeypatch.setattr(Path, "read_bytes", damaged_read)
-    else:
-        original_blob = cert.blob
-
-        def damaged_blob(head: str, path: str, repo: Path = cert.ROOT) -> bytes:
-            return damaged if path == cert.RESULT else original_blob(head, path, repo)
-
-        monkeypatch.setattr(cert, "blob", damaged_blob)
+def test_negative_stored_result_corruption(case: str) -> None:
+    blob_cases: dict[str, W821BlobDamage] = {
+        "bytes": "w821_stored_bytes",
+        "source_hash": "w821_stored_source_hash",
+        "test_hash": "w821_stored_test_hash",
+        "family": "w821_stored_family",
+    }
     with pytest.raises(ValueError, match="stored result differs from complete recomputation"):
-        cert.verify_result()
+        replay_w821_call("verify_result", blob_damage=blob_cases[case])

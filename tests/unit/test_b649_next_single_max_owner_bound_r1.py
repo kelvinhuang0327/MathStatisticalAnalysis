@@ -12,12 +12,16 @@ from typing import cast
 
 import pytest
 
+# Keep bootstrap first so certificate imports resolve from the pinned source snapshot.
+# isort: off
+from tests.unit.b649_certificate_replay import replay_certificate_call, replay_fixed_result
 from lottolab.research import b649_next_single_max_owner_bound_r1 as cert
+# isort: on
 
 
 @pytest.fixture(scope="module")
 def result() -> dict[str, object]:
-    return cert.compute_result()
+    return replay_fixed_result(cert.__name__)
 
 
 def test_exact_profile_facts_independently() -> None:
@@ -273,7 +277,7 @@ def test_tampered_result_rejected(result: dict[str, object], field: str, value: 
     changed = deepcopy(result)
     changed[field] = value
     with pytest.raises(ValueError, match="not exactly reproducible"):
-        cert.verify_result(changed)
+        replay_certificate_call(cert.__name__, "verify_result", changed)
 
 
 def test_all_family_rows_cursor_floor_and_all_owners(result: dict[str, object]) -> None:

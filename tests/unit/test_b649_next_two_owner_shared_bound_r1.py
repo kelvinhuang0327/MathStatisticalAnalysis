@@ -11,10 +11,15 @@ from fractions import Fraction
 from itertools import combinations, product
 from math import comb
 from pathlib import Path
+from typing import cast
 
 import pytest
 
+# Keep bootstrap first so certificate imports resolve from the pinned source snapshot.
+# isort: off
+from tests.unit.b649_certificate_replay import replay_certificate_call, replay_fixed_result
 from lottolab.research import b649_next_two_owner_shared_bound_r1 as cert
+# isort: on
 
 IDS = ("66555555555521100000", "66655555554432000000", "66666555554411100000")
 HISTS = (
@@ -25,8 +30,8 @@ HISTS = (
 
 
 @pytest.fixture(scope="module")
-def result():
-    return cert.compute_result()
+def result() -> dict[str, object]:
+    return replay_fixed_result(cert.__name__)
 
 
 def hh(degrees):
@@ -446,7 +451,9 @@ def test_negative_actual_sha_gate_and_profile_cap():
             cert.envelope(IDS[0], cap, {"S4_BASE": 112, "S4_BY_T": {}})
 
 
-def test_real_isolated_single_parent_child(tmp_path, monkeypatch, result):
+def test_real_isolated_single_parent_child(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, result: dict[str, object]
+) -> None:
     """Real Git objects under OS temp, without a second worktree or branch."""
     scratch = tmp_path / "child.git"
     subprocess.run(["git", "init", "--bare", "--quiet", str(scratch)], check=True)
@@ -481,8 +488,13 @@ def test_real_isolated_single_parent_child(tmp_path, monkeypatch, result):
         data=b"Disposable child fixture\n",
     )
     assert cert.verify_identity(child, scratch) == "FIXED_DIRECT_CHILD"
-    cert.verify_result(child, scratch)
+    replay_certificate_call(cert.__name__, "verify_result", child, repo=scratch)
+    candidate_result = cast(
+        dict[str, object],
+        replay_certificate_call(cert.__name__, "compute_result", child, repo=scratch),
+    )
+    assert candidate_result["FAMILY_AFTER"] == result["FAMILY_AFTER"]
 
 
 def test_stored_exact_result():
-    cert.verify_result()
+    assert replay_certificate_call(cert.__name__, "verify_result") is None

@@ -10,19 +10,53 @@ from copy import deepcopy
 from fractions import Fraction
 from itertools import combinations, combinations_with_replacement
 from math import comb
-from pathlib import Path
-from typing import Any
+from typing import Any, Literal, cast
 
 import pytest
+from tests.unit.b649_certificate_replay import replay_certificate_call, replay_fixed_result
 
 from lottolab.research import b649_w784_39_cursor_shared_bound_r1 as cert
 
 type Record = dict[str, Any]
+type FixedInputs = tuple[dict[str, Any], dict[str, Any], dict[str, Any]]
+_CERTIFICATE_SOURCE_HEAD = "93c263d187e4b0445ae465a5235c3a630f91396a"
+_CERTIFICATE_SOURCE_TREE = "94a5c7c9987d517a095c16a3730a3d911fda8463"
+
+
+def replay_w784_call(
+    operation: Literal[
+        "compute_result", "verify_result", "fixed_input", "upstream_ids_digest"
+    ],
+    *arguments: object,
+    git_damage: tuple[str, str] | None = None,
+    corrupt_input_tree: bool = False,
+    profile_floor_override: int | None = None,
+    blob_damage: Literal["result_sha", "source_sha"] | None = None,
+) -> object:
+    return replay_certificate_call(
+        cert.__name__,
+        operation,
+        *arguments,
+        source_head=_CERTIFICATE_SOURCE_HEAD,
+        source_tree=_CERTIFICATE_SOURCE_TREE,
+        operation_head=_CERTIFICATE_SOURCE_HEAD,
+        operation_tree=_CERTIFICATE_SOURCE_TREE,
+        git_damage=git_damage,
+        corrupt_input_tree=corrupt_input_tree,
+        profile_floor_override=profile_floor_override,
+        blob_damage=blob_damage,
+    )
 
 
 @pytest.fixture(scope="module")
 def result() -> Record:
-    return cert.compute_result()
+    return replay_fixed_result(
+        cert.__name__,
+        source_head=_CERTIFICATE_SOURCE_HEAD,
+        source_tree=_CERTIFICATE_SOURCE_TREE,
+        operation_head=_CERTIFICATE_SOURCE_HEAD,
+        operation_tree=_CERTIFICATE_SOURCE_TREE,
+    )
 
 
 def ceiling(value: Fraction) -> int:
@@ -61,7 +95,7 @@ def local_count(n: int, masks: dict[int, int]) -> int:
 
 
 def test_all_source_pins_and_accepted_input_replay(result: Record) -> None:
-    fixed, prior, base = cert.fixed_input()
+    fixed, prior, base = cast(FixedInputs, replay_w784_call("fixed_input"))
     assert cert.git("rev-parse", cert.INPUT_HEAD + "^{tree}") == cert.INPUT_TREE
     assert cert.git("rev-parse", cert.UPSTREAM_HEAD + "^{tree}") == cert.UPSTREAM_TREE
     assert cert.git("rev-parse", cert.BASE_HEAD + "^{tree}") == cert.BASE_TREE
@@ -88,10 +122,9 @@ def test_independent_histogram_census_and_exact_coverage(result: Record) -> None
     excluded = set(raw) - set(cursor) - set(resolved)
     assert len(resolved) == 4647 and len(excluded) == 282
     assert excluded == set(result["CURSOR_COVERAGE"]["EXCLUDED_IDS"])
-    assert (
-        cert.upstream.ids_digest(list(excluded))
-        == result["INHERITED_EXCLUSION"]["ORIGINAL_CONDITIONS_VERBATIM"]["IDS_SHA256"]
-    )
+    assert replay_w784_call("upstream_ids_digest", list(excluded)) == result[
+        "INHERITED_EXCLUSION"
+    ]["ORIGINAL_CONDITIONS_VERBATIM"]["IDS_SHA256"]
     assert not set(cursor) & set(resolved)
 
 
@@ -185,7 +218,7 @@ def test_k4_and_contained_k4_combinatorial_bounds_on_small_configurations() -> N
 
 
 def test_full_ledger_aggregation_and_preservation(result: Record) -> None:
-    fixed, _, _ = cert.fixed_input()
+    fixed, _, _ = cast(FixedInputs, replay_w784_call("fixed_input"))
     resolved = result["RESOLVED_ROWS"]
     before, after = result["CURSOR_ROW_BOUNDS_BEFORE"], result["CURSOR_ROW_BOUNDS_AFTER"]
     owners = set(result["OWNER_IDS"])
@@ -300,13 +333,9 @@ def test_negative_class_constants(result: Record, j: int, top: int, a_max: int, 
         cert.class_envelope(result["PER_CURSOR"], result["OWNER_IDS"], j, top, a_max, floor)
 
 
-def test_negative_wrong_base_s4_floor(result: Record, monkeypatch: pytest.MonkeyPatch) -> None:
-    def damaged_floor(_: tuple[int, ...]) -> int:
-        return 113
-
-    monkeypatch.setattr(cert.route.r28, "profile_s4_floor", damaged_floor)
+def test_negative_wrong_base_s4_floor(result: Record) -> None:
     with pytest.raises(ValueError, match="floor applicability"):
-        cert.compute_result()
+        replay_w784_call("compute_result", profile_floor_override=113)
 
 
 @pytest.mark.parametrize(
@@ -353,28 +382,15 @@ def test_negative_every_partial_owner_replacement(result: Record) -> None:
 
 
 @pytest.mark.parametrize("kind", ["git", "result_sha", "source_sha"])
-def test_negative_live_pin_corruption(kind: str, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_negative_live_pin_corruption(
+    kind: Literal["git", "result_sha", "source_sha"],
+) -> None:
     if kind == "git":
-        original = cert.git
-
-        def damaged_git(*args: str, repo: Path = cert.ROOT) -> str:
-            raw = original(*args, repo=repo)
-            return "0" * 40 if args == ("rev-parse", cert.INPUT_HEAD + "^{tree}") else raw
-
-        monkeypatch.setattr(cert, "git", damaged_git)
         with pytest.raises(ValueError, match="Git TREE pin"):
-            cert.compute_result()
+            replay_w784_call("compute_result", corrupt_input_tree=True)
     else:
-        original_blob = cert.blob
-        target = cert.INPUT_RESULT if kind == "result_sha" else cert.upstream.SOURCE
-
-        def damaged_blob(head: str, path: str, repo: Path = cert.ROOT) -> bytes:
-            raw = original_blob(head, path, repo)
-            return raw + b"\n" if path == target else raw
-
-        monkeypatch.setattr(cert, "blob", damaged_blob)
         with pytest.raises(ValueError, match="SHA pin"):
-            cert.compute_result()
+            replay_w784_call("compute_result", blob_damage=kind)
 
 
 @pytest.mark.parametrize(
@@ -402,7 +418,7 @@ def test_negative_complete_payload_tampering(result: Record, case: str) -> None:
 
 
 def test_stored_result_exact_recomputation(result: Record) -> None:
-    cert.verify_result()
+    replay_w784_call("verify_result")
     stored = json.loads((cert.ROOT / cert.RESULT).read_bytes())
     assert cert.render(stored) == cert.render(result)
     for rows in (stored["PER_CURSOR"].values(),):

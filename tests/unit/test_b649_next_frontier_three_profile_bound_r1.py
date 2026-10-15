@@ -14,7 +14,11 @@ from pathlib import Path
 
 import pytest
 
+# Keep bootstrap first so certificate imports resolve from the pinned source snapshot.
+# isort: off
+from tests.unit.b649_certificate_replay import replay_certificate_call, replay_fixed_result
 from lottolab.research import b649_next_frontier_three_profile_bound_r1 as cert
+# isort: on
 
 IDS = ("66665555555421000000", "65555555555442000000", "66555555554433000000")
 HISTOGRAMS = (
@@ -26,7 +30,7 @@ HISTOGRAMS = (
 
 @pytest.fixture(scope="module")
 def result():
-    return cert.compute_result()
+    return replay_fixed_result(cert.__name__)
 
 
 def hh(degrees):
@@ -411,4 +415,4 @@ def test_real_isolated_fixed_child_verifier(tmp_path, monkeypatch, result):
 
 
 def test_stored_result_bytes():
-    cert.verify_result()
+    replay_certificate_call(cert.__name__, "verify_result")

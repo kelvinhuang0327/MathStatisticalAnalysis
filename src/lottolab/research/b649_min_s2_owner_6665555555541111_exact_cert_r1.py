@@ -45,6 +45,13 @@ Family. All 4647 resolved rows and 197 cursor rows are replayed from the
 SHA-pinned base. Only this profile's resolved bound is replaced, in memory.
 The other owner stays at 313391740, so the family maximum does not move.
 Legal attainment and the global K20 optimum stay unknown. No solver is run.
+
+Continuation: the entire original T<=260 certificate is reproduced byte for
+byte from PRESERVED_HEAD below. The additional K4 theorem and its two finite
+enumerations are independent of that triangle relaxation. Both restrictions
+are applied on every T in 22..260; the minimum of the proved envelopes is
+adopted. The separate T<=265 envelope and A/B family effects are projections,
+not a shared Family Authority update.
 """
 
 from __future__ import annotations
@@ -57,7 +64,7 @@ import sys
 from collections import Counter
 from collections.abc import Mapping, Sequence
 from fractions import Fraction
-from itertools import combinations, combinations_with_replacement
+from itertools import combinations, combinations_with_replacement, product
 from math import ceil, comb
 from pathlib import Path
 from typing import cast
@@ -109,6 +116,30 @@ EVALUATOR_PINS = {
 }
 INITIAL_INDEX_SHA256 = "b68c0d81a387b8aabad1b86d3ad75f624e957fd174a3af52c5dacec0b7c00a7c"
 INITIAL_SHARED_REFS_FINGERPRINT = "f9360c15216a48357e954498140dfe3c7d300d67fa54fe3cdab835bd0cfe02e0"
+PRESERVED_HEAD = "26c34f19a68e824ff89bc584b8548a5a4186e69e"
+PRESERVED_TREE = "0f39c83405c2bff3cb96b6740c12158490704f8b"
+PRESERVED_RESULT_SHA256 = "8eac8d5ee451c1f585046eeece62032a3cdf5471f1bf5a63a1ab81e1db456e8f"
+CONTINUATION_OWNER = "01a13e0f-c119-70b0-a49c-2acbfb2bf8bb"
+OWNER_A_HEAD = "c4c83e6bfed718db133b69aaec4431e9dcd690ce"
+OWNER_A_TREE = "b1339e0a35fb3cf40b06ffc4053ba502fc4c76c4"
+OWNER_A_RESULT = (
+    "docs/research/matrix-native-results/"
+    "b649-min-s2-owner-666555555553311-exact-cert-r1-result.json"
+)
+OWNER_A_SHA256 = "7709b51fb56bafb90f6370b7e9add76bee29f558f422764a273f3afe1ce6a5ad"
+type LowType = tuple[int, int, int]
+type ShadowState = tuple[tuple[int, ...], int, int]
+LOW_TYPES: tuple[LowType, ...] = (
+    (1, 1, 1),
+    (1, 1, 4),
+    (1, 1, 5),
+    (1, 1, 6),
+    (1, 4, 5),
+    (1, 4, 6),
+    (1, 5, 5),
+    (1, 5, 6),
+    (1, 6, 6),
+)
 
 
 def require(condition: bool, message: str) -> None:
@@ -684,7 +715,7 @@ def replay_family(
     return updated, state
 
 
-def compute_result() -> Document:
+def compute_t260_result() -> Document:
     base = load_base()
     require(
         base["MODEL"]
@@ -918,6 +949,334 @@ def compute_result() -> Document:
     }
 
 
+def partition_shadow_states() -> set[ShadowState]:
+    """Method A: restricted-growth set partitions of four labelled d=1 tickets."""
+
+    states: set[ShadowState] = set()
+    partitions = assignments = 0
+    for word in product(range(4), repeat=4):
+        if word[0] != 0 or any(word[i] > 1 + max(word[:i]) for i in range(1, 4)):
+            continue
+        sizes = [word.count(i) for i in range(max(word) + 1)]
+        if max(sizes) > 3:
+            continue
+        partitions += 1
+        choices = [tuple(t for t in LOW_TYPES if t.count(1) == size) for size in sizes]
+        for triples in product(*choices):
+            assignments += 1
+            counts = tuple(triples.count(t) for t in LOW_TYPES)
+            c = sum(t.count(4) for t in triples)
+            high = sum(t.count(6) for t in triples)
+            pairs = sum(comb(t.count(6), 2) for t in triples)
+            for all_six in (0, 1):
+                if c > 4 or high < 3 or pairs + 3 * all_six > 3:
+                    continue
+                if 4 - c > 22 - len(triples) - all_six:
+                    continue
+                states.add((counts, all_six, 194 - 4 * len(triples) + c + all_six))
+    require((partitions, assignments) == (14, 1122), "partition coverage changed")
+    return states
+
+
+def histogram_shadow_states() -> set[ShadowState]:
+    """Method B: bounded integer histograms; no partition walk or A score call."""
+
+    states: set[ShadowState] = set()
+
+    def visit(index: int, remaining: int, counts: tuple[int, ...]) -> None:
+        if index < 9:
+            incidence = sum(value == 1 for value in LOW_TYPES[index])
+            for count in range(remaining // incidence + 1):
+                visit(index + 1, remaining - count * incidence, (*counts, count))
+            return
+        if remaining:
+            return
+        blocks = sum(counts)
+        fours = sum(n for n, t in zip(counts, LOW_TYPES, strict=True) if 4 in t)
+        sixes = sum(n * sum(d == 6 for d in t) for n, t in zip(counts, LOW_TYPES, strict=True))
+        used_pairs = sum(n for n, t in zip(counts, LOW_TYPES, strict=True) if t.count(6) == 2)
+        if fours > 4 or sixes < 3:
+            return
+        for q in range(2):
+            if used_pairs > 3 * (1 - q) or 22 - blocks - q < 4 - fours:
+                continue
+            minima = blocks + 4 * (4 - fours) + 5 * (22 - blocks - (4 - fours) - q) + 6 * q
+            states.add((counts, q, 88 + minima))
+
+    visit(0, 4, ())
+    return states
+
+
+def validate_shadow_state(state: ShadowState) -> None:
+    counts, q, score = state
+    require(len(counts) == 9 and all(type(n) is int and n >= 0 for n in counts), "shadow counts")
+    require(q in (0, 1), "shadow all-six capacity")
+    incidence = sum(n * t.count(1) for n, t in zip(counts, LOW_TYPES, strict=True))
+    c = sum(n * t.count(4) for n, t in zip(counts, LOW_TYPES, strict=True))
+    h = sum(n * t.count(6) for n, t in zip(counts, LOW_TYPES, strict=True))
+    pairs = sum(n * comb(t.count(6), 2) for n, t in zip(counts, LOW_TYPES, strict=True))
+    b = sum(counts)
+    require(
+        incidence == 4 and c <= 4 and h >= 3 and pairs + 3 * q <= 3 and 4 - c <= 22 - b - q,
+        "invalid shadow condition",
+    )
+    require(score == 194 - 4 * b + c + q, "incorrect shadow score")
+
+
+def k4_certificate() -> Document:
+    """Universal coverage proof for the additional cheaper-K4 cap.
+
+    H is the linear 3-uniform hypergraph of 22 triple label supports; P is the
+    disjoint set of 27 pair supports; G is their simple shadow union. For an
+    unordered four-ticket set Q, a triple-containing K4 means G[Q]=K4 and a
+    support tau in H is a subset of Q. Two such tau would share a pair, so
+    there is at most one. Its count A equals sum_tau |intersection N_G(v)|.
+    Neighbourhoods are open, so these common neighbours lie outside tau.
+    Each summand is <= min_v(g_v-2)=4+min_v d_v. The old average bound is
+    floor(sum_v d_v*(g_v-2)/3)=197.
+
+    Split the vertices into C (twelve d>=4), L (four d=1), Z (four d=0).
+    Every d=6 vertex has twelve DISTINCT H-shadow neighbours; only eleven
+    other C vertices exist, so each meets L. Thus triples meeting L have at
+    least three d=6 incidences in total. Each L vertex lies in exactly one
+    support: these supports partition labelled L into b blocks of size 1..3.
+    Their nine degree types are exactly LOW_TYPES. The unique d=4 vertex
+    cannot occur twice in one support; c<=4 of its incidences meet L. There
+    are 3*b-4 non-L slots, hence 3*b-4-c>=3. It follows that b>=3, and c<=2
+    if b=3. The three d=6 vertices support q<=1 all-six triples. Low supports
+    consume at most three of their pairs, including 3*q. The remaining 4-c
+    d=4 incidences occupy distinct supports not meeting L or all-six, so
+    4-c<=22-b-q. These are NECESSARY conditions only.
+
+    Minima sum exactly to b+4*(4-c)+5*(22-b-(4-c)-q)+6*q. Adding 4*22 gives
+    A<=194-4*b+c+q<=185 (b=3); for b=4 it is <=183. Both enumerators retain
+    the complete 73-state necessary relaxation, including impossible states.
+    Every legal H maps to A's labelled partition and degree-class partners,
+    then to B's histogram. Conversely every histogram has a partition of its
+    four L slots. Forgetting partner identities admits extra configurations;
+    it cannot omit a legal one. There is no sufficiency or attainment claim.
+
+    Z has H-degree zero, P-degree six, and no H-shadow edge. All of its 24
+    pair-ends may be placed in any compatible simple residual P. No G[Z]
+    or C/Z pair-placement restriction is imposed by this relaxation. Common
+    neighbours in Z remain counted in the FULL G, so the argument covers
+    every compatible residual graph. Z is never silently deleted.
+    """
+
+    expected = tuple(
+        t for t in combinations_with_replacement((1, 4, 5, 6), 3) if 1 in t and t.count(4) <= 1
+    )
+    require(expected == LOW_TYPES, "shadow type domain changed")
+    first, second = partition_shadow_states(), histogram_shadow_states()
+    for state in first | second:
+        validate_shadow_state(state)
+    require(first == second and len(first) == 73, "incomplete necessary state set")
+    cap = max(score for _, _, score in first)
+    require(cap == 185, "incorrect K4 cap")
+    old = sum(d * (4 + d) for d in profile_degrees(TARGET_PROFILE)) // 3
+    require(old == 197, "old K4 cap changed")
+    return {
+        "OLD_CAP": old,
+        "CAP": cap,
+        "STATE_COUNT": len(first),
+        "LOW_TYPES": [list(t) for t in LOW_TYPES],
+        "STATES": [
+            {"LOW_TYPE_COUNTS": list(n), "ALL_SIX": q, "CAP": score}
+            for n, q, score in sorted(first)
+        ],
+        "METHOD_A": "14 labelled set partitions; 1122 degree-class assignments",
+        "METHOD_B": "nine-type incidence histogram recursion; category-minimum sum",
+        "INDEPENDENT_SETS_EQUAL": True,
+        "COVERAGE": "Every legal H maps to a retained state; all compatible residual P included",
+        "LEGAL_ATTAINMENT": "UNKNOWN",
+    }
+
+
+def refined_envelope(cap: int, allowance: int) -> list[Term]:
+    facts = require_target(TARGET_PROFILE)
+    floor = global_s4_floor()
+    return [
+        envelope_term(
+            t,
+            wedges=facts["W"],
+            choose3=facts["SUM_CHOOSE3"],
+            degree_max=12,
+            allowance=allowance,
+            global_floor=floor,
+        )
+        for t in range(22, cap + 1)
+    ]
+
+
+def checked_envelope(terms: Sequence[Term], cap: int, allowance: int) -> int:
+    bound = require_complete_envelope(terms, cap)
+    # Independent direct formula validates every shipped term, including rounding.
+    for t, upper, k4, contained, floor, s3, opened in terms:
+        q = max(0, ceil(Fraction(2320 - 10 * (827 - 3 * t), 4)))
+        lower = max(112, 679 * q - 231 * min(q, allowance))
+        third = 2800 * (827 - 3 * t) + 20272 * (t - 22) + 154000
+        require(
+            (k4, contained, floor, s3, opened) == (q, min(q, allowance), lower, third, 827 - 3 * t),
+            "incorrect Route-B term",
+        )
+        require(
+            upper == ceil(Fraction(372228640 - 63838600 + third) - Fraction(4 * lower, 7)),
+            "wrong Route-B sign or rounding",
+        )
+    return bound
+
+
+def term_records(terms: Sequence[Term]) -> list[dict[str, int]]:
+    return [
+        dict(
+            zip(
+                ("T", "BOUND", "K4_FLOOR", "CONTAINED_K4", "S4", "S3", "OPEN_WEDGES"),
+                term,
+                strict=True,
+            )
+        )
+        for term in terms
+    ]
+
+
+def project_family(
+    rows: Mapping[str, int],
+    cursor: Mapping[str, int],
+    updates: Sequence[tuple[str, int]],
+    expected: Sequence[str],
+    cursor_fingerprint: str,
+) -> Document:
+    ids = [pid for pid, _ in updates]
+    require(
+        len(ids) == len(set(ids)) == len(expected) and set(ids) == set(expected),
+        "missing/duplicate ledger update",
+    )
+    require(sha(render(dict(sorted(cursor.items())))) == cursor_fingerprint, "cursor mutation")
+    updated = dict(rows)
+    for pid, upper in updates:
+        require(pid in rows and 0 <= upper < rows[pid], "invalid projection update")
+        updated[pid] = upper
+    require({p for p in rows if rows[p] != updated[p]} == set(expected), "projection scope")
+    state = family_state(updated, cursor)
+    state["CHANGED_PROFILES"] = sorted(expected)
+    state["OTHER_ROWS_PRESERVED"] = len(rows) - len(expected)
+    state["CURSOR_SHA256"] = cursor_fingerprint
+    return state
+
+
+def compute_result(pid: str = TARGET_PROFILE) -> Document:
+    require_target(pid)
+    legacy = compute_t260_result()
+    require(git("rev-parse", PRESERVED_HEAD + "^{tree}") == PRESERVED_TREE, "preserved tree")
+    preserved = blob(PRESERVED_HEAD, RESULT, PRESERVED_RESULT_SHA256)
+    require(render(legacy) == preserved, "original T260 certificate changed")
+    k4 = k4_certificate()
+    allowance = cast(int, k4["CAP"])
+    require(allowance == 185, "incorrect K4 cap")
+    joint = refined_envelope(260, allowance)
+    joint_bound = checked_envelope(joint, 260, allowance)
+    projection = refined_envelope(265, allowance)
+    projected_bound = checked_envelope(projection, 265, allowance)
+    old265 = full_envelope(TARGET_PROFILE, 265)
+    checked_envelope(old265, 265, 197)
+    require((old265[-1][4], projection[-1][4]) == (293993, 296765), "S4 correction changed")
+    require(
+        231 * (197 - allowance) == 2772 and Fraction(4 * 2772, 7) == 1584, "correction arithmetic"
+    )
+    require(projected_bound == 313390156, "T265 full envelope changed")
+    old_bound = cast(int, legacy["NEW_FULL_PROFILE_BOUND"])
+    adopted = min(old_bound, joint_bound, projected_bound)
+    require(adopted <= old_bound, "T260 certificate downgraded")
+    require(adopted == joint_bound == 313345152, "joint full envelope changed")
+
+    require(git("rev-parse", OWNER_A_HEAD + "^{tree}") == OWNER_A_TREE, "Owner A tree")
+    donor = obj(json.loads(blob(OWNER_A_HEAD, OWNER_A_RESULT, OWNER_A_SHA256)))
+    require(
+        donor["BASE_HEAD"] == BASE_HEAD
+        and donor["BASE_TREE"] == BASE_TREE
+        and donor["BASE_RESULT_SHA256"] == BASE_RESULT_SHA256
+        and obj(donor["FACTS"])["PROFILE"] == OTHER_OWNER
+        and donor["NEW_FULL_PROFILE_BOUND"] == 313248348,
+        "Owner A authority mismatch",
+    )
+    base = load_base()
+    rows = ledger(base["RESOLVED_ROW_BOUNDS"])
+    cursor = ledger(obj(base["CURSOR"])["COARSE_BOUND_PROJECTION"])
+    fingerprint = sha(render(dict(sorted(cursor.items()))))
+    s0 = family_state(rows, cursor)
+    s1 = project_family(rows, cursor, [(TARGET_PROFILE, adopted)], [TARGET_PROFILE], fingerprint)
+    s2 = project_family(
+        rows,
+        cursor,
+        [(OTHER_OWNER, 313248348), (TARGET_PROFILE, adopted)],
+        [OTHER_OWNER, TARGET_PROFILE],
+        fingerprint,
+    )
+    require(
+        s0["FAMILY_BOUND"] == s1["FAMILY_BOUND"] == 313391740
+        and s2["FAMILY_BOUND"] == 313391636
+        and s2["OWNER_IDS"] == ["66665555555321100000"],
+        "Family projection mismatch",
+    )
+    result = dict(legacy)
+    result.update(
+        {
+            "PRESERVED_T260_CERTIFICATE": legacy,
+            "PRESERVED_CERTIFICATE_PIN": {
+                "HEAD": PRESERVED_HEAD,
+                "TREE": PRESERVED_TREE,
+                "RESULT_SHA256": PRESERVED_RESULT_SHA256,
+            },
+            "CONTINUATION_OWNER_CONVERSATION_ID": CONTINUATION_OWNER,
+            "K4_CERTIFICATE": k4,
+            "T265_K4_ONLY_PROJECTION": {
+                "BOUND": projected_bound,
+                "T_CAP": 265,
+                "CAP_AUTHORITY": "WEAKENING_OF_PROVEN_T260",
+                "OLD_TERMS": term_records(old265),
+                "NEW_TERMS": term_records(projection),
+            },
+            "JOINT_T260_K4_BOUND": joint_bound,
+            "NEW_FULL_PROFILE_BOUND": adopted,
+            "PROFILE_DELTA": SEALED_SCALAR_BOUND - adopted,
+            "GAIN_OVER_PRESERVED_T260": old_bound - adopted,
+            "RECONSTRUCTED_ROUTE_B_BOUND": adopted,
+            "T_TERMS": term_records(joint),
+            "NEW_PROVEN_S4": "MAX(112, 679*q(T)-231*MIN(q(T),185))",
+            "SELECTED_RESTRICTION": "PRESERVED_HILO_T260_AND_UNIVERSAL_CONTAINED_K4_CAP185",
+            "FAMILY_PROJECTIONS": {"S0": s0, "S1_B_ONLY": s1, "S2_A_AND_B": s2},
+            "FAMILY_AUTHORITY_STATUS": "PROJECTIONS_ONLY; SHARED_LEDGER_NOT_CHANGED",
+            "OWNER_A_AUTHORITY": {
+                "HEAD": OWNER_A_HEAD,
+                "TREE": OWNER_A_TREE,
+                "RESULT_SHA256": OWNER_A_SHA256,
+                "BOUND": 313248348,
+                "INHERITED_CAVEATS": {
+                    key: donor[key]
+                    for key in (
+                        "BASE_JUDGE_CAVEATS",
+                        "BASE_JUDGE_REPORT_SHA256",
+                        "HISTORICAL_R15",
+                        "INHERITED_AUTHORITY_VERBATIM",
+                        "INHERITED_BASE_FRESH_JUDGE",
+                        "LEGAL_ATTAINMENT",
+                        "GLOBAL_K20_OPTIMUM",
+                    )
+                },
+            },
+            "SOURCE_SHA256": sha(working_bytes(SOURCE)),
+            "TEST_SHA256": sha(working_bytes(TEST)),
+            "TASK_STATUS": "JOINT_PROFILE_BOUND_PROVED; FAMILY_PROJECTIONS; LIFECYCLE_EXTERNAL",
+            # Runtime and lifecycle outcomes are recorded externally on the exact sealed tree.
+            "G01_TO_G18": {
+                f"G{i:02d}": "PASS" if i not in (2, 16, 17, 18) else "NOT_VERIFIED"
+                for i in range(1, 19)
+            },
+        }
+    )
+    return result
+
+
 def verify_result(value: object) -> None:
     require(render(value) == render(compute_result()), "deterministic result mismatch")
 
@@ -932,10 +1291,12 @@ def main() -> None:
     path = ROOT / RESULT
     if args.write_result:
         require(
-            not path.exists() or path.read_bytes() == payload,
-            "result rewrite would change bytes",
+            not path.exists()
+            or path.read_bytes() == payload
+            or sha(path.read_bytes()) == PRESERVED_RESULT_SHA256,
+            "result rewrite would overwrite an unexplained candidate",
         )
-        if not path.exists():
+        if not path.exists() or path.read_bytes() != payload:
             path.write_bytes(payload)
     require(path.is_file() and path.read_bytes() == payload, "sealed result mismatch")
     sys.stdout.buffer.write(payload)

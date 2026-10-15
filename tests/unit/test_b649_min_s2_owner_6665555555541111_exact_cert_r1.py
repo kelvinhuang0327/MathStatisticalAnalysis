@@ -5,6 +5,7 @@ from __future__ import annotations
 import copy
 import json
 import random
+from collections import Counter
 from collections.abc import Mapping
 from fractions import Fraction
 from itertools import combinations
@@ -20,7 +21,7 @@ FIVE_ZERO_PROFILE = "66655555555421100000"
 
 @pytest.fixture(scope="module")
 def result() -> cert.Document:
-    return cert.compute_result()
+    return cert.compute_t260_result()
 
 
 def _inputs(pid: str = cert.TARGET_PROFILE) -> dict[str, int]:
@@ -253,7 +254,7 @@ def test_equality_at_t265_is_not_a_strict_gain(monkeypatch: pytest.MonkeyPatch) 
 
     monkeypatch.setattr(cert, "hilo_relaxation", equality_cap)
     with pytest.raises(ValueError, match="no strict profile gain"):
-        cert.compute_result()
+        cert.compute_t260_result()
 
 
 def test_false_family_gain_is_rejected(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -282,7 +283,7 @@ def test_false_family_gain_is_rejected(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(cert, "hilo_relaxation", proved_cap)
     monkeypatch.setattr(cert, "replay_family", moved)
     with pytest.raises(ValueError, match="false family gain"):
-        cert.compute_result()
+        cert.compute_t260_result()
 
 
 def test_source_hash_and_cursor_mutation_are_rejected() -> None:
@@ -338,10 +339,171 @@ def test_working_evaluator_bytes_are_pinned(monkeypatch: pytest.MonkeyPatch) -> 
 
 def test_result_bytes_reject_a_forged_improvement(result: cert.Document) -> None:
     payload = (cert.ROOT / cert.RESULT).read_bytes()
-    assert payload == cert.render(result)
+    final = cert.compute_result()
+    assert cert.obj(final["PRESERVED_T260_CERTIFICATE"]) == result
+    assert payload == cert.render(final)
     cert.verify_result(json.loads(payload))
-    forged = copy.deepcopy(result)
+    forged = copy.deepcopy(final)
     forged["FAMILY_DELTA"] = -1
     forged["NEW_FULL_PROFILE_BOUND"] = cert.SEALED_SCALAR_BOUND
     with pytest.raises(ValueError, match="deterministic result mismatch"):
         cert.verify_result(forged)
+
+
+def test_k4_complete_state_sets_and_relaxed_maximum() -> None:
+    first, second = cert.partition_shadow_states(), cert.histogram_shadow_states()
+    assert first == second and len(first) == 73
+    assert Counter(score for _, _, score in first) == {
+        178: 10,
+        179: 16,
+        180: 14,
+        181: 9,
+        182: 11,
+        183: 9,
+        184: 3,
+        185: 1,
+    }
+    for state in first:
+        cert.validate_shadow_state(state)
+    assert [(n, q) for n, q, score in first if score == 185] == [
+        ((0, 0, 0, 1, 0, 2, 0, 0, 0), 1),
+    ]
+    assert cert.k4_certificate()["LEGAL_ATTAINMENT"] == "UNKNOWN"
+
+
+def test_final_joint_envelope_and_complete_family_projections() -> None:
+    final = cert.compute_result()
+    prior = cert.obj(final["PRESERVED_T260_CERTIFICATE"])
+    assert cert.sha(cert.render(prior)) == cert.PRESERVED_RESULT_SHA256
+    assert prior["NEW_PROVEN_T_CAP"] == final["NEW_PROVEN_T_CAP"] == 260
+    assert prior["NEW_FULL_PROFILE_BOUND"] == 313346736
+    assert final["NEW_FULL_PROFILE_BOUND"] == 313345152
+    assert final["GAIN_OVER_PRESERVED_T260"] == 1584
+    assert final["PROFILE_DELTA"] == 46588
+    assert final["INHERITED_CAVEATS"] == prior["INHERITED_CAVEATS"]
+    joint = cast(list[dict[str, int]], final["T_TERMS"])
+    assert len(joint) == 239 and [r["T"] for r in joint] == list(range(22, 261))
+    assert max(r["BOUND"] for r in joint) == joint[-1]["BOUND"] == 313345152
+    assert joint[-1]["S4"] == 271642
+    projection = cert.obj(final["T265_K4_ONLY_PROJECTION"])
+    old = cast(list[dict[str, int]], projection["OLD_TERMS"])
+    new = cast(list[dict[str, int]], projection["NEW_TERMS"])
+    assert len(old) == len(new) == 244
+    assert old[-1]["S4"] == 293993 and new[-1]["S4"] == 296765
+    assert projection["BOUND"] == 313390156
+    for cap, allowance in ((260, 185), (265, 185), (265, 197)):
+        terms = cert.refined_envelope(cap, allowance)
+        assert cert.checked_envelope(terms, cap, allowance) == terms[-1][1]
+    families = cert.obj(final["FAMILY_PROJECTIONS"])
+    s0, s1, s2 = (cert.obj(families[k]) for k in ("S0", "S1_B_ONLY", "S2_A_AND_B"))
+    assert s0["FAMILY_BOUND"] == s1["FAMILY_BOUND"] == 313391740
+    assert s2["FAMILY_BOUND"] == 313391636 and s2["GAP_TO_INCUMBENT"] == 127748
+    assert s2["OWNER_IDS"] == ["66665555555321100000"]
+    assert s1["CHANGED_PROFILES"] == [cert.TARGET_PROFILE]
+    assert s2["CHANGED_PROFILES"] == sorted([cert.OTHER_OWNER, cert.TARGET_PROFILE])
+    assert s2["OTHER_ROWS_PRESERVED"] == 4645
+    assert s1["CURSOR_SHA256"] == s2["CURSOR_SHA256"]
+    assert final["CURRENT_S5_AUTHORITY"] == "NOT_PINNED"
+    assert final["GLOBAL_K20_OPTIMUM"] == final["LEGAL_ATTAINMENT"] == "UNKNOWN"
+
+
+@pytest.mark.parametrize(
+    "defect",
+    [
+        "wrong_profile",
+        "omitted_state",
+        "incorrect_cap",
+        "invalid_shadow",
+        "s4_sign",
+        "unsupported_s5",
+        "incomplete_t",
+        "wrong_rounding",
+        "source_hash",
+        "missing_update",
+        "duplicate_update",
+        "cursor_mutation",
+    ],
+)
+def test_compute_result_rejects_each_required_defect(
+    defect: str,
+    result: cert.Document,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Reuse the fully reproduced legacy certificate; exercise the real new entry.
+    monkeypatch.setattr(cert, "compute_t260_result", lambda: result)
+    if defect == "wrong_profile":
+        with pytest.raises(ValueError, match="wrong profile"):
+            cert.compute_result(cert.OTHER_OWNER)
+        return
+    if defect == "omitted_state":
+        states = cert.histogram_shadow_states()
+        states.remove(next(iter(states)))
+        monkeypatch.setattr(cert, "histogram_shadow_states", lambda: states)
+    elif defect == "incorrect_cap":
+        certificate = cert.k4_certificate()
+        certificate["CAP"] = 186
+        monkeypatch.setattr(cert, "k4_certificate", lambda: certificate)
+    elif defect == "invalid_shadow":
+        states = cert.partition_shadow_states()
+        states.add(((0, 0, 0, 2, 0, 0, 0, 0, 0), 1, 187))
+        monkeypatch.setattr(cert, "partition_shadow_states", lambda: states)
+        monkeypatch.setattr(cert, "histogram_shadow_states", lambda: states)
+    elif defect == "source_hash":
+        pins = dict(cert.EVALUATOR_PINS)
+        pins["b649_k20_min_s2_higher_order_closure_r2.py"] = "0" * 64
+        monkeypatch.setattr(cert, "EVALUATOR_PINS", pins)
+    elif defect in ("incomplete_t", "wrong_rounding", "s4_sign", "unsupported_s5"):
+        original = cert.refined_envelope
+
+        def damaged(cap: int, allowance: int) -> list[cert.Term]:
+            if defect in ("s4_sign", "unsupported_s5"):
+                cert.envelope_term(
+                    22,
+                    **_inputs(),
+                    s4_sign=1 if defect == "s4_sign" else -1,
+                    s5_upper=0 if defect == "unsupported_s5" else None,
+                )
+            terms = original(cap, allowance)
+            if defect == "incomplete_t":
+                return terms[:-1]
+            first = terms[0]
+            terms[0] = (first[0], first[1] - 1, first[2], first[3], first[4], first[5], first[6])
+            return terms
+
+        monkeypatch.setattr(cert, "refined_envelope", damaged)
+    else:
+        replay = cert.project_family
+
+        def damaged_projection(
+            rows: Mapping[str, int],
+            cursor: Mapping[str, int],
+            updates: list[tuple[str, int]],
+            expected: list[str],
+            cursor_fingerprint: str,
+        ) -> cert.Document:
+            if defect == "missing_update":
+                updates = updates[:-1]
+            elif defect == "duplicate_update":
+                updates = [*updates, updates[0]]
+            else:
+                changed = dict(cursor)
+                changed[next(iter(changed))] += 1
+                cursor = changed
+            return replay(rows, cursor, updates, expected, cursor_fingerprint)
+
+        monkeypatch.setattr(cert, "project_family", damaged_projection)
+    expected_error = {
+        "omitted_state": "incomplete necessary state set",
+        "incorrect_cap": "incorrect K4 cap",
+        "invalid_shadow": "invalid shadow condition",
+        "s4_sign": "invalid S4/S5 sign",
+        "unsupported_s5": "unsupported S5 authority",
+        "incomplete_t": "incomplete T envelope",
+        "wrong_rounding": "wrong Route-B sign or rounding",
+        "source_hash": "source hash mismatch",
+        "missing_update": "missing/duplicate ledger update",
+        "duplicate_update": "missing/duplicate ledger update",
+        "cursor_mutation": "cursor mutation",
+    }[defect]
+    with pytest.raises(ValueError, match=expected_error):
+        cert.compute_result()

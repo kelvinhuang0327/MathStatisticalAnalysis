@@ -101,9 +101,12 @@ class FFTModule(Protocol):
 
 
 class RecordedDependency(TypedDict):
+    __file__: str
+
+
+class VersionedRecordedDependency(RecordedDependency):
     module_version: str
     distribution_version: str
-    __file__: str
 
 
 class RecordedRuntime(TypedDict):
@@ -112,6 +115,9 @@ class RecordedRuntime(TypedDict):
 
 class DependencyRow(TypedDict):
     phase: str
+
+
+class RuntimeDependencyRow(DependencyRow):
     runtime: RecordedRuntime
 
 
@@ -297,10 +303,11 @@ def verify_recorded_dependencies(receipt_bytes: bytes, metadata: DependencyMetad
     for row in (cast(DependencyRow, json.loads(line)) for line in receipt_bytes.splitlines()):
         if row["phase"] not in ("READY_TO_INVOKE", "TERMINAL"):
             continue
-        actual = row["runtime"]["dependencies"]
+        actual = cast(RuntimeDependencyRow, row)["runtime"]["dependencies"]
         for name, version in metadata["packages"].items():
-            if (actual[name]["module_version"] != version
-                    or actual[name]["distribution_version"] != version):
+            versioned = cast(VersionedRecordedDependency, actual[name])
+            if (versioned["module_version"] != version
+                    or versioned["distribution_version"] != version):
                 raise ValueError("Recorded dependency differs from pinned metadata: " + name)
         for name in ("numpy", "scipy", "scipy.fft"):
             Path(actual[name]["__file__"]).resolve(strict=True).relative_to(

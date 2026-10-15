@@ -1,0 +1,341 @@
+{
+  "ACCOUNTING_NOTE": "Buckets partition legal 3-ticket completions. Kernel-internal exact leaves that the output does not identify stay in UNRESOLVED_FRONTIER.",
+  "ACCOUNTING_SUM": "455747374158108530299",
+  "BASE_HEAD": "0ba102858c9d5156b759a172fe0ab0fad01ab8c0",
+  "BASE_TREE": "2a3063313b4bf083590c47c60b18953c55feaa85",
+  "BEST_CANONICAL_COUNT": 313263888,
+  "BEST_DELTA_7SET": 0,
+  "BEST_F": 6062881,
+  "BEST_PORTFOLIO_SHA": "6a537ea56c2741e1208dbbb4abf1064bc74508f2d356712920d348d11e3a4a24",
+  "BOUND_PRUNED_CANDIDATES": "455747080838261700180",
+  "C2_AUTOMORPHISM_GROUP_ORDER": 144,
+  "C2_EQUIVALENT_SLOT_TRIPLES": [
+    [
+      12,
+      13,
+      15
+    ],
+    [
+      12,
+      13,
+      16
+    ],
+    [
+      12,
+      13,
+      17
+    ],
+    [
+      12,
+      14,
+      15
+    ],
+    [
+      12,
+      14,
+      16
+    ],
+    [
+      12,
+      14,
+      17
+    ],
+    [
+      12,
+      15,
+      16
+    ],
+    [
+      12,
+      15,
+      17
+    ],
+    [
+      12,
+      16,
+      17
+    ],
+    [
+      13,
+      14,
+      15
+    ],
+    [
+      13,
+      14,
+      16
+    ],
+    [
+      13,
+      14,
+      17
+    ],
+    [
+      13,
+      15,
+      16
+    ],
+    [
+      13,
+      15,
+      17
+    ],
+    [
+      13,
+      16,
+      17
+    ],
+    [
+      14,
+      15,
+      16
+    ],
+    [
+      14,
+      15,
+      17
+    ],
+    [
+      14,
+      16,
+      17
+    ]
+  ],
+  "C4_DEGREE_MATCHES": 18,
+  "C4_LOCATOR": "/Users/kelvin/.codex/worktrees/b649-k20-12-8-winner-two-ticket-ascent-r1/MathStatisticalAnalysis/docs/research/matrix-native-results/b649-k20-12-8-winner-two-ticket-ascent-r1-result.json",
+  "C4_STATUS": "COMPUTED_FROM_LOCAL_C4_PORTFOLIO",
+  "CANONICAL_GAIN_RECOUNT": "NOT_APPLICABLE",
+  "CANONICAL_VERIFICATION_TIME_USED": 1.4171540830012646,
+  "CANONICAL_VERIFICATION_WALL_SECONDS": 1.4171540830012646,
+  "CHECKPOINT_LOCATOR": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_C2_N3_121315_FULL_DOMAIN_R1/.task-data/B649_C2_N3_121315_FULL_DOMAIN_R1/run1/solver.anchors.jsonl",
+  "COMPARED_FULL_N3_CLOSURES": [
+    {
+      "destroy_slots": [
+        12,
+        13,
+        14
+      ],
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_C2_N3_121314_FULL_DOMAIN_R1/docs/research/matrix-native-results/b649-c2-n3-121314-full-domain-r1-result.json",
+      "remainder_sha256": "926ff54c804490e906cd09e620a23d485709f7577ad1470b4b8f866b7c3129e0",
+      "same_remainder": false,
+      "task_id": "B649_C2_N3_121314_FULL_DOMAIN_R1",
+      "task_status": "EXHAUSTIVE_NO_GAIN_CLOSED"
+    }
+  ],
+  "COUNTING_UNIT": "7_SET",
+  "DESTROY_SLOTS": [
+    12,
+    13,
+    15
+  ],
+  "EQUIVALENT_C2_CASES": 18,
+  "EQUIVALENT_C4_CASES": 0,
+  "EVALUATOR_SHA256": "92dcb836254cc6dbcd6c2ad907e619a5eb8cf3917197a8f6de3e5f989825cf66",
+  "EXACT_EVALUATED_CANDIDATES": "0",
+  "EXACT_EVALUATED_COUNT": "0",
+  "F0": 6062881,
+  "FIRST_UNFINISHED_FRONTIER": null,
+  "GLOBAL_K20_OPTIMUM_STATUS": "UNKNOWN",
+  "HEAVY_SLOT_RELEASED": true,
+  "KERNEL_ARGV": [
+    "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_C2_N3_121315_FULL_DOMAIN_R1/.task-data/B649_C2_N3_121315_FULL_DOMAIN_R1/run1/n3-exact",
+    "--kept",
+    "1,2,3,4,5,21;1,6,7,8,9,22;2,6,10,11,12,23;3,10,13,14,15,22;1,11,13,16,17,24;4,6,14,16,18,25;7,10,17,18,19,21;2,8,13,19,20,25;3,7,12,16,20,26;5,8,11,15,18,26;5,9,12,14,19,24;4,9,15,17,20,23;27,39,40,41,42,43;28,30,35,40,46,47;28,31,36,41,48,49;32,37,42,44,46,48;33,38,43,45,47,49",
+    "--removed",
+    "27,29,30,31,32,33;27,34,35,36,37,38;28,29,34,39,44,45",
+    "--out",
+    "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_C2_N3_121315_FULL_DOMAIN_R1/.task-data/B649_C2_N3_121315_FULL_DOMAIN_R1/run1/kernel-result.json",
+    "--checkpoint",
+    "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_C2_N3_121315_FULL_DOMAIN_R1/.task-data/B649_C2_N3_121315_FULL_DOMAIN_R1/run1/solver.anchors.jsonl",
+    "--time-limit",
+    "3600"
+  ],
+  "KERNEL_PEAK_RSS_BYTES": 614825984,
+  "KERNEL_RESULT_LOCATOR": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_C2_N3_121315_FULL_DOMAIN_R1/.task-data/B649_C2_N3_121315_FULL_DOMAIN_R1/run1/kernel-result.json",
+  "KERNEL_RESULT_SHA256": "5de8657f410603ed6916d29448c6ece15a384237fced6b415b74790225a8d0a7",
+  "LISTED_GAIN": null,
+  "MEMORY_LIMIT": {
+    "MONITOR_IS_OS_HARD_CAP": false,
+    "MONITOR_STOP_LOSS_BYTES": 2147483648,
+    "OS_HARD_LIMIT_AVAILABLE": false,
+    "OS_HARD_LIMIT_BYTES": null,
+    "RLIMITS": {
+      "RLIMIT_AS": {
+        "before": [
+          9223372036854775807,
+          9223372036854775807
+        ],
+        "error": "ValueError: current limit exceeds maximum limit",
+        "set_soft_2gib": false
+      },
+      "RLIMIT_DATA": {
+        "before": [
+          9223372036854775807,
+          9223372036854775807
+        ],
+        "error": "ValueError: current limit exceeds maximum limit",
+        "set_soft_2gib": false
+      },
+      "RLIMIT_RSS": {
+        "before": [
+          9223372036854775807,
+          9223372036854775807
+        ],
+        "error": "ValueError: current limit exceeds maximum limit",
+        "set_soft_2gib": false
+      }
+    }
+  },
+  "N1_N2_CLOSED_CANDIDATES": "293319846830119",
+  "N1_N2_CLOSED_COUNT": "293319846830119",
+  "N3_DONOR_BINARY_SHA256": "d267c52282cba2592074df30ec03c0b0c5a2f21a9082becbe9aa3b65e33c653f",
+  "N3_DONOR_SOURCE_SHA256": "ebd39a1611aada9fcc8bec132a674de54613b8ac1b95029c57ac0e3d95204588",
+  "N3_KERNEL_BINARY_SHA256": "d267c52282cba2592074df30ec03c0b0c5a2f21a9082becbe9aa3b65e33c653f",
+  "N3_KERNEL_COMMIT": "ed356a09d4abb1040f394b7dc5fbfb913d0c97d4",
+  "N3_KERNEL_SOURCE_FILES": {
+    "n3.h": "9b9932f6775700e48cf2e895db484ddbff1e36383893489c0af57fc394cbf051",
+    "n3_bounds.h": "0af2bd004d7dd0c411a3ef339a053029e3c67c0e63b57b65f63e47004debd3eb",
+    "n3_checkpoint.c": "0808d8b5e6db6d09e2b7ca9e6c7664e9e488611785b506ab4364a0733968129e",
+    "n3_checkpoint.h": "0391e145dabc508ba1a902f3c535d57d0bed0f2a40a387bd3d48aa122b6a0b7a",
+    "n3_core.c": "a3225d642cbdd2ca514d6fd55a542963ce3341fde2805b1579efef874b407f23",
+    "n3_lower.c": "4345ad7d520e9eac38cd64171a750c8bd1125c6daf8190abc5a6140426689359",
+    "n3_main.c": "ba5b69cfc873fc21805861c1fbde12c27b6078291b9ca600f7ad04774740fa6d",
+    "n3_mtab.c": "c1d2e217fa73d53b830ccc07cb2c67479dbcb11a9decfe1d30416f46d70065c9",
+    "n3_mtab.h": "06d9d911a0f8fb262554a927d3f51848ba60ef4495df761d97844f791e14775a",
+    "n3_overlap.c": "d32d02d09d91e4321a1223b32246f8a1b1aca2d0bb317f6b94355f1ffa2a0379",
+    "n3_sig.c": "0850a1f1c5a6101b59371c194102563c920e2a8a0c1bb09cdcd2a91d15e9a43b",
+    "n3_sig.h": "1d0b52c9b1bb8821c7231c8044876358837c9d45d0285fe80512d1fad99b3033",
+    "n3_solve.c": "02389136654c1c90803515cd80004ef9aa198ba51b1521f3cca6d67ef03e6059",
+    "n3_solve.h": "5009174c48d08c297e174695a9430e19ddb1a97dacdca2bdee93ffb974462c5c",
+    "n3_solve_legacy.c": "4e3cbd1501c9ff479c6387f4a7593f780ceee2e9366ae1dbd1bca45b3eaab74a"
+  },
+  "N3_KERNEL_SOURCE_SHA256": "ebd39a1611aada9fcc8bec132a674de54613b8ac1b95029c57ac0e3d95204588",
+  "OPEN_UPPER_BOUND": -1,
+  "PARENT_STOP_REASON": "KERNEL_EXIT",
+  "PEAK_MEMORY": 428146688,
+  "PEAK_RSS_BYTES_SAMPLED": 428146688,
+  "PILOT_64_PATHS": [],
+  "PILOT_64_STATUS": "ABSENT_NO_LOCAL_64_CASE_N3_PILOT",
+  "PR": "NOT_CREATED",
+  "PREFLIGHT": {
+    "EVALUATOR_SHA256": "92dcb836254cc6dbcd6c2ad907e619a5eb8cf3917197a8f6de3e5f989825cf66",
+    "HEAD": "0ba102858c9d5156b759a172fe0ab0fad01ab8c0",
+    "HEAVY_SLOT_HELD": false,
+    "KERNEL_COMMIT": "ed356a09d4abb1040f394b7dc5fbfb913d0c97d4",
+    "KERNEL_INTERFACE": true,
+    "MEMORY": {
+      "MONITOR_IS_OS_HARD_CAP": false,
+      "MONITOR_STOP_LOSS_BYTES": 2147483648,
+      "OS_HARD_LIMIT_AVAILABLE": false,
+      "OS_HARD_LIMIT_BYTES": null,
+      "RLIMITS": {
+        "RLIMIT_AS": {
+          "before": [
+            9223372036854775807,
+            9223372036854775807
+          ],
+          "error": "ValueError: current limit exceeds maximum limit",
+          "set_soft_2gib": false
+        },
+        "RLIMIT_DATA": {
+          "before": [
+            9223372036854775807,
+            9223372036854775807
+          ],
+          "error": "ValueError: current limit exceeds maximum limit",
+          "set_soft_2gib": false
+        },
+        "RLIMIT_RSS": {
+          "before": [
+            9223372036854775807,
+            9223372036854775807
+          ],
+          "error": "ValueError: current limit exceeds maximum limit",
+          "set_soft_2gib": false
+        }
+      }
+    },
+    "N1_N2_CERTIFICATE_APPLIES": true,
+    "REMAINDER_SHA256": "2562c9798361af68c941bc9b1287538a941a36053bfc077c0aceba075f968f4a",
+    "TREE": "2a3063313b4bf083590c47c60b18953c55feaa85",
+    "ZERO_SUPPORT_NUMBERS": [
+      29,
+      34
+    ],
+    "failures": [],
+    "ok": true
+  },
+  "PRIOR_CLOSURE_NOVELTY_STATUS": "DISTINCT_FROM_LOCAL_FULL_N3_CLOSURES_64_CASE_PILOT_ABSENT",
+  "PROCESS_ACTIVE": false,
+  "PROCESS_WALL_SECONDS": 619.4801538749998,
+  "PRODUCTION_MUTATION": "NONE",
+  "PROVEN_BOUND_PRUNED_COUNT": "455747080838261700180",
+  "PUSH": "NOT_RUN",
+  "RAW_LEGAL_N3_DOMAIN": "455747374158108530299",
+  "RAW_N3_DOMAIN": "455747374158108530299",
+  "RECOUNT": null,
+  "REMAINDER_CLASS_MAPPING_STATUS": "COMPUTED_49_NUMBER_AND_17_TICKET_BIJECTION",
+  "REMAINDER_SHA256": "2562c9798361af68c941bc9b1287538a941a36053bfc077c0aceba075f968f4a",
+  "REMAINDER_SHA_DIFFERS_FROM_SEALED_121314": true,
+  "REMOVED_TICKETS": [
+    [
+      27,
+      29,
+      30,
+      31,
+      32,
+      33
+    ],
+    [
+      27,
+      34,
+      35,
+      36,
+      37,
+      38
+    ],
+    [
+      28,
+      29,
+      34,
+      39,
+      44,
+      45
+    ]
+  ],
+  "RU_MAXRSS_RAW": 614825984,
+  "RU_MAXRSS_UNIT": "BYTES_ON_MACOS",
+  "SAFE_PRUNING_CERTIFICATES": [
+    {
+      "bound": 0,
+      "count": "293319846830119",
+      "inequality": "distance<=2 from C2 and archived N1/N2 best delta is 0",
+      "kind": "N1_N2_REUSE"
+    },
+    {
+      "bound": 6062881,
+      "count": "455747080838261700180",
+      "inequality": "F<=F0=C_ijk for every triple in C(C(49,6),3), hence for every fresh triple",
+      "kind": "KERNEL_SUPERSET_CLOSURE"
+    }
+  ],
+  "SCHEMA": "B649_C2_N3_121315_FULL_DOMAIN_R1",
+  "SEALED_121314_ISOMORPHIC": false,
+  "SEALED_121314_REMAINDER_SHA256": "926ff54c804490e906cd09e620a23d485709f7577ad1470b4b8f866b7c3129e0",
+  "SOLVER_LAUNCHED": true,
+  "SOLVER_TIME_USED": 618.063,
+  "SOLVER_WALL_SECONDS": 618.063,
+  "START_CANONICAL_COUNT": 313263888,
+  "START_CLASS_ID": "e4b1941183c0583d479c1467d7ce9aadf164190a07734ec592a8cf6f45ee07d7",
+  "START_ORDERED_SHA": "6a537ea56c2741e1208dbbb4abf1064bc74508f2d356712920d348d11e3a4a24",
+  "STOP_REASON": "CLOSED",
+  "TASK_ID": "B649_C2_N3_121315_FULL_DOMAIN_R1",
+  "TASK_STATUS": "EXHAUSTIVE_NO_GAIN_CLOSED",
+  "UNRESOLVED_FRONTIER_CANDIDATES": "0",
+  "UNRESOLVED_FRONTIER_COUNT": "0",
+  "WRITE_OWNERSHIP": "RELEASED_AFTER_RESULT",
+  "ZERO_SUPPORT_NUMBERS": [
+    29,
+    34
+  ]
+}

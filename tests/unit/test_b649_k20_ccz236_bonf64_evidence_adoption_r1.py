@@ -115,6 +115,76 @@ class Bonf64EvidenceAdoptionTest(unittest.TestCase):
         ).stdout.strip()
         self.assertEqual(tree, FROZEN_TREE)
 
+    def test_correct_source_roles_are_independently_pinned(self):
+        expected_roles = {
+            "BONF64_SOURCE_PATH": (
+                "src/lottolab/research/"
+                "b649_k20_min_s2_higher_order_closure_r2.py"
+            ),
+            "BONF64_SOURCE_SHA256": (
+                "6897c974fe9679f2ec567602522bb4c38c996275368b714c6a7fadedd66d6e45"
+            ),
+            "BONF64_SUPPORT_SOURCE_PATH": (
+                "src/lottolab/research/"
+                "b649_k20_min_s2_realizable_core_class_bound_r4.py"
+            ),
+            "BONF64_SUPPORT_SOURCE_SHA256": (
+                "cbc57debfcc037b8be605f9c3e157dba9029fbbcca50fa05dcff99390066edec"
+            ),
+        }
+        for source in (expected_certificate(), self.result):
+            with self.subTest(source="validator" if source is not self.result else "result"):
+                self.assertEqual(
+                    {key: source[key] for key in expected_roles},
+                    expected_roles,
+                )
+        self.assertEqual(validate_certificate(self.result), ())
+
+    def test_source_role_tampering_is_rejected(self):
+        support_path = (
+            "src/lottolab/research/"
+            "b649_k20_min_s2_realizable_core_class_bound_r4.py"
+        )
+        support_sha256 = (
+            "cbc57debfcc037b8be605f9c3e157dba9029fbbcca50fa05dcff99390066edec"
+        )
+        bonf64_path = (
+            "src/lottolab/research/"
+            "b649_k20_min_s2_higher_order_closure_r2.py"
+        )
+        bonf64_sha256 = (
+            "6897c974fe9679f2ec567602522bb4c38c996275368b714c6a7fadedd66d6e45"
+        )
+
+        def swap_both_roles(item):
+            for left, right in (
+                ("BONF64_SOURCE_PATH", "BONF64_SUPPORT_SOURCE_PATH"),
+                ("BONF64_SOURCE_SHA256", "BONF64_SUPPORT_SOURCE_SHA256"),
+            ):
+                item[left], item[right] = item[right], item[left]
+
+        def coupled_bonf64_tampering(item):
+            item["BONF64_SOURCE_PATH"] = support_path
+            item["BONF64_SOURCE_SHA256"] = support_sha256
+
+        cases = (
+            ("REVERSED_SOURCE_ROLE", swap_both_roles),
+            ("BONF64_PATH_ONLY_TAMPER", lambda item: item.update(BONF64_SOURCE_PATH=support_path)),
+            ("BONF64_SHA_ONLY_TAMPER", lambda item: item.update(BONF64_SOURCE_SHA256=support_sha256)),
+            (
+                "SUPPORT_PATH_ONLY_TAMPER",
+                lambda item: item.update(BONF64_SUPPORT_SOURCE_PATH=bonf64_path),
+            ),
+            (
+                "SUPPORT_SHA_ONLY_TAMPER",
+                lambda item: item.update(BONF64_SUPPORT_SOURCE_SHA256=bonf64_sha256),
+            ),
+            ("BOTH_ROLES_SWAPPED", swap_both_roles),
+            ("COUPLED_SOURCE_TAMPERING", coupled_bonf64_tampering),
+        )
+        for name, mutate in cases:
+            self.assert_rejected(name, mutate)
+
     def test_required_fail_closed_mutations(self):
         cases = (
             ("WRONG_PROFILE", lambda item: item.update(PROFILE_ID="55555555555551100000")),

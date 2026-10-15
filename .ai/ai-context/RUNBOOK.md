@@ -146,3 +146,16 @@ policy document.
 Deployment process, artifact registry, publication steps, and external-notification
 procedures are **`[Unknown]`** — no committed source in this repository documents them
 as of this bootstrap.
+
+## One-off evidence retention
+
+`[Inferred]` Project workflow recommendation; not an established repository policy.
+
+- Save one-off execution artifacts with `--output-directory` to a persistent path
+  outside the version-controlled source tree that the owner can continue to access.
+- Keep DB and scratch data under the existing temporary-directory rules; execution
+  artifacts and runtime data must not enter Git.
+- In the handoff, list the artifact root, full manifest SHA-256, commit/tree,
+  runtime/source identity, and receipt/result SHA-256 values.
+- Explicitly list missing files and do not claim archival is complete while required
+  evidence is missing.

@@ -42,3 +42,9 @@
 - `[Unknown]` The original dataset/version, identity of the original 635 history rows, capture-time strategy/runtime identity, and original legacy HTTP response remain unknown or unverified. Prediction regeneration was not run.
 - `[Inferred]` The next bounded step is one `CANDIDATE_REPRODUCTION` using an identified candidate history and declared strategy/runtime. Candidate agreement cannot establish original-source identity or historical regeneration.
 - `[Confirmed]` The migration-ledger entry `lottery.replay.read_models` remains `INVENTORIED`; this pilot does not change its phase or parity-evidence field.
+
+## 2026-10-14 — Replay status publication (R2)
+
+- `[Confirmed]` Old r7 recorded exit 0, `accepted: true`, and candidate `MATCH` at commit `560503e9e0ab897c603205151368b10d33af94c4` / tree `bf43fa58a2bb2b5c9c0d337b6a0c7e90e3c42a41`; its receipt applies only to those old tool bytes.
+- `[Confirmed]` PR #379 merged at 2026-10-14T09:47:50Z into commit `b16cd98dc30c2459701c53024c8bf9b2328da925` / tree `d09c71985187a3151eb1641804bc592da9a635ba`; CI run 38532436278 succeeded for backend and frontend. These new tool bytes have not run through the fixed CPython 3.9.6 receipt path; old r7 and CI are not new runtime or historical-parity evidence.
+- `[Unknown]` Original execution source, complete ordered history, dataset/snapshot, runtime, and loaded-module identity remain `UNKNOWN`; original legacy HTTP response remains unverified, historical parity incomplete, and CTO progress 5/6 (83.3%). The single-record/eight-field conversion result and migration-ledger `INVENTORIED` phase remain unchanged.

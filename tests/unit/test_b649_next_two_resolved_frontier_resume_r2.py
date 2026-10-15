@@ -10,10 +10,16 @@ from copy import deepcopy
 from fractions import Fraction
 from itertools import combinations, combinations_with_replacement, product
 from math import comb
-from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import pytest
+from tests.unit.b649_certificate_replay import (
+    replay_certificate_call,
+    replay_fixed_result,
+)
+from tests.unit.b649_certificate_replay import (
+    replay_fixed_inputs as replay_certificate_inputs,
+)
 
 from lottolab.research import b649_next_two_resolved_frontier_resume_r2 as cert
 
@@ -21,6 +27,41 @@ type Record = dict[str, Any]
 type Adjacency = list[set[int]]
 
 A, B = cert.PROFILE_A, cert.PROFILE_B
+R2_HEAD = "1300ae2728497f7ec86b8ccae076c95b1327b133"
+R2_TREE = "dfba56c976d76f48666d50b8c60a511d0366d7db"
+
+
+def replay_r2(
+    operation: Literal["compute_result", "verify_result"],
+    *,
+    corrupt_input_tree: bool = False,
+    profile_floor_override: int | None = None,
+    blob_damage: Literal[
+        "r2_input_result", "r2_direct_source", "r2_base_result", "r2_r30_result"
+    ]
+    | None = None,
+) -> object:
+    return replay_certificate_call(
+        cert.__name__,
+        operation,
+        source_head=R2_HEAD,
+        source_tree=R2_TREE,
+        operation_head=R2_HEAD,
+        operation_tree=R2_TREE,
+        corrupt_input_tree=corrupt_input_tree,
+        profile_floor_override=profile_floor_override,
+        blob_damage=blob_damage,
+    )
+
+
+def replay_r2_inputs() -> tuple[Record, Record, Record]:
+    return replay_certificate_inputs(
+        cert.__name__,
+        source_head=R2_HEAD,
+        source_tree=R2_TREE,
+        operation_head=R2_HEAD,
+        operation_tree=R2_TREE,
+    )
 
 # Scratch hill-climb/random legal realizations: vertex i has d=int(pid[i]); 'a-b-c' is one
 # triple label and 'a-b' one pair label. Positive fixtures only; no certified bound uses them.
@@ -88,7 +129,13 @@ def realizations(pid: str) -> list[Realization]:
 
 @pytest.fixture(scope="module")
 def result() -> Record:
-    return cert.compute_result()
+    return replay_fixed_result(
+        cert.__name__,
+        source_head=R2_HEAD,
+        source_tree=R2_TREE,
+        operation_head=R2_HEAD,
+        operation_tree=R2_TREE,
+    )
 
 
 def ceiling(value: Fraction) -> int:
@@ -218,7 +265,7 @@ def legal_graph(
 
 
 def test_input_replay_pins_and_frontier(result: Record) -> None:
-    fixed, base, _ = cert.replay_input()
+    fixed, base, _ = replay_r2_inputs()
     assert cert.git("rev-parse", cert.INPUT_HEAD + "^{tree}") == cert.INPUT_TREE
     assert cert.git("rev-parse", cert.BASE_HEAD + "^{tree}") == cert.BASE_TREE
     assert result["FAMILY_BEFORE"] == fixed["FAMILY_AFTER"]
@@ -521,7 +568,7 @@ def test_base_authority_and_complete_old_and_new_envelopes(result: Record) -> No
 
 
 def test_full_family_aggregation_and_preservation(result: Record) -> None:
-    fixed, _, _ = cert.replay_input()
+    fixed, _, _ = replay_r2_inputs()
     raw: dict[str, int] = {}
     for combo in combinations_with_replacement(range(7), 20):
         if sum(combo) == 66:
@@ -674,7 +721,7 @@ def test_negative_swapped_split_adoption(monkeypatch: pytest.MonkeyPatch) -> Non
 
 
 def test_negative_s4_s5_authority(result: Record) -> None:
-    _, base, _ = cert.replay_input()
+    _, base, _ = replay_r2_inputs()
     for pid in (A, B):
         auth = result["PROFILES"][pid]["BASE_AUTHORITY"]
         cert.validate_s4_s5(pid, base, auth)
@@ -695,7 +742,7 @@ def test_negative_s4_s5_authority(result: Record) -> None:
 
 
 def test_negative_wrong_base_s4_floor(result: Record, monkeypatch: pytest.MonkeyPatch) -> None:
-    _, base, r30 = cert.replay_input()
+    _, base, r30 = replay_r2_inputs()
 
     def damaged_floor(_: tuple[int, ...]) -> int:
         return 113
@@ -707,7 +754,7 @@ def test_negative_wrong_base_s4_floor(result: Record, monkeypatch: pytest.Monkey
         with pytest.raises(ValueError, match="S4 authority"):
             cert.validate_s4_s5(pid, base, cert.base_authority(pid, r30))
     with pytest.raises(ValueError, match=r"floor applicability|S4 authority"):
-        cert.compute_result()
+        replay_r2("compute_result", profile_floor_override=113)
 
 
 @pytest.mark.parametrize(
@@ -801,33 +848,22 @@ def test_negative_duplicate_json_row() -> None:
 
 
 @pytest.mark.parametrize("kind", ["git", "input_result", "direct_source", "base", "r30"])
-def test_negative_live_pin_corruption(kind: str, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_negative_live_pin_corruption(kind: str) -> None:
     if kind == "git":
-        original = cert.git
-
-        def damaged_git(*args: str, repo: Path = cert.ROOT) -> str:
-            raw = original(*args, repo=repo)
-            return "0" * 40 if args == ("rev-parse", cert.BASE_HEAD + "^{tree}") else raw
-
-        monkeypatch.setattr(cert, "git", damaged_git)
         with pytest.raises(ValueError, match="Git TREE pin"):
-            cert.compute_result()
+            replay_r2("compute_result", corrupt_input_tree=True)
         return
-    target = {
-        "input_result": cert.INPUT_RESULT,
-        "direct_source": cert.direct.SOURCE,
-        "base": cert.BASE_RESULT,
-        "r30": cert.R30_PATH,
-    }[kind]
-    original_blob = cert.blob
-
-    def damaged_blob(head: str, path: str, repo: Path = cert.ROOT) -> bytes:
-        raw = original_blob(head, path, repo)
-        return raw + b"\n" if path == target else raw
-
-    monkeypatch.setattr(cert, "blob", damaged_blob)
+    damage_by_kind: dict[
+        str, Literal["r2_input_result", "r2_direct_source", "r2_base_result", "r2_r30_result"]
+    ] = {
+        "input_result": "r2_input_result",
+        "direct_source": "r2_direct_source",
+        "base": "r2_base_result",
+        "r30": "r2_r30_result",
+    }
+    damage = damage_by_kind[kind]
     with pytest.raises(ValueError, match="SHA pin"):
-        cert.compute_result()
+        replay_r2("compute_result", blob_damage=damage)
 
 
 @pytest.mark.parametrize(
@@ -860,7 +896,7 @@ def test_negative_complete_payload_tampering(result: Record, case: str) -> None:
 
 
 def test_stored_result_exact_recomputation(result: Record) -> None:
-    cert.verify_result()
+    replay_r2("verify_result")
     stored = json.loads((cert.ROOT / cert.RESULT).read_bytes())
     assert cert.render(stored) == cert.render(result)
     assert stored["TASK_STATUS"] == "PROVEN_FAMILY_GAIN"

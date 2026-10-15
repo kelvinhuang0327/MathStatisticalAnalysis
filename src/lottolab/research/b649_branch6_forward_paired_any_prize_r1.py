@@ -15,20 +15,21 @@ artifact SHA-256 and ``EXTERNAL_PREDRAW_ATTESTATION`` evidence whose capture
 time is at or before the supplied legal information cutoff and strictly before
 the official result is available.
 
-Real admission additionally requires a caller-configured independent verifier.
-It must resolve/authenticate the external evidence against an independently
-configured authority (e.g. a timestamp authority's pinned key), establish its
-real-data provenance, and return the verified bindings below. No verifier or
-trust anchor is loaded from snapshot JSON. There is deliberately no default
-real verifier: a locator, local file mtime, generated time, or self-declared
-``EXTERNAL_PREDRAW_ATTESTATION`` cannot establish historical pre-draw capture.
-Official results and their availability/legal cutoff must come from the caller's
-authoritative draw source. The verifier also independently binds those clocks.
+Data submitters cannot self-establish trust for REAL_OBSERVED. Caller-supplied
+verifier callbacks, caller-supplied trusted=true flags, self-declared attestation
+JSON, self-filled timestamps, locators, and always-True verifiers do not constitute
+independent trust. Selection and verification of trusted sources must be independent
+of data submitter control.
+
+In the absence of an integrated independent trusted verification source, any attempt
+to evaluate or admit real evidence under REAL_OBSERVED is REJECTED.
+Observed success gain remains NOT_ESTABLISHED and valid real paired draws remains 0.
+Synthetic fixtures always need the explicit label and cannot be promoted to real.
 
 Only complete, already selected portfolios are accepted, with a frozen lexical
 tie policy. Partial rankings/score lists cannot be completed using draw results.
 Any invalid input invalidates the whole batch; no lift is computed on a
-validation-selected subset. Synthetic fixtures always need the explicit label.
+validation-selected subset.
 
 Donor: original Branch6 source, 44755 bytes, mtime_ns=1792035396658573758,
 SHA256=cc676cf0baaac449799409755eea1fc9a624447c4d5256dd95767eb6ed1feac3.
@@ -402,6 +403,8 @@ def evaluate_paired_any_prize(
     officials, ambiguous_ids = _index_official_results(official_results)
     parsed = [_parse_snapshot(index, snapshot) for index, snapshot in enumerate(pre_draw_snapshots)]
     duplicate_keys = _duplicate_keys(parsed)
+    verified_sources: dict[str, str] = {}
+    verified_locators: dict[str, str] = {}
 
     admitted: list[PairedDrawEvaluation] = []
     rejections: list[InputRejection] = []
@@ -425,7 +428,12 @@ def evaluate_paired_any_prize(
         verified: VerifiedExternalAttestation | None = None
         if not codes and (report_label == REAL_OBSERVED or attestation_verifier is not None):
             verified = _verify_external_attestation(
-                codes, row, officials[row.draw_id], attestation_verifier
+                codes,
+                row,
+                officials[row.draw_id],
+                attestation_verifier,
+                verified_sources,
+                verified_locators,
             )
         if codes:
             rejections.append(
@@ -760,6 +768,8 @@ def _verify_external_attestation(
     row: _ParsedSnapshot,
     official: _ParsedOfficial,
     verifier: AttestationVerifier | None,
+    verified_sources: dict[str, str] | None = None,
+    verified_locators: dict[str, str] | None = None,
 ) -> VerifiedExternalAttestation | None:
     if verifier is None:
         _add(codes, MISSING_INDEPENDENT_VERIFIER)
@@ -767,12 +777,35 @@ def _verify_external_attestation(
     if row.evidence is None or row.frozen_bytes is None:
         _add(codes, UNTRUSTED_FREEZE_EVIDENCE)
         return None
+
+    # Caller-supplied verifier callbacks are controlled by the data submitter and cannot
+    # serve as an independent trust root for real pre-draw attestation.
+    if row.provenance == REAL_PREDRAW_ARTIFACT:
+        _add(codes, UNTRUSTED_FREEZE_EVIDENCE)
+        _add(codes, MISSING_INDEPENDENT_VERIFIER)
+        try:
+            verified = verifier(row.evidence, row.frozen_bytes)
+            if (
+                isinstance(verified, VerifiedExternalAttestation)
+                and verified.provenance != row.provenance
+            ):
+                _add(codes, ATTESTATION_BINDING_MISMATCH)
+        except Exception:
+            pass
+        return None
+
     try:
         verified = verifier(row.evidence, row.frozen_bytes)
     except Exception:  # A verification outage must never admit or score a real row.
         _add(codes, UNTRUSTED_FREEZE_EVIDENCE)
         return None
     if not isinstance(verified, VerifiedExternalAttestation):
+        _add(codes, UNTRUSTED_FREEZE_EVIDENCE)
+        return None
+    if verified.provenance != SYNTHETIC_FIXTURE:
+        # Caller-supplied verifiers can only authenticate SYNTHETIC_FIXTURE fixtures.
+        # They cannot promote evidence to real or replace the independent trust root.
+        _add(codes, ATTESTATION_BINDING_MISMATCH)
         _add(codes, UNTRUSTED_FREEZE_EVIDENCE)
         return None
     texts = (
@@ -811,6 +844,18 @@ def _verify_external_attestation(
     ):
         _add(codes, ATTESTATION_BINDING_MISMATCH)
         return None
+    if verified_sources is not None:
+        source_key = verified.source_sha256
+        if source_key in verified_sources and verified_sources[source_key] != row.draw_id:
+            _add(codes, ATTESTATION_BINDING_MISMATCH)
+            return None
+        verified_sources[source_key] = row.draw_id
+    if verified_locators is not None:
+        loc_key = verified.capture_locator
+        if loc_key in verified_locators and verified_locators[loc_key] != row.draw_id:
+            _add(codes, ATTESTATION_BINDING_MISMATCH)
+            return None
+        verified_locators[loc_key] = row.draw_id
     return verified
 
 
@@ -939,7 +984,10 @@ def _assemble_report(
     in_sample = tuple(bucket for bucket in buckets if bucket.sample_scope == IN_SAMPLE)
     out_of_sample = tuple(bucket for bucket in buckets if bucket.sample_scope == OUT_OF_SAMPLE)
     count = len(admitted)
-    real_count = count if report_label == REAL_OBSERVED else 0
+    # Real observed admission requires an integrated independent trusted source.
+    # Without such an independent authority, no real draw is admitted, and
+    # observed success gain remains NOT_ESTABLISHED.
+    real_count = 0
     synthetic_count = count if report_label == SYNTHETIC_FIXTURE else 0
     return EvaluationReport(
         report_label=report_label,
@@ -968,8 +1016,8 @@ def _assemble_report(
         observed_field_name=OBSERVED_WIN_FIELD,
         theoretical_field_name=THEORETICAL_COVERAGE_FIELD,
         validation_status="INVALID_INPUT" if rejections else "VALID",
-        valid_real_paired_draws=len({record.draw_id for record in admitted}) if real_count else 0,
-        observed_success_gain=_lift_text(buckets) if real_count else NOT_ESTABLISHED,
+        valid_real_paired_draws=0,
+        observed_success_gain=NOT_ESTABLISHED,
     )
 
 

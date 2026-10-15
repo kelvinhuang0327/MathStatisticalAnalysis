@@ -552,3 +552,240 @@ def test_paired_indicator_all_four_outcomes(candidate_wins: bool, baseline_wins:
     _freeze(row)
     record = _synthetic(row, official).out_of_sample_buckets[0].records[0]
     assert record.paired_indicator_difference == int(candidate_wins) - int(baseline_wins)
+
+
+# ---------------------------------------------------------------------------
+# Section VI Mandatory Fail-Closed Negative Tests (directly hitting evaluate_paired_any_prize)
+# ---------------------------------------------------------------------------
+
+
+def test_negative_case_01_caller_always_true_verifier_fails_closed() -> None:
+    row, official = _inputs()
+    row["provenance"] = official["provenance"] = evaluator.REAL_PREDRAW_ARTIFACT
+    _freeze(row)
+    verified = _verified_fixture(row, official)
+    verified = replace(
+        verified,
+        artifact_sha256=cast(str, row["frozen_artifact_sha256"]),
+        provenance=evaluator.REAL_PREDRAW_ARTIFACT,
+    )
+    report = evaluator.evaluate_paired_any_prize(
+        [row],
+        [official],
+        report_label=evaluator.REAL_OBSERVED,
+        attestation_verifier=lambda _e, _b: verified,
+    )
+    _rejected(report, "MISSING_INDEPENDENT_VERIFIER")
+    assert report.valid_real_paired_draws == 0
+    assert report.observed_success_gain == evaluator.NOT_ESTABLISHED
+
+
+def test_negative_case_02_caller_self_generated_attestation_rejected() -> None:
+    row, official = _inputs()
+    row["provenance"] = official["provenance"] = evaluator.REAL_PREDRAW_ARTIFACT
+    row["prediction_generated_at"] = datetime(2026, 1, 1, 11, tzinfo=UTC)
+    _nested(row, "pre_draw_capture_evidence")["captured_at"] = datetime(
+        2026, 1, 1, 11, 30, tzinfo=UTC
+    )
+    _freeze(row)
+    report = evaluator.evaluate_paired_any_prize(
+        [row], [official], report_label=evaluator.REAL_OBSERVED
+    )
+    _rejected(report, "MISSING_INDEPENDENT_VERIFIER")
+    assert report.valid_real_paired_draws == 0
+    assert report.observed_success_gain == evaluator.NOT_ESTABLISHED
+
+
+def test_negative_case_03_synthetic_labeled_real_observed_rejected() -> None:
+    row, official = _inputs()
+    row["provenance"] = official["provenance"] = evaluator.SYNTHETIC_FIXTURE
+    _freeze(row)
+    report = evaluator.evaluate_paired_any_prize(
+        [row], [official], report_label=evaluator.REAL_OBSERVED
+    )
+    _rejected(report, "SYNTHETIC_EXCLUDED_FROM_REAL")
+    assert report.valid_real_paired_draws == 0
+
+
+def test_negative_case_04_false_predraw_timestamp_rejected() -> None:
+    row, official = _inputs()
+    row["prediction_cutoff"] = _nested(row, "same_count_baseline")["prediction_cutoff"] = datetime(
+        2026, 1, 1, 21, tzinfo=UTC
+    )
+    _freeze(row)
+    report = evaluator.evaluate_paired_any_prize(
+        [row], [official], report_label=evaluator.SYNTHETIC_FIXTURE
+    )
+    _rejected(report, "LATE_CUTOFF")
+    _rejected(report, "CUTOFF_NOT_BEFORE_RESULT")
+
+
+def test_negative_case_05_wrong_artifact_sha256_rejected() -> None:
+    row, official = _inputs()
+    row["frozen_artifact_sha256"] = "f" * 64
+    report = evaluator.evaluate_paired_any_prize(
+        [row], [official], report_label=evaluator.SYNTHETIC_FIXTURE
+    )
+    _rejected(report, "SHA256_MISMATCH")
+
+
+def test_negative_case_06_frozen_bytes_replacement_rejected() -> None:
+    row, official = _inputs()
+    row["frozen_artifact_bytes"] = b"tampered frozen bytes replacement"
+    report = evaluator.evaluate_paired_any_prize(
+        [row], [official], report_label=evaluator.SYNTHETIC_FIXTURE
+    )
+    _rejected(report, "FROZEN_BYTES_MISMATCH")
+
+
+def test_negative_case_07_draw_id_mismatch_rejected() -> None:
+    row, official = _inputs()
+    _nested(row, "same_count_baseline")["draw_id"] = "MISMATCHED-DRAW-ID"
+    report = evaluator.evaluate_paired_any_prize(
+        [row], [official], report_label=evaluator.SYNTHETIC_FIXTURE
+    )
+    _rejected(report, "BASELINE_DRAW_MISMATCH")
+
+
+def test_negative_case_08_cutoff_mismatch_rejected() -> None:
+    row, official = _inputs()
+    _nested(row, "same_count_baseline")["prediction_cutoff"] = datetime(2026, 1, 1, 10, tzinfo=UTC)
+    report = evaluator.evaluate_paired_any_prize(
+        [row], [official], report_label=evaluator.SYNTHETIC_FIXTURE
+    )
+    _rejected(report, "BASELINE_CUTOFF_MISMATCH")
+
+
+def test_negative_case_09_duplicate_draw_rejected() -> None:
+    row, official = _inputs()
+    duplicate = deepcopy(row)
+    report = evaluator.evaluate_paired_any_prize(
+        [row, duplicate], [official], report_label=evaluator.SYNTHETIC_FIXTURE
+    )
+    _rejected(report, "DUPLICATE_DRAW")
+
+
+def test_negative_case_10_ticket_count_mismatch_rejected() -> None:
+    row, official = _inputs()
+    row["candidate_portfolio"] = ((1, 2, 3, 4, 5, 6),)  # 1 ticket instead of count=2
+    _freeze(row)
+    report = evaluator.evaluate_paired_any_prize(
+        [row], [official], report_label=evaluator.SYNTHETIC_FIXTURE
+    )
+    _rejected(report, "CANDIDATE_TICKET_COUNT_MISMATCH")
+
+
+def test_negative_case_11_budget_mismatch_rejected() -> None:
+    row, official = _inputs()
+    _nested(row, "same_count_baseline")["portfolio"] = ((20, 21, 22, 23, 24, 25),)
+    report = evaluator.evaluate_paired_any_prize(
+        [row], [official], report_label=evaluator.SYNTHETIC_FIXTURE
+    )
+    _rejected(report, "WRONG_BUDGET_BASELINE")
+
+
+def test_negative_case_12_time_order_violation_rejected() -> None:
+    row, official = _inputs()
+    row["prediction_generated_at"] = datetime(2026, 1, 1, 12, tzinfo=UTC)
+    _nested(row, "pre_draw_capture_evidence")["captured_at"] = datetime(2026, 1, 1, 11, tzinfo=UTC)
+    report = evaluator.evaluate_paired_any_prize(
+        [row], [official], report_label=evaluator.SYNTHETIC_FIXTURE
+    )
+    _rejected(report, "GENERATED_AFTER_CAPTURE")
+
+
+def test_negative_case_13_reproduced_attack_fabricated_1_1_gain_rejected() -> None:
+    row, official = _inputs()
+    row["provenance"] = official["provenance"] = evaluator.REAL_PREDRAW_ARTIFACT
+    row["candidate_portfolio"] = ((1, 2, 7, 8, 9, 10), (20, 21, 22, 23, 24, 25))
+    _freeze(row)
+    digest = cast(str, row["frozen_artifact_sha256"])
+    evidence = _nested(row, "pre_draw_capture_evidence")
+
+    verified = evaluator.VerifiedExternalAttestation(
+        artifact_sha256=digest,
+        draw_id=cast(str, row["draw_id"]),
+        captured_at=cast(datetime, evidence["captured_at"]),
+        prediction_cutoff=cast(datetime, row["prediction_cutoff"]),
+        capture_locator=cast(str, evidence["capture_locator"]),
+        source_identity="ATTACKER-MOCK-AUTHORITY",
+        source_sha256=hashlib.sha256(b"fake receipt").hexdigest(),
+        provenance=evaluator.REAL_PREDRAW_ARTIFACT,
+        official_draw_source_identity=cast(str, official["official_draw_source_identity"]),
+        official_result_available_at=cast(datetime, official["official_result_available_at"]),
+        legal_pre_draw_information_cutoff=cast(
+            datetime, official["legal_pre_draw_information_cutoff"]
+        ),
+    )
+
+    report = evaluator.evaluate_paired_any_prize(
+        [row],
+        [official],
+        report_label=evaluator.REAL_OBSERVED,
+        attestation_verifier=lambda _e, _b: verified,
+    )
+    _rejected(report, "MISSING_INDEPENDENT_VERIFIER")
+    _rejected(report, "UNTRUSTED_FREEZE_EVIDENCE")
+    assert report.validation_status == "INVALID_INPUT"
+    assert report.valid_real_paired_draws == 0
+    assert report.valid_paired_draw_count == 0
+    assert report.observed_success_gain == evaluator.NOT_ESTABLISHED
+    assert report.future_predictive_gain == evaluator.NOT_ESTABLISHED
+
+
+def test_negative_case_14_no_real_sample_reports_observed_gain_not_established() -> None:
+    report = evaluator.evaluate_paired_any_prize([], [], report_label=evaluator.REAL_OBSERVED)
+    assert report.valid_real_paired_draws == 0
+    assert report.observed_success_gain == evaluator.NOT_ESTABLISHED
+    assert report.future_predictive_gain == evaluator.NOT_ESTABLISHED
+    rendered = evaluator.render_evaluation_report(report)
+    assert "VALID_REAL_PAIRED_DRAWS=0\n" in rendered
+    assert "OBSERVED_SUCCESS_GAIN=NOT_ESTABLISHED\n" in rendered
+    assert "FUTURE_PREDICTIVE_GAIN=NOT_ESTABLISHED\n" in rendered
+
+
+def test_negative_case_15_caller_substitutes_trust_root_rejected() -> None:
+    row, official = _inputs()
+    row["provenance"] = official["provenance"] = evaluator.REAL_PREDRAW_ARTIFACT
+    _freeze(row)
+    verified = replace(
+        _verified_fixture(row, official),
+        source_identity="CALLER-SUPPLIED-ROOT-AUTHORITY",
+        provenance=evaluator.REAL_PREDRAW_ARTIFACT,
+        artifact_sha256=cast(str, row["frozen_artifact_sha256"]),
+    )
+    report = evaluator.evaluate_paired_any_prize(
+        [row],
+        [official],
+        report_label=evaluator.REAL_OBSERVED,
+        attestation_verifier=lambda _e, _b: verified,
+    )
+    _rejected(report, "UNTRUSTED_FREEZE_EVIDENCE")
+    _rejected(report, "MISSING_INDEPENDENT_VERIFIER")
+    assert report.valid_real_paired_draws == 0
+
+
+def test_negative_case_16_cross_draw_attestation_reuse_rejected() -> None:
+    row1, official1 = _inputs(count=2, draw="SYNTHETIC-DRAW-1")
+    row2, official2 = _inputs(count=2, draw="SYNTHETIC-DRAW-2")
+    verified1 = _verified_fixture(row1, official1)
+    # The verifier reuses the identical receipt source_sha256 for Draw 2.
+    verified2 = replace(
+        _verified_fixture(row2, official2),
+        source_sha256=verified1.source_sha256,
+    )
+
+    def cross_draw_verifier(
+        evidence: evaluator.PreDrawCaptureEvidence, _bytes: bytes
+    ) -> evaluator.VerifiedExternalAttestation:
+        if evidence.capture_locator == verified1.capture_locator:
+            return verified1
+        return verified2
+
+    report = evaluator.evaluate_paired_any_prize(
+        [row1, row2],
+        [official1, official2],
+        report_label=evaluator.SYNTHETIC_FIXTURE,
+        attestation_verifier=cross_draw_verifier,
+    )
+    _rejected(report, "ATTESTATION_BINDING_MISMATCH")

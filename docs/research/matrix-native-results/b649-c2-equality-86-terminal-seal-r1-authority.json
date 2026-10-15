@@ -1,0 +1,1557 @@
+{
+  "schema_version": 1,
+  "source": {
+    "repository": "kelvinhuang0327/MathStatisticalAnalysis",
+    "task_id": "B649_C2_N2_EQUALITY_REMAINING_86_CENSUS_R1",
+    "execution_id": "B649_C2_N2_EQUALITY_REMAINING_86_CENSUS_R1:7722:1791984163753121000",
+    "worktree": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_C2_N2_EQUALITY_REMAINING_86_CENSUS_R1",
+    "head": "91a1f7958c1b06a33e72848cdbb69f77cea479ce",
+    "tree": "cbe87b82feb29cc08e36a4d81fb774abc4a966af",
+    "result_locator": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_C2_N2_EQUALITY_REMAINING_86_CENSUS_R1/docs/research/matrix-native-results/b649-c2-n2-equality-remaining-86-census-r1-result.json",
+    "result_sha256": "823ffa8d32db196fe0b611ff959c766e787682cb4f519cff1e1a039818d75703",
+    "terminal_log_locator": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_C2_N2_EQUALITY_REMAINING_86_CENSUS_R1/.task-data/B649_C2_N2_EQUALITY_REMAINING_86_CENSUS_R1/run1.log",
+    "terminal_log_sha256": "b2711c676fd81ba54499f0c4afb559177e9ce7065ddab402c563b95855b22204",
+    "orbit_mapping_locator": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_K20_C2_ORBIT_REDUCED_EXACT_N2_R1/.task-data/B649_K20_C2_ORBIT_REDUCED_EXACT_N2_R1/preflight/orbit-mapping.json",
+    "orbit_mapping_file_sha256": "10e156a94420b71252e63b7e90132c34a5fd6713bd37dbbbc080f3ff1f7a451b",
+    "orbit_mapping_rows_sha256": "1cce8edf4ba105eef3028f1a69161c52fb8b1a6df16d4c3fe4b73b0b9c191260",
+    "evidence_root": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_C2_N2_EQUALITY_REMAINING_86_CENSUS_R1/.task-data/B649_C2_N2_EQUALITY_REMAINING_86_CENSUS_R1/evidence"
+  },
+  "terminal_summary": {
+    "status": "COMPLETE",
+    "stop_reason": null,
+    "counting_unit": "7_SET",
+    "completed_representatives": 86,
+    "pending_representatives": 0,
+    "unknown_representatives": 0,
+    "covered_original_pairs": 152,
+    "E_zero": 86,
+    "E_positive": 0,
+    "E_unknown": 0
+  },
+  "original_pair_accounting": {
+    "original_pair_count": 190,
+    "representative_count": 94,
+    "prior_completed_representatives": [
+      {
+        "orbit_index": 0,
+        "orbit_size": 1
+      },
+      {
+        "orbit_index": 5,
+        "orbit_size": 1
+      },
+      {
+        "orbit_index": 11,
+        "orbit_size": 6
+      },
+      {
+        "orbit_index": 12,
+        "orbit_size": 2
+      },
+      {
+        "orbit_index": 90,
+        "orbit_size": 6
+      },
+      {
+        "orbit_index": 91,
+        "orbit_size": 9
+      },
+      {
+        "orbit_index": 92,
+        "orbit_size": 12
+      },
+      {
+        "orbit_index": 93,
+        "orbit_size": 1
+      }
+    ],
+    "prior_completed_orbit_size_sum": 38,
+    "new_representatives": 86,
+    "new_orbit_size_sum": 152,
+    "combined_orbit_size_sum": 190,
+    "new_records_disjoint_from_prior_eight": true
+  },
+  "records": [
+    {
+      "orbit_index": 1,
+      "pair_ordered": [
+        0,
+        2
+      ],
+      "pair_engine": [
+        0,
+        3
+      ],
+      "orbit_size": 1,
+      "counting_unit": "7_SET",
+      "histogram_complete": true,
+      "E": 0,
+      "evidence_file": "orbit-01-pair-00-02.json",
+      "evidence_sha256": "660b2450f161810164a8bc916aa9e18ba64e109a4cd1f27b14414d78eecd42b9"
+    },
+    {
+      "orbit_index": 2,
+      "pair_ordered": [
+        0,
+        3
+      ],
+      "pair_engine": [
+        0,
+        6
+      ],
+      "orbit_size": 1,
+      "counting_unit": "7_SET",
+      "histogram_complete": true,
+      "E": 0,
+      "evidence_file": "orbit-02-pair-00-03.json",
+      "evidence_sha256": "710e02499e4365033334d3cc6d322ce4ce22eb7cec77ca955b58e0b046c5cdcb"
+    },
+    {
+      "orbit_index": 3,
+      "pair_ordered": [
+        0,
+        4
+      ],
+      "pair_engine": [
+        0,
+        2
+      ],
+      "orbit_size": 1,
+      "counting_unit": "7_SET",
+      "histogram_complete": true,
+      "E": 0,
+      "evidence_file": "orbit-03-pair-00-04.json",
+      "evidence_sha256": "71f39ce107e87a7866ea03b4a3d17f06925718315d57c33e903f92b42c8e2a76"
+    },
+    {
+      "orbit_index": 4,
+      "pair_ordered": [
+        0,
+        5
+      ],
+      "pair_engine": [
+        0,
+        7
+      ],
+      "orbit_size": 1,
+      "counting_unit": "7_SET",
+      "histogram_complete": true,
+      "E": 0,
+      "evidence_file": "orbit-04-pair-00-05.json",
+      "evidence_sha256": "8b38188547e4c985d979b3190ca18748d21235850c8b70a44e40dbf00b15613b"
+    },
+    {
+      "orbit_index": 6,
+      "pair_ordered": [
+        0,
+        7
+      ],
+      "pair_engine": [
+        0,
+        4
+      ],
+      "orbit_size": 1,
+      "counting_unit": "7_SET",
+      "histogram_complete": true,
+      "E": 0,
+      "evidence_file": "orbit-06-pair-00-07.json",
+      "evidence_sha256": "29487141d2d4d44395b886dcd65a8e3a36df7b006c107267a73aacfa3c7a5fb5"
+    },
+    {
+      "orbit_index": 7,
+      "pair_ordered": [
+        0,
+        8
+      ],
+      "pair_engine": [
+        0,
+        5
+      ],
+      "orbit_size": 1,
+      "counting_unit": "7_SET",
+      "histogram_complete": true,
+      "E": 0,
+      "evidence_file": "orbit-07-pair-00-08.json",
+      "evidence_sha256": "ab4054e21f3ac2dbc03b1d4d0b25cf5e6e41ec84c3e1ffb57a107199b73c6ed5"
+    },
+    {
+      "orbit_index": 8,
+      "pair_ordered": [
+        0,
+        9
+      ],
+      "pair_engine": [
+        0,
+        9
+      ],
+      "orbit_size": 1,
+      "counting_unit": "7_SET",
+      "histogram_complete": true,
+      "E": 0,
+      "evidence_file": "orbit-08-pair-00-09.json",
+      "evidence_sha256": "3aacbd7e8630b014af69f6e24ca78bacafb3af7ef839a8daf209c9d33beb852b"
+    },
+    {
+      "orbit_index": 9,
+      "pair_ordered": [
+        0,
+        10
+      ],
+      "pair_engine": [
+        0,
+        10
+      ],
+      "orbit_size": 1,
+      "counting_unit": "7_SET",
+      "histogram_complete": true,
+      "E": 0,
+      "evidence_file": "orbit-09-pair-00-10.json",
+      "evidence_sha256": "12bfdc4c6486e9b9ea64969a60467f099b3c3b8eb52e6c3f0dd9b93382ae9923"
+    },
+    {
+      "orbit_index": 10,
+      "pair_ordered": [
+        0,
+        11
+      ],
+      "pair_engine": [
+        0,
+        8
+      ],
+      "orbit_size": 1,
+      "counting_unit": "7_SET",
+      "histogram_complete": true,
+      "E": 0,
+      "evidence_file": "orbit-10-pair-00-11.json",
+      "evidence_sha256": "caa62bb42f546d3da9da715f232db8b63df5f502178bb5a73a5f18f6528d5052"
+    },
+    {
+      "orbit_index": 13,
+      "pair_ordered": [
+        1,
+        2
+      ],
+      "pair_engine": [
+        1,
+        3
+      ],
+      "orbit_size": 1,
+      "counting_unit": "7_SET",
+      "histogram_complete": true,
+      "E": 0,
+      "evidence_file": "orbit-13-pair-01-02.json",
+      "evidence_sha256": "5ea796a82b9d0c2c6e56449ffd7612e0c0341275a107bb1dbd3648c113526e81"
+    },
+    {
+      "orbit_index": 14,
+      "pair_ordered": [
+        1,
+        3
+      ],
+      "pair_engine": [
+        1,
+        6
+      ],
+      "orbit_size": 1,
+      "counting_unit": "7_SET",
+      "histogram_complete": true,
+      "E": 0,
+      "evidence_file": "orbit-14-pair-01-03.json",
+      "evidence_sha256": "a06306f4a455b50604137852fa8c4cc5c8a95bd4ce77821e0bae01213f267976"
+    },
+    {
+      "orbit_index": 15,
+      "pair_ordered": [
+        1,
+        4
+      ],
+      "pair_engine": [
+        1,
+        2
+      ],
+      "orbit_size": 1,
+      "counting_unit": "7_SET",
+      "histogram_complete": true,
+      "E": 0,
+      "evidence_file": "orbit-15-pair-01-04.json",
+      "evidence_sha256": "6ea8900ea50c924d9109d4186546bd8a25c0aed38c4144ff197423ae6a8c5dbd"
+    },
+    {
+      "orbit_index": 16,
+      "pair_ordered": [
+        1,
+        5
+      ],
+      "pair_engine": [
+        1,
+        7
+      ],
+      "orbit_size": 1,
+      "counting_unit": "7_SET",
+      "histogram_complete": true,
+      "E": 0,
+      "evidence_file": "orbit-16-pair-01-05.json",
+      "evidence_sha256": "c46297cfe5a267bf1e7946cd14aaaef63eeec793a861d2c48503a98c7bb501a8"
+    },
+    {
+      "orbit_index": 17,
+      "pair_ordered": [
+        1,
+        6
+      ],
+      "pair_engine": [
+        1,
+        11
+      ],
+      "orbit_size": 1,
+      "counting_unit": "7_SET",
+      "histogram_complete": true,
+      "E": 0,
+      "evidence_file": "orbit-17-pair-01-06.json",
+      "evidence_sha256": "cfc9272548fbc16adff035b2507988008d75a5aedcdea4c9c1bca65c3ac256a5"
+    },
+    {
+      "orbit_index": 18,
+      "pair_ordered": [
+        1,
+        7
+      ],
+      "pair_engine": [
+        1,
+        4
+      ],
+      "orbit_size": 1,
+      "counting_unit": "7_SET",
+      "histogram_complete": true,
+      "E": 0,
+      "evidence_file": "orbit-18-pair-01-07.json",
+      "evidence_sha256": "0dd0d40deaf0ba4920c47e156949a83052dc44c6b57b84ad354b5adc7c240654"
+    },
+    {
+      "orbit_index": 19,
+      "pair_ordered": [
+        1,
+        8
+      ],
+      "pair_engine": [
+        1,
+        5
+      ],
+      "orbit_size": 1,
+      "counting_unit": "7_SET",
+      "histogram_complete": true,
+      "E": 0,
+      "evidence_file": "orbit-19-pair-01-08.json",
+      "evidence_sha256": "7b16ed56c5de3523602c317a69964e88dfa3e7fad3f80bb9f328558a1d41f281"
+    },
+    {
+      "orbit_index": 20,
+      "pair_ordered": [
+        1,
+        9
+      ],
+      "pair_engine": [
+        1,
+        9
+      ],
+      "orbit_size": 1,
+      "counting_unit": "7_SET",
+      "histogram_complete": true,
+      "E": 0,
+      "evidence_file": "orbit-20-pair-01-09.json",
+      "evidence_sha256": "fca63dad8ed6d8a358999f4aaa55c22dd93b343f701124076cc1f8e028169f3b"
+    },
+    {
+      "orbit_index": 21,
+      "pair_ordered": [
+        1,
+        10
+      ],
+      "pair_engine": [
+        1,
+        10
+      ],
+      "orbit_size": 1,
+      "counting_unit": "7_SET",
+      "histogram_complete": true,
+      "E": 0,
+      "evidence_file": "orbit-21-pair-01-10.json",
+      "evidence_sha256": "03d7c9b570a19289e3f3befb7ce0e5a60b65300ad21cdc1e7e163b8598bd1ff0"
+    },
+    {
+      "orbit_index": 22,
+      "pair_ordered": [
+        1,
+        11
+      ],
+      "pair_engine": [
+        1,
+        8
+      ],
+      "orbit_size": 1,
+      "counting_unit": "7_SET",
+      "histogram_complete": true,
+      "E": 0,
+      "evidence_file": "orbit-22-pair-01-11.json",
+      "evidence_sha256": "73ca665333daad898b9bc0b169fa62cd674d76522b4a49c841c843285420f8ff"
+    },
+    {
+      "orbit_index": 23,
+      "pair_ordered": [
+        1,
+        12
+      ],
+      "pair_engine": [
+        1,
+        12
+      ],
+      "orbit_size": 6,
+      "counting_unit": "7_SET",
+      "histogram_complete": true,
+      "E": 0,
+      "evidence_file": "orbit-23-pair-01-12.json",
+      "evidence_sha256": "4a0e094acfc4d8e538fd4eceb5e5ac33de2cbdb4d352ed83d827ea63058ae971"
+    },
+    {
+      "orbit_index": 24,
+      "pair_ordered": [
+        1,
+        18
+      ],
+      "pair_engine": [
+        1,
+        18
+      ],
+      "orbit_size": 2,
+      "counting_unit": "7_SET",
+      "histogram_complete": true,
+      "E": 0,
+      "evidence_file": "orbit-24-pair-01-18.json",
+      "evidence_sha256": "8cf0a9448bb585405561f105cf87998864726164e5eef3953bcb98a0df2d31ed"
+    },
+    {
+      "orbit_index": 25,
+      "pair_ordered": [
+        2,
+        3
+      ],
+      "pair_engine": [
+        3,
+        6
+      ],
+      "orbit_size": 1,
+      "counting_unit": "7_SET",
+      "histogram_complete": true,
+      "E": 0,
+      "evidence_file": "orbit-25-pair-02-03.json",
+      "evidence_sha256": "bac84b768e30e15ca9b86c1b613f41985d38cf4be2f126b9ea0654a4feb25276"
+    },
+    {
+      "orbit_index": 26,
+      "pair_ordered": [
+        2,
+        4
+      ],
+      "pair_engine": [
+        2,
+        3
+      ],
+      "orbit_size": 1,
+      "counting_unit": "7_SET",
+      "histogram_complete": true,
+      "E": 0,
+      "evidence_file": "orbit-26-pair-02-04.json",
+      "evidence_sha256": "235a3b85eba43cd3ca93b21f1341d42c4061084206c7852a6a9b3343abbb8e3e"
+    },
+    {
+      "orbit_index": 27,
+      "pair_ordered": [
+        2,
+        5
+      ],
+      "pair_engine": [
+        3,
+        7
+      ],
+      "orbit_size": 1,
+      "counting_unit": "7_SET",
+      "histogram_complete": true,
+      "E": 0,
+      "evidence_file": "orbit-27-pair-02-05.json",
+      "evidence_sha256": "538ee9f1ad46946152c6b4a971e4005ea695b6ada61a01e960cd6793f45ff457"
+    },
+    {
+      "orbit_index": 28,
+      "pair_ordered": [
+        2,
+        6
+      ],
+      "pair_engine": [
+        3,
+        11
+      ],
+      "orbit_size": 1,
+      "counting_unit": "7_SET",
+      "histogram_complete": true,
+      "E": 0,
+      "evidence_file": "orbit-28-pair-02-06.json",
+      "evidence_sha256": "2899d6a4da27081e5ff07e0c2d6db5836adb0c81c80e42b324cc7a3af7de6cdf"
+    },
+    {
+      "orbit_index": 29,
+      "pair_ordered": [
+        2,
+        7
+      ],
+      "pair_engine": [
+        3,
+        4
+      ],
+      "orbit_size": 1,
+      "counting_unit": "7_SET",
+      "histogram_complete": true,
+      "E": 0,
+      "evidence_file": "orbit-29-pair-02-07.json",
+      "evidence_sha256": "c5796fdb46a568d2f772b30bbea6c8b361792b5db6aa6d30b2dfdfa6741ab6a3"
+    },
+    {
+      "orbit_index": 30,
+      "pair_ordered": [
+        2,
+        8
+      ],
+      "pair_engine": [
+        3,
+        5
+      ],
+      "orbit_size": 1,
+      "counting_unit": "7_SET",
+      "histogram_complete": true,
+      "E": 0,
+      "evidence_file": "orbit-30-pair-02-08.json",
+      "evidence_sha256": "e3ed726288f8b0547e9f284644161b6b1d29f14e86813e97d532a2aa8cf8cffd"
+    },
+    {
+      "orbit_index": 31,
+      "pair_ordered": [
+        2,
+        9
+      ],
+      "pair_engine": [
+        3,
+        9
+      ],
+      "orbit_size": 1,
+      "counting_unit": "7_SET",
+      "histogram_complete": true,
+      "E": 0,
+      "evidence_file": "orbit-31-pair-02-09.json",
+      "evidence_sha256": "ab8c4aa5520c267b364dc3b6e64e1ef632ae27c8785b9d80184b268cf7d92dcb"
+    },
+    {
+      "orbit_index": 32,
+      "pair_ordered": [
+        2,
+        10
+      ],
+      "pair_engine": [
+        3,
+        10
+      ],
+      "orbit_size": 1,
+      "counting_unit": "7_SET",
+      "histogram_complete": true,
+      "E": 0,
+      "evidence_file": "orbit-32-pair-02-10.json",
+      "evidence_sha256": "6f63ceefa9c5bbb1edc9e2d12546bcd1aed7597de93aa83265adbd86e7c89ede"
+    },
+    {
+      "orbit_index": 33,
+      "pair_ordered": [
+        2,
+        11
+      ],
+      "pair_engine": [
+        3,
+        8
+      ],
+      "orbit_size": 1,
+      "counting_unit": "7_SET",
+      "histogram_complete": true,
+      "E": 0,
+      "evidence_file": "orbit-33-pair-02-11.json",
+      "evidence_sha256": "7bd9fd814d54d8eb163fbe532db993194512203fc678072de63e6c889856384f"
+    },
+    {
+      "orbit_index": 34,
+      "pair_ordered": [
+        2,
+        12
+      ],
+      "pair_engine": [
+        3,
+        12
+      ],
+      "orbit_size": 6,
+      "counting_unit": "7_SET",
+      "histogram_complete": true,
+      "E": 0,
+      "evidence_file": "orbit-34-pair-02-12.json",
+      "evidence_sha256": "d59bea71815bdf28a40a44f8f19cd3c118fa4e6cb6eafca52d33266078669560"
+    },
+    {
+      "orbit_index": 35,
+      "pair_ordered": [
+        2,
+        18
+      ],
+      "pair_engine": [
+        3,
+        18
+      ],
+      "orbit_size": 2,
+      "counting_unit": "7_SET",
+      "histogram_complete": true,
+      "E": 0,
+      "evidence_file": "orbit-35-pair-02-18.json",
+      "evidence_sha256": "49acc09db2fbe3ec3093f8aa870fdced499b4cbea62dcabca85b37d563ac16ba"
+    },
+    {
+      "orbit_index": 36,
+      "pair_ordered": [
+        3,
+        4
+      ],
+      "pair_engine": [
+        2,
+        6
+      ],
+      "orbit_size": 1,
+      "counting_unit": "7_SET",
+      "histogram_complete": true,
+      "E": 0,
+      "evidence_file": "orbit-36-pair-03-04.json",
+      "evidence_sha256": "9d4d4c338e5147429a152f3f947a9d665d529dcfd3046f876c50e28ce347a8be"
+    },
+    {
+      "orbit_index": 37,
+      "pair_ordered": [
+        3,
+        5
+      ],
+      "pair_engine": [
+        6,
+        7
+      ],
+      "orbit_size": 1,
+      "counting_unit": "7_SET",
+      "histogram_complete": true,
+      "E": 0,
+      "evidence_file": "orbit-37-pair-03-05.json",
+      "evidence_sha256": "9a75e2ee1f5cbd2cea84c5257b1687f4fea93e86bc5a595c15bb46c31fe01a35"
+    },
+    {
+      "orbit_index": 38,
+      "pair_ordered": [
+        3,
+        6
+      ],
+      "pair_engine": [
+        6,
+        11
+      ],
+      "orbit_size": 1,
+      "counting_unit": "7_SET",
+      "histogram_complete": true,
+      "E": 0,
+      "evidence_file": "orbit-38-pair-03-06.json",
+      "evidence_sha256": "9c50707b4ae2dbd5644e617fcc1d826d10a55109f54142745a54e374ddd72ab8"
+    },
+    {
+      "orbit_index": 39,
+      "pair_ordered": [
+        3,
+        7
+      ],
+      "pair_engine": [
+        4,
+        6
+      ],
+      "orbit_size": 1,
+      "counting_unit": "7_SET",
+      "histogram_complete": true,
+      "E": 0,
+      "evidence_file": "orbit-39-pair-03-07.json",
+      "evidence_sha256": "1919379707821be640f06e7142283305d0c1af1bea60f480b0b878efdbf8f589"
+    },
+    {
+      "orbit_index": 40,
+      "pair_ordered": [
+        3,
+        8
+      ],
+      "pair_engine": [
+        5,
+        6
+      ],
+      "orbit_size": 1,
+      "counting_unit": "7_SET",
+      "histogram_complete": true,
+      "E": 0,
+      "evidence_file": "orbit-40-pair-03-08.json",
+      "evidence_sha256": "9220479611c3c2531108d297dab440d9cfc201060daedc6beecdbbbefc89d3bc"
+    },
+    {
+      "orbit_index": 41,
+      "pair_ordered": [
+        3,
+        9
+      ],
+      "pair_engine": [
+        6,
+        9
+      ],
+      "orbit_size": 1,
+      "counting_unit": "7_SET",
+      "histogram_complete": true,
+      "E": 0,
+      "evidence_file": "orbit-41-pair-03-09.json",
+      "evidence_sha256": "8a48d413516a5264209ee28ccfa7c05f753fb9007fce5c0e6630e965793e2552"
+    },
+    {
+      "orbit_index": 42,
+      "pair_ordered": [
+        3,
+        10
+      ],
+      "pair_engine": [
+        6,
+        10
+      ],
+      "orbit_size": 1,
+      "counting_unit": "7_SET",
+      "histogram_complete": true,
+      "E": 0,
+      "evidence_file": "orbit-42-pair-03-10.json",
+      "evidence_sha256": "f86999c73dbdd44e768cee86c3abc40bcb98498d47bcc54b92e9e30a44d2cccc"
+    },
+    {
+      "orbit_index": 43,
+      "pair_ordered": [
+        3,
+        11
+      ],
+      "pair_engine": [
+        6,
+        8
+      ],
+      "orbit_size": 1,
+      "counting_unit": "7_SET",
+      "histogram_complete": true,
+      "E": 0,
+      "evidence_file": "orbit-43-pair-03-11.json",
+      "evidence_sha256": "bc70be687505cbdf090166cde4f4c9746b607e047abb7ef7a1e41847d4e03079"
+    },
+    {
+      "orbit_index": 44,
+      "pair_ordered": [
+        3,
+        12
+      ],
+      "pair_engine": [
+        6,
+        12
+      ],
+      "orbit_size": 6,
+      "counting_unit": "7_SET",
+      "histogram_complete": true,
+      "E": 0,
+      "evidence_file": "orbit-44-pair-03-12.json",
+      "evidence_sha256": "63029af6dcc1e399a6eab6e4c605d934221b3b7eb4cd30d2acec599ab4217f59"
+    },
+    {
+      "orbit_index": 45,
+      "pair_ordered": [
+        3,
+        18
+      ],
+      "pair_engine": [
+        6,
+        18
+      ],
+      "orbit_size": 2,
+      "counting_unit": "7_SET",
+      "histogram_complete": true,
+      "E": 0,
+      "evidence_file": "orbit-45-pair-03-18.json",
+      "evidence_sha256": "6ae196eede536d2737a79b86e2d1158bfec8fce4c6eccd737f08ffc06bb29b9f"
+    },
+    {
+      "orbit_index": 46,
+      "pair_ordered": [
+        4,
+        5
+      ],
+      "pair_engine": [
+        2,
+        7
+      ],
+      "orbit_size": 1,
+      "counting_unit": "7_SET",
+      "histogram_complete": true,
+      "E": 0,
+      "evidence_file": "orbit-46-pair-04-05.json",
+      "evidence_sha256": "3cbb12b0ce38362eed01decc295178491d8ff6f7902915b2a9b2a950254d1729"
+    },
+    {
+      "orbit_index": 47,
+      "pair_ordered": [
+        4,
+        6
+      ],
+      "pair_engine": [
+        2,
+        11
+      ],
+      "orbit_size": 1,
+      "counting_unit": "7_SET",
+      "histogram_complete": true,
+      "E": 0,
+      "evidence_file": "orbit-47-pair-04-06.json",
+      "evidence_sha256": "28c586d7b984c4ce8ef83b808b23794d0de8d2c220129c32e33e1df1e03ccf46"
+    },
+    {
+      "orbit_index": 48,
+      "pair_ordered": [
+        4,
+        7
+      ],
+      "pair_engine": [
+        2,
+        4
+      ],
+      "orbit_size": 1,
+      "counting_unit": "7_SET",
+      "histogram_complete": true,
+      "E": 0,
+      "evidence_file": "orbit-48-pair-04-07.json",
+      "evidence_sha256": "cdb6ab300c1bd57980667414379fdf7f16e8c5f6b4754f16e7ee7b3f069fdd85"
+    },
+    {
+      "orbit_index": 49,
+      "pair_ordered": [
+        4,
+        8
+      ],
+      "pair_engine": [
+        2,
+        5
+      ],
+      "orbit_size": 1,
+      "counting_unit": "7_SET",
+      "histogram_complete": true,
+      "E": 0,
+      "evidence_file": "orbit-49-pair-04-08.json",
+      "evidence_sha256": "a1ad73fe94b195a69f84548147331c9380d00a2227c2c7c52fa305fd505d1983"
+    },
+    {
+      "orbit_index": 50,
+      "pair_ordered": [
+        4,
+        9
+      ],
+      "pair_engine": [
+        2,
+        9
+      ],
+      "orbit_size": 1,
+      "counting_unit": "7_SET",
+      "histogram_complete": true,
+      "E": 0,
+      "evidence_file": "orbit-50-pair-04-09.json",
+      "evidence_sha256": "5db536861d43060c4ecba93c14e5ec108a53e288d0f534a2412d79e3dc1deae4"
+    },
+    {
+      "orbit_index": 51,
+      "pair_ordered": [
+        4,
+        10
+      ],
+      "pair_engine": [
+        2,
+        10
+      ],
+      "orbit_size": 1,
+      "counting_unit": "7_SET",
+      "histogram_complete": true,
+      "E": 0,
+      "evidence_file": "orbit-51-pair-04-10.json",
+      "evidence_sha256": "34fabce31efa778ef2b542fe6f9d42ea23c29ce75b3fda7bfa1928876e89ed24"
+    },
+    {
+      "orbit_index": 52,
+      "pair_ordered": [
+        4,
+        11
+      ],
+      "pair_engine": [
+        2,
+        8
+      ],
+      "orbit_size": 1,
+      "counting_unit": "7_SET",
+      "histogram_complete": true,
+      "E": 0,
+      "evidence_file": "orbit-52-pair-04-11.json",
+      "evidence_sha256": "6104a62444338e1a0c3ef315a0fbe0a59cf55b6d130e5e16d27faf6efe134eb9"
+    },
+    {
+      "orbit_index": 53,
+      "pair_ordered": [
+        4,
+        12
+      ],
+      "pair_engine": [
+        2,
+        12
+      ],
+      "orbit_size": 6,
+      "counting_unit": "7_SET",
+      "histogram_complete": true,
+      "E": 0,
+      "evidence_file": "orbit-53-pair-04-12.json",
+      "evidence_sha256": "530c6bea420fa3fb59d67391de99ad8ed8e032b29e34e10021cc729e4b253eae"
+    },
+    {
+      "orbit_index": 54,
+      "pair_ordered": [
+        4,
+        18
+      ],
+      "pair_engine": [
+        2,
+        18
+      ],
+      "orbit_size": 2,
+      "counting_unit": "7_SET",
+      "histogram_complete": true,
+      "E": 0,
+      "evidence_file": "orbit-54-pair-04-18.json",
+      "evidence_sha256": "d5a8869c1c161d0ab8a4d12a21087a6f2e9f208395c2522bf9da13613cd5dd51"
+    },
+    {
+      "orbit_index": 55,
+      "pair_ordered": [
+        5,
+        6
+      ],
+      "pair_engine": [
+        7,
+        11
+      ],
+      "orbit_size": 1,
+      "counting_unit": "7_SET",
+      "histogram_complete": true,
+      "E": 0,
+      "evidence_file": "orbit-55-pair-05-06.json",
+      "evidence_sha256": "94867952f258463bd3f09e9e7109aac7927edf7d41c01f8565183c4127d7ff1e"
+    },
+    {
+      "orbit_index": 56,
+      "pair_ordered": [
+        5,
+        7
+      ],
+      "pair_engine": [
+        4,
+        7
+      ],
+      "orbit_size": 1,
+      "counting_unit": "7_SET",
+      "histogram_complete": true,
+      "E": 0,
+      "evidence_file": "orbit-56-pair-05-07.json",
+      "evidence_sha256": "b05c82429de82fbeb6c7a35375e25b22a80b5f2a1961fd1eee3eaf8c04e9649c"
+    },
+    {
+      "orbit_index": 57,
+      "pair_ordered": [
+        5,
+        8
+      ],
+      "pair_engine": [
+        5,
+        7
+      ],
+      "orbit_size": 1,
+      "counting_unit": "7_SET",
+      "histogram_complete": true,
+      "E": 0,
+      "evidence_file": "orbit-57-pair-05-08.json",
+      "evidence_sha256": "e012940127f50b554c892b1e3b93df775b14df8a849e75669851b3d9698bf114"
+    },
+    {
+      "orbit_index": 58,
+      "pair_ordered": [
+        5,
+        9
+      ],
+      "pair_engine": [
+        7,
+        9
+      ],
+      "orbit_size": 1,
+      "counting_unit": "7_SET",
+      "histogram_complete": true,
+      "E": 0,
+      "evidence_file": "orbit-58-pair-05-09.json",
+      "evidence_sha256": "0568b33a325dc6537ca059726f292a9b73e3c5f44641f44b626b8e8af3508e42"
+    },
+    {
+      "orbit_index": 59,
+      "pair_ordered": [
+        5,
+        10
+      ],
+      "pair_engine": [
+        7,
+        10
+      ],
+      "orbit_size": 1,
+      "counting_unit": "7_SET",
+      "histogram_complete": true,
+      "E": 0,
+      "evidence_file": "orbit-59-pair-05-10.json",
+      "evidence_sha256": "9c1f4eb889fb53073ff5e375aec182f597c6ee89f22a23d839f5c77645c56bf4"
+    },
+    {
+      "orbit_index": 60,
+      "pair_ordered": [
+        5,
+        11
+      ],
+      "pair_engine": [
+        7,
+        8
+      ],
+      "orbit_size": 1,
+      "counting_unit": "7_SET",
+      "histogram_complete": true,
+      "E": 0,
+      "evidence_file": "orbit-60-pair-05-11.json",
+      "evidence_sha256": "1e2110232c479bdab2594c2ee4737f8947aa67d5cabdc4bbf683e33a22047fbd"
+    },
+    {
+      "orbit_index": 61,
+      "pair_ordered": [
+        5,
+        12
+      ],
+      "pair_engine": [
+        7,
+        12
+      ],
+      "orbit_size": 6,
+      "counting_unit": "7_SET",
+      "histogram_complete": true,
+      "E": 0,
+      "evidence_file": "orbit-61-pair-05-12.json",
+      "evidence_sha256": "911afb705f6b94b923df3d45c0ebe30f7a4ec68ba6938ad6b062783bd34e5750"
+    },
+    {
+      "orbit_index": 62,
+      "pair_ordered": [
+        5,
+        18
+      ],
+      "pair_engine": [
+        7,
+        18
+      ],
+      "orbit_size": 2,
+      "counting_unit": "7_SET",
+      "histogram_complete": true,
+      "E": 0,
+      "evidence_file": "orbit-62-pair-05-18.json",
+      "evidence_sha256": "0f98860d9341e7edd91ac4fc7b2cbbb13ae5206e0d4cc2a53013885fd4d4d79e"
+    },
+    {
+      "orbit_index": 63,
+      "pair_ordered": [
+        6,
+        7
+      ],
+      "pair_engine": [
+        4,
+        11
+      ],
+      "orbit_size": 1,
+      "counting_unit": "7_SET",
+      "histogram_complete": true,
+      "E": 0,
+      "evidence_file": "orbit-63-pair-06-07.json",
+      "evidence_sha256": "dfd198f31d9630387235930f43cbb14437cd4a15f54887b21a39da2b542bae66"
+    },
+    {
+      "orbit_index": 64,
+      "pair_ordered": [
+        6,
+        8
+      ],
+      "pair_engine": [
+        5,
+        11
+      ],
+      "orbit_size": 1,
+      "counting_unit": "7_SET",
+      "histogram_complete": true,
+      "E": 0,
+      "evidence_file": "orbit-64-pair-06-08.json",
+      "evidence_sha256": "ed17d1562d2db595a21912e31818cd36bc0a037d39d7a6279bef2e7a08a9fce0"
+    },
+    {
+      "orbit_index": 65,
+      "pair_ordered": [
+        6,
+        9
+      ],
+      "pair_engine": [
+        9,
+        11
+      ],
+      "orbit_size": 1,
+      "counting_unit": "7_SET",
+      "histogram_complete": true,
+      "E": 0,
+      "evidence_file": "orbit-65-pair-06-09.json",
+      "evidence_sha256": "3bda8656c4dfb25f0bb2fdc6e085329003e497fd9766cde476621b79fda2aee9"
+    },
+    {
+      "orbit_index": 66,
+      "pair_ordered": [
+        6,
+        10
+      ],
+      "pair_engine": [
+        10,
+        11
+      ],
+      "orbit_size": 1,
+      "counting_unit": "7_SET",
+      "histogram_complete": true,
+      "E": 0,
+      "evidence_file": "orbit-66-pair-06-10.json",
+      "evidence_sha256": "22d57614bca4c75db92c073882e08a285bfd2cceec6d7c10a6b5b353524d02e1"
+    },
+    {
+      "orbit_index": 67,
+      "pair_ordered": [
+        6,
+        11
+      ],
+      "pair_engine": [
+        8,
+        11
+      ],
+      "orbit_size": 1,
+      "counting_unit": "7_SET",
+      "histogram_complete": true,
+      "E": 0,
+      "evidence_file": "orbit-67-pair-06-11.json",
+      "evidence_sha256": "a5ff0161b6482ab1a90e64c02c6d1ebc1534318fcc21501b506cf180533eaaa8"
+    },
+    {
+      "orbit_index": 68,
+      "pair_ordered": [
+        6,
+        12
+      ],
+      "pair_engine": [
+        11,
+        12
+      ],
+      "orbit_size": 6,
+      "counting_unit": "7_SET",
+      "histogram_complete": true,
+      "E": 0,
+      "evidence_file": "orbit-68-pair-06-12.json",
+      "evidence_sha256": "623bcb9162729e095b509f1a5f9e8ee7997ae6e4bf4a1108713a4cf261cebdf2"
+    },
+    {
+      "orbit_index": 69,
+      "pair_ordered": [
+        6,
+        18
+      ],
+      "pair_engine": [
+        11,
+        18
+      ],
+      "orbit_size": 2,
+      "counting_unit": "7_SET",
+      "histogram_complete": true,
+      "E": 0,
+      "evidence_file": "orbit-69-pair-06-18.json",
+      "evidence_sha256": "dfedb2b615cbee0f7ec15aac25768509cc8a0c5e31b9ae8d4dd7b089309ee814"
+    },
+    {
+      "orbit_index": 70,
+      "pair_ordered": [
+        7,
+        8
+      ],
+      "pair_engine": [
+        4,
+        5
+      ],
+      "orbit_size": 1,
+      "counting_unit": "7_SET",
+      "histogram_complete": true,
+      "E": 0,
+      "evidence_file": "orbit-70-pair-07-08.json",
+      "evidence_sha256": "522d5c3dd68e996430591d50fb316edb6544b0f523d2e424fc08f6063bc878b1"
+    },
+    {
+      "orbit_index": 71,
+      "pair_ordered": [
+        7,
+        9
+      ],
+      "pair_engine": [
+        4,
+        9
+      ],
+      "orbit_size": 1,
+      "counting_unit": "7_SET",
+      "histogram_complete": true,
+      "E": 0,
+      "evidence_file": "orbit-71-pair-07-09.json",
+      "evidence_sha256": "531d48e436155ae42c0571d7af180571fc551485712985bf88df05c50612b70b"
+    },
+    {
+      "orbit_index": 72,
+      "pair_ordered": [
+        7,
+        10
+      ],
+      "pair_engine": [
+        4,
+        10
+      ],
+      "orbit_size": 1,
+      "counting_unit": "7_SET",
+      "histogram_complete": true,
+      "E": 0,
+      "evidence_file": "orbit-72-pair-07-10.json",
+      "evidence_sha256": "cb8c3b1bc36e9c992feeabc431b1763715d688adeb6b989863a0485f0f7c978f"
+    },
+    {
+      "orbit_index": 73,
+      "pair_ordered": [
+        7,
+        11
+      ],
+      "pair_engine": [
+        4,
+        8
+      ],
+      "orbit_size": 1,
+      "counting_unit": "7_SET",
+      "histogram_complete": true,
+      "E": 0,
+      "evidence_file": "orbit-73-pair-07-11.json",
+      "evidence_sha256": "d05daffdafdcd00cb0f4e4720513de4548801e212c22f939d3a51db919e9c7e4"
+    },
+    {
+      "orbit_index": 74,
+      "pair_ordered": [
+        7,
+        12
+      ],
+      "pair_engine": [
+        4,
+        12
+      ],
+      "orbit_size": 6,
+      "counting_unit": "7_SET",
+      "histogram_complete": true,
+      "E": 0,
+      "evidence_file": "orbit-74-pair-07-12.json",
+      "evidence_sha256": "d0f6e38ddc11652e804742f34d0cf639c5990ee3b8c827e127dfbec027271ba8"
+    },
+    {
+      "orbit_index": 75,
+      "pair_ordered": [
+        7,
+        18
+      ],
+      "pair_engine": [
+        4,
+        18
+      ],
+      "orbit_size": 2,
+      "counting_unit": "7_SET",
+      "histogram_complete": true,
+      "E": 0,
+      "evidence_file": "orbit-75-pair-07-18.json",
+      "evidence_sha256": "c4fb9bd96dd17f361a441f867145a092489d14546266cb8e53661639b18eaadc"
+    },
+    {
+      "orbit_index": 76,
+      "pair_ordered": [
+        8,
+        9
+      ],
+      "pair_engine": [
+        5,
+        9
+      ],
+      "orbit_size": 1,
+      "counting_unit": "7_SET",
+      "histogram_complete": true,
+      "E": 0,
+      "evidence_file": "orbit-76-pair-08-09.json",
+      "evidence_sha256": "c5a9fb9ba1a1857952d17d28ac80e5dd776ae5a5623baa02f4ac70daeaac6422"
+    },
+    {
+      "orbit_index": 77,
+      "pair_ordered": [
+        8,
+        10
+      ],
+      "pair_engine": [
+        5,
+        10
+      ],
+      "orbit_size": 1,
+      "counting_unit": "7_SET",
+      "histogram_complete": true,
+      "E": 0,
+      "evidence_file": "orbit-77-pair-08-10.json",
+      "evidence_sha256": "5b7918e46ef10bd5e1c3c973ecece12b00e0be5faf1f33f0d5d951ef5f9f2cbe"
+    },
+    {
+      "orbit_index": 78,
+      "pair_ordered": [
+        8,
+        11
+      ],
+      "pair_engine": [
+        5,
+        8
+      ],
+      "orbit_size": 1,
+      "counting_unit": "7_SET",
+      "histogram_complete": true,
+      "E": 0,
+      "evidence_file": "orbit-78-pair-08-11.json",
+      "evidence_sha256": "5b7f422927b31501e4238579a38512b7f9f8f88a2d8e4e2d19000c965937a7aa"
+    },
+    {
+      "orbit_index": 79,
+      "pair_ordered": [
+        8,
+        12
+      ],
+      "pair_engine": [
+        5,
+        12
+      ],
+      "orbit_size": 6,
+      "counting_unit": "7_SET",
+      "histogram_complete": true,
+      "E": 0,
+      "evidence_file": "orbit-79-pair-08-12.json",
+      "evidence_sha256": "d9be4dfd8ba71fe2df72387f9fe5db883889ebc1acfa45197fc5764c889c5be5"
+    },
+    {
+      "orbit_index": 80,
+      "pair_ordered": [
+        8,
+        18
+      ],
+      "pair_engine": [
+        5,
+        18
+      ],
+      "orbit_size": 2,
+      "counting_unit": "7_SET",
+      "histogram_complete": true,
+      "E": 0,
+      "evidence_file": "orbit-80-pair-08-18.json",
+      "evidence_sha256": "c8e3a955439d4e93df21e000b16f853ab47edba283fd6c6bbd529b433124e27e"
+    },
+    {
+      "orbit_index": 81,
+      "pair_ordered": [
+        9,
+        10
+      ],
+      "pair_engine": [
+        9,
+        10
+      ],
+      "orbit_size": 1,
+      "counting_unit": "7_SET",
+      "histogram_complete": true,
+      "E": 0,
+      "evidence_file": "orbit-81-pair-09-10.json",
+      "evidence_sha256": "ed947cc9bfe44ba1b35a641cb1c128a848d88fc4662b8fd31f1f12270bbfafcc"
+    },
+    {
+      "orbit_index": 82,
+      "pair_ordered": [
+        9,
+        11
+      ],
+      "pair_engine": [
+        8,
+        9
+      ],
+      "orbit_size": 1,
+      "counting_unit": "7_SET",
+      "histogram_complete": true,
+      "E": 0,
+      "evidence_file": "orbit-82-pair-09-11.json",
+      "evidence_sha256": "fafb002b0ba606455c268ba85470b726b5a334614829a1aa4790da1bfaba0add"
+    },
+    {
+      "orbit_index": 83,
+      "pair_ordered": [
+        9,
+        12
+      ],
+      "pair_engine": [
+        9,
+        12
+      ],
+      "orbit_size": 6,
+      "counting_unit": "7_SET",
+      "histogram_complete": true,
+      "E": 0,
+      "evidence_file": "orbit-83-pair-09-12.json",
+      "evidence_sha256": "dfdffa28cb7c8eaccf338a4c7dac1de9b8bf8e38433dfa569b4edda479f39438"
+    },
+    {
+      "orbit_index": 84,
+      "pair_ordered": [
+        9,
+        18
+      ],
+      "pair_engine": [
+        9,
+        18
+      ],
+      "orbit_size": 2,
+      "counting_unit": "7_SET",
+      "histogram_complete": true,
+      "E": 0,
+      "evidence_file": "orbit-84-pair-09-18.json",
+      "evidence_sha256": "262d3bb8c26c2b05564ff149c18f5885bd520ba480a4276bd5f9875b625d3c52"
+    },
+    {
+      "orbit_index": 85,
+      "pair_ordered": [
+        10,
+        11
+      ],
+      "pair_engine": [
+        8,
+        10
+      ],
+      "orbit_size": 1,
+      "counting_unit": "7_SET",
+      "histogram_complete": true,
+      "E": 0,
+      "evidence_file": "orbit-85-pair-10-11.json",
+      "evidence_sha256": "7e0a91bb1cf1550812a35bab4b7a53848e89bfe24eefeff88c50c934a04bffce"
+    },
+    {
+      "orbit_index": 86,
+      "pair_ordered": [
+        10,
+        12
+      ],
+      "pair_engine": [
+        10,
+        12
+      ],
+      "orbit_size": 6,
+      "counting_unit": "7_SET",
+      "histogram_complete": true,
+      "E": 0,
+      "evidence_file": "orbit-86-pair-10-12.json",
+      "evidence_sha256": "c85313b659632c396f486af9ef61e08c66105b404484675ec9f50a196c4b87b7"
+    },
+    {
+      "orbit_index": 87,
+      "pair_ordered": [
+        10,
+        18
+      ],
+      "pair_engine": [
+        10,
+        18
+      ],
+      "orbit_size": 2,
+      "counting_unit": "7_SET",
+      "histogram_complete": true,
+      "E": 0,
+      "evidence_file": "orbit-87-pair-10-18.json",
+      "evidence_sha256": "5c7f80e3725a2552de7e9a2baa1456c85889203f2614141dad1b026228f3882d"
+    },
+    {
+      "orbit_index": 88,
+      "pair_ordered": [
+        11,
+        12
+      ],
+      "pair_engine": [
+        8,
+        12
+      ],
+      "orbit_size": 6,
+      "counting_unit": "7_SET",
+      "histogram_complete": true,
+      "E": 0,
+      "evidence_file": "orbit-88-pair-11-12.json",
+      "evidence_sha256": "a5b12a7a7c6a51b81b4172ecf17c6c1d7e9281df28907b1debe6d91ed0f5799e"
+    },
+    {
+      "orbit_index": 89,
+      "pair_ordered": [
+        11,
+        18
+      ],
+      "pair_engine": [
+        8,
+        18
+      ],
+      "orbit_size": 2,
+      "counting_unit": "7_SET",
+      "histogram_complete": true,
+      "E": 0,
+      "evidence_file": "orbit-89-pair-11-18.json",
+      "evidence_sha256": "4814f82e5805a1e071caa217ea078d20463123fd1007af10e5eea7a5a8a030ca"
+    }
+  ],
+  "terminal_observation": {
+    "execution_writer_pid": 7722,
+    "execution_pid_present": false,
+    "open_result_or_evidence_handles": false,
+    "stable_source_snapshot_seconds": 5
+  },
+  "self_check": {
+    "judge_mode": "SELF_CHECK_ONLY",
+    "independent_mathematical_reproof": "NOT_PERFORMED",
+    "scientific_execution_created": false,
+    "gain_evaluator_calls": 0,
+    "cp_sat_calls": 0,
+    "new_strict_gain_claimed": false,
+    "global_k20_optimum_status": "UNKNOWN",
+    "limitations": [
+      "This seal indexes the fixed terminal result and existing per-record evidence; it does not independently re-prove the mathematics.",
+      "No new strict-gain or global K20-optimum conclusion is made."
+    ]
+  }
+}

@@ -1,9 +1,8 @@
 """Terminal verification and scientific seal for one orbit-successor journal.
 
-The seal replays a validated dispatcher journal. It never imports the frozen
-scan, generator, or official outcome enumerator. An injected recount supplies
-the portfolio count for this process; a matching count is not an official
-full-universe recount.
+The seal replays a validated dispatcher journal without generating candidates.
+Synthetic callbacks remain explicitly synthetic. The scientific caller supplies
+a verified official evaluator capability to identify a real terminal recount.
 """
 
 from __future__ import annotations
@@ -89,8 +88,8 @@ def seal_orbit_successor_terminal(
     """Seal one terminal journal, or return INCOMPLETE_DURABLE for a valid prefix.
 
     ``recount`` receives the normalized 20-ticket portfolio and returns its
-    exact winning count. This function hashes ``evaluator_bytes`` and does not
-    execute that module. ``real_canonical_recount`` stays ``NOT RUN``.
+    exact winning count. Only a verified OfficialRecountBinding can identify an
+    executed official evaluator; arbitrary callbacks retain ``NOT RUN`` labels.
     """
 
     _bytes(manifest_bytes, "manifest")
@@ -236,6 +235,16 @@ def seal_orbit_successor_terminal(
         },
         "synthetic_result_is_not_a_discovered_higher_winning_count": True,
     }
+    # Only the production caller's verified capability can identify an executed
+    # official evaluator. Ordinary synthetic callbacks retain the legacy labels.
+    from lottolab.research.b649_k20_orbit_official_evaluator_binding_r1 import (
+        OfficialRecountBinding,
+        require_official_binding,
+    )
+
+    if type(recount) is OfficialRecountBinding:
+        payload["terminal_recount"].update(require_official_binding(recount).result_identity())
+        payload["synthetic_result_is_not_a_discovered_higher_winning_count"] = False
     payload["result_sha256"] = _result_sha256(payload)
     _reject_forbidden_claims(payload)
     return payload

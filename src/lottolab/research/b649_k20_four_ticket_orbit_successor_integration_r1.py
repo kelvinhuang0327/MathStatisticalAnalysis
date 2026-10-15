@@ -10,9 +10,11 @@ from __future__ import annotations
 
 import hashlib
 import sys
-from collections.abc import Callable, Iterator, Sequence
+from collections.abc import Callable, Generator, Iterator, Sequence
 from contextlib import contextmanager
+from dataclasses import asdict
 from pathlib import Path
+from types import ModuleType
 from typing import Any, Protocol
 
 from lottolab.research import b649_k20_four_ticket_orbit_source_binding_r1 as binding
@@ -204,3 +206,117 @@ def run_successor(
             journal=journal,
             score_representative=scorer,
         )
+
+
+@contextmanager
+def _pinned_scientific_caller() -> Generator[ModuleType]:
+    """Use the original entrypoint in its pinned checkout, including its path gates.
+
+    This terminal adapter may live in another worktree. The original entrypoint
+    requires its original binding/dispatcher paths; do not relax those checks.
+    """
+    import lottolab.research as package
+
+    integration_name = "_b649_orbit_original_scientific_integration_r1"
+    modules = (
+        (binding.__name__, SOURCE_BINDING_SHA256),
+        (dispatcher.__name__, DISPATCHER_SHA256),
+        (integration_name, "d775a165378f49fd049605522966943bf696bf32b288b15f26f9e957d3788478"),
+    )
+    previous = {name: sys.modules.get(name) for name, _ in modules}
+    attributes = {
+        name.rsplit(".", 1)[-1]: getattr(package, name.rsplit(".", 1)[-1], None)
+        for name, _ in modules[:2]
+    }
+    module: ModuleType | None = None
+    try:
+        for name, digest in modules:
+            sys.modules.pop(name, None)
+            filename = (
+                "b649_k20_four_ticket_orbit_successor_integration_r1.py"
+                if name == integration_name
+                else name.rsplit(".", 1)[-1] + ".py"
+            )
+            path = INTEGRATION_WORKTREE / "src/lottolab/research" / filename
+            module, _path, _digest, _created = binding._load_verified_module(  # pyright: ignore[reportPrivateUsage]
+                name, path, path, digest, "ORIGINAL_SCIENTIFIC_CALLER"
+            )
+            if name != integration_name:
+                setattr(package, name.rsplit(".", 1)[-1], module)
+        assert module is not None
+        yield module
+    finally:
+        for name, old in previous.items():
+            if old is None:
+                sys.modules.pop(name, None)
+            else:
+                sys.modules[name] = old
+        for name, old in attributes.items():
+            if old is None and hasattr(package, name):
+                delattr(package, name)
+            elif old is not None:
+                setattr(package, name, old)
+
+
+def run_successor_and_seal(
+    *,
+    journal_directory: Path,
+    portfolio_tickets: object,
+    test_evaluator: BoundedTestEvaluator | None = None,
+    test_terminal_recount: Callable[[tuple[tuple[int, ...], ...]], int] | None = None,
+) -> dict[str, Any]:
+    """Delegate the frozen run, then bind the official evaluator at terminal only.
+
+    Production accepts no recount callback. Both test seams require the isolated
+    test directory; their seals continue to say that real recount was NOT RUN.
+    The result is returned to the caller; no result file is written here.
+    """
+    from lottolab.research import b649_k20_orbit_official_evaluator_binding_r1 as official
+    from lottolab.research import b649_k20_orbit_successor_terminal_seal_r1 as terminal
+
+    directory = Path(journal_directory)
+    if directory != directory.resolve(strict=True):
+        raise IntegrationError("SUCCESSOR_JOURNAL_PATH_MISMATCH")
+    testing = test_evaluator is not None or test_terminal_recount is not None
+    if testing and (
+        test_evaluator is None
+        or test_terminal_recount is None
+        or not directory.is_relative_to(TEST_RUNTIME_ROOT)
+    ):
+        raise IntegrationError("TERMINAL_TEST_SEAMS_REQUIRE_ISOLATED_TEST_JOURNAL")
+
+    with _pinned_scientific_caller() as original:
+        summary = original.run_successor(journal_directory=directory, test_evaluator=test_evaluator)
+    manifest_bytes = (INTEGRATION_WORKTREE / dispatcher.MANIFEST_RELATIVE_PATH).read_bytes()
+    journal = dispatcher.JsonlProgressJournal(directory)
+    journal_bytes = journal.read_bytes()
+    accepted = dispatcher.summarize_progress(manifest_bytes, journal_bytes)
+    if (
+        asdict(summary) != asdict(accepted)
+        or len(accepted.completed_representative_indices) != dispatcher.PENDING_REPRESENTATIVES
+        or accepted.unexecuted_representative_indices
+        or accepted.new_raw_attempts_completed != dispatcher.EXPECTED_NEW_RAW_ATTEMPTS
+    ):
+        raise IntegrationError("TERMINAL_REQUIRES_COMPLETE_ACCEPTED_JOURNAL")
+
+    # No evaluator import or recount capability is created for a partial prefix.
+    recount = official.require_official_binding(official.load_official_recount())
+    terminal_recount: Callable[[tuple[tuple[int, ...], ...]], int] = recount
+    if testing:
+        assert test_terminal_recount is not None
+        terminal_recount = test_terminal_recount
+    result = terminal.seal_orbit_successor_terminal(
+        manifest_bytes,
+        journal_bytes,
+        (binding.TASK_ROOT / "attempt-results.jsonl").read_bytes(),
+        portfolio_tickets,
+        terminal.certified_coverage_mapping(manifest_bytes),
+        evaluator_bytes=recount.evaluator_bytes,
+        recount=terminal_recount,
+        run_disposition=terminal.DISPOSITION_TERMINAL,
+        source_commit=terminal.BASE_COMMIT,
+        source_tree=terminal.BASE_TREE,
+    )
+    if journal.read_bytes() != journal_bytes:
+        raise IntegrationError("TERMINAL_JOURNAL_CHANGED_DURING_RECOUNT")
+    return result

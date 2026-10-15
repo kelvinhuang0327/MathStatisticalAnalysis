@@ -13,6 +13,12 @@ binding = integration.binding
 dispatcher = integration.dispatcher
 
 
+@pytest.fixture(autouse=True)
+def isolated_local_integration(tmp_path, monkeypatch):
+    monkeypatch.setattr(integration, "INTEGRATION_WORKTREE", Path(__file__).resolve().parents[2])
+    monkeypatch.setattr(integration, "TEST_RUNTIME_ROOT", tmp_path)
+
+
 class InterruptedTest(Exception):
     pass
 

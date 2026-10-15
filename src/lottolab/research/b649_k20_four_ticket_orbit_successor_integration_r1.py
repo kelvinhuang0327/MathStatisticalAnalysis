@@ -12,7 +12,7 @@ import hashlib
 import sys
 from collections.abc import Callable, Generator, Iterator, Sequence
 from contextlib import contextmanager
-from dataclasses import asdict
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from types import ModuleType
 from typing import Any, Protocol
@@ -26,10 +26,44 @@ INTEGRATION_WORKTREE = Path(
 SOURCE_BINDING_SHA256 = "2789a0310ad538637457d93d6b053d7c3c24241834a1148a42b66f3d6a27d269"
 DISPATCHER_SHA256 = "0880a472437f736675ed3a5fddd48d377161458dc90d02f7940dedb36b9197e7"
 TEST_RUNTIME_ROOT = INTEGRATION_WORKTREE / ".integration-test-runtime"
+PRODUCTION_WORKTREE = Path(
+    "/Users/kelvin/.codex/worktrees/b649-k20-orbit-production-caller-r1/MathStatisticalAnalysis"
+)
+PRODUCTION_JOURNAL_DIRECTORY = PRODUCTION_WORKTREE / ".task-data" / dispatcher.TASK_ID
+PRODUCTION_TEST_RUNTIME_ROOT = PRODUCTION_WORKTREE / ".production-test-runtime"
 
 
 class IntegrationError(RuntimeError):
     """The integrated source, baseline or frozen scoring contract differs."""
+
+
+@dataclass(frozen=True)
+class JournalRootAuthority:
+    """Explicit successor authority; never redirect to the legacy worktree."""
+
+    directory: Path
+    testing: bool = False
+
+    def validate(self, directory: Path, *, testing: bool, must_exist: bool = True) -> None:
+        path = Path(directory)
+        if (
+            path != self.directory
+            or not path.is_absolute()
+            or path.name != dispatcher.TASK_ID
+            or path.resolve(strict=must_exist) != path
+            or path.is_symlink()
+            or testing != self.testing
+            or (must_exist and not path.is_dir())
+        ):
+            raise IntegrationError("JOURNAL_ROOT_AUTHORITY_MISMATCH")
+        if self.testing:
+            if not path.is_relative_to(PRODUCTION_TEST_RUNTIME_ROOT):
+                raise IntegrationError("TEST_AUTHORITY_REQUIRES_ISOLATED_ROOT")
+        elif path != PRODUCTION_JOURNAL_DIRECTORY:
+            raise IntegrationError("JOURNAL_ROOT_AUTHORITY_MISMATCH")
+        expected = PRODUCTION_WORKTREE / "src/lottolab/research" / Path(__file__).name
+        if Path(__file__) != expected or expected.resolve(strict=True) != expected:
+            raise IntegrationError("PRODUCTION_CALLER_SOURCE_PATH_MISMATCH")
 
 
 class BoundedTestEvaluator(Protocol):
@@ -40,9 +74,11 @@ class BoundedTestEvaluator(Protocol):
     def official_count(self, portfolio: Sequence[Sequence[int]]) -> int: ...
 
 
-def _verify_reused_module(module: Any, digest: str) -> None:
+def _verify_reused_module(
+    module: Any, digest: str, source_worktree: Path = INTEGRATION_WORKTREE
+) -> None:
     path = Path(module.__file__)
-    expected = INTEGRATION_WORKTREE / "src/lottolab/research" / path.name
+    expected = source_worktree / "src/lottolab/research" / path.name
     if path != expected or path.resolve(strict=True) != expected:
         raise IntegrationError("REUSED_MODULE_PATH_MISMATCH")
     if hashlib.sha256(path.read_bytes()).hexdigest() != digest:
@@ -50,9 +86,12 @@ def _verify_reused_module(module: Any, digest: str) -> None:
 
 
 @contextmanager
-def _original_binding() -> Iterator[binding.SuccessorSourceBinding]:
-    _verify_reused_module(binding, SOURCE_BINDING_SHA256)
-    _verify_reused_module(dispatcher, DISPATCHER_SHA256)
+def _original_binding(
+    *, source_worktree: Path | None = None
+) -> Iterator[binding.SuccessorSourceBinding]:
+    root = INTEGRATION_WORKTREE if source_worktree is None else source_worktree
+    _verify_reused_module(binding, SOURCE_BINDING_SHA256, root)
+    _verify_reused_module(dispatcher, DISPATCHER_SHA256, root)
     names = (
         binding._DRIVER_IMPORT_NAME,
         binding.OFFICIAL_IMPORT_NAME,
@@ -71,7 +110,7 @@ def _original_binding() -> Iterator[binding.SuccessorSourceBinding]:
     )
     # The unchanged loader pins its own location. Rebind that location in memory
     # only after checking the exact imported copy's original source identity.
-    binding.SUCCESSOR_WORKTREE = INTEGRATION_WORKTREE
+    binding.SUCCESSOR_WORKTREE = root
     try:
         evidence = binding.load_original_predicate_for_successor()
         yield evidence
@@ -177,6 +216,7 @@ def run_successor(
     *,
     journal_directory: Path,
     test_evaluator: BoundedTestEvaluator | None = None,
+    journal_authority: JournalRootAuthority | None = None,
 ) -> dispatcher.DispatchSummary:
     """Bind original sources, score in their original order, and durably dispatch.
 
@@ -189,17 +229,22 @@ def run_successor(
     resolved = directory.resolve(strict=True)
     if directory != resolved or directory.name != dispatcher.TASK_ID:
         raise IntegrationError("SUCCESSOR_JOURNAL_PATH_MISMATCH")
-    is_test_directory = directory.is_relative_to(TEST_RUNTIME_ROOT)
-    if test_evaluator is not None and not is_test_directory:
-        raise IntegrationError("TEST_EVALUATOR_REQUIRES_ISOLATED_TEST_JOURNAL")
-    if test_evaluator is None and (
-        is_test_directory or directory != INTEGRATION_WORKTREE / ".task-data" / dispatcher.TASK_ID
-    ):
-        raise IntegrationError("SCIENTIFIC_EVALUATOR_REQUIRES_SEPARATE_SUCCESSOR_JOURNAL")
-    manifest_bytes = (INTEGRATION_WORKTREE / dispatcher.MANIFEST_RELATIVE_PATH).read_bytes()
+    root = INTEGRATION_WORKTREE
+    if journal_authority is not None:
+        journal_authority.validate(directory, testing=test_evaluator is not None)
+        root = PRODUCTION_WORKTREE
+    else:
+        is_test_directory = directory.is_relative_to(TEST_RUNTIME_ROOT)
+        if test_evaluator is not None and not is_test_directory:
+            raise IntegrationError("TEST_EVALUATOR_REQUIRES_ISOLATED_TEST_JOURNAL")
+        if test_evaluator is None and (
+            is_test_directory or directory != root / ".task-data" / dispatcher.TASK_ID
+        ):
+            raise IntegrationError("SCIENTIFIC_EVALUATOR_REQUIRES_SEPARATE_SUCCESSOR_JOURNAL")
+    manifest_bytes = (root / dispatcher.MANIFEST_RELATIVE_PATH).read_bytes()
     journal = dispatcher.JsonlProgressJournal(directory)
     state = dispatcher.summarize_progress(manifest_bytes, journal.read_bytes())
-    with _original_binding() as evidence:
+    with _original_binding(source_worktree=root) as evidence:
         scorer = _score_representatives(evidence, state.incumbent.official_count, test_evaluator)
         return dispatcher.run_dispatch(
             manifest_bytes,
@@ -264,6 +309,7 @@ def run_successor_and_seal(
     portfolio_tickets: object,
     test_evaluator: BoundedTestEvaluator | None = None,
     test_terminal_recount: Callable[[tuple[tuple[int, ...], ...]], int] | None = None,
+    journal_authority: JournalRootAuthority | None = None,
 ) -> dict[str, Any]:
     """Delegate the frozen run, then bind the official evaluator at terminal only.
 
@@ -281,13 +327,25 @@ def run_successor_and_seal(
     if testing and (
         test_evaluator is None
         or test_terminal_recount is None
-        or not directory.is_relative_to(TEST_RUNTIME_ROOT)
+        or (journal_authority is None and not directory.is_relative_to(TEST_RUNTIME_ROOT))
     ):
         raise IntegrationError("TERMINAL_TEST_SEAMS_REQUIRE_ISOLATED_TEST_JOURNAL")
 
-    with _pinned_scientific_caller() as original:
-        summary = original.run_successor(journal_directory=directory, test_evaluator=test_evaluator)
-    manifest_bytes = (INTEGRATION_WORKTREE / dispatcher.MANIFEST_RELATIVE_PATH).read_bytes()
+    root = INTEGRATION_WORKTREE
+    if journal_authority is None:
+        with _pinned_scientific_caller() as original:
+            summary = original.run_successor(
+                journal_directory=directory, test_evaluator=test_evaluator
+            )
+    else:
+        journal_authority.validate(directory, testing=testing)
+        root = PRODUCTION_WORKTREE
+        summary = run_successor(
+            journal_directory=directory,
+            test_evaluator=test_evaluator,
+            journal_authority=journal_authority,
+        )
+    manifest_bytes = (root / dispatcher.MANIFEST_RELATIVE_PATH).read_bytes()
     journal = dispatcher.JsonlProgressJournal(directory)
     journal_bytes = journal.read_bytes()
     accepted = dispatcher.summarize_progress(manifest_bytes, journal_bytes)
@@ -298,6 +356,11 @@ def run_successor_and_seal(
         or accepted.new_raw_attempts_completed != dispatcher.EXPECTED_NEW_RAW_ATTEMPTS
     ):
         raise IntegrationError("TERMINAL_REQUIRES_COMPLETE_ACCEPTED_JOURNAL")
+
+    if journal_authority is not None:
+        portfolio_tickets = reconstruct_final_winner(
+            manifest_bytes, journal_bytes, portfolio_tickets
+        )
 
     # No evaluator import or recount capability is created for a partial prefix.
     recount = official.require_official_binding(official.load_official_recount())
@@ -320,3 +383,50 @@ def run_successor_and_seal(
     if journal.read_bytes() != journal_bytes:
         raise IntegrationError("TERMINAL_JOURNAL_CHANGED_DURING_RECOUNT")
     return result
+
+
+def reconstruct_final_winner(
+    manifest_bytes: bytes, journal_bytes: bytes, baseline_tickets: object
+) -> tuple[tuple[int, ...], ...]:
+    """Replay one winner's first-seen generator order, without any scoring.
+
+    The unchanged scan emits each legal identity once, in generator order.
+    Candidate ordinal therefore indexes exactly this deduplicated stream.
+    No journal schema change or separate winner sidecar is necessary on resume.
+    """
+    from lottolab.research import b649_k20_orbit_successor_terminal_seal_r1 as terminal
+
+    baseline, identity = terminal._normalize_portfolio(baseline_tickets, label="frozen baseline")
+    if identity != dispatcher.BASELINE_PORTFOLIO_SHA256:
+        raise IntegrationError("FROZEN_BASELINE_MISMATCH")
+    plan = dispatcher.load_manifest_plan(manifest_bytes)
+    state = dispatcher.validate_progress_prefix(journal_bytes, plan)
+    winner = state.incumbent
+    if not dispatcher.is_strict_gain(winner.official_count):
+        if winner.result_identity_sha256 != identity:
+            raise IntegrationError("BASELINE_TIE_IDENTITY_MISMATCH")
+        return baseline
+    representative = next(
+        (row for row in plan.representatives if row.index == winner.representative_index), None
+    )
+    if representative is None or winner.candidate_ordinal is None:
+        raise IntegrationError("FINAL_WINNER_MAPPING_UNAVAILABLE")
+    with _original_binding(source_worktree=PRODUCTION_WORKTREE) as evidence:
+        predicate = evidence.predicate_module
+        seen: set[str] = set()
+        for spec in predicate.iter_quadruple_specs(
+            baseline, representative.quadruple, pool_size=49
+        ):
+            emitted = predicate.classify_attempt(baseline, spec, pool_size=49)
+            if isinstance(emitted, str) or emitted.sha256 in seen:
+                continue
+            ordinal = len(seen)
+            seen.add(emitted.sha256)
+            if ordinal == winner.candidate_ordinal:
+                portfolio, digest = terminal._normalize_portfolio(
+                    emitted.portfolio, label="final winner"
+                )
+                if digest != emitted.sha256 or digest != winner.result_identity_sha256:
+                    raise IntegrationError("FINAL_WINNER_SHA256_MISMATCH")
+                return portfolio
+    raise IntegrationError("FINAL_WINNER_MAPPING_UNAVAILABLE")

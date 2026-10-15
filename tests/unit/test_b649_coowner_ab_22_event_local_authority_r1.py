@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterator, Mapping
+from dataclasses import replace
 from typing import Any, cast
 
 import pytest
@@ -112,7 +113,30 @@ def test_required_negative_mutations_are_rejected(
 
 def test_result_json_is_exact_replay_output(
     replay: tuple[Mapping[str, Any], Mapping[str, Any], Mapping[str, Any]],
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    result, _base_rows, _after_rows = replay
+    result, base_rows, _after_rows = replay
     result_path = integration.ROOT / integration.RESULT_PATH
     assert result_path.read_bytes() == integration.serialize_result(result)
+
+    with pytest.raises(ValueError, match="pinned 22-event commit or its direct successor"):
+        integration.verify_source_identity(integration.ROOT, integration.BASE_HEAD)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(integration, "BASE_HEAD", integration.FROZEN_HEAD)
+        patch.setattr(integration, "BASE_TREE", integration.FROZEN_TREE)
+        with pytest.raises(ValueError, match="pinned 20-event base"):
+            integration.verify_source_identity(integration.ROOT, integration.TWENTY_TWO_HEAD)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(integration, "TWENTY_TWO_HEAD", integration.FROZEN_HEAD)
+        patch.setattr(integration, "TWENTY_TWO_TREE", integration.FROZEN_TREE)
+        with pytest.raises(ValueError, match="pinned 20-event base"):
+            integration.verify_source_identity(integration.ROOT, integration.FROZEN_HEAD)
+
+    donor = integration.DONORS[0]
+    wrong_source = replace(donor, source_sha256="0" * 64)
+    with pytest.raises(ValueError, match="donor source SHA256 mismatch"):
+        integration.verify_donor_artifact(
+            integration.ROOT, base_rows[donor.profile_id], wrong_source
+        )

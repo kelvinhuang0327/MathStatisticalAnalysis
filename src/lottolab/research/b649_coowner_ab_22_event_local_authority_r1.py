@@ -29,6 +29,8 @@ FROZEN_TREE = "986d20859c86be9036b2321ac47e2e9622786a3b"
 FROZEN_RESULT_SHA256 = "880a672a7330a567cc4544170cdeb0f7aa4d3dc5b5e3603c89ef50663cd71743"
 BASE_HEAD = "52da2de3974fbbc85c3dc10b40a8a7ba96ef80f0"
 BASE_TREE = "9a50f7203922c5d8cdf3a422dd8f7e276040a51e"
+TWENTY_TWO_HEAD = "90462d7a6877ced211ee129c82377baecb6c5eed"
+TWENTY_TWO_TREE = "54260af5c0d96304f8ec09108afff9f8b55c7b82"
 BASE_RESULT_PATH = twenty.RESULT_PATH
 BASE_RESULT_SHA256 = "ccdaf9f9928fb26b3888550e0487f156243fe9d23e850f4eef5c4994042bc0f4"
 BASE_FULL_DIGEST = "3fa64615e6615eb6e3d3fdf8e50739057194f8e781ce970d8eafac0212888089"
@@ -386,15 +388,32 @@ def verify_donor_artifact(
     return record, identity, blobs
 
 
+def verify_source_identity(root: Path, current_head: str) -> None:
+    four.verify_commit(root, FROZEN_HEAD, FROZEN_TREE)
+    four.verify_commit(root, BASE_HEAD, BASE_TREE)
+    four.verify_commit(root, TWENTY_TWO_HEAD, TWENTY_TWO_TREE)
+    candidate_parents = cast(
+        str, four.run_git(root, "rev-list", "--parents", "-n", "1", TWENTY_TWO_HEAD)
+    ).split()
+    require(
+        candidate_parents == [TWENTY_TWO_HEAD, BASE_HEAD],
+        "pinned 22-event commit is not based on the pinned 20-event base",
+    )
+    if current_head == TWENTY_TWO_HEAD:
+        return
+    current_parents = cast(
+        str, four.run_git(root, "rev-list", "--parents", "-n", "1", current_head)
+    ).split()
+    require(
+        current_parents == [current_head, TWENTY_TWO_HEAD],
+        "integration HEAD is not the pinned 22-event commit or its direct successor",
+    )
+
+
 def verify_base() -> tuple[
     dict[str, Any], dict[str, four.Row], dict[str, four.Row], bytes
 ]:
-    require(
-        four.run_git(ROOT, "rev-parse", "HEAD") == BASE_HEAD,
-        "integration worktree HEAD is not the pinned 20-event base",
-    )
-    four.verify_commit(ROOT, FROZEN_HEAD, FROZEN_TREE)
-    four.verify_commit(ROOT, BASE_HEAD, BASE_TREE)
+    verify_source_identity(ROOT, cast(str, four.run_git(ROOT, "rev-parse", "HEAD")))
     base_raw = four.committed_blob(ROOT, BASE_HEAD, BASE_RESULT_PATH)
     require(sha256(base_raw) == BASE_RESULT_SHA256, "20-event result SHA256 mismatch")
     require((ROOT / BASE_RESULT_PATH).read_bytes() == base_raw, "working 20-event result differs")

@@ -86,6 +86,32 @@ The original dataset/version, identity of the original 635 history rows, capture
 
 This pilot does not change `lottery.replay.read_models`: its migration-ledger phase remains `INVENTORIED`, with no PR or parity-evidence entry. `[Confirmed]` (docs/migration/migration-ledger.yaml)
 
+### BIG_LOTTO bounded source-check closeout — 2026-10-16
+
+`[Confirmed]` This round of bounded source checks is closed: no material sufficient
+to establish the original P14B execution identity was found in the checked sources.
+This does not prove that such evidence is absent everywhere. Original P14B historical
+parity remains `UNKNOWN` and cannot be verified from the available evidence. Static DB
+path resolution describes defaults and overrides only; the actual historical DB path
+remains unproven.
+
+The r2 candidate receipt was accepted and candidate output fields are `MATCH`, with
+`candidate_only=true`, `original_source_identity_established=false`, and
+`historical_reproduction_proven=false`. CTO technical completion remains **5/6 (83.3%)**;
+the outstanding milestone is original P14B historical parity evidence.
+
+Reopening requires mutually linked evidence from the same execution: original program
+version and worktree state; full command/argv, host, cwd, runtime and dependencies;
+the corresponding DB/snapshot or complete ordered inputs with digest; and original
+outputs/logs/execution identifiers that link back to that execution.
+
+Evidence:
+- `/Users/kelvin/Documents/ChatGPT/ReplayEvidence/biglotto-final-receipt-r2-20261015-output/result.json`
+- `/Users/kelvin/Documents/ChatGPT/ReplayEvidence/p14b-adjacent-records-r1/artifact/evidence.json`
+  (manifest: `/Users/kelvin/Documents/ChatGPT/ReplayEvidence/p14b-adjacent-records-r1/manifest.json`).
+- `/Users/kelvin/Documents/ChatGPT/ReplayEvidence/p14b-path-resolution-r1/artifact/evidence.json`
+  (manifest: `/Users/kelvin/Documents/ChatGPT/ReplayEvidence/p14b-path-resolution-r1/manifest.json`).
+
 ## Reproducibility
 
 Interpreter or numerical-dependency upgrades are a gated PR that must regenerate and

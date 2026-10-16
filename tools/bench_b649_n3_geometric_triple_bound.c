@@ -18,9 +18,13 @@
  * context construction is timed as single-candidate runtime.
  * Pipeline seconds are normalized per 512-candidate pass after 64 repetitions;
  * the reported three measurements rotate order. Counts are per unique sample.
+ * Direct arithmetic uses 64 passes; cheap arithmetic uses 4096. LUT setup CPU
+ * and wall time are reported separately. --dump-input PATH writes the exact
+ * canonical inputs outside all timed regions for external SHA256 verification.
  */
 #include "n3_bounds.h"
 #include <inttypes.h>
+#include <time.h>
 
 #define NS 512
 #define NE 4096
@@ -28,14 +32,18 @@
 #define REPEAT 64
 #define OLD_REPEAT 4096
 #define PIPELINE_REPEAT 64
+#define NARITH 9
+#define NPIPE 4
 #define REQUIRE(x) do { if (!(x)) { fprintf(stderr,"benchmark FAIL line=%d: %s\n",__LINE__,#x); exit(1); } } while (0)
 
 typedef struct {
     uint64_t t[3];
     int64_t g[3], ab, ac, bc, q, F, G, lower;
+    N3TripleShape shape;
 } Sample;
-typedef struct { uint64_t rejects, lower_rejects, pairs, triples; int64_t checksum; } Counts;
+typedef struct { uint64_t rejects, lower_rejects, pairs, triples, g_calls; int64_t checksum; } Counts;
 static Ctx ctx;
+static const N3TripleGeometryTable *geometry;
 static Sample samples[NS];
 static uint64_t events[NE], random_state=0x649b64920261016ull, sample_fingerprint;
 static int64_t target;
@@ -125,6 +133,9 @@ static void setup(void) {
             s->ab+=a&&b; s->ac+=a&&c; s->bc+=b&&c; s->q+=a&&b&&c; s->F+=a||b||c;
         }
         s->G=n3_full_triple_geometry(s->t[0],s->t[1],s->t[2]);
+        s->shape=n3_triple_shape(s->t[0],s->t[1],s->t[2],
+                                (unsigned)__builtin_popcountll(s->t[1]&s->t[2]));
+        REQUIRE(s->G==n3_triple_geometry_lookup(geometry,s->shape));
         s->lower=n3_pair_overlap_lower_bound(&ctx,s->t[1],s->t[2]);
         REQUIRE(s->q<=s->G && s->lower>=0 && s->lower<=s->bc);
     }
@@ -138,18 +149,31 @@ static __attribute__((noinline)) int64_t arithmetic_pass(unsigned mode) {
         const Sample *s=samples+i;
         int64_t base=s->g[0]+s->g[1]-s->ab, gc=s->g[2]-s->ac;
         if (mode==0) sum+=n3_pair_bound(base,gc,s->ab,s->ac,s->bc);
-        else {
+        else if (mode<4) {
             int64_t G=n3_full_triple_geometry(s->t[0],s->t[1],s->t[2]);
             if (mode==1) sum+=G;
             if (mode==2) sum+=n3_geometric_pair_bound(base,gc,s->ab,s->ac,s->bc,G);
             if (mode==3) sum+=n3_geometric_lower_pair_bound(base,gc,s->ab,s->ac,s->lower,G);
+        } else if (mode==4) {
+            /* The solver already has bc from its lower gate. */
+            N3TripleShape shape=n3_triple_shape(s->t[0],s->t[1],s->t[2],s->shape.bc);
+            sum+=((shape.ab*7+shape.ac)*7+shape.bc)*7+shape.abc;
+        } else {
+            N3TripleShape shape=mode==5 ? s->shape :
+                n3_triple_shape(s->t[0],s->t[1],s->t[2],s->shape.bc);
+            int64_t G=n3_triple_geometry_lookup(geometry,shape);
+            if (mode==5 || mode==6) sum+=G;
+            if (mode==7) sum+=n3_geometric_pair_bound(base,gc,s->ab,s->ac,s->bc,G);
+            if (mode==8) sum+=n3_geometric_lower_pair_bound(base,gc,s->ab,s->ac,s->lower,G);
         }
     }
     return sum;
 }
 
-/* Modes: 0=prototype OFF; 1=actual single exact-pair integration;
- * 2=alternative single lower-gate integration (not installed in solver). */
+/* 0=original; 1=previous direct-G prototype (unchanged gate order);
+ * 2=installed LUT exact-pair gate; 3=lower-gate LUT alternative.
+ * LUT modes short-circuit original safe rejects before shape/lookup work.
+ * No mode caches residual pairs or calls a solver/evaluator. */
 static __attribute__((noinline)) Counts pipeline(unsigned mode) {
     Counts count={0};
     for (unsigned i=0;i<NS;i++) {
@@ -157,8 +181,10 @@ static __attribute__((noinline)) Counts pipeline(unsigned mode) {
         int64_t base=s->g[0]+s->g[1]-s->ab, gc=s->g[2]-s->ac;
         int64_t L=n3_pair_overlap_lower_bound(&ctx,s->t[1],s->t[2]);
         int64_t quick=n3_lower_pair_bound(base,gc,s->ab,s->ac,L);
-        if (mode==2) {
-            int64_t G=n3_full_triple_geometry(s->t[0],s->t[1],s->t[2]);
+        if (mode==3 && !n3_strict_prune(quick,target)) {
+            N3TripleShape shape=n3_triple_shape(s->t[0],s->t[1],s->t[2],
+                                 (unsigned)__builtin_popcountll(s->t[1]&s->t[2]));
+            int64_t G=n3_triple_geometry_lookup(geometry,shape); count.g_calls++;
             quick=n3_geometric_lower_pair_bound(base,gc,s->ab,s->ac,L,G);
         }
         if (n3_strict_prune(quick,target)) {
@@ -168,7 +194,12 @@ static __attribute__((noinline)) Counts pipeline(unsigned mode) {
         REQUIRE(bc==s->bc);
         int64_t bound=n3_pair_bound(base,gc,s->ab,s->ac,bc);
         if (mode==1) {
-            int64_t G=n3_full_triple_geometry(s->t[0],s->t[1],s->t[2]);
+            int64_t G=n3_full_triple_geometry(s->t[0],s->t[1],s->t[2]); count.g_calls++;
+            bound=n3_geometric_pair_bound(base,gc,s->ab,s->ac,bc,G);
+        } else if (mode==2 && !n3_strict_prune(bound,target)) {
+            N3TripleShape shape=n3_triple_shape(s->t[0],s->t[1],s->t[2],
+                                 (unsigned)__builtin_popcountll(s->t[1]&s->t[2]));
+            int64_t G=n3_triple_geometry_lookup(geometry,shape); count.g_calls++;
             bound=n3_geometric_pair_bound(base,gc,s->ab,s->ac,bc,G);
         }
         if (n3_strict_prune(bound,target)) { REQUIRE(s->F<target); count.rejects++; continue; }
@@ -186,56 +217,93 @@ static double median(double *v) {
     return b;
 }
 
-int main(void) {
-    n3_init_binom(); n3_init_kappa(); setup();
-    double arithmetic[4][NRUN],runtime[3][NRUN]; Counts results[3]={{0}};
+/* Canonical binary input stream, explicit little-endian uint64 values:
+ * nR, R masks, X masks, NE, events in generation order, NS, three masks/sample.
+ * No struct padding, derived results, timings or addresses enter its SHA256. */
+static void write_u64(FILE *f, uint64_t value) {
+    for (unsigned j=0;j<8;j++) REQUIRE(fputc((int)((value>>(8*j))&255),f)!=EOF);
+}
+static void dump_input(const char *path) {
+    FILE *f=fopen(path,"wb"); REQUIRE(f);
+    write_u64(f,ctx.nR);
+    for (int j=0;j<ctx.nR;j++) write_u64(f,ctx.Rmask[j]);
+    for (unsigned j=0;j<3;j++) write_u64(f,ctx.Xmask[j]);
+    write_u64(f,NE);
+    for (unsigned j=0;j<NE;j++) write_u64(f,events[j]);
+    write_u64(f,NS);
+    for (unsigned j=0;j<NS;j++) for (unsigned k=0;k<3;k++) write_u64(f,samples[j].t[k]);
+    REQUIRE(fclose(f)==0);
+}
+
+int main(int argc, char **argv) {
+    n3_init_binom(); n3_init_kappa();
+    clock_t cpu_start=clock(); double init_start=n3_now();
+    geometry=n3_init_triple_geometry_table();
+    double init_seconds=n3_now()-init_start;
+    double init_cpu_seconds=(double)(clock()-cpu_start)/CLOCKS_PER_SEC;
+    REQUIRE(geometry==n3_init_triple_geometry_table());
+    setup();
+    REQUIRE(sample_fingerprint==0x4e0b53247c1fa922ull && target==532);
+    if (argc==3 && !strcmp(argv[1],"--dump-input")) dump_input(argv[2]);
+    else REQUIRE(argc==1);
+    double arithmetic[NARITH][NRUN],runtime[NPIPE][NRUN]; Counts results[NPIPE]={{0}};
     /* Warm each real kernel; no timed compile/setup and no background work. */
-    for (unsigned j=0;j<4;j++) sink+=arithmetic_pass(j);
-    for (unsigned j=0;j<3;j++) results[j]=pipeline(j);
+    for (unsigned j=0;j<NARITH;j++) sink+=arithmetic_pass(j);
+    for (unsigned j=0;j<NPIPE;j++) results[j]=pipeline(j);
     for (unsigned run=0;run<NRUN;run++) {
         /* Rotate order to reduce fixed order bias. */
-        for (unsigned j=0;j<4;j++) {
-            unsigned mode=(j+run)%4; double start=n3_now();
-            for (unsigned rep=0;rep<(mode==0 ? OLD_REPEAT : REPEAT);rep++) {
+        for (unsigned j=0;j<NARITH;j++) {
+            unsigned mode=(j+run)%NARITH; double start=n3_now();
+            for (unsigned rep=0;rep<((mode==0 || mode>=4) ? OLD_REPEAT : REPEAT);rep++) {
                 __asm__ volatile("" ::: "memory");
                 sink+=arithmetic_pass(mode);
             }
             arithmetic[mode][run]=n3_now()-start;
         }
-        for (unsigned j=0;j<3;j++) {
-            unsigned mode=(j+run)%3; double start=n3_now();
+        for (unsigned j=0;j<NPIPE;j++) {
+            unsigned mode=(j+run)%NPIPE; double start=n3_now();
             for (unsigned rep=0;rep<PIPELINE_REPEAT;rep++) {
+                __asm__ volatile("" ::: "memory");
                 Counts c=pipeline(mode);
                 REQUIRE(c.rejects==results[mode].rejects && c.triples==results[mode].triples);
             }
             runtime[mode][run]=(n3_now()-start)/PIPELINE_REPEAT;
         }
     }
-    REQUIRE(results[1].rejects>=results[0].rejects);
-    const char *anames[4]={"OLD_BOUND","G_ONLY","NEW_BOUND_INCLUDING_G","LOWER_BOUND_INCLUDING_G"};
-    const char *pnames[3]={"PROTOTYPE_OFF","EXACT_PAIR_PROTOTYPE","LOWER_ONLY_ALTERNATIVE"};
+    for (unsigned j=1;j<NPIPE;j++) REQUIRE(results[j].rejects>=results[0].rejects);
+    REQUIRE(results[1].rejects==results[2].rejects && results[1].checksum==results[2].checksum);
+    const char *anames[NARITH]={"OLD_BOUND","G_ONLY","NEW_BOUND_INCLUDING_G","LOWER_BOUND_INCLUDING_G",
+        "SHAPE_INDEX_REUSING_BC","LOOKUP_ONLY","LUT_G_INCLUDING_INDEX","NEW_BOUND_LUT","LOWER_BOUND_LUT"};
+    const char *pnames[NPIPE]={"PROTOTYPE_OFF","EXACT_PAIR_DIRECT_G","EXACT_PAIR_LUT","LOWER_GATE_LUT"};
     printf("{\"SAMPLE_COUNT\":%d,\"RESIDUAL_EVENT_SAMPLE_COUNT\":%d,\"STRATUM_SIZE\":128,"
            "\"MEASUREMENTS\":%d,\"G_REPETITIONS\":%d,\"OLD_REPETITIONS\":%d,"
            "\"PIPELINE_REPETITIONS\":%d,\"D_SAMPLE\":%" PRId64
            ",\"SEED_HEX\":\"649b64920261016\",\"FINGERPRINT_HEX\":\"%016" PRIx64 "\","
-           "\"DOMAIN\":\"1..49\",\"FULL_C2_RESIDUAL\":false,\"ARITHMETIC\":{",
-           NS,NE,NRUN,REPEAT,OLD_REPEAT,PIPELINE_REPEAT,target,sample_fingerprint);
-    for (unsigned j=0;j<4;j++) {
+           "\"DOMAIN\":\"1..49\",\"FULL_C2_RESIDUAL\":false,"
+           "\"LUT_BYTES\":%zu,\"LUT_INITIALIZATION_SECONDS\":%.9f,"
+           "\"LUT_INITIALIZATION_CPU_SECONDS\":%.9f,\"ARITHMETIC\":{",
+           NS,NE,NRUN,REPEAT,OLD_REPEAT,PIPELINE_REPEAT,target,sample_fingerprint,
+           sizeof *geometry,init_seconds,init_cpu_seconds);
+    for (unsigned j=0;j<NARITH;j++) {
         printf("%s\"%s\":{\"SECONDS\":[%.9f,%.9f,%.9f],\"MEDIAN_NS_PER_CANDIDATE\":%.3f}",
             j?",":"",anames[j],arithmetic[j][0],arithmetic[j][1],arithmetic[j][2],
-            median(arithmetic[j])*1e9/(NS*(j==0 ? OLD_REPEAT : REPEAT)));
+            median(arithmetic[j])*1e9/(NS*((j==0 || j>=4) ? OLD_REPEAT : REPEAT)));
     }
     printf("},\"PIPELINES\":{");
-    for (unsigned j=0;j<3;j++)
+    for (unsigned j=0;j<NPIPE;j++)
         printf("%s\"%s\":{\"SECONDS\":[%.9f,%.9f,%.9f],\"MEDIAN_SECONDS\":%.9f,"
                "\"SAFE_REJECTS\":%" PRIu64 ",\"LOWER_REJECTS\":%" PRIu64
-               ",\"PAIR_CALLS\":%" PRIu64 ",\"TRIPLE_CALLS\":%" PRIu64 "}",
+               ",\"PAIR_CALLS\":%" PRIu64 ",\"TRIPLE_CALLS\":%" PRIu64
+               ",\"G_CALLS_PER_PASS\":%" PRIu64
+               ",\"G_CALLS_TIMED\":%" PRIu64 ",\"G_CALLS_WITH_WARMUP\":%" PRIu64 "}",
             j?",":"",pnames[j],runtime[j][0],runtime[j][1],runtime[j][2],median(runtime[j]),
-            results[j].rejects,results[j].lower_rejects,results[j].pairs,results[j].triples);
+            results[j].rejects,results[j].lower_rejects,results[j].pairs,results[j].triples,
+            results[j].g_calls,results[j].g_calls*NRUN*PIPELINE_REPEAT,
+            results[j].g_calls*(1+NRUN*PIPELINE_REPEAT));
     printf("},\"ADDITIONAL_SAFE_REJECTS\":%" PRIu64 ",\"NET_SECONDS_SAVED\":%.9f,"
            "\"PEAK_RSS_BYTES\":%zu,\"MISMATCHES\":0,\"FORMAL_N3_SOLVER_CALLS\":0,"
-           "\"CANONICAL_SCORING_CALLS\":0}\n",results[1].rejects-results[0].rejects,
-           median(runtime[0])-median(runtime[1]),n3_peak_rss());
+           "\"CANONICAL_SCORING_CALLS\":0}\n",results[2].rejects-results[0].rejects,
+           median(runtime[0])-median(runtime[2]),n3_peak_rss());
     free(ctx.U); free(ctx.N3); free(ctx.N4); free(ctx.N5); free(ctx.N6);
     return sink==-1;
 }

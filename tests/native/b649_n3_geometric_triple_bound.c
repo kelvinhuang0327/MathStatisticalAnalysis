@@ -32,8 +32,15 @@ static int64_t geometric_oracle(uint64_t a, uint64_t b, uint64_t c) {
     }
 }
 
-static uint64_t shape_checks, distinct_shapes, toy_triples, classifications, lower_checks;
+static const N3TripleGeometryTable *geometry;
+static uint64_t shape_checks, distinct_shapes, invalid_shapes, toy_triples, classifications, lower_checks;
 static uint64_t toy_old_reject, toy_new_reject, production_new_reject, varied_overlap;
+static int64_t maximum_G;
+
+static int64_t lut_G(uint64_t a, uint64_t b, uint64_t c) {
+    return n3_triple_geometry_lookup(geometry,
+            n3_triple_shape(a,b,c,(unsigned)__builtin_popcountll(b&c)));
+}
 
 static void all_shapes(void) {
     for (int ab=0; ab<=6; ab++) for (int ac=0; ac<=6; ac++)
@@ -42,7 +49,17 @@ static void all_shapes(void) {
                         ab-abc, 6-ac-bc+abc, ac-abc, bc-abc, abc};
             int valid=1;
             for (int j=0; j<8; j++) if (z[j]<0) valid=0;
-            if (!valid) continue;
+            N3TripleShape shape={(unsigned)ab,(unsigned)ac,(unsigned)bc,(unsigned)abc};
+            int from_shape[8];
+            uint32_t value=123;
+            CHECK(n3_triple_shape_cells(shape,from_shape)==valid);
+            CHECK(n3_triple_geometry_try_lookup(geometry,shape,&value)==valid);
+            if (!valid) {
+                CHECK(value==123); /* failure must not manufacture G=0 */
+                CHECK(geometry->G_TABLE[ab][ac][bc][abc]==UINT32_MAX);
+                invalid_shapes++; continue;
+            }
+            for (int j=0;j<8;j++) CHECK(from_shape[j]==z[j]);
             uint64_t a=0,b=0,c=0;
             unsigned next=0;
             for (unsigned j=1; j<8; j++) for (int k=0; k<z[j]; k++,next++) {
@@ -57,13 +74,30 @@ static void all_shapes(void) {
             CHECK(__builtin_popcountll(a&b)==ab && __builtin_popcountll(a&c)==ac);
             CHECK(__builtin_popcountll(b&c)==bc && __builtin_popcountll(a&b&c)==abc);
             int64_t G=n3_full_triple_geometry(a,b,c);
+            CHECK(value==G && lut_G(a,b,c)==G);
+            if (G>maximum_G) maximum_G=G;
             CHECK(G==geometric_oracle(a,b,c));
             CHECK(G>=0 && G<=(int64_t)COVER_PER_TICKET && G<=85900584);
             CHECK(G==n3_full_triple_geometry(c,a,b));
+            CHECK(G==lut_G(c,a,b) && G==lut_G(b,a,c));
             shape_checks++;
             distinct_shapes += a!=b && a!=c && b!=c;
         }
     int cells[8];
+    for (unsigned j=0;j<4;j++) {
+        N3TripleShape bad={0,0,0,0};
+        if (j==0) bad.ab=7; if (j==1) bad.ac=7;
+        if (j==2) bad.bc=7; if (j==3) bad.abc=UINT32_MAX;
+        uint32_t value=123;
+        CHECK(!n3_triple_shape_cells(bad,cells));
+        CHECK(!n3_triple_geometry_try_lookup(geometry,bad,&value) && value==123);
+    }
+    CHECK(shape_checks==256 && distinct_shapes==237 && invalid_shapes==2145);
+    CHECK(maximum_G==COVER_PER_TICKET && maximum_G<UINT32_MAX);
+    uint32_t saved=BIN[49][7];
+    BIN[49][7]=0; /* a rebuild would fail its binomial precondition */
+    CHECK(geometry==n3_init_triple_geometry_table());
+    BIN[49][7]=saved;
     CHECK(!n3_triple_venn_cells(31,63,126,cells));
     CHECK(!n3_triple_venn_cells(63^(1ull<<5)^(1ull<<49),63,126,cells));
     /* Full label invariance moves every number, including 29,32,44,49, through
@@ -74,6 +108,7 @@ static void all_shapes(void) {
         for (unsigned t=0;t<3;t++) for (unsigned j=0;j<49;j++)
             if (in[t]&(1ull<<j)) out[t] |= 1ull<<((j+shift)%49);
         CHECK(n3_full_triple_geometry(out[0],out[1],out[2])==expected);
+        CHECK(lut_G(out[0],out[1],out[2])==expected);
     }
     CHECK(expected>0);
 }
@@ -90,7 +125,7 @@ static void fixed_witnesses(void) {
     uint64_t t[3], g[3]={0}, h[3]={0};
     for (unsigned j=0;j<3;j++) t[j]=mask(tickets[j],6);
     CHECK(!(t[0]&t[1]) && !(t[0]&t[2]) && !(t[1]&t[2]));
-    CHECK(n3_full_triple_geometry(t[0],t[1],t[2])==0);
+    CHECK(lut_G(t[0],t[1],t[2])==0);
     for (unsigned j=0;j<3;j++) {
         uint64_t e=mask(events[j],7);
         for (unsigned r=0;r<17;r++) CHECK(!hits(e,mask(kept[r],6)));
@@ -121,7 +156,7 @@ static void fixed_witnesses(void) {
     CHECK(hits(extra_event,later) && rank_mask(t[2])<rank_mask(later));
     CHECK((int64_t)g[2]-(int64_t)h[2]==1); /* conditional c relative to b */
     int64_t later_bound=n3_geometric_pair_bound(3,1,1,0,0,
-                            n3_full_triple_geometry(t[1],t[0],later));
+                            lut_G(t[1],t[0],later));
     CHECK(now==3 && later_bound==4);
     CHECK(n3_strict_prune(now,4) && !n3_strict_prune(later_bound,4));
 
@@ -131,7 +166,7 @@ static void fixed_witnesses(void) {
     const int he[2][7]={{1,2,3,9,10,11,49},{1,2,3,12,13,14,48}};
     for (unsigned j=0;j<3;j++) t[j]=mask(hi[j],6);
     for (unsigned j=0;j<2;j++) for (unsigned k=0;k<3;k++) CHECK(hits(mask(he[j],7),t[k]));
-    int64_t G=n3_full_triple_geometry(t[0],t[1],t[2]);
+    int64_t G=lut_G(t[0],t[1],t[2]);
     CHECK(G>0);
     CHECK(n3_geometric_pair_bound(2,0,2,2,2,G)==2);
     CHECK(n3_strict_prune(n3_geometric_pair_bound(2,0,2,2,2,0),1));
@@ -218,7 +253,12 @@ static void exhaustive_toy(void) {
             int64_t old=n3_pair_bound(base,gc,hab,hac,hbc);
             int64_t now=n3_geometric_pair_bound(base,gc,hab,hac,hbc,*G);
             int64_t production=n3_geometric_pair_bound(base,gc,hab,hac,hbc,*G49);
+            int64_t lookup=lut_G(t[i],t[j],t[k]);
+            CHECK(lookup==*G49);
+            CHECK(production==n3_geometric_pair_bound(base,gc,hab,hac,hbc,lookup));
             int64_t early=n3_geometric_lower_pair_bound(base,gc,hab,hac,toy_lower[j][k],*G);
+            int64_t early49=n3_geometric_lower_pair_bound(base,gc,hab,hac,toy_lower[j][k],lookup);
+            CHECK(F<=early49 && early49<=n3_lower_pair_bound(base,gc,hab,hac,toy_lower[j][k]));
             CHECK(F<=now && now<=production && production<=old);
             CHECK(F<=early && early<=n3_lower_pair_bound(base,gc,hab,hac,toy_lower[j][k]));
             int64_t targets[5]={0,D,F,F+1,old};
@@ -231,6 +271,7 @@ static void exhaustive_toy(void) {
                 CHECK(F<=targets[v] || !new_reject); /* no positive delta lost */
                 CHECK(F!=targets[v] || !new_reject); /* no tied optimum lost */
                 CHECK(!n3_strict_prune(early,targets[v]) || F<targets[v]);
+                CHECK(!n3_strict_prune(early49,targets[v]) || F<targets[v]);
                 toy_old_reject+=old_reject; toy_new_reject+=new_reject;
                 production_new_reject+=production_reject; classifications++;
             }
@@ -241,18 +282,26 @@ static void exhaustive_toy(void) {
     free(ctx.N3); free(ctx.N4); free(ctx.N5); free(ctx.N6);
 }
 
-int main(void) {
+int main(int argc, char **argv) {
+    if (argc==2 && !strcmp(argv[1],"--uninitialized-table")) {
+        (void)n3_init_triple_geometry_table(); return 1;
+    }
     n3_init_binom();
+    geometry=n3_init_triple_geometry_table();
+    if (argc==2 && !strcmp(argv[1],"--invalid-shape")) {
+        (void)n3_triple_geometry_lookup(geometry,(N3TripleShape){0,0,0,1}); return 1;
+    }
     all_shapes(); fixed_witnesses(); exhaustive_toy();
     CHECK(!n3_strict_prune(10,10) && n3_strict_prune(9,10));
     printf("{\"SHAPE_CHECKS\":%" PRIu64 ",\"DISTINCT_TICKET_SHAPES\":%" PRIu64
-           ",\"LABEL_PERMUTATIONS\":49,\"TOY_TRIPLES\":%" PRIu64 ",\"CLASSIFICATIONS\":%" PRIu64
+           ",\"INVALID_SHAPES_REJECTED\":%" PRIu64 ",\"MAXIMUM_G\":%" PRId64
+           ",\"LUT_BYTES\":%zu,\"LABEL_PERMUTATIONS\":49,\"TOY_TRIPLES\":%" PRIu64 ",\"CLASSIFICATIONS\":%" PRIu64
            ",\"PRODUCTION_LOWER_CHECKS\":%" PRIu64 ",\"TOY_OLD_REJECTS\":%" PRIu64
            ",\"TOY_NEW_REJECTS\":%" PRIu64 ",\"PRODUCTION_NEW_REJECTS\":%" PRIu64
            ",\"VARIED_PAIR_OVERLAPS\":%" PRIu64 ",\"FIXED_WITNESS_ADDITIONAL_REJECTS\":1,"
            "\"ZERO_Q_COUNTEREXAMPLE\":true,\"SUFFIX_COUNTEREXAMPLE\":true,"
            "\"MISMATCHES\":0,\"PEAK_RSS_BYTES\":%zu}\n",
-           shape_checks,distinct_shapes,toy_triples,classifications,lower_checks,
+           shape_checks,distinct_shapes,invalid_shapes,maximum_G,sizeof *geometry,toy_triples,classifications,lower_checks,
            toy_old_reject,toy_new_reject,production_new_reject,varied_overlap,n3_peak_rss());
     return 0;
 }

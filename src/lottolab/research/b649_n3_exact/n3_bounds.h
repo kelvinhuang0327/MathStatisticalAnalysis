@@ -59,6 +59,85 @@ static inline int64_t n3_full_triple_geometry(uint64_t A, uint64_t B, uint64_t C
     return n3_triple_cell_count(cells, 1, 7, 0, 0, 0, 1);
 }
 
+typedef struct { unsigned ab, ac, bc, abc; } N3TripleShape;
+typedef struct { uint32_t G_TABLE[7][7][7][7]; } N3TripleGeometryTable;
+
+/* Complete intersection shape on 1..49, including coincident tickets. These
+ * integer cells are sufficient: assign disjoint labels to each inside cell,
+ * then the remaining labels to cell 0. Nonnegativity is also necessary. */
+static inline int n3_triple_shape_cells(N3TripleShape s, int cells[8]) {
+    if (s.ab > 6 || s.ac > 6 || s.bc > 6 || s.abc > 6) return 0;
+    int ab=(int)s.ab, ac=(int)s.ac, bc=(int)s.bc, abc=(int)s.abc;
+    int z[8]={31+ab+ac+bc-abc, 6-ab-ac+abc, 6-ab-bc+abc,
+              ab-abc, 6-ac-bc+abc, ac-abc, bc-abc, abc};
+    int sum=0;
+    for (unsigned j=0;j<8;j++) {
+        if (z[j]<0) return 0;
+        sum+=z[j];
+    }
+    if (sum!=49) return 0;
+    memcpy(cells,z,sizeof z);
+    return 1;
+}
+
+/* Single-threaded kernel, one table in its consuming translation unit.
+ * Call once before the candidate loop, AFTER n3_init_binom(). Repeated calls
+ * return the same immutable table without rebuilding. No residual/support
+ * mask is involved. UINT32_MAX marks invalid slots, never a zero G.
+ * Every G <= C(49,7)=85,900,584 < 2^32-1; in fact G<=2,658,776 since
+ * the triple coverage is contained in one ticket's coverage. The original
+ * exact int64_t recursion above is used unchanged before the checked cast. */
+static inline const N3TripleGeometryTable *n3_init_triple_geometry_table(void) {
+    static N3TripleGeometryTable table;
+    static int ready;
+    if (ready) return &table;
+    if (NPOOL!=49 || BIN[49][7]!=NT7) {
+        fprintf(stderr,"geometric LUT requires pool 49 and initialized binomials\n");
+        exit(2);
+    }
+    memset(&table,0xff,sizeof table);
+    for (unsigned ab=0;ab<7;ab++) for (unsigned ac=0;ac<7;ac++)
+        for (unsigned bc=0;bc<7;bc++) for (unsigned abc=0;abc<7;abc++) {
+            int cells[8];
+            if (!n3_triple_shape_cells((N3TripleShape){ab,ac,bc,abc},cells)) continue;
+            int64_t G=n3_triple_cell_count(cells,1,7,0,0,0,1);
+            if (G<0 || G>(int64_t)COVER_PER_TICKET || G>=UINT32_MAX) {
+                fprintf(stderr,"geometric LUT value out of range\n"); exit(2);
+            }
+            table.G_TABLE[ab][ac][bc][abc]=(uint32_t)G;
+        }
+    ready=1;
+    return &table;
+}
+
+/* Legal six-number tickets are guaranteed by the caller's candidate domain.
+ * bc is the already computed |B&C| (NOT residual overlap iBC). */
+static inline N3TripleShape n3_triple_shape(uint64_t A, uint64_t B, uint64_t C,
+                                           unsigned bc) {
+    return (N3TripleShape){(unsigned)__builtin_popcountll(A&B),
+                           (unsigned)__builtin_popcountll(A&C),bc,
+                           (unsigned)__builtin_popcountll(A&B&C)};
+}
+
+static inline int n3_triple_geometry_try_lookup(const N3TripleGeometryTable *table,
+                                                N3TripleShape s, uint32_t *G) {
+    if (s.ab>6 || s.ac>6 || s.bc>6 || s.abc>6) return 0;
+    uint32_t value=table->G_TABLE[s.ab][s.ac][s.bc][s.abc];
+    if (value==UINT32_MAX) return 0;
+    *G=value;
+    return 1;
+}
+
+static inline int64_t n3_triple_geometry_lookup(const N3TripleGeometryTable *table,
+                                                N3TripleShape s) {
+    uint32_t G;
+    if (!n3_triple_geometry_try_lookup(table,s,&G)) {
+        fprintf(stderr,"invalid geometric triple shape (%u,%u,%u,%u)\n",
+                s.ab,s.ac,s.bc,s.abc); exit(2);
+    }
+    return G;
+}
+
 /* Submodularity: res(B)\res(A) and res(C)\res(A) may overlap,
    so their two exact marginals give an admissible remaining-slot bound. */
 static inline int64_t n3_two_slot_bound(int64_t rA, int64_t gB, int64_t gC) {

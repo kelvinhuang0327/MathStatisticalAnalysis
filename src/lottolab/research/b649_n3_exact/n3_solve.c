@@ -76,6 +76,9 @@ static int pow2(uint64_t a) { return a && !(a & (a - 1)); }
 static int solver_run_impl(Solver *s, const Ctx *ctx, int64_t F0, double tl, int verbose,
                            const SolverResumeConfig *resume, uint64_t stop_after_new_anchors) {
     double t0 = n3_now();
+#if N3_GEOMETRIC_TRIPLE_BOUND
+    const N3TripleGeometryTable *geometry = n3_init_triple_geometry_table();
+#endif
     memset(s, 0, sizeof *s);
     s->incumbent = s->target = F0;
     s->time_limit_s = tl;
@@ -263,10 +266,14 @@ static int solver_run_impl(Solver *s, const Ctx *ctx, int64_t F0, double tl, int
                 s->pair_calls++;
                 int64_t bound = n3_pair_bound(base, C->r, iAB, iAC, iBC);
 #if N3_GEOMETRIC_TRIPLE_BOUND
-                /* Candidate-local only: the existing strict gate continues one
-                 * leaf, never a conditional suffix; accounting/ties stay intact. */
-                int64_t G = n3_full_triple_geometry(list[a].mask, B->mask, C->mask);
-                bound = n3_geometric_pair_bound(base, C->r, iAB, iAC, iBC, G);
+                /* Original safe rejects pay no shape/lookup cost. Reuse shared
+                 * from the lower gate. Candidate-local only: never break a
+                 * conditional suffix; accounting and strict ties stay intact. */
+                if (!n3_strict_prune(bound, s->target)) {
+                    N3TripleShape shape = n3_triple_shape(list[a].mask, B->mask, C->mask, shared);
+                    int64_t G = n3_triple_geometry_lookup(geometry, shape);
+                    bound = n3_geometric_pair_bound(base, C->r, iAB, iAC, iBC, G);
+                }
 #endif
                 s->accounted++;
                 if (n3_strict_prune(bound, s->target)) {

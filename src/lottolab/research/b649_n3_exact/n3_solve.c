@@ -262,6 +262,12 @@ static int solver_run_impl(Solver *s, const Ctx *ctx, int64_t F0, double tl, int
                 int64_t iBC = cached_pair(&pc, B, C);
                 s->pair_calls++;
                 int64_t bound = n3_pair_bound(base, C->r, iAB, iAC, iBC);
+#if N3_GEOMETRIC_TRIPLE_BOUND
+                /* Candidate-local only: the existing strict gate continues one
+                 * leaf, never a conditional suffix; accounting/ties stay intact. */
+                int64_t G = n3_full_triple_geometry(list[a].mask, B->mask, C->mask);
+                bound = n3_geometric_pair_bound(base, C->r, iAB, iAC, iBC, G);
+#endif
                 s->accounted++;
                 if (n3_strict_prune(bound, s->target)) {
                     s->leaves_pruned_pair++;

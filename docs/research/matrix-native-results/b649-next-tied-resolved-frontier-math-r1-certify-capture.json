@@ -1,0 +1,23 @@
+{
+  "argv": [
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/python",
+    "-m",
+    "lottolab.research.b649_next_tied_resolved_frontier_math_r1",
+    "--write"
+  ],
+  "cwd": "/Users/kelvin/.codex/worktrees/b649-next-tied-resolved-frontier-math-r1/MathStatisticalAnalysis",
+  "explicit_environment": {
+    "PYTHONDONTWRITEBYTECODE": "1",
+    "PYTHONPATH": "src",
+    "OPENBLAS_NUM_THREADS": "1",
+    "OMP_NUM_THREADS": "1",
+    "MKL_NUM_THREADS": "1"
+  },
+  "started_at": "2026-10-16T02:58:54.693435+00:00",
+  "ended_at": "2026-10-16T02:59:30.527414+00:00",
+  "exit_code": 0,
+  "stdout": "{\n  \"TASK_STATUS\": \"BOTH_FULL_PROFILE_BOUNDS_PROVED_SELF_CHECK_ONLY\",\n  \"RESULT_SHA256\": \"5b5834e003dc52daabdf72acf872f8fce83184030b7ed40f139b686d6836c1b2\",\n  \"RESULT_FILE_SHA256\": \"89c9fda3d3526285677e81867161f0fdeefa6f00a84779e1ccdd5f7cb96c1180\",\n  \"BOUNDS\": {\n    \"65555555555442000000\": 313015432,\n    \"66555555554433000000\": 312995528\n  }\n}\n",
+  "stderr": "",
+  "execution_authority": "Human supplemental authorization: direct local final validation; CPU <=120 seconds; one CPU-bound process; no shared lock mutation",
+  "protected_launcher_prior_failure": "PRIOR_PROCESS_STATE_UNRESOLVED: missing generation-2 lock marker; no migration attempted"
+}

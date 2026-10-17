@@ -29,7 +29,9 @@ BASE_RESULT_PATH = (
 )
 BASE_RESULT_SHA256 = "9fbe17d020573835cd69f16296fee224ff4f83aef8b3e7a644f2ffaabdfe92c9"
 RESULT_PATH = "docs/research/matrix-native-results/b649-certified-four-donor-family-r1-result.json"
-EVIDENCE_PATH = Path(".fable/checkpoints") / TASK_ID / "evidence"
+EVIDENCE_PATH = Path(
+    "docs/research/matrix-native-results/b649-certified-four-donor-family-r1-evidence"
+)
 
 
 @dataclass(frozen=True)
@@ -217,8 +219,34 @@ def safe_working_file(path: str) -> bytes:
 def safe_evidence_file(name: str) -> bytes:
     require(Path(name).name == name, "evidence filename must be a single component")
     target = ROOT / EVIDENCE_PATH / name
-    require(target.is_file() and not target.is_symlink(), f"missing/unsafe Fable evidence: {name}")
+    require(target.is_file() and not target.is_symlink(), f"missing/unsafe evidence: {name}")
     return target.read_bytes()
+
+
+def git_commit_exists(head: str) -> bool:
+    env = {
+        **os.environ,
+        "GIT_CONFIG_COUNT": "1",
+        "GIT_CONFIG_KEY_0": "core.fsmonitor",
+        "GIT_CONFIG_VALUE_0": "false",
+        "GIT_OPTIONAL_LOCKS": "0",
+    }
+    result = subprocess.run(
+        ["git", "-C", str(ROOT), "cat-file", "-e", f"{head}^{{commit}}"],
+        capture_output=True,
+        env=env,
+    )
+    return result.returncode == 0
+
+
+def load_donor_blob(pin: DonorPin, path: str, expected_sha256: str) -> bytes:
+    filename = Path(path).name
+    raw = safe_evidence_file(filename)
+    require(sha256(raw) == expected_sha256, f"{pin.key}:{filename}: SHA256 mismatch")
+    if git_commit_exists(pin.head):
+        git_raw = frozen_blob(pin.head, path, expected_sha256)
+        require(git_raw == raw, f"{pin.key}:{path}: evidence file differs from git blob")
+    return raw
 
 
 def _profile_bounds(value: object, label: str) -> dict[str, int]:
@@ -327,10 +355,11 @@ def _evidence_json(filename: str, expected_sha256: str) -> dict[str, Any]:
 def _judge_summary(pin: DonorPin, doc: dict[str, Any]) -> dict[str, Any]:
     if pin.key == "T257":
         message = safe_evidence_file(cast(str, pin.judge_evidence_file))
-        require(
-            message == git_bytes("show", "-s", "--format=%B", pin.head),
-            "T257 commit-message receipt drift",
-        )
+        if git_commit_exists(pin.head):
+            require(
+                message == git_bytes("show", "-s", "--format=%B", pin.head),
+                "T257 commit-message receipt drift",
+            )
         text = message.decode()
         require(
             "Fresh-context scientific Judge: VERIFIED_WITH_CAVEATS; G01-G17 PASS." in text,
@@ -381,13 +410,16 @@ def _judge_summary(pin: DonorPin, doc: dict[str, Any]) -> dict[str, Any]:
             f"Reviewed immutable candidate TREE: {pin.judge_tree}" in text,
             "W821 reviewed candidate tree",
         )
-        require(
-            git_text("rev-parse", f"{pin.head}^") == pin.reviewed_head, "W821 final commit parent"
-        )
-        require(
-            git_text("rev-parse", f"{pin.reviewed_head}^{{tree}}") == pin.reviewed_input_tree,
-            "W821 pre-review input identity",
-        )
+        if git_commit_exists(pin.head):
+            require(
+                git_text("rev-parse", f"{pin.head}^") == pin.reviewed_head,
+                "W821 final commit parent",
+            )
+            require(
+                git_text("rev-parse", f"{pin.reviewed_head}^{{tree}}") == pin.reviewed_input_tree,
+                "W821 pre-review input identity",
+            )
+
         limitations_start = text.find("Limitations:")
         require(limitations_start >= 0, "W821 Judge limitations missing")
         limitations_end = text.find("\n\n", limitations_start)
@@ -464,13 +496,15 @@ def _judge_summary(pin: DonorPin, doc: dict[str, Any]) -> dict[str, Any]:
 
 
 def _donor_record(pin: DonorPin) -> dict[str, Any]:
-    require(
-        git_text("rev-parse", f"{pin.head}^{{tree}}") == pin.tree, f"{pin.key} commit/tree mismatch"
-    )
-    result_raw = frozen_blob(pin.head, pin.result_path, pin.result_sha256)
+    if git_commit_exists(pin.head):
+        require(
+            git_text("rev-parse", f"{pin.head}^{{tree}}") == pin.tree,
+            f"{pin.key} commit/tree mismatch",
+        )
+    result_raw = load_donor_blob(pin, pin.result_path, pin.result_sha256)
     donor = parse_json(result_raw, f"{pin.key} result")
-    frozen_blob(pin.head, pin.source_path, pin.source_sha256)
-    frozen_blob(pin.head, pin.test_path, pin.test_sha256)
+    load_donor_blob(pin, pin.source_path, pin.source_sha256)
+    load_donor_blob(pin, pin.test_path, pin.test_sha256)
     require(donor.get("SOURCE_SHA256") == pin.source_sha256, f"{pin.key} source/result binding")
     require(donor.get("TEST_SHA256") == pin.test_sha256, f"{pin.key} test/result binding")
 

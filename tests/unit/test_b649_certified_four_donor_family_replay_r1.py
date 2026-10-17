@@ -177,3 +177,47 @@ def test_wrong_next_distinct_bound_is_rejected(result: dict[str, Any]) -> None:
     candidate = deepcopy(result)
     candidate["FAMILY_AFTER"]["NEXT_DISTINCT_BOUND"] += 1
     rejected(candidate)
+
+
+def test_missing_evidence_file_is_rejected(monkeypatch: pytest.MonkeyPatch) -> None:
+    original_safe_evidence = replay.safe_evidence_file
+
+    def mock_safe_evidence(name: str) -> bytes:
+        if name == "t257-certified-commit-message.txt":
+            raise ValueError(f"missing/unsafe evidence: {name}")
+        return original_safe_evidence(name)
+
+    monkeypatch.setattr(replay, "safe_evidence_file", mock_safe_evidence)
+    with pytest.raises(ValueError, match="missing/unsafe evidence"):
+        replay.compute_result()
+
+
+def test_wrong_evidence_sha_is_rejected(monkeypatch: pytest.MonkeyPatch) -> None:
+    original_safe_evidence = replay.safe_evidence_file
+
+    def mock_safe_evidence(name: str) -> bytes:
+        if name == "t237-judge-report.json":
+            return b'{"VERDICT": "CORRUPTED"}\n'
+        return original_safe_evidence(name)
+
+    monkeypatch.setattr(replay, "safe_evidence_file", mock_safe_evidence)
+    with pytest.raises(ValueError, match="Judge evidence SHA256 mismatch"):
+        replay.compute_result()
+
+
+def test_wrong_donor_source_commit_head_is_rejected(result: dict[str, Any]) -> None:
+    candidate = deepcopy(result)
+    candidate["DONORS"][0]["CERTIFIED_HEAD"] = "0" * 40
+    rejected(candidate)
+
+
+def test_clean_clone_without_donor_git_objects_succeeds(
+    monkeypatch: pytest.MonkeyPatch, result: dict[str, Any]
+) -> None:
+    def _mock_no_git_commit(head: str) -> bool:
+        return False
+
+    monkeypatch.setattr(replay, "git_commit_exists", _mock_no_git_commit)
+    computed = replay.compute_result()
+    replay.verify_result(computed)
+    assert computed == result

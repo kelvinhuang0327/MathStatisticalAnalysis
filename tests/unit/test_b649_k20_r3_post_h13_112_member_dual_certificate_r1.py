@@ -176,3 +176,121 @@ def test_deterministic_result_replay(result: dict[str, Any]) -> None:
     assert status["novel_vectors"] == 39
     assert status["final_family_ub"] == 354981480
     assert status["family_digest"] == cert.EXPECTED_FAMILY_DIGEST
+
+
+def test_n1_ledger_consistency_and_stale_final_bound_rejection(result: dict[str, Any]) -> None:
+    """AC2 & AC5: Reject stale final_bound (old N1) and verify ledger consistency."""
+    total_target_members = 0
+    total_target_vectors = 0
+    for reg in result["REGIONS"]:
+        sid = reg["state_id"]
+        target_ids = {m["member_id"] for m in reg["member_certificates"]}
+        for m in reg["complete_region_members"]:
+            mid = m["member_id"]
+            if mid in target_ids:
+                total_target_members += 1
+                # Must reflect the validated new_bound exactly
+                assert m["final_bound"] == m["new_bound"]
+                # Must be strictly tighter than stale prior_bound (reject old N1 behavior)
+                assert m["final_bound"] < m["prior_bound"]
+                for vr in m["represented_vector_bounds"]:
+                    total_target_vectors += 1
+                    assert vr["final_bound"] == vr["new_bound"]
+                    assert vr["final_bound"] < vr["prior_bound"]
+            else:
+                # Non-target effective bounds unchanged
+                assert m["final_bound"] == m["new_bound"]
+                if sid == cert.STATE_A:
+                    assert m["final_bound"] <= 354975096
+                elif sid == cert.STATE_B:
+                    assert m["final_bound"] <= 354981375
+
+        # Check ledger maxima consistency
+        assert reg["target_cohort_max"] == max(
+            m["final_bound"] for m in reg["complete_region_members"] if m["member_id"] in target_ids
+        )
+        assert reg["new_state_bound"] == max(
+            m["final_bound"] for m in reg["complete_region_members"]
+        )
+
+    assert total_target_members == 38
+    assert total_target_vectors == 39
+
+
+def test_blocker_cohort_exact_set_bijection_and_aliases(result: dict[str, Any]) -> None:
+    """AC3 & AC5: Full region blocker set bijection, alias coverage, and compressed MAX."""
+    bdata = cert.baseline_data()
+    cohort_groups = cert.cohorts()
+
+    # Identify all blockers across all baseline regions
+    all_blockers = {}
+    for sid, members in bdata["regions"].items():
+        bl = [r for r in members if r["final_bound"] > 354981480]
+        all_blockers[sid] = bl
+
+    # Only State A and State B have blockers above 354981480
+    assert len(all_blockers[cert.STATE_C]) == 0
+    assert len(all_blockers[cert.STATE_D]) == 0
+    assert len(all_blockers[cert.STATE_E]) == 0
+    assert len(all_blockers[cert.STATE_A]) == 32
+    assert len(all_blockers[cert.STATE_B]) == 6
+
+    # Canonical member IDs set equality
+    reg_map = {r["state_id"]: r for r in result["REGIONS"]}
+    target_ids_a = {m["member_id"] for m in reg_map[cert.STATE_A]["member_certificates"]}
+    target_ids_b = {m["member_id"] for m in reg_map[cert.STATE_B]["member_certificates"]}
+    assert target_ids_a == {r["member_id"] for r in all_blockers[cert.STATE_A]}
+    assert target_ids_b == {r["member_id"] for r in all_blockers[cert.STATE_B]}
+
+    # Represented vectors set equality
+    vecs_a = {
+        cert.dense(vr["counts"])
+        for r in all_blockers[cert.STATE_A]
+        for vr in r["represented_vector_bounds"]
+    }
+    vecs_b = {
+        cert.dense(vr["counts"])
+        for r in all_blockers[cert.STATE_B]
+        for vr in r["represented_vector_bounds"]
+    }
+    assert vecs_a == set(cohort_groups["A1"] + cohort_groups["A2"])
+    assert vecs_b == set(cohort_groups["B"])
+
+    # Compressed member represents 2 vectors and preserves MAX
+    cm_id = "[0,12][1,1][4,3][17,2]"
+    crm = next(m for m in reg_map[cert.STATE_A]["complete_region_members"] if m["member_id"] == cm_id)
+    assert crm["represented_vector_count"] == 2
+    assert len(crm["represented_vector_bounds"]) == 2
+    assert crm["final_bound"] == max(vr["final_bound"] for vr in crm["represented_vector_bounds"])
+    assert crm["new_bound"] == max(vr["new_bound"] for vr in crm["represented_vector_bounds"])
+    assert crm["final_bound"] == 354976636
+    # Verify MAX property: if vector bounds were simulated unequal, member bound must take MAX
+    v_bounds = [vr["final_bound"] for vr in crm["represented_vector_bounds"]]
+    assert max(v_bounds) >= min(v_bounds)
+
+
+def test_credit_legality_and_no_illegal_credit_addition(result: dict[str, Any]) -> None:
+    """AC5: Credit legality, exact integer deduction once, and no credit addition."""
+    for reg in result["REGIONS"]:
+        for mc in reg["member_certificates"]:
+            for vc in mc["vector_certificates"]:
+                u = vc["uncorrected_bound"]
+                cr = vc["credit"]
+                nb = vc["new_bound"]
+                prior = vc["prior_bound"]
+
+                # Exact integer arithmetic with 0 tolerance
+                assert isinstance(u, int)
+                assert isinstance(cr, int)
+                assert isinstance(nb, int)
+                assert isinstance(prior, int)
+
+                # Deduction is strictly subtractive (credit subtracted once)
+                assert cr > 0
+                assert nb == u - max(u - prior, cr)
+                assert nb <= prior
+                # Reject illegal credit addition (bound must decrease, not increase)
+                assert nb < u
+                assert u + cr > u
+                assert nb != u + cr
+                assert nb != prior + cr

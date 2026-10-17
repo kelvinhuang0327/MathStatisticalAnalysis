@@ -63060,7 +63060,7 @@
               ]
             ]
           ],
-          "final_bound": 355015626,
+          "final_bound": 354533746,
           "member_id": "[0,11][4,5][19,2]",
           "new_bound": 354533746,
           "prior_bound": 355015626,
@@ -63081,7 +63081,7 @@
                   2
                 ]
               ],
-              "final_bound": 355015626,
+              "final_bound": 354533746,
               "new_bound": 354533746,
               "new_credit": 4625320,
               "prior_bound": 355015626
@@ -63148,7 +63148,7 @@
               ]
             ]
           ],
-          "final_bound": 355015626,
+          "final_bound": 354533746,
           "member_id": "[0,11][4,5][17,1][19,1]",
           "new_bound": 354533746,
           "prior_bound": 355015626,
@@ -63173,7 +63173,7 @@
                   1
                 ]
               ],
-              "final_bound": 355015626,
+              "final_bound": 354533746,
               "new_bound": 354533746,
               "new_credit": 4625320,
               "prior_bound": 355015626
@@ -63248,7 +63248,7 @@
               ]
             ]
           ],
-          "final_bound": 355015626,
+          "final_bound": 354533746,
           "member_id": "[0,11][4,5][17,2]",
           "new_bound": 354533746,
           "prior_bound": 355015626,
@@ -63269,7 +63269,7 @@
                   2
                 ]
               ],
-              "final_bound": 355015626,
+              "final_bound": 354533746,
               "new_bound": 354533746,
               "new_credit": 4625320,
               "prior_bound": 355015626
@@ -63336,7 +63336,7 @@
               ]
             ]
           ],
-          "final_bound": 355015626,
+          "final_bound": 354533746,
           "member_id": "[0,11][1,1][4,4][19,2]",
           "new_bound": 354533746,
           "prior_bound": 355015626,
@@ -63361,7 +63361,7 @@
                   2
                 ]
               ],
-              "final_bound": 355015626,
+              "final_bound": 354533746,
               "new_bound": 354533746,
               "new_credit": 4625320,
               "prior_bound": 355015626
@@ -63436,7 +63436,7 @@
               ]
             ]
           ],
-          "final_bound": 355015626,
+          "final_bound": 354533746,
           "member_id": "[0,11][1,1][4,4][17,1][19,1]",
           "new_bound": 354533746,
           "prior_bound": 355015626,
@@ -63465,7 +63465,7 @@
                   1
                 ]
               ],
-              "final_bound": 355015626,
+              "final_bound": 354533746,
               "new_bound": 354533746,
               "new_credit": 4625320,
               "prior_bound": 355015626
@@ -63548,7 +63548,7 @@
               ]
             ]
           ],
-          "final_bound": 355015626,
+          "final_bound": 354533746,
           "member_id": "[0,11][1,1][4,4][17,2]",
           "new_bound": 354533746,
           "prior_bound": 355015626,
@@ -63573,7 +63573,7 @@
                   2
                 ]
               ],
-              "final_bound": 355015626,
+              "final_bound": 354533746,
               "new_bound": 354533746,
               "new_credit": 4625320,
               "prior_bound": 355015626
@@ -63648,7 +63648,7 @@
               ]
             ]
           ],
-          "final_bound": 355015626,
+          "final_bound": 354533746,
           "member_id": "[0,11][1,2][4,3][19,2]",
           "new_bound": 354533746,
           "prior_bound": 355015626,
@@ -63673,7 +63673,7 @@
                   2
                 ]
               ],
-              "final_bound": 355015626,
+              "final_bound": 354533746,
               "new_bound": 354533746,
               "new_credit": 4625320,
               "prior_bound": 355015626
@@ -63748,7 +63748,7 @@
               ]
             ]
           ],
-          "final_bound": 355015626,
+          "final_bound": 354533746,
           "member_id": "[0,11][1,2][4,3][17,1][19,1]",
           "new_bound": 354533746,
           "prior_bound": 355015626,
@@ -63777,7 +63777,7 @@
                   1
                 ]
               ],
-              "final_bound": 355015626,
+              "final_bound": 354533746,
               "new_bound": 354533746,
               "new_credit": 4625320,
               "prior_bound": 355015626
@@ -63860,7 +63860,7 @@
               ]
             ]
           ],
-          "final_bound": 355015626,
+          "final_bound": 354533746,
           "member_id": "[0,11][1,2][4,3][17,2]",
           "new_bound": 354533746,
           "prior_bound": 355015626,
@@ -63885,7 +63885,7 @@
                   2
                 ]
               ],
-              "final_bound": 355015626,
+              "final_bound": 354533746,
               "new_bound": 354533746,
               "new_credit": 4625320,
               "prior_bound": 355015626
@@ -63960,7 +63960,7 @@
               ]
             ]
           ],
-          "final_bound": 355015626,
+          "final_bound": 354533746,
           "member_id": "[0,11][1,3][4,2][19,2]",
           "new_bound": 354533746,
           "prior_bound": 355015626,
@@ -63985,7 +63985,7 @@
                   2
                 ]
               ],
-              "final_bound": 355015626,
+              "final_bound": 354533746,
               "new_bound": 354533746,
               "new_credit": 4625320,
               "prior_bound": 355015626
@@ -64060,7 +64060,7 @@
               ]
             ]
           ],
-          "final_bound": 355015626,
+          "final_bound": 354533746,
           "member_id": "[0,11][1,3][4,2][17,1][19,1]",
           "new_bound": 354533746,
           "prior_bound": 355015626,
@@ -64089,7 +64089,7 @@
                   1
                 ]
               ],
-              "final_bound": 355015626,
+              "final_bound": 354533746,
               "new_bound": 354533746,
               "new_credit": 4625320,
               "prior_bound": 355015626
@@ -64172,7 +64172,7 @@
               ]
             ]
           ],
-          "final_bound": 355015626,
+          "final_bound": 354533746,
           "member_id": "[0,11][1,3][4,2][17,2]",
           "new_bound": 354533746,
           "prior_bound": 355015626,
@@ -64197,7 +64197,7 @@
                   2
                 ]
               ],
-              "final_bound": 355015626,
+              "final_bound": 354533746,
               "new_bound": 354533746,
               "new_credit": 4625320,
               "prior_bound": 355015626
@@ -64272,7 +64272,7 @@
               ]
             ]
           ],
-          "final_bound": 355015626,
+          "final_bound": 354533746,
           "member_id": "[0,11][1,4][4,1][19,2]",
           "new_bound": 354533746,
           "prior_bound": 355015626,
@@ -64297,7 +64297,7 @@
                   2
                 ]
               ],
-              "final_bound": 355015626,
+              "final_bound": 354533746,
               "new_bound": 354533746,
               "new_credit": 4625320,
               "prior_bound": 355015626
@@ -64372,7 +64372,7 @@
               ]
             ]
           ],
-          "final_bound": 355015626,
+          "final_bound": 354533746,
           "member_id": "[0,11][1,4][4,1][17,1][19,1]",
           "new_bound": 354533746,
           "prior_bound": 355015626,
@@ -64401,7 +64401,7 @@
                   1
                 ]
               ],
-              "final_bound": 355015626,
+              "final_bound": 354533746,
               "new_bound": 354533746,
               "new_credit": 4625320,
               "prior_bound": 355015626
@@ -64484,7 +64484,7 @@
               ]
             ]
           ],
-          "final_bound": 355015626,
+          "final_bound": 354533746,
           "member_id": "[0,11][1,4][4,1][17,2]",
           "new_bound": 354533746,
           "prior_bound": 355015626,
@@ -64509,7 +64509,7 @@
                   2
                 ]
               ],
-              "final_bound": 355015626,
+              "final_bound": 354533746,
               "new_bound": 354533746,
               "new_credit": 4625320,
               "prior_bound": 355015626
@@ -64584,7 +64584,7 @@
               ]
             ]
           ],
-          "final_bound": 355015626,
+          "final_bound": 354533746,
           "member_id": "[0,11][1,5][19,2]",
           "new_bound": 354533746,
           "prior_bound": 355015626,
@@ -64605,7 +64605,7 @@
                   2
                 ]
               ],
-              "final_bound": 355015626,
+              "final_bound": 354533746,
               "new_bound": 354533746,
               "new_credit": 4625320,
               "prior_bound": 355015626
@@ -64672,7 +64672,7 @@
               ]
             ]
           ],
-          "final_bound": 355015626,
+          "final_bound": 354533746,
           "member_id": "[0,11][1,5][17,1][19,1]",
           "new_bound": 354533746,
           "prior_bound": 355015626,
@@ -64697,7 +64697,7 @@
                   1
                 ]
               ],
-              "final_bound": 355015626,
+              "final_bound": 354533746,
               "new_bound": 354533746,
               "new_credit": 4625320,
               "prior_bound": 355015626
@@ -64772,7 +64772,7 @@
               ]
             ]
           ],
-          "final_bound": 355015626,
+          "final_bound": 354533746,
           "member_id": "[0,11][1,5][17,2]",
           "new_bound": 354533746,
           "prior_bound": 355015626,
@@ -64793,7 +64793,7 @@
                   2
                 ]
               ],
-              "final_bound": 355015626,
+              "final_bound": 354533746,
               "new_bound": 354533746,
               "new_credit": 4625320,
               "prior_bound": 355015626
@@ -66284,7 +66284,7 @@
               ]
             ]
           ],
-          "final_bound": 355009956,
+          "final_bound": 354976636,
           "member_id": "[0,12][4,4][19,2]",
           "new_bound": 354976636,
           "prior_bound": 355009956,
@@ -66305,7 +66305,7 @@
                   2
                 ]
               ],
-              "final_bound": 355009956,
+              "final_bound": 354976636,
               "new_bound": 354976636,
               "new_credit": 4625320,
               "prior_bound": 355009956
@@ -66372,7 +66372,7 @@
               ]
             ]
           ],
-          "final_bound": 355009956,
+          "final_bound": 354976636,
           "member_id": "[0,12][4,4][17,1][19,1]",
           "new_bound": 354976636,
           "prior_bound": 355009956,
@@ -66397,7 +66397,7 @@
                   1
                 ]
               ],
-              "final_bound": 355009956,
+              "final_bound": 354976636,
               "new_bound": 354976636,
               "new_credit": 4625320,
               "prior_bound": 355009956
@@ -66472,7 +66472,7 @@
               ]
             ]
           ],
-          "final_bound": 355009956,
+          "final_bound": 354976636,
           "member_id": "[0,12][4,4][17,2]",
           "new_bound": 354976636,
           "prior_bound": 355009956,
@@ -66493,7 +66493,7 @@
                   2
                 ]
               ],
-              "final_bound": 355009956,
+              "final_bound": 354976636,
               "new_bound": 354976636,
               "new_credit": 4625320,
               "prior_bound": 355009956
@@ -66560,7 +66560,7 @@
               ]
             ]
           ],
-          "final_bound": 355009956,
+          "final_bound": 354976636,
           "member_id": "[0,12][1,1][4,3][19,2]",
           "new_bound": 354976636,
           "prior_bound": 355009956,
@@ -66585,7 +66585,7 @@
                   2
                 ]
               ],
-              "final_bound": 355009956,
+              "final_bound": 354976636,
               "new_bound": 354976636,
               "new_credit": 4625320,
               "prior_bound": 355009956
@@ -66660,7 +66660,7 @@
               ]
             ]
           ],
-          "final_bound": 355009956,
+          "final_bound": 354976636,
           "member_id": "[0,12][1,1][4,3][17,1][19,1]",
           "new_bound": 354976636,
           "prior_bound": 355009956,
@@ -66689,7 +66689,7 @@
                   1
                 ]
               ],
-              "final_bound": 355009956,
+              "final_bound": 354976636,
               "new_bound": 354976636,
               "new_credit": 4625320,
               "prior_bound": 355009956
@@ -66772,7 +66772,7 @@
               ]
             ]
           ],
-          "final_bound": 355009956,
+          "final_bound": 354976636,
           "member_id": "[0,12][1,1][4,3][17,2]",
           "new_bound": 354976636,
           "prior_bound": 355009956,
@@ -66797,7 +66797,7 @@
                   2
                 ]
               ],
-              "final_bound": 355009956,
+              "final_bound": 354976636,
               "new_bound": 354976636,
               "new_credit": 4625320,
               "prior_bound": 355009956
@@ -66821,7 +66821,7 @@
                   2
                 ]
               ],
-              "final_bound": 355009956,
+              "final_bound": 354976636,
               "new_bound": 354976636,
               "new_credit": 4625320,
               "prior_bound": 355009956
@@ -66914,7 +66914,7 @@
               ]
             ]
           ],
-          "final_bound": 355009956,
+          "final_bound": 354976636,
           "member_id": "[0,12][1,2][4,2][19,2]",
           "new_bound": 354976636,
           "prior_bound": 355009956,
@@ -66939,7 +66939,7 @@
                   2
                 ]
               ],
-              "final_bound": 355009956,
+              "final_bound": 354976636,
               "new_bound": 354976636,
               "new_credit": 4625320,
               "prior_bound": 355009956
@@ -67014,7 +67014,7 @@
               ]
             ]
           ],
-          "final_bound": 355009956,
+          "final_bound": 354976636,
           "member_id": "[0,12][1,2][4,2][17,1][19,1]",
           "new_bound": 354976636,
           "prior_bound": 355009956,
@@ -67043,7 +67043,7 @@
                   1
                 ]
               ],
-              "final_bound": 355009956,
+              "final_bound": 354976636,
               "new_bound": 354976636,
               "new_credit": 4625320,
               "prior_bound": 355009956
@@ -67126,7 +67126,7 @@
               ]
             ]
           ],
-          "final_bound": 355009956,
+          "final_bound": 354976636,
           "member_id": "[0,12][1,2][4,2][17,2]",
           "new_bound": 354976636,
           "prior_bound": 355009956,
@@ -67151,7 +67151,7 @@
                   2
                 ]
               ],
-              "final_bound": 355009956,
+              "final_bound": 354976636,
               "new_bound": 354976636,
               "new_credit": 4625320,
               "prior_bound": 355009956
@@ -67226,7 +67226,7 @@
               ]
             ]
           ],
-          "final_bound": 355009956,
+          "final_bound": 354976636,
           "member_id": "[0,12][1,3][4,1][17,1][19,1]",
           "new_bound": 354976636,
           "prior_bound": 355009956,
@@ -67255,7 +67255,7 @@
                   1
                 ]
               ],
-              "final_bound": 355009956,
+              "final_bound": 354976636,
               "new_bound": 354976636,
               "new_credit": 4625320,
               "prior_bound": 355009956
@@ -67338,7 +67338,7 @@
               ]
             ]
           ],
-          "final_bound": 355009956,
+          "final_bound": 354976636,
           "member_id": "[0,12][1,3][4,1][17,2]",
           "new_bound": 354976636,
           "prior_bound": 355009956,
@@ -67363,7 +67363,7 @@
                   2
                 ]
               ],
-              "final_bound": 355009956,
+              "final_bound": 354976636,
               "new_bound": 354976636,
               "new_credit": 4625320,
               "prior_bound": 355009956
@@ -67438,7 +67438,7 @@
               ]
             ]
           ],
-          "final_bound": 355009956,
+          "final_bound": 354976636,
           "member_id": "[0,12][1,4][19,2]",
           "new_bound": 354976636,
           "prior_bound": 355009956,
@@ -67459,7 +67459,7 @@
                   2
                 ]
               ],
-              "final_bound": 355009956,
+              "final_bound": 354976636,
               "new_bound": 354976636,
               "new_credit": 4625320,
               "prior_bound": 355009956
@@ -67526,7 +67526,7 @@
               ]
             ]
           ],
-          "final_bound": 355009956,
+          "final_bound": 354976636,
           "member_id": "[0,12][1,4][17,1][19,1]",
           "new_bound": 354976636,
           "prior_bound": 355009956,
@@ -67551,7 +67551,7 @@
                   1
                 ]
               ],
-              "final_bound": 355009956,
+              "final_bound": 354976636,
               "new_bound": 354976636,
               "new_credit": 4625320,
               "prior_bound": 355009956
@@ -67626,7 +67626,7 @@
               ]
             ]
           ],
-          "final_bound": 355009956,
+          "final_bound": 354976636,
           "member_id": "[0,12][1,4][17,2]",
           "new_bound": 354976636,
           "prior_bound": 355009956,
@@ -67647,7 +67647,7 @@
                   2
                 ]
               ],
-              "final_bound": 355009956,
+              "final_bound": 354976636,
               "new_bound": 354976636,
               "new_credit": 4625320,
               "prior_bound": 355009956
@@ -186373,7 +186373,7 @@
               ]
             ]
           ],
-          "final_bound": 354985260,
+          "final_bound": 354912460,
           "member_id": "[0,14][4,2][16,1][25,1]",
           "new_bound": 354912460,
           "prior_bound": 354985260,
@@ -186398,7 +186398,7 @@
                   1
                 ]
               ],
-              "final_bound": 354985260,
+              "final_bound": 354912460,
               "member_id": "[0,14][4,2][16,1][25,1]",
               "new_bound": 354912460,
               "new_credit": 5812800,
@@ -186474,7 +186474,7 @@
               ]
             ]
           ],
-          "final_bound": 354985260,
+          "final_bound": 354912460,
           "member_id": "[0,14][1,1][4,1][16,1][25,1]",
           "new_bound": 354912460,
           "prior_bound": 354985260,
@@ -186503,7 +186503,7 @@
                   1
                 ]
               ],
-              "final_bound": 354985260,
+              "final_bound": 354912460,
               "member_id": "[0,14][1,1][4,1][16,1][25,1]",
               "new_bound": 354912460,
               "new_credit": 5812800,
@@ -186587,7 +186587,7 @@
               ]
             ]
           ],
-          "final_bound": 354985260,
+          "final_bound": 354912460,
           "member_id": "[0,14][1,2][16,1][25,1]",
           "new_bound": 354912460,
           "prior_bound": 354985260,
@@ -186612,7 +186612,7 @@
                   1
                 ]
               ],
-              "final_bound": 354985260,
+              "final_bound": 354912460,
               "member_id": "[0,14][1,2][16,1][25,1]",
               "new_bound": 354912460,
               "new_credit": 5812800,
@@ -186688,7 +186688,7 @@
               ]
             ]
           ],
-          "final_bound": 354985708,
+          "final_bound": 354912908,
           "member_id": "[0,14][4,2][5,1][25,1]",
           "new_bound": 354912908,
           "prior_bound": 354985708,
@@ -186713,7 +186713,7 @@
                   1
                 ]
               ],
-              "final_bound": 354985708,
+              "final_bound": 354912908,
               "member_id": "[0,14][4,2][5,1][25,1]",
               "new_bound": 354912908,
               "new_credit": 5812800,
@@ -186789,7 +186789,7 @@
               ]
             ]
           ],
-          "final_bound": 354985708,
+          "final_bound": 354912908,
           "member_id": "[0,14][1,1][4,1][5,1][25,1]",
           "new_bound": 354912908,
           "prior_bound": 354985708,
@@ -186818,7 +186818,7 @@
                   1
                 ]
               ],
-              "final_bound": 354985708,
+              "final_bound": 354912908,
               "member_id": "[0,14][1,1][4,1][5,1][25,1]",
               "new_bound": 354912908,
               "new_credit": 5812800,
@@ -186902,7 +186902,7 @@
               ]
             ]
           ],
-          "final_bound": 354985708,
+          "final_bound": 354912908,
           "member_id": "[0,14][1,2][5,1][25,1]",
           "new_bound": 354912908,
           "prior_bound": 354985708,
@@ -186927,7 +186927,7 @@
                   1
                 ]
               ],
-              "final_bound": 354985708,
+              "final_bound": 354912908,
               "member_id": "[0,14][1,2][5,1][25,1]",
               "new_bound": 354912908,
               "new_credit": 5812800,
@@ -303208,8 +303208,8 @@
     "RESULT_SHA256": "b5ab351212297716afde9d7ef83b1048e33b163d67b74a86ed3e96e5ff8ff976",
     "TREE": "ac6c3d56e5b7e02461909a347beecf0c69c542e5",
     "implementation_sha256": {
-      "src/lottolab/research/b649_k20_r3_post_h13_112_member_dual_certificate_r1.py": "3479fefdd938075757fcb85a3a3bbba98894d769c3d24eabf22dedccc11afbcc",
-      "tests/unit/test_b649_k20_r3_post_h13_112_member_dual_certificate_r1.py": "a9c2c6a4f110e13870e136ca28b883f39828ca5f84a5786544a71663b60e1a11"
+      "src/lottolab/research/b649_k20_r3_post_h13_112_member_dual_certificate_r1.py": "913ca180cf90e63ffb9e2a468a4ebdc4b1bb01ad924b6bd4f0a58958c10622c5",
+      "tests/unit/test_b649_k20_r3_post_h13_112_member_dual_certificate_r1.py": "867904b1d8f4b71bab24cf0f05e0d03ec3ab0db1591851c291159e632d17f42f"
     },
     "upstream_sha256": {
       "docs/research/matrix-native-results/b649-k20-r3-bound-owner-reduction-r11-result.json": "2684443adc1a7165738df321eb2d4d0b03e2939e7a73cdc6897dda171de54e18",

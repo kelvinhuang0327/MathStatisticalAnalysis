@@ -458,6 +458,14 @@ def update_target_regions() -> tuple[list[dict[str, Any]], dict[str, int]]:
     if (len(blockers[STATE_A]), len(blockers[STATE_B])) != (32, 6):
         raise AssertionError("exact 32 blockers in A and 6 blockers in B required")
 
+    # Exact vector correspondence between cohorts and blockers
+    all_blocker_vecs_a = {dense(vr["counts"]) for r in blockers[STATE_A] for vr in r["represented_vector_bounds"]}
+    all_blocker_vecs_b = {dense(vr["counts"]) for r in blockers[STATE_B] for vr in r["represented_vector_bounds"]}
+    if all_blocker_vecs_a != set(cohort_groups["A1"] + cohort_groups["A2"]):
+        raise AssertionError("exact cohort A1+A2 vector bijection with State A blockers required")
+    if all_blocker_vecs_b != set(cohort_groups["B"]):
+        raise AssertionError("exact cohort B vector bijection with State B blockers required")
+
     records_by_state: dict[str, list[dict[str, Any]]] = {STATE_A: [], STATE_B: []}
     new_regions: list[dict[str, Any]] = []
     final_bounds: dict[str, int] = {}
@@ -470,34 +478,38 @@ def update_target_regions() -> tuple[list[dict[str, Any]], dict[str, int]]:
             mid = r["member_id"]
             if mid in target_ids:
                 vector_certs = []
+                prior_member_bound = r["final_bound"]
                 for vr in r["represented_vector_bounds"]:
                     v = dense(vr["counts"])
                     cname = "B" if sid == STATE_B else ("A1" if v[0] == 11 else "A2")
                     cr = chosen_credit(sid, v)
                     u = uncorrected_bound(v)
-                    nb = u - max(u - vr["final_bound"], cr)
+                    prior_vec_bound = vr["final_bound"]
+                    nb = u - max(u - prior_vec_bound, cr)
                     w = witness_analysis(cname, v)
                     vr["new_credit"] = cr
                     vr["new_bound"] = nb
+                    vr["final_bound"] = nb
                     vector_certs.append(
                         {
                             "cohort": cname,
                             "counts": vr["counts"],
                             "uncorrected_bound": u,
-                            "prior_bound": vr["final_bound"],
+                            "prior_bound": prior_vec_bound,
                             "credit": cr,
                             "new_bound": nb,
                             "witness": w,
                         }
                     )
                 r["new_bound"] = max(vr["new_bound"] for vr in r["represented_vector_bounds"])
+                r["final_bound"] = r["new_bound"]
                 member_certs.append(
                     {
                         "member_id": mid,
                         "cohort": vector_certs[0]["cohort"],
                         "witness_counts": r["witness_counts"],
                         "represented_vector_count": r["represented_vector_count"],
-                        "prior_bound": r["final_bound"],
+                        "prior_bound": prior_member_bound,
                         "new_bound": r["new_bound"],
                         "vector_certificates": vector_certs,
                     }
@@ -513,7 +525,7 @@ def update_target_regions() -> tuple[list[dict[str, Any]], dict[str, int]]:
                 )
 
         records_by_state[sid] = member_certs
-        new_state_bound = max(r["new_bound"] for r in regions[sid])
+        new_state_bound = max(r["final_bound"] for r in regions[sid])
         final_bounds[sid] = new_state_bound
 
         spec = REGION_SPECS[sid]

@@ -11,6 +11,7 @@ import sys
 from collections import Counter
 from collections.abc import Mapping, Sequence
 from fractions import Fraction
+from itertools import zip_longest
 from math import comb
 from pathlib import Path
 from typing import Any
@@ -46,6 +47,14 @@ FORBIDDEN_SUCCESS_CLAIMS = frozenset({
     "PROVEN_ACCURACY_IMPROVEMENT",
 })
 FORBIDDEN_CLAIM_VALUES = frozenset({"VERIFIED", "PROVED", "TRUE", "PASS", "ESTABLISHED"})
+
+
+def _zip_strict_py39(*iterables: Any) -> Any:
+    sentinel = object()
+    for row in zip_longest(*iterables, fillvalue=sentinel):
+        if any(value is sentinel for value in row):
+            raise ValueError("zip() arguments have different lengths")
+        yield row
 
 
 def _validate_single_ticket(ticket: Any) -> tuple[int, ...]:
@@ -101,11 +110,11 @@ def portfolio_exact_baseline(tickets: Sequence[Sequence[int]]) -> dict[str, Any]
         if idx == len(active):
             if remaining_draw == 0:
                 w = 1
-                for (_, count), y in zip(active, current_y, strict=True):
+                for (_, count), y in _zip_strict_py39(active, current_y):
                     w *= comb(count, y)
                 total_weights += w
                 ticket_hits = [0] * m
-                for (mask, _), y in zip(active, current_y, strict=True):
+                for (mask, _), y in _zip_strict_py39(active, current_y):
                     if y > 0:
                         for i in range(m):
                             if (mask >> i) & 1:

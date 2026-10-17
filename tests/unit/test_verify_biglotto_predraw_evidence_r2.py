@@ -15,7 +15,9 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -28,6 +30,7 @@ from tools.verify_biglotto_predraw_evidence_r2 import (  # noqa: E402
     ContractError,
     build_canonical_prediction_payload,
     compute_canonical_payload_sha256,
+    _parse_timestamp_token,
     verify_predraw_evidence_boundary,
 )
 
@@ -217,8 +220,8 @@ def _make_prediction_fixture(
     experiment_id: str = "SYNTHETIC_EXP_R2",
     strategy_id: str = "synthetic-strategy@version:2",
     snapshot_hash: str = "0" * 64,
-    cutoff: str = "2099-01-01T12:00:00+00:00",
-    capture_time: str = "2099-01-01T12:01:00+00:00",
+    cutoff: str = "2000-01-01T12:00:00+00:00",
+    capture_time: str = "2000-01-01T12:01:00+00:00",
     numbers: list[int] | None = None,
 ) -> dict[str, Any]:
     return {
@@ -271,6 +274,100 @@ class VerifyBigLottoPredrawEvidenceTests(unittest.TestCase):
 
     def tearDown(self) -> None:
         self.temp_dir.cleanup()
+
+    def _evidence_bundle_for_token(
+        self, pred: dict[str, Any], canonical_hash: str, token_bytes: bytes
+    ) -> dict[str, Any]:
+        draw_id = pred["DRAW_ID"]
+        return {
+            draw_id: {
+                "CONTENT_SHA256": canonical_hash,
+                "TOKEN_BYTES": token_bytes,
+                "RECEIPT_SHA256": hashlib.sha256(token_bytes).hexdigest(),
+                "STRATEGY_IDENTITY": pred["STRATEGY_IDENTITY"],
+            }
+        }
+
+    def _issue_synthetic_evidence(
+        self, pred: dict[str, Any]
+    ) -> tuple[dict[str, Any], datetime, str]:
+        payload = build_canonical_prediction_payload(pred)
+        canonical_hash = compute_canonical_payload_sha256(payload)
+        token_bytes = self.tsa.issue_token(canonical_hash)
+        gen_time = _parse_timestamp_token(token_bytes).gen_time
+        return self._evidence_bundle_for_token(pred, canonical_hash, token_bytes), gen_time, canonical_hash
+
+    def _issue_synthetic_evidence_at_input_cutoff(
+        self, pred: dict[str, Any]
+    ) -> tuple[dict[str, Any], datetime, str]:
+        # OpenSSL stamps to whole seconds. Schedule a signed token at the
+        # candidate second and retry only if process scheduling crosses it.
+        for _ in range(12):
+            input_cutoff = datetime.now(timezone.utc).replace(microsecond=0) + timedelta(
+                seconds=3
+            )
+            pred["INPUT_CUTOFF"] = input_cutoff.isoformat()
+            payload = build_canonical_prediction_payload(pred)
+            canonical_hash = compute_canonical_payload_sha256(payload)
+            while datetime.now(timezone.utc) < input_cutoff:
+                time.sleep(0.001)
+            token_bytes = self.tsa.issue_token(canonical_hash)
+            gen_time = _parse_timestamp_token(token_bytes).gen_time
+            if gen_time == input_cutoff:
+                return (
+                    self._evidence_bundle_for_token(pred, canonical_hash, token_bytes),
+                    gen_time,
+                    canonical_hash,
+                )
+        self.fail("could not create a synthetic token at the exact input cutoff second")
+        raise AssertionError("unreachable")
+
+    def _assert_time_boundary_case(
+        self,
+        case_id: str,
+        pred: dict[str, Any],
+        out: dict[str, Any],
+        evidence_bundle: dict[str, Any],
+        gen_time: datetime,
+        *,
+        expected: str,
+        expected_error_code: str | None = None,
+    ) -> None:
+        contract = _make_contract_fixture([pred["DRAW_ID"]])
+        actual = "REJECT"
+        error_code = None
+        try:
+            result = verify_predraw_evidence_boundary(
+                [pred],
+                [out],
+                contract,
+                evidence_bundle=evidence_bundle,
+                pinned_tsa_cert_pem_path=self.ca_pem_path,
+                pinned_tsa_cert_sha256=self.ca_sha256,
+            )
+            actual = "ACCEPT_SYNTHETIC_DIAGNOSTIC"
+            self.assertEqual(result["EVIDENCE_STATUS"], "DIAGNOSTIC_ONLY")
+            self.assertTrue(result["CRYPTO_TOKEN_VALID"])
+        except ContractError as exc:
+            error_code = exc.code
+
+        passed = actual == expected and error_code == expected_error_code
+        print(
+            json.dumps(
+                {
+                    "CASE": case_id,
+                    "INPUT_CUTOFF": pred["INPUT_CUTOFF"],
+                    "genTime": gen_time.isoformat(),
+                    "DRAW_CUTOFF": out["DRAW_TIME"],
+                    "EXPECTED": expected,
+                    "ACTUAL": actual,
+                    "ERROR_CODE": error_code,
+                    "VERDICT": "PASS" if passed else "FAIL",
+                },
+                sort_keys=True,
+            )
+        )
+        self.assertTrue(passed, f"{case_id}: {error_code or actual}")
 
     # --- AC1: Identity Tests ---
     def test_ac1_scorer_and_cli_unchanged(self) -> None:
@@ -329,7 +426,7 @@ class VerifyBigLottoPredrawEvidenceTests(unittest.TestCase):
 
         # Valid snapshot
         snap_content = json.dumps(
-            [{"DRAW_ID": "199000000", "DRAW_TIME": "2098-12-31T20:30:00+00:00"}]
+            [{"DRAW_ID": "199000000", "DRAW_TIME": "1999-12-31T20:30:00+00:00"}]
         ).encode("utf-8")
         snap_hash = hashlib.sha256(snap_content).hexdigest()
         pred["INPUT_SNAPSHOT_SHA256"] = snap_hash
@@ -349,7 +446,7 @@ class VerifyBigLottoPredrawEvidenceTests(unittest.TestCase):
             pinned_tsa_cert_pem_path=self.ca_pem_path,
             pinned_tsa_cert_sha256=self.ca_sha256,
             snapshot_files_by_sha256={snap_hash: snap_content},
-            require_independent_verification=True,
+            require_independent_verification=False,
         )
 
         self.assertEqual(result["TARGET_COUNT"], 1)
@@ -360,6 +457,23 @@ class VerifyBigLottoPredrawEvidenceTests(unittest.TestCase):
         self.assertEqual(result["ORIGINAL_HISTORICAL_PARITY"], "NOT_VERIFIED")
         self.assertEqual(result["PREDICTIVE_SUCCESS_EVIDENCE"], "NOT_ESTABLISHED")
         self.assertEqual(result["CRYPTOGRAPHIC_VERIFIER_STATUS"], "PASS")
+        self.assertTrue(result["CRYPTO_TOKEN_VALID"])
+        self.assertFalse(result["DRAW_CUTOFF_SOURCE_VERIFIED"])
+        self.assertFalse(result["PREDRAW_EVIDENCE_INDEPENDENTLY_VERIFIED"])
+        self.assertEqual(result["PREDRAW_EVIDENCE_STATUS"], "DIAGNOSTIC_ONLY")
+
+        with self.assertRaises(ContractError) as caught:
+            verify_predraw_evidence_boundary(
+                [pred],
+                [out],
+                contract,
+                evidence_bundle=evidence_bundle,
+                pinned_tsa_cert_pem_path=self.ca_pem_path,
+                pinned_tsa_cert_sha256=self.ca_sha256,
+                snapshot_files_by_sha256={snap_hash: snap_content},
+                require_independent_verification=True,
+            )
+        self.assertEqual(caught.exception.code, "TRUSTED_DRAW_CUTOFF_REQUIRED")
 
     def test_ac5_diagnostic_only_without_evidence_bundle(self) -> None:
         pred = _make_prediction_fixture("199000001")
@@ -369,6 +483,78 @@ class VerifyBigLottoPredrawEvidenceTests(unittest.TestCase):
         result = verify_predraw_evidence_boundary([pred], [out], contract, evidence_bundle=None)
         self.assertEqual(result["EVIDENCE_STATUS"], "DIAGNOSTIC_ONLY")
         self.assertFalse(result["CAPTURE_TIME_INDEPENDENTLY_VERIFIED"])
+        self.assertFalse(result["CRYPTO_TOKEN_VALID"])
+        self.assertFalse(result["DRAW_CUTOFF_SOURCE_VERIFIED"])
+        self.assertFalse(result["PREDRAW_EVIDENCE_INDEPENDENTLY_VERIFIED"])
+
+    def test_timestamp_boundary_matrix_uses_public_verifier(self) -> None:
+        pred1 = _make_prediction_fixture("199000001", cutoff="2000-01-01T12:00:00+00:00")
+        out1 = _make_outcome_fixture("199000001")
+        bundle1, gen_time1, _ = self._issue_synthetic_evidence(pred1)
+        self._assert_time_boundary_case(
+            "TIME_01",
+            pred1,
+            out1,
+            bundle1,
+            gen_time1,
+            expected="ACCEPT_SYNTHETIC_DIAGNOSTIC",
+        )
+
+        pred2 = _make_prediction_fixture("199000002")
+        out2 = _make_outcome_fixture("199000002")
+        bundle2, gen_time2, _ = self._issue_synthetic_evidence_at_input_cutoff(pred2)
+        self._assert_time_boundary_case(
+            "TIME_02",
+            pred2,
+            out2,
+            bundle2,
+            gen_time2,
+            expected="REJECT",
+            expected_error_code="TIMESTAMP_NOT_AFTER_INPUT_CUTOFF",
+        )
+
+        future_cutoff = datetime.now(timezone.utc).replace(microsecond=0) + timedelta(
+            minutes=10
+        )
+        pred3 = _make_prediction_fixture("199000003", cutoff=future_cutoff.isoformat())
+        out3 = _make_outcome_fixture("199000003")
+        bundle3, gen_time3, _ = self._issue_synthetic_evidence(pred3)
+        self._assert_time_boundary_case(
+            "TIME_03",
+            pred3,
+            out3,
+            bundle3,
+            gen_time3,
+            expected="REJECT",
+            expected_error_code="TIMESTAMP_NOT_AFTER_INPUT_CUTOFF",
+        )
+
+        pred4 = _make_prediction_fixture("199000004", cutoff="2000-01-01T12:00:00+00:00")
+        bundle4, gen_time4, _ = self._issue_synthetic_evidence(pred4)
+        out4 = _make_outcome_fixture("199000004", draw_time=gen_time4.isoformat())
+        self._assert_time_boundary_case(
+            "TIME_04",
+            pred4,
+            out4,
+            bundle4,
+            gen_time4,
+            expected="REJECT",
+            expected_error_code="TIMESTAMP_AFTER_CUTOFF",
+        )
+
+        pred5 = _make_prediction_fixture("199000005", cutoff="2000-01-01T12:00:00+00:00")
+        bundle5, gen_time5, _ = self._issue_synthetic_evidence(pred5)
+        draw_cutoff5 = (gen_time5 - timedelta(seconds=1)).isoformat()
+        out5 = _make_outcome_fixture("199000005", draw_time=draw_cutoff5)
+        self._assert_time_boundary_case(
+            "TIME_05",
+            pred5,
+            out5,
+            bundle5,
+            gen_time5,
+            expected="REJECT",
+            expected_error_code="TIMESTAMP_AFTER_CUTOFF",
+        )
 
     # --- AC6: Complete 17-Item Negative Matrix Tests ---
 
@@ -595,14 +781,16 @@ class VerifyBigLottoPredrawEvidenceTests(unittest.TestCase):
         self.assertEqual(caught.exception.code, "WRONG_TSA_POLICY")
 
     def test_ac6_neg_12_timestamp_after_cutoff(self) -> None:
-        # Pred cutoff is in 2020, but token gen_time is in 2026
-        pred = _make_prediction_fixture("199000001", cutoff="2020-01-01T00:00:00+00:00")
+        # genTime is after the outcome's DRAW_TIME, while still after INPUT_CUTOFF.
+        pred = _make_prediction_fixture("199000001", cutoff="2000-01-01T00:00:00+00:00")
         out = _make_outcome_fixture("199000001")
         contract = _make_contract_fixture(["199000001"])
 
         payload = build_canonical_prediction_payload(pred)
         canon_hash = compute_canonical_payload_sha256(payload)
         token = self.tsa.issue_token(canon_hash)
+        gen_time = _parse_timestamp_token(token).gen_time
+        out["DRAW_TIME"] = (gen_time - timedelta(seconds=1)).isoformat()
 
         with self.assertRaises(ContractError) as caught:
             verify_predraw_evidence_boundary(

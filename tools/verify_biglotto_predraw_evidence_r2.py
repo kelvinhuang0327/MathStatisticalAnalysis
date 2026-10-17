@@ -856,18 +856,25 @@ def verify_predraw_evidence_boundary(
                         f"accepted policies {acc_list}",
                     )
 
-            # Check timestamp timing vs cutoff and draw time
+            # Treat INPUT_CUTOFF as the strict lower bound for the TSA time.
             cutoff_dt = _parse_iso_utc(str(pred_by_draw[did].get("INPUT_CUTOFF")), "INPUT_CUTOFF")
-            draw_dt = _parse_iso_utc(str(out_by_draw[did].get("DRAW_TIME")), "DRAW_TIME")
-            if parsed_token.gen_time >= cutoff_dt:
+            if parsed_token.gen_time <= cutoff_dt:
                 raise ContractError(
-                    "TIMESTAMP_AFTER_CUTOFF",
-                    f"genTime {parsed_token.gen_time} is at or after input cutoff {cutoff_dt}",
+                    "TIMESTAMP_NOT_AFTER_INPUT_CUTOFF",
+                    f"genTime {parsed_token.gen_time} is not after input cutoff {cutoff_dt}",
                 )
-            if parsed_token.gen_time >= draw_dt:
+
+            # DRAW_TIME comes from the outcome payload and has no authenticated,
+            # fixed-identity official source in this verifier. Use it only as a
+            # diagnostic upper bound; it is never a trusted draw cutoff.
+            draw_cutoff_dt = _parse_iso_utc(
+                str(out_by_draw[did].get("DRAW_TIME")), "DRAW_TIME"
+            )
+            if parsed_token.gen_time >= draw_cutoff_dt:
                 raise ContractError(
                     "TIMESTAMP_AFTER_CUTOFF",
-                    f"genTime {parsed_token.gen_time} is at or after draw time {draw_dt}",
+                    f"genTime {parsed_token.gen_time} is at or after untrusted outcome "
+                    f"DRAW_TIME cutoff {draw_cutoff_dt}",
                 )
 
             # Run OpenSSL verification
@@ -881,6 +888,16 @@ def verify_predraw_evidence_boundary(
                 chain_path=chain_path,
                 gen_time=parsed_token.gen_time,
             )
+
+    # No current input provides an independently authenticated official draw
+    # cutoff with a fixed source identity. A valid token and outcome.DRAW_TIME
+    # therefore cannot satisfy independent verification.
+    if require_independent_verification:
+        raise ContractError(
+            "TRUSTED_DRAW_CUTOFF_REQUIRED",
+            "independent verification requires an externally authenticated, "
+            "fixed-identity TRUSTED_DRAW_CUTOFF; outcomes.DRAW_TIME is untrusted",
+        )
 
     # 7. Execute prospective scoring engine (directly reuses score_biglotto_prospective)
     scoring_result = score_biglotto_prospective(
@@ -897,7 +914,10 @@ def verify_predraw_evidence_boundary(
     result["CAPTURE_TIME_INDEPENDENTLY_VERIFIED"] = False
     result["ORIGINAL_HISTORICAL_PARITY"] = "NOT_VERIFIED"
     result["PREDICTIVE_SUCCESS_EVIDENCE"] = "NOT_ESTABLISHED"
+    result["CRYPTO_TOKEN_VALID"] = bundle_data is not None
+    result["DRAW_CUTOFF_SOURCE_VERIFIED"] = False
+    result["PREDRAW_EVIDENCE_INDEPENDENTLY_VERIFIED"] = False
+    result["PREDRAW_EVIDENCE_STATUS"] = "DIAGNOSTIC_ONLY"
     if bundle_data is not None:
         result["CRYPTOGRAPHIC_VERIFIER_STATUS"] = "PASS"
-        result["PREDRAW_EVIDENCE_STATUS"] = "OFFLINE_RFC3161_VERIFIED"
     return result

@@ -1,0 +1,325 @@
+{
+  "VERDICT": "VERIFIED_WITH_CAVEATS",
+  "TASK_ID": "B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2",
+  "REPORT_PURPOSE": "Independent source-provenance supplement to the retained original exact-tree Judge report. This adjudicates the late Owner clarification; it does not replace or repeat the mathematical review.",
+  "TASK_CLASS": "READ_ONLY_COMPLETION_REVIEW",
+  "WORKER_ROUTE": "NOT_APPLICABLE",
+  "JUDGE_MODE": "FRESH_CONTEXT",
+  "JUDGE_CONTEXT_LINEAGE": {
+    "agent_task": "/root/t208_source_judge",
+    "implementation_context_inherited": false,
+    "context_scope": "Original Packet, late clarification, sealed candidate and retained evidence only; no implementation performed.",
+    "worker_disposition_treated_as_claim": true
+  },
+  "JUDGE_DEPTH": "BOUNDED",
+  "JUDGE_DEPTH_REASON": "The expressly bounded supplemental task changes source-provenance reporting only. The candidate is unchanged; no new subject-matter/workload trigger or load-bearing mathematical contradiction was found. The original FULL independent mathematical review is retained with valid same-snapshot evidence. This is not candidate remediation and is not DELTA.",
+  "PACKET_JUDGE_DEPTH": "NOT_APPLICABLE",
+  "CANONICAL_REQUIRED_JUDGE_DEPTH": "BOUNDED",
+  "JUDGE_DEPTH_RECONCILIATION": "MATCH",
+  "MISSING_JUDGE_EVIDENCE": "NONE",
+  "IMPLEMENTATION_MUTATION_REQUIRED": "NO",
+  "ORIGINAL_REVIEW_DEPTH": {
+    "JUDGE_DEPTH": "FULL",
+    "CANONICAL_REQUIRED_JUDGE_DEPTH": "FULL",
+    "REASON": "Original Packet required full independent mathematical reproduction. That requirement was already satisfied by the retained original Judge captures for this exact HEAD/tree; the bounded source supplement does not lower that requirement or replace its evidence."
+  },
+  "RULE_PINS": {
+    "/Users/kelvin/.codex/skills/fable-judge/SKILL.md": "491e120f12455d4046638ac89dfb55f794e953c8b98c4a12b7d094c58ecdfaa3",
+    "/Users/kelvin/.codex/skills/fable-judge/references/judge-depth-contract.md": "c02a2189582fcb0a08deef1d6e0faa3576eaf842b4f919d86d89045619193159"
+  },
+  "ORIGINAL_PACKET": {
+    "PATH": "/Users/kelvin/.codex/attachments/08778873-958d-4ed1-85b6-ab44a0a71713/pasted-text-1.txt",
+    "SHA256": "4ff399abe117eda43757da78dd0c236dbd7e86781850110cae132faca38003f1"
+  },
+  "OWNER_CLARIFICATION": {
+    "PATH": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/owner-source-clarification-r1.json",
+    "SHA256": "a7966a36417075867ba882f66fe2a0c265af30ecd4e8123163a316a3ae4c57d9",
+    "AUTHORITY": "Late direct human clarification supplied in this Judge assignment and recorded in the hash-pinned receipt. No new historical chat query was made.",
+    "CERTIFICATE_SOURCE_MODE": "INDEPENDENT_REDERIVATION",
+    "ORIGINAL_RESEARCH_CONVERSATION_ID": "UNKNOWN_NOT_VERIFIED",
+    "ORIGINAL_RESEARCH_PROOF_ARTIFACT": "NOT_VERIFIED",
+    "ORIGINAL_RESEARCH_CHAT_REQUIRED_PREMISE": false,
+    "AUTHORITY_RECONCILIATION": "The latest Owner instruction explicitly removes original-chat provenance as a required premise and permits independent rederivation from the fixed Base. It supersedes the original Packet's historical-source restriction for this disposition. It does not change the fixed Base, model, mathematical acceptance criteria, one-commit limit or action boundaries."
+  },
+  "SOURCE_IDENTITY": {
+    "REPOSITORY": "kelvinhuang0327/MathStatisticalAnalysis",
+    "REPOSITORY_PATH": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis",
+    "WORKTREE": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2",
+    "BRANCH": "codex/b649-s3-t208-certificate-r2",
+    "HEAD": "6a7178354c302daa0ea98b638a687a043cade4d1",
+    "TREE": "6745a903fb1dabbea3939212fad0613020429d26",
+    "PARENT": "9acea1331e021a9623fa593997d90cfc89a69136",
+    "LOCAL_COMMIT_COUNT_ABOVE_BASE": 1,
+    "WORKTREE_STATUS": "CLEAN",
+    "RESULT_SHA256": "7f76e162696850f80c68e25cc4dfcf288aa164003bf513c2d85e94f90955ae3b",
+    "CANDIDATE_CHANGED": false,
+    "COMMIT_TREE_MATCH": "YES",
+    "GIT_IDENTITY_STATUS": "PASS; directly observed with fsmonitor disabled and optional locks disabled.",
+    "COMMITTED_PATHS": [
+      {
+        "PATH": "docs/research/matrix-native-results/b649-s3-t208-exact-profile-certificate-r2-result.json",
+        "MODE": "100644",
+        "BLOB": "499cd006badcaf6a941811bdb23d4f9cbace7911",
+        "BYTES": 106435,
+        "SHA256": "7f76e162696850f80c68e25cc4dfcf288aa164003bf513c2d85e94f90955ae3b"
+      },
+      {
+        "PATH": "src/lottolab/research/b649_s3_t208_exact_profile_certificate_r2.py",
+        "MODE": "100644",
+        "BLOB": "ee710a67f22f35f42ca9386d72fae719390f02f8",
+        "BYTES": 20115,
+        "SHA256": "33da4fad8af7d794c42de10f4f4da76b3428dfacada4851da2527eea2184079c"
+      },
+      {
+        "PATH": "tests/unit/test_b649_s3_t208_exact_profile_certificate_r2.py",
+        "MODE": "100644",
+        "BLOB": "7fd6a385d6d3424520394aca7bb0086605620b74",
+        "BYTES": 5541,
+        "SHA256": "5de05d84e71ad88a69228665bf864f20436567b1f9f64a74181d8ca6c610a7bf"
+      }
+    ]
+  },
+  "BASE_IDENTITY": {
+    "HEAD": "9acea1331e021a9623fa593997d90cfc89a69136",
+    "TREE": "de577e8d6f3ccbe52e663c96ee1528c95a0ee7ec",
+    "RESULT_PATH": "docs/research/matrix-native-results/b649-min-s2-owner-ab-t249-t260k4-composition-r1-result.json",
+    "RESULT_SHA256": "9fbe17d020573835cd69f16296fee224ff4f83aef8b3e7a644f2ffaabdfe92c9",
+    "SUPPLEMENTAL_OBSERVATION": "Base commit's tree directly read; exact Base result blob SHA256 directly recomputed. Original independent raw-object identity checks retained."
+  },
+  "SOURCE_MODE_DISPOSITION": {
+    "CERTIFICATE_SOURCE_MODE": "INDEPENDENT_REDERIVATION",
+    "MATHEMATICAL_PREMISES": "Frozen exact-profile model, immutable Base, independently stated universal proof, complete finite-domain recounts and applicable pinned Route-B authority.",
+    "HISTORICAL_PROVENANCE_STATUS": "UNKNOWN_NOT_VERIFIED",
+    "HISTORICAL_PROOF_ARTIFACT_STATUS": "NOT_VERIFIED",
+    "SEALED_METADATA_UNCHANGED": {
+      "RESEARCH_THREAD": "01a143f5-0ccd-7f81-8a69-b748cd481c8f",
+      "RESEARCH_TURN": "01a143f5-18d7-7df3-81f1-6404044aa724",
+      "RESEARCH_SOURCE": {
+        "THREAD_ID": "01a143f5-0ccd-7f81-8a69-b748cd481c8f",
+        "TURN_ID": "01a143f5-18d7-7df3-81f1-6404044aa724"
+      },
+      "CANDIDATE_ZIP": "NOT_USED; independent implementation from original research"
+    },
+    "METADATA_INTERPRETATION": "These embedded values remain visible in the immutable candidate. They are retained pre-clarification historical attribution strings, not independently certified original execution or proof provenance. The phrase 'from original research' is not an accepted claim of historical proof retrieval under this supplement.",
+    "DATAFLOW_OBSERVATION": "Source lines 110-111 define the thread/turn literals. compute_result() lines 417-418 only emits them and ZIP wording into result metadata. base_identity(), authority_pins(), facts(), core_recount(), zero_recount(), independent_terms() and route_b() do not consume or dereference these locators. verify_result() compares complete deterministic documents, including metadata, but equal literals prove reproducibility, not historical authenticity.",
+    "INDEPENDENT_PROOF_OBSERVATION": "The universal derivation and stronger multiplier-nine Route-B proof are present in the committed module docstring. Original independent reproduction reconstructs the facts, core/zero domains, local intersection weights and all 187 exact terms before comparing against the candidate. It performs no historical-chat or ZIP read.",
+    "REPORTING_SUPERSESSION_ONLY": true,
+    "PRODUCT_REPAIR_REQUIRED": false,
+    "SECOND_COMMIT_REQUIRED": false
+  },
+  "ZIP_DISPOSITION": {
+    "FILENAME": "B649_T208_uncommitted_certificate_candidate.zip",
+    "REPORTED_SHA256": "5647a23ddb72cdea833d561f3231a55d847da19610ebd0a42df2951467745058",
+    "REPORTED_STATUS": "UNCOMMITTED_UNJUDGED_CANDIDATE",
+    "OPTIONAL": true,
+    "ACTUAL_UPLOADED_LOCAL_LOCATOR": "NOT_PROVIDED",
+    "SANDBOX_REFERENCE": "/mnt/data/B649_T208_uncommitted_certificate_candidate.zip",
+    "SANDBOX_REFERENCE_IS_LOCAL_ATTACHMENT": false,
+    "USAGE": "NOT_USED",
+    "ACTUAL_BYTES_HASH_STATUS": "NOT_VERIFIED",
+    "ZIP_READS_IN_SUPPLEMENT": 0,
+    "SEARCHES_IN_SUPPLEMENT": 0,
+    "LOAD_BEARING_PREMISE": false
+  },
+  "REUSED_EVIDENCE": [
+    {
+      "PATH": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/judge-report.json",
+      "SHA256": "12b0dace8690fbae019a8a0d262f96d695251abf115ddd457206b55dbb8a4e20",
+      "SCOPE": "Original FULL fresh-context exact-tree mathematics, criterion mapping, runtime evidence and task-relative scope/accounting. Historical-source identification wording is narrowed below."
+    },
+    {
+      "PATH": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/captures/judge-independent-reproduction.json",
+      "SHA256": "b2c9cefb2d525737e9de0848adf605607a01c360a95cdd99593aa19ee8d283aa",
+      "EXECUTION_RECORD_SHA256": "cad2b7694bb721195a7778128cbc3973f2c5ccc99b103f82175233709294265b",
+      "EXIT_STATUS": 0,
+      "SCOPE": "Independent exact Base checks; derived invariants; 432 core classes and 73728 labelled assignments/max-plus; all 32768 zero masks and graphical degree sets; local intersection counts; all 187 Fraction/formal terms; bound 312835000, argmax [208], S4(208)=54656; committed byte identity and 21 evaluator pins."
+    },
+    {
+      "PATH": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/captures/judge-focused-pytest.json",
+      "SHA256": "2af372eacf05b2808d76a78b694007a92b184ab8f9d6ea14f79adc6a041ccf6b",
+      "EXECUTION_RECORD_SHA256": "f5e27f018c4091e8643e551480e8b89b2793610a955327a69fb8663ec374c7b1",
+      "EXIT_STATUS": 0,
+      "SCOPE": "20 focused production-verifier tests passed."
+    },
+    {
+      "PATH": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/captures/judge-ruff.json",
+      "SHA256": "9a5e7c8a38fa69790af810b7d2c19362db1ffb302ae284f5564a5b1deadf6f37",
+      "EXECUTION_RECORD_SHA256": "0ce4a44aa31fb236d9507644e7a8c170efdcccb386634665d21d937d13b770ec",
+      "EXIT_STATUS": 0,
+      "SCOPE": "Ruff check --no-cache on the exact verifier/test paths passed."
+    },
+    {
+      "PATH": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/captures/judge-strict-pyright.json",
+      "SHA256": "39ff857a406d360c08c7ace6e6c4b0ca62977d1f658d2c04f950b5471c54b50f",
+      "EXECUTION_RECORD_SHA256": "26670832a4f68b864d79ec4bd2108fb30f10530400b4ac5d995645530829e8d2",
+      "EXIT_STATUS": 0,
+      "SCOPE": "Required strict Pyright with Python 3.13: zero errors/warnings/informations. Retained stdout also contains a tool update notice."
+    },
+    {
+      "PATH": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/captures/judge-certificate-cli.json",
+      "SHA256": "b0769ec548a896d5baa01f26e3eef4a3f7b636d44dc9c35ea9ca8127533d720b",
+      "EXECUTION_RECORD_SHA256": "2173bb2ee6dcd701acbb24c5176f6410bc6bdacfbd4b4620286114b1ecbde312",
+      "EXIT_STATUS": 0,
+      "SCOPE": "Read-only production CLI independently emitted T cap 208, full bound 312835000 and the sealed result SHA256."
+    }
+  ],
+  "EVIDENCE_REUSE_ADMISSIBILITY": {
+    "ALL_FIVE_CAPTURE_HASHES_MATCH_ORIGINAL_REPORT": true,
+    "ALL_FIVE_COMMANDS_STDOUT_STDERR_EXIT_HEAD_TREE_MATCH_ORIGINAL_REPORT": true,
+    "ALL_FIVE_EXECUTION_RECORDS_COMPLETED": true,
+    "ALL_FIVE_CAPTURE_HEAD": "6a7178354c302daa0ea98b638a687a043cade4d1",
+    "ALL_FIVE_CAPTURE_TREE": "6745a903fb1dabbea3939212fad0613020429d26",
+    "COMMAND_AND_ENVIRONMENT": "Original commands and recorded environment are reused unchanged, not substituted or rerun. Python commands pin the task src via PYTHONPATH, task primary .venv executable and no-bytecode flags; pytest disables its cache. Pyright records --pythonversion 3.13 and the primary venv path. Exact command arrays, including the complete independent proof program, are retained in the hash-pinned captures and match the original report.",
+    "LAUNCHER": "/Users/kelvin/.codex/skills/fable-method/scripts/task_checkpoint.rb",
+    "LAUNCHER_SHA256_IN_CAPTURES": "babba3757a7ea9ad59c7ff9b18b6e4497dbc887b86eebfb09ccae1a36ab96275",
+    "RECORDED_LAUNCHER_RUNTIME": "ruby 2.6.10p210 (2022-04-12 revision 67958) [universal.arm64e-darwin25]",
+    "INVALIDATION_REVIEW": "No candidate change or contradiction invalidates the numerical/quality evidence. The source clarification concerns provenance only. No claim is made that the present workstation environment was re-executed or freshly certified."
+  },
+  "INVALIDATED_EVIDENCE": [
+    {
+      "EVIDENCE": "Original Judge G02 observed_result 'Original research task and source thread identified' and provenance-only reuse of the previously read thread.",
+      "SCOPE": "Historical original execution/proof provenance only.",
+      "REASON": "Latest Owner declaration specifies UNKNOWN_NOT_VERIFIED conversation ID and NOT_VERIFIED original proof artifact. The old thread locator must not be reused as certified original-source provenance. The existence of embedded strings is verified; their historical authenticity is not."
+    },
+    {
+      "EVIDENCE": "Any stronger provenance reading of sealed CANDIDATE_ZIP wording, prior Worker receipts or original J12 evidence 'original research thread read'.",
+      "SCOPE": "Reporting interpretation only.",
+      "REASON": "Such wording cannot establish actual original-chat derivation or ZIP bytes. Mathematical evidence and original record bytes remain retained unchanged."
+    }
+  ],
+  "CRITERIA": [
+    {
+      "CRITERION": "J01/J10/G01/G15",
+      "EVIDENCE": "Direct Git HEAD/tree/parent/path metadata and one-commit count; clean status; direct committed result/Base SHA256 and working certificate hashes; original exact-tree evidence.",
+      "OBSERVED_RESULT": "All identity pins match and only the three authorized regular blobs are added.",
+      "DECISION": "PASS"
+    },
+    {
+      "CRITERION": "G02",
+      "EVIDENCE": "Original Packet section four; late direct Owner declaration/clarification receipt; source lines 110-111 and 417-418; result metadata lines 12 and 4892-4894; independent capture program.",
+      "OBSERVED_RESULT": "Correct accepted source mode is INDEPENDENT_REDERIVATION. Historical task label is reported by Owner; historical conversation/proof provenance remains NOT_VERIFIED. Optional ZIP is unused and its actual hash is NOT_VERIFIED. Embedded old locators remain unchanged and are explicitly caveated.",
+      "DECISION": "PASS",
+      "DECISION_SCOPE": "Correct identification/disposition under the latest Owner instruction; not a PASS of historical conversation or proof provenance.",
+      "HISTORICAL_PROVENANCE_SUBCLAIM": "NOT_VERIFIED"
+    },
+    {
+      "CRITERION": "J12",
+      "EVIDENCE": "Sealed PROOF/BASE caveats, original Judge caveats C01-C04 and this supplement's explicit source-mode/provenance/ZIP disposition.",
+      "OBSERVED_RESULT": "PASS with expanded reporting caveat. Historical status is only reported history; original-chat provenance and proof artifact are not certified. Historical R15 remains NOT_VERIFIED, legal attainment/global optimum UNKNOWN, and conditional Family effect NOT_ADOPTED.",
+      "DECISION": "PASS"
+    },
+    {
+      "CRITERION": "J02/J03/J04/J05/J06/J07/J08/J09 and G03/G04/G05/G06/G07/G08/G09/G10/G11/G12/G13/G14",
+      "EVIDENCE": "Original Judge per-criterion mapping and mathematical derivations; exact matching independent-reproduction, focused pytest, Ruff, strict Pyright and CLI captures listed above.",
+      "OBSERVED_RESULT": "Original PASS results remain valid. Universal T<=208 and the stronger full-profile upper bound 312835000 are independently supported without historical-chat/ZIP premises. No numerical check was rerun in this supplement.",
+      "DECISION": "PASS"
+    },
+    {
+      "CRITERION": "J11/G16/G17/G18",
+      "EVIDENCE": "Retained exact-tree original Judge scope/accounting; direct unchanged candidate identity/path observation; supplemental write ledger.",
+      "OBSERVED_RESULT": "Original task-relative acceptance remains valid with stated caveats. No new product, Family, Git lifecycle or external action occurred in this supplement. G17 retains its original limitation: no global shared-workstation byte-immutability claim.",
+      "DECISION": "PASS"
+    }
+  ],
+  "G02_J12_RECONCILIATION": {
+    "G02": "PASS for accurate source-mode/optional-candidate disposition under late Owner clarification; historical execution and proof provenance remain NOT_VERIFIED. Prior positive original-thread identification wording is superseded for reporting only.",
+    "J12": "PASS with the explicit new provenance caveat and all prior mathematical/historical caveats retained.",
+    "DECISION_RULE_RECONCILIATION": "Original Packet requires correct source identification and preserved caveats. Latest Owner instruction makes historical chat unnecessary and allows independent rederivation; therefore the remaining unknown provenance is non-material to the mathematical certificate. No Packet rule requires correcting a non-blocking historical metadata limitation, and source modification/second commit remain prohibited.",
+    "SEALED_CONTENT_REWRITTEN": false,
+    "HISTORICAL_PROVENANCE_CERTIFIED": false
+  },
+  "FINDINGS": [
+    {
+      "finding_id": "SRC-C01",
+      "severity": "NON_BLOCKING",
+      "FINDING_CONFIDENCE": "CONFIRMED",
+      "claim": "The sealed candidate and original receipts retain pre-clarification positive historical-source attribution strings; those strings cannot support certified original execution/proof provenance.",
+      "criterion_or_rule": "G02 accurate source identification; J12 historical caveats; latest Owner source clarification.",
+      "evidence": "Source lines 110-111/417-418; result CANDIDATE_ZIP/RESEARCH_SOURCE; original Judge G02; Owner clarification hash a7966a36417075867ba882f66fe2a0c265af30ecd4e8123163a316a3ae4c57d9.",
+      "expected": "Final disposition states INDEPENDENT_REDERIVATION, historical conversation UNKNOWN_NOT_VERIFIED, proof artifact NOT_VERIFIED and ZIP NOT_USED with actual bytes unchecked; no historical provenance certification.",
+      "observed": "This supplement states those limitations explicitly while retaining all sealed bytes and prior report snapshots. The historical locators are not mathematical inputs.",
+      "materiality": "Non-blocking because the Owner expressly removed historical chat as a required premise and the exact-tree independent proof/reproduction supports the numerical claims. This finding confirms the reporting limitation, not that a particular historical locator has been proven false.",
+      "mandatory_candidate_correction": false
+    }
+  ],
+  "PRIOR_MATHEMATICAL_FINDINGS_CHANGED": false,
+  "MATHEMATICAL_EVIDENCE_INVALIDATED": false,
+  "MATHEMATICAL_OUTCOME": {
+    "UNIVERSAL_T_CAP": 208,
+    "FULL_PROFILE_BOUND": 312835000,
+    "STRONGER_BOUND_PROOF": "PROVEN by retained independent exact-tree evidence",
+    "ALL_ROUTE_B_TERMS": "PASS; 187 terms, reused evidence",
+    "ARGMAX": [208],
+    "ACCEPTED_VERDICT_REMAINS_VALID": true,
+    "LEGAL_ATTAINMENT": "UNKNOWN",
+    "GLOBAL_K20_OPTIMUM": "UNKNOWN",
+    "CONDITIONAL_FAMILY_EFFECT": "NOT_ADOPTED"
+  },
+  "COVERED_ITEMS": [
+    "Supplemental exact identity and source-dataflow checks",
+    "G02 source-mode/provenance reconciliation",
+    "J12 expanded historical caveat reconciliation",
+    "Admissibility of all five original exact-tree Judge captures",
+    "Continued validity of original J01-J12/G01-G18 mathematical and task-relative disposition",
+    "Supplemental write/action accounting"
+  ],
+  "MISSING_ITEMS": [],
+  "LIMITATIONS": [
+    "Historical original conversation and proof provenance remain UNKNOWN_NOT_VERIFIED/NOT_VERIFIED; they are no longer load-bearing under the direct Owner clarification.",
+    "Actual optional ZIP bytes and hash remain NOT_VERIFIED; ZIP was not used.",
+    "Embedded historical attribution fields are unchanged and require this reporting caveat whenever presented.",
+    "All original non-material caveats C01-C04 remain in force, including no legal attainment/global optimum proof and task-relative rather than global workstation non-mutation.",
+    "This is an independent provenance supplement with reused original independent mathematical evidence; it is not a second fresh numerical reproduction."
+  ],
+  "ACTUAL_VERIFICATION_RUN_COUNTS": {
+    "new_independent_mathematical_reproduction": 0,
+    "new_focused_pytest": 0,
+    "new_ruff": 0,
+    "new_strict_pyright": 0,
+    "new_certificate_cli": 0,
+    "new_complete_local_suite": 0,
+    "new_protected_runtime_commands": 0,
+    "historical_chat_searches": 0,
+    "zip_reads": 0,
+    "heavy_solver": 0,
+    "cp_sat": 0,
+    "full_portfolio_enumeration": 0,
+    "new_commits": 0,
+    "reused_original_protected_captures": 5,
+    "reused_original_focused_tests_passed": 20
+  },
+  "RUN_TIMING": "UNKNOWN for supplemental review; original measured run timings remain in retained captures and are not attributed to this supplement.",
+  "WRITE_LEDGER": {
+    "RETAINED_CREATED_FILES": [
+      {
+        "PATH": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/judge-source-clarification-r1.json",
+        "CLASSIFICATION": "TASK_REPORT_RETAIN",
+        "BEFORE": "ABSENT; checked immediately before report creation",
+        "AFTER": "This supplemental JSON report",
+        "PURPOSE": "Minimal authorized Fable source-clarification Judge receipt"
+      }
+    ],
+    "MODIFIED_EXISTING_FILES": [],
+    "DELETED_FILES": [],
+    "TEMPORARY_FILES_CREATED_OR_DELETED": [],
+    "PRODUCT_SOURCE_TEST_RESULT_WRITES": [],
+    "ORIGINAL_RECEIPT_WRITES": [],
+    "GIT_LIFECYCLE_MUTATIONS": [],
+    "PROTECTED_MARKER_OR_LAUNCHER_WRITES": [],
+    "FAMILY_OR_OTHER_WORKTREE_WRITES": [],
+    "EXTERNAL_ACTIONS": [],
+    "READ_ONLY_GIT_POLICY": "All Git calls used git -c core.fsmonitor=false --no-optional-locks; only identity, metadata, status and exact allowlisted blob reads.",
+    "AUTOMATIC_TOOL_TRANSCRIPTS": "Tooling may retain normal conversation/command transcripts; this Judge created no additional on-disk transcript or scratch artifact."
+  },
+  "PRIOR_WORKER_RECEIPT": {
+    "PATH": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/final-worker-receipt.json",
+    "SHA256": "8964b536b8a26815a1ca5b8092298f4d22cedbff49a998ccc7c8d97f23ced2eb",
+    "STATUS": "Retained unchanged; claims were not accepted without direct candidate/evidence inspection. Historical-source reporting is subject to this supplement."
+  },
+  "AUTHORIZATION_STATUS": "Only this source-only Judge supplement and its minimal task report; one local commit maximum remains unchanged.",
+  "PUBLICATION_STATUS": "NOT RUN; push/PR/merge remain unauthorized.",
+  "FAMILY_INTEGRATION_STATUS": "NOT RUN; Family mutation remains unauthorized.",
+  "CLEANUP_STATUS": "Retain original task worktree/branch/certificate and existing receipts unchanged.",
+  "TECHNICAL_OUTCOME": "The accepted mathematical verdict remains VERIFIED_WITH_CAVEATS at the exact sealed HEAD/tree. Historical original execution/proof provenance is not certified.",
+  "NEXT_ACTION": "Return this supplement and its SHA256 to the Worker; carry the explicit provenance caveat into final reporting. No source edit, second commit, historical search or numeric rerun is required."
+}

@@ -1,0 +1,840 @@
+{
+  "BASE_HEAD": "588734b83266e4ea2f003b278edc9d067fcee9de",
+  "BASE_TREE": "53afda81acce4ac72378a6575c44c778d702515f",
+  "CURRENT_AUTHORITY_BOUNDS": {
+    "R3": 350545750,
+    "R4": 350778728,
+    "R5": 349009248,
+    "R6": 343869728
+  },
+  "FOCUSED_TESTS": "PASS (8 passed)",
+  "HIGHER_ORDER_CORRECTION": "NOT_COMPUTED; a full residual event-multiplicity census is outside the seven-state reduction.",
+  "INCUMBENT": 313239661,
+  "JOINT_S3_S4_WITNESS": {
+    "s2-10833008-s3-427140": {
+      "RESIDUAL_S2_AT_S4_FEASIBLE_WITNESS": 63337904,
+      "S3": 427140,
+      "S4_FEASIBLE_WITNESS": 0,
+      "S4_MINIMUM": 0
+    },
+    "s2-11295555-s3-450450": {
+      "RESIDUAL_S2_AT_S4_FEASIBLE_WITNESS": 71002568,
+      "S3": 450450,
+      "S4_FEASIBLE_WITNESS": 0,
+      "S4_MINIMUM": 0
+    },
+    "s2-11298977-s3-504238": {
+      "RESIDUAL_S2_AT_S4_FEASIBLE_WITNESS": 62404104,
+      "S3": 504238,
+      "S4_FEASIBLE_WITNESS": 0,
+      "S4_MINIMUM": 0
+    },
+    "s2-11761525-s3-527548": {
+      "RESIDUAL_S2_AT_S4_FEASIBLE_WITNESS": 65143232,
+      "S3": 527548,
+      "S4_FEASIBLE_WITNESS": 0,
+      "S4_MINIMUM": 0
+    },
+    "s2-11764636-s3-581336": {
+      "RESIDUAL_S2_AT_S4_FEASIBLE_WITNESS": 61972792,
+      "S3": 581336,
+      "S4_FEASIBLE_WITNESS": 2016,
+      "S4_MINIMUM": 2016
+    },
+    "s2-12227184-s3-604646": {
+      "RESIDUAL_S2_AT_S4_FEASIBLE_WITNESS": 61874176,
+      "S3": 604646,
+      "S4_FEASIBLE_WITNESS": 2016,
+      "S4_MINIMUM": 2016
+    },
+    "s2-12229984-s3-658434": {
+      "RESIDUAL_S2_AT_S4_FEASIBLE_WITNESS": 61993456,
+      "S3": 658434,
+      "S4_FEASIBLE_WITNESS": 5208,
+      "S4_MINIMUM": null
+    }
+  },
+  "LEAF_GAP": 37306088,
+  "LOAD_BEARING_COUNT_VECTOR_MEMBER_COUNT": 14,
+  "LOAD_BEARING_FRONTIER_STATE_COUNT": 7,
+  "NEW_PORTFOLIO_SEARCH_STARTED": "NO",
+  "PRODUCTION_MUTATION": "NONE",
+  "PYRIGHT": "PASS (0 errors, 0 warnings, 0 informations)",
+  "R3_BELOW_R5": false,
+  "R3_BOUND": 350545749,
+  "R3_LOAD_BEARING_FRONTIER_STATES": [
+    {
+      "classification": "REALIZABLE",
+      "current_upper_bound": 350545750,
+      "joint_s2": 10833008,
+      "mirrored_counts_sparse": [
+        [
+          0,
+          7
+        ],
+        [
+          1,
+          11
+        ]
+      ],
+      "recomputed_r3_bound": 346864727,
+      "residual_s2_at_s4_feasible_witness": 63337904,
+      "residual_s2_certificate": {
+        "balanced_outside_pair_mass_floor": 74,
+        "minimum_outside_slope": "448728",
+        "outside_incidence_total": 97,
+        "s4_pairwise_minimum_floor": 0,
+        "type_pair_minimum_sum": 16339400
+      },
+      "residual_s2_certified_lower_bound": 49545272,
+      "s3_at_s4_feasible_witness": 427140,
+      "s3_max_at_state": 427140,
+      "s4_feasible_witness_at_s3_max": 0,
+      "s4_lower_bound_source": "COMPACT_FREQUENCY_RELAXATION",
+      "s4_min_at_s3_max": 0,
+      "s4_minimum_certified_lower_bound": 0,
+      "s4_minimum_proven": true,
+      "s4_relaxation_optimal": true,
+      "s4_solver_status": "OPTIMAL",
+      "s4_support_witness_sha256": "4cbdadfed4e5743dd811f07d664d49949aee3a4876117c7294e1ee5237528cb6",
+      "solver_run": {
+        "certified_minimum_lower_bound": 0,
+        "external_hard_timeout_seconds": 25.0,
+        "external_wall_time_seconds": 1.6052429169976676,
+        "incumbent_objective": 0,
+        "minimum_proven": true,
+        "native_wall_limit_seconds": 15.0,
+        "native_wall_time_seconds": 0.6757998330031114,
+        "objective": "compact_s4_frequency_relaxation",
+        "relaxation_objective": 0,
+        "relaxation_optimal": true,
+        "runtime": {
+          "ortools": "9.15.6755",
+          "python": "3.13.8"
+        },
+        "solver_wall_time_seconds": 0.673884,
+        "state_id": "s2-10833008-s3-427140",
+        "status": "OPTIMAL",
+        "support_witness_sha256": "4cbdadfed4e5743dd811f07d664d49949aee3a4876117c7294e1ee5237528cb6",
+        "witness_residual_pair_s2": 63337904,
+        "witness_s4": 0
+      },
+      "state_id": "s2-10833008-s3-427140",
+      "support_witness_bitmasks": [
+        32256,
+        1016320,
+        15762432,
+        520159232,
+        16643129344,
+        532576206848,
+        1666985754624,
+        549774821384,
+        7696585850888,
+        11544914034704,
+        123179729158160,
+        4398719697440,
+        2200365958176,
+        17609374369824,
+        70900551712,
+        176063594373152,
+        71743133859872,
+        282033393762336
+      ],
+      "symmetric_count_vector_member_count": 2,
+      "witness_counts_sparse": [
+        [
+          0,
+          7
+        ],
+        [
+          4,
+          11
+        ]
+      ]
+    },
+    {
+      "classification": "REALIZABLE",
+      "current_upper_bound": 350106513,
+      "joint_s2": 11295555,
+      "mirrored_counts_sparse": [
+        [
+          0,
+          6
+        ],
+        [
+          1,
+          12
+        ]
+      ],
+      "recomputed_r3_bound": 346524977,
+      "residual_s2_at_s4_feasible_witness": 71002568,
+      "residual_s2_certificate": {
+        "balanced_outside_pair_mass_floor": 72,
+        "minimum_outside_slope": "448728",
+        "outside_incidence_total": 96,
+        "s4_pairwise_minimum_floor": 0,
+        "type_pair_minimum_sum": 16308600
+      },
+      "residual_s2_certified_lower_bound": 48617016,
+      "s3_at_s4_feasible_witness": 450450,
+      "s3_max_at_state": 450450,
+      "s4_feasible_witness_at_s3_max": 0,
+      "s4_lower_bound_source": "COMPACT_FREQUENCY_RELAXATION",
+      "s4_min_at_s3_max": 0,
+      "s4_minimum_certified_lower_bound": 0,
+      "s4_minimum_proven": true,
+      "s4_relaxation_optimal": true,
+      "s4_solver_status": "OPTIMAL",
+      "s4_support_witness_sha256": "78f4024c3f6a9bb52f58951eec4abf47343b68fa6bf4bc2ca4610cc5f48aafc6",
+      "solver_run": {
+        "certified_minimum_lower_bound": 0,
+        "external_hard_timeout_seconds": 25.0,
+        "external_wall_time_seconds": 1.1906672090008215,
+        "incumbent_objective": 0,
+        "minimum_proven": true,
+        "native_wall_limit_seconds": 15.0,
+        "native_wall_time_seconds": 0.4830549170001177,
+        "objective": "compact_s4_frequency_relaxation",
+        "relaxation_objective": 0,
+        "relaxation_optimal": true,
+        "runtime": {
+          "ortools": "9.15.6755",
+          "python": "3.13.8"
+        },
+        "solver_wall_time_seconds": 0.48162900000000003,
+        "state_id": "s2-11295555-s3-450450",
+        "status": "OPTIMAL",
+        "support_witness_sha256": "78f4024c3f6a9bb52f58951eec4abf47343b68fa6bf4bc2ca4610cc5f48aafc6",
+        "witness_residual_pair_s2": 71002568,
+        "witness_s4": 0
+      },
+      "state_id": "s2-11295555-s3-450450",
+      "support_witness_bitmasks": [
+        32256,
+        1016320,
+        15762432,
+        520095744,
+        1628508160,
+        15066013696,
+        19394498568,
+        34495143944,
+        4565778440,
+        34934620176,
+        71136968720,
+        142883160080,
+        189246997536,
+        828928722976,
+        68862349344,
+        8611446816,
+        1102198210592,
+        32986422575136
+      ],
+      "symmetric_count_vector_member_count": 2,
+      "witness_counts_sparse": [
+        [
+          0,
+          6
+        ],
+        [
+          4,
+          12
+        ]
+      ]
+    },
+    {
+      "classification": "REALIZABLE",
+      "current_upper_bound": 350156879,
+      "joint_s2": 11298977,
+      "mirrored_counts_sparse": [
+        [
+          0,
+          7
+        ],
+        [
+          1,
+          10
+        ],
+        [
+          5,
+          1
+        ]
+      ],
+      "recomputed_r3_bound": 346592703,
+      "residual_s2_at_s4_feasible_witness": 62404104,
+      "residual_s2_certificate": {
+        "balanced_outside_pair_mass_floor": 72,
+        "minimum_outside_slope": "446558",
+        "outside_incidence_total": 96,
+        "s4_pairwise_minimum_floor": 0,
+        "type_pair_minimum_sum": 16339400
+      },
+      "residual_s2_certified_lower_bound": 48491576,
+      "s3_at_s4_feasible_witness": 504238,
+      "s3_max_at_state": 504238,
+      "s4_feasible_witness_at_s3_max": 0,
+      "s4_lower_bound_source": "COMPACT_FREQUENCY_RELAXATION",
+      "s4_min_at_s3_max": 0,
+      "s4_minimum_certified_lower_bound": 0,
+      "s4_minimum_proven": true,
+      "s4_relaxation_optimal": true,
+      "s4_solver_status": "OPTIMAL",
+      "s4_support_witness_sha256": "968a14f0f4afdb985b61d09bbdd895bd2eaebee384719505fe3796f026bc2115",
+      "solver_run": {
+        "certified_minimum_lower_bound": 0,
+        "external_hard_timeout_seconds": 25.0,
+        "external_wall_time_seconds": 2.4412220000012894,
+        "incumbent_objective": 0,
+        "minimum_proven": true,
+        "native_wall_limit_seconds": 15.0,
+        "native_wall_time_seconds": 1.5562537500009057,
+        "objective": "compact_s4_frequency_relaxation",
+        "relaxation_objective": 0,
+        "relaxation_optimal": true,
+        "runtime": {
+          "ortools": "9.15.6755",
+          "python": "3.13.8"
+        },
+        "solver_wall_time_seconds": 1.5449410000000001,
+        "state_id": "s2-11298977-s3-504238",
+        "status": "OPTIMAL",
+        "support_witness_sha256": "968a14f0f4afdb985b61d09bbdd895bd2eaebee384719505fe3796f026bc2115",
+        "witness_residual_pair_s2": 62404104,
+        "witness_s4": 0
+      },
+      "state_id": "s2-11298977-s3-504238",
+      "support_witness_bitmasks": [
+        32256,
+        2064384,
+        65044480,
+        2080440320,
+        32214482944,
+        1065156083712,
+        34119220199424,
+        1168298476040,
+        2201179194376,
+        4535619815432,
+        8800656461832,
+        284022013960,
+        4400730898960,
+        279273539600,
+        17601858113552,
+        9363045548048,
+        1237222162448,
+        527765581332576
+      ],
+      "symmetric_count_vector_member_count": 2,
+      "witness_counts_sparse": [
+        [
+          0,
+          7
+        ],
+        [
+          4,
+          10
+        ],
+        [
+          5,
+          1
+        ]
+      ]
+    },
+    {
+      "classification": "REALIZABLE",
+      "current_upper_bound": 349717641,
+      "joint_s2": 11761525,
+      "mirrored_counts_sparse": [
+        [
+          0,
+          6
+        ],
+        [
+          1,
+          11
+        ],
+        [
+          5,
+          1
+        ]
+      ],
+      "recomputed_r3_bound": 346252470,
+      "residual_s2_at_s4_feasible_witness": 65143232,
+      "residual_s2_certificate": {
+        "balanced_outside_pair_mass_floor": 70,
+        "minimum_outside_slope": "446558",
+        "outside_incidence_total": 95,
+        "s4_pairwise_minimum_floor": 0,
+        "type_pair_minimum_sum": 16308600
+      },
+      "residual_s2_certified_lower_bound": 47567660,
+      "s3_at_s4_feasible_witness": 527548,
+      "s3_max_at_state": 527548,
+      "s4_feasible_witness_at_s3_max": 0,
+      "s4_lower_bound_source": "COMPACT_FREQUENCY_RELAXATION",
+      "s4_min_at_s3_max": 0,
+      "s4_minimum_certified_lower_bound": 0,
+      "s4_minimum_proven": true,
+      "s4_relaxation_optimal": true,
+      "s4_solver_status": "OPTIMAL",
+      "s4_support_witness_sha256": "de6f031fd47c62e852d1981f1113978a138052b85b2c9276ea8fbde8f9ec471d",
+      "solver_run": {
+        "certified_minimum_lower_bound": 0,
+        "external_hard_timeout_seconds": 25.0,
+        "external_wall_time_seconds": 1.6599053340032697,
+        "incumbent_objective": 0,
+        "minimum_proven": true,
+        "native_wall_limit_seconds": 15.0,
+        "native_wall_time_seconds": 0.7991185410028265,
+        "objective": "compact_s4_frequency_relaxation",
+        "relaxation_objective": 0,
+        "relaxation_optimal": true,
+        "runtime": {
+          "ortools": "9.15.6755",
+          "python": "3.13.8"
+        },
+        "solver_wall_time_seconds": 0.79759,
+        "state_id": "s2-11761525-s3-527548",
+        "status": "OPTIMAL",
+        "support_witness_sha256": "de6f031fd47c62e852d1981f1113978a138052b85b2c9276ea8fbde8f9ec471d",
+        "witness_residual_pair_s2": 65143232,
+        "witness_s4": 0
+      },
+      "state_id": "s2-11761525-s3-527548",
+      "support_witness_bitmasks": [
+        32256,
+        1016320,
+        32506880,
+        1040188416,
+        7550797824,
+        128850071552,
+        413457711624,
+        1649401696264,
+        11007959048,
+        2216240939016,
+        4437246476296,
+        6665789277200,
+        8813281413136,
+        140123377680,
+        17592254472208,
+        35571908624,
+        554336518160,
+        527765581332576
+      ],
+      "symmetric_count_vector_member_count": 2,
+      "witness_counts_sparse": [
+        [
+          0,
+          6
+        ],
+        [
+          4,
+          11
+        ],
+        [
+          5,
+          1
+        ]
+      ]
+    },
+    {
+      "classification": "REALIZABLE",
+      "current_upper_bound": 349768318,
+      "joint_s2": 11764636,
+      "mirrored_counts_sparse": [
+        [
+          0,
+          7
+        ],
+        [
+          1,
+          9
+        ],
+        [
+          5,
+          2
+        ]
+      ],
+      "recomputed_r3_bound": 346408514,
+      "residual_s2_at_s4_feasible_witness": 61972792,
+      "residual_s2_certificate": {
+        "balanced_outside_pair_mass_floor": 70,
+        "minimum_outside_slope": "433006",
+        "outside_incidence_total": 95,
+        "s4_pairwise_minimum_floor": 336,
+        "type_pair_minimum_sum": 16336936
+      },
+      "residual_s2_certified_lower_bound": 46647356,
+      "s3_at_s4_feasible_witness": 581336,
+      "s3_max_at_state": 581336,
+      "s4_feasible_witness_at_s3_max": 2016,
+      "s4_lower_bound_source": "COMPACT_FREQUENCY_RELAXATION",
+      "s4_min_at_s3_max": 2016,
+      "s4_minimum_certified_lower_bound": 2016,
+      "s4_minimum_proven": true,
+      "s4_relaxation_optimal": true,
+      "s4_solver_status": "OPTIMAL",
+      "s4_support_witness_sha256": "e86f63609f4edf7af34e8c192f47e857de1fec2ebaf8fbd43afc20e6508b2f39",
+      "solver_run": {
+        "certified_minimum_lower_bound": 2016,
+        "external_hard_timeout_seconds": 25.0,
+        "external_wall_time_seconds": 2.156440291997569,
+        "incumbent_objective": 2016,
+        "minimum_proven": true,
+        "native_wall_limit_seconds": 15.0,
+        "native_wall_time_seconds": 1.1977172500010056,
+        "objective": "compact_s4_frequency_relaxation",
+        "relaxation_objective": 2016,
+        "relaxation_optimal": true,
+        "runtime": {
+          "ortools": "9.15.6755",
+          "python": "3.13.8"
+        },
+        "solver_wall_time_seconds": 1.19475,
+        "state_id": "s2-11764636-s3-581336",
+        "status": "OPTIMAL",
+        "support_witness_sha256": "e86f63609f4edf7af34e8c192f47e857de1fec2ebaf8fbd43afc20e6508b2f39",
+        "witness_residual_pair_s2": 61972792,
+        "witness_s4": 2016
+      },
+      "state_id": "s2-11764636-s3-581336",
+      "support_witness_bitmasks": [
+        32256,
+        1016320,
+        32538624,
+        504430592,
+        16643129344,
+        258235170816,
+        293167693824,
+        34431173640,
+        1649804838920,
+        343739994120,
+        19595829256,
+        277092763664,
+        38663626768,
+        138646962192,
+        575529877520,
+        1168281567248,
+        32985348833376,
+        527765581332640
+      ],
+      "symmetric_count_vector_member_count": 2,
+      "witness_counts_sparse": [
+        [
+          0,
+          7
+        ],
+        [
+          4,
+          9
+        ],
+        [
+          5,
+          2
+        ]
+      ]
+    },
+    {
+      "classification": "REALIZABLE",
+      "current_upper_bound": 349329080,
+      "joint_s2": 12227184,
+      "mirrored_counts_sparse": [
+        [
+          0,
+          6
+        ],
+        [
+          1,
+          10
+        ],
+        [
+          5,
+          2
+        ]
+      ],
+      "recomputed_r3_bound": 346065270,
+      "residual_s2_at_s4_feasible_witness": 61874176,
+      "residual_s2_certificate": {
+        "balanced_outside_pair_mass_floor": 68,
+        "minimum_outside_slope": "433006",
+        "outside_incidence_total": 94,
+        "s4_pairwise_minimum_floor": 336,
+        "type_pair_minimum_sum": 16306136
+      },
+      "residual_s2_certified_lower_bound": 45750544,
+      "s3_at_s4_feasible_witness": 604646,
+      "s3_max_at_state": 604646,
+      "s4_feasible_witness_at_s3_max": 2016,
+      "s4_lower_bound_source": "COMPACT_FREQUENCY_RELAXATION",
+      "s4_min_at_s3_max": 2016,
+      "s4_minimum_certified_lower_bound": 2016,
+      "s4_minimum_proven": true,
+      "s4_relaxation_optimal": true,
+      "s4_solver_status": "OPTIMAL",
+      "s4_support_witness_sha256": "529c7de56dbf049272dbc26b2b578d78dd8c80ca5e7e1a0869f8ab253cdf743c",
+      "solver_run": {
+        "certified_minimum_lower_bound": 2016,
+        "external_hard_timeout_seconds": 25.0,
+        "external_wall_time_seconds": 2.9610545830000774,
+        "incumbent_objective": 2016,
+        "minimum_proven": true,
+        "native_wall_limit_seconds": 15.0,
+        "native_wall_time_seconds": 2.0453572920014267,
+        "objective": "compact_s4_frequency_relaxation",
+        "relaxation_objective": 2016,
+        "relaxation_optimal": true,
+        "runtime": {
+          "ortools": "9.15.6755",
+          "python": "3.13.8"
+        },
+        "solver_wall_time_seconds": 2.043756,
+        "state_id": "s2-12227184-s3-604646",
+        "status": "OPTIMAL",
+        "support_witness_sha256": "529c7de56dbf049272dbc26b2b578d78dd8c80ca5e7e1a0869f8ab253cdf743c",
+        "witness_residual_pair_s2": 61874176,
+        "witness_s4": 2016
+      },
+      "state_id": "s2-12227184-s3-604646",
+      "support_witness_bitmasks": [
+        32256,
+        1016320,
+        32506880,
+        504397824,
+        16643063808,
+        532576075776,
+        567506108936,
+        35500852232,
+        70869092360,
+        1099650109448,
+        141735501832,
+        8866906120,
+        138045034512,
+        1692217122832,
+        69797953552,
+        21626093584,
+        32985348833376,
+        527765581332640
+      ],
+      "symmetric_count_vector_member_count": 2,
+      "witness_counts_sparse": [
+        [
+          0,
+          6
+        ],
+        [
+          4,
+          10
+        ],
+        [
+          5,
+          2
+        ]
+      ]
+    },
+    {
+      "classification": "REALIZABLE",
+      "current_upper_bound": 349380068,
+      "joint_s2": 12229984,
+      "mirrored_counts_sparse": [
+        [
+          0,
+          7
+        ],
+        [
+          1,
+          8
+        ],
+        [
+          5,
+          3
+        ]
+      ],
+      "recomputed_r3_bound": 346116183,
+      "residual_s2_at_s4_feasible_witness": 61993456,
+      "residual_s2_certificate": {
+        "balanced_outside_pair_mass_floor": 68,
+        "minimum_outside_slope": "433006",
+        "outside_incidence_total": 94,
+        "s4_pairwise_minimum_floor": 1008,
+        "type_pair_minimum_sum": 16332008
+      },
+      "residual_s2_certified_lower_bound": 45776416,
+      "s3_at_s4_feasible_witness": 658434,
+      "s3_max_at_state": 658434,
+      "s4_feasible_witness_at_s3_max": 5208,
+      "s4_lower_bound_source": "COMPACT_FREQUENCY_RELAXATION",
+      "s4_min_at_s3_max": null,
+      "s4_minimum_certified_lower_bound": 4368,
+      "s4_minimum_proven": false,
+      "s4_relaxation_optimal": true,
+      "s4_solver_status": "OPTIMAL",
+      "s4_support_witness_sha256": "ecc443e99b36e7832f803d504f2c660b9432b1d1249becd00ababeed52941692",
+      "solver_run": {
+        "certified_minimum_lower_bound": 4368,
+        "external_hard_timeout_seconds": 25.0,
+        "external_wall_time_seconds": 2.428275041998859,
+        "incumbent_objective": 5208,
+        "minimum_proven": false,
+        "native_wall_limit_seconds": 15.0,
+        "native_wall_time_seconds": 1.495575083001313,
+        "objective": "compact_s4_frequency_relaxation",
+        "relaxation_objective": 4368,
+        "relaxation_optimal": true,
+        "runtime": {
+          "ortools": "9.15.6755",
+          "python": "3.13.8"
+        },
+        "solver_wall_time_seconds": 1.4937390000000001,
+        "state_id": "s2-12229984-s3-658434",
+        "status": "OPTIMAL",
+        "support_witness_sha256": "ecc443e99b36e7832f803d504f2c660b9432b1d1249becd00ababeed52941692",
+        "witness_residual_pair_s2": 61993456,
+        "witness_s4": 5208
+      },
+      "state_id": "s2-12229984-s3-658434",
+      "support_witness_bitmasks": [
+        32256,
+        1016320,
+        15762432,
+        118556672,
+        421662720,
+        8069873664,
+        60668772352,
+        78383219720,
+        675809288,
+        2189692936,
+        17515454472,
+        38655901704,
+        36776182800,
+        1283473424,
+        90232061968,
+        2061584302160,
+        32985348833440,
+        527765581332768
+      ],
+      "symmetric_count_vector_member_count": 2,
+      "witness_counts_sparse": [
+        [
+          0,
+          7
+        ],
+        [
+          4,
+          8
+        ],
+        [
+          5,
+          3
+        ]
+      ]
+    }
+  ],
+  "R3_STATUS": "TIGHTENED_OPEN",
+  "R7_FRONTIER_SHA256": "271c3950b6d30d58d4baa5bb534894a60f17111b8458586fda0089447d1bc7d3",
+  "R7_FRONTIER_SIZE": 23,
+  "R7_RESIDUAL_STATE_COUNT": 10117,
+  "REALIZABLE_STATE_COUNT": 7,
+  "RUFF": "PASS",
+  "S3_MAX": 658434,
+  "S4_MIN_AT_S3_MAX": {
+    "s2-10833008-s3-427140": 0,
+    "s2-11295555-s3-450450": 0,
+    "s2-11298977-s3-504238": 0,
+    "s2-11761525-s3-527548": 0,
+    "s2-11764636-s3-581336": 2016,
+    "s2-12227184-s3-604646": 2016,
+    "s2-12229984-s3-658434": null
+  },
+  "SOLVER_ACTUAL_WALL_TIME": {
+    "batch_external_seconds": 14.849706875000265,
+    "native_solver_seconds_sum": 8.230289
+  },
+  "SOLVER_CERTIFIED_BOUND": {
+    "s2-10833008-s3-427140": {
+      "RESIDUAL_S2": 49545272,
+      "S4_MINIMUM": 0
+    },
+    "s2-11295555-s3-450450": {
+      "RESIDUAL_S2": 48617016,
+      "S4_MINIMUM": 0
+    },
+    "s2-11298977-s3-504238": {
+      "RESIDUAL_S2": 48491576,
+      "S4_MINIMUM": 0
+    },
+    "s2-11761525-s3-527548": {
+      "RESIDUAL_S2": 47567660,
+      "S4_MINIMUM": 0
+    },
+    "s2-11764636-s3-581336": {
+      "RESIDUAL_S2": 46647356,
+      "S4_MINIMUM": 2016
+    },
+    "s2-12227184-s3-604646": {
+      "RESIDUAL_S2": 45750544,
+      "S4_MINIMUM": 2016
+    },
+    "s2-12229984-s3-658434": {
+      "RESIDUAL_S2": 45776416,
+      "S4_MINIMUM": 4368
+    }
+  },
+  "SOLVER_CONFIGURED_WALL_LIMIT": {
+    "external_hard_timeout_seconds_per_run": 25.0,
+    "native_seconds_per_run": 15.0,
+    "solver_model": "COMPACT_FREQUENCY_RELAXATION",
+    "worker_count": 16
+  },
+  "SOLVER_RUNTIME_PREFLIGHT": {
+    "ortools": "9.15.6755",
+    "python": "3.13.8"
+  },
+  "SOLVER_STATUS": {
+    "counts": {
+      "OPTIMAL": 7
+    },
+    "runs": [
+      {
+        "objective": "compact_s4_frequency_relaxation",
+        "state_id": "s2-10833008-s3-427140",
+        "status": "OPTIMAL"
+      },
+      {
+        "objective": "compact_s4_frequency_relaxation",
+        "state_id": "s2-11295555-s3-450450",
+        "status": "OPTIMAL"
+      },
+      {
+        "objective": "compact_s4_frequency_relaxation",
+        "state_id": "s2-11298977-s3-504238",
+        "status": "OPTIMAL"
+      },
+      {
+        "objective": "compact_s4_frequency_relaxation",
+        "state_id": "s2-11761525-s3-527548",
+        "status": "OPTIMAL"
+      },
+      {
+        "objective": "compact_s4_frequency_relaxation",
+        "state_id": "s2-11764636-s3-581336",
+        "status": "OPTIMAL"
+      },
+      {
+        "objective": "compact_s4_frequency_relaxation",
+        "state_id": "s2-12227184-s3-604646",
+        "status": "OPTIMAL"
+      },
+      {
+        "objective": "compact_s4_frequency_relaxation",
+        "state_id": "s2-12229984-s3-658434",
+        "status": "OPTIMAL"
+      }
+    ]
+  },
+  "SUCCESS_A": false,
+  "SUCCESS_B": true,
+  "SUCCESS_C": true,
+  "TASK_BRANCH": "codex/b649-k20-r3-frontier-realizability-bound-r8",
+  "TASK_ID": "B649_K20_R3_FRONTIER_REALIZABILITY_BOUND_R8",
+  "TASK_STATUS": "PARTIAL_CERTIFICATE",
+  "UNKNOWN_STATE_COUNT": 0,
+  "UNREALIZABLE_STATE_COUNT": 0
+}

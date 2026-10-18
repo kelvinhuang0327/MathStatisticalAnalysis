@@ -1,0 +1,665 @@
+{
+  "TASK_ID": "B649_K20_R3_CORRECTED_TAIL_MIN_LOSS_PLATEAU_R12",
+  "TASK_STATUS": "CERTIFIED_R3_BOUND_TIGHTENED",
+  "BASE_HEAD": "35ddfb6065121a1bf0657bed6768da0c41e11973",
+  "BASE_TREE": "e8576f102eaae7e7407566d7d6e84693e044fea5",
+  "TASK_BRANCH": "codex/b649-k20-r3-corrected-tail-min-loss-plateau-r12",
+  "CANONICAL_PRIMITIVES": {
+    "SINGLE_TICKET_ANY_PRIZE": 18611432,
+    "PAIR_INTERSECTION_COST[6]": 18611432,
+    "K20_S1": 372228640
+  },
+  "CANONICAL_PRIMITIVE_STATUS": "PASS",
+  "UPSTREAM_FINGERPRINTS_SHA256": {
+    "src/lottolab/research/b649_k20_r3_bound_owner_reduction_r11.py": "9a344dc2d6c03fb45e9cb105661dbda58c55eea9db6c93eed12ff998e5f403fc",
+    "docs/research/matrix-native-results/b649-k20-r3-bound-owner-reduction-r11-result.json": "2684443adc1a7165738df321eb2d4d0b03e2939e7a73cdc6897dda171de54e18"
+  },
+  "PRIOR_R3_BOUND": 358352827,
+  "PRIOR_CORRECTED_TAIL_BOUND": 358352827,
+  "PRIOR_BOUND_OWNER_SET": [
+    "corrected-tail"
+  ],
+  "START_TAIL_LOSS": 6695801,
+  "START_PLATEAU": {
+    "LOCAL_LOSS": 6695801,
+    "VECTOR_COUNT": 0,
+    "STATUS": "EMPTY",
+    "CERTIFIED_EMPTY_LOSS_INTERVAL": [
+      6695801,
+      6696171
+    ]
+  },
+  "LEVEL_CENSUS": {
+    "LOCAL_LOSS_CUTOFF": 6695798,
+    "VECTORS_AT_OR_BELOW_CUTOFF": 10816,
+    "ENUMERATION_LOSS_LIMIT": 6712182,
+    "ENUMERATED_VECTOR_COUNT": 11058,
+    "ATTAINED_LEVELS_RECORDED": 33,
+    "LEVEL_DEFINITION": "A loss level is a local-loss value attained by at least one 18-ticket type-count vector; every integer strictly between consecutive levels is certified empty by the same exact enumeration."
+  },
+  "LOSS_LEVELS_PROCESSED": 32,
+  "LOSS_LEVEL_ROWS": [
+    {
+      "ordinal": 1,
+      "local_loss": 6696172,
+      "offset_above_cutoff": 374,
+      "vector_count": 14,
+      "eliminated": 0,
+      "witness_realized": 14,
+      "unwitnessed": 0,
+      "minimum_correction": 2296000,
+      "maximum_vector_bound": 356056456,
+      "next_unprocessed_loss": 6696620,
+      "effective_tail_bound": 358352008,
+      "r3_bound": 358352008
+    },
+    {
+      "ordinal": 2,
+      "local_loss": 6696620,
+      "offset_above_cutoff": 822,
+      "vector_count": 14,
+      "eliminated": 0,
+      "witness_realized": 14,
+      "unwitnessed": 0,
+      "minimum_correction": 2296000,
+      "maximum_vector_bound": 356056008,
+      "next_unprocessed_loss": 6696872,
+      "effective_tail_bound": 358351756,
+      "r3_bound": 358351756
+    },
+    {
+      "ordinal": 3,
+      "local_loss": 6696872,
+      "offset_above_cutoff": 1074,
+      "vector_count": 6,
+      "eliminated": 0,
+      "witness_realized": 6,
+      "unwitnessed": 0,
+      "minimum_correction": 4592000,
+      "maximum_vector_bound": 353759756,
+      "next_unprocessed_loss": 6696893,
+      "effective_tail_bound": 358351735,
+      "r3_bound": 358351735
+    },
+    {
+      "ordinal": 4,
+      "local_loss": 6696893,
+      "offset_above_cutoff": 1095,
+      "vector_count": 4,
+      "eliminated": 0,
+      "witness_realized": 4,
+      "unwitnessed": 0,
+      "minimum_correction": 4018000,
+      "maximum_vector_bound": 354333735,
+      "next_unprocessed_loss": 6696921,
+      "effective_tail_bound": 358351707,
+      "r3_bound": 358351707
+    },
+    {
+      "ordinal": 5,
+      "local_loss": 6696921,
+      "offset_above_cutoff": 1123,
+      "vector_count": 8,
+      "eliminated": 0,
+      "witness_realized": 8,
+      "unwitnessed": 0,
+      "minimum_correction": 5740000,
+      "maximum_vector_bound": 352611707,
+      "next_unprocessed_loss": 6697320,
+      "effective_tail_bound": 358351308,
+      "r3_bound": 358351308
+    },
+    {
+      "ordinal": 6,
+      "local_loss": 6697320,
+      "offset_above_cutoff": 1522,
+      "vector_count": 6,
+      "eliminated": 0,
+      "witness_realized": 6,
+      "unwitnessed": 0,
+      "minimum_correction": 4592000,
+      "maximum_vector_bound": 353759308,
+      "next_unprocessed_loss": 6697341,
+      "effective_tail_bound": 358351287,
+      "r3_bound": 358351287
+    },
+    {
+      "ordinal": 7,
+      "local_loss": 6697341,
+      "offset_above_cutoff": 1543,
+      "vector_count": 4,
+      "eliminated": 0,
+      "witness_realized": 4,
+      "unwitnessed": 0,
+      "minimum_correction": 4018000,
+      "maximum_vector_bound": 354333287,
+      "next_unprocessed_loss": 6697369,
+      "effective_tail_bound": 358351259,
+      "r3_bound": 358351259
+    },
+    {
+      "ordinal": 8,
+      "local_loss": 6697369,
+      "offset_above_cutoff": 1571,
+      "vector_count": 8,
+      "eliminated": 0,
+      "witness_realized": 8,
+      "unwitnessed": 0,
+      "minimum_correction": 5740000,
+      "maximum_vector_bound": 352611259,
+      "next_unprocessed_loss": 6697768,
+      "effective_tail_bound": 358350860,
+      "r3_bound": 358350860
+    },
+    {
+      "ordinal": 9,
+      "local_loss": 6697768,
+      "offset_above_cutoff": 1970,
+      "vector_count": 6,
+      "eliminated": 0,
+      "witness_realized": 6,
+      "unwitnessed": 0,
+      "minimum_correction": 4592000,
+      "maximum_vector_bound": 353758860,
+      "next_unprocessed_loss": 6697789,
+      "effective_tail_bound": 358350839,
+      "r3_bound": 358350839
+    },
+    {
+      "ordinal": 10,
+      "local_loss": 6697789,
+      "offset_above_cutoff": 1991,
+      "vector_count": 4,
+      "eliminated": 0,
+      "witness_realized": 4,
+      "unwitnessed": 0,
+      "minimum_correction": 4018000,
+      "maximum_vector_bound": 354332839,
+      "next_unprocessed_loss": 6698237,
+      "effective_tail_bound": 358350391,
+      "r3_bound": 358350391
+    },
+    {
+      "ordinal": 11,
+      "local_loss": 6698237,
+      "offset_above_cutoff": 2439,
+      "vector_count": 4,
+      "eliminated": 0,
+      "witness_realized": 4,
+      "unwitnessed": 0,
+      "minimum_correction": 4018000,
+      "maximum_vector_bound": 354332391,
+      "next_unprocessed_loss": 6700904,
+      "effective_tail_bound": 358347724,
+      "r3_bound": 358347724
+    },
+    {
+      "ordinal": 12,
+      "local_loss": 6700904,
+      "offset_above_cutoff": 5106,
+      "vector_count": 16,
+      "eliminated": 0,
+      "witness_realized": 16,
+      "unwitnessed": 0,
+      "minimum_correction": 4018000,
+      "maximum_vector_bound": 354329724,
+      "next_unprocessed_loss": 6701128,
+      "effective_tail_bound": 358347500,
+      "r3_bound": 358347500
+    },
+    {
+      "ordinal": 13,
+      "local_loss": 6701128,
+      "offset_above_cutoff": 5330,
+      "vector_count": 8,
+      "eliminated": 0,
+      "witness_realized": 8,
+      "unwitnessed": 0,
+      "minimum_correction": 5166000,
+      "maximum_vector_bound": 353181500,
+      "next_unprocessed_loss": 6701352,
+      "effective_tail_bound": 358347276,
+      "r3_bound": 358347276
+    },
+    {
+      "ordinal": 14,
+      "local_loss": 6701352,
+      "offset_above_cutoff": 5554,
+      "vector_count": 16,
+      "eliminated": 0,
+      "witness_realized": 16,
+      "unwitnessed": 0,
+      "minimum_correction": 4018000,
+      "maximum_vector_bound": 354329276,
+      "next_unprocessed_loss": 6701576,
+      "effective_tail_bound": 358347052,
+      "r3_bound": 358347052
+    },
+    {
+      "ordinal": 15,
+      "local_loss": 6701576,
+      "offset_above_cutoff": 5778,
+      "vector_count": 8,
+      "eliminated": 0,
+      "witness_realized": 8,
+      "unwitnessed": 0,
+      "minimum_correction": 5166000,
+      "maximum_vector_bound": 353181052,
+      "next_unprocessed_loss": 6701800,
+      "effective_tail_bound": 358346828,
+      "r3_bound": 358346828
+    },
+    {
+      "ordinal": 16,
+      "local_loss": 6701800,
+      "offset_above_cutoff": 6002,
+      "vector_count": 16,
+      "eliminated": 0,
+      "witness_realized": 16,
+      "unwitnessed": 0,
+      "minimum_correction": 4018000,
+      "maximum_vector_bound": 354328828,
+      "next_unprocessed_loss": 6704089,
+      "effective_tail_bound": 358344539,
+      "r3_bound": 358344539
+    },
+    {
+      "ordinal": 17,
+      "local_loss": 6704089,
+      "offset_above_cutoff": 8291,
+      "vector_count": 16,
+      "eliminated": 0,
+      "witness_realized": 16,
+      "unwitnessed": 0,
+      "minimum_correction": 5166000,
+      "maximum_vector_bound": 353178539,
+      "next_unprocessed_loss": 6707484,
+      "effective_tail_bound": 358341144,
+      "r3_bound": 358341144
+    },
+    {
+      "ordinal": 18,
+      "local_loss": 6707484,
+      "offset_above_cutoff": 11686,
+      "vector_count": 4,
+      "eliminated": 0,
+      "witness_realized": 4,
+      "unwitnessed": 0,
+      "minimum_correction": 4592000,
+      "maximum_vector_bound": 353749144,
+      "next_unprocessed_loss": 6707589,
+      "effective_tail_bound": 358341039,
+      "r3_bound": 358341039
+    },
+    {
+      "ordinal": 19,
+      "local_loss": 6707589,
+      "offset_above_cutoff": 11791,
+      "vector_count": 8,
+      "eliminated": 0,
+      "witness_realized": 8,
+      "unwitnessed": 0,
+      "minimum_correction": 6314000,
+      "maximum_vector_bound": 352027039,
+      "next_unprocessed_loss": 6707932,
+      "effective_tail_bound": 358340696,
+      "r3_bound": 358340696
+    },
+    {
+      "ordinal": 20,
+      "local_loss": 6707932,
+      "offset_above_cutoff": 12134,
+      "vector_count": 4,
+      "eliminated": 0,
+      "witness_realized": 4,
+      "unwitnessed": 0,
+      "minimum_correction": 4592000,
+      "maximum_vector_bound": 353748696,
+      "next_unprocessed_loss": 6708380,
+      "effective_tail_bound": 358340248,
+      "r3_bound": 358340248
+    },
+    {
+      "ordinal": 21,
+      "local_loss": 6708380,
+      "offset_above_cutoff": 12582,
+      "vector_count": 4,
+      "eliminated": 0,
+      "witness_realized": 4,
+      "unwitnessed": 0,
+      "minimum_correction": 4592000,
+      "maximum_vector_bound": 353748248,
+      "next_unprocessed_loss": 6708828,
+      "effective_tail_bound": 358339800,
+      "r3_bound": 358339800
+    },
+    {
+      "ordinal": 22,
+      "local_loss": 6708828,
+      "offset_above_cutoff": 13030,
+      "vector_count": 4,
+      "eliminated": 0,
+      "witness_realized": 4,
+      "unwitnessed": 0,
+      "minimum_correction": 4592000,
+      "maximum_vector_bound": 353747800,
+      "next_unprocessed_loss": 6709276,
+      "effective_tail_bound": 358339352,
+      "r3_bound": 358339352
+    },
+    {
+      "ordinal": 23,
+      "local_loss": 6709276,
+      "offset_above_cutoff": 13478,
+      "vector_count": 4,
+      "eliminated": 0,
+      "witness_realized": 4,
+      "unwitnessed": 0,
+      "minimum_correction": 4592000,
+      "maximum_vector_bound": 353747352,
+      "next_unprocessed_loss": 6709346,
+      "effective_tail_bound": 358339282,
+      "r3_bound": 358339282
+    },
+    {
+      "ordinal": 24,
+      "local_loss": 6709346,
+      "offset_above_cutoff": 13548,
+      "vector_count": 24,
+      "eliminated": 0,
+      "witness_realized": 24,
+      "unwitnessed": 0,
+      "minimum_correction": 1804429,
+      "maximum_vector_bound": 356534853,
+      "next_unprocessed_loss": 6709724,
+      "effective_tail_bound": 358338904,
+      "r3_bound": 358338904
+    },
+    {
+      "ordinal": 25,
+      "local_loss": 6709724,
+      "offset_above_cutoff": 13926,
+      "vector_count": 3,
+      "eliminated": 0,
+      "witness_realized": 3,
+      "unwitnessed": 0,
+      "minimum_correction": 2870000,
+      "maximum_vector_bound": 355468904,
+      "next_unprocessed_loss": 6710172,
+      "effective_tail_bound": 358338456,
+      "r3_bound": 358338456
+    },
+    {
+      "ordinal": 26,
+      "local_loss": 6710172,
+      "offset_above_cutoff": 14374,
+      "vector_count": 3,
+      "eliminated": 0,
+      "witness_realized": 3,
+      "unwitnessed": 0,
+      "minimum_correction": 2870000,
+      "maximum_vector_bound": 355468456,
+      "next_unprocessed_loss": 6710620,
+      "effective_tail_bound": 358338008,
+      "r3_bound": 358338008
+    },
+    {
+      "ordinal": 27,
+      "local_loss": 6710620,
+      "offset_above_cutoff": 14822,
+      "vector_count": 3,
+      "eliminated": 0,
+      "witness_realized": 3,
+      "unwitnessed": 0,
+      "minimum_correction": 2870000,
+      "maximum_vector_bound": 355468008,
+      "next_unprocessed_loss": 6710627,
+      "effective_tail_bound": 358338001,
+      "r3_bound": 358338001
+    },
+    {
+      "ordinal": 28,
+      "local_loss": 6710627,
+      "offset_above_cutoff": 14829,
+      "vector_count": 2,
+      "eliminated": 0,
+      "witness_realized": 2,
+      "unwitnessed": 0,
+      "minimum_correction": 6888000,
+      "maximum_vector_bound": 351450001,
+      "next_unprocessed_loss": 6710669,
+      "effective_tail_bound": 358337959,
+      "r3_bound": 358337959
+    },
+    {
+      "ordinal": 29,
+      "local_loss": 6710669,
+      "offset_above_cutoff": 14871,
+      "vector_count": 4,
+      "eliminated": 0,
+      "witness_realized": 4,
+      "unwitnessed": 0,
+      "minimum_correction": 5740000,
+      "maximum_vector_bound": 352597959,
+      "next_unprocessed_loss": 6711068,
+      "effective_tail_bound": 358337560,
+      "r3_bound": 358337560
+    },
+    {
+      "ordinal": 30,
+      "local_loss": 6711068,
+      "offset_above_cutoff": 15270,
+      "vector_count": 3,
+      "eliminated": 0,
+      "witness_realized": 3,
+      "unwitnessed": 0,
+      "minimum_correction": 2870000,
+      "maximum_vector_bound": 355467560,
+      "next_unprocessed_loss": 6711117,
+      "effective_tail_bound": 358337511,
+      "r3_bound": 358337511
+    },
+    {
+      "ordinal": 31,
+      "local_loss": 6711117,
+      "offset_above_cutoff": 15319,
+      "vector_count": 4,
+      "eliminated": 0,
+      "witness_realized": 4,
+      "unwitnessed": 0,
+      "minimum_correction": 5740000,
+      "maximum_vector_bound": 352597511,
+      "next_unprocessed_loss": 6711516,
+      "effective_tail_bound": 358337112,
+      "r3_bound": 358337112
+    },
+    {
+      "ordinal": 32,
+      "local_loss": 6711516,
+      "offset_above_cutoff": 15718,
+      "vector_count": 3,
+      "eliminated": 0,
+      "witness_realized": 3,
+      "unwitnessed": 0,
+      "minimum_correction": 2870000,
+      "maximum_vector_bound": 355467112,
+      "next_unprocessed_loss": 6711565,
+      "effective_tail_bound": 358337063,
+      "r3_bound": 358337063
+    }
+  ],
+  "MIN_REALIZABLE_TAIL_LOSS": 6696172,
+  "TAIL_VECTOR_COUNT": 235,
+  "UNREALIZABLE_VECTOR_COUNT": 0,
+  "REALIZABLE_VECTOR_COUNT": 235,
+  "UNRESOLVED_VECTOR_COUNT": 0,
+  "SUPPORT_WITNESS_SHA256": "90427ba1074ea10f99e9f778ebe49b1c693349af8858dae2d8dd17e6785b22ae",
+  "SUPPORT_WITNESS_VALIDATOR": "R8 validate_support_assignment (solver-independent)",
+  "MANDATORY_HIGHER_ORDER_CORRECTION": {
+    "MINIMUM": 1804429,
+    "MAXIMUM": 6888000,
+    "SOURCE": "R6 type_count_envelope: max(ceil(residual pair/anchor-triple intersection mass floor / 9), frozen R5 weighted-forest floor)",
+    "FOURTH_ORDER_CORRECTION": "NOT_REQUIRED; every processed vector is below the floor",
+    "MINIMUM_SLACK_BELOW_TAIL_FLOOR": 1802210,
+    "WORST_PROCESSED_VECTOR": {
+      "TYPE_COUNTS": [
+        [
+          0,
+          6
+        ],
+        [
+          1,
+          11
+        ],
+        [
+          17,
+          1
+        ]
+      ],
+      "LOCAL_LOSS": 6709346,
+      "CORRECTION": 1804429,
+      "VECTOR_BOUND": 356534853
+    }
+  },
+  "EFFECTIVE_TAIL_CERTIFICATE": {
+    "CANONICAL_K20_S1": 372228640,
+    "FIXED_CERTIFIED_LOSS": 7180012,
+    "BINDING_TERM": "NEXT_UNPROCESSED_LOSS_LEVEL_FLOOR",
+    "TYPE_COUNT_LOSS": 6711565,
+    "MANDATORY_STRUCTURAL_CORRECTION": 0,
+    "EFFECTIVE_TAIL_BOUND": 358337063,
+    "FORMULA": "max(max over processed surviving v of S1 - fixed - L(v) - corr(v), S1 - fixed - first unprocessed attained level)"
+  },
+  "CORRECTED_TAIL_BOUND": 358337063,
+  "TOP_STATE_BOUND": 356799210,
+  "TOP_LEVEL_R3_TERMS": [
+    {
+      "stable_id": "corrected-tail",
+      "bound": 358337063
+    },
+    {
+      "stable_id": "state:s2-10833008-s3-427140",
+      "bound": 354671803
+    },
+    {
+      "stable_id": "state:s2-11298977-s3-504238",
+      "bound": 354399779
+    },
+    {
+      "stable_id": "state:s2-11295555-s3-450450",
+      "bound": 354332053
+    },
+    {
+      "stable_id": "state:s2-11764636-s3-581336",
+      "bound": 354215592
+    },
+    {
+      "stable_id": "state:s2-11761525-s3-527548",
+      "bound": 354059548
+    },
+    {
+      "stable_id": "state:s2-12229984-s3-658434",
+      "bound": 353923259
+    },
+    {
+      "stable_id": "state:s2-12227184-s3-604646",
+      "bound": 353872346
+    },
+    {
+      "stable_id": "state:s2-12695020-s3-735532",
+      "bound": 356799210
+    },
+    {
+      "stable_id": "state:s2-12692531-s3-681744",
+      "bound": 356747911
+    },
+    {
+      "stable_id": "state:s2-13169800-s3-789320",
+      "bound": 356378218
+    },
+    {
+      "stable_id": "state:s2-13548976-s3-951748",
+      "bound": 356161470
+    },
+    {
+      "stable_id": "state:s2-14122976-s3-1005536",
+      "bound": 355641258
+    },
+    {
+      "stable_id": "state:s2-14696976-s3-1059324",
+      "bound": 355121046
+    },
+    {
+      "stable_id": "state:s2-15270976-s3-1113112",
+      "bound": 354600834
+    },
+    {
+      "stable_id": "state:s2-15754130-s3-1115170",
+      "bound": 354119738
+    },
+    {
+      "stable_id": "state:s2-15844976-s3-1166900",
+      "bound": 354080622
+    },
+    {
+      "stable_id": "state:s2-16328130-s3-1168958",
+      "bound": 353599526
+    },
+    {
+      "stable_id": "state:s2-16798152-s3-1383116",
+      "bound": 353343662
+    },
+    {
+      "stable_id": "state:s2-16608564-s3-1182916",
+      "bound": 353333050
+    },
+    {
+      "stable_id": "state:s2-16794330-s3-1246056",
+      "bound": 353210424
+    },
+    {
+      "stable_id": "state:s2-17743684-s3-1816864",
+      "bound": 352831878
+    },
+    {
+      "stable_id": "state:s2-17372152-s3-1436904",
+      "bound": 352823450
+    },
+    {
+      "stable_id": "state:s2-18317684-s3-1870652",
+      "bound": 352311666
+    }
+  ],
+  "CURRENT_BOUND_OWNER_SET": [
+    "corrected-tail"
+  ],
+  "R3_BOUND": 358337063,
+  "R3_STATUS": "CERTIFIED_STRICTLY_BELOW_PRIOR_BOUND",
+  "R3_TIGHTENING": 15764,
+  "STOP_CONDITION": "D_LOSS_LEVEL_BUDGET_EXHAUSTED",
+  "STOP_FLAGS": {
+    "A_R3_AT_OR_BELOW_TOP_NON_TAIL_STATE": false,
+    "B_R3_AT_OR_BELOW_R4_REFERENCE": false,
+    "C_CERTIFIED_TIGHTENING_AT_LEAST_50000": false,
+    "D_LOSS_LEVEL_BUDGET_EXHAUSTED": true,
+    "E_PROOF_WALL_BUDGET_EXHAUSTED": false
+  },
+  "SUCCESS_A": false,
+  "SUCCESS_B": false,
+  "SUCCESS_C": true,
+  "R4_REFERENCE_BOUND": 350545749,
+  "INCUMBENT": 313239661,
+  "REMAINING_GAP": 45097402,
+  "NEXT_PACKET_SIZING": {
+    "STOP_A_LOCAL_LOSS_THRESHOLD": 8249418,
+    "ATTAINED_LEVELS_BELOW_STOP_A_THRESHOLD": 3653,
+    "VECTORS_BELOW_STOP_A_THRESHOLD": 35002,
+    "SCOPE": "census count only; levels beyond the budget were not classified"
+  },
+  "PROOF_WALL_SECONDS": 6.696968,
+  "PROOF_WALL_BUDGET_SECONDS": 3600.0,
+  "SOLVER_STATUS": "NOT_USED_EXACT_TYPE_COUNT_CENSUS_AND_CONSTRUCTIVE_WITNESSES",
+  "OUTCOME_SPACE_ENUMERATED": "NO",
+  "NEW_PORTFOLIO_SEARCH_STARTED": "NO",
+  "PRODUCTION_MUTATION": "NONE"
+}

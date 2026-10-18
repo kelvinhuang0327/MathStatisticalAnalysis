@@ -1,0 +1,280 @@
+{
+  "BASE_HEAD": "0ee55267daffeb6bb2c4cd16888d2b3ca8ecb6d7",
+  "BASE_TREE": "a8b084ad88679bae4a9fc4495555975a8987834e",
+  "CANDIDATE_TYPE_COUNT_VECTOR_COUNT": 10816,
+  "FAMILY_A_BOTTLENECK_R": "R4",
+  "FAMILY_A_LEAF_BOUNDS": {
+    "R3": 350545750,
+    "R4": 351106608,
+    "R5": 350778728,
+    "R6": 343869728
+  },
+  "FAMILY_A_RECOMPUTED_BOUND": 351106608,
+  "FEASIBLE_REUSED_TYPE_COUNT_VECTOR_COUNT": 2683,
+  "FEASIBLE_SUPPLEMENTAL_TYPE_COUNT_VECTOR_COUNT": 8133,
+  "FEASIBLE_TYPE_COUNT_VECTOR_COUNT": 10816,
+  "FOCUSED_TESTS": "PASS: final run 5 passed in 4.98s (Python 3.13; pytest cache disabled)",
+  "INCUMBENT": 313239661,
+  "JOINT_BOUND_SOURCE": "JOINT_S2_S3_FRONTIER",
+  "JOINT_S2_S3_WITNESS": {
+    "ANCHOR_PAIR_S2": 9009000,
+    "ANCHOR_TRIPLE_S3": 427140,
+    "APPLIED_RESIDUAL_UNION_PENALTY": 1824008,
+    "CELL_INCIDENCES": {
+      "a_only": 11,
+      "b_only": 0,
+      "outside": 97,
+      "shared": 0
+    },
+    "COMPLEMENTARY_FROZEN_FOREST_FLOOR": 1148000,
+    "JOINT_S2": 10833008,
+    "JOINT_S3": 427140,
+    "LOCAL_RECOVERY_LOSS": 4871790,
+    "OUTSIDE_MULTIPLICITY_FLOOR": [
+      {
+        "frequency": 2,
+        "label_count": 23
+      },
+      {
+        "frequency": 3,
+        "label_count": 17
+      }
+    ],
+    "RESIDUAL_PAIR_INTERSECTION_MASS_FLOOR": 16416064,
+    "RESIDUAL_PAIR_UNION_PENALTY": 1824008,
+    "TYPE_COUNTS": [
+      [
+        0,
+        7
+      ],
+      [
+        4,
+        11
+      ]
+    ],
+    "UPPER_BOUND": 350545750
+  },
+  "LOCAL_LOSS_CENSUS_CUTOFF": 6695798,
+  "MANDATORY_OUTSIDE_PAIR_PENALTY": 1824008,
+  "NEW_PORTFOLIO_SEARCH_STARTED": "NO",
+  "PRODUCTION_MUTATION": "NONE",
+  "PROOF": {
+    "COMPLEMENTARY_FOREST_FLOOR": "Reuse the frozen r5 good-count rows only as a complementary lower bound via max; the forest certificate is not recomputed.",
+    "JOINT_EXPRESSION": "2*N-I(3)+18*N-S2+S3; S2 is the exact anchor-pair cost plus the maximum of a per-vector residual pair-union floor and the frozen complementary forest floor; S3=sum_C J(A,B,C).",
+    "PORTFOLIOS_ENUMERATED": "NO",
+    "RESIDUAL_PAIR_FLOOR": "For each type pair, reuse the exact r6 residual-intersection floor and outside-label slope; sum those inequalities, then apply the balanced 40-label frequency floor and ceil(mass/9).",
+    "STATE_COHERENCE": "Every frontier point is witnessed by one feasible exact type-count vector. Its cell incidences, outside-label frequency floor, S2, and S3 are carried together; no cross-state S2/S3 extrema are combined.",
+    "TAIL": "Every omitted vector has integer local loss greater than the census cutoff, so its bound is at most UNCORRECTED_R3_BOUND-cutoff-1."
+  },
+  "PYRIGHT": "PASS: final scoped strict Pyright 1.1.411 run; 0 errors, 0 warnings, 0 informations; Python 3.13 explicit, one thread; project .venv absent notice",
+  "R3_BOUND": 350545750,
+  "R3_STATUS": "TIGHTENED_OPEN",
+  "REMAINING_GAP": 37866947,
+  "RESIDUAL_STATE_COUNT": 10117,
+  "REUSED_EXACT_TYPE_COUNT_VECTOR_COUNT": 2683,
+  "REUSED_EXACT_TYPE_COUNT_VECTOR_SHA256_REPR": "6e6dbdf5bb9cdf2905a7c8dbc061a032cb0dce005b3fb80b062f40eb64e1581f",
+  "RUFF": "PASS: final scoped Ruff 0.15.21 run; all checks passed",
+  "S2_LEVEL_COUNT": 398,
+  "S2_S3_ENVELOPE_LEVEL_COUNT": 398,
+  "S2_S3_ENVELOPE_SHA256": "8c5ab3a5a404531af61648ffd78690a28aece8a140d91bd4c1515925132ccf65",
+  "S2_S3_FRONTIER": [
+    {
+      "JOINT_S2": 10833008,
+      "MAXIMUM_JOINT_S3": 427140,
+      "UPPER_BOUND": 350545750
+    },
+    {
+      "JOINT_S2": 11295555,
+      "MAXIMUM_JOINT_S3": 450450,
+      "UPPER_BOUND": 350106513
+    },
+    {
+      "JOINT_S2": 11298977,
+      "MAXIMUM_JOINT_S3": 504238,
+      "UPPER_BOUND": 350156879
+    },
+    {
+      "JOINT_S2": 11761525,
+      "MAXIMUM_JOINT_S3": 527548,
+      "UPPER_BOUND": 349717641
+    },
+    {
+      "JOINT_S2": 11764636,
+      "MAXIMUM_JOINT_S3": 581336,
+      "UPPER_BOUND": 349768318
+    },
+    {
+      "JOINT_S2": 12227184,
+      "MAXIMUM_JOINT_S3": 604646,
+      "UPPER_BOUND": 349329080
+    },
+    {
+      "JOINT_S2": 12229984,
+      "MAXIMUM_JOINT_S3": 658434,
+      "UPPER_BOUND": 349380068
+    },
+    {
+      "JOINT_S2": 12692531,
+      "MAXIMUM_JOINT_S3": 681744,
+      "UPPER_BOUND": 348940831
+    },
+    {
+      "JOINT_S2": 12695020,
+      "MAXIMUM_JOINT_S3": 735532,
+      "UPPER_BOUND": 348992130
+    },
+    {
+      "JOINT_S2": 13169800,
+      "MAXIMUM_JOINT_S3": 789320,
+      "UPPER_BOUND": 348571138
+    },
+    {
+      "JOINT_S2": 13548976,
+      "MAXIMUM_JOINT_S3": 951748,
+      "UPPER_BOUND": 348354390
+    },
+    {
+      "JOINT_S2": 14122976,
+      "MAXIMUM_JOINT_S3": 1005536,
+      "UPPER_BOUND": 347834178
+    },
+    {
+      "JOINT_S2": 14696976,
+      "MAXIMUM_JOINT_S3": 1059324,
+      "UPPER_BOUND": 347313966
+    },
+    {
+      "JOINT_S2": 15270976,
+      "MAXIMUM_JOINT_S3": 1113112,
+      "UPPER_BOUND": 346793754
+    },
+    {
+      "JOINT_S2": 15754130,
+      "MAXIMUM_JOINT_S3": 1115170,
+      "UPPER_BOUND": 346312658
+    },
+    {
+      "JOINT_S2": 15844976,
+      "MAXIMUM_JOINT_S3": 1166900,
+      "UPPER_BOUND": 346273542
+    },
+    {
+      "JOINT_S2": 16328130,
+      "MAXIMUM_JOINT_S3": 1168958,
+      "UPPER_BOUND": 345792446
+    },
+    {
+      "JOINT_S2": 16608564,
+      "MAXIMUM_JOINT_S3": 1182916,
+      "UPPER_BOUND": 345525970
+    },
+    {
+      "JOINT_S2": 16794330,
+      "MAXIMUM_JOINT_S3": 1246056,
+      "UPPER_BOUND": 345403344
+    },
+    {
+      "JOINT_S2": 16798152,
+      "MAXIMUM_JOINT_S3": 1383116,
+      "UPPER_BOUND": 345536582
+    },
+    {
+      "JOINT_S2": 17372152,
+      "MAXIMUM_JOINT_S3": 1436904,
+      "UPPER_BOUND": 345016370
+    },
+    {
+      "JOINT_S2": 17743684,
+      "MAXIMUM_JOINT_S3": 1816864,
+      "UPPER_BOUND": 345024798
+    },
+    {
+      "JOINT_S2": 18317684,
+      "MAXIMUM_JOINT_S3": 1870652,
+      "UPPER_BOUND": 344504586
+    }
+  ],
+  "S2_S3_FRONTIER_SHA256": "271c3950b6d30d58d4baa5bb534894a60f17111b8458586fda0089447d1bc7d3",
+  "S2_S3_FRONTIER_SIZE": 23,
+  "SOLVER_ACTUAL_WALL_TIME": "NOT_APPLICABLE",
+  "SOLVER_CERTIFIED_BOUND": null,
+  "SOLVER_CONFIGURED_WALL_LIMIT": "NOT_APPLICABLE",
+  "SOLVER_STATUS": "NOT_USED_EXACT_FINITE_STATE_CENSUS",
+  "SUPPLEMENTAL_TYPE_COUNT_VECTOR_COUNT": 8133,
+  "TAIL_LOCAL_LOSS_BOUND": 350545749,
+  "TASK_BRANCH": "codex/b649-k20-r3-joint-residual-envelope-r7",
+  "TASK_ID": "B649_K20_R3_JOINT_RESIDUAL_ENVELOPE_R7",
+  "TASK_STATUS": "CERTIFIED_R3_BOUND_TIGHTENED",
+  "VERIFICATION_ATTEMPT_LEDGER": [
+    {
+      "attempt": 1,
+      "check": "analysis interpreter",
+      "result": "python command unavailable; no files written"
+    },
+    {
+      "attempt": 2,
+      "check": "analysis interpreter",
+      "result": "host Python 3.9 rejected zip(strict=True); used Python 3.13"
+    },
+    {
+      "attempt": 1,
+      "check": "focused pytest",
+      "result": "FAIL: toy oracle used set.intersection with frozenset; corrected"
+    },
+    {
+      "attempt": 2,
+      "check": "focused pytest",
+      "result": "PASS: 5 passed in 4.78s"
+    },
+    {
+      "attempt": 3,
+      "check": "focused pytest",
+      "result": "PASS: 5 passed in 5.09s after state-count correction"
+    },
+    {
+      "attempt": 4,
+      "check": "focused pytest",
+      "result": "PASS: final compact-result version, 5 passed in 4.98s"
+    },
+    {
+      "attempt": 1,
+      "check": "Ruff",
+      "result": "FAIL: unused import and unsorted __all__; corrected"
+    },
+    {
+      "attempt": 2,
+      "check": "Ruff",
+      "result": "PASS: Ruff 0.15.21; all checks passed"
+    },
+    {
+      "attempt": 3,
+      "check": "Ruff",
+      "result": "PASS: final state-count version; all checks passed"
+    },
+    {
+      "attempt": 4,
+      "check": "Ruff",
+      "result": "PASS: final compact-result version; all checks passed"
+    },
+    {
+      "attempt": 1,
+      "check": "scoped Pyright",
+      "result": "FAIL: uppercase mutable cache triggered constant-redefinition; renamed"
+    },
+    {
+      "attempt": 2,
+      "check": "scoped Pyright",
+      "result": "PASS: Pyright 1.1.411; 0 errors, warnings, or informations"
+    },
+    {
+      "attempt": 3,
+      "check": "scoped Pyright",
+      "result": "PASS: final state-count version; strict, no diagnostics"
+    },
+    {
+      "attempt": 4,
+      "check": "scoped Pyright",
+      "result": "PASS: final compact-result version; strict, no diagnostics"
+    }
+  ]
+}

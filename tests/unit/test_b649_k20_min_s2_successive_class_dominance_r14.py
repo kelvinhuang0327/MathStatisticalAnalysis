@@ -2,23 +2,19 @@
 
 from __future__ import annotations
 
-import importlib
 import json
-from collections import defaultdict
+import os
+import subprocess
+import sys
 from itertools import combinations
-from math import comb
 from pathlib import Path
 from time import monotonic
-from types import SimpleNamespace
-from typing import Any, cast
+from typing import cast
 
 import pytest
 
-import lottolab.research.b649_k20_min_s2_class_dominance_or_descent_r13 as r13
 from lottolab.research.b649_k20_min_s2_class_dominance_or_descent_r13 import (
     assert_no_prior_profile_rerun,
-    degree_class_open_wedge_relaxation,
-    graph_triangle_upper_bound_from_open_wedges,
 )
 from lottolab.research.b649_k20_min_s2_successive_class_dominance_r14 import (
     INCUMBENT,
@@ -43,7 +39,7 @@ RESULT_PATH = (
 )
 
 
-def _triangle_count(edges: set[tuple[int, int]], vertex_count: int) -> int:
+def triangle_count(edges: set[tuple[int, int]], vertex_count: int) -> int:
     return sum(
         all(tuple(sorted(pair)) in edges for pair in combinations(triangle, 2))
         for triangle in combinations(range(vertex_count), 3)
@@ -129,62 +125,167 @@ def test_coarse_class_envelope_is_monotone_and_matches_r13_frontier() -> None:
         previous_bound = family_bound
 
 
-def test_relaxed_class_triangle_envelope_covers_all_small_graphs() -> None:
-    vertex_count = 5
-    pairs = tuple(combinations(range(vertex_count), 2))
-    observed: dict[tuple[int, ...], list[int]] = defaultdict(lambda: [10**9, -1])
-    for mask in range(1 << len(pairs)):
-        edges = {pair for index, pair in enumerate(pairs) if mask & (1 << index)}
-        degrees = tuple(sum(vertex in pair for pair in edges) for vertex in range(vertex_count))
-        wedges = sum(comb(degree, 2) for degree in degrees)
-        triangles = _triangle_count(edges, vertex_count)
-        open_wedges = wedges - 3 * triangles
-        summary = observed[degrees]
-        summary[0] = min(summary[0], open_wedges)
-        summary[1] = max(summary[1], triangles)
+def run_isolated_relaxed_class_check() -> None:
+    child_code = """
+import json
+from collections import defaultdict
+from itertools import combinations
+from math import comb
 
-    for degrees, (minimum_open_wedges, maximum_triangles) in observed.items():
-        relaxation = degree_class_open_wedge_relaxation(degrees, wall_limit_seconds=2.0)
-        assert relaxation["SOLVER_STATUS"] == "OPTIMAL"
-        lower_bound = relaxation["WEIGHTED_OPEN_WEDGE_LOWER_BOUND"]
-        assert isinstance(lower_bound, int)
-        assert lower_bound <= minimum_open_wedges
-        envelope = graph_triangle_upper_bound_from_open_wedges(degrees, lower_bound)
-        assert envelope["GRAPH_TRIANGLE_UPPER_BOUND"] >= maximum_triangles
+from lottolab.research.b649_k20_min_s2_class_dominance_or_descent_r13 import (
+    degree_class_open_wedge_relaxation,
+    graph_triangle_upper_bound_from_open_wedges,
+)
+from tests.unit.test_b649_k20_min_s2_successive_class_dominance_r14 import triangle_count
+
+vertex_count = 5
+pairs = tuple(combinations(range(vertex_count), 2))
+observed: dict[tuple[int, ...], list[int]] = defaultdict(lambda: [10**9, -1])
+for mask in range(1 << len(pairs)):
+    edges = {pair for index, pair in enumerate(pairs) if mask & (1 << index)}
+    degrees = tuple(sum(vertex in pair for pair in edges) for vertex in range(vertex_count))
+    wedges = sum(comb(degree, 2) for degree in degrees)
+    triangles = triangle_count(edges, vertex_count)
+    open_wedges = wedges - 3 * triangles
+    summary = observed[degrees]
+    summary[0] = min(summary[0], open_wedges)
+    summary[1] = max(summary[1], triangles)
+
+for degrees, (minimum_open_wedges, maximum_triangles) in observed.items():
+    relaxation = degree_class_open_wedge_relaxation(degrees, wall_limit_seconds=2.0)
+    assert relaxation["SOLVER_STATUS"] == "OPTIMAL"
+    lower_bound = relaxation["WEIGHTED_OPEN_WEDGE_LOWER_BOUND"]
+    assert isinstance(lower_bound, int)
+    assert lower_bound <= minimum_open_wedges
+    envelope = graph_triangle_upper_bound_from_open_wedges(degrees, lower_bound)
+    assert envelope["GRAPH_TRIANGLE_UPPER_BOUND"] >= maximum_triangles
+"""
+    env = {
+        **os.environ,
+        "PYTHONPATH": (
+            str(REPOSITORY_ROOT)
+            + os.pathsep
+            + str(REPOSITORY_ROOT / "src")
+            + os.pathsep
+            + os.environ.get("PYTHONPATH", "")
+        ),
+    }
+    completed = subprocess.run(
+        [sys.executable, "-c", child_code],
+        cwd=REPOSITORY_ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if completed.returncode != 0:
+        raise AssertionError(
+            f"Isolated relaxed class check failed (exit {completed.returncode}):\n"
+            f"STDOUT:\n{completed.stdout}\n"
+            f"STDERR:\n{completed.stderr}"
+        )
+
+
+def test_relaxed_class_triangle_envelope_covers_all_small_graphs() -> None:
+    modules_before = set(sys.modules.keys())
+    run_isolated_relaxed_class_check()
+    modules_after = set(sys.modules.keys())
+
+    assert not any(m.startswith("ortools") for m in sys.modules)
+    new_ortools = [m for m in modules_after - modules_before if m.startswith("ortools")]
+    assert new_ortools == []
+
+
+def run_isolated_feasible_solver_check() -> dict[str, object]:
+    child_code = """
+import importlib
+import json
+import sys
+from types import SimpleNamespace
+from typing import Any, cast
+import pytest
+
+import lottolab.research.b649_k20_min_s2_class_dominance_or_descent_r13 as r13
+from lottolab.research.b649_k20_min_s2_class_dominance_or_descent_r13 import (
+    degree_class_open_wedge_relaxation,
+)
+
+cp_model = cast(Any, importlib.import_module("ortools.sat.python.cp_model"))
+
+
+class FeasibleSolver:
+    def __init__(self) -> None:
+        self.parameters = SimpleNamespace()
+
+    def Solve(self, model: object) -> int:
+        del model
+        return cp_model.FEASIBLE
+
+    def StatusName(self, status: int) -> str:
+        del status
+        return "FEASIBLE"
+
+    def BestObjectiveBound(self) -> float:
+        return 7.9
+
+    def WallTime(self) -> float:
+        return 0.001
+
+
+def fake_import_module(_name: str) -> Any:
+    return cp_model
+
+
+mp = pytest.MonkeyPatch()
+try:
+    mp.setattr(r13, "import_module", fake_import_module)
+    mp.setattr(cp_model, "CpSolver", FeasibleSolver)
+    relaxation = degree_class_open_wedge_relaxation((1, 1, 2), wall_limit_seconds=1.0)
+finally:
+    mp.undo()
+
+assert relaxation["SOLVER_STATUS"] == "FEASIBLE"
+assert relaxation["WEIGHTED_OPEN_WEDGE_LOWER_BOUND"] == 7
+print(json.dumps(relaxation))
+"""
+    env = {
+        **os.environ,
+        "PYTHONPATH": str(REPOSITORY_ROOT / "src") + os.pathsep + os.environ.get("PYTHONPATH", ""),
+    }
+    completed = subprocess.run(
+        [sys.executable, "-c", child_code],
+        cwd=REPOSITORY_ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if completed.returncode != 0:
+        raise AssertionError(
+            f"Isolated feasible solver check failed (exit {completed.returncode}):\n"
+            f"STDOUT:\n{completed.stdout}\n"
+            f"STDERR:\n{completed.stderr}"
+        )
+    output_line = completed.stdout.strip().splitlines()[-1]
+    decoded = json.loads(output_line)
+    if not isinstance(decoded, dict):
+        raise AssertionError("Expected JSON object from isolated feasible solver check")
+    return cast(dict[str, object], decoded)
 
 
 def test_feasible_solver_status_uses_only_best_bound_floor(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    cp_model = cast(Any, importlib.import_module("ortools.sat.python.cp_model"))
-
-    class FeasibleSolver:
-        def __init__(self) -> None:
-            self.parameters = SimpleNamespace()
-
-        def Solve(self, model: object) -> int:
-            del model
-            return cp_model.FEASIBLE
-
-        def StatusName(self, status: int) -> str:
-            del status
-            return "FEASIBLE"
-
-        def BestObjectiveBound(self) -> float:
-            return 7.9
-
-        def WallTime(self) -> float:
-            return 0.001
-
-    def fake_import_module(_name: str) -> Any:
-        return cp_model
-
-    monkeypatch.setattr(r13, "import_module", fake_import_module)
-    monkeypatch.setattr(cp_model, "CpSolver", FeasibleSolver)
-    relaxation = degree_class_open_wedge_relaxation((1, 1, 2), wall_limit_seconds=1.0)
+    del monkeypatch
+    modules_before = set(sys.modules.keys())
+    relaxation = run_isolated_feasible_solver_check()
+    modules_after = set(sys.modules.keys())
 
     assert relaxation["SOLVER_STATUS"] == "FEASIBLE"
     assert relaxation["WEIGHTED_OPEN_WEDGE_LOWER_BOUND"] == 7
+    assert not any(m.startswith("ortools") for m in sys.modules)
+    new_ortools = [m for m in modules_after - modules_before if m.startswith("ortools")]
+    assert new_ortools == []
 
 
 def test_compact_result_records_class_bounds_and_bounded_fallback() -> None:

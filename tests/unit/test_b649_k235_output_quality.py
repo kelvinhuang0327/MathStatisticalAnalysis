@@ -3,17 +3,98 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
+from typing import Any
+
+import pytest
 
 from lottolab.research.b649_k235_output_quality import (
     evaluate_candidate_quality,
     partition_k_entries,
 )
 
-FIXTURE_097_PATH = Path(
-    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.task-data/"
-    "BIGLOTTO_115000096_K2_K3_K5_TOP3_115000097_PREDICTION_R1/predictions_115000097.json"
-)
+HISTORICAL_097_INPUT_ENV = "B649_K235_HISTORICAL_097_PREDICTION"
+
+
+def _valid_tickets(k: int) -> list[list[int]]:
+    return [list(range(start, start + 6)) for start in range(1, 6 * k + 1, 6)]
+
+
+def _overlapping_tickets(k: int) -> list[list[int]]:
+    tickets = _valid_tickets(k)
+    tickets[1][0] = tickets[0][0]
+    return tickets
+
+
+def _synthetic_entries_by_k() -> dict[str, dict[str, list[dict[str, Any]]]]:
+    accepted_ranks = {"k2": {1, 2}, "k3": {1, 3}, "k5": {1, 2}}
+    result: dict[str, dict[str, list[dict[str, Any]]]] = {}
+    for category, valid_ranks in accepted_ranks.items():
+        k = int(category[1:])
+        result[category] = {
+            "entries": [
+                {
+                    "rank": rank,
+                    "strategy_id": f"synthetic_{category}_rank_{rank}",
+                    "tickets": (
+                        _valid_tickets(k)
+                        if rank in valid_ranks
+                        else _overlapping_tickets(k)
+                    ),
+                }
+                for rank in (1, 2, 3)
+            ]
+        }
+    return result
+
+
+def _assert_k235_quality_outcomes(payload: dict[str, Any]) -> None:
+    expectations = {
+        "k2": (2, [1, 2], [3], 5302152, 85900584),
+        "k3": (3, [1, 3], [2], 7930128, 85900584),
+        "k5": (5, [1, 2], [3], 13139880, 85900584),
+    }
+    total_accepted = 0
+    total_rejected = 0
+
+    for category, (k, accepted_ranks, rejected_ranks, numerator, denominator) in (
+        expectations.items()
+    ):
+        accepted, rejected = partition_k_entries(payload[category]["entries"], k)
+        fraction = f"{numerator}/{denominator}"
+        assert [entry["rank"] for entry in accepted] == accepted_ranks
+        assert [entry["rank"] for entry in rejected] == rejected_ranks
+
+        for entry in accepted:
+            evaluation = entry["quality_evaluation"]
+            assert entry["quality_status"] == "ACCEPTED"
+            assert evaluation["is_valid"] is True
+            assert evaluation["unique_number_count"] == 6 * k
+            assert evaluation["expected_unique_count"] == 6 * k
+            assert entry["exact_coverage_fraction"] == fraction
+            assert entry["coverage_probability"] == numerator / denominator
+            assert evaluation["exact_numerator"] == numerator
+            assert evaluation["exact_denominator"] == denominator
+
+        for entry in rejected:
+            evaluation = entry["quality_evaluation"]
+            assert entry["quality_status"] == "REJECTED"
+            assert evaluation["is_valid"] is False
+            assert any(
+                "CROSS_TICKET_OVERLAP" in reason
+                for reason in entry["rejection_reasons"]
+            )
+            assert entry["exact_coverage_fraction"] is None
+            assert entry["coverage_probability"] is None
+            assert evaluation["exact_numerator"] is None
+            assert evaluation["exact_denominator"] is None
+
+        total_accepted += len(accepted)
+        total_rejected += len(rejected)
+
+    assert total_accepted == 6
+    assert total_rejected == 3
 
 
 def test_valid_disjoint_portfolios_pass_and_receive_exact_fractions() -> None:
@@ -164,53 +245,20 @@ def test_rejects_malformed_shapes_with_6k_distinct_numbers() -> None:
     assert any("TICKET_COUNT_MISMATCH" in r for r in res_4_4_4.rejection_reasons)
 
 
-def test_ac4_predictions_115000097_fixture_evaluation() -> None:
-    """AC4 requirement:
+def test_portable_synthetic_k235_quality_classification() -> None:
+    """Synthetic unit contract; it does not claim 097 historical performance."""
+    _assert_k235_quality_outcomes(_synthetic_entries_by_k())
 
-    Evaluating predictions_115000097.json yields:
-    K2: accept rank 1, 2; reject rank 3
-    K3: accept rank 1, 3; reject rank 2
-    K5: accept rank 1, 2; reject rank 3
-    Total: 6 accepted, 3 rejected.
-    """
-    assert FIXTURE_097_PATH.exists()
-    payload = json.loads(FIXTURE_097_PATH.read_text(encoding="utf-8"))
 
-    # K2
-    k2_acc, k2_rej = partition_k_entries(payload["k2"]["entries"], 2)
-    assert [e["rank"] for e in k2_acc] == [1, 2]
-    assert [e["rank"] for e in k2_rej] == [3]
-    assert len(k2_acc) == 2
-    assert len(k2_rej) == 1
-    # Check exact coverage fraction assigned to accepted K2
-    for e in k2_acc:
-        assert e["exact_coverage_fraction"] == "5302152/85900584"
-    for e in k2_rej:
-        assert e["exact_coverage_fraction"] is None
+def test_local_integration_historical_097_golden() -> None:
+    """Optional local integration check against an explicitly supplied 097 JSON."""
+    fixture_value = os.environ.get(HISTORICAL_097_INPUT_ENV)
+    if not fixture_value:
+        pytest.skip(
+            f"Set {HISTORICAL_097_INPUT_ENV} to run the private historical 097 Golden"
+        )
 
-    # K3
-    k3_acc, k3_rej = partition_k_entries(payload["k3"]["entries"], 3)
-    assert [e["rank"] for e in k3_acc] == [1, 3]
-    assert [e["rank"] for e in k3_rej] == [2]
-    assert len(k3_acc) == 2
-    assert len(k3_rej) == 1
-    for e in k3_acc:
-        assert e["exact_coverage_fraction"] == "7930128/85900584"
-    for e in k3_rej:
-        assert e["exact_coverage_fraction"] is None
-
-    # K5
-    k5_acc, k5_rej = partition_k_entries(payload["k5"]["entries"], 5)
-    assert [e["rank"] for e in k5_acc] == [1, 2]
-    assert [e["rank"] for e in k5_rej] == [3]
-    assert len(k5_acc) == 2
-    assert len(k5_rej) == 1
-    for e in k5_acc:
-        assert e["exact_coverage_fraction"] == "13139880/85900584"
-    for e in k5_rej:
-        assert e["exact_coverage_fraction"] is None
-
-    total_acc = len(k2_acc) + len(k3_acc) + len(k5_acc)
-    total_rej = len(k2_rej) + len(k3_rej) + len(k5_rej)
-    assert total_acc == 6
-    assert total_rej == 3
+    fixture_path = Path(fixture_value)
+    assert fixture_path.is_file(), f"Historical input does not exist: {fixture_path}"
+    payload: dict[str, Any] = json.loads(fixture_path.read_text(encoding="utf-8"))
+    _assert_k235_quality_outcomes(payload)

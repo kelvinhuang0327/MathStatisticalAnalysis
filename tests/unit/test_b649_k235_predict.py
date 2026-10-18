@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+import os
 import sqlite3
 import sys
 from pathlib import Path
@@ -15,16 +17,113 @@ from tools.b649_k235_predict import (
     run_prediction,
 )
 
+from lottolab.domain.draws import LotteryType
 from lottolab.strategies.adapters.biglotto_horizon_minimax import (
     BigLottoHorizonMinimaxDisagreementAdapter,
 )
 from lottolab.strategies.catalog import production_catalog
 
+HISTORICAL_DB_ENV = "B649_K235_HISTORICAL_DB"
+HISTORICAL_RANK_HISTORY_ENV = "B649_K235_HISTORICAL_RANK_HISTORY"
 
-def test_ac1_ac2_runtime_independence_and_blocking_legacy_worktrees(
+
+def _create_portable_prediction_inputs(tmp_path: Path) -> tuple[Path, Path]:
+    db_path = tmp_path / "synthetic_lottolab.db"
+    with sqlite3.connect(db_path) as conn:
+        conn.execute(
+            "CREATE TABLE draws ("
+            "draw_number TEXT PRIMARY KEY, "
+            "draw_date TEXT, "
+            "main_numbers_json TEXT, "
+            "special_numbers_json TEXT, "
+            "lottery_type TEXT"
+            ");"
+        )
+        conn.executemany(
+            "INSERT INTO draws VALUES (?, ?, ?, ?, ?);",
+            [
+                ("115000095", "2026-10-10", "[1, 2, 3, 4, 5, 6]", "[7]", "BIG_LOTTO"),
+                ("115000096", "2026-10-12", "[2, 3, 4, 5, 6, 7]", "[8]", "BIG_LOTTO"),
+                ("115000097", "2026-10-14", "[3, 4, 5, 6, 7, 8]", "[9]", "BIG_LOTTO"),
+                ("115000098", "2026-10-16", "[4, 5, 6, 7, 8, 9]", "[10]", "BIG_LOTTO"),
+                ("115000099", "2026-10-18", "[5, 6, 7, 8, 9, 10]", "[11]", "BIG_LOTTO"),
+            ],
+        )
+
+    descriptors = production_catalog().list(lottery_type=LotteryType.BIG_LOTTO)
+    rank_history: dict[str, Any] = {"hist": {"115000096": {}}, "ids": {}}
+    for k in (2, 3, 5):
+        candidates = [d for d in descriptors if d.native_ticket_count == k]
+        assert len(candidates) >= 3
+        rank_history["hist"]["115000096"][str(k)] = []
+        for rank, descriptor in enumerate(candidates[:3], start=1):
+            rank_history["hist"]["115000096"][str(k)].append(
+                [rank, descriptor.strategy_id]
+            )
+            rank_history["ids"][descriptor.strategy_id] = [
+                rank,
+                descriptor.strategy_name,
+            ]
+
+    rank_history_path = tmp_path / "synthetic_rank_history.json"
+    rank_history_path.write_text(json.dumps(rank_history), encoding="utf-8")
+    return db_path, rank_history_path
+
+
+def _portable_raw_predictions() -> dict[str, Any]:
+    accepted_ranks = {"k2": {1, 2}, "k3": {1, 3}, "k5": {1, 2}}
+    result: dict[str, Any] = {}
+    for category, valid_ranks in accepted_ranks.items():
+        k = int(category[1:])
+        entries: list[dict[str, Any]] = []
+        for rank in (1, 2, 3):
+            tickets = [
+                list(range(start, start + 6))
+                for start in range(1, 6 * k + 1, 6)
+            ]
+            if rank not in valid_ranks:
+                tickets[1][0] = tickets[0][0]
+            entries.append(
+                {
+                    "rank": rank,
+                    "strategy_id": f"synthetic_{category}_rank_{rank}",
+                    "display_name": f"Synthetic {category.upper()} rank {rank}",
+                    "strategy_version": "synthetic",
+                    "native_ticket_count": k,
+                    "status": "OK",
+                    "tickets": [
+                        {"emitted_main_numbers": ticket} for ticket in tickets
+                    ],
+                }
+            )
+        result[category] = {"entries": entries}
+    return result
+
+
+def _historical_inputs_from_environment() -> tuple[Path, Path] | None:
+    db_value = os.environ.get(HISTORICAL_DB_ENV)
+    rank_history_value = os.environ.get(HISTORICAL_RANK_HISTORY_ENV)
+    if not db_value and not rank_history_value:
+        return None
+    if not db_value or not rank_history_value:
+        pytest.fail(
+            f"Set both {HISTORICAL_DB_ENV} and {HISTORICAL_RANK_HISTORY_ENV} "
+            "to run the local 098 historical Golden"
+        )
+    db_path = Path(db_value)
+    rank_history_path = Path(rank_history_value)
+    assert db_path.is_file(), f"Historical DB does not exist: {db_path}"
+    assert rank_history_path.is_file(), (
+        f"Historical rank history does not exist: {rank_history_path}"
+    )
+    return db_path, rank_history_path
+
+
+def test_ac1_ac2_portable_runtime_independence_and_legacy_blocking(
     tmp_path: Path,
 ) -> None:
-    """AC1 and AC2:
+    """Portable synthetic pipeline and import isolation checks.
+
     - Verifies that running prediction executes cleanly without importing ANY Python
       modules from:
         - B649_K2_K3_EXACT_NATIVE_FULL_REPLAY_R1
@@ -32,7 +131,8 @@ def test_ac1_ac2_runtime_independence_and_blocking_legacy_worktrees(
         - any .task-data Python scripts
     - Uses an active sys.meta_path import blocker that raises ImportError if any module
       from these forbidden legacy paths is imported.
-    - Confirms execution completes successfully (status: COMPLETE, all 9 candidates generated).
+    - Uses only a tmp_path database/ranking input and synthetic candidate outputs.
+    - Confirms six synthetic candidates are accepted and three are rejected.
     - Inspects sys.modules to verify that every loaded lottolab / tool module origin is inside
       TARGET_WORKTREE, and 0 modules are from the forbidden paths.
     """
@@ -69,15 +169,21 @@ def test_ac1_ac2_runtime_independence_and_blocking_legacy_worktrees(
     sys.meta_path.insert(0, blocker)
     try:
         out_dir = tmp_path / "ac1_ac2_test"
+        db_path, rank_history_path = _create_portable_prediction_inputs(tmp_path)
         doc = run_prediction(
+            db_path=db_path,
+            rank_history_path=rank_history_path,
             cutoff_draw="115000097",
             target_draw="115000098",
             output_dir=out_dir,
             overwrite=True,
+            raw_predictions_override=_portable_raw_predictions(),
         )
         assert doc["overall_pipeline_status"] == "COMPLETE"
         assert doc["all_k_available"] is True
-        assert doc["causal_history_length"] == 2179
+        assert doc["causal_history_length"] == 3
+        assert doc["accepted_counts_by_k"] == {"k2": 2, "k3": 2, "k5": 2}
+        assert doc["rejected_counts_by_k"] == {"k2": 1, "k3": 1, "k5": 1}
 
         # Audit all loaded modules in sys.modules
         repo_root_str = str(REPO_ROOT.resolve())
@@ -117,6 +223,8 @@ def test_ac1_existing_output_conflict_rejection_and_idempotence(
     """
     out_dir = tmp_path / "ac1_test"
     out_dir.mkdir(parents=True, exist_ok=True)
+    db_path, rank_history_path = _create_portable_prediction_inputs(tmp_path)
+    raw_predictions = _portable_raw_predictions()
     json_file = out_dir / "predictions_115000098.json"
     txt_file = out_dir / "tickets_115000098.txt"
 
@@ -126,10 +234,13 @@ def test_ac1_existing_output_conflict_rejection_and_idempotence(
 
     with pytest.raises(FileExistsError) as excinfo:
         run_prediction(
+            db_path=db_path,
+            rank_history_path=rank_history_path,
             cutoff_draw="115000097",
             target_draw="115000098",
             output_dir=out_dir,
             overwrite=False,
+            raw_predictions_override=raw_predictions,
         )
     assert "already exists with conflicting" in str(excinfo.value)
     # File content must remain completely preserved and uncorrupted
@@ -137,10 +248,13 @@ def test_ac1_existing_output_conflict_rejection_and_idempotence(
 
     # 2. Overwrite=True succeeds
     doc = run_prediction(
+        db_path=db_path,
+        rank_history_path=rank_history_path,
         cutoff_draw="115000097",
         target_draw="115000098",
         output_dir=out_dir,
         overwrite=True,
+        raw_predictions_override=raw_predictions,
     )
     assert doc["overall_pipeline_status"] == "COMPLETE"
     assert json_file.exists()
@@ -150,10 +264,13 @@ def test_ac1_existing_output_conflict_rejection_and_idempotence(
 
     # 3. Idempotent rerun without overwrite succeeds and preserves exact bytes
     doc_idempotent = run_prediction(
+        db_path=db_path,
+        rank_history_path=rank_history_path,
         cutoff_draw="115000097",
         target_draw="115000098",
         output_dir=out_dir,
         overwrite=False,
+        raw_predictions_override=raw_predictions,
     )
     assert doc_idempotent["overall_pipeline_status"] == "COMPLETE"
     assert json_file.read_bytes() == written_json_bytes
@@ -310,6 +427,7 @@ def test_ac3_no_qualified_candidates_and_partial_availability(
     }
 
     # Scenario 1: Partial availability (K2 and K5 valid, K3 all rejected)
+    db_path, rank_history_path = _create_portable_prediction_inputs(tmp_path)
     partial_override = {
         "k2": {"entries": [valid_k2_entry]},
         "k3": {"entries": [overlapping_k3_entry]},
@@ -317,6 +435,8 @@ def test_ac3_no_qualified_candidates_and_partial_availability(
     }
     out1 = tmp_path / "partial"
     doc_partial = run_prediction(
+        db_path=db_path,
+        rank_history_path=rank_history_path,
         output_dir=out1,
         raw_predictions_override=partial_override,
     )
@@ -347,6 +467,8 @@ def test_ac3_no_qualified_candidates_and_partial_availability(
     }
     out2 = tmp_path / "none_avail"
     doc_none = run_prediction(
+        db_path=db_path,
+        rank_history_path=rank_history_path,
         output_dir=out2,
         raw_predictions_override=none_override,
     )
@@ -381,8 +503,13 @@ def test_ac3_no_qualified_candidates_and_partial_availability(
     assert exc_exit.value.code == 2
 
 
-def test_ac4_draw_098_end_to_end_and_exact_coverage(tmp_path: Path) -> None:
-    """AC4 (No regression):
+def test_local_integration_ac4_draw_098_historical_golden(tmp_path: Path) -> None:
+    """Local integration against the real 098 Golden from explicit private inputs.
+
+    Portable synthetic tests run in ordinary CI; their results are not described
+    as historical performance.
+
+    AC4 (No regression):
     Run end-to-end for draw 115000098:
     - Input cutoff 115000097, 2179 draws.
     - Generates 9 candidates across K2, K3, K5.
@@ -401,7 +528,16 @@ def test_ac4_draw_098_end_to_end_and_exact_coverage(tmp_path: Path) -> None:
       Rejected candidates do not receive these values.
     - all_k_available is True, pipeline status is COMPLETE.
     """
+    historical_inputs = _historical_inputs_from_environment()
+    if historical_inputs is None:
+        pytest.skip(
+            f"Set {HISTORICAL_DB_ENV} and {HISTORICAL_RANK_HISTORY_ENV} "
+            "to run the private historical 098 Golden"
+        )
+    db_path, rank_history_path = historical_inputs
     doc = run_prediction(
+        db_path=db_path,
+        rank_history_path=rank_history_path,
         cutoff_draw="115000097",
         target_draw="115000098",
         output_dir=tmp_path,
@@ -491,16 +627,24 @@ def test_ac7_reproducibility(tmp_path: Path) -> None:
     """
     out1 = tmp_path / "run1"
     out2 = tmp_path / "run2"
+    db_path, rank_history_path = _create_portable_prediction_inputs(tmp_path)
+    raw_predictions = _portable_raw_predictions()
 
     run_prediction(
+        db_path=db_path,
+        rank_history_path=rank_history_path,
         cutoff_draw="115000097",
         target_draw="115000098",
         output_dir=out1,
+        raw_predictions_override=raw_predictions,
     )
     run_prediction(
+        db_path=db_path,
+        rank_history_path=rank_history_path,
         cutoff_draw="115000097",
         target_draw="115000098",
         output_dir=out2,
+        raw_predictions_override=raw_predictions,
     )
 
     json1 = (out1 / "predictions_115000098.json").read_bytes()

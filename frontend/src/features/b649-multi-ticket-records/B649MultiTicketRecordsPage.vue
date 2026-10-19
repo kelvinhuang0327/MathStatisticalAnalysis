@@ -5,7 +5,6 @@ import {
   B649_HISTORY_WINDOWS,
   B649_PREFIX_COUNTS,
   B649_REPRODUCTION_STATUSES,
-  B649_RESEARCH_DISCLAIMER,
   B649_SUCCESS_CRITERIA,
   B649RecordsRequestError,
   fetchB649MultiTicketRecords,
@@ -89,7 +88,7 @@ async function loadSummary(): Promise<void> {
     if (isAbortError(error)) return
     summaryState.value = 'error'
     summaryError.value =
-      error instanceof Error ? error.message : '研究摘要目前無法載入。'
+      error instanceof Error ? error.message : 'Research summary could not be loaded.'
   }
 }
 
@@ -152,7 +151,7 @@ async function runQuery(
     }
     queryState.value = 'error'
     queryError.value =
-      error instanceof Error ? error.message : '查詢目前無法完成。'
+      error instanceof Error ? error.message : 'Query could not be completed.'
   }
 }
 
@@ -220,22 +219,21 @@ onBeforeUnmount(() => {
     <header class="b649-records__heading">
       <div>
         <p class="eyebrow">B649 · checksum-pinned research</p>
-        <h1 id="b649-records-title">大樂透多注歷史預測資料</h1>
+        <h1 id="b649-records-title">B649 Multi-Ticket Historical Replay Data</h1>
         <p class="b649-records__intro">
-          唯讀查閱 221 個正式策略身分及已完成的聚合歷史回測紀錄。此頁不執行策略、
-          不產生票券、不重跑回測，也不選擇最佳策略。
+          Read-only inspection of 221 formal strategy identities and completed aggregated backtest records. This page does not execute strategies, generate tickets, re-run backtests, or select top performers.
         </p>
       </div>
       <span class="readonly-badge">READ ONLY</span>
     </header>
 
     <div v-if="summaryState === 'loading'" class="records-state" role="status" aria-live="polite">
-      正在載入研究摘要…
+      Loading research summary…
     </div>
     <div v-else-if="summaryState === 'error'" class="records-state records-state--error" role="alert">
-      <strong>研究摘要無法載入</strong>
+      <strong>Research summary could not be loaded</strong>
       <p>{{ summaryError }}</p>
-      <button type="button" @click="loadSummary">重試</button>
+      <button type="button" @click="loadSummary">Retry</button>
     </div>
 
     <template v-else-if="summary">
@@ -243,7 +241,7 @@ onBeforeUnmount(() => {
         <div class="research-progress__heading">
           <div>
             <p class="eyebrow">Formal disposition</p>
-            <h2 id="research-progress-title">完整策略研究進度</h2>
+            <h2 id="research-progress-title">Full Strategy Research Progress</h2>
           </div>
           <code :title="summary.catalog_sha256">
             catalog {{ shortSha(summary.catalog_sha256) }}
@@ -251,95 +249,95 @@ onBeforeUnmount(() => {
         </div>
         <dl class="research-progress__grid">
           <div>
-            <dt>全部方法</dt>
+            <dt>All Methods</dt>
             <dd>{{ summary.progress.total_strategy_count }}</dd>
           </div>
           <div>
-            <dt>已復現並回測</dt>
+            <dt>Reproduced & Backtested</dt>
             <dd>{{ summary.progress.backtested_count }}</dd>
           </div>
           <div>
-            <dt>正式不可執行</dt>
+            <dt>Formally Unexecutable</dt>
             <dd>{{ summary.progress.closed_count }}</dd>
           </div>
           <div>
-            <dt>重複別名</dt>
+            <dt>Duplicate Alias</dt>
             <dd>{{ summary.progress.duplicate_alias_count }}</dd>
           </div>
           <div>
-            <dt>待 Owner 決策</dt>
+            <dt>Pending Owner Decision</dt>
             <dd>{{ summary.progress.owner_decision_required_count }}</dd>
           </div>
           <div>
-            <dt>未完成</dt>
+            <dt>Incomplete</dt>
             <dd>{{ summary.progress.uncompleted_count }}</dd>
           </div>
         </dl>
       </section>
 
       <aside class="research-disclaimer" role="note">
-        {{ B649_RESEARCH_DISCLAIMER }}
+        Historical success rates, rankings, and random baseline differences are for descriptive research only and do not constitute future predictions, recommendations, deployment decisions, or prize guarantees.
       </aside>
 
       <form class="records-query" aria-labelledby="records-query-title" @submit.prevent="submitQuery">
         <div class="records-query__heading">
           <div>
             <p class="eyebrow">Explicit query</p>
-            <h2 id="records-query-title">選擇查詢條件</h2>
+            <h2 id="records-query-title">Query Parameters</h2>
           </div>
-          <p>注數、歷史區間與成功標準必須由你明確選擇；系統不提供預設贏家。</p>
+          <p>Ticket count, history window, and success criterion must be explicitly selected; no default winner is provided.</p>
         </div>
         <div class="records-query__grid">
           <label>
-            <span>注數 <strong aria-hidden="true">*</strong></span>
+            <span>Ticket Count <strong aria-hidden="true">*</strong></span>
             <select v-model="prefixCount" name="prefix-count" required>
-              <option value="" disabled>請選擇</option>
+              <option value="" disabled>Select ticket count</option>
               <option v-for="value in B649_PREFIX_COUNTS" :key="value" :value="value">
-                {{ value }} 注
+                {{ value }} Tickets
               </option>
             </select>
           </label>
           <label>
-            <span>歷史區間 <strong aria-hidden="true">*</strong></span>
+            <span>History Window <strong aria-hidden="true">*</strong></span>
             <select v-model="windowKind" name="history-window" required>
-              <option value="" disabled>請選擇</option>
+              <option value="" disabled>Select window</option>
               <option v-for="value in B649_HISTORY_WINDOWS" :key="value" :value="value">
                 {{ value }}
               </option>
             </select>
           </label>
           <label>
-            <span>成功標準 <strong aria-hidden="true">*</strong></span>
+            <span>Success Criterion <strong aria-hidden="true">*</strong></span>
             <select v-model="criterion" name="success-criterion" required>
-              <option value="" disabled>請選擇</option>
+              <option value="" disabled>Select criterion</option>
               <option v-for="value in B649_SUCCESS_CRITERIA" :key="value" :value="value">
                 {{ value }}
               </option>
             </select>
           </label>
           <label>
-            <span>策略搜尋</span>
+            <span>Strategy Search</span>
             <input
               v-model="search"
               name="strategy-search"
               type="search"
               maxlength="200"
-              placeholder="策略 ID、舊方法或來源"
+              placeholder="Strategy ID, legacy method, or source"
             />
           </label>
           <label>
-            <span>方法分類</span>
+            <span>Method Family</span>
             <select v-model="methodFamily" name="method-family">
-              <option value="">全部分類</option>
+              <option value="">All families</option>
               <option v-for="family in summary.method_families" :key="family" :value="family">
                 {{ family }}
               </option>
             </select>
           </label>
           <label>
-            <span>復現狀態</span>
+            <span>Reproduction Status</span>
             <select v-model="reproductionStatus" name="reproduction-status">
-              <option value="">全部狀態</option>
+              <option value="">All statuses</option>
               <option
                 v-for="status in B649_REPRODUCTION_STATUSES"
                 :key="status"
@@ -352,84 +350,84 @@ onBeforeUnmount(() => {
         </div>
         <div class="records-query__actions">
           <p v-if="!recordsAvailable" role="status">
-            checksum-pinned 聚合 projection 目前不可用；查詢維持關閉。
+            Checksum-pinned aggregate projection is currently unavailable; query remains disabled.
           </p>
-          <p v-else-if="!canQuery">請先選擇三個必填研究條件。</p>
-          <p v-else>準備依明確條件讀取聚合紀錄。</p>
+          <p v-else-if="!canQuery">Please select all three required query parameters.</p>
+          <p v-else>Ready to query aggregate records with explicit parameters.</p>
           <button type="submit" :disabled="!canQuery || queryState === 'loading'">
-            {{ queryState === 'loading' ? '查詢中…' : '查詢' }}
+            {{ queryState === 'loading' ? 'Querying…' : 'Query' }}
           </button>
         </div>
       </form>
 
       <div v-if="queryState === 'idle'" class="records-state" role="status">
-        尚未送出查詢。頁面不會自動選擇排名、最新資料或最佳策略。
+        No query submitted yet. The page does not automatically select rankings, latest data, or top strategies.
       </div>
       <div v-else-if="queryState === 'loading'" class="records-state" role="status" aria-live="polite">
-        正在讀取 checksum-pinned 聚合紀錄…
+        Loading checksum-pinned aggregate records…
       </div>
       <div v-else-if="queryState === 'empty'" class="records-state" role="status">
-        <strong>沒有符合條件的策略</strong>
-        <p>請調整搜尋文字或篩選條件後重新按下「查詢」。</p>
+        <strong>No matching strategies found</strong>
+        <p>Adjust search text or filter criteria and click "Query" again.</p>
       </div>
       <div
         v-else-if="queryState === 'unavailable'"
         class="records-state records-state--warning"
         role="status"
       >
-        <strong>聚合歷史紀錄目前不可用</strong>
-        <p>{{ queryError || '系統找不到完整且 checksum-pinned 的正式 projection。' }}</p>
-        <button type="button" @click="retryQuery">重試</button>
+        <strong>Aggregate historical records are currently unavailable</strong>
+        <p>{{ queryError || 'System could not locate a complete, checksum-pinned production projection.' }}</p>
+        <button type="button" @click="retryQuery">Retry</button>
       </div>
       <div v-else-if="queryState === 'error'" class="records-state records-state--error" role="alert">
-        <strong>查詢失敗</strong>
+        <strong>Query Failed</strong>
         <p>{{ queryError }}</p>
-        <button type="button" @click="retryQuery">重試</button>
+        <button type="button" @click="retryQuery">Retry</button>
       </div>
 
       <section v-else-if="queryState === 'success' && page" class="records-results">
         <div class="records-results__heading">
           <div>
             <p class="eyebrow">Aggregate records only</p>
-            <h2>查詢結果</h2>
+            <h2>Query Results</h2>
           </div>
           <p aria-live="polite">{{ displayedRange }}</p>
         </div>
         <div
           class="records-table-scroll"
           role="region"
-          aria-label="B649 多注歷史預測資料表，可水平捲動"
+          aria-label="B649 multi-ticket historical replay table, horizontally scrollable"
           tabindex="0"
         >
           <table class="records-table">
             <caption>
-              聚合歷史紀錄；不包含逐期 ordered-20、native tickets 或 execution audit。
+              Aggregated historical records; does not include draw-by-draw ordered-20, native tickets, or execution audit.
             </caption>
             <thead>
               <tr>
-                <th scope="col">策略／版本</th>
-                <th scope="col">歷史方法身分</th>
-                <th scope="col">復現狀態</th>
-                <th scope="col">查詢條件</th>
-                <th scope="col">官方任一獎排名</th>
-                <th scope="col">官方任一獎率</th>
-                <th scope="col">官方隨機基準</th>
-                <th scope="col">官方相對差異</th>
-                <th scope="col">次要 M 排名／原因</th>
-                <th scope="col">成功／有效期數</th>
-                <th scope="col">次要 M 成功率</th>
-                <th scope="col">次要 M 隨機基準</th>
-                <th scope="col">次要 M 相對差異</th>
-                <th scope="col">覆蓋率</th>
-                <th scope="col">一獎</th>
-                <th scope="col">二獎</th>
-                <th scope="col">三獎</th>
-                <th scope="col">四獎</th>
-                <th scope="col">五獎</th>
-                <th scope="col">六獎</th>
-                <th scope="col">七獎</th>
-                <th scope="col">普獎</th>
-                <th scope="col">未中獎</th>
+                <th scope="col">Strategy / Version</th>
+                <th scope="col">Legacy Method ID</th>
+                <th scope="col">Status</th>
+                <th scope="col">Parameters</th>
+                <th scope="col">Official Any-Prize Rank</th>
+                <th scope="col">Official Win Rate</th>
+                <th scope="col">Official Baseline</th>
+                <th scope="col">Official Delta</th>
+                <th scope="col">Secondary Rank / Reason</th>
+                <th scope="col">Success / Valid Draws</th>
+                <th scope="col">Secondary Rate</th>
+                <th scope="col">Secondary Baseline</th>
+                <th scope="col">Secondary Delta</th>
+                <th scope="col">Coverage</th>
+                <th scope="col">1st Prize</th>
+                <th scope="col">2nd Prize</th>
+                <th scope="col">3rd Prize</th>
+                <th scope="col">4th Prize</th>
+                <th scope="col">5th Prize</th>
+                <th scope="col">6th Prize</th>
+                <th scope="col">7th Prize</th>
+                <th scope="col">General Prize</th>
+                <th scope="col">No Prize</th>
                 <th scope="col">report SHA-256</th>
                 <th scope="col">catalog SHA-256</th>
               </tr>
@@ -484,13 +482,13 @@ onBeforeUnmount(() => {
             </tbody>
           </table>
         </div>
-        <nav class="records-pagination" aria-label="查詢結果分頁">
+        <nav class="records-pagination" aria-label="Query results pagination">
           <button type="button" :disabled="!hasPrevious" @click="previousPage">
-            上一頁
+            Previous
           </button>
           <span>{{ displayedRange }}</span>
           <button type="button" :disabled="!hasNext" @click="nextPage">
-            下一頁
+            Next
           </button>
         </nav>
       </section>

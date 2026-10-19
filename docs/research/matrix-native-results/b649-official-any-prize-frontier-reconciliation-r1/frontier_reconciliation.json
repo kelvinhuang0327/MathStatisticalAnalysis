@@ -1,0 +1,3030 @@
+{
+  "AUTHORITY_SUMMARY": {
+    "CANONICAL_EVALUATOR": {
+      "callable": "evaluate_portfolio",
+      "draw_space_callable": "all_main_draw_masks",
+      "path": "src/lottolab/research/b649_official_any_prize_exact.py",
+      "source_file_sha256": "92dcb836254cc6dbcd6c2ad907e619a5eb8cf3917197a8f6de3e5f989825cf66"
+    },
+    "CURRENT_PRODUCTION_CODE": {
+      "method": "B649_SEALED_GEOMETRY_PORTFOLIO",
+      "path": "src/lottolab/application/b649_sealed_geometry_portfolio.py",
+      "source_file_sha256": "c058c42fc04388b854e5ef4e2adaf517e81813049a8add2bb3cf746d9f6943b4"
+    },
+    "DESIGNATED_RESEARCH_REFERENCE": {
+      "designation_file_sha256": "cc9ed16191f9f92611fbaefb98d202ac7264e617e41e1208752bfc15f044c77e",
+      "designation_path": "docs/research/matrix-native-results/b649-official-any-prize-constructor-reference-designation-v1.json",
+      "evidence_inputs_file_sha256": "a62ea73a422b7f9a3169ca039e00acb421fc0d9a4af1aafda8007b8891ea20c8",
+      "evidence_inputs_path": "docs/research/matrix-native-results/b649-reference-e-improved-portfolio-official-any-prize-postcheck-r1/inputs.json",
+      "method": "ITERATIVE_EXACT_1EXCHANGE_REFINEMENT_V1"
+    },
+    "HARD_DIV": {
+      "method": "HARD_DIV_PAIRWISE_OVERLAP_R1",
+      "path": "docs/research/matrix-native-results/hard-div-exact-radius2-reconciliation-r1-result.json",
+      "source_file_sha256": "2d37c6dceb69664b489a458f46d201d9e13b544a08c3924ece8b848f44d25b82"
+    }
+  },
+  "BASE_HEAD": "741280b609ee4ee0e3d4ca5e03131e8c92968ebc",
+  "BASE_TREE": "bbe7eb2f23a9914f998d1ae39bf4b9fd198e19c7",
+  "BRANCH": "codex/b649-official-any-prize-frontier-reconciliation-r1",
+  "CANDIDATE_IDENTITIES": [
+    {
+      "CANDIDATE_ID": "CURRENT_PRODUCTION_CODE_K5_SEMANTIC_ec858fe04075ee40931366c05617ad7d04d934c5f72ac35c9b74c26ba91f8d87",
+      "EXACT_EVALUATION": {
+        "m3_plus": "54130/582659",
+        "m3_plus_draw_count": 1299120,
+        "main_draw_count": 13983816,
+        "official_any_prize": "547495/3579191",
+        "official_any_prize_outcome_count": 91979160,
+        "special_count": 43,
+        "total_outcome_count": 601304088
+      },
+      "K": 5,
+      "NORMALIZED_SEMANTIC_ID": "ec858fe04075ee40931366c05617ad7d04d934c5f72ac35c9b74c26ba91f8d87",
+      "NORMALIZED_TICKET_SET": [
+        [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        [
+          7,
+          8,
+          9,
+          10,
+          11,
+          12
+        ],
+        [
+          13,
+          14,
+          15,
+          16,
+          17,
+          18
+        ],
+        [
+          19,
+          20,
+          21,
+          22,
+          23,
+          24
+        ],
+        [
+          25,
+          26,
+          27,
+          28,
+          29,
+          30
+        ]
+      ],
+      "SOURCE_IDENTITIES": [
+        {
+          "METHOD_ID": "B649_SEALED_GEOMETRY_PORTFOLIO",
+          "SOURCE_AUTHORITY_FILE_SHA256": null,
+          "SOURCE_AUTHORITY_PATH": null,
+          "SOURCE_CANDIDATE_ID": "CURRENT_PRODUCTION_CODE_B649_SEALED_GEOMETRY_PORTFOLIO_K5",
+          "SOURCE_FAMILY": "CURRENT_PRODUCTION_CODE",
+          "SOURCE_FILE_SHA256": "f2a48557dffb04a2ac13ed2b1286ef85bb5fffda97313728863680c67200ffec",
+          "SOURCE_HASH_CONVENTION": "COMPACT_JSON_LISTS_CONSTRUCTOR_ORDER",
+          "SOURCE_ID": "STRATEGY_MATRIX_REFERENCE_E_METHOD_E_20_PREFIX_K5",
+          "SOURCE_LOCATOR": "docs/research/matrix-native-results/diversification-constructor-frontier-b649-v1-result.json",
+          "SOURCE_PATH": "src/lottolab/application/b649_sealed_geometry_portfolio.py",
+          "SOURCE_RECORDED_SHA256": "ec858fe04075ee40931366c05617ad7d04d934c5f72ac35c9b74c26ba91f8d87",
+          "SOURCE_TICKETS": [
+            [
+              1,
+              2,
+              3,
+              4,
+              5,
+              6
+            ],
+            [
+              7,
+              8,
+              9,
+              10,
+              11,
+              12
+            ],
+            [
+              13,
+              14,
+              15,
+              16,
+              17,
+              18
+            ],
+            [
+              19,
+              20,
+              21,
+              22,
+              23,
+              24
+            ],
+            [
+              25,
+              26,
+              27,
+              28,
+              29,
+              30
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "CANDIDATE_ID": "HARD_DIV_PAIRWISE_OVERLAP_R1_K5_SEMANTIC_985ceea1c7790da4b4b47b01585e1ca41cdcd927a2c63f50462de2c75edce009",
+      "EXACT_EVALUATION": {
+        "m3_plus": "54130/582659",
+        "m3_plus_draw_count": 1299120,
+        "main_draw_count": 13983816,
+        "official_any_prize": "547495/3579191",
+        "official_any_prize_outcome_count": 91979160,
+        "special_count": 43,
+        "total_outcome_count": 601304088
+      },
+      "K": 5,
+      "NORMALIZED_SEMANTIC_ID": "985ceea1c7790da4b4b47b01585e1ca41cdcd927a2c63f50462de2c75edce009",
+      "NORMALIZED_TICKET_SET": [
+        [
+          1,
+          2,
+          4,
+          8,
+          13,
+          21
+        ],
+        [
+          3,
+          5,
+          9,
+          14,
+          22,
+          30
+        ],
+        [
+          6,
+          10,
+          15,
+          23,
+          28,
+          29
+        ],
+        [
+          7,
+          11,
+          16,
+          19,
+          20,
+          24
+        ],
+        [
+          12,
+          17,
+          18,
+          25,
+          26,
+          27
+        ]
+      ],
+      "SOURCE_IDENTITIES": [
+        {
+          "METHOD_ID": "HARD_DIV_PAIRWISE_OVERLAP_R1",
+          "SOURCE_AUTHORITY_FILE_SHA256": null,
+          "SOURCE_AUTHORITY_PATH": null,
+          "SOURCE_CANDIDATE_ID": "HARD_DIV_PAIRWISE_OVERLAP_R1_K5_RADIUS1",
+          "SOURCE_FAMILY": "HARD_DIV_PAIRWISE_OVERLAP_R1",
+          "SOURCE_FILE_SHA256": "2d37c6dceb69664b489a458f46d201d9e13b544a08c3924ece8b848f44d25b82",
+          "SOURCE_HASH_CONVENTION": "UNKNOWN_SOURCE_CONVENTION_PRESERVED_VERBATIM_DO_NOT_COMPARE_ACROSS_CONVENTIONS",
+          "SOURCE_ID": "HARD_DIV_PAIRWISE_OVERLAP_R1_K5_RADIUS1",
+          "SOURCE_LOCATOR": "docs/research/matrix-native-results/hard-div-exact-radius2-reconciliation-r1-result.json#/k_results[k=5]/radius1_portfolio",
+          "SOURCE_PATH": "docs/research/matrix-native-results/hard-div-exact-radius2-reconciliation-r1-result.json",
+          "SOURCE_RECORDED_SHA256": "cbd4c4721a4b83b05127806eafdfe0325a4f3692033686c5e1a6639da122d3e4",
+          "SOURCE_TICKETS": [
+            [
+              1,
+              2,
+              4,
+              8,
+              13,
+              21
+            ],
+            [
+              3,
+              5,
+              9,
+              14,
+              22,
+              30
+            ],
+            [
+              6,
+              10,
+              15,
+              23,
+              28,
+              29
+            ],
+            [
+              7,
+              11,
+              16,
+              19,
+              20,
+              24
+            ],
+            [
+              12,
+              17,
+              18,
+              25,
+              26,
+              27
+            ]
+          ]
+        },
+        {
+          "METHOD_ID": "HARD_DIV_PAIRWISE_OVERLAP_R1",
+          "SOURCE_AUTHORITY_FILE_SHA256": null,
+          "SOURCE_AUTHORITY_PATH": null,
+          "SOURCE_CANDIDATE_ID": "HARD_DIV_PAIRWISE_OVERLAP_R1_K5_RADIUS2",
+          "SOURCE_FAMILY": "HARD_DIV_PAIRWISE_OVERLAP_R1",
+          "SOURCE_FILE_SHA256": "2d37c6dceb69664b489a458f46d201d9e13b544a08c3924ece8b848f44d25b82",
+          "SOURCE_HASH_CONVENTION": "COMPACT_JSON_LISTS_SOURCE_ORDER_EQUALS_NORMALIZED_ORDER",
+          "SOURCE_ID": "HARD_DIV_PAIRWISE_OVERLAP_R1_K5_RADIUS2",
+          "SOURCE_LOCATOR": "docs/research/matrix-native-results/hard-div-exact-radius2-reconciliation-r1-result.json#/k_results[k=5]/radius2_portfolio",
+          "SOURCE_PATH": "docs/research/matrix-native-results/hard-div-exact-radius2-reconciliation-r1-result.json",
+          "SOURCE_RECORDED_SHA256": "985ceea1c7790da4b4b47b01585e1ca41cdcd927a2c63f50462de2c75edce009",
+          "SOURCE_TICKETS": [
+            [
+              1,
+              2,
+              4,
+              8,
+              13,
+              21
+            ],
+            [
+              3,
+              5,
+              9,
+              14,
+              22,
+              30
+            ],
+            [
+              6,
+              10,
+              15,
+              23,
+              28,
+              29
+            ],
+            [
+              7,
+              11,
+              16,
+              19,
+              20,
+              24
+            ],
+            [
+              12,
+              17,
+              18,
+              25,
+              26,
+              27
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "CANDIDATE_ID": "CURRENT_PRODUCTION_CODE_K10_SEMANTIC_eea8a560fdd65e2d35cb438e950426df537880525b4e0d014366e9f8ca57acdc",
+      "EXACT_EVALUATION": {
+        "m3_plus": "364025/1997688",
+        "m3_plus_draw_count": 2548175,
+        "main_draw_count": 13983816,
+        "official_any_prize": "1095245/3734808",
+        "official_any_prize_outcome_count": 176334445,
+        "special_count": 43,
+        "total_outcome_count": 601304088
+      },
+      "K": 10,
+      "NORMALIZED_SEMANTIC_ID": "eea8a560fdd65e2d35cb438e950426df537880525b4e0d014366e9f8ca57acdc",
+      "NORMALIZED_TICKET_SET": [
+        [
+          1,
+          11,
+          12,
+          18,
+          23,
+          40
+        ],
+        [
+          2,
+          18,
+          33,
+          35,
+          38,
+          39
+        ],
+        [
+          3,
+          6,
+          9,
+          13,
+          14,
+          49
+        ],
+        [
+          4,
+          21,
+          22,
+          32,
+          36,
+          43
+        ],
+        [
+          5,
+          8,
+          15,
+          24,
+          30,
+          31
+        ],
+        [
+          7,
+          37,
+          41,
+          42,
+          44,
+          45
+        ],
+        [
+          10,
+          11,
+          25,
+          29,
+          33,
+          47
+        ],
+        [
+          10,
+          17,
+          19,
+          23,
+          39,
+          48
+        ],
+        [
+          16,
+          20,
+          27,
+          28,
+          42,
+          46
+        ],
+        [
+          17,
+          26,
+          29,
+          34,
+          38,
+          40
+        ]
+      ],
+      "SOURCE_IDENTITIES": [
+        {
+          "METHOD_ID": "B649_SEALED_GEOMETRY_PORTFOLIO",
+          "SOURCE_AUTHORITY_FILE_SHA256": null,
+          "SOURCE_AUTHORITY_PATH": null,
+          "SOURCE_CANDIDATE_ID": "CURRENT_PRODUCTION_CODE_B649_SEALED_GEOMETRY_PORTFOLIO_K10",
+          "SOURCE_FAMILY": "CURRENT_PRODUCTION_CODE",
+          "SOURCE_FILE_SHA256": "8ae997ec1ed504b93fd80e5113660973774cd5d9fe6054d0989312940b942211",
+          "SOURCE_HASH_CONVENTION": "COMPACT_JSON_LISTS_CONSTRUCTOR_ORDER",
+          "SOURCE_ID": "B649_ANY_PRIZE_OBJECTIVE_CORRECTION_R1_P0C_CAPTURE_GAP_K10",
+          "SOURCE_LOCATOR": ".task-data/B649_ANY_PRIZE_OBJECTIVE_CORRECTION_R1/p0c_capture_gap.json",
+          "SOURCE_PATH": "src/lottolab/application/b649_sealed_geometry_portfolio.py",
+          "SOURCE_RECORDED_SHA256": "d73f37721e3378deb024e4b762a915dbfa125d462605c293bc764fef7ea487c2",
+          "SOURCE_TICKETS": [
+            [
+              10,
+              17,
+              19,
+              23,
+              39,
+              48
+            ],
+            [
+              3,
+              6,
+              9,
+              13,
+              14,
+              49
+            ],
+            [
+              17,
+              26,
+              29,
+              34,
+              38,
+              40
+            ],
+            [
+              1,
+              11,
+              12,
+              18,
+              23,
+              40
+            ],
+            [
+              7,
+              37,
+              41,
+              42,
+              44,
+              45
+            ],
+            [
+              10,
+              11,
+              25,
+              29,
+              33,
+              47
+            ],
+            [
+              5,
+              8,
+              15,
+              24,
+              30,
+              31
+            ],
+            [
+              2,
+              18,
+              33,
+              35,
+              38,
+              39
+            ],
+            [
+              16,
+              20,
+              27,
+              28,
+              42,
+              46
+            ],
+            [
+              4,
+              21,
+              22,
+              32,
+              36,
+              43
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "CANDIDATE_ID": "DESIGNATED_RESEARCH_REFERENCE_K10_SEMANTIC_4167482d739c59896ad9d50d23ebad89c1d22e787df8a34ae2b6bfd9206a69d5",
+      "EXACT_EVALUATION": {
+        "m3_plus": "90995/499422",
+        "m3_plus_draw_count": 2547860,
+        "main_draw_count": 13983816,
+        "official_any_prize": "66980/228459",
+        "official_any_prize_outcome_count": 176291360,
+        "special_count": 43,
+        "total_outcome_count": 601304088
+      },
+      "K": 10,
+      "NORMALIZED_SEMANTIC_ID": "4167482d739c59896ad9d50d23ebad89c1d22e787df8a34ae2b6bfd9206a69d5",
+      "NORMALIZED_TICKET_SET": [
+        [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        [
+          1,
+          7,
+          13,
+          19,
+          25,
+          49
+        ],
+        [
+          2,
+          8,
+          14,
+          20,
+          26,
+          49
+        ],
+        [
+          7,
+          8,
+          9,
+          10,
+          11,
+          12
+        ],
+        [
+          13,
+          14,
+          15,
+          16,
+          17,
+          18
+        ],
+        [
+          19,
+          20,
+          21,
+          22,
+          23,
+          24
+        ],
+        [
+          25,
+          26,
+          27,
+          28,
+          29,
+          30
+        ],
+        [
+          31,
+          32,
+          33,
+          34,
+          35,
+          36
+        ],
+        [
+          37,
+          38,
+          39,
+          40,
+          41,
+          42
+        ],
+        [
+          43,
+          44,
+          45,
+          46,
+          47,
+          48
+        ]
+      ],
+      "SOURCE_IDENTITIES": [
+        {
+          "METHOD_ID": "ITERATIVE_EXACT_1EXCHANGE_REFINEMENT_V1",
+          "SOURCE_AUTHORITY_FILE_SHA256": "cc9ed16191f9f92611fbaefb98d202ac7264e617e41e1208752bfc15f044c77e",
+          "SOURCE_AUTHORITY_PATH": "docs/research/matrix-native-results/b649-official-any-prize-constructor-reference-designation-v1.json",
+          "SOURCE_CANDIDATE_ID": "DESIGNATED_REFERENCE_ITERATIVE_EXACT_1EXCHANGE_REFINEMENT_V1_K10",
+          "SOURCE_FAMILY": "DESIGNATED_RESEARCH_REFERENCE",
+          "SOURCE_FILE_SHA256": "a62ea73a422b7f9a3169ca039e00acb421fc0d9a4af1aafda8007b8891ea20c8",
+          "SOURCE_HASH_CONVENTION": "sorted compact JSON",
+          "SOURCE_ID": "ITERATIVE_EXACT_1EXCHANGE_REFINEMENT_V1_K10_TERMINAL",
+          "SOURCE_LOCATOR": "docs/research/matrix-native-results/b649-reference-e-improved-portfolio-official-any-prize-postcheck-r1/inputs.json#/per_k/10/terminal/portfolio",
+          "SOURCE_PATH": "docs/research/matrix-native-results/b649-reference-e-improved-portfolio-official-any-prize-postcheck-r1/inputs.json",
+          "SOURCE_RECORDED_SHA256": "4167482d739c59896ad9d50d23ebad89c1d22e787df8a34ae2b6bfd9206a69d5",
+          "SOURCE_TICKETS": [
+            [
+              1,
+              2,
+              3,
+              4,
+              5,
+              6
+            ],
+            [
+              1,
+              7,
+              13,
+              19,
+              25,
+              49
+            ],
+            [
+              2,
+              8,
+              14,
+              20,
+              26,
+              49
+            ],
+            [
+              7,
+              8,
+              9,
+              10,
+              11,
+              12
+            ],
+            [
+              13,
+              14,
+              15,
+              16,
+              17,
+              18
+            ],
+            [
+              19,
+              20,
+              21,
+              22,
+              23,
+              24
+            ],
+            [
+              25,
+              26,
+              27,
+              28,
+              29,
+              30
+            ],
+            [
+              31,
+              32,
+              33,
+              34,
+              35,
+              36
+            ],
+            [
+              37,
+              38,
+              39,
+              40,
+              41,
+              42
+            ],
+            [
+              43,
+              44,
+              45,
+              46,
+              47,
+              48
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "CANDIDATE_ID": "HARD_DIV_PAIRWISE_OVERLAP_R1_K10_SEMANTIC_13b1126d5b26ce44c9aba24670142eeab49f4a4b51aaf3bbabe7a7f1659ac673",
+      "EXACT_EVALUATION": {
+        "m3_plus": "364025/1997688",
+        "m3_plus_draw_count": 2548175,
+        "main_draw_count": 13983816,
+        "official_any_prize": "536005/1827672",
+        "official_any_prize_outcome_count": 176345645,
+        "special_count": 43,
+        "total_outcome_count": 601304088
+      },
+      "K": 10,
+      "NORMALIZED_SEMANTIC_ID": "13b1126d5b26ce44c9aba24670142eeab49f4a4b51aaf3bbabe7a7f1659ac673",
+      "NORMALIZED_TICKET_SET": [
+        [
+          1,
+          2,
+          4,
+          8,
+          13,
+          21
+        ],
+        [
+          3,
+          6,
+          10,
+          15,
+          23,
+          42
+        ],
+        [
+          4,
+          5,
+          7,
+          11,
+          16,
+          24
+        ],
+        [
+          5,
+          8,
+          12,
+          17,
+          18,
+          25
+        ],
+        [
+          7,
+          13,
+          18,
+          26,
+          29,
+          41
+        ],
+        [
+          9,
+          11,
+          20,
+          28,
+          40,
+          44
+        ],
+        [
+          12,
+          16,
+          21,
+          29,
+          32,
+          36
+        ],
+        [
+          14,
+          22,
+          31,
+          37,
+          45,
+          47
+        ],
+        [
+          19,
+          27,
+          33,
+          34,
+          35,
+          43
+        ],
+        [
+          30,
+          38,
+          39,
+          46,
+          48,
+          49
+        ]
+      ],
+      "SOURCE_IDENTITIES": [
+        {
+          "METHOD_ID": "HARD_DIV_PAIRWISE_OVERLAP_R1",
+          "SOURCE_AUTHORITY_FILE_SHA256": null,
+          "SOURCE_AUTHORITY_PATH": null,
+          "SOURCE_CANDIDATE_ID": "HARD_DIV_PAIRWISE_OVERLAP_R1_K10_RADIUS1",
+          "SOURCE_FAMILY": "HARD_DIV_PAIRWISE_OVERLAP_R1",
+          "SOURCE_FILE_SHA256": "2d37c6dceb69664b489a458f46d201d9e13b544a08c3924ece8b848f44d25b82",
+          "SOURCE_HASH_CONVENTION": "UNKNOWN_SOURCE_CONVENTION_PRESERVED_VERBATIM_DO_NOT_COMPARE_ACROSS_CONVENTIONS",
+          "SOURCE_ID": "HARD_DIV_PAIRWISE_OVERLAP_R1_K10_RADIUS1",
+          "SOURCE_LOCATOR": "docs/research/matrix-native-results/hard-div-exact-radius2-reconciliation-r1-result.json#/k_results[k=10]/radius1_portfolio",
+          "SOURCE_PATH": "docs/research/matrix-native-results/hard-div-exact-radius2-reconciliation-r1-result.json",
+          "SOURCE_RECORDED_SHA256": "363a087f9b3f1294291c98f4353115be1031606946d25f6c56774b14261b5f49",
+          "SOURCE_TICKETS": [
+            [
+              1,
+              2,
+              4,
+              8,
+              13,
+              21
+            ],
+            [
+              3,
+              6,
+              10,
+              15,
+              23,
+              42
+            ],
+            [
+              4,
+              5,
+              7,
+              11,
+              16,
+              24
+            ],
+            [
+              5,
+              8,
+              12,
+              17,
+              18,
+              25
+            ],
+            [
+              7,
+              13,
+              18,
+              26,
+              29,
+              41
+            ],
+            [
+              9,
+              11,
+              20,
+              28,
+              40,
+              44
+            ],
+            [
+              12,
+              16,
+              21,
+              29,
+              32,
+              36
+            ],
+            [
+              14,
+              22,
+              31,
+              37,
+              45,
+              47
+            ],
+            [
+              19,
+              27,
+              33,
+              34,
+              35,
+              43
+            ],
+            [
+              30,
+              38,
+              39,
+              46,
+              48,
+              49
+            ]
+          ]
+        },
+        {
+          "METHOD_ID": "HARD_DIV_PAIRWISE_OVERLAP_R1",
+          "SOURCE_AUTHORITY_FILE_SHA256": null,
+          "SOURCE_AUTHORITY_PATH": null,
+          "SOURCE_CANDIDATE_ID": "HARD_DIV_PAIRWISE_OVERLAP_R1_K10_RADIUS2",
+          "SOURCE_FAMILY": "HARD_DIV_PAIRWISE_OVERLAP_R1",
+          "SOURCE_FILE_SHA256": "2d37c6dceb69664b489a458f46d201d9e13b544a08c3924ece8b848f44d25b82",
+          "SOURCE_HASH_CONVENTION": "COMPACT_JSON_LISTS_SOURCE_ORDER_EQUALS_NORMALIZED_ORDER",
+          "SOURCE_ID": "HARD_DIV_PAIRWISE_OVERLAP_R1_K10_RADIUS2",
+          "SOURCE_LOCATOR": "docs/research/matrix-native-results/hard-div-exact-radius2-reconciliation-r1-result.json#/k_results[k=10]/radius2_portfolio",
+          "SOURCE_PATH": "docs/research/matrix-native-results/hard-div-exact-radius2-reconciliation-r1-result.json",
+          "SOURCE_RECORDED_SHA256": "13b1126d5b26ce44c9aba24670142eeab49f4a4b51aaf3bbabe7a7f1659ac673",
+          "SOURCE_TICKETS": [
+            [
+              1,
+              2,
+              4,
+              8,
+              13,
+              21
+            ],
+            [
+              3,
+              6,
+              10,
+              15,
+              23,
+              42
+            ],
+            [
+              4,
+              5,
+              7,
+              11,
+              16,
+              24
+            ],
+            [
+              5,
+              8,
+              12,
+              17,
+              18,
+              25
+            ],
+            [
+              7,
+              13,
+              18,
+              26,
+              29,
+              41
+            ],
+            [
+              9,
+              11,
+              20,
+              28,
+              40,
+              44
+            ],
+            [
+              12,
+              16,
+              21,
+              29,
+              32,
+              36
+            ],
+            [
+              14,
+              22,
+              31,
+              37,
+              45,
+              47
+            ],
+            [
+              19,
+              27,
+              33,
+              34,
+              35,
+              43
+            ],
+            [
+              30,
+              38,
+              39,
+              46,
+              48,
+              49
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "CANDIDATE_ID": "DESIGNATED_RESEARCH_REFERENCE_K15_SEMANTIC_8057138edd980413fa52607144d66a90372e68d251654998e3a1767fd3d9ce83",
+      "EXACT_EVALUATION": {
+        "m3_plus": "14090/52969",
+        "m3_plus_draw_count": 3719760,
+        "main_draw_count": 13983816,
+        "official_any_prize": "2976525/7158382",
+        "official_any_prize_outcome_count": 250028100,
+        "special_count": 43,
+        "total_outcome_count": 601304088
+      },
+      "K": 15,
+      "NORMALIZED_SEMANTIC_ID": "8057138edd980413fa52607144d66a90372e68d251654998e3a1767fd3d9ce83",
+      "NORMALIZED_TICKET_SET": [
+        [
+          1,
+          2,
+          3,
+          4,
+          5,
+          33
+        ],
+        [
+          2,
+          8,
+          9,
+          29,
+          36,
+          37
+        ],
+        [
+          3,
+          9,
+          15,
+          27,
+          32,
+          42
+        ],
+        [
+          4,
+          26,
+          27,
+          29,
+          34,
+          41
+        ],
+        [
+          5,
+          8,
+          15,
+          26,
+          31,
+          39
+        ],
+        [
+          6,
+          10,
+          16,
+          22,
+          25,
+          28
+        ],
+        [
+          6,
+          12,
+          18,
+          24,
+          30,
+          35
+        ],
+        [
+          7,
+          10,
+          11,
+          12,
+          14,
+          20
+        ],
+        [
+          7,
+          13,
+          19,
+          25,
+          30,
+          49
+        ],
+        [
+          11,
+          17,
+          23,
+          28,
+          35,
+          49
+        ],
+        [
+          13,
+          14,
+          16,
+          17,
+          18,
+          21
+        ],
+        [
+          19,
+          20,
+          21,
+          22,
+          23,
+          24
+        ],
+        [
+          31,
+          32,
+          33,
+          34,
+          36,
+          40
+        ],
+        [
+          37,
+          38,
+          39,
+          40,
+          41,
+          42
+        ],
+        [
+          43,
+          44,
+          45,
+          46,
+          47,
+          48
+        ]
+      ],
+      "SOURCE_IDENTITIES": [
+        {
+          "METHOD_ID": "ITERATIVE_EXACT_1EXCHANGE_REFINEMENT_V1",
+          "SOURCE_AUTHORITY_FILE_SHA256": "cc9ed16191f9f92611fbaefb98d202ac7264e617e41e1208752bfc15f044c77e",
+          "SOURCE_AUTHORITY_PATH": "docs/research/matrix-native-results/b649-official-any-prize-constructor-reference-designation-v1.json",
+          "SOURCE_CANDIDATE_ID": "DESIGNATED_REFERENCE_ITERATIVE_EXACT_1EXCHANGE_REFINEMENT_V1_K15",
+          "SOURCE_FAMILY": "DESIGNATED_RESEARCH_REFERENCE",
+          "SOURCE_FILE_SHA256": "a62ea73a422b7f9a3169ca039e00acb421fc0d9a4af1aafda8007b8891ea20c8",
+          "SOURCE_HASH_CONVENTION": "sorted compact JSON",
+          "SOURCE_ID": "ITERATIVE_EXACT_1EXCHANGE_REFINEMENT_V1_K15_TERMINAL",
+          "SOURCE_LOCATOR": "docs/research/matrix-native-results/b649-reference-e-improved-portfolio-official-any-prize-postcheck-r1/inputs.json#/per_k/15/terminal/portfolio",
+          "SOURCE_PATH": "docs/research/matrix-native-results/b649-reference-e-improved-portfolio-official-any-prize-postcheck-r1/inputs.json",
+          "SOURCE_RECORDED_SHA256": "8057138edd980413fa52607144d66a90372e68d251654998e3a1767fd3d9ce83",
+          "SOURCE_TICKETS": [
+            [
+              1,
+              2,
+              3,
+              4,
+              5,
+              33
+            ],
+            [
+              2,
+              8,
+              9,
+              29,
+              36,
+              37
+            ],
+            [
+              3,
+              9,
+              15,
+              27,
+              32,
+              42
+            ],
+            [
+              4,
+              26,
+              27,
+              29,
+              34,
+              41
+            ],
+            [
+              5,
+              8,
+              15,
+              26,
+              31,
+              39
+            ],
+            [
+              6,
+              10,
+              16,
+              22,
+              25,
+              28
+            ],
+            [
+              6,
+              12,
+              18,
+              24,
+              30,
+              35
+            ],
+            [
+              7,
+              10,
+              11,
+              12,
+              14,
+              20
+            ],
+            [
+              7,
+              13,
+              19,
+              25,
+              30,
+              49
+            ],
+            [
+              11,
+              17,
+              23,
+              28,
+              35,
+              49
+            ],
+            [
+              13,
+              14,
+              16,
+              17,
+              18,
+              21
+            ],
+            [
+              19,
+              20,
+              21,
+              22,
+              23,
+              24
+            ],
+            [
+              31,
+              32,
+              33,
+              34,
+              36,
+              40
+            ],
+            [
+              37,
+              38,
+              39,
+              40,
+              41,
+              42
+            ],
+            [
+              43,
+              44,
+              45,
+              46,
+              47,
+              48
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "CANDIDATE_ID": "CURRENT_PRODUCTION_CODE_K20_SEMANTIC_fbec2280e314e41517b5091192c51bda15228de6416a8e54e5df327185ddb238",
+      "EXACT_EVALUATION": {
+        "m3_plus": "2401225/6991908",
+        "m3_plus_draw_count": 4802450,
+        "main_draw_count": 13983816,
+        "official_any_prize": "44615213/85900584",
+        "official_any_prize_outcome_count": 312306491,
+        "special_count": 43,
+        "total_outcome_count": 601304088
+      },
+      "K": 20,
+      "NORMALIZED_SEMANTIC_ID": "fbec2280e314e41517b5091192c51bda15228de6416a8e54e5df327185ddb238",
+      "NORMALIZED_TICKET_SET": [
+        [
+          1,
+          4,
+          6,
+          20,
+          32,
+          44
+        ],
+        [
+          1,
+          5,
+          30,
+          33,
+          39,
+          49
+        ],
+        [
+          1,
+          10,
+          12,
+          21,
+          24,
+          42
+        ],
+        [
+          2,
+          3,
+          4,
+          5,
+          9,
+          21
+        ],
+        [
+          2,
+          7,
+          25,
+          31,
+          33,
+          36
+        ],
+        [
+          3,
+          18,
+          22,
+          24,
+          32,
+          38
+        ],
+        [
+          3,
+          20,
+          27,
+          28,
+          37,
+          42
+        ],
+        [
+          5,
+          17,
+          23,
+          25,
+          42,
+          44
+        ],
+        [
+          6,
+          21,
+          22,
+          23,
+          37,
+          49
+        ],
+        [
+          7,
+          13,
+          15,
+          40,
+          43,
+          46
+        ],
+        [
+          8,
+          11,
+          14,
+          15,
+          36,
+          41
+        ],
+        [
+          8,
+          16,
+          19,
+          29,
+          38,
+          40
+        ],
+        [
+          8,
+          26,
+          27,
+          43,
+          45,
+          48
+        ],
+        [
+          9,
+          12,
+          20,
+          23,
+          30,
+          31
+        ],
+        [
+          10,
+          13,
+          19,
+          26,
+          35,
+          36
+        ],
+        [
+          11,
+          13,
+          24,
+          29,
+          45,
+          47
+        ],
+        [
+          11,
+          17,
+          19,
+          33,
+          34,
+          48
+        ],
+        [
+          14,
+          25,
+          34,
+          35,
+          39,
+          45
+        ],
+        [
+          16,
+          26,
+          34,
+          41,
+          46,
+          47
+        ],
+        [
+          18,
+          28,
+          29,
+          35,
+          41,
+          48
+        ]
+      ],
+      "SOURCE_IDENTITIES": [
+        {
+          "METHOD_ID": "B649_SEALED_GEOMETRY_PORTFOLIO",
+          "SOURCE_AUTHORITY_FILE_SHA256": null,
+          "SOURCE_AUTHORITY_PATH": null,
+          "SOURCE_CANDIDATE_ID": "CURRENT_PRODUCTION_CODE_B649_SEALED_GEOMETRY_PORTFOLIO_K20",
+          "SOURCE_FAMILY": "CURRENT_PRODUCTION_CODE",
+          "SOURCE_FILE_SHA256": "8ae997ec1ed504b93fd80e5113660973774cd5d9fe6054d0989312940b942211",
+          "SOURCE_HASH_CONVENTION": "COMPACT_JSON_LISTS_CONSTRUCTOR_ORDER",
+          "SOURCE_ID": "B649_ANY_PRIZE_OBJECTIVE_CORRECTION_R1_P0C_CAPTURE_GAP_K20",
+          "SOURCE_LOCATOR": ".task-data/B649_ANY_PRIZE_OBJECTIVE_CORRECTION_R1/p0c_capture_gap.json",
+          "SOURCE_PATH": "src/lottolab/application/b649_sealed_geometry_portfolio.py",
+          "SOURCE_RECORDED_SHA256": "a0126d34589f82945f5f8895b8812818293a2c04a957ab0a940eaff09fd70332",
+          "SOURCE_TICKETS": [
+            [
+              8,
+              16,
+              19,
+              29,
+              38,
+              40
+            ],
+            [
+              5,
+              17,
+              23,
+              25,
+              42,
+              44
+            ],
+            [
+              1,
+              5,
+              30,
+              33,
+              39,
+              49
+            ],
+            [
+              7,
+              13,
+              15,
+              40,
+              43,
+              46
+            ],
+            [
+              9,
+              12,
+              20,
+              23,
+              30,
+              31
+            ],
+            [
+              8,
+              26,
+              27,
+              43,
+              45,
+              48
+            ],
+            [
+              8,
+              11,
+              14,
+              15,
+              36,
+              41
+            ],
+            [
+              3,
+              20,
+              27,
+              28,
+              37,
+              42
+            ],
+            [
+              14,
+              25,
+              34,
+              35,
+              39,
+              45
+            ],
+            [
+              11,
+              13,
+              24,
+              29,
+              45,
+              47
+            ],
+            [
+              18,
+              28,
+              29,
+              35,
+              41,
+              48
+            ],
+            [
+              1,
+              10,
+              12,
+              21,
+              24,
+              42
+            ],
+            [
+              6,
+              21,
+              22,
+              23,
+              37,
+              49
+            ],
+            [
+              11,
+              17,
+              19,
+              33,
+              34,
+              48
+            ],
+            [
+              16,
+              26,
+              34,
+              41,
+              46,
+              47
+            ],
+            [
+              3,
+              18,
+              22,
+              24,
+              32,
+              38
+            ],
+            [
+              1,
+              4,
+              6,
+              20,
+              32,
+              44
+            ],
+            [
+              2,
+              7,
+              25,
+              31,
+              33,
+              36
+            ],
+            [
+              2,
+              3,
+              4,
+              5,
+              9,
+              21
+            ],
+            [
+              10,
+              13,
+              19,
+              26,
+              35,
+              36
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "CANDIDATE_ID": "DESIGNATED_RESEARCH_REFERENCE_K20_SEMANTIC_bf561d28d26961043f112ba8ed762ba9535666022c7df6bcefe49b8a21412710",
+      "EXACT_EVALUATION": {
+        "m3_plus": "1200781/3495954",
+        "m3_plus_draw_count": 4803124,
+        "main_draw_count": 13983816,
+        "official_any_prize": "7439615/14316764",
+        "official_any_prize_outcome_count": 312463830,
+        "special_count": 43,
+        "total_outcome_count": 601304088
+      },
+      "K": 20,
+      "NORMALIZED_SEMANTIC_ID": "bf561d28d26961043f112ba8ed762ba9535666022c7df6bcefe49b8a21412710",
+      "NORMALIZED_TICKET_SET": [
+        [
+          1,
+          2,
+          3,
+          11,
+          12,
+          18
+        ],
+        [
+          1,
+          7,
+          13,
+          31,
+          37,
+          43
+        ],
+        [
+          1,
+          8,
+          15,
+          23,
+          38,
+          44
+        ],
+        [
+          2,
+          8,
+          14,
+          20,
+          31,
+          47
+        ],
+        [
+          2,
+          9,
+          19,
+          36,
+          43,
+          49
+        ],
+        [
+          3,
+          7,
+          14,
+          23,
+          39,
+          45
+        ],
+        [
+          3,
+          9,
+          15,
+          27,
+          31,
+          46
+        ],
+        [
+          4,
+          10,
+          16,
+          22,
+          28,
+          33
+        ],
+        [
+          4,
+          13,
+          14,
+          15,
+          17,
+          18
+        ],
+        [
+          5,
+          6,
+          22,
+          29,
+          34,
+          49
+        ],
+        [
+          5,
+          16,
+          19,
+          26,
+          32,
+          47
+        ],
+        [
+          6,
+          10,
+          12,
+          24,
+          30,
+          35
+        ],
+        [
+          6,
+          16,
+          21,
+          25,
+          42,
+          48
+        ],
+        [
+          7,
+          8,
+          9,
+          11,
+          17,
+          41
+        ],
+        [
+          11,
+          13,
+          20,
+          23,
+          40,
+          46
+        ],
+        [
+          17,
+          20,
+          21,
+          24,
+          39,
+          44
+        ],
+        [
+          18,
+          41,
+          44,
+          45,
+          46,
+          48
+        ],
+        [
+          25,
+          26,
+          27,
+          28,
+          29,
+          30
+        ],
+        [
+          25,
+          32,
+          33,
+          34,
+          35,
+          36
+        ],
+        [
+          37,
+          38,
+          39,
+          40,
+          41,
+          42
+        ]
+      ],
+      "SOURCE_IDENTITIES": [
+        {
+          "METHOD_ID": "ITERATIVE_EXACT_1EXCHANGE_REFINEMENT_V1",
+          "SOURCE_AUTHORITY_FILE_SHA256": "cc9ed16191f9f92611fbaefb98d202ac7264e617e41e1208752bfc15f044c77e",
+          "SOURCE_AUTHORITY_PATH": "docs/research/matrix-native-results/b649-official-any-prize-constructor-reference-designation-v1.json",
+          "SOURCE_CANDIDATE_ID": "DESIGNATED_REFERENCE_ITERATIVE_EXACT_1EXCHANGE_REFINEMENT_V1_K20",
+          "SOURCE_FAMILY": "DESIGNATED_RESEARCH_REFERENCE",
+          "SOURCE_FILE_SHA256": "a62ea73a422b7f9a3169ca039e00acb421fc0d9a4af1aafda8007b8891ea20c8",
+          "SOURCE_HASH_CONVENTION": "sorted compact JSON",
+          "SOURCE_ID": "ITERATIVE_EXACT_1EXCHANGE_REFINEMENT_V1_K20_TERMINAL",
+          "SOURCE_LOCATOR": "docs/research/matrix-native-results/b649-reference-e-improved-portfolio-official-any-prize-postcheck-r1/inputs.json#/per_k/20/terminal/portfolio",
+          "SOURCE_PATH": "docs/research/matrix-native-results/b649-reference-e-improved-portfolio-official-any-prize-postcheck-r1/inputs.json",
+          "SOURCE_RECORDED_SHA256": "bf561d28d26961043f112ba8ed762ba9535666022c7df6bcefe49b8a21412710",
+          "SOURCE_TICKETS": [
+            [
+              1,
+              2,
+              3,
+              11,
+              12,
+              18
+            ],
+            [
+              1,
+              7,
+              13,
+              31,
+              37,
+              43
+            ],
+            [
+              1,
+              8,
+              15,
+              23,
+              38,
+              44
+            ],
+            [
+              2,
+              8,
+              14,
+              20,
+              31,
+              47
+            ],
+            [
+              2,
+              9,
+              19,
+              36,
+              43,
+              49
+            ],
+            [
+              3,
+              7,
+              14,
+              23,
+              39,
+              45
+            ],
+            [
+              3,
+              9,
+              15,
+              27,
+              31,
+              46
+            ],
+            [
+              4,
+              10,
+              16,
+              22,
+              28,
+              33
+            ],
+            [
+              4,
+              13,
+              14,
+              15,
+              17,
+              18
+            ],
+            [
+              5,
+              6,
+              22,
+              29,
+              34,
+              49
+            ],
+            [
+              5,
+              16,
+              19,
+              26,
+              32,
+              47
+            ],
+            [
+              6,
+              10,
+              12,
+              24,
+              30,
+              35
+            ],
+            [
+              6,
+              16,
+              21,
+              25,
+              42,
+              48
+            ],
+            [
+              7,
+              8,
+              9,
+              11,
+              17,
+              41
+            ],
+            [
+              11,
+              13,
+              20,
+              23,
+              40,
+              46
+            ],
+            [
+              17,
+              20,
+              21,
+              24,
+              39,
+              44
+            ],
+            [
+              18,
+              41,
+              44,
+              45,
+              46,
+              48
+            ],
+            [
+              25,
+              26,
+              27,
+              28,
+              29,
+              30
+            ],
+            [
+              25,
+              32,
+              33,
+              34,
+              35,
+              36
+            ],
+            [
+              37,
+              38,
+              39,
+              40,
+              41,
+              42
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "CANDIDATE_ID": "HARD_DIV_PAIRWISE_OVERLAP_R1_K20_SEMANTIC_9a802a103f79948f2345e51f4746860236857f18beece22fe444886cde9d3424",
+      "EXACT_EVALUATION": {
+        "m3_plus": "1601841/4661272",
+        "m3_plus_draw_count": 4805523,
+        "main_draw_count": 13983816,
+        "official_any_prize": "22345625/42950292",
+        "official_any_prize_outcome_count": 312838750,
+        "special_count": 43,
+        "total_outcome_count": 601304088
+      },
+      "K": 20,
+      "NORMALIZED_SEMANTIC_ID": "9a802a103f79948f2345e51f4746860236857f18beece22fe444886cde9d3424",
+      "NORMALIZED_TICKET_SET": [
+        [
+          1,
+          2,
+          34,
+          41,
+          42,
+          45
+        ],
+        [
+          1,
+          17,
+          22,
+          30,
+          33,
+          43
+        ],
+        [
+          2,
+          5,
+          33,
+          35,
+          40,
+          48
+        ],
+        [
+          3,
+          4,
+          6,
+          10,
+          15,
+          23
+        ],
+        [
+          3,
+          9,
+          12,
+          16,
+          29,
+          39
+        ],
+        [
+          3,
+          13,
+          14,
+          20,
+          36,
+          44
+        ],
+        [
+          4,
+          7,
+          11,
+          16,
+          24,
+          47
+        ],
+        [
+          4,
+          8,
+          26,
+          31,
+          37,
+          39
+        ],
+        [
+          5,
+          17,
+          25,
+          27,
+          36,
+          41
+        ],
+        [
+          6,
+          7,
+          9,
+          13,
+          18,
+          26
+        ],
+        [
+          7,
+          8,
+          10,
+          14,
+          19,
+          29
+        ],
+        [
+          8,
+          9,
+          11,
+          15,
+          20,
+          28
+        ],
+        [
+          11,
+          12,
+          14,
+          18,
+          23,
+          31
+        ],
+        [
+          12,
+          13,
+          15,
+          19,
+          24,
+          32
+        ],
+        [
+          16,
+          19,
+          23,
+          26,
+          28,
+          46
+        ],
+        [
+          17,
+          21,
+          34,
+          40,
+          44,
+          49
+        ],
+        [
+          18,
+          20,
+          24,
+          29,
+          37,
+          46
+        ],
+        [
+          21,
+          25,
+          30,
+          38,
+          45,
+          48
+        ],
+        [
+          22,
+          27,
+          35,
+          45,
+          47,
+          49
+        ],
+        [
+          27,
+          32,
+          38,
+          40,
+          42,
+          43
+        ]
+      ],
+      "SOURCE_IDENTITIES": [
+        {
+          "METHOD_ID": "HARD_DIV_PAIRWISE_OVERLAP_R1",
+          "SOURCE_AUTHORITY_FILE_SHA256": null,
+          "SOURCE_AUTHORITY_PATH": null,
+          "SOURCE_CANDIDATE_ID": "HARD_DIV_PAIRWISE_OVERLAP_R1_K20_RADIUS2",
+          "SOURCE_FAMILY": "HARD_DIV_PAIRWISE_OVERLAP_R1",
+          "SOURCE_FILE_SHA256": "2d37c6dceb69664b489a458f46d201d9e13b544a08c3924ece8b848f44d25b82",
+          "SOURCE_HASH_CONVENTION": "COMPACT_JSON_LISTS_SOURCE_ORDER_EQUALS_NORMALIZED_ORDER",
+          "SOURCE_ID": "HARD_DIV_PAIRWISE_OVERLAP_R1_K20_RADIUS2",
+          "SOURCE_LOCATOR": "docs/research/matrix-native-results/hard-div-exact-radius2-reconciliation-r1-result.json#/k_results[k=20]/radius2_portfolio",
+          "SOURCE_PATH": "docs/research/matrix-native-results/hard-div-exact-radius2-reconciliation-r1-result.json",
+          "SOURCE_RECORDED_SHA256": "9a802a103f79948f2345e51f4746860236857f18beece22fe444886cde9d3424",
+          "SOURCE_TICKETS": [
+            [
+              1,
+              2,
+              34,
+              41,
+              42,
+              45
+            ],
+            [
+              1,
+              17,
+              22,
+              30,
+              33,
+              43
+            ],
+            [
+              2,
+              5,
+              33,
+              35,
+              40,
+              48
+            ],
+            [
+              3,
+              4,
+              6,
+              10,
+              15,
+              23
+            ],
+            [
+              3,
+              9,
+              12,
+              16,
+              29,
+              39
+            ],
+            [
+              3,
+              13,
+              14,
+              20,
+              36,
+              44
+            ],
+            [
+              4,
+              7,
+              11,
+              16,
+              24,
+              47
+            ],
+            [
+              4,
+              8,
+              26,
+              31,
+              37,
+              39
+            ],
+            [
+              5,
+              17,
+              25,
+              27,
+              36,
+              41
+            ],
+            [
+              6,
+              7,
+              9,
+              13,
+              18,
+              26
+            ],
+            [
+              7,
+              8,
+              10,
+              14,
+              19,
+              29
+            ],
+            [
+              8,
+              9,
+              11,
+              15,
+              20,
+              28
+            ],
+            [
+              11,
+              12,
+              14,
+              18,
+              23,
+              31
+            ],
+            [
+              12,
+              13,
+              15,
+              19,
+              24,
+              32
+            ],
+            [
+              16,
+              19,
+              23,
+              26,
+              28,
+              46
+            ],
+            [
+              17,
+              21,
+              34,
+              40,
+              44,
+              49
+            ],
+            [
+              18,
+              20,
+              24,
+              29,
+              37,
+              46
+            ],
+            [
+              21,
+              25,
+              30,
+              38,
+              45,
+              48
+            ],
+            [
+              22,
+              27,
+              35,
+              45,
+              47,
+              49
+            ],
+            [
+              27,
+              32,
+              38,
+              40,
+              42,
+              43
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "CANDIDATE_ID": "HARD_DIV_PAIRWISE_OVERLAP_R1_K20_SEMANTIC_a920c98327de729438c240b57d0b4a8a47909404106f40cd1f687a60ffc7d3bf",
+      "EXACT_EVALUATION": {
+        "m3_plus": "4805093/13983816",
+        "m3_plus_draw_count": 4805093,
+        "main_draw_count": 13983816,
+        "official_any_prize": "22340729/42950292",
+        "official_any_prize_outcome_count": 312770206,
+        "special_count": 43,
+        "total_outcome_count": 601304088
+      },
+      "K": 20,
+      "NORMALIZED_SEMANTIC_ID": "a920c98327de729438c240b57d0b4a8a47909404106f40cd1f687a60ffc7d3bf",
+      "NORMALIZED_TICKET_SET": [
+        [
+          1,
+          2,
+          34,
+          41,
+          42,
+          45
+        ],
+        [
+          1,
+          17,
+          22,
+          30,
+          33,
+          43
+        ],
+        [
+          2,
+          5,
+          33,
+          35,
+          40,
+          48
+        ],
+        [
+          3,
+          4,
+          6,
+          10,
+          15,
+          23
+        ],
+        [
+          3,
+          9,
+          12,
+          16,
+          29,
+          39
+        ],
+        [
+          4,
+          7,
+          11,
+          16,
+          24,
+          47
+        ],
+        [
+          4,
+          8,
+          26,
+          31,
+          37,
+          39
+        ],
+        [
+          5,
+          17,
+          25,
+          27,
+          36,
+          41
+        ],
+        [
+          6,
+          7,
+          9,
+          13,
+          18,
+          26
+        ],
+        [
+          7,
+          8,
+          10,
+          14,
+          19,
+          29
+        ],
+        [
+          8,
+          9,
+          11,
+          15,
+          20,
+          28
+        ],
+        [
+          11,
+          12,
+          14,
+          18,
+          23,
+          31
+        ],
+        [
+          12,
+          13,
+          15,
+          19,
+          24,
+          32
+        ],
+        [
+          13,
+          14,
+          16,
+          20,
+          36,
+          44
+        ],
+        [
+          17,
+          21,
+          34,
+          40,
+          44,
+          49
+        ],
+        [
+          18,
+          20,
+          24,
+          29,
+          37,
+          46
+        ],
+        [
+          19,
+          23,
+          26,
+          28,
+          46,
+          47
+        ],
+        [
+          21,
+          25,
+          30,
+          38,
+          45,
+          48
+        ],
+        [
+          22,
+          27,
+          35,
+          45,
+          47,
+          49
+        ],
+        [
+          27,
+          32,
+          38,
+          40,
+          42,
+          43
+        ]
+      ],
+      "SOURCE_IDENTITIES": [
+        {
+          "METHOD_ID": "HARD_DIV_PAIRWISE_OVERLAP_R1",
+          "SOURCE_AUTHORITY_FILE_SHA256": null,
+          "SOURCE_AUTHORITY_PATH": null,
+          "SOURCE_CANDIDATE_ID": "HARD_DIV_PAIRWISE_OVERLAP_R1_K20_RADIUS1",
+          "SOURCE_FAMILY": "HARD_DIV_PAIRWISE_OVERLAP_R1",
+          "SOURCE_FILE_SHA256": "2d37c6dceb69664b489a458f46d201d9e13b544a08c3924ece8b848f44d25b82",
+          "SOURCE_HASH_CONVENTION": "UNKNOWN_SOURCE_CONVENTION_PRESERVED_VERBATIM_DO_NOT_COMPARE_ACROSS_CONVENTIONS",
+          "SOURCE_ID": "HARD_DIV_PAIRWISE_OVERLAP_R1_K20_RADIUS1",
+          "SOURCE_LOCATOR": "docs/research/matrix-native-results/hard-div-exact-radius2-reconciliation-r1-result.json#/k_results[k=20]/radius1_portfolio",
+          "SOURCE_PATH": "docs/research/matrix-native-results/hard-div-exact-radius2-reconciliation-r1-result.json",
+          "SOURCE_RECORDED_SHA256": "36d1cd6e226b9e8b982d881854b8cf1c4c3aa90dfce22fe75ba5d8f161385ac0",
+          "SOURCE_TICKETS": [
+            [
+              1,
+              2,
+              34,
+              41,
+              42,
+              45
+            ],
+            [
+              1,
+              17,
+              22,
+              30,
+              33,
+              43
+            ],
+            [
+              2,
+              5,
+              33,
+              35,
+              40,
+              48
+            ],
+            [
+              3,
+              4,
+              6,
+              10,
+              15,
+              23
+            ],
+            [
+              3,
+              9,
+              12,
+              16,
+              29,
+              39
+            ],
+            [
+              4,
+              7,
+              11,
+              16,
+              24,
+              47
+            ],
+            [
+              4,
+              8,
+              26,
+              31,
+              37,
+              39
+            ],
+            [
+              5,
+              17,
+              25,
+              27,
+              36,
+              41
+            ],
+            [
+              6,
+              7,
+              9,
+              13,
+              18,
+              26
+            ],
+            [
+              7,
+              8,
+              10,
+              14,
+              19,
+              29
+            ],
+            [
+              8,
+              9,
+              11,
+              15,
+              20,
+              28
+            ],
+            [
+              11,
+              12,
+              14,
+              18,
+              23,
+              31
+            ],
+            [
+              12,
+              13,
+              15,
+              19,
+              24,
+              32
+            ],
+            [
+              13,
+              14,
+              16,
+              20,
+              36,
+              44
+            ],
+            [
+              17,
+              21,
+              34,
+              40,
+              44,
+              49
+            ],
+            [
+              18,
+              20,
+              24,
+              29,
+              37,
+              46
+            ],
+            [
+              19,
+              23,
+              26,
+              28,
+              46,
+              47
+            ],
+            [
+              21,
+              25,
+              30,
+              38,
+              45,
+              48
+            ],
+            [
+              22,
+              27,
+              35,
+              45,
+              47,
+              49
+            ],
+            [
+              27,
+              32,
+              38,
+              40,
+              42,
+              43
+            ]
+          ]
+        }
+      ]
+    }
+  ],
+  "CANONICAL_MODEL": "MAIN_DRAW_COLLAPSED_EXACT_SPECIAL_UNION",
+  "CANONICAL_TOTAL_OFFICIAL_OUTCOME_COUNT": 601304088,
+  "CURRENT_PRODUCTION_BEATEN_AT_ANY_PRODUCTION_K": "YES",
+  "DB_MUTATION": "NONE",
+  "DISTINCT_NORMALIZED_CANDIDATE_COUNT": 10,
+  "EXPECTED_PAYOUT_CLAIM": "NO",
+  "EXTERNAL_WRITES": "NONE",
+  "FRONTIER_SCOPE": "BEST_KNOWN_AMONG_TESTED_SEALED_CANDIDATES_ONLY",
+  "GLOBAL_OPTIMUM_STATUS": "UNKNOWN",
+  "HISTORICAL_OOS_CLAIM": "NO",
+  "HISTORICAL_OUTCOME_DATA_USED": "NO",
+  "K10_FRONTIER": {
+    "BEST_KNOWN_TESTED_CANDIDATE_IDS": [
+      "HARD_DIV_PAIRWISE_OVERLAP_R1_K10_SEMANTIC_13b1126d5b26ce44c9aba24670142eeab49f4a4b51aaf3bbabe7a7f1659ac673"
+    ],
+    "BEST_Q": "536005/1827672",
+    "CANDIDATES": [
+      {
+        "candidate_id": "HARD_DIV_PAIRWISE_OVERLAP_R1_K10_SEMANTIC_13b1126d5b26ce44c9aba24670142eeab49f4a4b51aaf3bbabe7a7f1659ac673",
+        "m3_plus": "364025/1997688",
+        "m3_plus_draw_count": 2548175,
+        "normalized_semantic_id": "13b1126d5b26ce44c9aba24670142eeab49f4a4b51aaf3bbabe7a7f1659ac673",
+        "official_any_prize": "536005/1827672",
+        "official_any_prize_outcome_count": 176345645,
+        "position": 1,
+        "rank": 1,
+        "source_candidate_ids": [
+          "HARD_DIV_PAIRWISE_OVERLAP_R1_K10_RADIUS1",
+          "HARD_DIV_PAIRWISE_OVERLAP_R1_K10_RADIUS2"
+        ]
+      },
+      {
+        "candidate_id": "CURRENT_PRODUCTION_CODE_K10_SEMANTIC_eea8a560fdd65e2d35cb438e950426df537880525b4e0d014366e9f8ca57acdc",
+        "m3_plus": "364025/1997688",
+        "m3_plus_draw_count": 2548175,
+        "normalized_semantic_id": "eea8a560fdd65e2d35cb438e950426df537880525b4e0d014366e9f8ca57acdc",
+        "official_any_prize": "1095245/3734808",
+        "official_any_prize_outcome_count": 176334445,
+        "position": 2,
+        "rank": 2,
+        "source_candidate_ids": [
+          "CURRENT_PRODUCTION_CODE_B649_SEALED_GEOMETRY_PORTFOLIO_K10"
+        ]
+      },
+      {
+        "candidate_id": "DESIGNATED_RESEARCH_REFERENCE_K10_SEMANTIC_4167482d739c59896ad9d50d23ebad89c1d22e787df8a34ae2b6bfd9206a69d5",
+        "m3_plus": "90995/499422",
+        "m3_plus_draw_count": 2547860,
+        "normalized_semantic_id": "4167482d739c59896ad9d50d23ebad89c1d22e787df8a34ae2b6bfd9206a69d5",
+        "official_any_prize": "66980/228459",
+        "official_any_prize_outcome_count": 176291360,
+        "position": 3,
+        "rank": 3,
+        "source_candidate_ids": [
+          "DESIGNATED_REFERENCE_ITERATIVE_EXACT_1EXCHANGE_REFINEMENT_V1_K10"
+        ]
+      }
+    ],
+    "CANDIDATE_COUNT": 3,
+    "CURRENT_PRODUCTION_CODE_CANDIDATE": "CURRENT_PRODUCTION_CODE_K10_SEMANTIC_eea8a560fdd65e2d35cb438e950426df537880525b4e0d014366e9f8ca57acdc",
+    "CURRENT_PRODUCTION_Q": "1095245/3734808",
+    "CURRENT_PRODUCTION_STRICTLY_BEATEN": "YES",
+    "DELTA_BEST_VS_CURRENT_PRODUCTION": "200/10737573",
+    "DELTA_BEST_VS_DESIGNATED_REFERENCE": "5/55384",
+    "DELTA_BEST_VS_RUNNER_UP": "200/10737573",
+    "DESIGNATED_REFERENCE_CANDIDATE": "DESIGNATED_RESEARCH_REFERENCE_K10_SEMANTIC_4167482d739c59896ad9d50d23ebad89c1d22e787df8a34ae2b6bfd9206a69d5",
+    "DESIGNATED_REFERENCE_Q": "66980/228459",
+    "FRONTIER_STATUS": "UNIQUE_BEST_TESTED",
+    "K": 10,
+    "RUNNER_UP_ID": "CURRENT_PRODUCTION_CODE_K10_SEMANTIC_eea8a560fdd65e2d35cb438e950426df537880525b4e0d014366e9f8ca57acdc",
+    "RUNNER_UP_Q": "1095245/3734808",
+    "SOURCE_CANDIDATE_COUNT": 4
+  },
+  "K15_FRONTIER": {
+    "BEST_KNOWN_TESTED_CANDIDATE_IDS": [
+      "DESIGNATED_RESEARCH_REFERENCE_K15_SEMANTIC_8057138edd980413fa52607144d66a90372e68d251654998e3a1767fd3d9ce83"
+    ],
+    "BEST_Q": "2976525/7158382",
+    "CANDIDATES": [
+      {
+        "candidate_id": "DESIGNATED_RESEARCH_REFERENCE_K15_SEMANTIC_8057138edd980413fa52607144d66a90372e68d251654998e3a1767fd3d9ce83",
+        "m3_plus": "14090/52969",
+        "m3_plus_draw_count": 3719760,
+        "normalized_semantic_id": "8057138edd980413fa52607144d66a90372e68d251654998e3a1767fd3d9ce83",
+        "official_any_prize": "2976525/7158382",
+        "official_any_prize_outcome_count": 250028100,
+        "position": 1,
+        "rank": 1,
+        "source_candidate_ids": [
+          "DESIGNATED_REFERENCE_ITERATIVE_EXACT_1EXCHANGE_REFINEMENT_V1_K15"
+        ]
+      }
+    ],
+    "CANDIDATE_COUNT": 1,
+    "CURRENT_PRODUCTION_CODE_CANDIDATE": "NOT_APPLICABLE",
+    "CURRENT_PRODUCTION_Q": "NOT_APPLICABLE",
+    "CURRENT_PRODUCTION_STRICTLY_BEATEN": "NO",
+    "DELTA_BEST_VS_CURRENT_PRODUCTION": "NOT_APPLICABLE",
+    "DELTA_BEST_VS_DESIGNATED_REFERENCE": "0/1",
+    "DELTA_BEST_VS_RUNNER_UP": "NOT_APPLICABLE",
+    "DESIGNATED_REFERENCE_CANDIDATE": "DESIGNATED_RESEARCH_REFERENCE_K15_SEMANTIC_8057138edd980413fa52607144d66a90372e68d251654998e3a1767fd3d9ce83",
+    "DESIGNATED_REFERENCE_Q": "2976525/7158382",
+    "FRONTIER_STATUS": "SINGLE_SEALED_CANDIDATE_ONLY",
+    "K": 15,
+    "RUNNER_UP_ID": "NOT_APPLICABLE",
+    "RUNNER_UP_Q": "NOT_APPLICABLE",
+    "SOURCE_CANDIDATE_COUNT": 1
+  },
+  "K20_FRONTIER": {
+    "BEST_KNOWN_TESTED_CANDIDATE_IDS": [
+      "HARD_DIV_PAIRWISE_OVERLAP_R1_K20_SEMANTIC_9a802a103f79948f2345e51f4746860236857f18beece22fe444886cde9d3424"
+    ],
+    "BEST_Q": "22345625/42950292",
+    "CANDIDATES": [
+      {
+        "candidate_id": "HARD_DIV_PAIRWISE_OVERLAP_R1_K20_SEMANTIC_9a802a103f79948f2345e51f4746860236857f18beece22fe444886cde9d3424",
+        "m3_plus": "1601841/4661272",
+        "m3_plus_draw_count": 4805523,
+        "normalized_semantic_id": "9a802a103f79948f2345e51f4746860236857f18beece22fe444886cde9d3424",
+        "official_any_prize": "22345625/42950292",
+        "official_any_prize_outcome_count": 312838750,
+        "position": 1,
+        "rank": 1,
+        "source_candidate_ids": [
+          "HARD_DIV_PAIRWISE_OVERLAP_R1_K20_RADIUS2"
+        ]
+      },
+      {
+        "candidate_id": "HARD_DIV_PAIRWISE_OVERLAP_R1_K20_SEMANTIC_a920c98327de729438c240b57d0b4a8a47909404106f40cd1f687a60ffc7d3bf",
+        "m3_plus": "4805093/13983816",
+        "m3_plus_draw_count": 4805093,
+        "normalized_semantic_id": "a920c98327de729438c240b57d0b4a8a47909404106f40cd1f687a60ffc7d3bf",
+        "official_any_prize": "22340729/42950292",
+        "official_any_prize_outcome_count": 312770206,
+        "position": 2,
+        "rank": 2,
+        "source_candidate_ids": [
+          "HARD_DIV_PAIRWISE_OVERLAP_R1_K20_RADIUS1"
+        ]
+      },
+      {
+        "candidate_id": "DESIGNATED_RESEARCH_REFERENCE_K20_SEMANTIC_bf561d28d26961043f112ba8ed762ba9535666022c7df6bcefe49b8a21412710",
+        "m3_plus": "1200781/3495954",
+        "m3_plus_draw_count": 4803124,
+        "normalized_semantic_id": "bf561d28d26961043f112ba8ed762ba9535666022c7df6bcefe49b8a21412710",
+        "official_any_prize": "7439615/14316764",
+        "official_any_prize_outcome_count": 312463830,
+        "position": 3,
+        "rank": 3,
+        "source_candidate_ids": [
+          "DESIGNATED_REFERENCE_ITERATIVE_EXACT_1EXCHANGE_REFINEMENT_V1_K20"
+        ]
+      },
+      {
+        "candidate_id": "CURRENT_PRODUCTION_CODE_K20_SEMANTIC_fbec2280e314e41517b5091192c51bda15228de6416a8e54e5df327185ddb238",
+        "m3_plus": "2401225/6991908",
+        "m3_plus_draw_count": 4802450,
+        "normalized_semantic_id": "fbec2280e314e41517b5091192c51bda15228de6416a8e54e5df327185ddb238",
+        "official_any_prize": "44615213/85900584",
+        "official_any_prize_outcome_count": 312306491,
+        "position": 4,
+        "rank": 4,
+        "source_candidate_ids": [
+          "CURRENT_PRODUCTION_CODE_B649_SEALED_GEOMETRY_PORTFOLIO_K20"
+        ]
+      }
+    ],
+    "CANDIDATE_COUNT": 4,
+    "CURRENT_PRODUCTION_CODE_CANDIDATE": "CURRENT_PRODUCTION_CODE_K20_SEMANTIC_fbec2280e314e41517b5091192c51bda15228de6416a8e54e5df327185ddb238",
+    "CURRENT_PRODUCTION_Q": "44615213/85900584",
+    "CURRENT_PRODUCTION_STRICTLY_BEATEN": "YES",
+    "DELTA_BEST_VS_CURRENT_PRODUCTION": "76037/85900584",
+    "DELTA_BEST_VS_DESIGNATED_REFERENCE": "6695/10737573",
+    "DELTA_BEST_VS_RUNNER_UP": "408/3579191",
+    "DESIGNATED_REFERENCE_CANDIDATE": "DESIGNATED_RESEARCH_REFERENCE_K20_SEMANTIC_bf561d28d26961043f112ba8ed762ba9535666022c7df6bcefe49b8a21412710",
+    "DESIGNATED_REFERENCE_Q": "7439615/14316764",
+    "FRONTIER_STATUS": "UNIQUE_BEST_TESTED",
+    "K": 20,
+    "RUNNER_UP_ID": "HARD_DIV_PAIRWISE_OVERLAP_R1_K20_SEMANTIC_a920c98327de729438c240b57d0b4a8a47909404106f40cd1f687a60ffc7d3bf",
+    "RUNNER_UP_Q": "22340729/42950292",
+    "SOURCE_CANDIDATE_COUNT": 4
+  },
+  "K5_FRONTIER": {
+    "BEST_KNOWN_TESTED_CANDIDATE_IDS": [
+      "CURRENT_PRODUCTION_CODE_K5_SEMANTIC_ec858fe04075ee40931366c05617ad7d04d934c5f72ac35c9b74c26ba91f8d87",
+      "HARD_DIV_PAIRWISE_OVERLAP_R1_K5_SEMANTIC_985ceea1c7790da4b4b47b01585e1ca41cdcd927a2c63f50462de2c75edce009"
+    ],
+    "BEST_Q": "547495/3579191",
+    "CANDIDATES": [
+      {
+        "candidate_id": "CURRENT_PRODUCTION_CODE_K5_SEMANTIC_ec858fe04075ee40931366c05617ad7d04d934c5f72ac35c9b74c26ba91f8d87",
+        "m3_plus": "54130/582659",
+        "m3_plus_draw_count": 1299120,
+        "normalized_semantic_id": "ec858fe04075ee40931366c05617ad7d04d934c5f72ac35c9b74c26ba91f8d87",
+        "official_any_prize": "547495/3579191",
+        "official_any_prize_outcome_count": 91979160,
+        "position": 1,
+        "rank": 1,
+        "source_candidate_ids": [
+          "CURRENT_PRODUCTION_CODE_B649_SEALED_GEOMETRY_PORTFOLIO_K5"
+        ]
+      },
+      {
+        "candidate_id": "HARD_DIV_PAIRWISE_OVERLAP_R1_K5_SEMANTIC_985ceea1c7790da4b4b47b01585e1ca41cdcd927a2c63f50462de2c75edce009",
+        "m3_plus": "54130/582659",
+        "m3_plus_draw_count": 1299120,
+        "normalized_semantic_id": "985ceea1c7790da4b4b47b01585e1ca41cdcd927a2c63f50462de2c75edce009",
+        "official_any_prize": "547495/3579191",
+        "official_any_prize_outcome_count": 91979160,
+        "position": 2,
+        "rank": 1,
+        "source_candidate_ids": [
+          "HARD_DIV_PAIRWISE_OVERLAP_R1_K5_RADIUS1",
+          "HARD_DIV_PAIRWISE_OVERLAP_R1_K5_RADIUS2"
+        ]
+      }
+    ],
+    "CANDIDATE_COUNT": 2,
+    "CURRENT_PRODUCTION_CODE_CANDIDATE": "CURRENT_PRODUCTION_CODE_K5_SEMANTIC_ec858fe04075ee40931366c05617ad7d04d934c5f72ac35c9b74c26ba91f8d87",
+    "CURRENT_PRODUCTION_Q": "547495/3579191",
+    "CURRENT_PRODUCTION_STRICTLY_BEATEN": "NO",
+    "DELTA_BEST_VS_CURRENT_PRODUCTION": "0/1",
+    "DELTA_BEST_VS_DESIGNATED_REFERENCE": "NOT_APPLICABLE",
+    "DELTA_BEST_VS_RUNNER_UP": "NOT_APPLICABLE",
+    "DESIGNATED_REFERENCE_CANDIDATE": "NOT_APPLICABLE",
+    "DESIGNATED_REFERENCE_Q": "NOT_APPLICABLE",
+    "FRONTIER_STATUS": "TIED_BEST_TESTED",
+    "K": 5,
+    "RUNNER_UP_ID": "NOT_APPLICABLE",
+    "RUNNER_UP_Q": "NOT_APPLICABLE",
+    "SOURCE_CANDIDATE_COUNT": 3
+  },
+  "MONTE_CARLO": "NO",
+  "NEXT_TASK": "B649_SEALED_GEOMETRY_FRONTIER_UPDATE_DECISION_R1",
+  "NONCANONICAL_WRITES": "NONE",
+  "NORMALIZED_DEDUPE_RESULT": [
+    {
+      "CANDIDATE_ID": "CURRENT_PRODUCTION_CODE_K5_SEMANTIC_ec858fe04075ee40931366c05617ad7d04d934c5f72ac35c9b74c26ba91f8d87",
+      "DEDUPED_SOURCE_IDENTITY_COUNT": 1,
+      "DEDUPLICATION_STATUS": "UNIQUE_NORMALIZED_CONTENT",
+      "K": 5,
+      "NORMALIZED_SEMANTIC_ID": "ec858fe04075ee40931366c05617ad7d04d934c5f72ac35c9b74c26ba91f8d87",
+      "SOURCE_CANDIDATE_IDS": [
+        "CURRENT_PRODUCTION_CODE_B649_SEALED_GEOMETRY_PORTFOLIO_K5"
+      ]
+    },
+    {
+      "CANDIDATE_ID": "HARD_DIV_PAIRWISE_OVERLAP_R1_K5_SEMANTIC_985ceea1c7790da4b4b47b01585e1ca41cdcd927a2c63f50462de2c75edce009",
+      "DEDUPED_SOURCE_IDENTITY_COUNT": 2,
+      "DEDUPLICATION_STATUS": "DEDUPE_SAME_NORMALIZED_CONTENT",
+      "K": 5,
+      "NORMALIZED_SEMANTIC_ID": "985ceea1c7790da4b4b47b01585e1ca41cdcd927a2c63f50462de2c75edce009",
+      "SOURCE_CANDIDATE_IDS": [
+        "HARD_DIV_PAIRWISE_OVERLAP_R1_K5_RADIUS1",
+        "HARD_DIV_PAIRWISE_OVERLAP_R1_K5_RADIUS2"
+      ]
+    },
+    {
+      "CANDIDATE_ID": "CURRENT_PRODUCTION_CODE_K10_SEMANTIC_eea8a560fdd65e2d35cb438e950426df537880525b4e0d014366e9f8ca57acdc",
+      "DEDUPED_SOURCE_IDENTITY_COUNT": 1,
+      "DEDUPLICATION_STATUS": "UNIQUE_NORMALIZED_CONTENT",
+      "K": 10,
+      "NORMALIZED_SEMANTIC_ID": "eea8a560fdd65e2d35cb438e950426df537880525b4e0d014366e9f8ca57acdc",
+      "SOURCE_CANDIDATE_IDS": [
+        "CURRENT_PRODUCTION_CODE_B649_SEALED_GEOMETRY_PORTFOLIO_K10"
+      ]
+    },
+    {
+      "CANDIDATE_ID": "DESIGNATED_RESEARCH_REFERENCE_K10_SEMANTIC_4167482d739c59896ad9d50d23ebad89c1d22e787df8a34ae2b6bfd9206a69d5",
+      "DEDUPED_SOURCE_IDENTITY_COUNT": 1,
+      "DEDUPLICATION_STATUS": "UNIQUE_NORMALIZED_CONTENT",
+      "K": 10,
+      "NORMALIZED_SEMANTIC_ID": "4167482d739c59896ad9d50d23ebad89c1d22e787df8a34ae2b6bfd9206a69d5",
+      "SOURCE_CANDIDATE_IDS": [
+        "DESIGNATED_REFERENCE_ITERATIVE_EXACT_1EXCHANGE_REFINEMENT_V1_K10"
+      ]
+    },
+    {
+      "CANDIDATE_ID": "HARD_DIV_PAIRWISE_OVERLAP_R1_K10_SEMANTIC_13b1126d5b26ce44c9aba24670142eeab49f4a4b51aaf3bbabe7a7f1659ac673",
+      "DEDUPED_SOURCE_IDENTITY_COUNT": 2,
+      "DEDUPLICATION_STATUS": "DEDUPE_SAME_NORMALIZED_CONTENT",
+      "K": 10,
+      "NORMALIZED_SEMANTIC_ID": "13b1126d5b26ce44c9aba24670142eeab49f4a4b51aaf3bbabe7a7f1659ac673",
+      "SOURCE_CANDIDATE_IDS": [
+        "HARD_DIV_PAIRWISE_OVERLAP_R1_K10_RADIUS1",
+        "HARD_DIV_PAIRWISE_OVERLAP_R1_K10_RADIUS2"
+      ]
+    },
+    {
+      "CANDIDATE_ID": "DESIGNATED_RESEARCH_REFERENCE_K15_SEMANTIC_8057138edd980413fa52607144d66a90372e68d251654998e3a1767fd3d9ce83",
+      "DEDUPED_SOURCE_IDENTITY_COUNT": 1,
+      "DEDUPLICATION_STATUS": "UNIQUE_NORMALIZED_CONTENT",
+      "K": 15,
+      "NORMALIZED_SEMANTIC_ID": "8057138edd980413fa52607144d66a90372e68d251654998e3a1767fd3d9ce83",
+      "SOURCE_CANDIDATE_IDS": [
+        "DESIGNATED_REFERENCE_ITERATIVE_EXACT_1EXCHANGE_REFINEMENT_V1_K15"
+      ]
+    },
+    {
+      "CANDIDATE_ID": "CURRENT_PRODUCTION_CODE_K20_SEMANTIC_fbec2280e314e41517b5091192c51bda15228de6416a8e54e5df327185ddb238",
+      "DEDUPED_SOURCE_IDENTITY_COUNT": 1,
+      "DEDUPLICATION_STATUS": "UNIQUE_NORMALIZED_CONTENT",
+      "K": 20,
+      "NORMALIZED_SEMANTIC_ID": "fbec2280e314e41517b5091192c51bda15228de6416a8e54e5df327185ddb238",
+      "SOURCE_CANDIDATE_IDS": [
+        "CURRENT_PRODUCTION_CODE_B649_SEALED_GEOMETRY_PORTFOLIO_K20"
+      ]
+    },
+    {
+      "CANDIDATE_ID": "DESIGNATED_RESEARCH_REFERENCE_K20_SEMANTIC_bf561d28d26961043f112ba8ed762ba9535666022c7df6bcefe49b8a21412710",
+      "DEDUPED_SOURCE_IDENTITY_COUNT": 1,
+      "DEDUPLICATION_STATUS": "UNIQUE_NORMALIZED_CONTENT",
+      "K": 20,
+      "NORMALIZED_SEMANTIC_ID": "bf561d28d26961043f112ba8ed762ba9535666022c7df6bcefe49b8a21412710",
+      "SOURCE_CANDIDATE_IDS": [
+        "DESIGNATED_REFERENCE_ITERATIVE_EXACT_1EXCHANGE_REFINEMENT_V1_K20"
+      ]
+    },
+    {
+      "CANDIDATE_ID": "HARD_DIV_PAIRWISE_OVERLAP_R1_K20_SEMANTIC_9a802a103f79948f2345e51f4746860236857f18beece22fe444886cde9d3424",
+      "DEDUPED_SOURCE_IDENTITY_COUNT": 1,
+      "DEDUPLICATION_STATUS": "UNIQUE_NORMALIZED_CONTENT",
+      "K": 20,
+      "NORMALIZED_SEMANTIC_ID": "9a802a103f79948f2345e51f4746860236857f18beece22fe444886cde9d3424",
+      "SOURCE_CANDIDATE_IDS": [
+        "HARD_DIV_PAIRWISE_OVERLAP_R1_K20_RADIUS2"
+      ]
+    },
+    {
+      "CANDIDATE_ID": "HARD_DIV_PAIRWISE_OVERLAP_R1_K20_SEMANTIC_a920c98327de729438c240b57d0b4a8a47909404106f40cd1f687a60ffc7d3bf",
+      "DEDUPED_SOURCE_IDENTITY_COUNT": 1,
+      "DEDUPLICATION_STATUS": "UNIQUE_NORMALIZED_CONTENT",
+      "K": 20,
+      "NORMALIZED_SEMANTIC_ID": "a920c98327de729438c240b57d0b4a8a47909404106f40cd1f687a60ffc7d3bf",
+      "SOURCE_CANDIDATE_IDS": [
+        "HARD_DIV_PAIRWISE_OVERLAP_R1_K20_RADIUS1"
+      ]
+    }
+  ],
+  "PRECOMPUTATION_CHECKS": {
+    "candidate_legality": "PASS",
+    "canonical_import": "PASS",
+    "complete_main_draw_count": 13983816,
+    "draw_space_reused_across_candidates": "YES",
+    "evaluate_single_ticket_closed_form": "7729/249711",
+    "special_count": 43
+  },
+  "PREDICTIVE_SIGNAL_CLAIM": "NO",
+  "PRODUCTION_MUTATION": "NONE",
+  "PRODUCTION_PROMOTION": "NOT_AUTHORIZED",
+  "RAW_SOURCE_CANDIDATE_COUNT": 12,
+  "SOURCE_WRITES": "NONE",
+  "TASK_ID": "B649_OFFICIAL_ANY_PRIZE_FRONTIER_RECONCILIATION_R1",
+  "TASK_STATUS": "COMPLETED",
+  "WORKTREE_PATH": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.task-data/worktrees/B649_OFFICIAL_ANY_PRIZE_FRONTIER_RECONCILIATION_R1",
+  "WRITTEN_PROJECT_PATHS": [
+    ".task-data/B649_OFFICIAL_ANY_PRIZE_FRONTIER_RECONCILIATION_R1/frontier_reconciliation.json"
+  ]
+}

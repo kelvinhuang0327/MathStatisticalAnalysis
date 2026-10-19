@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
-from datetime import datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
-from typing import cast
+from types import TracebackType
+from typing import TextIO, cast
 from zoneinfo import ZoneInfo
 
 import pytest
@@ -14,9 +16,13 @@ from tools.b649_operational_prediction_loop import (
     HistorySnapshot,
     PredictionTarget,
     StrategyStream,
+    build_canonical_predraw_consensus,
     build_current_target_freshness_report,
+    build_descriptive_predraw_consensus,
     classify_prediction_temporal,
     compute_history_freshness,
+    compute_number_consensus,
+    compute_pairwise_stream_overlap,
     create_prediction_payload,
     rebuild_history_freshness_ledger,
     resolve_latest_known_draw,
@@ -129,7 +135,7 @@ def _history() -> HistorySnapshot:
     rows = tuple(
         CausalDrawRow(
             draw=str(index + 1),
-            date=f"history-{index + 1}",
+            date=(date(2020, 1, 1) + timedelta(days=index)).isoformat(),
             numbers=tuple(
                 sorted((((index + 7 * offset) % 49) + 1) for offset in range(6))
             ),
@@ -240,6 +246,18 @@ def test_prediction_saves_two_native_tickets_with_time_and_history_identity(
     )
     assert stored["prediction_created_at"] == "2026-08-14T19:00:00.000000+08:00"
     assert stored["prediction_temporal_class"] == "PRE_DRAW"
+    assert stored["strategy_id"] == "b649_new_horizon_minimax_disagreement_r1"
+    assert stored["strategy_version"] == "v0.1"
+    assert stored["strategy_config"] == {
+        "short_horizon": 30,
+        "middle_horizon": 120,
+        "full_prefix": True,
+        "maximum_cross_ticket_overlap": 2,
+    }
+    assert stored["producer_fingerprint"] == (
+        "cf80ae3e6ab8ebeb33c0c1c4e169ab3e0cb800659184bb79898901e244eac007"
+    )
+    assert stored["pinned_implementation"] == "fc720ea8965faf95021a59d3fe3dae61ae3ef6c3"
     assert stored["history_draw_count"] == 200
     assert stored["history_sha256"] == "1" * 64
     assert _object(stored, "history_cutoff") == {
@@ -249,9 +267,93 @@ def test_prediction_saves_two_native_tickets_with_time_and_history_identity(
     tickets = _object_list(stored, "tickets")
     assert len(tickets) == 2
     assert [ticket["ticket_position"] for ticket in tickets] == [1, 2]
-    assert all(len(_numbers(ticket, "predicted_numbers")) == 6 for ticket in tickets)
+    assert tuple(_numbers(ticket, "predicted_numbers") for ticket in tickets) == (
+        (1, 2, 3, 4, 8, 11),
+        (3, 4, 10, 22, 23, 29),
+    )
     assert (tmp_path / "performance.jsonl").is_file()
     assert (tmp_path / "research-summary.json").is_file()
+
+
+def test_v01_and_v02_horizon_records_keep_separate_identity_and_scores(
+    tmp_path: Path,
+) -> None:
+    history = _history()
+    v01_prediction = create_prediction_payload(
+        history,
+        created_at=datetime.fromisoformat("2026-08-14T19:00:00+08:00"),
+        prediction_run_id="horizon-v01-run",
+    )
+    v02_stream = next(
+        stream
+        for stream in STRATEGY_STREAMS
+        if stream.strategy_id == "b649_new_horizon_minimax_disagreement_r1"
+    )
+    v02_prediction = run_strategy_stream(
+        v02_stream,
+        history,
+        PredictionTarget(
+            lottery_type="BIG_LOTTO",
+            draw_number="115000079",
+            draw_date="2026-08-14",
+            scheduled_at="2026-08-14T20:30:00+08:00",
+        ),
+        created_at=datetime.fromisoformat("2026-08-14T19:10:00+08:00"),
+        prediction_run_id="horizon-v02-run",
+    )
+
+    assert v02_stream.strategy_version == "v0.2"
+    assert v02_stream.strategy_config == {
+        "short_horizon": 30,
+        "middle_horizon": 120,
+        "full_prefix": True,
+        "maximum_cross_ticket_overlap": 0,
+    }
+    assert v02_stream.producer_fingerprint is None
+    assert v02_stream.pinned_implementation is None
+    assert v01_prediction["strategy_version"] == "v0.1"
+    assert v02_prediction["strategy_version"] == "v0.2"
+    assert v02_prediction["strategy_config"] == v02_stream.strategy_config
+    assert v02_prediction["producer_fingerprint"] is None
+    assert v02_prediction["pinned_implementation"] is None
+    v02_tickets = _object_list(v02_prediction, "tickets")
+    v02_numbers = tuple(_numbers(ticket, "predicted_numbers") for ticket in v02_tickets)
+    assert v02_numbers == (
+        (1, 2, 3, 4, 8, 11),
+        (10, 22, 23, 29, 30, 36),
+    )
+    assert len(set(v02_numbers[0]) & set(v02_numbers[1])) == 0
+
+    save_prediction(tmp_path, v01_prediction)
+    save_strategy_prediction(tmp_path, v02_prediction)
+    _, score_paths = update_outcome(
+        tmp_path,
+        draw_number="115000079",
+        main_numbers=(1, 2, 3, 4, 5, 6),
+        special_number=49,
+        source="synthetic-version-identity-check",
+        updated_at=datetime.fromisoformat("2026-08-14T21:00:00+08:00"),
+    )
+
+    score_identities = {
+        (_read_object(path)["strategy_id"], _read_object(path)["strategy_version"])
+        for path in score_paths
+    }
+    assert score_identities == {
+        ("b649_new_horizon_minimax_disagreement_r1", "v0.1"),
+        ("b649_new_horizon_minimax_disagreement_r1", "v0.2"),
+    }
+    performance_rows = [
+        cast(dict[str, object], json.loads(line))
+        for line in (tmp_path / "performance.jsonl").read_text(encoding="utf-8").splitlines()
+    ]
+    assert {
+        (row["strategy_id"], row["strategy_version"], row["scored_count"])
+        for row in performance_rows
+    } == {
+        ("b649_new_horizon_minimax_disagreement_r1", "v0.1", 1),
+        ("b649_new_horizon_minimax_disagreement_r1", "v0.2", 1),
+    }
 
 
 def test_later_prediction_run_does_not_replace_the_older_run(tmp_path: Path) -> None:
@@ -467,9 +569,129 @@ def test_save_strategy_prediction_never_overwrites_an_existing_run(tmp_path: Pat
         created_at=datetime.fromisoformat("2026-08-18T19:00:00+08:00"),
         prediction_run_id="dup-run",
     )
-    save_strategy_prediction(tmp_path, record)
+    path = save_strategy_prediction(tmp_path, record)
+    original_bytes = path.read_bytes()
+    original_sha256 = hashlib.sha256(original_bytes).hexdigest()
+    before = {
+        item.relative_to(tmp_path): item.read_bytes()
+        for item in tmp_path.rglob("*")
+        if item.is_file()
+    }
+
     with pytest.raises(FileExistsError):
         save_strategy_prediction(tmp_path, record)
+
+    assert path.is_file()
+    assert path.read_bytes() == original_bytes
+    assert hashlib.sha256(path.read_bytes()).hexdigest() == original_sha256
+    after = {
+        item.relative_to(tmp_path): item.read_bytes()
+        for item in tmp_path.rglob("*")
+        if item.is_file()
+    }
+    assert after == before
+
+
+def test_legacy_duplicate_save_preserves_prediction_and_derived_history(
+    tmp_path: Path,
+) -> None:
+    prediction = create_prediction_payload(
+        _history(),
+        created_at=datetime.fromisoformat("2026-08-14T19:00:00+08:00"),
+        prediction_run_id="legacy-dup-run",
+    )
+    path = save_prediction(tmp_path, prediction)
+    original_bytes = path.read_bytes()
+    original_sha256 = hashlib.sha256(original_bytes).hexdigest()
+    before = {
+        item.relative_to(tmp_path): item.read_bytes()
+        for item in tmp_path.rglob("*")
+        if item.is_file()
+    }
+
+    assert prediction["prediction_temporal_class"] == "PRE_DRAW"
+    assert (tmp_path / "performance.jsonl").is_file()
+    assert (tmp_path / "research-summary.json").is_file()
+
+    with pytest.raises(FileExistsError):
+        save_prediction(tmp_path, prediction)
+
+    assert path.is_file()
+    assert path.read_bytes() == original_bytes
+    assert hashlib.sha256(path.read_bytes()).hexdigest() == original_sha256
+    after = {
+        item.relative_to(tmp_path): item.read_bytes()
+        for item in tmp_path.rglob("*")
+        if item.is_file()
+    }
+    assert after == before
+
+
+def test_create_json_cleans_only_its_file_after_partial_write_failure(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    prediction = create_prediction_payload(
+        _history(),
+        created_at=datetime.fromisoformat("2026-08-14T19:00:00+08:00"),
+        prediction_run_id="partial-write-run",
+    )
+    draw_number = cast(str, prediction["draw_number"])
+    run_id = cast(str, prediction["prediction_run_id"])
+    new_path = tmp_path / "predictions" / draw_number / f"{run_id}.json"
+    existing_path = new_path.with_name("existing.json")
+    existing_path.parent.mkdir(parents=True)
+    existing_bytes = b'{"preserve":true}\n'
+    existing_path.write_bytes(existing_bytes)
+    original_open = Path.open
+
+    class _PartialWriteFailure:
+        def __init__(self, handle: TextIO) -> None:
+            self.handle = handle
+
+        def __enter__(self) -> _PartialWriteFailure:
+            return self
+
+        def __exit__(
+            self,
+            exc_type: type[BaseException] | None,
+            exc_value: BaseException | None,
+            traceback: TracebackType | None,
+        ) -> None:
+            self.handle.close()
+
+        def write(self, value: str) -> int:
+            self.handle.write(value[:1])
+            self.handle.flush()
+            raise OSError("synthetic partial write failure")
+
+        def flush(self) -> None:
+            self.handle.flush()
+
+        def fileno(self) -> int:
+            return self.handle.fileno()
+
+    def open_with_partial_failure(
+        path: Path,
+        mode: str = "r",
+        buffering: int = -1,
+        encoding: str | None = None,
+        errors: str | None = None,
+        newline: str | None = None,
+    ) -> TextIO:
+        handle = cast(
+            TextIO, original_open(path, mode, buffering, encoding, errors, newline)
+        )
+        if path == new_path and mode == "x":
+            return cast(TextIO, _PartialWriteFailure(handle))
+        return handle
+
+    monkeypatch.setattr(Path, "open", open_with_partial_failure)
+
+    with pytest.raises(OSError, match="synthetic partial write failure"):
+        save_prediction(tmp_path, prediction)
+
+    assert not new_path.exists()
+    assert existing_path.read_bytes() == existing_bytes
 
 
 def test_legacy_flat_prediction_remains_readable_alongside_nested_multi_strategy_layout(
@@ -1030,3 +1252,372 @@ def test_resolve_latest_known_draw_prefers_a_newer_recorded_outcome_over_the_dat
     )
 
     assert resolve_latest_known_draw(tmp_path, database) == "115000079"
+
+
+# ---------------------------------------------------------------------------
+# Hermetic fixture constants and helper used by the aggregator tests below.
+# ---------------------------------------------------------------------------
+# NOTE: No developer-host absolute paths exist here.
+# Every aggregator test is self-contained and runs in any CI environment.
+
+_FIXTURE_TARGET_DRAW = "115000087"
+_FIXTURE_HISTORY_CUTOFF = "115000086"
+
+# Exact tickets from the real 115000087 PRE_DRAW run (11 strategies, 22 tickets
+# total).  Inlined here so characterization tests remain hermetic while
+# preserving the same computed top6 / top_k values.
+_FIXTURE_STREAMS: tuple[tuple[str, list[list[int]]], ...] = (
+    (
+        "b649_new_horizon_minimax_disagreement_r1",
+        [[15, 16, 23, 26, 29, 35], [4, 7, 12, 22, 29, 34]],
+    ),
+    ("biglotto_deviation_2bet", [[4, 12, 16, 25, 26, 29]]),
+    ("biglotto_social_wisdom_anti_popularity", [[42, 43, 44, 45, 47, 49]]),
+    (
+        "legacy_biglotto__graph_predictor__cd70713a5709",
+        [[16, 23, 24, 26, 29, 47]],
+    ),
+    (
+        "legacy_biglotto__hpsb_optimizer__cf5cd7d971e8",
+        [[12, 24, 25, 26, 29, 35]],
+    ),
+    (
+        "legacy_biglotto__pure_cold_predict__9e89f2b41add",
+        [[7, 22, 31, 38, 39, 42]],
+    ),
+    (
+        "legacy_biglotto__test_asm__d39a233a4c75",
+        [[1, 4, 6, 9, 10, 25], [1, 4, 34, 36, 45, 46], [6, 8, 9, 10, 11, 18]],
+    ),
+    (
+        "legacy_biglotto__test_ces__78d17c530ab8",
+        [[8, 9, 11, 26, 29, 43], [1, 9, 18, 19, 26, 39], [4, 9, 18, 24, 28, 29]],
+    ),
+    (
+        "legacy_biglotto__test_ecp__c9d5ac6decdd",
+        [[8, 10, 11, 18, 19, 43], [10, 25, 34, 36, 43, 45], [1, 4, 6, 36, 45, 46]],
+    ),
+    (
+        "legacy_biglotto__test_mwsc__ba37643d6a3b",
+        [[10, 12, 25, 26, 36, 38], [10, 24, 36, 45, 46, 47], [24, 32, 34, 39, 40, 47]],
+    ),
+    (
+        "legacy_biglotto__test_tme__f3bb5106dfe3",
+        [[2, 8, 11, 18, 19, 43], [1, 2, 3, 4, 6, 9], [9, 26, 28, 29, 39, 44]],
+    ),
+)
+
+
+def _populate_fixture_directory(directory: Path) -> None:
+    """Write all 11 canonical streams from ``_FIXTURE_STREAMS`` into *directory*."""
+    for strategy_id, tickets in _FIXTURE_STREAMS:
+        _write_predraw_prediction(directory, strategy_id=strategy_id, tickets=tickets)
+
+
+def _write_predraw_prediction(
+    directory: Path,
+    *,
+    strategy_id: str,
+    tickets: list[list[int]],
+    draw_number: str = "115000087",
+    cutoff_draw_number: str = "115000086",
+    availability: str = "AVAILABLE",
+    temporal_class: str = "PRE_DRAW",
+    run_suffix: str = "1",
+) -> None:
+    """Write one minimal, schema-valid synthetic PRE_DRAW prediction record.
+
+    Mirrors the real ``b649-operational-prediction-v1`` field set exactly so
+    aggregator tests exercise the real parsing/validation path rather than a
+    simplified stand-in.
+    """
+
+    stream_dir = directory / strategy_id
+    stream_dir.mkdir(parents=True, exist_ok=True)
+    run_id = f"{draw_number}-{strategy_id}-{run_suffix}"
+    payload: dict[str, object] = {
+        "schema_version": "b649-operational-prediction-v1",
+        "task_id": "TEST_TASK",
+        "prediction_run_id": run_id,
+        "lottery_type": "BIG_LOTTO",
+        "draw_number": draw_number,
+        "draw_date": "2026-09-11",
+        "scheduled_at": "2026-09-11T20:30:00+08:00",
+        "prediction_created_at": "2026-09-08T22:00:00.000000+08:00",
+        "strategy_id": strategy_id,
+        "strategy_version": "v0.1",
+        "strategy_config": {},
+        "history_cutoff": {"draw_number": cutoff_draw_number, "draw_date": "2026-09-08"},
+        "history_draw_count": 100,
+        "history_sha256": "0" * 64,
+        "history_caveat": "YES",
+        "producer_fingerprint": None,
+        "pinned_implementation": None,
+        "prediction_temporal_class": temporal_class,
+        "availability": availability,
+        "unavailable_reason": None,
+        "native_ticket_count": len(tickets),
+        "tickets": [
+            {"ticket_position": position, "predicted_numbers": numbers}
+            for position, numbers in enumerate(tickets, start=1)
+        ],
+    }
+    (stream_dir / f"{run_id}.json").write_text(json.dumps(payload), encoding="utf-8")
+
+
+def test_build_descriptive_predraw_consensus_matches_115000087_characterization(
+    tmp_path: Path,
+) -> None:
+    """Hermetic characterization of the 115000087 canonical PRE_DRAW consensus.
+
+    The 11-stream ticket data is inlined from the real 115000087 run in
+    ``_FIXTURE_STREAMS``; the computed top6/top_k values are therefore
+    identical to what the original developer-host test verified, but this
+    version works in any CI environment without any local file dependencies.
+    """
+    _populate_fixture_directory(tmp_path)
+
+    result = build_descriptive_predraw_consensus(
+        tmp_path,
+        expected_target_draw=_FIXTURE_TARGET_DRAW,
+        expected_history_cutoff=_FIXTURE_HISTORY_CUTOFF,
+        expected_stream_count=11,
+    )
+
+    assert result["target_draw"] == "115000087"
+    assert result["history_cutoff"] == "115000086"
+    assert result["prediction_temporal_class"] == "PRE_DRAW"
+    assert result["stream_count"] == 11
+    assert result["ticket_count"] == 22
+    assert result["schema_version"] == "b649-descriptive-predraw-consensus-v1"
+    assert result["authority_status"] == "NONCANONICAL_DESCRIPTIVE"
+    assert result["descriptive_top6"] == [1, 4, 18, 25, 26, 29]
+    assert result["descriptive_top_k"] == [1, 4, 8, 18, 24, 25, 26, 29, 43, 45]
+    assert cast(list[object], result["descriptive_number_consensus"])
+    assert "final_recommended_output" not in result
+    assert result["target_result_used"] is False
+    assert result["aggregation_weight_mode"] == "UNWEIGHTED"
+    assert result["weight_authority_status"] == "LIMITED"
+    assert len(cast(list[object], result["stream_identities"])) == 11
+
+
+def test_legacy_canonical_predraw_consensus_fails_closed_before_input_read(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def must_not_read(_directory: Path) -> tuple[dict[str, object], ...]:
+        raise AssertionError("legacy canonical entrypoint read prediction inputs")
+
+    monkeypatch.setattr(
+        "tools.b649_operational_prediction_loop._load_predraw_consensus_predictions",
+        must_not_read,
+    )
+
+    with pytest.raises(ValueError, match="CANONICAL_PREDRAW_CONSENSUS_RETIRED"):
+        build_canonical_predraw_consensus(
+            Path("/path/that/must/not/be-read"),
+            expected_target_draw="115000087",
+            expected_history_cutoff="115000086",
+        )
+
+
+def test_build_descriptive_predraw_consensus_is_deterministic_across_repeated_runs(
+    tmp_path: Path,
+) -> None:
+    _populate_fixture_directory(tmp_path)
+    generated_at = datetime.fromisoformat("2026-09-10T00:00:00+08:00")
+
+    first = build_descriptive_predraw_consensus(
+        tmp_path,
+        expected_target_draw=_FIXTURE_TARGET_DRAW,
+        expected_history_cutoff=_FIXTURE_HISTORY_CUTOFF,
+        expected_stream_count=11,
+        generated_at=generated_at,
+    )
+    second = build_descriptive_predraw_consensus(
+        tmp_path,
+        expected_target_draw=_FIXTURE_TARGET_DRAW,
+        expected_history_cutoff=_FIXTURE_HISTORY_CUTOFF,
+        expected_stream_count=11,
+        generated_at=generated_at,
+    )
+
+    assert first == second
+
+
+def test_upstream_prediction_locator_is_absolute_and_matches_input_directory(
+    tmp_path: Path,
+) -> None:
+    _populate_fixture_directory(tmp_path)
+
+    result = build_descriptive_predraw_consensus(
+        tmp_path,
+        expected_target_draw=_FIXTURE_TARGET_DRAW,
+        expected_history_cutoff=_FIXTURE_HISTORY_CUTOFF,
+    )
+
+    locator = Path(cast(str, result["upstream_prediction_locator"]))
+    assert locator.is_absolute()
+    assert locator == tmp_path.resolve()
+
+
+def test_target_result_independence_no_outcome_file_is_ever_read(
+    tmp_path: Path,
+) -> None:
+    """The aggregator must never read an outcome file; ``target_result_used``
+    must always be False regardless of whether an outcome file is present."""
+    _populate_fixture_directory(tmp_path)
+    # Verify there is genuinely no outcome file in our hermetic sandbox.
+    outcome_path = tmp_path.parent / "outcomes" / f"{_FIXTURE_TARGET_DRAW}.json"
+    assert not outcome_path.exists()
+
+    result = build_descriptive_predraw_consensus(
+        tmp_path,
+        expected_target_draw=_FIXTURE_TARGET_DRAW,
+        expected_history_cutoff=_FIXTURE_HISTORY_CUTOFF,
+    )
+
+    assert result["target_result_used"] is False
+
+
+def test_compute_number_consensus_tie_break_is_ascending_natural_number() -> None:
+    predictions: list[dict[str, object]] = [
+        {"strategy_id": "stream_a", "tickets": [{"predicted_numbers": [5, 24]}]},
+        {"strategy_id": "stream_b", "tickets": [{"predicted_numbers": [5, 18]}]},
+    ]
+
+    ranking = compute_number_consensus(predictions)
+    by_number = {entry["number"]: entry for entry in ranking}
+
+    assert by_number[5]["unique_stream_count"] == 2
+    assert by_number[18]["unique_stream_count"] == by_number[24]["unique_stream_count"] == 1
+    assert by_number[18]["ticket_count"] == by_number[24]["ticket_count"] == 1
+    numbers_in_rank_order = [entry["number"] for entry in ranking]
+    assert numbers_in_rank_order.index(18) < numbers_in_rank_order.index(24)
+
+
+def test_compute_pairwise_stream_overlap_is_descriptive_only() -> None:
+    predictions: list[dict[str, object]] = [
+        {"strategy_id": "alpha_stream", "tickets": [{"predicted_numbers": [1, 2, 3]}]},
+        {"strategy_id": "beta_stream", "tickets": [{"predicted_numbers": [2, 3, 4]}]},
+    ]
+
+    overlap = compute_pairwise_stream_overlap(predictions)
+
+    assert overlap == (
+        {"stream_a": "alpha_stream", "stream_b": "beta_stream", "shared_number_count": 2},
+    )
+
+
+def test_stream_count_mismatch_raises_when_expected_count_is_supplied(tmp_path: Path) -> None:
+    _write_predraw_prediction(tmp_path, strategy_id="only_stream", tickets=[[1, 2, 3, 4, 5, 6]])
+
+    with pytest.raises(ValueError, match="STREAM_COUNT_MISMATCH"):
+        build_descriptive_predraw_consensus(
+            tmp_path,
+            expected_target_draw="115000087",
+            expected_history_cutoff="115000086",
+            expected_stream_count=2,
+        )
+
+
+def test_stream_count_validation_is_skipped_when_not_supplied(tmp_path: Path) -> None:
+    _write_predraw_prediction(tmp_path, strategy_id="only_stream", tickets=[[1, 2, 3, 4, 5, 6]])
+
+    result = build_descriptive_predraw_consensus(
+        tmp_path,
+        expected_target_draw="115000087",
+        expected_history_cutoff="115000086",
+    )
+
+    assert result["stream_count"] == 1
+
+
+def test_target_draw_mismatch_raises(tmp_path: Path) -> None:
+    _write_predraw_prediction(
+        tmp_path,
+        strategy_id="wrong_draw_stream",
+        tickets=[[1, 2, 3, 4, 5, 6]],
+        draw_number="115000086",
+    )
+
+    with pytest.raises(ValueError, match="TARGET_DRAW_MISMATCH"):
+        build_descriptive_predraw_consensus(
+            tmp_path,
+            expected_target_draw="115000087",
+            expected_history_cutoff="115000086",
+        )
+
+
+def test_prediction_not_available_raises(tmp_path: Path) -> None:
+    _write_predraw_prediction(
+        tmp_path,
+        strategy_id="unavailable_stream",
+        tickets=[],
+        availability="UNAVAILABLE",
+    )
+
+    with pytest.raises(ValueError, match="PREDICTION_NOT_AVAILABLE"):
+        build_descriptive_predraw_consensus(
+            tmp_path,
+            expected_target_draw="115000087",
+            expected_history_cutoff="115000086",
+        )
+
+
+def test_prediction_not_pre_draw_raises(tmp_path: Path) -> None:
+    _write_predraw_prediction(
+        tmp_path,
+        strategy_id="post_draw_stream",
+        tickets=[[1, 2, 3, 4, 5, 6]],
+        temporal_class="POST_DRAW",
+    )
+
+    with pytest.raises(ValueError, match="PREDICTION_NOT_PRE_DRAW"):
+        build_descriptive_predraw_consensus(
+            tmp_path,
+            expected_target_draw="115000087",
+            expected_history_cutoff="115000086",
+        )
+
+
+def test_history_cutoff_exceeding_allowed_ceiling_raises(tmp_path: Path) -> None:
+    _write_predraw_prediction(
+        tmp_path,
+        strategy_id="leaky_cutoff_stream",
+        tickets=[[1, 2, 3, 4, 5, 6]],
+        cutoff_draw_number="115000087",  # equals the target itself: not allowed
+    )
+
+    with pytest.raises(ValueError, match="HISTORY_CUTOFF_EXCEEDS_ALLOWED"):
+        build_descriptive_predraw_consensus(
+            tmp_path,
+            expected_target_draw="115000087",
+            expected_history_cutoff="115000086",
+        )
+
+
+def test_weighted_mode_fails_closed_when_authority_is_not_ready(tmp_path: Path) -> None:
+    for status in ("LIMITED", "NOT_AVAILABLE"):
+        with pytest.raises(ValueError, match="WEIGHTED_MODE_REQUIRES_READY_AUTHORITY"):
+            build_descriptive_predraw_consensus(
+                tmp_path,
+                expected_target_draw="115000087",
+                expected_history_cutoff="115000086",
+                weight_authority_status=status,
+                aggregation_weight_mode="CANONICAL_WEIGHTED",
+            )
+
+
+def test_weighted_mode_is_not_implemented_even_when_authority_is_ready(tmp_path: Path) -> None:
+    """No canonical stream weight source exists anywhere in this codebase, so
+    a READY authority must never be silently accepted as license to invent
+    weights; this must fail differently from the not-ready case above."""
+
+    with pytest.raises(ValueError, match="CANONICAL_WEIGHTED_NOT_IMPLEMENTED"):
+        build_descriptive_predraw_consensus(
+            tmp_path,
+            expected_target_draw="115000087",
+            expected_history_cutoff="115000086",
+            weight_authority_status="READY",
+            aggregation_weight_mode="CANONICAL_WEIGHTED",
+        )

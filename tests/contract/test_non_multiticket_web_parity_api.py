@@ -5,19 +5,51 @@
 
 from __future__ import annotations
 
+import json
 from datetime import date
 from pathlib import Path
 
+import pytest
 from fastapi.testclient import TestClient
 
 from lottolab.application.draw_automation import ProviderDrawRecord, ProviderFetchResult
+from lottolab.application.strategy_evidence import (
+    D3AvailabilityStatus,
+    D3DefinitionSnapshot,
+    StrategyEvidenceRegistryUnavailableError,
+)
 from lottolab.domain.draws import LotteryType
 from lottolab.infrastructure.persistence.draw_schema import (
     DATA_DIRECTORY_ENV,
     LocalDataPaths,
     resolve_local_data_paths,
 )
+from lottolab.infrastructure.strategy_evidence_registry import CommittedStrategyEvidenceRegistry
 from lottolab.interfaces.api.app import create_app
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+D3_AUTHORITY_PATH = "contracts/evidence/metric_definitions/d3.json"
+
+_VALID_REGISTRY_PAYLOAD = {
+    "entries": [],
+    "schema_id": "lottolab.evidence.canonical_evidence_registry",
+    "schema_version": "1.0.0",
+}
+
+_VALID_D3_PAYLOAD = {
+    "metric_id": "D3",
+    "metric_version": "v1",
+    "schema_id": "lottolab.evidence.metric_definition",
+    "schema_version": "1.0.0",
+    "formula_status": "RESERVED_UNAVAILABLE",
+    "direction": "DESCRIPTIVE_ONLY",
+    "aggregation": "NONE",
+    "sample_unit": "DRAWS",
+    "decimal_scale": 4,
+    "rounding_mode": "ROUND_HALF_EVEN",
+    "unit": "UNITLESS",
+    "definition_prose": "fixture prose",
+}
 
 
 class _Provider:
@@ -148,9 +180,119 @@ def test_strategy_evidence_is_fail_closed_and_excludes_multiticket_ranking() -> 
         "value": "NOT_AVAILABLE",
         "owner": "ACTIVE_MULTITICKET_AGENT",
     }
-    assert payload["d3"] == {
-        "status": "RESERVED_UNAVAILABLE",
-        "value": "NOT_AVAILABLE",
+    assert payload["d3"]["status"] == "RESERVED_UNAVAILABLE"
+    assert payload["d3"]["value"] == "NOT_AVAILABLE"
+
+    canonical_d3 = json.loads((REPO_ROOT / D3_AUTHORITY_PATH).read_text(encoding="utf-8"))
+    assert payload["d3"]["definition"] == {
+        "metric_id": canonical_d3["metric_id"],
+        "metric_version": canonical_d3["metric_version"],
+        "schema_id": canonical_d3["schema_id"],
+        "schema_version": canonical_d3["schema_version"],
+        "formula_status": canonical_d3["formula_status"],
+        "direction": canonical_d3["direction"],
+        "aggregation": canonical_d3["aggregation"],
+        "sample_unit": canonical_d3["sample_unit"],
+        "decimal_scale": canonical_d3["decimal_scale"],
+        "rounding_mode": canonical_d3["rounding_mode"],
+        "unit": canonical_d3["unit"],
+        "definition_prose": canonical_d3["definition_prose"],
+        "authority_path": D3_AUTHORITY_PATH,
+    }
+
+
+def test_committed_strategy_evidence_registry_parses_canonical_d3_definition(
+    tmp_path: Path,
+) -> None:
+    registry_path = tmp_path / "canonical_evidence_registry.json"
+    d3_path = tmp_path / "d3.json"
+    registry_path.write_text(json.dumps(_VALID_REGISTRY_PAYLOAD), encoding="utf-8")
+    d3_path.write_text(json.dumps(_VALID_D3_PAYLOAD), encoding="utf-8")
+    registry = CommittedStrategyEvidenceRegistry(registry_path, d3_path, D3_AUTHORITY_PATH)
+
+    snapshot = registry.read()
+
+    assert snapshot.d3_status == D3AvailabilityStatus.RESERVED_UNAVAILABLE
+    assert snapshot.d3_definition == D3DefinitionSnapshot(
+        metric_id="D3",
+        metric_version="v1",
+        schema_id="lottolab.evidence.metric_definition",
+        schema_version="1.0.0",
+        formula_status="RESERVED_UNAVAILABLE",
+        direction="DESCRIPTIVE_ONLY",
+        aggregation="NONE",
+        sample_unit="DRAWS",
+        decimal_scale=4,
+        rounding_mode="ROUND_HALF_EVEN",
+        unit="UNITLESS",
+        definition_prose="fixture prose",
+        authority_path=D3_AUTHORITY_PATH,
+    )
+
+
+def test_committed_strategy_evidence_registry_fails_closed_when_d3_definition_missing(
+    tmp_path: Path,
+) -> None:
+    registry_path = tmp_path / "canonical_evidence_registry.json"
+    registry_path.write_text(json.dumps(_VALID_REGISTRY_PAYLOAD), encoding="utf-8")
+    registry = CommittedStrategyEvidenceRegistry(registry_path, tmp_path / "missing-d3.json")
+
+    with pytest.raises(StrategyEvidenceRegistryUnavailableError):
+        registry.read()
+
+
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        {"metric_id": "NOT_D3"},
+        {"metric_version": ""},
+        {"metric_version": None},
+        {"schema_id": "wrong.schema"},
+        {"schema_version": ""},
+        {"formula_status": 1},
+        {"direction": None},
+        {"aggregation": None},
+        {"sample_unit": None},
+        {"decimal_scale": -1},
+        {"decimal_scale": "4"},
+        {"rounding_mode": None},
+        {"unit": None},
+        {"definition_prose": ""},
+        {"definition_prose": None},
+    ],
+)
+def test_committed_strategy_evidence_registry_fails_closed_on_malformed_d3_definition(
+    tmp_path: Path, overrides: dict[str, object]
+) -> None:
+    registry_path = tmp_path / "canonical_evidence_registry.json"
+    d3_path = tmp_path / "d3.json"
+    registry_path.write_text(json.dumps(_VALID_REGISTRY_PAYLOAD), encoding="utf-8")
+    d3_path.write_text(json.dumps({**_VALID_D3_PAYLOAD, **overrides}), encoding="utf-8")
+    registry = CommittedStrategyEvidenceRegistry(registry_path, d3_path, D3_AUTHORITY_PATH)
+
+    with pytest.raises(StrategyEvidenceRegistryUnavailableError):
+        registry.read()
+
+
+def test_strategy_evidence_api_fails_closed_when_d3_definition_is_malformed(
+    tmp_path: Path,
+) -> None:
+    registry_path = tmp_path / "canonical_evidence_registry.json"
+    d3_path = tmp_path / "d3.json"
+    registry_path.write_text(json.dumps(_VALID_REGISTRY_PAYLOAD), encoding="utf-8")
+    d3_path.write_text(
+        json.dumps({**_VALID_D3_PAYLOAD, "decimal_scale": -1}), encoding="utf-8"
+    )
+    registry = CommittedStrategyEvidenceRegistry(registry_path, d3_path, D3_AUTHORITY_PATH)
+
+    response = TestClient(
+        create_app(strategy_evidence_registry_reader=registry)
+    ).get("/api/v1/strategy-evidence")
+
+    assert response.status_code == 503
+    assert response.json() == {
+        "error_code": "STRATEGY_EVIDENCE_REGISTRY_UNAVAILABLE",
+        "message": "Canonical strategy evidence metadata is unavailable.",
     }
 
 

@@ -5,9 +5,12 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+from dataclasses import fields
 from functools import lru_cache
 from importlib.resources import files
 from typing import cast
+
+from pydantic import TypeAdapter, ValidationError
 
 from lottolab.application.biglotto_multi_ticket_records import (
     B649_AUTHORITY_MODE_FRESH_REPRODUCTION as AUTHORITY_MODE_FRESH_REPRODUCTION,
@@ -16,10 +19,22 @@ from lottolab.application.biglotto_multi_ticket_records import (
     B649_AUTHORITY_MODE_HISTORICAL_SEALED as AUTHORITY_MODE_HISTORICAL_SEALED,
 )
 from lottolab.application.biglotto_multi_ticket_records import (
+    B649_EXACT_NATIVE_TICKET_COUNTS,
     B649_HISTORY_WINDOWS,
     B649_PREFIX_COUNTS,
     B649_SUCCESS_CRITERIA,
+    B649ExactNativeRecord,
+    B649ExactNativeRecordDataset,
     B649HistoryWindow,
+    B649K5Provenance,
+    B649K5Record,
+    B649K5RecordDataset,
+    B649K5Tie,
+    B649K5WindowBoundary,
+    B649K10Provenance,
+    B649K10Record,
+    B649K10RecordDataset,
+    B649K10WindowBoundary,
     B649MultiTicketRecord,
     B649MultiTicketRecordDataset,
     B649OfficialPrizeCounts,
@@ -40,6 +55,8 @@ from lottolab.infrastructure.b649_dataset_authority import (
 
 PROJECTION_RESOURCE_NAME = "biglotto_multi_ticket_historical_records_v1.json"
 PROJECTION_SCHEMA_VERSION = "B649_MULTI_TICKET_HISTORICAL_RECORDS_V2"
+PROJECTION_RESOURCE_NAME_V3 = "biglotto_multi_ticket_historical_records_v2.json"
+PROJECTION_SCHEMA_VERSION_V3 = "B649_MULTI_TICKET_HISTORICAL_RECORDS_V3"
 _LEGACY_PROJECTION_SCHEMA_VERSION = "B649_MULTI_TICKET_HISTORICAL_RECORDS_V1"
 _SHA256 = re.compile(r"^[0-9a-f]{64}$", flags=re.ASCII)
 _DECIMAL_18 = re.compile(r"^-?[0-9]+\.[0-9]{18}$", flags=re.ASCII)
@@ -88,11 +105,22 @@ class B649MultiTicketRecordProjectionError(RuntimeError):
     """The fixed packaged projection is absent or violates its closed contract."""
 
 
+class B649ExactNativeRecordProjectionError(RuntimeError):
+    """The fixed packaged V3 projection is absent or violates its closed contract."""
+
+
 class PackagedB649MultiTicketRecordReader:
     """Read only the exact named resource; never discover reports at runtime."""
 
     def read(self) -> B649MultiTicketRecordDataset:
         return _read_packaged_projection()
+
+
+class PackagedB649ExactNativeRecordReader:
+    """Read only the exact named V3 resource; never discover reports at runtime."""
+
+    def read(self) -> B649ExactNativeRecordDataset:
+        return _read_packaged_exact_native_projection()
 
 
 @lru_cache(maxsize=1)
@@ -715,9 +743,811 @@ def _nonnegative_integer(value: object, label: str) -> int:
     return value
 
 
+@lru_cache(maxsize=1)
+def _read_packaged_exact_native_projection() -> B649ExactNativeRecordDataset:
+    resource = files("lottolab.strategies.data").joinpath(PROJECTION_RESOURCE_NAME_V3)
+    try:
+        raw = resource.read_bytes()
+    except (FileNotFoundError, OSError) as exc:
+        raise B649ExactNativeRecordProjectionError(
+            "the pinned B649 exact-native projection is unavailable"
+        ) from exc
+    return _parse_exact_native_projection(raw)
+
+
+def _exact_native_mapping(value: object, label: str) -> dict[str, object]:
+    if not isinstance(value, dict) or not all(
+        isinstance(key, str) for key in cast(dict[object, object], value)
+    ):
+        raise B649ExactNativeRecordProjectionError(f"{label} must be an object")
+    return cast(dict[str, object], value)
+
+
+def _exact_native_string(value: object, label: str) -> str:
+    if not isinstance(value, str) or not value:
+        raise B649ExactNativeRecordProjectionError(f"{label} must be non-empty")
+    return value
+
+
+def _exact_native_nonnegative_integer(value: object, label: str) -> int:
+    if type(value) is not int or value < 0:
+        raise B649ExactNativeRecordProjectionError(
+            f"{label} must be a non-negative integer"
+        )
+    return value
+
+
+def _exact_native_decimal_18(value: object, label: str) -> str:
+    if not isinstance(value, str) or _DECIMAL_18.fullmatch(value) is None:
+        raise B649ExactNativeRecordProjectionError(
+            f"{label} must be an exact decimal_18 string"
+        )
+    return value
+
+
+def _exact_native_opt_int(value: object, label: str) -> int | None:
+    if value is None:
+        return None
+    if isinstance(value, int) and not isinstance(value, bool):
+        return value
+    if isinstance(value, str) and value.isdigit():
+        return int(value)
+    raise B649ExactNativeRecordProjectionError(
+        f"{label} must be an integer or null"
+    )
+
+
+def _exact_native_opt_str(value: object, label: str) -> str | None:
+    if value is None:
+        return None
+    if isinstance(value, str):
+        return value
+    raise B649ExactNativeRecordProjectionError(
+        f"{label} must be a string or null"
+    )
+
+
+def _exact_native_opt_bool(value: object, label: str) -> bool | None:
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        return value
+    raise B649ExactNativeRecordProjectionError(
+        f"{label} must be a boolean or null"
+    )
+
+
+def _parse_exact_native_projection(raw: bytes) -> B649ExactNativeRecordDataset:
+    try:
+        parsed = json.loads(raw)
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise B649ExactNativeRecordProjectionError(
+            "the pinned B649 exact-native projection is invalid JSON"
+        ) from exc
+    document = _exact_native_mapping(parsed, "exact_native_projection")
+    if document.get("projection_schema_version") != PROJECTION_SCHEMA_VERSION_V3:
+        raise B649ExactNativeRecordProjectionError(
+            "the B649 exact-native projection schema is unsupported"
+        )
+
+    projection_sha256 = document.get("projection_sha256")
+    if not isinstance(projection_sha256, str) or _SHA256.fullmatch(projection_sha256) is None:
+        raise B649ExactNativeRecordProjectionError(
+            "projection_sha256 must be a lowercase SHA-256"
+        )
+
+    canonical = json.dumps(
+        {key: value for key, value in document.items() if key != "projection_sha256"},
+        ensure_ascii=False,
+        separators=(",", ":"),
+        sort_keys=True,
+    ).encode("utf-8")
+    if hashlib.sha256(canonical).hexdigest() != projection_sha256:
+        raise B649ExactNativeRecordProjectionError(
+            "the B649 exact-native projection checksum does not match"
+        )
+
+    catalog = load_full_strategy_catalog()
+    if document.get("catalog_sha256") != catalog.catalog_sha256:
+        raise B649ExactNativeRecordProjectionError(
+            "the B649 exact-native projection catalog checksum does not match"
+        )
+
+    records_value = document.get("exact_native_records")
+    if not isinstance(records_value, list):
+        raise B649ExactNativeRecordProjectionError(
+            "exact_native_records must be a list"
+        )
+    records_raw = cast(list[object], records_value)
+    expected_count = (
+        len(catalog.records)
+        * len(B649_EXACT_NATIVE_TICKET_COUNTS)
+        * len(B649_HISTORY_WINDOWS)
+    )
+    if len(records_raw) != expected_count:
+        raise B649ExactNativeRecordProjectionError(
+            f"exact_native_records must contain exactly {expected_count} records"
+        )
+
+    catalog_by_id = {record.strategy_id: record for record in catalog.records}
+    projected: list[B649ExactNativeRecord] = []
+    available_counts: dict[str, int] = {}
+    if isinstance(document.get("available_strategy_count_by_exact_ticket_count"), dict):
+        available_counts = {
+            str(k): int(cast(int | str, v))
+            for k, v in cast(
+                dict[object, object],
+                document["available_strategy_count_by_exact_ticket_count"],
+            ).items()
+        }
+
+    for index, value in enumerate(records_raw):
+        record = _exact_native_mapping(value, f"exact_native_records[{index}]")
+        strategy_id = _exact_native_string(record.get("strategy_id"), "strategy_id")
+        if strategy_id not in catalog_by_id:
+            raise B649ExactNativeRecordProjectionError(
+                f"unknown strategy_id {strategy_id} in exact_native_records[{index}]"
+            )
+        catalog_record = catalog_by_id[strategy_id]
+        if record.get("reproduction_status") != catalog_record.reproduction_status.value:
+            raise B649ExactNativeRecordProjectionError(
+                f"reproduction_status mismatch for {strategy_id}"
+            )
+        ticket_count = _exact_native_nonnegative_integer(
+            record.get("ticket_count"), "ticket_count"
+        )
+        if ticket_count not in B649_EXACT_NATIVE_TICKET_COUNTS:
+            raise B649ExactNativeRecordProjectionError(
+                f"invalid ticket_count {ticket_count} in exact_native_records[{index}]"
+            )
+        window_str = _exact_native_string(record.get("window"), "window")
+        try:
+            window = B649HistoryWindow(window_str)
+        except ValueError as exc:
+            raise B649ExactNativeRecordProjectionError(
+                f"unsupported window {window_str} in exact_native_records[{index}]"
+            ) from exc
+
+        metric_status_raw = _exact_native_string(record.get("metric_status"), "metric_status")
+        if metric_status_raw not in ("AVAILABLE", "UNAVAILABLE"):
+            raise B649ExactNativeRecordProjectionError(
+                f"invalid metric_status {metric_status_raw} in exact_native_records[{index}]"
+            )
+        metric_status = metric_status_raw
+
+        rankable_raw = record.get("rankable")
+        if not isinstance(rankable_raw, bool):
+            raise B649ExactNativeRecordProjectionError(
+                f"rankable must be boolean in exact_native_records[{index}]"
+            )
+        rankable = rankable_raw
+
+        unavailable_reason: str | None = None
+        if record.get("unavailable_reason") is not None:
+            unavailable_reason = _exact_native_string(
+                record.get("unavailable_reason"), "unavailable_reason"
+            )
+
+        official_prize_counts: B649OfficialPrizeCounts | None = None
+        if record.get("official_prize_counts") is not None:
+            prize_dict = _exact_native_mapping(
+                record.get("official_prize_counts"), "official_prize_counts"
+            )
+            official_prize_counts = B649OfficialPrizeCounts(
+                first=_exact_native_nonnegative_integer(prize_dict.get("first"), "first"),
+                second=_exact_native_nonnegative_integer(prize_dict.get("second"), "second"),
+                third=_exact_native_nonnegative_integer(prize_dict.get("third"), "third"),
+                fourth=_exact_native_nonnegative_integer(prize_dict.get("fourth"), "fourth"),
+                fifth=_exact_native_nonnegative_integer(prize_dict.get("fifth"), "fifth"),
+                sixth=_exact_native_nonnegative_integer(prize_dict.get("sixth"), "sixth"),
+                seventh=_exact_native_nonnegative_integer(prize_dict.get("seventh"), "seventh"),
+                general=_exact_native_nonnegative_integer(prize_dict.get("general"), "general"),
+            )
+
+        official_any_prize_count: int | None = None
+        if record.get("official_any_prize_count") is not None:
+            official_any_prize_count = _exact_native_nonnegative_integer(
+                record.get("official_any_prize_count"), "official_any_prize_count"
+            )
+
+        official_any_prize_rate: str | None = None
+        if record.get("official_any_prize_rate") is not None:
+            official_any_prize_rate = _exact_native_decimal_18(
+                record.get("official_any_prize_rate"), "official_any_prize_rate"
+            )
+
+        official_random_baseline_probability: str | None = None
+        if record.get("official_random_baseline_probability") is not None:
+            official_random_baseline_probability = _exact_native_decimal_18(
+                record.get("official_random_baseline_probability"),
+                "official_random_baseline_probability",
+            )
+
+        official_random_baseline_delta: str | None = None
+        if record.get("official_random_baseline_delta") is not None:
+            official_random_baseline_delta = _exact_native_decimal_18(
+                record.get("official_random_baseline_delta"),
+                "official_random_baseline_delta",
+            )
+
+        coverage: str | None = None
+        if record.get("coverage") is not None:
+            coverage = _exact_native_decimal_18(record.get("coverage"), "coverage")
+
+        native_dist: dict[str, int] = {}
+        if isinstance(record.get("native_ticket_count_distribution"), dict):
+            native_dist = {
+                str(k): int(cast(int | str, v))
+                for k, v in cast(
+                    dict[object, object],
+                    record["native_ticket_count_distribution"],
+                ).items()
+            }
+
+        execution_status_counts: dict[str, int] = {}
+        if isinstance(record.get("execution_status_counts"), dict):
+            execution_status_counts = {
+                str(k): int(cast(int | str, v))
+                for k, v in cast(
+                    dict[object, object],
+                    record["execution_status_counts"],
+                ).items()
+            }
+
+        projected.append(
+            B649ExactNativeRecord(
+                strategy_id=catalog_record.strategy_id,
+                strategy_version=catalog_record.strategy_version,
+                legacy_method_id=catalog_record.legacy_method_id,
+                source_path=catalog_record.source_path,
+                method_family=catalog_record.method_family,
+                reproduction_status=catalog_record.reproduction_status,
+                duplicate_alias_target=(
+                    str(record["duplicate_alias_target"])
+                    if record.get("duplicate_alias_target") is not None
+                    else None
+                ),
+                ticket_count=ticket_count,
+                window=window,
+                criterion=_exact_native_string(record.get("criterion"), "criterion"),
+                metric_status=metric_status,
+                rankable=rankable,
+                unavailable_reason=unavailable_reason,
+                metrics_unavailable_reason=_exact_native_opt_str(
+                    record.get("metrics_unavailable_reason"), "metrics_unavailable_reason"
+                ),
+                unranked_reason=_exact_native_opt_str(
+                    record.get("unranked_reason"), "unranked_reason"
+                ),
+                official_any_prize_count=official_any_prize_count,
+                official_any_prize_rate=official_any_prize_rate,
+                official_random_baseline_probability=official_random_baseline_probability,
+                official_random_baseline_delta=official_random_baseline_delta,
+                coverage=coverage,
+                official_prize_counts=official_prize_counts,
+                no_prize_count=_exact_native_opt_int(
+                    record.get("no_prize_count"), "no_prize_count"
+                ),
+                available_observation_count=_exact_native_opt_int(
+                    record.get("available_observation_count"), "available_observation_count"
+                ),
+                effective_backtest_draw_count=_exact_native_opt_int(
+                    record.get("effective_backtest_draw_count"), "effective_backtest_draw_count"
+                ),
+                successful_observation_count=_exact_native_opt_int(
+                    record.get("successful_observation_count"), "successful_observation_count"
+                ),
+                ticket_position_count=_exact_native_opt_int(
+                    record.get("ticket_position_count"), "ticket_position_count"
+                ),
+                observed_distinct_ticket_count=_exact_native_opt_int(
+                    record.get("observed_distinct_ticket_count"), "observed_distinct_ticket_count"
+                ),
+                observed_duplicate_ticket_count=_exact_native_opt_int(
+                    record.get("observed_duplicate_ticket_count"), "observed_duplicate_ticket_count"
+                ),
+                native_ticket_count_classification=_exact_native_opt_str(
+                    record.get("native_ticket_count_classification"),
+                    "native_ticket_count_classification",
+                ),
+                native_ticket_count_distribution=native_dist,
+                execution_status_counts=execution_status_counts,
+                window_available_draws=_exact_native_opt_int(
+                    record.get("window_available_draws"), "window_available_draws"
+                ),
+                window_requested_draws=_exact_native_opt_int(
+                    record.get("window_requested_draws"), "window_requested_draws"
+                ),
+                window_complete=_exact_native_opt_bool(
+                    record.get("window_complete"), "window_complete"
+                ),
+                authority_mode=_exact_native_opt_str(
+                    record.get("authority_mode"), "authority_mode"
+                ),
+                input_canonical_sha256=_exact_native_opt_str(
+                    record.get("input_canonical_sha256"), "input_canonical_sha256"
+                ),
+                input_raw_sha256=_exact_native_opt_str(
+                    record.get("input_raw_sha256"), "input_raw_sha256"
+                ),
+                catalog_sha256=catalog.catalog_sha256,
+                official_rank=None,
+            )
+        )
+
+    return B649ExactNativeRecordDataset(
+        records=tuple(projected),
+        catalog_sha256=catalog.catalog_sha256,
+        projection_sha256=projection_sha256,
+        available_strategy_count_by_exact_ticket_count=available_counts,
+    )
+
+
 __all__ = [
     "PROJECTION_RESOURCE_NAME",
+    "PROJECTION_RESOURCE_NAME_V3",
     "PROJECTION_SCHEMA_VERSION",
+    "PROJECTION_SCHEMA_VERSION_V3",
+    "B649ExactNativeRecordProjectionError",
     "B649MultiTicketRecordProjectionError",
+    "PackagedB649ExactNativeRecordReader",
     "PackagedB649MultiTicketRecordReader",
 ]
+
+K10_PROJECTION_RESOURCE_NAME = "biglotto_exact_native_k10_115000084_records_v1.json"
+K10_PROJECTION_SCHEMA_VERSION = "B649_EXACT_NATIVE_K10_RECORDS_V1"
+K10_AUTHORITY: dict[str, object] = {
+    "authority_head": "2c861c91490df9fae0a1484b0cca1e0dd93d4a22",
+    "authority_tree": "693205beb9fb19f2a56847893d00e7dc9607b4f7",
+    "manifest_locator": (
+        '/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.task-data/BIGLOTTO_1'
+        '15000084_K10_EXACT_NATIVE_CANONICAL_REFRESH_R1/sealed_manifest.json'
+    ),
+    "sealed_manifest_sha256": "32dc65b424cf805b481160a8b0d88d5a838daa30ffdb31d877d2a990f4d7c47d",
+    "target_evidence_sha256": "e3e56e1e0bacc6bbb03edd3610ae2339f864f82285da00bb6723fc344f4f16c6",
+    "source_ranking_locator": (
+        '/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.task-data/BIGLOTTO_1'
+        '15000084_K10_EXACT_NATIVE_CANONICAL_REFRESH_R1/ranking.json'
+    ),
+    "source_ranking_sha256": "075aa7d9667e62f87612d0e5fe15958e3ab93dc6d4e023ff5a503b5a2453ea25",
+    "run_id": "BIGLOTTO_115000084_K10_EXACT_NATIVE_CANONICAL_REFRESH_R1",
+    "lottery": "BIG_LOTTO",
+    "k": 10,
+    "cutoff": "115000084",
+    "cutoff_label": "084",
+    "evidence_record_count": 4332,
+    "consumer_record_count": 8,
+    "strategy_universe": [
+        "legacy_biglotto__backtest_10bet_biglotto__054e85b088be",
+        "legacy_biglotto__backtest_biglotto_coldpool_15__2a80423e3cf5",
+    ],
+    "producer_universe_fingerprint": (
+        '3d3afa99db61965f4db80a24beb41ad56afa790c59409661e22454acf075ae93'
+    ),
+    "producer_catalog_fingerprint": (
+        'c618e9d14692cfd23f6b08b3b103a6de64e4b3d5e47025263d3babb9fce47dba'
+    ),
+    "consumer_catalog_sha256": "9e2d9f6c3cffbfe9867d4aaafbf8c9315922503fc0b806dfc84627699e0d82e3",
+}
+K10_WINDOW_BOUNDARIES: dict[str, dict[str, object]] = {
+    "FULL": {
+        "first_target": "96000001",
+        "first_target_date": "2007-01-02",
+        "last_target": "115000084",
+        "last_target_date": "2026-09-01",
+        "observations_required": 2166,
+    },
+    "RECENT_300": {
+        "first_target": "113000021",
+        "first_target_date": "2024-02-16",
+        "last_target": "115000084",
+        "last_target_date": "2026-09-01",
+        "observations_required": 300,
+    },
+    "RECENT_50": {
+        "first_target": "115000035",
+        "first_target_date": "2026-03-13",
+        "last_target": "115000084",
+        "last_target_date": "2026-09-01",
+        "observations_required": 50,
+    },
+    "RECENT_750": {
+        "first_target": "109000027",
+        "first_target_date": "2020-03-06",
+        "last_target": "115000084",
+        "last_target_date": "2026-09-01",
+        "observations_required": 750,
+    },
+}
+
+
+class PackagedB649K10RecordReader:
+    """Load only the tracked K10 resource, independently of the V3 resource."""
+
+    def read(self, window: B649HistoryWindow | None = None) -> B649K10RecordDataset:
+        return _read_packaged_k10_projection(window)
+
+
+@lru_cache(maxsize=5)
+def _read_packaged_k10_projection(
+    window: B649HistoryWindow | None = None,
+) -> B649K10RecordDataset:
+    try:
+        raw = files("lottolab.strategies.data").joinpath(K10_PROJECTION_RESOURCE_NAME).read_bytes()
+    except OSError as exc:
+        raise B649ExactNativeRecordProjectionError(
+            "the pinned K10 projection is unavailable"
+        ) from exc
+    return parse_b649_k10_projection(raw, window)
+
+
+def _k10_require(condition: bool, label: str) -> None:
+    if not condition:
+        raise B649ExactNativeRecordProjectionError(f"invalid K10 {label}")
+
+
+def parse_b649_k10_projection(
+    raw: bytes,
+    window: B649HistoryWindow | None = None,
+) -> B649K10RecordDataset:
+    """Validate the envelope globally and metric payloads only in the selected window."""
+    try:
+        document = _exact_native_mapping(json.loads(raw), "K10 projection")
+    except (ValueError, UnicodeDecodeError) as exc:
+        raise B649ExactNativeRecordProjectionError("invalid K10 JSON") from exc
+    _k10_require(
+        set(document) == {"projection_schema_version", "projection_sha256", "records"},
+        "projection fields",
+    )
+    _k10_require(document["projection_schema_version"] == K10_PROJECTION_SCHEMA_VERSION, "schema")
+    canonical = json.dumps(
+        {k: v for k, v in document.items() if k != "projection_sha256"},
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode()
+    checksum = hashlib.sha256(canonical).hexdigest()
+    _k10_require(document["projection_sha256"] == checksum, "checksum")
+    values = document["records"]
+    _k10_require(isinstance(values, list) and len(cast(list[object], values)) == 8, "record count")
+    records = [_exact_native_mapping(v, "K10 record") for v in cast(list[object], values)]
+    universe = cast(list[str], K10_AUTHORITY["strategy_universe"])
+    expected = {(sid, w.value) for sid in universe for w in B649_HISTORY_WINDOWS}
+    identities = [(v.get("strategy_id"), v.get("window")) for v in records]
+    _k10_require(all(isinstance(s, str) and isinstance(w, str) for s, w in identities), "identity")
+    _k10_require(
+        set(identities) == expected and len(identities) == len(set(identities)), "universe"
+    )
+    catalog = load_full_strategy_catalog()
+    _k10_require(catalog.catalog_sha256 == K10_AUTHORITY["consumer_catalog_sha256"], "catalog")
+    catalog_by_id = {r.strategy_id: r for r in catalog.records}
+    positions: dict[str, int] = {}
+    result: list[B649K10Record] = []
+    adapter = TypeAdapter(B649K10Record)
+    for value in records:
+        w = str(value["window"])
+        positions[w] = positions.get(w, 0) + 1
+        _k10_require(
+            type(value.get("source_order")) is int and value["source_order"] == positions[w],
+            "source order",
+        )
+        _k10_require(value.get("provenance") == K10_AUTHORITY, "authority")
+        _k10_require(value.get("window_boundary") == K10_WINDOW_BOUNDARIES[w], "window boundary")
+        if window is not None and w != window.value:
+            continue
+        _k10_require(set(value) == {f.name for f in fields(B649K10Record)}, "record fields")
+        _k10_require(
+            set(_exact_native_mapping(value["provenance"], "provenance"))
+            == {f.name for f in fields(B649K10Provenance)},
+            "provenance fields",
+        )
+        _k10_require(
+            set(_exact_native_mapping(value["window_boundary"], "boundary"))
+            == {f.name for f in fields(B649K10WindowBoundary)},
+            "boundary fields",
+        )
+        try:
+            row = adapter.validate_json(json.dumps(value), strict=True)
+        except ValidationError as exc:
+            raise B649ExactNativeRecordProjectionError("invalid K10 record schema") from exc
+        _k10_require(row.strategy_version == "v0.1", "producer version")
+        _k10_require(row.rank == row.official_rank and (row.rank is None or row.rank > 0), "rank")
+        _k10_require(row.rank is not None or bool(row.unranked_reason), "unranked reason")
+        _k10_require(
+            row.requested_draws == row.window_boundary.observations_required, "requested draws"
+        )
+        meta = catalog_by_id[row.strategy_id]
+        for key in (
+            "legacy_method_id",
+            "source_path",
+            "method_family",
+            "reproduction_status",
+            "duplicate_alias_target",
+        ):
+            _k10_require(getattr(row, key) == getattr(meta, key), f"catalog {key}")
+        _k10_require(row.catalog_strategy_version == meta.strategy_version, "catalog version")
+        metrics = (
+            row.official_any_prize_rate,
+            row.official_random_baseline,
+            row.baseline_delta,
+            row.coverage,
+        )
+        for metric in metrics:
+            _k10_require(metric is None or _DECIMAL_18.fullmatch(metric) is not None, "decimal")
+        for count in (
+            row.evaluated_draws,
+            row.official_any_prize_numerator,
+            row.official_any_prize_denominator,
+            row.typed_replay_failures_count,
+        ):
+            _k10_require(count is None or count >= 0, "count")
+        for counts in (row.best_prize_counts, row.replay_status_counts):
+            _k10_require(counts is None or all(n >= 0 for n in counts.values()), "sparse counts")
+        if row.best_prize_counts is not None:
+            _k10_require(set(row.best_prize_counts) <= {p.upper() for p in _PRIZE_FIELDS}, "prizes")
+        if row.metric_status == "UNAVAILABLE":
+            _k10_require(
+                bool(row.unavailable_reason) and row.rank is None, "unavailable reason/rank"
+            )
+            _k10_require(
+                all(v is None for v in metrics)
+                and row.official_any_prize_numerator is None
+                and row.official_any_prize_denominator is None
+                and row.best_prize_counts is None,
+                "unavailable metrics",
+            )
+        else:
+            _k10_require(
+                all(v is not None for v in metrics)
+                and row.official_any_prize_numerator is not None
+                and row.official_any_prize_denominator is not None,
+                "available metrics",
+            )
+        result.append(row)
+    return B649K10RecordDataset(tuple(result), checksum)
+
+
+K5_PROJECTION_RESOURCE_NAME = "biglotto_exact_native_k5_115000084_records_v1.json"
+K5_PROJECTION_SCHEMA_VERSION = "B649_EXACT_NATIVE_K5_RECORDS_V1"
+K5_AUTHORITY: dict[str, object] = {
+    "authority_head": "8365f253859cc747e6f65688e8249267454cd0d9",
+    "authority_tree": "b053cf6b2a26dd4c7dce620261c1361666c07463",
+    "manifest_locator": (
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.task-data/BI"
+        "GLOTTO_115000084_K2_K3_K5_DRAW_LEVEL_AUTHORITY_RECOVERY_R1/sealed_manife"
+        "st.json"
+    ),
+    "sealed_manifest_sha256": "3e4604e95248af1a223ba4473d5c1f4debb4405877ce334beca6eac28dca3e4d",
+    "target_evidence_sha256": "c50df2d35e09f487aa2c06e1a08faf4fd6eeee8929b21ef05feb138eae2dd09d",
+    "source_ranking_locator": (
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.task-data/BR"
+        "ANCH6_BIGLOTTO_K2_K3_K5_K10_FINALIZATION_R1/rankings.json"
+    ),
+    "source_ranking_sha256": "eb41d668c9356a0ce68db2504953e2a2f916f02a709e60dd6ce0d716bcb11e44",
+    "run_id": "BIGLOTTO_115000084_K2_K3_K5_DRAW_LEVEL_AUTHORITY_RECOVERY_R1",
+    "lottery": "BIG_LOTTO",
+    "k": 5,
+    "cutoff": "115000084",
+    "cutoff_label": "084",
+    "evidence_record_count": 10830,
+    "consumer_record_count": 20,
+    "strategy_universe": [
+        "legacy_biglotto__predict_biglotto_echo_phase2__51c44b5c13d4",
+        "legacy_biglotto__predict_5me_115000004__8a1c06ce1bdd",
+        "legacy_biglotto__predict_biglotto_115000002_zone_balance__8febca575f5d",
+        "legacy_composite__quick_predict_5bet_ts3_markov_freqort",
+        "legacy_biglotto__backtest_big_lotto_orthogonal_5bet__c4dff46c5a5e",
+    ],
+    "producer_universe_fingerprint": (
+        "fdf451062dcf8206f9396e2c219f3229d86c1f2d47813962637a541dedfcddd0"
+    ),
+    "producer_catalog_fingerprint": (
+        "c618e9d14692cfd23f6b08b3b103a6de64e4b3d5e47025263d3babb9fce47dba"
+    ),
+    "consumer_catalog_sha256": "9e2d9f6c3cffbfe9867d4aaafbf8c9315922503fc0b806dfc84627699e0d82e3",
+    "authority_schema": "B649_EXACT_NATIVE_REFRESH_SEALED_MANIFEST_V1",
+    "source_ranking_schema": "BRANCH6_LANE6_FINALIZATION_RANKINGS_V1",
+    "source_ranking_run_id": "BRANCH6_BIGLOTTO_K2_K3_K5_K10_FINALIZATION_R1",
+    "target_evidence_locator": (
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.task-data/BI"
+        "GLOTTO_115000084_K2_K3_K5_DRAW_LEVEL_AUTHORITY_RECOVERY_R1/target_eviden"
+        "ce.jsonl"
+    ),
+    "sealed_manifest_k_values": [2, 3, 5],
+    "target_evidence_k_values": [2, 3, 5],
+    "source_ranking_k_values": [2, 3, 5, 10],
+    "target_evidence_total_row_count": 93138,
+}
+K5_WINDOW_BOUNDARIES: dict[str, dict[str, object]] = {
+    "FULL": {
+        "first_target": "96000001",
+        "first_target_date": "2007-01-02",
+        "last_target": "115000084",
+        "last_target_date": "2026-09-01",
+        "observations_required": 2166,
+    },
+    "RECENT_750": {
+        "first_target": "109000027",
+        "first_target_date": "2020-03-06",
+        "last_target": "115000084",
+        "last_target_date": "2026-09-01",
+        "observations_required": 750,
+    },
+    "RECENT_300": {
+        "first_target": "113000021",
+        "first_target_date": "2024-02-16",
+        "last_target": "115000084",
+        "last_target_date": "2026-09-01",
+        "observations_required": 300,
+    },
+    "RECENT_50": {
+        "first_target": "115000035",
+        "first_target_date": "2026-03-13",
+        "last_target": "115000084",
+        "last_target_date": "2026-09-01",
+        "observations_required": 50,
+    },
+}
+K5_TIES_BY_WINDOW: dict[str, list[dict[str, object]]] = {
+    "FULL": [],
+    "RECENT_750": [],
+    "RECENT_300": [],
+    "RECENT_50": [
+        {"rank": 2, "strategy_id": "legacy_biglotto__predict_biglotto_echo_phase2__51c44b5c13d4"},
+        {"rank": 2, "strategy_id": "legacy_composite__quick_predict_5bet_ts3_markov_freqort"},
+    ],
+}
+
+
+class PackagedB649K5RecordReader:
+    """Read the self-contained K5 resource; upstream locators are provenance only."""
+
+    def read(self, window: B649HistoryWindow | None = None) -> B649K5RecordDataset:
+        return _read_packaged_k5_projection(window)
+
+
+@lru_cache(maxsize=5)
+def _read_packaged_k5_projection(
+    window: B649HistoryWindow | None = None,
+) -> B649K5RecordDataset:
+    try:
+        raw = files("lottolab.strategies.data").joinpath(K5_PROJECTION_RESOURCE_NAME).read_bytes()
+    except OSError as exc:
+        raise B649ExactNativeRecordProjectionError(
+            "the pinned K5 projection is unavailable"
+        ) from exc
+    return parse_b649_k5_projection(raw, window)
+
+
+def _k5_require(condition: bool, label: str) -> None:
+    if not condition:
+        raise B649ExactNativeRecordProjectionError(f"invalid K5 {label}")
+
+
+def parse_b649_k5_projection(
+    raw: bytes,
+    window: B649HistoryWindow | None = None,
+) -> B649K5RecordDataset:
+    """Validate sealed identity/order globally and selected-window metrics without evaluation."""
+    try:
+        document = _exact_native_mapping(json.loads(raw), "K5 projection")
+    except (ValueError, UnicodeDecodeError) as exc:
+        raise B649ExactNativeRecordProjectionError("invalid K5 JSON") from exc
+    _k5_require(
+        set(document)
+        == {
+            "projection_schema_version",
+            "projection_sha256",
+            "records",
+            "ties_by_window",
+            "provenance",
+        },
+        "projection fields",
+    )
+    _k5_require(document["projection_schema_version"] == K5_PROJECTION_SCHEMA_VERSION, "schema")
+    canonical = json.dumps(
+        {k: v for k, v in document.items() if k != "projection_sha256"},
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode()
+    checksum = hashlib.sha256(canonical).hexdigest()
+    _k5_require(document["projection_sha256"] == checksum, "checksum")
+    _k5_require(document["provenance"] == K5_AUTHORITY, "authority")
+    _k5_require(document["ties_by_window"] == K5_TIES_BY_WINDOW, "producer ties")
+    values = document["records"]
+    _k5_require(isinstance(values, list) and len(cast(list[object], values)) == 20, "record count")
+    records = [_exact_native_mapping(v, "K5 record") for v in cast(list[object], values)]
+    universe = cast(list[str], K5_AUTHORITY["strategy_universe"])
+    expected = {(sid, w.value) for sid in universe for w in B649_HISTORY_WINDOWS}
+    identities = [(v.get("strategy_id"), v.get("window")) for v in records]
+    _k5_require(all(isinstance(s, str) and isinstance(w, str) for s, w in identities), "identity")
+    _k5_require(set(identities) == expected and len(set(identities)) == 20, "universe")
+    _k5_require(
+        [v["window"] for v in records] == [w.value for w in B649_HISTORY_WINDOWS for _ in range(5)],
+        "window order",
+    )
+    result: list[B649K5Record] = []
+    adapter = TypeAdapter(B649K5Record)
+    for index, value in enumerate(records):
+        w = str(value["window"])
+        _k5_require(
+            type(value.get("source_order")) is int and value["source_order"] == index % 5 + 1,
+            "source order",
+        )
+        _k5_require(value.get("provenance") == K5_AUTHORITY, "record authority")
+        _k5_require(value.get("window_boundary") == K5_WINDOW_BOUNDARIES[w], "window boundary")
+        _k5_require(value.get("ticket_count") == value.get("native_ticket_count") == 5, "K")
+        _k5_require(value.get("criterion") == "OFFICIAL_ANY_PRIZE", "criterion")
+        if window is not None and w != window.value:
+            continue
+        _k5_require(set(value) == {f.name for f in fields(B649K5Record)}, "record fields")
+        try:
+            row = adapter.validate_json(json.dumps(value), strict=True)
+        except ValidationError as exc:
+            raise B649ExactNativeRecordProjectionError("invalid K5 record schema") from exc
+        _k5_require(row.strategy_version == "v0.1", "producer version")
+        _k5_require(
+            row.rank == row.official_rank and (row.rank is None or 1 <= row.rank <= 5), "rank"
+        )
+        _k5_require(row.position is None or row.position == row.source_order, "position")
+        _k5_require(
+            row.requested_draws == row.window_boundary.observations_required, "requested draws"
+        )
+        metrics = (
+            row.official_any_prize_rate,
+            row.official_random_baseline,
+            row.baseline_delta,
+            row.coverage,
+        )
+        for metric in metrics:
+            _k5_require(metric is None or _DECIMAL_18.fullmatch(metric) is not None, "decimal")
+        for count in (
+            row.evaluated_draws,
+            row.official_any_prize_numerator,
+            row.official_any_prize_denominator,
+            row.typed_replay_failures_count,
+        ):
+            _k5_require(count is None or count >= 0, "count")
+        for counts in (row.best_prize_counts, row.replay_status_counts):
+            _k5_require(counts is None or all(n >= 0 for n in counts.values()), "sparse counts")
+        if row.best_prize_counts is not None:
+            _k5_require(set(row.best_prize_counts) <= {p.upper() for p in _PRIZE_FIELDS}, "prizes")
+        if row.metric_status == "UNAVAILABLE":
+            _k5_require(
+                bool(row.metric_unavailable_reason) and row.rank is None, "unavailable reason/rank"
+            )
+            _k5_require(
+                all(v is None for v in metrics)
+                and row.official_any_prize_numerator is None
+                and row.official_any_prize_denominator is None
+                and row.best_prize_counts is None,
+                "unavailable metrics",
+            )
+        else:
+            # Incomplete observations affect the denominator, not producer availability.
+            _k5_require(
+                all(v is not None for v in metrics)
+                and row.official_any_prize_numerator is not None
+                and row.official_any_prize_denominator is not None
+                and row.rank is not None
+                and row.position is not None
+                and row.metric_unavailable_reason is None,
+                "available metrics",
+            )
+        result.append(row)
+    return B649K5RecordDataset(
+        records=tuple(result),
+        projection_sha256=checksum,
+        provenance=TypeAdapter(B649K5Provenance).validate_json(
+            json.dumps(document["provenance"]), strict=True
+        ),
+        ties_by_window={
+            w: TypeAdapter(tuple[B649K5Tie, ...]).validate_json(json.dumps(ties), strict=True)
+            for w, ties in K5_TIES_BY_WINDOW.items()
+        },
+        window_boundaries={
+            w: TypeAdapter(B649K5WindowBoundary).validate_json(json.dumps(boundary), strict=True)
+            for w, boundary in K5_WINDOW_BOUNDARIES.items()
+        },
+    )

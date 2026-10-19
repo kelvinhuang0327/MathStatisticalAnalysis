@@ -1,0 +1,514 @@
+#!/usr/bin/env python3
+"""Exact BIG_LOTTO OFFICIAL_ANY_PRIZE postcheck.
+
+Task: B649_REFERENCE_E_IMPROVED_PORTFOLIO_OFFICIAL_ANY_PRIZE_POSTCHECK_R1
+Read-only with respect to the repository, the database, and production state.
+Counting method: MAIN_DRAW_COLLAPSED_EXACT_SPECIAL_UNION. No Monte Carlo.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import itertools
+import json
+import random
+import sys
+from fractions import Fraction
+from math import comb
+from pathlib import Path
+
+import numpy as np
+
+HERE = Path(__file__).resolve().parent
+POOL = 49
+DRAW = 6
+THRESHOLD = 3                      # official outright-win main-match threshold
+SPECIAL_POOL = POOL - DRAW         # 43
+TOTAL_MAIN = comb(POOL, DRAW)      # 13_983_816
+TOTAL_OUTCOMES = TOTAL_MAIN * SPECIAL_POOL  # 601_304_088
+
+
+# ---------------------------------------------------------------- utilities
+def portfolio_sha256(portfolio) -> str:
+    """Repository canonical convention (tools/run_strategy_matrix_phase{9,10}...)."""
+    payload = json.dumps(portfolio, separators=(",", ":")).encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()
+
+
+def mask_of(numbers) -> int:
+    m = 0
+    for n in numbers:
+        m |= 1 << (n - 1)
+    return m
+
+
+# ------------------------------------------------- exhaustive draw enumeration
+def all_draw_masks(pool: int, draw: int) -> np.ndarray:
+    """Every C(pool, draw) main draw as a bitmask, built pair + (draw-2)-subset."""
+    rest = draw - 2
+    subs = list(itertools.combinations(range(1, pool + 1), rest))
+    m_rest = np.array([mask_of(c) for c in subs], dtype=np.uint64)
+    min_rest = np.array([c[0] for c in subs], dtype=np.int64)
+    order = np.argsort(min_rest, kind="stable")
+    m_rest = m_rest[order]
+    min_rest = min_rest[order]
+    start = np.searchsorted(min_rest, np.arange(0, pool + 2), side="left")
+
+    out = np.empty(comb(pool, draw), dtype=np.uint64)
+    pos = 0
+    for a in range(1, pool + 1):
+        for b in range(a + 1, pool + 1):
+            seg = m_rest[start[b + 1]:]
+            if seg.size == 0:
+                continue
+            out[pos:pos + seg.size] = seg | np.uint64(mask_of((a, b)))
+            pos += seg.size
+    assert pos == out.size, (pos, out.size)
+    return out
+
+
+def verify_draw_space(draws: np.ndarray, pool: int, draw: int) -> dict:
+    """Cardinality + popcount + uniqueness jointly prove this is exactly C(pool,draw)."""
+    n_expected = comb(pool, draw)
+    pc = np.bitwise_count(draws)
+    uniq = np.unique(draws)
+    checks = {
+        "cardinality": bool(draws.size == n_expected),
+        "all_popcount_eq_draw_size": bool(int(pc.min()) == draw and int(pc.max()) == draw),
+        "all_distinct": bool(uniq.size == n_expected),
+        "within_pool": bool(int(draws.max()) < (1 << pool)),
+    }
+    checks["status"] = "PASS" if all(checks.values()) else "FAIL"
+    return checks
+
+
+# --------------------------------------- collapsed exact evaluator (generic)
+def evaluate_portfolios(
+    portfolios: dict,
+    draws: np.ndarray,
+    pool: int,
+    draw: int,
+    threshold: int,
+    chunk: int = 1 << 21,
+):
+    """One pass over the main-draw space, all portfolios evaluated together.
+
+    For each main draw D:
+      any ticket with |t n D| >= threshold  -> all (pool - draw) specials win
+      else                                  -> |union of (t \\ D) over tickets
+                                               with |t n D| == threshold - 1|
+    """
+    specials = pool - draw
+    keys = list(portfolios)
+    masks = {k: [np.uint64(mask_of(t)) for t in portfolios[k]] for k in keys}
+    official = {k: 0 for k in keys}
+    m3plus = {k: 0 for k in keys}
+    disjoint_ok = True
+
+    for s in range(0, draws.size, chunk):
+        D = draws[s:s + chunk]
+        notD = ~D
+        for k in keys:
+            has_t = np.zeros(D.size, dtype=bool)
+            U = np.zeros(D.size, dtype=np.uint64)
+            for tm in masks[k]:
+                pc = np.bitwise_count(D & tm)
+                has_t |= pc >= threshold
+                U |= np.where(pc == (threshold - 1), tm & notD, np.uint64(0))
+            # invariant: the special-union never intersects the drawn main set
+            if int(np.bitwise_count(U & D).max(initial=0)) != 0:
+                disjoint_ok = False
+            contrib = np.where(has_t, np.uint8(specials), np.bitwise_count(U))
+            official[k] += int(contrib.sum(dtype=np.int64))
+            m3plus[k] += int(has_t.sum(dtype=np.int64))
+
+    return official, m3plus, disjoint_ok
+
+
+# ------------------------------------------------------ oracle B: brute force
+def brute_force_small(portfolio, pool: int, draw: int, threshold: int) -> int:
+    """Explicitly enumerate (main draw, special) and apply the rule directly."""
+    total = 0
+    universe = range(1, pool + 1)
+    tickets = [set(t) for t in portfolio]
+    for D in itertools.combinations(universe, draw):
+        Ds = set(D)
+        for special in universe:
+            if special in Ds:
+                continue                      # special comes from the remainder
+            won = False
+            for t in tickets:
+                hits = len(t & Ds)
+                if hits >= threshold or (hits == threshold - 1 and special in t):
+                    won = True
+                    break
+            total += 1 if won else 0
+    return total
+
+
+def run_small_domain_oracle() -> dict:
+    """Reduced analogous lottery: pool 9, draw 3, ticket 3, threshold 2, 6 specials."""
+    p, d, thr = 9, 3, 2
+    draws = all_draw_masks(p, d)
+    space = verify_draw_space(draws, p, d)
+    rng = random.Random(20260919)
+    all_tickets = list(itertools.combinations(range(1, p + 1), d))
+
+    cases = []
+    for _ in range(300):
+        k = rng.randint(1, 5)
+        cases.append([list(t) for t in rng.sample(all_tickets, k)])
+    cases.append([list(all_tickets[0])])                       # K=1
+    cases.append([list(all_tickets[0]), list(all_tickets[0])])  # duplicate
+    cases.append([list(t) for t in all_tickets[:8]])            # dense
+
+    mismatches = []
+    for i, port in enumerate(cases):
+        collapsed, _, _ = evaluate_portfolios({"c": port}, draws, p, d, thr, chunk=1 << 12)
+        bf = brute_force_small(port, p, d, thr)
+        if collapsed["c"] != bf:
+            mismatches.append({"case": i, "portfolio": port,
+                               "collapsed": collapsed["c"], "brute_force": bf})
+
+    return {
+        "domain": {"pool": p, "draw_size": d, "ticket_size": d, "threshold": thr,
+                   "special_pool": p - d,
+                   "total_outcomes": comb(p, d) * (p - d)},
+        "draw_space_checks": space,
+        "cases_compared": len(cases),
+        "mismatches": mismatches,
+        "status": "PASS" if not mismatches and space["status"] == "PASS" else "FAIL",
+    }
+
+
+# ------------------------------------ oracle A: canonical single-ticket parity
+def run_single_ticket_oracle(evaluator_count: int) -> dict:
+    """Reconcile against the repository's committed BIG_LOTTO prize-tier table."""
+    from lottolab.domain.lottery_rules import (  # noqa: PLC0415
+        BIG_LOTTO_RULE_CONTRACT,
+        BigLottoPrizeTier,
+        resolve_big_lotto_prize_tier,
+    )
+    from lottolab.domain.prize_evaluation import (  # noqa: PLC0415
+        evaluate_big_lotto_ticket,
+    )
+
+    lottolab_mod = sys.modules["lottolab"].__file__
+
+    # Outcome census by (main_hits, special_hit), for any single fixed ticket.
+    canonical_total = 0
+    census_total = 0
+    winning_signatures = []
+    for m in range(0, DRAW + 1):
+        n_draws = comb(DRAW, m) * comb(POOL - DRAW, DRAW - m)
+        n_special_hit = DRAW - m                      # ticket numbers outside D
+        for hit in (False, True):
+            if m + int(hit) > DRAW:
+                continue
+            n_special = n_special_hit if hit else SPECIAL_POOL - n_special_hit
+            count = n_draws * n_special
+            census_total += count
+            tier = resolve_big_lotto_prize_tier(m, hit)
+            if isinstance(tier, BigLottoPrizeTier):
+                canonical_total += count
+                winning_signatures.append(
+                    {"main_hits": m, "special_hit": hit,
+                     "official_label": tier.official_label, "outcomes": count}
+                )
+
+    # Independent closed form, derived from the rule statement rather than the table.
+    closed_form = SPECIAL_POOL * sum(
+        comb(DRAW, m) * comb(POOL - DRAW, DRAW - m) for m in range(THRESHOLD, DRAW + 1)
+    ) + (DRAW - (THRESHOLD - 1)) * comb(DRAW, THRESHOLD - 1) * comb(
+        POOL - DRAW, DRAW - (THRESHOLD - 1)
+    )
+
+    # Spot-check the live evaluator on concrete triples covering every signature.
+    ticket = (1, 2, 3, 4, 5, 6)
+    spot = []
+    triples = [
+        ((1, 2, 3, 4, 5, 6), 7, True),    # 6 main
+        ((1, 2, 3, 4, 5, 7), 6, True),    # 5 main + special in ticket
+        ((1, 2, 3, 4, 5, 7), 8, True),    # 5 main, special outside
+        ((1, 2, 3, 7, 8, 9), 4, True),    # 3 main + special in ticket
+        ((1, 2, 3, 7, 8, 9), 10, True),   # 3 main, special outside
+        ((1, 2, 7, 8, 9, 10), 3, True),   # 2 main + special in ticket
+        ((1, 2, 7, 8, 9, 10), 11, False),  # 2 main, special outside -> no prize
+        ((1, 7, 8, 9, 10, 11), 2, False),  # 1 main + special in ticket -> no prize
+    ]
+    for win_main, special, expect_win in triples:
+        res = evaluate_big_lotto_ticket(
+            predicted_main_numbers=ticket,
+            predicted_special_number=None,
+            winning_main_numbers=win_main,
+            winning_special_number=special,
+        )
+        spot.append({"winning_main": list(win_main), "special": special,
+                     "expected_win": expect_win, "actual_win": res.is_winner,
+                     "tier": res.prize_tier, "agrees": res.is_winner == expect_win})
+
+    ok = (
+        census_total == TOTAL_OUTCOMES
+        and canonical_total == closed_form == evaluator_count
+        and all(s["agrees"] for s in spot)
+    )
+    return {
+        "lottolab_module_path": lottolab_mod,
+        "prize_rule_version": BIG_LOTTO_RULE_CONTRACT.prize_rule.schema_version,
+        "prize_rule_source_sha256": BIG_LOTTO_RULE_CONTRACT.prize_rule.source_sha256,
+        "prize_rule_source_locator": BIG_LOTTO_RULE_CONTRACT.prize_rule.source_locator,
+        "winning_signatures": winning_signatures,
+        "census_total_outcomes": census_total,
+        "expected_total_outcomes": TOTAL_OUTCOMES,
+        "canonical_table_single_ticket_count": canonical_total,
+        "independent_closed_form_count": closed_form,
+        "this_evaluator_single_ticket_count": evaluator_count,
+        "single_ticket_probability": f"{Fraction(canonical_total, TOTAL_OUTCOMES)}",
+        "single_ticket_probability_decimal": float(Fraction(canonical_total, TOTAL_OUTCOMES)),
+        "evaluator_spot_checks": spot,
+        "status": "PASS" if ok else "FAIL",
+    }
+
+
+# --------------------------------------------------------------------- main
+def main() -> int:
+    inputs = json.loads((HERE / "inputs.json").read_text())
+    ladder = [10, 15, 20]
+
+    # ---- identity reconciliation against canonical authority ----
+    identity = {"status": "PASS", "per_k": {}}
+    for k in ladder:
+        e = inputs["per_k"][str(k)]
+        row = {}
+        for side in ("reference", "terminal"):
+            computed = portfolio_sha256(e[side]["portfolio"])
+            row[side] = {
+                "expected_sha256": e[side]["expected_sha256"],
+                "computed_sha256": computed,
+                "match": computed == e[side]["expected_sha256"],
+                "ticket_count": len(e[side]["portfolio"]),
+                "cardinality_ok": len(e[side]["portfolio"]) == k,
+            }
+            if not (row[side]["match"] and row[side]["cardinality_ok"]):
+                identity["status"] = "FAIL"
+        identity["per_k"][str(k)] = row
+
+    # ---- ticket legality ----
+    legality = {"status": "PASS", "violations": []}
+    for k in ladder:
+        for side in ("reference", "terminal"):
+            for t in inputs["per_k"][str(k)][side]["portfolio"]:
+                bad = (
+                    len(t) != DRAW
+                    or len(set(t)) != DRAW
+                    or any(not (1 <= n <= POOL) for n in t)
+                    or list(t) != sorted(t)
+                )
+                if bad:
+                    legality["status"] = "FAIL"
+                    legality["violations"].append({"k": k, "side": side, "ticket": t})
+
+    if identity["status"] == "FAIL" or legality["status"] == "FAIL":
+        print(json.dumps({"BLOCKED_UNVERIFIABLE": {"identity": identity,
+                                                   "legality": legality}}, indent=2))
+        return 2
+
+    # ---- build the single-pass evaluation set ----
+    rng = random.Random(115000089)
+    work = {}
+    for k in ladder:
+        for side in ("reference", "terminal"):
+            p = [list(t) for t in inputs["per_k"][str(k)][side]["portfolio"]]
+            work[f"{side}_{k}"] = p
+            perm = p[:]
+            rng.shuffle(perm)
+            work[f"perm_{side}_{k}"] = perm
+            work[f"dup_{side}_{k}"] = p + [list(p[0])]
+    work["single_ticket_probe"] = [[1, 2, 3, 4, 5, 6]]
+
+    print(f"building C({POOL},{DRAW}) draw space ...", flush=True)
+    draws = all_draw_masks(POOL, DRAW)
+    space = verify_draw_space(draws, POOL, DRAW)
+    print(f"  draw space: {space}", flush=True)
+    if space["status"] != "PASS":
+        print(json.dumps({"BLOCKED_UNVERIFIABLE": {"draw_space": space}}, indent=2))
+        return 2
+
+    print(f"evaluating {len(work)} portfolios in one pass ...", flush=True)
+    official, m3plus, disjoint_ok = evaluate_portfolios(
+        work, draws, POOL, DRAW, THRESHOLD
+    )
+    del draws
+
+    # ---- oracles ----
+    single = run_single_ticket_oracle(official["single_ticket_probe"])
+    print(f"  single-ticket oracle: {single['status']}", flush=True)
+    small = run_small_domain_oracle()
+    print(f"  small-domain oracle: {small['status']}", flush=True)
+
+    perm_inv = {"status": "PASS", "per_portfolio": {}}
+    dup_inv = {"status": "PASS", "per_portfolio": {}}
+    for k in ladder:
+        for side in ("reference", "terminal"):
+            base = official[f"{side}_{k}"]
+            pv, dv = official[f"perm_{side}_{k}"], official[f"dup_{side}_{k}"]
+            perm_inv["per_portfolio"][f"{side}_{k}"] = {
+                "canonical_order_count": base, "permuted_order_count": pv,
+                "invariant": base == pv}
+            dup_inv["per_portfolio"][f"{side}_{k}"] = {
+                "count": base, "count_with_duplicated_first_ticket": dv,
+                "invariant": base == dv}
+            if base != pv:
+                perm_inv["status"] = "FAIL"
+            if base != dv:
+                dup_inv["status"] = "FAIL"
+    dup_inv["contract"] = (
+        "UNION_SEMANTICS_DUPLICATES_INERT: portfolio success is a union over "
+        "tickets, so a repeated ticket cannot change the outcome count"
+    )
+
+    # ---- sealed M3+ parity ----
+    m3_parity = {"status": "PASS", "per_k": {}}
+    for k in ladder:
+        row = {}
+        for side in ("reference", "terminal"):
+            sealed = Fraction(inputs["per_k"][str(k)][side]["sealed_m3_q"])
+            expected = sealed * TOTAL_MAIN
+            observed = m3plus[f"{side}_{k}"]
+            ok = expected.denominator == 1 and int(expected) == observed
+            row[side] = {"sealed_m3_q": str(sealed),
+                         "sealed_m3_count": int(expected) if expected.denominator == 1
+                         else None,
+                         "recomputed_m3_count": observed,
+                         "recomputed_m3_q": str(Fraction(observed, TOTAL_MAIN)),
+                         "match": ok}
+            if not ok:
+                m3_parity["status"] = "FAIL"
+        m3_parity["per_k"][str(k)] = row
+
+    # ---- results ----
+    per_k_out = {}
+    classifications = {}
+    for k in ladder:
+        rc, tc = official[f"reference_{k}"], official[f"terminal_{k}"]
+        rq, tq = Fraction(rc, TOTAL_OUTCOMES), Fraction(tc, TOTAL_OUTCOMES)
+        delta = tq - rq
+        lift = delta / rq
+        if delta > 0:
+            cls = "M3_IMPROVEMENT_CONFIRMED_OFFICIAL_ANY_PRIZE_POSITIVE"
+        elif delta == 0:
+            cls = "M3_IMPROVEMENT_OFFICIAL_ANY_PRIZE_NEUTRAL"
+        else:
+            cls = "M3_IMPROVEMENT_OFFICIAL_ANY_PRIZE_NEGATIVE"
+        classifications[k] = cls
+        per_k_out[str(k)] = {
+            "k": k,
+            "reference_portfolio_sha256": identity["per_k"][str(k)]["reference"]["computed_sha256"],
+            "terminal_portfolio_sha256": identity["per_k"][str(k)]["terminal"]["computed_sha256"],
+            "reference_m3_q": str(Fraction(m3plus[f"reference_{k}"], TOTAL_MAIN)),
+            "terminal_m3_q": str(Fraction(m3plus[f"terminal_{k}"], TOTAL_MAIN)),
+            "reference_m3_count": m3plus[f"reference_{k}"],
+            "terminal_m3_count": m3plus[f"terminal_{k}"],
+            "reference_official_any_prize_count": rc,
+            "terminal_official_any_prize_count": tc,
+            "reference_official_any_prize_q": str(rq),
+            "terminal_official_any_prize_q": str(tq),
+            "reference_official_any_prize_q_decimal": float(rq),
+            "terminal_official_any_prize_q_decimal": float(tq),
+            "official_absolute_delta": str(delta),
+            "official_absolute_delta_decimal": float(delta),
+            "official_outcome_count_delta": tc - rc,
+            "official_relative_lift": str(lift),
+            "official_relative_lift_decimal": float(lift),
+            "classification": cls,
+            # Exact decomposition: official = SPECIAL_POOL * N3 + S2, where S2 is the
+            # 柒獎 (2-main + special) outcome mass on draws no ticket covers at 3+.
+            "decomposition": {
+                "reference_m3_outcome_mass": SPECIAL_POOL * m3plus[f"reference_{k}"],
+                "terminal_m3_outcome_mass": SPECIAL_POOL * m3plus[f"terminal_{k}"],
+                "reference_two_plus_special_union_mass": rc - SPECIAL_POOL * m3plus[f"reference_{k}"],
+                "terminal_two_plus_special_union_mass": tc - SPECIAL_POOL * m3plus[f"terminal_{k}"],
+                "m3_outcome_mass_delta": SPECIAL_POOL * (m3plus[f"terminal_{k}"] - m3plus[f"reference_{k}"]),
+                "two_plus_special_union_mass_delta": (tc - SPECIAL_POOL * m3plus[f"terminal_{k}"])
+                - (rc - SPECIAL_POOL * m3plus[f"reference_{k}"]),
+                "note": "the union term is net of draws promoted out of the sub-threshold "
+                        "bucket by the M3+ gain",
+            },
+        }
+
+    vals = set(classifications.values())
+    if vals == {"M3_IMPROVEMENT_CONFIRMED_OFFICIAL_ANY_PRIZE_POSITIVE"}:
+        overall = "OFFICIAL_ANY_PRIZE_LIFT_REPLICATED_K10_K15_K20"
+    elif "M3_IMPROVEMENT_CONFIRMED_OFFICIAL_ANY_PRIZE_POSITIVE" in vals:
+        overall = "OFFICIAL_ANY_PRIZE_EFFECT_MIXED_BY_K"
+    else:
+        overall = "M3_PROXY_IMPROVEMENT_DOES_NOT_TRANSLATE_TO_OFFICIAL_ANY_PRIZE"
+
+    verification = {
+        "portfolio_identity_reconciliation": identity["status"],
+        "ticket_legality": legality["status"],
+        "draw_space_exhaustiveness": space["status"],
+        "special_union_disjoint_from_draw_invariant": "PASS" if disjoint_ok else "FAIL",
+        "single_ticket_oracle": single["status"],
+        "small_domain_brute_force_oracle": small["status"],
+        "permutation_invariance": perm_inv["status"],
+        "duplicate_ticket_invariance": dup_inv["status"],
+        "sealed_m3_parity": m3_parity["status"],
+    }
+    all_pass = all(v == "PASS" for v in verification.values())
+
+    result = {
+        "task_id": "B649_REFERENCE_E_IMPROVED_PORTFOLIO_OFFICIAL_ANY_PRIZE_POSTCHECK_R1",
+        "task_status": "COMPLETE" if all_pass else "BLOCKED_UNVERIFIABLE",
+        "lottery_type": "BIG_LOTTO",
+        "authority": inputs["authority"],
+        "official_any_prize_contract": {
+            "rule": "main_matches >= 3 OR (main_matches == 2 AND official special "
+                    "number is one of the ticket's remaining selected numbers)",
+            "canonical_source": "src/lottolab/domain/lottery_rules.py "
+                                "BIG_LOTTO_RULE_CONTRACT.prize_rule",
+            "portfolio_event": "at least one selected ticket receives any official prize",
+        },
+        "counting_method": "MAIN_DRAW_COLLAPSED_EXACT_SPECIAL_UNION",
+        "total_outcome_count": TOTAL_OUTCOMES,
+        "total_main_draw_count": TOTAL_MAIN,
+        "per_k": per_k_out,
+        "overall_classification": overall,
+        "verification": verification,
+        "verification_detail": {
+            "portfolio_identity": identity,
+            "ticket_legality": legality,
+            "draw_space": space,
+            "single_ticket_oracle": single,
+            "small_domain_brute_force_oracle": small,
+            "permutation_invariance": perm_inv,
+            "duplicate_ticket_invariance": dup_inv,
+            "sealed_m3_parity": m3_parity,
+        },
+        "invariants": {
+            "historical_outcome_data_used": False,
+            "monte_carlo": False,
+            "db_access": False,
+            "repo_source_writes": "NONE",
+            "production_mutation": "NONE",
+            "candidate_generation": "NONE",
+            "portfolio_mutation": "NONE",
+            "exact_arithmetic": "FRACTION",
+            "predictive_signal_claim": False,
+            "global_optimum_status": "UNKNOWN",
+        },
+    }
+    (HERE / "official_any_prize_postcheck.json").write_text(
+        json.dumps(result, indent=2, sort_keys=True) + "\n"
+    )
+    print(json.dumps({"verification": verification,
+                      "overall_classification": overall,
+                      "per_k": {k: {"delta": per_k_out[k]["official_absolute_delta"],
+                                    "lift": per_k_out[k]["official_relative_lift_decimal"],
+                                    "cls": per_k_out[k]["classification"]}
+                                for k in per_k_out}}, indent=2))
+    return 0 if all_pass else 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

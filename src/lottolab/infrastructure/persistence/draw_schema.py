@@ -15,11 +15,13 @@ from pathlib import Path
 
 DATA_DIRECTORY_ENV = "LOTTOLAB_DATA_DIR"
 DATABASE_FILENAME = "lottolab.db"
-CURRENT_SCHEMA_VERSION = 3
+CURRENT_SCHEMA_VERSION = 4
 CONTEXT_SCHEMA_VERSION = 2
+DRAW_SCHEDULE_SCHEMA_VERSION = 3
 MIGRATION_NAME = "create_local_draw_data_schema"
 CONTEXT_MIGRATION_NAME = "add_ingestion_run_context"
 DRAW_SCHEDULE_MIGRATION_NAME = "add_canonical_draw_schedules"
+SCHEDULE_AUTHORITY_MIGRATION_NAME = "add_t539_p638_schedule_authority"
 BUSY_TIMEOUT_MS = 5_000
 
 
@@ -230,6 +232,116 @@ DRAW_SCHEDULE_MIGRATION_SQL = (
 DRAW_SCHEDULE_MIGRATION_CHECKSUM = hashlib.sha256(
     DRAW_SCHEDULE_MIGRATION_SQL.encode("utf-8")
 ).hexdigest()
+SCHEDULE_AUTHORITY_MIGRATION_STATEMENTS = (
+    """
+    CREATE TABLE draw_schedule_facts (
+        schedule_id INTEGER PRIMARY KEY,
+        official_game_code INTEGER NOT NULL CHECK (official_game_code > 0),
+        scheduled_local_time TEXT NOT NULL,
+        source_period_identifier TEXT,
+        immutable_schedule_hash TEXT NOT NULL,
+        authority_origin TEXT NOT NULL
+            CHECK (authority_origin IN ('OFFICIAL', 'MANUAL')),
+        FOREIGN KEY (schedule_id) REFERENCES draw_schedules(id) ON DELETE RESTRICT
+    )
+    """,
+    """
+    CREATE INDEX idx_draw_schedule_facts_game
+    ON draw_schedule_facts (official_game_code, schedule_id)
+    """,
+    """
+    CREATE TABLE draw_schedule_authority_evidence (
+        id INTEGER PRIMARY KEY,
+        schedule_id INTEGER,
+        lottery_type TEXT NOT NULL,
+        official_game_code INTEGER NOT NULL CHECK (official_game_code > 0),
+        draw_number TEXT,
+        draw_date TEXT,
+        scheduled_local_time TEXT,
+        schedule_timezone TEXT,
+        scheduled_at TEXT,
+        source_period_identifier TEXT,
+        event_kind TEXT NOT NULL,
+        disposition TEXT NOT NULL,
+        detail_code TEXT NOT NULL,
+        source_id TEXT NOT NULL,
+        source_version TEXT NOT NULL,
+        source_locator TEXT NOT NULL,
+        source_payload_sha256 TEXT NOT NULL,
+        source_observed_at TEXT NOT NULL,
+        immutable_schedule_hash TEXT,
+        certificate_input_sha256 TEXT,
+        certificate_document_sha256 TEXT,
+        certified_at TEXT,
+        certifying_authority TEXT,
+        certification_reason TEXT,
+        supporting_artifact_type TEXT,
+        run_id TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY (schedule_id) REFERENCES draw_schedules(id) ON DELETE RESTRICT,
+        FOREIGN KEY (run_id) REFERENCES ingestion_runs(id) ON DELETE RESTRICT
+    )
+    """,
+    """
+    CREATE INDEX idx_draw_schedule_authority_evidence_target
+    ON draw_schedule_authority_evidence (lottery_type, draw_number, id)
+    """,
+    """
+    CREATE INDEX idx_draw_schedule_authority_evidence_state
+    ON draw_schedule_authority_evidence (
+        lottery_type, event_kind, source_observed_at, id
+    )
+    """,
+    """
+    CREATE TRIGGER trg_draw_schedules_reject_update
+    BEFORE UPDATE ON draw_schedules
+    BEGIN
+        SELECT RAISE(ABORT, 'canonical schedule facts are immutable');
+    END
+    """,
+    """
+    CREATE TRIGGER trg_draw_schedules_reject_delete
+    BEFORE DELETE ON draw_schedules
+    BEGIN
+        SELECT RAISE(ABORT, 'canonical schedule facts cannot be deleted');
+    END
+    """,
+    """
+    CREATE TRIGGER trg_draw_schedule_facts_reject_update
+    BEFORE UPDATE ON draw_schedule_facts
+    BEGIN
+        SELECT RAISE(ABORT, 'canonical schedule fact metadata is immutable');
+    END
+    """,
+    """
+    CREATE TRIGGER trg_draw_schedule_facts_reject_delete
+    BEFORE DELETE ON draw_schedule_facts
+    BEGIN
+        SELECT RAISE(ABORT, 'canonical schedule fact metadata cannot be deleted');
+    END
+    """,
+    """
+    CREATE TRIGGER trg_draw_schedule_authority_evidence_reject_update
+    BEFORE UPDATE ON draw_schedule_authority_evidence
+    BEGIN
+        SELECT RAISE(ABORT, 'schedule authority evidence is append-only');
+    END
+    """,
+    """
+    CREATE TRIGGER trg_draw_schedule_authority_evidence_reject_delete
+    BEFORE DELETE ON draw_schedule_authority_evidence
+    BEGIN
+        SELECT RAISE(ABORT, 'schedule authority evidence is append-only');
+    END
+    """,
+)
+SCHEDULE_AUTHORITY_MIGRATION_SQL = (
+    ";\n".join(statement.strip() for statement in SCHEDULE_AUTHORITY_MIGRATION_STATEMENTS)
+    + ";\n"
+)
+SCHEDULE_AUTHORITY_MIGRATION_CHECKSUM = hashlib.sha256(
+    SCHEDULE_AUTHORITY_MIGRATION_SQL.encode("utf-8")
+).hexdigest()
 
 _EXPECTED_TABLE_XINFO = {
     "schema_migrations": (
@@ -318,6 +430,47 @@ _EXPECTED_TABLE_XINFO_V3 = {
     ),
 }
 
+_EXPECTED_TABLE_XINFO_V4 = {
+    **_EXPECTED_TABLE_XINFO_V3,
+    "draw_schedule_facts": (
+        (0, "schedule_id", "INTEGER", 0, None, 1, 0),
+        (1, "official_game_code", "INTEGER", 1, None, 0, 0),
+        (2, "scheduled_local_time", "TEXT", 1, None, 0, 0),
+        (3, "source_period_identifier", "TEXT", 0, None, 0, 0),
+        (4, "immutable_schedule_hash", "TEXT", 1, None, 0, 0),
+        (5, "authority_origin", "TEXT", 1, None, 0, 0),
+    ),
+    "draw_schedule_authority_evidence": (
+        (0, "id", "INTEGER", 0, None, 1, 0),
+        (1, "schedule_id", "INTEGER", 0, None, 0, 0),
+        (2, "lottery_type", "TEXT", 1, None, 0, 0),
+        (3, "official_game_code", "INTEGER", 1, None, 0, 0),
+        (4, "draw_number", "TEXT", 0, None, 0, 0),
+        (5, "draw_date", "TEXT", 0, None, 0, 0),
+        (6, "scheduled_local_time", "TEXT", 0, None, 0, 0),
+        (7, "schedule_timezone", "TEXT", 0, None, 0, 0),
+        (8, "scheduled_at", "TEXT", 0, None, 0, 0),
+        (9, "source_period_identifier", "TEXT", 0, None, 0, 0),
+        (10, "event_kind", "TEXT", 1, None, 0, 0),
+        (11, "disposition", "TEXT", 1, None, 0, 0),
+        (12, "detail_code", "TEXT", 1, None, 0, 0),
+        (13, "source_id", "TEXT", 1, None, 0, 0),
+        (14, "source_version", "TEXT", 1, None, 0, 0),
+        (15, "source_locator", "TEXT", 1, None, 0, 0),
+        (16, "source_payload_sha256", "TEXT", 1, None, 0, 0),
+        (17, "source_observed_at", "TEXT", 1, None, 0, 0),
+        (18, "immutable_schedule_hash", "TEXT", 0, None, 0, 0),
+        (19, "certificate_input_sha256", "TEXT", 0, None, 0, 0),
+        (20, "certificate_document_sha256", "TEXT", 0, None, 0, 0),
+        (21, "certified_at", "TEXT", 0, None, 0, 0),
+        (22, "certifying_authority", "TEXT", 0, None, 0, 0),
+        (23, "certification_reason", "TEXT", 0, None, 0, 0),
+        (24, "supporting_artifact_type", "TEXT", 0, None, 0, 0),
+        (25, "run_id", "TEXT", 1, None, 0, 0),
+        (26, "created_at", "TEXT", 1, None, 0, 0),
+    ),
+}
+
 _EXPECTED_INDEX_LIST = {
     "schema_migrations": {},
     "ingestion_runs": {
@@ -346,6 +499,17 @@ _EXPECTED_INDEX_LIST_V3 = {
     "draw_schedules": {
         "idx_draw_schedules_earliest": (0, "c", 0),
         "sqlite_autoindex_draw_schedules_1": (1, "u", 0),
+    },
+}
+
+_EXPECTED_INDEX_LIST_V4 = {
+    **_EXPECTED_INDEX_LIST_V3,
+    "draw_schedule_facts": {
+        "idx_draw_schedule_facts_game": (0, "c", 0),
+    },
+    "draw_schedule_authority_evidence": {
+        "idx_draw_schedule_authority_evidence_state": (0, "c", 0),
+        "idx_draw_schedule_authority_evidence_target": (0, "c", 0),
     },
 }
 
@@ -408,6 +572,28 @@ _EXPECTED_INDEX_XINFO_V3 = {
     ),
 }
 
+_EXPECTED_INDEX_XINFO_V4 = {
+    **_EXPECTED_INDEX_XINFO_V3,
+    "idx_draw_schedule_facts_game": (
+        (0, 1, "official_game_code", 0, "BINARY", 1),
+        (1, 0, "schedule_id", 0, "BINARY", 1),
+        (2, -1, None, 0, "BINARY", 0),
+    ),
+    "idx_draw_schedule_authority_evidence_target": (
+        (0, 2, "lottery_type", 0, "BINARY", 1),
+        (1, 4, "draw_number", 0, "BINARY", 1),
+        (2, 0, "id", 0, "BINARY", 1),
+        (3, -1, None, 0, "BINARY", 0),
+    ),
+    "idx_draw_schedule_authority_evidence_state": (
+        (0, 2, "lottery_type", 0, "BINARY", 1),
+        (1, 10, "event_kind", 0, "BINARY", 1),
+        (2, 17, "source_observed_at", 0, "BINARY", 1),
+        (3, 0, "id", 0, "BINARY", 1),
+        (4, -1, None, 0, "BINARY", 0),
+    ),
+}
+
 _EXPECTED_FOREIGN_KEYS = {
     "schema_migrations": (),
     "ingestion_runs": (),
@@ -449,6 +635,44 @@ _EXPECTED_FOREIGN_KEYS_V3 = {
     ),
 }
 
+_EXPECTED_FOREIGN_KEYS_V4 = {
+    **_EXPECTED_FOREIGN_KEYS_V3,
+    "draw_schedule_facts": (
+        (
+            0,
+            0,
+            "draw_schedules",
+            "schedule_id",
+            "id",
+            "NO ACTION",
+            "RESTRICT",
+            "NONE",
+        ),
+    ),
+    "draw_schedule_authority_evidence": (
+        (
+            0,
+            0,
+            "ingestion_runs",
+            "run_id",
+            "id",
+            "NO ACTION",
+            "RESTRICT",
+            "NONE",
+        ),
+        (
+            1,
+            0,
+            "draw_schedules",
+            "schedule_id",
+            "id",
+            "NO ACTION",
+            "RESTRICT",
+            "NONE",
+        ),
+    ),
+}
+
 _EXPECTED_SCHEMA_SQL = {
     "schema_migrations": MIGRATION_STATEMENTS[0],
     "ingestion_runs": MIGRATION_STATEMENTS[1],
@@ -476,6 +700,29 @@ _EXPECTED_SCHEMA_SQL_V3 = {
     "trg_draws_reject_schedule_date_mismatch_insert": DRAW_SCHEDULE_MIGRATION_STATEMENTS[3],
     "trg_draws_reject_schedule_date_mismatch_update": DRAW_SCHEDULE_MIGRATION_STATEMENTS[4],
     "sqlite_autoindex_draw_schedules_1": None,
+}
+
+_EXPECTED_SCHEMA_SQL_V4 = {
+    **_EXPECTED_SCHEMA_SQL_V3,
+    "draw_schedule_facts": SCHEDULE_AUTHORITY_MIGRATION_STATEMENTS[0],
+    "idx_draw_schedule_facts_game": SCHEDULE_AUTHORITY_MIGRATION_STATEMENTS[1],
+    "draw_schedule_authority_evidence": SCHEDULE_AUTHORITY_MIGRATION_STATEMENTS[2],
+    "idx_draw_schedule_authority_evidence_target": (
+        SCHEDULE_AUTHORITY_MIGRATION_STATEMENTS[3]
+    ),
+    "idx_draw_schedule_authority_evidence_state": (
+        SCHEDULE_AUTHORITY_MIGRATION_STATEMENTS[4]
+    ),
+    "trg_draw_schedules_reject_update": SCHEDULE_AUTHORITY_MIGRATION_STATEMENTS[5],
+    "trg_draw_schedules_reject_delete": SCHEDULE_AUTHORITY_MIGRATION_STATEMENTS[6],
+    "trg_draw_schedule_facts_reject_update": SCHEDULE_AUTHORITY_MIGRATION_STATEMENTS[7],
+    "trg_draw_schedule_facts_reject_delete": SCHEDULE_AUTHORITY_MIGRATION_STATEMENTS[8],
+    "trg_draw_schedule_authority_evidence_reject_update": (
+        SCHEDULE_AUTHORITY_MIGRATION_STATEMENTS[9]
+    ),
+    "trg_draw_schedule_authority_evidence_reject_delete": (
+        SCHEDULE_AUTHORITY_MIGRATION_STATEMENTS[10]
+    ),
 }
 
 _EXPECTED_SCHEMA_OBJECTS = {("table", name, name) for name in _EXPECTED_TABLE_XINFO} | {
@@ -520,6 +767,48 @@ _EXPECTED_SCHEMA_OBJECTS_V3 = {
         "trigger",
         "trg_draws_reject_schedule_date_mismatch_update",
         "draws",
+    ),
+}
+
+_EXPECTED_SCHEMA_OBJECTS_V4 = {
+    ("table", name, name) for name in _EXPECTED_TABLE_XINFO_V4
+} | {
+    (object_type, name, table)
+    for object_type, name, table in _EXPECTED_SCHEMA_OBJECTS_V3
+    if object_type != "table"
+} | {
+    ("index", "idx_draw_schedule_facts_game", "draw_schedule_facts"),
+    (
+        "index",
+        "idx_draw_schedule_authority_evidence_target",
+        "draw_schedule_authority_evidence",
+    ),
+    (
+        "index",
+        "idx_draw_schedule_authority_evidence_state",
+        "draw_schedule_authority_evidence",
+    ),
+    ("trigger", "trg_draw_schedules_reject_update", "draw_schedules"),
+    ("trigger", "trg_draw_schedules_reject_delete", "draw_schedules"),
+    (
+        "trigger",
+        "trg_draw_schedule_facts_reject_update",
+        "draw_schedule_facts",
+    ),
+    (
+        "trigger",
+        "trg_draw_schedule_facts_reject_delete",
+        "draw_schedule_facts",
+    ),
+    (
+        "trigger",
+        "trg_draw_schedule_authority_evidence_reject_update",
+        "draw_schedule_authority_evidence",
+    ),
+    (
+        "trigger",
+        "trg_draw_schedule_authority_evidence_reject_delete",
+        "draw_schedule_authority_evidence",
     ),
 }
 
@@ -610,9 +899,25 @@ def initialize_schema(paths: LocalDataPaths) -> None:
                         VALUES (?, ?, ?, ?)
                         """,
                         (
-                            CURRENT_SCHEMA_VERSION,
+                            DRAW_SCHEDULE_SCHEMA_VERSION,
                             DRAW_SCHEDULE_MIGRATION_NAME,
                             DRAW_SCHEDULE_MIGRATION_CHECKSUM,
+                            _utc_now(),
+                        ),
+                    )
+                    version = _verify_migration_state(connection)
+                if version == DRAW_SCHEDULE_SCHEMA_VERSION:
+                    for statement in SCHEDULE_AUTHORITY_MIGRATION_STATEMENTS:
+                        connection.execute(statement)
+                    connection.execute(
+                        """
+                        INSERT INTO schema_migrations (version, name, checksum, applied_at)
+                        VALUES (?, ?, ?, ?)
+                        """,
+                        (
+                            CURRENT_SCHEMA_VERSION,
+                            SCHEDULE_AUTHORITY_MIGRATION_NAME,
+                            SCHEDULE_AUTHORITY_MIGRATION_CHECKSUM,
                             _utc_now(),
                         ),
                     )
@@ -743,7 +1048,13 @@ def _verify_migration_state(connection: sqlite3.Connection) -> int | None:
     if versions not in (
         [1],
         [1, CONTEXT_SCHEMA_VERSION],
-        [1, CONTEXT_SCHEMA_VERSION, CURRENT_SCHEMA_VERSION],
+        [1, CONTEXT_SCHEMA_VERSION, DRAW_SCHEDULE_SCHEMA_VERSION],
+        [
+            1,
+            CONTEXT_SCHEMA_VERSION,
+            DRAW_SCHEDULE_SCHEMA_VERSION,
+            CURRENT_SCHEMA_VERSION,
+        ],
     ):
         raise SchemaMigrationError("database migration history is incomplete")
     _, initial_name, initial_checksum = rows[0]
@@ -756,11 +1067,18 @@ def _verify_migration_state(connection: sqlite3.Connection) -> int | None:
             or context_checksum != CONTEXT_MIGRATION_CHECKSUM
         ):
             raise MigrationChecksumError("database migration checksum does not match")
-    if versions == [1, CONTEXT_SCHEMA_VERSION, CURRENT_SCHEMA_VERSION]:
+    if len(versions) >= 3:
         _, schedule_name, schedule_checksum = rows[2]
         if (
             schedule_name != DRAW_SCHEDULE_MIGRATION_NAME
             or schedule_checksum != DRAW_SCHEDULE_MIGRATION_CHECKSUM
+        ):
+            raise MigrationChecksumError("database migration checksum does not match")
+    if len(versions) == 4:
+        _, authority_name, authority_checksum = rows[3]
+        if (
+            authority_name != SCHEDULE_AUTHORITY_MIGRATION_NAME
+            or authority_checksum != SCHEDULE_AUTHORITY_MIGRATION_CHECKSUM
         ):
             raise MigrationChecksumError("database migration checksum does not match")
 
@@ -778,32 +1096,38 @@ def _verify_schema_semantics(
     expected_table_xinfo = {
         1: _EXPECTED_TABLE_XINFO,
         CONTEXT_SCHEMA_VERSION: _EXPECTED_TABLE_XINFO_V2,
-        CURRENT_SCHEMA_VERSION: _EXPECTED_TABLE_XINFO_V3,
+        DRAW_SCHEDULE_SCHEMA_VERSION: _EXPECTED_TABLE_XINFO_V3,
+        CURRENT_SCHEMA_VERSION: _EXPECTED_TABLE_XINFO_V4,
     }[version]
     expected_schema_objects = {
         1: _EXPECTED_SCHEMA_OBJECTS,
         CONTEXT_SCHEMA_VERSION: _EXPECTED_SCHEMA_OBJECTS_V2,
-        CURRENT_SCHEMA_VERSION: _EXPECTED_SCHEMA_OBJECTS_V3,
+        DRAW_SCHEDULE_SCHEMA_VERSION: _EXPECTED_SCHEMA_OBJECTS_V3,
+        CURRENT_SCHEMA_VERSION: _EXPECTED_SCHEMA_OBJECTS_V4,
     }[version]
     expected_schema_sql = {
         1: _EXPECTED_SCHEMA_SQL,
         CONTEXT_SCHEMA_VERSION: _EXPECTED_SCHEMA_SQL_V2,
-        CURRENT_SCHEMA_VERSION: _EXPECTED_SCHEMA_SQL_V3,
+        DRAW_SCHEDULE_SCHEMA_VERSION: _EXPECTED_SCHEMA_SQL_V3,
+        CURRENT_SCHEMA_VERSION: _EXPECTED_SCHEMA_SQL_V4,
     }[version]
     expected_index_list = {
         1: _EXPECTED_INDEX_LIST,
         CONTEXT_SCHEMA_VERSION: _EXPECTED_INDEX_LIST_V2,
-        CURRENT_SCHEMA_VERSION: _EXPECTED_INDEX_LIST_V3,
+        DRAW_SCHEDULE_SCHEMA_VERSION: _EXPECTED_INDEX_LIST_V3,
+        CURRENT_SCHEMA_VERSION: _EXPECTED_INDEX_LIST_V4,
     }[version]
     expected_foreign_keys = {
         1: _EXPECTED_FOREIGN_KEYS,
         CONTEXT_SCHEMA_VERSION: _EXPECTED_FOREIGN_KEYS_V2,
-        CURRENT_SCHEMA_VERSION: _EXPECTED_FOREIGN_KEYS_V3,
+        DRAW_SCHEDULE_SCHEMA_VERSION: _EXPECTED_FOREIGN_KEYS_V3,
+        CURRENT_SCHEMA_VERSION: _EXPECTED_FOREIGN_KEYS_V4,
     }[version]
     expected_index_xinfo = {
         1: _EXPECTED_INDEX_XINFO,
         CONTEXT_SCHEMA_VERSION: _EXPECTED_INDEX_XINFO_V2,
-        CURRENT_SCHEMA_VERSION: _EXPECTED_INDEX_XINFO_V3,
+        DRAW_SCHEDULE_SCHEMA_VERSION: _EXPECTED_INDEX_XINFO_V3,
+        CURRENT_SCHEMA_VERSION: _EXPECTED_INDEX_XINFO_V4,
     }[version]
     if table_names != set(expected_table_xinfo):
         raise SchemaMigrationError(f"database schema tables do not match version {version}")

@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "command": [
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/python",
+    "tools/run_b649_k20_exact_ticket_exchange_pilot.py"
+  ],
+  "stdout": "{\"exact_candidate_score_count\": 8, \"output_path\": \"docs/research/b649-k20-2-3-ticket-exact-objective-exchange-pilot-r1.json\", \"scan_count\": 4, \"strict_improvement_count\": 0}\n",
+  "stderr": "",
+  "exit_status": 0,
+  "started_at": "2026-09-23T10:21:16Z",
+  "ended_at": "2026-09-23T10:21:20Z"
+}

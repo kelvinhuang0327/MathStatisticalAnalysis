@@ -1,0 +1,2495 @@
+{
+  "callable_family_grouping": {
+    "callable_count_sum_across_cells": 26,
+    "group_identity_fields": [
+      "source_authority_id",
+      "lottery_id",
+      "native_ticket_count",
+      "callable_identity"
+    ],
+    "grouping_scope": "SOURCE_AUTHORITY_ID_X_LOTTERY_ID_X_NATIVE_TICKET_COUNT_X_CALLABLE_IDENTITY",
+    "removed_sibling_count_sum_across_cells": 36
+  },
+  "callable_reduced_universe": {
+    "cell_universes": [
+      {
+        "cell_id": "T539:K1",
+        "representative_count": 12,
+        "sha256": "3d1c189f599f7612c08b09d1684cf1efc2283a15b487d1ac9c83af73aaa8ea81"
+      },
+      {
+        "cell_id": "T539:K2",
+        "representative_count": 3,
+        "sha256": "dcee5db9eae282bad7e11431ab6e3abc7ca51ed07d31bebfd94382174d4a9d05"
+      },
+      {
+        "cell_id": "T539:K3",
+        "representative_count": 3,
+        "sha256": "fd7cbd2a7feeb5de2c3ab9613d8111b66b8253cdd238473c7dfe170ad55eb192"
+      },
+      {
+        "cell_id": "T539:K4",
+        "representative_count": 1,
+        "sha256": "3395e00950399a06ddd9d40efe7673688ebf2c8867fd40c39fd1ef243b6db3e8"
+      },
+      {
+        "cell_id": "T539:K5",
+        "representative_count": 2,
+        "sha256": "810d83e99c0e945f66f407366d6fa0576977a067da252e09933f2a88788dba79"
+      },
+      {
+        "cell_id": "T539:K7",
+        "representative_count": 1,
+        "sha256": "4f00afe92eeee7a68a9231e3f6edc7d2dfa55c49407eae3243e54f13b45605c1"
+      },
+      {
+        "cell_id": "T539:K10",
+        "representative_count": 1,
+        "sha256": "3b9bd4b748f7e2b3d191fc6cfbdbfd58dc99695ae68ab20579c68383f6d29663"
+      },
+      {
+        "cell_id": "T539:K11",
+        "representative_count": 1,
+        "sha256": "42d465f853807cf099da5414cb80ae5f5c88f4e3d1564277254d57454df16839"
+      },
+      {
+        "cell_id": "T539:K12",
+        "representative_count": 1,
+        "sha256": "49d05e7189f4f382e30820c68a79a36427137ef25d835b0c02b9ca93afc8cd74"
+      },
+      {
+        "cell_id": "T539:K25",
+        "representative_count": 1,
+        "sha256": "156380d6f3d2df21c7ea670b9c75a54608725bfeb69a323d9196243c1ed929fc"
+      }
+    ],
+    "representative_count_sum_across_cells": 26,
+    "sha256": "e57bd95fb9b95b3490442f78cf1a02c88a12628bae95dd2a246161cc9b8a89f1"
+  },
+  "cells": [
+    {
+      "callable_families": [
+        {
+          "authority_qualified_callable_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            1,
+            "callable-sha256:c6c6d25c5671a19d0b5f2b20e842db571af2340b46a9268291fe409590d50944"
+          ],
+          "callable_identity": "callable-sha256:c6c6d25c5671a19d0b5f2b20e842db571af2340b46a9268291fe409590d50944",
+          "callable_labels": [
+            "lottolab.strategies.adapters.daily539_batch01:Daily539AcbSingleCatalogAdapter._predict"
+          ],
+          "member_identities": [
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "acb_single_539",
+              "v0.1-p36"
+            ]
+          ],
+          "removed_sibling_identities": [],
+          "representative_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            "acb_single_539",
+            "v0.1-p36"
+          ],
+          "resolution_authorities": [
+            "BASE_PRODUCTION_LINEAGE"
+          ]
+        },
+        {
+          "authority_qualified_callable_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            1,
+            "selector-supplement-callable:lottolab.strategies.adapters.daily539_acb_markov_midfreq:Daily539AcbMarkovMidfreqAdapter.get_one_bet"
+          ],
+          "callable_identity": "selector-supplement-callable:lottolab.strategies.adapters.daily539_acb_markov_midfreq:Daily539AcbMarkovMidfreqAdapter.get_one_bet",
+          "callable_labels": [
+            "lottolab.strategies.adapters.daily539_acb_markov_midfreq:Daily539AcbMarkovMidfreqAdapter.get_one_bet"
+          ],
+          "member_identities": [
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "acb_markov_midfreq",
+              "v0.1-p31a"
+            ]
+          ],
+          "removed_sibling_identities": [],
+          "representative_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            "acb_markov_midfreq",
+            "v0.1-p31a"
+          ],
+          "resolution_authorities": [
+            "R2_AUTHORITY_QUALIFIED_ATTRIBUTION"
+          ]
+        },
+        {
+          "authority_qualified_callable_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            1,
+            "selector-supplement-callable:lottolab.strategies.adapters.daily539_biglotto_batch15:_Daily539Batch15SingleAdapter.get_one_bet"
+          ],
+          "callable_identity": "selector-supplement-callable:lottolab.strategies.adapters.daily539_biglotto_batch15:_Daily539Batch15SingleAdapter.get_one_bet",
+          "callable_labels": [
+            "lottolab.strategies.adapters.daily539_biglotto_batch15:_Daily539Batch15SingleAdapter.get_one_bet"
+          ],
+          "member_identities": [
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "t539_biglotto_cold_hunter_1bet",
+              "v0.1-t539-batch15"
+            ],
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "t539_biglotto_dms_1bet",
+              "v0.1-t539-batch15"
+            ],
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "t539_biglotto_gap_pressure_1bet",
+              "v0.1-t539-batch15"
+            ],
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "t539_biglotto_moderate_rank_1bet",
+              "v0.1-t539-batch15"
+            ],
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "t539_biglotto_pure_cold_1bet",
+              "v0.1-t539-batch15"
+            ],
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "t539_biglotto_rebound_aware_1bet",
+              "v0.1-t539-batch15"
+            ],
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "t539_biglotto_short_window_deviation_1bet",
+              "v0.1-t539-batch15"
+            ],
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "t539_biglotto_zone_momentum_1bet",
+              "v0.1-t539-batch15"
+            ]
+          ],
+          "removed_sibling_identities": [
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "t539_biglotto_dms_1bet",
+              "v0.1-t539-batch15"
+            ],
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "t539_biglotto_gap_pressure_1bet",
+              "v0.1-t539-batch15"
+            ],
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "t539_biglotto_moderate_rank_1bet",
+              "v0.1-t539-batch15"
+            ],
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "t539_biglotto_pure_cold_1bet",
+              "v0.1-t539-batch15"
+            ],
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "t539_biglotto_rebound_aware_1bet",
+              "v0.1-t539-batch15"
+            ],
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "t539_biglotto_short_window_deviation_1bet",
+              "v0.1-t539-batch15"
+            ],
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "t539_biglotto_zone_momentum_1bet",
+              "v0.1-t539-batch15"
+            ]
+          ],
+          "representative_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            "t539_biglotto_cold_hunter_1bet",
+            "v0.1-t539-batch15"
+          ],
+          "resolution_authorities": [
+            "R2_AUTHORITY_QUALIFIED_ATTRIBUTION"
+          ]
+        },
+        {
+          "authority_qualified_callable_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            1,
+            "selector-supplement-callable:lottolab.strategies.adapters.daily539_biglotto_portable:Daily539BigLottoPortableAdapter.get_bets"
+          ],
+          "callable_identity": "selector-supplement-callable:lottolab.strategies.adapters.daily539_biglotto_portable:Daily539BigLottoPortableAdapter.get_bets",
+          "callable_labels": [
+            "lottolab.strategies.adapters.daily539_biglotto_portable:Daily539BigLottoPortableAdapter.get_bets"
+          ],
+          "member_identities": [
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "t539_biglotto_attention_replay_1bet",
+              "v0.1-t539-cross-lottery-r2"
+            ],
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "t539_biglotto_dynamic_frequency_1bet",
+              "v0.1-t539-cross-lottery-r2"
+            ],
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "t539_biglotto_graph_predictor_1bet",
+              "v0.1-t539-cross-lottery-r2"
+            ],
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "t539_biglotto_hot_cooccurrence_1bet",
+              "v0.1-t539-cross-lottery-r2"
+            ],
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "t539_biglotto_hpsb_1bet",
+              "v0.1-t539-cross-lottery-r2"
+            ],
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "t539_biglotto_must_hit_top6_1bet",
+              "v0.1-t539-cross-lottery-r2"
+            ],
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "t539_biglotto_optimized_ensemble_1bet",
+              "v0.1-t539-cross-lottery-r2"
+            ]
+          ],
+          "removed_sibling_identities": [
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "t539_biglotto_dynamic_frequency_1bet",
+              "v0.1-t539-cross-lottery-r2"
+            ],
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "t539_biglotto_graph_predictor_1bet",
+              "v0.1-t539-cross-lottery-r2"
+            ],
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "t539_biglotto_hot_cooccurrence_1bet",
+              "v0.1-t539-cross-lottery-r2"
+            ],
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "t539_biglotto_hpsb_1bet",
+              "v0.1-t539-cross-lottery-r2"
+            ],
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "t539_biglotto_must_hit_top6_1bet",
+              "v0.1-t539-cross-lottery-r2"
+            ],
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "t539_biglotto_optimized_ensemble_1bet",
+              "v0.1-t539-cross-lottery-r2"
+            ]
+          ],
+          "representative_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            "t539_biglotto_attention_replay_1bet",
+            "v0.1-t539-cross-lottery-r2"
+          ],
+          "resolution_authorities": [
+            "R2_AUTHORITY_QUALIFIED_ATTRIBUTION",
+            "SEALED_SELECTOR_SOURCE_STATIC_RESOLUTION"
+          ]
+        },
+        {
+          "authority_qualified_callable_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            1,
+            "selector-supplement-callable:lottolab.strategies.adapters.daily539_fourier4:Daily539P0bFourierColdFmidAdapter.get_one_bet"
+          ],
+          "callable_identity": "selector-supplement-callable:lottolab.strategies.adapters.daily539_fourier4:Daily539P0bFourierColdFmidAdapter.get_one_bet",
+          "callable_labels": [
+            "lottolab.strategies.adapters.daily539_fourier4:Daily539P0bFourierColdFmidAdapter.get_one_bet"
+          ],
+          "member_identities": [
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "p0b_539_3bet_f_cold_fmid",
+              "v0.1-p36"
+            ]
+          ],
+          "removed_sibling_identities": [],
+          "representative_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            "p0b_539_3bet_f_cold_fmid",
+            "v0.1-p36"
+          ],
+          "resolution_authorities": [
+            "R2_AUTHORITY_QUALIFIED_ATTRIBUTION"
+          ]
+        },
+        {
+          "authority_qualified_callable_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            1,
+            "selector-supplement-callable:lottolab.strategies.adapters.daily539_fourier4:Daily539P0cFourierColdX2Adapter.get_one_bet"
+          ],
+          "callable_identity": "selector-supplement-callable:lottolab.strategies.adapters.daily539_fourier4:Daily539P0cFourierColdX2Adapter.get_one_bet",
+          "callable_labels": [
+            "lottolab.strategies.adapters.daily539_fourier4:Daily539P0cFourierColdX2Adapter.get_one_bet"
+          ],
+          "member_identities": [
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "p0c_539_3bet_f_cold_x2",
+              "v0.1-p36"
+            ]
+          ],
+          "removed_sibling_identities": [],
+          "representative_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            "p0c_539_3bet_f_cold_x2",
+            "v0.1-p36"
+          ],
+          "resolution_authorities": [
+            "SEALED_SELECTOR_SOURCE_STATIC_RESOLUTION"
+          ]
+        },
+        {
+          "authority_qualified_callable_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            1,
+            "selector-supplement-callable:lottolab.strategies.adapters.daily539_portfolio_f4cold:Daily539F4ColdAdapter.get_bets"
+          ],
+          "callable_identity": "selector-supplement-callable:lottolab.strategies.adapters.daily539_portfolio_f4cold:Daily539F4ColdAdapter.get_bets",
+          "callable_labels": [
+            "lottolab.strategies.adapters.daily539_portfolio_f4cold:Daily539F4ColdAdapter.get_bets"
+          ],
+          "member_identities": [
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "daily539_f4cold",
+              "v0.1"
+            ]
+          ],
+          "removed_sibling_identities": [],
+          "representative_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            "daily539_f4cold",
+            "v0.1"
+          ],
+          "resolution_authorities": [
+            "R2_AUTHORITY_QUALIFIED_ATTRIBUTION"
+          ]
+        },
+        {
+          "authority_qualified_callable_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            1,
+            "selector-supplement-callable:lottolab.strategies.adapters.daily539_single_legacy:Daily539Acb1BetAdapter.get_one_bet"
+          ],
+          "callable_identity": "selector-supplement-callable:lottolab.strategies.adapters.daily539_single_legacy:Daily539Acb1BetAdapter.get_one_bet",
+          "callable_labels": [
+            "lottolab.strategies.adapters.daily539_single_legacy:Daily539Acb1BetAdapter.get_one_bet"
+          ],
+          "member_identities": [
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "acb_1bet",
+              "v0.1-p31a"
+            ]
+          ],
+          "removed_sibling_identities": [],
+          "representative_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            "acb_1bet",
+            "v0.1-p31a"
+          ],
+          "resolution_authorities": [
+            "SEALED_SELECTOR_SOURCE_STATIC_RESOLUTION"
+          ]
+        },
+        {
+          "authority_qualified_callable_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            1,
+            "selector-supplement-callable:lottolab.strategies.adapters.daily539_single_legacy:Daily539Markov1BetAdapter.get_one_bet"
+          ],
+          "callable_identity": "selector-supplement-callable:lottolab.strategies.adapters.daily539_single_legacy:Daily539Markov1BetAdapter.get_one_bet",
+          "callable_labels": [
+            "lottolab.strategies.adapters.daily539_single_legacy:Daily539Markov1BetAdapter.get_one_bet"
+          ],
+          "member_identities": [
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "markov_1bet_539",
+              "v0.1-p36"
+            ]
+          ],
+          "removed_sibling_identities": [],
+          "representative_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            "markov_1bet_539",
+            "v0.1-p36"
+          ],
+          "resolution_authorities": [
+            "SEALED_SELECTOR_SOURCE_STATIC_RESOLUTION"
+          ]
+        },
+        {
+          "authority_qualified_callable_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            1,
+            "selector-supplement-callable:lottolab.strategies.adapters.daily539_single_legacy:Daily539Orthogonal3BetAdapter.get_one_bet"
+          ],
+          "callable_identity": "selector-supplement-callable:lottolab.strategies.adapters.daily539_single_legacy:Daily539Orthogonal3BetAdapter.get_one_bet",
+          "callable_labels": [
+            "lottolab.strategies.adapters.daily539_single_legacy:Daily539Orthogonal3BetAdapter.get_one_bet"
+          ],
+          "member_identities": [
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "539_3bet_orthogonal",
+              "v0.1-p36"
+            ]
+          ],
+          "removed_sibling_identities": [],
+          "representative_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            "539_3bet_orthogonal",
+            "v0.1-p36"
+          ],
+          "resolution_authorities": [
+            "R2_AUTHORITY_QUALIFIED_ATTRIBUTION"
+          ]
+        },
+        {
+          "authority_qualified_callable_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            1,
+            "selector-supplement-callable:lottolab.strategies.adapters.daily539_wave1:Daily539MarkovColdAdapter.get_one_bet"
+          ],
+          "callable_identity": "selector-supplement-callable:lottolab.strategies.adapters.daily539_wave1:Daily539MarkovColdAdapter.get_one_bet",
+          "callable_labels": [
+            "lottolab.strategies.adapters.daily539_wave1:Daily539MarkovColdAdapter.get_one_bet"
+          ],
+          "member_identities": [
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "daily539_markov_cold",
+              "v0.1"
+            ]
+          ],
+          "removed_sibling_identities": [],
+          "representative_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            "daily539_markov_cold",
+            "v0.1"
+          ],
+          "resolution_authorities": [
+            "R2_AUTHORITY_QUALIFIED_ATTRIBUTION"
+          ]
+        },
+        {
+          "authority_qualified_callable_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            1,
+            "selector-supplement-callable:lottolab.strategies.adapters.daily539_zone_gap:Daily539ZoneGap3BetAdapter.get_one_bet"
+          ],
+          "callable_identity": "selector-supplement-callable:lottolab.strategies.adapters.daily539_zone_gap:Daily539ZoneGap3BetAdapter.get_one_bet",
+          "callable_labels": [
+            "lottolab.strategies.adapters.daily539_zone_gap:Daily539ZoneGap3BetAdapter.get_one_bet"
+          ],
+          "member_identities": [
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "zone_gap_3bet_539",
+              "v0.1-p36"
+            ]
+          ],
+          "removed_sibling_identities": [],
+          "representative_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            "zone_gap_3bet_539",
+            "v0.1-p36"
+          ],
+          "resolution_authorities": [
+            "R2_AUTHORITY_QUALIFIED_ATTRIBUTION"
+          ]
+        }
+      ],
+      "callable_reduced_universe_sha256": "3d1c189f599f7612c08b09d1684cf1efc2283a15b487d1ac9c83af73aaa8ea81",
+      "cell_id": "T539:K1",
+      "deduplicated_callable_count": 12,
+      "lottery_id": "T539",
+      "native_ticket_count": 1,
+      "original_candidate_count": 25,
+      "original_candidate_universe": [
+        [
+          "T539_HISTORICAL_SQLITE",
+          "T539",
+          "539_3bet_orthogonal",
+          "v0.1-p36"
+        ],
+        [
+          "T539_HISTORICAL_SQLITE",
+          "T539",
+          "acb_1bet",
+          "v0.1-p31a"
+        ],
+        [
+          "T539_HISTORICAL_SQLITE",
+          "T539",
+          "acb_markov_midfreq",
+          "v0.1-p31a"
+        ],
+        [
+          "T539_HISTORICAL_SQLITE",
+          "T539",
+          "acb_single_539",
+          "v0.1-p36"
+        ],
+        [
+          "T539_HISTORICAL_SQLITE",
+          "T539",
+          "daily539_f4cold",
+          "v0.1"
+        ],
+        [
+          "T539_HISTORICAL_SQLITE",
+          "T539",
+          "daily539_markov_cold",
+          "v0.1"
+        ],
+        [
+          "T539_HISTORICAL_SQLITE",
+          "T539",
+          "markov_1bet_539",
+          "v0.1-p36"
+        ],
+        [
+          "T539_HISTORICAL_SQLITE",
+          "T539",
+          "p0b_539_3bet_f_cold_fmid",
+          "v0.1-p36"
+        ],
+        [
+          "T539_HISTORICAL_SQLITE",
+          "T539",
+          "p0c_539_3bet_f_cold_x2",
+          "v0.1-p36"
+        ],
+        [
+          "T539_HISTORICAL_SQLITE",
+          "T539",
+          "t539_biglotto_attention_replay_1bet",
+          "v0.1-t539-cross-lottery-r2"
+        ],
+        [
+          "T539_HISTORICAL_SQLITE",
+          "T539",
+          "t539_biglotto_cold_hunter_1bet",
+          "v0.1-t539-batch15"
+        ],
+        [
+          "T539_HISTORICAL_SQLITE",
+          "T539",
+          "t539_biglotto_dms_1bet",
+          "v0.1-t539-batch15"
+        ],
+        [
+          "T539_HISTORICAL_SQLITE",
+          "T539",
+          "t539_biglotto_dynamic_frequency_1bet",
+          "v0.1-t539-cross-lottery-r2"
+        ],
+        [
+          "T539_HISTORICAL_SQLITE",
+          "T539",
+          "t539_biglotto_gap_pressure_1bet",
+          "v0.1-t539-batch15"
+        ],
+        [
+          "T539_HISTORICAL_SQLITE",
+          "T539",
+          "t539_biglotto_graph_predictor_1bet",
+          "v0.1-t539-cross-lottery-r2"
+        ],
+        [
+          "T539_HISTORICAL_SQLITE",
+          "T539",
+          "t539_biglotto_hot_cooccurrence_1bet",
+          "v0.1-t539-cross-lottery-r2"
+        ],
+        [
+          "T539_HISTORICAL_SQLITE",
+          "T539",
+          "t539_biglotto_hpsb_1bet",
+          "v0.1-t539-cross-lottery-r2"
+        ],
+        [
+          "T539_HISTORICAL_SQLITE",
+          "T539",
+          "t539_biglotto_moderate_rank_1bet",
+          "v0.1-t539-batch15"
+        ],
+        [
+          "T539_HISTORICAL_SQLITE",
+          "T539",
+          "t539_biglotto_must_hit_top6_1bet",
+          "v0.1-t539-cross-lottery-r2"
+        ],
+        [
+          "T539_HISTORICAL_SQLITE",
+          "T539",
+          "t539_biglotto_optimized_ensemble_1bet",
+          "v0.1-t539-cross-lottery-r2"
+        ],
+        [
+          "T539_HISTORICAL_SQLITE",
+          "T539",
+          "t539_biglotto_pure_cold_1bet",
+          "v0.1-t539-batch15"
+        ],
+        [
+          "T539_HISTORICAL_SQLITE",
+          "T539",
+          "t539_biglotto_rebound_aware_1bet",
+          "v0.1-t539-batch15"
+        ],
+        [
+          "T539_HISTORICAL_SQLITE",
+          "T539",
+          "t539_biglotto_short_window_deviation_1bet",
+          "v0.1-t539-batch15"
+        ],
+        [
+          "T539_HISTORICAL_SQLITE",
+          "T539",
+          "t539_biglotto_zone_momentum_1bet",
+          "v0.1-t539-batch15"
+        ],
+        [
+          "T539_HISTORICAL_SQLITE",
+          "T539",
+          "zone_gap_3bet_539",
+          "v0.1-p36"
+        ]
+      ],
+      "original_candidate_universe_sha256": "f2a264f546c17791ccac7708df91d2bdbbab40f850655a89c9f06ff34717dc47",
+      "removed_sibling_count": 13,
+      "windows": [
+        {
+          "callable_family_dedup_frozen_baseline_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            "539_3bet_orthogonal",
+            "v0.1-p36"
+          ],
+          "label": "W50",
+          "size": 50
+        },
+        {
+          "callable_family_dedup_frozen_baseline_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            "t539_biglotto_attention_replay_1bet",
+            "v0.1-t539-cross-lottery-r2"
+          ],
+          "label": "W300",
+          "size": 300
+        },
+        {
+          "callable_family_dedup_frozen_baseline_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            "539_3bet_orthogonal",
+            "v0.1-p36"
+          ],
+          "label": "W750",
+          "size": 750
+        }
+      ]
+    },
+    {
+      "callable_families": [
+        {
+          "authority_qualified_callable_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            2,
+            "selector-supplement-callable:lottolab.strategies.adapters.daily539_biglotto_batch15:Daily539BigLottoDmDmsAdapter.get_bets"
+          ],
+          "callable_identity": "selector-supplement-callable:lottolab.strategies.adapters.daily539_biglotto_batch15:Daily539BigLottoDmDmsAdapter.get_bets",
+          "callable_labels": [
+            "lottolab.strategies.adapters.daily539_biglotto_batch15:Daily539BigLottoDmDmsAdapter.get_bets"
+          ],
+          "member_identities": [
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "t539_biglotto_dm_dms_2bet",
+              "v0.1-t539-batch15"
+            ]
+          ],
+          "removed_sibling_identities": [],
+          "representative_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            "t539_biglotto_dm_dms_2bet",
+            "v0.1-t539-batch15"
+          ],
+          "resolution_authorities": [
+            "R2_AUTHORITY_QUALIFIED_ATTRIBUTION"
+          ]
+        },
+        {
+          "authority_qualified_callable_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            2,
+            "selector-supplement-callable:lottolab.strategies.adapters.daily539_biglotto_portable:Daily539BigLottoPortableAdapter.get_bets"
+          ],
+          "callable_identity": "selector-supplement-callable:lottolab.strategies.adapters.daily539_biglotto_portable:Daily539BigLottoPortableAdapter.get_bets",
+          "callable_labels": [
+            "lottolab.strategies.adapters.daily539_biglotto_portable:Daily539BigLottoPortableAdapter.get_bets"
+          ],
+          "member_identities": [
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "t539_biglotto_deviation_2bet",
+              "v0.1-t539-cross-lottery-r2"
+            ],
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "t539_biglotto_echo_2bet",
+              "v0.1-t539-cross-lottery-r2"
+            ],
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "t539_biglotto_enhanced_dual_2bet",
+              "v0.1-t539-cross-lottery-r2"
+            ],
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "t539_biglotto_gemini_v1_2bet",
+              "v0.1-t539-cross-lottery-r2"
+            ],
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "t539_biglotto_p0_echo_2bet",
+              "v0.1-t539-cross-lottery-r2"
+            ],
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "t539_biglotto_smart_2bet",
+              "v0.1-t539-cross-lottery-r2"
+            ],
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "t539_biglotto_two_bet_elite_2bet",
+              "v0.1-t539-cross-lottery-r2"
+            ],
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "t539_biglotto_two_bet_final_2bet",
+              "v0.1-t539-cross-lottery-r2"
+            ],
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "t539_biglotto_two_bet_optimizer_2bet",
+              "v0.1-t539-cross-lottery-r2"
+            ],
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "t539_biglotto_two_bet_optimizer_v2_2bet",
+              "v0.1-t539-cross-lottery-r2"
+            ]
+          ],
+          "removed_sibling_identities": [
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "t539_biglotto_echo_2bet",
+              "v0.1-t539-cross-lottery-r2"
+            ],
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "t539_biglotto_enhanced_dual_2bet",
+              "v0.1-t539-cross-lottery-r2"
+            ],
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "t539_biglotto_gemini_v1_2bet",
+              "v0.1-t539-cross-lottery-r2"
+            ],
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "t539_biglotto_p0_echo_2bet",
+              "v0.1-t539-cross-lottery-r2"
+            ],
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "t539_biglotto_smart_2bet",
+              "v0.1-t539-cross-lottery-r2"
+            ],
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "t539_biglotto_two_bet_elite_2bet",
+              "v0.1-t539-cross-lottery-r2"
+            ],
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "t539_biglotto_two_bet_final_2bet",
+              "v0.1-t539-cross-lottery-r2"
+            ],
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "t539_biglotto_two_bet_optimizer_2bet",
+              "v0.1-t539-cross-lottery-r2"
+            ],
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "t539_biglotto_two_bet_optimizer_v2_2bet",
+              "v0.1-t539-cross-lottery-r2"
+            ]
+          ],
+          "representative_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            "t539_biglotto_deviation_2bet",
+            "v0.1-t539-cross-lottery-r2"
+          ],
+          "resolution_authorities": [
+            "R2_AUTHORITY_QUALIFIED_ATTRIBUTION"
+          ]
+        },
+        {
+          "authority_qualified_callable_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            2,
+            "selector-supplement-callable:lottolab.strategies.adapters.daily539_portfolio_frequency:_Daily539PortfolioAdapter.get_bets"
+          ],
+          "callable_identity": "selector-supplement-callable:lottolab.strategies.adapters.daily539_portfolio_frequency:_Daily539PortfolioAdapter.get_bets",
+          "callable_labels": [
+            "lottolab.strategies.adapters.daily539_portfolio_frequency:_Daily539PortfolioAdapter.get_bets"
+          ],
+          "member_identities": [
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "midfreq_acb_2bet",
+              "v0.1"
+            ],
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "midfreq_fourier_2bet",
+              "v0.1"
+            ]
+          ],
+          "removed_sibling_identities": [
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "midfreq_fourier_2bet",
+              "v0.1"
+            ]
+          ],
+          "representative_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            "midfreq_acb_2bet",
+            "v0.1"
+          ],
+          "resolution_authorities": [
+            "R2_AUTHORITY_QUALIFIED_ATTRIBUTION"
+          ]
+        }
+      ],
+      "callable_reduced_universe_sha256": "dcee5db9eae282bad7e11431ab6e3abc7ca51ed07d31bebfd94382174d4a9d05",
+      "cell_id": "T539:K2",
+      "deduplicated_callable_count": 3,
+      "lottery_id": "T539",
+      "native_ticket_count": 2,
+      "original_candidate_count": 13,
+      "original_candidate_universe": [
+        [
+          "T539_HISTORICAL_SQLITE",
+          "T539",
+          "midfreq_acb_2bet",
+          "v0.1"
+        ],
+        [
+          "T539_HISTORICAL_SQLITE",
+          "T539",
+          "midfreq_fourier_2bet",
+          "v0.1"
+        ],
+        [
+          "T539_HISTORICAL_SQLITE",
+          "T539",
+          "t539_biglotto_deviation_2bet",
+          "v0.1-t539-cross-lottery-r2"
+        ],
+        [
+          "T539_HISTORICAL_SQLITE",
+          "T539",
+          "t539_biglotto_dm_dms_2bet",
+          "v0.1-t539-batch15"
+        ],
+        [
+          "T539_HISTORICAL_SQLITE",
+          "T539",
+          "t539_biglotto_echo_2bet",
+          "v0.1-t539-cross-lottery-r2"
+        ],
+        [
+          "T539_HISTORICAL_SQLITE",
+          "T539",
+          "t539_biglotto_enhanced_dual_2bet",
+          "v0.1-t539-cross-lottery-r2"
+        ],
+        [
+          "T539_HISTORICAL_SQLITE",
+          "T539",
+          "t539_biglotto_gemini_v1_2bet",
+          "v0.1-t539-cross-lottery-r2"
+        ],
+        [
+          "T539_HISTORICAL_SQLITE",
+          "T539",
+          "t539_biglotto_p0_echo_2bet",
+          "v0.1-t539-cross-lottery-r2"
+        ],
+        [
+          "T539_HISTORICAL_SQLITE",
+          "T539",
+          "t539_biglotto_smart_2bet",
+          "v0.1-t539-cross-lottery-r2"
+        ],
+        [
+          "T539_HISTORICAL_SQLITE",
+          "T539",
+          "t539_biglotto_two_bet_elite_2bet",
+          "v0.1-t539-cross-lottery-r2"
+        ],
+        [
+          "T539_HISTORICAL_SQLITE",
+          "T539",
+          "t539_biglotto_two_bet_final_2bet",
+          "v0.1-t539-cross-lottery-r2"
+        ],
+        [
+          "T539_HISTORICAL_SQLITE",
+          "T539",
+          "t539_biglotto_two_bet_optimizer_2bet",
+          "v0.1-t539-cross-lottery-r2"
+        ],
+        [
+          "T539_HISTORICAL_SQLITE",
+          "T539",
+          "t539_biglotto_two_bet_optimizer_v2_2bet",
+          "v0.1-t539-cross-lottery-r2"
+        ]
+      ],
+      "original_candidate_universe_sha256": "5945ae44a8f159539380644934aca151b316d283ef83a134774c4b7b816871a7",
+      "removed_sibling_count": 10,
+      "windows": [
+        {
+          "callable_family_dedup_frozen_baseline_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            "midfreq_acb_2bet",
+            "v0.1"
+          ],
+          "label": "W50",
+          "size": 50
+        },
+        {
+          "callable_family_dedup_frozen_baseline_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            "t539_biglotto_deviation_2bet",
+            "v0.1-t539-cross-lottery-r2"
+          ],
+          "label": "W300",
+          "size": 300
+        },
+        {
+          "callable_family_dedup_frozen_baseline_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            "t539_biglotto_deviation_2bet",
+            "v0.1-t539-cross-lottery-r2"
+          ],
+          "label": "W750",
+          "size": 750
+        }
+      ]
+    },
+    {
+      "callable_families": [
+        {
+          "authority_qualified_callable_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            3,
+            "callable-sha256:8d315f03ca35764733727ebad1d644ab144ed27061722c5b97d33038895351ad"
+          ],
+          "callable_identity": "callable-sha256:8d315f03ca35764733727ebad1d644ab144ed27061722c5b97d33038895351ad",
+          "callable_labels": [
+            "lottolab.strategies.adapters.cross_dataset_batch02_bridge:Daily539AcbMarkovMidfreq3BetCatalogAdapter._predict_all"
+          ],
+          "member_identities": [
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "acb_markov_midfreq_3bet",
+              "v0.1"
+            ]
+          ],
+          "removed_sibling_identities": [],
+          "representative_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            "acb_markov_midfreq_3bet",
+            "v0.1"
+          ],
+          "resolution_authorities": [
+            "R2_AUTHORITY_QUALIFIED_ATTRIBUTION"
+          ]
+        },
+        {
+          "authority_qualified_callable_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            3,
+            "selector-supplement-callable:lottolab.strategies.adapters.daily539_biglotto_portable:Daily539BigLottoPortableAdapter.get_bets"
+          ],
+          "callable_identity": "selector-supplement-callable:lottolab.strategies.adapters.daily539_biglotto_portable:Daily539BigLottoPortableAdapter.get_bets",
+          "callable_labels": [
+            "lottolab.strategies.adapters.daily539_biglotto_portable:Daily539BigLottoPortableAdapter.get_bets"
+          ],
+          "member_identities": [
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "t539_biglotto_asm_3bet",
+              "v0.1-t539-cross-lottery-r2"
+            ],
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "t539_biglotto_cag_3bet",
+              "v0.1-t539-cross-lottery-r2"
+            ],
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "t539_biglotto_diversified_ensemble_v6_3bet",
+              "v0.1-t539-cross-lottery-r2"
+            ],
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "t539_biglotto_dms_3bet",
+              "v0.1-t539-cross-lottery-r2"
+            ],
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "t539_biglotto_exhaustive_audit_3bet",
+              "v0.1-t539-cross-lottery-r2"
+            ],
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "t539_biglotto_mwsc_3bet",
+              "v0.1-t539-cross-lottery-r2"
+            ],
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "t539_biglotto_random_core_satellite_3bet",
+              "v0.1-t539-cross-lottery-r2"
+            ],
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "t539_biglotto_random_zone_split_3bet",
+              "v0.1-t539-cross-lottery-r2"
+            ],
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "t539_biglotto_tme_3bet",
+              "v0.1-t539-cross-lottery-r2"
+            ],
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "t539_biglotto_zdp_3bet",
+              "v0.1-t539-cross-lottery-r2"
+            ],
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "t539_biglotto_zone_split_3bet",
+              "v0.1-t539-cross-lottery-r2"
+            ]
+          ],
+          "removed_sibling_identities": [
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "t539_biglotto_cag_3bet",
+              "v0.1-t539-cross-lottery-r2"
+            ],
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "t539_biglotto_diversified_ensemble_v6_3bet",
+              "v0.1-t539-cross-lottery-r2"
+            ],
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "t539_biglotto_dms_3bet",
+              "v0.1-t539-cross-lottery-r2"
+            ],
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "t539_biglotto_exhaustive_audit_3bet",
+              "v0.1-t539-cross-lottery-r2"
+            ],
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "t539_biglotto_mwsc_3bet",
+              "v0.1-t539-cross-lottery-r2"
+            ],
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "t539_biglotto_random_core_satellite_3bet",
+              "v0.1-t539-cross-lottery-r2"
+            ],
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "t539_biglotto_random_zone_split_3bet",
+              "v0.1-t539-cross-lottery-r2"
+            ],
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "t539_biglotto_tme_3bet",
+              "v0.1-t539-cross-lottery-r2"
+            ],
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "t539_biglotto_zdp_3bet",
+              "v0.1-t539-cross-lottery-r2"
+            ],
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "t539_biglotto_zone_split_3bet",
+              "v0.1-t539-cross-lottery-r2"
+            ]
+          ],
+          "representative_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            "t539_biglotto_asm_3bet",
+            "v0.1-t539-cross-lottery-r2"
+          ],
+          "resolution_authorities": [
+            "R2_AUTHORITY_QUALIFIED_ATTRIBUTION"
+          ]
+        },
+        {
+          "authority_qualified_callable_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            3,
+            "selector-supplement-callable:lottolab.strategies.adapters.daily539_portfolio_f4cold:Daily539F4Cold3BetAdapter.get_bets"
+          ],
+          "callable_identity": "selector-supplement-callable:lottolab.strategies.adapters.daily539_portfolio_f4cold:Daily539F4Cold3BetAdapter.get_bets",
+          "callable_labels": [
+            "lottolab.strategies.adapters.daily539_portfolio_f4cold:Daily539F4Cold3BetAdapter.get_bets"
+          ],
+          "member_identities": [
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "daily539_f4cold_3bet",
+              "v0.1"
+            ]
+          ],
+          "removed_sibling_identities": [],
+          "representative_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            "daily539_f4cold_3bet",
+            "v0.1"
+          ],
+          "resolution_authorities": [
+            "R2_AUTHORITY_QUALIFIED_ATTRIBUTION"
+          ]
+        }
+      ],
+      "callable_reduced_universe_sha256": "fd7cbd2a7feeb5de2c3ab9613d8111b66b8253cdd238473c7dfe170ad55eb192",
+      "cell_id": "T539:K3",
+      "deduplicated_callable_count": 3,
+      "lottery_id": "T539",
+      "native_ticket_count": 3,
+      "original_candidate_count": 13,
+      "original_candidate_universe": [
+        [
+          "T539_HISTORICAL_SQLITE",
+          "T539",
+          "acb_markov_midfreq_3bet",
+          "v0.1"
+        ],
+        [
+          "T539_HISTORICAL_SQLITE",
+          "T539",
+          "daily539_f4cold_3bet",
+          "v0.1"
+        ],
+        [
+          "T539_HISTORICAL_SQLITE",
+          "T539",
+          "t539_biglotto_asm_3bet",
+          "v0.1-t539-cross-lottery-r2"
+        ],
+        [
+          "T539_HISTORICAL_SQLITE",
+          "T539",
+          "t539_biglotto_cag_3bet",
+          "v0.1-t539-cross-lottery-r2"
+        ],
+        [
+          "T539_HISTORICAL_SQLITE",
+          "T539",
+          "t539_biglotto_diversified_ensemble_v6_3bet",
+          "v0.1-t539-cross-lottery-r2"
+        ],
+        [
+          "T539_HISTORICAL_SQLITE",
+          "T539",
+          "t539_biglotto_dms_3bet",
+          "v0.1-t539-cross-lottery-r2"
+        ],
+        [
+          "T539_HISTORICAL_SQLITE",
+          "T539",
+          "t539_biglotto_exhaustive_audit_3bet",
+          "v0.1-t539-cross-lottery-r2"
+        ],
+        [
+          "T539_HISTORICAL_SQLITE",
+          "T539",
+          "t539_biglotto_mwsc_3bet",
+          "v0.1-t539-cross-lottery-r2"
+        ],
+        [
+          "T539_HISTORICAL_SQLITE",
+          "T539",
+          "t539_biglotto_random_core_satellite_3bet",
+          "v0.1-t539-cross-lottery-r2"
+        ],
+        [
+          "T539_HISTORICAL_SQLITE",
+          "T539",
+          "t539_biglotto_random_zone_split_3bet",
+          "v0.1-t539-cross-lottery-r2"
+        ],
+        [
+          "T539_HISTORICAL_SQLITE",
+          "T539",
+          "t539_biglotto_tme_3bet",
+          "v0.1-t539-cross-lottery-r2"
+        ],
+        [
+          "T539_HISTORICAL_SQLITE",
+          "T539",
+          "t539_biglotto_zdp_3bet",
+          "v0.1-t539-cross-lottery-r2"
+        ],
+        [
+          "T539_HISTORICAL_SQLITE",
+          "T539",
+          "t539_biglotto_zone_split_3bet",
+          "v0.1-t539-cross-lottery-r2"
+        ]
+      ],
+      "original_candidate_universe_sha256": "8e5e57fa72afd80ac1c0293a225fbaaee29c896176b43828235f5791a0409d69",
+      "removed_sibling_count": 10,
+      "windows": [
+        {
+          "callable_family_dedup_frozen_baseline_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            "acb_markov_midfreq_3bet",
+            "v0.1"
+          ],
+          "label": "W50",
+          "size": 50
+        },
+        {
+          "callable_family_dedup_frozen_baseline_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            "daily539_f4cold_3bet",
+            "v0.1"
+          ],
+          "label": "W300",
+          "size": 300
+        },
+        {
+          "callable_family_dedup_frozen_baseline_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            "daily539_f4cold_3bet",
+            "v0.1"
+          ],
+          "label": "W750",
+          "size": 750
+        }
+      ]
+    },
+    {
+      "callable_families": [
+        {
+          "authority_qualified_callable_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            4,
+            "selector-supplement-callable:lottolab.strategies.adapters.daily539_biglotto_portable:Daily539BigLottoPortableAdapter.get_bets"
+          ],
+          "callable_identity": "selector-supplement-callable:lottolab.strategies.adapters.daily539_biglotto_portable:Daily539BigLottoPortableAdapter.get_bets",
+          "callable_labels": [
+            "lottolab.strategies.adapters.daily539_biglotto_portable:Daily539BigLottoPortableAdapter.get_bets"
+          ],
+          "member_identities": [
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "t539_biglotto_tme_optimizer_4bet",
+              "v0.1-t539-cross-lottery-r2"
+            ]
+          ],
+          "removed_sibling_identities": [],
+          "representative_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            "t539_biglotto_tme_optimizer_4bet",
+            "v0.1-t539-cross-lottery-r2"
+          ],
+          "resolution_authorities": [
+            "R2_AUTHORITY_QUALIFIED_ATTRIBUTION"
+          ]
+        }
+      ],
+      "callable_reduced_universe_sha256": "3395e00950399a06ddd9d40efe7673688ebf2c8867fd40c39fd1ef243b6db3e8",
+      "cell_id": "T539:K4",
+      "deduplicated_callable_count": 1,
+      "lottery_id": "T539",
+      "native_ticket_count": 4,
+      "original_candidate_count": 1,
+      "original_candidate_universe": [
+        [
+          "T539_HISTORICAL_SQLITE",
+          "T539",
+          "t539_biglotto_tme_optimizer_4bet",
+          "v0.1-t539-cross-lottery-r2"
+        ]
+      ],
+      "original_candidate_universe_sha256": "658772781782371d20a38bacd4df79e240904f776ad5c5390b3aafc5157154bc",
+      "removed_sibling_count": 0,
+      "windows": [
+        {
+          "callable_family_dedup_frozen_baseline_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            "t539_biglotto_tme_optimizer_4bet",
+            "v0.1-t539-cross-lottery-r2"
+          ],
+          "label": "W50",
+          "size": 50
+        },
+        {
+          "callable_family_dedup_frozen_baseline_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            "t539_biglotto_tme_optimizer_4bet",
+            "v0.1-t539-cross-lottery-r2"
+          ],
+          "label": "W300",
+          "size": 300
+        },
+        {
+          "callable_family_dedup_frozen_baseline_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            "t539_biglotto_tme_optimizer_4bet",
+            "v0.1-t539-cross-lottery-r2"
+          ],
+          "label": "W750",
+          "size": 750
+        }
+      ]
+    },
+    {
+      "callable_families": [
+        {
+          "authority_qualified_callable_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            5,
+            "selector-supplement-callable:lottolab.strategies.adapters.daily539_biglotto_portable:Daily539BigLottoPortableAdapter.get_bets"
+          ],
+          "callable_identity": "selector-supplement-callable:lottolab.strategies.adapters.daily539_biglotto_portable:Daily539BigLottoPortableAdapter.get_bets",
+          "callable_labels": [
+            "lottolab.strategies.adapters.daily539_biglotto_portable:Daily539BigLottoPortableAdapter.get_bets"
+          ],
+          "member_identities": [
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "t539_biglotto_five_me_5bet",
+              "v0.1-t539-cross-lottery-r2"
+            ],
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "t539_biglotto_zone_balance_5bet",
+              "v0.1-t539-cross-lottery-r2"
+            ]
+          ],
+          "removed_sibling_identities": [
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "t539_biglotto_zone_balance_5bet",
+              "v0.1-t539-cross-lottery-r2"
+            ]
+          ],
+          "representative_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            "t539_biglotto_five_me_5bet",
+            "v0.1-t539-cross-lottery-r2"
+          ],
+          "resolution_authorities": [
+            "R2_AUTHORITY_QUALIFIED_ATTRIBUTION",
+            "SEALED_SELECTOR_SOURCE_STATIC_RESOLUTION"
+          ]
+        },
+        {
+          "authority_qualified_callable_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            5,
+            "selector-supplement-callable:lottolab.strategies.adapters.daily539_portfolio_f4cold:Daily539F4Cold5BetAdapter.get_bets"
+          ],
+          "callable_identity": "selector-supplement-callable:lottolab.strategies.adapters.daily539_portfolio_f4cold:Daily539F4Cold5BetAdapter.get_bets",
+          "callable_labels": [
+            "lottolab.strategies.adapters.daily539_portfolio_f4cold:Daily539F4Cold5BetAdapter.get_bets"
+          ],
+          "member_identities": [
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "daily539_f4cold_5bet",
+              "v0.1"
+            ]
+          ],
+          "removed_sibling_identities": [],
+          "representative_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            "daily539_f4cold_5bet",
+            "v0.1"
+          ],
+          "resolution_authorities": [
+            "R2_AUTHORITY_QUALIFIED_ATTRIBUTION"
+          ]
+        }
+      ],
+      "callable_reduced_universe_sha256": "810d83e99c0e945f66f407366d6fa0576977a067da252e09933f2a88788dba79",
+      "cell_id": "T539:K5",
+      "deduplicated_callable_count": 2,
+      "lottery_id": "T539",
+      "native_ticket_count": 5,
+      "original_candidate_count": 3,
+      "original_candidate_universe": [
+        [
+          "T539_HISTORICAL_SQLITE",
+          "T539",
+          "daily539_f4cold_5bet",
+          "v0.1"
+        ],
+        [
+          "T539_HISTORICAL_SQLITE",
+          "T539",
+          "t539_biglotto_five_me_5bet",
+          "v0.1-t539-cross-lottery-r2"
+        ],
+        [
+          "T539_HISTORICAL_SQLITE",
+          "T539",
+          "t539_biglotto_zone_balance_5bet",
+          "v0.1-t539-cross-lottery-r2"
+        ]
+      ],
+      "original_candidate_universe_sha256": "b99f1c5ff32bbecf4ddace7dc1c27a6cda928bcc61b58e815fcf80903f04a0cb",
+      "removed_sibling_count": 1,
+      "windows": [
+        {
+          "callable_family_dedup_frozen_baseline_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            "t539_biglotto_five_me_5bet",
+            "v0.1-t539-cross-lottery-r2"
+          ],
+          "label": "W50",
+          "size": 50
+        },
+        {
+          "callable_family_dedup_frozen_baseline_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            "daily539_f4cold_5bet",
+            "v0.1"
+          ],
+          "label": "W300",
+          "size": 300
+        },
+        {
+          "callable_family_dedup_frozen_baseline_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            "daily539_f4cold_5bet",
+            "v0.1"
+          ],
+          "label": "W750",
+          "size": 750
+        }
+      ]
+    },
+    {
+      "callable_families": [
+        {
+          "authority_qualified_callable_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            7,
+            "selector-supplement-callable:lottolab.strategies.adapters.daily539_biglotto_portable:Daily539BigLottoPortableAdapter.get_bets"
+          ],
+          "callable_identity": "selector-supplement-callable:lottolab.strategies.adapters.daily539_biglotto_portable:Daily539BigLottoPortableAdapter.get_bets",
+          "callable_labels": [
+            "lottolab.strategies.adapters.daily539_biglotto_portable:Daily539BigLottoPortableAdapter.get_bets"
+          ],
+          "member_identities": [
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "t539_biglotto_elite_7bet",
+              "v0.1-t539-cross-lottery-r2"
+            ],
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "t539_biglotto_gemini_phase2_7bet",
+              "v0.1-t539-cross-lottery-r2"
+            ],
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "t539_biglotto_high_prize_trend_7bet",
+              "v0.1-t539-cross-lottery-r2"
+            ]
+          ],
+          "removed_sibling_identities": [
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "t539_biglotto_gemini_phase2_7bet",
+              "v0.1-t539-cross-lottery-r2"
+            ],
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "t539_biglotto_high_prize_trend_7bet",
+              "v0.1-t539-cross-lottery-r2"
+            ]
+          ],
+          "representative_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            "t539_biglotto_elite_7bet",
+            "v0.1-t539-cross-lottery-r2"
+          ],
+          "resolution_authorities": [
+            "R2_AUTHORITY_QUALIFIED_ATTRIBUTION"
+          ]
+        }
+      ],
+      "callable_reduced_universe_sha256": "4f00afe92eeee7a68a9231e3f6edc7d2dfa55c49407eae3243e54f13b45605c1",
+      "cell_id": "T539:K7",
+      "deduplicated_callable_count": 1,
+      "lottery_id": "T539",
+      "native_ticket_count": 7,
+      "original_candidate_count": 3,
+      "original_candidate_universe": [
+        [
+          "T539_HISTORICAL_SQLITE",
+          "T539",
+          "t539_biglotto_elite_7bet",
+          "v0.1-t539-cross-lottery-r2"
+        ],
+        [
+          "T539_HISTORICAL_SQLITE",
+          "T539",
+          "t539_biglotto_gemini_phase2_7bet",
+          "v0.1-t539-cross-lottery-r2"
+        ],
+        [
+          "T539_HISTORICAL_SQLITE",
+          "T539",
+          "t539_biglotto_high_prize_trend_7bet",
+          "v0.1-t539-cross-lottery-r2"
+        ]
+      ],
+      "original_candidate_universe_sha256": "b836801e3208b89d69dc175a9d4365d8fa01b44a7715dbc8265becaceb909198",
+      "removed_sibling_count": 2,
+      "windows": [
+        {
+          "callable_family_dedup_frozen_baseline_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            "t539_biglotto_elite_7bet",
+            "v0.1-t539-cross-lottery-r2"
+          ],
+          "label": "W50",
+          "size": 50
+        },
+        {
+          "callable_family_dedup_frozen_baseline_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            "t539_biglotto_elite_7bet",
+            "v0.1-t539-cross-lottery-r2"
+          ],
+          "label": "W300",
+          "size": 300
+        },
+        {
+          "callable_family_dedup_frozen_baseline_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            "t539_biglotto_elite_7bet",
+            "v0.1-t539-cross-lottery-r2"
+          ],
+          "label": "W750",
+          "size": 750
+        }
+      ]
+    },
+    {
+      "callable_families": [
+        {
+          "authority_qualified_callable_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            10,
+            "selector-supplement-callable:lottolab.strategies.adapters.daily539_biglotto_portable:Daily539BigLottoPortableAdapter.get_bets"
+          ],
+          "callable_identity": "selector-supplement-callable:lottolab.strategies.adapters.daily539_biglotto_portable:Daily539BigLottoPortableAdapter.get_bets",
+          "callable_labels": [
+            "lottolab.strategies.adapters.daily539_biglotto_portable:Daily539BigLottoPortableAdapter.get_bets"
+          ],
+          "member_identities": [
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "t539_biglotto_backtest_10bet",
+              "v0.1-t539-cross-lottery-r2"
+            ]
+          ],
+          "removed_sibling_identities": [],
+          "representative_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            "t539_biglotto_backtest_10bet",
+            "v0.1-t539-cross-lottery-r2"
+          ],
+          "resolution_authorities": [
+            "R2_AUTHORITY_QUALIFIED_ATTRIBUTION"
+          ]
+        }
+      ],
+      "callable_reduced_universe_sha256": "3b9bd4b748f7e2b3d191fc6cfbdbfd58dc99695ae68ab20579c68383f6d29663",
+      "cell_id": "T539:K10",
+      "deduplicated_callable_count": 1,
+      "lottery_id": "T539",
+      "native_ticket_count": 10,
+      "original_candidate_count": 1,
+      "original_candidate_universe": [
+        [
+          "T539_HISTORICAL_SQLITE",
+          "T539",
+          "t539_biglotto_backtest_10bet",
+          "v0.1-t539-cross-lottery-r2"
+        ]
+      ],
+      "original_candidate_universe_sha256": "141fcaef9005b3fc5b402a32c0eb741a21789071ceb1988c30320bcd92737ff9",
+      "removed_sibling_count": 0,
+      "windows": [
+        {
+          "callable_family_dedup_frozen_baseline_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            "t539_biglotto_backtest_10bet",
+            "v0.1-t539-cross-lottery-r2"
+          ],
+          "label": "W50",
+          "size": 50
+        },
+        {
+          "callable_family_dedup_frozen_baseline_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            "t539_biglotto_backtest_10bet",
+            "v0.1-t539-cross-lottery-r2"
+          ],
+          "label": "W300",
+          "size": 300
+        },
+        {
+          "callable_family_dedup_frozen_baseline_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            "t539_biglotto_backtest_10bet",
+            "v0.1-t539-cross-lottery-r2"
+          ],
+          "label": "W750",
+          "size": 750
+        }
+      ]
+    },
+    {
+      "callable_families": [
+        {
+          "authority_qualified_callable_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            11,
+            "selector-supplement-callable:lottolab.strategies.adapters.daily539_biglotto_portable:Daily539BigLottoPortableAdapter.get_bets"
+          ],
+          "callable_identity": "selector-supplement-callable:lottolab.strategies.adapters.daily539_biglotto_portable:Daily539BigLottoPortableAdapter.get_bets",
+          "callable_labels": [
+            "lottolab.strategies.adapters.daily539_biglotto_portable:Daily539BigLottoPortableAdapter.get_bets"
+          ],
+          "member_identities": [
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "t539_biglotto_variant_history_11bet",
+              "v0.1-t539-cross-lottery-r2"
+            ]
+          ],
+          "removed_sibling_identities": [],
+          "representative_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            "t539_biglotto_variant_history_11bet",
+            "v0.1-t539-cross-lottery-r2"
+          ],
+          "resolution_authorities": [
+            "R2_AUTHORITY_QUALIFIED_ATTRIBUTION"
+          ]
+        }
+      ],
+      "callable_reduced_universe_sha256": "42d465f853807cf099da5414cb80ae5f5c88f4e3d1564277254d57454df16839",
+      "cell_id": "T539:K11",
+      "deduplicated_callable_count": 1,
+      "lottery_id": "T539",
+      "native_ticket_count": 11,
+      "original_candidate_count": 1,
+      "original_candidate_universe": [
+        [
+          "T539_HISTORICAL_SQLITE",
+          "T539",
+          "t539_biglotto_variant_history_11bet",
+          "v0.1-t539-cross-lottery-r2"
+        ]
+      ],
+      "original_candidate_universe_sha256": "3d7c6d120d4bf71f95f703f9bb01e8b19112c14bd98733842a99efd03383ec32",
+      "removed_sibling_count": 0,
+      "windows": [
+        {
+          "callable_family_dedup_frozen_baseline_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            "t539_biglotto_variant_history_11bet",
+            "v0.1-t539-cross-lottery-r2"
+          ],
+          "label": "W50",
+          "size": 50
+        },
+        {
+          "callable_family_dedup_frozen_baseline_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            "t539_biglotto_variant_history_11bet",
+            "v0.1-t539-cross-lottery-r2"
+          ],
+          "label": "W300",
+          "size": 300
+        },
+        {
+          "callable_family_dedup_frozen_baseline_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            "t539_biglotto_variant_history_11bet",
+            "v0.1-t539-cross-lottery-r2"
+          ],
+          "label": "W750",
+          "size": 750
+        }
+      ]
+    },
+    {
+      "callable_families": [
+        {
+          "authority_qualified_callable_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            12,
+            "selector-supplement-callable:lottolab.strategies.adapters.daily539_biglotto_portable:Daily539BigLottoPortableAdapter.get_bets"
+          ],
+          "callable_identity": "selector-supplement-callable:lottolab.strategies.adapters.daily539_biglotto_portable:Daily539BigLottoPortableAdapter.get_bets",
+          "callable_labels": [
+            "lottolab.strategies.adapters.daily539_biglotto_portable:Daily539BigLottoPortableAdapter.get_bets"
+          ],
+          "member_identities": [
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "t539_biglotto_core_satellite_12bet",
+              "v0.1-t539-cross-lottery-r2"
+            ]
+          ],
+          "removed_sibling_identities": [],
+          "representative_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            "t539_biglotto_core_satellite_12bet",
+            "v0.1-t539-cross-lottery-r2"
+          ],
+          "resolution_authorities": [
+            "R2_AUTHORITY_QUALIFIED_ATTRIBUTION"
+          ]
+        }
+      ],
+      "callable_reduced_universe_sha256": "49d05e7189f4f382e30820c68a79a36427137ef25d835b0c02b9ca93afc8cd74",
+      "cell_id": "T539:K12",
+      "deduplicated_callable_count": 1,
+      "lottery_id": "T539",
+      "native_ticket_count": 12,
+      "original_candidate_count": 1,
+      "original_candidate_universe": [
+        [
+          "T539_HISTORICAL_SQLITE",
+          "T539",
+          "t539_biglotto_core_satellite_12bet",
+          "v0.1-t539-cross-lottery-r2"
+        ]
+      ],
+      "original_candidate_universe_sha256": "f7692eb6cb4094abd4f015a7bf374db2ec5ec541f21bf918d7096a68b328adec",
+      "removed_sibling_count": 0,
+      "windows": [
+        {
+          "callable_family_dedup_frozen_baseline_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            "t539_biglotto_core_satellite_12bet",
+            "v0.1-t539-cross-lottery-r2"
+          ],
+          "label": "W50",
+          "size": 50
+        },
+        {
+          "callable_family_dedup_frozen_baseline_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            "t539_biglotto_core_satellite_12bet",
+            "v0.1-t539-cross-lottery-r2"
+          ],
+          "label": "W300",
+          "size": 300
+        },
+        {
+          "callable_family_dedup_frozen_baseline_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            "t539_biglotto_core_satellite_12bet",
+            "v0.1-t539-cross-lottery-r2"
+          ],
+          "label": "W750",
+          "size": 750
+        }
+      ]
+    },
+    {
+      "callable_families": [
+        {
+          "authority_qualified_callable_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            25,
+            "selector-supplement-callable:lottolab.strategies.adapters.daily539_biglotto_portable:Daily539BigLottoPortableAdapter.get_bets"
+          ],
+          "callable_identity": "selector-supplement-callable:lottolab.strategies.adapters.daily539_biglotto_portable:Daily539BigLottoPortableAdapter.get_bets",
+          "callable_labels": [
+            "lottolab.strategies.adapters.daily539_biglotto_portable:Daily539BigLottoPortableAdapter.get_bets"
+          ],
+          "member_identities": [
+            [
+              "T539_HISTORICAL_SQLITE",
+              "T539",
+              "t539_biglotto_auto_optimizer_alpha_25bet",
+              "v0.1-t539-cross-lottery-r2"
+            ]
+          ],
+          "removed_sibling_identities": [],
+          "representative_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            "t539_biglotto_auto_optimizer_alpha_25bet",
+            "v0.1-t539-cross-lottery-r2"
+          ],
+          "resolution_authorities": [
+            "R2_AUTHORITY_QUALIFIED_ATTRIBUTION"
+          ]
+        }
+      ],
+      "callable_reduced_universe_sha256": "156380d6f3d2df21c7ea670b9c75a54608725bfeb69a323d9196243c1ed929fc",
+      "cell_id": "T539:K25",
+      "deduplicated_callable_count": 1,
+      "lottery_id": "T539",
+      "native_ticket_count": 25,
+      "original_candidate_count": 1,
+      "original_candidate_universe": [
+        [
+          "T539_HISTORICAL_SQLITE",
+          "T539",
+          "t539_biglotto_auto_optimizer_alpha_25bet",
+          "v0.1-t539-cross-lottery-r2"
+        ]
+      ],
+      "original_candidate_universe_sha256": "080a6315691ff6fa7ec38e8980ca55bf2901ee0573e22526c35582e1c27c34c4",
+      "removed_sibling_count": 0,
+      "windows": [
+        {
+          "callable_family_dedup_frozen_baseline_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            "t539_biglotto_auto_optimizer_alpha_25bet",
+            "v0.1-t539-cross-lottery-r2"
+          ],
+          "label": "W50",
+          "size": 50
+        },
+        {
+          "callable_family_dedup_frozen_baseline_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            "t539_biglotto_auto_optimizer_alpha_25bet",
+            "v0.1-t539-cross-lottery-r2"
+          ],
+          "label": "W300",
+          "size": 300
+        },
+        {
+          "callable_family_dedup_frozen_baseline_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            "t539_biglotto_auto_optimizer_alpha_25bet",
+            "v0.1-t539-cross-lottery-r2"
+          ],
+          "label": "W750",
+          "size": 750
+        }
+      ]
+    }
+  ],
+  "comparators": [
+    {
+      "id": "ORIGINAL_ROLLING",
+      "selection_mode": "STRICTLY_CAUSAL_ROLLING_WINDOW_SELECTOR",
+      "universe_reference": "cells[].original_candidate_universe",
+      "universe_sha256_field": "cells[].original_candidate_universe_sha256"
+    },
+    {
+      "id": "CALLABLE_FAMILY_DEDUP_ROLLING",
+      "selection_mode": "STRICTLY_CAUSAL_ROLLING_WINDOW_SELECTOR",
+      "universe_reference": "cells[].callable_families[].representative_identity",
+      "universe_sha256_field": "cells[].callable_reduced_universe_sha256"
+    },
+    {
+      "baseline_identity_field": "cells[].windows[].callable_family_dedup_frozen_baseline_identity",
+      "id": "CALLABLE_FAMILY_DEDUP_FROZEN_BASELINE",
+      "selection_mode": "STATIC_EXACT_PILOT_FROZEN_BASELINE_IDENTITY",
+      "universe_reference": "cells[].callable_families[].representative_identity",
+      "universe_sha256_field": "cells[].callable_reduced_universe_sha256"
+    }
+  ],
+  "freeze_boundary": {
+    "comparison_type": "UNSIGNED_DECIMAL_INTEGER",
+    "contributors": [
+      {
+        "cell_id": "T539:K1",
+        "window_label": "W300"
+      },
+      {
+        "cell_id": "T539:K1",
+        "window_label": "W50"
+      },
+      {
+        "cell_id": "T539:K1",
+        "window_label": "W750"
+      },
+      {
+        "cell_id": "T539:K10",
+        "window_label": "W300"
+      },
+      {
+        "cell_id": "T539:K10",
+        "window_label": "W50"
+      },
+      {
+        "cell_id": "T539:K10",
+        "window_label": "W750"
+      },
+      {
+        "cell_id": "T539:K11",
+        "window_label": "W300"
+      },
+      {
+        "cell_id": "T539:K11",
+        "window_label": "W50"
+      },
+      {
+        "cell_id": "T539:K11",
+        "window_label": "W750"
+      },
+      {
+        "cell_id": "T539:K12",
+        "window_label": "W300"
+      },
+      {
+        "cell_id": "T539:K12",
+        "window_label": "W50"
+      },
+      {
+        "cell_id": "T539:K12",
+        "window_label": "W750"
+      },
+      {
+        "cell_id": "T539:K2",
+        "window_label": "W300"
+      },
+      {
+        "cell_id": "T539:K2",
+        "window_label": "W50"
+      },
+      {
+        "cell_id": "T539:K2",
+        "window_label": "W750"
+      },
+      {
+        "cell_id": "T539:K25",
+        "window_label": "W300"
+      },
+      {
+        "cell_id": "T539:K25",
+        "window_label": "W50"
+      },
+      {
+        "cell_id": "T539:K25",
+        "window_label": "W750"
+      },
+      {
+        "cell_id": "T539:K3",
+        "window_label": "W300"
+      },
+      {
+        "cell_id": "T539:K3",
+        "window_label": "W50"
+      },
+      {
+        "cell_id": "T539:K3",
+        "window_label": "W750"
+      },
+      {
+        "cell_id": "T539:K4",
+        "window_label": "W300"
+      },
+      {
+        "cell_id": "T539:K4",
+        "window_label": "W50"
+      },
+      {
+        "cell_id": "T539:K4",
+        "window_label": "W750"
+      },
+      {
+        "cell_id": "T539:K5",
+        "window_label": "W300"
+      },
+      {
+        "cell_id": "T539:K5",
+        "window_label": "W50"
+      },
+      {
+        "cell_id": "T539:K5",
+        "window_label": "W750"
+      },
+      {
+        "cell_id": "T539:K7",
+        "window_label": "W300"
+      },
+      {
+        "cell_id": "T539:K7",
+        "window_label": "W50"
+      },
+      {
+        "cell_id": "T539:K7",
+        "window_label": "W750"
+      }
+    ],
+    "derivation": "MAXIMUM_HISTORICAL_TARGET_IDENTITY_ACTUALLY_EVALUATED_BY_PILOT",
+    "inclusive_historical_boundary": true,
+    "last_target_reference_count": 62,
+    "source_field": "cells[].experiments[].last_target",
+    "target_identity": "115000186"
+  },
+  "freeze_id": "T539_CALLABLE_FAMILY_DEDUP_PROSPECTIVE_SHADOW_FREEZE_R1",
+  "freeze_integrity": {
+    "database_access": "NO",
+    "future_outcome_access": "NO",
+    "historical_replay": "NOT_RUN",
+    "network_draw_refresh": "NOT_RUN",
+    "post_freeze_outcome_records": [],
+    "predictive_advantage": "NOT_ESTABLISHED",
+    "profitability": "NOT_ESTABLISHED",
+    "prospective_observation_records": [],
+    "prospective_observations": 0,
+    "strategy_rerun": "NOT_RUN"
+  },
+  "future_target_admissibility": {
+    "eligible_rule": "target_identity > FREEZE_BOUNDARY",
+    "eligible_status": "ELIGIBLE_STRICTLY_AFTER_FREEZE_BOUNDARY",
+    "ineligible_status": "INELIGIBLE_AT_OR_BEFORE_FREEZE_BOUNDARY",
+    "outcome_presence_at_prediction": "ABSENT",
+    "predicate": "int(target_identity) > int(freeze_boundary.target_identity)",
+    "rejected_identity_status": "REJECTED_NON_CANONICAL_TARGET_IDENTITY",
+    "target_identity_format": "1_TO_32_ASCII_DECIMAL_DIGITS"
+  },
+  "immutable_rule_fingerprint": {
+    "algorithm": "SHA-256",
+    "canonicalization": "UTF8_COMPACT_JSON_SORTED_KEYS_NO_TRAILING_NEWLINE",
+    "sha256": "eb4eb89082cd782041c240e80858efd8453c3bbf08edec3b76e98e2e8051f446"
+  },
+  "original_candidate_universe": {
+    "candidate_count_sum_across_cells": 62,
+    "cell_universes": [
+      {
+        "cell_id": "T539:K1",
+        "original_candidate_count": 25,
+        "sha256": "f2a264f546c17791ccac7708df91d2bdbbab40f850655a89c9f06ff34717dc47"
+      },
+      {
+        "cell_id": "T539:K2",
+        "original_candidate_count": 13,
+        "sha256": "5945ae44a8f159539380644934aca151b316d283ef83a134774c4b7b816871a7"
+      },
+      {
+        "cell_id": "T539:K3",
+        "original_candidate_count": 13,
+        "sha256": "8e5e57fa72afd80ac1c0293a225fbaaee29c896176b43828235f5791a0409d69"
+      },
+      {
+        "cell_id": "T539:K4",
+        "original_candidate_count": 1,
+        "sha256": "658772781782371d20a38bacd4df79e240904f776ad5c5390b3aafc5157154bc"
+      },
+      {
+        "cell_id": "T539:K5",
+        "original_candidate_count": 3,
+        "sha256": "b99f1c5ff32bbecf4ddace7dc1c27a6cda928bcc61b58e815fcf80903f04a0cb"
+      },
+      {
+        "cell_id": "T539:K7",
+        "original_candidate_count": 3,
+        "sha256": "b836801e3208b89d69dc175a9d4365d8fa01b44a7715dbc8265becaceb909198"
+      },
+      {
+        "cell_id": "T539:K10",
+        "original_candidate_count": 1,
+        "sha256": "141fcaef9005b3fc5b402a32c0eb741a21789071ceb1988c30320bcd92737ff9"
+      },
+      {
+        "cell_id": "T539:K11",
+        "original_candidate_count": 1,
+        "sha256": "3d7c6d120d4bf71f95f703f9bb01e8b19112c14bd98733842a99efd03383ec32"
+      },
+      {
+        "cell_id": "T539:K12",
+        "original_candidate_count": 1,
+        "sha256": "f7692eb6cb4094abd4f015a7bf374db2ec5ec541f21bf918d7096a68b328adec"
+      },
+      {
+        "cell_id": "T539:K25",
+        "original_candidate_count": 1,
+        "sha256": "080a6315691ff6fa7ec38e8980ca55bf2901ee0573e22526c35582e1c27c34c4"
+      }
+    ],
+    "identity_fields": [
+      "source_authority_id",
+      "lottery_id",
+      "strategy_id",
+      "strategy_version"
+    ],
+    "sha256": "ae69e809f9c01c30cf8915c99604d5c629eb03855a274831fc27c2d289163226"
+  },
+  "prospective_observer_compatibility": {
+    "outcome_presence_at_prediction": [
+      "ABSENT",
+      "PRESENT"
+    ],
+    "prediction_availability": [
+      "AVAILABLE",
+      "UNAVAILABLE"
+    ],
+    "prediction_schema_version": "1.0.0",
+    "prediction_sync_status": [
+      "CREATED",
+      "EXACT_IDEMPOTENT_NO_OP"
+    ],
+    "score_availability": [
+      "SCORED",
+      "UNAVAILABLE_PREDICTION"
+    ],
+    "score_schema_version": "1.0.0",
+    "score_sync_status": [
+      "CREATED",
+      "EXACT_IDEMPOTENT_NO_OP",
+      "OUTCOME_UNAVAILABLE"
+    ],
+    "shared_runtime_change": "NOT_REQUIRED",
+    "temporal_provenance_required": "POST_FREEZE_DATE_PROSPECTIVE"
+  },
+  "representative_selection": {
+    "chosen_representative_count": 26,
+    "historical_outcomes_used": false,
+    "identity_order": [
+      "source_authority_id",
+      "lottery_id",
+      "strategy_id",
+      "strategy_version"
+    ],
+    "removed_sibling_count": 36,
+    "representative_sweep": "NOT_RUN",
+    "rule": "LEXICOGRAPHIC_MINIMUM_COMPLETE_AUTHORITY_QUALIFIED_IDENTITY"
+  },
+  "result_status_vocabulary": {
+    "prediction_availability": [
+      "AVAILABLE",
+      "UNAVAILABLE"
+    ],
+    "prediction_sync": [
+      "CREATED",
+      "EXACT_IDEMPOTENT_NO_OP"
+    ],
+    "score_availability": [
+      "SCORED",
+      "UNAVAILABLE_PREDICTION"
+    ],
+    "score_sync": [
+      "CREATED",
+      "EXACT_IDEMPOTENT_NO_OP",
+      "OUTCOME_UNAVAILABLE"
+    ],
+    "target_admissibility": [
+      "ELIGIBLE_STRICTLY_AFTER_FREEZE_BOUNDARY",
+      "INELIGIBLE_AT_OR_BEFORE_FREEZE_BOUNDARY",
+      "REJECTED_NON_CANONICAL_TARGET_IDENTITY"
+    ]
+  },
+  "schema_version": "T539_CALLABLE_FAMILY_DEDUP_PROSPECTIVE_SHADOW_FREEZE_V1",
+  "selector_contract": {
+    "causal_history_rule": "EVERY_SELECTOR_INPUT_TARGET_IS_STRICTLY_BEFORE_TARGET",
+    "current_target_excluded_from_history": true,
+    "frozen_tie_break": [
+      "OFFICIAL_ANY_PRIZE_TARGET_RATE_DESC",
+      "OFFICIAL_PRIZE_TIER_COUNT_VECTOR_DESC",
+      "OFFICIAL_WINNING_TICKET_RATE_DESC",
+      "STRATEGY_ID_ASC"
+    ],
+    "no_preferred_historical_window": true,
+    "primary_metric_id": "OFFICIAL_ANY_PRIZE_TARGET_RATE",
+    "rolling_history_rule": "EXACT_IMMEDIATELY_PRECEDING_WINDOW_TARGETS",
+    "weighted_windows": "FORBIDDEN"
+  },
+  "source_pilot": {
+    "canonical_base_head": "07a5c3479123c03fd91b6f1ae2402046b5f16c2a",
+    "canonical_base_tree": "cff549183e67ad49f12afb5076a11b1f8b712dde",
+    "commit": "0a4355cfcd13b26451e6d6c74bc873ca2b12fcdd",
+    "embedded_authority_manifest_key": "source_authorities",
+    "embedded_authority_manifest_sha256": "53278d1c5bc44f274ae5a102bac6fee73bc71c0af5b6896bb91e3f4b65db8a72",
+    "original_selector_runner": {
+      "blob_oid": "42da099d939c0db8644f3d7b3fd0de11610e7939",
+      "commit": "abc367bd6d8b59d01ecc4d79e56c787bbc03cd20",
+      "path": "tools/run_strategy_matrix_causal_rolling_selector_pilot.py",
+      "sha256": "63a90f5eae921ad3553a7a761c47da88a76a30b43cea309eb7d38149ade19b18",
+      "size_bytes": 66309,
+      "tree": "bf430efd66b7ce1ac38ee04fb0052e8c55cc972c"
+    },
+    "result_path": "docs/research/matrix-native-results/callable-family-dedup-causal-selector-pilot-r1-result.json",
+    "result_schema_version": "CALLABLE_FAMILY_DEDUP_CAUSAL_SELECTOR_PILOT_RESULT_V1",
+    "result_sha256": "1a4fbd067f3d9b4735a4a1143b3694222f38f05eb3ec91e4e8b782e0e90c5c86",
+    "result_size_bytes": 532005,
+    "supporting_research_locator_policy": "SOLE_EMBEDDED_AUTHORITY_MANIFEST",
+    "tree": "34c1896bb2a3797ffb57b2bff44f9ddd8bff628e"
+  },
+  "surface": {
+    "cell_inclusion_rule": "EVERY_T539_CELL_COMPLETE_FOR_ORIGINAL_AND_DEDUP_IN_ALL_PILOT_WINDOWS",
+    "included_cell_count": 10,
+    "included_native_ticket_counts": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      7,
+      10,
+      11,
+      12,
+      25
+    ],
+    "lottery_id": "T539",
+    "windows": [
+      {
+        "label": "W50",
+        "size": 50
+      },
+      {
+        "label": "W300",
+        "size": 300
+      },
+      {
+        "label": "W750",
+        "size": 750
+      }
+    ]
+  }
+}

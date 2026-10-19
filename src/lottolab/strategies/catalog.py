@@ -1491,7 +1491,7 @@ _PRODUCTION_DESCRIPTORS = (
     StrategyDescriptor(
         strategy_id="b649_new_horizon_minimax_disagreement_r1",
         strategy_name="大樂透 Horizon Minimax Disagreement 2注",
-        version="v0.1",
+        version="v0.2",
         lottery_types=(LotteryType.BIG_LOTTO,),
         lifecycle_status=LifecycleStatus.ONLINE,
         executable=True,
@@ -1513,6 +1513,7 @@ _PRODUCTION_DESCRIPTORS = (
             "current_significance:NOT_ESTABLISHED",
             "predictive_advantage_claimed:NO",
             "migration_task:BRANCH_B_B649_HORIZON_MINIMAX_TARGET_NATIVE_MIGRATION_R1",
+            "version_update:v0.2_zero_cross_ticket_overlap_cap",
         ),
         response_shape=ResponseShape.PORTFOLIO,
         native_ticket_count=2,
@@ -1770,6 +1771,33 @@ _PRODUCTION_DESCRIPTORS = (
         native_ticket_count=3,
     ),
     StrategyDescriptor(
+        strategy_id="legacy_biglotto__predict_evolutionary_gum__b3e96cf483b0",
+        strategy_name="大樂透 進化型GUM前沿發現預測器",
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_batch16:"
+            "BigLottoPredictEvolutionaryGumAdapter"
+        ),
+        min_history=150,
+        provenance=(
+            "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
+            "legacy_source:tools/predict_evolutionary_gum.py",
+            "legacy_source:tools/strategy_leaderboard.py",
+            "legacy_source_sha256:"
+            "b3e96cf483b05793f75811379ce284b98a0200767d5d5f35476b5bb47b1a52ab",
+            "legacy_symbol:EvolutionaryGUM.predict",
+            "full_strategy_catalog_id:"
+            "legacy_biglotto__predict_evolutionary_gum__b3e96cf483b0",
+            "migration_task:BIGLOTTO_BATCH16_R1_BASE_METHOD_BATCH02_INTAKE",
+            "selection_task:B_BASE_METHOD_UNIVERSE_LIVE_GAP_AND_BATCH02_RESELECTION_R1",
+        ),
+        response_shape=ResponseShape.PORTFOLIO,
+        native_ticket_count=2,
+    ),
+    StrategyDescriptor(
         strategy_id="legacy_biglotto__backtest_apriori__2abb53765703",
         strategy_name="大樂透 Apriori 關聯規則回測預測器",
         version="v0.1",
@@ -1846,6 +1874,8 @@ _PRODUCTION_DESCRIPTORS = (
         ),
         response_shape=ResponseShape.PORTFOLIO,
         native_ticket_count=10,
+        minimum_native_ticket_count=1,
+        maximum_native_ticket_count=10,
     ),
     StrategyDescriptor(
         strategy_id="legacy_biglotto__predict_biglotto_triple_strike__dad1c50d1504",
@@ -3535,6 +3565,89 @@ _PRODUCTION_DESCRIPTORS = (
         ),
         response_shape=ResponseShape.SINGLE_TICKET,
         native_ticket_count=1,
+    ),
+    StrategyDescriptor(
+        strategy_id="legacy_biglotto__frontend_auto_optimize_strategy__a121d28125c6",
+        strategy_name="大樂透 Frontend Auto Optimize Strategy",
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_frontend_auto_optimize:"
+            "BigLottoFrontendAutoOptimizeAdapter"
+        ),
+        min_history=30,
+        provenance=(
+            "legacy_source:src/engine/strategies/AutoOptimizeStrategy.js",
+            "legacy_source_sha256:"
+            "a121d28125c6456dfd71c0f4f72e2b1f164e0e51cd175a4746decb49d129f952",
+            "legacy_symbol:AutoOptimizeStrategy.predict",
+            "legacy_runtime:PredictionEngine.strategies.auto_optimize",
+            "candidate_order:FREQUENCY_TREND_BAYESIAN_MONTECARLO_MARKOV_DEVIATION_"
+            "ENSEMBLE_WEIGHTED_ENSEMBLE_BOOSTING_ENSEMBLE_FEATURES_ML_FOREST_"
+            "COLLABORATIVE_HYBRID_HOT_COLD_SUM_RANGE_STATISTICAL",
+            "candidate_instances:CREATED_ONCE_REUSED_THROUGH_VALIDATION_AND_FINAL",
+            "legacy_history_window:NEWEST_FIRST_MAX500",
+            "target_history_order:OLDEST_FIRST_REVERSED_AT_ADAPTER_BOUNDARY",
+            "validation:test_size_MIN10_FLOOR20_PERCENT_SINGLE_SPLIT_FOR_LIVE_INPUT",
+            "kfold:ENABLED_3_FOLD_MIN5_UNREACHABLE_WITH_MAX10_TEST_SPLIT",
+            "training_prefix:TRAIN_DATA_PLUS_PRIOR_TEST_ROWS_BY_SOURCE_INDEX",
+            "success_rule:CEIL_PICK_COUNT_HALF_HITS",
+            "scoring:SUCCESS_RATE_TOLERANCE_0.01_THEN_AVG_HITS",
+            "winner_ties:STABLE_CANDIDATE_ORDER",
+            "rng_sharing:ONE_GLOBAL_UNSEEDED_STREAM_ACROSS_ALL_CANDIDATES_AND_FINAL",
+            "rng_schedule:PROMISE_ALLSETTLED_COOPERATIVE_AWAIT_ORDER_PRESERVED",
+            "seed_semantics:GENERATE_REQUEST_SEED_NOT_THREADED",
+            "legacy_response_shape:NUMBERS_PROBABILITIES_CONFIDENCE_METHOD_REPORT",
+            "native_response_shape:EXACTLY_1_SINGLE_TICKET_NUMBERS_ONLY",
+            "number_range:1_TO_49",
+            "pick_count:6",
+            "portfolio_cardinality:EXACTLY_1_SINGLE_TICKET",
+            "minimum_history:TARGET_AND_PREDICTION_ENGINE_BOUNDARY_30",
+            "candidate_error_behavior:LOG_AND_SKIP_FAILED_PERIOD",
+            "donor_execution:REVIVED_DIRECT_NODE_WITH_SYNCHRONOUS_STATISTICS_AND_FIXED_RANDOM_SEQUENCE",
+            "runtime_boundary:CALLER_SUPPLIED_CAUSAL_HISTORY_NO_DB",
+            "live_db_required:NO",
+            "db_write:NONE",
+            "predictive_advantage_claimed:NO",
+            "migration_task:LANE3_AUTOOPTIMIZE_STRATEGY_LEGACY_METHOD_MIGRATION_R19",
+        ),
+        response_shape=ResponseShape.SINGLE_TICKET,
+        native_ticket_count=1,
+    ),
+    StrategyDescriptor(
+        strategy_id="power_graph_synergy_seed42_2bet",
+        strategy_name="威力彩 Graph Synergy Louvain (固定種子42)",
+        version="v0.1-seed42",
+        lottery_types=(LotteryType.POWER_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.powerlotto_graph_synergy:"
+            "PowerLottoGraphSynergySeed42Adapter"
+        ),
+        min_history=1,
+        provenance=(
+            "legacy_source:tools/power_graph_synergy.py",
+            "legacy_source_sha256:"
+            "48701cd6854d442ced2b1ca63956d0928be23b715aaa880a116a86a8d905b581",
+            "legacy_symbol:graph_clancy_predict",
+            "historical_donor_strategy_id:power_graph_synergy",
+            "historical_donor_status:STOCHASTIC_BLOCKED_AUTHORITY_RETAINED",
+            "authorized_variant:CALL_LOCAL_DETERMINISTIC_LOUVAIN_SEED_42",
+            "louvain_reference:PYTHON_LOUVAIN_0_16_NETWORKX_3_2_1_RESOLUTION_1_0",
+            "graph_semantics:POWER_LOTTO_1_TO_38_TRAILING_500_ALL_PAIR_INTEGER_WEIGHTS",
+            "portfolio_cardinality:EXACTLY_2",
+            "second_zone:not_populated_first_zone_donor_only",
+            "runtime_boundary:CALLER_SUPPLIED_CAUSAL_HISTORY_NO_DB",
+            "live_db_required:NO",
+            "db_write:NONE",
+            "predictive_advantage_claimed:NO",
+            "migration_task:ANALYSIS_LOUVAIN_LEGACY_NATIVE_MIGRATION_R1",
+        ),
+        response_shape=ResponseShape.PORTFOLIO,
+        native_ticket_count=2,
     ),
 )
 

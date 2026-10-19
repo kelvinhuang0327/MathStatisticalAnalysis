@@ -1,0 +1,262 @@
+{
+  "CERTIFICATE_F_SOURCE_IDENTITY": {
+    "COMPOSITE_JSON_POINTER": "/CERTIFICATE_F",
+    "DONOR_HEAD": "f2ad83b4e07571a6842ac301d336360cec805a6a",
+    "DONOR_JSON_POINTER": "/OWNER_CERTIFICATE",
+    "DONOR_TREE": "0b089eb90884f14283679528be40295098a5d3ef",
+    "FORMULA_SOURCES": [
+      {
+        "EXECUTED": false,
+        "HEAD": "83ddad7ade4ae286d12890efdbf3ea7768103d5e",
+        "PATH": "src/lottolab/research/b649_k20_min_s2_topw12_split_cap_certificate_r1.py",
+        "SHA256": "dd31017a685c809f494b359b7eece3fb3d832aef7f55699f7872dec53e25f784"
+      },
+      {
+        "EXECUTED": false,
+        "HEAD": "83ddad7ade4ae286d12890efdbf3ea7768103d5e",
+        "PATH": "src/lottolab/research/b649_k20_min_s2_higher_order_closure_r2.py",
+        "SHA256": "6897c974fe9679f2ec567602522bb4c38c996275368b714c6a7fadedd66d6e45"
+      },
+      {
+        "EXECUTED": false,
+        "HEAD": "83ddad7ade4ae286d12890efdbf3ea7768103d5e",
+        "PATH": "src/lottolab/research/b649_k20_min_s2_resolved_above_cursor_owner_chase_r20.py",
+        "SHA256": "b63081af598a6366ab9989f00f3e269052e8edbc41956a0771941dc03891b74e"
+      },
+      {
+        "EXECUTED": false,
+        "HEAD": "f2ad83b4e07571a6842ac301d336360cec805a6a",
+        "PATH": "src/lottolab/research/b649_k20_min_s2_owner_66655555555440000000_motif_r1.py",
+        "SHA256": "33ba11cddd498f55019d708901e1a387316e23eecd4a9c3613dfd72268e56234"
+      },
+      {
+        "EXECUTED": false,
+        "HEAD": "f2ad83b4e07571a6842ac301d336360cec805a6a",
+        "PATH": "src/lottolab/research/b649_k20_min_s2_three_motif_complete_family_integration_r1.py",
+        "SHA256": "7aacb00b3c9ff247c9cdb2d00faacd5ea2a84f3535b3e595b3bccfd5dbb91178"
+      }
+    ],
+    "FROZEN_INPUT_SHA256": {
+      "docs/research/matrix-native-results/b649-min-s2-six-row-existing-s4-family-authority-r1-result.json": "1f94b064ab7392b88cf4c18ca4d3cb164305601ea9bc2b0f2174c0cddb185e5f",
+      "docs/research/matrix-native-results/b649-min-s2-six-row-existing-s4-family-authority-r1-sources/five-row-fresh-judge.md": "ebbbfe22326ea8d49ab27f77c44bb7245c44b90fdbc87afbd9dde7ae1e88407b",
+      "docs/research/matrix-native-results/b649-min-s2-six-row-existing-s4-family-authority-r1-sources/s4-result.json": "e376c3c15a767bdc75fe937f8ad36adf2ae94cc705628caccfab7f655c55852c",
+      "docs/research/matrix-native-results/b649-min-s2-six-row-existing-s4-family-authority-r1-sources/s4-source.py.txt": "1621262ae38fefcad112c30788c791e258be1eb5f8f2eea3dc328e3e7d6e8f09",
+      "docs/research/matrix-native-results/b649-min-s2-six-row-existing-s4-family-authority-r1-sources/s4-tests.py.txt": "8e7d1dbede49bf3b47f816b40912d7f2b017ca6a1865bf87b7f16b6889028a70"
+    },
+    "PROFILE_ID": "66666555554411100000"
+  },
+  "CLEANUP_DISPOSITION": "RETAIN",
+  "EXECUTION": {
+    "COMMAND": "PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=. python3 tests/unit/test_b649_min_s2_certificate_f_independent_arithmetic_r1.py --write-result",
+    "CPU_BOUND_PROCESSES": 1,
+    "CPU_LIMIT_SECONDS": 120,
+    "FINAL_EXIT_STATUS": 0,
+    "OUTCOME_ENUMERATIONS": 0,
+    "PYTHON": "3.9.6 (default, Aug 25 2026, 21:26:21) \n[Clang 21.0.0 (clang-2100.3.34.2)]",
+    "PYTHON_EXECUTABLE": "/Library/Developer/CommandLineTools/usr/bin/python3",
+    "RESEARCH_IMPORTS": 0,
+    "SOLVER_CALLS": 0,
+    "TOTAL_TESTS_AND_VERIFICATION_CPU_NANOSECONDS": 127896000,
+    "VERIFIER_CPU_NANOSECONDS": 49399000
+  },
+  "FINAL_SCOPE_CHECK": {
+    "EARLIER_SCOPE_WRAPPER_FAILURE": "Misclassified no-index return1 as failure; arithmetic tests passed; corrected read-only check passed.",
+    "PUBLICATION": "NO_COMMIT_NO_PUSH_NO_MERGE",
+    "RETAINED_NEW_FILES": [
+      "docs/research/matrix-native-results/b649-min-s2-certificate-f-independent-arithmetic-r1-result.json",
+      "tests/unit/test_b649_min_s2_certificate_f_independent_arithmetic_r1.py",
+      "tools/verify_b649_min_s2_certificate_f_independent_arithmetic_r1.py"
+    ],
+    "STATUS": "PASS",
+    "TRACKED_SOURCE_MUTATIONS": 0,
+    "WHITESPACE_CHECK": "PASS; no-index return1 indicates new-file differences; stdout/stderr empty",
+    "WORKTREE_MODE": "DETACHED_FROZEN_HEAD"
+  },
+  "FOCUSED_TESTS": {
+    "ERRORS": 0,
+    "FAILURES": 0,
+    "PATH": "tests/unit/test_b649_min_s2_certificate_f_independent_arithmetic_r1.py",
+    "RUNNER": "stdlib unittest; same CPU-bound process as final verification",
+    "STATUS": "PASS",
+    "TESTS_RUN": 8
+  },
+  "FORMULA_INDEPENDENCE": {
+    "DONOR_CODE_IMPORTED_OR_EXECUTED": false,
+    "INTEGER_ONLY": true,
+    "METHOD": "Shared-label subset and private-label polynomial coefficient counts; explicit incidence tuple sets; integer finite minimization for Route-B S4; independent numerator ceiling; frozen results used only for comparison."
+  },
+  "FORMULA_OR_APPLICABILITY_INCONSISTENCY": "NONE",
+  "FROZEN_INPUT_REPRODUCTION": "PASS",
+  "FROZEN_SOURCE_HEAD_AND_TREE": {
+    "HEAD": "83ddad7ade4ae286d12890efdbf3ea7768103d5e",
+    "TREE": "8939ae0a9150e269bbdb787a75ceb699b0cc3bca"
+  },
+  "HEAVY_PROCESS_STARTED": "NO",
+  "IMPLEMENTATION_SHA256": {
+    "tests/unit/test_b649_min_s2_certificate_f_independent_arithmetic_r1.py": "6bf144b39760c267745041b3dd97cc5c9c675b0a0f06445634412b2e281cc1ab",
+    "tools/verify_b649_min_s2_certificate_f_independent_arithmetic_r1.py": "a85087a52e1d3f738310d00abdf73052f07c871608d7ba9eb1ba47748ed04204"
+  },
+  "INCIDENCE_CHECK": {
+    "EQUIVALENT_TABLE_SHA256": "24a070df675bd9cd9e8abd95580625c2057654f120a326c42a872a4ddc6c0eae",
+    "LOCAL_CASES": 96,
+    "LOCAL_WEIGHTS_RECOUNTED": [
+      0,
+      112,
+      448,
+      679
+    ],
+    "OWNER_REALIZATION": {
+      "B": 604,
+      "EXACT_S4_FROM_PINNED_LOCAL_TABLE": 218127,
+      "J": 2370,
+      "MOTIFS_K_D_P_C_A_D1_P1": [
+        340,
+        237,
+        481,
+        55,
+        139,
+        64,
+        59
+      ],
+      "PROFILE_ID": "66666555554411100000",
+      "QUARTETS_IN_ONE_FIXED_REALIZATION": 4845,
+      "R": 1601,
+      "STATUS": "PASS",
+      "TRIANGLES": 209,
+      "UNIVERSAL_CAP_REPROVED": false
+    },
+    "PRIMITIVE_TABLE_SHA256": "d23f333c47ca1d8a01d318cb669504206e924fd6e52b816bfe51fb7b69b40165",
+    "STATUS": "PASS"
+  },
+  "INDEPENDENT_ARITHMETIC_RECOUNT": "PASS",
+  "INTEGER_ARITHMETIC_RESULT": {
+    "CAP_NEW_BOUND": 313387988,
+    "CAP_OLD_BOUND": 313401076,
+    "CERTIFIED_PROFILE_BOUND": 313391920,
+    "DEGREE_FLOOR": {
+      "B": 604,
+      "J": 2370,
+      "K4_BOUND": 490,
+      "OW": 41,
+      "R_MAX": 410,
+      "S4_CERTIFIED_FLOOR": 309162,
+      "S4_CONSTANT": 195972,
+      "W": 833
+    },
+    "DIRECTION_CHECKS": "K lower; A,L upper; S4 max; union upper",
+    "EVENT_CONSTANTS_RECOUNTED": {
+      "CORE_TRIANGLE": 7000,
+      "DISJOINT_PAIR": 107800,
+      "OVERLAP_PAIR": 574000,
+      "PAIR_TRIANGLE": 20272,
+      "SINGLE": 18611432,
+      "WEDGE": 2800
+    },
+    "EXACT_ADDITIONAL_CREDIT": 13088,
+    "INCIDENCE_FLOOR": {
+      "A_MAX": 201,
+      "K4_FLOOR": 490,
+      "L_MAX": 410,
+      "OW": 41,
+      "R": 604,
+      "S4_FLOOR": 309183,
+      "U": 2370,
+      "W": 833
+    },
+    "MAXIMIZING_T": [
+      263
+    ],
+    "NEW_INTEGER_CREDIT": 176676,
+    "NEW_S4_FLOOR": 309183,
+    "OLD_INTEGER_CREDIT": 163588,
+    "OLD_PROFILE_BOUND": 313401076,
+    "OLD_ROUTE_B_S4_FLOOR": 286279,
+    "RETAINED_LOWER_T_COUNT": 242,
+    "RETAINED_LOWER_T_MAX": 313391920,
+    "RETAINED_TERMS_SHA256": "98981b3706d099a3fb0d9ac10b8380e4d9b24323db11d7226af7174676c961f5",
+    "ROUNDING": "ceil((7*(S1-S2+S3)-4*S4)/7); integer only"
+  },
+  "JUDGE_MODE": "SELF_CHECK_ONLY",
+  "MISMATCHES": [],
+  "ORIGINAL_RESEARCH_FILES_MODIFIED": false,
+  "PRESERVED_SCIENTIFIC_BASELINE": {
+    "CERTIFICATES_COMPOSED": 6,
+    "DONOR_JUDGE_STATUS": "SELF_CHECK_ONLY",
+    "GLOBAL_K20_OPTIMUM": "UNKNOWN",
+    "INCUMBENT": 313263888,
+    "REMAINING_GAP": 135032,
+    "SIX_ROW_FAMILY_UPPER_BOUND": 313398920,
+    "WHOLE_FAMILY_REPLAYED": false
+  },
+  "PRODUCTION_MUTATION": "NONE",
+  "REFERENCE_SCOPE_CAVEAT": {
+    "217_TERMS_BELONG_TO": "Prior five-row Cap238 certificate, T22..238, Certificate E",
+    "CERTIFICATE_E_VERIFIED_BY_THIS_TASK": false,
+    "CERTIFICATE_F_ACTUAL_COUNT": 243,
+    "F_T22_THROUGH_T238_PREFIX_RECOUNTED": 217,
+    "SOURCE": "docs/research/matrix-native-results/b649-min-s2-six-row-existing-s4-family-authority-r1-sources/five-row-fresh-judge.md:19,31,45",
+    "STATUS": "217_TERM_ATTRIBUTION_MISMATCH"
+  },
+  "REMAINING_TASK_MODEL": {
+    "中弱模型": "固定證據的機械性記錄及發布。",
+    "強模型": "已驗證數學結果的工程正確性整合。",
+    "最強模型": "後續單一 family owner 的 exact improvement／證書改進研究。"
+  },
+  "REMOTE_WRITE": "NONE",
+  "RESULT_LOCATOR": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_MIN_S2_CERT_F_INDEPENDENT_ARITHMETIC_R1/docs/research/matrix-native-results/b649-min-s2-certificate-f-independent-arithmetic-r1-result.json",
+  "RUNTIME_TRANSITION_OCCURRED": false,
+  "SCIENTIFIC_CLAIM_SUPPORTED": "Certificate F's conditional T22..264 arithmetic and local incidence identities match the frozen certificate. No six-certificate VERIFIED verdict or strict winning outcome.",
+  "TASK_ID": "B649_MIN_S2_CERTIFICATE_F_INDEPENDENT_ARITHMETIC_R1",
+  "TASK_STATUS": "COMPLETE_SELF_CHECK_ONLY_WITH_REFERENCE_CAVEAT",
+  "T_TERMS_RECOUNTED": {
+    "ALL_TERMS_SHA256": "da9266134ce7f780216f7b634d00c0070926b30d5a9ae53743f23af4005ef995",
+    "COUNT": 243,
+    "RANGE": [
+      22,
+      264
+    ],
+    "RETAINED_TERMS_SHA256": "98981b3706d099a3fb0d9ac10b8380e4d9b24323db11d7226af7174676c961f5",
+    "SAMPLES": [
+      [
+        22,
+        310691576,
+        0,
+        0,
+        112,
+        2301600
+      ],
+      [
+        238,
+        313168064,
+        295,
+        201,
+        153874,
+        4865952
+      ],
+      [
+        263,
+        313391920,
+        483,
+        201,
+        281526,
+        5162752
+      ],
+      [
+        264,
+        313387988,
+        490,
+        201,
+        309183,
+        5174624
+      ]
+    ],
+    "SIX_INTEGER_COLUMNS_PER_TERM": 6
+  },
+  "UNVERIFIED_ASSUMPTIONS": [
+    "Universal triangle cap264 relies on inherited CP-SAT infeasibility; solver proof not rerun.",
+    "Inherited S4>=112 existence theorem is accepted, not independently reproved here.",
+    "Complete MIN-S2 partition/ledger and all other certificates, including Cap238's 217 terms, are not revalidated; one fixed realization does not prove universal coverage.",
+    "Global K20 optimality remains UNKNOWN; T256 theorem is outside this PR/task."
+  ],
+  "WORKSPACE": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_MIN_S2_CERT_F_INDEPENDENT_ARITHMETIC_R1"
+}

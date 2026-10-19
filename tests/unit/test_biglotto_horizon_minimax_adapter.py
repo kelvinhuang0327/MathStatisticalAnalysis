@@ -60,15 +60,15 @@ def _block_history(*, reversed_blocks: bool = False) -> tuple[CausalDrawRow, ...
     [
         (
             200,
-            ((1, 2, 3, 4, 8, 11), (3, 4, 10, 22, 23, 29)),
+            ((1, 2, 3, 4, 8, 11), (10, 22, 23, 29, 30, 36)),
         ),
         (
             201,
-            ((1, 2, 3, 4, 5, 12), (4, 5, 11, 22, 23, 24)),
+            ((1, 2, 3, 4, 5, 12), (11, 22, 23, 24, 29, 30)),
         ),
         (
             250,
-            ((1, 2, 3, 4, 5, 12), (4, 5, 11, 22, 23, 24)),
+            ((1, 2, 3, 4, 5, 12), (11, 22, 23, 24, 29, 30)),
         ),
     ],
 )
@@ -83,7 +83,8 @@ def test_sealed_research_parity_goldens(
 
     assert first == second == expected
     assert len(first) == 2
-    assert len(set(first[0]) & set(first[1])) <= 2
+    assert len(set(first[0]) & set(first[1])) == 0
+    assert len(set(first[0]) | set(first[1])) == 12
 
 
 def test_tail_horizons_are_oldest_first_and_full_prefix_is_not_truncated() -> None:
@@ -95,9 +96,11 @@ def test_tail_horizons_are_oldest_first_and_full_prefix_is_not_truncated() -> No
         LotteryType.BIG_LOTTO,
     )
 
-    assert forward == ((1, 2, 3, 44, 45, 46), (1, 2, 4, 5, 6, 7))
+    assert forward == ((1, 2, 3, 44, 45, 46), (4, 5, 6, 7, 8, 9))
     assert reversed_blocks == ((1, 2, 3, 4, 5, 6), (44, 45, 46, 47, 48, 49))
     assert forward != reversed_blocks
+    assert len(set(forward[0]) & set(forward[1])) == 0
+    assert len(set(reversed_blocks[0]) & set(reversed_blocks[1])) == 0
 
 
 def test_minimum_history_and_lottery_type_fail_closed() -> None:
@@ -149,7 +152,7 @@ def test_catalog_registry_and_response_path_preserve_one_two_ticket_identity() -
     )
     portfolio = build_production_generate_portfolio().execute(request)
     assert portfolio.status is GeneratePortfolioStatus.OK
-    assert portfolio.numbers == ((1, 2, 3, 4, 8, 11), (3, 4, 10, 22, 23, 29))
+    assert portfolio.numbers == ((1, 2, 3, 4, 8, 11), (10, 22, 23, 29, 30, 36))
 
     one_bet = build_production_generate_one_bet().execute(request)
     assert one_bet.status is GenerateOneBetStatus.WRONG_RESPONSE_PATH
@@ -181,7 +184,50 @@ def test_existing_cli_portfolio_vertical_returns_all_tickets_and_seed_is_metadat
     assert first_ok is second_ok is True
     assert first["numbers"] == second["numbers"] == [
         [1, 2, 3, 4, 8, 11],
-        [3, 4, 10, 22, 23, 29],
+        [10, 22, 23, 29, 30, 36],
     ]
     assert first["seed"] == 7
     assert second["seed"] == 999
+
+
+def test_ac1_horizon_v02_zero_one_two_overlap_transition() -> None:
+    """AC1 verification:
+
+    Fixed controllable cases covering 0, 1, 2 overlap in legacy v0.1 logic:
+    1. Zero-overlap in v0.1: _block_history(reversed_blocks=True)
+       v0.1 was ((1, 2, 3, 4, 5, 6), (44, 45, 46, 47, 48, 49)).
+       v0.2 produces the EXACT SAME ticket pair.
+    2. One-overlap in v0.1: _cyclic_history(232)
+       v0.1 produced ((1, 8, 15, 22, 29, 36), (2, 3, 35, 36, 42, 43)) with overlap {36}.
+       v0.2 produces ((1, 8, 15, 22, 29, 36), (2, 3, 4, 35, 42, 43)), keeping the
+       first consensus ticket identical, skipping 36, and yielding 12 distinct numbers.
+    3. Two-overlap in v0.1: _cyclic_history(200)
+       v0.1 produced ((1, 2, 3, 4, 8, 11), (3, 4, 10, 22, 23, 29)) with overlap {3, 4}.
+       v0.2 produces ((1, 2, 3, 4, 8, 11), (10, 22, 23, 29, 30, 36)), keeping the
+       first consensus ticket identical, skipping 3 and 4, and yielding 12 distinct numbers.
+    In all cases, both tickets are legal (6 numbers in 1..49) and pairwise disjoint.
+    """
+    adapter = BigLottoHorizonMinimaxDisagreementAdapter()
+
+    # Case 1: 0-overlap legacy case
+    h_zero = _block_history(reversed_blocks=True)
+    res_zero = adapter.get_bets(h_zero, LotteryType.BIG_LOTTO)
+    assert res_zero == ((1, 2, 3, 4, 5, 6), (44, 45, 46, 47, 48, 49))
+    assert len(set(res_zero[0]) & set(res_zero[1])) == 0
+    assert len(set(res_zero[0]) | set(res_zero[1])) == 12
+
+    # Case 2: 1-overlap legacy case
+    h_one = _cyclic_history(232)
+    res_one = adapter.get_bets(h_one, LotteryType.BIG_LOTTO)
+    assert res_one == ((1, 8, 15, 22, 29, 36), (2, 3, 4, 35, 42, 43))
+    assert res_one[0] == (1, 8, 15, 22, 29, 36)  # Consensus 1st ticket unchanged
+    assert len(set(res_one[0]) & set(res_one[1])) == 0
+    assert len(set(res_one[0]) | set(res_one[1])) == 12
+
+    # Case 3: 2-overlap legacy case
+    h_two = _cyclic_history(200)
+    res_two = adapter.get_bets(h_two, LotteryType.BIG_LOTTO)
+    assert res_two == ((1, 2, 3, 4, 8, 11), (10, 22, 23, 29, 30, 36))
+    assert res_two[0] == (1, 2, 3, 4, 8, 11)  # Consensus 1st ticket unchanged
+    assert len(set(res_two[0]) & set(res_two[1])) == 0
+    assert len(set(res_two[0]) | set(res_two[1])) == 12

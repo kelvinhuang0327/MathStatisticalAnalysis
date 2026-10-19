@@ -181,7 +181,7 @@ describe('ReplayHistoryPage overview replay', () => {
     const wrapper = mount(ReplayHistoryPage)
     await flushPromises()
 
-    expect(wrapper.text()).toContain('L649')
+    expect(wrapper.text()).toContain('B649')
     expect(wrapper.text()).not.toContain('BIG_LOTTO')
 
     await wrapper.get('select[name="run_id"]').setValue('run-explicit-1')
@@ -251,7 +251,7 @@ describe('ReplayHistoryPage optimal replay', () => {
     await wrapper.get('form').trigger('submit')
     await flushPromises()
 
-    expect(wrapper.text()).toContain('L649')
+    expect(wrapper.text()).toContain('B649')
     expect(wrapper.text()).toContain('BIG_LOTTO_TIER_LEXICOGRAPHIC_COUNTS_V1')
     expect(wrapper.text()).toContain('28 / 40')
     wrapper.unmount()

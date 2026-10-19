@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from lottolab.application.dto import (
     D3AvailabilityBlock,
+    D3DefinitionView,
     StrategyCombinationHitRateBlock,
     StrategyEvidenceBestStrategyBlock,
     StrategyEvidenceItem,
@@ -82,5 +83,20 @@ class QueryStrategyEvidence:
             d3=D3AvailabilityBlock(
                 status=snapshot.d3_status,
                 value="NOT_AVAILABLE",
+                definition=D3DefinitionView(
+                    metric_id=snapshot.d3_definition.metric_id,
+                    metric_version=snapshot.d3_definition.metric_version,
+                    schema_id=snapshot.d3_definition.schema_id,
+                    schema_version=snapshot.d3_definition.schema_version,
+                    formula_status=snapshot.d3_definition.formula_status,
+                    direction=snapshot.d3_definition.direction,
+                    aggregation=snapshot.d3_definition.aggregation,
+                    sample_unit=snapshot.d3_definition.sample_unit,
+                    decimal_scale=snapshot.d3_definition.decimal_scale,
+                    rounding_mode=snapshot.d3_definition.rounding_mode,
+                    unit=snapshot.d3_definition.unit,
+                    definition_prose=snapshot.d3_definition.definition_prose,
+                    authority_path=snapshot.d3_definition.authority_path,
+                ),
             ),
         )

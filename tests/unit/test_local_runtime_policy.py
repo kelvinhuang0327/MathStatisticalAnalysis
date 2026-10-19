@@ -358,11 +358,14 @@ def test_smoke_accepts_exact_authorized_openapi_surface_with_path_metadata() -> 
 def authorized_openapi_paths() -> dict[str, dict[str, object]]:
     return {
         "/api/health": {"get": {}},
+        "/api/b649/canonical-forecast/current": {"get": {}},
         "/api/v1/strategies": {"get": {}},
         "/api/v1/strategy-overview": {"get": {}},
         "/api/v1/strategy-evidence": {"get": {}},
+        "/api/v1/strategy-matrix/structural": {"get": {}},
         "/api/v1/b649-multi-ticket-records": {"get": {}},
         "/api/v1/b649-multi-ticket-records/summary": {"get": {}},
+        "/api/v1/b649-exact-native-records": {"get": {}},
         "/api/v1/draw-imports/preview": {"post": {}},
         "/api/v1/draw-imports/commit": {"post": {}},
         "/api/v1/draw-imports/batch/preview": {"post": {}},

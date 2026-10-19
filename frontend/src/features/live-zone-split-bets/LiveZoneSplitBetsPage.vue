@@ -9,6 +9,7 @@ import {
   MIN_NUM_BETS,
   type LiveZoneSplitBetsResponse,
 } from '../../api/liveZoneSplitBets'
+import LotteryNumberBall from '../../components/LotteryNumberBall.vue'
 
 const numBetsInput = ref(3)
 const pending = ref(false)
@@ -145,9 +146,13 @@ onBeforeUnmount(() => {
           <h2>Primary bet</h2>
         </div>
         <div class="number-chips primary-bet">
-          <span v-for="number in result.bets![0]" :key="number" class="number-chip">
-            {{ number }}
-          </span>
+          <LotteryNumberBall
+            v-for="number in result.bets![0]"
+            :key="number"
+            :value="number"
+            variant="main"
+            size="md"
+          />
         </div>
 
         <dl class="metric-grid">
@@ -175,7 +180,13 @@ onBeforeUnmount(() => {
         <ul class="plain-list all-bets">
           <li v-for="(bet, index) in result.bets" :key="index">
             <div class="number-chips">
-              <span v-for="number in bet" :key="number" class="number-chip">{{ number }}</span>
+              <LotteryNumberBall
+                v-for="number in bet"
+                :key="number"
+                :value="number"
+                variant="main"
+                size="sm"
+              />
             </div>
           </li>
         </ul>

@@ -1,0 +1,3577 @@
+"""Hermetic tests for the B649 production cutover entrypoint."""
+
+from __future__ import annotations
+
+import argparse
+import base64
+import copy
+import hashlib
+import json
+import os
+import plistlib
+import shutil
+import stat
+import subprocess
+import sys
+from collections.abc import Callable, Sequence
+from dataclasses import dataclass, field, replace
+from pathlib import Path
+from typing import cast
+
+import pytest
+import tools.b649_cutover_checkpoint as checkpoint
+import tools.b649_goalc_local_scheduler as scheduler
+import tools.b649_production_cutover as cutover
+
+from lottolab.application.b649_sealed_geometry_portfolio import (
+    SEALED_GEOMETRY_METHOD_ID,
+    SEALED_GEOMETRY_METHOD_VERSION,
+    SEALED_GEOMETRY_PORTFOLIOS,
+    canonical_portfolio_sha256,
+)
+
+NEW_HEAD = "1" * 40
+NEW_TREE = "2" * 40
+OLD_HEAD = "3" * 40
+OLD_TREE = "4" * 40
+LEGACY_HEAD = "5" * 40
+LEGACY_TREE = "6" * 40
+UID = os.getuid() + 1000000
+DOMAIN = f"gui/{UID}"
+# A receipt-bound OLD/PRESTATE worktree name that predates the
+# B649_PRODUCTION_<HEAD> release-materialization convention -- the real
+# production shape this fixture's default new/old pair (both named
+# B649_PRODUCTION_<HEAD>) never exercises. See b649-cutover-plan-old-runtime-
+# durable-ref-missing / b649-cutover-plan-old-interpreter-outside-worktree.
+LEGACY_WORKTREE_NAME = "B649_V5_ACTIVATION_PREREQUISITE_SUCCESSOR_CONSTRUCTION_R1"
+
+
+def _object(value: object) -> dict[str, object]:
+    assert isinstance(value, dict)
+    return cast(dict[str, object], value)
+
+
+def _objects(value: object) -> list[dict[str, object]]:
+    assert isinstance(value, list)
+    items = cast(list[object], value)
+    assert all(isinstance(item, dict) for item in items)
+    return cast(list[dict[str, object]], items)
+
+
+def _completed(
+    argv: Sequence[str],
+    stdout: str = "",
+    stderr: str = "",
+    returncode: int = 0,
+) -> subprocess.CompletedProcess[str]:
+    return subprocess.CompletedProcess(tuple(argv), returncode, stdout, stderr)
+
+
+@dataclass
+class Fixture:
+    root: Path
+    old_name: str = field(default=f"B649_PRODUCTION_{OLD_HEAD}")
+    canonical: Path = field(init=False)
+    worktree_parent: Path = field(init=False)
+    new: Path = field(init=False)
+    old: Path = field(init=False)
+    operation_root: Path = field(init=False)
+    scheduler_root: Path = field(init=False)
+    data_root: Path = field(init=False)
+    plist_path: Path = field(init=False)
+    primary_lock_path: Path = field(init=False)
+    shadow_lock_path: Path = field(init=False)
+    cutover_lock_path: Path = field(init=False)
+    receipt_path: Path = field(init=False)
+    config: cutover.CutoverConfig = field(init=False)
+    old_plist_bytes: bytes = field(init=False)
+    business_state_paths: tuple[Path, ...] = field(init=False)
+    business_state_before: dict[Path, bytes] = field(init=False)
+    business_state_before_hashes: dict[Path, str] = field(init=False)
+
+    def __post_init__(self) -> None:
+        self.canonical = self.root / "MathStatisticalAnalysis"
+        self.canonical.mkdir()
+        self.worktree_parent = self.root / ".worktrees" / self.canonical.name
+        self.new = self.worktree_parent / f"B649_PRODUCTION_{NEW_HEAD}"
+        self.old = self.worktree_parent / self.old_name
+        self.make_source(self.new)
+        self.make_source(self.old)
+
+        self.operation_root = self.root / "operation"
+        self.scheduler_root = self.operation_root / "scheduler"
+        self.data_root = self.root / "data"
+        launch_agents = self.root / "Library" / "LaunchAgents"
+        launch_agents.mkdir(mode=0o700, parents=True)
+        self.plist_path = launch_agents / f"{cutover.LABEL}.plist"
+        self.primary_lock_path = self.scheduler_root / "primary.lock"
+        self.shadow_lock_path = self.root / "runtime" / "shadow.lock"
+        self.cutover_lock_path = self.scheduler_root / "cutover.lock"
+        self.receipt_path = self.scheduler_root / "receipt.json"
+
+        self.config = cutover.CutoverConfig(
+            source_worktree=self.new,
+            launch_domain=DOMAIN,
+            plist_path=self.plist_path,
+            canonical_repository=self.canonical,
+            operation_root=self.operation_root,
+            scheduler_root=self.scheduler_root,
+            data_root=self.data_root,
+            database=self.data_root / "lottolab.db",
+            announcement=self.data_root / "pre-outcome-target-announcements-v1.json",
+            health_path=self.scheduler_root / "health.json",
+            stdout_path=self.scheduler_root / "launchd.stdout.log",
+            stderr_path=self.scheduler_root / "launchd.stderr.log",
+            primary_lock_path=self.primary_lock_path,
+            shadow_lock_path=self.shadow_lock_path,
+            cutover_lock_path=self.cutover_lock_path,
+            receipt_path=self.receipt_path,
+            expected_head=NEW_HEAD,
+            expected_tree=NEW_TREE,
+            durable_ref=f"refs/heads/runtime/b649/{NEW_HEAD}",
+            strict_release_layout=False,
+        )
+        old_scheduler_config = scheduler.SchedulerConfig(
+            label=cutover.LABEL,
+            version=scheduler.TASK_VERSION,
+            canonical_repository=self.canonical,
+            source_worktree=self.old,
+            python_executable=self.old / ".venv/bin/python",
+            script_path=self.old / "tools/b649_goalc_local_scheduler.py",
+            operation_root=self.operation_root,
+            data_root=self.data_root,
+            database=self.data_root / "lottolab.db",
+            announcement=self.data_root / "pre-outcome-target-announcements-v1.json",
+            scheduler_root=self.scheduler_root,
+            lock_path=self.primary_lock_path,
+            health_path=self.scheduler_root / "health.json",
+            stdout_path=self.scheduler_root / "launchd.stdout.log",
+            stderr_path=self.scheduler_root / "launchd.stderr.log",
+            plist_path=self.plist_path,
+        )
+        self.old_plist_bytes = scheduler.build_launchd_plist(old_scheduler_config)
+        self.plist_path.write_bytes(self.old_plist_bytes)
+        self.plist_path.chmod(0o600)
+        self.business_state_paths = (
+            self.config.database,
+            self.operation_root / "scheduler-health-state.json",
+            self.operation_root / "predictions" / "forecast.json",
+            self.operation_root / "reports" / "score-report.json",
+        )
+        business_state_bytes = (
+            b"SQLite format 3\x00B649 fixture business state\n",
+            b'{"scheduler":"healthy","last_run":"fixture"}\n',
+            b'{"prediction_id":"fixture","forecast":[1,2,3]}\n',
+            b'{"report_id":"fixture","score":42,"task_data":{"case":"B649"}}\n',
+        )
+        for path, data in zip(self.business_state_paths, business_state_bytes, strict=True):
+            path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+            path.write_bytes(data)
+            path.chmod(0o600)
+        self.business_state_before = {path: path.read_bytes() for path in self.business_state_paths}
+        self.business_state_before_hashes = {
+            path: hashlib.sha256(data).hexdigest()
+            for path, data in self.business_state_before.items()
+        }
+
+    @staticmethod
+    def make_source(path: Path) -> None:
+        (path / ".venv" / "bin").mkdir(mode=0o700, parents=True)
+        interpreter = path / ".venv" / "bin" / "python"
+        interpreter.write_text("#!/bin/sh\n", encoding="utf-8")
+        interpreter.chmod(0o700)
+        (path / "tools").mkdir(mode=0o700)
+        (path / "tools" / "b649_goalc_local_scheduler.py").write_text(
+            "# fixture scheduler\n",
+            encoding="utf-8",
+        )
+        (path / "src").mkdir(mode=0o700)
+
+
+@dataclass
+class FakeLaunchd:
+    fixture: Fixture
+    loaded: bool = True
+    loaded_source: Path | None = None
+    enabled: bool = True
+    calls: list[tuple[str, ...]] = field(default_factory=lambda: list[tuple[str, ...]]())
+    status_by_path: dict[Path, str] = field(default_factory=lambda: dict[Path, str]())
+    process_rows: list[str] = field(
+        default_factory=lambda: [f"424242 1 {UID} S /usr/bin/fixture-shell"]
+    )
+    file_rows: list[str] = field(default_factory=lambda: ["p424242", "fcwd", "n/tmp"])
+    vanished_pids: set[int] = field(default_factory=lambda: set[int]())
+    fail_bootstrap_new_once: bool = False
+    fail_command_once: tuple[str, ...] | None = None
+    after_mutation: Callable[[tuple[str, ...]], None] | None = None
+    # worktree -> (head, tree, has_durable_ref). Defaults to exactly the prior
+    # hardcoded new/old pair; a test registers an additional (e.g. legacy-
+    # layout) worktree by adding an entry. has_durable_ref=False simulates a
+    # worktree with no resolvable refs/heads/runtime/b649/<HEAD> ref -- the
+    # git call fails exactly as it would live, instead of a harness assertion.
+    worktree_identities: dict[Path, tuple[str, str, bool]] = field(
+        default_factory=lambda: dict[Path, tuple[str, str, bool]]()
+    )
+
+    def __post_init__(self) -> None:
+        if self.loaded_source is None:
+            self.loaded_source = self.fixture.old
+        if not self.worktree_identities:
+            self.worktree_identities = {
+                self.fixture.new: (NEW_HEAD, NEW_TREE, True),
+                self.fixture.old: (OLD_HEAD, OLD_TREE, True),
+            }
+
+    @property
+    def mutation_calls(self) -> list[tuple[str, ...]]:
+        verbs = {"disable", "bootout", "bootstrap", "enable", "kickstart", "kill"}
+        return [
+            call
+            for call in self.calls
+            if len(call) > 1 and call[0] == "launchctl" and call[1] in verbs
+        ]
+
+    def _launch_text(self) -> str:
+        assert self.loaded_source is not None
+        source = self.loaded_source
+        interpreter = source / ".venv/bin/python"
+        script = source / "tools/b649_goalc_local_scheduler.py"
+        return f"""{DOMAIN}/{cutover.LABEL} = {{
+    path = {self.fixture.plist_path}
+    type = LaunchAgent
+    state = not running
+    program = {interpreter}
+    arguments = {{
+        {interpreter}
+        {script}
+        run
+    }}
+    environment = {{
+        PYTHONPATH => {source}/src
+        PYTHONDONTWRITEBYTECODE => 1
+    }}
+    working directory = {source}
+    last exit code = 0
+    run interval = 300 seconds
+}}
+"""
+
+    def _after(self, args: tuple[str, ...]) -> None:
+        if self.after_mutation is not None:
+            self.after_mutation(args)
+
+    def __call__(self, argv: Sequence[str]) -> subprocess.CompletedProcess[str]:
+        raw_args = tuple(argv)
+        self.calls.append(raw_args)
+        args = raw_args
+        if args[:3] == ("git", "-c", "core.fsmonitor=false"):
+            args = ("git", *args[3:])
+        if self.fail_command_once == args:
+            self.fail_command_once = None
+            return _completed(args, stderr="fake mutation failure", returncode=1)
+        if args[:2] == ("git", "--no-optional-locks"):
+            worktree = Path(args[3])
+            assert worktree in self.worktree_identities, f"unregistered worktree: {worktree}"
+            head, tree, has_ref = self.worktree_identities[worktree]
+            if args[4] == "status":
+                return _completed(args, self.status_by_path.get(worktree, ""))
+            assert args[4] == "rev-parse"
+            if args[5:] == ("--show-toplevel",):
+                return _completed(args, str(worktree) + "\n")
+            assert args[5:7] == ("--verify", "--end-of-options")
+            revision = args[7]
+            values = {"HEAD": head, "HEAD^{tree}": tree}
+            if has_ref:
+                values[f"refs/heads/runtime/b649/{head}^{{commit}}"] = head
+            if revision not in values:
+                return _completed(
+                    args,
+                    stderr=f"fatal: ambiguous argument '{revision}': unknown revision or path\n",
+                    returncode=128,
+                )
+            return _completed(args, values[revision] + "\n")
+        if args[:2] == ("git", "check-ref-format"):
+            return _completed(args)
+        if args == ("launchctl", "print", f"{DOMAIN}/{cutover.LABEL}"):
+            if not self.loaded:
+                return _completed(
+                    args,
+                    stderr=(
+                        "Bad request.\n"
+                        f'Could not find service "{cutover.LABEL}" in domain for user '
+                        f"gui: {UID}\n"
+                    ),
+                    returncode=113,
+                )
+            return _completed(args, self._launch_text())
+        if args == ("launchctl", "print-disabled", DOMAIN):
+            return _completed(
+                args,
+                "disabled services = {\n"
+                f'    "{cutover.LABEL}" => {str(not self.enabled).lower()}\n'
+                "}\n",
+            )
+        if args == ("ps", "-ww", "-axo", "pid=,ppid=,uid=,stat=,command="):
+            return _completed(args, "\n".join(self.process_rows) + "\n")
+        if len(args) == 5 and args[0] == "ps" and args[1] == "-p" and args[3:] == ("-o", "pid="):
+            requested = {int(value) for value in args[2].split(",")}
+            alive = sorted(requested - self.vanished_pids)
+            return _completed(args, "\n".join(str(pid) for pid in alive) + "\n")
+        if args == ("lsof", "-nP", "-a", "-u", str(UID), "-F", "pfn"):
+            return _completed(args, "\n".join(self.file_rows) + "\n")
+        if args == ("launchctl", "disable", f"{DOMAIN}/{cutover.LABEL}"):
+            self.enabled = False
+            self._after(args)
+            return _completed(args)
+        if args == ("launchctl", "enable", f"{DOMAIN}/{cutover.LABEL}"):
+            self.enabled = True
+            self._after(args)
+            return _completed(args)
+        if args == ("launchctl", "bootout", f"{DOMAIN}/{cutover.LABEL}"):
+            self.loaded = False
+            self._after(args)
+            return _completed(args)
+        if args == ("launchctl", "bootstrap", DOMAIN, str(self.fixture.plist_path)):
+            if not self.enabled:
+                return _completed(args, stderr="service is disabled", returncode=5)
+            binding = plistlib.loads(self.fixture.plist_path.read_bytes())
+            source = Path(binding["WorkingDirectory"])
+            if source == self.fixture.new and self.fail_bootstrap_new_once:
+                self.fail_bootstrap_new_once = False
+                return _completed(args, stderr="fake bootstrap failure", returncode=1)
+            self.loaded = True
+            self.loaded_source = source
+            self._after(args)
+            return _completed(args)
+        raise AssertionError(f"unexpected command (possible forbidden mutation): {args}")
+
+
+@pytest.fixture
+def fixture(tmp_path: Path) -> Fixture:
+    return Fixture(tmp_path)
+
+
+_REAL_STAT_SEAMS = {
+    name: cast(Callable[..., os.stat_result], getattr(os, name))
+    for name in ("stat", "lstat", "fstat")
+}
+_VISIBLE_STAT_FIELDS = {"st_mode", "st_ino", "st_dev", "st_nlink", "st_uid", "st_gid", "st_size"}
+
+
+def simulate_reboot(monkeypatch: pytest.MonkeyPatch, volume: Path, boot: int) -> int:
+    """Report the device number a macOS reboot assigns to ``volume``; return it.
+
+    The production incident: after a reboot the Data volume's st_dev moved from
+    16777232 to 16777234 while every inode, mode, link count, size and timestamp
+    stayed byte-exact. ``boot`` 0 is the real number. ``os.stat``, ``os.lstat``
+    and ``os.fstat`` all report the renumbered device, so every same-read CAS
+    stays internally consistent, exactly as it does after a real reboot.
+    """
+    real = _REAL_STAT_SEAMS["lstat"](volume).st_dev
+    reported = real + 2 * boot
+
+    def renumbered(result: os.stat_result) -> os.stat_result:
+        if result.st_dev != real:
+            return result
+        visible = list(result)
+        visible[2] = reported
+        hidden = {
+            name: getattr(result, name)
+            for name in dir(result)
+            if name.startswith("st_") and name not in _VISIBLE_STAT_FIELDS
+        }
+        return os.stat_result(visible, hidden)
+
+    def seam(call: Callable[..., os.stat_result]) -> Callable[..., os.stat_result]:
+        def rebooted(*args: object, **kwargs: object) -> os.stat_result:
+            return renumbered(call(*args, **kwargs))
+
+        return rebooted
+
+    for name, call in _REAL_STAT_SEAMS.items():
+        monkeypatch.setattr(os, name, seam(call))
+    return reported
+
+
+def test_fake_launchd_rejects_bootstrap_while_disabled(fixture: Fixture) -> None:
+    runner = FakeLaunchd(fixture, loaded=False, enabled=False)
+    result = runner(("launchctl", "bootstrap", DOMAIN, str(fixture.plist_path)))
+
+    assert result.returncode == 5
+    assert result.stderr == "service is disabled"
+    assert runner.loaded is False
+    assert runner.enabled is False
+
+
+def test_source_validation_fsmonitor_metadata_is_passive_before_ownership_snapshot(
+    fixture: Fixture,
+) -> None:
+    runner = FakeLaunchd(fixture)
+    git_admin = fixture.canonical / ".git" / "worktrees" / fixture.new.name
+    git_admin.mkdir(parents=True)
+    (git_admin / "index").touch()
+    (fixture.new / ".git").write_text(f"gitdir: {git_admin}\n", encoding="utf-8")
+    fsmonitor_pid = 424243
+    status_call = (
+        "git",
+        "-c",
+        "core.fsmonitor=false",
+        "--no-optional-locks",
+        "-C",
+        str(fixture.new),
+        "status",
+        "--porcelain=v1",
+        "--untracked-files=all",
+    )
+
+    def runner_after_source_validation(argv: Sequence[str]) -> subprocess.CompletedProcess[str]:
+        result = runner(argv)
+        if tuple(argv) == status_call:
+            runner.process_rows.append(f"{fsmonitor_pid} 1 {UID} S git fsmonitor--daemon run")
+            runner.file_rows.extend(
+                [
+                    f"p{fsmonitor_pid}",
+                    "fcwd",
+                    "n/tmp",
+                    "ftxt",
+                    "n/usr/bin/git",
+                    "f3",
+                    f"n{git_admin / 'index'}",
+                ]
+            )
+        return result
+
+    validate_source = cast(Callable[..., dict[str, object]], vars(cutover)["_validate_source"])
+    ownership_snapshot = cast(
+        Callable[..., dict[str, object]], vars(cutover)["_ownership_snapshot"]
+    )
+    source = validate_source(
+        fixture.config,
+        runner_after_source_validation,
+        role="new",
+        expected_head=NEW_HEAD,
+        expected_tree=NEW_TREE,
+        expected_ref=fixture.config.durable_ref,
+    )
+    assert any(row.startswith(f"{fsmonitor_pid} ") for row in runner.process_rows)
+
+    ownership = ownership_snapshot(fixture.config, runner_after_source_validation, source)
+
+    runtime = _object(ownership["runtime"])
+    process_calls = runner.calls
+    assert process_calls.index(status_call) < process_calls.index(
+        ("ps", "-ww", "-axo", "pid=,ppid=,uid=,stat=,command=")
+    )
+    assert runtime["classification"] == "ABSENT"
+    assert runtime["pids"] == []
+
+
+def _assert_business_state_unchanged(fixture: Fixture) -> None:
+    for path in fixture.business_state_paths:
+        current = path.read_bytes()
+        assert current == fixture.business_state_before[path]
+        assert hashlib.sha256(current).hexdigest() == fixture.business_state_before_hashes[path]
+
+
+def test_plan_is_read_only_and_reports_exact_runtime(fixture: Fixture) -> None:
+    runner = FakeLaunchd(fixture)
+    before_paths = {
+        fixture.scheduler_root,
+        fixture.cutover_lock_path,
+        fixture.receipt_path,
+        fixture.primary_lock_path,
+        fixture.shadow_lock_path,
+    }
+
+    result = cutover.build_plan(fixture.config, runner=runner)
+
+    assert result["status"] == "PASS"
+    assert result["target"] == {
+        "label": cutover.LABEL,
+        "launch_domain": DOMAIN,
+        "launch_target": f"{DOMAIN}/{cutover.LABEL}",
+        "plist_path": str(fixture.plist_path),
+    }
+    runtime = _object(result["runtime"])
+    assert runtime["new"] == {
+        "working_directory": str(fixture.new),
+        "interpreter": str(fixture.new / ".venv/bin/python"),
+        "script": str(fixture.new / "tools/b649_goalc_local_scheduler.py"),
+        "pythonpath": str(fixture.new / "src"),
+        "arguments": [
+            str(fixture.new / ".venv/bin/python"),
+            str(fixture.new / "tools/b649_goalc_local_scheduler.py"),
+            "run",
+        ],
+    }
+    assert runner.mutation_calls == []
+    assert all(not path.exists() for path in before_paths)
+
+
+def test_cli_plan_output_file_is_private_and_matches_canonical_stdout(
+    fixture: Fixture, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    runner = FakeLaunchd(fixture)
+    output_path = fixture.root / "cutover-plan.json"
+
+    def fake_config(_args: argparse.Namespace) -> cutover.CutoverConfig:
+        return fixture.config
+
+    monkeypatch.setattr(cutover, "_config_from_args", fake_config)
+
+    exit_code = cutover.main(
+        [
+            "plan",
+            "--source-worktree",
+            str(fixture.new),
+            "--output-file",
+            str(output_path),
+        ],
+        runner=runner,
+    )
+
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    result = json.loads(captured.out)
+    canonical_json = cast(Callable[[object], str], vars(cutover)["_canonical_json"])
+    serialized = (canonical_json(result) + "\n").encode("utf-8")
+    assert result["status"] == "PASS"
+    assert output_path.read_bytes() == serialized
+    assert stat.S_IMODE(output_path.lstat().st_mode) == 0o600
+    assert output_path.lstat().st_nlink == 1
+    assert runner.mutation_calls == []
+    _assert_business_state_unchanged(fixture)
+
+
+@pytest.mark.parametrize("mode", [0o600, 0o644])
+def test_cli_plan_output_file_refuses_existing_file_without_rewriting(
+    fixture: Fixture,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    mode: int,
+) -> None:
+    runner = FakeLaunchd(fixture)
+    output_path = fixture.root / "existing-plan.json"
+    original = b"existing plan must be preserved\n"
+    output_path.write_bytes(original)
+    output_path.chmod(mode)
+    before = output_path.lstat()
+
+    def fake_config(_args: argparse.Namespace) -> cutover.CutoverConfig:
+        return fixture.config
+
+    monkeypatch.setattr(cutover, "_config_from_args", fake_config)
+
+    exit_code = cutover.main(
+        [
+            "plan",
+            "--source-worktree",
+            str(fixture.new),
+            "--output-file",
+            str(output_path),
+        ],
+        runner=runner,
+    )
+
+    result = json.loads(capsys.readouterr().out)
+    after = output_path.lstat()
+    assert exit_code == 1
+    assert result["status"] == "NOT_STARTED"
+    assert output_path.read_bytes() == original
+    assert (after.st_dev, after.st_ino, after.st_mode, after.st_mtime_ns) == (
+        before.st_dev,
+        before.st_ino,
+        before.st_mode,
+        before.st_mtime_ns,
+    )
+    assert runner.mutation_calls == []
+
+
+def test_cli_plan_output_file_refuses_symlink_without_touching_target(
+    fixture: Fixture, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    runner = FakeLaunchd(fixture)
+    output_path = fixture.root / "linked-plan.json"
+    target_path = fixture.root / "plan-target.json"
+    original = b"symlink target must be preserved\n"
+    target_path.write_bytes(original)
+    target_path.chmod(0o600)
+    output_path.symlink_to(target_path)
+    before = output_path.lstat()
+
+    def fake_config(_args: argparse.Namespace) -> cutover.CutoverConfig:
+        return fixture.config
+
+    monkeypatch.setattr(cutover, "_config_from_args", fake_config)
+
+    exit_code = cutover.main(
+        [
+            "plan",
+            "--source-worktree",
+            str(fixture.new),
+            "--output-file",
+            str(output_path),
+        ],
+        runner=runner,
+    )
+
+    result = json.loads(capsys.readouterr().out)
+    after = output_path.lstat()
+    assert exit_code == 1
+    assert result["status"] == "NOT_STARTED"
+    assert stat.S_ISLNK(after.st_mode)
+    assert (after.st_dev, after.st_ino, after.st_mtime_ns) == (
+        before.st_dev,
+        before.st_ino,
+        before.st_mtime_ns,
+    )
+    assert target_path.read_bytes() == original
+    assert stat.S_IMODE(target_path.stat().st_mode) == 0o600
+    assert runner.mutation_calls == []
+
+
+def test_private_json_create_does_not_replace_a_file_that_appears_after_check(
+    fixture: Fixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    output_path = fixture.root / "racing-plan.json"
+    original = b"concurrent file must be preserved\n"
+    original_link = os.link
+
+    def create_before_link(
+        source: str | bytes | os.PathLike[str] | os.PathLike[bytes],
+        destination: str | bytes | os.PathLike[str] | os.PathLike[bytes],
+        *,
+        follow_symlinks: bool = True,
+    ) -> None:
+        output_path.write_bytes(original)
+        output_path.chmod(0o600)
+        original_link(source, destination, follow_symlinks=follow_symlinks)
+
+    monkeypatch.setattr(cutover.os, "link", create_before_link)
+
+    write_json = cast(Callable[..., cutover.FileIdentity], vars(cutover)["_write_json"])
+    with pytest.raises(cutover.CutoverSafetyError, match="destination appeared before create"):
+        write_json(output_path, {"status": "PASS"}, expected=None)
+
+    assert output_path.read_bytes() == original
+    assert stat.S_IMODE(output_path.lstat().st_mode) == 0o600
+    assert list(fixture.root.glob(".racing-plan.json.*.tmp")) == []
+
+
+@pytest.mark.parametrize("drift", ["source", "plist"])
+def test_plan_fails_closed_on_source_or_plist_drift(fixture: Fixture, drift: str) -> None:
+    runner = FakeLaunchd(fixture)
+    if drift == "source":
+        runner.status_by_path[fixture.new] = " M drifted.py\n"
+    else:
+        binding = plistlib.loads(fixture.old_plist_bytes)
+        binding["ProgramArguments"][0] = str(fixture.new / ".venv/bin/python")
+        fixture.plist_path.write_bytes(plistlib.dumps(binding))
+        fixture.plist_path.chmod(0o600)
+
+    result = cutover.build_plan(fixture.config, runner=runner)
+
+    assert result["status"] == "FAIL"
+    assert result["failures"]
+    assert runner.mutation_calls == []
+    assert not fixture.cutover_lock_path.exists()
+    assert not fixture.receipt_path.exists()
+
+
+def test_plan_reports_malformed_loaded_service_as_structured_failure(
+    fixture: Fixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    runner = FakeLaunchd(fixture)
+
+    def malformed_launch(
+        _args: argparse.Namespace, _runner: cutover.checkpoint.Runner
+    ) -> dict[str, object]:
+        return {
+            "state": "LOADED",
+            "target": f"{DOMAIN}/{cutover.LABEL}",
+            "raw": f"{DOMAIN}/{cutover.LABEL} = {{\n    malformed\n}}\n",
+        }
+
+    monkeypatch.setattr(
+        cutover.checkpoint,
+        "launch_snapshot",
+        malformed_launch,
+    )
+
+    result = cutover.build_plan(fixture.config, runner=runner)
+
+    assert result["status"] == "FAIL"
+    failures = cast(list[object], result["failures"])
+    assert any("old_state" in str(failure) for failure in failures)
+    assert _object(result["launchd"])["loaded_binding"] is None
+    assert runner.mutation_calls == []
+
+
+def test_plan_rejects_a_venv_interpreter_that_resolves_outside_the_release(
+    fixture: Fixture,
+) -> None:
+    runner = FakeLaunchd(fixture)
+    external = fixture.root / "external-python"
+    external.write_text("#!/bin/sh\n", encoding="utf-8")
+    external.chmod(0o700)
+    interpreter = fixture.new / ".venv/bin/python"
+    interpreter.unlink()
+    interpreter.symlink_to(external)
+
+    result = cutover.build_plan(fixture.config, runner=runner)
+
+    assert result["status"] == "FAIL"
+    failures = cast(list[object], result["failures"])
+    assert any("outside the source worktree" in str(failure) for failure in failures)
+    assert runner.mutation_calls == []
+
+
+def test_apply_duplicate_and_receipt_bound_rollback_are_hermetic(fixture: Fixture) -> None:
+    runner = FakeLaunchd(fixture)
+    plan = cutover.build_plan(fixture.config, runner=runner)
+    assert plan["status"] == "PASS"
+
+    applied = cutover.apply(fixture.config, plan=plan, runner=runner)
+
+    assert applied["status"] == "SUCCESS"
+    assert runner.loaded is True
+    assert runner.loaded_source == fixture.new
+    assert runner.enabled is True
+    _assert_business_state_unchanged(fixture)
+    after = _object(applied["after"])
+    plist = _object(after["plist"])
+    assert plist["sha256"] == hashlib.sha256(fixture.plist_path.read_bytes()).hexdigest()
+    receipt = json.loads(fixture.receipt_path.read_text(encoding="utf-8"))
+    assert receipt["status"] == "SUCCESS"
+    assert stat.S_IMODE(fixture.receipt_path.stat().st_mode) == 0o600
+    mutation_count = len(runner.mutation_calls)
+
+    duplicate = cutover.apply(fixture.config, plan=plan, runner=runner)
+
+    assert duplicate["status"] == "ALREADY_APPLIED"
+    assert len(runner.mutation_calls) == mutation_count
+    assert all(
+        call[1] in {"disable", "bootout", "bootstrap", "enable"} for call in runner.mutation_calls
+    )
+    assert runner.mutation_calls == [
+        ("launchctl", "disable", f"{DOMAIN}/{cutover.LABEL}"),
+        ("launchctl", "bootout", f"{DOMAIN}/{cutover.LABEL}"),
+        ("launchctl", "enable", f"{DOMAIN}/{cutover.LABEL}"),
+        ("launchctl", "bootstrap", DOMAIN, str(fixture.plist_path)),
+    ]
+
+    rolled_back = cutover.rollback(fixture.config, receipt=receipt, runner=runner)
+
+    assert rolled_back["status"] == "ROLLBACK_SUCCESS"
+    assert runner.loaded is True
+    assert runner.loaded_source == fixture.old
+    assert runner.enabled is True
+    assert fixture.plist_path.read_bytes() == fixture.old_plist_bytes
+    assert rolled_back["business_state"] == "UNCHANGED"
+    _assert_business_state_unchanged(fixture)
+    rollback_after = _object(rolled_back["after"])
+    assert (
+        _object(rollback_after["plist"])["sha256"]
+        == hashlib.sha256(fixture.old_plist_bytes).hexdigest()
+    )
+    rolled_receipt = json.loads(fixture.receipt_path.read_text(encoding="utf-8"))
+    assert rolled_receipt["status"] == "ROLLBACK_SUCCESS"
+
+    duplicate_rollback = cutover.rollback(fixture.config, runner=runner)
+    assert duplicate_rollback["status"] == "ALREADY_ROLLED_BACK"
+
+
+def test_duplicate_apply_revalidates_the_receipt_bound_source(fixture: Fixture) -> None:
+    runner = FakeLaunchd(fixture)
+    plan = cutover.build_plan(fixture.config, runner=runner)
+    applied = cutover.apply(fixture.config, plan=plan, runner=runner)
+    assert applied["status"] == "SUCCESS"
+    mutation_count = len(runner.mutation_calls)
+    runner.status_by_path[fixture.new] = " M drifted-after-apply.py\n"
+
+    with pytest.raises(cutover.CutoverSafetyError, match="existing-new source is not clean"):
+        cutover.apply(fixture.config, plan=plan, runner=runner)
+
+    assert len(runner.mutation_calls) == mutation_count
+
+
+def test_apply_rejects_a_plan_that_differs_from_the_existing_receipt(
+    fixture: Fixture,
+) -> None:
+    runner = FakeLaunchd(fixture)
+    plan = cutover.build_plan(fixture.config, runner=runner)
+    applied = cutover.apply(fixture.config, plan=plan, runner=runner)
+    assert applied["status"] == "SUCCESS"
+    different_plan = copy.deepcopy(plan)
+    different_prestate = _object(different_plan["prestate"])
+    different_prestate["old_enabled"] = False
+    prestate_digest = cast(Callable[[dict[str, object]], str], vars(cutover)["_prestate_digest"])(
+        different_prestate
+    )
+    different_plan["prestate_digest"] = prestate_digest
+    target = _object(different_plan["target"])
+    new_source = _object(_object(different_plan["source"])["new"])
+    plan_digest = cast(Callable[[object], str], vars(cutover)["_sha256_json"])(
+        {
+            "schema_version": cutover.PLAN_SCHEMA_VERSION,
+            "target": target,
+            "prestate_digest": prestate_digest,
+            "new_source": new_source,
+            "new_plist_sha256": different_prestate["new_plist_sha256"],
+        }
+    )
+    different_plan["plan_digest"] = plan_digest
+    mutation_count = len(runner.mutation_calls)
+
+    with pytest.raises(cutover.CutoverSafetyError, match="plan prestate drifted"):
+        cutover.apply(fixture.config, plan=different_plan, runner=runner)
+
+    assert len(runner.mutation_calls) == mutation_count
+
+
+def test_apply_reconciles_a_completed_receipt_for_the_next_cutover(fixture: Fixture) -> None:
+    runner = FakeLaunchd(fixture)
+    first_plan = cutover.build_plan(fixture.config, runner=runner)
+    first = cutover.apply(fixture.config, plan=first_plan, runner=runner)
+    assert first["status"] == "SUCCESS"
+
+    next_config = replace(
+        fixture.config,
+        source_worktree=fixture.old,
+        expected_head=OLD_HEAD,
+        expected_tree=OLD_TREE,
+        durable_ref=f"refs/heads/runtime/b649/{OLD_HEAD}",
+    )
+    next_plan = cutover.build_plan(next_config, runner=runner)
+    assert next_plan["status"] == "PASS"
+
+    second = cutover.apply(next_config, plan=next_plan, runner=runner)
+
+    assert second["status"] == "SUCCESS"
+    assert runner.loaded_source == fixture.old
+    assert fixture.plist_path.read_bytes() == fixture.old_plist_bytes
+    receipt = json.loads(fixture.receipt_path.read_text(encoding="utf-8"))
+    assert receipt["plan_digest"] == next_plan["plan_digest"]
+
+
+def test_apply_recovery_is_not_reported_as_cli_success(
+    fixture: Fixture, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    def fake_config(
+        _args: argparse.Namespace, *, source_worktree: Path | None = None
+    ) -> cutover.CutoverConfig:
+        del source_worktree
+        return fixture.config
+
+    def recovered_apply(*_args: object, **_kwargs: object) -> dict[str, object]:
+        return {"status": "RECOVERED"}
+
+    monkeypatch.setattr(cutover, "_config_from_args", fake_config)
+    monkeypatch.setattr(cutover, "apply", recovered_apply)
+
+    exit_code = cutover.main(
+        ["apply", "--source-worktree", str(fixture.new)], runner=FakeLaunchd(fixture)
+    )
+
+    assert exit_code == 1
+    assert '"status":"RECOVERED"' in capsys.readouterr().out
+
+
+def test_cli_receipt_file_is_compared_to_the_canonical_receipt(
+    fixture: Fixture, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    runner = FakeLaunchd(fixture)
+    plan = cutover.build_plan(fixture.config, runner=runner)
+    applied = cutover.apply(fixture.config, plan=plan, runner=runner)
+    assert applied["status"] == "SUCCESS"
+    forged = json.loads(fixture.receipt_path.read_text(encoding="utf-8"))
+    forged["operation_id"] = "forged-receipt"
+    alternate = fixture.root / "forged-receipt.json"
+    alternate.write_text(json.dumps(forged), encoding="utf-8")
+    alternate.chmod(0o600)
+
+    def fake_config(
+        _args: argparse.Namespace, *, source_worktree: Path | None = None
+    ) -> cutover.CutoverConfig:
+        del source_worktree
+        return fixture.config
+
+    monkeypatch.setattr(cutover, "_config_from_args", fake_config)
+
+    exit_code = cutover.main(["rollback", "--receipt-file", str(alternate)], runner=runner)
+
+    assert exit_code == 1
+    assert "supplied receipt differs from the durable receipt" in capsys.readouterr().out
+    assert len(runner.mutation_calls) == 4
+
+
+def test_apply_isolated_to_the_exact_b649_launchagent_target(fixture: Fixture) -> None:
+    runner = FakeLaunchd(fixture)
+    allowed_mutations = {
+        ("launchctl", "disable", fixture.config.target),
+        ("launchctl", "bootout", fixture.config.target),
+        ("launchctl", "bootstrap", fixture.config.launch_domain, str(fixture.plist_path)),
+        ("launchctl", "enable", fixture.config.target),
+    }
+
+    def guarded_runner(argv: Sequence[str]) -> subprocess.CompletedProcess[str]:
+        args = tuple(argv)
+        if (
+            args[:2] == ("launchctl", "disable")
+            or args[:2]
+            == (
+                "launchctl",
+                "bootout",
+            )
+            or args[:2] == ("launchctl", "bootstrap")
+            or args[:2] == ("launchctl", "enable")
+        ):
+            assert args in allowed_mutations
+        return runner(args)
+
+    plan = cutover.build_plan(fixture.config, runner=guarded_runner)
+    applied = cutover.apply(fixture.config, plan=plan, runner=guarded_runner)
+
+    assert applied["status"] == "SUCCESS"
+    assert set(runner.mutation_calls) <= allowed_mutations
+    assert all(
+        call[-1] == fixture.config.target
+        for call in runner.mutation_calls
+        if call[1] in {"disable", "bootout", "enable"}
+    )
+
+
+def test_concurrent_apply_is_rejected_by_the_serialization_lock(fixture: Fixture) -> None:
+    runner = FakeLaunchd(fixture)
+    plan = cutover.build_plan(fixture.config, runner=runner)
+    assert plan["status"] == "PASS"
+
+    with cutover.CutoverLock(fixture.config.cutover_lock_path):
+        result = cutover.apply(fixture.config, plan=plan, runner=runner)
+
+    assert result["status"] == "NOT_STARTED"
+    failures = cast(list[object], result["failures"])
+    assert any("CONCURRENT_APPLY" in str(failure) for failure in failures)
+    assert runner.mutation_calls == []
+    assert not fixture.receipt_path.exists()
+
+
+@pytest.mark.parametrize(
+    ("loaded", "enabled", "verbs"),
+    [
+        (True, True, ["disable", "bootout", "enable", "bootstrap"]),
+        (True, False, ["bootout", "enable", "bootstrap", "disable"]),
+        (False, True, ["disable", "enable"]),
+        (False, False, []),
+    ],
+)
+def test_apply_and_rollback_preserve_loaded_and_enabled_prestate(
+    fixture: Fixture, loaded: bool, enabled: bool, verbs: list[str]
+) -> None:
+    runner = FakeLaunchd(fixture, loaded=loaded, enabled=enabled)
+    plan = cutover.build_plan(fixture.config, runner=runner)
+    assert plan["status"] == "PASS"
+    assert _object(plan["launchd"])["old_state"] == ("LOADED" if loaded else "UNLOADED")
+    assert _object(plan["launchd"])["old_enabled"] is enabled
+
+    applied = cutover.apply(fixture.config, plan=plan, runner=runner)
+
+    assert applied["status"] == "SUCCESS"
+    assert runner.loaded is loaded
+    assert runner.enabled is enabled
+    assert [call[1] for call in runner.mutation_calls] == verbs
+    mutation_count = len(runner.mutation_calls)
+    after = _object(applied["after"])
+    assert _object(after["launchd"])["state"] == ("LOADED" if loaded else "UNLOADED")
+    assert after["enabled"] is enabled
+    receipt = json.loads(fixture.receipt_path.read_text(encoding="utf-8"))
+
+    rolled_back = cutover.rollback(fixture.config, receipt=receipt, runner=runner)
+
+    assert rolled_back["status"] == "ROLLBACK_SUCCESS"
+    assert runner.loaded is loaded
+    assert runner.enabled is enabled
+    assert [call[1] for call in runner.mutation_calls[mutation_count:]] == verbs
+    after = _object(rolled_back["after"])
+    assert _object(after["launchd"])["state"] == ("LOADED" if loaded else "UNLOADED")
+    assert after["enabled"] is enabled
+    assert fixture.plist_path.read_bytes() == fixture.old_plist_bytes
+    _assert_business_state_unchanged(fixture)
+
+
+@pytest.mark.parametrize("with_zombie", [False, True])
+def test_plan_rejects_active_shadow_before_any_mutation(
+    fixture: Fixture, with_zombie: bool
+) -> None:
+    runner = FakeLaunchd(fixture)
+    runner.process_rows = [f"424242 1 {UID} S {fixture.old}/tools/b649_pair_rule_forward_shadow.py"]
+    if with_zombie:
+        runner.process_rows.append(f"424243 1 {UID} Z <defunct>")
+
+    result = cutover.build_plan(fixture.config, runner=runner)
+
+    assert result["status"] == "FAIL"
+    failures = cast(list[object], result["failures"])
+    assert any("old_state" in str(failure) for failure in failures)
+    ownership = _object(result["ownership"])
+    assert _object(ownership["shadow"])["classification"] == "PRESENT"
+    assert _object(ownership["primary_lock"])["state"] == "IDLE"
+    assert runner.mutation_calls == []
+
+
+@pytest.mark.parametrize("state", ["Z", "Z+"])
+@pytest.mark.parametrize("stale_scheduler", [False, True])
+def test_plan_passes_with_verified_zombie_only(
+    fixture: Fixture, state: str, stale_scheduler: bool
+) -> None:
+    runner = FakeLaunchd(fixture)
+    command = (
+        f"python {fixture.old}/tools/b649_goalc_local_scheduler.py run"
+        if stale_scheduler
+        else "<defunct>"
+    )
+    runner.process_rows.append(f"424243 1 {UID} {state} {command}")
+    result = cutover.build_plan(fixture.config, runner=runner)
+    assert result["status"] == "PASS", result["failures"]
+    assert result["failures"] == []
+    ownership = _object(result["ownership"])
+    for role in ("runtime", "primary", "scheduler", "shadow"):
+        assert _object(ownership[role]) == {"classification": "ABSENT", "pids": []}
+    process = _object(ownership["process"])
+    assert process["zombie_pids"] == [424243]
+    assert process["uncertainties"] == []
+    assert runner.mutation_calls == []
+    assert fixture.plist_path.read_bytes() == fixture.old_plist_bytes
+    assert not fixture.receipt_path.exists()
+    assert not fixture.cutover_lock_path.exists()
+    _assert_business_state_unchanged(fixture)
+
+
+@pytest.mark.parametrize("state", ["S", "R"])
+@pytest.mark.parametrize("stale_scheduler", [False, True])
+def test_plan_still_blocks_live_zombie_lookalike(
+    fixture: Fixture, state: str, stale_scheduler: bool
+) -> None:
+    runner = FakeLaunchd(fixture)
+    command = (
+        f"python {fixture.old}/tools/b649_goalc_local_scheduler.py run"
+        if stale_scheduler
+        else "<defunct>"
+    )
+    runner.process_rows.append(f"424243 1 {UID} {state} {command}")
+    result = cutover.build_plan(fixture.config, runner=runner)
+    expected = "PRESENT" if stale_scheduler else "UNVERIFIABLE"
+    assert result["status"] == "FAIL"
+    assert result["failures"] == [
+        f"old_state: ActiveCycleError: runtime ownership is not idle: {expected}"
+    ]
+    assert runner.mutation_calls == []
+
+
+@pytest.mark.parametrize("evidence", ["cwd", "primary", "shadow"])
+def test_plan_blocks_zombie_with_inconsistent_evidence(fixture: Fixture, evidence: str) -> None:
+    runner = FakeLaunchd(fixture)
+    runner.process_rows.append(f"424243 1 {UID} Z <defunct>")
+    path = {
+        "cwd": fixture.old,
+        "primary": fixture.primary_lock_path,
+        "shadow": fixture.shadow_lock_path,
+    }[evidence]
+    runner.file_rows.extend(["p424243", "fcwd" if evidence == "cwd" else "f3", f"n{path}"])
+    result = cutover.build_plan(fixture.config, runner=runner)
+    assert result["status"] == "FAIL"
+    assert result["failures"] == [
+        "old_state: ActiveCycleError: runtime ownership is not idle: UNVERIFIABLE"
+    ]
+    assert runner.mutation_calls == []
+
+
+@pytest.mark.parametrize("state", ["", "Zinvalid"])
+def test_plan_blocks_missing_or_malformed_process_state(fixture: Fixture, state: str) -> None:
+    runner = FakeLaunchd(fixture)
+    runner.process_rows.append(f"424243 1 {UID} {state} <defunct>")
+    result = cutover.build_plan(fixture.config, runner=runner)
+    assert result["status"] == "FAIL"
+    assert result["failures"] == ["old_state: Unverifiable: unparseable process table row"]
+    assert runner.mutation_calls == []
+
+
+def test_plan_passes_when_only_passive_git_fsmonitor_daemon_is_present(
+    fixture: Fixture,
+) -> None:
+    git_executable = shutil.which("git")
+    assert git_executable is not None
+    git_executable = str(Path(git_executable).resolve(strict=True))
+    runner = FakeLaunchd(fixture)
+    runner.process_rows = [
+        (f"10793 1 {UID} S {git_executable} fsmonitor--daemon run --detach --ipc-threads=8")
+    ]
+    runner.file_rows = [
+        "p10793",
+        "fcwd",
+        "n/Users/kelvin",
+        "ftxt",
+        f"n{git_executable}",
+        "ftxt",
+        f"n{sys.executable}",
+        "f4",
+        f"n{fixture.old}",
+    ]
+
+    result = cutover.build_plan(fixture.config, runner=runner)
+
+    assert result["status"] == "PASS", result.get("failures")
+    assert result["failures"] == []
+    ownership = _object(result["ownership"])
+    assert _object(ownership["runtime"])["classification"] == "ABSENT"
+    assert _object(ownership["primary"])["classification"] == "ABSENT"
+    assert _object(ownership["scheduler"])["classification"] == "ABSENT"
+    assert _object(ownership["shadow"])["classification"] == "ABSENT"
+    assert runner.mutation_calls == []
+
+
+def test_apply_race_after_disable_becomes_recovery_required_without_kill(
+    fixture: Fixture,
+) -> None:
+    runner = FakeLaunchd(fixture)
+    plan = cutover.build_plan(fixture.config, runner=runner)
+    assert plan["status"] == "PASS"
+
+    def make_scheduler_active(args: tuple[str, ...]) -> None:
+        if args[1] == "disable":
+            runner.process_rows = [
+                f"424242 1 {UID} S {fixture.old}/tools/b649_goalc_local_scheduler.py"
+            ]
+
+    runner.after_mutation = make_scheduler_active
+    result = cutover.apply(fixture.config, plan=plan, runner=runner)
+
+    assert result["status"] == "RECOVERY_REQUIRED"
+    mutation_summary = _object(result["mutation_summary"])
+    assert mutation_summary["launchd"] is True
+    assert mutation_summary["plist"] is False
+    assert fixture.plist_path.read_bytes() == fixture.old_plist_bytes
+    assert not any(
+        call[1] in {"bootout", "bootstrap", "enable", "kill"}
+        for call in runner.calls
+        if call[0] == "launchctl"
+    )
+    receipt = json.loads(fixture.receipt_path.read_text(encoding="utf-8"))
+    assert receipt["status"] == "RECOVERY_REQUIRED"
+    assert receipt["mutation_summary"]["launchd"] is True
+
+    runner.process_rows = [f"424242 1 {UID} S /usr/bin/fixture-shell"]
+    recovered = cutover.rollback(fixture.config, runner=runner)
+
+    assert recovered["status"] == "ROLLBACK_SUCCESS"
+    assert runner.loaded_source == fixture.old
+    assert runner.enabled is True
+
+
+def test_apply_unloaded_enabled_race_is_detected_before_plist_replacement(
+    fixture: Fixture,
+) -> None:
+    runner = FakeLaunchd(fixture, loaded=False, enabled=True)
+    plan = cutover.build_plan(fixture.config, runner=runner)
+    assert plan["status"] == "PASS"
+
+    def make_scheduler_active(args: tuple[str, ...]) -> None:
+        if args[1] == "disable":
+            runner.process_rows = [
+                f"424242 1 {UID} S {fixture.old}/tools/b649_goalc_local_scheduler.py"
+            ]
+
+    runner.after_mutation = make_scheduler_active
+    result = cutover.apply(fixture.config, plan=plan, runner=runner)
+
+    assert result["status"] == "RECOVERY_REQUIRED"
+    assert fixture.plist_path.read_bytes() == fixture.old_plist_bytes
+    assert runner.mutation_calls == [
+        ("launchctl", "disable", fixture.config.target),
+    ]
+    assert not any(action["name"] == "install-plist" for action in _objects(result["actions"]))
+
+
+def test_apply_interruption_after_launchd_mutation_leaves_started_receipt(
+    fixture: Fixture,
+) -> None:
+    runner = FakeLaunchd(fixture)
+    plan = cutover.build_plan(fixture.config, runner=runner)
+    assert plan["status"] == "PASS"
+    staged_statuses: list[object] = []
+
+    def interrupt_after_disable(args: tuple[str, ...]) -> None:
+        if args[1] == "disable":
+            staged_statuses.append(
+                json.loads(fixture.receipt_path.read_text(encoding="utf-8"))["status"]
+            )
+            runner.after_mutation = None
+            raise KeyboardInterrupt("synthetic interruption after disable")
+
+    runner.after_mutation = interrupt_after_disable
+    result = cutover.apply(fixture.config, plan=plan, runner=runner)
+
+    assert result["status"] == "RECOVERED"
+    assert staged_statuses == ["IN_PROGRESS"]
+    receipt = json.loads(fixture.receipt_path.read_text(encoding="utf-8"))
+    assert receipt["status"] == "RECOVERED"
+    assert receipt["phase"] == "COMPLETED"
+    interrupted = next(
+        action for action in _objects(result["actions"]) if action["name"] == "disable-before-apply"
+    )
+    assert interrupted["status"] == "INTERRUPTED"
+    assert interrupted["interrupted"] is True
+    assert interrupted["mutation"] is True
+    assert runner.enabled is True
+    assert runner.loaded_source == fixture.old
+    assert fixture.plist_path.read_bytes() == fixture.old_plist_bytes
+    _assert_business_state_unchanged(fixture)
+
+
+@pytest.mark.parametrize("verb", ["disable", "bootout", "enable"])
+def test_apply_launchd_mutation_boundary_failures_are_explicit(fixture: Fixture, verb: str) -> None:
+    runner = FakeLaunchd(
+        fixture,
+        fail_command_once=("launchctl", verb, fixture.config.target),
+    )
+    plan = cutover.build_plan(fixture.config, runner=runner)
+    assert plan["status"] == "PASS"
+
+    result = cutover.apply(fixture.config, plan=plan, runner=runner)
+
+    expected_status = "RECOVERED"
+    assert result["status"] == expected_status
+    receipt = json.loads(fixture.receipt_path.read_text(encoding="utf-8"))
+    assert receipt["status"] == expected_status
+    assert all(
+        call[0] == "launchctl"
+        and (
+            (call[1] in {"disable", "bootout", "enable"} and call[2] == fixture.config.target)
+            or (
+                call[1] == "bootstrap"
+                and call[2] == fixture.config.launch_domain
+                and call[3] == str(fixture.plist_path)
+            )
+        )
+        for call in runner.mutation_calls
+    )
+    assert not any(call[1] == "kill" for call in runner.mutation_calls)
+
+
+@pytest.mark.parametrize("loaded", [False, True])
+@pytest.mark.parametrize("enabled", [False, True])
+def test_apply_post_replace_failure_is_counted_and_recovered(
+    fixture: Fixture, monkeypatch: pytest.MonkeyPatch, loaded: bool, enabled: bool
+) -> None:
+    runner = FakeLaunchd(fixture, loaded=loaded, enabled=enabled)
+    plan = cutover.build_plan(fixture.config, runner=runner)
+    assert plan["status"] == "PASS"
+    original_atomic_write = cast(
+        Callable[..., cutover.FileIdentity], vars(cutover)["_atomic_write"]
+    )
+    raised = False
+
+    def replace_then_raise(
+        path: Path,
+        data: bytes,
+        *,
+        expected: cutover.FileIdentity | None,
+    ) -> cutover.FileIdentity:
+        nonlocal raised
+        identity = original_atomic_write(path, data, expected=expected)
+        if path == fixture.plist_path and data != fixture.old_plist_bytes and not raised:
+            raised = True
+            raise OSError("failure after plist replace")
+        return identity
+
+    monkeypatch.setattr(cutover, "_atomic_write", replace_then_raise)
+    result = cutover.apply(fixture.config, plan=plan, runner=runner)
+
+    assert result["status"] == "RECOVERED"
+    assert fixture.plist_path.read_bytes() == fixture.old_plist_bytes
+    assert runner.loaded_source == fixture.old
+    assert runner.loaded is loaded
+    assert runner.enabled is enabled
+    after = _object(result["after"])
+    assert _object(after["launchd"])["state"] == ("LOADED" if loaded else "UNLOADED")
+    assert after["enabled"] is enabled
+    names = [action["name"] for action in _objects(result["actions"])]
+    assert "install-plist" in names
+    assert "restore-plist" in names
+    install = next(
+        action for action in _objects(result["actions"]) if action["name"] == "install-plist"
+    )
+    assert install["after_observation"] == "OBSERVED"
+    assert _object(install["after"])["sha256"] == _object(plan["prestate"])["new_plist_sha256"]
+    _assert_business_state_unchanged(fixture)
+    assert bool(runner.mutation_calls) is (loaded or enabled)
+    assert result["mutation_summary"] == {
+        "launchd": True,
+        "plist": True,
+        "control_files": True,
+    }
+
+
+def test_apply_source_drift_after_plist_install_blocks_new_bootstrap(
+    fixture: Fixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    runner = FakeLaunchd(fixture)
+    plan = cutover.build_plan(fixture.config, runner=runner)
+    assert plan["status"] == "PASS"
+    original_atomic_write = cast(
+        Callable[..., cutover.FileIdentity], vars(cutover)["_atomic_write"]
+    )
+
+    def install_then_drift(
+        path: Path,
+        data: bytes,
+        *,
+        expected: cutover.FileIdentity | None,
+    ) -> cutover.FileIdentity:
+        identity = original_atomic_write(path, data, expected=expected)
+        if path == fixture.plist_path and data != fixture.old_plist_bytes:
+            runner.status_by_path[fixture.new] = " M drifted-before-bootstrap.py\n"
+        return identity
+
+    monkeypatch.setattr(cutover, "_atomic_write", install_then_drift)
+    result = cutover.apply(fixture.config, plan=plan, runner=runner)
+
+    assert result["status"] == "RECOVERED"
+    assert fixture.plist_path.read_bytes() == fixture.old_plist_bytes
+    assert runner.loaded_source == fixture.old
+    assert not any(action["name"] == "bootstrap-new" for action in _objects(result["actions"]))
+
+
+def test_apply_active_cycle_after_enable_blocks_bootstrap(fixture: Fixture) -> None:
+    runner = FakeLaunchd(fixture)
+    plan = cutover.build_plan(fixture.config, runner=runner)
+    assert plan["status"] == "PASS"
+
+    def make_scheduler_active(args: tuple[str, ...]) -> None:
+        if args[1] == "enable":
+            runner.process_rows = [
+                f"424242 1 {UID} S {fixture.new}/tools/b649_goalc_local_scheduler.py"
+            ]
+
+    runner.after_mutation = make_scheduler_active
+    result = cutover.apply(fixture.config, plan=plan, runner=runner)
+
+    assert result["status"] == "RECOVERY_REQUIRED"
+    assert any(call[1] == "enable" for call in runner.mutation_calls)
+    assert not any(call[1] == "bootstrap" for call in runner.mutation_calls)
+    assert not any(call[1] == "kill" for call in runner.mutation_calls)
+
+
+@pytest.mark.parametrize("operation", ["apply", "recovery", "rollback"])
+@pytest.mark.parametrize("enabled", [False, True])
+def test_transition_accepts_run_at_load_activity(
+    fixture: Fixture, operation: str, enabled: bool
+) -> None:
+    runner = FakeLaunchd(fixture, enabled=enabled)
+    plan = cutover.build_plan(fixture.config, runner=runner)
+    assert plan["status"] == "PASS"
+    if operation == "rollback":
+        assert cutover.apply(fixture.config, plan=plan, runner=runner)["status"] == "SUCCESS"
+    runner.fail_bootstrap_new_once = operation == "recovery"
+
+    def run_at_load(args: tuple[str, ...]) -> None:
+        if args[1] == "bootstrap":
+            runner.process_rows = [
+                f"424242 1 {UID} S {runner.loaded_source}/tools/b649_goalc_local_scheduler.py"
+            ]
+
+    runner.after_mutation = run_at_load
+    result = (
+        cutover.rollback(fixture.config, runner=runner)
+        if operation == "rollback"
+        else cutover.apply(fixture.config, plan=plan, runner=runner)
+    )
+
+    assert (
+        result["status"]
+        == {
+            "apply": "SUCCESS",
+            "recovery": "RECOVERED",
+            "rollback": "ROLLBACK_SUCCESS",
+        }[operation]
+    )
+    expected_source = fixture.new if operation == "apply" else fixture.old
+    assert runner.loaded is True
+    assert runner.loaded_source == expected_source
+    assert runner.enabled is enabled
+    assert runner.process_rows == [
+        f"424242 1 {UID} S {expected_source}/tools/b649_goalc_local_scheduler.py"
+    ]
+    after = _object(result["after"])
+    assert _object(after["launchd"])["state"] == "LOADED"
+    assert after["enabled"] is enabled
+    assert not any(call[1] in {"kickstart", "kill"} for call in runner.mutation_calls)
+    _assert_business_state_unchanged(fixture)
+
+
+@pytest.mark.parametrize("operation", ["apply", "recovery", "rollback"])
+def test_transition_rejects_wrong_loaded_binding_after_bootstrap(
+    fixture: Fixture, operation: str
+) -> None:
+    runner = FakeLaunchd(fixture)
+    plan = cutover.build_plan(fixture.config, runner=runner)
+    assert plan["status"] == "PASS"
+    if operation == "rollback":
+        assert cutover.apply(fixture.config, plan=plan, runner=runner)["status"] == "SUCCESS"
+    runner.fail_bootstrap_new_once = operation == "recovery"
+
+    def load_wrong_source(args: tuple[str, ...]) -> None:
+        if args[1] == "bootstrap":
+            runner.loaded_source = fixture.old if operation == "apply" else fixture.new
+
+    runner.after_mutation = load_wrong_source
+    result = (
+        cutover.rollback(fixture.config, runner=runner)
+        if operation == "rollback"
+        else cutover.apply(fixture.config, plan=plan, runner=runner)
+    )
+
+    assert result["status"] == "RECOVERY_REQUIRED"
+    failures = cast(list[object], result["failures"])
+    assert any("loaded LaunchAgent runtime tuple differs" in str(f) for f in failures)
+    assert not any(call[1] in {"kickstart", "kill"} for call in runner.mutation_calls)
+    _assert_business_state_unchanged(fixture)
+
+
+def test_same_root_resolves_parent_escape_paths(fixture: Fixture) -> None:
+    same_root = cast(
+        Callable[[dict[str, object], dict[str, object]], bool], vars(cutover)["_same_root"]
+    )
+    runtime: dict[str, object] = {
+        "working_directory": str(fixture.old),
+        "interpreter": str(fixture.old / ".venv/bin/python"),
+        "script": str(fixture.old / "tools/b649_goalc_local_scheduler.py"),
+        "pythonpath": str(fixture.old / "src"),
+    }
+    escaped = dict(runtime)
+    escaped["script"] = str(fixture.old / "../outside-scheduler.py")
+    source: dict[str, object] = {"source_worktree": str(fixture.old)}
+
+    assert same_root(runtime, source) is True
+    assert same_root(escaped, source) is False
+
+
+def test_apply_receipt_prestage_write_failure_has_no_runtime_mutation(
+    fixture: Fixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    runner = FakeLaunchd(fixture)
+    plan = cutover.build_plan(fixture.config, runner=runner)
+    assert plan["status"] == "PASS"
+
+    def fail_save(
+        _config: cutover.CutoverConfig,
+        _receipt: dict[str, object],
+        *,
+        expected: cutover.FileIdentity | None,
+    ) -> cutover.FileIdentity:
+        del expected
+        raise OSError("receipt unavailable")
+
+    monkeypatch.setattr(cutover, "_save_receipt", fail_save)
+    result = cutover.apply(fixture.config, plan=plan, runner=runner)
+
+    assert result["status"] == "NOT_STARTED"
+    assert runner.mutation_calls == []
+    assert not fixture.receipt_path.exists()
+
+
+def test_apply_final_receipt_write_failure_persists_recovery_provenance(
+    fixture: Fixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    runner = FakeLaunchd(fixture)
+    plan = cutover.build_plan(fixture.config, runner=runner)
+    assert plan["status"] == "PASS"
+    original_save = cast(Callable[..., cutover.FileIdentity], vars(cutover)["_save_receipt"])
+    save_count = 0
+
+    def fail_final_save(
+        config: cutover.CutoverConfig,
+        receipt: dict[str, object],
+        *,
+        expected: cutover.FileIdentity | None,
+    ) -> cutover.FileIdentity:
+        nonlocal save_count
+        save_count += 1
+        if save_count == 2:
+            raise OSError("final receipt unavailable")
+        return original_save(config, receipt, expected=expected)
+
+    monkeypatch.setattr(cutover, "_save_receipt", fail_final_save)
+    result = cutover.apply(fixture.config, plan=plan, runner=runner)
+
+    assert result["status"] == "RECOVERY_REQUIRED"
+    assert runner.loaded_source == fixture.new
+    assert fixture.plist_path.read_bytes() != fixture.old_plist_bytes
+    durable_receipt = json.loads(fixture.receipt_path.read_text(encoding="utf-8"))
+    assert durable_receipt["status"] == "RECOVERY_REQUIRED"
+    assert durable_receipt["after"] == result["after"]
+
+
+def test_rollback_receipt_prestage_failure_is_structured(
+    fixture: Fixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    runner = FakeLaunchd(fixture)
+    plan = cutover.build_plan(fixture.config, runner=runner)
+    applied = cutover.apply(fixture.config, plan=plan, runner=runner)
+    assert applied["status"] == "SUCCESS"
+    receipt = json.loads(fixture.receipt_path.read_text(encoding="utf-8"))
+    mutation_count = len(runner.mutation_calls)
+
+    def fail_save(
+        _config: cutover.CutoverConfig,
+        _receipt: dict[str, object],
+        *,
+        expected: cutover.FileIdentity | None,
+    ) -> cutover.FileIdentity:
+        del expected
+        raise OSError("rollback receipt unavailable")
+
+    monkeypatch.setattr(cutover, "_save_receipt", fail_save)
+    result = cutover.rollback(fixture.config, receipt=receipt, runner=runner)
+
+    assert result["status"] == "RECOVERY_REQUIRED"
+    assert len(runner.mutation_calls) == mutation_count
+    assert fixture.plist_path.read_bytes() != fixture.old_plist_bytes
+
+
+def test_apply_bootstrap_failure_has_explicit_recovery(fixture: Fixture) -> None:
+    runner = FakeLaunchd(fixture, fail_bootstrap_new_once=True)
+    plan = cutover.build_plan(fixture.config, runner=runner)
+    assert plan["status"] == "PASS"
+
+    result = cutover.apply(fixture.config, plan=plan, runner=runner)
+
+    assert result["status"] == "RECOVERED"
+    assert runner.loaded is True
+    assert runner.loaded_source == fixture.old
+    assert runner.enabled is True
+    assert fixture.plist_path.read_bytes() == fixture.old_plist_bytes
+    _assert_business_state_unchanged(fixture)
+    names = [action["name"] for action in _objects(result["actions"])]
+    assert "bootstrap-new" in names
+    assert "restore-plist" in names
+    assert result["mutation_summary"] == {
+        "launchd": True,
+        "plist": True,
+        "control_files": True,
+    }
+
+
+def test_rollback_blocks_when_new_release_cycle_is_active(fixture: Fixture) -> None:
+    runner = FakeLaunchd(fixture)
+    plan = cutover.build_plan(fixture.config, runner=runner)
+    applied = cutover.apply(fixture.config, plan=plan, runner=runner)
+    assert applied["status"] == "SUCCESS"
+    receipt = json.loads(fixture.receipt_path.read_text(encoding="utf-8"))
+    runner.process_rows = [f"424242 1 {UID} S {fixture.new}/tools/b649_goalc_local_scheduler.py"]
+    before_mutations = len(runner.mutation_calls)
+
+    result = cutover.rollback(fixture.config, receipt=receipt, runner=runner)
+
+    assert result["status"] == "ROLLBACK_BLOCKED_ACTIVE_CYCLE"
+    assert result["kill_attempted"] is False
+    assert len(runner.mutation_calls) == before_mutations
+    assert fixture.plist_path.read_bytes() != fixture.old_plist_bytes
+
+
+def test_rollback_passes_wrapper_only_ownership_gate_without_mutating_fake(
+    fixture: Fixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    runner = FakeLaunchd(fixture)
+    receipt, new_plist_bytes = _prepare_recovery_required_new_release(fixture, runner)
+    _set_protected_task_checkpoint_ancestor(fixture, runner, monkeypatch)
+
+    def stop_after_ownership_gate(
+        config: cutover.CutoverConfig,
+        gate_runner: FakeLaunchd,
+        source: dict[str, object],
+        expected_runtime: dict[str, object],
+    ) -> dict[str, object]:
+        raise cutover.CutoverSafetyError("test stopped after rollback ownership gate")
+
+    monkeypatch.setattr(cutover, "_assert_runtime_binding", stop_after_ownership_gate)
+
+    try:
+        result = cutover.rollback(fixture.config, receipt=receipt, runner=runner)
+    except cutover.CutoverSafetyError as exc:
+        assert "stopped after rollback ownership gate" in str(exc)
+    else:
+        pytest.fail(f"rollback stopped before the post-gate sentinel: {result!r}")
+
+    assert runner.mutation_calls == []
+    assert fixture.plist_path.read_bytes() == new_plist_bytes
+    persisted_receipt = json.loads(fixture.receipt_path.read_text(encoding="utf-8"))
+    assert persisted_receipt["status"] == "RECOVERY_REQUIRED"
+
+
+def test_rollback_still_blocks_scheduler_with_protected_wrapper_ancestor(
+    fixture: Fixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    runner = FakeLaunchd(fixture)
+    receipt, new_plist_bytes = _prepare_recovery_required_new_release(fixture, runner)
+    _set_protected_task_checkpoint_ancestor(
+        fixture,
+        runner,
+        monkeypatch,
+        live_scheduler=True,
+    )
+
+    result = cutover.rollback(fixture.config, receipt=receipt, runner=runner)
+
+    assert result["status"] == "ROLLBACK_BLOCKED_ACTIVE_CYCLE"
+    assert "runtime ownership is not idle: PRESENT" in cast(list[str], result["failures"])[0]
+    assert runner.mutation_calls == []
+    assert fixture.plist_path.read_bytes() == new_plist_bytes
+    persisted_receipt = json.loads(fixture.receipt_path.read_text(encoding="utf-8"))
+    assert persisted_receipt["status"] == "RECOVERY_REQUIRED"
+
+
+def test_rollback_old_release_drift_fails_before_launchd_mutation(fixture: Fixture) -> None:
+    runner = FakeLaunchd(fixture)
+    plan = cutover.build_plan(fixture.config, runner=runner)
+    applied = cutover.apply(fixture.config, plan=plan, runner=runner)
+    assert applied["status"] == "SUCCESS"
+    receipt = json.loads(fixture.receipt_path.read_text(encoding="utf-8"))
+    runner.status_by_path[fixture.old] = " M old-release.py\n"
+    before_mutations = len(runner.mutation_calls)
+
+    with pytest.raises(cutover.CutoverSafetyError):
+        cutover.rollback(fixture.config, receipt=receipt, runner=runner)
+
+    assert len(runner.mutation_calls) == before_mutations
+    assert fixture.plist_path.read_bytes() != fixture.old_plist_bytes
+
+
+# --- Receipt-bound OLD/PRESTATE legacy-layout compatibility ---------------
+#
+# _validate_bound_source used to reapply config.strict_release_layout's
+# B649_PRODUCTION_<HEAD> release-materialization naming to every role,
+# including the OLD/PRESTATE side during automatic recovery, explicit
+# rollback, and completed-receipt reconciliation -- even though build_plan's
+# and rollback's own inline OLD-role checks already correctly pass
+# strict_release_layout=False for that side. A real production OLD runtime
+# predates that naming convention (see b649-cutover-plan-old-runtime-durable-
+# ref-missing), so those bootstrap-time re-validations rejected it. The tests
+# below cover the fix: an OLD/PRESTATE source with a same-root runtime tuple
+# that resembles the real historical shape -- valid HEAD/tree/durable-ref/
+# cleanliness, only its directory name is not B649_PRODUCTION_<HEAD> -- is
+# now accepted for the OLD role only; the NEW role's layout requirement, and
+# every other OLD-role guard (durable ref, drift, containment), is unchanged.
+
+
+def _scheduler_config_for(fixture: Fixture, source: Path) -> scheduler.SchedulerConfig:
+    """Build the SchedulerConfig for an arbitrary source worktree.
+
+    Mirrors exactly how ``Fixture.__post_init__`` builds its own old
+    scheduler config, parametrized only by the source worktree.
+    """
+
+    return scheduler.SchedulerConfig(
+        label=cutover.LABEL,
+        version=scheduler.TASK_VERSION,
+        canonical_repository=fixture.canonical,
+        source_worktree=source,
+        python_executable=source / ".venv/bin/python",
+        script_path=source / "tools/b649_goalc_local_scheduler.py",
+        operation_root=fixture.operation_root,
+        data_root=fixture.data_root,
+        database=fixture.data_root / "lottolab.db",
+        announcement=fixture.data_root / "pre-outcome-target-announcements-v1.json",
+        scheduler_root=fixture.scheduler_root,
+        lock_path=fixture.primary_lock_path,
+        health_path=fixture.scheduler_root / "health.json",
+        stdout_path=fixture.scheduler_root / "launchd.stdout.log",
+        stderr_path=fixture.scheduler_root / "launchd.stderr.log",
+        plist_path=fixture.plist_path,
+    )
+
+
+def _install_legacy_old(
+    fixture: Fixture, *, name: str = LEGACY_WORKTREE_NAME
+) -> tuple[Path, bytes]:
+    """Materialize a legacy-layout OLD/PRESTATE worktree and install its plist.
+
+    Built with the same ``Fixture.make_source`` as ``fixture.old`` -- a
+    same-root, ordinary in-worktree interpreter -- so only the directory name
+    differs from the ``B649_PRODUCTION_<HEAD>`` convention. Interpreter/
+    PYTHONPATH containment is unchanged by this task and stays out of scope.
+    """
+
+    legacy = fixture.worktree_parent / name
+    Fixture.make_source(legacy)
+    legacy_bytes = scheduler.build_launchd_plist(_scheduler_config_for(fixture, legacy))
+    fixture.plist_path.write_bytes(legacy_bytes)
+    fixture.plist_path.chmod(0o600)
+    return legacy, legacy_bytes
+
+
+def _legacy_runner(fixture: Fixture, legacy: Path) -> FakeLaunchd:
+    runner = FakeLaunchd(fixture, loaded_source=legacy)
+    runner.worktree_identities[legacy] = (LEGACY_HEAD, LEGACY_TREE, True)
+    return runner
+
+
+def _patch_production_paths(monkeypatch: pytest.MonkeyPatch, fixture: Fixture) -> None:
+    """Make strict_release_layout=True's exact-production-path gate in
+    ``_validate_config`` match this hermetic fixture.
+
+    ``strict_release_layout=True`` is the real CLI's actual, hardcoded
+    setting (``_config_from_args``), and it gates two independent things: the
+    ``B649_PRODUCTION_<HEAD>`` release-directory naming this task's fix is
+    about (``_source_layout_error``, keyed only off ``config.
+    canonical_repository``/``source_worktree`` and already hermetic), and a
+    separate exact-path check against real production constants (plist,
+    scheduler/data roots, locks, receipt -- see ``_validate_config``). Only
+    the latter needs patching to exercise strict mode end to end without
+    touching real production paths.
+    """
+
+    monkeypatch.setattr(cutover, "DEFAULT_PLIST_PATH", fixture.plist_path)
+    monkeypatch.setattr(cutover, "DOMAIN", DOMAIN)
+    monkeypatch.setattr(cutover, "DEFAULT_OPERATION_ROOT", fixture.operation_root)
+    monkeypatch.setattr(cutover, "DEFAULT_RECEIPT_PATH", fixture.receipt_path)
+    monkeypatch.setattr(cutover, "DEFAULT_CUTOVER_LOCK_PATH", fixture.cutover_lock_path)
+    monkeypatch.setattr(cutover, "DEFAULT_PRIMARY_LOCK_PATH", fixture.primary_lock_path)
+    monkeypatch.setattr(cutover, "DEFAULT_SHADOW_LOCK_PATH", fixture.shadow_lock_path)
+    # scheduler.production_config() builds its own bare SchedulerConfig from
+    # these same-family module globals before _scheduler_config()'s replace()
+    # ever overrides it with config's fields, and SchedulerConfig.__post_init__
+    # validates that bare construction's internal root/child relationships
+    # immediately -- so GOALC_ROOT and LOCK_PATH must move together with
+    # SCHEDULER_ROOT or that first construction raises before the override.
+    monkeypatch.setattr(scheduler, "GOALC_ROOT", fixture.operation_root)
+    monkeypatch.setattr(scheduler, "SCHEDULER_ROOT", fixture.scheduler_root)
+    monkeypatch.setattr(scheduler, "LOCK_PATH", fixture.primary_lock_path)
+    monkeypatch.setattr(scheduler, "DATA_ROOT", fixture.data_root)
+    monkeypatch.setattr(scheduler, "DATABASE_PATH", fixture.config.database)
+    monkeypatch.setattr(scheduler, "ANNOUNCEMENT_PATH", fixture.config.announcement)
+    monkeypatch.setattr(scheduler, "HEALTH_PATH", fixture.config.health_path)
+    monkeypatch.setattr(scheduler, "STDOUT_PATH", fixture.config.stdout_path)
+    monkeypatch.setattr(scheduler, "STDERR_PATH", fixture.config.stderr_path)
+
+
+def test_validate_bound_source_relaxes_layout_only_for_legacy_prestate(
+    fixture: Fixture,
+) -> None:
+    """The exact seam this fix adds, isolated from the rest of build_plan/apply.
+
+    legacy_prestate=True must relax only the B649_PRODUCTION_<HEAD> layout
+    check, and only when the caller explicitly sets it -- proven by a control
+    call with the identical source and config but legacy_prestate=False.
+    """
+
+    legacy = fixture.worktree_parent / LEGACY_WORKTREE_NAME
+    Fixture.make_source(legacy)
+    runner = FakeLaunchd(fixture)
+    runner.worktree_identities[legacy] = (LEGACY_HEAD, LEGACY_TREE, True)
+    config = replace(fixture.config, strict_release_layout=True)
+    validate_bound_source = cast(
+        Callable[..., dict[str, object]], vars(cutover)["_validate_bound_source"]
+    )
+    source_record: dict[str, object] = {
+        "source_worktree": str(legacy),
+        "head": LEGACY_HEAD,
+        "tree": LEGACY_TREE,
+        "durable_ref": f"refs/heads/runtime/b649/{LEGACY_HEAD}",
+    }
+
+    result = validate_bound_source(
+        config, source_record, runner, role="bootstrap-old", legacy_prestate=True
+    )
+
+    assert result["source_worktree"] == str(legacy)
+
+    with pytest.raises(cutover.CutoverSafetyError, match="B649_PRODUCTION_"):
+        validate_bound_source(
+            config, source_record, runner, role="bootstrap-old", legacy_prestate=False
+        )
+
+
+def test_validate_bound_source_legacy_prestate_still_requires_a_durable_ref(
+    fixture: Fixture,
+) -> None:
+    """legacy_prestate=True relaxes only the layout-naming check: the durable-
+    ref requirement (and everything else _validate_source checks) stays
+    exactly as strict as it is for a NEW role."""
+
+    legacy = fixture.worktree_parent / LEGACY_WORKTREE_NAME
+    Fixture.make_source(legacy)
+    runner = FakeLaunchd(fixture)
+    runner.worktree_identities[legacy] = (LEGACY_HEAD, LEGACY_TREE, False)
+    config = replace(fixture.config, strict_release_layout=True)
+    validate_bound_source = cast(
+        Callable[..., dict[str, object]], vars(cutover)["_validate_bound_source"]
+    )
+    source_record: dict[str, object] = {
+        "source_worktree": str(legacy),
+        "head": LEGACY_HEAD,
+        "tree": LEGACY_TREE,
+        "durable_ref": f"refs/heads/runtime/b649/{LEGACY_HEAD}",
+    }
+
+    with pytest.raises(cutover.CutoverSafetyError, match="git failed"):
+        validate_bound_source(
+            config, source_record, runner, role="bootstrap-old", legacy_prestate=True
+        )
+
+
+def test_plan_fails_for_new_release_with_mismatched_strict_layout_name(
+    fixture: Fixture,
+) -> None:
+    """NEW's release-directory naming requirement is unaffected by this fix.
+
+    ``strict_release_layout=True`` also gates ``_validate_config``'s exact-
+    production-path checks (plist/scheduler/data roots, ...), which only
+    match real production paths and so cannot be exercised through
+    ``build_plan`` without patching them (see
+    ``test_apply_automatic_recovery_restores_a_legacy_layout_old_prestate`` and
+    siblings). Calling ``_validate_source`` directly isolates exactly the
+    release-directory-naming check this test targets.
+    """
+
+    validate_source = cast(Callable[..., dict[str, object]], vars(cutover)["_validate_source"])
+    mismatched = fixture.worktree_parent / "not-the-strict-layout-name"
+    Fixture.make_source(mismatched)
+    runner = FakeLaunchd(fixture)
+    runner.worktree_identities[mismatched] = (NEW_HEAD, NEW_TREE, True)
+    config = replace(fixture.config, source_worktree=mismatched, strict_release_layout=True)
+
+    with pytest.raises(cutover.CutoverSafetyError, match="B649_PRODUCTION_"):
+        validate_source(
+            config,
+            runner,
+            role="new",
+            expected_head=NEW_HEAD,
+            expected_tree=NEW_TREE,
+            expected_ref=config.durable_ref,
+            strict_release_layout=True,
+        )
+
+    assert runner.mutation_calls == []
+
+
+def test_apply_automatic_recovery_restores_a_legacy_layout_old_prestate(
+    fixture: Fixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _patch_production_paths(monkeypatch, fixture)
+    legacy, legacy_bytes = _install_legacy_old(fixture)
+    runner = _legacy_runner(fixture, legacy)
+    runner.fail_bootstrap_new_once = True
+    config = replace(fixture.config, strict_release_layout=True)
+    plan = cutover.build_plan(config, runner=runner)
+    assert plan["status"] == "PASS", plan["failures"]
+
+    result = cutover.apply(config, plan=plan, runner=runner)
+
+    assert result["status"] == "RECOVERED"
+    assert runner.loaded is True
+    assert runner.loaded_source == legacy
+    assert runner.enabled is True
+    assert fixture.plist_path.read_bytes() == legacy_bytes
+    _assert_business_state_unchanged(fixture)
+    names = [action["name"] for action in _objects(result["actions"])]
+    assert "bootstrap-new" in names
+    assert "restore-plist" in names
+
+
+def test_apply_and_explicit_rollback_accept_a_legacy_layout_old_prestate(
+    fixture: Fixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _patch_production_paths(monkeypatch, fixture)
+    legacy, legacy_bytes = _install_legacy_old(fixture)
+    runner = _legacy_runner(fixture, legacy)
+    config = replace(fixture.config, strict_release_layout=True)
+    plan = cutover.build_plan(config, runner=runner)
+    assert plan["status"] == "PASS", plan["failures"]
+
+    applied = cutover.apply(config, plan=plan, runner=runner)
+    assert applied["status"] == "SUCCESS"
+    assert runner.loaded_source == fixture.new
+    receipt = json.loads(fixture.receipt_path.read_text(encoding="utf-8"))
+
+    rolled_back = cutover.rollback(config, receipt=receipt, runner=runner)
+
+    assert rolled_back["status"] == "ROLLBACK_SUCCESS"
+    assert runner.loaded is True
+    assert runner.loaded_source == legacy
+    assert runner.enabled is True
+    assert fixture.plist_path.read_bytes() == legacy_bytes
+    assert rolled_back["business_state"] == "UNCHANGED"
+    _assert_business_state_unchanged(fixture)
+
+
+def test_apply_reconciles_a_completed_legacy_rollback_receipt_for_the_next_cutover(
+    fixture: Fixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """_reconcile_completed_receipt's legacy_prestate=True branch, end to end.
+
+    A receipt whose "after" side is the legacy OLD prestate (the most recent
+    completed operation was a rollback onto it) must reconcile -- and must be
+    proven to actually take the reconciliation path, not the already-applied
+    fast path.
+    """
+
+    _patch_production_paths(monkeypatch, fixture)
+    legacy, legacy_bytes = _install_legacy_old(fixture)
+    runner = _legacy_runner(fixture, legacy)
+    config = replace(fixture.config, strict_release_layout=True)
+    first_plan = cutover.build_plan(config, runner=runner)
+    assert first_plan["status"] == "PASS", first_plan["failures"]
+    first = cutover.apply(config, plan=first_plan, runner=runner)
+    assert first["status"] == "SUCCESS"
+    first_receipt = json.loads(fixture.receipt_path.read_text(encoding="utf-8"))
+
+    rolled_back = cutover.rollback(config, receipt=first_receipt, runner=runner)
+    assert rolled_back["status"] == "ROLLBACK_SUCCESS"
+    assert fixture.plist_path.read_bytes() == legacy_bytes
+    receipt_after_rollback = json.loads(fixture.receipt_path.read_text(encoding="utf-8"))
+    assert receipt_after_rollback["status"] == "ROLLBACK_SUCCESS"
+    assert _object(receipt_after_rollback["after"])["source"] == _object(
+        _object(receipt_after_rollback["prestate"])["old_source"]
+    )
+
+    second_plan = cutover.build_plan(config, runner=runner)
+    assert second_plan["status"] == "PASS", second_plan["failures"]
+    assert receipt_after_rollback["plan_digest"] != second_plan["plan_digest"]
+
+    second = cutover.apply(config, plan=second_plan, runner=runner)
+
+    assert second["status"] == "SUCCESS"
+    assert runner.loaded_source == fixture.new
+    receipt = json.loads(fixture.receipt_path.read_text(encoding="utf-8"))
+    assert receipt["plan_digest"] == second_plan["plan_digest"]
+    assert receipt["status"] == "SUCCESS"
+
+
+def test_reconcile_completed_receipt_fails_closed_when_after_source_matches_neither_side(
+    fixture: Fixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _patch_production_paths(monkeypatch, fixture)
+    runner = FakeLaunchd(fixture)
+    config = replace(fixture.config, strict_release_layout=True)
+    plan = cutover.build_plan(config, runner=runner)
+    assert plan["status"] == "PASS", plan["failures"]
+    applied = cutover.apply(config, plan=plan, runner=runner)
+    assert applied["status"] == "SUCCESS"
+
+    reconcile = cast(Callable[..., None], vars(cutover)["_reconcile_completed_receipt"])
+    receipt = _object(json.loads(fixture.receipt_path.read_text(encoding="utf-8")))
+    after = _object(receipt["after"])
+    tampered_source = dict(_object(after["source"]))
+    tampered_source["source_worktree"] = str(fixture.root / "not-either-prestate-side")
+    after["source"] = tampered_source
+
+    with pytest.raises(cutover.CutoverSafetyError, match="matches neither prestate side"):
+        reconcile(config, receipt, runner=runner)
+
+
+# --- reconcile-restored: already-restored receipt finalization ------------
+#
+# reconcile-restored finalizes a RECOVERY_REQUIRED receipt when live state has
+# already independently returned to the receipt-bound OLD prestate, without
+# ever calling launchctl or replacing the plist. Its cases below mirror the
+# fixture's default (never-mutated) state, which already *is* exactly the OLD
+# prestate -- new/loaded_source default to `fixture.old`/`fixture.old_plist_
+# bytes` -- so most cases need no extra FakeLaunchd setup for the OLD side.
+
+RECONCILE_OPERATION_ID = "b649-reconcile-fixture-operation-id-0001"
+
+
+def _recovery_required_receipt(
+    fixture: Fixture, plan: dict[str, object], *, operation_id: str = RECONCILE_OPERATION_ID
+) -> dict[str, object]:
+    """Build a RECOVERY_REQUIRED receipt the way a failed apply() would leave one."""
+
+    receipt_base = cast(Callable[..., dict[str, object]], vars(cutover)["_receipt_base"])
+    receipt = receipt_base(fixture.config, plan, operation_id)
+    receipt["status"] = "RECOVERY_REQUIRED"
+    receipt["phase"] = "RECOVERY_REQUIRED"
+    receipt["failures"] = ["simulated: prior apply attempt left the target mid-recovery"]
+    return receipt
+
+
+def _write_receipt(fixture: Fixture, receipt: dict[str, object]) -> str:
+    """Persist a receipt exactly like the tool would and return its sha256."""
+
+    fixture.receipt_path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    write_json = cast(Callable[..., cutover.FileIdentity], vars(cutover)["_write_json"])
+    write_json(fixture.receipt_path, receipt, expected=None)
+    return hashlib.sha256(fixture.receipt_path.read_bytes()).hexdigest()
+
+
+def _prepare_recovery_required_new_release(
+    fixture: Fixture, runner: FakeLaunchd
+) -> tuple[dict[str, object], bytes]:
+    plan = cutover.build_plan(fixture.config, runner=runner)
+    assert plan["status"] == "PASS", plan["failures"]
+    receipt = _recovery_required_receipt(fixture, plan)
+    prestate = _object(receipt["prestate"])
+    new_plist_bytes = base64.b64decode(
+        cast(str, prestate["new_plist_bytes_b64"]),
+        validate=True,
+    )
+    fixture.plist_path.write_bytes(new_plist_bytes)
+    _write_receipt(fixture, receipt)
+    return receipt, new_plist_bytes
+
+
+def _set_protected_task_checkpoint_ancestor(
+    fixture: Fixture,
+    runner: FakeLaunchd,
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    live_scheduler: bool = False,
+) -> int:
+    wrapper_pid = 952001
+    invocation_pid = 952002
+    runner.process_rows = [
+        f"{invocation_pid} {wrapper_pid} {UID} S python tools/b649_production_cutover.py rollback",
+        f"{wrapper_pid} 1 {UID} S ruby /opt/fable-method/scripts/task_checkpoint.rb "
+        f"--run --repo {fixture.canonical} --worktree {fixture.new} "
+        "--task-id B649_CUTOVER_PROTECTED_WRAPPER_ANCESTOR_OWNERSHIP_REPAIR_R1 "
+        "--execution-id integration-test -- "
+        "python tools/b649_production_cutover.py rollback",
+    ]
+    runner.file_rows = [
+        f"p{invocation_pid}",
+        "fcwd",
+        "n/tmp",
+        f"p{wrapper_pid}",
+        "fcwd",
+        "n/tmp",
+    ]
+    if live_scheduler:
+        scheduler_pid = 952003
+        runner.process_rows.append(
+            f"{scheduler_pid} {wrapper_pid} {UID} S "
+            f"python {fixture.new}/tools/b649_goalc_local_scheduler.py run"
+        )
+        runner.file_rows.extend([f"p{scheduler_pid}", "fcwd", f"n{fixture.new}"])
+    monkeypatch.setattr(checkpoint.os, "getpid", lambda: invocation_pid)
+    monkeypatch.setattr(checkpoint.os, "getppid", lambda: wrapper_pid)
+    return wrapper_pid
+
+
+def test_reconcile_restored_finalizes_an_already_restored_recovery_required_receipt(
+    fixture: Fixture,
+) -> None:
+    runner = FakeLaunchd(fixture)
+    plan = cutover.build_plan(fixture.config, runner=runner)
+    assert plan["status"] == "PASS"
+    receipt = _recovery_required_receipt(fixture, plan)
+    receipt_sha256 = _write_receipt(fixture, receipt)
+
+    result = cutover.reconcile_restored(
+        fixture.config,
+        expected_operation_id=RECONCILE_OPERATION_ID,
+        expected_receipt_sha256=receipt_sha256,
+        runner=runner,
+    )
+
+    assert result["status"] == "ROLLBACK_SUCCESS"
+    assert result["operation_id"] == RECONCILE_OPERATION_ID
+    assert result["business_state"] == "UNCHANGED"
+    assert runner.mutation_calls == []
+    assert runner.loaded is True
+    assert runner.loaded_source == fixture.old
+    assert runner.enabled is True
+    assert fixture.plist_path.read_bytes() == fixture.old_plist_bytes
+    _assert_business_state_unchanged(fixture)
+    mutation_summary = _object(result["mutation_summary"])
+    assert mutation_summary == {"launchd": False, "plist": False, "control_files": True}
+    stored = json.loads(fixture.receipt_path.read_text(encoding="utf-8"))
+    assert stored["status"] == "ROLLBACK_SUCCESS"
+    assert stored["phase"] == "COMPLETED"
+    assert stored["operation_id"] == RECONCILE_OPERATION_ID
+    assert stored["prestate"] == receipt["prestate"]
+    assert stat.S_IMODE(fixture.receipt_path.stat().st_mode) == 0o600
+    after = _object(stored["after"])
+    assert _object(after["plist"])["sha256"] == hashlib.sha256(fixture.old_plist_bytes).hexdigest()
+
+
+def test_reconcile_restored_preserves_an_unloaded_disabled_old_prestate(
+    fixture: Fixture,
+) -> None:
+    runner = FakeLaunchd(fixture, loaded=False, enabled=False)
+    plan = cutover.build_plan(fixture.config, runner=runner)
+    assert plan["status"] == "PASS"
+    assert _object(plan["launchd"])["old_state"] == "UNLOADED"
+    assert _object(plan["launchd"])["old_enabled"] is False
+    receipt = _recovery_required_receipt(fixture, plan)
+    receipt_sha256 = _write_receipt(fixture, receipt)
+
+    result = cutover.reconcile_restored(
+        fixture.config,
+        expected_operation_id=RECONCILE_OPERATION_ID,
+        expected_receipt_sha256=receipt_sha256,
+        runner=runner,
+    )
+
+    assert result["status"] == "ROLLBACK_SUCCESS"
+    assert runner.mutation_calls == []
+    assert runner.loaded is False
+    assert runner.enabled is False
+
+
+@pytest.mark.parametrize("drift", ["plist", "enabled", "loaded"])
+def test_reconcile_restored_fails_closed_on_state_drift(fixture: Fixture, drift: str) -> None:
+    runner = FakeLaunchd(fixture)
+    plan = cutover.build_plan(fixture.config, runner=runner)
+    assert plan["status"] == "PASS"
+    receipt = _recovery_required_receipt(fixture, plan)
+    receipt_sha256 = _write_receipt(fixture, receipt)
+    before_receipt_bytes = fixture.receipt_path.read_bytes()
+
+    if drift == "plist":
+        binding = plistlib.loads(fixture.old_plist_bytes)
+        binding["ProgramArguments"][0] = str(fixture.new / ".venv/bin/python")
+        fixture.plist_path.write_bytes(plistlib.dumps(binding))
+        fixture.plist_path.chmod(0o600)
+    elif drift == "enabled":
+        runner.enabled = False
+    else:
+        runner.loaded = False
+
+    with pytest.raises(cutover.CutoverSafetyError):
+        cutover.reconcile_restored(
+            fixture.config,
+            expected_operation_id=RECONCILE_OPERATION_ID,
+            expected_receipt_sha256=receipt_sha256,
+            runner=runner,
+        )
+
+    assert runner.mutation_calls == []
+    assert fixture.receipt_path.read_bytes() == before_receipt_bytes
+
+
+@pytest.mark.parametrize("mismatch", ["operation_id", "sha256"])
+def test_reconcile_restored_fails_closed_on_receipt_identity_mismatch(
+    fixture: Fixture, mismatch: str
+) -> None:
+    runner = FakeLaunchd(fixture)
+    plan = cutover.build_plan(fixture.config, runner=runner)
+    assert plan["status"] == "PASS"
+    receipt = _recovery_required_receipt(fixture, plan)
+    receipt_sha256 = _write_receipt(fixture, receipt)
+    before_receipt_bytes = fixture.receipt_path.read_bytes()
+    expected_operation_id = (
+        "wrong-operation-id" if mismatch == "operation_id" else RECONCILE_OPERATION_ID
+    )
+    expected_receipt_sha256 = "0" * 64 if mismatch == "sha256" else receipt_sha256
+
+    with pytest.raises(cutover.CutoverSafetyError):
+        cutover.reconcile_restored(
+            fixture.config,
+            expected_operation_id=expected_operation_id,
+            expected_receipt_sha256=expected_receipt_sha256,
+            runner=runner,
+        )
+
+    assert runner.mutation_calls == []
+    assert fixture.receipt_path.read_bytes() == before_receipt_bytes
+
+
+def test_reconcile_restored_fails_closed_when_ownership_is_not_idle(fixture: Fixture) -> None:
+    runner = FakeLaunchd(fixture)
+    plan = cutover.build_plan(fixture.config, runner=runner)
+    assert plan["status"] == "PASS"
+    receipt = _recovery_required_receipt(fixture, plan)
+    receipt_sha256 = _write_receipt(fixture, receipt)
+    before_receipt_bytes = fixture.receipt_path.read_bytes()
+    runner.process_rows = [f"424242 1 {UID} S {fixture.old}/tools/b649_goalc_local_scheduler.py"]
+
+    with pytest.raises(cutover.ActiveCycleError):
+        cutover.reconcile_restored(
+            fixture.config,
+            expected_operation_id=RECONCILE_OPERATION_ID,
+            expected_receipt_sha256=receipt_sha256,
+            runner=runner,
+        )
+
+    assert runner.mutation_calls == []
+    assert fixture.receipt_path.read_bytes() == before_receipt_bytes
+
+
+def test_reconcile_restored_is_idempotent_when_already_reconciled(fixture: Fixture) -> None:
+    runner = FakeLaunchd(fixture)
+    plan = cutover.build_plan(fixture.config, runner=runner)
+    assert plan["status"] == "PASS"
+    receipt = _recovery_required_receipt(fixture, plan)
+    receipt_sha256 = _write_receipt(fixture, receipt)
+
+    first = cutover.reconcile_restored(
+        fixture.config,
+        expected_operation_id=RECONCILE_OPERATION_ID,
+        expected_receipt_sha256=receipt_sha256,
+        runner=runner,
+    )
+    assert first["status"] == "ROLLBACK_SUCCESS"
+    mutation_count_after_first = len(runner.mutation_calls)
+    stored_bytes = fixture.receipt_path.read_bytes()
+
+    second = cutover.reconcile_restored(
+        fixture.config,
+        expected_operation_id=RECONCILE_OPERATION_ID,
+        expected_receipt_sha256=hashlib.sha256(stored_bytes).hexdigest(),
+        runner=runner,
+    )
+
+    assert second["status"] == "ALREADY_RECONCILED"
+    assert len(runner.mutation_calls) == mutation_count_after_first
+    assert fixture.receipt_path.read_bytes() == stored_bytes
+
+
+def test_reconcile_restored_fails_closed_when_completed_receipt_no_longer_matches_live_state(
+    fixture: Fixture,
+) -> None:
+    runner = FakeLaunchd(fixture)
+    plan = cutover.build_plan(fixture.config, runner=runner)
+    assert plan["status"] == "PASS"
+    receipt = _recovery_required_receipt(fixture, plan)
+    receipt_sha256 = _write_receipt(fixture, receipt)
+    first = cutover.reconcile_restored(
+        fixture.config,
+        expected_operation_id=RECONCILE_OPERATION_ID,
+        expected_receipt_sha256=receipt_sha256,
+        runner=runner,
+    )
+    assert first["status"] == "ROLLBACK_SUCCESS"
+    stored_bytes = fixture.receipt_path.read_bytes()
+    runner.enabled = False
+
+    with pytest.raises(cutover.CutoverSafetyError):
+        cutover.reconcile_restored(
+            fixture.config,
+            expected_operation_id=RECONCILE_OPERATION_ID,
+            expected_receipt_sha256=hashlib.sha256(stored_bytes).hexdigest(),
+            runner=runner,
+        )
+
+    assert runner.mutation_calls == []
+    assert fixture.receipt_path.read_bytes() == stored_bytes
+
+
+def test_cli_reconcile_restored_finalizes_and_reports_success(
+    fixture: Fixture, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    runner = FakeLaunchd(fixture)
+    plan = cutover.build_plan(fixture.config, runner=runner)
+    assert plan["status"] == "PASS"
+    receipt = _recovery_required_receipt(fixture, plan)
+    receipt_sha256 = _write_receipt(fixture, receipt)
+
+    def fake_config(
+        _args: argparse.Namespace, *, source_worktree: Path | None = None
+    ) -> cutover.CutoverConfig:
+        del source_worktree
+        return fixture.config
+
+    monkeypatch.setattr(cutover, "_config_from_args", fake_config)
+
+    exit_code = cutover.main(
+        [
+            "reconcile-restored",
+            "--receipt-file",
+            str(fixture.receipt_path),
+            "--expected-operation-id",
+            RECONCILE_OPERATION_ID,
+            "--expected-receipt-sha256",
+            receipt_sha256,
+        ],
+        runner=runner,
+    )
+
+    assert exit_code == 0
+    out = json.loads(capsys.readouterr().out)
+    assert out["status"] == "ROLLBACK_SUCCESS"
+    assert runner.mutation_calls == []
+
+
+OWNER_CONTROL_VERSION: cutover.Record = {"head": "5" * 40, "tree": "6" * 40}
+
+
+def _authorized_owner(
+    fixture: Fixture,
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    target: dict[str, object] | None = None,
+    operation_id: str | None = None,
+) -> tuple[cutover.CutoverConfig, dict[str, object], dict[str, object], str, str]:
+    fixture.scheduler_root.mkdir(mode=0o700, parents=True, exist_ok=True)
+    monkeypatch.setattr(cutover, "control_version", lambda: OWNER_CONTROL_VERSION)
+    reservation_id = str(cutover.uuid4())
+    selected_target: cutover.Record = target or {
+        "source_worktree": str(fixture.new),
+        "head": NEW_HEAD,
+        "tree": NEW_TREE,
+        "durable_ref": f"refs/heads/runtime/b649/{NEW_HEAD}",
+    }
+    selected_operation = operation_id or cutover.uuid4().hex
+    reservation = cutover.acquire_control_owner(
+        fixture.config,
+        action="apply",
+        target=selected_target,
+        reservation_id=reservation_id,
+        version=OWNER_CONTROL_VERSION,
+    )
+    file_identity = cast(
+        Callable[..., tuple[cutover.FileIdentity | None, bytes | None]],
+        vars(cutover)["_file_identity"],
+    )
+    initial_identity, _ = file_identity(fixture.receipt_path, missing_ok=True)
+    initial_hash = None if initial_identity is None else initial_identity.sha256
+    bound = cutover.bind_control_owner(
+        fixture.config,
+        reservation_id,
+        action="apply",
+        target=selected_target,
+        operation_id=selected_operation,
+        managed_receipt_sha256=initial_hash,
+        version=OWNER_CONTROL_VERSION,
+    )
+    authorized = cutover.authorize_control_owner(
+        fixture.config,
+        reservation_id,
+        cutover.control_owner_authorization(bound),
+    )
+    config = replace(
+        fixture.config,
+        control_owner_id=reservation_id,
+        operation_id=selected_operation,
+    )
+    assert reservation["managed_receipt_sha256"] is None
+    return config, authorized, selected_target, selected_operation, reservation_id
+
+
+def test_production_owner_is_shared_across_receipt_paths_and_owner_classes(
+    fixture: Fixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    shared_owner_path = fixture.root / "shared-production-control-owner.json"
+    monkeypatch.setattr(cutover, "PRODUCTION_CONTROL_OWNER_PATH", shared_owner_path)
+    target: cutover.Record = {
+        "source_worktree": str(fixture.new),
+        "head": NEW_HEAD,
+        "tree": NEW_TREE,
+        "durable_ref": f"refs/heads/runtime/b649/{NEW_HEAD}",
+    }
+    managed_config = replace(
+        fixture.config,
+        launch_domain=cutover.DOMAIN,
+        plist_path=cutover.DEFAULT_PLIST_PATH,
+        receipt_path=fixture.root / "managed-owner-a" / "receipt.json",
+    )
+    protected_config = replace(
+        managed_config,
+        receipt_path=fixture.root / "managed-owner-b" / "receipt.json",
+    )
+
+    managed_owner = cutover.acquire_control_owner(
+        managed_config,
+        action="apply",
+        target=target,
+        owner_kind="managed",
+        version=OWNER_CONTROL_VERSION,
+    )
+
+    observed = cutover.inspect_control_owner(protected_config)
+    assert observed is not None
+    assert observed["reservation_id"] == managed_owner["reservation_id"]
+    with pytest.raises(cutover.CutoverSafetyError, match="blocks takeover"):
+        cutover.acquire_control_owner(
+            protected_config,
+            action="apply",
+            target=target,
+            owner_kind="protected",
+            version=OWNER_CONTROL_VERSION,
+        )
+
+
+def test_durable_owner_survives_worker_exit_and_blocks_competing_owner(
+    fixture: Fixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    config, owner, target, operation_id, reservation_id = _authorized_owner(fixture, monkeypatch)
+
+    def stale_worker(_pid: int) -> str:
+        return "STALE_PROCESS"
+
+    monkeypatch.setattr(cutover, "_pid_state", stale_worker)
+
+    inspected = cutover.inspect_control_owner(config)
+    assert inspected is not None
+    assert inspected["worker_state"] == "STALE_PROCESS"
+    assert inspected["reservation_id"] == reservation_id
+    assert inspected["phase"] == "AUTHORIZED_PENDING"
+    resumed = cutover.resume_control_owner(config, reservation_id, version=OWNER_CONTROL_VERSION)
+    assert resumed["reservation_id"] == reservation_id
+    assert resumed["operation_id"] == operation_id
+    assert resumed["target"] == target
+    assert resumed["authorization"] == owner["authorization"]
+    with pytest.raises(cutover.CutoverSafetyError, match="blocks takeover"):
+        cutover.acquire_control_owner(
+            fixture.config,
+            action="apply",
+            target=target,
+            reservation_id=str(cutover.uuid4()),
+            version=OWNER_CONTROL_VERSION,
+        )
+
+
+def test_stale_owner_requires_explicit_two_step_abandonment(
+    fixture: Fixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    config, _owner, _target, _operation_id, reservation_id = _authorized_owner(fixture, monkeypatch)
+
+    def stale_worker(_pid: int) -> str:
+        return "STALE_PROCESS"
+
+    monkeypatch.setattr(cutover, "_pid_state", stale_worker)
+
+    abandoned = cutover.reconcile_control_owner(
+        config,
+        reservation_id,
+        disposition="ABANDON_BEFORE_MUTATION",
+        version=OWNER_CONTROL_VERSION,
+    )
+    assert abandoned["phase"] == "ABANDONED"
+    released = cutover.reconcile_control_owner(
+        config,
+        reservation_id,
+        disposition="RELEASE_ABANDONED",
+        version=OWNER_CONTROL_VERSION,
+    )
+    assert released["phase"] == "RELEASED"
+    assert released["release_evidence"] == {
+        "kind": "EXPLICIT_ABANDON_NO_MUTATION",
+        "verified": True,
+    }
+
+
+def test_active_owner_blocks_direct_managed_apply_before_mutation(
+    fixture: Fixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    runner = FakeLaunchd(fixture)
+    plan = cutover.build_plan(fixture.config, runner=runner)
+    assert plan["status"] == "PASS"
+    _authorized_owner(fixture, monkeypatch)
+    runner.calls.clear()
+
+    with pytest.raises(cutover.CutoverSafetyError, match="different durable control owner"):
+        cutover.apply(fixture.config, plan=plan, runner=runner)
+
+    assert runner.mutation_calls == []
+    assert not fixture.receipt_path.exists()
+
+
+@pytest.mark.parametrize("action", ["apply", "rollback"])
+@pytest.mark.parametrize("production_binding", ["receipt", "plist", "domain"])
+def test_non_strict_managed_api_requires_owner_for_production_receipt(
+    fixture: Fixture, action: str, production_binding: str
+) -> None:
+    runner = FakeLaunchd(fixture)
+    plan = cutover.build_plan(fixture.config, runner=runner)
+    assert plan["status"] == "PASS"
+    overrides: dict[str, object] = {"strict_release_layout": False}
+    if production_binding == "receipt":
+        overrides["receipt_path"] = cutover.DEFAULT_RECEIPT_PATH
+    elif production_binding == "plist":
+        overrides["plist_path"] = cutover.DEFAULT_PLIST_PATH
+    else:
+        overrides["launch_domain"] = cutover.DOMAIN
+    production_config = replace(fixture.config, **overrides)
+
+    with pytest.raises(cutover.CutoverSafetyError, match="requires a durable control owner"):
+        if action == "apply":
+            cutover.apply(production_config, plan=plan, runner=runner)
+        else:
+            cutover.rollback(production_config, runner=runner)
+
+    assert runner.mutation_calls == []
+
+
+@pytest.mark.parametrize(
+    "drift",
+    ["owner", "operation", "receipt", "target", "control"],
+)
+def test_owner_authorization_rejects_identity_drift(
+    fixture: Fixture, monkeypatch: pytest.MonkeyPatch, drift: str
+) -> None:
+    config, _owner, target, operation_id, reservation_id = _authorized_owner(fixture, monkeypatch)
+    actual_owner = reservation_id
+    actual_target = target
+    actual_operation = operation_id
+    actual_receipt_hash: str | None = None
+    if drift == "owner":
+        actual_owner = cutover.uuid4().hex
+    elif drift == "operation":
+        actual_operation = cutover.uuid4().hex
+    elif drift == "receipt":
+        actual_receipt_hash = "a" * 64
+    elif drift == "target":
+        actual_target = {**target, "head": "7" * 40}
+    elif drift == "control":
+        monkeypatch.setattr(
+            cutover,
+            "control_version",
+            lambda: {"head": "8" * 40, "tree": "9" * 40},
+        )
+
+    with pytest.raises(cutover.CutoverSafetyError):
+        cutover.check_control_owner(
+            replace(config, control_owner_id=actual_owner),
+            action="apply",
+            target=actual_target,
+            operation_id=actual_operation,
+            managed_receipt_sha256=actual_receipt_hash,
+        )
+
+
+def test_started_owner_is_recoverable_and_cannot_release_before_terminal_evidence(
+    fixture: Fixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    config, _owner, target, operation_id, reservation_id = _authorized_owner(fixture, monkeypatch)
+    started = cutover.check_control_owner(
+        config,
+        action="apply",
+        target=target,
+        operation_id=operation_id,
+        managed_receipt_sha256=None,
+        begin_mutation=True,
+    )
+    assert started is not None and started["phase"] == "MUTATION_IN_PROGRESS"
+    with pytest.raises(cutover.CutoverSafetyError, match="no verified terminal evidence"):
+        cutover.release_control_owner(config, reservation_id)
+
+    resumed = cutover.resume_control_owner(config, reservation_id, version=OWNER_CONTROL_VERSION)
+    assert resumed["phase"] == "MUTATION_IN_PROGRESS"
+    inspected = cutover.inspect_control_owner(config)
+    assert inspected is not None
+    assert inspected["reservation_id"] == reservation_id
+    with pytest.raises(cutover.CutoverSafetyError, match="started mutation"):
+        cutover.reconcile_control_owner(
+            config,
+            reservation_id,
+            disposition="ABANDON_BEFORE_MUTATION",
+            version=OWNER_CONTROL_VERSION,
+        )
+
+
+def test_verified_managed_terminal_receipt_allows_owner_release(
+    fixture: Fixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    config, _owner, target, operation_id, reservation_id = _authorized_owner(fixture, monkeypatch)
+    cutover.check_control_owner(
+        config,
+        action="apply",
+        target=target,
+        operation_id=operation_id,
+        managed_receipt_sha256=None,
+        begin_mutation=True,
+    )
+    write_json = cast(Callable[..., cutover.FileIdentity], vars(cutover)["_write_json"])
+    write_json(
+        fixture.receipt_path,
+        {"operation_id": operation_id, "status": "SUCCESS", "phase": "COMPLETED"},
+        expected=None,
+    )
+    cutover.mark_control_terminal_pending(
+        config, reservation_id, operation_id=operation_id, status="SUCCESS"
+    )
+
+    released = cutover.release_control_owner(config, reservation_id)
+
+    assert released["phase"] == "RELEASED"
+    assert _object(released["release_evidence"])["verified"] is True
+
+
+def test_terminal_verification_drift_retains_control_owner(
+    fixture: Fixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    config, _owner, target, operation_id, reservation_id = _authorized_owner(fixture, monkeypatch)
+    cutover.check_control_owner(
+        config,
+        action="apply",
+        target=target,
+        operation_id=operation_id,
+        managed_receipt_sha256=None,
+        begin_mutation=True,
+    )
+    write_json = cast(Callable[..., cutover.FileIdentity], vars(cutover)["_write_json"])
+    write_json(
+        fixture.receipt_path,
+        {"operation_id": operation_id, "status": "SUCCESS", "phase": "COMPLETED"},
+        expected=None,
+    )
+    cutover.mark_control_terminal_pending(
+        config, reservation_id, operation_id=operation_id, status="SUCCESS"
+    )
+    file_identity = cast(
+        Callable[..., tuple[cutover.FileIdentity | None, bytes | None]],
+        vars(cutover)["_file_identity"],
+    )
+    write_json = cast(Callable[..., cutover.FileIdentity], vars(cutover)["_write_json"])
+    write_json(
+        fixture.receipt_path,
+        {
+            "operation_id": operation_id,
+            "status": "RECOVERY_REQUIRED",
+            "phase": "RECOVERY_REQUIRED",
+        },
+        expected=file_identity(fixture.receipt_path, missing_ok=False)[0],
+    )
+
+    with pytest.raises(cutover.CutoverSafetyError, match="verification failed"):
+        cutover.release_control_owner(config, reservation_id)
+    owner = cutover.inspect_control_owner(config)
+    assert owner is not None and owner["phase"] == "TERMINAL_CAPTURE_PENDING"
+
+
+def test_managed_terminal_receipt_write_failure_retains_started_owner(
+    fixture: Fixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    runner = FakeLaunchd(fixture)
+    plan = cutover.build_plan(fixture.config, runner=runner)
+    assert plan["status"] == "PASS"
+    config, _owner, _target, _operation_id, reservation_id = _authorized_owner(fixture, monkeypatch)
+    original_save = cast(Callable[..., cutover.FileIdentity], vars(cutover)["_save_receipt"])
+
+    def fail_success(
+        selected_config: cutover.CutoverConfig,
+        value: dict[str, object],
+        *,
+        expected: cutover.FileIdentity | None,
+    ) -> cutover.FileIdentity:
+        if value.get("status") == "SUCCESS":
+            raise OSError("injected terminal evidence write failure")
+        return original_save(selected_config, value, expected=expected)
+
+    monkeypatch.setattr(cutover, "_save_receipt", fail_success)
+    result = cutover.apply(config, plan=plan, runner=runner)
+
+    assert result["status"] == "RECOVERY_REQUIRED"
+    owner = cutover.inspect_control_owner(config)
+    assert owner is not None
+    assert owner["reservation_id"] == reservation_id
+    assert owner["phase"] == "MUTATION_IN_PROGRESS"
+    assert owner["mutation_started"] is True
+
+
+def test_malformed_durable_owner_fails_closed(
+    fixture: Fixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    config, _owner, target, _operation_id, _reservation_id = _authorized_owner(fixture, monkeypatch)
+    owner_path = config.receipt_path.with_name(cutover.CONTROL_OWNER_NAME)
+    owner_path.write_text('{"schema":"unknown"}\n', encoding="utf-8")
+    owner_path.chmod(0o600)
+
+    with pytest.raises(cutover.CutoverSafetyError, match="schema is invalid"):
+        cutover.inspect_control_owner(config)
+    with pytest.raises(cutover.CutoverSafetyError, match="schema is invalid"):
+        cutover.acquire_control_owner(
+            fixture.config,
+            action="apply",
+            target=target,
+            version=OWNER_CONTROL_VERSION,
+        )
+
+
+def test_active_owner_blocks_reconcile_restored_before_receipt_reads_or_mutation(
+    fixture: Fixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    config, _owner, _target, operation_id, _reservation_id = _authorized_owner(fixture, monkeypatch)
+    runner = FakeLaunchd(fixture)
+
+    with pytest.raises(cutover.CutoverSafetyError, match="active durable control owner"):
+        cutover.reconcile_restored(
+            config,
+            expected_operation_id=operation_id,
+            expected_receipt_sha256="a" * 64,
+            runner=runner,
+        )
+
+    assert runner.mutation_calls == []
+    assert not fixture.receipt_path.exists()
+
+
+def test_abandon_with_managed_receipt_drift_requires_exact_observed_live_sha(
+    fixture: Fixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    config, _owner, _target, _operation_id, reservation_id = _authorized_owner(
+        fixture, monkeypatch, operation_id="deadbeef" * 8
+    )
+    fixture.receipt_path.write_text('{"status": "SUCCESS"}\n', encoding="utf-8")
+    fixture.receipt_path.chmod(0o600)
+    live_identity, _ = cast(
+        Callable[..., tuple[cutover.FileIdentity | None, bytes | None]],
+        vars(cutover)["_file_identity"],
+    )(fixture.receipt_path, missing_ok=True)
+    assert live_identity is not None
+    live_sha = live_identity.sha256
+
+    with pytest.raises(cutover.CutoverSafetyError, match="managed receipt changed"):
+        cutover.reconcile_control_owner(
+            config,
+            reservation_id,
+            disposition="ABANDON_BEFORE_MUTATION",
+            version=OWNER_CONTROL_VERSION,
+        )
+    with pytest.raises(cutover.CutoverSafetyError, match="managed receipt changed"):
+        cutover.reconcile_control_owner(
+            config,
+            reservation_id,
+            disposition="ABANDON_BEFORE_MUTATION",
+            version=OWNER_CONTROL_VERSION,
+            observed_managed_receipt_sha256="a" * 64,
+        )
+    owner = cutover.inspect_control_owner(config)
+    assert owner is not None and owner["phase"] == "AUTHORIZED_PENDING"
+
+    abandoned = cutover.reconcile_control_owner(
+        config,
+        reservation_id,
+        disposition="ABANDON_BEFORE_MUTATION",
+        version=OWNER_CONTROL_VERSION,
+        observed_managed_receipt_sha256=live_sha,
+    )
+    assert abandoned["phase"] == "ABANDONED"
+
+    drift_path = config.receipt_path.with_name(
+        f"b649-control-owner-managed-receipt-drift.{reservation_id}.json"
+    )
+    evidence = json.loads(drift_path.read_text(encoding="utf-8"))
+    assert evidence["schema"] == "b649-control-owner-managed-receipt-drift-v1"
+    assert evidence["reservation_id"] == reservation_id
+    assert evidence["expected_managed_receipt_sha256"] is None
+    assert evidence["observed_managed_receipt_sha256"] == live_sha
+
+    released = cutover.reconcile_control_owner(
+        config,
+        reservation_id,
+        disposition="RELEASE_ABANDONED",
+        version=OWNER_CONTROL_VERSION,
+    )
+    assert released["phase"] == "RELEASED"
+
+
+def test_abandon_drift_evidence_refuses_conflicting_replay(
+    fixture: Fixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    config, _owner, _target, _operation_id, reservation_id = _authorized_owner(fixture, monkeypatch)
+    fixture.receipt_path.write_text('{"status": "SUCCESS"}\n', encoding="utf-8")
+    fixture.receipt_path.chmod(0o600)
+    drift_path = config.receipt_path.with_name(
+        f"b649-control-owner-managed-receipt-drift.{reservation_id}.json"
+    )
+    drift_path.write_text(json.dumps({"schema": "not-the-real-evidence"}) + "\n", encoding="utf-8")
+    drift_path.chmod(0o600)
+    live_identity, _ = cast(
+        Callable[..., tuple[cutover.FileIdentity | None, bytes | None]],
+        vars(cutover)["_file_identity"],
+    )(fixture.receipt_path, missing_ok=True)
+    assert live_identity is not None
+
+    with pytest.raises(cutover.CutoverSafetyError, match="conflicting content"):
+        cutover.reconcile_control_owner(
+            config,
+            reservation_id,
+            disposition="ABANDON_BEFORE_MUTATION",
+            version=OWNER_CONTROL_VERSION,
+            observed_managed_receipt_sha256=live_identity.sha256,
+        )
+    owner = cutover.inspect_control_owner(config)
+    assert owner is not None and owner["phase"] == "AUTHORIZED_PENDING"
+
+
+# Successor plist identity. Values are the v6 Stage A incident's shape: after the
+# reboot only st_dev moved (16777232 -> 16777234); every other field was byte-exact.
+_SEALED_PLIST_IDENTITY = cutover.FileIdentity(
+    path=f"/Users/fixture/Library/LaunchAgents/{cutover.LABEL}.plist",
+    device=16777232,
+    inode=40_812_345,
+    mode=0o100600,
+    uid=501,
+    links=1,
+    size=2_048,
+    modified_ns=1_790_700_000_123_456_789,
+    changed_ns=1_790_700_000_223_456_789,
+    sha256="a" * 64,
+)
+_REBOOTED_PLIST_IDENTITY = replace(_SEALED_PLIST_IDENTITY, device=16777234)
+_STABLE_FIELD_CHANGES: dict[str, object] = {
+    "path": f"/Users/fixture/Library/LaunchAgents/{cutover.LABEL}.other.plist",
+    "inode": 40_812_346,
+    "mode": 0o100644,
+    "uid": 502,
+    "links": 2,
+    "size": 2_049,
+    "modified_ns": 1_790_700_000_123_456_790,
+    "changed_ns": 1_790_700_000_223_456_790,
+    "sha256": "b" * 64,
+}
+
+
+def _sealed_identity_with(**changes: object) -> dict[str, object]:
+    return {**_SEALED_PLIST_IDENTITY.to_dict(), **changes}
+
+
+_MALFORMED_PLIST_IDENTITIES: dict[str, object] = {
+    "not_an_object": None,
+    "field_list": list(_SEALED_PLIST_IDENTITY.to_dict().values()),
+    "missing_device": {
+        key: item for key, item in _SEALED_PLIST_IDENTITY.to_dict().items() if key != "device"
+    },
+    "missing_changed_ns": {
+        key: item for key, item in _SEALED_PLIST_IDENTITY.to_dict().items() if key != "changed_ns"
+    },
+    "extra_field": _sealed_identity_with(generation=1),
+    "text_device": _sealed_identity_with(device="16777232"),
+    "boolean_links": _sealed_identity_with(links=True),
+    "float_size": _sealed_identity_with(size=2048.0),
+    "uppercase_sha256": _sealed_identity_with(sha256="A" * 64),
+    "short_sha256": _sealed_identity_with(sha256="a" * 63),
+    "empty_path": _sealed_identity_with(path=""),
+}
+
+
+def test_successor_plist_identity_ignores_only_the_rebooted_device() -> None:
+    sealed, rebooted = _SEALED_PLIST_IDENTITY, _REBOOTED_PLIST_IDENTITY
+    assert cutover.successor_plist_identity_matches(sealed.to_dict(), rebooted)
+    assert cutover.successor_plist_identity_matches(sealed.to_dict(), rebooted.to_dict())
+    assert cutover.successor_plist_identity_matches(rebooted, sealed)
+    # The transaction identity is unchanged: it still binds the device.
+    assert sealed.key() != rebooted.key()
+    assert {**sealed.to_dict(), "device": rebooted.device} == rebooted.to_dict()
+    assert cutover.FileIdentity.from_value(sealed.to_dict()) == sealed
+
+
+@pytest.mark.parametrize("rebooted", [False, True])
+@pytest.mark.parametrize("field_name", list(_STABLE_FIELD_CHANGES))
+def test_successor_plist_identity_refuses_any_other_field_difference(
+    field_name: str, rebooted: bool
+) -> None:
+    # The table is every persisted field except device.
+    assert set(_STABLE_FIELD_CHANGES) == set(_SEALED_PLIST_IDENTITY.to_dict()) - {"device"}
+    base = _REBOOTED_PLIST_IDENTITY if rebooted else _SEALED_PLIST_IDENTITY
+    live = replace(base, **{field_name: _STABLE_FIELD_CHANGES[field_name]})
+    sealed = _SEALED_PLIST_IDENTITY.to_dict()
+    assert not cutover.successor_plist_identity_matches(sealed, live)
+    assert not cutover.successor_plist_identity_matches(sealed, live.to_dict())
+    assert not cutover.successor_plist_identity_matches(live.to_dict(), _SEALED_PLIST_IDENTITY)
+
+
+@pytest.mark.parametrize("defect", list(_MALFORMED_PLIST_IDENTITIES))
+def test_successor_plist_identity_refuses_a_malformed_identity(defect: str) -> None:
+    malformed = _MALFORMED_PLIST_IDENTITIES[defect]
+    assert not cutover.successor_plist_identity_matches(malformed, _SEALED_PLIST_IDENTITY)
+    assert not cutover.successor_plist_identity_matches(_SEALED_PLIST_IDENTITY, malformed)
+    assert not cutover.successor_plist_identity_matches(malformed, malformed)
+
+
+def test_verify_completed_receipt_live_binds_the_plan_old_identity_to_this_boot(
+    fixture: Fixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    runner = FakeLaunchd(fixture)
+    plan = cutover.build_plan(fixture.config, runner=runner)
+    assert cutover.apply(fixture.config, plan=plan, runner=runner)["status"] == "SUCCESS"
+    receipt = _object(json.loads(fixture.receipt_path.read_bytes()))
+    sealed = _object(_object(_object(receipt["after"])["plist"])["identity"])
+    cutover.verify_completed_receipt_live(
+        fixture.config, receipt, successor_old_plist_identity=sealed, runner=runner
+    )
+    rebooted = {**sealed, "device": simulate_reboot(monkeypatch, fixture.root, 1)}
+    assert rebooted != sealed
+    # A plan frozen after the reboot continues from the pre-reboot receipt.
+    cutover.verify_completed_receipt_live(
+        fixture.config, receipt, successor_old_plist_identity=rebooted, runner=runner
+    )
+    # A plan frozen before the reboot no longer names the live file for its CAS.
+    with pytest.raises(cutover.CutoverSafetyError, match="successor plan OLD plist identity"):
+        cutover.verify_completed_receipt_live(
+            fixture.config, receipt, successor_old_plist_identity=sealed, runner=runner
+        )
+    with pytest.raises(cutover.CutoverSafetyError, match="file identity"):
+        cutover.verify_completed_receipt_live(
+            fixture.config,
+            receipt,
+            successor_old_plist_identity=_MALFORMED_PLIST_IDENTITIES["missing_device"],
+            runner=runner,
+        )
+    # Identical bytes rewritten after the reboot: the sealed receipt still refuses.
+    fixture.plist_path.write_bytes(fixture.plist_path.read_bytes())
+    with pytest.raises(cutover.CutoverSafetyError, match="completed receipt plist identity"):
+        cutover.verify_completed_receipt_live(
+            fixture.config, receipt, successor_old_plist_identity=rebooted, runner=runner
+        )
+
+
+def _exact_failed_terminal_bridge_proof(
+    fixture: Fixture,
+) -> tuple[dict[str, object], dict[str, object]]:
+    digest_json = cast(Callable[[object], str], vars(cutover)["_sha256_json"])
+    owner_identity = cast(
+        Callable[[dict[str, object]], dict[str, object]], vars(cutover)["_owner_identity"]
+    )
+
+    def seal(value: dict[str, object], field_name: str) -> dict[str, object]:
+        unsigned = {key: item for key, item in value.items() if key != field_name}
+        return {**unsigned, field_name: digest_json(unsigned)}
+
+    v5_authority = seal(
+        {
+            "schema": cutover.PROTECTED_PREDECESSOR_RELEASE_SCHEMA,
+            "prior_reservation_id": "v5-reservation",
+            "prior_operation_id": "v5-operation",
+            "prior_authorization_sha256": "a" * 64,
+            "prior_release_evidence": {
+                "verified": True,
+                "protected_receipt_sha256": cutover.V5_PROTECTED_RECEIPT_SHA256,
+                "managed_receipt_sha256": cutover.V5_MANAGED_RECEIPT_SHA256,
+            },
+            "prior_protected_receipt_sha256": cutover.V5_PROTECTED_RECEIPT_SHA256,
+            "prior_managed_receipt_sha256": cutover.V5_MANAGED_RECEIPT_SHA256,
+            "new_reservation_id": cutover.FAILED_TERMINAL_RESERVATION_ID,
+            "new_operation_id": cutover.FAILED_TERMINAL_OPERATION_ID,
+            "evidence_sha256": "",
+        },
+        "evidence_sha256",
+    )
+    target: dict[str, object] = {
+        "source_worktree": str(fixture.new),
+        "head": cutover.V7_SOURCE_HEAD,
+        "tree": cutover.V7_SOURCE_TREE,
+    }
+    failed_owner: dict[str, object] = {
+        "schema": cutover.CONTROL_OWNER_SCHEMA,
+        "reservation_id": cutover.FAILED_TERMINAL_RESERVATION_ID,
+        "owner_kind": "protected",
+        "owner_pid": 4321,
+        "action": "apply",
+        "target": target,
+        "control_head": "5" * 40,
+        "control_tree": "6" * 40,
+        "operation_id": cutover.FAILED_TERMINAL_OPERATION_ID,
+        "managed_receipt_sha256": cutover.V5_MANAGED_RECEIPT_SHA256,
+        "phase": "RELEASED",
+        "created_at": "2026-01-01T00:00:00Z",
+        "updated_at": "2026-01-01T00:00:00Z",
+        "authorization": None,
+        "mutation_started": False,
+        "terminal": None,
+        "release_evidence": {
+            "protected_receipt_sha256": cutover.FAILED_TERMINAL_RECEIPT_SHA256,
+            "managed_receipt_unchanged": True,
+            "verified": True,
+        },
+        "predecessor_release_evidence": v5_authority,
+        "record_sha256": "",
+    }
+    failed_owner["authorization"] = owner_identity(failed_owner)
+    failed_owner = seal(failed_owner, "record_sha256")
+
+    receipt_path = fixture.scheduler_root / cutover.FAILED_TERMINAL_RECEIPT_NAME
+    execution_id = "failed-execution"
+    retirement = seal(
+        {
+            "schema": cutover.FAILED_TERMINAL_RETIREMENT_SCHEMA,
+            "receipt_path": str(receipt_path),
+            "archive_path": str(
+                receipt_path.with_name(f"{receipt_path.stem}.{execution_id}.superseded.json")
+            ),
+            "execution_id": execution_id,
+            "receipt_sha256": cutover.FAILED_TERMINAL_RECEIPT_SHA256,
+            "reservation_id": cutover.FAILED_TERMINAL_RESERVATION_ID,
+            "operation_id": cutover.FAILED_TERMINAL_OPERATION_ID,
+            "status": "FAILED",
+            "phase": "COMPLETED",
+            "exit_code": 1,
+            "result_status": "INCOMPLETE_OR_AMBIGUOUS",
+            "child_started": False,
+            "child_completed": False,
+            "mutation_started": False,
+            "zero_mutation": True,
+            "owner_record": failed_owner,
+            "owner_file_sha256": "b" * 64,
+            "v5_predecessor_release_evidence": v5_authority,
+            "v5_protected_receipt_sha256": cutover.V5_PROTECTED_RECEIPT_SHA256,
+            "v5_protected_receipt_archive_path": str(
+                fixture.scheduler_root / "v5-protected-execution.superseded.json"
+            ),
+            "v5_managed_receipt_sha256": cutover.V5_MANAGED_RECEIPT_SHA256,
+            "v5_managed_receipt_path": str(fixture.receipt_path),
+            "v5_source_head": cutover.V5_SOURCE_HEAD,
+            "v5_source_tree": cutover.V5_SOURCE_TREE,
+            "v5_live_state": {
+                "verified": True,
+                "source": {"head": cutover.V5_SOURCE_HEAD, "tree": cutover.V5_SOURCE_TREE},
+            },
+            "candidate_plan_sha256": "c" * 64,
+            "candidate_target": target,
+            "claim_root": str(fixture.root / "claims"),
+            "claim_store_status": "ABSENT",
+            "failed_operation_managed_receipt_present": False,
+            "archive_status": "ARCHIVED_UNCHANGED",
+            "record_sha256": "",
+        },
+        "record_sha256",
+    )
+    proof = seal(
+        {
+            "schema": cutover.PROTECTED_PREDECESSOR_RELEASE_SCHEMA,
+            "prior_reservation_id": v5_authority["prior_reservation_id"],
+            "prior_operation_id": v5_authority["prior_operation_id"],
+            "prior_authorization_sha256": v5_authority["prior_authorization_sha256"],
+            "prior_release_evidence": v5_authority["prior_release_evidence"],
+            "prior_protected_receipt_sha256": cutover.V5_PROTECTED_RECEIPT_SHA256,
+            "prior_managed_receipt_sha256": cutover.V5_MANAGED_RECEIPT_SHA256,
+            "new_reservation_id": "b649-protected-successor-reservation",
+            "new_operation_id": "b649-protected-successor-operation",
+            "retired_failed_terminal_evidence": retirement,
+            "evidence_sha256": "",
+        },
+        "evidence_sha256",
+    )
+    successor_owner = {
+        "reservation_id": proof["new_reservation_id"],
+        "operation_id": proof["new_operation_id"],
+        "managed_receipt_sha256": cutover.V5_MANAGED_RECEIPT_SHA256,
+        "target": target,
+    }
+    return proof, successor_owner
+
+
+def test_production_validator_accepts_exact_failed_terminal_v5_bridge(
+    fixture: Fixture,
+) -> None:
+    proof, successor_owner = _exact_failed_terminal_bridge_proof(fixture)
+    validate = cast(
+        Callable[[object, dict[str, object]], dict[str, object]],
+        vars(cutover)["_validate_predecessor_release_evidence"],
+    )
+    assert validate(proof, successor_owner) == proof
+
+
+@pytest.mark.parametrize("defect", ["v5_managed_hash", "candidate_target", "successor_authority"])
+def test_production_validator_rejects_corrupted_failed_terminal_bridge(
+    fixture: Fixture,
+    defect: str,
+) -> None:
+    digest_json = cast(Callable[[object], str], vars(cutover)["_sha256_json"])
+    proof, successor_owner = _exact_failed_terminal_bridge_proof(fixture)
+    corrupted = copy.deepcopy(proof)
+    retirement = _object(corrupted["retired_failed_terminal_evidence"])
+    if defect == "v5_managed_hash":
+        retirement["v5_managed_receipt_sha256"] = "e" * 64
+        retirement["record_sha256"] = ""
+        retirement["record_sha256"] = digest_json(
+            {key: value for key, value in retirement.items() if key != "record_sha256"}
+        )
+    elif defect == "candidate_target":
+        _object(retirement["candidate_target"])["tree"] = "f" * 40
+        retirement["record_sha256"] = ""
+        retirement["record_sha256"] = digest_json(
+            {key: value for key, value in retirement.items() if key != "record_sha256"}
+        )
+    else:
+        corrupted["prior_authorization_sha256"] = "d" * 64
+    corrupted["evidence_sha256"] = ""
+    corrupted["evidence_sha256"] = digest_json(
+        {key: value for key, value in corrupted.items() if key != "evidence_sha256"}
+    )
+    validate = cast(
+        Callable[[object, dict[str, object]], dict[str, object]],
+        vars(cutover)["_validate_predecessor_release_evidence"],
+    )
+    with pytest.raises(cutover.CutoverSafetyError):
+        validate(corrupted, successor_owner)
+
+
+def test_production_validator_preserves_ordinary_predecessor_proof_shape() -> None:
+    validate = cast(
+        Callable[[object, dict[str, object]], dict[str, object]],
+        vars(cutover)["_validate_predecessor_release_evidence"],
+    )
+    digest_json = cast(Callable[[object], str], vars(cutover)["_sha256_json"])
+    predecessor = {
+        "schema": cutover.PROTECTED_PREDECESSOR_RELEASE_SCHEMA,
+        "prior_reservation_id": "ordinary-prior-reservation",
+        "prior_operation_id": "ordinary-prior-operation",
+        "prior_authorization_sha256": "a" * 64,
+        "prior_release_evidence": {
+            "verified": True,
+            "protected_receipt_sha256": "b" * 64,
+            "managed_receipt_sha256": "c" * 64,
+        },
+        "prior_protected_receipt_sha256": "b" * 64,
+        "prior_managed_receipt_sha256": "c" * 64,
+        "new_reservation_id": "ordinary-new-reservation",
+        "new_operation_id": "ordinary-new-operation",
+    }
+    predecessor["evidence_sha256"] = digest_json(predecessor)
+    owner: dict[str, object] = {
+        "reservation_id": "ordinary-new-reservation",
+        "operation_id": "ordinary-new-operation",
+        "managed_receipt_sha256": "c" * 64,
+    }
+    assert validate(predecessor, owner) == predecessor
+
+
+def _exact_released_intermediate_v2_retirement(
+    fixture: Fixture,
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    candidate_version: str = "v7",
+) -> tuple[dict[str, object], dict[str, object]]:
+    digest_json = cast(Callable[[object], str], vars(cutover)["_sha256_json"])
+    seal = cast(
+        Callable[[dict[str, object]], dict[str, object]], vars(cutover)["_seal_control_owner"]
+    )
+    canonical_json = cast(Callable[[object], str], vars(cutover)["_canonical_json"])
+    owner_identity = cast(
+        Callable[[dict[str, object]], dict[str, object]], vars(cutover)["_owner_identity"]
+    )
+
+    def file_sha(value: dict[str, object]) -> str:
+        return hashlib.sha256((canonical_json(value) + "\n").encode()).hexdigest()
+
+    receipt_path = fixture.scheduler_root / cutover.FAILED_TERMINAL_RECEIPT_NAME
+    release_path = fixture.scheduler_root / (
+        f"b649-prestart-successor-release-{cutover.RELEASED_INTERMEDIATE_RESERVATION_ID}.json"
+    )
+    intermediate_target: dict[str, object] = {
+        "source_worktree": cutover.RELEASED_INTERMEDIATE_TARGET_WORKTREE,
+        "head": cutover.RELEASED_INTERMEDIATE_TARGET_HEAD,
+        "tree": cutover.RELEASED_INTERMEDIATE_TARGET_TREE,
+        "durable_ref": cutover.RELEASED_INTERMEDIATE_TARGET_REF,
+    }
+    owner: dict[str, object] = {
+        "schema": cutover.CONTROL_OWNER_SCHEMA,
+        "reservation_id": cutover.RELEASED_INTERMEDIATE_RESERVATION_ID,
+        "owner_kind": "protected",
+        "owner_pid": 1234,
+        "action": "apply",
+        "target": intermediate_target,
+        "control_head": cutover.V7_SOURCE_HEAD,
+        "control_tree": cutover.V7_SOURCE_TREE,
+        "operation_id": cutover.RELEASED_INTERMEDIATE_OPERATION_ID,
+        "managed_receipt_sha256": cutover.V5_MANAGED_RECEIPT_SHA256,
+        "phase": "RELEASED",
+        "created_at": "2026-10-01T00:00:00Z",
+        "updated_at": "2026-10-01T00:00:00Z",
+        "authorization": None,
+        "mutation_started": False,
+        "terminal": None,
+        "release_evidence": None,
+        "predecessor_release_evidence": None,
+    }
+    owner["authorization"] = owner_identity(owner)
+    release: dict[str, object] = {
+        "schema": "b649-protected-prestart-successor-release-v1",
+        "reservation_id": cutover.RELEASED_INTERMEDIATE_RESERVATION_ID,
+        "operation_id": cutover.RELEASED_INTERMEDIATE_OPERATION_ID,
+        "owner_authorization": owner["authorization"],
+        "plan_digest": "1" * 64,
+        "plan_sha256": "2" * 64,
+        "original_control_identity": {
+            "head": cutover.V7_SOURCE_HEAD,
+            "tree": cutover.V7_SOURCE_TREE,
+        },
+        "recovery_control_identity": {"head": "3" * 40, "tree": "4" * 40},
+        "target": intermediate_target,
+        "live_old_state": {
+            "verified": True,
+            "source": {"head": cutover.V5_SOURCE_HEAD, "tree": cutover.V5_SOURCE_TREE},
+        },
+        "managed_receipt_sha256": cutover.V5_MANAGED_RECEIPT_SHA256,
+        "protected_execution_receipt": {
+            "execution_id": cutover.FAILED_TERMINAL_EXECUTION_ID,
+            "exists": True,
+            "operation_id": cutover.FAILED_TERMINAL_OPERATION_ID,
+            "path": str(receipt_path),
+            "reservation_id": cutover.FAILED_TERMINAL_RESERVATION_ID,
+            "sha256": cutover.FAILED_TERMINAL_RECEIPT_SHA256,
+            "status": "FAILED",
+        },
+        "claim_absent": True,
+        "rollback_receipt_absent": True,
+        "mutation_started": False,
+    }
+    release_unsigned = {key: value for key, value in release.items() if key != "record_sha256"}
+    release["record_sha256"] = digest_json(release_unsigned)
+    release_file_sha = file_sha(release)
+    owner["release_evidence"] = {
+        "claim_absent": True,
+        "kind": "PRESTART_SUCCESSOR_NO_MUTATION",
+        "managed_receipt_sha256": cutover.V5_MANAGED_RECEIPT_SHA256,
+        "mutation_started": False,
+        "protected_receipt_absent_for_operation": True,
+        "release_record_path": str(release_path),
+        "release_record_sha256": release_file_sha,
+        "verified": True,
+    }
+    owner = seal(owner)
+    owner_file_sha = file_sha(owner)
+    monkeypatch.setattr(
+        cutover, "RELEASED_INTERMEDIATE_OWNER_RECORD_SHA256", owner["record_sha256"]
+    )
+    monkeypatch.setattr(cutover, "RELEASED_INTERMEDIATE_OWNER_FILE_SHA256", owner_file_sha)
+    monkeypatch.setattr(
+        cutover, "RELEASED_INTERMEDIATE_RELEASE_RECORD_SHA256", release["record_sha256"]
+    )
+    monkeypatch.setattr(
+        cutover, "RELEASED_INTERMEDIATE_RELEASE_RECORD_FILE_SHA256", release_file_sha
+    )
+
+    v5_proof = cast(
+        Callable[[], dict[str, object]], vars(cutover)["_reconstructed_v5_predecessor_proof"]
+    )()
+    candidate_bindings = {
+        "v7": (
+            cutover.V7_SOURCE_HEAD,
+            cutover.V7_SOURCE_TREE,
+            cutover.V7_TARGET_METHOD,
+            cutover.V7_TARGET_K20_SHA256,
+        ),
+        "v8": (
+            cutover.V8_SOURCE_HEAD,
+            cutover.V8_SOURCE_TREE,
+            cutover.V8_TARGET_METHOD,
+            cutover.V8_TARGET_K20_SHA256,
+        ),
+    }
+    candidate_head, candidate_tree, candidate_method, candidate_k20_sha256 = candidate_bindings[
+        candidate_version
+    ]
+    candidate_target: dict[str, object] = {
+        "source_worktree": str(fixture.new),
+        "head": candidate_head,
+        "tree": candidate_tree,
+        "durable_ref": f"refs/heads/runtime/b649/{candidate_head}",
+    }
+    retirement_unsigned: dict[str, object] = {
+        "schema": cutover.FAILED_TERMINAL_RETIREMENT_V2_SCHEMA,
+        "receipt_path": str(receipt_path),
+        "archive_path": str(
+            receipt_path.with_name(
+                f"{receipt_path.stem}.{cutover.FAILED_TERMINAL_EXECUTION_ID}.superseded.json"
+            )
+        ),
+        "execution_id": cutover.FAILED_TERMINAL_EXECUTION_ID,
+        "receipt_sha256": cutover.FAILED_TERMINAL_RECEIPT_SHA256,
+        "reservation_id": cutover.FAILED_TERMINAL_RESERVATION_ID,
+        "operation_id": cutover.FAILED_TERMINAL_OPERATION_ID,
+        "status": "FAILED",
+        "phase": "COMPLETED",
+        "exit_code": 1,
+        "result_status": "INCOMPLETE_OR_AMBIGUOUS",
+        "child_started": False,
+        "child_completed": False,
+        "mutation_started": False,
+        "zero_mutation": True,
+        "v5_predecessor_release_evidence": v5_proof,
+        "v5_predecessor_proof_sha256": cutover.V5_RECONSTRUCTED_PREDECESSOR_PROOF_SHA256,
+        "v5_protected_receipt_sha256": cutover.V5_PROTECTED_RECEIPT_SHA256,
+        "v5_protected_receipt_archive_path": str(
+            fixture.scheduler_root
+            / (
+                f"{cutover.FAILED_TERMINAL_RECEIPT_NAME.rsplit('.', 1)[0]}."
+                f"{cutover.V5_EXECUTION_ID}.superseded.json"
+            )
+        ),
+        "v5_managed_receipt_sha256": cutover.V5_MANAGED_RECEIPT_SHA256,
+        "v5_managed_receipt_path": str(fixture.receipt_path),
+        "v5_source_head": cutover.V5_SOURCE_HEAD,
+        "v5_source_tree": cutover.V5_SOURCE_TREE,
+        "v5_live_state": {
+            "verified": True,
+            "source": {"head": cutover.V5_SOURCE_HEAD, "tree": cutover.V5_SOURCE_TREE},
+        },
+        "intermediate_owner_record": owner,
+        "intermediate_owner_file_sha256": owner_file_sha,
+        "intermediate_release_record_path": str(release_path),
+        "intermediate_release_record_file_sha256": release_file_sha,
+        "intermediate_release_record": release,
+        "intermediate_reservation_id": cutover.RELEASED_INTERMEDIATE_RESERVATION_ID,
+        "intermediate_operation_id": cutover.RELEASED_INTERMEDIATE_OPERATION_ID,
+        "intermediate_target": intermediate_target,
+        "candidate_plan_sha256": "5" * 64,
+        "candidate_reservation_id": "8f66c4b9-f104-40ea-8591-a4deef696c99",
+        "candidate_operation_id": "9" * 32,
+        "candidate_target": candidate_target,
+        "candidate_method": candidate_method,
+        "candidate_k20_sha256": candidate_k20_sha256,
+        "claim_root": str(fixture.root / "claims"),
+        "claim_store_status": "ABSENT",
+        "rollback_receipt_absent": True,
+        "intermediate_execution_receipt_absent": True,
+        "failed_operation_managed_receipt_present": False,
+        "archive_status": "ARCHIVED_UNCHANGED",
+    }
+    retirement = {
+        **retirement_unsigned,
+        "record_sha256": digest_json(retirement_unsigned),
+    }
+    successor_proof_unsigned: dict[str, object] = {
+        "schema": cutover.PROTECTED_PREDECESSOR_RELEASE_SCHEMA,
+        "prior_reservation_id": v5_proof["prior_reservation_id"],
+        "prior_operation_id": v5_proof["prior_operation_id"],
+        "prior_authorization_sha256": v5_proof["prior_authorization_sha256"],
+        "prior_release_evidence": v5_proof["prior_release_evidence"],
+        "prior_protected_receipt_sha256": cutover.V5_PROTECTED_RECEIPT_SHA256,
+        "prior_managed_receipt_sha256": cutover.V5_MANAGED_RECEIPT_SHA256,
+        "new_reservation_id": retirement["candidate_reservation_id"],
+        "new_operation_id": retirement["candidate_operation_id"],
+        "retired_failed_terminal_evidence": retirement,
+    }
+    successor_proof = {
+        **successor_proof_unsigned,
+        "evidence_sha256": digest_json(successor_proof_unsigned),
+    }
+    return retirement, successor_proof
+
+
+def test_production_validator_accepts_exact_released_intermediate_v2_bridge(
+    fixture: Fixture,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _retirement, proof = _exact_released_intermediate_v2_retirement(fixture, monkeypatch)
+    validate = cast(
+        Callable[[object, dict[str, object]], dict[str, object]],
+        vars(cutover)["_validate_predecessor_release_evidence"],
+    )
+    owner = {
+        "reservation_id": proof["new_reservation_id"],
+        "operation_id": proof["new_operation_id"],
+        "managed_receipt_sha256": cutover.V5_MANAGED_RECEIPT_SHA256,
+        "target": _object(_object(proof["retired_failed_terminal_evidence"])["candidate_target"]),
+    }
+    assert validate(proof, owner) == proof
+
+
+def test_v8_candidate_binding_matches_the_sealed_k20_authority() -> None:
+    k20 = SEALED_GEOMETRY_PORTFOLIOS[20]
+
+    assert cutover.V8_SOURCE_HEAD == "ef28fecc5d6198465cedc37770a586c3239ce63f"
+    assert cutover.V8_SOURCE_TREE == "601760544573651795e365f8c9d95d59405fbb85"
+    assert (
+        f"{SEALED_GEOMETRY_METHOD_ID}@{SEALED_GEOMETRY_METHOD_VERSION}"
+    ) == cutover.V8_TARGET_METHOD
+    assert k20.ticket_count == 20
+    assert len(k20.tickets) == 20
+    assert canonical_portfolio_sha256(k20.tickets) == cutover.V8_TARGET_K20_SHA256
+    assert k20.portfolio_sha256 == cutover.V8_TARGET_K20_SHA256
+
+
+def test_production_validator_accepts_exact_v8_candidate_binding(
+    fixture: Fixture,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    retirement, proof = _exact_released_intermediate_v2_retirement(
+        fixture, monkeypatch, candidate_version="v8"
+    )
+    validate = cast(
+        Callable[[object, dict[str, object]], dict[str, object]],
+        vars(cutover)["_validate_predecessor_release_evidence"],
+    )
+    owner = {
+        "reservation_id": proof["new_reservation_id"],
+        "operation_id": proof["new_operation_id"],
+        "managed_receipt_sha256": cutover.V5_MANAGED_RECEIPT_SHA256,
+        "target": _object(_object(proof["retired_failed_terminal_evidence"])["candidate_target"]),
+    }
+
+    assert retirement["candidate_method"] == cutover.V8_TARGET_METHOD
+    assert retirement["candidate_k20_sha256"] == cutover.V8_TARGET_K20_SHA256
+    assert retirement["v5_protected_receipt_sha256"] == cutover.V5_PROTECTED_RECEIPT_SHA256
+    assert retirement["v5_managed_receipt_sha256"] == cutover.V5_MANAGED_RECEIPT_SHA256
+    assert validate(proof, owner) == proof
+
+
+@pytest.mark.parametrize(
+    "defect",
+    [
+        "owner_file_seal",
+        "owner_record_seal",
+        "release_file_seal",
+        "release_record_seal",
+        "v5_proof_digest",
+        "v6_binding",
+        "candidate_target",
+        "wrong_head",
+        "wrong_tree",
+        "candidate_id_reuse",
+        "candidate_operation_reuse",
+        "wrong_method",
+        "wrong_k20",
+    ],
+)
+@pytest.mark.parametrize("candidate_version", ["v7", "v8"])
+def test_production_validator_rejects_released_intermediate_v2_corruption(
+    fixture: Fixture,
+    monkeypatch: pytest.MonkeyPatch,
+    candidate_version: str,
+    defect: str,
+) -> None:
+    digest_json = cast(Callable[[object], str], vars(cutover)["_sha256_json"])
+    _retirement, proof = _exact_released_intermediate_v2_retirement(
+        fixture, monkeypatch, candidate_version=candidate_version
+    )
+    corrupted = copy.deepcopy(proof)
+    retirement = _object(corrupted["retired_failed_terminal_evidence"])
+    if defect in {"owner_file_seal", "owner_record_seal"}:
+        owner = _object(retirement["intermediate_owner_record"])
+        if defect == "owner_file_seal":
+            retirement["intermediate_owner_file_sha256"] = "a" * 64
+        else:
+            owner["record_sha256"] = "a" * 64
+    elif defect in {"release_file_seal", "release_record_seal"}:
+        release = _object(retirement["intermediate_release_record"])
+        if defect == "release_file_seal":
+            retirement["intermediate_release_record_file_sha256"] = "b" * 64
+        else:
+            release["record_sha256"] = "b" * 64
+    elif defect == "v5_proof_digest":
+        retirement["v5_predecessor_proof_sha256"] = "c" * 64
+    elif defect == "v6_binding":
+        release = _object(retirement["intermediate_release_record"])
+        _object(release["protected_execution_receipt"])["operation_id"] = "d" * 32
+    elif defect == "candidate_target":
+        candidate_target = _object(retirement["candidate_target"])
+        if candidate_version == "v8":
+            candidate_target["head"] = cutover.V7_SOURCE_HEAD
+            candidate_target["tree"] = cutover.V7_SOURCE_TREE
+        else:
+            candidate_target["head"] = cutover.RELEASED_INTERMEDIATE_TARGET_HEAD
+    elif defect == "wrong_head":
+        candidate_target = _object(retirement["candidate_target"])
+        candidate_target["head"] = (
+            cutover.V7_SOURCE_HEAD
+            if candidate_version == "v8"
+            else cutover.RELEASED_INTERMEDIATE_TARGET_HEAD
+        )
+    elif defect == "wrong_tree":
+        candidate_target = _object(retirement["candidate_target"])
+        candidate_target["tree"] = (
+            cutover.V7_SOURCE_TREE
+            if candidate_version == "v8"
+            else cutover.RELEASED_INTERMEDIATE_TARGET_TREE
+        )
+    elif defect == "candidate_id_reuse":
+        retirement["candidate_reservation_id"] = cutover.RELEASED_INTERMEDIATE_RESERVATION_ID
+    elif defect == "candidate_operation_reuse":
+        retirement["candidate_operation_id"] = cutover.RELEASED_INTERMEDIATE_OPERATION_ID
+    elif defect == "wrong_method":
+        retirement["candidate_method"] = (
+            cutover.V7_TARGET_METHOD if candidate_version == "v8" else "other"
+        )
+    else:
+        retirement["candidate_k20_sha256"] = (
+            cutover.V7_TARGET_K20_SHA256 if candidate_version == "v8" else "e" * 64
+        )
+    retirement["record_sha256"] = ""
+    retirement["record_sha256"] = digest_json(
+        {key: value for key, value in retirement.items() if key != "record_sha256"}
+    )
+    corrupted["evidence_sha256"] = ""
+    corrupted["evidence_sha256"] = digest_json(
+        {key: value for key, value in corrupted.items() if key != "evidence_sha256"}
+    )
+    validate = cast(
+        Callable[[object, dict[str, object]], dict[str, object]],
+        vars(cutover)["_validate_predecessor_release_evidence"],
+    )
+    owner = {
+        "reservation_id": corrupted["new_reservation_id"],
+        "operation_id": corrupted["new_operation_id"],
+        "managed_receipt_sha256": cutover.V5_MANAGED_RECEIPT_SHA256,
+        "target": _object(
+            _object(corrupted["retired_failed_terminal_evidence"])["candidate_target"]
+        ),
+    }
+    with pytest.raises(cutover.CutoverSafetyError):
+        validate(corrupted, owner)
+
+def _prestart_successor_predecessor_proof() -> tuple[dict[str, object], dict[str, object]]:
+    digest_json = cast(Callable[[object], str], vars(cutover)["_sha256_json"])
+    prior_reservation = "92740b95-103b-4350-8dc0-ee2ffe6cec32"
+    prior_operation = "b985e964f4b21c417d08a266c3d13ff8"
+    release_sha = "a" * 64
+    managed_sha = "c" * 64
+    protected_sha = "b" * 64
+    release_evidence: dict[str, object] = {
+        "kind": "PRESTART_SUCCESSOR_NO_MUTATION",
+        "verified": True,
+        "release_record_path": (f"/tmp/b649-prestart-successor-release-{prior_reservation}.json"),
+        "release_record_sha256": release_sha,
+        "managed_receipt_sha256": managed_sha,
+        "protected_receipt_absent_for_operation": True,
+        "claim_absent": True,
+        "mutation_started": False,
+    }
+    proof: dict[str, object] = {
+        "schema": cutover.PROTECTED_PREDECESSOR_RELEASE_SCHEMA,
+        "prior_reservation_id": prior_reservation,
+        "prior_operation_id": prior_operation,
+        "prior_authorization_sha256": "d" * 64,
+        "prior_release_evidence": release_evidence,
+        "prior_protected_receipt_sha256": protected_sha,
+        "prior_managed_receipt_sha256": managed_sha,
+        "new_reservation_id": "next-reservation",
+        "new_operation_id": "next-operation",
+        "prestart_successor_predecessor_evidence": {
+            "schema": cutover.PRESTART_SUCCESSOR_PREDECESSOR_SCHEMA,
+            "release_record_sha256": release_sha,
+            "predecessor_reservation_id": "v5-reservation",
+            "predecessor_operation_id": "v5-operation",
+            "protected_receipt_sha256": protected_sha,
+            "managed_receipt_sha256": managed_sha,
+        },
+    }
+    proof["evidence_sha256"] = digest_json(proof)
+    successor_owner = {
+        "reservation_id": proof["new_reservation_id"],
+        "operation_id": proof["new_operation_id"],
+        "managed_receipt_sha256": managed_sha,
+        "target": {
+            "source_worktree": "/tmp/B649_PRODUCTION_NEXT",
+            "head": "e" * 40,
+            "tree": "f" * 40,
+        },
+    }
+    return proof, successor_owner
+
+
+@pytest.mark.parametrize(
+    "defect",
+    ["link_missing", "release_sha", "release_path", "release_shape"],
+)
+def test_production_validator_requires_bound_prestart_successor_predecessor_link(
+    defect: str,
+) -> None:
+    digest_json = cast(Callable[[object], str], vars(cutover)["_sha256_json"])
+    validate = cast(
+        Callable[[object, dict[str, object]], dict[str, object]],
+        vars(cutover)["_validate_predecessor_release_evidence"],
+    )
+    proof, successor_owner = _prestart_successor_predecessor_proof()
+    if defect == "link_missing":
+        proof.pop("prestart_successor_predecessor_evidence")
+    else:
+        prior_release = _object(proof["prior_release_evidence"])
+        link = _object(proof["prestart_successor_predecessor_evidence"])
+        if defect == "release_sha":
+            link["release_record_sha256"] = "e" * 64
+        elif defect == "release_path":
+            prior_release["release_record_path"] = "/tmp/wrong-release.json"
+        else:
+            prior_release["claim_absent"] = False
+    proof["evidence_sha256"] = ""
+    proof["evidence_sha256"] = digest_json(
+        {key: value for key, value in proof.items() if key != "evidence_sha256"}
+    )
+
+    with pytest.raises(cutover.CutoverSafetyError):
+        validate(proof, successor_owner)

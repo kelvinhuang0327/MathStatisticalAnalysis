@@ -86,10 +86,12 @@ class B649ForwardAutoCycleAdapter:
 
     def resolve_next_target(self) -> PredictionTarget | None:
         if self._target is not None:
-            return self._target
-        if self._target_resolver is not None:
-            return self._target_resolver()
-        return self._resolve_canonical_due_or_future_target()
+            target = self._target
+        elif self._target_resolver is not None:
+            target = self._target_resolver()
+        else:
+            target = self._resolve_canonical_due_or_future_target()
+        return target
 
     def list_enabled_strategy_streams(self) -> tuple[StrategyStream, ...]:
         return tuple(stream for stream in self._streams if stream.enabled)

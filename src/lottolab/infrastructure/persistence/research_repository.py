@@ -38,19 +38,32 @@ from lottolab.application.research_store import (
     TicketInput,
     TicketResultInput,
 )
-from lottolab.domain.lottery_rules import LotteryRuleContract
+from lottolab.domain.lottery_rules import BIG_LOTTO_RULE_CONTRACT, LotteryRuleContract
 from lottolab.domain.research import (
     ResearchExecutionStatus,
     ResearchRunKind,
     ResearchRunStatus,
     StrategyProvenanceAvailability,
 )
+from lottolab.domain.research_live_forecast import (
+    CANONICAL_CONSENSUS,
+    CONSENSUS_AUTHORITY_B_PAYLOAD_SHA256,
+    CONSENSUS_AUTHORITY_B_SCOPE,
+    CONSENSUS_STREAM,
+    CONSENSUS_STREAM_VERSION,
+    ORIGINAL_FIELDS,
+    LiveForecastInput,
+    LiveForecastResult,
+    canonical_json,
+    digest,
+    object_json,
+)
 from lottolab.infrastructure.persistence.research_schema import (
     APPEND_ONLY_TRIGGER_NAMES,
     BUSY_TIMEOUT_MS,
     IMMUTABLE_TABLE_NAMES,
-    MIGRATION_CHECKSUM,
     TABLE_NAMES,
+    V5_MIGRATION_CHECKSUM,
     ResearchDataPaths,
     initialize_schema,
     open_database,
@@ -74,6 +87,73 @@ class ResearchConflictError(ResearchRepositoryError):
     """Stored immutable bytes conflict with a recomputed identity."""
 
 
+@dataclass(frozen=True, slots=True)
+class HistoricalReplayDiscoveryCorpusRows:
+    """Raw read-only rows for one target-bounded historical replay corpus."""
+
+    table_names: frozenset[str]
+    source_metadata: tuple[object, ...] | None
+    source_latest_status: object | None
+    strategy_rows: tuple[tuple[object, ...], ...]
+    run_inventory_rows: tuple[tuple[object, ...], ...]
+    bounded_profile_counts: tuple[object, ...]
+    common_rows: tuple[dict[str, object], ...]
+
+
+@dataclass(frozen=True, slots=True)
+class LiveForecastCurrentResult:
+    """The version selected by the exact live-current pointer join."""
+
+    forecast: LiveForecastInput
+    version: int
+    run_id: str
+    pointer_advanced: bool = True
+
+    @property
+    def scope(self) -> tuple[str, str, str, str, str]:
+        return self.forecast.scope
+
+    @property
+    def request_id(self) -> str:
+        return self.forecast.request_id
+
+    @property
+    def request_sha256(self) -> str:
+        return self.forecast.request_sha256
+
+    @property
+    def payload_bytes(self) -> bytes:
+        return self.forecast.payload_bytes
+
+    @property
+    def payload_sha256(self) -> str:
+        return self.forecast.payload_sha256
+
+    @property
+    def provenance_class(self) -> str:
+        return self.forecast.provenance_class
+
+    @property
+    def forecast_stream_id(self) -> str:
+        return self.forecast.forecast_stream_id
+
+    @property
+    def forecast_stream_version(self) -> str:
+        return self.forecast.forecast_stream_version
+
+    @property
+    def source_locator(self) -> str:
+        return self.forecast.source_locator
+
+    @property
+    def consensus_provenance_json(self) -> str | None:
+        return self.forecast.consensus_provenance_json
+
+    @property
+    def schedule_authority_sha256(self) -> str:
+        return str(self.forecast.target["schedule_authority_sha256"])
+
+
 class SQLiteResearchRepository:
     """The only production-authorized SQL writer for research tables."""
 
@@ -85,6 +165,795 @@ class SQLiteResearchRepository:
     @property
     def paths(self) -> ResearchDataPaths:
         return self._paths
+
+    def live_current_version(self, scope: tuple[str, str, str, str, str]) -> int:
+        with open_database(self._paths, read_only=True) as connection:
+            row = connection.execute(
+                "SELECT version FROM research_live_forecast_current_pointer WHERE "
+                "lottery_type=? AND target_draw_number=? AND target_draw_date=? "
+                "AND forecast_stream_id=? AND forecast_stream_version=?",
+                scope,
+            ).fetchone()
+        return 0 if row is None else int(row[0])
+
+    def find_live_request(self, request_id: str, request_sha256: str) -> LiveForecastResult | None:
+        with open_database(self._paths, read_only=True) as connection:
+            return self._existing_live_request(connection, request_id, request_sha256)
+
+    def read_current_consensus(
+        self,
+        scope: tuple[str, str, str, str, str] = (
+            "BIG_LOTTO",
+            "115000087",
+            "2026-09-11",
+            CONSENSUS_STREAM,
+            CONSENSUS_STREAM_VERSION,
+        ),
+    ) -> LiveForecastCurrentResult | None:
+        """Read the canonical version selected by the complete pointer join."""
+
+        if len(scope) != 5:
+            raise ResearchRepositoryError("live forecast scope must contain five fields")
+        with open_database(self._paths, read_only=True) as connection:
+            connection.row_factory = sqlite3.Row
+            pointer_row = connection.execute(
+                "SELECT version, run_id FROM research_live_forecast_current_pointer WHERE "
+                "lottery_type=? AND target_draw_number=? AND target_draw_date=? "
+                "AND forecast_stream_id=? AND forecast_stream_version=?",
+                scope,
+            ).fetchone()
+            row = connection.execute(
+                """
+                SELECT
+                    p.lottery_type AS pointer_lottery_type,
+                    p.target_draw_number AS pointer_target_draw_number,
+                    p.target_draw_date AS pointer_target_draw_date,
+                    p.forecast_stream_id AS pointer_forecast_stream_id,
+                    p.forecast_stream_version AS pointer_forecast_stream_version,
+                    p.version AS pointer_version,
+                    p.run_id AS pointer_run_id,
+                    v.version,
+                    v.run_id,
+                    v.request_id,
+                    v.request_sha256,
+                    v.lottery_type,
+                    v.target_draw_number,
+                    v.target_draw_date,
+                    v.forecast_stream_id,
+                    v.forecast_stream_version,
+                    v.target_json,
+                    v.provenance_class,
+                    v.payload_bytes,
+                    v.payload_sha256,
+                    v.source_payload_sha256,
+                    v.source_locator,
+                    v.missing_provenance_json,
+                    v.import_execution_json,
+                    v.consensus_provenance_json,
+                    v.candidate_ref,
+                    v.pointer_advanced,
+                    v.provenance_envelope_json,
+                    v.provenance_envelope_sha256,
+                    v.committed_at,
+                    v.expected_current_version,
+                    v.producer_json,
+                    v.source_execution_json,
+                    v.runtime_manifest_json,
+                    v.history_snapshot_json,
+                    v.catalog_json,
+                    v.generation_configs_json,
+                    v.effective_parameters_json,
+                    v.rng_semantics_json,
+                    v.ranking_evidence_json,
+                    v.ticket_lineage_json,
+                    v.generation_started_at,
+                    v.generation_finished_at
+                FROM research_live_forecast_current_pointer AS p
+                JOIN research_live_forecast_versions AS v
+                  ON v.version = p.version
+                 AND v.run_id = p.run_id
+                 AND v.lottery_type = p.lottery_type
+                 AND v.target_draw_number = p.target_draw_number
+                 AND v.target_draw_date = p.target_draw_date
+                 AND v.forecast_stream_id = p.forecast_stream_id
+                 AND v.forecast_stream_version = p.forecast_stream_version
+                WHERE p.lottery_type = ?
+                  AND p.target_draw_number = ?
+                  AND p.target_draw_date = ?
+                  AND p.forecast_stream_id = ?
+                  AND p.forecast_stream_version = ?
+                """,
+                scope,
+            ).fetchone()
+        if row is None:
+            if pointer_row is not None:
+                raise ResearchConflictError("canonical current pointer has no matching version")
+            return None
+
+        pointer_scope = tuple(
+            str(row[f"pointer_{name}"])
+            for name in (
+                "lottery_type",
+                "target_draw_number",
+                "target_draw_date",
+                "forecast_stream_id",
+                "forecast_stream_version",
+            )
+        )
+        version = int(row["version"])
+        run_id = str(row["run_id"])
+        if (
+            pointer_scope != tuple(scope)
+            or row["pointer_version"] != version
+            or str(row["pointer_run_id"]) != run_id
+            or tuple(
+                str(row[name])
+                for name in (
+                    "lottery_type",
+                    "target_draw_number",
+                    "target_draw_date",
+                    "forecast_stream_id",
+                    "forecast_stream_version",
+                )
+            )
+            != tuple(scope)
+            or row["pointer_advanced"] != 1
+            or row["provenance_class"] != CANONICAL_CONSENSUS
+            or row["forecast_stream_id"] != CONSENSUS_STREAM
+            or row["forecast_stream_version"] != CONSENSUS_STREAM_VERSION
+        ):
+            raise ResearchConflictError("canonical current pointer identity is invalid")
+        payload = row["payload_bytes"]
+        if not isinstance(payload, bytes):
+            if isinstance(payload, memoryview):
+                payload = payload.tobytes()
+            else:
+                raise ResearchConflictError("canonical current payload is not stored as bytes")
+        payload_sha256 = hashlib.sha256(payload).hexdigest()
+        envelope_raw = row["provenance_envelope_json"]
+        try:
+            envelope = object_json(envelope_raw) if isinstance(envelope_raw, str) else None
+        except (TypeError, ValueError):
+            envelope = None
+        try:
+            target_for_envelope = (
+                object_json(str(row["target_json"]))
+                if isinstance(row["target_json"], str)
+                else None
+            )
+        except (TypeError, ValueError):
+            target_for_envelope = None
+        if (
+            row["payload_sha256"] != payload_sha256
+            or row["source_payload_sha256"] != payload_sha256
+            or row["consensus_provenance_json"] is None
+            or row["import_execution_json"] is None
+            or envelope is None
+            or target_for_envelope is None
+            or envelope.get("schedule_authority_sha256")
+            != target_for_envelope.get("schedule_authority_sha256")
+            or digest(envelope) != row["provenance_envelope_sha256"]
+        ):
+            raise ResearchConflictError("canonical current payload or provenance hash mismatch")
+        original = {field: row[field] for field in ORIGINAL_FIELDS}
+        forecast = LiveForecastInput(
+            request_id=str(row["request_id"]),
+            request_sha256=str(row["request_sha256"]),
+            provenance_class=str(row["provenance_class"]),
+            forecast_stream_id=str(row["forecast_stream_id"]),
+            forecast_stream_version=str(row["forecast_stream_version"]),
+            target_json=str(row["target_json"]),
+            payload_bytes=payload,
+            source_locator=str(row["source_locator"]),
+            original_execution_json=canonical_json(original),
+            missing_provenance_json=str(row["missing_provenance_json"]),
+            import_execution_json=str(row["import_execution_json"]),
+            consensus_provenance_json=str(row["consensus_provenance_json"]),
+            candidate_ref=None if row["candidate_ref"] is None else str(row["candidate_ref"]),
+        )
+        try:
+            forecast.validate()
+        except (TypeError, ValueError) as exc:
+            raise ResearchConflictError("canonical current row failed domain validation") from exc
+        return LiveForecastCurrentResult(forecast, version, run_id)
+
+    @staticmethod
+    def _existing_live_request(
+        connection: sqlite3.Connection,
+        request_id: str,
+        request_sha256: str,
+        *,
+        scope: tuple[str, str, str, str, str] | None = None,
+        forecast: LiveForecastInput | None = None,
+    ) -> LiveForecastResult | None:
+        row = connection.execute(
+            "SELECT run_id, version, pointer_advanced, payload_sha256, "
+            "provenance_envelope_sha256, request_sha256, source_locator, "
+            "provenance_class, forecast_stream_id, forecast_stream_version, "
+            "lottery_type, target_draw_number, target_draw_date, target_json, "
+            "import_execution_json, consensus_provenance_json, candidate_ref "
+            "FROM research_live_forecast_versions WHERE request_id=?",
+            (request_id,),
+        ).fetchone()
+        if row is None:
+            return None
+        if row[5] != request_sha256:
+            raise ResearchConflictError("live request id was reused for different inputs")
+        if forecast is not None:
+            stored_scope = (
+                str(row[10]),
+                str(row[11]),
+                str(row[12]),
+                str(row[8]),
+                str(row[9]),
+            )
+            expected_scope = forecast.scope
+            if (
+                row[3] != forecast.payload_sha256
+                or row[6] != forecast.source_locator
+                or row[7] != forecast.provenance_class
+                or row[8] != forecast.forecast_stream_id
+                or row[9] != forecast.forecast_stream_version
+                or stored_scope != expected_scope
+                or row[13] != forecast.target_json
+                or row[15] != forecast.consensus_provenance_json
+                or (str(row[16]) if row[16] is not None else None) != forecast.candidate_ref
+            ):
+                raise ResearchConflictError("live request id was reused for different content")
+        pointer_advanced = bool(row[2])
+        if scope is not None:
+            pointer = connection.execute(
+                "SELECT version, run_id FROM research_live_forecast_current_pointer WHERE "
+                "lottery_type=? AND target_draw_number=? AND target_draw_date=? "
+                "AND forecast_stream_id=? AND forecast_stream_version=?",
+                scope,
+            ).fetchone()
+            pointer_advanced = (
+                pointer is not None
+                and int(pointer[0]) == int(row[1])
+                and str(pointer[1]) == str(row[0])
+            )
+        return LiveForecastResult(
+            str(row[0]), int(row[1]), pointer_advanced, True, str(row[3]), str(row[4])
+        )
+
+    def commit_live_forecast(
+        self,
+        forecast: LiveForecastInput,
+        *,
+        expected_current_version: int,
+        current_eligible: Callable[[], bool],
+        clock: Callable[[], datetime] = lambda: datetime.now(UTC),
+        strict_consensus: bool = False,
+        idempotency_key: str | None = None,
+    ) -> LiveForecastResult:
+        """Append one request and CAS its pointer in the same SQLite transaction.
+
+        Capture expected_current_version before generation. A concurrent winner
+        makes this run historical, not lost. Retries return without moving a
+        pointer or rerunning the gate. Exceptions (including a final gate error)
+        roll back artifact, rule, run, version, provenance and pointer together.
+        """
+        _require_canonical_consensus_authority(forecast)
+        forecast.validate()
+        if type(expected_current_version) is not int or expected_current_version < 0:
+            raise ResearchRepositoryError("invalid current pointer version")
+        consensus = forecast.provenance_class == CANONICAL_CONSENSUS
+        strict = strict_consensus or consensus
+        if strict and not consensus:
+            raise ResearchRepositoryError("strict consensus mode requires canonical consensus")
+        selected_idempotency_key = idempotency_key or forecast.request_id
+
+        def operation(connection: sqlite3.Connection) -> LiveForecastResult:
+            existing = self._existing_live_request(
+                connection,
+                forecast.request_id,
+                forecast.request_sha256,
+                scope=forecast.scope if strict else None,
+                forecast=forecast if strict else None,
+            )
+            if existing is not None:
+                return existing
+            if strict:
+                current = connection.execute(
+                    "SELECT version FROM research_live_forecast_current_pointer WHERE "
+                    "lottery_type=? AND target_draw_number=? AND target_draw_date=? "
+                    "AND forecast_stream_id=? AND forecast_stream_version=?",
+                    forecast.scope,
+                ).fetchone()
+                actual = 0 if current is None else int(current[0])
+                if actual != expected_current_version:
+                    raise ResearchConflictError("canonical current pointer changed")
+                eligible = current_eligible()
+                if type(eligible) is not bool:
+                    raise ResearchRepositoryError("current eligibility must be explicit")
+                if not eligible:
+                    raise ResearchConflictError("canonical consensus promotion is not eligible")
+                _claim_idempotency(
+                    connection,
+                    operation_name="commit_consensus_promotion",
+                    idempotency_key=selected_idempotency_key,
+                    request_sha256=forecast.request_sha256,
+                )
+            run_id = f"live-{uuid.uuid4()}"
+            committed_at = _utc_text(clock())
+            original = forecast.original
+            legacy = forecast.provenance_class == "LEGACY_MATERIALIZED"
+            native = forecast.provenance_class == "NATIVE_GENERATED"
+            if native and datetime.fromisoformat(committed_at) < datetime.fromisoformat(
+                str(original["generation_finished_at"])
+            ):
+                raise ResearchConflictError("commit clock predates native execution")
+            source = None if not native else object_json(str(original["source_execution_json"]))
+            producer = None if not native else object_json(str(original["producer_json"]))
+            # A current validation contract is not evidence of the original
+            # legacy execution's rule version. Only native execution binds it.
+            rule_id: str | None = None
+            if native:
+                rule_json = BIG_LOTTO_RULE_CONTRACT.canonical_json()
+                rule_sha = _sha256(rule_json)
+                rule_id = f"rule-{rule_sha}"
+                connection.execute(
+                    "INSERT OR IGNORE INTO research_rule_contracts VALUES (?, ?, ?, ?, ?, ?)",
+                    (
+                        rule_id,
+                        "BIG_LOTTO",
+                        BIG_LOTTO_RULE_CONTRACT.contract_version,
+                        rule_json,
+                        rule_sha,
+                        committed_at,
+                    ),
+                )
+            artifact_id = f"live-payload-{forecast.payload_sha256}"
+            connection.execute(
+                "INSERT OR IGNORE INTO research_artifacts VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (
+                    artifact_id,
+                    "LIVE_FORECAST_PAYLOAD",
+                    forecast.source_locator,
+                    "application/json",
+                    len(forecast.payload_bytes),
+                    forecast.payload_sha256,
+                    committed_at,
+                ),
+            )
+            target = forecast.target
+            if consensus:
+                if forecast.scope[1] == "115000087":
+                    if forecast.candidate_ref is not None:
+                        raise ResearchConflictError("frozen target 115000087 forbids candidate_ref")
+                else:
+                    if forecast.candidate_ref is None:
+                        raise ResearchConflictError(
+                            "successor canonical consensus requires candidate_ref"
+                        )
+            if consensus and forecast.candidate_ref is not None:
+                cand_row = connection.execute(
+                    "SELECT lottery_type, target_draw_number, "
+                    "target_draw_date, forecast_stream_id, forecast_stream_version, "
+                    "payload_sha256, payload_bytes, schedule_authority_sha256 "
+                    "FROM research_consensus_candidate_authorities WHERE candidate_ref = ?",
+                    (forecast.candidate_ref,),
+                ).fetchone()
+                if cand_row is None:
+                    raise ResearchConflictError(
+                        f"candidate_ref {forecast.candidate_ref} not found in candidate authorities"
+                    )
+                cand_scope = (
+                    str(cand_row[0]),
+                    str(cand_row[1]),
+                    str(cand_row[2]),
+                    str(cand_row[3]),
+                    str(cand_row[4]),
+                )
+                if cand_scope != forecast.scope:
+                    raise ResearchConflictError("candidate authority scope mismatch")
+                if str(cand_row[5]) != forecast.payload_sha256:
+                    raise ResearchConflictError("candidate authority payload sha256 mismatch")
+                cand_bytes = cand_row[6]
+                if isinstance(cand_bytes, memoryview):
+                    cand_bytes = cand_bytes.tobytes()
+                if cand_bytes != forecast.payload_bytes:
+                    raise ResearchConflictError("candidate authority payload bytes mismatch")
+                if str(cand_row[7]) != target.get("schedule_authority_sha256"):
+                    raise ResearchConflictError("candidate authority schedule mismatch")
+                dup_row = connection.execute(
+                    "SELECT request_id FROM research_live_forecast_versions "
+                    "WHERE candidate_ref = ?",
+                    (forecast.candidate_ref,),
+                ).fetchone()
+                if dup_row is not None and str(dup_row[0]) != forecast.request_id:
+                    raise ResearchConflictError("DUPLICATE_CANDIDATE_CONFLICT")
+            connection.execute(
+                "INSERT INTO research_runs (id, run_kind, rule_contract_id, "
+                "input_dataset_identity, input_dataset_sha256, status, expected_target_count, "
+                "imported_from_artifact_id, producer_identity, execution_code_version, "
+                "source_commit_oid, started_at, created_at, provenance_class) "
+                "VALUES (?, 'LIVE_PREDICTION', ?, ?, ?, 'COMPLETED', 1, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    run_id,
+                    rule_id,
+                    f"causal-history:{target['causal_history_sha256']}",
+                    target["causal_history_sha256"],
+                    artifact_id if (legacy or consensus) else None,
+                    None if producer is None else producer["producer_id"],
+                    None if producer is None else producer["producer_version"],
+                    None if source is None else source["commit"],
+                    original["generation_started_at"] if native else None,
+                    committed_at,
+                    forecast.provenance_class,
+                ),
+            )
+            current = connection.execute(
+                "SELECT version FROM research_live_forecast_current_pointer WHERE "
+                "lottery_type=? AND target_draw_number=? AND target_draw_date=? "
+                "AND forecast_stream_id=? AND forecast_stream_version=?",
+                forecast.scope,
+            ).fetchone()
+            actual = 0 if current is None else int(current[0])
+            if strict:
+                if actual != expected_current_version:
+                    raise ResearchConflictError("canonical current pointer changed")
+                advanced = True
+            else:
+                eligible = current_eligible()
+                if type(eligible) is not bool:
+                    raise ResearchRepositoryError("current eligibility must be explicit")
+                advanced = (
+                    eligible and actual == expected_current_version and (not legacy or actual == 0)
+                )
+            version = int(
+                connection.execute(
+                    "SELECT COALESCE(MAX(version), 0) + 1 FROM research_live_forecast_versions"
+                ).fetchone()[0]
+            )
+            envelope = {
+                "run_id": run_id,
+                "request_id": forecast.request_id,
+                "request_sha256": forecast.request_sha256,
+                "run_kind": "LIVE_PREDICTION",
+                "version": version,
+                "scope_version": 1,
+                "scope": forecast.scope,
+                "target": target,
+                "schedule_authority_sha256": target.get("schedule_authority_sha256"),
+                "payload_sha256": forecast.payload_sha256,
+                "source_locator": forecast.source_locator,
+                "provenance_class": forecast.provenance_class,
+                "original_execution": original,
+                "missing_provenance": object_json(forecast.missing_provenance_json),
+                "import_execution": None
+                if forecast.import_execution_json is None
+                else object_json(forecast.import_execution_json),
+                "consensus_provenance": None
+                if forecast.consensus_provenance_json is None
+                else object_json(forecast.consensus_provenance_json),
+                "committed_at": committed_at,
+                "expected_current_version": expected_current_version,
+                "pointer_advanced": advanced,
+            }
+            if forecast.candidate_ref is not None:
+                envelope["candidate_ref"] = forecast.candidate_ref
+            envelope_json = canonical_json(envelope)
+            envelope_sha = digest(envelope)
+            columns = (
+                "version",
+                "run_id",
+                "request_id",
+                "request_sha256",
+                "lottery_type",
+                "target_draw_number",
+                "target_draw_date",
+                "forecast_stream_id",
+                "forecast_stream_version",
+                "target_json",
+                "provenance_class",
+                "original_execution_provenance_status",
+                "payload_bytes",
+                "payload_sha256",
+                "source_payload_sha256",
+                "source_locator",
+                "bundle_id",
+                *ORIGINAL_FIELDS,
+                "missing_provenance_json",
+                "import_execution_json",
+                "consensus_provenance_json",
+                "candidate_ref",
+                "committed_at",
+                "expected_current_version",
+                "pointer_advanced",
+                "provenance_envelope_json",
+                "provenance_envelope_sha256",
+            )
+            payload = cast(dict[str, object], json.loads(forecast.payload_bytes))
+            values = (
+                version,
+                run_id,
+                forecast.request_id,
+                forecast.request_sha256,
+                *forecast.scope,
+                forecast.target_json,
+                forecast.provenance_class,
+                (
+                    "UNKNOWN_LEGACY_PROVENANCE"
+                    if legacy
+                    else "CONSENSUS_ADMISSION_BOUND"
+                    if (consensus and forecast.candidate_ref is not None)
+                    else "CONSENSUS_SOURCE_BOUND"
+                    if consensus
+                    else "COMPLETE"
+                ),
+                forecast.payload_bytes,
+                forecast.payload_sha256,
+                forecast.payload_sha256,
+                forecast.source_locator,
+                payload.get("bundle_id") if native else None,
+                *(original[field] for field in ORIGINAL_FIELDS),
+                forecast.missing_provenance_json,
+                forecast.import_execution_json,
+                forecast.consensus_provenance_json,
+                forecast.candidate_ref,
+                committed_at,
+                expected_current_version,
+                int(advanced),
+                envelope_json,
+                envelope_sha,
+            )
+            connection.execute(
+                f"INSERT INTO research_live_forecast_versions ({', '.join(columns)}) "
+                f"VALUES ({', '.join('?' for _ in columns)})",
+                values,
+            )
+            connection.execute(
+                "INSERT INTO research_run_status_events VALUES "
+                "(?, ?, 0, 'COMPLETED', NULL, 1, ?, ?)",
+                (f"status-{run_id}", run_id, committed_at, committed_at),
+            )
+            if advanced:
+                pointer_write = connection.execute(
+                    "INSERT INTO research_live_forecast_current_pointer "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?) "
+                    "ON CONFLICT(lottery_type, target_draw_number, target_draw_date, "
+                    "forecast_stream_id, forecast_stream_version) DO UPDATE SET "
+                    "version=excluded.version, run_id=excluded.run_id "
+                    "WHERE research_live_forecast_current_pointer.version=?",
+                    (*forecast.scope, version, run_id, expected_current_version),
+                )
+                if strict and pointer_write.rowcount != 1:
+                    raise ResearchConflictError("canonical current pointer CAS failed")
+            # Recheck after all writes: a deadline/schedule/outcome change must
+            # roll back the whole native transaction. Legacy may be history-only.
+            final_eligible = current_eligible()
+            if (
+                type(final_eligible) is not bool
+                or (strict and not final_eligible)
+                or (advanced and not strict and not final_eligible)
+                or _as_utc(clock()) < datetime.fromisoformat(committed_at)
+            ):
+                raise ResearchConflictError("forecast validity changed before commit")
+            return LiveForecastResult(
+                run_id, version, advanced, False, forecast.payload_sha256, envelope_sha
+            )
+
+        return self._write_transaction(operation)
+
+    def commit_consensus_promotion(
+        self,
+        forecast: LiveForecastInput,
+        *,
+        expected_current_version: int,
+        current_eligible: Callable[[], bool],
+        clock: Callable[[], datetime] = lambda: datetime.now(UTC),
+        idempotency_key: str | None = None,
+    ) -> LiveForecastResult:
+        """Promote one canonical consensus candidate with strict CAS semantics."""
+
+        _require_canonical_consensus_authority(forecast)
+        return self.commit_live_forecast(
+            forecast,
+            expected_current_version=expected_current_version,
+            current_eligible=current_eligible,
+            clock=clock,
+            strict_consensus=True,
+            idempotency_key=idempotency_key,
+        )
+
+    # INTENT: Provide canonical research repository reader for consensus candidate authorities
+    def get_consensus_candidate_authority(
+        self, candidate_ref: str
+    ) -> dict[str, object] | None:
+        """Fetch an admitted consensus candidate record by candidate_ref."""
+        with open_database(self._paths, read_only=True) as connection:
+            row = connection.execute(
+                """
+                SELECT
+                    candidate_ref,
+                    lottery_type,
+                    target_draw_number,
+                    target_draw_date,
+                    forecast_stream_id,
+                    forecast_stream_version,
+                    payload_bytes,
+                    payload_sha256,
+                    candidate_locator,
+                    candidate_created_at,
+                    scheduled_at,
+                    deadline,
+                    data_cutoff_draw_number,
+                    data_cutoff_draw_date,
+                    history_draw_count,
+                    causal_history_sha256,
+                    schedule_authority_sha256,
+                    stream_input_manifest_sha256,
+                    implementation_commit,
+                    implementation_tree,
+                    implementation_source_hashes_json,
+                    streams_json,
+                    admission_provenance_json,
+                    admitted_at
+                FROM research_consensus_candidate_authorities
+                WHERE candidate_ref = ?
+                """,
+                (candidate_ref,),
+            ).fetchone()
+            if row is None:
+                return None
+            payload_bytes = row[6]
+            if isinstance(payload_bytes, memoryview):
+                payload_bytes = payload_bytes.tobytes()
+            return {
+                "candidate_ref": str(row[0]),
+                "lottery_type": str(row[1]),
+                "target_draw_number": str(row[2]),
+                "target_draw_date": str(row[3]),
+                "forecast_stream_id": str(row[4]),
+                "forecast_stream_version": str(row[5]),
+                "payload_bytes": bytes(payload_bytes),
+                "payload_sha256": str(row[7]),
+                "candidate_locator": str(row[8]),
+                "candidate_created_at": str(row[9]),
+                "scheduled_at": str(row[10]),
+                "deadline": str(row[11]),
+                "data_cutoff_draw_number": str(row[12]),
+                "data_cutoff_draw_date": str(row[13]),
+                "history_draw_count": int(row[14]),
+                "causal_history_sha256": str(row[15]),
+                "schedule_authority_sha256": str(row[16]),
+                "stream_input_manifest_sha256": str(row[17]),
+                "implementation_commit": str(row[18]),
+                "implementation_tree": str(row[19]),
+                "implementation_source_hashes_json": str(row[20]),
+                "streams_json": str(row[21]),
+                "admission_provenance_json": str(row[22]),
+                "admitted_at": str(row[23]),
+            }
+
+    # INTENT: Provide canonical write transaction to record an admitted consensus candidate
+    def persist_consensus_candidate_authority(
+        self,
+        *,
+        candidate_ref: str,
+        lottery_type: str,
+        target_draw_number: str,
+        target_draw_date: str,
+        forecast_stream_id: str,
+        forecast_stream_version: str,
+        payload_bytes: bytes,
+        payload_sha256: str,
+        candidate_locator: str,
+        candidate_created_at: str,
+        scheduled_at: str,
+        deadline: str,
+        data_cutoff_draw_number: str,
+        data_cutoff_draw_date: str,
+        history_draw_count: int,
+        causal_history_sha256: str,
+        schedule_authority_sha256: str,
+        stream_input_manifest_sha256: str,
+        implementation_commit: str,
+        implementation_tree: str,
+        implementation_source_hashes_json: str,
+        streams_json: str,
+        admission_provenance_json: str,
+        admitted_at: str,
+    ) -> None:
+        """Persist an admitted candidate row into research_consensus_candidate_authorities."""
+
+        def operation(connection: sqlite3.Connection) -> None:
+            existing = connection.execute(
+                """
+                SELECT candidate_ref, payload_sha256, payload_bytes, schedule_authority_sha256
+                FROM research_consensus_candidate_authorities
+                WHERE candidate_ref = ?
+                   OR (
+                       lottery_type = ?
+                       AND target_draw_number = ?
+                       AND forecast_stream_id = ?
+                       AND forecast_stream_version = ?
+                   )
+                """,
+                (
+                    candidate_ref,
+                    lottery_type,
+                    target_draw_number,
+                    forecast_stream_id,
+                    forecast_stream_version,
+                ),
+            ).fetchone()
+            if existing is not None:
+                exist_ref, exist_sha, exist_bytes, exist_sched = existing
+                if isinstance(exist_bytes, memoryview):
+                    exist_bytes = exist_bytes.tobytes()
+                if (
+                    exist_ref == candidate_ref
+                    and exist_sha == payload_sha256
+                    and exist_bytes == payload_bytes
+                    and exist_sched == schedule_authority_sha256
+                ):
+                    return
+                raise ResearchConflictError(
+                    f"conflicting candidate authority exists for target {target_draw_number}"
+                )
+            connection.execute(
+                """
+                INSERT INTO research_consensus_candidate_authorities (
+                    candidate_ref,
+                    lottery_type,
+                    target_draw_number,
+                    target_draw_date,
+                    forecast_stream_id,
+                    forecast_stream_version,
+                    payload_bytes,
+                    payload_sha256,
+                    candidate_locator,
+                    candidate_created_at,
+                    scheduled_at,
+                    deadline,
+                    data_cutoff_draw_number,
+                    data_cutoff_draw_date,
+                    history_draw_count,
+                    causal_history_sha256,
+                    schedule_authority_sha256,
+                    stream_input_manifest_sha256,
+                    implementation_commit,
+                    implementation_tree,
+                    implementation_source_hashes_json,
+                    streams_json,
+                    admission_provenance_json,
+                    admitted_at
+                ) VALUES (
+                    ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+                )
+                """,
+                (
+                    candidate_ref,
+                    lottery_type,
+                    target_draw_number,
+                    target_draw_date,
+                    forecast_stream_id,
+                    forecast_stream_version,
+                    payload_bytes,
+                    payload_sha256,
+                    candidate_locator,
+                    candidate_created_at,
+                    scheduled_at,
+                    deadline,
+                    data_cutoff_draw_number,
+                    data_cutoff_draw_date,
+                    history_draw_count,
+                    causal_history_sha256,
+                    schedule_authority_sha256,
+                    stream_input_manifest_sha256,
+                    implementation_commit,
+                    implementation_tree,
+                    implementation_source_hashes_json,
+                    streams_json,
+                    admission_provenance_json,
+                    admitted_at,
+                ),
+            )
+
+        self._write_transaction(operation)
 
     def register_rule_contract(
         self,
@@ -330,9 +1199,7 @@ class SQLiteResearchRepository:
             if value.parameters_json is None
             else _validated_canonical_json(value.parameters_json, "parameters_json")
         )
-        parameters_sha256 = (
-            None if canonical_parameters is None else _sha256(canonical_parameters)
-        )
+        parameters_sha256 = None if canonical_parameters is None else _sha256(canonical_parameters)
         selected_id = snapshot_id or f"strategy-{uuid.uuid4()}"
         payload = {
             "parameters_sha256": parameters_sha256,
@@ -793,9 +1660,7 @@ class SQLiteResearchRepository:
             ).fetchone()
             if existing is not None:
                 if tuple(existing) != expected:
-                    raise ResearchConflictError(
-                        "run summary identity conflicts with stored bytes"
-                    )
+                    raise ResearchConflictError("run summary identity conflicts with stored bytes")
                 return selected_summary_id
             connection.execute(
                 """
@@ -829,12 +1694,8 @@ class SQLiteResearchRepository:
         cursor_clause = ""
         parameters: list[object] = [run_id]
         if after is not None:
-            cursor_clause = (
-                "AND (target_order, strategy_snapshot_id, id) > (?, ?, ?)"
-            )
-            parameters.extend(
-                (after.target_order, after.strategy_snapshot_id, after.target_id)
-            )
+            cursor_clause = "AND (target_order, strategy_snapshot_id, id) > (?, ?, ?)"
+            parameters.extend((after.target_order, after.strategy_snapshot_id, after.target_id))
         parameters.append(limit + 1)
         with open_database(self._paths, read_only=True) as connection:
             rows = connection.execute(
@@ -859,9 +1720,7 @@ class SQLiteResearchRepository:
                 target_id=str(last[4]),
             )
         return QueryPage(
-            items=tuple(
-                (str(row[0]), str(row[1]), str(row[2])) for row in page_rows
-            ),
+            items=tuple((str(row[0]), str(row[1]), str(row[2])) for row in page_rows),
             next_cursor=next_cursor,
         )
 
@@ -927,12 +1786,8 @@ class SQLiteResearchRepository:
             parameters.append(ResearchRunKind.REFERENCE_BASELINE.value)
         cursor_clause = ""
         if after is not None:
-            cursor_clause = (
-                "WHERE (started_at, run_id, strategy_snapshot_id) > (?, ?, ?)"
-            )
-            parameters.extend(
-                (after.started_at, after.run_id, after.strategy_snapshot_id)
-            )
+            cursor_clause = "WHERE (started_at, run_id, strategy_snapshot_id) > (?, ?, ?)"
+            parameters.extend((after.started_at, after.run_id, after.strategy_snapshot_id))
         parameters.append(limit + 1)
         with open_database(self._paths, read_only=True) as connection:
             rows = connection.execute(
@@ -1124,6 +1979,7 @@ class SQLiteResearchRepository:
 
     def verify_store(self) -> ResearchStoreReport:
         with open_database(self._paths, read_only=True) as connection:
+            _verify_canonical_consensus_payload_rows(connection)
             inventory = tuple(
                 str(row[0])
                 for row in connection.execute(
@@ -1196,7 +2052,7 @@ class SQLiteResearchRepository:
             resolved_path=str(self._paths.database),
             schema_version=int(migration_row[0]),
             migration_checksum=str(migration_row[1]),
-            migration_checksum_match=str(migration_row[1]) == MIGRATION_CHECKSUM,
+            migration_checksum_match=str(migration_row[1]) == V5_MIGRATION_CHECKSUM,
             table_inventory=inventory,
             row_counts=counts,
             append_only_triggers=tuple(
@@ -1235,6 +2091,119 @@ class SQLiteResearchRepository:
             f"research writer remained busy after {WRITE_RETRY_ATTEMPTS} attempts "
             f"with {BUSY_TIMEOUT_MS}ms busy timeout"
         ) from last_busy_error
+
+
+def _require_canonical_consensus_authority(forecast: LiveForecastInput) -> None:
+    if forecast.provenance_class != CANONICAL_CONSENSUS:
+        return
+    if (
+        forecast.scope == CONSENSUS_AUTHORITY_B_SCOPE
+        and forecast.payload_sha256 != CONSENSUS_AUTHORITY_B_PAYLOAD_SHA256
+    ):
+        raise ResearchRepositoryError("canonical consensus payload is not Authority B")
+    if forecast.scope[1] == "115000087":
+        if forecast.candidate_ref is not None:
+            raise ResearchConflictError("frozen target 115000087 forbids candidate_ref")
+    else:
+        if forecast.candidate_ref is None:
+            raise ResearchConflictError("successor canonical consensus requires candidate_ref")
+
+
+def _verify_canonical_consensus_payload_rows(connection: sqlite3.Connection) -> None:
+    rows = connection.execute(
+        """
+        SELECT version, payload_bytes, payload_sha256, source_payload_sha256
+        FROM research_live_forecast_versions
+        WHERE provenance_class = ?
+          AND lottery_type = ?
+          AND target_draw_number = ?
+          AND target_draw_date = ?
+          AND forecast_stream_id = ?
+          AND forecast_stream_version = ?
+        ORDER BY version
+        """,
+        (CANONICAL_CONSENSUS, *CONSENSUS_AUTHORITY_B_SCOPE),
+    ).fetchall()
+    for version, payload_bytes, payload_sha256, source_payload_sha256 in rows:
+        if isinstance(payload_bytes, memoryview):
+            payload_bytes = payload_bytes.tobytes()
+        if (
+            not isinstance(payload_bytes, bytes)
+            or payload_sha256 != CONSENSUS_AUTHORITY_B_PAYLOAD_SHA256
+            or source_payload_sha256 != CONSENSUS_AUTHORITY_B_PAYLOAD_SHA256
+            or hashlib.sha256(payload_bytes).hexdigest() != CONSENSUS_AUTHORITY_B_PAYLOAD_SHA256
+        ):
+            raise ResearchRepositoryError(
+                f"canonical consensus row {version} is not bound to Authority B"
+            )
+
+    successor_rows = connection.execute(
+        """
+        SELECT v.version, v.candidate_ref, v.payload_bytes, v.payload_sha256,
+               v.source_payload_sha256, a.payload_bytes, a.payload_sha256, a.candidate_ref
+        FROM research_live_forecast_versions AS v
+        LEFT JOIN research_consensus_candidate_authorities AS a
+          ON a.candidate_ref = v.candidate_ref
+        WHERE v.provenance_class = ?
+          AND v.candidate_ref IS NOT NULL
+        ORDER BY v.version
+        """,
+        (CANONICAL_CONSENSUS,),
+    ).fetchall()
+    for (
+        ver,
+        cand_ref,
+        v_bytes,
+        v_sha,
+        v_source_sha,
+        a_bytes,
+        a_sha,
+        a_ref,
+    ) in successor_rows:
+        if isinstance(v_bytes, memoryview):
+            v_bytes = v_bytes.tobytes()
+        if isinstance(a_bytes, memoryview):
+            a_bytes = a_bytes.tobytes()
+        if (
+            cand_ref is None
+            or a_ref is None
+            or not isinstance(v_bytes, bytes)
+            or v_sha != a_sha
+            or v_source_sha != a_sha
+            or v_bytes != a_bytes
+            or hashlib.sha256(v_bytes).hexdigest() != a_sha
+        ):
+            raise ResearchRepositoryError(
+                f"canonical consensus row {ver} is not bound to candidate authority {cand_ref}"
+            )
+
+    invalid_null_ref = connection.execute(
+        """
+        SELECT version FROM research_live_forecast_versions
+        WHERE provenance_class = ?
+          AND target_draw_number != '115000087'
+          AND candidate_ref IS NULL
+        """,
+        (CANONICAL_CONSENSUS,),
+    ).fetchall()
+    if invalid_null_ref:
+        raise ResearchRepositoryError(
+            f"successor canonical consensus row {invalid_null_ref[0][0]} missing candidate_ref"
+        )
+
+    invalid_087_ref = connection.execute(
+        """
+        SELECT version FROM research_live_forecast_versions
+        WHERE provenance_class = ?
+          AND target_draw_number = '115000087'
+          AND candidate_ref IS NOT NULL
+        """,
+        (CANONICAL_CONSENSUS,),
+    ).fetchall()
+    if invalid_087_ref:
+        raise ResearchRepositoryError(
+            f"frozen canonical consensus row {invalid_087_ref[0][0]} has illegal candidate_ref"
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -1301,9 +2270,7 @@ def _normalize_target(value: TargetCommitInput) -> _NormalizedTarget:
         if ticket.ordered_portfolio_position is not None
     ]
     if sorted(ordered_positions) != list(range(1, len(ordered_positions) + 1)):
-        raise ResearchRepositoryError(
-            "ordered portfolio positions must be unique and contiguous"
-        )
+        raise ResearchRepositoryError("ordered portfolio positions must be unique and contiguous")
     result_positions = [row.ticket_native_position for row in value.ticket_results]
     if result_positions and result_positions != positions:
         raise ResearchRepositoryError(
@@ -1360,9 +2327,7 @@ def _normalize_target(value: TargetCommitInput) -> _NormalizedTarget:
                 native_duplicate_of_position=native_duplicate,
                 portfolio_duplicate_of_position=portfolio_duplicate,
                 legacy_record_json=legacy_record,
-                legacy_record_sha256=(
-                    None if legacy_record is None else _sha256(legacy_record)
-                ),
+                legacy_record_sha256=(None if legacy_record is None else _sha256(legacy_record)),
                 legacy_provenance_hash=ticket.legacy_provenance_hash,
                 legacy_provenance_source=ticket.legacy_provenance_source,
             )
@@ -1515,12 +2480,8 @@ def _commit_ticket_result_rows(
             {
                 "draw_sha256": draw.draw_sha256,
                 "hit_numbers_json": normalized["hit_numbers_json"],
-                "legacy_reported_result_json": normalized[
-                    "legacy_reported_result_json"
-                ],
-                "legacy_reported_result_sha256": normalized[
-                    "legacy_reported_result_sha256"
-                ],
+                "legacy_reported_result_json": normalized["legacy_reported_result_json"],
+                "legacy_reported_result_sha256": normalized["legacy_reported_result_sha256"],
                 "main_hit_count": row.main_hit_count,
                 "prize_tier_id": row.prize_tier_id,
                 "special_hit_count": row.special_hit_count,
@@ -1545,9 +2506,7 @@ def _commit_ticket_result_rows(
         ).fetchone()
         if existing is not None:
             if str(existing[0]) != result_sha256:
-                raise ResearchConflictError(
-                    "same draw checksum produced different ticket results"
-                )
+                raise ResearchConflictError("same draw checksum produced different ticket results")
             continue
         version_row = connection.execute(
             """
@@ -1735,6 +2694,16 @@ def _utc_now() -> str:
     return datetime.now(UTC).isoformat(timespec="microseconds").replace("+00:00", "Z")
 
 
+def _as_utc(value: datetime) -> datetime:
+    if value.tzinfo is None or value.utcoffset() is None:
+        raise ResearchRepositoryError("repository clock must be timezone-aware")
+    return value.astimezone(UTC)
+
+
+def _utc_text(value: datetime) -> str:
+    return _as_utc(value).isoformat(timespec="microseconds").replace("+00:00", "Z")
+
+
 def fetch_research_draw_bindings_for_dataset(
     connection: sqlite3.Connection,
     *,
@@ -1764,6 +2733,369 @@ def fetch_research_draw_bindings_for_dataset(
     )
 
 
+def fetch_historical_replay_discovery_corpus_rows(
+    connection: sqlite3.Connection,
+    *,
+    source_run_id: str,
+    last_target_draw_date: str,
+    last_target_draw_number: int,
+) -> HistoricalReplayDiscoveryCorpusRows:
+    """Read one replay cohort capped at an inclusive discovery boundary.
+
+    The caller must own a query-only connection. The boundary is repeated in
+    every label-bearing query so rows after the discovery partition never
+    reach the study process.
+    """
+
+    query_only_row = connection.execute("PRAGMA query_only").fetchone()
+    if query_only_row is None or int(query_only_row[0]) != 1:
+        raise ResearchRepositoryError("historical replay corpus connection is not query-only")
+
+    table_names = fetch_research_table_names(connection)
+    source_row = connection.execute(
+        """
+        SELECT run_kind, input_dataset_identity, input_dataset_sha256, rule_contract_id
+        FROM research_runs
+        WHERE id = ?
+        """,
+        (source_run_id,),
+    ).fetchone()
+    source_status_row = connection.execute(
+        """
+        SELECT status
+        FROM research_run_status_events
+        WHERE run_id = ?
+        ORDER BY sequence DESC, id DESC
+        LIMIT 1
+        """,
+        (source_run_id,),
+    ).fetchone()
+    strategy_rows = connection.execute(
+        """
+        SELECT strategy_id, strategy_version
+        FROM research_strategy_snapshots
+        WHERE run_id = ?
+        ORDER BY strategy_id, strategy_version, id
+        """,
+        (source_run_id,),
+    ).fetchall()
+
+    inventory_rows: list[tuple[object, ...]] = []
+    runs = connection.execute(
+        "SELECT id, run_kind FROM research_runs ORDER BY started_at, id"
+    ).fetchall()
+    for run_row in runs:
+        run_id = run_row[0]
+        latest_status_row = connection.execute(
+            """
+            SELECT status
+            FROM research_run_status_events
+            WHERE run_id = ?
+            ORDER BY sequence DESC, id DESC
+            LIMIT 1
+            """,
+            (run_id,),
+        ).fetchone()
+        counts = connection.execute(
+            """
+            SELECT
+                (SELECT COUNT(*) FROM research_strategy_snapshots WHERE run_id = ?),
+                (SELECT COUNT(*) FROM research_prediction_targets WHERE run_id = ?),
+                (
+                    SELECT COUNT(*)
+                    FROM (
+                        SELECT target_draw_date, target_draw_number
+                        FROM research_prediction_targets
+                        WHERE run_id = ?
+                        GROUP BY target_draw_date, target_draw_number
+                    )
+                )
+            """,
+            (run_id, run_id, run_id),
+        ).fetchone()
+        if counts is None:
+            raise ResearchRepositoryError("historical replay inventory count returned no row")
+        inventory_rows.append(
+            (
+                run_row[0],
+                run_row[1],
+                None if latest_status_row is None else latest_status_row[0],
+                counts[0],
+                counts[1],
+                counts[2],
+            )
+        )
+
+    boundary = (
+        source_run_id,
+        last_target_draw_date,
+        last_target_draw_date,
+        last_target_draw_number,
+    )
+    profile_queries = (
+        """
+        SELECT COUNT(*)
+        FROM research_prediction_targets AS target
+        WHERE target.run_id = ?
+          AND (
+              target.target_draw_date < ?
+              OR (
+                  target.target_draw_date = ?
+                  AND CAST(target.target_draw_number AS INTEGER) <= ?
+              )
+          )
+        """,
+        """
+        SELECT COUNT(*)
+        FROM research_prediction_tickets AS ticket
+        JOIN research_prediction_targets AS target ON target.id = ticket.target_id
+        WHERE target.run_id = ?
+          AND (
+              target.target_draw_date < ?
+              OR (
+                  target.target_draw_date = ?
+                  AND CAST(target.target_draw_number AS INTEGER) <= ?
+              )
+          )
+        """,
+        """
+        SELECT COUNT(*)
+        FROM research_ticket_results AS result
+        JOIN research_prediction_targets AS target ON target.id = result.target_id
+        WHERE target.run_id = ?
+          AND (
+              target.target_draw_date < ?
+              OR (
+                  target.target_draw_date = ?
+                  AND CAST(target.target_draw_number AS INTEGER) <= ?
+              )
+          )
+        """,
+        """
+        SELECT COUNT(*)
+        FROM research_prediction_tickets AS ticket
+        JOIN research_prediction_targets AS target ON target.id = ticket.target_id
+        WHERE target.run_id = ?
+          AND (
+              target.target_draw_date < ?
+              OR (
+                  target.target_draw_date = ?
+                  AND CAST(target.target_draw_number AS INTEGER) <= ?
+              )
+          )
+          AND (
+              ticket.native_duplicate_of_position IS NOT NULL
+              OR ticket.portfolio_duplicate_of_position IS NOT NULL
+          )
+        """,
+        """
+        SELECT COUNT(*)
+        FROM (
+            SELECT result.ticket_id, COUNT(*) AS version_count
+            FROM research_ticket_results AS result
+            JOIN research_prediction_targets AS target ON target.id = result.target_id
+            WHERE target.run_id = ?
+              AND (
+                  target.target_draw_date < ?
+                  OR (
+                      target.target_draw_date = ?
+                      AND CAST(target.target_draw_number AS INTEGER) <= ?
+                  )
+              )
+            GROUP BY result.ticket_id
+            HAVING COUNT(*) > 1
+        )
+        """,
+        """
+        SELECT COUNT(*)
+        FROM research_prediction_targets AS target
+        JOIN research_prediction_tickets AS ticket ON ticket.target_id = target.id
+        JOIN research_ticket_results AS result
+          ON result.target_id = target.id AND result.ticket_id = ticket.id
+        WHERE target.run_id = ?
+          AND (
+              target.target_draw_date < ?
+              OR (
+                  target.target_draw_date = ?
+                  AND CAST(target.target_draw_number AS INTEGER) <= ?
+              )
+          )
+          AND (
+              target.target_draw_number IS NULL
+              OR target.target_draw_date IS NULL
+              OR target.history_cutoff_draw_number IS NULL
+              OR target.history_cutoff_draw_date IS NULL
+              OR ticket.main_numbers_json IS NULL
+              OR ticket.ticket_sha256 IS NULL
+              OR result.main_hit_count IS NULL
+          )
+        """,
+        """
+        SELECT COUNT(*)
+        FROM research_prediction_targets AS target
+        JOIN research_prediction_tickets AS ticket ON ticket.target_id = target.id
+        JOIN research_draw_bindings AS draw ON draw.id = target.target_draw_binding_id
+        WHERE target.run_id = ?
+          AND (
+              target.target_draw_date < ?
+              OR (
+                  target.target_draw_date = ?
+                  AND CAST(target.target_draw_number AS INTEGER) <= ?
+              )
+          )
+          AND (
+              json_valid(ticket.main_numbers_json) = 0
+              OR json_valid(draw.main_numbers_json) = 0
+              OR json_array_length(ticket.main_numbers_json) != 6
+              OR json_array_length(draw.main_numbers_json) != 6
+          )
+        """,
+        """
+        SELECT COUNT(*)
+        FROM research_ticket_results AS result
+        JOIN research_prediction_targets AS target ON target.id = result.target_id
+        JOIN research_prediction_tickets AS ticket ON ticket.id = result.ticket_id
+        JOIN research_draw_bindings AS draw ON draw.id = result.draw_binding_id
+        WHERE target.run_id = ?
+          AND (
+              target.target_draw_date < ?
+              OR (
+                  target.target_draw_date = ?
+                  AND CAST(target.target_draw_number AS INTEGER) <= ?
+              )
+          )
+          AND result.main_hit_count != (
+              SELECT COUNT(*)
+              FROM json_each(ticket.main_numbers_json) AS predicted
+              WHERE CAST(predicted.value AS INTEGER) IN (
+                  SELECT CAST(winning.value AS INTEGER)
+                  FROM json_each(draw.main_numbers_json) AS winning
+              )
+          )
+        """,
+        """
+        SELECT COUNT(*)
+        FROM research_prediction_targets AS target
+        WHERE target.run_id = ?
+          AND (
+              target.target_draw_date < ?
+              OR (
+                  target.target_draw_date = ?
+                  AND CAST(target.target_draw_number AS INTEGER) <= ?
+              )
+          )
+          AND (
+              target.causal_eligible != 1
+              OR target.history_cutoff_draw_date >= target.target_draw_date
+              OR target.history_cutoff_draw_number = target.target_draw_number
+          )
+        """,
+    )
+    profile_counts: list[object] = []
+    for query in profile_queries:
+        count_row = connection.execute(query, boundary).fetchone()
+        if count_row is None:
+            raise ResearchRepositoryError("historical replay profile count returned no row")
+        profile_counts.append(count_row[0])
+
+    common_rows = connection.execute(
+        """
+        WITH common_targets AS (
+            SELECT target_draw_date, target_draw_number
+            FROM research_prediction_targets
+            WHERE run_id = ?
+              AND execution_status = 'OK'
+              AND (
+                  target_draw_date < ?
+                  OR (
+                      target_draw_date = ?
+                      AND CAST(target_draw_number AS INTEGER) <= ?
+                  )
+              )
+            GROUP BY target_draw_date, target_draw_number
+            HAVING COUNT(DISTINCT strategy_snapshot_id) = ?
+        )
+        SELECT
+            target.id AS target_id,
+            target.target_draw_date,
+            target.target_draw_number,
+            target.native_ticket_count,
+            target.history_cutoff_draw_date,
+            target.history_cutoff_draw_number,
+            strategy.strategy_id,
+            strategy.strategy_version,
+            ticket.native_position,
+            ticket.main_numbers_json AS ticket_main_numbers_json,
+            ticket.ticket_sha256,
+            result.main_hit_count,
+            result.result_version,
+            target_draw.main_numbers_json AS winning_main_numbers_json,
+            target_draw.draw_sha256 AS target_draw_sha256,
+            cutoff_draw.draw_sha256 AS cutoff_draw_sha256
+        FROM research_prediction_targets AS target
+        JOIN common_targets AS common
+          ON common.target_draw_date = target.target_draw_date
+         AND common.target_draw_number = target.target_draw_number
+        JOIN research_strategy_snapshots AS strategy
+          ON strategy.id = target.strategy_snapshot_id
+        JOIN research_prediction_tickets AS ticket ON ticket.target_id = target.id
+        JOIN research_ticket_results AS result
+          ON result.target_id = target.id AND result.ticket_id = ticket.id
+        JOIN research_draw_bindings AS target_draw
+          ON target_draw.id = target.target_draw_binding_id
+        JOIN research_draw_bindings AS cutoff_draw
+          ON cutoff_draw.id = target.history_cutoff_binding_id
+        WHERE target.run_id = ?
+          AND target.execution_status = 'OK'
+          AND (
+              target.target_draw_date < ?
+              OR (
+                  target.target_draw_date = ?
+                  AND CAST(target.target_draw_number AS INTEGER) <= ?
+              )
+          )
+        ORDER BY
+            target.target_draw_date,
+            CAST(target.target_draw_number AS INTEGER),
+            strategy.strategy_id,
+            ticket.native_position,
+            result.result_version
+        """,
+        (
+            source_run_id,
+            last_target_draw_date,
+            last_target_draw_date,
+            last_target_draw_number,
+            len(strategy_rows),
+            source_run_id,
+            last_target_draw_date,
+            last_target_draw_date,
+            last_target_draw_number,
+        ),
+    ).fetchall()
+
+    return HistoricalReplayDiscoveryCorpusRows(
+        table_names=table_names,
+        source_metadata=None if source_row is None else tuple(source_row),
+        source_latest_status=(None if source_status_row is None else source_status_row[0]),
+        strategy_rows=tuple(tuple(row) for row in strategy_rows),
+        run_inventory_rows=tuple(inventory_rows),
+        bounded_profile_counts=tuple(profile_counts),
+        common_rows=tuple(dict(row) for row in common_rows),
+    )
+
+
+def fetch_research_table_names(connection: sqlite3.Connection) -> frozenset[str]:
+    """Return research-store table names without changing the store."""
+
+    return frozenset(
+        str(row[0])
+        for row in connection.execute(
+            "SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name"
+        ).fetchall()
+    )
+
+
 __all__ = [
     "BUSY_TIMEOUT_MS",
     "IMMUTABLE_TABLE_NAMES",
@@ -1775,6 +3107,8 @@ __all__ = [
     "CoverageRow",
     "DrawBindingInput",
     "DuplicateIdempotencyKeyError",
+    "HistoricalReplayDiscoveryCorpusRows",
+    "LiveForecastCurrentResult",
     "QueryPage",
     "RankingCursor",
     "RankingRow",
@@ -1790,5 +3124,7 @@ __all__ = [
     "TicketCursor",
     "TicketInput",
     "TicketResultInput",
+    "fetch_historical_replay_discovery_corpus_rows",
     "fetch_research_draw_bindings_for_dataset",
+    "fetch_research_table_names",
 ]

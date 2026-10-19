@@ -1,0 +1,1292 @@
+// @vitest-environment jsdom
+
+import { flushPromises, mount } from '@vue/test-utils'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+
+import BestReplayHorizonComparison from '../src/features/best-replay/BestReplayHorizonComparison.vue'
+import BestReplayMatrix from '../src/features/best-replay/BestReplayMatrix.vue'
+import BestReplayOneToFiveOverview from '../src/features/best-replay/BestReplayOneToFiveOverview.vue'
+import BestReplayPage from '../src/features/best-replay/BestReplayPage.vue'
+import { compareNullableNumbers } from '../src/features/best-replay/sorting'
+import {
+  ALL_TICKET_COUNTS,
+  B649_AVAILABLE_TICKET_COUNTS,
+  CANONICAL_HORIZONS,
+  PRIMARY_TICKET_COUNTS,
+  type BestReplayItem,
+  type BestReplayMatrixRow,
+  type TicketCount,
+} from '../src/features/best-replay/types'
+
+import {
+  B649_HISTORY_WINDOWS,
+  B649_PREFIX_COUNTS,
+  B649_REPRODUCTION_STATUSES,
+  B649_RESEARCH_DISCLAIMER,
+  B649_SUCCESS_CRITERIA,
+  type B649MultiTicketRecord,
+} from '../src/api/b649MultiTicketRecords'
+import {
+  loadP638BestReplayData,
+  loadT539BestReplayData,
+  transformB649Record,
+} from '../src/api/bestReplay'
+
+let fetchMock: ReturnType<typeof vi.fn<typeof fetch>>
+let p638CompleteTargetCount: number | null
+let p638WinningTargetCount: number | null
+let p638WinningTargetRate: number | null
+let p638StrategyVersion: string | null
+let t539EligibleTargetCount: number | null
+let t539WinningTargetCount: number | null
+let t539WinningTargetRate: number | null
+let t539StrategyVersion: string | null
+
+function apiResponse(payload: unknown, status = 200): Response {
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    json: vi.fn().mockResolvedValue(payload),
+  } as unknown as Response
+}
+
+function mockB649Summary(recordsAvailable = true) {
+  return {
+    progress: {
+      total_strategy_count: 221,
+      reproduced_count: 135,
+      backtested_count: 135,
+      closed_count: 74,
+      duplicate_alias_count: 12,
+      owner_decision_required_count: 0,
+      uncompleted_count: 0,
+    },
+    prefix_counts: [...B649_PREFIX_COUNTS],
+    windows: [...B649_HISTORY_WINDOWS],
+    success_criteria: [...B649_SUCCESS_CRITERIA],
+    primary_ranking_criterion: 'OFFICIAL_ANY_PRIZE',
+    method_families: ['frequency', 'statistical'],
+    reproduction_statuses: [...B649_REPRODUCTION_STATUSES],
+    catalog_sha256: 'a'.repeat(64),
+    records_available: recordsAvailable,
+    projection_sha256: recordsAvailable ? 'b'.repeat(64) : null,
+    source_report_count: recordsAvailable ? 17 : null,
+    metrics_available_strategy_count: recordsAvailable ? 133 : null,
+    metrics_unavailable_strategy_count: recordsAvailable ? 2 : null,
+    research_disclaimer: B649_RESEARCH_DISCLAIMER,
+  }
+}
+
+function mockB649Record(
+  prefixCount: number,
+  window: string,
+  strategyToken: string,
+  options: {
+    rank?: number | null
+    rate?: string
+    delta?: string
+    draws?: number
+    hits?: number
+  } = {},
+) {
+  return {
+    strategy_id: `legacy_biglotto__${strategyToken}__fixture`,
+    strategy_version: 'v1.0',
+    legacy_method_id: strategyToken,
+    source_path: `fixture/${strategyToken}.json`,
+    method_family: strategyToken.includes('6bet') ? 'frequency' : 'statistical',
+    reproduction_status: 'BACKTESTED',
+    duplicate_alias_target: null,
+    prefix_count: prefixCount,
+    window,
+    criterion: 'M3_PLUS',
+    rank: options.rank ?? null,
+    official_rank: options.rank ?? null,
+    official_any_prize_count: options.hits ?? 539,
+    official_any_prize_rate: options.rate ?? '0.276552077988712160',
+    official_random_baseline_probability: '0.269779736506368005',
+    official_random_baseline_delta: options.delta ?? '0.006772341482344155',
+    unranked_reason: options.rank === null ? 'UNRANKED' : null,
+    success_count: options.hits ?? 539,
+    effective_backtest_draw_count: options.draws ?? 1949,
+    successful_execution_count: options.draws ?? 1949,
+    historical_success_rate: options.rate ?? '0.276552077988712160',
+    random_baseline_success_rate: '0.269779736506368005',
+    random_baseline_rate_difference: options.delta ?? '0.006772341482344155',
+    coverage: '0.906900000000000000',
+    window_available_draws: window === 'FULL' ? 2149 : Number(window.replace('RECENT_', '')),
+    window_requested_draws: window === 'FULL' ? 2149 : Number(window.replace('RECENT_', '')),
+    window_complete: true,
+    official_prize_counts: {
+      first: 0,
+      second: 1,
+      third: 2,
+      fourth: 5,
+      fifth: 20,
+      sixth: 21,
+      seventh: 241,
+      general: 355,
+    },
+    no_prize_count: 1410,
+    report_sha256: 'a'.repeat(64),
+    report_file_sha256: 'b'.repeat(64),
+    catalog_sha256: 'c'.repeat(64),
+  }
+}
+
+function mockB649RecordsPage(url: URL) {
+  const prefixCount = Number(url.searchParams.get('prefix_count'))
+  const window = url.searchParams.get('window') ?? 'FULL'
+
+  const items = [
+    mockB649Record(prefixCount, window, 'portfolio_optimizer', {
+      rank: 1,
+      rate: '0.276552',
+      delta: '0.006772',
+      draws: window === 'RECENT_50' ? 50 : window === 'RECENT_300' ? 300 : window === 'RECENT_750' ? 750 : 1949,
+      hits: window === 'RECENT_50' ? 14 : window === 'RECENT_300' ? 82 : window === 'RECENT_750' ? 208 : 539,
+    }),
+    mockB649Record(prefixCount, window, '6bet_ewma', {
+      rank: 2,
+      rate: '0.251200',
+      delta: '0.001200',
+      draws: window === 'RECENT_50' ? 50 : window === 'RECENT_300' ? 300 : window === 'RECENT_750' ? 750 : 1949,
+      hits: window === 'RECENT_50' ? 12 : window === 'RECENT_300' ? 75 : window === 'RECENT_750' ? 188 : 489,
+    }),
+    mockB649Record(prefixCount, window, 'coldpool_15', {
+      rank: 3,
+      rate: '0.240100',
+      delta: '-0.005400',
+      draws: window === 'RECENT_50' ? 50 : window === 'RECENT_300' ? 300 : window === 'RECENT_750' ? 750 : 1949,
+      hits: window === 'RECENT_50' ? 11 : window === 'RECENT_300' ? 71 : window === 'RECENT_750' ? 179 : 467,
+    }),
+  ]
+
+  return {
+    items,
+    total: items.length,
+    limit: 100,
+    offset: 0,
+    prefix_count: prefixCount,
+    window,
+    criterion: 'M3_PLUS',
+    research_disclaimer: B649_RESEARCH_DISCLAIMER,
+  }
+}
+
+function mockP638Runs() {
+  return {
+    items: [
+      {
+        run_id: 'p638-canonical-run-1',
+        import_identity_sha256: 'a'.repeat(64),
+        manifest_sha256: 'b'.repeat(64),
+        contract_version: 'v1.0',
+        source_run_id: 'src-p638-1',
+        source_replay_sha256: 'c'.repeat(64),
+        source_draw_db_sha256: 'd'.repeat(64),
+        source_commit_oid: 'e'.repeat(40),
+        source_content_sha256: 'f'.repeat(64),
+        second_zone_ssot_version: 'v1',
+        status: 'COMPLETE',
+        started_at: '2026-08-01T00:00:00Z',
+        completed_at: '2026-08-01T01:00:00Z',
+        strategy_count: 5,
+        draw_count: 1000,
+        complete_target_count: p638CompleteTargetCount,
+        excluded_target_count: 0,
+        failed_target_count: 0,
+        ticket_count: 1,
+        first_draw_number: '1',
+        first_draw_date: '2010-01-01',
+      },
+    ],
+    total_count: 1,
+    limit: 5,
+    offset: 0,
+  }
+}
+
+function mockP638Rankings() {
+  return {
+    run_id: 'p638-canonical-run-1',
+    items: [
+      {
+        strategy_id: 'p638_zonal_entropy_leader',
+        strategy_version: p638StrategyVersion,
+        rank: 1,
+        eligible_target_count: 1000,
+        winning_target_count: p638WinningTargetCount,
+        winning_target_rate: p638WinningTargetRate,
+        prize_tier_counts: [
+          { prize_tier: 'first', count: 1 },
+          { prize_tier: 'second', count: 2 },
+          { prize_tier: 'third', count: 12 },
+          { prize_tier: 'fourth', count: 45 },
+          { prize_tier: 'fifth', count: 125 },
+        ],
+      },
+      {
+        strategy_id: 'p638_cyclical_shift_runner_up',
+        strategy_version: 'p638-cyclic-v2',
+        rank: 2,
+        eligible_target_count: 1000,
+        winning_target_count: 162,
+        winning_target_rate: 0.162,
+        prize_tier_counts: [
+          { prize_tier: 'first', count: 0 },
+          { prize_tier: 'second', count: 1 },
+          { prize_tier: 'third', count: 9 },
+          { prize_tier: 'fourth', count: 38 },
+          { prize_tier: 'fifth', count: 114 },
+        ],
+      },
+    ],
+  }
+}
+
+function mockT539Runs() {
+  return {
+    items: [
+      {
+        run_id: 't539-canonical-run-1',
+        status: 'COMPLETE',
+        lottery_type: 'DAILY_539',
+        eligible_target_count: t539EligibleTargetCount,
+      },
+    ],
+    total_count: 1,
+    limit: 5,
+    offset: 0,
+  }
+}
+
+function mockT539Rankings() {
+  return {
+    run_id: 't539-canonical-run-1',
+    items: [
+      {
+        strategy_id: 't539_wave1_cyclic_leader',
+        strategy_version: t539StrategyVersion,
+        rank: 1,
+        eligible_target_count: 1000,
+        winning_target_count: t539WinningTargetCount,
+        winning_target_rate: t539WinningTargetRate,
+        ticket_winning_rate: 0.215,
+        prize_tier_counts: [
+          { prize_tier: 'first', count: 0 },
+          { prize_tier: 'second', count: 3 },
+          { prize_tier: 'third', count: 15 },
+          { prize_tier: 'fourth', count: 58 },
+          { prize_tier: 'fifth', count: 139 },
+        ],
+      },
+      {
+        strategy_id: 't539_sidon_runner_up',
+        strategy_version: 't539-sidon-v3',
+        rank: 2,
+        eligible_target_count: 1000,
+        winning_target_count: 198,
+        winning_target_rate: 0.198,
+        ticket_winning_rate: 0.198,
+        prize_tier_counts: [
+          { prize_tier: 'first', count: 0 },
+          { prize_tier: 'second', count: 1 },
+          { prize_tier: 'third', count: 11 },
+          { prize_tier: 'fourth', count: 47 },
+          { prize_tier: 'fifth', count: 139 },
+        ],
+      },
+    ],
+  }
+}
+
+beforeEach(() => {
+  p638CompleteTargetCount = 1000
+  p638WinningTargetCount = 180
+  p638WinningTargetRate = 0.185
+  p638StrategyVersion = 'p638-zonal-v2'
+  t539EligibleTargetCount = 1000
+  t539WinningTargetCount = 211
+  t539WinningTargetRate = 0.215
+  t539StrategyVersion = 't539-wave1-v4'
+
+  fetchMock = vi.fn<typeof fetch>().mockImplementation((input) => {
+    const url = new URL(String(input), 'http://localhost')
+    if (url.pathname.includes('/b649-multi-ticket-records/summary')) {
+      return Promise.resolve(apiResponse(mockB649Summary()))
+    }
+    if (url.pathname.includes('/b649-multi-ticket-records')) {
+      return Promise.resolve(apiResponse(mockB649RecordsPage(url)))
+    }
+    if (url.pathname.includes('/p638-historical/runs') && url.pathname.includes('/rankings')) {
+      return Promise.resolve(apiResponse(mockP638Rankings()))
+    }
+    if (url.pathname.includes('/p638-historical/runs')) {
+      return Promise.resolve(apiResponse(mockP638Runs()))
+    }
+    if (url.pathname.includes('/t539-historical/runs') && url.pathname.includes('/rankings')) {
+      return Promise.resolve(apiResponse(mockT539Rankings()))
+    }
+    if (url.pathname.includes('/t539-historical/runs')) {
+      return Promise.resolve(apiResponse(mockT539Runs()))
+    }
+    return Promise.resolve(apiResponse({}))
+  })
+  vi.stubGlobal('fetch', fetchMock)
+})
+
+afterEach(() => vi.unstubAllGlobals())
+
+describe('Best Replay source-value regressions', () => {
+  it('preserves a source P638 complete-target count of zero', async () => {
+    p638CompleteTargetCount = 0
+
+    const item = (await loadP638BestReplayData([1], 'FULL'))[0]
+
+    expect(item?.evaluatedTargets).toBe(0)
+  })
+
+  it('uses the P638 winning-target numerator and strategy version from ranking evidence', async () => {
+    const item = (await loadP638BestReplayData([1], 'FULL'))[0]
+
+    expect(item?.winningTargets).toBe(180)
+    expect(item?.hitRate).toBe(0.185)
+    expect(item?.rank).toBe(1)
+    expect(item?.strategyId).toBe('p638_zonal_entropy_leader')
+    expect(item?.strategyVersion).toBe('p638-zonal-v2')
+  })
+
+  it('keeps a missing P638 numerator and strategy version unavailable', async () => {
+    p638WinningTargetCount = null
+    p638StrategyVersion = null
+
+    const item = (await loadP638BestReplayData([1], 'FULL'))[0]
+
+    expect(item?.winningTargets).toBeNull()
+    expect(item?.strategyVersion).toBeNull()
+  })
+
+  it('does not infer a winning-target count from a rate and sample count', async () => {
+    p638WinningTargetCount = null
+
+    const item = (await loadP638BestReplayData([1], 'FULL'))[0]
+
+    expect(item?.evaluatedTargets).toBe(1000)
+    expect(item?.hitRate).toBe(0.185)
+    expect(item?.winningTargets).toBeNull()
+  })
+
+  it('preserves a sourced B649 sample count and leaves a missing count unknown', () => {
+    const sourcedRecord = {
+      ...mockB649Record(5, 'RECENT_750', 'sample', { draws: 37 }),
+      effective_backtest_draw_count: 37,
+      window_available_draws: 750,
+    } as B649MultiTicketRecord
+    const missingRecord = {
+      ...sourcedRecord,
+      effective_backtest_draw_count: null,
+      window_available_draws: null,
+    }
+
+    expect(transformB649Record(sourcedRecord, 'RECENT_750', 5).evaluatedTargets).toBe(37)
+    expect(transformB649Record(missingRecord, 'RECENT_750', 5).evaluatedTargets).toBeNull()
+  })
+
+  it('keeps missing T539 sample and numerator values unknown', async () => {
+    t539EligibleTargetCount = null
+    t539WinningTargetCount = null
+
+    const item = (await loadT539BestReplayData([1], 'FULL'))[0]
+
+    expect(item?.evaluatedTargets).toBeNull()
+    expect(item?.winningTargets).toBeNull()
+    expect(item?.hitRate).toBe(0.215)
+  })
+
+  it('renders a source P638 sample count of zero as zero in the summary', async () => {
+    p638CompleteTargetCount = 0
+    const wrapper = mount(BestReplayPage)
+    await flushPromises()
+    await wrapper.find('[data-testid="game-btn-p638"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="best-replay-metrics-grid"]').text()).toContain('0 Historical Draws')
+
+    wrapper.unmount()
+  })
+
+  it('renders missing P638 sample, numerator, and version sources as unavailable', async () => {
+    p638CompleteTargetCount = null
+    p638WinningTargetCount = null
+    p638StrategyVersion = null
+    const wrapper = mount(BestReplayPage)
+    await flushPromises()
+    await wrapper.find('[data-testid="game-btn-p638"]').trigger('click')
+    await flushPromises()
+
+    const visibleText = wrapper.text()
+    expect(visibleText).toContain('p638_zonal_entropy_leader')
+    expect(visibleText).toContain('Sample count unknown')
+    expect(visibleText).toContain('Unknown')
+    expect(visibleText).toContain('Not provided')
+    expect(visibleText).not.toContain('v1.0')
+
+    wrapper.unmount()
+  })
+
+  it('sorts missing numeric evidence after sourced values without assigning a numeric fallback', () => {
+    expect(compareNullableNumbers(null, 0.162, 1)).toBe(1)
+    expect(compareNullableNumbers(0.162, null, 1)).toBe(-1)
+    expect(compareNullableNumbers(null, 0.162, -1)).toBe(1)
+    expect(compareNullableNumbers(Number.NaN, 0.162, 1)).toBe(1)
+  })
+
+  it('does not describe RECENT_750 as an out-of-sample audit in the page copy', async () => {
+    const wrapper = mount(BestReplayPage)
+    await flushPromises()
+    await wrapper.find('#horizon-select').setValue('RECENT_750')
+    await flushPromises()
+
+    expect(wrapper.text().toLowerCase()).not.toContain('out-of-sample')
+
+    wrapper.unmount()
+  })
+
+  it('describes RECENT_750 as a historical interval without an OOS claim', () => {
+    const recent750 = CANONICAL_HORIZONS.find((horizon) => horizon.key === 'RECENT_750')
+
+    expect(recent750?.description).toBe('Recent 750 historical draws')
+    expect(recent750?.description.toLowerCase()).not.toContain('out-of-sample')
+  })
+})
+
+describe('BestReplayPage Workspace & Cross-Game Features', () => {
+  it('mounts cleanly with SectionHeader, Summary Metrics Cards, 1-5 Overview, and English-only copy', async () => {
+    const wrapper = mount(BestReplayPage)
+    await flushPromises()
+
+    expect(wrapper.find('#best-replay-title h2').text()).toBe('Best Replay')
+    expect(wrapper.text()).toContain('Multi-ticket horizon ranking')
+    expect(wrapper.text()).toContain('Best Strategy')
+    expect(wrapper.text()).toContain('Ticket Count')
+    expect(wrapper.text()).toContain('Horizon')
+    expect(wrapper.text()).toContain('Historical Hit Rate')
+    expect(wrapper.text()).toContain('Evidence Guard')
+    expect(wrapper.text()).toContain('1–5 Best Strategy Overview')
+
+    // CJK Audit: verify 0 CJK characters in visible text
+    const visibleText = wrapper.text()
+    const cjkMatches = visibleText.match(/[\u4e00-\u9fff\u3400-\u4dbf\uf900-\ufaff]/g)
+    expect(cjkMatches).toBeNull()
+
+    wrapper.unmount()
+  })
+
+  it('provides dedicated game selector buttons for B649, P638, and T539 with B649 default', async () => {
+    const wrapper = mount(BestReplayPage)
+    await flushPromises()
+
+    const b649Btn = wrapper.find('[data-testid="game-btn-b649"]')
+    const p638Btn = wrapper.find('[data-testid="game-btn-p638"]')
+    const t539Btn = wrapper.find('[data-testid="game-btn-t539"]')
+
+    expect(b649Btn.exists()).toBe(true)
+    expect(p638Btn.exists()).toBe(true)
+    expect(t539Btn.exists()).toBe(true)
+
+    // B649 default active
+    expect(b649Btn.classes()).toContain('game-nav-btn--active')
+    expect(wrapper.text()).toContain('Big Lotto 6/49')
+
+    // Switch to P638
+    await p638Btn.trigger('click')
+    await flushPromises()
+    expect(p638Btn.classes()).toContain('game-nav-btn--active')
+    expect(wrapper.text()).toContain('Power Lotto 6/38')
+
+    // Switch to T539
+    await t539Btn.trigger('click')
+    await flushPromises()
+    expect(t539Btn.classes()).toContain('game-nav-btn--active')
+    expect(wrapper.text()).toContain('Daily Cash 5/39')
+
+    wrapper.unmount()
+  })
+
+  it('guarantees 1, 2, 3, 4, 5 ticket buttons ALWAYS exist and are interactive across all games', async () => {
+    const wrapper = mount(BestReplayPage)
+    await flushPromises()
+
+    for (const count of [1, 2, 3, 4, 5]) {
+      const btn = wrapper.find(`[data-testid="ticket-btn-${count}"]`)
+      expect(btn.exists()).toBe(true)
+    }
+
+    // Switch to P638
+    await wrapper.find('[data-testid="game-btn-p638"]').trigger('click')
+    await flushPromises()
+
+    for (const count of [1, 2, 3, 4, 5]) {
+      const btn = wrapper.find(`[data-testid="ticket-btn-${count}"]`)
+      expect(btn.exists()).toBe(true)
+    }
+
+    // Switch to T539
+    await wrapper.find('[data-testid="game-btn-t539"]').trigger('click')
+    await flushPromises()
+
+    for (const count of [1, 2, 3, 4, 5]) {
+      const btn = wrapper.find(`[data-testid="ticket-btn-${count}"]`)
+      expect(btn.exists()).toBe(true)
+    }
+
+    wrapper.unmount()
+  })
+
+  it('supports canonical horizons: FULL, 750, 300, and 50', async () => {
+    const wrapper = mount(BestReplayPage)
+    await flushPromises()
+
+    const horizonSelect = wrapper.find('#horizon-select')
+    expect(horizonSelect.exists()).toBe(true)
+
+    // Switch to RECENT_50
+    await horizonSelect.setValue('RECENT_50')
+    await flushPromises()
+    expect(wrapper.text()).toContain('Short · 50')
+    expect(wrapper.text()).toContain('LOW POWER')
+
+    // Switch to RECENT_300
+    await horizonSelect.setValue('RECENT_300')
+    await flushPromises()
+    expect(wrapper.text()).toContain('Medium · 300')
+
+    // Switch to RECENT_750
+    await horizonSelect.setValue('RECENT_750')
+    await flushPromises()
+    expect(wrapper.text()).toContain('Long · 750')
+
+    // Switch to FULL
+    await horizonSelect.setValue('FULL')
+    await flushPromises()
+    expect(wrapper.text()).toContain('Full')
+
+    wrapper.unmount()
+  })
+
+  it('selects canonical Rank #1 as the Best Strategy summary leader', async () => {
+    const wrapper = mount(BestReplayPage)
+    await flushPromises()
+
+    // Under B649 5T FULL, rank 1 is portfolio_optimizer
+    expect(wrapper.text()).toContain('legacy_biglotto__portfolio_optimizer__fixture')
+    expect(wrapper.text()).toContain('Rank #1 · B649')
+    expect(wrapper.text()).toContain('27.66%')
+    expect(wrapper.text()).toContain('+0.68%')
+
+    wrapper.unmount()
+  })
+
+  it('distinguishes unavailable ticket counts explicitly without converting to 0% and displays reason', async () => {
+    const wrapper = mount(BestReplayPage)
+    await flushPromises()
+
+    // Click 3T button (unavailable in B649 canonical records)
+    await wrapper.find('[data-testid="ticket-btn-3"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('EVIDENCE UNAVAILABLE')
+    expect(wrapper.text()).toContain('NO_CANONICAL_REPLAY_EVIDENCE')
+    expect(wrapper.text()).toContain('No canonical multi-ticket backtest evidence is recorded for ticket count 3')
+
+    // Confirm no 0.00% fake hit rate appears
+    const monoCells = wrapper.findAll('.font-mono')
+    const texts = monoCells.map((c) => c.text())
+    expect(texts.some((t) => t === '0.00%')).toBe(false)
+
+    wrapper.unmount()
+  })
+
+  it('preserves Official Rank as default ordering and allows User Sort with Reset to Official Rank', async () => {
+    const wrapper = mount(BestReplayPage)
+    await flushPromises()
+
+    const rows = wrapper.findAll('tbody tr')
+    expect(rows.length).toBeGreaterThan(0)
+    expect(rows[0]?.text()).toContain('#1')
+    expect(rows[0]?.text()).toContain('portfolio_optimizer')
+
+    // User sorts by Hit Rate ascending
+    const hitRateHeader = wrapper.findAll('thead th').find((th) => th.text().includes('Hit Rate'))
+    await hitRateHeader?.trigger('click')
+    await flushPromises()
+
+    // Check custom sort state
+    expect(wrapper.text()).toContain('hitRate (asc)')
+
+    // Click Reset to Official Rank button
+    const resetBtn = wrapper.find('[data-testid="reset-rank-btn"]')
+    expect(resetBtn.exists()).toBe(true)
+    await resetBtn.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Official Rank')
+    const resetRows = wrapper.findAll('tbody tr')
+    expect(resetRows[0]?.text()).toContain('#1')
+
+    wrapper.unmount()
+  })
+
+  it('renders all 5 cells in 1–5 Overview and switches active ticket count when card is clicked', async () => {
+    const wrapper = mount(BestReplayPage)
+    await flushPromises()
+
+    const overview = wrapper.find('[data-testid="one-to-five-overview"]')
+    expect(overview.exists()).toBe(true)
+
+    // Verify all 5 cards exist
+    for (const count of [1, 2, 3, 4, 5]) {
+      const card = wrapper.find(`[data-testid="overview-card-${count}"]`)
+      expect(card.exists()).toBe(true)
+    }
+
+    // In B649: card 5 is available, cards 1..4 are unavailable
+    expect(wrapper.find('[data-testid="overview-card-5"]').classes()).toContain('overview-card--available')
+    expect(wrapper.find('[data-testid="overview-card-1"]').classes()).toContain('overview-card--unavailable')
+
+    // Click overview card 1
+    await wrapper.find('[data-testid="overview-card-1"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('1 Tickets')
+    expect(wrapper.text()).toContain('EVIDENCE UNAVAILABLE')
+
+    wrapper.unmount()
+  })
+
+  it('maintains strict cross-game data isolation upon switching games', async () => {
+    const wrapper = mount(BestReplayPage)
+    await flushPromises()
+
+    // Starts in B649
+    expect(wrapper.text()).toContain('legacy_biglotto__portfolio_optimizer__fixture')
+    expect(wrapper.text()).not.toContain('p638_zonal_entropy_leader')
+    expect(wrapper.text()).not.toContain('t539_wave1_cyclic_leader')
+
+    // Switch to P638
+    await wrapper.find('[data-testid="game-btn-p638"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('p638_zonal_entropy_leader')
+    expect(wrapper.text()).not.toContain('legacy_biglotto')
+    expect(wrapper.text()).not.toContain('t539_wave1_cyclic_leader')
+
+    // Switch to T539
+    await wrapper.find('[data-testid="game-btn-t539"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('t539_wave1_cyclic_leader')
+    expect(wrapper.text()).not.toContain('legacy_biglotto')
+    expect(wrapper.text()).not.toContain('p638_zonal_entropy_leader')
+
+    wrapper.unmount()
+  })
+
+  describe('Bounded UI Smoke Check Matrix (A through F)', () => {
+    it('Smoke A: B649 → 1 → FULL renders explicit EVIDENCE UNAVAILABLE', async () => {
+      const wrapper = mount(BestReplayPage)
+      await flushPromises()
+
+      await wrapper.find('[data-testid="game-btn-b649"]').trigger('click')
+      await wrapper.find('#horizon-select').setValue('FULL')
+      await wrapper.find('[data-testid="ticket-btn-1"]').trigger('click')
+      await flushPromises()
+
+      expect(wrapper.text()).toContain('EVIDENCE UNAVAILABLE')
+      expect(wrapper.text()).toContain('NO_CANONICAL_REPLAY_EVIDENCE')
+      expect(wrapper.text()).toContain('No canonical multi-ticket backtest evidence is recorded for ticket count 1')
+      wrapper.unmount()
+    })
+
+    it('Smoke B: B649 → 5 → 300 renders canonical Rank #1 strategy', async () => {
+      const wrapper = mount(BestReplayPage)
+      await flushPromises()
+
+      await wrapper.find('[data-testid="game-btn-b649"]').trigger('click')
+      await wrapper.find('#horizon-select').setValue('RECENT_300')
+      await wrapper.find('[data-testid="ticket-btn-5"]').trigger('click')
+      await flushPromises()
+
+      expect(wrapper.text()).toContain('legacy_biglotto__portfolio_optimizer__fixture')
+      expect(wrapper.text()).toContain('Rank #1 · B649')
+      expect(wrapper.text()).toContain('27.66%')
+      wrapper.unmount()
+    })
+
+    it('Smoke C: P638 → 2 → 750 renders explicit EVIDENCE UNAVAILABLE', async () => {
+      const wrapper = mount(BestReplayPage)
+      await flushPromises()
+
+      await wrapper.find('[data-testid="game-btn-p638"]').trigger('click')
+      await wrapper.find('#horizon-select').setValue('RECENT_750')
+      await wrapper.find('[data-testid="ticket-btn-2"]').trigger('click')
+      await flushPromises()
+
+      expect(wrapper.text()).toContain('EVIDENCE UNAVAILABLE')
+      expect(wrapper.text()).toContain('NO_CANONICAL_REPLAY_EVIDENCE')
+      expect(wrapper.text()).toContain('No canonical multi-ticket backtest evidence is recorded for ticket count 2')
+      wrapper.unmount()
+    })
+
+    it('Smoke D: P638 → 5 → 50 renders explicit EVIDENCE UNAVAILABLE', async () => {
+      const wrapper = mount(BestReplayPage)
+      await flushPromises()
+
+      await wrapper.find('[data-testid="game-btn-p638"]').trigger('click')
+      await wrapper.find('#horizon-select').setValue('RECENT_50')
+      await wrapper.find('[data-testid="ticket-btn-5"]').trigger('click')
+      await flushPromises()
+
+      expect(wrapper.text()).toContain('EVIDENCE UNAVAILABLE')
+      expect(wrapper.text()).toContain('NO_CANONICAL_REPLAY_EVIDENCE')
+      expect(wrapper.text()).toContain('No canonical multi-ticket backtest evidence is recorded for ticket count 5')
+      wrapper.unmount()
+    })
+
+    it('Smoke E: T539 → 1 → FULL renders canonical Rank #1 strategy', async () => {
+      const wrapper = mount(BestReplayPage)
+      await flushPromises()
+
+      await wrapper.find('[data-testid="game-btn-t539"]').trigger('click')
+      await wrapper.find('#horizon-select').setValue('FULL')
+      await wrapper.find('[data-testid="ticket-btn-1"]').trigger('click')
+      await flushPromises()
+
+      expect(wrapper.text()).toContain('t539_wave1_cyclic_leader')
+      expect(wrapper.text()).toContain('Rank #1 · T539')
+      expect(wrapper.text()).toContain('21.50%')
+      wrapper.unmount()
+    })
+
+    it('Smoke F: T539 → 4 → 300 renders explicit EVIDENCE UNAVAILABLE', async () => {
+      const wrapper = mount(BestReplayPage)
+      await flushPromises()
+
+      await wrapper.find('[data-testid="game-btn-t539"]').trigger('click')
+      await wrapper.find('#horizon-select').setValue('RECENT_300')
+      await wrapper.find('[data-testid="ticket-btn-4"]').trigger('click')
+      await flushPromises()
+
+      expect(wrapper.text()).toContain('EVIDENCE UNAVAILABLE')
+      expect(wrapper.text()).toContain('NO_CANONICAL_REPLAY_EVIDENCE')
+      expect(wrapper.text()).toContain('No canonical multi-ticket backtest evidence is recorded for ticket count 4')
+      wrapper.unmount()
+    })
+  })
+})
+
+describe('BestReplayOneToFiveOverview Component Direct Unit Tests', () => {
+  it('renders 5 cards with proper available and unavailable states', () => {
+    const mockItem5: BestReplayItem = {
+      id: 'B649-sample-5-FULL',
+      rank: 1,
+      strategyId: 'legacy_sample_optimizer',
+      strategyVersion: 'v1.0',
+      methodFamily: 'statistical',
+      game: 'B649',
+      ticketCount: 5,
+      horizon: 'FULL',
+      horizonLabel: 'Full',
+      evaluatedTargets: 1949,
+      winningTargets: 539,
+      hitRate: 0.27655,
+      hitRateFormatted: '27.66%',
+      baselineProbability: 0.269,
+      baselineDelta: 0.0067,
+      baselineDeltaFormatted: '+0.67%',
+      coverage: 0.9069,
+      bestHit: '2nd Prize (1)',
+      prizeCounts: { first: 0, second: 1, third: 0, fourth: 0, fifth: 0 },
+      evidenceStatus: 'DESCRIPTIVE LEADER',
+      notes: 'Historically strongest strategy',
+      isAvailable: true,
+    }
+
+    const wrapper = mount(BestReplayOneToFiveOverview, {
+      props: {
+        game: 'B649',
+        horizon: 'FULL',
+        selectedTicketCount: 5,
+        itemsByTicketCount: {
+          1: null,
+          2: null,
+          3: null,
+          4: null,
+          5: mockItem5,
+        },
+      },
+    })
+
+    expect(wrapper.findAll('.overview-card').length).toBe(5)
+    expect(wrapper.find('[data-testid="overview-card-5"]').text()).toContain('27.66%')
+    expect(wrapper.find('[data-testid="overview-card-5"]').text()).toContain('+0.67%')
+    expect(wrapper.find('[data-testid="overview-card-1"]').text()).toContain('Evidence Unavailable')
+
+    wrapper.unmount()
+  })
+})
+
+describe('BestReplayMatrix Component', () => {
+  it('renders all 20 ticket count columns with distinct available and unavailable styling', () => {
+    const sampleItem: BestReplayItem = {
+      id: 'B649-sample-5-FULL',
+      rank: 1,
+      strategyId: 'legacy_biglotto__sample',
+      strategyVersion: 'v1.0',
+      methodFamily: 'statistical',
+      game: 'B649',
+      ticketCount: 5,
+      horizon: 'FULL',
+      horizonLabel: 'Full',
+      evaluatedTargets: 1949,
+      winningTargets: 539,
+      hitRate: 0.27655,
+      hitRateFormatted: '27.66%',
+      baselineProbability: 0.269,
+      baselineDelta: 0.0067,
+      baselineDeltaFormatted: '+0.67%',
+      coverage: 0.9,
+      bestHit: '2nd Prize (1)',
+      prizeCounts: { first: 0, second: 1, third: 0, fourth: 0, fifth: 0 },
+      evidenceStatus: 'DESCRIPTIVE LEADER',
+      notes: 'Historically strongest strategy',
+      isAvailable: true,
+    }
+
+    const rows: BestReplayMatrixRow[] = [
+      {
+        strategyId: 'legacy_biglotto__sample',
+        strategyLabel: 'sample',
+        methodFamily: 'statistical',
+        game: 'B649',
+        cells: {
+          1: null,
+          2: null,
+          3: null,
+          4: null,
+          5: sampleItem,
+          6: null,
+          7: null,
+          8: null,
+          9: null,
+          10: null,
+          11: null,
+          12: null,
+          13: null,
+          14: null,
+          15: null,
+          16: null,
+          17: null,
+          18: null,
+          19: null,
+          20: null,
+        },
+      },
+    ]
+
+    const wrapper = mount(BestReplayMatrix, {
+      props: {
+        rows,
+        selectedTicketCount: 5,
+        selectedStrategyId: 'legacy_biglotto__sample',
+      },
+    })
+
+    const headerCells = wrapper.findAll('thead th.col-ticket')
+    expect(headerCells.length).toBe(20)
+
+    const availableCell = wrapper.find('.matrix-cell--available')
+    expect(availableCell.text()).toContain('27.66%')
+    expect(availableCell.text()).toContain('+0.67%')
+
+    const unavailableCells = wrapper.findAll('.matrix-cell--unavailable')
+    expect(unavailableCells.length).toBe(19)
+
+    wrapper.unmount()
+  })
+})
+
+describe('BestReplayHorizonComparison Component', () => {
+  it('renders four horizon cards with mini-bars and explicit unavailable states', () => {
+    const fullItem: BestReplayItem = {
+      id: 'B649-sample-5-FULL',
+      rank: 1,
+      strategyId: 'legacy_biglotto__sample',
+      strategyVersion: 'v1.0',
+      methodFamily: 'statistical',
+      game: 'B649',
+      ticketCount: 5,
+      horizon: 'FULL',
+      horizonLabel: 'Full',
+      evaluatedTargets: 1949,
+      winningTargets: 539,
+      hitRate: 0.27655,
+      hitRateFormatted: '27.66%',
+      baselineProbability: 0.269,
+      baselineDelta: 0.0067,
+      baselineDeltaFormatted: '+0.67%',
+      coverage: 0.9,
+      bestHit: '2nd Prize (1)',
+      prizeCounts: { first: 0, second: 1, third: 0, fourth: 0, fifth: 0 },
+      evidenceStatus: 'DESCRIPTIVE LEADER',
+      notes: 'Historically strongest strategy',
+      isAvailable: true,
+    }
+
+    const wrapper = mount(BestReplayHorizonComparison, {
+      props: {
+        strategyId: 'legacy_biglotto__sample',
+        strategyVersion: 'v1.0',
+        ticketCount: 5,
+        game: 'B649',
+        itemsByHorizon: {
+          FULL: fullItem,
+          RECENT_750: null,
+          RECENT_300: null,
+          RECENT_50: null,
+        },
+      },
+    })
+
+    const fullCard = wrapper.find('[data-testid="horizon-card-full"]')
+    expect(fullCard.text()).toContain('27.66%')
+    expect(fullCard.text()).toContain('+0.67%')
+    expect(fullCard.text()).toContain('DESCRIPTIVE LEADER')
+
+    const shortCard = wrapper.find('[data-testid="horizon-card-recent-50"]')
+    expect(shortCard.text()).toContain('Evidence Unavailable')
+
+    wrapper.unmount()
+  })
+})
+
+describe('P638 Best Replay Horizon Authority Validation (Correction R1)', () => {
+  it('loadP638BestReplayData returns available items only for FULL horizon', async () => {
+    const fullItems = await loadP638BestReplayData([1], 'FULL')
+    expect(fullItems.length).toBe(2)
+
+    const leader = fullItems[0]
+    expect(leader?.isAvailable).toBe(true)
+    expect(leader?.strategyId).toBe('p638_zonal_entropy_leader')
+    expect(leader?.rank).toBe(1)
+    expect(leader?.hitRate).toBe(0.185)
+    expect(leader?.hitRateFormatted).toBe('18.50%')
+    expect(leader?.evaluatedTargets).toBe(1000)
+    expect(leader?.winningTargets).toBe(180)
+    expect(leader?.evidenceStatus).toBe('DESCRIPTIVE LEADER')
+    expect(leader?.notes).toContain('Descriptive historical evidence only; does not infer future performance')
+  })
+
+  it('loadP638BestReplayData fails closed for RECENT_50, RECENT_300, and RECENT_750 with explicit reason', async () => {
+    for (const unsupportedHorizon of ['RECENT_50', 'RECENT_300', 'RECENT_750'] as const) {
+      const items = await loadP638BestReplayData([1], unsupportedHorizon)
+      expect(items.length).toBeGreaterThan(0)
+
+      for (const item of items) {
+        expect(item.isAvailable).toBe(false)
+        expect(item.evidenceStatus).toBe('EVIDENCE UNAVAILABLE')
+        expect(item.rank).toBeNull()
+        expect(item.hitRate).toBeNull()
+        expect(item.hitRateFormatted).toBe('Unavailable')
+        expect(item.winningTargets).toBeNull()
+        expect(item.evaluatedTargets).toBeNull()
+        expect(item.unavailableReasonCode).toBe('NO_CANONICAL_WINDOW_EVIDENCE')
+        expect(item.notes).toContain(
+          `P638 canonical evidence does not publish an exact ${unsupportedHorizon} ranking window.`,
+        )
+        expect(item.notes).toContain('Descriptive historical evidence only; does not infer future performance')
+      }
+    }
+  })
+
+  it('loadP638BestReplayData rejects ticket counts 2, 3, 4, and 5', async () => {
+    const multiTicketItems = await loadP638BestReplayData([2, 3, 4, 5], 'FULL')
+    expect(multiTicketItems).toEqual([])
+
+    const multiTicketRecentItems = await loadP638BestReplayData([2, 3, 4, 5], 'RECENT_50')
+    expect(multiTicketRecentItems).toEqual([])
+  })
+
+  it('proves no P638 horizon reuses identical latest ranking results under relabeled RECENT windows', async () => {
+    const fullItems = await loadP638BestReplayData([1], 'FULL')
+    const recent50Items = await loadP638BestReplayData([1], 'RECENT_50')
+    const recent300Items = await loadP638BestReplayData([1], 'RECENT_300')
+    const recent750Items = await loadP638BestReplayData([1], 'RECENT_750')
+
+    const fullLeader = fullItems[0]
+    expect(fullLeader?.isAvailable).toBe(true)
+    expect(fullLeader?.rank).toBe(1)
+    expect(fullLeader?.hitRate).toBe(0.185)
+
+    // All RECENT horizons must NOT have rank 1 or 18.5% hit rate
+    for (const recentSet of [recent50Items, recent300Items, recent750Items]) {
+      const recentLeader = recentSet[0]
+      expect(recentLeader?.isAvailable).toBe(false)
+      expect(recentLeader?.rank).toBeNull()
+      expect(recentLeader?.hitRate).toBeNull()
+      expect(recentLeader?.hitRateFormatted).toBe('Unavailable')
+    }
+  })
+
+  it('renders P638 at RECENT_50 as explicit EVIDENCE UNAVAILABLE in UI without 0% or fake hit rate', async () => {
+    const wrapper = mount(BestReplayPage)
+    await flushPromises()
+
+    // Switch to P638
+    await wrapper.find('[data-testid="game-btn-p638"]').trigger('click')
+    await flushPromises()
+
+    // Switch to RECENT_50
+    await wrapper.find('#horizon-select').setValue('RECENT_50')
+    await flushPromises()
+
+    // Summary Card must be unavailable
+    const metricsGrid = wrapper.find('[data-testid="best-replay-metrics-grid"]')
+    expect(metricsGrid.text()).toContain('Evidence Unavailable')
+    expect(metricsGrid.text()).toContain('Unavailable')
+    expect(metricsGrid.text()).toContain('EVIDENCE UNAVAILABLE')
+
+    // 1–5 Overview Card 1 must be unavailable with NO_CANONICAL_WINDOW_EVIDENCE
+    const card1 = wrapper.find('[data-testid="overview-card-1"]')
+    expect(card1.classes()).toContain('overview-card--unavailable')
+    expect(card1.text()).toContain('NO_CANONICAL_WINDOW_EVIDENCE')
+    expect(card1.text()).toContain('P638 canonical evidence does not publish an exact RECENT_50 ranking window')
+
+    // Overview cards 2..5 must be unavailable with NO_CANONICAL_REPLAY_EVIDENCE
+    for (const count of [2, 3, 4, 5]) {
+      const card = wrapper.find(`[data-testid="overview-card-${count}"]`)
+      expect(card.classes()).toContain('overview-card--unavailable')
+      expect(card.text()).toContain('NO_CANONICAL_REPLAY_EVIDENCE')
+    }
+
+    // Table rows must show Rank — and Hit Rate Unavailable
+    const rows = wrapper.findAll('tbody tr')
+    expect(rows.length).toBeGreaterThan(0)
+    for (const row of rows) {
+      expect(row.text()).toContain('Unavailable')
+      expect(row.text()).toContain('EVIDENCE UNAVAILABLE')
+      expect(row.text()).toContain('P638 canonical evidence does not publish an exact RECENT_50 ranking window')
+    }
+
+    // Verify 0.00% fake hit rate does not appear
+    const visibleTexts = wrapper.findAll('.font-mono').map((c) => c.text())
+    expect(visibleTexts.some((t) => t === '0.00%')).toBe(false)
+    expect(visibleTexts.some((t) => t === '18.50%')).toBe(false)
+
+    wrapper.unmount()
+  })
+
+  it('renders P638 at FULL with canonical Rank #1 while horizon comparison shows RECENT windows unavailable', async () => {
+    const wrapper = mount(BestReplayPage)
+    await flushPromises()
+
+    // Switch to P638 with FULL horizon default
+    await wrapper.find('[data-testid="game-btn-p638"]').trigger('click')
+    await wrapper.find('#horizon-select').setValue('FULL')
+    await flushPromises()
+
+    // Summary Card shows canonical leader
+    const metricsGrid = wrapper.find('[data-testid="best-replay-metrics-grid"]')
+    expect(metricsGrid.text()).toContain('p638_zonal_entropy_leader')
+    expect(metricsGrid.text()).toContain('18.50%')
+    expect(metricsGrid.text()).toContain('DESCRIPTIVE LEADER')
+
+    // 1–5 Overview Card 1 is available
+    const card1 = wrapper.find('[data-testid="overview-card-1"]')
+    expect(card1.classes()).toContain('overview-card--available')
+    expect(card1.text()).toContain('18.50%')
+
+    // Horizon comparison breakdown
+    const fullHorizonCard = wrapper.find('[data-testid="horizon-card-full"]')
+    expect(fullHorizonCard.classes()).toContain('horizon-card--available')
+    expect(fullHorizonCard.text()).toContain('18.50%')
+
+    const shortHorizonCard = wrapper.find('[data-testid="horizon-card-recent-50"]')
+    expect(shortHorizonCard.classes()).not.toContain('horizon-card--available')
+    expect(shortHorizonCard.text()).toContain('Evidence Unavailable')
+    expect(shortHorizonCard.text()).toContain('P638 canonical evidence does not publish an exact RECENT_50 ranking window')
+
+    const mediumHorizonCard = wrapper.find('[data-testid="horizon-card-recent-300"]')
+    expect(mediumHorizonCard.classes()).not.toContain('horizon-card--available')
+    expect(mediumHorizonCard.text()).toContain('Evidence Unavailable')
+    expect(mediumHorizonCard.text()).toContain('P638 canonical evidence does not publish an exact RECENT_300 ranking window')
+
+    const longHorizonCard = wrapper.find('[data-testid="horizon-card-recent-750"]')
+    expect(longHorizonCard.classes()).not.toContain('horizon-card--available')
+    expect(longHorizonCard.text()).toContain('Evidence Unavailable')
+    expect(longHorizonCard.text()).toContain('P638 canonical evidence does not publish an exact RECENT_750 ranking window')
+
+    wrapper.unmount()
+  })
+})
+
+describe('T539 Best Replay Horizon Authority Validation (Correction R1)', () => {
+  it('loadT539BestReplayData returns available items only for FULL horizon', async () => {
+    const fullItems = await loadT539BestReplayData([1], 'FULL')
+    expect(fullItems.length).toBe(2)
+
+    const leader = fullItems[0]
+    expect(leader?.isAvailable).toBe(true)
+    expect(leader?.strategyId).toBe('t539_wave1_cyclic_leader')
+    expect(leader?.rank).toBe(1)
+    expect(leader?.hitRate).toBe(0.215)
+    expect(leader?.hitRateFormatted).toBe('21.50%')
+    expect(leader?.evaluatedTargets).toBe(1000)
+    expect(leader?.winningTargets).toBe(211)
+    expect(leader?.evidenceStatus).toBe('DESCRIPTIVE LEADER')
+    expect(leader?.notes).toContain('Descriptive historical evidence only; does not infer future performance')
+  })
+
+  it('loadT539BestReplayData fails closed for RECENT_50, RECENT_300, and RECENT_750 with explicit reason', async () => {
+    for (const unsupportedHorizon of ['RECENT_50', 'RECENT_300', 'RECENT_750'] as const) {
+      const items = await loadT539BestReplayData([1], unsupportedHorizon)
+      expect(items.length).toBeGreaterThan(0)
+
+      for (const item of items) {
+        expect(item.isAvailable).toBe(false)
+        expect(item.evidenceStatus).toBe('EVIDENCE UNAVAILABLE')
+        expect(item.rank).toBeNull()
+        expect(item.hitRate).toBeNull()
+        expect(item.hitRateFormatted).toBe('Unavailable')
+        expect(item.winningTargets).toBeNull()
+        expect(item.evaluatedTargets).toBeNull()
+        expect(item.unavailableReasonCode).toBe('NO_CANONICAL_WINDOW_EVIDENCE')
+        expect(item.notes).toContain(
+          `T539 canonical evidence does not publish an exact ${unsupportedHorizon} ranking window.`,
+        )
+        expect(item.notes).toContain('Descriptive historical evidence only; does not infer future performance')
+      }
+    }
+  })
+
+  it('loadT539BestReplayData rejects ticket counts 2, 3, 4, and 5', async () => {
+    const multiTicketItems = await loadT539BestReplayData([2, 3, 4, 5], 'FULL')
+    expect(multiTicketItems).toEqual([])
+
+    const multiTicketRecentItems = await loadT539BestReplayData([2, 3, 4, 5], 'RECENT_50')
+    expect(multiTicketRecentItems).toEqual([])
+  })
+
+  it('proves no T539 horizon reuses identical latest ranking results under relabeled RECENT windows', async () => {
+    const fullItems = await loadT539BestReplayData([1], 'FULL')
+    const recent50Items = await loadT539BestReplayData([1], 'RECENT_50')
+    const recent300Items = await loadT539BestReplayData([1], 'RECENT_300')
+    const recent750Items = await loadT539BestReplayData([1], 'RECENT_750')
+
+    const fullLeader = fullItems[0]
+    expect(fullLeader?.isAvailable).toBe(true)
+    expect(fullLeader?.rank).toBe(1)
+    expect(fullLeader?.hitRate).toBe(0.215)
+
+    // All RECENT horizons must NOT have rank 1 or 21.5% hit rate
+    for (const recentSet of [recent50Items, recent300Items, recent750Items]) {
+      const recentLeader = recentSet[0]
+      expect(recentLeader?.isAvailable).toBe(false)
+      expect(recentLeader?.rank).toBeNull()
+      expect(recentLeader?.hitRate).toBeNull()
+      expect(recentLeader?.hitRateFormatted).toBe('Unavailable')
+    }
+  })
+
+  it('renders T539 at RECENT_50 as explicit EVIDENCE UNAVAILABLE in UI without 0% or fake hit rate', async () => {
+    const wrapper = mount(BestReplayPage)
+    await flushPromises()
+
+    // Switch to T539
+    await wrapper.find('[data-testid="game-btn-t539"]').trigger('click')
+    await flushPromises()
+
+    // Switch to RECENT_50
+    await wrapper.find('#horizon-select').setValue('RECENT_50')
+    await flushPromises()
+
+    // Summary Card must be unavailable
+    const metricsGrid = wrapper.find('[data-testid="best-replay-metrics-grid"]')
+    expect(metricsGrid.text()).toContain('Evidence Unavailable')
+    expect(metricsGrid.text()).toContain('Unavailable')
+    expect(metricsGrid.text()).toContain('EVIDENCE UNAVAILABLE')
+
+    // 1–5 Overview Card 1 must be unavailable with NO_CANONICAL_WINDOW_EVIDENCE
+    const card1 = wrapper.find('[data-testid="overview-card-1"]')
+    expect(card1.classes()).toContain('overview-card--unavailable')
+    expect(card1.text()).toContain('NO_CANONICAL_WINDOW_EVIDENCE')
+    expect(card1.text()).toContain('T539 canonical evidence does not publish an exact RECENT_50 ranking window')
+
+    // Overview cards 2..5 must be unavailable with NO_CANONICAL_REPLAY_EVIDENCE
+    for (const count of [2, 3, 4, 5]) {
+      const card = wrapper.find(`[data-testid="overview-card-${count}"]`)
+      expect(card.classes()).toContain('overview-card--unavailable')
+      expect(card.text()).toContain('NO_CANONICAL_REPLAY_EVIDENCE')
+    }
+
+    // Table rows must show Rank — and Hit Rate Unavailable
+    const rows = wrapper.findAll('tbody tr')
+    expect(rows.length).toBeGreaterThan(0)
+    for (const row of rows) {
+      expect(row.text()).toContain('Unavailable')
+      expect(row.text()).toContain('EVIDENCE UNAVAILABLE')
+      expect(row.text()).toContain('T539 canonical evidence does not publish an exact RECENT_50 ranking window')
+    }
+
+    // Verify 0.00% fake hit rate does not appear
+    const visibleTexts = wrapper.findAll('.font-mono').map((c) => c.text())
+    expect(visibleTexts.some((t) => t === '0.00%')).toBe(false)
+    expect(visibleTexts.some((t) => t === '21.50%')).toBe(false)
+
+    wrapper.unmount()
+  })
+
+  it('renders T539 at FULL with canonical Rank #1 while horizon comparison shows RECENT windows unavailable', async () => {
+    const wrapper = mount(BestReplayPage)
+    await flushPromises()
+
+    // Switch to T539 with FULL horizon default
+    await wrapper.find('[data-testid="game-btn-t539"]').trigger('click')
+    await wrapper.find('#horizon-select').setValue('FULL')
+    await flushPromises()
+
+    // Summary Card shows canonical leader
+    const metricsGrid = wrapper.find('[data-testid="best-replay-metrics-grid"]')
+    expect(metricsGrid.text()).toContain('t539_wave1_cyclic_leader')
+    expect(metricsGrid.text()).toContain('21.50%')
+    expect(metricsGrid.text()).toContain('DESCRIPTIVE LEADER')
+
+    // 1–5 Overview Card 1 is available
+    const card1 = wrapper.find('[data-testid="overview-card-1"]')
+    expect(card1.classes()).toContain('overview-card--available')
+    expect(card1.text()).toContain('21.50%')
+
+    // Horizon comparison breakdown
+    const fullHorizonCard = wrapper.find('[data-testid="horizon-card-full"]')
+    expect(fullHorizonCard.classes()).toContain('horizon-card--available')
+    expect(fullHorizonCard.text()).toContain('21.50%')
+
+    const shortHorizonCard = wrapper.find('[data-testid="horizon-card-recent-50"]')
+    expect(shortHorizonCard.classes()).not.toContain('horizon-card--available')
+    expect(shortHorizonCard.text()).toContain('Evidence Unavailable')
+    expect(shortHorizonCard.text()).toContain('T539 canonical evidence does not publish an exact RECENT_50 ranking window')
+
+    const mediumHorizonCard = wrapper.find('[data-testid="horizon-card-recent-300"]')
+    expect(mediumHorizonCard.classes()).not.toContain('horizon-card--available')
+    expect(mediumHorizonCard.text()).toContain('Evidence Unavailable')
+    expect(mediumHorizonCard.text()).toContain('T539 canonical evidence does not publish an exact RECENT_300 ranking window')
+
+    const longHorizonCard = wrapper.find('[data-testid="horizon-card-recent-750"]')
+    expect(longHorizonCard.classes()).not.toContain('horizon-card--available')
+    expect(longHorizonCard.text()).toContain('Evidence Unavailable')
+    expect(longHorizonCard.text()).toContain('T539 canonical evidence does not publish an exact RECENT_750 ranking window')
+
+    wrapper.unmount()
+  })
+})

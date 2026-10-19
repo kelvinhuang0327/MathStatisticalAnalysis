@@ -36,8 +36,8 @@ from lottolab.infrastructure.persistence.research_repository import (
     TicketResultInput,
 )
 from lottolab.infrastructure.persistence.research_schema import (
-    IMMUTABLE_TABLE_NAMES,
     RESEARCH_DATABASE_FILENAME,
+    V2_IMMUTABLE_TABLE_NAMES,
     ResearchDataPaths,
     open_database,
 )
@@ -802,7 +802,7 @@ def test_append_only_triggers_block_update_and_delete_on_every_immutable_table(
             (artifact_id,),
         )
         connection.commit()
-        for table in IMMUTABLE_TABLE_NAMES:
+        for table in V2_IMMUTABLE_TABLE_NAMES:
             assert connection.execute(
                 f"SELECT COUNT(*) FROM {table}"
             ).fetchone()[0] >= 1

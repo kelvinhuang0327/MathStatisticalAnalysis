@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from datetime import date, timedelta
 from pathlib import Path
 from typing import Any, cast
 
@@ -13,6 +14,7 @@ from typer.testing import CliRunner
 from lottolab.application.biglotto_multi_ticket_backtest import (
     INPUT_SCHEMA_VERSION,
     MultiTicketBacktestInputError,
+    evaluate_biglotto_exact_native_official_metrics,
     evaluate_biglotto_multi_ticket_backtest,
 )
 from lottolab.domain.biglotto_full_strategy_catalog import (
@@ -43,8 +45,7 @@ def _strategy_identity() -> tuple[str, str]:
     record = next(
         record
         for record in load_full_strategy_catalog().records
-        if record.legacy_method_id
-        == "tools/evolving_strategy_engine/evolution_engine.py"
+        if record.legacy_method_id == "tools/evolving_strategy_engine/evolution_engine.py"
     )
     return record.strategy_id, record.strategy_version
 
@@ -152,16 +153,13 @@ def test_report_exposes_official_primary_metrics_and_isolates_ticket_windows(
 
     assert len(official_metrics) == 4 * 4
     assert len(official_rankings) == 4 * 4 * 221
-    assert {row["criterion"] for row in official_rankings} == {
-        "OFFICIAL_ANY_PRIZE"
-    }
+    assert {row["criterion"] for row in official_rankings} == {"OFFICIAL_ANY_PRIZE"}
     assert all(
         len(
             [
                 row
                 for row in official_rankings
-                if row["prefix_count"] == prefix_count
-                and row["window"] == window
+                if row["prefix_count"] == prefix_count and row["window"] == window
             ]
         )
         == 221
@@ -171,9 +169,7 @@ def test_report_exposes_official_primary_metrics_and_isolates_ticket_windows(
     assert len(official_top_20) == 4 * 4
 
     metric = next(
-        row
-        for row in official_metrics
-        if row["prefix_count"] == 5 and row["window"] == "FULL"
+        row for row in official_metrics if row["prefix_count"] == 5 and row["window"] == "FULL"
     )
     assert metric["official_any_prize_count"] == 1
     assert metric["official_any_prize_rate"] == {
@@ -183,6 +179,49 @@ def test_report_exposes_official_primary_metrics_and_isolates_ticket_windows(
     }
     assert metric["official_random_baseline_probability"]["numerator"] > 0
     assert metric["official_random_baseline_delta"]["numerator"] > 0
+
+
+def test_exact_native_metrics_score_only_the_two_native_ticket_positions() -> None:
+    exact_report = evaluate_biglotto_exact_native_official_metrics(_input_bytes())
+    records = cast(list[dict[str, Any]], exact_report["records"])
+    k2_full = next(row for row in records if row["ticket_count"] == 2 and row["window"] == "FULL")
+    k3_full = next(row for row in records if row["ticket_count"] == 3 and row["window"] == "FULL")
+
+    assert k2_full["metric_status"] == "AVAILABLE"
+    assert k2_full["available_observation_count"] == 2
+    assert k2_full["ticket_position_count"] == 4
+    assert k2_full["official_any_prize_count"] == 1
+    assert k2_full["official_any_prize_rate"] == {
+        "decimal_18": "0.500000000000000000",
+        "denominator": 2,
+        "numerator": 1,
+    }
+    assert k2_full["official_prize_tier_counts"]["FIRST"] == 2
+    assert k2_full["no_prize_count"] == 2
+    assert k3_full["metric_status"] == "UNAVAILABLE"
+    assert k3_full["unavailable_reason"] == "NATIVE_TICKET_COUNT_MISMATCH"
+    assert k3_full["official_any_prize_count"] is None
+    assert k3_full["official_any_prize_rate"] is None
+
+
+def test_variable_native_cardinality_is_typed_unavailable_not_partially_scored() -> None:
+    document = _input_document()
+    executions = cast(list[dict[str, object]], document["executions"])
+    native_tickets = cast(list[object], executions[1]["native_tickets"])
+    executions[1]["native_tickets"] = [*native_tickets, native_tickets[0]]
+    executions[1]["native_ticket_count"] = 3
+
+    exact_report = evaluate_biglotto_exact_native_official_metrics(_input_bytes(document))
+    records = cast(list[dict[str, Any]], exact_report["records"])
+
+    assert len(records) == 8
+    assert {row["metric_status"] for row in records} == {"UNAVAILABLE"}
+    assert {row["native_ticket_count_classification"] for row in records} == {
+        "VARIABLE_NATIVE_TICKET_COUNT"
+    }
+    assert {row["unavailable_reason"] for row in records} == {"VARIABLE_NATIVE_TICKET_COUNT"}
+    assert all(row["official_any_prize_count"] is None for row in records)
+    assert all(row["official_any_prize_rate"] is None for row in records)
 
 
 def test_two_main_plus_special_is_official_success_but_not_m3_plus() -> None:
@@ -201,14 +240,10 @@ def test_two_main_plus_special_is_official_success_but_not_m3_plus() -> None:
     m3 = next(
         row
         for row in metrics
-        if row["prefix_count"] == 5
-        and row["window"] == "FULL"
-        and row["criterion"] == "M3_PLUS"
+        if row["prefix_count"] == 5 and row["window"] == "FULL" and row["criterion"] == "M3_PLUS"
     )
     official = next(
-        row
-        for row in official_metrics
-        if row["prefix_count"] == 5 and row["window"] == "FULL"
+        row for row in official_metrics if row["prefix_count"] == 5 and row["window"] == "FULL"
     )
 
     assert m3["observed_success_count"] == 0
@@ -425,3 +460,182 @@ def test_cli_exports_json_csv_and_checksums(tmp_path: Path) -> None:
     assert set(checksums) == expected_files
     for filename, digest in checksums.items():
         assert hashlib.sha256((output / filename).read_bytes()).hexdigest() == digest
+
+
+def _multi_target_document(
+    draw_count: int = 100,
+) -> tuple[dict[str, object], str, str]:
+    strategy_id, strategy_version = _strategy_identity()
+    winning_ticket = [1, 2, 3, 4, 5, 6]
+    ordered_portfolio = [winning_ticket for _ in range(20)]
+    start_date = date(2020, 1, 1)
+
+    targets: list[dict[str, object]] = []
+    executions: list[dict[str, object]] = []
+
+    for i in range(draw_count):
+        draw_num = str(100 + i)
+        draw_dt = (start_date + timedelta(days=i + 1)).isoformat()
+        targets.append(
+            {
+                "draw_date": draw_dt,
+                "draw_number": draw_num,
+                "winning_main_numbers": winning_ticket,
+                "winning_special_number": 7,
+            }
+        )
+        cutoff_num = str(99 + i)
+        cutoff_dt = (start_date + timedelta(days=i)).isoformat()
+        executions.append(
+            {
+                "candidate_k": 12,
+                "combination_count": 924,
+                "history_cutoff_draw_date": cutoff_dt,
+                "history_cutoff_draw_number": cutoff_num,
+                "native_ticket_count": 2,
+                "native_tickets": [winning_ticket, winning_ticket],
+                "ordered_portfolio": ordered_portfolio,
+                "portfolio_derivation": "test-constructor/v1",
+                "portfolio_ticket_count": 20,
+                "status": "OK",
+                "strategy_id": strategy_id,
+                "strategy_version": strategy_version,
+                "target_draw_number": draw_num,
+            }
+        )
+
+    doc: dict[str, object] = {
+        "dataset_id": "fixture-dataset-multi",
+        "dataset_sha256": "b" * 64,
+        "dataset_version": "v1",
+        "executions": executions,
+        "lottery_type": "BIG_LOTTO",
+        "schema_version": INPUT_SCHEMA_VERSION,
+        "targets": targets,
+    }
+    return doc, strategy_id, strategy_version
+
+
+def test_case_a_execution_failure_inside_recent_50_makes_window_unavailable() -> None:
+    doc, strategy_id, strategy_version = _multi_target_document(100)
+    executions = cast(list[dict[str, object]], doc["executions"])
+    executions[90] = {
+        "reason_code": "EXECUTION_FAILURE",
+        "status": "EXECUTION_FAILURE",
+        "strategy_id": strategy_id,
+        "strategy_version": strategy_version,
+        "target_draw_number": "190",
+    }
+    report = evaluate_biglotto_exact_native_official_metrics(_input_bytes(doc))
+    records = cast(list[dict[str, Any]], report["records"])
+    recent_50_k2 = next(
+        r
+        for r in records
+        if r["strategy_id"] == strategy_id and r["window"] == "RECENT_50" and r["ticket_count"] == 2
+    )
+    assert recent_50_k2["metric_status"] == "UNAVAILABLE"
+    assert recent_50_k2["rankable"] is False
+    assert recent_50_k2["unavailable_reason"] == "EXECUTION_FAILURE"
+    assert recent_50_k2["execution_status_counts"]["EXECUTION_FAILURE"] == 1
+
+
+def test_case_b_incomplete_observations_inside_window_remain_available() -> None:
+    doc, strategy_id, strategy_version = _multi_target_document(100)
+    executions = cast(list[dict[str, object]], doc["executions"])
+    executions[90] = {
+        "reason_code": "AVAILABLE_HISTORY_BELOW_MINIMUM",
+        "status": "WINDOW_INELIGIBLE_INCOMPLETE_OBSERVATIONS",
+        "strategy_id": strategy_id,
+        "strategy_version": strategy_version,
+        "target_draw_number": "190",
+    }
+    report = evaluate_biglotto_exact_native_official_metrics(_input_bytes(doc))
+    records = cast(list[dict[str, Any]], report["records"])
+    recent_50_k2 = next(
+        r
+        for r in records
+        if r["strategy_id"] == strategy_id and r["window"] == "RECENT_50" and r["ticket_count"] == 2
+    )
+    assert recent_50_k2["metric_status"] == "AVAILABLE"
+    assert recent_50_k2["rankable"] is True
+    assert recent_50_k2["unavailable_reason"] is None
+    assert recent_50_k2["available_observation_count"] == 49
+    assert recent_50_k2["execution_status_counts"]["WINDOW_INELIGIBLE_INCOMPLETE_OBSERVATIONS"] == 1
+
+
+def test_case_c_execution_failure_outside_recent_50_preserves_recent_50_availability() -> None:
+    doc, strategy_id, strategy_version = _multi_target_document(100)
+    executions = cast(list[dict[str, object]], doc["executions"])
+    executions[20] = {
+        "reason_code": "EXECUTION_FAILURE",
+        "status": "EXECUTION_FAILURE",
+        "strategy_id": strategy_id,
+        "strategy_version": strategy_version,
+        "target_draw_number": "120",
+    }
+    report = evaluate_biglotto_exact_native_official_metrics(_input_bytes(doc))
+    records = cast(list[dict[str, Any]], report["records"])
+    recent_50_k2 = next(
+        r
+        for r in records
+        if r["strategy_id"] == strategy_id and r["window"] == "RECENT_50" and r["ticket_count"] == 2
+    )
+    assert recent_50_k2["metric_status"] == "AVAILABLE"
+    assert recent_50_k2["rankable"] is True
+    assert recent_50_k2["unavailable_reason"] is None
+    assert recent_50_k2["available_observation_count"] == 50
+
+
+def test_case_d_failure_inside_full_but_outside_recent_50() -> None:
+    doc, strategy_id, strategy_version = _multi_target_document(100)
+    executions = cast(list[dict[str, object]], doc["executions"])
+    executions[20] = {
+        "reason_code": "EXECUTION_FAILURE",
+        "status": "EXECUTION_FAILURE",
+        "strategy_id": strategy_id,
+        "strategy_version": strategy_version,
+        "target_draw_number": "120",
+    }
+    report = evaluate_biglotto_exact_native_official_metrics(_input_bytes(doc))
+    records = cast(list[dict[str, Any]], report["records"])
+    full_k2 = next(
+        r
+        for r in records
+        if r["strategy_id"] == strategy_id and r["window"] == "FULL" and r["ticket_count"] == 2
+    )
+    recent_50_k2 = next(
+        r
+        for r in records
+        if r["strategy_id"] == strategy_id and r["window"] == "RECENT_50" and r["ticket_count"] == 2
+    )
+    # Expected: FULL=UNAVAILABLE / RECENT_50=AVAILABLE
+    assert full_k2["metric_status"] == "UNAVAILABLE"
+    assert full_k2["rankable"] is False
+    assert full_k2["unavailable_reason"] == "EXECUTION_FAILURE"
+    assert full_k2["execution_status_counts"]["EXECUTION_FAILURE"] == 1
+
+    assert recent_50_k2["metric_status"] == "AVAILABLE"
+    assert recent_50_k2["rankable"] is True
+    assert recent_50_k2["unavailable_reason"] is None
+    assert recent_50_k2["available_observation_count"] == 50
+
+
+def test_closed_execution_accepts_reason_attribute_fallback() -> None:
+    doc, strategy_id, strategy_version = _multi_target_document(100)
+    executions = cast(list[dict[str, object]], doc["executions"])
+    executions[90] = {
+        "reason": "BINDING_FAILURE: unable to import",
+        "status": "EXECUTION_FAILURE",
+        "strategy_id": strategy_id,
+        "strategy_version": strategy_version,
+        "target_draw_number": "190",
+    }
+    report = evaluate_biglotto_exact_native_official_metrics(_input_bytes(doc))
+    records = cast(list[dict[str, Any]], report["records"])
+    recent_50_k2 = next(
+        r
+        for r in records
+        if r["strategy_id"] == strategy_id and r["window"] == "RECENT_50" and r["ticket_count"] == 2
+    )
+    assert recent_50_k2["metric_status"] == "UNAVAILABLE"
+    assert recent_50_k2["unavailable_reason"] == "EXECUTION_FAILURE"

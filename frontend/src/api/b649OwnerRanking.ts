@@ -43,6 +43,7 @@ export interface B649OwnerRankingData {
 export const B649_OWNER_RANKING_CRITERION = 'M3_PLUS' as const
 const OWNER_PAGE_SIZE = 100
 
+// Historical R2 research baseline snapshot (descriptive reference only; non-canonical).
 export const R2_BASELINE_SNAPSHOT: Record<
   B649PrefixCount,
   { full: string; recent750: string; recent300: string; recent50: string }
@@ -51,33 +52,6 @@ export const R2_BASELINE_SNAPSHOT: Record<
   10: { full: '18/20', recent750: '14/20', recent300: '11/20', recent50: '20/20' },
   15: { full: '6/20', recent750: '7/20', recent300: '6/20', recent50: '20/20' },
   20: { full: '2/20', recent750: '3/20', recent300: '5/20', recent50: '10/20' },
-}
-
-export interface B649OwnerSnapshot {
-  rank: number
-  rate: string
-  coverage: string
-  observations: number
-  delta: string
-}
-
-// R2 identifies this strategy as portfolio_optimizer. The current projection has a
-// different backtest_biglotto_portfolio utility strategy, so do not alias the two.
-export const R2_PORTFOLIO_SNAPSHOT: Partial<
-  Record<B649PrefixCount, Partial<Record<B649HistoryWindow, B649OwnerSnapshot>>>
-> = {
-  15: {
-    FULL: { rank: 14, rate: '0.384000000000000000', coverage: '0.906900000000000000', observations: 1949, delta: '-0.009700000000000000' },
-    RECENT_750: { rank: 6, rate: '0.384000000000000000', coverage: '1.000000000000000000', observations: 750, delta: '0.008000000000000000' },
-    RECENT_300: { rank: 3, rate: '0.386700000000000000', coverage: '1.000000000000000000', observations: 300, delta: '0.010700000000000000' },
-    RECENT_50: { rank: 9, rate: '0.440000000000000000', coverage: '1.000000000000000000', observations: 50, delta: '0.064000000000000000' },
-  },
-  20: {
-    FULL: { rank: 17, rate: '0.461300000000000000', coverage: '0.906900000000000000', observations: 1949, delta: '-0.031700000000000000' },
-    RECENT_750: { rank: 6, rate: '0.461300000000000000', coverage: '1.000000000000000000', observations: 750, delta: '-0.005400000000000000' },
-    RECENT_300: { rank: 2, rate: '0.476700000000000000', coverage: '1.000000000000000000', observations: 300, delta: '0.009900000000000000' },
-    RECENT_50: { rank: 9, rate: '0.480000000000000000', coverage: '1.000000000000000000', observations: 50, delta: '0.013200000000000000' },
-  },
 }
 
 export const R2_CORE_OBSERVATIONS: Record<B649PrefixCount, readonly B649OwnerMetadata[]> = {

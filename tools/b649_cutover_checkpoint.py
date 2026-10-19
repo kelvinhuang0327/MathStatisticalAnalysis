@@ -1,0 +1,1374 @@
+"""Read-only, bounded evidence gates for an externally performed B649 cutover.
+
+Run ``uv run python tools/b649_cutover_checkpoint.py --help`` for JSON usage.
+Supply a phase and its required expectations; each invocation emits one JSON
+object and exits 0 only on PASS (invalid input exits 2, failed evidence exits 1).
+No scheduler modules are imported, no locks are acquired, and no repair is made.
+
+Ownership is a conservative snapshot of the LaunchAgent user's process table,
+commands, cwd/open files, and descendants. Role identities are literal markers
+(repeat the flags for wrappers/extra hooks). Defaults cover the project entry
+points. An ambiguous B649 process or incomplete observation fails closed. This
+is evidence for the observation window, not a reservation against later starts.
+An open primary/shadow lock is treated as ownership even without testing flock.
+
+The DB gate only reads schema metadata, using mode=ro, immutable and query_only.
+Journals, WAL headers/sidecars and concurrent file changes are refused; immutable
+prevents SQLite from creating sidecars even if the database changes mid-check.
+Health authority is the exact supplied local file, checked by label and schema;
+freshness and acceptable states are explicit caller policy. Post-load inspects
+both the on-disk plist and launchd's independently loaded binding.
+"""
+
+from __future__ import annotations
+
+import argparse
+import ctypes
+import hashlib
+import json
+import os
+import plistlib
+import re
+import shlex
+import sqlite3
+import stat
+import subprocess
+import sys
+from collections.abc import Callable, Mapping, Sequence
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
+from pathlib import Path
+from typing import NoReturn, cast
+
+if __package__ in {None, ""}:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from tools.task_execution_claim import ClaimStore
+
+PHASES = ("pre-cutover", "post-unload", "post-load")
+COMMAND_TIMEOUT = 10
+MAX_BYTES = 16 * 1024 * 1024
+PROTECTED_TASK_KEY = "b649-protected-cutover:com.lottolab.b649-goalc-r1"
+ROLE_DEFAULTS = {
+    "primary": ["b649_operational_prediction_loop.py", "b649_forward_auto_cycle_adapter.py"],
+    "scheduler": ["b649_goalc_local_scheduler.py"],
+    "shadow": ["b649_pair_rule_forward_shadow.py", "run_shadow_predraw", "run_shadow_postdraw"],
+}
+type Runner = Callable[[Sequence[str]], subprocess.CompletedProcess[str]]
+type Record = dict[str, object]
+
+
+class Unverifiable(ValueError):
+    """A mandatory observation cannot establish the expected state."""
+
+
+def git_read_argv(argv: Sequence[str]) -> list[str]:
+    """Pin fsmonitor off at both the injectable and the real command boundary."""
+    result = list(argv)
+    if result and result[0] == "git":
+        rest = result[3:] if result[1:3] == ["-c", "core.fsmonitor=false"] else result[1:]
+        if any(arg.startswith(("-c", "--config-env")) for arg in rest):
+            raise Unverifiable("Git command configuration overrides are forbidden")
+        result = ["git", "-c", "core.fsmonitor=false", *rest]
+    return result
+
+
+def run_command(argv: Sequence[str]) -> subprocess.CompletedProcess[str]:
+    """The only command execution seam; callers supply fixed read-only verbs."""
+    return subprocess.run(
+        git_read_argv(argv),
+        capture_output=True,
+        text=True,
+        check=False,
+        timeout=COMMAND_TIMEOUT,
+        env={**os.environ, "LC_ALL": "C", "GIT_OPTIONAL_LOCKS": "0"},
+    )
+
+
+def command(runner: Runner, argv: Sequence[str]) -> subprocess.CompletedProcess[str]:
+    result = runner(git_read_argv(argv))
+    if len(result.stdout) + len(result.stderr) > MAX_BYTES:
+        raise Unverifiable(f"{argv[0]} observation exceeded the output bound")
+    return result
+
+
+def checked(runner: Runner, argv: Sequence[str]) -> str:
+    result = command(runner, argv)
+    if result.returncode != 0 or result.stderr.strip():
+        raise Unverifiable(f"{argv[0]} failed ({result.returncode}): {result.stderr.strip()}")
+    return result.stdout
+
+
+def file_identity(s: os.stat_result) -> tuple[int, ...]:
+    return s.st_dev, s.st_ino, s.st_size, s.st_mtime_ns, s.st_ctime_ns
+
+
+def read_bytes(path: Path) -> bytes:
+    # Nonblocking open prevents a FIFO masquerading as evidence from hanging.
+    fd = os.open(path, os.O_RDONLY | os.O_NONBLOCK | os.O_NOFOLLOW)
+    with os.fdopen(fd, "rb") as stream:
+        before = os.fstat(stream.fileno())
+        if not stat.S_ISREG(before.st_mode) or before.st_size > MAX_BYTES:
+            raise Unverifiable(f"not a bounded regular evidence file: {path}")
+        data = stream.read(MAX_BYTES + 1)
+        after = os.fstat(stream.fileno())
+    current = path.stat(follow_symlinks=False)
+
+    if len(data) > MAX_BYTES or file_identity(before) != file_identity(after):
+        raise Unverifiable(f"evidence changed during observation: {path}")
+    if file_identity(before) != file_identity(current):
+        raise Unverifiable(f"evidence replaced during observation: {path}")
+    return data
+
+
+def object_record(value: object) -> Record:
+    if not isinstance(value, dict) or any(
+        not isinstance(key, str) for key in cast(dict[object, object], value)
+    ):
+        raise Unverifiable("expected an object with string keys")
+    return cast(Record, value)
+
+
+@dataclass
+class Checks:
+    phase: str
+    checks: dict[str, Record] = field(default_factory=lambda: dict[str, Record]())
+    failures: list[str] = field(default_factory=lambda: list[str]())
+
+    def add(
+        self,
+        name: str,
+        observe: Callable[[], object],
+        *,
+        accept: Callable[[object], bool] = lambda _: True,
+        expected: object = None,
+    ) -> object:
+        try:
+            observed = observe()
+            passed = accept(observed)
+            entry: Record = {"status": "PASS" if passed else "FAIL", "observed": observed}
+        except Exception as exc:
+            observed = None
+            passed = False
+            entry = {
+                "status": "FAIL",
+                "classification": "UNVERIFIABLE",
+                "error": f"{type(exc).__name__}: {exc}",
+            }
+        if expected is not None:
+            entry["expected"] = expected
+        self.checks[name] = entry
+        if not passed:
+            self.failures.append(name)
+        return observed
+
+    def equal(self, name: str, observe: Callable[[], object], expected: object) -> object:
+        return self.add(name, observe, accept=lambda value: value == expected, expected=expected)
+
+    def result(self) -> Record:
+        return {
+            "phase": self.phase,
+            "status": "FAIL" if self.failures else "PASS",
+            "checks": self.checks,
+            "failures": self.failures,
+        }
+
+
+def git_value(runner: Runner, worktree: str, revision: str) -> str:
+    return checked(
+        runner,
+        [
+            "git",
+            "--no-optional-locks",
+            "-C",
+            worktree,
+            "rev-parse",
+            "--verify",
+            "--end-of-options",
+            revision,
+        ],
+    ).strip()
+
+
+def check_source(checks: Checks, args: argparse.Namespace, runner: Runner, role: str) -> None:
+    worktree = cast(str, getattr(args, f"expected_{role}_worktree"))
+    head = cast(str, getattr(args, f"expected_{role}_head"))
+    checks.equal(f"{role}_worktree", lambda: Path(worktree).is_dir(), True)
+    checks.equal(
+        f"{role}_root",
+        lambda: checked(
+            runner, ["git", "--no-optional-locks", "-C", worktree, "rev-parse", "--show-toplevel"]
+        ).strip(),
+        worktree,
+    )
+    checks.equal(f"{role}_head", lambda: git_value(runner, worktree, "HEAD"), head)
+    if role == "successor" and args.phase == "pre-cutover":
+        checks.equal(
+            "successor_ref_format",
+            lambda: checked(
+                runner, ["git", "check-ref-format", args.expected_successor_ref]
+            ).strip(),
+            "",
+        )
+        checks.equal(
+            "successor_tree",
+            lambda: git_value(runner, worktree, "HEAD^{tree}"),
+            args.expected_successor_tree,
+        )
+        checks.equal(
+            "successor_durable_ref",
+            lambda: git_value(runner, worktree, args.expected_successor_ref + "^{commit}"),
+            head,
+        )
+
+
+def plist_snapshot(path: Path) -> Record:
+    data = read_bytes(path)
+    # Plists may contain date/data values in informational fields. Keep the
+    # evidence JSON serializable, and reject non-finite numbers before reporting.
+    value = object_record(
+        json.loads(json.dumps(plistlib.loads(data), default=str, allow_nan=False))
+    )
+    return {"path": str(path), "sha256": hashlib.sha256(data).hexdigest(), "binding": value}
+
+
+def launch_snapshot(args: argparse.Namespace, runner: Runner) -> Record:
+    target = f"{args.launch_domain}/{args.expected_label}"
+    result = command(runner, ["launchctl", "print", target])
+    if result.returncode == 0 and not result.stderr.strip():
+        if not result.stdout.startswith(target + " = {"):
+            raise Unverifiable("launchctl returned a different or malformed service")
+        return {"state": "LOADED", "target": target, "raw": result.stdout}
+    missing = re.fullmatch(
+        r'Bad request\.\s+Could not find service "'
+        + re.escape(args.expected_label)
+        + r'" in domain for user '
+        + re.escape(args.launch_domain.replace("/", ": "))
+        + r"\s*",
+        result.stderr,
+    )
+    if result.returncode == 113 and missing and not result.stdout.strip():
+        return {"state": "UNLOADED", "target": target, "raw": result.stderr}
+    raise Unverifiable(f"launchctl print failed ({result.returncode}): {result.stderr.strip()}")
+
+
+def launch_fields(raw: str) -> dict[str, str | list[str]]:
+    """Parse only direct service fields, preserving nested blocks for exact checks."""
+    lines = raw.splitlines()
+    fields: dict[str, str | list[str]] = {}
+    depth = 1
+    active: list[str] | None = None
+    for line in lines[1:]:
+        text = line.strip()
+        if text == "}":
+            depth -= 1
+            if depth < 0:
+                raise Unverifiable("unbalanced launchctl output")
+            if depth == 1:
+                active = None
+            continue
+        if depth < 1:
+            if text:
+                raise Unverifiable("trailing launchctl output")
+            continue
+        if depth == 1 and " = " in text:
+            key, value = text.split(" = ", 1)
+            if key in fields:
+                raise Unverifiable(f"ambiguous launchctl field: {key}")
+            if value == "{":
+                active = []
+                fields[key] = active
+            else:
+                fields[key] = value
+        elif active is not None:
+            active.append(text)
+        if text.endswith("{"):
+            depth += 1
+    if depth != 0:
+        raise Unverifiable("incomplete launchctl output")
+    return fields
+
+
+def enabled_snapshot(args: argparse.Namespace, runner: Runner) -> bool:
+    raw = checked(runner, ["launchctl", "print-disabled", args.launch_domain])
+    if not re.fullmatch(
+        r'disabled services = \{\s*(?:"[^"\n]+" => (?:true|false|enabled|disabled)\s*)*}',
+        raw.strip(),
+    ):
+        raise Unverifiable("unrecognized launchctl disabled-services output")
+    values = re.findall(
+        r'"' + re.escape(args.expected_label) + r'" => (true|false|enabled|disabled)', raw
+    )
+    if len(values) > 1:
+        raise Unverifiable("duplicate disabled-service entry")
+    # Boolean values describe the disabled override; words describe service state.
+    return not values or values[0] in ("false", "enabled")
+
+
+def database_metadata(path: Path) -> Record:
+    before = path.stat(follow_symlinks=False)
+    if not stat.S_ISREG(before.st_mode):
+        raise Unverifiable("database must be a regular, non-symlink file")
+    sidecars = [str(path) + suffix for suffix in ("-wal", "-shm", "-journal")]
+    if any(os.path.lexists(sidecar) for sidecar in sidecars):
+        raise Unverifiable("database has journal/WAL sidecars; metadata inspection refused")
+    fd = os.open(path, os.O_RDONLY | os.O_NONBLOCK | os.O_NOFOLLOW)
+    with os.fdopen(fd, "rb") as stream:
+        if file_identity(os.fstat(stream.fileno())) != file_identity(before):
+            raise Unverifiable("database replaced before metadata inspection")
+        header = stream.read(100)
+    if header[:16] != b"SQLite format 3\x00" or header[18:20] != b"\x01\x01":
+        raise Unverifiable("database header must identify a rollback-journal SQLite file")
+    # https://www.sqlite.org/uri.html: immutable avoids all journal/SHM writes.
+    # Since a live file is not intrinsically immutable, reject changes around
+    # this bounded metadata read instead of trusting a potentially stale result.
+    connection = sqlite3.connect(path.as_uri() + "?mode=ro&immutable=1", uri=True, timeout=2)
+    try:
+        connection.execute("PRAGMA query_only = ON")
+        connection.set_progress_handler(lambda: 1, 100_000)
+        mode = connection.execute("PRAGMA journal_mode").fetchone()
+        if mode != ("delete",):
+            raise Unverifiable("database must use DELETE journal mode")
+        connection.execute("BEGIN")
+        migrations = connection.execute(
+            "SELECT version, name, checksum FROM schema_migrations ORDER BY version LIMIT 257"
+        ).fetchall()
+        tables = connection.execute(
+            "SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name LIMIT 1025"
+        ).fetchall()
+        if not migrations or len(migrations) > 256 or len(tables) > 1024:
+            raise Unverifiable("schema metadata missing or exceeds observation bound")
+        if any(
+            type(row[0]) is not int or any(type(value) is not str for value in row[1:])
+            for row in migrations
+        ):
+            raise Unverifiable("schema migration metadata has invalid types")
+        return {
+            "path": str(path),
+            "schema_version": migrations[-1][0],
+            "migrations": [list(row) for row in migrations],
+            "tables": [row[0] for row in tables],
+            "journal_mode": mode[0],
+        }
+    finally:
+        connection.close()
+        if file_identity(before) != file_identity(path.stat(follow_symlinks=False)) or any(
+            os.path.lexists(sidecar) for sidecar in sidecars
+        ):
+            raise Unverifiable("database changed during metadata inspection")
+
+
+@dataclass
+class Process:
+    pid: int
+    ppid: int
+    uid: int
+    command: str
+    state: str | None = None
+    files: list[str] = field(default_factory=lambda: list[str]())
+    cwd: str | None = None
+    executable_files: list[str] = field(default_factory=lambda: list[str]())
+
+
+def process_image(pid: int) -> Path:
+    """Return the kernel executable image for a process."""
+    if sys.platform == "darwin":
+        library = ctypes.CDLL("/usr/lib/libproc.dylib", use_errno=True)
+        query = library.proc_pidpath
+        query.argtypes = [ctypes.c_int, ctypes.c_void_p, ctypes.c_uint32]
+        query.restype = ctypes.c_int
+        buffer = ctypes.create_string_buffer(4096)
+        if query(pid, buffer, len(buffer)) <= 0:
+            raise Unverifiable("cannot observe protected process executable")
+        path = Path(os.fsdecode(buffer.value))
+    elif sys.platform == "linux":
+        path = Path(os.readlink(f"/proc/{pid}/exe"))
+    else:
+        raise Unverifiable("protected executable observation is unsupported")
+    return path.resolve(strict=True)
+
+
+def interpreter_command_matches(process: Process, argv: tuple[str, ...]) -> bool:
+    if not argv:
+        return False
+    suffix = " " + " ".join(argv[1:])
+    if not process.command.endswith(suffix):
+        return False
+    executable = Path(process.command[: -len(suffix)])
+    image = process_image(os.getpid())
+    return (
+        executable.is_absolute()
+        and executable.resolve(strict=True) == image
+        and process_image(process.pid) == image
+    )
+
+
+def _process_identity_failure(process: Process, argv: tuple[str, ...], role: str) -> str | None:
+    """Return one safe, stable diagnostic without copying observed argv or paths."""
+    if not argv:
+        return f"protected process identity failed: {role} argv mismatch"
+    suffix = " " + " ".join(argv[1:])
+    if not process.command.endswith(suffix):
+        return f"protected process identity failed: {role} argv mismatch"
+    executable = Path(process.command[: -len(suffix)])
+    try:
+        expected_image = process_image(os.getpid())
+    except (OSError, RuntimeError, ValueError):
+        return f"protected process identity failed: {role} executable image unobservable"
+    if not executable.is_absolute():
+        return f"protected process identity failed: {role} executable image mismatch"
+    try:
+        command_image = executable.resolve(strict=True)
+    except (OSError, RuntimeError, ValueError):
+        return f"protected process identity failed: {role} executable image unobservable"
+    if command_image != expected_image:
+        return f"protected process identity failed: {role} executable image mismatch"
+    try:
+        actual_image = process_image(process.pid)
+    except (OSError, RuntimeError, ValueError):
+        return f"protected process identity failed: {role} executable image unobservable"
+    if actual_image != expected_image:
+        return f"protected process identity failed: {role} executable image mismatch"
+    return None
+
+
+@dataclass(frozen=True)
+class ControlledExecution:
+    """Claim-bound proof inputs; never a caller-supplied PID exemption."""
+
+    claim_root: Path
+    task_key: str
+    execution_id: str
+    owner_id: str
+    child_argv: tuple[str, ...]
+    owner_argv: tuple[str, ...]
+    owner_cwd: str
+    sources: tuple[tuple[str, str, str], ...]
+
+    def verify(self, processes: dict[int, Process], uid: int) -> Record:
+        root = Path(__file__).resolve().parents[1]
+        if (
+            self.task_key != PROTECTED_TASK_KEY
+            or self.child_argv[:3]
+            != (sys.executable, str(root / "tools/b649_production_cutover.py"), "apply")
+            or self.child_argv[-4:-3] != ("--protected-request",)
+        ):
+            raise Unverifiable("only the protected B649 command can control ownership")
+        try:
+            wire = object_record(json.loads(self.child_argv[-3]))
+            identity = object_record(wire.get("identity"))
+            identity_digest = hashlib.sha256(
+                json.dumps(
+                    identity,
+                    sort_keys=True,
+                    separators=(",", ":"),
+                    ensure_ascii=True,
+                    allow_nan=False,
+                ).encode()
+            ).hexdigest()
+        except (IndexError, TypeError, ValueError) as exc:
+            raise Unverifiable("protected request identity is invalid") from exc
+        expected_owner = (
+            sys.executable,
+            str(root / "tools/b649_protected_cutover.py"),
+            "apply",
+            "--source-worktree",
+            identity.get("source_worktree"),
+            "--expected-head",
+            identity.get("source_head"),
+            "--expected-tree",
+            identity.get("source_tree"),
+            "--legacy-worktree",
+            identity.get("legacy_worktree"),
+            "--legacy-head",
+            identity.get("legacy_head"),
+            "--legacy-tree",
+            identity.get("legacy_tree"),
+            "--plan-file",
+            identity.get("plan_file"),
+            *(("--takeover-stale",) if wire.get("takeover_stale") is True else ()),
+        )
+        expected_sources = (
+            (
+                identity.get("legacy_worktree"),
+                identity.get("legacy_head"),
+                identity.get("legacy_tree"),
+            ),
+            (
+                identity.get("source_worktree"),
+                identity.get("source_head"),
+                identity.get("source_tree"),
+            ),
+        )
+        if identity_digest != self.execution_id:
+            raise Unverifiable("protected execution identity digest mismatch")
+        if identity.get("task_key") != self.task_key:
+            raise Unverifiable("protected execution task identity mismatch")
+        if identity.get("action") != "apply":
+            raise Unverifiable("protected execution action identity mismatch")
+        if identity.get("claim_root") != str(self.claim_root):
+            raise Unverifiable("protected execution claim-root identity mismatch")
+        if identity.get("control_worktree") != str(root):
+            raise Unverifiable("protected execution control-worktree identity mismatch")
+        if self.owner_cwd != str(root):
+            raise Unverifiable("protected execution parent cwd identity mismatch")
+        if self.owner_argv != expected_owner:
+            raise Unverifiable("protected execution parent argv identity mismatch")
+        if self.sources != expected_sources:
+            raise Unverifiable("protected execution source identity mismatch")
+        claim = ClaimStore(self.claim_root).inspect(self.task_key)
+        child, owner = os.getpid(), os.getppid()
+        if claim.get("status") != "ACTIVE":
+            raise Unverifiable("protected ClaimStore status mismatch")
+        if claim.get("owner_alive") is not True:
+            raise Unverifiable("protected ClaimStore owner liveness is unverified")
+        if claim.get("child_alive") is not True:
+            raise Unverifiable("protected ClaimStore child liveness is unverified")
+        if claim.get("owner_id") != self.owner_id:
+            raise Unverifiable("protected ClaimStore owner identity mismatch")
+        if claim.get("owner_pid") != owner:
+            raise Unverifiable("protected ClaimStore owner PID mismatch")
+        if claim.get("child_pid") != child:
+            raise Unverifiable("protected ClaimStore child PID mismatch")
+        if claim.get("command") != list(self.child_argv):
+            raise Unverifiable("protected ClaimStore child argv identity mismatch")
+        if claim.get("cwd") != self.owner_cwd:
+            raise Unverifiable("protected ClaimStore cwd identity mismatch")
+        if not re.fullmatch(r"[0-9a-f]{64}", self.execution_id):
+            raise Unverifiable("protected execution ID is malformed")
+        if "--protected-execution" not in self.child_argv:
+            raise Unverifiable("protected child argv is missing its execution marker")
+        if self.child_argv[-1] != self.execution_id:
+            raise Unverifiable("protected child argv execution ID mismatch")
+        for pid, argv, role in (
+            (owner, self.owner_argv, "parent"),
+            (child, self.child_argv, "child"),
+        ):
+            process = processes.get(pid)
+            if process is None:
+                raise Unverifiable(
+                    f"protected process identity failed: {role} missing from snapshot"
+                )
+            if process.uid != uid:
+                raise Unverifiable(f"protected process identity failed: {role} UID mismatch")
+            failure = _process_identity_failure(process, argv, role)
+            if failure is not None:
+                raise Unverifiable(failure)
+            if process.cwd is None:
+                raise Unverifiable(f"protected process identity failed: {role} cwd missing")
+            if process.cwd != self.owner_cwd:
+                raise Unverifiable(f"protected process identity failed: {role} cwd mismatch")
+        if processes[child].ppid != owner:
+            raise Unverifiable("protected process chain failed: child parent PID mismatch")
+        if owner == child:
+            raise Unverifiable("protected process chain failed: owner and child PIDs are identical")
+        return {
+            "execution_id": self.execution_id,
+            "owner_id": self.owner_id,
+            "supervisor_pid": owner,
+            "gated_child_pid": child,
+        }
+
+
+def _is_trusted_git_executable(executable: str, text_files: Sequence[str]) -> bool:
+    binary = Path(executable).name.lower()
+    if binary not in {
+        "git",
+        "git.exe",
+        "git-fsmonitor--daemon",
+        "git-fsmonitor--daemon.exe",
+    }:
+        return False
+    matching_text_files = {
+        path
+        for path in set(text_files)
+        if Path(path).is_absolute() and Path(path).name.lower() == binary
+    }
+    if len(matching_text_files) != 1:
+        return False
+    text_path = Path(next(iter(matching_text_files)))
+    try:
+        actual = text_path.resolve(strict=True)
+    except (OSError, RuntimeError, ValueError):
+        return False
+    if Path(executable).is_absolute():
+        try:
+            if Path(executable).resolve(strict=True) != actual:
+                return False
+        except (OSError, RuntimeError, ValueError):
+            return False
+    elif executable.lower() != binary:
+        return False
+
+    trusted_roots = (
+        Path("/usr/bin"),
+        Path("/usr/libexec/git-core"),
+        Path("/Library/Developer/CommandLineTools/usr/bin"),
+        Path("/Library/Developer/CommandLineTools/usr/libexec/git-core"),
+        Path("/Applications/Xcode.app/Contents/Developer/usr/bin"),
+        Path("/Applications/Xcode.app/Contents/Developer/usr/libexec/git-core"),
+        Path("/opt/homebrew/Cellar/git"),
+        Path("/usr/local/Cellar/git"),
+    )
+    for root in trusted_roots:
+        try:
+            if actual.is_relative_to(root.resolve(strict=True)):
+                return True
+        except (OSError, RuntimeError, ValueError):
+            continue
+    return False
+
+
+def is_git_fsmonitor_command(
+    command: str,
+    old_worktree: str | None = None,
+    *,
+    executable_files: Sequence[str] = (),
+) -> bool:
+    """Narrowly recognize genuine git fsmonitor daemon executions."""
+    try:
+        tokens = shlex.split(command)
+    except Exception:
+        return False
+    if not tokens:
+        return False
+    executable = tokens[0]
+    if old_worktree:
+        path_pattern = re.escape(old_worktree) + r"(?=/|[\s\"']|$)"
+        if re.search(path_pattern, executable):
+            return False
+    binary = Path(executable).name.lower()
+    if binary in {"git", "git.exe"}:
+        if not _is_trusted_git_executable(executable, executable_files):
+            return False
+        idx = 1
+        while idx < len(tokens):
+            tok = tokens[idx]
+            if tok == "fsmonitor--daemon":
+                sub_tokens = [t for t in tokens[idx + 1 :] if not t.startswith("-")]
+                return bool(sub_tokens and sub_tokens[0] in {"run", "start"})
+            elif tok in {"-C", "-c", "--git-dir", "--work-tree", "--namespace", "--super-prefix"}:
+                idx += 2
+            elif tok.startswith("-"):
+                idx += 1
+            else:
+                return False
+        return False
+    elif binary in {"git-fsmonitor--daemon", "git-fsmonitor--daemon.exe"}:
+        if not _is_trusted_git_executable(executable, executable_files):
+            return False
+        sub_tokens = [t for t in tokens[1:] if not t.startswith("-")]
+        return bool(sub_tokens and sub_tokens[0] in {"run", "start"})
+    return False
+
+
+def _is_target_git_admin_metadata(path: str, *, head: str, old_worktree: str) -> bool:
+    """Recognize Git admin paths linked by this B649 worktree's .git file."""
+    worktree_name = f"B649_PRODUCTION_{head}"
+    if Path(old_worktree).name != worktree_name or any(char in path for char in "\x00\r\n"):
+        return False
+    metadata_path = Path(path)
+    if not metadata_path.is_absolute():
+        return False
+    git_file = Path(old_worktree) / ".git"
+    try:
+        lines = git_file.read_text(encoding="utf-8").splitlines()
+        if len(lines) != 1 or not lines[0].startswith("gitdir: "):
+            return False
+        gitdir_text = lines[0][len("gitdir: ") :]
+        if not gitdir_text or any(char in gitdir_text for char in "\x00\r\n"):
+            return False
+        gitdir = Path(gitdir_text)
+        if not gitdir.is_absolute():
+            gitdir = git_file.parent / gitdir
+        actual_gitdir = gitdir.resolve(strict=True)
+        actual_metadata = metadata_path.resolve(strict=True)
+    except (OSError, RuntimeError, ValueError):
+        return False
+    return actual_gitdir.name == worktree_name and actual_metadata.is_relative_to(actual_gitdir)
+
+
+def _head_appears_outside_target_git_metadata(
+    process: Process, *, head: str, old_worktree: str
+) -> bool:
+    if head in process.command.replace(old_worktree, ""):
+        return True
+    for path in process.files:
+        if head not in path.replace(old_worktree, ""):
+            continue
+        if not _is_target_git_admin_metadata(path, head=head, old_worktree=old_worktree):
+            return True
+    return False
+
+
+def is_passive_git_fsmonitor(
+    process: Process,
+    *,
+    roles: set[str],
+    locks: Mapping[str, str],
+    head: str,
+    old_worktree: str,
+) -> bool:
+    """Return True only if process is a legitimate git fsmonitor without B649 ownership."""
+    if roles:
+        return False
+    if any(lock in process.files for lock in locks.values()):
+        return False
+    if head and _head_appears_outside_target_git_metadata(
+        process, head=head, old_worktree=old_worktree
+    ):
+        return False
+    return is_git_fsmonitor_command(
+        process.command,
+        old_worktree=old_worktree,
+        executable_files=process.executable_files,
+    )
+
+
+def is_protected_task_checkpoint_run(
+    command: str, *, protected_owner_argv: Sequence[str] | None = None
+) -> bool:
+    """Recognize only a wrapper that launched the verified protected owner."""
+    try:
+        tokens = shlex.split(command)
+    except Exception:
+        return False
+    if (
+        protected_owner_argv is None
+        or len(tokens) < 3
+        or Path(tokens[0]).name.lower() != "ruby"
+        or Path(tokens[1]).name != "task_checkpoint.rb"
+    ):
+        return False
+    try:
+        separator = tokens.index("--", 2)
+    except ValueError:
+        return False
+    return (
+        "--run" in tokens[2:separator]
+        and tuple(tokens[separator + 1 :]) == tuple(protected_owner_argv)
+    )
+
+
+def reconcile_coverage_gap_liveness(runner: Runner, pending: set[int]) -> set[int]:
+    """One bounded liveness sample for PIDs whose only uncertainty is missing
+    ps/lsof coverage between the process-table and file-ownership snapshots.
+
+    Returns the subset of `pending` still alive; a PID this omits was proven
+    to have exited, and this is never retried or polled further.
+    """
+    result = command(
+        runner, ["ps", "-p", ",".join(str(pid) for pid in sorted(pending)), "-o", "pid="]
+    )
+    if result.stderr.strip():
+        raise Unverifiable(f"liveness reconciliation failed: {result.stderr.strip()}")
+    alive: set[int] = set()
+    for line in result.stdout.splitlines():
+        stripped = line.strip()
+        if not stripped:
+            continue
+        if not stripped.isdigit():
+            raise Unverifiable("unparseable liveness reconciliation row")
+        alive.add(int(stripped))
+    return alive
+
+
+def parse_process_row(line: str, *, darwin: bool) -> Process:
+    """Parse one ps row, normalizing Darwin's signed 32-bit UID output."""
+    # macOS ps STAT is a run state followed by documented modifiers; command
+    # text alone must not establish the process state.
+    uid_pattern = r"(?:0|-?[1-9][0-9]*)" if darwin else r"\d+"
+    match = re.fullmatch(
+        rf"\s*(\d+)\s+(\d+)\s+({uid_pattern})\s+([IRSTUZ][+<>AELNSVWXs]*)\s+(\S.*)",
+        line,
+    )
+    if match is None:
+        raise Unverifiable("unparseable process table row")
+    pid, ppid, owner, state, cmd = match.groups()
+    uid = int(owner)
+    if darwin:
+        if not -(2**31) <= uid <= 2**31 - 1:
+            raise Unverifiable("unparseable process table row")
+        if uid < 0:
+            uid += 2**32
+    return Process(int(pid), int(ppid), uid, cmd, state=state)
+
+
+def process_snapshot(
+    args: argparse.Namespace,
+    runner: Runner,
+    *,
+    execution: ControlledExecution | None = None,
+) -> Record:
+    uid = int(args.launch_domain.split("/")[1])
+    raw = checked(runner, ["ps", "-ww", "-axo", "pid=,ppid=,uid=,stat=,command="])
+    processes: dict[int, Process] = {}
+    for line in raw.splitlines():
+        process = parse_process_row(line, darwin=sys.platform == "darwin")
+        if process.pid in processes:
+            raise Unverifiable("duplicate process table PID")
+        processes[process.pid] = process
+    if not processes:
+        raise Unverifiable("empty process table")
+    current_pid = os.getpid()
+    ancestors: set[int] = set()
+    parent = os.getppid()
+    while parent in processes and parent not in ancestors and parent != current_pid:
+        ancestors.add(parent)
+        parent = processes[parent].ppid
+    protected_task_checkpoint_ancestors: set[int] = set()
+    controlled: Record | None = None
+    excluded = {current_pid}
+    parent = os.getppid()
+    while parent in processes and parent not in excluded:
+        process = processes[parent]
+        if "b649_cutover_checkpoint.py" not in process.command:
+            break
+        excluded.add(parent)
+        parent = process.ppid
+    files = checked(runner, ["lsof", "-nP", "-a", "-u", str(uid), "-F", "pfn"])
+    current: Process | None = None
+    descriptor = ""
+    for line in files.splitlines():
+        if line.startswith("p") and line[1:].isdigit():
+            pid = int(line[1:])
+            # Preserve positive path/lock evidence for a process that appeared
+            # between ps and lsof, even though its argv was not in the first sample.
+            current = processes.setdefault(pid, Process(pid, 0, uid, "<argv unavailable>"))
+            descriptor = ""
+        elif line.startswith("f"):
+            descriptor = line[1:]
+        elif line.startswith("n") and descriptor:
+            if current is not None:
+                name = line[1:]
+                current.files.append(name)
+                if descriptor == "cwd":
+                    current.cwd = name
+                elif descriptor == "txt":
+                    current.executable_files.append(name)
+        else:
+            raise Unverifiable("unparseable lsof ownership row")
+    if execution is not None:
+        controlled = execution.verify(processes, uid)
+        supervisor_pid = object_record(controlled).get("supervisor_pid")
+        if type(supervisor_pid) is not int or supervisor_pid not in ancestors:
+            raise Unverifiable("protected supervisor is not in the observed ancestor chain")
+        excluded.add(supervisor_pid)
+        parent = processes[supervisor_pid].ppid
+        seen: set[int] = set()
+        while parent in ancestors and parent in processes and parent not in seen:
+            seen.add(parent)
+            if is_protected_task_checkpoint_run(
+                processes[parent].command,
+                protected_owner_argv=execution.owner_argv,
+            ):
+                protected_task_checkpoint_ancestors.add(parent)
+            parent = processes[parent].ppid
+    old = args.expected_rollback_worktree
+    head = args.expected_rollback_head
+    identities = {
+        role: defaults + cast(list[str], getattr(args, f"old_{role}_identity") or [])
+        for role, defaults in ROLE_DEFAULTS.items()
+    }
+    locks = {"primary": args.primary_lock_path, "shadow": args.shadow_lock_path}
+    members: dict[str, set[int]] = {role: set() for role in ROLE_DEFAULTS}
+    runtime: set[int] = set()
+    zombie_pids = {
+        process.pid
+        for process in processes.values()
+        if process.state is not None and process.state.startswith("Z")
+    }
+    unknown: list[str] = []
+    coverage_gap_pids: set[int] = set()
+    for process in processes.values():
+        if process.pid in excluded:
+            continue
+        if process.pid in zombie_pids:
+            # Exited records retain stale argv, but cannot execute a cycle.
+            # Live file evidence may indicate PID reuse or an inconsistent sample.
+            if process.cwd is not None or process.files:
+                unknown.append(f"PID {process.pid}: zombie has inconsistent cwd/open-file evidence")
+            continue
+        if process.uid == uid and process.cwd is None:
+            coverage_gap_pids.add(process.pid)
+        file_evidence = "\n".join(process.files)
+        evidence = "\n".join([process.command, *process.files])
+        scopes = ((old, head, ""),) if execution is None else execution.sources
+        matched_scopes = [
+            (worktree, source_head)
+            for worktree, source_head, _tree in scopes
+            if (
+                bool(re.search(re.escape(worktree) + r"(?=/|[\s\"']|$)", evidence))
+                or (source_head and source_head in evidence)
+            )
+        ]
+        argv_bound = any(
+            bool(re.search(re.escape(worktree) + r"(?=/|[\s\"']|$)", process.command))
+            or (source_head and source_head in process.command)
+            for worktree, source_head in matched_scopes
+        )
+        files_bound = any(
+            bool(re.search(re.escape(worktree) + r"(?=/|[\s\"']|$)", file_evidence))
+            or (source_head and source_head in file_evidence)
+            for worktree, source_head in matched_scopes
+        )
+        bound = argv_bound or files_bound
+        roles = {
+            role
+            for role, markers in identities.items()
+            if any(marker in evidence for marker in markers)
+        }
+        lock_bound = False
+        for role, lock in locks.items():
+            if lock in process.files:
+                roles.add(role)
+                lock_bound = True
+        bound = bound or lock_bound
+        if (
+            process.pid in ancestors
+            and argv_bound
+            and not files_bound
+            and not lock_bound
+            and not roles
+        ):
+            # A real ancestor's own argv may merely pass the target worktree
+            # path or head down to a subprocess it launches; that
+            # command-text-only evidence alone cannot prove THIS process
+            # owns the runtime. Any independently verified evidence above
+            # (role marker, lock, or cwd/file binding) already kept bound=True.
+            bound = False
+        if (
+            process.pid in protected_task_checkpoint_ancestors
+            and not roles
+            and not files_bound
+            and not lock_bound
+        ):
+            # The verified wrapper is control-plane infrastructure only when it
+            # has no independent runtime file/lock evidence of its own.
+            continue
+        is_passive_fsmonitor = bool(matched_scopes) and all(
+            is_passive_git_fsmonitor(
+                process,
+                roles=roles,
+                locks=locks,
+                head=source_head,
+                old_worktree=worktree,
+            )
+            for worktree, source_head in matched_scopes
+        )
+        if bound and not is_passive_fsmonitor:
+            runtime.add(process.pid)
+            for role in roles:
+                members[role].add(process.pid)
+        elif roles:
+            # A relative script/import or wrapper cannot be assumed to be a successor.
+            unknown.append(f"PID {process.pid}: runtime role has no verified old/source binding")
+    # A child may outlive a scheduler and retain none of its parent's argv.
+    pending = True
+    while pending:
+        pending = False
+        for process in processes.values():
+            if process.ppid in runtime and process.pid not in runtime | excluded | zombie_pids:
+                runtime.add(process.pid)
+                pending = True
+    if coverage_gap_pids:
+        # Exactly one bounded recheck: a PID proven gone here was a sampling
+        # race, not a real gap; a PID still present with no coverage stays
+        # fail-closed UNVERIFIABLE, and this never repeats or polls further.
+        coverage_gap_pids &= reconcile_coverage_gap_liveness(runner, coverage_gap_pids)
+    unknown.extend(
+        f"PID {pid}: cwd/open-file coverage unavailable" for pid in sorted(coverage_gap_pids)
+    )
+
+    def classification(pids: set[int]) -> str:
+        return "PRESENT" if pids else "UNVERIFIABLE" if unknown else "ABSENT"
+
+    result: Record = {
+        "scope": f"user {uid}; ps state, argv, cwd/open files, descendant closure",
+        "old_worktree": old,
+        "old_head": head,
+        "excluded_checkpoint_pids": sorted(excluded),
+        "controlled_execution": controlled,
+        "zombie_pids": sorted(zombie_pids),
+        "process_count": len(processes),
+        "uncertainties": unknown,
+        "runtime": {"classification": classification(runtime), "pids": sorted(runtime)},
+        "processes": [
+            {
+                "pid": p.pid,
+                "ppid": p.ppid,
+                "uid": p.uid,
+                "command": p.command,
+                "state": p.state,
+                "cwd": p.cwd,
+                "files": p.files,
+            }
+            for p in processes.values()
+            if p.pid in runtime | zombie_pids
+        ],
+    }
+    for role, pids in members.items():
+        result[role] = {"classification": classification(pids), "pids": sorted(pids)}
+    return result
+
+
+def ownership_checks(checks: Checks, args: argparse.Namespace, runner: Runner, job: object) -> None:
+    snapshot = checks.add("process_snapshot", lambda: process_snapshot(args, runner))
+    for role in (*ROLE_DEFAULTS, "runtime"):
+        checks.add(
+            f"old_{role}_ownership" if role != "runtime" else "old_runtime_process_ownership",
+            lambda role=role: object_record(object_record(snapshot)[role]),
+            accept=lambda value: (
+                object_record(value).get("classification")
+                in ({"ABSENT"} if args.phase == "post-unload" else {"PRESENT", "ABSENT"})
+            ),
+            expected="ABSENT" if args.phase == "post-unload" else "verifiable snapshot",
+        )
+
+    def full_ownership() -> Record:
+        process: Record = (
+            object_record(object_record(snapshot)["runtime"])
+            if snapshot
+            else {
+                "classification": "UNVERIFIABLE",
+                "pids": [],
+            }
+        )
+        state = object_record(job)["state"] if job else "UNVERIFIABLE"
+        classification = process["classification"]
+        # A loaded recurring job is an owner between executions, even if ps is idle.
+        if state == "LOADED" or classification == "PRESENT":
+            classification = "PRESENT"
+        elif state != "UNLOADED":
+            classification = "UNVERIFIABLE"
+        return {
+            "classification": classification,
+            "launchagent": state,
+            "process_classification": process["classification"],
+            "pids": process["pids"],
+        }
+
+    checks.add(
+        "old_runtime_ownership",
+        full_ownership,
+        accept=lambda value: (
+            object_record(value)["classification"]
+            in ({"ABSENT"} if args.phase == "post-unload" else {"PRESENT", "ABSENT"})
+        ),
+        expected="ABSENT" if args.phase == "post-unload" else "verifiable snapshot",
+    )
+
+
+def pre_cutover(checks: Checks, args: argparse.Namespace, runner: Runner) -> None:
+    check_source(checks, args, runner, "successor")
+    check_source(checks, args, runner, "rollback")
+    live = checks.add("live_plist", lambda: plist_snapshot(Path(args.plist_path)))
+    checks.equal(
+        "live_plist_label",
+        lambda: object_record(object_record(live)["binding"])["Label"],
+        args.expected_label,
+    )
+    if args.expected_plist_sha256:
+        checks.equal(
+            "live_plist_sha256", lambda: object_record(live)["sha256"], args.expected_plist_sha256
+        )
+    checks.equal(
+        "rollback_backup_sha256",
+        lambda: hashlib.sha256(read_bytes(Path(args.expected_rollback_backup_path))).hexdigest(),
+        args.expected_rollback_backup_sha256,
+    )
+    job = checks.add("launchagent", lambda: launch_snapshot(args, runner))
+    db = checks.add("db_metadata", lambda: database_metadata(Path(args.db_path)))
+    checks.equal("db_schema", lambda: object_record(db)["schema_version"], args.expected_db_schema)
+    ownership_checks(checks, args, runner, job)
+
+
+def post_unload(checks: Checks, args: argparse.Namespace, runner: Runner) -> None:
+    check_source(checks, args, runner, "rollback")
+    snapshot = checks.add("launchagent", lambda: launch_snapshot(args, runner))
+    checks.equal("launchagent_unloaded", lambda: object_record(snapshot)["state"], "UNLOADED")
+    # This always runs, independently of the launchd result or primary lock state.
+    ownership_checks(checks, args, runner, snapshot)
+
+
+def health_snapshot(args: argparse.Namespace, now: datetime) -> Record:
+    def invalid_constant(value: str) -> NoReturn:
+        raise Unverifiable(f"non-JSON health constant: {value}")
+
+    health = object_record(
+        json.loads(
+            read_bytes(Path(args.health_path)),
+            parse_constant=invalid_constant,
+        )
+    )
+    timestamp = health.get("finished_at")
+    if health.get("current_status") == "RUNNING" and timestamp is None:
+        timestamp = health.get("started_at")
+    if not isinstance(timestamp, str):
+        raise Unverifiable("health timestamp missing")
+    recorded = datetime.fromisoformat(timestamp)
+    if recorded.tzinfo is None:
+        raise Unverifiable("health timestamp must have an explicit timezone")
+    if "last_error" not in health and "error_message" not in health:
+        raise Unverifiable("health error field missing")
+    if type(health.get("ready_before_draw")) is not bool:
+        raise Unverifiable("health readiness must be a boolean")
+    for name in ("last_error", "error_message", "error_class"):
+        if health.get(name) is not None and not isinstance(health[name], str):
+            raise Unverifiable(f"health {name} must be text or null")
+    return {
+        "authority": args.health_path,
+        "label": health.get("label"),
+        "schema_version": health.get("schema_version"),
+        "source_worktree": health.get("source_worktree"),
+        "observed_source_head": health.get("observed_source_head"),
+        "timestamp": timestamp,
+        "age_seconds": (now - recorded).total_seconds(),
+        "state": health.get("current_status"),
+        "readiness": health.get("ready_before_draw"),
+        "last_error": health.get("last_error") or health.get("error_message"),
+        "error_class": health.get("error_class"),
+    }
+
+
+def post_load(checks: Checks, args: argparse.Namespace, runner: Runner, now: datetime) -> None:
+    check_source(checks, args, runner, "successor")
+    plist = checks.add("live_plist", lambda: plist_snapshot(Path(args.plist_path)))
+    job = checks.add("launchagent", lambda: launch_snapshot(args, runner))
+    checks.equal("launchagent_loaded", lambda: object_record(job)["state"], "LOADED")
+    checks.equal("launchagent_enabled", lambda: enabled_snapshot(args, runner), True)
+    loaded = checks.add("loaded_binding", lambda: launch_fields(str(object_record(job)["raw"])))
+    expected_args = [args.expected_interpreter, args.expected_script_path, "run"]
+    expected_plist = {
+        "Label": args.expected_label,
+        "WorkingDirectory": args.expected_successor_worktree,
+        "ProgramArguments": expected_args,
+        "StartInterval": args.expected_start_interval,
+    }
+    for key, expected in expected_plist.items():
+        checks.equal(
+            f"plist_{key}",
+            lambda key=key: object_record(object_record(plist)["binding"])[key],
+            expected,
+        )
+    checks.equal(
+        "plist_enabled",
+        lambda: object_record(object_record(plist)["binding"]).get("Disabled", False),
+        False,
+    )
+    checks.equal(
+        "plist_pythonpath",
+        lambda: object_record(
+            object_record(object_record(plist)["binding"])["EnvironmentVariables"]
+        )["PYTHONPATH"],
+        args.expected_pythonpath,
+    )
+    expected_loaded = {
+        "path": args.plist_path,
+        "working directory": args.expected_successor_worktree,
+        "program": args.expected_interpreter,
+        "arguments": expected_args,
+        "run interval": f"{args.expected_start_interval} seconds",
+    }
+    for key, expected in expected_loaded.items():
+        checks.equal(f"loaded_{key}", lambda key=key: object_record(loaded)[key], expected)
+    checks.equal(
+        "loaded_pythonpath",
+        lambda: [
+            line
+            for line in cast(list[str], object_record(loaded)["environment"])
+            if line.startswith("PYTHONPATH => ")
+        ],
+        [f"PYTHONPATH => {args.expected_pythonpath}"],
+    )
+    checks.add(
+        "latest_exit",
+        lambda: object_record(loaded).get("last exit code"),
+        accept=lambda value: value in (None, "0", "(never exited)"),
+        expected="0 or not yet available",
+    )
+    health = checks.add("health", lambda: health_snapshot(args, now))
+    for key, expected in {
+        "label": args.expected_label,
+        "schema_version": args.expected_health_schema,
+        "source_worktree": args.expected_successor_worktree,
+        "observed_source_head": args.expected_successor_head,
+    }.items():
+        checks.equal(f"health_{key}", lambda key=key: object_record(health)[key], expected)
+    checks.add(
+        "health_fresh",
+        lambda: object_record(health)["age_seconds"],
+        accept=lambda value: (
+            isinstance(value, (int, float)) and 0 <= value <= args.max_health_age_seconds
+        ),
+        expected=args.max_health_age_seconds,
+    )
+    checks.add(
+        "health_state",
+        lambda: object_record(health)["state"],
+        accept=lambda value: value in args.expected_health_state,
+        expected=args.expected_health_state,
+    )
+    checks.equal(
+        "health_readiness",
+        lambda: object_record(health)["readiness"],
+        args.expected_readiness == "true",
+    )
+    checks.equal("health_last_error", lambda: object_record(health)["last_error"], None)
+    checks.equal("health_error_class", lambda: object_record(health)["error_class"], None)
+
+
+class Parser(argparse.ArgumentParser):
+    def error(self, message: str) -> NoReturn:
+        raise ValueError(message)
+
+
+def parser() -> Parser:
+    result = Parser(description=__doc__, add_help=False, allow_abbrev=False)
+    result.add_argument("phase", choices=PHASES, nargs="?")
+    result.add_argument("--help", action="store_true")
+    result.add_argument("--launch-domain", default=f"gui/{os.getuid()}")
+    common = [
+        "expected-label",
+        "plist-path",
+        "expected-successor-worktree",
+        "expected-successor-head",
+        "expected-successor-tree",
+        "expected-successor-ref",
+        "expected-rollback-worktree",
+        "expected-rollback-head",
+        "expected-plist-sha256",
+        "expected-rollback-backup-path",
+        "expected-rollback-backup-sha256",
+        "db-path",
+        "primary-lock-path",
+        "shadow-lock-path",
+        "health-path",
+        "expected-interpreter",
+        "expected-script-path",
+        "expected-pythonpath",
+        "expected-health-schema",
+    ]
+    for name in common:
+        result.add_argument("--" + name)
+    for name in ("expected-db-schema", "expected-start-interval", "max-health-age-seconds"):
+        result.add_argument("--" + name, type=int)
+    result.add_argument("--expected-health-state", action="append")
+    result.add_argument("--expected-readiness", choices=("true", "false"))
+    for role in ROLE_DEFAULTS:
+        result.add_argument(
+            f"--old-{role}-identity",
+            action="append",
+            help=f"Additional literal {role} process/hook marker; repeatable.",
+        )
+    return result
+
+
+def validate(args: argparse.Namespace) -> None:
+    required = ["phase", "expected_label"]
+    if args.phase in ("pre-cutover", "post-load"):
+        required += ["expected_successor_worktree", "expected_successor_head", "plist_path"]
+    if args.phase in ("pre-cutover", "post-unload"):
+        required += [
+            "expected_rollback_worktree",
+            "expected_rollback_head",
+            "primary_lock_path",
+            "shadow_lock_path",
+        ]
+    if args.phase == "pre-cutover":
+        required += [
+            "expected_successor_tree",
+            "expected_successor_ref",
+            "expected_rollback_backup_path",
+            "expected_rollback_backup_sha256",
+            "db_path",
+            "expected_db_schema",
+        ]
+    if args.phase == "post-load":
+        required += [
+            "health_path",
+            "expected_interpreter",
+            "expected_script_path",
+            "expected_pythonpath",
+            "expected_start_interval",
+            "expected_health_schema",
+            "expected_health_state",
+            "expected_readiness",
+            "max_health_age_seconds",
+        ]
+    missing = [name.replace("_", "-") for name in required if getattr(args, name) is None]
+    if missing:
+        raise ValueError("required for this phase: " + ", ".join(missing))
+    if not re.fullmatch(r"(?:gui|user)/[0-9]+", args.launch_domain):
+        raise ValueError("launch-domain must be gui/UID or user/UID")
+    if not re.fullmatch(r"[A-Za-z0-9_.-]+", args.expected_label):
+        raise ValueError("invalid LaunchAgent label")
+    for name, value in vars(args).items():
+        if value is None:
+            continue
+        if (name.endswith(("_path", "_worktree")) or name == "expected_interpreter") and (
+            not Path(value).is_absolute() or str(Path(value)) != value or ".." in Path(value).parts
+        ):
+            raise ValueError(f"{name} must be a normalized absolute path")
+        if name.endswith(("_head", "_tree")) and not re.fullmatch(
+            r"[0-9a-f]{40}|[0-9a-f]{64}", value
+        ):
+            raise ValueError(f"{name} must be an explicit full object ID")
+        if name.endswith("sha256") and not re.fullmatch(r"[0-9a-f]{64}", value):
+            raise ValueError(f"{name} must be a SHA-256 hex digest")
+        if (
+            name in ("expected_db_schema", "expected_start_interval", "max_health_age_seconds")
+            and value <= 0
+        ):
+            raise ValueError(f"{name} must be positive")
+        if isinstance(value, str) and (not value or any(ord(c) < 32 for c in value)):
+            raise ValueError(f"{name} contains an empty or control-character value")
+        if isinstance(value, list) and any(not item for item in cast(list[str], value)):
+            raise ValueError(f"{name} must contain nonempty identities/states")
+    if args.expected_successor_ref and not args.expected_successor_ref.startswith(
+        ("refs/heads/", "refs/tags/", "refs/remotes/")
+    ):
+        raise ValueError("expected-successor-ref must name a durable, fully qualified ref")
+
+
+def main(
+    argv: Sequence[str] | None = None, *, runner: Runner = run_command, now: datetime | None = None
+) -> int:
+    cli = parser()
+    phase = "UNKNOWN"
+    try:
+        args = cli.parse_args(argv)
+        phase = args.phase or phase
+        if args.help:
+            print(
+                json.dumps(
+                    {
+                        "phase": phase,
+                        "status": "PASS",
+                        "checks": {"usage": cli.format_help()},
+                        "failures": [],
+                    }
+                )
+            )
+            return 0
+        validate(args)
+    except ValueError as exc:
+        print(json.dumps({"phase": phase, "status": "FAIL", "checks": {}, "failures": [str(exc)]}))
+        return 2
+    checks = Checks(phase)
+    observed_at = now or datetime.now(UTC)
+    if phase == "pre-cutover":
+        pre_cutover(checks, args, runner)
+    elif phase == "post-unload":
+        post_unload(checks, args, runner)
+    else:
+        post_load(checks, args, runner, observed_at)
+    result = checks.result()
+    result["observed_at"] = observed_at.isoformat()
+    result["completed_at"] = datetime.now(UTC).isoformat()
+    print(json.dumps(result, sort_keys=True))
+    return 1 if checks.failures else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

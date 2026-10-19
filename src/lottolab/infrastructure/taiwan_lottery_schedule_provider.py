@@ -12,7 +12,7 @@ import json
 import re
 import ssl
 from collections.abc import Callable, Mapping
-from datetime import UTC, datetime, time
+from datetime import UTC, date, datetime, time
 from typing import cast
 from urllib.error import URLError
 from urllib.parse import urlsplit
@@ -20,9 +20,19 @@ from urllib.request import Request, urlopen
 from zoneinfo import ZoneInfo
 
 from lottolab.application.schedule_sync import (
+    BIG_LOTTO_SCHEDULE_GAME_CODE,
+    CANONICAL_NORMAL_DRAW_LOCAL_TIME,
+    CANONICAL_SCHEDULE_TIMEZONE,
+    P638_SCHEDULE_GAME_CODE,
+    T539_SCHEDULE_GAME_CODE,
+    AuthoritativeScheduleVeto,
+    CanonicalScheduleAuthorityFetchResult,
+    CanonicalScheduleFact,
+    OfficialGameScheduleAuthority,
     OfficialScheduleContractError,
     OfficialScheduleFetchResult,
     OfficialScheduleUnavailableError,
+    ScheduleAuthorityStatus,
 )
 from lottolab.domain.draws import LotteryType
 from lottolab.domain.pre_outcome_target import TargetAnnouncement, TargetSourceProvenance
@@ -34,7 +44,7 @@ from lottolab.infrastructure.persistence.future_draw_identity_repository import 
 )
 
 SCHEDULE_URL = "https://api.taiwanlottery.com/TLCAPIWeB/Lottery/NextDrawDate"
-SCHEDULE_GAME_CODE = 5118
+SCHEDULE_GAME_CODE = BIG_LOTTO_SCHEDULE_GAME_CODE
 SCHEDULE_MAX_RESPONSE_BYTES = 1024 * 1024
 SCHEDULE_MAX_ANNOUNCEMENTS = 1024
 HTTPS_TIMEOUT_SECONDS = 15.0
@@ -48,9 +58,7 @@ HEADERS = {
     "Referer": "https://www.taiwanlottery.com/",
 }
 
-_OFFICIAL_HTTPS_HOSTS = frozenset(
-    {"api.taiwanlottery.com", "www.taiwanlottery.com"}
-)
+_OFFICIAL_HTTPS_HOSTS = frozenset({"api.taiwanlottery.com", "www.taiwanlottery.com"})
 _DRAW_NUMBER = re.compile(r"[0-9]{1,32}", flags=re.ASCII)
 _STRICT_CHAIN_MARKERS = (
     "authority key identifier",
@@ -184,6 +192,88 @@ class TaiwanLotteryScheduleProvider:
         )
 
 
+class TaiwanLotteryCanonicalScheduleAuthorityProvider:
+    """Fetch one bounded official response for a selected canonical game contract."""
+
+    def __init__(
+        self,
+        *,
+        https_client: OfficialHttpsClient | None = None,
+        source_url: str = SCHEDULE_URL,
+        active_vetoes: tuple[AuthoritativeScheduleVeto, ...] = (),
+        lottery_types: tuple[LotteryType, ...] = (
+            LotteryType.DAILY_539,
+            LotteryType.POWER_LOTTO,
+        ),
+    ) -> None:
+        _validate_official_https_url(source_url)
+        if type(active_vetoes) is not tuple or any(
+            type(item) is not AuthoritativeScheduleVeto for item in active_vetoes
+        ):
+            raise ValueError("active_vetoes must contain AuthoritativeScheduleVeto values")
+        self._https = OfficialHttpsClient() if https_client is None else https_client
+        self._source_url = source_url
+        self._active_vetoes = active_vetoes
+        self._lottery_types = _validate_lottery_contract(lottery_types)
+
+    @property
+    def provider_id(self) -> str:
+        return OFFICIAL_SCHEDULE_SOURCE_ID
+
+    @property
+    def provider_version(self) -> str:
+        return OFFICIAL_SCHEDULE_SOURCE_VERSION
+
+    def fetch_authority(
+        self,
+        *,
+        observed_at: datetime,
+    ) -> CanonicalScheduleAuthorityFetchResult:
+        observed_utc = _as_utc(observed_at)
+        try:
+            body = self._https.get(
+                self._source_url,
+                max_response_bytes=SCHEDULE_MAX_RESPONSE_BYTES,
+            )
+            return parse_official_canonical_schedule_authority(
+                body,
+                observed_at=observed_utc,
+                source_url=self._source_url,
+                active_vetoes=self._active_vetoes,
+                lottery_types=self._lottery_types,
+            )
+        except (OfficialScheduleUnavailableError, OfficialScheduleContractError):
+            raise
+        except (URLError, TimeoutError, OSError, ssl.SSLError) as exc:
+            raise OfficialScheduleUnavailableError(
+                "official Taiwan Lottery schedule is unavailable"
+            ) from exc
+        except Exception as exc:
+            raise OfficialScheduleUnavailableError(
+                "official Taiwan Lottery schedule is unavailable"
+            ) from exc
+
+
+class TaiwanLotteryBigLottoCanonicalScheduleAuthorityProvider(
+    TaiwanLotteryCanonicalScheduleAuthorityProvider
+):
+    """Fetch exactly the official BIG_LOTTO/5118 canonical authority contract."""
+
+    def __init__(
+        self,
+        *,
+        https_client: OfficialHttpsClient | None = None,
+        source_url: str = SCHEDULE_URL,
+        active_vetoes: tuple[AuthoritativeScheduleVeto, ...] = (),
+    ) -> None:
+        super().__init__(
+            https_client=https_client,
+            source_url=source_url,
+            active_vetoes=active_vetoes,
+            lottery_types=(LotteryType.BIG_LOTTO,),
+        )
+
+
 def parse_official_b649_schedule(
     body: bytes,
     *,
@@ -281,6 +371,342 @@ def parse_official_b649_schedule(
     if not announcements:
         raise OfficialScheduleUnavailableError("official schedule has no future B649 target")
     return tuple(sorted(announcements, key=_announcement_sort_key))
+
+
+def parse_official_t539_p638_schedule(
+    body: bytes,
+    *,
+    observed_at: datetime,
+    source_url: str = SCHEDULE_URL,
+    active_vetoes: tuple[AuthoritativeScheduleVeto, ...] = (),
+) -> CanonicalScheduleAuthorityFetchResult:
+    """Classify T539/P638 independently from one fixture-verifiable envelope."""
+
+    return parse_official_canonical_schedule_authority(
+        body,
+        observed_at=observed_at,
+        source_url=source_url,
+        active_vetoes=active_vetoes,
+        lottery_types=(LotteryType.DAILY_539, LotteryType.POWER_LOTTO),
+    )
+
+
+def parse_official_biglotto_schedule_authority(
+    body: bytes,
+    *,
+    observed_at: datetime,
+    source_url: str = SCHEDULE_URL,
+    active_vetoes: tuple[AuthoritativeScheduleVeto, ...] = (),
+) -> CanonicalScheduleAuthorityFetchResult:
+    """Classify exactly the official BIG_LOTTO/5118 authority contract."""
+
+    return parse_official_canonical_schedule_authority(
+        body,
+        observed_at=observed_at,
+        source_url=source_url,
+        active_vetoes=active_vetoes,
+        lottery_types=(LotteryType.BIG_LOTTO,),
+    )
+
+
+def parse_official_canonical_schedule_authority(
+    body: bytes,
+    *,
+    observed_at: datetime,
+    source_url: str = SCHEDULE_URL,
+    active_vetoes: tuple[AuthoritativeScheduleVeto, ...] = (),
+    lottery_types: tuple[LotteryType, ...],
+) -> CanonicalScheduleAuthorityFetchResult:
+    """Classify each caller-selected game from one bounded official envelope."""
+
+    observed_utc = _as_utc(observed_at)
+    _validate_official_https_url(source_url)
+    if type(body) is not bytes:
+        raise OfficialScheduleContractError("official schedule response must be bytes")
+    if len(body) > SCHEDULE_MAX_RESPONSE_BYTES:
+        raise OfficialScheduleContractError(
+            "official schedule response exceeds the bounded size limit"
+        )
+    if type(active_vetoes) is not tuple or any(
+        type(item) is not AuthoritativeScheduleVeto for item in active_vetoes
+    ):
+        raise ValueError("active_vetoes must contain AuthoritativeScheduleVeto values")
+    selected_lotteries = _validate_lottery_contract(lottery_types)
+    rows = _decode_shared_schedule_rows(body)
+    payload_sha256 = hashlib.sha256(body).hexdigest()
+    source = TargetSourceProvenance(
+        source_id=OFFICIAL_SCHEDULE_SOURCE_ID,
+        source_version=OFFICIAL_SCHEDULE_SOURCE_VERSION,
+        source_locator=source_url,
+        source_sha256=payload_sha256,
+        observed_at=observed_utc,
+    )
+    games = tuple(
+        _parse_canonical_game_authority(
+            rows,
+            lottery_type=lottery_type,
+            game_code={
+                LotteryType.BIG_LOTTO: SCHEDULE_GAME_CODE,
+                LotteryType.DAILY_539: T539_SCHEDULE_GAME_CODE,
+                LotteryType.POWER_LOTTO: P638_SCHEDULE_GAME_CODE,
+            }[lottery_type],
+            observed_at=observed_utc,
+            source=source,
+            active_vetoes=active_vetoes,
+        )
+        for lottery_type in selected_lotteries
+    )
+    return CanonicalScheduleAuthorityFetchResult(
+        provider_id=OFFICIAL_SCHEDULE_SOURCE_ID,
+        provider_version=OFFICIAL_SCHEDULE_SOURCE_VERSION,
+        source_url=source_url,
+        source_payload_sha256=payload_sha256,
+        observed_at=observed_utc,
+        games=games,
+    )
+
+
+def _decode_shared_schedule_rows(body: bytes) -> tuple[dict[str, object], ...]:
+    try:
+        decoded: object = json.loads(
+            body.decode("utf-8"),
+            object_pairs_hook=_reject_duplicate_json_members,
+        )
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise OfficialScheduleUnavailableError(
+            "official schedule response is not valid UTF-8 JSON"
+        ) from exc
+    if not isinstance(decoded, dict):
+        raise OfficialScheduleUnavailableError("official schedule response must be an object")
+    payload = cast(dict[str, object], decoded)
+    if type(payload.get("rtCode")) is not int or payload.get("rtCode") != 0:
+        raise OfficialScheduleUnavailableError("official schedule response reported an error")
+    content = payload.get("content")
+    if not isinstance(content, dict):
+        raise OfficialScheduleUnavailableError("official schedule content is missing")
+    rows_value = cast(dict[str, object], content).get("nextDrawDateList")
+    if not isinstance(rows_value, list):
+        raise OfficialScheduleUnavailableError("official schedule target list is missing")
+    rows = cast(list[object], rows_value)
+    if len(rows) > SCHEDULE_MAX_ANNOUNCEMENTS:
+        raise OfficialScheduleContractError(
+            "official schedule target list exceeds the bounded item limit"
+        )
+    if any(not isinstance(raw, dict) for raw in rows):
+        raise OfficialScheduleUnavailableError("official schedule row must be an object")
+    return tuple(cast(dict[str, object], raw) for raw in rows)
+
+
+def _parse_canonical_game_authority(
+    rows: tuple[dict[str, object], ...],
+    *,
+    lottery_type: LotteryType,
+    game_code: int,
+    observed_at: datetime,
+    source: TargetSourceProvenance,
+    active_vetoes: tuple[AuthoritativeScheduleVeto, ...],
+) -> OfficialGameScheduleAuthority:
+    game_rows = tuple(
+        row for row in rows if type(row.get("gameCode")) is int and row.get("gameCode") == game_code
+    )
+    game_vetoes = tuple(
+        veto for veto in active_vetoes if veto.lottery_type is lottery_type
+    )
+    if game_vetoes:
+        evidence_draw_dates = tuple(
+            sorted(
+                {
+                    parsed_date
+                    for row in game_rows
+                    if (parsed_date := _strict_canonical_draw_date(row.get("drawDate")))
+                    is not None
+                }
+            )
+        )
+        return OfficialGameScheduleAuthority(
+            lottery_type=lottery_type,
+            official_game_code=game_code,
+            status=ScheduleAuthorityStatus.AUTHORITATIVE_VETO,
+            schedules=(),
+            detail_code="AUTHORITATIVE_EXCEPTION_VETO",
+            evidence_draw_dates=evidence_draw_dates,
+            vetoes=game_vetoes,
+        )
+    if not game_rows:
+        return OfficialGameScheduleAuthority(
+            lottery_type=lottery_type,
+            official_game_code=game_code,
+            status=ScheduleAuthorityStatus.MISSING_SCHEDULE,
+            schedules=(),
+            detail_code="NO_EXPLICIT_GAME_ROW",
+        )
+
+    facts: list[CanonicalScheduleFact] = []
+    explicit_identity_material: dict[str, tuple[date, datetime]] = {}
+    incomplete_dates: list[date] = []
+    expired_dates: list[date] = []
+    invalid_dates: list[date] = []
+    invalid_row = False
+    for row in game_rows:
+        draw_date = _strict_canonical_draw_date(row.get("drawDate"))
+        if draw_date is None:
+            invalid_row = True
+            continue
+        draw_term = row.get("drawTerm")
+        if draw_term is None:
+            incomplete_dates.append(draw_date)
+            continue
+        draw_number = _canonical_draw_term(draw_term)
+        if draw_number is None:
+            invalid_row = True
+            invalid_dates.append(draw_date)
+            continue
+        scheduled_at = datetime.combine(
+            draw_date,
+            CANONICAL_NORMAL_DRAW_LOCAL_TIME,
+            tzinfo=TAIPEI,
+        ).astimezone(UTC)
+        previous_identity = explicit_identity_material.get(draw_number)
+        current_identity = (draw_date, scheduled_at)
+        if previous_identity is not None and previous_identity != current_identity:
+            return OfficialGameScheduleAuthority(
+                lottery_type=lottery_type,
+                official_game_code=game_code,
+                status=ScheduleAuthorityStatus.SOURCE_CONFLICT,
+                schedules=(),
+                detail_code="CONFLICTING_EXPLICIT_GAME_ROWS",
+                evidence_draw_dates=tuple(
+                    sorted({previous_identity[0], draw_date, *incomplete_dates, *expired_dates})
+                ),
+            )
+        explicit_identity_material[draw_number] = current_identity
+        if observed_at >= scheduled_at:
+            expired_dates.append(draw_date)
+            continue
+        announcement = TargetAnnouncement(
+            target=ObservationTarget(
+                lottery_type=lottery_type,
+                draw_number=draw_number,
+                draw_date=draw_date,
+            ),
+            schedule_timezone=CANONICAL_SCHEDULE_TIMEZONE,
+            scheduled_at=scheduled_at,
+            source=source,
+        )
+        facts.append(
+            CanonicalScheduleFact(
+                announcement=announcement,
+                official_game_code=game_code,
+                scheduled_local_time=CANONICAL_NORMAL_DRAW_LOCAL_TIME,
+                source_period_identifier=draw_number,
+            )
+        )
+
+    evidence_dates = tuple(sorted(set((*incomplete_dates, *expired_dates, *invalid_dates))))
+    if invalid_row or (facts and incomplete_dates):
+        return OfficialGameScheduleAuthority(
+            lottery_type=lottery_type,
+            official_game_code=game_code,
+            status=ScheduleAuthorityStatus.SOURCE_CONFLICT,
+            schedules=(),
+            detail_code="INVALID_OR_PARTIAL_EXPLICIT_GAME_ROWS",
+            evidence_draw_dates=evidence_dates,
+        )
+    if not facts and incomplete_dates:
+        return OfficialGameScheduleAuthority(
+            lottery_type=lottery_type,
+            official_game_code=game_code,
+            status=ScheduleAuthorityStatus.INCOMPLETE_AUTHORITY,
+            schedules=(),
+            detail_code="DRAW_TERM_MISSING",
+            evidence_draw_dates=evidence_dates,
+        )
+    if not facts:
+        return OfficialGameScheduleAuthority(
+            lottery_type=lottery_type,
+            official_game_code=game_code,
+            status=ScheduleAuthorityStatus.OBSERVATION_DEADLINE_EXPIRED,
+            schedules=(),
+            detail_code="OBSERVED_NOT_BEFORE_SCHEDULE",
+            evidence_draw_dates=evidence_dates,
+        )
+
+    unique: dict[tuple[LotteryType, str], CanonicalScheduleFact] = {}
+    for fact in facts:
+        key = (
+            fact.announcement.target.lottery_type,
+            fact.announcement.target.draw_number,
+        )
+        previous = unique.get(key)
+        if previous is not None and (
+            previous.immutable_schedule_sha256 != fact.immutable_schedule_sha256
+        ):
+            return OfficialGameScheduleAuthority(
+                lottery_type=lottery_type,
+                official_game_code=game_code,
+                status=ScheduleAuthorityStatus.SOURCE_CONFLICT,
+                schedules=(),
+                detail_code="CONFLICTING_EXPLICIT_GAME_ROWS",
+                evidence_draw_dates=evidence_dates,
+            )
+        unique[key] = fact
+
+    ordered = tuple(sorted(unique.values(), key=_canonical_fact_sort_key))
+    return OfficialGameScheduleAuthority(
+        lottery_type=lottery_type,
+        official_game_code=game_code,
+        status=ScheduleAuthorityStatus.COMPLETE,
+        schedules=ordered,
+        detail_code="COMPLETE_EXPLICIT_AUTHORITY",
+        evidence_draw_dates=tuple(sorted({fact.announcement.target.draw_date for fact in ordered})),
+    )
+
+
+def _strict_canonical_draw_date(value: object) -> date | None:
+    if type(value) is not str or re.fullmatch(r"[0-9]{8}", value, flags=re.ASCII) is None:
+        return None
+    try:
+        return datetime.strptime(value, "%Y%m%d").date()
+    except ValueError:
+        return None
+
+
+def _canonical_draw_term(value: object) -> str | None:
+    if type(value) is int:
+        normalized = str(value)
+    elif type(value) is str:
+        normalized = value
+    else:
+        return None
+    return normalized if _DRAW_NUMBER.fullmatch(normalized) is not None else None
+
+
+def _validate_lottery_contract(
+    lottery_types: tuple[LotteryType, ...],
+) -> tuple[LotteryType, ...]:
+    if type(lottery_types) is not tuple or not lottery_types:
+        raise ValueError("lottery_types must be a non-empty tuple")
+    if any(type(item) is not LotteryType for item in lottery_types):
+        raise ValueError("lottery_types must contain LotteryType values")
+    if len(set(lottery_types)) != len(lottery_types):
+        raise ValueError("lottery_types must not contain duplicates")
+    if any(
+        item
+        not in {LotteryType.BIG_LOTTO, LotteryType.DAILY_539, LotteryType.POWER_LOTTO}
+        for item in lottery_types
+    ):
+        raise ValueError("lottery_types contains an unsupported canonical lottery")
+    return lottery_types
+
+
+def _canonical_fact_sort_key(
+    fact: CanonicalScheduleFact,
+) -> tuple[datetime, int, str]:
+    return (
+        fact.announcement.scheduled_at,
+        int(fact.announcement.target.draw_number),
+        fact.announcement.target.draw_number,
+    )
 
 
 def _reject_duplicate_json_members(pairs: list[tuple[str, object]]) -> dict[str, object]:
@@ -383,6 +809,11 @@ __all__ = [
     "SCHEDULE_MAX_RESPONSE_BYTES",
     "SCHEDULE_URL",
     "OfficialHttpsClient",
+    "TaiwanLotteryBigLottoCanonicalScheduleAuthorityProvider",
+    "TaiwanLotteryCanonicalScheduleAuthorityProvider",
     "TaiwanLotteryScheduleProvider",
     "parse_official_b649_schedule",
+    "parse_official_biglotto_schedule_authority",
+    "parse_official_canonical_schedule_authority",
+    "parse_official_t539_p638_schedule",
 ]

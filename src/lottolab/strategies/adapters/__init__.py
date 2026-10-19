@@ -13,6 +13,9 @@ from lottolab.strategies.adapters.base import (
 from lottolab.strategies.adapters.biglotto_2bet_hedging import (
     BigLotto2BetHedgingAdapter,
 )
+from lottolab.strategies.adapters.biglotto_frontend_auto_optimize import (
+    BigLottoFrontendAutoOptimizeAdapter,
+)
 from lottolab.strategies.adapters.biglotto_frontend_bayesian import (
     BigLottoFrontendBayesianAdapter,
 )
@@ -94,6 +97,7 @@ __all__ = [
     "BigLottoDeviation2BetBet2Adapter",
     "BigLottoDynamicFrequencyAdapter",
     "BigLottoEchoPhase2Adapter",
+    "BigLottoFrontendAutoOptimizeAdapter",
     "BigLottoFrontendBayesianAdapter",
     "BigLottoFrontendCollaborativeHybridAdapter",
     "BigLottoFrontendDeviationAdapter",

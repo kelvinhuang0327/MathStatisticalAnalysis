@@ -1,0 +1,123 @@
+{
+  "task_id": "B649_K10_PROFILE_42_3_4_EXACT_CLOSURE_R1",
+  "base_head": "a124f55d2713b7ecb7fa071abb4c224a5b8853e5",
+  "base_tree": "a2226ed522bced1ae3e57d8fc08ee6a43d4cba69",
+  "task_head": "a124f55d2713b7ecb7fa071abb4c224a5b8853e5",
+  "task_tree": "a2226ed522bced1ae3e57d8fc08ee6a43d4cba69",
+  "task_branch": "codex/b649-k10-mass-ge13-upper-bound-r1",
+  "profile": {
+    "multiplicity_histogram": {
+      "1": 42,
+      "2": 3,
+      "3": 4
+    },
+    "overlap_mass": 15,
+    "repeated_label_incidence": 18
+  },
+  "incumbent_outcome_count": 176345645,
+  "previous_profile_bound": 182166320,
+  "structural_reduction": {
+    "ticket_vertices": 10,
+    "triple_hyperedges": 4,
+    "ordinary_edges": 3,
+    "singleton_labels": 42,
+    "ticket_size": 6,
+    "singleton_relabeling_invariant": true,
+    "proof": "With repeated-label supports fixed, each singleton has one-ticket support. Relabeling singleton identities is a permutation of the 49-number pool, so it preserves every OFFICIAL_ANY_PRIZE outcome count."
+  },
+  "pair_intersection_analysis": {
+    "pair_event_counts_overlap_0_to_5": [
+      107800,
+      574000,
+      1695988,
+      3469942,
+      6224512,
+      10776332
+    ],
+    "convexity_checked": true,
+    "ticket_pair_overlap_maximum": 5,
+    "occupied_pair_rows": [
+      {"pairs": 3, "minimum_S2": 36856596, "U2": 173828788, "closed": true},
+      {"pairs": 4, "minimum_S2": 26563278, "U2": 177259894, "closed": false},
+      {"pairs": 5, "minimum_S2": 21661710, "U2": 178893750, "closed": false},
+      {"pairs": 6, "minimum_S2": 19701990, "U2": 179546990, "closed": false},
+      {"pairs": 7, "minimum_S2": 17742270, "U2": 180200230, "closed": false},
+      {"pairs": 8, "minimum_S2": 16434516, "U2": 180636148, "closed": false},
+      {"pairs": 9, "minimum_S2": 15778728, "U2": 180854744, "closed": false},
+      {"pairs": 10, "minimum_S2": 15122940, "U2": 181073340, "closed": false},
+      {"pairs": 11, "minimum_S2": 14467152, "U2": 181291936, "closed": false},
+      {"pairs": 12, "minimum_S2": 13811364, "U2": 181510532, "closed": false},
+      {"pairs": 13, "minimum_S2": 13155576, "U2": 181729128, "closed": false},
+      {"pairs": 14, "minimum_S2": 12499788, "U2": 181947724, "closed": false},
+      {"pairs": 15, "minimum_S2": 11844000, "U2": 182166320, "closed": false}
+    ],
+    "nonlinear_collision_family": {
+      "occupied_pair_range": [4, 14],
+      "minimum_S2": 12499788,
+      "maximum_U2": 181947724,
+      "maximum_attained_at_pair_count": 14,
+      "closed_at_incumbent": false
+    }
+  },
+  "linear_core": {
+    "pair_intersection_sum_S2": 11844000,
+    "triple_intersection_counts_for_0_1_2_3_pair_edges_and_marked_triple": [
+      0,
+      0,
+      2800,
+      20272,
+      7000
+    ],
+    "S3_identity": "S3 = 2800*W + 11872*Q - 53088, where W is the overlap-graph wedge count and Q its triangle count.",
+    "wedge_upper_bound": 120,
+    "graph_triangle_upper_bound": 120,
+    "S3_upper_bound": 1707552,
+    "third_order_union_upper_bound": 175977872,
+    "status": "CLOSED"
+  },
+  "nonlinear_collision_solver": {
+    "structural_domain": "Exactly three size-2 and four size-3 supports on ten vertices; repeated degree <= 6; ticket-pair overlap <= 5; at least four occupied pairs; at least one collision.",
+    "symmetry_handling": "Ten-vertex labeled lift with degree-order symmetry breaking. Constraints and objective are S10-invariant, so maximizing over all labeled lifts covers every vertex-isomorphism class; duplicate isomorphic encodings do not change the maximum.",
+    "objective": "Maximize min(S1 - S2 + S3, floor(S1 - 2*S2/6)).",
+    "solver_status": "FEASIBLE",
+    "objective_incumbent": 173903940,
+    "certified_objective_upper_bound": 183875720,
+    "elapsed_seconds": 120.0482719589927,
+    "time_limit_seconds": 120,
+    "num_search_workers": 1,
+    "incumbent_occupied_pairs": 14,
+    "incumbent_S2": 12499788,
+    "incumbent_U3": 173903940,
+    "incumbent_U2": 181947724,
+    "final_bound_source": "The certified CP-SAT bound was weaker than the exact convex S2 ceiling for the p=4..14 collision family; the final profile bound uses the latter.",
+    "execution_id": "profile-42-3-4-collision-u3-r1"
+  },
+  "result": {
+    "profile_status": "OPEN_BOUND_IMPROVED",
+    "global_optimum_status": "UNKNOWN",
+    "profile_upper_bound": 181947724,
+    "remaining_gap": 5602079,
+    "bound_components": {
+      "three_occupied_pair_family": 173828788,
+      "linear_core": 175977872,
+      "nonlinear_collision_family": 181947724,
+      "combined_by_maximum": 181947724
+    },
+    "unlabeled_class_census": "NOT RUN; the structural upper bound already meets Success B."
+  },
+  "verification": {
+    "uv_sync": "PASS: uv sync --frozen --extra research",
+    "focused_tests": "PASS: 10 passed across the new profile proof and affected mass>=13 regression",
+    "ruff": "PASS: changed Python files",
+    "pyright": "PASS: scoped to changed Python files",
+    "falsifiability": "PASS: the collision test failed after a controlled +1 pair-count mutation and passed after restoration",
+    "full_suite": "NOT RUN: excluded by packet"
+  },
+  "scope_constraints": {
+    "other_mass_ge13_profiles_reanalyzed": "NO",
+    "mass11_or_mass12_rerun": "NO",
+    "new_portfolio_heuristic_search_started": "NO",
+    "k20_takeover": "NO",
+    "production_mutation": "NONE"
+  }
+}

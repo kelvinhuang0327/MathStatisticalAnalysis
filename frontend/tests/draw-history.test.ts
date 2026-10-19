@@ -81,7 +81,7 @@ describe('DrawHistoryPage', () => {
     expect(wrapper.text()).toContain('synthetic-reference')
     expect(wrapper.text()).toContain(draw.ingestion_run_id)
     expect(wrapper.text()).toContain('draw_date:desc · draw_number:string_desc · id:desc')
-    expect(wrapper.text()).toContain('L649')
+    expect(wrapper.text()).toContain('B649')
     expect(wrapper.text()).not.toContain('BIG_LOTTO')
     const buttonLabels = wrapper.findAll('button').map((button) => button.text())
     expect(buttonLabels).not.toContain('Edit')

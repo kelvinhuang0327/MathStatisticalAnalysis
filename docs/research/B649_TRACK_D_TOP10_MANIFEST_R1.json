@@ -1,0 +1,285 @@
+{
+  "artifact_set": "B649_TRACK_D_TOP10_R1",
+  "audit_totals": {
+    "collision_rows": 1330,
+    "data_sufficiency_rows": 210,
+    "exact_hypothesis_matches": 0,
+    "experiment_specs": 10,
+    "historical_identities": 133,
+    "hypotheses": 10,
+    "no_meaningful_overlap": 1046,
+    "open_after_deep_audit": 10,
+    "priority_rows": 20,
+    "same_family_different_hypothesis": 115,
+    "strong_component_overlaps": 92,
+    "unknown": 0,
+    "weak_component_overlaps": 77
+  },
+  "authority_roots_read": [
+    {
+      "checksum_ledger_sha256": "51f2901877dee9e0efe4a106a8eb9b8adfac9c86cf1ff2669e060c227d32f782",
+      "checksum_validation": "PASS",
+      "read_purpose": "historical authority evidence",
+      "task_data_root": "/Users/kelvin/VibeCoding-WorkSpace/.task-data/B649_ALL_STRATEGIES_ALL_TICKETS_HISTORICAL_RAW_FOUNDATION_R2"
+    },
+    {
+      "checksum_ledger_sha256": "9f4b4e3e54d0e9ce41fe856ceb9e725ead11eefb5560be56e2f7bc0c4b3349e0",
+      "checksum_validation": "PASS",
+      "read_purpose": "historical authority evidence",
+      "task_data_root": "/Users/kelvin/VibeCoding-WorkSpace/.task-data/B649_HIT_DEPTH_PROJECTION_R1"
+    },
+    {
+      "checksum_ledger_sha256": null,
+      "checksum_validation": "NOT_RERUN_DIRECT_READ",
+      "read_purpose": "historical authority evidence",
+      "task_data_root": "/Users/kelvin/VibeCoding-WorkSpace/.task-data/B649_FINAL_133_MULTI_TICKET_RANKING_REVIEW_R1"
+    },
+    {
+      "checksum_ledger_sha256": null,
+      "checksum_validation": "NOT_RERUN_DIRECT_READ",
+      "read_purpose": "historical authority evidence",
+      "task_data_root": "/Users/kelvin/VibeCoding-WorkSpace/.task-data/B649_133_STATISTICAL_ROBUSTNESS_FAMILY_REVIEW_R1"
+    },
+    {
+      "checksum_ledger_sha256": "c1ad764d3eff384714151e44b85c7242232237b723ad139aae7037ee25158422",
+      "checksum_validation": "PASS",
+      "read_purpose": "historical authority evidence",
+      "task_data_root": "/Users/kelvin/VibeCoding-WorkSpace/.task-data/B649_STRATEGY_K_HISTORICAL_MATRIX_AUTHORITY_R1"
+    },
+    {
+      "checksum_ledger_sha256": "ed8404e8e62c26ab488822e3ae8e65487f0c7dc876ef7d7da382819ecc92c714",
+      "checksum_validation": "PASS",
+      "read_purpose": "historical authority evidence",
+      "task_data_root": "/Users/kelvin/VibeCoding-WorkSpace/.task-data/B649_COMBINATION_PROJECTION_R1"
+    },
+    {
+      "checksum_ledger_sha256": "43e1859b586dc2c598a9a0c9e31525562700fbed0f28cbac5717c35f67bd7229",
+      "checksum_validation": "PASS",
+      "read_purpose": "historical authority evidence",
+      "task_data_root": "/Users/kelvin/VibeCoding-WorkSpace/.task-data/B649_COMBINATION_PROSPECTIVE_CANDIDATE_FREEZE_R1"
+    },
+    {
+      "checksum_ledger_sha256": "df7ed9efbcfeb085f9545a8f71b675cb4a2a6b4d4edeaa2d7e51a423ba7f6e55",
+      "checksum_validation": "PASS",
+      "read_purpose": "historical authority evidence",
+      "task_data_root": "/Users/kelvin/VibeCoding-WorkSpace/.task-data/B649_COMBINATION_PROSPECTIVE_FORWARD_OBSERVER_R4"
+    },
+    {
+      "checksum_ledger_sha256": "016ab85d086a30a2cff3356a2095f4227aa10f4b609bcd3449e733952ef0a91a",
+      "checksum_validation": "PASS",
+      "read_purpose": "historical authority evidence",
+      "task_data_root": "/Users/kelvin/VibeCoding-WorkSpace/.task-data/B649_NEXT_GENERATION_STRATEGY_RESEARCH_R1"
+    },
+    {
+      "checksum_ledger_sha256": null,
+      "checksum_validation": "NOT_RERUN_DIRECT_READ",
+      "read_purpose": "historical authority evidence",
+      "task_data_root": "/Users/kelvin/VibeCoding-WorkSpace/.task-data/B649_OFFICIAL_CAUSAL_REGIME_ANALYSIS_R1"
+    },
+    {
+      "checksum_ledger_sha256": null,
+      "checksum_validation": "NOT_RERUN_DIRECT_READ",
+      "read_purpose": "historical authority evidence",
+      "task_data_root": "/Users/kelvin/VibeCoding-WorkSpace/.task-data/B649_R2_OVERNIGHT_NEGATIVE_SIGNAL_STRUCTURE_AND_ANTI_BIAS_DESIGN_R1"
+    },
+    {
+      "checksum_ledger_sha256": "52ac82fcb4d0776e13c262136df76bb84e8a7dd02775ecac4a5fe2c7935cd513",
+      "checksum_validation": "PASS",
+      "read_purpose": "historical authority evidence",
+      "task_data_root": "/Users/kelvin/VibeCoding-WorkSpace/.task-data/B649_R2_FULL_UNIVERSE_PRIZE_AWARE_INFERENTIAL_VALIDATION_R1"
+    },
+    {
+      "checksum_ledger_sha256": "13fbc29415149f752722906877717cfe17aa34ccabc4a998af664fd94f980498",
+      "checksum_validation": "NOT_RERUN_DIRECT_READ",
+      "read_purpose": "historical authority evidence",
+      "task_data_root": "/Users/kelvin/VibeCoding-WorkSpace/.task-data/B649_R2_RAW_FOUNDATION_CANONICAL_METRICS_REBUILD_R1"
+    }
+  ],
+  "classification_counts_by_hypothesis": {
+    "H01": {
+      "EXACT_HYPOTHESIS_MATCH": 0,
+      "NO_MEANINGFUL_OVERLAP": 104,
+      "SAME_METHOD_FAMILY_DIFFERENT_HYPOTHESIS": 7,
+      "STRONG_COMPONENT_OVERLAP": 12,
+      "UNKNOWN": 0,
+      "WEAK_COMPONENT_OVERLAP": 10
+    },
+    "H02": {
+      "EXACT_HYPOTHESIS_MATCH": 0,
+      "NO_MEANINGFUL_OVERLAP": 100,
+      "SAME_METHOD_FAMILY_DIFFERENT_HYPOTHESIS": 17,
+      "STRONG_COMPONENT_OVERLAP": 9,
+      "UNKNOWN": 0,
+      "WEAK_COMPONENT_OVERLAP": 7
+    },
+    "H03": {
+      "EXACT_HYPOTHESIS_MATCH": 0,
+      "NO_MEANINGFUL_OVERLAP": 103,
+      "SAME_METHOD_FAMILY_DIFFERENT_HYPOTHESIS": 15,
+      "STRONG_COMPONENT_OVERLAP": 11,
+      "UNKNOWN": 0,
+      "WEAK_COMPONENT_OVERLAP": 4
+    },
+    "H04": {
+      "EXACT_HYPOTHESIS_MATCH": 0,
+      "NO_MEANINGFUL_OVERLAP": 114,
+      "SAME_METHOD_FAMILY_DIFFERENT_HYPOTHESIS": 10,
+      "STRONG_COMPONENT_OVERLAP": 1,
+      "UNKNOWN": 0,
+      "WEAK_COMPONENT_OVERLAP": 8
+    },
+    "H05": {
+      "EXACT_HYPOTHESIS_MATCH": 0,
+      "NO_MEANINGFUL_OVERLAP": 102,
+      "SAME_METHOD_FAMILY_DIFFERENT_HYPOTHESIS": 11,
+      "STRONG_COMPONENT_OVERLAP": 11,
+      "UNKNOWN": 0,
+      "WEAK_COMPONENT_OVERLAP": 9
+    },
+    "H06": {
+      "EXACT_HYPOTHESIS_MATCH": 0,
+      "NO_MEANINGFUL_OVERLAP": 103,
+      "SAME_METHOD_FAMILY_DIFFERENT_HYPOTHESIS": 10,
+      "STRONG_COMPONENT_OVERLAP": 12,
+      "UNKNOWN": 0,
+      "WEAK_COMPONENT_OVERLAP": 8
+    },
+    "H07": {
+      "EXACT_HYPOTHESIS_MATCH": 0,
+      "NO_MEANINGFUL_OVERLAP": 102,
+      "SAME_METHOD_FAMILY_DIFFERENT_HYPOTHESIS": 15,
+      "STRONG_COMPONENT_OVERLAP": 8,
+      "UNKNOWN": 0,
+      "WEAK_COMPONENT_OVERLAP": 8
+    },
+    "H08": {
+      "EXACT_HYPOTHESIS_MATCH": 0,
+      "NO_MEANINGFUL_OVERLAP": 115,
+      "SAME_METHOD_FAMILY_DIFFERENT_HYPOTHESIS": 0,
+      "STRONG_COMPONENT_OVERLAP": 11,
+      "UNKNOWN": 0,
+      "WEAK_COMPONENT_OVERLAP": 7
+    },
+    "H09": {
+      "EXACT_HYPOTHESIS_MATCH": 0,
+      "NO_MEANINGFUL_OVERLAP": 110,
+      "SAME_METHOD_FAMILY_DIFFERENT_HYPOTHESIS": 5,
+      "STRONG_COMPONENT_OVERLAP": 10,
+      "UNKNOWN": 0,
+      "WEAK_COMPONENT_OVERLAP": 8
+    },
+    "H10": {
+      "EXACT_HYPOTHESIS_MATCH": 0,
+      "NO_MEANINGFUL_OVERLAP": 93,
+      "SAME_METHOD_FAMILY_DIFFERENT_HYPOTHESIS": 25,
+      "STRONG_COMPONENT_OVERLAP": 7,
+      "UNKNOWN": 0,
+      "WEAK_COMPONENT_OVERLAP": 8
+    }
+  },
+  "created_date": "2026-08-12",
+  "determinism": {
+    "classification_precedence": [
+      "EXACT_HYPOTHESIS_MATCH",
+      "STRONG_COMPONENT_OVERLAP",
+      "WEAK_COMPONENT_OVERLAP",
+      "SAME_METHOD_FAMILY_DIFFERENT_HYPOTHESIS",
+      "NO_MEANINGFUL_OVERLAP",
+      "UNKNOWN"
+    ],
+    "exact_match_dimensions": [
+      "predictive_information_set",
+      "transformation",
+      "target",
+      "gating_logic",
+      "composition_semantics",
+      "temporal_semantics"
+    ],
+    "hypothesis_sort": "H01..H10",
+    "identity_sort": "canonical strategy_id ascending",
+    "pinned_historical_head": "2db4da27aee716805c393eb9c7dd41aff8e9527e",
+    "pinned_tree": "cb6b9c3685739c381d6a5f7a92fa7668ed93cc9c",
+    "primary_input_report": "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_RESEARCH_SURFACE_R1.md",
+    "primary_input_sha256": "26add8e34cb259cffdd54c6cd8f91373980ffe7c2277b17b2afaca8c936c8859"
+  },
+  "generation_timezone": "Asia/Taipei",
+  "known_limits": [
+    "No post-freeze prospective observations exist in R4.",
+    "H02 historical reproduction/stress cannot be called independent confirmation.",
+    "Frozen source commit objects are unavailable locally and no network fetch was authorized.",
+    "Most historical rows do not preserve strategy-internal rank, internal score, or calibrated number probabilities."
+  ],
+  "manifest_scope": "This manifest hashes the five primary artifacts. The separate SHA256SUMS ledger hashes those five plus this manifest; it necessarily excludes itself.",
+  "mutation_attestation": {
+    "candidate_freeze_mutation": "NONE",
+    "db_mutation": "NONE",
+    "git_operations": "NONE",
+    "prospective_operation_mutation": "NONE",
+    "repo_mutation_by_track_d": "NONE",
+    "sealed_task_data_mutation": "NONE"
+  },
+  "pinned_catalog": {
+    "frozen_source_commit": "49a25effa62fc24f40789c16be6f11bdfb41a4a9",
+    "frozen_source_objects_available_locally": false,
+    "joined_historical_count": 133,
+    "limitation": "Committed catalog semantics plus sealed raw behavior/reports used; unavailable frozen source bodies were not inferred.",
+    "path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/src/lottolab/strategies/data/biglotto_full_strategy_catalog_v1.json",
+    "record_count": 221
+  },
+  "population": {
+    "candidate_k_direct_available": 7,
+    "current_executable_within_historical": 51,
+    "frozen_candidates": 40,
+    "frozen_forward_generatable": 3,
+    "frozen_unavailable": 37,
+    "historical_analyzable": 133,
+    "historical_raw_only": 82
+  },
+  "primary_artifacts": [
+    {
+      "bytes": 72439,
+      "data_rows": null,
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_TOP10_HYPOTHESIS_COLLISION_AUDIT_R1.md",
+      "sha256": "6758482663fd46f14f86a293f0eef1a2bc77ff3186931267c5197f8cac87287b"
+    },
+    {
+      "bytes": 1218921,
+      "data_rows": 1330,
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_TOP10_COLLISION_MATRIX_R1.csv",
+      "sha256": "44689faf7c06b59a7452090fd0952e94dd276609427a1b893fbd67825e52a1d5"
+    },
+    {
+      "bytes": 63355,
+      "data_rows": 210,
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_HYPOTHESIS_DATA_SUFFICIENCY_MATRIX_R1.csv",
+      "sha256": "9200b55d61b6fde69fa173c97bac419e8f9c10813fd415aef03f76662b1874ab"
+    },
+    {
+      "bytes": 41435,
+      "data_rows": null,
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_TOP10_TRACK_B_EXPERIMENT_SPECS_R1.md",
+      "sha256": "335c5921978fd167658dd14c3bdac539edfdf2b405609d9e275fcbe024e4959d"
+    },
+    {
+      "bytes": 8785,
+      "data_rows": 20,
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_TOP10_PRIORITY_RANKING_R1.csv",
+      "sha256": "b0953cf2548e1fe9a941197d26a5bee9456b75adfa99361a1195acbcf663b869"
+    }
+  ],
+  "priority_top_3": {
+    "DISCOVERY_PRIORITY": [
+      "H01",
+      "H03",
+      "H07"
+    ],
+    "PROSPECTIVE_READINESS": [
+      "H03",
+      "H06",
+      "H07"
+    ]
+  },
+  "recommended_first_experiment": "H01 CROSS_STRATEGY_RESIDUAL_GATED_META_SELECTOR",
+  "status": "PASS",
+  "task_id": "B649_TRACK_D_TOP10_HYPOTHESIS_COLLISION_AUDIT_AND_EXPERIMENT_SPECS_R1"
+}

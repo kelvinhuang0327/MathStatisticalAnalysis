@@ -1,0 +1,2476 @@
+"""Outcome-free intake and comparison of existing Strategy Matrix methods.
+
+The research ledger owns method metadata; this module only dispatches already
+implemented algorithms and normalizes their evidence. It does not register a
+production strategy, fit anything, rank strategies, or define a composite score.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import itertools
+import json
+import math
+import random
+from collections.abc import Callable, Mapping
+from dataclasses import asdict, replace
+from fractions import Fraction
+from pathlib import Path
+from typing import Any, cast
+
+from lottolab.domain.lottery_rules import (
+    BIG_LOTTO_RULE_CONTRACT,
+    DAILY_539_RULE_CONTRACT,
+    POWER_LOTTO_RULE_CONTRACT,
+    LotteryRuleContract,
+)
+from lottolab.research.biglotto_multi_ticket_constructors_r1 import CONSTRUCTORS
+from lottolab.research.bounded_coverage_optimizer import exact_portfolio_coverage
+from lottolab.research.bounded_coverage_optimizer_fast import restart_greedy_swap_search_fast
+from lottolab.research.covering_design_fixed_k_bridge import (
+    build_big_lotto_fixed_k_portfolio_from_tabu7_cover,
+)
+from lottolab.research.covering_design_tabu7 import (
+    TabuSearch7RunConfig,
+    run_covering_design_tabu7,
+)
+from lottolab.research.cyclic_sidon_shift import sidon_shift_portfolio as sidon_b649
+from lottolab.research.cyclic_sidon_shift_p638_zone1 import sidon_shift_portfolio as sidon_p638
+from lottolab.research.cyclic_sidon_shift_t539 import sidon_shift_portfolio as sidon_t539
+from lottolab.research.exact_coverage_baseline import exact_random_portfolio_coverage
+from lottolab.research.exact_coverage_fast_evaluator import (
+    clear_cache,
+    fast_exact_portfolio_coverage,
+)
+from lottolab.research.expected_max_main_matches import (
+    CoverageEvaluator,
+    expected_max_main_matches,
+)
+from lottolab.research.global_exact_coverage_solver import PAIRWISE_MAX_INTERSECTION
+from lottolab.research.greedy_min_overlap_constructor import greedy_min_overlap_portfolio
+from lottolab.research.greedy_minmax_sum_then_reuse_dispersion_constructor import (
+    greedy_minmax_sum_then_reuse_dispersion_portfolio,
+)
+from lottolab.research.greedy_minmax_then_sum_overlap_constructor import (
+    greedy_minmax_then_sum_overlap_portfolio,
+)
+from lottolab.research.hard_div_pairwise_bounded_candidate_adapter import (
+    METHOD_ID as HARD_DIV,
+)
+from lottolab.research.hard_div_pairwise_bounded_candidate_adapter import (
+    AdapterStatus,
+    HardDivPairwiseBoundedCandidateResult,
+    HardDivPairwiseSearchEvidence,
+    big_lotto_dispatch,
+    run_hard_div_pairwise_bounded_candidate_adapter,
+)
+from lottolab.research.low_overlap_portfolio_constructor import (
+    build_low_overlap_portfolio,
+    compute_portfolio_geometry_metrics,
+)
+from lottolab.research.reference_e_exact_one_exchange_refinement import (
+    Portfolio,
+    evaluate_one_exchange_neighborhood,
+)
+from lottolab.research.reference_e_iterative_exact_one_exchange_ascent import (
+    iterative_exact_one_exchange_ascent,
+)
+
+K_SCOPE = (2, 3, 5, 10, 20)
+LEDGER_PATH = Path("docs/research/cross_lottery_research_ledger_r1.json")
+RESULT_PATH = Path(
+    "docs/research/matrix-native-results/imported-optimizer-integration-r1-result.json"
+)
+EXPECTED_MAX_MAIN_MATCHES_V1 = "EXPECTED_MAX_MAIN_MATCHES_V1"
+EXPECTED_MAX_EXACTNESS = "EXACT_COMBINATORIAL_EXPECTATION"
+EXPECTED_MAX_CORE_PATH = Path("src/lottolab/research/expected_max_main_matches.py")
+EXPECTED_MAX_RESULT_PATH = Path(
+    "docs/research/matrix-native-results/expected-max-main-matches-v1-result.json"
+)
+EXPECTED_MAX_CORE_HEAD = "28fe4cf978e64c526f1311be1b497fa6f325464d"
+EXPECTED_MAX_CORE_TREE = "8b95a2142506ddaec20b998fca366debd3f93b3c"
+NATIVE_MEASUREMENT_KEY = "native_coverage_r1"
+NATIVE_MEASUREMENT_PATH = Path(
+    "docs/research/matrix-native-results/strategy-matrix-native-evidence-coverage-r1-result.json"
+)
+NATIVE_MEASUREMENT_SCHEMA_VERSION = "1.0.0"
+NATIVE_CANDIDATE_POOL_KIND = "clustered_plus_sidon"
+NATIVE_MEASUREMENT_MINIMUM_MATCHES = 3
+NATIVE_MAX_SAMPLE_ATTEMPTS = 200
+SIDON = "CYCLIC_SIDON_SHIFT_V1"
+ARM_B = "GREEDY_MIN_OVERLAP_V1"
+ARM_E = "GREEDY_MINMAX_THEN_SUM_OVERLAP_V1"
+ARM_F = "GREEDY_MINMAX_SUM_THEN_REUSE_DISPERSION_V1"
+CANDIDATE = "CANDIDATE_LOW_OVERLAP_V1"
+# R1 descriptive reference case for the merged Tabu7 fixed-K bridge, registered as
+# one CANDIDATE_LOW_OVERLAP_V1 geometry-only candidate-source case -- not a new
+# method/family, not an optimal-seed claim, and not a convergence result. A
+# configuration change requires a new case identity; this one is never overwritten.
+TABU7_CANDIDATE_CASE_ID = "CANDIDATES_BIG_LOTTO_tabu7_complete_pair_cover_c29_s31_i1_r1"
+TABU7_CANDIDATE_CONFIG = TabuSearch7RunConfig(constructor_seed=29, search_seed=31, max_iterations=1)
+TABU7_CANDIDATE_DESIGN = {"v": 49, "block_size": 6, "t": 2}
+BOUNDED = "RESTART_GREEDY_SWAP_COVERAGE_SEARCH_V1"
+ONE_EXCHANGE = "REFERENCE_E_BEST_1EXCHANGE_EXACT_COVERAGE_V1"
+ITERATIVE = "ITERATIVE_EXACT_1EXCHANGE_REFINEMENT_V1"
+HARD_DIV_R2 = "HARD_DIV_PAIRWISE_OVERLAP_R2"
+HARD_DIV_RADIUS2_RECONCILIATION_PATH = Path(
+    "docs/research/matrix-native-results/hard-div-exact-radius2-reconciliation-r1-result.json"
+)
+HARD_DIV_RADIUS2_RECONCILIATION_SHA256 = (
+    "2d37c6dceb69664b489a458f46d201d9e13b544a08c3924ece8b848f44d25b82"
+)
+EXPECTED_MAX_EXACT_1EXCHANGE = "ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1"
+EXPECTED_MAX_EXACT_1EXCHANGE_ASCENT_PATH = Path(
+    "docs/research/matrix-native-results/expected-max-exact-1exchange-ascent-r1-result.json"
+)
+EXPECTED_MAX_EXACT_1EXCHANGE_ASCENT_SHA256 = (
+    "f7fd8a7bde805a9715724f09974dcb9e3a4ac3952496da0b3399f3333f8e9cc6"
+)
+EXPECTED_MAX_EXACT_1EXCHANGE_DAILY539_K2_PATH = Path(
+    "docs/research/matrix-native-results/expected-max-exact-1exchange-ascent-daily539-k2-r1-result.json"
+)
+EXPECTED_MAX_EXACT_1EXCHANGE_DAILY539_K2_SHA256 = (
+    "06c2d29f85e69505e01ceabd4a8718db354e3e2e47b214fa60fb48c00790784c"
+)
+EXPECTED_MAX_EXACT_1EXCHANGE_DAILY539_NOT_RUN_REASON = (
+    "CANONICAL_EXPECTED_MAX_EXACT_1EXCHANGE_DAILY539_ARTIFACT_NOT_AVAILABLE_FOR_K"
+)
+METHOD_IDS = (
+    SIDON,
+    ARM_B,
+    ARM_E,
+    ARM_F,
+    CANDIDATE,
+    BOUNDED,
+    ONE_EXCHANGE,
+    ITERATIVE,
+    HARD_DIV,
+    HARD_DIV_R2,
+    EXPECTED_MAX_EXACT_1EXCHANGE,
+    *CONSTRUCTORS,
+)
+# Methods whose supported cells are executed inline by their own canonical adapter.
+# They are therefore never "open" cells awaiting the native-coverage checkpoint.
+NATIVE_DIRECT_DISPATCH = frozenset({HARD_DIV, HARD_DIV_R2, EXPECTED_MAX_EXACT_1EXCHANGE})
+# A portfolio hash is only comparable alongside the byte convention that produced it.
+# The Matrix's own portfolio_sha256 uses canonical_json_bytes; a native method may
+# carry a differently-canonicalized identity of the same portfolio, which is expected.
+NATIVE_PORTFOLIO_HASH_CANONICALIZATION = "COMPACT_JSON_NO_TRAILING_NEWLINE"
+RULES = {
+    "BIG_LOTTO": BIG_LOTTO_RULE_CONTRACT,
+    "DAILY_539": DAILY_539_RULE_CONTRACT,
+    "POWER_LOTTO_ZONE1": POWER_LOTTO_RULE_CONTRACT,
+}
+SIDON_CONSTRUCTORS = {
+    "BIG_LOTTO": sidon_b649,
+    "DAILY_539": sidon_t539,
+    "POWER_LOTTO_ZONE1": sidon_p638,
+}
+GREEDY_CONSTRUCTORS: Mapping[str, Callable[[int, int, int], Portfolio]] = {
+    ARM_B: greedy_min_overlap_portfolio,
+    ARM_E: greedy_minmax_then_sum_overlap_portfolio,
+    ARM_F: greedy_minmax_sum_then_reuse_dispersion_portfolio,
+}
+TOY_RULES = replace(DAILY_539_RULE_CONTRACT, main_number_max=14, main_number_count=4)
+TOY_SEARCH_BUDGET = {
+    "seed": 20260815,
+    "restart_count": 2,
+    "candidate_sample_size": 10,
+    "max_swap_passes": 2,
+}
+type JsonObject = dict[str, Any]
+
+
+def canonical_json_bytes(payload: object) -> bytes:
+    return (json.dumps(payload, sort_keys=True, indent=2, allow_nan=False) + "\n").encode()
+
+
+def rational(value: Fraction) -> JsonObject:
+    return {
+        "numerator": value.numerator,
+        "denominator": value.denominator,
+        "exact": f"{value.numerator}/{value.denominator}",
+    }
+
+
+def parse_rational(value: JsonObject) -> Fraction:
+    """Accept the two existing exact encodings, but reject conflicting authorities."""
+    result = Fraction(value["exact"])
+    if "numerator" in value and result != Fraction(value["numerator"], value["denominator"]):
+        raise ValueError("CANONICAL_METRIC_CONTRACT_CONFLICT: rational fields disagree")
+    return result
+
+
+def _sha256(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _pinned_file(root: Path, entry: JsonObject) -> Path:
+    relative = Path(entry["path"])
+    path = root / relative
+    if relative.is_absolute() or ".." in relative.parts or path.is_symlink():
+        raise ValueError("intake source must be a repository file")
+    if not path.resolve().is_relative_to(root.resolve()):
+        raise ValueError("intake source escapes repository")
+    if _sha256(path) != entry["sha256"]:
+        raise ValueError(f"intake evidence changed: {relative}")
+    return path
+
+
+def load_matrix(root: Path) -> JsonObject:
+    """Fail closed before dispatch if intake, source or evidence identity drifts."""
+    ledger = json.loads((root / LEDGER_PATH).read_text())
+    matrix = cast(JsonObject, ledger["imported_optimizer_matrix"])
+    if matrix["schema_version"] != "1.0.0" or matrix["supported_k"] != list(K_SCOPE):
+        raise ValueError("CANONICAL_METRIC_CONTRACT_CONFLICT: matrix schema/k")
+    if matrix["canonical_result_path"] != RESULT_PATH.as_posix():
+        raise ValueError("CANONICAL_METRIC_CONTRACT_CONFLICT: canonical result path")
+    methods: list[JsonObject] = matrix["methods"]
+    ids = [method["strategy_id"] for method in methods]
+    if len(ids) != len(set(ids)) or set(ids) != set(METHOD_IDS):
+        raise ValueError("MATRIX_AUTHORITY_UNRESOLVED: duplicate or unknown method")
+    if len(methods) != 14 or len({method["strategy_family"] for method in methods}) != 8:
+        raise ValueError("MATRIX_AUTHORITY_UNRESOLVED: method/family intake count")
+    required = {
+        "strategy_family",
+        "strategy_id",
+        "method_type",
+        "portfolio_or_ticket_level",
+        "supported_lottery",
+        "supported_k",
+        "objective",
+        "search_type",
+        "neighborhood_radius",
+        "exact_or_heuristic",
+        "diversification_constraint",
+        "deterministic",
+        "source_status",
+        "core_correctness_test",
+        "source_files",
+        "correctness_evidence",
+        "supports_synthetic_shape",
+        "evidence_source",
+        "proof_status",
+    }
+    for method in methods:
+        if not required <= method.keys():
+            raise ValueError("incomplete imported method metadata")
+        if method["source_status"] != "IMPLEMENTED" or method["core_correctness_test"] != "PASS":
+            raise ValueError("IMPORTED_METHOD_CORE_CORRECTNESS_UNKNOWN")
+        if method["deterministic"] is not True:
+            raise ValueError("imported method is not deterministic under its fixed inputs")
+        supported = method["supported_k"]
+        if (
+            not supported
+            or any(type(k) is not int or k not in K_SCOPE for k in supported)
+            or len(set(supported)) != len(supported)
+        ):
+            raise ValueError("invalid imported k scope")
+        if method["strategy_id"] in CONSTRUCTORS and supported != [5, 10, 20]:
+            raise ValueError("frozen native constructor budget contract changed")
+        if not method["source_files"] or not method["correctness_evidence"]:
+            raise ValueError("IMPORTED_METHOD_CORE_CORRECTNESS_UNKNOWN")
+        for entry in [*method["source_files"], *method["correctness_evidence"]]:
+            _pinned_file(root, entry)
+    for entry in matrix["native_evidence"].values():
+        _pinned_file(root, entry)
+    return matrix
+
+
+def _row(
+    method: JsonObject,
+    case_id: str,
+    lottery: str,
+    k: int,
+    *,
+    scope: str,
+    status: str = "MEASURED",
+    reason: str | None = None,
+    variant: str = "default",
+    minimum_matches: int | None = None,
+) -> JsonObject:
+    dimensions = {
+        field: method[field]
+        for field in (
+            "strategy_family",
+            "strategy_id",
+            "method_type",
+            "portfolio_or_ticket_level",
+            "objective",
+            "search_type",
+            "neighborhood_radius",
+            "exact_or_heuristic",
+            "diversification_constraint",
+            "deterministic",
+            "source_status",
+            "evidence_source",
+            "proof_status",
+        )
+    }
+    return {
+        **dimensions,
+        "row_id": f"{case_id}|{method['strategy_id']}|{variant}|k{k}|m{minimum_matches}",
+        "case_id": case_id,
+        "lottery": lottery,
+        "k": k,
+        "variant": variant,
+        "zone": "zone1" if lottery == "POWER_LOTTO_ZONE1" else None,
+        "evidence_scope": scope,
+        "status": status,
+        "status_reason": reason,
+        "minimum_matches": minimum_matches,
+        "evaluation_objective": "UNIFORM_MAIN_DRAW_COVERAGE" if minimum_matches else "GEOMETRY",
+        "exact_q": None,
+        "q_random_expected": None,
+        "delta_vs_reference": None,
+        "reference": None,
+        "geometry": None,
+        "portfolio": None,
+        "search_evidence": None,
+        "source_evidence": None,
+        "local_optimum_status": "NOT_CERTIFIED",
+        "global_optimum_status": "UNKNOWN",
+    }
+
+
+def _attach_q(
+    row: JsonObject,
+    rules: LotteryRuleContract,
+    q: Fraction,
+    reference_q: Fraction,
+    reference_id: str,
+) -> None:
+    if not 0 <= q <= 1 or not 0 <= reference_q <= 1:
+        raise ValueError("CANONICAL_METRIC_CONTRACT_CONFLICT: coverage outside [0,1]")
+    row["pool_size"] = rules.main_number_max
+    row["draw_size"] = rules.main_number_count
+    row["exact_q"] = rational(q)
+    row["reference"] = {"strategy_id": reference_id, "exact_q": rational(reference_q)}
+    row["delta_vs_reference"] = rational(q - reference_q)
+    row["q_random_expected"] = rational(
+        exact_random_portfolio_coverage(
+            rules.main_number_max,
+            rules.main_number_count,
+            row["minimum_matches"],
+            row["k"],
+        )
+    )
+    if q == 1:
+        # A mathematical upper bound, NOT a claim of exhaustive portfolio search.
+        row["global_optimum_status"] = "CERTIFIED_BY_UNIT_UPPER_BOUND"
+        row["global_optimum_proof"] = "Exact Q=1 attains the universal probability upper bound."
+        row["proof_status"] = "GLOBAL_OPTIMUM_CERTIFIED_BY_UNIT_UPPER_BOUND"
+
+
+def _attach_portfolio(row: JsonObject, rules: LotteryRuleContract, portfolio: Portfolio) -> None:
+    if len(portfolio) != row["k"] or len(set(portfolio)) != row["k"]:
+        raise ValueError("imported portfolio violated exact-k/distinct-ticket contract")
+    for ticket in portfolio:
+        if (
+            len(ticket) != rules.main_number_count
+            or tuple(sorted(set(ticket))) != ticket
+            or any(type(n) is not int or not 1 <= n <= rules.main_number_max for n in ticket)
+        ):
+            raise ValueError("imported portfolio contains an illegal ticket")
+    row["pool_size"] = rules.main_number_max
+    row["draw_size"] = rules.main_number_count
+    row["portfolio"] = portfolio
+    row["portfolio_sha256"] = hashlib.sha256(canonical_json_bytes(portfolio)).hexdigest()
+    row["geometry"] = asdict(compute_portfolio_geometry_metrics(portfolio, rules))
+    row["geometry"]["mean_pairwise_overlap_exact"] = rational(
+        Fraction(
+            sum(size * count for size, count in row["geometry"]["overlap_profile"].items()),
+            math.comb(row["k"], 2),
+        )
+    )
+
+
+def _attach_native_portfolio_hash(row: JsonObject, native_sha256: str) -> None:
+    """Carry a native method's own portfolio identity without recomputing it.
+
+    This never replaces ``portfolio_sha256``: that field stays the Matrix-owned
+    identity derived from the stored portfolio by ``_attach_portfolio``, so it
+    cannot be spoofed by an upstream producer. A native method's hash answers a
+    different question - "is this the same portfolio the adapter sealed?" - and
+    is recorded alongside the byte convention that produced it, because a hash
+    without its canonicalization is not a comparable identity.
+    """
+
+    if len(native_sha256) != 64 or not all(c in "0123456789abcdef" for c in native_sha256):
+        raise ValueError("CANONICAL_METRIC_CONTRACT_CONFLICT: native portfolio hash")
+    row["native_portfolio_sha256"] = native_sha256
+    row["native_portfolio_sha256_canonicalization"] = NATIVE_PORTFOLIO_HASH_CANONICALIZATION
+
+
+def _exact(rules: LotteryRuleContract, minimum: int, portfolio: Portfolio) -> Fraction:
+    return exact_portfolio_coverage(
+        rules.main_number_max,
+        rules.main_number_count,
+        minimum,
+        portfolio,
+    )
+
+
+def compare_neighborhood(
+    method: JsonObject,
+    rules: LotteryRuleContract,
+    seed: Portfolio,
+    minimum_matches: int,
+    *,
+    case_id: str,
+    reference_id: str,
+) -> JsonObject:
+    """Keep a non-improving one-step neighbor separate from the retained portfolio."""
+    row = _row(
+        method,
+        case_id,
+        "SYNTHETIC",
+        len(seed),
+        scope="SYNTHETIC_UNIFORM_WINNING_SPACE",
+        minimum_matches=minimum_matches,
+    )
+    if method["strategy_id"] == ITERATIVE and minimum_matches != 3:
+        row.update(status="NOT_APPLICABLE", status_reason="ITERATIVE_EVALUATOR_REQUIRES_M3_PLUS")
+        return row
+    n, d = rules.main_number_max, rules.main_number_count
+    if method["strategy_id"] == ONE_EXCHANGE:
+        evaluated = evaluate_one_exchange_neighborhood(n, d, minimum_matches, seed)
+        accepted = evaluated["delta_vs_reference"] > 0
+        portfolio = evaluated["best_neighbor"] if accepted else seed
+        q = evaluated["q_best_neighbor"] if accepted else evaluated["q_reference"]
+        reference_q = evaluated["q_reference"]
+        row["search_evidence"] = {
+            "all_neighbors_evaluated": evaluated["all_neighbors_evaluated"],
+            "unique_legal_neighbor_count": evaluated["unique_neighbor_count"],
+            "best_neighbor_q": rational(evaluated["q_best_neighbor"]),
+            "best_neighbor_delta": rational(evaluated["delta_vs_reference"]),
+            "accepted_move": accepted,
+            "neighborhood_unit": "REMOVE_ONE_ADD_ONE_NUMBER_IN_ONE_TICKET",
+        }
+        if not accepted:
+            row["local_optimum_status"] = "CERTIFIED_ONE_NUMBER_EXCHANGE"
+            row["proof_status"] = "LOCAL_OPTIMUM_CERTIFIED_EXACT_RADIUS_1_NO_GLOBAL_PROOF"
+    else:
+        result = iterative_exact_one_exchange_ascent(n, d, minimum_matches, seed)
+        portfolio, q, reference_q = result.terminal_portfolio, result.terminal_q, result.seed_q
+        row["search_evidence"] = {
+            "move_count": result.move_count,
+            "neighborhood_unit": "REMOVE_ONE_ADD_ONE_NUMBER_IN_ONE_TICKET",
+            "iterations": [
+                {
+                    "input_q": rational(item.input_q),
+                    "best_neighbor_q": rational(item.best_neighbor_q),
+                    "delta": rational(item.delta),
+                    "accepted_move": item.accepted_move,
+                    "unique_legal_neighbor_count": item.unique_legal_neighbor_count,
+                    "input_portfolio": item.input_portfolio,
+                    "best_neighbor_portfolio": item.best_neighbor_portfolio,
+                }
+                for item in result.iterations
+            ],
+        }
+        row["local_optimum_status"] = "CERTIFIED_ONE_NUMBER_EXCHANGE"
+        row["proof_status"] = "LOCAL_OPTIMUM_CERTIFIED_EXACT_RADIUS_1_NO_GLOBAL_PROOF"
+    _attach_portfolio(row, rules, portfolio)
+    _attach_q(row, rules, q, reference_q, reference_id)
+    return row
+
+
+def _toy_rows(methods: Mapping[str, JsonObject]) -> list[JsonObject]:
+    rows: list[JsonObject] = []
+    prefixes = {key: fn(14, 4, 20) for key, fn in GREEDY_CONSTRUCTORS.items()}
+    for minimum in (2, 3):
+        for k in K_SCOPE:
+            baseline = prefixes[ARM_E][:k]
+            baseline_q = _exact(TOY_RULES, minimum, baseline)
+            for method_id, prefix in prefixes.items():
+                row = _row(
+                    methods[method_id],
+                    "TOY_14_4",
+                    "SYNTHETIC",
+                    k,
+                    scope="SYNTHETIC_UNIFORM_WINNING_SPACE",
+                    minimum_matches=minimum,
+                )
+                portfolio = prefix[:k]
+                reference_id = ARM_B if method_id == ARM_E else ARM_E
+                _attach_portfolio(row, TOY_RULES, portfolio)
+                _attach_q(
+                    row,
+                    TOY_RULES,
+                    _exact(TOY_RULES, minimum, portfolio),
+                    _exact(TOY_RULES, minimum, prefixes[reference_id][:k]),
+                    reference_id,
+                )
+                rows.append(row)
+            result = restart_greedy_swap_search_fast(14, 4, minimum, k, **TOY_SEARCH_BUDGET)
+            # Restart 0 and the multi-restart selection come from ONE unchanged
+            # invocation, not two tuned algorithms or two method families.
+            for variant, portfolio, q in (
+                (
+                    "first_restart",
+                    result.restart_outcomes[0].portfolio,
+                    result.restart_outcomes[0].coverage,
+                ),
+                ("best_restart", result.portfolio, result.coverage),
+            ):
+                row = _row(
+                    methods[BOUNDED],
+                    "TOY_14_4",
+                    "SYNTHETIC",
+                    k,
+                    scope="SYNTHETIC_UNIFORM_WINNING_SPACE",
+                    variant=variant,
+                    minimum_matches=minimum,
+                )
+                row["search_type"] = (
+                    "SINGLE_RESTART_HEURISTIC"
+                    if variant == "first_restart"
+                    else "BEST_OF_RESTARTS_HEURISTIC"
+                )
+                row["search_evidence"] = {
+                    "budget": TOY_SEARCH_BUDGET,
+                    "evaluations_used_entire_invocation": result.evaluations_used,
+                    "best_restart_index": result.best_restart_index,
+                    "restart_coverages": [
+                        rational(item.coverage) for item in result.restart_outcomes
+                    ],
+                    "sampled_converged_by_restart": [
+                        item.converged for item in result.restart_outcomes
+                    ],
+                    "neighborhood_unit": "SAMPLED_WHOLE_TICKET_REPLACEMENT",
+                }
+                row["local_optimum_status"] = "NOT_CERTIFIED_SAMPLED_NEIGHBORHOOD"
+                _attach_portfolio(row, TOY_RULES, portfolio)
+                _attach_q(row, TOY_RULES, q, baseline_q, ARM_E)
+                rows.append(row)
+            for method_id in (ONE_EXCHANGE, ITERATIVE):
+                rows.append(
+                    compare_neighborhood(
+                        methods[method_id],
+                        TOY_RULES,
+                        baseline,
+                        minimum,
+                        case_id="TOY_14_4",
+                        reference_id=ARM_E,
+                    )
+                )
+    # This pre-existing correctness fixture discriminates one-step from iterative
+    # ascent even where the greedy reference already happens to be locally optimal.
+    rules = replace(TOY_RULES, main_number_max=8)
+    seed = ((1, 2, 3, 4), (1, 2, 3, 5))
+    for method_id in (ONE_EXCHANGE, ITERATIVE):
+        rows.append(
+            compare_neighborhood(
+                methods[method_id],
+                rules,
+                seed,
+                3,
+                case_id="EXISTING_TWO_MOVE_FIXTURE_8_4",
+                reference_id="EXISTING_CORE_TEST_SEED",
+            )
+        )
+    return rows
+
+
+def candidate_pool(lottery: str, kind: str) -> Portfolio:
+    """Declared synthetic inputs, independent of every historical/future draw."""
+    rules = RULES[lottery]
+    n, d = rules.main_number_max, rules.main_number_count
+    if kind == "clustered_plus_sidon":
+        clustered = tuple(itertools.islice(itertools.combinations(range(1, n + 1), d), 20))
+        return tuple(dict.fromkeys((*clustered, *SIDON_CONSTRUCTORS[lottery](20))))
+    if kind != "uniform_seeded":
+        raise ValueError("unknown synthetic candidate case")
+    rng = random.Random(20260815)
+    tickets: dict[tuple[int, ...], None] = {}
+    while len(tickets) < 40:
+        tickets[tuple(sorted(rng.sample(range(1, n + 1), d)))] = None
+    return tuple(tickets)
+
+
+def _candidate_rows(methods: Mapping[str, JsonObject]) -> list[JsonObject]:
+    rows: list[JsonObject] = []
+    for lottery, rules in RULES.items():
+        for kind in ("clustered_plus_sidon", "uniform_seeded"):
+            candidates = candidate_pool(lottery, kind)
+            variants = [(CANDIDATE, "geometry_only"), (CANDIDATE, "score_priority")]
+            if lottery == "BIG_LOTTO":
+                variants.extend((method_id, "default") for method_id in CONSTRUCTORS)
+            for k in K_SCOPE:
+                for method_id, variant in variants:
+                    method = methods[method_id]
+                    row = _row(
+                        method,
+                        f"CANDIDATES_{lottery}_{kind}",
+                        lottery,
+                        k,
+                        scope="NATIVE_RULE_SYNTHETIC_CANDIDATE_GEOMETRY",
+                        variant=variant,
+                    )
+                    row["candidate_pool_sha256"] = hashlib.sha256(
+                        canonical_json_bytes(candidates)
+                    ).hexdigest()
+                    row["candidate_count"] = len(candidates)
+                    if k not in method["supported_k"]:
+                        row.update(status="NOT_APPLICABLE", status_reason="UNSUPPORTED_NATIVE_K")
+                        rows.append(row)
+                        continue
+                    if method_id == CANDIDATE:
+                        scores = (
+                            [float(len(candidates) - i) for i in range(len(candidates))]
+                            if variant == "score_priority"
+                            else None
+                        )
+                        portfolio = build_low_overlap_portfolio(candidates, k, rules, scores)
+                    else:
+                        portfolio = CONSTRUCTORS[method_id](candidates, k)
+                    _attach_portfolio(row, rules, portfolio)
+                    row["reference"] = {
+                        "strategy_id": "INPUT_ORDER_PREFIX",
+                        "geometry": asdict(
+                            compute_portfolio_geometry_metrics(candidates[:k], rules)
+                        ),
+                    }
+                    row["coverage_status"] = "NOT_RUN"
+                    row["coverage_status_reason"] = (
+                        "Geometry comparison only; no native winning-space run."
+                    )
+                    rows.append(row)
+    return rows
+
+
+def _tabu7_candidate_pool_identity() -> tuple[Portfolio, str, JsonObject]:
+    """Independently materialize and verify the Tabu7 candidate pool's identity.
+
+    Mirrors only ``covering_design_fixed_k_bridge``'s zero-based -> one-based
+    mapping, ticket sorting, and deduplication -- the minimal normalization
+    needed to prove candidate-source provenance and reference geometry. This
+    never reimplements the selector (``build_low_overlap_portfolio``) or the
+    Tabu7 search itself; the actual portfolios are always produced through the
+    public bridge function.
+    """
+
+    rules = BIG_LOTTO_RULE_CONTRACT
+    result = run_covering_design_tabu7(v=49, k=6, t=2, config=TABU7_CANDIDATE_CONFIG)
+    unique: set[tuple[int, ...]] = {
+        tuple(sorted(number + 1 for number in block)) for block in result.best_complete_blocks
+    }
+    candidates = tuple(sorted(unique))
+    required_pairs = set(
+        itertools.combinations(range(rules.main_number_min, rules.main_number_max + 1), 2)
+    )
+    covered_pairs = {pair for ticket in candidates for pair in itertools.combinations(ticket, 2)}
+    missing_pairs = required_pairs - covered_pairs
+    pool_sha256 = hashlib.sha256(canonical_json_bytes(candidates)).hexdigest()
+    pair_cover = {
+        "required_pairs": len(required_pairs),
+        "missing_pairs": len(missing_pairs),
+        "complete": not missing_pairs,
+    }
+    return candidates, pool_sha256, pair_cover
+
+
+def _tabu7_bridge_candidate_rows(methods: Mapping[str, JsonObject]) -> list[JsonObject]:
+    """Register the merged Tabu7 fixed-K bridge as one versioned candidate-source
+    case of the existing CANDIDATE_LOW_OVERLAP_V1 method (geometry_only variant).
+
+    CANDIDATE_POOL_COMPLETE_PAIR_COVER: YES (independently reverified here).
+    SELECTED_FIXED_K_PORTFOLIO_COMPLETE_PAIR_COVER: NOT_CLAIMED. No selector
+    superiority, global optimum, predictive, or profitability claim is made.
+    """
+
+    method = methods[CANDIDATE]
+    rules = BIG_LOTTO_RULE_CONTRACT
+    candidates, pool_sha256, pair_cover = _tabu7_candidate_pool_identity()
+    if len(candidates) != 183 or not pair_cover["complete"]:
+        raise ValueError("CANONICAL_METRIC_CONTRACT_CONFLICT: tabu7 candidate pool identity")
+
+    source_files = {entry["path"]: entry for entry in method["source_files"]}
+    correctness_evidence = {entry["path"]: entry for entry in method["correctness_evidence"]}
+    provenance = {
+        "case_id": TABU7_CANDIDATE_CASE_ID,
+        "config": {
+            "constructor_seed": TABU7_CANDIDATE_CONFIG.constructor_seed,
+            "search_seed": TABU7_CANDIDATE_CONFIG.search_seed,
+            "max_iterations": TABU7_CANDIDATE_CONFIG.max_iterations,
+        },
+        "design": dict(TABU7_CANDIDATE_DESIGN),
+        "variant": "geometry_only",
+        "bridge": source_files["src/lottolab/research/covering_design_fixed_k_bridge.py"],
+        "producer": source_files["src/lottolab/research/covering_design_tabu7.py"],
+        "selector": source_files["src/lottolab/research/low_overlap_portfolio_constructor.py"],
+        "bridge_correctness_evidence": (
+            correctness_evidence["tests/unit/test_covering_design_fixed_k_bridge.py"]
+        ),
+        "producer_correctness_evidence": (
+            correctness_evidence["tests/unit/test_covering_design_tabu7.py"]
+        ),
+        "selector_correctness_evidence": (
+            correctness_evidence["tests/unit/test_low_overlap_portfolio_constructor.py"]
+        ),
+        "candidate_count": len(candidates),
+        "candidate_pool_sha256": pool_sha256,
+        "candidate_pool_pair_cover": pair_cover,
+    }
+
+    rows: list[JsonObject] = []
+    for k in K_SCOPE:
+        row = _row(
+            method,
+            TABU7_CANDIDATE_CASE_ID,
+            "BIG_LOTTO",
+            k,
+            scope="NATIVE_RULE_SYNTHETIC_CANDIDATE_GEOMETRY",
+            variant="geometry_only",
+        )
+        row["candidate_pool_sha256"] = pool_sha256
+        row["candidate_count"] = len(candidates)
+        portfolio = build_big_lotto_fixed_k_portfolio_from_tabu7_cover(
+            k, config=TABU7_CANDIDATE_CONFIG
+        )
+        _attach_portfolio(row, rules, portfolio)
+        row["reference"] = {
+            "strategy_id": "INPUT_ORDER_PREFIX",
+            "geometry": asdict(compute_portfolio_geometry_metrics(candidates[:k], rules)),
+        }
+        row["coverage_status"] = "NOT_RUN"
+        row["coverage_status_reason"] = "Geometry comparison only; no native winning-space run."
+        row["source_evidence"] = dict(provenance)
+        rows.append(row)
+    return rows
+
+
+def _pointer(payload: Any, pointer: str) -> Any:
+    current: object = payload
+    for part in pointer.strip("/").split("/"):
+        if isinstance(current, list):
+            current = cast(list[object], current)[int(part)]
+        elif isinstance(current, dict):
+            current = cast(dict[str, object], current)[part]
+        else:
+            raise ValueError("CANONICAL_METRIC_CONTRACT_CONFLICT: invalid evidence pointer")
+    return current
+
+
+def _native_locator(method_id: str, lottery: str, k: int) -> tuple[str, str] | None:
+    structure_key = {
+        "BIG_LOTTO": "next_b649",
+        "DAILY_539": "next_t539",
+        "POWER_LOTTO_ZONE1": "next_p638",
+    }[lottery]
+    if method_id in (SIDON, ARM_B, ARM_E) and k in (3, 5, 10, 20):
+        arm = {SIDON: "a", ARM_B: "b", ARM_E: "e"}[method_id]
+        return structure_key, f"/per_k/{k}/q_{arm}"
+    if method_id == BOUNDED and lottery == "BIG_LOTTO" and k in (3, 5, 10, 20):
+        return "frontier_b649", f"/q/c/3/{k}"
+    if method_id == ARM_F and lottery == "BIG_LOTTO" and k in (10, 20):
+        return "method_f", f"/per_k/{k}/q_f"
+    if method_id == ONE_EXCHANGE and lottery == "BIG_LOTTO" and k in (10, 20):
+        return "one_exchange", f"/per_k/{k}/q_best_neighbor"
+    if method_id == ITERATIVE and k in (10, 20):
+        if lottery == "BIG_LOTTO":
+            return "ascent_b649", f"/per_k/{k}/terminal_q"
+        return "ascent_cross", f"/structures/{lottery}/per_k/{k}/terminal_q"
+    return None
+
+
+def _native_supported_specs(
+    methods: Mapping[str, JsonObject],
+) -> list[tuple[str, LotteryRuleContract, str, JsonObject, int]]:
+    """Derive supported native cells from the canonical method/lottery matrix."""
+
+    return [
+        (lottery, rules, method_id, method, k)
+        for lottery, rules in RULES.items()
+        for method_id, method in methods.items()
+        for k in K_SCOPE
+        if lottery in method["supported_lottery"] and k in method["supported_k"]
+    ]
+
+
+def _native_row_id(lottery: str, method_id: str, k: int) -> str:
+    return f"NATIVE_{lottery}|{method_id}|default|k{k}|m{NATIVE_MEASUREMENT_MINIMUM_MATCHES}"
+
+
+def _is_checkpoint_managed(method_id: str, lottery: str, k: int) -> bool:
+    """True for supported cells with neither pinned evidence nor a direct executor.
+
+    Only these cells are carried by the native-coverage checkpoint. A method in
+    ``NATIVE_DIRECT_DISPATCH`` runs its own canonical adapter inline, so it is
+    never an open cell and must not widen the checkpoint's expected identity set.
+    """
+
+    if method_id in NATIVE_DIRECT_DISPATCH:
+        return False
+    return _native_locator(method_id, lottery, k) is None
+
+
+def _native_supported_not_run_row_ids(methods: Mapping[str, JsonObject]) -> list[str]:
+    """Return the open native identities without maintaining a second cell list."""
+
+    return sorted(
+        _native_row_id(lottery, method_id, k)
+        for lottery, _rules, method_id, _method, k in _native_supported_specs(methods)
+        if _is_checkpoint_managed(method_id, lottery, k)
+    )
+
+
+def _load_native_documents(root: Path, matrix: JsonObject) -> dict[str, JsonObject]:
+    entries = cast(dict[str, JsonObject], matrix["native_evidence"])
+    return {
+        key: cast(JsonObject, json.loads((root / entry["path"]).read_text()))
+        for key, entry in entries.items()
+        if key != NATIVE_MEASUREMENT_KEY
+    }
+
+
+def _native_search_budget(documents: Mapping[str, JsonObject]) -> dict[str, int]:
+    """Reuse the already-sealed native bounded-search budget."""
+
+    optimizer = cast(JsonObject, documents["frontier_b649"]["optimizer"])
+    keys = ("seed", "restart_count", "candidate_sample_size", "max_swap_passes")
+    budget = {key: optimizer[key] for key in keys}
+    if any(type(budget[key]) is not int or budget[key] <= 0 for key in keys):
+        raise ValueError("CANONICAL_METRIC_CONTRACT_CONFLICT: invalid native search budget")
+    budget["max_sample_attempts"] = NATIVE_MAX_SAMPLE_ATTEMPTS
+    return cast(dict[str, int], budget)
+
+
+def _portfolio_from_json(value: Any) -> Portfolio:
+    if not isinstance(value, list):
+        raise ValueError("CANONICAL_METRIC_CONTRACT_CONFLICT: measured portfolio is not a list")
+    tickets = cast(list[list[int]], value)
+    return tuple(tuple(ticket) for ticket in tickets)
+
+
+def _expected_max_coverage_evaluator(
+    pool_size: int,
+    draw_size: int,
+    minimum_matches: int,
+    portfolio: Portfolio,
+) -> Fraction:
+    """Use existing exact evaluators without expanding the threshold-1 space."""
+
+    total_draws = math.comb(pool_size, draw_size)
+    if minimum_matches == 1:
+        if not portfolio:
+            return Fraction(0)
+        covered_numbers: set[int] = set()
+        for ticket in portfolio:
+            covered_numbers.update(ticket)
+        return Fraction(
+            total_draws - math.comb(pool_size - len(covered_numbers), draw_size),
+            total_draws,
+        )
+    if minimum_matches == 2:
+        return exact_portfolio_coverage(pool_size, draw_size, minimum_matches, portfolio)
+    return fast_exact_portfolio_coverage(pool_size, draw_size, minimum_matches, portfolio)
+
+
+def _rules_for_expected_max_row(row: JsonObject) -> LotteryRuleContract:
+    lottery = row.get("lottery")
+    if isinstance(lottery, str) and lottery in RULES:
+        return RULES[lottery]
+    if lottery != "SYNTHETIC":
+        raise ValueError("CANONICAL_METRIC_CONTRACT_CONFLICT: unsupported row lottery")
+    pool_size = row.get("pool_size")
+    draw_size = row.get("draw_size")
+    if type(pool_size) is not int or type(draw_size) is not int:
+        raise ValueError("CANONICAL_METRIC_CONTRACT_CONFLICT: synthetic row shape")
+    return replace(TOY_RULES, main_number_max=pool_size, main_number_count=draw_size)
+
+
+def _validated_portfolio_for_expected_max(row: JsonObject, rules: LotteryRuleContract) -> Portfolio:
+    raw_portfolio = row.get("portfolio")
+    if raw_portfolio is None:
+        raise ValueError("CANONICAL_METRIC_CONTRACT_CONFLICT: canonical portfolio is missing")
+    portfolio = _portfolio_from_json(raw_portfolio)
+
+    # Reuse the Matrix's single canonical legality contract before any evaluator
+    # call. The temporary row also recomputes the Matrix-owned portfolio identity.
+    validated: JsonObject = {"k": row["k"]}
+    _attach_portfolio(validated, rules, portfolio)
+    if row.get("portfolio_sha256") != validated["portfolio_sha256"]:
+        raise ValueError("CANONICAL_METRIC_CONTRACT_CONFLICT: portfolio hash mismatch")
+    return portfolio
+
+
+def evaluate_expected_max_main_matches(
+    row: JsonObject,
+    *,
+    evaluator: CoverageEvaluator | None = None,
+) -> Fraction:
+    """Evaluate one stored Matrix row after enforcing canonical portfolio legality."""
+
+    rules = _rules_for_expected_max_row(row)
+    portfolio = _validated_portfolio_for_expected_max(row, rules)
+    return expected_max_main_matches(
+        rules.main_number_max,
+        rules.main_number_count,
+        portfolio,
+        evaluator=evaluator or _expected_max_coverage_evaluator,
+    )
+
+
+def _measure_native_row(
+    method: JsonObject,
+    lottery: str,
+    rules: LotteryRuleContract,
+    k: int,
+    search_budget: Mapping[str, int],
+    documents: Mapping[str, JsonObject],
+) -> JsonObject:
+    """Execute one supported native cell through an existing deterministic method."""
+
+    method_id = cast(str, method["strategy_id"])
+    minimum_matches = NATIVE_MEASUREMENT_MINIMUM_MATCHES
+    row = _row(
+        method,
+        f"NATIVE_{lottery}",
+        lottery,
+        k,
+        scope="NATIVE_UNIFORM_WINNING_SPACE",
+        minimum_matches=minimum_matches,
+    )
+    number_max = rules.main_number_max
+    draw_size = rules.main_number_count
+    measurement_evidence: JsonObject = {
+        "execution_classification": "EXECUTED_EXISTING_NATIVE_METHOD",
+        "method_invocation": method_id,
+        "minimum_matches": minimum_matches,
+    }
+
+    reference_portfolio: Portfolio | None = None
+    reference_q: Fraction
+    portfolio: Portfolio
+    q: Fraction
+    reference_locator = _native_locator(ARM_E, lottery, k)
+    if reference_locator is not None:
+        reference_source, reference_pointer = reference_locator
+        reference_q = parse_rational(_pointer(documents[reference_source], reference_pointer))
+        measurement_evidence["reference_q_reused_from_native_evidence"] = True
+        measurement_evidence["reference_q_locator"] = {
+            "source_key": reference_source,
+            "json_pointer": reference_pointer,
+        }
+        if method_id in (ONE_EXCHANGE, ITERATIVE):
+            reference_portfolio = GREEDY_CONSTRUCTORS[ARM_E](number_max, draw_size, k)
+    else:
+        reference_portfolio = GREEDY_CONSTRUCTORS[ARM_E](number_max, draw_size, k)
+        reference_q = fast_exact_portfolio_coverage(
+            number_max, draw_size, minimum_matches, reference_portfolio
+        )
+
+    if method_id == CANDIDATE:
+        candidates = candidate_pool(lottery, NATIVE_CANDIDATE_POOL_KIND)
+        portfolio = build_low_overlap_portfolio(candidates, k, rules)
+        row["candidate_pool_kind"] = NATIVE_CANDIDATE_POOL_KIND
+        row["candidate_pool_sha256"] = hashlib.sha256(canonical_json_bytes(candidates)).hexdigest()
+        row["candidate_count"] = len(candidates)
+        measurement_evidence.update(
+            {
+                "candidate_pool_kind": NATIVE_CANDIDATE_POOL_KIND,
+                "candidate_pool_scope": "NATIVE_RULE_SYNTHETIC_CANDIDATE_POOL",
+                "candidate_selection_mode": "GEOMETRY_ONLY",
+            }
+        )
+        clear_cache()
+        q = fast_exact_portfolio_coverage(number_max, draw_size, minimum_matches, portfolio)
+    elif method_id in CONSTRUCTORS:
+        candidates = candidate_pool("BIG_LOTTO", NATIVE_CANDIDATE_POOL_KIND)
+        portfolio = CONSTRUCTORS[method_id](candidates, k)
+        row["candidate_pool_kind"] = NATIVE_CANDIDATE_POOL_KIND
+        row["candidate_pool_sha256"] = hashlib.sha256(canonical_json_bytes(candidates)).hexdigest()
+        row["candidate_count"] = len(candidates)
+        measurement_evidence.update(
+            {
+                "candidate_pool_kind": NATIVE_CANDIDATE_POOL_KIND,
+                "candidate_pool_scope": "NATIVE_RULE_SYNTHETIC_CANDIDATE_POOL",
+                "candidate_selection_mode": "FROZEN_B649_CONSTRUCTOR",
+            }
+        )
+        clear_cache()
+        q = fast_exact_portfolio_coverage(number_max, draw_size, minimum_matches, portfolio)
+    elif method_id == SIDON:
+        portfolio = SIDON_CONSTRUCTORS[lottery](k)
+        clear_cache()
+        q = fast_exact_portfolio_coverage(number_max, draw_size, minimum_matches, portfolio)
+    elif method_id in GREEDY_CONSTRUCTORS:
+        portfolio = GREEDY_CONSTRUCTORS[method_id](number_max, draw_size, k)
+        clear_cache()
+        q = fast_exact_portfolio_coverage(number_max, draw_size, minimum_matches, portfolio)
+    elif method_id == BOUNDED:
+        result = restart_greedy_swap_search_fast(
+            number_max,
+            draw_size,
+            minimum_matches,
+            k,
+            seed=search_budget["seed"],
+            restart_count=search_budget["restart_count"],
+            candidate_sample_size=search_budget["candidate_sample_size"],
+            max_swap_passes=search_budget["max_swap_passes"],
+            max_sample_attempts=search_budget["max_sample_attempts"],
+        )
+        portfolio, q = result.portfolio, result.coverage
+        row["local_optimum_status"] = "NOT_CERTIFIED_SAMPLED_NEIGHBORHOOD"
+        row["search_evidence"] = {
+            "budget": dict(search_budget),
+            "evaluations_used_entire_invocation": result.evaluations_used,
+            "best_restart_index": result.best_restart_index,
+            "restart_coverages": [rational(item.coverage) for item in result.restart_outcomes],
+            "sampled_converged_by_restart": [item.converged for item in result.restart_outcomes],
+            "neighborhood_unit": "SAMPLED_WHOLE_TICKET_REPLACEMENT",
+        }
+        measurement_evidence["search_budget"] = dict(search_budget)
+    elif method_id == ONE_EXCHANGE:
+        assert reference_portfolio is not None
+        evaluated = evaluate_one_exchange_neighborhood(
+            number_max, draw_size, minimum_matches, reference_portfolio
+        )
+        accepted = evaluated["delta_vs_reference"] > 0
+        portfolio = evaluated["best_neighbor"] if accepted else reference_portfolio
+        q = evaluated["q_best_neighbor"] if accepted else evaluated["q_reference"]
+        reference_q = evaluated["q_reference"]
+        row["search_evidence"] = {
+            "all_neighbors_evaluated": evaluated["all_neighbors_evaluated"],
+            "unique_legal_neighbor_count": evaluated["unique_neighbor_count"],
+            "best_neighbor_q": rational(evaluated["q_best_neighbor"]),
+            "best_neighbor_delta": rational(evaluated["delta_vs_reference"]),
+            "accepted_move": accepted,
+            "neighborhood_unit": "REMOVE_ONE_ADD_ONE_NUMBER_IN_ONE_TICKET",
+        }
+        if not accepted:
+            row["local_optimum_status"] = "CERTIFIED_ONE_NUMBER_EXCHANGE"
+            row["proof_status"] = "LOCAL_OPTIMUM_CERTIFIED_EXACT_RADIUS_1_NO_GLOBAL_PROOF"
+        measurement_evidence["seed_policy"] = ARM_E
+    elif method_id == ITERATIVE:
+        assert reference_portfolio is not None
+        result = iterative_exact_one_exchange_ascent(
+            number_max, draw_size, minimum_matches, reference_portfolio
+        )
+        portfolio, q, reference_q = result.terminal_portfolio, result.terminal_q, result.seed_q
+        row["search_evidence"] = {
+            "move_count": result.move_count,
+            "neighborhood_unit": "REMOVE_ONE_ADD_ONE_NUMBER_IN_ONE_TICKET",
+            "iterations": [
+                {
+                    "input_q": rational(item.input_q),
+                    "best_neighbor_q": rational(item.best_neighbor_q),
+                    "delta": rational(item.delta),
+                    "accepted_move": item.accepted_move,
+                    "unique_legal_neighbor_count": item.unique_legal_neighbor_count,
+                    "input_portfolio": item.input_portfolio,
+                    "best_neighbor_portfolio": item.best_neighbor_portfolio,
+                }
+                for item in result.iterations
+            ],
+        }
+        row["local_optimum_status"] = "CERTIFIED_ONE_NUMBER_EXCHANGE"
+        row["proof_status"] = "LOCAL_OPTIMUM_CERTIFIED_EXACT_RADIUS_1_NO_GLOBAL_PROOF"
+        measurement_evidence["seed_policy"] = ARM_E
+    else:
+        raise ValueError(f"NATIVE_MEASUREMENT_UNSUPPORTED_METHOD:{method_id}")
+
+    _attach_portfolio(row, rules, portfolio)
+    _attach_q(row, rules, q, reference_q, ARM_E)
+    row["measurement_evidence"] = measurement_evidence
+    return row
+
+
+def _native_measurement_failure(
+    method: JsonObject,
+    lottery: str,
+    k: int,
+    error: Exception,
+) -> JsonObject:
+    reason = f"EXISTING_NATIVE_EXECUTION_FAILED:{type(error).__name__}:{error}"
+    row = _row(
+        method,
+        f"NATIVE_{lottery}",
+        lottery,
+        k,
+        scope="NATIVE_UNIFORM_WINNING_SPACE",
+        status="NOT_RUN",
+        reason=reason,
+        minimum_matches=NATIVE_MEASUREMENT_MINIMUM_MATCHES,
+    )
+    row["measurement_evidence"] = {
+        "execution_classification": "ATTEMPTED_EXISTING_NATIVE_METHOD",
+        "failure_type": type(error).__name__,
+        "failure_reason": str(error),
+    }
+    return row
+
+
+def measure_native_coverage(root: Path) -> JsonObject:
+    """Execute every currently open supported native cell once."""
+
+    matrix = load_matrix(root)
+    methods = {method["strategy_id"]: method for method in matrix["methods"]}
+    documents = _load_native_documents(root, matrix)
+    search_budget = _native_search_budget(documents)
+    expected_open = _native_supported_not_run_row_ids(methods)
+    rows: list[JsonObject] = []
+
+    for lottery, rules, method_id, method, k in _native_supported_specs(methods):
+        if not _is_checkpoint_managed(method_id, lottery, k):
+            continue
+        clear_cache()
+        try:
+            row = _measure_native_row(method, lottery, rules, k, search_budget, documents)
+        except Exception as error:
+            row = _native_measurement_failure(method, lottery, k, error)
+        finally:
+            clear_cache()
+        rows.append(row)
+
+    rows.sort(key=lambda row: row["row_id"])
+    actual_ids = [row["row_id"] for row in rows]
+    if actual_ids != expected_open:
+        raise ValueError("MATRIX_AUTHORITY_UNRESOLVED: native measurement identity drift")
+    measured_count = sum(row["status"] == "MEASURED" for row in rows)
+    return {
+        "artifact_id": "STRATEGY_MATRIX_NATIVE_EVIDENCE_COVERAGE_R1",
+        "schema_version": NATIVE_MEASUREMENT_SCHEMA_VERSION,
+        "source_type": "STRATEGY_MATRIX_NATIVE",
+        "execution_policy": "OUTCOME_FREE_DETERMINISTIC_EXISTING_IMPLEMENTATION",
+        "matrix_authority_base_head": matrix["base_head"],
+        "matrix_authority_base_tree": matrix["base_tree"],
+        "minimum_matches": NATIVE_MEASUREMENT_MINIMUM_MATCHES,
+        "candidate_pool": {
+            "kind": NATIVE_CANDIDATE_POOL_KIND,
+            "scope": "NATIVE_RULE_SYNTHETIC_CANDIDATE_POOL",
+            "selection_mode": "EXISTING_DECLARED_CANDIDATE_POOL",
+        },
+        "seed_policy": ARM_E,
+        "search_budget": search_budget,
+        "supported_native_not_run_row_ids": expected_open,
+        "starting_supported_native_not_run_count": len(expected_open),
+        "rows": rows,
+        "new_native_measured_count": measured_count,
+        "remaining_native_not_run_count": len(rows) - measured_count,
+    }
+
+
+def repair_native_coverage(root: Path) -> JsonObject:
+    """Complete a previously interrupted native measurement artifact."""
+
+    matrix = load_matrix(root)
+    methods = {method["strategy_id"]: method for method in matrix["methods"]}
+    documents = _load_native_documents(root, matrix)
+    search_budget = _native_search_budget(documents)
+    expected_open = _native_supported_not_run_row_ids(methods)
+    path = root / NATIVE_MEASUREMENT_PATH
+    if not path.is_file():
+        raise ValueError("NATIVE_MEASUREMENT_CHECKPOINT_MISSING")
+    checkpoint = cast(JsonObject, json.loads(path.read_text()))
+    if (
+        checkpoint.get("artifact_id") != "STRATEGY_MATRIX_NATIVE_EVIDENCE_COVERAGE_R1"
+        or checkpoint.get("schema_version") != NATIVE_MEASUREMENT_SCHEMA_VERSION
+        or checkpoint.get("matrix_authority_base_head") != matrix["base_head"]
+        or checkpoint.get("matrix_authority_base_tree") != matrix["base_tree"]
+        or checkpoint.get("supported_native_not_run_row_ids") != expected_open
+    ):
+        raise ValueError("MATRIX_AUTHORITY_UNRESOLVED: native checkpoint drift")
+    raw_rows = checkpoint.get("rows")
+    if not isinstance(raw_rows, list):
+        raise ValueError("CANONICAL_METRIC_CONTRACT_CONFLICT: native checkpoint rows")
+    raw_rows = cast(list[object], raw_rows)
+    checkpoint_rows: dict[str, JsonObject] = {}
+    for raw_row in raw_rows:
+        if not isinstance(raw_row, dict):
+            raise ValueError("CANONICAL_METRIC_CONTRACT_CONFLICT: native checkpoint row")
+        row = cast(JsonObject, raw_row)
+        row_id = row.get("row_id")
+        if not isinstance(row_id, str) or row_id in checkpoint_rows:
+            raise ValueError("CANONICAL_METRIC_CONTRACT_CONFLICT: native checkpoint row id")
+        if row_id not in expected_open or row.get("evidence_scope") != (
+            "NATIVE_UNIFORM_WINNING_SPACE"
+        ):
+            raise ValueError("MATRIX_AUTHORITY_UNRESOLVED: native checkpoint row scope")
+        if row.get("status") not in {"MEASURED", "NOT_RUN"}:
+            raise ValueError("CANONICAL_METRIC_CONTRACT_CONFLICT: native checkpoint status")
+        if row["status"] == "MEASURED":
+            if row.get("exact_q") is None or row.get("portfolio") is None:
+                raise ValueError(
+                    "CANONICAL_METRIC_CONTRACT_CONFLICT: native checkpoint measured row"
+                )
+            parse_rational(cast(JsonObject, row["exact_q"]))
+        checkpoint_rows[row_id] = row
+    if set(checkpoint_rows) != set(expected_open):
+        raise ValueError("MATRIX_AUTHORITY_UNRESOLVED: incomplete native checkpoint rows")
+
+    rows: list[JsonObject] = []
+    for lottery, rules, method_id, method, k in _native_supported_specs(methods):
+        if not _is_checkpoint_managed(method_id, lottery, k):
+            continue
+        row_id = _native_row_id(lottery, method_id, k)
+        checkpoint_row = checkpoint_rows[row_id]
+        if checkpoint_row["status"] == "MEASURED":
+            rows.append(checkpoint_row)
+            continue
+        clear_cache()
+        try:
+            row = _measure_native_row(method, lottery, rules, k, search_budget, documents)
+        except Exception as error:
+            row = _native_measurement_failure(method, lottery, k, error)
+        finally:
+            clear_cache()
+        rows.append(row)
+
+    rows.sort(key=lambda row: row["row_id"])
+    if [row["row_id"] for row in rows] != expected_open:
+        raise ValueError("MATRIX_AUTHORITY_UNRESOLVED: native repair identity drift")
+    measured_count = sum(row["status"] == "MEASURED" for row in rows)
+    repaired = dict(checkpoint)
+    repaired["rows"] = rows
+    repaired["starting_supported_native_not_run_count"] = len(expected_open)
+    repaired["new_native_measured_count"] = measured_count
+    repaired["remaining_native_not_run_count"] = len(rows) - measured_count
+    return repaired
+
+
+def _load_native_measurement_rows(
+    root: Path, matrix: JsonObject, methods: Mapping[str, JsonObject]
+) -> dict[str, tuple[int, JsonObject]]:
+    entries = cast(dict[str, JsonObject], matrix["native_evidence"])
+    entry = entries.get(NATIVE_MEASUREMENT_KEY)
+    if entry is None:
+        return {}
+    path = _pinned_file(root, entry)
+    artifact = cast(JsonObject, json.loads(path.read_text()))
+    if artifact.get("schema_version") != NATIVE_MEASUREMENT_SCHEMA_VERSION:
+        raise ValueError("CANONICAL_METRIC_CONTRACT_CONFLICT: native measurement schema")
+    expected_open = _native_supported_not_run_row_ids(methods)
+    if artifact.get("supported_native_not_run_row_ids") != expected_open:
+        raise ValueError("MATRIX_AUTHORITY_UNRESOLVED: native measurement open cells drifted")
+    raw_rows = artifact.get("rows")
+    if not isinstance(raw_rows, list):
+        raise ValueError("CANONICAL_METRIC_CONTRACT_CONFLICT: native measurement rows")
+    raw_rows = cast(list[object], raw_rows)
+    records: dict[str, tuple[int, JsonObject]] = {}
+    for index, raw_row in enumerate(raw_rows):
+        if not isinstance(raw_row, dict):
+            raise ValueError("CANONICAL_METRIC_CONTRACT_CONFLICT: native measurement row")
+        record = cast(JsonObject, raw_row)
+        row_id = record.get("row_id")
+        if not isinstance(row_id, str) or row_id in records:
+            raise ValueError("CANONICAL_METRIC_CONTRACT_CONFLICT: native measurement row id")
+        if row_id not in expected_open:
+            raise ValueError("MATRIX_AUTHORITY_UNRESOLVED: unexpected native measurement row")
+        if record.get("status") not in {"MEASURED", "NOT_RUN"}:
+            raise ValueError("CANONICAL_METRIC_CONTRACT_CONFLICT: native measurement status")
+        if record.get("evidence_scope") != "NATIVE_UNIFORM_WINNING_SPACE":
+            raise ValueError("CANONICAL_METRIC_CONTRACT_CONFLICT: native measurement scope")
+        if record["status"] == "MEASURED":
+            if record.get("exact_q") is None or record.get("portfolio") is None:
+                raise ValueError("CANONICAL_METRIC_CONTRACT_CONFLICT: incomplete measured row")
+            if (
+                cast(JsonObject, record.get("measurement_evidence", {})).get(
+                    "execution_classification"
+                )
+                != "EXECUTED_EXISTING_NATIVE_METHOD"
+            ):
+                raise ValueError("CANONICAL_METRIC_CONTRACT_CONFLICT: measured execution proof")
+            parse_rational(cast(JsonObject, record["exact_q"]))
+        records[row_id] = (index, record)
+    if set(records) != set(expected_open):
+        raise ValueError("MATRIX_AUTHORITY_UNRESOLVED: incomplete native measurement rows")
+    return records
+
+
+def _apply_native_measurement(
+    row: JsonObject,
+    record: JsonObject,
+    entry: JsonObject,
+    index: int,
+    rules: LotteryRuleContract,
+) -> None:
+    if record["status"] == "NOT_RUN":
+        row["status"] = "NOT_RUN"
+        row["status_reason"] = record.get("status_reason") or (
+            "EXISTING_NATIVE_EXECUTION_DID_NOT_COMPLETE"
+        )
+        row["measurement_evidence"] = record.get("measurement_evidence")
+        return
+
+    q = parse_rational(cast(JsonObject, record["exact_q"]))
+    reference = cast(JsonObject, record["reference"])
+    if reference.get("strategy_id") != ARM_E:
+        raise ValueError("CANONICAL_METRIC_CONTRACT_CONFLICT: native reference strategy")
+    reference_q = parse_rational(cast(JsonObject, reference["exact_q"]))
+    portfolio = _portfolio_from_json(record["portfolio"])
+    _attach_portfolio(row, rules, portfolio)
+    _attach_q(row, rules, q, reference_q, ARM_E)
+    for field in (
+        "candidate_pool_kind",
+        "candidate_pool_sha256",
+        "candidate_count",
+        "search_evidence",
+        "local_optimum_status",
+        "proof_status",
+        "measurement_evidence",
+    ):
+        if field in record:
+            row[field] = record[field]
+    row["status"] = "MEASURED"
+    row["status_reason"] = None
+    row["source_evidence"] = {
+        **entry,
+        "json_pointer": f"/rows/{index}",
+    }
+
+
+def _hard_div_search_evidence(result: HardDivPairwiseBoundedCandidateResult) -> JsonObject:
+    """Summarize the adapter's certificate without copying every iteration trace."""
+
+    evidence = cast(HardDivPairwiseSearchEvidence, result.search_evidence)
+    return {
+        "neighborhood_unit": evidence.neighborhood_unit,
+        "neighborhood_radius": 1,
+        "hard_pairwise_intersection_cap": PAIRWISE_MAX_INTERSECTION,
+        "iteration_count": evidence.iteration_count,
+        "move_count": evidence.move_count,
+        "complete_neighbor_count_total": evidence.complete_neighbor_count_total,
+        "hard_feasible_neighbor_count_total": evidence.hard_feasible_neighbor_count_total,
+        "exact_evaluated_neighbor_count_total": evidence.exact_evaluated_neighbor_count_total,
+        "terminal_no_strict_improvement": evidence.terminal_no_strict_improvement,
+        "complete_neighborhood_certified": evidence.complete_neighborhood_certified,
+        "hard_feasible_filter_before_exact_evaluation": (
+            evidence.hard_feasible_filter_before_exact_evaluation
+        ),
+        "seed_policy": SIDON,
+        # Hashes inside this native-evidence block are the adapter's own, so they
+        # carry the adapter's byte convention rather than the Matrix's.
+        "portfolio_hash_canonicalization": NATIVE_PORTFOLIO_HASH_CANONICALIZATION,
+        "seed_portfolio_sha256": result.seed_portfolio_sha256,
+        "seed_exact_q": rational(cast(Fraction, result.seed_exact_q)),
+        "seed_covered_draw_count": result.seed_covered_draw_count,
+        "covered_draw_count": result.covered_draw_count,
+        "total_draw_count": result.total_draw_count,
+    }
+
+
+def _hard_div_native_row(
+    method: JsonObject,
+    lottery: str,
+    rules: LotteryRuleContract,
+    k: int,
+) -> JsonObject:
+    """Measure one HARD_DIV cell through its canonical adapter.
+
+    The Matrix owns registration, dispatch, normalization and the artifact only.
+    The Sidon seed, the radius-1 neighborhood, hard-feasibility filtering and the
+    exact coverage evaluation all stay inside the adapter's public API.
+    """
+
+    minimum_matches = NATIVE_MEASUREMENT_MINIMUM_MATCHES
+    row = _row(
+        method,
+        f"NATIVE_{lottery}",
+        lottery,
+        k,
+        scope="NATIVE_UNIFORM_WINNING_SPACE",
+        minimum_matches=minimum_matches,
+    )
+    try:
+        result = run_hard_div_pairwise_bounded_candidate_adapter(big_lotto_dispatch(k))
+    except Exception as error:
+        # Fail closed: an execution failure is NOT_RUN, never a fabricated row.
+        row.update(
+            status="NOT_RUN",
+            status_reason=f"HARD_DIV_ADAPTER_EXECUTION_FAILED:{type(error).__name__}",
+        )
+        return row
+    if result.status is not AdapterStatus.MEASURED:
+        row.update(
+            status=result.status.value,
+            status_reason=result.status_reason or "HARD_DIV_ADAPTER_DID_NOT_MEASURE",
+        )
+        return row
+    if (
+        result.method_id != HARD_DIV
+        or result.reference_strategy_id != SIDON
+        or result.lottery != lottery
+        or result.k != k
+        or result.minimum_matches != minimum_matches
+        or result.pool_size != rules.main_number_max
+        or result.draw_size != rules.main_number_count
+    ):
+        raise ValueError("CANONICAL_METRIC_CONTRACT_CONFLICT: hard-div dispatch identity")
+    portfolio = result.portfolio
+    seed_q = result.seed_exact_q
+    q = result.exact_q
+    native_sha256 = result.portfolio_sha256
+    if (
+        portfolio is None
+        or seed_q is None
+        or q is None
+        or native_sha256 is None
+        or result.search_evidence is None
+        or result.geometry_max_pairwise_overlap is None
+    ):
+        raise ValueError("CANONICAL_METRIC_CONTRACT_CONFLICT: incomplete hard-div measurement")
+
+    _attach_portfolio(row, rules, portfolio)
+    _attach_q(row, rules, q, seed_q, SIDON)
+    _attach_native_portfolio_hash(row, native_sha256)
+
+    if (
+        row["geometry"]["max_pairwise_overlap"] != result.geometry_max_pairwise_overlap
+        or result.geometry_max_pairwise_overlap > PAIRWISE_MAX_INTERSECTION
+    ):
+        raise ValueError("CANONICAL_METRIC_CONTRACT_CONFLICT: hard-div pairwise overlap cap")
+    if result.delta_vs_reference != q - seed_q:
+        raise ValueError("CANONICAL_METRIC_CONTRACT_CONFLICT: hard-div delta vs reference")
+    if (
+        result.local_optimum_status != "CERTIFIED_ONE_NUMBER_EXCHANGE"
+        or result.proof_status != method["proof_status"]
+        or result.global_optimum_status != "UNKNOWN"
+    ):
+        # A radius-1 certificate is never a global optimum claim.
+        raise ValueError("CANONICAL_METRIC_CONTRACT_CONFLICT: hard-div proof boundary")
+    row["local_optimum_status"] = result.local_optimum_status
+    row["proof_status"] = result.proof_status
+    row["search_evidence"] = _hard_div_search_evidence(result)
+    row["measurement_evidence"] = {
+        "execution_classification": "EXECUTED_EXISTING_NATIVE_METHOD",
+        "method_invocation": HARD_DIV,
+        "minimum_matches": minimum_matches,
+        "dispatch": "CANONICAL_HARD_DIV_PAIRWISE_BOUNDED_CANDIDATE_ADAPTER",
+    }
+    row["source_evidence"] = {
+        **cast(JsonObject, method["source_files"][0]),
+        "dispatch": "CANONICAL_ADAPTER_PUBLIC_API",
+    }
+    return row
+
+
+_frozen_canonical_rows_cache: dict[str, JsonObject] | None = None
+
+
+def _get_frozen_canonical_row(root: Path, row_id: str) -> JsonObject | None:
+    global _frozen_canonical_rows_cache
+    if _frozen_canonical_rows_cache is None:
+        result_path = root / RESULT_PATH
+        if not result_path.exists():
+            return None
+        try:
+            data = json.loads(result_path.read_text(encoding="utf-8"))
+            _frozen_canonical_rows_cache = {
+                entry["row_id"]: entry for entry in data.get("rows", []) if "row_id" in entry
+            }
+        except Exception:
+            _frozen_canonical_rows_cache = {}
+    return _frozen_canonical_rows_cache.get(row_id)
+
+
+def _hard_div_radius2_search_evidence(
+    k_res: JsonObject,
+    artifact: JsonObject,
+) -> JsonObject:
+    neighborhood = cast(JsonObject, k_res["neighborhood"])
+    return {
+        "neighborhood_unit": artifact["neighborhood_unit"],
+        "neighborhood_radius": 2,
+        "hard_pairwise_intersection_cap": artifact["hard_pairwise_max_intersection"],
+        "complete_endpoint_count": neighborhood["complete_endpoint_count"],
+        "hard_feasible_endpoint_count": neighborhood["hard_feasible_endpoint_count"],
+        "exact_evaluated_endpoint_count": neighborhood["exact_evaluated_endpoint_count"],
+        "accepted_move": neighborhood["accepted_move"],
+        "classification": k_res["classification"],
+        "terminal_certificate": k_res["radius2_terminal_certificate"],
+        "baseline_method_id": artifact["baseline_method_id"],
+        "baseline_portfolio_sha256": k_res["radius1_portfolio_sha256"],
+        "baseline_exact_q": k_res["radius1_q"],
+        "portfolio_hash_canonicalization": NATIVE_PORTFOLIO_HASH_CANONICALIZATION,
+        "total_draw_count": artifact["total_draw_count"],
+    }
+
+
+def _hard_div_radius2_native_row(
+    root: Path,
+    method: JsonObject,
+    lottery: str,
+    rules: LotteryRuleContract,
+    k: int,
+) -> JsonObject:
+    """Measure one HARD_DIV radius-2 cell through canonical reconciliation evidence."""
+
+    minimum_matches = NATIVE_MEASUREMENT_MINIMUM_MATCHES
+    row = _row(
+        method,
+        f"NATIVE_{lottery}",
+        lottery,
+        k,
+        scope="NATIVE_UNIFORM_WINNING_SPACE",
+        minimum_matches=minimum_matches,
+    )
+    if lottery != "BIG_LOTTO" or k not in K_SCOPE:
+        row.update(status="NOT_APPLICABLE", status_reason="UNSUPPORTED_LOTTERY_OR_K")
+        return row
+
+    artifact_path = root / HARD_DIV_RADIUS2_RECONCILIATION_PATH
+    if not artifact_path.exists():
+        row.update(
+            status="NOT_RUN",
+            status_reason="CANONICAL_RADIUS2_RECONCILIATION_ARTIFACT_MISSING",
+        )
+        return row
+
+    artifact_bytes = artifact_path.read_bytes()
+    artifact_sha = hashlib.sha256(artifact_bytes).hexdigest()
+    if artifact_sha != HARD_DIV_RADIUS2_RECONCILIATION_SHA256:
+        raise ValueError("RADIUS2_EVIDENCE_IDENTITY_MISMATCH: artifact sha256 mismatch")
+
+    artifact = json.loads(artifact_bytes.decode("utf-8"))
+    k_res = next((res for res in artifact["k_results"] if res["k"] == k), None)
+    if k_res is None:
+        raise ValueError(f"CANONICAL_METRIC_CONTRACT_CONFLICT: missing k={k} in radius2 artifact")
+
+    portfolio = tuple(tuple(int(num) for num in ticket) for ticket in k_res["radius2_portfolio"])
+    radius2_q = Fraction(k_res["radius2_q"]["numerator"], k_res["radius2_q"]["denominator"])
+    radius1_q = Fraction(k_res["radius1_q"]["numerator"], k_res["radius1_q"]["denominator"])
+    native_sha256 = k_res["radius2_portfolio_sha256"]
+
+    _attach_portfolio(row, rules, portfolio)
+    _attach_q(row, rules, radius2_q, radius1_q, HARD_DIV)
+    _attach_native_portfolio_hash(row, native_sha256)
+
+    if (
+        row["geometry"]["max_pairwise_overlap"] != k_res["max_pairwise_intersection"]
+        or k_res["max_pairwise_intersection"] > PAIRWISE_MAX_INTERSECTION
+    ):
+        raise ValueError("CANONICAL_METRIC_CONTRACT_CONFLICT: radius-2 pairwise overlap cap")
+
+    expected_delta = radius2_q - radius1_q
+    artifact_delta = Fraction(k_res["delta"]["numerator"], k_res["delta"]["denominator"])
+    if expected_delta != artifact_delta:
+        raise ValueError("CANONICAL_METRIC_CONTRACT_CONFLICT: radius-2 delta arithmetic")
+
+    row["local_optimum_status"] = k_res["radius2_terminal_certificate"]
+    row["proof_status"] = method["proof_status"]
+    row["global_optimum_status"] = "UNKNOWN"
+    row["search_evidence"] = _hard_div_radius2_search_evidence(k_res, artifact)
+    row["measurement_evidence"] = {
+        "execution_classification": "EXECUTED_EXISTING_NATIVE_METHOD",
+        "method_invocation": HARD_DIV_R2,
+        "minimum_matches": minimum_matches,
+        "dispatch": "CANONICAL_HARD_DIV_EXACT_RADIUS2_RECONCILIATION_ARTIFACT",
+        "reconciliation_task_id": artifact["task_id"],
+    }
+    row["source_evidence"] = {
+        "dispatch": "CANONICAL_RADIUS2_RECONCILIATION_RESULT",
+        "evidence_class": "EXISTING_NATIVE_EXACT_EVIDENCE",
+        "path": HARD_DIV_RADIUS2_RECONCILIATION_PATH.as_posix(),
+        "sha256": HARD_DIV_RADIUS2_RECONCILIATION_SHA256,
+    }
+    return row
+
+
+def _expected_max_exact_1exchange_search_evidence(
+    k_res: JsonObject,
+    artifact: JsonObject,
+    rules: LotteryRuleContract,
+) -> JsonObject:
+    frozen = cast(JsonObject, artifact.get("frozen_semantics", {}))
+    return {
+        "neighborhood_unit": "REMOVE_ONE_ADD_ONE_NUMBER_IN_ONE_TICKET",
+        "neighborhood_radius": 1,
+        "move_count": k_res["move_count"],
+        "iteration_count": k_res["iteration_count"],
+        "terminal_unique_neighbor_count": k_res["terminal_unique_neighbor_count"],
+        "total_neighbor_evaluations": k_res["total_neighbor_evaluations"],
+        "local_optimum_status": k_res["local_optimum_status"],
+        "seed_portfolio_sha256": k_res["seed_portfolio_sha256"],
+        "terminal_portfolio_sha256": k_res["terminal_portfolio_sha256"],
+        "seed_expected_max": k_res["seed_expected_max"],
+        "terminal_expected_max": k_res["terminal_expected_max"],
+        "delta_seed_to_terminal": k_res["delta_seed_to_terminal"],
+        "seed_policy": frozen.get("seed", "canonical Method E"),
+        "move_acceptance": frozen.get("move_acceptance", "strict best improvement only"),
+        "tie_break": frozen.get("tie_break", "lexicographically smallest canonical portfolio"),
+        "portfolio_hash_canonicalization": NATIVE_PORTFOLIO_HASH_CANONICALIZATION,
+        "total_draw_count": math.comb(rules.main_number_max, rules.main_number_count),
+    }
+
+
+def _validated_daily539_expected_max_k2_result(
+    artifact: JsonObject,
+    rules: LotteryRuleContract,
+) -> JsonObject:
+    """Validate the dedicated producer certificate without rerunning its ascent."""
+
+    expected_fields = {
+        "lottery": "DAILY_539",
+        "pool_size": 39,
+        "draw_size": 5,
+        "k": 2,
+        "method_id": EXPECTED_MAX_EXACT_1EXCHANGE,
+        "seed_method_id": ARM_E,
+        "proof_status": "COMPLETE_RADIUS_1_LOCAL_OPTIMUM",
+        "terminal_portfolio_sha256": (
+            "79739c0f788046ea2b632df223346075d00ba541bee9c410d92a479461f76fbd"
+        ),
+        "move_count": 0,
+        "iteration_count": 1,
+        "terminal_unique_neighbor_count": 340,
+        "total_neighbor_evaluations": 340,
+    }
+    for field, expected in expected_fields.items():
+        actual = artifact.get(field)
+        if type(actual) is not type(expected) or actual != expected:
+            raise ValueError(f"EXPECTED_MAX_EVIDENCE_IDENTITY_MISMATCH: DAILY_539 {field}")
+    if (rules.main_number_max, rules.main_number_count) != (39, 5):
+        raise ValueError("EXPECTED_MAX_EVIDENCE_IDENTITY_MISMATCH: DAILY_539 rule shape")
+
+    portfolio_bytes = json.dumps(artifact.get("terminal_portfolio"), separators=(",", ":")).encode()
+    if hashlib.sha256(portfolio_bytes).hexdigest() != artifact["terminal_portfolio_sha256"]:
+        raise ValueError("EXPECTED_MAX_EVIDENCE_IDENTITY_MISMATCH: DAILY_539 terminal portfolio")
+    if (
+        artifact.get("seed_portfolio") != artifact["terminal_portfolio"]
+        or artifact.get("seed_portfolio_sha256") != artifact["terminal_portfolio_sha256"]
+    ):
+        raise ValueError("EXPECTED_MAX_EVIDENCE_IDENTITY_MISMATCH: DAILY_539 seed portfolio")
+    for field, expected_value in (
+        ("terminal_expected_max", Fraction(597050, 575757)),
+        ("seed_expected_max", Fraction(597050, 575757)),
+        ("delta_seed_to_terminal", Fraction(0)),
+    ):
+        value = artifact.get(field)
+        if not isinstance(value, dict) or parse_rational(cast(JsonObject, value)) != expected_value:
+            raise ValueError(f"EXPECTED_MAX_EVIDENCE_IDENTITY_MISMATCH: DAILY_539 {field}")
+
+    # The dedicated artifact stores its local proof at the top level; the shared
+    # BIG_LOTTO artifact stores local_optimum_status inside each k_result.
+    return {**artifact, "local_optimum_status": artifact["proof_status"]}
+
+
+def _expected_max_exact_1exchange_native_row(
+    root: Path,
+    method: JsonObject,
+    lottery: str,
+    rules: LotteryRuleContract,
+    k: int,
+) -> JsonObject:
+    """Measure one ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1 cell
+    through canonical ascent evidence.
+    """
+
+    minimum_matches = NATIVE_MEASUREMENT_MINIMUM_MATCHES
+    row = _row(
+        method,
+        f"NATIVE_{lottery}",
+        lottery,
+        k,
+        scope="NATIVE_UNIFORM_WINNING_SPACE",
+        minimum_matches=minimum_matches,
+    )
+    if lottery not in method["supported_lottery"] or k not in method["supported_k"]:
+        row.update(status="NOT_APPLICABLE", status_reason="UNSUPPORTED_LOTTERY_OR_K")
+        return row
+
+    evidence_path = EXPECTED_MAX_EXACT_1EXCHANGE_ASCENT_PATH
+    evidence_sha256 = EXPECTED_MAX_EXACT_1EXCHANGE_ASCENT_SHA256
+    missing_reason = "CANONICAL_EXPECTED_MAX_EXACT_1EXCHANGE_ASCENT_ARTIFACT_MISSING"
+    if lottery == "DAILY_539":
+        if k != 2:
+            row.update(
+                status="NOT_RUN",
+                status_reason=EXPECTED_MAX_EXACT_1EXCHANGE_DAILY539_NOT_RUN_REASON,
+            )
+            return row
+        evidence_path = EXPECTED_MAX_EXACT_1EXCHANGE_DAILY539_K2_PATH
+        evidence_sha256 = EXPECTED_MAX_EXACT_1EXCHANGE_DAILY539_K2_SHA256
+        missing_reason = EXPECTED_MAX_EXACT_1EXCHANGE_DAILY539_NOT_RUN_REASON
+
+    artifact_path = root / evidence_path
+    if not artifact_path.exists():
+        row.update(status="NOT_RUN", status_reason=missing_reason)
+        return row
+
+    artifact_bytes = artifact_path.read_bytes()
+    artifact_sha = hashlib.sha256(artifact_bytes).hexdigest()
+    if artifact_sha != evidence_sha256:
+        raise ValueError("EXPECTED_MAX_EVIDENCE_IDENTITY_MISMATCH: artifact sha256 mismatch")
+
+    artifact = json.loads(artifact_bytes.decode("utf-8"))
+    k_res = (
+        _validated_daily539_expected_max_k2_result(artifact, rules)
+        if lottery == "DAILY_539"
+        else artifact.get("k_results", {}).get(str(k))
+    )
+    if k_res is None:
+        raise ValueError(
+            f"CANONICAL_METRIC_CONTRACT_CONFLICT: missing k={k} in expected-max ascent artifact"
+        )
+
+    portfolio = tuple(tuple(int(num) for num in ticket) for ticket in k_res["terminal_portfolio"])
+    clear_cache()
+    try:
+        exact_q = fast_exact_portfolio_coverage(
+            rules.main_number_max, rules.main_number_count, minimum_matches, portfolio
+        )
+    finally:
+        clear_cache()
+
+    reference_row = _get_frozen_canonical_row(root, f"NATIVE_{lottery}|{ARM_E}|default|k{k}|m3")
+    if reference_row is not None and reference_row.get("exact_q") is not None:
+        reference_q = parse_rational(cast(JsonObject, reference_row["exact_q"]))
+    else:
+        reference_portfolio = greedy_minmax_then_sum_overlap_portfolio(
+            rules.main_number_max, rules.main_number_count, k
+        )
+        clear_cache()
+        try:
+            reference_q = fast_exact_portfolio_coverage(
+                rules.main_number_max,
+                rules.main_number_count,
+                minimum_matches,
+                reference_portfolio,
+            )
+        finally:
+            clear_cache()
+
+    _attach_portfolio(row, rules, portfolio)
+    _attach_q(row, rules, exact_q, reference_q, ARM_E)
+    _attach_native_portfolio_hash(row, k_res["terminal_portfolio_sha256"])
+
+    row["local_optimum_status"] = k_res["local_optimum_status"]
+    row["proof_status"] = method["proof_status"]
+    row["global_optimum_status"] = "UNKNOWN"
+    row["search_evidence"] = _expected_max_exact_1exchange_search_evidence(k_res, artifact, rules)
+    row["measurement_evidence"] = {
+        "execution_classification": "EXECUTED_EXISTING_NATIVE_METHOD",
+        "method_invocation": EXPECTED_MAX_EXACT_1EXCHANGE,
+        "minimum_matches": minimum_matches,
+        "dispatch": "CANONICAL_EXPECTED_MAX_EXACT_1EXCHANGE_ASCENT_RESULT",
+    }
+    row["source_evidence"] = {
+        "dispatch": "CANONICAL_EXPECTED_MAX_EXACT_1EXCHANGE_ASCENT_RESULT",
+        "evidence_class": "EXISTING_NATIVE_EXACT_EVIDENCE",
+        "path": evidence_path.as_posix(),
+        "sha256": evidence_sha256,
+    }
+    return row
+
+
+def _native_rows(
+    root: Path,
+    matrix: JsonObject,
+    methods: Mapping[str, JsonObject],
+    *,
+    recompute_direct_dispatch: bool = False,
+) -> list[JsonObject]:
+    entries = cast(dict[str, JsonObject], matrix["native_evidence"])
+    documents = _load_native_documents(root, matrix)
+    measured_rows = _load_native_measurement_rows(root, matrix, methods)
+    rows: list[JsonObject] = []
+    for lottery, rules in RULES.items():
+        for method_id, method in methods.items():
+            for k in K_SCOPE:
+                row = _row(
+                    method,
+                    f"NATIVE_{lottery}",
+                    lottery,
+                    k,
+                    scope="NATIVE_UNIFORM_WINNING_SPACE",
+                    minimum_matches=3,
+                )
+                if lottery not in method["supported_lottery"] or k not in method["supported_k"]:
+                    row.update(status="NOT_APPLICABLE", status_reason="UNSUPPORTED_LOTTERY_OR_K")
+                    rows.append(row)
+                    continue
+                if method_id == HARD_DIV:
+                    if not recompute_direct_dispatch and (root / RESULT_PATH).exists():
+                        frozen_row = _get_frozen_canonical_row(root, row["row_id"])
+                        if frozen_row is not None:
+                            rows.append(frozen_row)
+                            continue
+                    clear_cache()
+                    try:
+                        rows.append(_hard_div_native_row(method, lottery, rules, k))
+                    finally:
+                        clear_cache()
+                    continue
+                if method_id == HARD_DIV_R2:
+                    rows.append(_hard_div_radius2_native_row(root, method, lottery, rules, k))
+                    continue
+                if method_id == EXPECTED_MAX_EXACT_1EXCHANGE:
+                    rows.append(
+                        _expected_max_exact_1exchange_native_row(root, method, lottery, rules, k)
+                    )
+                    continue
+                locator = _native_locator(method_id, lottery, k)
+                if locator is None:
+                    measured = measured_rows.get(row["row_id"])
+                    if measured is None:
+                        row.update(
+                            status="NOT_RUN", status_reason="NO_EXISTING_NATIVE_EXACT_EVIDENCE"
+                        )
+                    else:
+                        index, record = measured
+                        _apply_native_measurement(
+                            row, record, entries[NATIVE_MEASUREMENT_KEY], index, rules
+                        )
+                    rows.append(row)
+                    continue
+                source_key, pointer = locator
+                document = documents[source_key]
+                q = parse_rational(_pointer(document, pointer))
+                reference_id = ARM_B if method_id == ARM_E else ARM_E
+                reference_locator = _native_locator(reference_id, lottery, k)
+                if reference_locator is None:
+                    raise ValueError("CANONICAL_METRIC_CONTRACT_CONFLICT: missing reference")
+                reference_source, reference_pointer = reference_locator
+                reference_q = parse_rational(
+                    _pointer(documents[reference_source], reference_pointer)
+                )
+                _attach_q(row, rules, q, reference_q, reference_id)
+                row["status"] = "REUSED_VERIFIED"
+                row["source_evidence"] = {**entries[source_key], "json_pointer": pointer}
+                row["reference"]["source_evidence"] = {
+                    **entries[reference_source],
+                    "json_pointer": reference_pointer,
+                }
+                if method_id == ITERATIVE:
+                    rung: JsonObject = _pointer(document, pointer.rsplit("/", 1)[0])
+                    terminal = rung["iterations"][-1]
+                    terminal_input = parse_rational(terminal["exact_input_q"])
+                    best_neighbor = parse_rational(terminal["exact_best_neighbor_q"])
+                    if (
+                        rung["terminal_certificate"]["status"] != "PASS"
+                        or terminal["accepted_move"]
+                        or terminal_input != q
+                        or best_neighbor > q
+                    ):
+                        raise ValueError("CANONICAL_METRIC_CONTRACT_CONFLICT: terminal certificate")
+                    _attach_portfolio(
+                        row, rules, tuple(tuple(ticket) for ticket in rung["terminal_portfolio"])
+                    )
+                    row["local_optimum_status"] = "CERTIFIED_ONE_NUMBER_EXCHANGE"
+                    row["proof_status"] = "LOCAL_OPTIMUM_CERTIFIED_EXACT_RADIUS_1_NO_GLOBAL_PROOF"
+                    row["search_evidence"] = {
+                        "move_count": rung["move_count"],
+                        "terminal_neighbor_count": terminal["unique_legal_neighbor_count"],
+                        "terminal_best_neighbor_q": rational(best_neighbor),
+                        "terminal_input_q": rational(terminal_input),
+                        "trace_source_pointer": pointer.rsplit("/", 1)[0] + "/iterations",
+                        "seed_policy": "PHASE9_BEST_NEIGHBOR"
+                        if lottery == "BIG_LOTTO"
+                        else "METHOD_E",
+                    }
+                elif method_id == ONE_EXCHANGE:
+                    rung = document["per_k"][str(k)]
+                    _attach_portfolio(
+                        row,
+                        rules,
+                        tuple(tuple(ticket) for ticket in rung["best_neighbor_portfolio"]),
+                    )
+                    row["search_evidence"] = {
+                        "unique_legal_neighbor_count": rung["unique_neighbor_count"],
+                        "best_neighbor_delta": rung["delta_vs_reference_e"],
+                        "seed_policy": "METHOD_E",
+                    }
+                    if parse_rational(rung["delta_vs_reference_e"]) <= 0:
+                        row["local_optimum_status"] = "CERTIFIED_ONE_NUMBER_EXCHANGE"
+                        row["proof_status"] = (
+                            "LOCAL_OPTIMUM_CERTIFIED_EXACT_RADIUS_1_NO_GLOBAL_PROOF"
+                        )
+                elif method_id == BOUNDED:
+                    row["local_optimum_status"] = "NOT_CERTIFIED_SAMPLED_NEIGHBORHOOD"
+                    optimizer = document["optimizer"]
+                    row["search_evidence"] = {
+                        "budget": {key: optimizer[key] for key in TOY_SEARCH_BUDGET},
+                        **optimizer["search_by_k"][str(k)],
+                    }
+                rows.append(row)
+    return rows
+
+
+def _gap(
+    category: str,
+    gap_id: str,
+    existing: str,
+    missing: str,
+    why: str,
+    branch: int | None,
+    evidence: list[str],
+) -> JsonObject:
+    return {
+        "category": category,
+        "gap_id": gap_id,
+        "existing_capability": existing,
+        "missing_capability": missing,
+        "why_not_duplicate": why,
+        "handoff_branch": branch,
+        "evidence_row_ids": evidence,
+    }
+
+
+def detect_gaps(rows: list[JsonObject], methods: Mapping[str, JsonObject]) -> list[JsonObject]:
+    local = [
+        row["row_id"]
+        for row in rows
+        if row["local_optimum_status"] == "CERTIFIED_ONE_NUMBER_EXCHANGE"
+    ]
+    unavailable = [row["row_id"] for row in rows if row["status"] == "NOT_RUN"]
+    low_k = [key for key, method in methods.items() if not {2, 3} <= set(method["supported_k"])]
+    return [
+        _gap(
+            "METHOD_GAPS",
+            "GLOBAL_EXACT_SOLVER",
+            "Exact evaluation and bounded best-of-restarts search.",
+            "A portfolio-wide exact solver/certificate below Q=1.",
+            "Exact objective values and local certificates do not enumerate all portfolios.",
+            3,
+            local,
+        ),
+        _gap(
+            "FEATURE_GAPS",
+            "K_GAP_NATIVE_CANDIDATE_CONSTRUCTORS",
+            "Frozen candidate-set constructors support 5/10/20: " + ", ".join(low_k),
+            "Native 2/3 allocation with its own correctness evidence.",
+            "Current guards reject low k; truncating a 5-ticket result changes the contract.",
+            3,
+            [row["row_id"] for row in rows if row["strategy_id"] in low_k and row["k"] in (2, 3)],
+        ),
+        _gap(
+            "FEATURE_GAPS",
+            "NATIVE_EXACT_EVIDENCE_COVERAGE",
+            "All requested k have fresh synthetic comparisons; selected native rungs "
+            "have sealed exact Q.",
+            "Native Q for supported but unmeasured method/k cells and candidate-pool "
+            "geometry cases.",
+            "A synthetic rule/candidate measurement is not native uniform winning-space evidence.",
+            None,
+            unavailable,
+        ),
+        _gap(
+            "SEARCH_GAPS",
+            "TWO_EXCHANGE_AND_RADIUS_N",
+            (
+                "Complete radius-1 scans and exact radius-2 two-exchange local escape "
+                "for B649 (k=2, 3, 5, 10, 20)."
+            ),
+            "Arbitrary radius-N neighborhoods beyond radius 2 and cross-structure expansion.",
+            (
+                "Exact radius-2 escape is implemented for B649, but radius-N beyond 2 "
+                "remains an open search gap."
+            ),
+            3,
+            local,
+        ),
+        _gap(
+            "OBJECTIVE_GAPS",
+            "COVERAGE_WITH_HARD_DIVERSIFICATION",
+            "Sidon enforces pairwise overlap <=1; coverage optimizers only require "
+            "distinct tickets.",
+            "Coverage optimization subject to an explicit hard overlap/exposure constraint.",
+            "Greedy overlap preferences and descriptive geometry do not constrain "
+            "the coverage search feasible set.",
+            3,
+            [
+                row["row_id"]
+                for row in rows
+                if row["strategy_id"] == BOUNDED and row["status"] == "MEASURED"
+            ],
+        ),
+        _gap(
+            "OBJECTIVE_GAPS",
+            "EXPECTED_HIT_UTILITY_CONTRACT",
+            "Exact EXPECTED_MAX_MAIN_MATCHES_V1 evaluation is integrated and a dedicated "
+            "exact radius-1 ascent optimizer (ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1) "
+            "has completed evidence for B649 (k=2, 3, 5, 10, 20) and Daily 539 k=2.",
+            "Cross-structure replication for Daily 539 k=3, 5, 10, 20 and Power Lotto Zone-1 "
+            "for the dedicated expected-max optimizer.",
+            "Exact radius-1 local ascent is certified for Big Lotto k<=20 and Daily 539 k=2; "
+            "the remaining Daily 539 rungs and Power Lotto Zone-1 replication remain open.",
+            None,
+            [],
+        ),
+    ]
+
+
+def _relation(left: Fraction, right: Fraction) -> str:
+    if left > right:
+        return "A"
+    if left < right:
+        return "B"
+    return "TIE"
+
+
+def _expected_max_cell(row: JsonObject, value: Fraction) -> JsonObject:
+    return {
+        "row_id": row["row_id"],
+        "case_id": row["case_id"],
+        "lottery": row["lottery"],
+        "k": row["k"],
+        "strategy_id": row["strategy_id"],
+        "status": row["status"],
+        "minimum_matches": row["minimum_matches"],
+        "portfolio_sha256": row["portfolio_sha256"],
+        "native_method_objective": row["objective"],
+        "native_evaluation_objective": row["evaluation_objective"],
+        "native_exact_q": row["exact_q"],
+        "evaluation_metric_id": EXPECTED_MAX_MAIN_MATCHES_V1,
+        "exactness": EXPECTED_MAX_EXACTNESS,
+        "expected_max_main_matches_v1": rational(value),
+    }
+
+
+def _expected_max_discrimination(cells: list[JsonObject]) -> JsonObject:
+    grouped: dict[tuple[str, int], dict[str, JsonObject]] = {}
+    for cell in cells:
+        group_key = (cast(str, cell["lottery"]), cast(int, cell["k"]))
+        portfolio_sha256 = cast(str, cell["portfolio_sha256"])
+        portfolios = grouped.setdefault(group_key, {})
+        entry = portfolios.setdefault(
+            portfolio_sha256,
+            {
+                "expected_max": parse_rational(
+                    cast(JsonObject, cell["expected_max_main_matches_v1"])
+                ),
+                "row_ids": [],
+                "strategy_ids": [],
+                "coverage_by_minimum_matches": {},
+            },
+        )
+        expected_max = parse_rational(cast(JsonObject, cell["expected_max_main_matches_v1"]))
+        if entry["expected_max"] != expected_max:
+            raise ValueError("CANONICAL_METRIC_CONTRACT_CONFLICT: reused expected-max value")
+        cast(list[str], entry["row_ids"]).append(cast(str, cell["row_id"]))
+        cast(list[str], entry["strategy_ids"]).append(cast(str, cell["strategy_id"]))
+        minimum_matches = cell["minimum_matches"]
+        exact_q = cell["native_exact_q"]
+        if type(minimum_matches) is int and isinstance(exact_q, dict):
+            coverage = cast(dict[int, Fraction], entry["coverage_by_minimum_matches"])
+            q = parse_rational(cast(JsonObject, exact_q))
+            previous = coverage.get(minimum_matches)
+            if previous is not None and previous != q:
+                raise ValueError("CANONICAL_METRIC_CONTRACT_CONFLICT: reused exact_q value")
+            coverage[minimum_matches] = q
+
+    pairs: list[JsonObject] = []
+    multiple_portfolio_groups = 0
+    comparable_groups = 0
+    metric_varies_pair_count = 0
+    comparable_pair_count = 0
+    different_relation_pair_count = 0
+    coverage_observation_counts = {"AGREE": 0, "DIFFERENT": 0}
+    separated_coverage_tie_count = 0
+    coverage_preference_with_expected_tie_count = 0
+    coverage_preference_reversed_count = 0
+    for (lottery, k), portfolios in sorted(grouped.items()):
+        ordered = sorted(portfolios.items())
+        if len(ordered) < 2:
+            continue
+        multiple_portfolio_groups += 1
+        group_has_comparable_pair = False
+        for index, (sha_a, a) in enumerate(ordered):
+            for sha_b, b in ordered[index + 1 :]:
+                expected_a = cast(Fraction, a["expected_max"])
+                expected_b = cast(Fraction, b["expected_max"])
+                expected_relation = _relation(expected_a, expected_b)
+                if expected_relation != "TIE":
+                    metric_varies_pair_count += 1
+                coverage_a = cast(dict[int, Fraction], a["coverage_by_minimum_matches"])
+                coverage_b = cast(dict[int, Fraction], b["coverage_by_minimum_matches"])
+                observations: list[JsonObject] = []
+                for minimum_matches in sorted(set(coverage_a) & set(coverage_b)):
+                    q_a = coverage_a[minimum_matches]
+                    q_b = coverage_b[minimum_matches]
+                    coverage_relation = _relation(q_a, q_b)
+                    relation_status = (
+                        "AGREE" if expected_relation == coverage_relation else "DIFFERENT"
+                    )
+                    observations.append(
+                        {
+                            "minimum_matches": minimum_matches,
+                            "coverage_a": rational(q_a),
+                            "coverage_b": rational(q_b),
+                            "coverage_relation": coverage_relation,
+                            "relation_status": relation_status,
+                        }
+                    )
+                    coverage_observation_counts[relation_status] += 1
+                    if coverage_relation == "TIE" and expected_relation != "TIE":
+                        separated_coverage_tie_count += 1
+                    if coverage_relation != "TIE" and expected_relation == "TIE":
+                        coverage_preference_with_expected_tie_count += 1
+                    if (
+                        coverage_relation != "TIE"
+                        and expected_relation != "TIE"
+                        and coverage_relation != expected_relation
+                    ):
+                        coverage_preference_reversed_count += 1
+                if observations:
+                    comparable_pair_count += 1
+                    group_has_comparable_pair = True
+                    if any(
+                        observation["relation_status"] == "DIFFERENT"
+                        for observation in observations
+                    ):
+                        different_relation_pair_count += 1
+                pairs.append(
+                    {
+                        "lottery": lottery,
+                        "k": k,
+                        "portfolio_a_sha256": sha_a,
+                        "portfolio_b_sha256": sha_b,
+                        "portfolio_a_representative_row_id": min(a["row_ids"]),
+                        "portfolio_b_representative_row_id": min(b["row_ids"]),
+                        "expected_max_a": rational(expected_a),
+                        "expected_max_b": rational(expected_b),
+                        "expected_max_relation": expected_relation,
+                        "coverage_comparison_status": (
+                            "COMPARABLE" if observations else "UNAVAILABLE"
+                        ),
+                        "coverage_observations": observations,
+                    }
+                )
+        if group_has_comparable_pair:
+            comparable_groups += 1
+
+    if comparable_pair_count == 0:
+        classification = "INSUFFICIENT_CANONICAL_PORTFOLIOS"
+    elif different_relation_pair_count:
+        classification = "DISTINCT_OBJECTIVE_SIGNAL"
+    elif metric_varies_pair_count:
+        classification = "ORDER_EQUIVALENT_ON_CURRENT_EVIDENCE"
+    else:
+        classification = "NO_DISCRIMINATION_ON_CURRENT_EVIDENCE"
+    return {
+        "overall_classification": classification,
+        "same_lottery_same_k_only": True,
+        "cross_lottery_normalization": "NOT_PERFORMED",
+        "pairwise_portfolio_pair_count": len(pairs),
+        "multiple_portfolio_group_count": multiple_portfolio_groups,
+        "comparable_group_count": comparable_groups,
+        "comparable_pair_count": comparable_pair_count,
+        "metric_varies_pair_count": metric_varies_pair_count,
+        "different_relation_pair_count": different_relation_pair_count,
+        "coverage_observation_relation_counts": coverage_observation_counts,
+        "separated_coverage_tie_count": separated_coverage_tie_count,
+        "coverage_preference_with_expected_tie_count": (
+            coverage_preference_with_expected_tie_count
+        ),
+        "coverage_preference_reversed_count": coverage_preference_reversed_count,
+        "pairwise_evidence": pairs,
+    }
+
+
+def _expected_max_gap_semantics(
+    classification: str,
+    evidence_row_ids: list[str],
+    *,
+    dedicated_optimizer_implemented: bool = False,
+) -> JsonObject:
+    if dedicated_optimizer_implemented:
+        return {
+            "previous_gap_id": "EXPECTED_HIT_UTILITY_CONTRACT",
+            "contract_evaluator": "RESOLVED",
+            "optimizer_gap_id": "EXPECTED_MAX_MAIN_MATCHES_OPTIMIZER",
+            "optimizer_status": "RESOLVED",
+            "dedicated_optimizer_implemented": True,
+            "dedicated_optimizer_id": EXPECTED_MAX_EXACT_1EXCHANGE,
+            "remaining_prospective_gap": "CROSS_STRUCTURE_EXPECTED_MAX_OPTIMIZATION",
+            "existing_capability": (
+                "Completed exact radius-1 ascent evidence for BIG_LOTTO k2, k3, k5, k10, k20 "
+                "and DAILY_539 k2."
+            ),
+            "missing_capability": (
+                "DAILY_539 k3, k5, k10, k20; POWER_LOTTO_ZONE1 replication."
+            ),
+            "evidence_row_ids": evidence_row_ids,
+        }
+    if classification == "DISTINCT_OBJECTIVE_SIGNAL":
+        return {
+            "previous_gap_id": "EXPECTED_HIT_UTILITY_CONTRACT",
+            "contract_evaluator": "RESOLVED",
+            "remaining_prospective_gap": "EXPECTED_MAX_MAIN_MATCHES_OPTIMIZER",
+            "dedicated_optimizer_implemented": False,
+            "evidence_row_ids": evidence_row_ids,
+        }
+    return {
+        "previous_gap_id": "EXPECTED_HIT_UTILITY_CONTRACT",
+        "contract_evaluator": "RESOLVED",
+        "remaining_prospective_gap": None,
+        "dedicated_optimizer_implemented": False,
+        "optimizer_work_opened": False,
+        "finding": classification,
+        "evidence_row_ids": evidence_row_ids,
+    }
+
+
+def build_expected_max_main_matches_result(root: Path) -> JsonObject:
+    """Build the focused exact metric surface from the frozen Matrix artifact.
+
+    This intentionally reads ``RESULT_PATH`` rather than calling
+    ``build_comparison``: the expected-max metric consumes complete portfolios
+    already present in canonical Matrix evidence and never reconstructs them.
+    """
+
+    matrix = load_matrix(root)
+    result_path = root / RESULT_PATH
+    if not result_path.exists():
+        raise ValueError("CANONICAL_METRIC_CONTRACT_CONFLICT: canonical result is missing")
+    result_bytes = result_path.read_bytes()
+    canonical_result = cast(JsonObject, json.loads(result_bytes.decode("utf-8")))
+    if canonical_json_bytes(canonical_result) != result_bytes:
+        raise ValueError("CANONICAL_METRIC_CONTRACT_CONFLICT: canonical result serialization")
+    raw_rows = canonical_result.get("rows")
+    if not isinstance(raw_rows, list):
+        raise ValueError("CANONICAL_METRIC_CONTRACT_CONFLICT: canonical result rows")
+    rows: list[JsonObject] = []
+    for raw_row in cast(list[object], raw_rows):
+        if not isinstance(raw_row, dict):
+            raise ValueError("CANONICAL_METRIC_CONTRACT_CONFLICT: canonical result row")
+        rows.append(cast(JsonObject, raw_row))
+    row_ids = [row.get("row_id") for row in rows]
+    if not all(isinstance(row_id, str) for row_id in row_ids) or len(row_ids) != len(set(row_ids)):
+        raise ValueError("CANONICAL_METRIC_CONTRACT_CONFLICT: canonical row identity")
+
+    value_cache: dict[tuple[str, int, int, int, str], Fraction] = {}
+    portfolio_row_ids: dict[tuple[str, int, int, int, str], list[str]] = {}
+    evaluated_cells: list[JsonObject] = []
+    unavailable_cells: list[JsonObject] = []
+    for row in sorted(rows, key=lambda item: cast(str, item["row_id"])):
+        if row.get("portfolio") is None:
+            reason = "NO_CANONICAL_PORTFOLIO_STORED"
+            status_reason = row.get("status_reason")
+            if isinstance(status_reason, str) and status_reason:
+                reason += f":{status_reason}"
+            unavailable_cells.append(
+                {
+                    "row_id": row["row_id"],
+                    "case_id": row["case_id"],
+                    "lottery": row["lottery"],
+                    "k": row["k"],
+                    "strategy_id": row["strategy_id"],
+                    "status": row["status"],
+                    "reason": reason,
+                }
+            )
+            continue
+
+        rules = _rules_for_expected_max_row(row)
+        portfolio = _validated_portfolio_for_expected_max(row, rules)
+        portfolio_sha256 = cast(str, row["portfolio_sha256"])
+        key = (
+            cast(str, row["lottery"]),
+            cast(int, row["k"]),
+            rules.main_number_max,
+            rules.main_number_count,
+            portfolio_sha256,
+        )
+        if key not in value_cache:
+            clear_cache()
+            try:
+                value_cache[key] = expected_max_main_matches(
+                    rules.main_number_max,
+                    rules.main_number_count,
+                    portfolio,
+                    evaluator=_expected_max_coverage_evaluator,
+                )
+            finally:
+                clear_cache()
+        portfolio_row_ids.setdefault(key, []).append(cast(str, row["row_id"]))
+        evaluated_cells.append(_expected_max_cell(row, value_cache[key]))
+
+    evaluated_cells.sort(key=lambda cell: cast(str, cell["row_id"]))
+    unavailable_cells.sort(key=lambda cell: cast(str, cell["row_id"]))
+    portfolio_evaluations = [
+        {
+            "lottery": lottery,
+            "k": k,
+            "pool_size": pool_size,
+            "draw_size": draw_size,
+            "portfolio_sha256": portfolio_sha256,
+            "row_ids": sorted(portfolio_row_ids[key]),
+            "reused_row_count": len(portfolio_row_ids[key]),
+            "computed_once": True,
+            "expected_max_main_matches_v1": rational(value_cache[key]),
+        }
+        for key in sorted(value_cache)
+        for lottery, k, pool_size, draw_size, portfolio_sha256 in [key]
+    ]
+    discrimination = _expected_max_discrimination(evaluated_cells)
+    evidence_row_ids = [
+        row_id
+        for pair in discrimination["pairwise_evidence"]
+        if any(
+            observation["relation_status"] == "DIFFERENT"
+            for observation in pair["coverage_observations"]
+        )
+        for row_id in (
+            pair["portfolio_a_representative_row_id"],
+            pair["portfolio_b_representative_row_id"],
+        )
+    ]
+    discrimination["evidence_row_ids"] = sorted(set(evidence_row_ids))
+    has_optimizer = any(row.get("strategy_id") == EXPECTED_MAX_EXACT_1EXCHANGE for row in rows)
+    return {
+        "task_id": "EXPECTED_HIT_UTILITY_MATRIX_INTEGRATION_R1",
+        "schema_version": "1.0.0",
+        "core_head": EXPECTED_MAX_CORE_HEAD,
+        "core_tree": EXPECTED_MAX_CORE_TREE,
+        "core": {
+            "path": EXPECTED_MAX_CORE_PATH.as_posix(),
+            "head": EXPECTED_MAX_CORE_HEAD,
+            "tree": EXPECTED_MAX_CORE_TREE,
+            "sha256": _sha256(root / EXPECTED_MAX_CORE_PATH),
+        },
+        "matrix_source": {
+            "path": Path("src/lottolab/research/strategy_matrix_comparison.py").as_posix(),
+            "sha256": _sha256(root / "src/lottolab/research/strategy_matrix_comparison.py"),
+        },
+        "input_canonical_result": {
+            "path": RESULT_PATH.as_posix(),
+            "sha256": hashlib.sha256(result_bytes).hexdigest(),
+            "task_id": canonical_result.get("task_id"),
+            "schema_version": canonical_result.get("schema_version"),
+            "base_head": canonical_result.get("base_head"),
+            "base_tree": canonical_result.get("base_tree"),
+        },
+        "matrix_intake_sha256": hashlib.sha256(canonical_json_bytes(matrix)).hexdigest(),
+        "objective": {
+            "evaluation_metric_id": EXPECTED_MAX_MAIN_MATCHES_V1,
+            "exactness": EXPECTED_MAX_EXACTNESS,
+            "definition": "E[max_t |t intersection D|]",
+            "tail_sum_identity": "sum_{m=1..draw_size} Coverage(P; m)",
+            "draw_distribution": "LEGAL_UNIFORM_MAIN_DRAW",
+            "native_method_objective_preserved": True,
+        },
+        "supported_k": list(K_SCOPE),
+        "evaluated_cell_count": len(evaluated_cells),
+        "unavailable_cell_count": len(unavailable_cells),
+        "evaluated_cells": evaluated_cells,
+        "unavailable_cells": unavailable_cells,
+        "portfolio_evaluations": portfolio_evaluations,
+        "objective_discrimination": discrimination,
+        "gap_semantics": _expected_max_gap_semantics(
+            discrimination["overall_classification"],
+            discrimination["evidence_row_ids"],
+            dedicated_optimizer_implemented=has_optimizer,
+        ),
+        "claim_boundary": {
+            "historical_outcomes_used": "NO",
+            "historical_replay": "NOT_RUN",
+            "strategy_id_added": EXPECTED_MAX_EXACT_1EXCHANGE if has_optimizer else "NO",
+            "dedicated_optimizer_implemented": "YES" if has_optimizer else "NO",
+            "global_leaderboard": "NOT_PRODUCED",
+            "cross_lottery_normalization": "NOT_PERFORMED",
+            "production_mutation": "NONE",
+        },
+    }
+
+
+def build_comparison(root: Path, *, recompute_direct_dispatch: bool = False) -> JsonObject:
+    matrix = load_matrix(root)
+    methods = {method["strategy_id"]: method for method in matrix["methods"]}
+    rows = [
+        *_toy_rows(methods),
+        *_candidate_rows(methods),
+        *_tabu7_bridge_candidate_rows(methods),
+        *_native_rows(root, matrix, methods, recompute_direct_dispatch=recompute_direct_dispatch),
+    ]
+    rows.sort(key=lambda row: row["row_id"])
+    if len({row["row_id"] for row in rows}) != len(rows):
+        raise ValueError("duplicate canonical comparison row")
+    improvements = [
+        {
+            "row_id": row["row_id"],
+            "reference": row["reference"]["strategy_id"],
+            "delta": row["delta_vs_reference"],
+            "evidence_scope": row["evidence_scope"],
+        }
+        for row in rows
+        if row["delta_vs_reference"] is not None and parse_rational(row["delta_vs_reference"]) > 0
+    ]
+    gaps = detect_gaps(rows, methods)
+    method_families = sorted({method["strategy_family"] for method in methods.values()})
+    return {
+        "task_id": "STRATEGY_MATRIX_IMPORTED_OPTIMIZER_INTEGRATION_AND_GAP_R1",
+        "schema_version": matrix["schema_version"],
+        "base_head": matrix["base_head"],
+        "base_tree": matrix["base_tree"],
+        "matrix_intake_sha256": hashlib.sha256(canonical_json_bytes(matrix)).hexdigest(),
+        "imported_method_count": len(methods),
+        "distinct_family_count": len(method_families),
+        "method_families": method_families,
+        "supported_k": K_SCOPE,
+        "methods": list(methods.values()),
+        "rows": rows,
+        "status_counts": {
+            status: sum(row["status"] == status for row in rows)
+            for status in ("MEASURED", "REUSED_VERIFIED", "NOT_APPLICABLE", "NOT_RUN")
+        },
+        "strict_improvements": improvements,
+        "new_deterministic_comparison_row_ids": [
+            row["row_id"] for row in rows if row["status"] == "MEASURED"
+        ],
+        "reused_native_evidence_row_ids": [
+            row["row_id"] for row in rows if row["status"] == "REUSED_VERIFIED"
+        ],
+        "exact_optimum_row_ids": [
+            row["row_id"]
+            for row in rows
+            if row["global_optimum_status"] == "CERTIFIED_BY_UNIT_UPPER_BOUND"
+        ],
+        "gaps": gaps,
+        "gap_counts": {
+            category: sum(gap["category"] == category for gap in gaps)
+            for category in ("METHOD_GAPS", "FEATURE_GAPS", "SEARCH_GAPS", "OBJECTIVE_GAPS")
+        },
+        "family_expansion_candidates": [
+            {
+                "strategy_family": family,
+                "basis": "CONTROLLED_ALGORITHM_COMPARISON_ONLY",
+                "evidence_row_ids": [
+                    row["row_id"]
+                    for row in rows
+                    if row["strategy_family"] == family
+                    and row["delta_vs_reference"] is not None
+                    and parse_rational(row["delta_vs_reference"]) > 0
+                ],
+            }
+            for family in ("EXACT_ONE_NUMBER_EXCHANGE", "BOUNDED_COVERAGE_SEARCH")
+        ],
+        "handoffs": {
+            "branch_2": [],
+            "branch_3": [gap["gap_id"] for gap in gaps if gap["handoff_branch"] == 3],
+            "branch_4": [],
+            "branch_5": [],
+            "branch_6": {
+                "canonical_metrics": RESULT_PATH.as_posix(),
+                "recompute_authority": False,
+                "comparison_keys": [
+                    "case_id",
+                    "lottery",
+                    "zone",
+                    "k",
+                    "minimum_matches",
+                    "evidence_scope",
+                    "candidate_pool_sha256",
+                ],
+                "restriction": "Consume these metrics; no synthetic/native or geometry/Q pooling.",
+            },
+            "branch_7": {
+                "schema": "docs/research/cross-lottery-research-ledger-r1-schema.md",
+                "status_semantics": matrix["status_semantics"],
+                "ui_implemented": False,
+            },
+        },
+        "claim_boundary": {
+            "predictive_advantage": "NOT_TESTED",
+            "economic_optimality": "NOT_TESTED",
+            "db_access": "NO",
+            "db_write": "NO",
+            "future_outcome_access": "NO",
+            "production_runtime_mutation": "NONE",
+            "leaderboard": "NOT_PRODUCED",
+            "global_optimum_without_proof": "NEVER_CLAIMED",
+        },
+    }

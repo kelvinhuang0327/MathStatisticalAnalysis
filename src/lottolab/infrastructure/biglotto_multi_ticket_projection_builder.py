@@ -7,14 +7,17 @@ executes a strategy, opens a database, or regenerates a ticket.
 from __future__ import annotations
 
 import hashlib
+import io
 import json
 import stat
+from collections import Counter
 from dataclasses import dataclass
 from fractions import Fraction
 from importlib.resources import files
 from pathlib import Path
 from typing import cast
 
+import lottolab.application.biglotto_multi_ticket_backtest as exact_native_evaluator
 from lottolab.application.biglotto_multi_ticket_records import (
     B649_AUTHORITY_MODE_FRESH_REPRODUCTION,
     B649_AUTHORITY_MODE_HISTORICAL_SEALED,
@@ -37,7 +40,15 @@ from lottolab.infrastructure.b649_dataset_authority import (
     validate_b649_dataset_sha256,
 )
 from lottolab.infrastructure.biglotto_multi_ticket_record_reader import (
+    K5_AUTHORITY,
+    K5_PROJECTION_SCHEMA_VERSION,
+    K5_WINDOW_BOUNDARIES,
+    K10_AUTHORITY,
+    K10_PROJECTION_SCHEMA_VERSION,
+    K10_WINDOW_BOUNDARIES,
     PROJECTION_SCHEMA_VERSION,
+    parse_b649_k5_projection,
+    parse_b649_k10_projection,
 )
 
 
@@ -49,6 +60,22 @@ METRICS_UNAVAILABLE_STRATEGY_IDS = B649_METRICS_UNAVAILABLE_STRATEGY_IDS
 METRICS_UNAVAILABLE_REASON = B649_METRICS_UNAVAILABLE_REASON
 AUTHORITY_MODE_HISTORICAL_SEALED = B649_AUTHORITY_MODE_HISTORICAL_SEALED
 AUTHORITY_MODE_FRESH_REPRODUCTION = B649_AUTHORITY_MODE_FRESH_REPRODUCTION
+K2_K3_PROJECTION_SCHEMA_VERSION = "B649_MULTI_TICKET_HISTORICAL_RECORDS_V3"
+K2_K3_PROJECTION_VERSION = "2.0.0"
+K2_K3_SOURCE_PROJECTION_FILE_SHA256 = (
+    "b0f0bca7ecdee6af9ff4cb5dfd8db4621471634415575c72617ae91bb8183cf3"
+)
+K2_K3_SOURCE_PROJECTION_SHA256 = (
+    "82f69939716e82d5896769b58886a300d890247c263f29f4df0c0eac534be2c4"
+)
+K2_K3_CANONICAL_REPLAY_SOURCE_SHA256 = APPROVED_FRESH_LOGICAL_DATASET_SHA256
+K2_K3_CANONICAL_TARGET_SEQUENCE_SHA256 = (
+    "14876e0088513613125851700f6ae05772811a70a3f17c71550dd93817f6db75"
+)
+K2_K3_CANONICAL_DATASET_ID = "b649-canonical-replay-universe-2149"
+K2_K3_CANONICAL_DATASET_VERSION = (
+    "B649_CANONICAL_REPLAY_UNIVERSE_2149_2007-01-02_2026-07-24_V1"
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -364,6 +391,461 @@ def build_b649_projection_bytes(
     canonical = _canonical_json(document)
     document["projection_sha256"] = hashlib.sha256(canonical).hexdigest()
     return _canonical_json(document) + b"\n"
+
+
+def build_b649_k2_k3_projection_bytes(
+    *,
+    source_projection_path: Path,
+    replay_input_paths: tuple[Path, ...],
+    dataset_source_path: Path,
+) -> bytes:
+    """Build the K2/K3 successor from explicit canonical replay inputs.
+
+    The pinned 5/10/15/20 projection is retained verbatim. Only validated
+    ``native_tickets`` are evaluated; ordered-20 output is never substituted.
+    """
+
+    source_raw = _read_regular_file(source_projection_path)
+    source_file_sha256 = hashlib.sha256(source_raw).hexdigest()
+    if source_file_sha256 != K2_K3_SOURCE_PROJECTION_FILE_SHA256:
+        raise B649ProjectionBuildError(
+            "source projection does not match the pinned V2 file SHA-256"
+        )
+    source_document = _report_document(source_raw, source_projection_path)
+    if source_document.get("projection_schema_version") != PROJECTION_SCHEMA_VERSION:
+        raise B649ProjectionBuildError("source projection schema is not canonical V2")
+    if source_document.get("projection_sha256") != K2_K3_SOURCE_PROJECTION_SHA256:
+        raise B649ProjectionBuildError(
+            "source projection does not match the pinned projection SHA-256"
+        )
+    source_without_checksum = {
+        key: value
+        for key, value in source_document.items()
+        if key != "projection_sha256"
+    }
+    if (
+        hashlib.sha256(_canonical_json(source_without_checksum)).hexdigest()
+        != K2_K3_SOURCE_PROJECTION_SHA256
+    ):
+        raise B649ProjectionBuildError(
+            "source projection does not satisfy its self-hash contract"
+        )
+
+    dataset_source_raw = _read_regular_file(dataset_source_path)
+    dataset_source_sha256 = hashlib.sha256(dataset_source_raw).hexdigest()
+    if dataset_source_sha256 != K2_K3_CANONICAL_REPLAY_SOURCE_SHA256:
+        raise B649ProjectionBuildError(
+            "dataset source does not match the canonical replay-universe SHA-256"
+        )
+    if not replay_input_paths:
+        raise B649ProjectionBuildError("at least one explicit replay input is required")
+
+    catalog = load_full_strategy_catalog()
+    if source_document.get("catalog_sha256") != catalog.catalog_sha256:
+        raise B649ProjectionBuildError(
+            "source projection was not built against the current catalog"
+        )
+    source_records = _list_of_mappings(
+        source_document.get("records"), "source projection records"
+    )
+    if len(source_records) != len(catalog.records):
+        raise B649ProjectionBuildError(
+            "source projection does not contain the complete catalog universe"
+        )
+    source_by_strategy = {
+        _string(record.get("strategy_id"), "source strategy_id"): record
+        for record in source_records
+    }
+    if len(source_by_strategy) != len(source_records):
+        raise B649ProjectionBuildError(
+            "source projection contains duplicate strategy identities"
+        )
+
+    exact_by_identity: dict[tuple[str, int, str], dict[str, object]] = {}
+    input_provenance_by_strategy: dict[str, dict[str, object]] = {}
+    source_inputs: list[dict[str, object]] = []
+    seen_input_hashes: set[str] = set()
+    reference_windows: dict[str, object] | None = None
+    allowed_windows = {name for name, _draws in exact_native_evaluator.WINDOWS}
+    for replay_input_path in replay_input_paths:
+        replay_input_raw = _read_regular_file(replay_input_path)
+        input_raw_sha256 = hashlib.sha256(replay_input_raw).hexdigest()
+        if input_raw_sha256 in seen_input_hashes:
+            raise B649ProjectionBuildError(
+                f"replay input {input_raw_sha256} was supplied more than once"
+            )
+        seen_input_hashes.add(input_raw_sha256)
+        exact_report = exact_native_evaluator.evaluate_biglotto_exact_native_official_metrics(
+            replay_input_raw,
+            catalog=catalog,
+        )
+        _verify_report_self_hash(exact_report, replay_input_path)
+        if exact_report.get("catalog_sha256") != catalog.catalog_sha256:
+            raise B649ProjectionBuildError(
+                f"{replay_input_path} was not evaluated against the current catalog"
+            )
+        dataset_sha256 = exact_report.get("dataset_sha256")
+        if dataset_sha256 == LEGACY_PINNED_DATASET_SHA256:
+            authority_mode = AUTHORITY_MODE_HISTORICAL_SEALED
+        elif dataset_sha256 == APPROVED_FRESH_LOGICAL_DATASET_SHA256:
+            authority_mode = AUTHORITY_MODE_FRESH_REPRODUCTION
+        else:
+            raise B649ProjectionBuildError(
+                f"{replay_input_path} carries an unauthorized dataset identity"
+            )
+        try:
+            validate_b649_dataset_sha256(
+                dataset_sha256,
+                authority_mode=authority_mode,
+            )
+        except B649DatasetAuthorityError as exc:
+            raise B649ProjectionBuildError(f"{replay_input_path}: {exc}") from exc
+        if (
+            exact_report.get("target_sequence_sha256")
+            != K2_K3_CANONICAL_TARGET_SEQUENCE_SHA256
+            or exact_report.get("target_draw_count") != 2149
+        ):
+            raise B649ProjectionBuildError(
+                f"{replay_input_path} is outside the pinned 2,149-draw replay universe"
+            )
+        report_windows = _mapping(
+            exact_report.get("windows"), "exact-native report windows"
+        )
+        if reference_windows is None:
+            reference_windows = report_windows
+        elif report_windows != reference_windows:
+            raise B649ProjectionBuildError(
+                "explicit replay inputs do not share identical absolute windows"
+            )
+
+        report_records = _list_of_mappings(
+            exact_report.get("records"), "exact-native report records"
+        )
+        report_strategy_ids: set[str] = set()
+        for row in report_records:
+            strategy_id = _string(row.get("strategy_id"), "exact strategy_id")
+            ticket_count = _integer(row.get("ticket_count"), "exact ticket_count")
+            window = _string(row.get("window"), "exact window")
+            if ticket_count not in exact_native_evaluator.EXACT_NATIVE_TICKET_COUNTS:
+                raise B649ProjectionBuildError(
+                    f"{strategy_id} has an unsupported exact-native ticket count"
+                )
+            if window not in allowed_windows:
+                raise B649ProjectionBuildError(
+                    f"{strategy_id} has an unsupported exact-native window"
+                )
+            identity = (strategy_id, ticket_count, window)
+            if identity in exact_by_identity:
+                raise B649ProjectionBuildError(
+                    f"exact-native metric identity was supplied twice: {identity}"
+                )
+            exact_by_identity[identity] = row
+            report_strategy_ids.add(strategy_id)
+
+        expected_record_count = (
+            len(report_strategy_ids)
+            * len(exact_native_evaluator.EXACT_NATIVE_TICKET_COUNTS)
+            * len(exact_native_evaluator.WINDOWS)
+        )
+        if len(report_records) != expected_record_count:
+            raise B649ProjectionBuildError(
+                f"{replay_input_path} has incomplete exact-native metric cells"
+            )
+        input_metadata: dict[str, object] = {
+            "authority_mode": authority_mode,
+            "dataset_id": _string(exact_report.get("dataset_id"), "dataset_id"),
+            "dataset_sha256": _sha256(cast(str, dataset_sha256), "dataset_sha256"),
+            "dataset_version": _string(
+                exact_report.get("dataset_version"), "dataset_version"
+            ),
+            "input_canonical_sha256": _sha256(
+                _string(
+                    exact_report.get("input_canonical_sha256"),
+                    "input_canonical_sha256",
+                ),
+                "input_canonical_sha256",
+            ),
+            "input_raw_sha256": input_raw_sha256,
+            "report_sha256": _sha256(
+                _string(exact_report.get("report_sha256"), "report_sha256"),
+                "report_sha256",
+            ),
+            "strategy_ids": sorted(report_strategy_ids),
+        }
+        for strategy_id in report_strategy_ids:
+            if strategy_id in input_provenance_by_strategy:
+                raise B649ProjectionBuildError(
+                    f"strategy was supplied by multiple replay inputs: {strategy_id}"
+                )
+            input_provenance_by_strategy[strategy_id] = input_metadata
+        source_inputs.append(input_metadata)
+
+    metrics_eligible_ids = {
+        strategy_id
+        for strategy_id, record in source_by_strategy.items()
+        if record.get("reproduction_status") == ReproductionStatus.BACKTESTED.value
+        and record.get("metrics_unavailable_reason") is None
+    }
+    supplied_strategy_ids = set(input_provenance_by_strategy)
+    if supplied_strategy_ids != metrics_eligible_ids:
+        raise B649ProjectionBuildError(
+            "explicit replay inputs do not cover exactly the existing metrics-eligible "
+            "universe; "
+            f"missing={len(metrics_eligible_ids - supplied_strategy_ids)} "
+            f"unexpected={len(supplied_strategy_ids - metrics_eligible_ids)}"
+        )
+
+    exact_native_records: list[dict[str, object]] = []
+    for source_record in source_records:
+        strategy_id = _string(source_record.get("strategy_id"), "source strategy_id")
+        input_provenance = input_provenance_by_strategy.get(strategy_id)
+        for ticket_count in exact_native_evaluator.EXACT_NATIVE_TICKET_COUNTS:
+            for window_name, _requested_draws in exact_native_evaluator.WINDOWS:
+                exact_native_records.append(
+                    _k2_k3_projection_record(
+                        source_record=source_record,
+                        ticket_count=ticket_count,
+                        window=window_name,
+                        report_row=exact_by_identity.get(
+                            (strategy_id, ticket_count, window_name)
+                        ),
+                        input_provenance=input_provenance,
+                    )
+                )
+
+    available_by_ticket_count = {
+        str(ticket_count): len(
+            {
+                cast(str, row["strategy_id"])
+                for row in exact_native_records
+                if row["ticket_count"] == ticket_count
+                and row["metric_status"] == "AVAILABLE"
+            }
+        )
+        for ticket_count in exact_native_evaluator.EXACT_NATIVE_TICKET_COUNTS
+    }
+    source_inputs.sort(key=lambda row: cast(str, row["input_raw_sha256"]))
+    source_input_manifest_sha256 = hashlib.sha256(
+        _canonical_json(source_inputs)
+    ).hexdigest()
+    producer_path = Path(__file__).resolve()
+    evaluator_path = Path(exact_native_evaluator.__file__).resolve()
+    producer_identity = {
+        "builder_function": "build_b649_k2_k3_projection_bytes",
+        "builder_module": "lottolab.infrastructure.biglotto_multi_ticket_projection_builder",
+        "builder_source_sha256": hashlib.sha256(producer_path.read_bytes()).hexdigest(),
+        "evaluator_function": "evaluate_biglotto_exact_native_official_metrics",
+        "evaluator_module": "lottolab.application.biglotto_multi_ticket_backtest",
+        "evaluator_source_sha256": hashlib.sha256(evaluator_path.read_bytes()).hexdigest(),
+    }
+    if reference_windows is None:
+        raise B649ProjectionBuildError("no replay-window metadata was produced")
+    document: dict[str, object] = {
+        "available_strategy_count_by_exact_ticket_count": available_by_ticket_count,
+        "catalog_sha256": catalog.catalog_sha256,
+        "criterion": "OFFICIAL_ANY_PRIZE",
+        "dataset": {
+            "cutoff_draw_date": "2026-07-24",
+            "cutoff_draw_number": "115000073",
+            "dataset_id": K2_K3_CANONICAL_DATASET_ID,
+            "dataset_version": K2_K3_CANONICAL_DATASET_VERSION,
+            "first_draw_date": "2007-01-02",
+            "first_draw_number": "96000001",
+            "logical_dataset_sha256s": sorted(
+                {cast(str, row["dataset_sha256"]) for row in source_inputs}
+            ),
+            "source_sha256": dataset_source_sha256,
+            "target_draw_count": 2149,
+            "target_sequence_sha256": K2_K3_CANONICAL_TARGET_SEQUENCE_SHA256,
+        },
+        "exact_native_backtest_policy_version": (
+            exact_native_evaluator.EXACT_NATIVE_BACKTEST_POLICY_VERSION
+        ),
+        "exact_native_records": exact_native_records,
+        "projection_schema_version": K2_K3_PROJECTION_SCHEMA_VERSION,
+        "projection_version": K2_K3_PROJECTION_VERSION,
+        "producer_identity": producer_identity,
+        "ranking_input_contract": {
+            "authoritative_ranking_owner": "BRANCH6",
+            "partition_keys": ["ticket_count", "window"],
+            "primary_metric": "official_any_prize_rate",
+            "rankable_required": True,
+            "sort_order": [
+                "official_any_prize_rate DESC",
+                "official_random_baseline_delta DESC",
+                "coverage DESC",
+                "strategy_id ASC",
+            ],
+        },
+        "records": source_document["records"],
+        "source_input_count": len(source_inputs),
+        "source_input_manifest_sha256": source_input_manifest_sha256,
+        "source_inputs": source_inputs,
+        "source_projection": {
+            "file_sha256": source_file_sha256,
+            "projection_schema_version": source_document[
+                "projection_schema_version"
+            ],
+            "projection_sha256": source_document["projection_sha256"],
+        },
+        "source_reports": source_document["source_reports"],
+        "ticket_counts": [2, 3, 5, 10, 15, 20],
+        "windows": reference_windows,
+    }
+    document["projection_sha256"] = hashlib.sha256(
+        _canonical_json(document)
+    ).hexdigest()
+    return _canonical_json(document) + b"\n"
+
+
+def _k2_k3_projection_record(
+    *,
+    source_record: dict[str, object],
+    ticket_count: int,
+    window: str,
+    report_row: dict[str, object] | None,
+    input_provenance: dict[str, object] | None,
+) -> dict[str, object]:
+    """Render one flat exact-native cell without inventing unavailable metrics."""
+
+    base = {
+        "authority_mode": source_record.get("authority_mode"),
+        "duplicate_alias_target": source_record.get("duplicate_alias_target"),
+        "legacy_method_id": source_record.get("legacy_method_id"),
+        "method_family": source_record.get("method_family"),
+        "metrics_unavailable_reason": source_record.get(
+            "metrics_unavailable_reason"
+        ),
+        "reproduction_status": source_record.get("reproduction_status"),
+        "source_path": source_record.get("source_path"),
+        "strategy_id": source_record.get("strategy_id"),
+        "strategy_version": source_record.get("strategy_version"),
+        "ticket_count": ticket_count,
+        "unranked_reason": source_record.get("unranked_reason"),
+        "window": window,
+    }
+    if report_row is None:
+        metrics_unavailable_reason = source_record.get("metrics_unavailable_reason")
+        if isinstance(metrics_unavailable_reason, str) and metrics_unavailable_reason:
+            unavailable_reason = metrics_unavailable_reason
+            native_classification = "SOURCE_METRICS_UNAVAILABLE"
+        else:
+            source_unranked_reason = source_record.get("unranked_reason")
+            unavailable_reason = (
+                source_unranked_reason
+                if isinstance(source_unranked_reason, str) and source_unranked_reason
+                else _string(
+                    source_record.get("reproduction_status"),
+                    "source reproduction_status",
+                )
+            )
+            native_classification = "SOURCE_STRATEGY_NOT_BACKTESTED"
+        return {
+            **base,
+            "available_observation_count": None,
+            "coverage": None,
+            "criterion": "OFFICIAL_ANY_PRIZE",
+            "effective_backtest_draw_count": None,
+            "execution_status_counts": None,
+            "input_canonical_sha256": None,
+            "input_raw_sha256": None,
+            "metric_status": "UNAVAILABLE",
+            "native_ticket_count_classification": native_classification,
+            "native_ticket_count_distribution": None,
+            "no_prize_count": None,
+            "observed_distinct_ticket_count": None,
+            "observed_duplicate_ticket_count": None,
+            "official_any_prize_count": None,
+            "official_any_prize_rate": None,
+            "official_prize_counts": None,
+            "official_random_baseline_delta": None,
+            "official_random_baseline_probability": None,
+            "rankable": False,
+            "successful_observation_count": None,
+            "ticket_position_count": None,
+            "unavailable_reason": unavailable_reason,
+            "window_available_draws": None,
+            "window_complete": None,
+            "window_requested_draws": None,
+        }
+    if input_provenance is None:
+        raise B649ProjectionBuildError("exact-native record has no input provenance")
+
+    def decimal_or_none(key: str) -> str | None:
+        value = report_row.get(key)
+        if value is None:
+            return None
+        return cast(str, _rational(value, key)["decimal_18"])
+
+    prize_counts_value = report_row.get("official_prize_tier_counts")
+    if prize_counts_value is None:
+        official_prize_counts = None
+    else:
+        prize_counts = _mapping(prize_counts_value, "official prize tier counts")
+        official_prize_counts = {
+            "first": _integer(prize_counts.get("FIRST"), "FIRST"),
+            "second": _integer(prize_counts.get("SECOND"), "SECOND"),
+            "third": _integer(prize_counts.get("THIRD"), "THIRD"),
+            "fourth": _integer(prize_counts.get("FOURTH"), "FOURTH"),
+            "fifth": _integer(prize_counts.get("FIFTH"), "FIFTH"),
+            "sixth": _integer(prize_counts.get("SIXTH"), "SIXTH"),
+            "seventh": _integer(prize_counts.get("SEVENTH"), "SEVENTH"),
+            "general": _integer(prize_counts.get("GENERAL"), "GENERAL"),
+        }
+    metric_status = _string(report_row.get("metric_status"), "metric_status")
+    if metric_status not in {"AVAILABLE", "UNAVAILABLE"}:
+        raise B649ProjectionBuildError("exact-native metric_status is invalid")
+    rankable = _boolean(report_row.get("rankable"), "rankable")
+    if rankable is not (metric_status == "AVAILABLE"):
+        raise B649ProjectionBuildError(
+            "exact-native availability and rankability contradict each other"
+        )
+    return {
+        **base,
+        "available_observation_count": report_row.get(
+            "available_observation_count"
+        ),
+        "coverage": decimal_or_none("coverage"),
+        "criterion": "OFFICIAL_ANY_PRIZE",
+        "effective_backtest_draw_count": report_row.get(
+            "available_observation_count"
+        ),
+        "execution_status_counts": report_row.get("execution_status_counts"),
+        "input_canonical_sha256": input_provenance["input_canonical_sha256"],
+        "input_raw_sha256": input_provenance["input_raw_sha256"],
+        "metric_status": metric_status,
+        "native_ticket_count_classification": report_row.get(
+            "native_ticket_count_classification"
+        ),
+        "native_ticket_count_distribution": report_row.get(
+            "native_ticket_count_distribution"
+        ),
+        "no_prize_count": report_row.get("no_prize_count"),
+        "observed_distinct_ticket_count": report_row.get(
+            "observed_distinct_ticket_count"
+        ),
+        "observed_duplicate_ticket_count": report_row.get(
+            "observed_duplicate_ticket_count"
+        ),
+        "official_any_prize_count": report_row.get("official_any_prize_count"),
+        "official_any_prize_rate": decimal_or_none("official_any_prize_rate"),
+        "official_prize_counts": official_prize_counts,
+        "official_random_baseline_delta": decimal_or_none(
+            "official_random_baseline_delta"
+        ),
+        "official_random_baseline_probability": decimal_or_none(
+            "official_random_baseline_probability"
+        ),
+        "rankable": rankable,
+        "successful_observation_count": report_row.get(
+            "successful_observation_count"
+        ),
+        "ticket_position_count": report_row.get("ticket_position_count"),
+        "unavailable_reason": report_row.get("unavailable_reason"),
+        "window_available_draws": report_row.get("window_available_draws"),
+        "window_complete": report_row.get("window_complete"),
+        "window_requested_draws": report_row.get("window_requested_draws"),
+    }
 
 
 def expected_report_manifest(
@@ -923,8 +1405,262 @@ def _canonical_json(value: object) -> bytes:
 __all__ = [
     "AUTHORITY_MODE_FRESH_REPRODUCTION",
     "AUTHORITY_MODE_HISTORICAL_SEALED",
+    "K2_K3_CANONICAL_DATASET_ID",
+    "K2_K3_CANONICAL_DATASET_VERSION",
+    "K2_K3_CANONICAL_REPLAY_SOURCE_SHA256",
+    "K2_K3_CANONICAL_TARGET_SEQUENCE_SHA256",
+    "K2_K3_PROJECTION_SCHEMA_VERSION",
+    "K2_K3_PROJECTION_VERSION",
+    "K2_K3_SOURCE_PROJECTION_FILE_SHA256",
+    "K2_K3_SOURCE_PROJECTION_SHA256",
     "B649ProjectionBuildError",
     "ExpectedReport",
+    "build_b649_k2_k3_projection_bytes",
     "build_b649_projection_bytes",
     "expected_report_manifest",
 ]
+
+def build_b649_k10_projection_bytes(
+    manifest_path: Path,
+    evidence_path: Path,
+    ranking_path: Path,
+) -> bytes:
+    """Copy the three sealed authorities; no evaluator or replay entrypoint is called."""
+    raw_sources: dict[str, bytes] = {}
+    for label, path, pin in (
+        ("manifest", manifest_path, "sealed_manifest_sha256"),
+        ("evidence", evidence_path, "target_evidence_sha256"),
+        ("ranking", ranking_path, "source_ranking_sha256"),
+    ):
+        raw = path.read_bytes()
+        if hashlib.sha256(raw).hexdigest() != K10_AUTHORITY[pin]:
+            raise B649ProjectionBuildError(f"K10 {label} checksum mismatch")
+        raw_sources[label] = raw
+    manifest = cast(dict[str, object], json.loads(raw_sources["manifest"]))
+    ranking = cast(dict[str, object], json.loads(raw_sources["ranking"]))
+    source = cast(dict[str, object], manifest["source"])
+    catalog_manifest = cast(dict[str, object], manifest["catalog"])
+    contract = cast(dict[str, object], manifest["execution_contract"])
+    evidence = cast(dict[str, object], manifest["evidence"])
+    windows = cast(dict[str, dict[str, object]], manifest["target_windows"])
+    universe = cast(list[str], K10_AUTHORITY["strategy_universe"])
+    if not (
+        source["head"] == K10_AUTHORITY["authority_head"]
+        and source["tree"] == K10_AUTHORITY["authority_tree"]
+        and manifest["run_id"] == ranking["run_id"] == K10_AUTHORITY["run_id"]
+        and contract["lottery_type"] == K10_AUTHORITY["lottery"]
+        and manifest["max_visible_draw"] == ranking["cutoff"] == K10_AUTHORITY["cutoff"]
+        and ranking["k10_strategy_universe"] == universe
+        and catalog_manifest["k10_count"] == 2
+        and catalog_manifest["k10_universe_fingerprint"]
+        == K10_AUTHORITY["producer_universe_fingerprint"]
+        and catalog_manifest["catalog_fingerprint"] == K10_AUTHORITY["producer_catalog_fingerprint"]
+        and evidence["record_count"] == len(raw_sources["evidence"].splitlines()) == 4332
+        and set(windows) == set(K10_WINDOW_BOUNDARIES)
+    ):
+        raise B649ProjectionBuildError("K10 sealed authority mismatch")
+    for name, boundary in K10_WINDOW_BOUNDARIES.items():
+        if {k: v for k, v in windows[name].items() if k != "draw_numbers"} != boundary:
+            raise B649ProjectionBuildError("K10 window boundary mismatch")
+    catalog = load_full_strategy_catalog()
+    if catalog.catalog_sha256 != K10_AUTHORITY["consumer_catalog_sha256"]:
+        raise B649ProjectionBuildError("K10 consumer catalog checksum mismatch")
+    catalog_by_id = {r.strategy_id: r for r in catalog.records}
+    boards = cast(dict[str, dict[str, dict[str, object]]], ranking["leaderboards"])
+    if set(boards) != {"K10"} or set(boards["K10"]) != set(K10_WINDOW_BOUNDARIES):
+        raise B649ProjectionBuildError("K10 leaderboard universe mismatch")
+    records: list[dict[str, object]] = []
+    for window, board in boards["K10"].items():
+        for source_order, producer in enumerate(
+            cast(list[dict[str, object]], board["rankings"]), 1
+        ):
+            sid = str(producer["strategy_id"])
+            if sid not in universe or producer["native_ticket_count"] != 10:
+                raise B649ProjectionBuildError("K10 producer strategy mismatch")
+            meta = catalog_by_id[sid]
+            records.append(
+                {
+                    **producer,
+                    "official_rank": producer["rank"],
+                    "position": None,
+                    "source_order": source_order,
+                    "unranked_reason": producer.get("unranked_reason"),
+                    "unavailable_reason": producer.get("unavailable_reason"),
+                    "ticket_count": 10,
+                    "window": window,
+                    "criterion": "OFFICIAL_ANY_PRIZE",
+                    "catalog_strategy_version": meta.strategy_version,
+                    "legacy_method_id": meta.legacy_method_id,
+                    "source_path": meta.source_path,
+                    "method_family": meta.method_family,
+                    "reproduction_status": meta.reproduction_status.value,
+                    "duplicate_alias_target": meta.duplicate_alias_target,
+                    "provenance": K10_AUTHORITY,
+                    "window_boundary": K10_WINDOW_BOUNDARIES[window],
+                }
+            )
+    payload: dict[str, object] = {
+        "projection_schema_version": K10_PROJECTION_SCHEMA_VERSION,
+        "records": records,
+    }
+    canonical = json.dumps(
+        payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    ).encode()
+    payload["projection_sha256"] = hashlib.sha256(canonical).hexdigest()
+    output = (
+        json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")) + "\n"
+    ).encode()
+    parse_b649_k10_projection(output)
+    return output
+
+
+def build_b649_k5_projection_bytes(
+    manifest_path: Path,
+    evidence_path: Path,
+    ranking_path: Path,
+) -> bytes:
+    """Materialize the frozen K5 publication; inspect evidence identity, never evaluate it."""
+    raw_sources: dict[str, bytes] = {}
+    for label, path, pin in (
+        ("manifest", manifest_path, "sealed_manifest_sha256"),
+        ("evidence", evidence_path, "target_evidence_sha256"),
+        ("ranking", ranking_path, "source_ranking_sha256"),
+    ):
+        raw = path.read_bytes()
+        if hashlib.sha256(raw).hexdigest() != K5_AUTHORITY[pin]:
+            raise B649ProjectionBuildError(f"K5 {label} checksum mismatch")
+        raw_sources[label] = raw
+    try:
+        return _materialize_b649_k5(raw_sources)
+    except (KeyError, TypeError, ValueError) as exc:
+        raise B649ProjectionBuildError("K5 source schema mismatch") from exc
+
+
+def _materialize_b649_k5(raw_sources: dict[str, bytes]) -> bytes:
+    manifest = cast(dict[str, object], json.loads(raw_sources["manifest"]))
+    ranking = cast(dict[str, object], json.loads(raw_sources["ranking"]))
+    source = cast(dict[str, object], manifest["source"])
+    catalog_manifest = cast(dict[str, object], manifest["catalog"])
+    contract = cast(dict[str, object], manifest["execution_contract"])
+    evidence = cast(dict[str, object], manifest["evidence"])
+    windows = cast(dict[str, dict[str, object]], manifest["target_windows"])
+    manifest_universe = cast(dict[str, object], manifest["universe"])
+    source_universe = cast(dict[str, list[str]], ranking["strategy_universe"])
+    universe = cast(list[str], K5_AUTHORITY["strategy_universe"])
+    source_scopes = {"K2", "K3", "K5", "K10"}
+    if not (
+        manifest["schema_version"] == K5_AUTHORITY["authority_schema"]
+        and ranking["schema_version"] == K5_AUTHORITY["source_ranking_schema"]
+        and source["head"] == K5_AUTHORITY["authority_head"]
+        and source["tree"] == K5_AUTHORITY["authority_tree"]
+        and manifest["run_id"] == K5_AUTHORITY["run_id"]
+        and ranking["run_id"] == K5_AUTHORITY["source_ranking_run_id"]
+        and contract["lottery_type"] == K5_AUTHORITY["lottery"]
+        and manifest["max_visible_draw"] == ranking["cutoff"] == K5_AUTHORITY["cutoff"]
+        and ranking["budgets"] == K5_AUTHORITY["source_ranking_k_values"]
+        and ranking["primary_metric"] == "OFFICIAL_ANY_PRIZE"
+        and ranking["partition_keys"] == ["ticket_count", "window"]
+        and cast(dict[str, object], ranking["inputs"])["k2_k3_k5_authority"]
+        == K5_AUTHORITY["manifest_locator"]
+        and manifest_universe["k5_strategy_ids"] == source_universe["K5"] == universe
+        and {k for k in manifest_universe if k.endswith("_strategy_ids")}
+        == {"k2_strategy_ids", "k3_strategy_ids", "k5_strategy_ids"}
+        and set(source_universe) == source_scopes
+        and set(cast(dict[str, object], catalog_manifest["strategies"])) == {"k2", "k3", "k5"}
+        and catalog_manifest["k5_count"] == 5
+        and catalog_manifest["k5_universe_fingerprint"]
+        == K5_AUTHORITY["producer_universe_fingerprint"]
+        and catalog_manifest["catalog_fingerprint"] == K5_AUTHORITY["producer_catalog_fingerprint"]
+        and evidence["sha256"] == K5_AUTHORITY["target_evidence_sha256"]
+        and evidence["schema_version"] == "B649_EXACT_NATIVE_TARGET_EVIDENCE_V1"
+        and evidence["record_count"] == K5_AUTHORITY["target_evidence_total_row_count"]
+        and set(windows) == set(K5_WINDOW_BOUNDARIES)
+    ):
+        raise B649ProjectionBuildError("K5 sealed authority or source scope mismatch")
+    evidence_counts: Counter[tuple[int, str]] = Counter()
+    for line in io.BytesIO(raw_sources["evidence"]):
+        row = cast(dict[str, object], json.loads(line))
+        k, sid = row["native_ticket_count"], row["strategy_id"]
+        if not (
+            row["schema_version"] == evidence["schema_version"]
+            and row["run_id"] == K5_AUTHORITY["run_id"]
+            and type(k) is int
+            and k in (2, 3, 5)
+            and sid in cast(list[str], manifest_universe[f"k{k}_strategy_ids"])
+        ):
+            raise B649ProjectionBuildError("K5 shared evidence identity mismatch")
+        evidence_counts[(cast(int, k), cast(str, sid))] += 1
+    if not (
+        sum(evidence_counts.values()) == K5_AUTHORITY["target_evidence_total_row_count"]
+        and sum(n for (k, _), n in evidence_counts.items() if k == 5)
+        == K5_AUTHORITY["evidence_record_count"]
+        and set(evidence_counts)
+        == {
+            (k, sid)
+            for k in (2, 3, 5)
+            for sid in cast(list[str], manifest_universe[f"k{k}_strategy_ids"])
+        }
+        and all(n == 2166 for n in evidence_counts.values())
+    ):
+        raise B649ProjectionBuildError("K5 shared evidence count/scope mismatch")
+    ranking_windows = cast(dict[str, dict[str, object]], ranking["windows"])
+    for name, boundary in K5_WINDOW_BOUNDARIES.items():
+        if {
+            k: v for k, v in windows[name].items() if k != "draw_numbers"
+        } != boundary or ranking_windows[name] != {
+            k: v for k, v in boundary.items() if not k.endswith("_date")
+        }:
+            raise B649ProjectionBuildError("K5 window boundary mismatch")
+    catalog = load_full_strategy_catalog()
+    if catalog.catalog_sha256 != K5_AUTHORITY["consumer_catalog_sha256"]:
+        raise B649ProjectionBuildError("K5 consumer catalog checksum mismatch")
+    catalog_by_id = {r.strategy_id: r for r in catalog.records}
+    boards = cast(dict[str, dict[str, dict[str, object]]], ranking["leaderboards"])
+    if set(boards) != source_scopes or set(boards["K5"]) != set(K5_WINDOW_BOUNDARIES):
+        raise B649ProjectionBuildError("K5 leaderboard universe mismatch")
+    records: list[dict[str, object]] = []
+    ties_by_window: dict[str, object] = {}
+    for window in K5_WINDOW_BOUNDARIES:
+        board = boards["K5"][window]
+        ties_by_window[window] = board["ties"]
+        for source_order, producer in enumerate(
+            cast(list[dict[str, object]], board["rankings"]), 1
+        ):
+            sid = str(producer["strategy_id"])
+            if sid not in universe or producer["native_ticket_count"] != 5:
+                raise B649ProjectionBuildError("K5 producer strategy mismatch")
+            # The legacy catalog enriches matching identities; the producer owns admission.
+            meta = catalog_by_id.get(sid)
+            records.append(
+                {
+                    **producer,
+                    "official_rank": producer["rank"],
+                    "source_order": source_order,
+                    "ticket_count": 5,
+                    "window": window,
+                    "criterion": "OFFICIAL_ANY_PRIZE",
+                    "catalog_strategy_version": meta.strategy_version if meta else None,
+                    "legacy_method_id": meta.legacy_method_id if meta else None,
+                    "source_path": meta.source_path if meta else None,
+                    "method_family": meta.method_family if meta else None,
+                    "reproduction_status": meta.reproduction_status.value if meta else None,
+                    "duplicate_alias_target": meta.duplicate_alias_target if meta else None,
+                    "provenance": K5_AUTHORITY,
+                    "window_boundary": K5_WINDOW_BOUNDARIES[window],
+                }
+            )
+    payload: dict[str, object] = {
+        "projection_schema_version": K5_PROJECTION_SCHEMA_VERSION,
+        "provenance": K5_AUTHORITY,
+        "records": records,
+        "ties_by_window": ties_by_window,
+    }
+    canonical = json.dumps(
+        payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    ).encode()
+    payload["projection_sha256"] = hashlib.sha256(canonical).hexdigest()
+    output = (
+        json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")) + "\n"
+    ).encode()
+    parse_b649_k5_projection(output)
+    return output

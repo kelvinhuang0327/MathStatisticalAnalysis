@@ -19,6 +19,7 @@ import {
 } from '../../api/replayPortfolioRankings'
 import type { LotteryType } from '../../api/strategies'
 import { lotteryTypeDisplayLabel } from '../../utils/lotteryDisplayLabel'
+import LotteryNumberBall from '../../components/LotteryNumberBall.vue'
 
 function lotteryLabel(value: string): string {
   return lotteryTypeDisplayLabel(value as LotteryType)
@@ -355,10 +356,22 @@ onBeforeUnmount(() => {
                     <summary>{{ portfolio.tickets.length }} tickets</summary>
                     <ul class="ticket-list">
                       <li v-for="ticket in portfolio.tickets" :key="ticket.ticket_sha256">
-                        {{ ticket.main_numbers.join(', ') }}
-                        <template v-if="ticket.special_numbers.length">
-                          · special {{ ticket.special_numbers.join(', ') }}
-                        </template>
+                        <span class="number-chips">
+                          <LotteryNumberBall
+                            v-for="num in ticket.main_numbers"
+                            :key="num"
+                            :value="num"
+                            variant="main"
+                            size="sm"
+                          />
+                          <LotteryNumberBall
+                            v-for="snum in ticket.special_numbers"
+                            :key="snum"
+                            :value="snum"
+                            variant="special"
+                            size="sm"
+                          />
+                        </span>
                         — {{ ticket.main_hit_count }} hit(s){{ ticket.special_hit ? ' + special' : '' }}
                       </li>
                     </ul>

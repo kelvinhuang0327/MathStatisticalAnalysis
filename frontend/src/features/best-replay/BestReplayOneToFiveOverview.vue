@@ -81,9 +81,9 @@ const emit = defineEmits<{
             <div class="metric-row">
               <span class="metric-name">Successes / Draws</span>
               <span class="metric-value font-mono">
-                {{ props.itemsByTicketCount[count]?.winningTargets !== null ? props.itemsByTicketCount[count]?.winningTargets?.toLocaleString() : '—' }}
+                {{ props.itemsByTicketCount[count]?.winningTargets?.toLocaleString() ?? 'Not provided' }}
                 /
-                {{ props.itemsByTicketCount[count]?.evaluatedTargets?.toLocaleString() }}
+                {{ props.itemsByTicketCount[count]?.evaluatedTargets?.toLocaleString() ?? 'Unknown' }}
               </span>
             </div>
             <div class="metric-row">

@@ -11,6 +11,7 @@ from __future__ import annotations
 import dataclasses
 import hashlib
 import json
+from collections import Counter
 from fractions import Fraction
 from pathlib import Path
 from typing import cast
@@ -18,6 +19,9 @@ from typing import cast
 import pytest
 
 from lottolab.application.b649_sealed_geometry_portfolio import (
+    K20_PORTFOLIO_VERSION,
+    K20_V7_PORTFOLIO_VERSION,
+    SEALED_GEOMETRY_K20_VERSIONS,
     SEALED_GEOMETRY_METHOD_ID,
     SEALED_GEOMETRY_METHOD_VERSION,
     SEALED_GEOMETRY_PORTFOLIOS,
@@ -51,7 +55,18 @@ K20_EXPECTED_ENGINE_NORMALIZED_SHA256 = (
     "eaed652900d101881b678a1515d2a366bff9de6723dbec2ec9c82fe0d0d7844c"
 )
 K20_START_ARTIFACT_SHA256 = "10d4ef5102ad824fb2c96503501694bef3f878504c8c164698c86f2f1ce35a3b"
-K20_EXPECTED_OUTCOME_COUNT = 313263888
+K20_V7_TASK_ID = "B649_K20_EXACT_TWO_TICKET_JOINT_REPLACEMENT_SWEEP_R1"
+K20_V7_RESULT_LOCATOR = (
+    "docs/research/matrix-native-results/"
+    "b649-k20-exact-two-ticket-joint-replacement-terminal-r1.json"
+)
+K20_V7_RESULT_SHA256 = "e7698ff0d76a91c69378bf9bf0badb4ed9ac4f4dd146c71e5c94300bcfbbff9e"
+K20_V7_PORTFOLIO_SHA256 = "0045ac8837fc82e9a585d812173341ac12e05c5de201af7f8fedeacafa19e1ff"
+K20_V7_COVERAGE = 313239661
+K20_V8_COVERAGE = 313263888
+K20_TOTAL_OUTCOMES = 601304088
+K20_V8_SOURCE_REVISION = "da26b434499927f5611e3c3d12e50485f2e58a6a"
+K20_EXPECTED_OUTCOME_COUNT = K20_V8_COVERAGE
 K20_EXPECTED_EXACT_FRACTION = Fraction(1864666, 3579191)
 K5_EXPECTED_TICKETS = (
     (1, 2, 3, 4, 5, 6),
@@ -128,9 +143,16 @@ def test_exact_probabilities_reproduce_the_sealed_record(
     assert result.m3_plus == entry.m3_plus_probability
     assert result.official_any_prize == entry.official_any_prize_probability
     if size == 20:
-        assert result.official_any_prize_outcome_count == K20_EXPECTED_OUTCOME_COUNT
+        historical_v7 = SEALED_GEOMETRY_K20_VERSIONS[K20_V7_PORTFOLIO_VERSION]
+        old_result = evaluate_portfolio(historical_v7.tickets, draws=big_lotto_draws)
+        outcome_space = result.main_draw_count * result.special_count
+        gain = result.official_any_prize_outcome_count - old_result.official_any_prize_outcome_count
+
+        assert result.official_any_prize_outcome_count == K20_V8_COVERAGE
+        assert old_result.official_any_prize_outcome_count == K20_V7_COVERAGE
         assert result.official_any_prize == K20_EXPECTED_EXACT_FRACTION
-        assert result.main_draw_count * result.special_count == 601304088
+        assert outcome_space == K20_TOTAL_OUTCOMES
+        assert gain == 24227
 
 
 @pytest.mark.parametrize("size", [5, 10, 20])
@@ -189,6 +211,13 @@ def test_k20_matches_v8_two_ticket_ascent_authority() -> None:
     assert entry.tickets == tuple(tuple(ticket) for ticket in sealed_tickets)
     assert entry.portfolio_sha256 == K20_SOURCE_PORTFOLIO_SHA256
     assert canonical_portfolio_sha256(entry.tickets) == K20_SOURCE_PORTFOLIO_SHA256
+    assert K20_V7_PORTFOLIO_VERSION == "7.0.0"
+    assert K20_PORTFOLIO_VERSION == "8.0.0"
+    assert SEALED_GEOMETRY_K20_VERSIONS[K20_PORTFOLIO_VERSION] is entry
+    assert entry.portfolio_version == K20_PORTFOLIO_VERSION
+    assert entry.source_revision == K20_V8_SOURCE_REVISION
+    assert entry.provenance()["portfolio_version"] == K20_PORTFOLIO_VERSION
+    assert entry.provenance()["source_revision"] == K20_V8_SOURCE_REVISION
     assert str(entry.official_any_prize_probability) == authority["FINAL_EXACT_FRACTION"]
     assert entry.official_any_prize_probability == K20_EXPECTED_EXACT_FRACTION
     assert entry.m3_plus_probability == Fraction(1201973, 3495954)
@@ -206,6 +235,45 @@ def test_k20_matches_v8_two_ticket_ascent_authority() -> None:
         == "PROVEN_FOR_VALIDATED_EXACT_TWO_TICKET_NEIGHBORHOOD"
     )
     assert authority["GLOBAL_K20_OPTIMUM_STATUS"] == "UNKNOWN"
+
+
+def test_k20_v7_history_matches_the_sealed_sweep_terminal() -> None:
+    entry = SEALED_GEOMETRY_K20_VERSIONS[K20_V7_PORTFOLIO_VERSION]
+    authority = _committed_json(K20_V7_RESULT_LOCATOR, K20_V7_RESULT_SHA256)
+    sealed_tickets = cast(list[list[int]], authority["TICKETS"])
+
+    assert entry.source_id == K20_V7_TASK_ID
+    assert entry.source_locator == K20_V7_RESULT_LOCATOR
+    assert entry.source_sha256 == K20_V7_RESULT_SHA256
+    assert entry.tickets == tuple(tuple(ticket) for ticket in sealed_tickets)
+    assert entry.portfolio_sha256 == K20_V7_PORTFOLIO_SHA256
+    assert canonical_portfolio_sha256(entry.tickets) == K20_V7_PORTFOLIO_SHA256
+    assert str(entry.official_any_prize_probability) == authority["FINAL_EXACT_FRACTION"]
+    assert entry.official_any_prize_probability == Fraction(44748523, 85900584)
+
+    assert authority["TASK_ID"] == K20_V7_TASK_ID
+    assert authority["RESULT_TYPE"] == "TERMINAL_LOCAL_OPTIMUM"
+    assert authority["METHOD_ID"] == SEALED_GEOMETRY_METHOD_ID
+    assert authority["METHOD_VERSION"] == K20_V7_PORTFOLIO_VERSION
+    assert authority["FINAL_EXACT_COUNT"] == K20_V7_COVERAGE
+    assert authority["TOTAL_OUTCOMES"] == K20_TOTAL_OUTCOMES
+    assert authority["GLOBAL_OPTIMUM"] == "UNKNOWN"
+
+
+def test_k20_geometry_matches_the_sealed_overlap_and_usage_contract() -> None:
+    tickets = SEALED_GEOMETRY_PORTFOLIOS[20].tickets
+    overlaps = [
+        len(set(left) & set(right))
+        for index, left in enumerate(tickets)
+        for right in tickets[index + 1 :]
+    ]
+    number_uses = Counter(number for ticket in tickets for number in ticket)
+
+    assert len(tickets) == len(set(tickets)) == 20
+    assert Counter(overlaps) == Counter({0: 97, 1: 93})
+    assert max(overlaps) == 1
+    assert sum(overlap * overlap for overlap in overlaps) == 93
+    assert Counter(number_uses.values()) == Counter({2: 27, 3: 22})
 
 
 def test_k5_reaches_the_committed_frontier_best_found_with_disjoint_tickets() -> None:
@@ -240,6 +308,25 @@ def test_every_ticket_number_is_used_at_k10_and_k20() -> None:
 )
 def test_integrity_check_rejects_any_drift(tickets: tuple[tuple[int, ...], ...]) -> None:
     tampered = dataclasses.replace(SEALED_GEOMETRY_PORTFOLIOS[5], tickets=tickets)
+
+    with pytest.raises(SealedGeometryIntegrityError):
+        verify_sealed_geometry_portfolio(tampered)
+
+
+@pytest.mark.parametrize(
+    "tickets",
+    [
+        (*SEALED_GEOMETRY_PORTFOLIOS[20].tickets[:-1], SEALED_GEOMETRY_PORTFOLIOS[20].tickets[0]),
+        (
+            (1, 2, 3, 4, 5, 50),
+            *SEALED_GEOMETRY_PORTFOLIOS[20].tickets[1:],
+        ),
+    ],
+)
+def test_k20_integrity_rejects_duplicate_or_illegal_ticket(
+    tickets: tuple[tuple[int, ...], ...],
+) -> None:
+    tampered = dataclasses.replace(SEALED_GEOMETRY_PORTFOLIOS[20], tickets=tickets)
 
     with pytest.raises(SealedGeometryIntegrityError):
         verify_sealed_geometry_portfolio(tampered)

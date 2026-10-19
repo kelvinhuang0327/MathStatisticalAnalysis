@@ -113,7 +113,14 @@ jobs:
             echo "::error::CHECKOUT_IDENTITY_CHANGED: provenance materialization changed the test checkout"
             exit 1
           fi
-      - run: uv run pytest
+      - name: Run shared certificate tests in an isolated process
+        run: |
+          uv run pytest \
+            tests/unit/test_b649_three_max_profiles_shared_certificate_r2.py
+      - name: Run remaining backend tests in an isolated process
+        run: |
+          uv run pytest \
+            --ignore=tests/unit/test_b649_three_max_profiles_shared_certificate_r2.py
 
   frontend:
     runs-on: ubuntu-latest

@@ -473,10 +473,16 @@ def run_prediction(
 
     cutoff_int = int(cutoff_draw)
     target_int = int(target_draw)
+    ranking_cutoff = "115000096"
     if cutoff_int >= target_int:
         raise ValueError(
             f"Causal violation: cutoff draw {cutoff_draw} "
             f"must be strictly less than target draw {target_draw}"
+        )
+    if int(ranking_cutoff) > cutoff_int:
+        raise ValueError(
+            f"Causal violation: frozen ranking cutoff {ranking_cutoff} "
+            f"must not exceed prediction cutoff {cutoff_draw}"
         )
 
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -497,7 +503,6 @@ def run_prediction(
     dmap = {d.strategy_id: d for d in descriptors}
 
     slots: dict[str, list[dict[str, Any]]] = {}
-    ranking_cutoff = "115000096"
     for k_val in (2, 3, 5):
         hist_k = rank_history["hist"][ranking_cutoff][str(k_val)][:3]
         slots[f"K{k_val}"] = [

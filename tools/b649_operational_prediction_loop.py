@@ -65,6 +65,9 @@ from lottolab.strategies.adapters.biglotto_wave14 import (
     BigLottoHpsbOptimizerAdapter,
     BigLottoTestEcpAdapter,
 )
+from tools.b649_horizon_minimax_v01_compat import (
+    BigLottoHorizonMinimaxDisagreementAdapter as BigLottoHorizonMinimaxV01CompatAdapter,
+)
 
 TASK_ID = "B649_OPERATIONAL_PREDICTION_LOOP_R1"
 LOTTERY_TYPE = LotteryType.BIG_LOTTO.value
@@ -150,10 +153,8 @@ STRATEGY_STREAMS: tuple[StrategyStream, ...] = (
             "short_horizon": 30,
             "middle_horizon": 120,
             "full_prefix": True,
-            "maximum_cross_ticket_overlap": 2,
+            "maximum_cross_ticket_overlap": 0,
         },
-        producer_fingerprint=PRODUCER_FINGERPRINT,
-        pinned_implementation=PINNED_IMPLEMENTATION,
     ),
     StrategyStream(
         strategy_id=BigLottoSocialWisdomAntiPopularityAdapter.strategy_id,
@@ -416,7 +417,7 @@ def create_prediction_payload(
         history_rows=history.rows,
     )
 
-    adapter = BigLottoHorizonMinimaxDisagreementAdapter()
+    adapter = BigLottoHorizonMinimaxV01CompatAdapter()
     if (
         adapter.strategy_id != STRATEGY_ID
         or adapter.strategy_version != STRATEGY_VERSION
@@ -1628,15 +1629,18 @@ def _canonical_json(value: object) -> str:
 
 def _create_json(path: Path, value: object) -> None:
     path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    created = False
     try:
-        with path.open("x", encoding="utf-8", newline="\n") as handle:
+        handle = path.open("x", encoding="utf-8", newline="\n")
+        created = True
+        with handle:
             os.chmod(path, 0o600)
             handle.write(_canonical_json(value) + "\n")
             handle.flush()
             os.fsync(handle.fileno())
     except BaseException:
-        if path.exists():
-            path.unlink()
+        if created:
+            path.unlink(missing_ok=True)
         raise
 
 

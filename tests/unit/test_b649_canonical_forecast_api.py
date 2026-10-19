@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from datetime import UTC, datetime, timedelta, tzinfo
 from pathlib import Path
 from typing import cast
 
@@ -40,6 +41,19 @@ TARGET = {
     "scheduled_at": "2026-09-18T12:30:00Z",
 }
 ARTIFACT_SCHEDULED_AT = "2026-09-18T20:30:00+08:00"
+FROZEN_NOW = datetime(2026, 9, 18, 20, 30, tzinfo=UTC)
+FRESH_FINISHED_AT = FROZEN_NOW.isoformat().replace("+00:00", "Z")
+_MISSING = object()
+
+
+class _FixedDateTime(datetime):
+    current: datetime = FROZEN_NOW
+
+    @classmethod
+    def now(cls, tz: tzinfo | None = None) -> datetime:
+        if tz is None:
+            return cls.current.replace(tzinfo=None)
+        return cls.current.astimezone(tz)
 
 
 def _json_bytes(value: object) -> bytes:
@@ -99,10 +113,13 @@ def _health(
     *,
     forecast_health: dict[str, object] | None = None,
     portfolio_health: dict[str, object] | None = None,
+    finished_at: object = FRESH_FINISHED_AT,
+    stale_after_seconds: object = _MISSING,
 ) -> dict[str, object]:
-    return {
+    health: dict[str, object] = {
         "schema_version": "b649-goalc-local-scheduler-health-v1",
         "current_status": "PREDRAW_READY",
+        "finished_at": finished_at,
         "current_target": TARGET,
         "forecast_materialization": {
             "status": "COMPLETE",
@@ -125,6 +142,11 @@ def _health(
             **({} if portfolio_health is None else portfolio_health),
         },
     }
+    if finished_at is _MISSING:
+        del health["finished_at"]
+    if stale_after_seconds is not _MISSING:
+        health["stale_after_seconds"] = stale_after_seconds
+    return health
 
 
 def _write_bundle(
@@ -134,6 +156,8 @@ def _write_bundle(
     portfolio: dict[str, object] | None = None,
     forecast_health: dict[str, object] | None = None,
     portfolio_health: dict[str, object] | None = None,
+    finished_at: object = FRESH_FINISHED_AT,
+    stale_after_seconds: object = _MISSING,
 ) -> tuple[Path, Path, Path]:
     forecast_path = root / "forecast.json"
     portfolio_path = root / "portfolio.json"
@@ -150,6 +174,8 @@ def _write_bundle(
                 portfolio_path,
                 forecast_health=forecast_health,
                 portfolio_health=portfolio_health,
+                finished_at=finished_at,
+                stale_after_seconds=stale_after_seconds,
             )
         )
     )
@@ -157,8 +183,149 @@ def _write_bundle(
 
 
 def _client(monkeypatch: MonkeyPatch, health_path: Path) -> httpx.Client:
+    _FixedDateTime.current = FROZEN_NOW
+    monkeypatch.setattr(api_module, "datetime", _FixedDateTime)
     monkeypatch.setenv(HEALTH_PATH_ENV, str(health_path))
     return cast(httpx.Client, TestClient(create_app()))
+
+
+def _unavailable(response: httpx.Response) -> None:
+    assert response.status_code == 503
+    assert response.json() == {
+        "error_code": "B649_CANONICAL_FORECAST_UNAVAILABLE",
+        "message": "The scheduler-owned B649 canonical forecast is unavailable.",
+    }
+
+
+def test_health_freshness_accepts_exact_default_threshold(
+    tmp_path: Path, monkeypatch: MonkeyPatch
+) -> None:
+    health_path, _, _ = _write_bundle(
+        tmp_path,
+        finished_at=(FROZEN_NOW - timedelta(seconds=900)).isoformat().replace(
+            "+00:00", "Z"
+        ),
+    )
+
+    response = _client(monkeypatch, health_path).get(PATH)
+
+    assert response.status_code == 200
+
+
+def test_health_freshness_rejects_over_default_threshold_and_ignores_caller_clock(
+    tmp_path: Path, monkeypatch: MonkeyPatch
+) -> None:
+    health_path, _, _ = _write_bundle(
+        tmp_path,
+        finished_at=(FROZEN_NOW - timedelta(seconds=901)).isoformat().replace(
+            "+00:00", "Z"
+        ),
+    )
+
+    response = _client(monkeypatch, health_path).request(
+        "GET",
+        PATH,
+        params={"stale_after_seconds": 999999, "now": "2099-01-01T00:00:00Z"},
+        json={"stale_after_seconds": 999999, "now": "2099-01-01T00:00:00Z"},
+    )
+
+    _unavailable(response)
+    assert str(health_path) not in response.text
+
+
+@pytest.mark.parametrize(
+    ("age_seconds", "stale_after_seconds", "expected_status"),
+    [(60, 60, 200), (61, 60, 503)],
+)
+def test_health_freshness_uses_recorded_threshold(
+    tmp_path: Path,
+    monkeypatch: MonkeyPatch,
+    age_seconds: int,
+    stale_after_seconds: int,
+    expected_status: int,
+) -> None:
+    health_path, _, _ = _write_bundle(
+        tmp_path,
+        finished_at=(FROZEN_NOW - timedelta(seconds=age_seconds)).isoformat().replace(
+            "+00:00", "Z"
+        ),
+        stale_after_seconds=stale_after_seconds,
+    )
+
+    response = _client(monkeypatch, health_path).get(PATH)
+
+    assert response.status_code == expected_status
+
+
+@pytest.mark.parametrize(
+    "finished_at",
+    [
+        _MISSING,
+        "not-a-timestamp",
+        "2026-09-18T20:30:00",
+        "2026-09-18T20:30:01Z",
+    ],
+    ids=["missing", "malformed", "timezone-naive", "future"],
+)
+def test_health_freshness_rejects_unusable_finish_time(
+    tmp_path: Path,
+    monkeypatch: MonkeyPatch,
+    finished_at: object,
+) -> None:
+    health_path, _, _ = _write_bundle(tmp_path, finished_at=finished_at)
+
+    response = _client(monkeypatch, health_path).get(PATH)
+
+    _unavailable(response)
+    assert str(health_path) not in response.text
+
+
+@pytest.mark.parametrize(
+    "stale_after_seconds", [True, 0, -1, 900.0, "900", None],
+    ids=["bool", "zero", "negative", "float", "text", "null"],
+)
+def test_health_freshness_rejects_invalid_threshold(
+    tmp_path: Path,
+    monkeypatch: MonkeyPatch,
+    stale_after_seconds: object,
+) -> None:
+    health_path, _, _ = _write_bundle(
+        tmp_path,
+        stale_after_seconds=stale_after_seconds,
+    )
+
+    response = _client(monkeypatch, health_path).get(PATH)
+
+    _unavailable(response)
+
+
+def test_health_freshness_accepts_equivalent_zoned_timestamp(
+    tmp_path: Path, monkeypatch: MonkeyPatch
+) -> None:
+    health_path, _, _ = _write_bundle(
+        tmp_path,
+        finished_at="2026-09-19T04:30:00+08:00",
+    )
+
+    response = _client(monkeypatch, health_path).get(PATH)
+
+    assert response.status_code == 200
+
+
+def test_health_freshness_is_rechecked_for_each_request(
+    tmp_path: Path, monkeypatch: MonkeyPatch
+) -> None:
+    health_path, _, _ = _write_bundle(tmp_path)
+    health_before = health_path.read_bytes()
+    client = _client(monkeypatch, health_path)
+
+    fresh_response = client.get(PATH)
+    _FixedDateTime.current = FROZEN_NOW + timedelta(seconds=901)
+    stale_response = client.get(PATH)
+
+    assert fresh_response.status_code == 200
+    _unavailable(stale_response)
+    assert health_path.read_bytes() == health_before
 
 
 def test_success_projects_scheduler_artifacts_and_ignores_caller_paths(

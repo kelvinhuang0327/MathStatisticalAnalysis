@@ -177,6 +177,16 @@ def _health_authority(
     if current_status is not None and current_status != "PREDRAW_READY":
         raise _UnavailableError("scheduler health is not current")
 
+    finished_at = _instant(health.get("finished_at"), "scheduler health finish")
+    stale_after_seconds = health.get("stale_after_seconds", 900)
+    if type(stale_after_seconds) is not int or stale_after_seconds <= 0:
+        raise _UnavailableError("scheduler health freshness policy is invalid")
+    age_seconds = (datetime.now(UTC) - finished_at).total_seconds()
+    if age_seconds < 0:
+        raise _UnavailableError("scheduler health finish time is in the future")
+    if age_seconds > stale_after_seconds:
+        raise _UnavailableError("scheduler health is stale")
+
     target = _target(health.get("current_target"), "current target")
     forecast_health = _mapping(health.get("forecast_materialization"), "forecast health")
     portfolio_health = _mapping(

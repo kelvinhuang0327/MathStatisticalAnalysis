@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import subprocess
+import sys
 from pathlib import Path
 from typing import Any, cast
 
@@ -24,7 +26,7 @@ from tools.change_aware_verification import (
 )
 
 WORKTREE_ROOT = Path(__file__).resolve().parents[2]
-TOOL_PATH = WORKTREE_ROOT / "tools" / "change_aware_verification.py"
+TOOL_PATH = (WORKTREE_ROOT / "tools" / "change_aware_verification.py").resolve()
 LEDGER_REL = CANONICAL_CURRENT_AUTHORITY_PATH
 SOURCE_REL = "src/lottolab/research/synthetic_pinned_source.py"
 TEST_REL = "tests/unit/test_synthetic_pinned_source.py"
@@ -653,13 +655,22 @@ def _commit_all(repo: Path, message: str) -> None:
     _git(repo, "commit", "--no-verify", "-m", message)
 
 
-def _run_preflight_process(repo: Path, extra: list[str]) -> subprocess.CompletedProcess[str]:
+def _run_preflight_process(
+    repo: Path,
+    extra: list[str],
+    *,
+    env: dict[str, str] | None = None,
+) -> subprocess.CompletedProcess[str]:
+    child_env = os.environ.copy()
+    if env is not None:
+        child_env.update(env)
     return subprocess.run(
-        ["uv", "run", "python", str(TOOL_PATH), "--repo-root", str(repo), *extra],
+        [sys.executable, str(TOOL_PATH), "--repo-root", str(repo), *extra],
         cwd=WORKTREE_ROOT,
         capture_output=True,
         text=True,
         check=False,
+        env=child_env,
     )
 
 
@@ -865,6 +876,8 @@ def test_cli_process_stale_pin_reports_refresh_required(tmp_path: Path) -> None:
     assert mismatch["status"] == "confirmed_mismatch"
     assert mismatch["source_path"] == SOURCE_REL
     assert mismatch["consumer_path"] == CANONICAL_CURRENT_AUTHORITY_PATH
+    assert mismatch["consumer_id"] == "SYNTHETIC_PINNED_V1"
+    assert mismatch["pin_kind"] == "source_files"
     assert mismatch["pinned_sha256"] == _sha256(OLD_SOURCE)
     assert mismatch["snapshot_sha256"] == _sha256(NEW_SOURCE)
     assert STRUCTURAL_VERIFICATION_COMMAND in payload["recommended_commands"]
@@ -882,6 +895,77 @@ def test_cli_process_matching_pin_is_not_refresh_required(tmp_path: Path) -> Non
     assert SOURCE_REL in proc.stdout
     assert CANONICAL_CURRENT_AUTHORITY_PATH in proc.stdout
     assert "[affected]" in proc.stdout
+
+
+def test_cli_process_does_not_invoke_uv_with_invalid_cache_dir(tmp_path: Path) -> None:
+    repo = _build_synthetic_repo(tmp_path, source=NEW_SOURCE, pinned_source=NEW_SOURCE)
+    fake_bin = tmp_path / "fake-bin"
+    fake_bin.mkdir()
+    fake_uv = fake_bin / "uv"
+    uv_invocations = tmp_path / "uv-invocations.log"
+    fake_uv.write_text(
+        "#!/bin/sh\n"
+        'printf "%s\\n" "$*" >> "$UV_INVOCATION_LOG"\n'
+        "exit 73\n",
+        encoding="utf-8",
+    )
+    fake_uv.chmod(0o755)
+
+    invalid_cache_dir = tmp_path / "invalid-uv-cache-dir"
+    invalid_cache_dir.write_text("this path is a file, not a cache directory\n", encoding="utf-8")
+    env = {
+        "PATH": os.pathsep.join([str(fake_bin), os.environ.get("PATH", "")]),
+        "UV_CACHE_DIR": str(invalid_cache_dir),
+        "UV_INVOCATION_LOG": str(uv_invocations),
+    }
+
+    proc = _run_preflight_process(
+        repo,
+        ["--changed-path", SOURCE_REL, "--format", "json"],
+        env=env,
+    )
+
+    assert proc.returncode == 0, proc.stderr
+    assert proc.args[0] == sys.executable
+    assert Path(proc.args[1]) == TOOL_PATH
+    payload = json.loads(proc.stdout)
+    assert PINNED_SOURCE_REFRESH_RULE not in payload["rules_triggered"]
+    assert not any(
+        hit["status"] == "confirmed_mismatch"
+        for hit in payload["pinned_source_consumers"]
+    )
+    affected = next(
+        hit
+        for hit in payload["pinned_source_consumers"]
+        if hit["source_path"] == SOURCE_REL
+    )
+    assert affected["status"] == "affected"
+    assert affected["consumer_path"] == CANONICAL_CURRENT_AUTHORITY_PATH
+    assert affected["pinned_sha256"] == _sha256(NEW_SOURCE)
+    assert affected["snapshot_sha256"] == _sha256(NEW_SOURCE)
+    assert invalid_cache_dir.is_file()
+    assert not uv_invocations.exists()
+
+
+def test_cli_process_invalid_mixed_input_modes_returns_usage_error(tmp_path: Path) -> None:
+    repo = _build_synthetic_repo(tmp_path, source=NEW_SOURCE, pinned_source=NEW_SOURCE)
+    proc = _run_preflight_process(
+        repo,
+        [
+            "--changed-path",
+            SOURCE_REL,
+            "--base-ref",
+            "HEAD",
+            "--head-ref",
+            "HEAD",
+        ],
+    )
+
+    assert proc.returncode == 64
+    assert proc.stdout == ""
+    assert proc.stderr.strip() == (
+        "Usage error: Cannot mix --changed-path with --base-ref/--head-ref."
+    )
 
 
 def test_git_range_deletion_of_pinned_source_is_confirmed_mismatch(

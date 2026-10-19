@@ -303,6 +303,39 @@ def test_ac2_runtime_and_catalog_version_integrity() -> None:
     assert minimal_dual.version == "v0.1"
 
 
+@pytest.mark.parametrize("target_draw", ["115000096", "115000098"])
+def test_frozen_ranking_after_prediction_cutoff_is_rejected(
+    tmp_path: Path, target_draw: str
+) -> None:
+    db_path, rank_history_path = _create_portable_prediction_inputs(tmp_path)
+    output_dir = tmp_path / "future_ranking"
+    with pytest.raises(ValueError, match="frozen ranking cutoff"):
+        run_prediction(
+            db_path=db_path,
+            rank_history_path=rank_history_path,
+            cutoff_draw="115000095",
+            target_draw=target_draw,
+            output_dir=output_dir,
+            raw_predictions_override=_portable_raw_predictions(),
+        )
+    assert not output_dir.exists()
+
+
+def test_frozen_ranking_at_prediction_cutoff_remains_causal(tmp_path: Path) -> None:
+    db_path, rank_history_path = _create_portable_prediction_inputs(tmp_path)
+    doc = run_prediction(
+        db_path=db_path,
+        rank_history_path=rank_history_path,
+        cutoff_draw="115000096",
+        target_draw="115000097",
+        output_dir=tmp_path / "ranking_boundary",
+        raw_predictions_override=_portable_raw_predictions(),
+    )
+    assert doc["ranking_cutoff_draw_number"] == doc["prediction_cutoff_draw_number"]
+    assert doc["causal_history_last_draw_number"] == "115000096"
+    assert doc["overall_pipeline_status"] == "COMPLETE"
+
+
 def test_ac2_causal_cutoff_and_future_data_exclusion(tmp_path: Path) -> None:
     """AC2:
     Validate cutoff < target.

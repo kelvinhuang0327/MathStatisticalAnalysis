@@ -10,7 +10,7 @@ import {
 
 const props = defineProps<{
   strategyId: string
-  strategyVersion?: string
+  strategyVersion?: string | null
   ticketCount: TicketCount
   game: string
   itemsByHorizon: Partial<Record<string, BestReplayItem | null>>
@@ -37,7 +37,7 @@ const maxHitRate = computed(() => {
       </div>
       <div class="horizon-comparison__meta">
         <span class="status-badge status-badge--accent">
-          {{ strategyVersion || 'v1.0' }}
+          {{ strategyVersion || 'Version not provided' }}
         </span>
       </div>
     </div>
@@ -101,13 +101,13 @@ const maxHitRate = computed(() => {
             <div class="detail-item">
               <span class="detail-item__label">Evaluated Draws</span>
               <span class="detail-item__value">
-                {{ itemsByHorizon[h.key]?.evaluatedTargets }}
+                {{ itemsByHorizon[h.key]?.evaluatedTargets?.toLocaleString() ?? 'Unknown' }}
               </span>
             </div>
             <div class="detail-item">
               <span class="detail-item__label">Winning Targets</span>
               <span class="detail-item__value">
-                {{ itemsByHorizon[h.key]?.winningTargets ?? '—' }}
+                {{ itemsByHorizon[h.key]?.winningTargets?.toLocaleString() ?? 'Not provided' }}
               </span>
             </div>
             <div class="detail-item">

@@ -1,0 +1,157 @@
+{
+  "ACCEPTED_WALL_SECONDS": 150.95535795799515,
+  "AUDIT_STATUS": "PASS_OWNER_AUTHORIZED_SLEEP_EXCLUSION",
+  "CAPTURE_CALENDAR_WALL_SECONDS": 7347.0,
+  "CAPTURE_ENDED_AT": "2026-10-17T17:15:32Z",
+  "CAPTURE_EXIT_STATUS": 0,
+  "CAPTURE_LOCATOR": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_K20_SIX_TICKET_CYCLIC_TRANSFER_EXACT_4320_R1/captures/cyclic-exact-4320-r1.json",
+  "CAPTURE_SHA256": "e3f0735de50b09d68a7e5f7b99328215ef65941359c9c7e943349a45d3218a8b",
+  "CAPTURE_STARTED_AT": "2026-10-17T15:13:05Z",
+  "CLOCK_IMPLEMENTATION": "namespace(implementation='mach_absolute_time()', monotonic=True, adjustable=False, resolution=4.166666666666666e-08)",
+  "CPU_LIMIT_PASS": true,
+  "CPU_SECONDS": 145.237255,
+  "EXECUTED_JOURNAL_LOCATOR": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_K20_SIX_TICKET_CYCLIC_TRANSFER_EXACT_4320_R1/captures/computation-progress.original.jsonl",
+  "EXECUTED_JOURNAL_SHA256": "9def9d45cdea28275c369b6beabe1913cecc37b0fc5d21a879065ebec12e73bc",
+  "EXECUTED_RESULT_LOCATOR": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_K20_SIX_TICKET_CYCLIC_TRANSFER_EXACT_4320_R1/captures/computation-result.original.json",
+  "EXECUTED_RESULT_SHA256": "15bd4258ad5fedbca83b2e9dd96afb91182acbf64d19e5ee129bdc757e00feec",
+  "FINAL_ACCEPTANCE_STATUS": "PASS",
+  "FINAL_JOURNAL_SHA256": "e9850f502758ff7b896c58ed6488d6f92a562d31cbb81e4837ed68855a8670ce",
+  "FINAL_RESULT_LOCATOR": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_K20_SIX_TICKET_CYCLIC_TRANSFER_EXACT_4320_R1/.task-data/B649_K20_SIX_TICKET_CYCLIC_TRANSFER_EXACT_4320_R1/result.json",
+  "FINAL_RESULT_SHA256": "05ef81a1e740eee54c47aa747b93c51267ffdc2c2a3c0667fd33d1df09995bbb",
+  "HOST_SLEEP_EVENTS": [
+    {
+      "at": "2026-10-17T23:14:30+08:00",
+      "event": "Sleep",
+      "message": "Entering Sleep state due to 'Clamshell Sleep':TCPKeepAlive=active Using Batt (Charge:63%) 596 secs  "
+    },
+    {
+      "at": "2026-10-17T23:24:26+08:00",
+      "event": "DarkWake",
+      "message": "DarkWake from Deep Idle [CDNP] : due to NUB.SPMI0.SW3 nub-spmi0.0x02 rtc/Maintenance Using BATT (Charge:63%) 9 secs    "
+    },
+    {
+      "at": "2026-10-17T23:24:35+08:00",
+      "event": "Sleep",
+      "message": "Entering Sleep state due to 'Maintenance Sleep':TCPKeepAlive=active Using Batt (Charge:63%) 948 secs  "
+    },
+    {
+      "at": "2026-10-17T23:40:23+08:00",
+      "event": "DarkWake",
+      "message": "DarkWake from Deep Idle [CDNP] : due to NUB.SPMI0.SW3 nub-spmi0.0x02 rtc/SleepService Using BATT (Charge:63%) 2 secs    "
+    },
+    {
+      "at": "2026-10-17T23:40:25+08:00",
+      "event": "Sleep",
+      "message": "Entering Sleep state due to 'Sleep Service Back to Sleep':TCPKeepAlive=active Using Batt (Charge:63%) 141 secs  "
+    },
+    {
+      "at": "2026-10-17T23:42:46+08:00",
+      "event": "DarkWake",
+      "message": "DarkWake from Deep Idle [CDNP] : due to NUB.SPMI0.SW3 nub-spmi0.0x02 rtc/Maintenance Using BATT (Charge:63%) 6 secs    "
+    },
+    {
+      "at": "2026-10-17T23:42:52+08:00",
+      "event": "Sleep",
+      "message": "Entering Sleep state due to 'Maintenance Sleep':TCPKeepAlive=active Using Batt (Charge:63%) 900 secs  "
+    },
+    {
+      "at": "2026-10-17T23:57:52+08:00",
+      "event": "DarkWake",
+      "message": "DarkWake from Deep Idle [CDNP] : due to NUB.SPMI0.SW3 nub-spmi0.0x02 rtc/SleepService Using BATT (Charge:63%) 2 secs    "
+    },
+    {
+      "at": "2026-10-17T23:57:54+08:00",
+      "event": "Sleep",
+      "message": "Entering Sleep state due to 'Sleep Service Back to Sleep':TCPKeepAlive=active Using Batt (Charge:63%) 950 secs  "
+    },
+    {
+      "at": "2026-10-18T00:13:44+08:00",
+      "event": "DarkWake",
+      "message": "DarkWake from Deep Idle [CDNP] : due to NUB.SPMI0.SW3 nub-spmi0.0x02 rtc/SleepService Using BATT (Charge:63%) 2 secs    "
+    },
+    {
+      "at": "2026-10-18T00:13:46+08:00",
+      "event": "Sleep",
+      "message": "Entering Sleep state due to 'Sleep Service Back to Sleep':TCPKeepAlive=active Using Batt (Charge:63%) 40 secs   "
+    },
+    {
+      "at": "2026-10-18T00:14:26+08:00",
+      "event": "DarkWake",
+      "message": "DarkWake from Deep Idle [CDNP] : due to NUB.SPMI0.SW3 nub-spmi0.0x02 rtc/Maintenance Using BATT (Charge:63%) 6 secs    "
+    },
+    {
+      "at": "2026-10-18T00:14:32+08:00",
+      "event": "Sleep",
+      "message": "Entering Sleep state due to 'Maintenance Sleep':TCPKeepAlive=active Using Batt (Charge:63%) 958 secs  "
+    },
+    {
+      "at": "2026-10-18T00:30:30+08:00",
+      "event": "DarkWake",
+      "message": "DarkWake from Deep Idle [CDNP] : due to NUB.SPMI0.SW3 nub-spmi0.0x02 rtc/SleepService Using BATT (Charge:63%) 2 secs    "
+    },
+    {
+      "at": "2026-10-18T00:30:32+08:00",
+      "event": "Sleep",
+      "message": "Entering Sleep state due to 'Sleep Service Back to Sleep':TCPKeepAlive=active Using Batt (Charge:63%) 1046 secs "
+    },
+    {
+      "at": "2026-10-18T00:47:58+08:00",
+      "event": "DarkWake",
+      "message": "DarkWake from Deep Idle [CDNP] : due to NUB.SPMI0.SW3 nub-spmi0.0x02 rtc/SleepService Using BATT (Charge:63%) 2 secs    "
+    },
+    {
+      "at": "2026-10-18T00:48:00+08:00",
+      "event": "Sleep",
+      "message": "Entering Sleep state due to 'Sleep Service Back to Sleep':TCPKeepAlive=active Using Batt (Charge:62%) 1033 secs "
+    },
+    {
+      "at": "2026-10-18T01:05:13+08:00",
+      "event": "DarkWake",
+      "message": "DarkWake from Deep Idle [CDNP] : due to NUB.SPMI0.SW3 nub-spmi0.0x02 rtc/SleepService Using BATT (Charge:62%) 2 secs    "
+    },
+    {
+      "at": "2026-10-18T01:05:15+08:00",
+      "event": "Sleep",
+      "message": "Entering Sleep state due to 'Sleep Service Back to Sleep':TCPKeepAlive=active Using Batt (Charge:62%) 610 secs  "
+    },
+    {
+      "at": "2026-10-18T01:15:25+08:00",
+      "event": "DarkWake",
+      "message": "DarkWake from Deep Idle [CDNP] : due to NUB.SPMI0.SW3 nub-spmi0.0x02 rtc/Maintenance Using BATT (Charge:62%) 6 secs    "
+    },
+    {
+      "at": "2026-10-18T01:15:31+08:00",
+      "event": "Sleep",
+      "message": "Entering Sleep state due to 'Maintenance Sleep':TCPKeepAlive=active Using Batt (Charge:62%) 2 secs    "
+    }
+  ],
+  "MATH_ACCEPTANCE_AC1_AC11": "PASS; complete score ledger, all required independent recounts, zero exact mismatches; hashes/source binding verified",
+  "MAX_WALL_SECONDS": 5400.0,
+  "MEMORY_LIMIT_PASS": true,
+  "NO_BUDGET_RESET": true,
+  "NO_RESTART": true,
+  "NUMERICAL_SCIENTIFIC_RESULT": "NO_STRICT_GAIN_IN_FIXED_CYCLIC_FAMILY",
+  "ORIGINAL_CALENDAR_LIMIT_FINDING": "Retained: capture calendar elapsed 7347 seconds exceeds 5400; Owner expressly accepted monotonic time excluding host sleep for this execution.",
+  "OWNER_AUTHORIZATION_LOCATOR": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_K20_SIX_TICKET_CYCLIC_TRANSFER_EXACT_4320_R1/wall-time-owner-acceptance.json",
+  "OWNER_AUTHORIZATION_SHA256": "f16424dbe6c5471571a28101c952dd681cc01f2982e32d6026fc2b093a360bf7",
+  "OWNER_SLEEP_EXCLUSION_AUTHORIZATION": "CURRENT_WORKER_CONVERSATION_USER_MESSAGE: \u6388\u6b0a\u6392\u9664\u4e3b\u6a5f\u7761\u7720\u9a57\u6536",
+  "PEAK_MEMORY_BYTES": 889110528,
+  "PREVIOUS_AUDIT_CORRECTION": "The earlier tool projection AC1_AC12 PASS did not establish the separate wall-time constraint. Final resource gate is not PASS.",
+  "PRE_OWNER_AUDIT_LOCATOR": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_K20_SIX_TICKET_CYCLIC_TRANSFER_EXACT_4320_R1/captures/resource-budget-audit.pre-owner-acceptance.json",
+  "PRE_OWNER_AUDIT_SHA256": "535b75caca070c112cdf4e02c320dfd9bc6b362035ec4a11a88fd91dae6be1d5",
+  "PROCESS_MONOTONIC_WALL_SECONDS": 150.95535795799515,
+  "RESOURCE_BUDGET_STATUS": "PASS",
+  "SAME_EXECUTION_ID": "cyclic-exact-4320-r1",
+  "SLEEP_ESTIMATE_LIMITATION": "Power-management notifications are not an exact process uptime clock; not substituted for capture elapsed time or used to invent a budget exemption.",
+  "SLEEP_NOTIFICATION_INTERVAL_ESTIMATE_SECONDS": 7223.0,
+  "SOURCE_IDENTITY": {
+    "SOURCE_PATH": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_K20_SIX_TICKET_CYCLIC_TRANSFER_EXACT_4320_R1/src/lottolab/research/b649_k20_six_ticket_cyclic_transfer_exact_4320_r1.py",
+    "SOURCE_SHA256": "73c2f10e1a5c17b718099a47eecf2026c1154b7d411ef21cbc4e521f8e3ac7a3",
+    "TEST_PATH": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_K20_SIX_TICKET_CYCLIC_TRANSFER_EXACT_4320_R1/tests/unit/test_b649_k20_six_ticket_cyclic_transfer_exact_4320_r1.py",
+    "TEST_SHA256": "18ee90fe57c29b1362fd9dcb43b3eee7f54be9f59e5a92791a9132941003c989"
+  },
+  "TASK_ID": "B649_K20_SIX_TICKET_CYCLIC_TRANSFER_EXACT_4320_R1",
+  "TASK_STATUS": "COMPLETE_NO_GAIN",
+  "WALL_TIME_ACCOUNTING": "OWNER_AUTHORIZED_MONOTONIC_EXCLUDING_HOST_SLEEP",
+  "WORKSPACE_ACCEPTANCE_AC12": "PASS; only task-authorized writes; seven pinned read-input identities unchanged"
+}

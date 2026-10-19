@@ -1,0 +1,552 @@
+{
+  "TASK_ID": "B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2",
+  "TASK_STATUS": "COMPLETE_CERTIFIED_WITH_CAVEATS",
+  "ACTUAL_SKILL_LOCATOR": "/Users/kelvin/.codex/skills/fable-method/SKILL.md",
+  "ACTUAL_SKILL_SHA256": "747c0e75d8ecab37f475719943f26f457eda73014b1281971c89f6e4c4a21693",
+  "SKILL_VERSION": "No semantic version declared; exact SHA256 fingerprint recorded",
+  "IMPLEMENTATION_DEPTH": "NORMAL",
+  "DEPTH_SOURCE": "SKILL_FALLBACK",
+  "BASE_HEAD": "9acea1331e021a9623fa593997d90cfc89a69136",
+  "BASE_TREE": "de577e8d6f3ccbe52e663c96ee1528c95a0ee7ec",
+  "BASE_RESULT_SHA256": "9fbe17d020573835cd69f16296fee224ff4f83aef8b3e7a644f2ffaabdfe92c9",
+  "ORIGINAL_RESEARCH_TASK": "B649_S3_NEXT_OWNER_INDEPENDENT_SYMBOLIC_R1",
+  "RESEARCH_SOURCE_LOCATOR": {
+    "THREAD_ID": "01a143f5-0ccd-7f81-8a69-b748cd481c8f",
+    "TURN_ID": "01a143f5-18d7-7df3-81f1-6404044aa724"
+  },
+  "CANDIDATE_ZIP_SHA256": "NOT_USED; optional archive not read",
+  "WORKTREE_PATH": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2",
+  "WORKTREE_OWNERSHIP": "THIS_TASK_ONLY; new isolated official protected worktree",
+  "SOURCE_CHANGED_PATHS": [
+    "docs/research/matrix-native-results/b649-s3-t208-exact-profile-certificate-r2-result.json",
+    "src/lottolab/research/b649_s3_t208_exact_profile_certificate_r2.py",
+    "tests/unit/test_b649_s3_t208_exact_profile_certificate_r2.py"
+  ],
+  "TARGET_PROFILE": "55555555555443000000",
+  "DEGREE_HISTOGRAM": {
+    "0": 6,
+    "3": 1,
+    "4": 2,
+    "5": 11
+  },
+  "CORE_VERTICES": 14,
+  "ZERO_VERTICES": 6,
+  "INVARIANTS": {
+    "A_MAX": 193,
+    "CORE_VERTICES": 14,
+    "DEGREE_HISTOGRAM": {
+      "0": 6,
+      "3": 1,
+      "4": 2,
+      "5": 11
+    },
+    "E_G": 93,
+    "GOODMAN": 287,
+    "G_MAX": 11,
+    "J": 2259,
+    "PROFILE": "55555555555443000000",
+    "RESIDUAL_CAPACITIES": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      2,
+      2,
+      3
+    ],
+    "R_DOMAIN": [
+      6,
+      8,
+      10,
+      12,
+      14,
+      16,
+      18
+    ],
+    "SUM_D": 66,
+    "SUM_D2": 316,
+    "W": 821,
+    "ZERO_VERTICES": 6
+  },
+  "UNIVERSAL_T_CAP": 208,
+  "COVERAGE_PROOF": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/src/lottolab/research/b649_s3_t208_exact_profile_certificate_r2.py:1",
+  "CORE_CLASS_STATES": 432,
+  "ZERO_GRAPH_MASKS": 32768,
+  "INDEPENDENT_RECOUNT": "PASS; all core r/score/multiplicities and all zero graphical degree sequences; per-r extrema match",
+  "R_CLASS_MAXIMA": [
+    [
+      6,
+      -31,
+      6,
+      208
+    ],
+    [
+      8,
+      -44,
+      12,
+      201
+    ],
+    [
+      10,
+      -60,
+      20,
+      193
+    ],
+    [
+      12,
+      -76,
+      30,
+      187
+    ],
+    [
+      14,
+      -92,
+      42,
+      183
+    ],
+    [
+      16,
+      -108,
+      56,
+      181
+    ],
+    [
+      18,
+      -124,
+      66,
+      175
+    ]
+  ],
+  "ROUTE_B_AUTHORITY": "R2 local intersections and Bonferroni; R4 exact S3; R30/R32 Route B",
+  "ROUTE_B_RANGE": [
+    22,
+    208
+  ],
+  "ROUTE_B_TERMS_CHECKED": 187,
+  "ROUTE_B_ARGMAX": [
+    208
+  ],
+  "REFERENCE_FULL_BOUND": 312847544,
+  "STRONGER_BOUND_PROOF_LOCATOR": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/src/lottolab/research/b649_s3_t208_exact_profile_certificate_r2.py:1",
+  "STRONGER_BOUND_EVIDENCE": {
+    "G_MAX": 11,
+    "OPEN_WEDGE_MULTIPLIER": 9,
+    "PROVEN": true,
+    "REFERENCE_DIFFERENCE": 12544,
+    "S4_AT_208": 54656,
+    "THEOREM": "J <= 4*K4 + (g_max-2)*(W-3*T); see module proof"
+  },
+  "FINAL_VERIFIED_PROFILE_BOUND": 312835000,
+  "PROFILE_DELTA": 555396,
+  "CONDITIONAL_FAMILY_EFFECT": {
+    "DISPOSITION": "NOT_ADOPTED",
+    "REPORTED_DELTA": 1096
+  },
+  "FOCUSED_TESTS": "PASS: 20 tests independently rerun by Fresh-context Judge on exact committed HEAD/tree",
+  "RUFF": "PASS: Fresh-context committed-tree reproduction",
+  "PYRIGHT": "PASS: strict Python 3.13, Fresh-context committed-tree reproduction",
+  "LOCAL_COMMIT_COUNT": 1,
+  "FINAL_LOCAL_COMMIT": "6a7178354c302daa0ea98b638a687a043cade4d1",
+  "FINAL_COMMITTED_TREE": "6745a903fb1dabbea3939212fad0613020429d26",
+  "COMMITTED_PATHS": [
+    "docs/research/matrix-native-results/b649-s3-t208-exact-profile-certificate-r2-result.json",
+    "src/lottolab/research/b649_s3_t208_exact_profile_certificate_r2.py",
+    "tests/unit/test_b649_s3_t208_exact_profile_certificate_r2.py"
+  ],
+  "RESULT_SHA256": "7f76e162696850f80c68e25cc4dfcf288aa164003bf513c2d85e94f90955ae3b",
+  "WORKTREE_STATUS": "",
+  "FRESH_JUDGE": "VERIFIED_WITH_CAVEATS",
+  "JUDGE_REPORT_LOCATOR": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/judge-report.json",
+  "JUDGED_TREE": "6745a903fb1dabbea3939212fad0613020429d26",
+  "COMMIT_TREE_MATCH": "YES",
+  "G01_TO_G18": {
+    "G01": "PASS",
+    "G02": "PASS",
+    "G03": "PASS",
+    "G04": "PASS",
+    "G05": "PASS",
+    "G06": "PASS",
+    "G07": "PASS",
+    "G08": "PASS",
+    "G09": "PASS",
+    "G10": "PASS",
+    "G11": "PASS",
+    "G12": "PASS",
+    "G13": "PASS",
+    "G14": "PASS",
+    "G15": "PASS",
+    "G16": "PASS",
+    "G17": "PASS",
+    "G18": "PASS"
+  },
+  "FAMILY_AUTHORITY_MUTATED": "NO",
+  "OTHER_PROFILE_CERTIFICATES_CHANGED": "NO",
+  "REMOTE_WRITE": "NO",
+  "HEAVY_SOLVER_STARTED": "NO",
+  "LEGAL_ATTAINMENT": "UNKNOWN",
+  "GLOBAL_K20_OPTIMUM": "UNKNOWN",
+  "REMAINING_TASK_MODEL": {
+    "FAMILY_INTEGRATION": "強模型 — 已認證證書的後續 Family Authority 整合；須獨立任務授權",
+    "UNRESOLVED_LOCAL_CERTIFICATE_MATH": "NONE; strongest model only for a newly authorized mathematical problem"
+  },
+  "NEXT_ACTION": "END_WITH_EXACT_T208_CERTIFICATE_DISPOSITION",
+  "WRITE_LEDGER": {
+    "BYTECODE_AND_PYTEST_CACHE": "disabled; no new in-tree files",
+    "DELETED_TASK_TEMP": [
+      ".ruff_cache/CACHEDIR.TAG",
+      ".ruff_cache/.gitignore",
+      ".ruff_cache/0.15.21/10782392310438632730",
+      ".ruff_cache/0.15.21/9195585411781702428",
+      ".ruff_cache/0.15.21",
+      ".ruff_cache"
+    ],
+    "FAILED_FALSIFIABILITY_MUTATION": "Process-local no-op verifier only; no source write; expected failed negative test observed; restored fresh-process negative test passes.",
+    "RETAINED_FABLE": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/{executions,captures}/*.json; worker-handoff.json; later Judge report and captures",
+    "RETAINED_GIT": "one codex/b649-s3-t208-certificate-r2 branch, linked worktree metadata, index/objects and one commit; task-owned execution anchor",
+    "RETAINED_PRODUCT": [
+      "docs/research/matrix-native-results/b649-s3-t208-exact-profile-certificate-r2-result.json",
+      "src/lottolab/research/b649_s3_t208_exact_profile_certificate_r2.py",
+      "tests/unit/test_b649_s3_t208_exact_profile_certificate_r2.py"
+    ],
+    "RETAINED_WORKSPACE": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2",
+    "JUDGE": {
+      "candidate_unchanged_after_seal": true,
+      "judge_deleted_files": [],
+      "judge_git_lifecycle_mutations": [],
+      "judge_product_writes": [],
+      "judge_retained_files": [
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/judge-preflight.json",
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/judge-report.json",
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/captures/judge-independent-reproduction.json",
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/captures/judge-focused-pytest.json",
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/captures/judge-ruff.json",
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/captures/judge-strict-pyright.json",
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/captures/judge-certificate-cli.json",
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/executions/judge-independent-reproduction.json",
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/executions/judge-focused-pytest.json",
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/executions/judge-ruff.json",
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/executions/judge-strict-pyright.json",
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/executions/judge-certificate-cli.json"
+      ],
+      "judge_scratch": "NONE; PYTHONDONTWRITEBYTECODE=1 and python -B; pytest cache disabled; Ruff --no-cache.",
+      "official_runtime_metadata": "Five sequential protected runs update the existing task-owned stable common-metadata execution lock lineage and create their official execution/capture files. No marker initialization or alternate launcher.",
+      "worker_process_termination_ledger": [
+        {
+          "COMMAND": "git fsmonitor--daemon run --detach --ipc-threads=8",
+          "EVIDENCE": "FD10 bound exact task lock inode 248062733; open directory and fsmonitor socket under exact new task worktree.",
+          "EXIT": 0,
+          "FORCE_USED": false,
+          "PID": 97073,
+          "POST_OBSERVATION": "lsof exact lock: no open handles",
+          "SHUTDOWN": "git -c core.fsmonitor=false -C <exact task worktree> fsmonitor--daemon stop",
+          "TASK_OWNED": true
+        }
+      ],
+      "worker_retained_deleted_ledger": {
+        "BYTECODE_AND_PYTEST_CACHE": "disabled; no new in-tree files",
+        "DELETED_TASK_TEMP": [
+          ".ruff_cache/CACHEDIR.TAG",
+          ".ruff_cache/.gitignore",
+          ".ruff_cache/0.15.21/10782392310438632730",
+          ".ruff_cache/0.15.21/9195585411781702428",
+          ".ruff_cache/0.15.21",
+          ".ruff_cache"
+        ],
+        "FAILED_FALSIFIABILITY_MUTATION": "Process-local no-op verifier only; no source write; expected failed negative test observed; restored fresh-process negative test passes.",
+        "RETAINED_FABLE": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/{executions,captures}/*.json; worker-handoff.json; later Judge report and captures",
+        "RETAINED_GIT": "one codex/b649-s3-t208-certificate-r2 branch, linked worktree metadata, index/objects and one commit; task-owned execution anchor",
+        "RETAINED_PRODUCT": [
+          "docs/research/matrix-native-results/b649-s3-t208-exact-profile-certificate-r2-result.json",
+          "src/lottolab/research/b649_s3_t208_exact_profile_certificate_r2.py",
+          "tests/unit/test_b649_s3_t208_exact_profile_certificate_r2.py"
+        ],
+        "RETAINED_WORKSPACE": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2"
+      }
+    },
+    "FINAL_RECEIPT": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/final-worker-receipt.json"
+  },
+  "FAILED_ATTEMPTS": [
+    {
+      "ACTION": "create native goal",
+      "RESULT": "Existing active native goal already represents user request; no goal created or prior goal resumed."
+    },
+    {
+      "ACTION": "first protected ruff-v1 attempt",
+      "RESULT": "PRIOR_PROCESS_ACTIVE before execution acquisition; no ruff record created. Task-owned git fsmonitor inherited FD10."
+    },
+    {
+      "ACTION": "initial direct Pyright parameter selection",
+      "RESULT": "--pythonpath and --venvpath mutually exclusive; no analysis performed."
+    },
+    {
+      "ACTION": "strict-pyright-v1",
+      "RESULT": "one missing list annotation; fixed before commit."
+    },
+    {
+      "ACTION": "strict-pyright-v2",
+      "RESULT": "environment inferred Python 3.9; corrected --pythonversion 3.13; no source changes."
+    },
+    {
+      "ACTION": "focused-tests-v1",
+      "RESULT": "19 passed, 1 test fixture StopIteration; all S4 multiples of 7; test corrected to a genuinely fractional K4 ceiling."
+    }
+  ],
+  "PROCESS_TERMINATION_LEDGER": [
+    {
+      "COMMAND": "git fsmonitor--daemon run --detach --ipc-threads=8",
+      "EVIDENCE": "FD10 bound exact task lock inode 248062733; open directory and fsmonitor socket under exact new task worktree.",
+      "EXIT": 0,
+      "FORCE_USED": false,
+      "PID": 97073,
+      "POST_OBSERVATION": "lsof exact lock: no open handles",
+      "SHUTDOWN": "git -c core.fsmonitor=false -C <exact task worktree> fsmonitor--daemon stop",
+      "TASK_OWNED": true
+    }
+  ],
+  "CHECK_RECEIPTS": {
+    "create-worktree": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/captures/create-worktree.json",
+    "falsifiability": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/captures/falsifiability.json",
+    "final-candidate-validation": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/captures/final-candidate-validation.json",
+    "focused-tests-v1": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/captures/focused-tests-v1.json",
+    "focused-tests-v2": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/captures/focused-tests-v2.json",
+    "generate-result-v1": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/captures/generate-result-v1.json",
+    "generate-result-v2": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/captures/generate-result-v2.json",
+    "generate-result-v3": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/captures/generate-result-v3.json",
+    "ruff-final": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/captures/ruff-final.json",
+    "ruff-v1": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/captures/ruff-v1.json",
+    "strict-pyright-v1": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/captures/strict-pyright-v1.json",
+    "strict-pyright-v2": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/captures/strict-pyright-v2.json",
+    "strict-pyright-v3": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/captures/strict-pyright-v3.json",
+    "unique-local-commit": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/captures/unique-local-commit.json"
+  },
+  "RUNTIME_TRANSITION_OCCURRED": "NO product runtime identity changed; only task-owned fsmonitor was started by git and stopped",
+  "JUDGE_REPORT_SHA256": "12b0dace8690fbae019a8a0d262f96d695251abf115ddd457206b55dbb8a4e20",
+  "G01_TO_G18_EVIDENCE": [
+    {
+      "criterion": "G01",
+      "decision": "PASS",
+      "evidence": "independent Git raw-object hashes, result bytes/hash",
+      "observed_result": "Pinned Base commit/tree/result SHA256 independently confirmed.",
+      "requirement": "Base identity"
+    },
+    {
+      "criterion": "G02",
+      "decision": "PASS",
+      "evidence": "original Packet; read_thread 01a143f5-0ccd-7f81-8a69-b748cd481c8f; result provenance",
+      "observed_result": "Original research task and source thread identified. Optional ZIP explicitly NOT_USED; no claim of ZIP certification.",
+      "requirement": "Research and candidate provenance"
+    },
+    {
+      "criterion": "G03",
+      "decision": "PASS",
+      "evidence": "J02; independent facts and local model count",
+      "observed_result": "5^11,4^2,3^1,0^6; 14 core and six zero vertices under frozen support assumptions.",
+      "requirement": "Exact profile model"
+    },
+    {
+      "criterion": "G04",
+      "decision": "PASS",
+      "evidence": "independent reproduction",
+      "observed_result": "sum d=66, sum d²=316, E=93, W=821, J=2259, Goodman=287, A_max=193.",
+      "requirement": "Derived invariants"
+    },
+    {
+      "criterion": "G05",
+      "decision": "PASS",
+      "evidence": "J05; MATHEMATICAL_REVIEW",
+      "observed_result": "Complement degree balance and triangle decomposition yield exact T identity with constant 233.",
+      "requirement": "Core-zero exact identity"
+    },
+    {
+      "criterion": "G06",
+      "decision": "PASS",
+      "evidence": "J05; MATHEMATICAL_REVIEW",
+      "observed_result": "Each is a cardinality; classes have distinct vertex composition; sign is negative.",
+      "requirement": "Four nonnegative remainders"
+    },
+    {
+      "criterion": "G07",
+      "decision": "PASS",
+      "evidence": "module universal coverage; MATHEMATICAL_REVIEW",
+      "observed_result": "sigma in 0..6-d; 1<=zeta<=6; even r in 6..18; no legal realization excluded.",
+      "requirement": "Cross-degree restrictions"
+    },
+    {
+      "criterion": "G08",
+      "decision": "PASS",
+      "evidence": "judge-independent-reproduction",
+      "observed_result": "Full class rows and all r/score multiplicities independently reproduced.",
+      "requirement": "432 core classes"
+    },
+    {
+      "criterion": "G09",
+      "decision": "PASS",
+      "evidence": "judge-independent-reproduction",
+      "observed_result": "Full 15-bit mask range scanned; mask-domain SHA and every per-r graphical sequence set match.",
+      "requirement": "32768 zero masks"
+    },
+    {
+      "criterion": "G10",
+      "decision": "PASS",
+      "evidence": "judge-independent-reproduction",
+      "observed_result": "Histogram and labelled enumeration/max-plus agree by class spectrum; edge masks and Erdős–Gallai agree by r and sequence.",
+      "requirement": "Independent recount agreement"
+    },
+    {
+      "criterion": "G11",
+      "decision": "PASS",
+      "evidence": "J03/J04/J05",
+      "observed_result": "All seven per-r relaxed maxima match required table; global maximum 208.",
+      "requirement": "Universal T<=208"
+    },
+    {
+      "criterion": "G12",
+      "decision": "PASS",
+      "evidence": "J07",
+      "observed_result": "All six values in all 187 terms independently checked; complete range and argmax.",
+      "requirement": "All 187 exact Route-B terms"
+    },
+    {
+      "criterion": "G13",
+      "decision": "PASS",
+      "evidence": "J08/J09",
+      "observed_result": "g_max-2=9 motif theorem proves stronger S4; reference-ten formula is separately preserved and insufficient alone.",
+      "requirement": "Additional proof for 312835000"
+    },
+    {
+      "criterion": "G14",
+      "decision": "PASS",
+      "evidence": "judge-focused-pytest; judge-ruff; judge-strict-pyright; judge-certificate-cli",
+      "observed_result": "20 tests passed; Ruff passed; strict Pyright 0 errors/warnings/informations; read-only CLI passed.",
+      "requirement": "Focused tests and quality"
+    },
+    {
+      "criterion": "G15",
+      "decision": "PASS",
+      "evidence": "unique-local-commit lifecycle capture; final Git diff/count",
+      "observed_result": "Exactly one commit above immutable Base; exact allowed three-path set, all 100644 additions; no checkpoints in commit.",
+      "requirement": "One local commit and three paths"
+    },
+    {
+      "criterion": "G16",
+      "decision": "PASS",
+      "evidence": "this report; five final-tree execution identities",
+      "observed_result": "VERIFIED_WITH_CAVEATS at exact final committed HEAD/tree; candidate unchanged after sealing.",
+      "requirement": "Fresh-context Judge accepts same tree"
+    },
+    {
+      "criterion": "G17",
+      "decision": "PASS",
+      "evidence": "J11; task command/write ledger; primary create/final identities and counts",
+      "observed_result": "No this-task source write outside new certificate checkout; primary HEAD/tree unchanged; 55 non-task status entries remain. No dirty-content/other-worktree byte-immutability claim.",
+      "requirement": "Task-relative preservation"
+    },
+    {
+      "criterion": "G18",
+      "decision": "PASS",
+      "evidence": "exact command/write ledger; static execution path review; Judge command list",
+      "observed_result": "No push, PR, merge, heavy solver, CP-SAT solve, full portfolio enumeration or Family adoption. Official task-owned Git metadata/receipts and recorded fsmonitor lifecycle accounted for.",
+      "requirement": "No unauthorized side effects"
+    }
+  ],
+  "J01_TO_J12": {
+    "J01": "PASS",
+    "J02": "PASS",
+    "J03": "PASS",
+    "J04": "PASS",
+    "J05": "PASS",
+    "J06": "PASS",
+    "J07": "PASS",
+    "J08": "PASS",
+    "J09": "PASS",
+    "J10": "PASS",
+    "J11": "PASS",
+    "J12": "PASS"
+  },
+  "JUDGE_MODE": "FRESH_CONTEXT",
+  "JUDGE_DEPTH": "FULL",
+  "JUDGE_SESSION_LINEAGE": {
+    "agent_task": "/root/t208_judge",
+    "fork_turns": "none",
+    "implementation_context_inherited": false,
+    "parent_role": "Worker",
+    "worker_handoff_is_claims_only": true
+  },
+  "JUDGE_RUN_COUNTS": {
+    "CP_SAT": 0,
+    "certificate_cli": 1,
+    "complete_local_suite": 0,
+    "focused_pytest": 1,
+    "full_portfolio_enumeration": 0,
+    "heavy_solver": 0,
+    "independent_mathematical_reproduction": 1,
+    "judge_remediation": 0,
+    "protected_commands": 5,
+    "ruff": 1,
+    "strict_pyright": 1,
+    "tests_passed": 20
+  },
+  "CAVEATS": [
+    {
+      "description": "Upper-bound certification only. Legal attainment and GLOBAL_K20_OPTIMUM remain UNKNOWN; relaxation maxima do not establish support realizability.",
+      "id": "C01",
+      "material": false
+    },
+    {
+      "description": "Conditional Family delta1096 remains NOT_ADOPTED. No Family integration, publication, push, PR or merge is authorized or performed.",
+      "id": "C02",
+      "material": false
+    },
+    {
+      "description": "Historical R15 remains NOT_VERIFIED, as in immutable Base. This local exact-profile certificate does not retroactively certify unrelated history.",
+      "id": "C03",
+      "material": false
+    },
+    {
+      "description": "G17 is task-relative non-mutation. Exact candidate/Base/imported authority identity and primary HEAD/tree are verified; task write ledger is consistent. There is no sealed pre/post dirty-content or other-worktree snapshot, so this report makes no global shared-workstation byte-immutability claim.",
+      "id": "C04",
+      "material": false
+    }
+  ],
+  "AUTHORIZATION_STATUS": "Exact local one-commit certificate/Judge scope only; no expansion.",
+  "RULE_PINS": {
+    "/Users/kelvin/.codex/skills/fable-judge/SKILL.md": "491e120f12455d4046638ac89dfb55f794e953c8b98c4a12b7d094c58ecdfaa3",
+    "/Users/kelvin/.codex/skills/fable-judge/references/judge-depth-contract.md": "c02a2189582fcb0a08deef1d6e0faa3576eaf842b4f919d86d89045619193159",
+    "/Users/kelvin/.codex/skills/fable-method/SKILL.md": "747c0e75d8ecab37f475719943f26f457eda73014b1281971c89f6e4c4a21693",
+    "/Users/kelvin/.codex/skills/fable-method/references/judge-handoff.md": "0aeb32bc6a93afc064b8be5cce4c106fd1e76684b428277a38ffac1306ccabf4",
+    "/Users/kelvin/.codex/skills/fable-method/references/task-checkpoint.md": "ddec42a39a41919833fc04e7d351bea85c3cf5d7f097088667e23646871d4c9a"
+  },
+  "FINAL_BYTE_IDENTITY": {
+    "HEAD": "6a7178354c302daa0ea98b638a687a043cade4d1",
+    "TREE": "6745a903fb1dabbea3939212fad0613020429d26",
+    "STATUS": "",
+    "COMMITTED_PATHS": [
+      "docs/research/matrix-native-results/b649-s3-t208-exact-profile-certificate-r2-result.json",
+      "src/lottolab/research/b649_s3_t208_exact_profile_certificate_r2.py",
+      "tests/unit/test_b649_s3_t208_exact_profile_certificate_r2.py"
+    ],
+    "WORKING_COMMITTED_BYTES_MATCH": {
+      "docs/research/matrix-native-results/b649-s3-t208-exact-profile-certificate-r2-result.json": true,
+      "src/lottolab/research/b649_s3_t208_exact_profile_certificate_r2.py": true,
+      "tests/unit/test_b649_s3_t208_exact_profile_certificate_r2.py": true
+    },
+    "LOCAL_COMMIT_COUNT": 1,
+    "RESULT_SHA256": "7f76e162696850f80c68e25cc4dfcf288aa164003bf513c2d85e94f90955ae3b"
+  },
+  "FINAL_CLEANUP_DISPOSITION": "RETAIN_AFTER_HANDOFF",
+  "GENERATION_2_MARKER": "PRESENT; NOT_INITIALIZED_BY_TASK",
+  "LAUNCHER": {
+    "BLOB": "00e2cf4a4f06b0f0a8d8e4be6091a4304e6e2ae4",
+    "MODE": "0755",
+    "PATH": "/Users/kelvin/.codex/skills/fable-method/scripts/task_checkpoint.rb",
+    "SHA256": "babba3757a7ea9ad59c7ff9b18b6e4497dbc887b86eebfb09ccae1a36ab96275"
+  },
+  "FINAL_RECEIPT_PATH": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/final-worker-receipt.json"
+}

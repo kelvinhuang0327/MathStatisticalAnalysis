@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "command": [
+    "docker",
+    "run",
+    "--pull=never",
+    "--name",
+    "b649-k20-orbstack-cgroup-r1",
+    "--rm",
+    "--network",
+    "none",
+    "--read-only",
+    "--memory=256m",
+    "--cpus=1",
+    "--pids-limit=16",
+    "--tmpfs",
+    "/tmp:rw,nosuid,nodev,size=512m",
+    "--entrypoint",
+    "/bin/sh",
+    "postgres@sha256:cf78e76683b9ca8c5733cbbdce6c9262b45b6767934dd0a95e671f9a0fc20685",
+    "-c",
+    "set +e\nparent_pid=$$\nparent_cgroup=$(cat /proc/self/cgroup | tr '\\n' ';')\nmemory_max=$(cat /sys/fs/cgroup/memory.max)\npids_max=$(cat /sys/fs/cgroup/pids.max)\nparent_threads=$(awk '/^Threads:/ {print $2}' /proc/$$/status)\necho \"parent_pid=$parent_pid\"\necho \"parent_cgroup=$parent_cgroup\"\necho \"memory_max_bytes=$memory_max\"\necho \"pids_max=$pids_max\"\necho \"parent_threads=$parent_threads\"\necho \"memory_events_before=$(tr '\\n' ';' < /sys/fs/cgroup/memory.events)\"\n/bin/sh -c 'echo child_pid=$$; echo child_cgroup=$(cat /proc/self/cgroup | tr \"\\n\" \";\"); dd if=/dev/zero of=/tmp/fill bs=1M count=512; rc=$?; echo dd_exit=$rc; exit 0' >/tmp/child.out 2>&1 &\nchild=$!\necho \"child_shell_pid=$child\"\necho \"child_cgroup_from_parent=$(cat /proc/$child/cgroup 2>/dev/null | tr '\\n' ';')\"\necho \"pids_current_during=$(cat /sys/fs/cgroup/pids.current)\"\nwait \"$child\"\nchild_wait=$?\necho \"child_shell_wait_status=$child_wait\"\necho 'child_output_begin'\ncat /tmp/child.out\necho 'child_output_end'\nevents=$(cat /sys/fs/cgroup/memory.events)\necho 'memory_events_after_begin'\nprintf '%s\\n' \"$events\"\necho 'memory_events_after_end'\nprintf '%s\\n' \"$events\" | grep -q '^oom_kill [1-9][0-9]*$'\nkill_seen=$?\nprintf '%s\\n' \"$events\" | grep -q '^max [1-9][0-9]*$'\nmax_seen=$?\necho \"oom_kill_event_seen=$((kill_seen == 0))\"\necho \"memory_max_event_seen=$((max_seen == 0))\"\necho \"pids_current_after=$(cat /sys/fs/cgroup/pids.current)\"\n[ \"$memory_max\" = 268435456 ] || exit 20\n[ \"$kill_seen\" = 0 ] && [ \"$max_seen\" = 0 ] || exit 21\n"
+  ],
+  "stdout": "parent_pid=1\nparent_cgroup=0::/;\nmemory_max_bytes=268435456\npids_max=16\nparent_threads=1\nmemory_events_before=low 0;high 0;max 0;oom 0;oom_kill 0;oom_group_kill 0;sock_throttled 0;\nchild_shell_pid=13\nchild_cgroup_from_parent=0::/;\npids_current_during=3\nchild_shell_wait_status=0\nchild_output_begin\nchild_pid=13\nchild_cgroup=0::/;\nKilled\ndd_exit=137\nchild_output_end\nmemory_events_after_begin\nlow 0\nhigh 0\nmax 1460\noom 1\noom_kill 1\noom_group_kill 0\nsock_throttled 0\nmemory_events_after_end\noom_kill_event_seen=1\nmemory_max_event_seen=1\npids_current_after=2\n",
+  "stderr": "",
+  "exit_status": 0,
+  "started_at": "2026-10-18T08:22:14Z",
+  "ended_at": "2026-10-18T08:22:14Z"
+}

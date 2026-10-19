@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "task_id": "B649_K20_COMPACT_LINUX_PY313_IMAGE_READY_R1",
+  "execution_id": "python313-compatibility-smoke-r1",
+  "pid": 11349,
+  "status": "COMPLETED",
+  "durable_capture_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_K20_COMPACT_LINUX_PY313_IMAGE_READY_R1/captures/python313-compatibility-smoke-r1.json",
+  "started_at": "2026-10-18T12:16:55Z",
+  "ended_at": "2026-10-18T12:16:56Z"
+}

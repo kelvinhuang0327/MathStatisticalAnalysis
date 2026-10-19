@@ -1,0 +1,38 @@
+{
+  "BRANCH": "codex/b649-s3-t208-certificate-r2",
+  "CANONICAL_REQUIRED_JUDGE_DEPTH": "FULL",
+  "HEAD": "6a7178354c302daa0ea98b638a687a043cade4d1",
+  "IMPLEMENTATION_MUTATION_REQUIRED": "NO",
+  "JUDGE_DEPTH": "FULL",
+  "JUDGE_DEPTH_REASON": "Owner explicitly requires full independent reproduction of universal mathematics, recounts and every applicable Route-B term.",
+  "JUDGE_DEPTH_RECONCILIATION": "MATCH",
+  "JUDGE_MODE": "FRESH_CONTEXT",
+  "LAUNCHER": {
+    "BLOB": "00e2cf4a4f06b0f0a8d8e4be6091a4304e6e2ae4",
+    "MODE": "0755",
+    "PATH": "/Users/kelvin/.codex/skills/fable-method/scripts/task_checkpoint.rb",
+    "SHA256": "babba3757a7ea9ad59c7ff9b18b6e4497dbc887b86eebfb09ccae1a36ab96275"
+  },
+  "LAUNCHER_STATUS": "PRESENT_RUNNABLE",
+  "PACKET_JUDGE_DEPTH": "NOT_APPLICABLE",
+  "PATHS": {
+    "docs/research/matrix-native-results/b649-s3-t208-exact-profile-certificate-r2-result.json": {
+      "BYTES": 106435,
+      "MODE": "0o644",
+      "SHA256": "7f76e162696850f80c68e25cc4dfcf288aa164003bf513c2d85e94f90955ae3b"
+    },
+    "src/lottolab/research/b649_s3_t208_exact_profile_certificate_r2.py": {
+      "BYTES": 20115,
+      "MODE": "0o644",
+      "SHA256": "33da4fad8af7d794c42de10f4f4da76b3428dfacada4851da2527eea2184079c"
+    },
+    "tests/unit/test_b649_s3_t208_exact_profile_certificate_r2.py": {
+      "BYTES": 5541,
+      "MODE": "0o644",
+      "SHA256": "5de05d84e71ad88a69228665bf864f20436567b1f9f64a74181d8ca6c610a7bf"
+    }
+  },
+  "TASK_ID": "B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2",
+  "TEMP_RESOURCE": "No scratch resource required; bytecode and caches disabled; focused tests use no tmp fixture.",
+  "TREE": "6745a903fb1dabbea3939212fad0613020429d26"
+}

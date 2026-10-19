@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "command": [
+    "env",
+    "PYTHONDONTWRITEBYTECODE=1",
+    "PYTHONPATH=src",
+    "OMP_NUM_THREADS=1",
+    "MKL_NUM_THREADS=1",
+    "OPENBLAS_NUM_THREADS=1",
+    "NUMEXPR_NUM_THREADS=1",
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/python",
+    "-B",
+    "-m",
+    "pytest",
+    "-q",
+    "-s",
+    "-p",
+    "no:cacheprovider",
+    "--tb=short",
+    "tests/unit/test_b649_k20_r3_post_h11_h16_paired_root_150_member_certificate_r1.py",
+    "-k",
+    "relevant"
+  ],
+  "stdout": "............\n12 passed, 56 deselected in 54.17s\n",
+  "stderr": "",
+  "exit_status": 0,
+  "started_at": "2026-10-16T06:57:53Z",
+  "ended_at": "2026-10-16T06:58:48Z",
+  "execution_identity": {
+    "repository_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis",
+    "worktree_path": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_K20_R3_POST_H11_H16_PAIRED_ROOT_150_MEMBER_ADOPTION_R1",
+    "head": "75e30e7b87cce7384ec1ba591061ae53b2e4c8a7",
+    "tree": "26479c39a0f23be7dc9e19282e68de4c013e7ced",
+    "launcher_path": "/Users/kelvin/.codex/skills/fable-method/scripts/task_checkpoint.rb",
+    "launcher_sha256": "babba3757a7ea9ad59c7ff9b18b6e4497dbc887b86eebfb09ccae1a36ab96275",
+    "runtime_executable": "/System/Library/Frameworks/Ruby.framework/Versions/2.6/usr/bin/ruby",
+    "runtime_version": "ruby 2.6.10p210 (2022-04-12 revision 67958) [universal.arm64e-darwin25]"
+  }
+}

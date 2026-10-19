@@ -1,0 +1,69 @@
+{
+  "TASK_ID": "B649_K20_SIX_TICKET_CYCLIC_TRANSFER_EXACT_4320_R1",
+  "AUTHORIZATION_SOURCE": "CURRENT_WORKER_CONVERSATION_USER_MESSAGE_WITH_OWNER_DIRECT_PACKET",
+  "PACKET_LOCATOR": "/Users/kelvin/.codex/attachments/1ba2ad7f-171d-4da0-95a8-5f3d6d108fd8/pasted-text-1.txt",
+  "SOURCE_HEAD": "df217c8784d974f73d2f5ed49c2cb45679425455",
+  "SOURCE_TREE": "7250eccf353e2c9c99047adc6331e6fc7bc9e09f",
+  "INITIAL_WORKTREE_STATUS": "CLEAN",
+  "PREEXISTING_PRIMARY_DIRTY_STATE": "preserved; outside write scope",
+  "IMPLEMENTATION_DEPTH": "NORMAL",
+  "DEPTH_SOURCE": "SKILL_FALLBACK",
+  "JUDGE_DISPATCH": "SUPPRESSED",
+  "READ_INPUT_SHA256": {
+    "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_K20_SIX_TICKET_TRIPLE_CROSS_COMPONENT_MATCHING_SWAP_R1/src/lottolab/research/b649_k20_six_ticket_triple_cross_component_matching_swap_r1.py": "5a4011d0e274bd2e6b9c4cef460180ad77da51c6660c3160913496bef43a7935",
+    "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_K20_SIX_TICKET_TRIPLE_CROSS_COMPONENT_MATCHING_SWAP_R1/tests/unit/test_b649_k20_six_ticket_triple_cross_component_matching_swap_r1.py": "b71b185f2eed851093b4b67214d928d9a08a66b98cfc5421c01db88eaab000c7",
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/src/lottolab/research/b649_official_any_prize_exact.py": "92dcb836254cc6dbcd6c2ad907e619a5eb8cf3917197a8f6de3e5f989825cf66",
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.task-data/B649_K20_DESTROY4_GLOBAL_POOL_EXHAUSTIVE_R1/run1/engine/src/lottolab/research/b649_k20_five_ticket_exact_repair_r1.py": "2877785e3b956c5e6f79fc15b8e04f2f0b2c3b489625afbf44409ce62684c8d0",
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/README.md": "fd4cd1f8538160140e8aeaa000d0280fca34a673f771202b99baa8e4d623cb7a",
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.ai/ai-context/RUNBOOK.md": "c1d3853be5dda011767975012ba9e8f2a2a8df714076298dd10e54a3ac732f0b",
+    "/Users/kelvin/.codex/skills/fable-method/SKILL.md": "747c0e75d8ecab37f475719943f26f457eda73014b1281971c89f6e4c4a21693"
+  },
+  "SKILL_VERSION": "no declared version; content SHA256 recorded",
+  "LAUNCHER_BLOB": "00e2cf4a4f06b0f0a8d8e4be6091a4304e6e2ae4",
+  "LAUNCHER_MODE": "0755",
+  "GENERATION": 2,
+  "WORKSPACE_DISPOSITION": "retain; no cleanup authorized",
+  "WRITE_LEDGER": [
+    "new detached worktree materialization and Git registration",
+    "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_K20_SIX_TICKET_CYCLIC_TRANSFER_EXACT_4320_R1/src/lottolab/research/b649_k20_six_ticket_cyclic_transfer_exact_4320_r1.py",
+    "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_K20_SIX_TICKET_CYCLIC_TRANSFER_EXACT_4320_R1/tests/unit/test_b649_k20_six_ticket_cyclic_transfer_exact_4320_r1.py",
+    "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_K20_SIX_TICKET_CYCLIC_TRANSFER_EXACT_4320_R1/.task-data/B649_K20_SIX_TICKET_CYCLIC_TRANSFER_EXACT_4320_R1",
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_K20_SIX_TICKET_CYCLIC_TRANSFER_EXACT_4320_R1",
+    "task-owned Gen-2 lock anchor in Git common directory"
+  ],
+  "FORMAL_PRELAUNCH_STABILITY": {
+    "HEAD": "df217c8784d974f73d2f5ed49c2cb45679425455",
+    "TREE": "7250eccf353e2c9c99047adc6331e6fc7bc9e09f",
+    "STATUS": "?? src/lottolab/research/b649_k20_six_ticket_cyclic_transfer_exact_4320_r1.py\n?? tests/unit/test_b649_k20_six_ticket_cyclic_transfer_exact_4320_r1.py\n",
+    "SHA256": {
+      "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_K20_SIX_TICKET_CYCLIC_TRANSFER_EXACT_4320_R1/src/lottolab/research/b649_k20_six_ticket_cyclic_transfer_exact_4320_r1.py": "73c2f10e1a5c17b718099a47eecf2026c1154b7d411ef21cbc4e521f8e3ac7a3",
+      "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_K20_SIX_TICKET_CYCLIC_TRANSFER_EXACT_4320_R1/tests/unit/test_b649_k20_six_ticket_cyclic_transfer_exact_4320_r1.py": "18ee90fe57c29b1362fd9dcb43b3eee7f54be9f59e5a92791a9132941003c989"
+    }
+  },
+  "FOCUSED_TEST_RESULTS": {
+    "command": [
+      "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/python",
+      "-m",
+      "pytest",
+      "-q",
+      "-p",
+      "no:cacheprovider",
+      "--basetemp=/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_K20_SIX_TICKET_CYCLIC_TRANSFER_EXACT_4320_R1/.task-data/B649_K20_SIX_TICKET_CYCLIC_TRANSFER_EXACT_4320_R1/runtime/pytest",
+      "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_K20_SIX_TICKET_CYCLIC_TRANSFER_EXACT_4320_R1/tests/unit/test_b649_k20_six_ticket_cyclic_transfer_exact_4320_r1.py"
+    ],
+    "cwd": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_K20_SIX_TICKET_CYCLIC_TRANSFER_EXACT_4320_R1",
+    "exit_status": 0,
+    "stdout": "........                                                                 [100%]\n8 passed in 5.33s\n",
+    "stderr": "",
+    "SOURCE_SHA256": "73c2f10e1a5c17b718099a47eecf2026c1154b7d411ef21cbc4e521f8e3ac7a3",
+    "TEST_SHA256": "18ee90fe57c29b1362fd9dcb43b3eee7f54be9f59e5a92791a9132941003c989",
+    "CPU_SECONDS": 4.322768,
+    "WALL_SECONDS": 5.585497874999419,
+    "NUMERICAL_THREADS": 1,
+    "CPU_WORKERS": 1,
+    "PYTEST_DISABLE_PLUGIN_AUTOLOAD": "1",
+    "PYTHONDONTWRITEBYTECODE": "1",
+    "FALSIFIABILITY_CHECK": "parity/direction mutant is rejected inside focused test; monkeypatch restores automatically; normal full family fixture passes"
+  },
+  "LAUNCHER_BLOB_RECHECK": "00e2cf4a4f06b0f0a8d8e4be6091a4304e6e2ae4"
+}

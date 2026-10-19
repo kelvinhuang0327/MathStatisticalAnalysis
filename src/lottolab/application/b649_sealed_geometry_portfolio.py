@@ -7,10 +7,21 @@ P(at least one ticket wins). K5 is pairwise disjoint. For both OFFICIAL_ANY_PRIZ
 and M3_PLUS, every pairwise-disjoint portfolio of size 1..8 attains the global
 optimum proved in ``lottolab.research.b649_k1_k8_global_optimality``; that
 optimum is not unique. K10 remains the frozen HARD_DIV pairwise-overlap
+<<<<<<< HEAD
 radius2 authority from sealed-geometry v2. The v7 K20 is an independently
 exact-verified, sealed durable incumbent establishing 313,239,661 winning
 outcomes (+14 over v6). Neither sweep nor neighborhood completeness is claimed,
 and neither K10 nor K20 is a proven global optimum.
+=======
+radius2 authority from sealed-geometry v2.
+K10 OFFICIAL_ANY_PRIZE: PROVEN GLOBAL OPTIMUM by the canonical K10 proof
+certificate. K10 M3_PLUS: GLOBAL OPTIMUM UNKNOWN. The v8 K20 is the exact
+incumbent from the canonical two-ticket ascent result, with v7 retained in
+the portfolio version history.
+It is proven optimal only within its validated exact local neighborhoods.
+K20 global optimality remains unknown.
+K20: GLOBAL OPTIMUM UNKNOWN.
+>>>>>>> bf745b1fe6dc19ce7b675a3fbbf90e4710cf0d44
 There is no historical outcome tuning or predictive signal: the portfolios do
 not depend on the target draw, prediction streams, or historical outcomes.
 Their probabilities are exact counts over the full outcome space, verified by
@@ -34,7 +45,13 @@ from typing import Final
 type Ticket = tuple[int, ...]
 
 SEALED_GEOMETRY_METHOD_ID: Final = "B649_SEALED_GEOMETRY_PORTFOLIO"
+<<<<<<< HEAD
 SEALED_GEOMETRY_METHOD_VERSION: Final = "7.0.0"
+=======
+SEALED_GEOMETRY_METHOD_VERSION: Final = "8.0.0"
+K20_V7_PORTFOLIO_VERSION: Final = "7.0.0"
+K20_PORTFOLIO_VERSION: Final = "8.0.0"
+>>>>>>> bf745b1fe6dc19ce7b675a3fbbf90e4710cf0d44
 PROBABILITY_MODEL: Final = "BIG_LOTTO_UNIFORM_FAIR_DRAW"
 PRIZE_EVENT: Final = "OFFICIAL_ANY_PRIZE"
 POOL_SIZE: Final = 49
@@ -57,11 +74,13 @@ class SealedGeometryPortfolio:
     source_sha256: str
     m3_plus_probability: Fraction
     official_any_prize_probability: Fraction
+    portfolio_version: str | None = None
+    source_revision: str | None = None
 
     def provenance(self) -> dict[str, object]:
         """Canonical-JSON-safe provenance (exact fractions as ``"n/d"`` text)."""
 
-        return {
+        provenance: dict[str, object] = {
             "ticket_count": self.ticket_count,
             "portfolio_sha256": self.portfolio_sha256,
             "source_id": self.source_id,
@@ -70,6 +89,11 @@ class SealedGeometryPortfolio:
             "m3_plus_probability": str(self.m3_plus_probability),
             "official_any_prize_probability": str(self.official_any_prize_probability),
         }
+        if self.portfolio_version is not None:
+            provenance["portfolio_version"] = self.portfolio_version
+        if self.source_revision is not None:
+            provenance["source_revision"] = self.source_revision
+        return provenance
 
 
 def canonical_portfolio_sha256(tickets: Sequence[Sequence[int]]) -> str:
@@ -129,11 +153,15 @@ _K10 = SealedGeometryPortfolio(
     official_any_prize_probability=Fraction(536005, 1827672),
 )
 
+<<<<<<< HEAD
 # OFFICIAL_ANY_PRIZE successor to sealed-geometry v6: the exact-recomputed
 # terminal local optimum of the bounded two-ticket replacement sweep,
 # establishing 313,239,661 winning outcomes (+14 over v6). Global optimality
 # is unknown; no historical outcomes were used for tuning.
-_K20 = SealedGeometryPortfolio(
+=======
+# Historical K20 v7 remains available so its identity and evidence are not
+# silently redefined when the default portfolio advances.
+_K20_V7 = SealedGeometryPortfolio(
     ticket_count=20,
     tickets=(
         (1, 2, 34, 41, 42, 45),
@@ -166,6 +194,60 @@ _K20 = SealedGeometryPortfolio(
     source_sha256="e7698ff0d76a91c69378bf9bf0badb4ed9ac4f4dd146c71e5c94300bcfbbff9e",
     m3_plus_probability=Fraction(4807367, 13983816),
     official_any_prize_probability=Fraction(44748523, 85900584),
+)
+
+# Canonical exact K20 incumbent from the two-ticket ascent result. The result
+# proves the validated exact two-ticket neighborhood; global optimality is
+# unknown. No historical outcomes were used for tuning.
+>>>>>>> bf745b1fe6dc19ce7b675a3fbbf90e4710cf0d44
+_K20 = SealedGeometryPortfolio(
+    ticket_count=20,
+    tickets=(
+        (1, 2, 34, 41, 42, 45),
+        (1, 17, 22, 30, 33, 43),
+        (2, 5, 33, 35, 40, 48),
+        (3, 4, 10, 15, 26, 27),
+        (3, 8, 13, 28, 31, 36),
+        (3, 9, 12, 16, 29, 39),
+        (4, 7, 36, 39, 46, 49),
+        (4, 18, 20, 24, 28, 29),
+        (5, 17, 25, 32, 41, 47),
+        (6, 7, 9, 13, 18, 26),
+        (6, 10, 11, 16, 24, 36),
+        (6, 14, 20, 31, 37, 39),
+        (7, 8, 10, 14, 19, 29),
+        (8, 9, 11, 15, 20, 46),
+        (11, 12, 18, 23, 27, 49),
+        (13, 15, 19, 24, 37, 49),
+        (16, 19, 23, 26, 28, 46),
+        (21, 25, 30, 38, 45, 48),
+        (21, 32, 40, 42, 43, 44),
+        (22, 34, 35, 38, 44, 47),
+    ),
+    portfolio_sha256="0045ac8837fc82e9a585d812173341ac12e05c5de201af7f8fedeacafa19e1ff",
+    source_id="B649_K20_EXACT_TWO_TICKET_JOINT_REPLACEMENT_SWEEP_R1",
+    source_locator=(
+        "docs/research/matrix-native-results/"
+        "b649-k20-exact-two-ticket-joint-replacement-terminal-r1.json"
+    ),
+<<<<<<< HEAD
+    source_sha256="e7698ff0d76a91c69378bf9bf0badb4ed9ac4f4dd146c71e5c94300bcfbbff9e",
+    m3_plus_probability=Fraction(4807367, 13983816),
+    official_any_prize_probability=Fraction(44748523, 85900584),
+=======
+    source_sha256="3d5d3f8f2389b66a9b2c45b0e345b81a0d9dc59d08ca9223519be70a055e5a00",
+    m3_plus_probability=Fraction(1201973, 3495954),
+    official_any_prize_probability=Fraction(1864666, 3579191),
+    portfolio_version=K20_PORTFOLIO_VERSION,
+    source_revision="da26b434499927f5611e3c3d12e50485f2e58a6a",
+)
+
+SEALED_GEOMETRY_K20_VERSIONS: Final[Mapping[str, SealedGeometryPortfolio]] = MappingProxyType(
+    {
+        K20_V7_PORTFOLIO_VERSION: _K20_V7,
+        K20_PORTFOLIO_VERSION: _K20,
+    }
+>>>>>>> bf745b1fe6dc19ce7b675a3fbbf90e4710cf0d44
 )
 
 SEALED_GEOMETRY_PORTFOLIOS: Final[Mapping[int, SealedGeometryPortfolio]] = MappingProxyType(
@@ -210,8 +292,11 @@ def sealed_geometry_buckets(bucket_sizes: Sequence[int]) -> dict[int, tuple[Tick
 
 
 __all__ = [
+    "K20_PORTFOLIO_VERSION",
+    "K20_V7_PORTFOLIO_VERSION",
     "PRIZE_EVENT",
     "PROBABILITY_MODEL",
+    "SEALED_GEOMETRY_K20_VERSIONS",
     "SEALED_GEOMETRY_METHOD_ID",
     "SEALED_GEOMETRY_METHOD_VERSION",
     "SEALED_GEOMETRY_PORTFOLIOS",

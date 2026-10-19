@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "task_id": "B649_K20_ONE_SWAP_EXACT_DELTA_ACCEL_R1",
+  "execution_id": "bounded-delta-zero-fixture-validation-r1",
+  "pid": 87405,
+  "status": "COMPLETED",
+  "durable_capture_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_K20_ONE_SWAP_EXACT_DELTA_ACCEL_R1/captures/bounded-delta-zero-fixture-validation-r1.json",
+  "started_at": "2026-10-19T06:12:28Z",
+  "ended_at": "2026-10-19T06:12:38Z"
+}

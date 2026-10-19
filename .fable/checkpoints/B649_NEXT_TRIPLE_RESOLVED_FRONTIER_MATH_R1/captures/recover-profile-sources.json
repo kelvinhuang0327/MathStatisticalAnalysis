@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "command": [
+    "env",
+    "PYTHONPATH=src",
+    "PYTHONDONTWRITEBYTECODE=1",
+    "OMP_NUM_THREADS=1",
+    "OPENBLAS_NUM_THREADS=1",
+    "MKL_NUM_THREADS=1",
+    "NUMEXPR_NUM_THREADS=1",
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/python",
+    "-B",
+    "-c",
+    "import resource,json,subprocess,hashlib\nfrom dataclasses import asdict\nfrom time import monotonic\nfrom pathlib import Path\nresource.setrlimit(resource.RLIMIT_CPU,(120,120))\nfrom lottolab.research import b649_k20_min_s2_topw12_coverage_repair_r1 as existing\nfrom lottolab.research import b649_k20_min_s2_route_b_current_owner_refinement_r32 as r32\nids=('65555555555531100000','66555555554441100000','66555555555422100000')\nstart=monotonic()\nchase,_,_=existing.start_chase(monotonic()+115)\nselected={}\nfor p,c in chase.catalog.items():\n pid=''.join(map(str,p))\n if pid not in ids: continue\n row=asdict(c)\n row['W_U_GMAX']=r32.k4_premises(p)\n row['A_MAX']=r32.contained_triple_k4_cap(p)\n terms=r32.route_b_envelope(p,c.triangle_cap,c.s4)\n row['ROUTE_B_TERM_COUNT']=len(terms)\n row['ROUTE_B_ARGMAX']=max(terms,key=lambda t:t[1])\n selected[pid]=row\nassert set(selected)==set(ids)\nprint(json.dumps({'PROFILE_SOURCES':selected,'ELAPSED_SECONDS':monotonic()-start},sort_keys=True))\n"
+  ],
+  "stdout": "{\"ELAPSED_SECONDS\": 90.5621369579967, \"PROFILE_SOURCES\": {\"65555555555531100000\": {\"A_MAX\": 195, \"ROUTE_B_ARGMAX\": [266, 313391844, 508, 195, 299887, 5173168], \"ROUTE_B_TERM_COUNT\": 245, \"W_U_GMAX\": [824, 2289, 12], \"bound\": 313391844, \"profile\": [6, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 3, 1, 1, 0, 0, 0, 0, 0], \"realizability\": \"CLASS_ENVELOPE_ONLY\", \"relaxation\": \"NB_DEGREE_CAP_ROUTE_B_ALL_T\", \"s3\": 5173168, \"s4\": 112, \"source_result\": \"b649-k20-min-s2-nb-degree-cap-frontier-r1-result.json\", \"source_row\": \"NB_CERTIFICATES[1616]\", \"triangle_cap\": 266, \"witness_row\": null, \"witness_source\": null}, \"66555555554441100000\": {\"A_MAX\": 195, \"ROUTE_B_ARGMAX\": [266, 313391844, 508, 195, 299887, 5173168], \"ROUTE_B_TERM_COUNT\": 245, \"W_U_GMAX\": [824, 2290, 12], \"bound\": 313391844, \"profile\": [6, 6, 5, 5, 5, 5, 5, 5, 5, 5, 4, 4, 4, 1, 1, 0, 0, 0, 0, 0], \"realizability\": \"CLASS_ENVELOPE_ONLY\", \"relaxation\": \"NB_DEGREE_CAP_ROUTE_B_ALL_T\", \"s3\": 5173168, \"s4\": 112, \"source_result\": \"b649-k20-min-s2-nb-degree-cap-frontier-r1-result.json\", \"source_row\": \"NB_CERTIFICATES[1466]\", \"triangle_cap\": 266, \"witness_row\": null, \"witness_source\": null}, \"66555555555422100000\": {\"A_MAX\": 195, \"ROUTE_B_ARGMAX\": [266, 313391844, 508, 195, 299887, 5173168], \"ROUTE_B_TERM_COUNT\": 245, \"W_U_GMAX\": [824, 2292, 12], \"bound\": 313391844, \"profile\": [6, 6, 5, 5, 5, 5, 5, 5, 5, 5, 5, 4, 2, 2, 1, 0, 0, 0, 0, 0], \"realizability\": \"CLASS_ENVELOPE_ONLY\", \"relaxation\": \"NB_DEGREE_CAP_ROUTE_B_ALL_T\", \"s3\": 5173168, \"s4\": 112, \"source_result\": \"b649-k20-min-s2-nb-degree-cap-frontier-r1-result.json\", \"source_row\": \"NB_CERTIFICATES[1450]\", \"triangle_cap\": 266, \"witness_row\": null, \"witness_source\": null}}}\n",
+  "stderr": "",
+  "exit_status": 0,
+  "started_at": "2026-10-16T06:43:24Z",
+  "ended_at": "2026-10-16T06:45:00Z",
+  "execution_identity": {
+    "repository_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis",
+    "worktree_path": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_NEXT_TRIPLE_RESOLVED_FRONTIER_MATH_R1",
+    "head": "b53a776a025a5218eef73e9a6933b972b4f5395b",
+    "tree": "d1b6d18bd41d45bd2cbc5b947f23cd6561e6d6b1",
+    "launcher_path": "/Users/kelvin/.codex/skills/fable-method/scripts/task_checkpoint.rb",
+    "launcher_sha256": "babba3757a7ea9ad59c7ff9b18b6e4497dbc887b86eebfb09ccae1a36ab96275",
+    "runtime_executable": "/System/Library/Frameworks/Ruby.framework/Versions/2.6/usr/bin/ruby",
+    "runtime_version": "ruby 2.6.10p210 (2022-04-12 revision 67958) [universal.arm64e-darwin25]"
+  }
+}

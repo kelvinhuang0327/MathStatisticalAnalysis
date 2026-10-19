@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "task_id": "B649_K20_R3_POST_H11_H16_PAIRED_ROOT_150_MEMBER_ADOPTION_R1",
+  "execution_id": "strict-pyright-v2",
+  "pid": 4249,
+  "status": "COMPLETED",
+  "durable_capture_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_K20_R3_POST_H11_H16_PAIRED_ROOT_150_MEMBER_ADOPTION_R1/captures/strict-pyright-v2.json",
+  "started_at": "2026-10-16T06:59:20Z",
+  "ended_at": "2026-10-16T06:59:21Z"
+}

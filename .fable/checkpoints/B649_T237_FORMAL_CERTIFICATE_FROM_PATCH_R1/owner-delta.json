@@ -1,0 +1,34 @@
+{
+  "TASK_ID": "B649_T237_FORMAL_CERTIFICATE_FROM_PATCH_R1",
+  "AUTHORIZATION_SOURCE": "CURRENT_WORKER_CONVERSATION_USER_MESSAGE",
+  "OWNER_DELTA_AUTHORIZATION": "APPROVED",
+  "OWNER_WORDS": "授權此最小 Delta 並繼續。",
+  "SCOPE": "Only the original allowed T237 verifier source and focused tests in the exact task worktree; start from verified seed patch bytes; original Patch and other worktrees unchanged.",
+  "FIX_1": "Separately report RAW core states, retained distinct core states, sigma/zeta matchings, compatible graph pairs, and independent labelled recount without mixing units.",
+  "FIX_2": "Separate RAW maxima, maxima after proved nonnegative remainder floors, and conservative final T cap; fix verifier/result semantics and direct focused regressions.",
+  "TARGETS": {
+    "T_CAP": 237,
+    "FULL_PROFILE_BOUND": 313122700,
+    "ARE": "verification targets, never hard-coded successful outputs"
+  },
+  "REQUIRED": [
+    "finite-domain coverage proof",
+    "1491 retained states",
+    "100834 compatible graph pairs",
+    "separate every r RAW/corrected maximum",
+    "four P remainders nonnegative and disjoint",
+    "independent universal T<=237",
+    "complete Route-B exact arithmetic",
+    "focused regressions PASS"
+  ],
+  "LIMITS": {
+    "LOCAL_COMMIT_LIMIT": 1,
+    "PUSH": "NO",
+    "PR": "NO",
+    "MERGE": "NO",
+    "FAMILY_AUTHORITY_MUTATION": "NO",
+    "HEAVY_SOLVER": "NO",
+    "FRESH_JUDGE": "must inspect final committed tree"
+  },
+  "STOP": "If mathematical inconsistency or scope conflict, stop formal certification and report the exact gap."
+}

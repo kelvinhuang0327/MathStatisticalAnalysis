@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "command": [
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/python",
+    "-B",
+    "-c",
+    "import subprocess,json,time\ndef git(*args):return subprocess.check_output(['git','-c','core.fsmonitor=false',*args],text=True).strip()\ndef snapshot():return [git('rev-parse','HEAD'),git('write-tree'),git('status','--porcelain=v1','--untracked-files=all')]\na=snapshot();time.sleep(5);assert a==snapshot();assert a[0]=='9acea1331e021a9623fa593997d90cfc89a69136';assert a[1]=='a9977cc6451693ad8badd18d0bd7e5e9bb9c709e';assert git('rev-list','--count','9acea1331e021a9623fa593997d90cfc89a69136..HEAD')=='0'\nsubprocess.run(['git','-c','core.fsmonitor=false','commit','-m','research: certify T237 exact profile with distinct finite-domain counts'],check=True)\nassert git('rev-parse','HEAD^')==a[0];assert git('rev-parse','HEAD^{tree}')==a[1];assert git('rev-list','--count',a[0]+'..HEAD')=='1';assert git('status','--porcelain=v1','--untracked-files=all')==''\nprint(json.dumps({'FINAL_LOCAL_COMMIT':git('rev-parse','HEAD'),'FINAL_COMMITTED_TREE':git('rev-parse','HEAD^{tree}'),'LOCAL_COMMIT_COUNT':1,'CLEAN':True}))"
+  ],
+  "stdout": "[codex/b649-t237-formal-certificate-from-patch-r1 f30863f] research: certify T237 exact profile with distinct finite-domain counts\n 3 files changed, 265369 insertions(+)\n create mode 100644 docs/research/matrix-native-results/b649-min-s2-t257-t237-joint-exact-authority-r1-result.json\n create mode 100644 src/lottolab/research/b649_min_s2_t257_t237_joint_exact_authority_r1.py\n create mode 100644 tests/unit/test_b649_min_s2_t257_t237_joint_exact_authority_r1.py\n{\"FINAL_LOCAL_COMMIT\": \"f30863f708e7f4d026d5c99e9b79529e38f9be92\", \"FINAL_COMMITTED_TREE\": \"a9977cc6451693ad8badd18d0bd7e5e9bb9c709e\", \"LOCAL_COMMIT_COUNT\": 1, \"CLEAN\": true}\n",
+  "stderr": "",
+  "exit_status": 0,
+  "started_at": "2026-10-17T09:13:01Z",
+  "ended_at": "2026-10-17T09:13:07Z",
+  "execution_identity": {
+    "repository_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis",
+    "worktree_path": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_T237_FORMAL_CERTIFICATE_FROM_PATCH_R1",
+    "head": "9acea1331e021a9623fa593997d90cfc89a69136",
+    "tree": "de577e8d6f3ccbe52e663c96ee1528c95a0ee7ec",
+    "launcher_path": "/Users/kelvin/.codex/skills/fable-method/scripts/task_checkpoint.rb",
+    "launcher_sha256": "babba3757a7ea9ad59c7ff9b18b6e4497dbc887b86eebfb09ccae1a36ab96275",
+    "runtime_executable": "/System/Library/Frameworks/Ruby.framework/Versions/2.6/usr/bin/ruby",
+    "runtime_version": "ruby 2.6.10p210 (2022-04-12 revision 67958) [universal.arm64e-darwin26]"
+  }
+}

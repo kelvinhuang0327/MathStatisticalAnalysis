@@ -1,0 +1,546 @@
+{
+  "ACTUAL_RULE_SOURCES": {
+    "/Users/kelvin/.codex/skills/fable-judge/SKILL.md": "491e120f12455d4046638ac89dfb55f794e953c8b98c4a12b7d094c58ecdfaa3",
+    "/Users/kelvin/.codex/skills/fable-judge/references/judge-depth-contract.md": "c02a2189582fcb0a08deef1d6e0faa3576eaf842b4f919d86d89045619193159",
+    "/Users/kelvin/.codex/skills/fable-method/SKILL.md": "747c0e75d8ecab37f475719943f26f457eda73014b1281971c89f6e4c4a21693",
+    "/Users/kelvin/.codex/skills/fable-method/references/judge-handoff.md": "0aeb32bc6a93afc064b8be5cce4c106fd1e76684b428277a38ffac1306ccabf4",
+    "/Users/kelvin/.codex/skills/fable-method/references/operational-gates.md": "7578b41b87b13beebc57635285635c6ad242da58e70e326a5f63991c488eb5d5",
+    "/Users/kelvin/.codex/skills/fable-method/references/task-checkpoint.md": "ddec42a39a41919833fc04e7d351bea85c3cf5d7f097088667e23646871d4c9a",
+    "/Users/kelvin/.codex/skills/fable-method/references/test-falsifiability.md": "2bd436c97caaa943081f3b4e25db911a9edbfac9d4719dfd4b069866896e79c8",
+    "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_T237_FORMAL_CERTIFICATE_FROM_PATCH_R1/.ai/ai-context/PROJECT_PROFILE.md": "9f2ccbb22046796ab634d6a65976544ffb950aeba1d51f8bbbd240a307744c9c",
+    "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_T237_FORMAL_CERTIFICATE_FROM_PATCH_R1/.ai/ai-context/RUNBOOK.md": "d079553237efb06327b3389ef4a3c29a8baf1724359e365ce26c3fb642c9af5d",
+    "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_T237_FORMAL_CERTIFICATE_FROM_PATCH_R1/pyproject.toml": "d423a8dec45a0408ddecd7e535ab3df4e5ddc91114dcf48a8608067911d91f77"
+  },
+  "ACTUAL_SKILL_LOCATOR": "/Users/kelvin/.codex/skills/fable-method/SKILL.md",
+  "ACTUAL_SKILL_SHA256": "747c0e75d8ecab37f475719943f26f457eda73014b1281971c89f6e4c4a21693",
+  "BASE_HEAD": "9acea1331e021a9623fa593997d90cfc89a69136",
+  "BASE_RESULT_SHA256": "9fbe17d020573835cd69f16296fee224ff4f83aef8b3e7a644f2ffaabdfe92c9",
+  "BASE_TREE": "de577e8d6f3ccbe52e663c96ee1528c95a0ee7ec",
+  "CAVEATS": [
+    {
+      "ID": "C01",
+      "MATERIAL": false,
+      "TEXT": "Historical Base/donor caveats are preserved verbatim and not recertified or promoted. HISTORICAL_R15 remains NOT_VERIFIED; inherited exclusions and earlier external-review dispositions retain their original scope. Legal attainment and globalK20 optimum remain UNKNOWN."
+    },
+    {
+      "ID": "C02",
+      "MATERIAL": false,
+      "TEXT": "Packet field T257_REPORTED_RESULT_SHA256 contains dd8cdc8d...03e2. Immutable donor commit labels those bytes as the sealed Judge report SHA, not the result-file SHA. The accepted fixed Patch correctly pins result SHA f2a2a48f...3b42 and separately parses report SHAdd8cdc8d...03e2. Judge confirmed both distinct kinds; no identity drift was inferred from comparing unlike fields."
+    },
+    {
+      "ID": "C03",
+      "MATERIAL": false,
+      "TEXT": "T237 is the authorized conservative certificate cap. The corrected degree relaxation is236; neither237 nor236 is claimed to be attained by a legal ticket-support realization."
+    },
+    {
+      "ID": "C04",
+      "MATERIAL": false,
+      "TEXT": "The deterministic committed result retains its pre-verification pending lifecycle strings. This external exact-committed-tree report supplies the current acceptance disposition; the result was not rewritten and no second commit was made."
+    },
+    {
+      "ID": "C05",
+      "MATERIAL": false,
+      "TEXT": "Pyright returned0 errors,0 warnings,0 informations and exit0. Its wrapper additionally printed a newer-version advisory. No dependency/tool upgrade was performed."
+    }
+  ],
+  "CHANGED_PATHS": [
+    "docs/research/matrix-native-results/b649-min-s2-t257-t237-joint-exact-authority-r1-result.json",
+    "src/lottolab/research/b649_min_s2_t257_t237_joint_exact_authority_r1.py",
+    "tests/unit/test_b649_min_s2_t257_t237_joint_exact_authority_r1.py"
+  ],
+  "CLEANUP_DISPOSITION": "RETAIN_AFTER_HANDOFF",
+  "COMMIT_TREE_MATCH": "YES",
+  "COMPATIBLE_PAIRS": 100834,
+  "CORE_ZERO_DEGREE_MATCHINGS": 3517,
+  "CORRECTED_RELAXATION_CAP": 236,
+  "COVERAGE_PROOF": {
+    "EVIDENCE": [
+      "judge-independent-finite-domain",
+      "judge-independent-labelled-and-identity"
+    ],
+    "PROOF": "A zero vertex belongs to no triple support; every core-zero edge uses a pair support, so0<=sigma_i<=6-d_i. A zero vertex has graph degree6 and at most4 zero neighbours, so2<=zeta_u<=6. Same cross-edge count r=sum sigma=sum zeta lies10..24; shore degree sums force r even. Core complement degrees h_i=14-(6+d_i-sigma_i)=8-d_i+sigma_i, zero complement degrees mu_u=4-(6-zeta_u)=zeta_u-2. Actual shore graphs meet graphicality and actual cross graph meets bipartite degree conditions. Sorting equal-d classes and zeros is bijective relabelling, and all1024 zero graphs are enumerated.",
+    "STATUS": "PASS"
+  },
+  "CURSOR_PROFILES_UNCHANGED": 197,
+  "DEPTH_SOURCE": "SKILL_FALLBACK",
+  "FAMILY_AUTHORITY_MUTATED": "NO",
+  "FILESYSTEM_WRITE_LEDGER": {
+    "CACHE_POLICY": "Python-B/PYTHONDONTWRITEBYTECODE=1; pytest no:cacheprovider; Ruff--no-cache. No test/runtime output paths in judged tree; final tracked/untracked status clean.",
+    "CLEANUP_DISPOSITION": "RETAIN_AFTER_HANDOFF",
+    "FORBIDDEN_MUTATIONS_OBSERVED": "NONE in the scoped diff,captured actions,reflog and pinned-source audits.",
+    "JUDGE_GIT_LIFECYCLE_MUTATIONS": 0,
+    "JUDGE_HARNESS_METADATA": "Official launcher uses the existing task execution lock and updates its held-lineage payload. No lock/authority inode replacement,marker change,or launcher edit. Ordinary read-only Git commands may refresh Git index/stat metadata; no refs,commits or source trees were changed by Judge.",
+    "JUDGE_PRODUCT_SOURCE_TEST_RESULT_WRITES": 0,
+    "JUDGE_RETAINED": [
+      "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_T237_FORMAL_CERTIFICATE_FROM_PATCH_R1/judge-report.json",
+      "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_T237_FORMAL_CERTIFICATE_FROM_PATCH_R1/captures/judge-*.json (nine completed verification captures plus this seal capture)",
+      "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_T237_FORMAL_CERTIFICATE_FROM_PATCH_R1/executions/judge-*.json (nine completed verification records plus this seal record)"
+    ],
+    "JUDGE_TEMPORARY_DELETED": "Launcher-managed execution/capture atomic-write intermediates finalize within task-owned runtime storage. All Judge computation code and mutation-test fixtures were argv/process-memory only; no standalone scratch files.",
+    "PROTECTED_INPUTS": "Original Patch and originalT237 source/test hashes rechecked unchanged; fixed Base authority blob unchanged; canonical current Base path remained absent; marker and launcher SHA unchanged.",
+    "REMOTE_WRITES": "NO",
+    "RUNTIME_TRANSITION": "NO",
+    "WORKER_RETAINED": "One isolated worktree/branch and normal Git metadata; exactly three committed authorized certificate paths; task-owned checkpoint,Owner Delta,blocker receipt,handoff,execution/capture records and stable lock authorities.",
+    "WORKER_TEMPORARY_DELETED": "Task checkpoint atomic-save intermediates,normal Git metadata operations,and process-local mutation fixtures as accounted in durable Worker ledger; no deleted product artifacts."
+  },
+  "FINAL_COMMITTED_TREE": "a9977cc6451693ad8badd18d0bd7e5e9bb9c709e",
+  "FINAL_LOCAL_COMMIT": "f30863f708e7f4d026d5c99e9b79529e38f9be92",
+  "FINAL_SOURCE_SHA256": "d8d286d021cacba5dc55803c5db5ba8cbe00a502a9916191be540755d00af131",
+  "FINAL_TEST_SHA256": "cd1f2fa08bfd9215bfa46a8dd189a1baefa177aa74f9b420ec8ae759b907bdf7",
+  "FINAL_WORKER_WRITES": [
+    "final-worker-receipt.json",
+    "task checkpoint revision 3 COMPLETED",
+    "official execution/capture and checkpoint lock metadata"
+  ],
+  "FIX_1_STATUS": "PASS",
+  "FIX_2_STATUS": "PASS",
+  "FOCUSED_TESTS": {
+    "COMMITTED_TREE_TESTS": 33,
+    "DIRECT_REGRESSIONS": 2,
+    "SECONDS": 12.56,
+    "STATUS": "PASS",
+    "T237_TESTS": 31
+  },
+  "FOUR_P_REMAINDERS": {
+    "IDENTITY_PROOF": "For M=complement(G[K]) and N=complement(G[Z]), eM=(54+r)/2,eN=(r-10)/2. Every mixed complement triangle has exactly one same-shore edge. An M-edge has5-sigma_x-sigma_y+c_Z(x,y) common complement zeros; an N-edge has15-zeta_u-zeta_v+c_K(u,v) common complement core vertices. Consequently T(complementG)=5eM+15eN-sum sigma*h-sum zeta*mu+P=60+10r-sum sigma*h-sum zeta*mu+P. Subtracting from287 and using both sums=r gives the claimed227 identity.",
+    "MIXED_FLOORS": "For any S subset of vertices ofF, sum_Sa=e(F)+e_F(S)-e_F(outside), hence e_F(S)>=sum_Sa-e(F)>=sum of the |S| smallest degrees-e(F); also>=0. Apply inN to each core vertex's G-zero neighbourhood for sum_Nc_K, and inM to each zero vertex's G-core neighbourhood for sum_Mc_Z. Floors bound four distinct P terms separately and sum without duplicate subtraction.",
+    "PARTITION": [
+      "T(M): all-core complement triangles; each unordered triple counted once.",
+      "T(N): all-zero complement triangles; disjoint from all-core.",
+      "sum_M c_Z: triples with two core vertices joined by a complement edge and one zero joined to both inG; unique same-shore edge.",
+      "sum_N c_K: triples with two zeros joined by a complement edge and one core joined to both inG; unique same-shore edge. Shore compositions3K,3Z,2K1Z,1K2Z are pairwise disjoint."
+    ],
+    "STATUS": "PASS",
+    "TRIANGLE_FLOORS": "For edgeij in an n-vertex graphF, common neighbours>=a_i+a_j-n, so3T(F)>=sum a_i^2-ne and integer ceiling is valid. For top-h subsetL, crossing edges<=sum_outside min(h,a), hence at least k=max(0,ceil((sum_La-sum_outside min(h,a))/2)) internal edges. Their common-neighbour sum is3T(F[L])+T(exactly2 vertices inL)<=T(F)+2C(h,3). Every internal edge has nonnegative weight max(0,a_i+a_j-n); the sum of k smallest candidate weights gives a valid lower bound. Taking maximum of these floors and0 preserves validity."
+  },
+  "FRESH_JUDGE": "VERIFIED_WITH_CAVEATS",
+  "FRESH_JUDGE_VERDICT": "VERIFIED_WITH_CAVEATS",
+  "FULL_PROFILE_BOUND": 313122700,
+  "G01_TO_G16": [
+    {
+      "CRITERION": "Immutable Base HEAD/tree/result SHA and lineage",
+      "EVIDENCE": [
+        "judge-identity-and-provenance",
+        "judge-independent-route-family"
+      ],
+      "ID": "G01",
+      "OBSERVED": "Exact Base 9acea133... / de577e8d...; immutable result SHA 9fbe17d0...92c9; complete blob equals isolated working file. Embedded upstream lineage separately matches bee6acaa... / 7b382a40... / bca4ad19....",
+      "STATUS": "PASS"
+    },
+    {
+      "CRITERION": "Exact accepted Patch source/test seed identity",
+      "EVIDENCE": [
+        "judge-identity-and-provenance",
+        "judge-final-scope-and-falsifiability",
+        "worker:copy-exact-patch"
+      ],
+      "ID": "G02",
+      "OBSERVED": "Patch source SHA31775603...0043 and test SHA64b0026c...204f independently matched. Durable copy receipt confirms exact bytes seeded this worktree. Final delta changes only four enumeration functions semantically, plus authorized proof/metadata and focused tests; original patch bytes unchanged.",
+      "STATUS": "PASS"
+    },
+    {
+      "CRITERION": "Immutable T257 donor identity and unchanged historical caveats",
+      "EVIDENCE": [
+        "judge-identity-and-provenance",
+        "judge-independent-route-family"
+      ],
+      "ID": "G03",
+      "OBSERVED": "bbfee5c2... / 6925613d...; immutable result SHA f2a2a48f...3b42, source/test hashes match donor blob. Commit binds Fresh-context VERIFIED_WITH_CAVEATS and report SHAdd8cdc8d...03e2. Cap257 and bound313329096 accepted only as pinned donor authority; no T257 research re-executed. See hash-kind caveat C02.",
+      "STATUS": "PASS"
+    },
+    {
+      "CRITERION": "Frozen exact-profile invariants",
+      "EVIDENCE": [
+        "judge-independent-labelled-and-identity",
+        "judge-committed-focused-pytest"
+      ],
+      "ID": "G04",
+      "OBSERVED": "20 tickets, 6 labels,22 triple/27 pair supports; sumD66,core15,zero5,E93,W821,J2265,Goodman287,Amax193 independently derived.",
+      "STATUS": "PASS"
+    },
+    {
+      "CRITERION": "Universal core-zero identity",
+      "EVIDENCE": [
+        "judge-independent-labelled-and-identity",
+        "judge-committed-focused-pytest"
+      ],
+      "ID": "G05",
+      "OBSERVED": "Direct combinatorial derivation proves T=227+sum sigma*(sigma-d-4)+sum zeta^2-P for every realization. All32768 labelled six-vertex graphs validate the general shore partition; focused test additionally checks a 20-vertex graph of exact degrees.",
+      "STATUS": "PASS"
+    },
+    {
+      "CRITERION": "Four disjoint nonnegative remainders and valid floors",
+      "EVIDENCE": [
+        "judge-independent-finite-domain",
+        "judge-independent-labelled-and-identity",
+        "judge-committed-focused-pytest"
+      ],
+      "ID": "G06",
+      "OBSERVED": "Each P term is a separate cardinality classified by shore type; triangle and mixed-neighbour floors follow edge/degree identities. All1024 five-vertex graphs and32768 subset floor cases checked independently. All3517 state floor fields match.",
+      "STATUS": "PASS"
+    },
+    {
+      "CRITERION": "Coverage of every legal realization",
+      "EVIDENCE": [
+        "judge-independent-labelled-and-identity",
+        "judge-independent-finite-domain"
+      ],
+      "ID": "G07",
+      "OBSERVED": "Capacity, equal cross sums, parity, graphicality and bipartite tests are necessary conditions. Symmetry sorting only permutes equal-d core vertices and zero vertices. Every labelled zero graph included; no support realization asserted from degree feasibility.",
+      "STATUS": "PASS"
+    },
+    {
+      "CRITERION": "Complete retained state recount",
+      "EVIDENCE": [
+        "judge-independent-finite-domain",
+        "judge-independent-labelled-and-identity"
+      ],
+      "ID": "G08",
+      "OBSERVED": "3960 raw class signatures yield1491 distinct retained core signatures and3517 (sigma,zeta) degree matchings, with exact statewise equality.",
+      "STATUS": "PASS"
+    },
+    {
+      "CRITERION": "Complete compatible graph-pair recount",
+      "EVIDENCE": [
+        "judge-independent-finite-domain",
+        "judge-independent-labelled-and-identity"
+      ],
+      "ID": "G09",
+      "OBSERVED": "All1024 zero graphs,31 graphical degree multisets and every multiplicity reproduce100834 compatible class graph pairs.",
+      "STATUS": "PASS"
+    },
+    {
+      "CRITERION": "Independent labelled/convolution recount",
+      "EVIDENCE": [
+        "judge-independent-finite-domain",
+        "judge-independent-labelled-and-identity"
+      ],
+      "ID": "G10",
+      "OBSERVED": "Judge's independent constructive bipartite greedy/class enumeration agrees with independent vertex-extension graphs,Havel-Hakimi and conjugate cross majorization. Explicit368640 labelled assignments plus binary-core/edge-polynomial convolution reproduce154050 labelled cores,292300 degree matchings,6727928 graph pairs; every state multiplicity matches.",
+      "STATUS": "PASS"
+    },
+    {
+      "CRITERION": "Universal T<=237 and separate raw/corrected maxima",
+      "EVIDENCE": [
+        "judge-independent-finite-domain",
+        "judge-independent-labelled-and-identity"
+      ],
+      "ID": "G11",
+      "OBSERVED": "Per-r RAW maxima233,237,237,235,235,233,235,235; corrected233,236,235,232,231,226,224,222. P>=0 yields computed conservative universal cap237. Corrected relaxation cap236 is explicitly separate; P is never set equal to zero.",
+      "STATUS": "PASS"
+    },
+    {
+      "CRITERION": "Complete exact old/new Route-B terms",
+      "EVIDENCE": [
+        "judge-independent-route-family",
+        "judge-committed-focused-pytest"
+      ],
+      "ID": "G12",
+      "OBSERVED": "All246 old terms22..267 and216 new terms22..237 match independently generated integer/Fraction arithmetic and frozen formal evaluator in every field. Outward ceiling, negative S4 coefficient,Amax193 and no-S5 authority validated.",
+      "STATUS": "PASS"
+    },
+    {
+      "CRITERION": "Full-profile bound313122700",
+      "EVIDENCE": [
+        "judge-independent-route-family",
+        "judge-committed-cli-verification"
+      ],
+      "ID": "G13",
+      "OBSERVED": "New envelope unique maximum atT237 is313122700; endpoint q292,contained193,S4=153685,S3=4820480. Old maximum313391560 atT267. Result is recomputed rather than accepted from a hard-coded pass.",
+      "STATUS": "PASS"
+    },
+    {
+      "CRITERION": "Complete in-memory Family projection and authority preservation",
+      "EVIDENCE": [
+        "judge-independent-route-family",
+        "judge-final-scope-and-falsifiability"
+      ],
+      "ID": "G14",
+      "OBSERVED": "All4647 resolved rows and197 cursor profiles replayed under four scenarios. Only T257 andT237 rows change; other4645 and full cursor object equal Base. Joint313391172, owner65555555555511111000. Candidate adds only its own result; fixed Base bytes unchanged; canonical current checkout's Base path remains absent.",
+      "STATUS": "PASS"
+    },
+    {
+      "CRITERION": "Focused tests, quality checks and all required negatives",
+      "EVIDENCE": [
+        "judge-committed-focused-pytest",
+        "judge-committed-ruff",
+        "judge-committed-strict-pyright",
+        "judge-committed-cli-verification",
+        "judge-final-scope-and-falsifiability"
+      ],
+      "ID": "G15",
+      "OBSERVED": "Exact committed-tree33 tests passed:31 T237+2 r32 primitives. Ruff clean; strict Pyright0 errors,0 warnings,0 informations; CLI verifies exact result SHA. All14 required negative categories exercised by direct verifier tests. Existing17 seed test functions AST-preserved; no skip/xfail. Two added regressions fail under original defect fixture mutations and pass restored.",
+      "STATUS": "PASS"
+    },
+    {
+      "CRITERION": "Unique local commit, exact Judge tree and scope/write boundaries",
+      "EVIDENCE": [
+        "judge-identity-and-provenance",
+        "judge-final-scope-and-falsifiability",
+        "worker:unique-local-commit",
+        "worker:copy-exact-patch"
+      ],
+      "ID": "G16",
+      "OBSERVED": "Branch reflog contains creation from fixed Base plus one commitf30863f7; HEAD treea9977cc6 equals every Judge capture. Clean tracked/untracked status, exactly three allowed changed paths. Original Patch and originalT237 source/test hashes unchanged; marker/launcher unchanged. Execution/write audit contains no remote,Family-authority or other-worktree mutation. Judge performed no Git lifecycle or product writes.",
+      "STATUS": "PASS"
+    }
+  ],
+  "GLOBAL_K20_OPTIMUM": "UNKNOWN",
+  "HISTORICAL_R15": "NOT_VERIFIED",
+  "IMPLEMENTATION_DEPTH": "NORMAL",
+  "INDEPENDENT_RECOUNT": {
+    "CAPTURE_MANIFEST": {
+      "judge-committed-cli-verification": {
+        "ARGV_JSON_SHA256": "1bc53513bb04d1e6311b1d32889c7799e3616d735824f8bee4016a1b61964044",
+        "ELAPSED_SECONDS_TIMESTAMP_RESOLUTION": 13.0,
+        "ENDED_AT": "2026-10-17T09:23:44Z",
+        "EXACT_ARGV_IN_CAPTURE": true,
+        "EXIT_STATUS": 0,
+        "HEAD": "f30863f708e7f4d026d5c99e9b79529e38f9be92",
+        "LOCATOR": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_T237_FORMAL_CERTIFICATE_FROM_PATCH_R1/captures/judge-committed-cli-verification.json",
+        "SHA256": "8419e17a27d72deab3e8c128f7408ca60619c92e1aedac58393f3038d52ec2aa",
+        "STARTED_AT": "2026-10-17T09:23:31Z",
+        "STDERR_SHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "STDOUT_SHA256": "ef0bb66312b78d91fc3845f4566d08cf8339bdc576eae5060228f8ca61119e08",
+        "TREE": "a9977cc6451693ad8badd18d0bd7e5e9bb9c709e"
+      },
+      "judge-committed-focused-pytest": {
+        "ARGV_JSON_SHA256": "030fcacbb221983770e84cab71e3bb5f7c9cf1a368e03534397c2a1888093c6f",
+        "ELAPSED_SECONDS_TIMESTAMP_RESOLUTION": 13.0,
+        "ENDED_AT": "2026-10-17T09:21:25Z",
+        "EXACT_ARGV_IN_CAPTURE": true,
+        "EXIT_STATUS": 0,
+        "HEAD": "f30863f708e7f4d026d5c99e9b79529e38f9be92",
+        "LOCATOR": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_T237_FORMAL_CERTIFICATE_FROM_PATCH_R1/captures/judge-committed-focused-pytest.json",
+        "SHA256": "e9faa558d1a3c73c23681d5a12425763972ce22afffdc76d0c085403280936f0",
+        "STARTED_AT": "2026-10-17T09:21:12Z",
+        "STDERR_SHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "STDOUT_SHA256": "1ea04b1dec1719250ae2249274497d8703a3a3d16e59e350715ebbbea46a6692",
+        "TREE": "a9977cc6451693ad8badd18d0bd7e5e9bb9c709e"
+      },
+      "judge-committed-ruff": {
+        "ARGV_JSON_SHA256": "9531b5ec08edb0fcb52a97d8e3eb5cea3c718c1a93db32663b744c86f0f33d39",
+        "ELAPSED_SECONDS_TIMESTAMP_RESOLUTION": 0.0,
+        "ENDED_AT": "2026-10-17T09:24:15Z",
+        "EXACT_ARGV_IN_CAPTURE": true,
+        "EXIT_STATUS": 0,
+        "HEAD": "f30863f708e7f4d026d5c99e9b79529e38f9be92",
+        "LOCATOR": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_T237_FORMAL_CERTIFICATE_FROM_PATCH_R1/captures/judge-committed-ruff.json",
+        "SHA256": "22713709b65cc724d304d6255118955dad1f0b1c50acaa163da8e2cc1b50a4d4",
+        "STARTED_AT": "2026-10-17T09:24:15Z",
+        "STDERR_SHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "STDOUT_SHA256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18",
+        "TREE": "a9977cc6451693ad8badd18d0bd7e5e9bb9c709e"
+      },
+      "judge-committed-strict-pyright": {
+        "ARGV_JSON_SHA256": "c1430fa8e8d4debad69c945a51fddffb9b969eeba1f1f847a34dad81e14ec528",
+        "ELAPSED_SECONDS_TIMESTAMP_RESOLUTION": 3.0,
+        "ENDED_AT": "2026-10-17T09:24:23Z",
+        "EXACT_ARGV_IN_CAPTURE": true,
+        "EXIT_STATUS": 0,
+        "HEAD": "f30863f708e7f4d026d5c99e9b79529e38f9be92",
+        "LOCATOR": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_T237_FORMAL_CERTIFICATE_FROM_PATCH_R1/captures/judge-committed-strict-pyright.json",
+        "SHA256": "f35971dd01fb2a953a3f2d687aa1b54ca92bbb8decfc1ce70186ecb2d060ebf4",
+        "STARTED_AT": "2026-10-17T09:24:20Z",
+        "STDERR_SHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "STDOUT_SHA256": "f552d237ad0bd249c05f97eb62dbc65d2d0e4a5fe2346608e10fb7838dba9ed1",
+        "TREE": "a9977cc6451693ad8badd18d0bd7e5e9bb9c709e"
+      },
+      "judge-final-scope-and-falsifiability": {
+        "ARGV_JSON_SHA256": "90d75fb5f3e9aaa718595a2e1a76f072f43266758f6175b53fe37ac01b2514d9",
+        "ELAPSED_SECONDS_TIMESTAMP_RESOLUTION": 1.0,
+        "ENDED_AT": "2026-10-17T09:26:46Z",
+        "EXACT_ARGV_IN_CAPTURE": true,
+        "EXIT_STATUS": 0,
+        "HEAD": "f30863f708e7f4d026d5c99e9b79529e38f9be92",
+        "LOCATOR": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_T237_FORMAL_CERTIFICATE_FROM_PATCH_R1/captures/judge-final-scope-and-falsifiability.json",
+        "SHA256": "69c53a574dbf04268e8554da97138b21d28d2469966dd6112b7f91328256a0b3",
+        "STARTED_AT": "2026-10-17T09:26:45Z",
+        "STDERR_SHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "STDOUT_SHA256": "835c23a53cbccc82771bb53040dd218977e07f7d854d37f385541ca54486f806",
+        "TREE": "a9977cc6451693ad8badd18d0bd7e5e9bb9c709e"
+      },
+      "judge-identity-and-provenance": {
+        "ARGV_JSON_SHA256": "5f0fa76be721369c7a080df82c775e7216dc65e0701f5e04406596ddfb1a029c",
+        "ELAPSED_SECONDS_TIMESTAMP_RESOLUTION": 4.0,
+        "ENDED_AT": "2026-10-17T09:19:31Z",
+        "EXACT_ARGV_IN_CAPTURE": true,
+        "EXIT_STATUS": 0,
+        "HEAD": "f30863f708e7f4d026d5c99e9b79529e38f9be92",
+        "LOCATOR": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_T237_FORMAL_CERTIFICATE_FROM_PATCH_R1/captures/judge-identity-and-provenance.json",
+        "SHA256": "224a7f60479cf5372c409f5e993d8470f2578bfbebdb3ccd285bde9fa957bb09",
+        "STARTED_AT": "2026-10-17T09:19:27Z",
+        "STDERR_SHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "STDOUT_SHA256": "8eaaec48679bd86b7fad111577166da86298ea0dbf12b7db4231168718ffe37e",
+        "TREE": "a9977cc6451693ad8badd18d0bd7e5e9bb9c709e"
+      },
+      "judge-independent-finite-domain": {
+        "ARGV_JSON_SHA256": "f2e9860746445f8d81d954c945bedc89193938f2dd40137977791e519d002c70",
+        "ELAPSED_SECONDS_TIMESTAMP_RESOLUTION": 0.0,
+        "ENDED_AT": "2026-10-17T09:20:46Z",
+        "EXACT_ARGV_IN_CAPTURE": true,
+        "EXIT_STATUS": 0,
+        "HEAD": "f30863f708e7f4d026d5c99e9b79529e38f9be92",
+        "LOCATOR": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_T237_FORMAL_CERTIFICATE_FROM_PATCH_R1/captures/judge-independent-finite-domain.json",
+        "SHA256": "36a7f949ee12ecef5cca8e42e16a7ce7b8c6bf457289593107dd187a3d2e5b69",
+        "STARTED_AT": "2026-10-17T09:20:46Z",
+        "STDERR_SHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "STDOUT_SHA256": "79416aa37044c9860eb4187e5aabcd71ab079dbc64928bc701fd4208f12ebc79",
+        "TREE": "a9977cc6451693ad8badd18d0bd7e5e9bb9c709e"
+      },
+      "judge-independent-labelled-and-identity": {
+        "ARGV_JSON_SHA256": "06ba8a1c95c65335076bd52af85897ef3bcfc90cd0115d8825f6f4e899d5e73f",
+        "ELAPSED_SECONDS_TIMESTAMP_RESOLUTION": 1.0,
+        "ENDED_AT": "2026-10-17T09:22:53Z",
+        "EXACT_ARGV_IN_CAPTURE": true,
+        "EXIT_STATUS": 0,
+        "HEAD": "f30863f708e7f4d026d5c99e9b79529e38f9be92",
+        "LOCATOR": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_T237_FORMAL_CERTIFICATE_FROM_PATCH_R1/captures/judge-independent-labelled-and-identity.json",
+        "SHA256": "7077533c616d4e4d3d2c31a2797bf4003c578e38521102040b5e8ba941683294",
+        "STARTED_AT": "2026-10-17T09:22:52Z",
+        "STDERR_SHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "STDOUT_SHA256": "1fd3b17fc424d4f1a667ab7a7319ac8c5e0a123fef9326a5dbe925f558e0952d",
+        "TREE": "a9977cc6451693ad8badd18d0bd7e5e9bb9c709e"
+      },
+      "judge-independent-route-family": {
+        "ARGV_JSON_SHA256": "50e39b73af0c910dfd6244343cf37ffe8c1d1f5ac524779400e8d1d2bdb7cc61",
+        "ELAPSED_SECONDS_TIMESTAMP_RESOLUTION": 1.0,
+        "ENDED_AT": "2026-10-17T09:25:12Z",
+        "EXACT_ARGV_IN_CAPTURE": true,
+        "EXIT_STATUS": 0,
+        "HEAD": "f30863f708e7f4d026d5c99e9b79529e38f9be92",
+        "LOCATOR": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_T237_FORMAL_CERTIFICATE_FROM_PATCH_R1/captures/judge-independent-route-family.json",
+        "SHA256": "e4ad0994e486d6ff3d78eed6536a1b49f76bb598bf2ee99fd318c74f65134e2b",
+        "STARTED_AT": "2026-10-17T09:25:11Z",
+        "STDERR_SHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "STDOUT_SHA256": "93cbe0843693731fe59997a481896565b2ef0612eff90c62a33ce284f6adcab3",
+        "TREE": "a9977cc6451693ad8badd18d0bd7e5e9bb9c709e"
+      }
+    },
+    "JUDGE": {
+      "COVERAGE_PROOF": "22*3+27*2=20*6 exhausts label incidences; pair-linearity gives g=6+d. Every zero endpoint lies only on pair supports, so sigma<=6-d and zeta>=2. Consequently 10<=r<=24 and r even. Actual shore graphs are graphical and their actual cross graph satisfies both bipartite criteria. Equal-d core relabelling and zero relabelling preserve every condition/objective; every labelled zero graph is included. These are only necessary conditions, so all legal support realizations survive.",
+      "EXHAUSTIVE_SIX_VERTEX_PARTITION_CHECKS": 32768,
+      "FOUR_DISJOINT_REMAINDER_TOTALS": [
+        4096,
+        4096,
+        36864,
+        36864
+      ],
+      "FROZEN_FACTS": {
+        "A_MAX": 193,
+        "CORE": 15,
+        "E": 93,
+        "GOODMAN": 287,
+        "J": 2265,
+        "SUM_D": 66,
+        "W": 821,
+        "ZERO": 5
+      },
+      "LABELLED_CORES": 154050,
+      "LABELLED_GRAPH_PAIRS": 6727928,
+      "LABELLED_MATCHINGS": 292300,
+      "METHOD": "independent vertex-extension zero graphs + Havel-Hakimi + conjugate zero-side cross majorization + direct labelled assignments",
+      "RAW_LABELLED": 368640,
+      "STATEWISE_MULTIPLICITY_EQUAL": true,
+      "UNIVERSAL_IDENTITY_PROOF": "Each mixed complement triangle has a unique same-shore complement edge. Inclusion-exclusion gives 5-sigma_x-sigma_y+c_Z or 15-zeta_u-zeta_v+c_K. Adding homogeneous complement triangles gives Tc=5eM+15eN-sum sigma*h-sum zeta*mu+P. Here eM=(54+r)/2,eN=(r-10)/2 and Goodman=287, hence T=227+sum sigma*(sigma-d-4)+sum zeta^2-P."
+    },
+    "STATUS": "PASS",
+    "WORKER": {
+      "COMPATIBLE_CLASS_GRAPH_PAIRS": 100834,
+      "CORE_ZERO_DEGREE_MATCHINGS": 3517,
+      "LABELLED_CORE_GRAPH_PAIRS": 6727928,
+      "LABELLED_CORE_STATES": 154050,
+      "LABELLED_CORE_ZERO_DEGREE_MATCHINGS": 292300,
+      "RAW_LABELLED_SIGMA_STATES": 368640,
+      "RETAINED_CLASS_STATES": 1491,
+      "ZERO_GRAPH_MASKS": 1024
+    }
+  },
+  "JUDGED_TREE": "a9977cc6451693ad8badd18d0bd7e5e9bb9c709e",
+  "JUDGE_DEPTH": "FULL",
+  "JUDGE_MODE": "FRESH_CONTEXT",
+  "JUDGE_REPORT_LOCATOR": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_T237_FORMAL_CERTIFICATE_FROM_PATCH_R1/judge-report.json",
+  "JUDGE_REPORT_SHA256": "bbed01db2176856535aacc5915a2989727bd8889bb3276e01a3c5c08cafae595",
+  "LABELLED_CORE_GRAPH_PAIRS": 6727928,
+  "LABELLED_CORE_STATES": 154050,
+  "LABELLED_CORE_ZERO_DEGREE_MATCHINGS": 292300,
+  "LEGAL_ATTAINMENT": "UNKNOWN",
+  "LOCAL_COMMIT_COUNT": 1,
+  "NEW_T_TERMS": 216,
+  "NEXT_ACTION": "END_WITH_CERTIFIED_T237_RESULT",
+  "NO_SECOND_COMMIT": "CONFIRMED",
+  "OLD_T_TERMS": 246,
+  "ORIGINAL_WORKTREES_UNCHANGED": "PASS: exact source/test hashes confirmed by independent final scope audit",
+  "OTHER_RESOLVED_ROWS_UNCHANGED": 4645,
+  "PATCH_SOURCE_SHA256": "317756039a2794565024c5743052a6c06c5f2d24a9441a9452378b3665490043",
+  "PATCH_TEST_SHA256": "64b0026c98aa35a0903bdf3d559df5a377c10d4205d30a721504b6feff90204f",
+  "PROJECTED_FAMILY_UB": 313391172,
+  "PROJECTED_OWNER_IDS": [
+    "65555555555511111000"
+  ],
+  "PYRIGHT": "PASS: 0 errors, 0 warnings, 0 informations; version advisory only",
+  "RAW_STATES": 3960,
+  "REMAINING_TASK_MODEL": "強模型 — certified Family Authority integration",
+  "REMOTE_WRITE": "NO",
+  "RESULT_SHA256": "4aa6f817220db51a3648df3dcbe10efbd0d0ad614afa4223404e7dcd62ab01ac",
+  "RETAINED_STATES": 1491,
+  "ROUTE_B_MAX_T": 237,
+  "RUFF": "PASS: All checks passed",
+  "R_CLASS_CORRECTED_MAXIMA": {
+    "10": 233,
+    "12": 236,
+    "14": 235,
+    "16": 232,
+    "18": 231,
+    "20": 226,
+    "22": 224,
+    "24": 222
+  },
+  "R_CLASS_MAXIMA": {
+    "CORRECTED": {
+      "10": 233,
+      "12": 236,
+      "14": 235,
+      "16": 232,
+      "18": 231,
+      "20": 226,
+      "22": 224,
+      "24": 222
+    },
+    "RAW": {
+      "10": 233,
+      "12": 237,
+      "14": 237,
+      "16": 235,
+      "18": 235,
+      "20": 233,
+      "22": 235,
+      "24": 235
+    }
+  },
+  "R_CLASS_RAW_MAXIMA": {
+    "10": 233,
+    "12": 237,
+    "14": 237,
+    "16": 235,
+    "18": 235,
+    "20": 233,
+    "22": 235,
+    "24": 235
+  },
+  "S5": "NOT_USED",
+  "SOURCE_TEST_RESULT_UNCHANGED_AFTER_JUDGE": "CONFIRMED",
+  "T237_PROFILE_BOUND": 313122700,
+  "T237_UNIVERSAL_CAP": 237,
+  "T257_DONOR_HEAD": "bbfee5c20258fe69dbe48f070f86c6afa0020416",
+  "T257_DONOR_JUDGE_REPORT_SHA256": "dd8cdc8ded41ecf93a8846aea1ae226979eb18d6c8a54f51c51b0e33066403e2",
+  "T257_DONOR_RESULT_SHA256": "f2a2a48ff023dbb6a259911fb8b01b9a318b0982b5681f479549d35fdb1c3b42",
+  "T257_HASH_KIND_CAVEAT": "Packet reported dd8c...03e2 is the immutable commit cited Judge report hash; the result-file hash is f2a2...3b42. Both verified separately, historical caveats unchanged.",
+  "TASK_ID": "B649_T237_FORMAL_CERTIFICATE_FROM_PATCH_R1",
+  "TASK_STATUS": "COMPLETE_CERTIFIED_WITH_CAVEATS",
+  "UNIVERSAL_T_CAP": 237,
+  "WORKER_ATTEMPT_LEDGER": "Earlier failures retained in worker-blocker-receipt.json, worker-handoff.json and exact per-execution captures. Judge interruption at usage limit occurred after all verification captures completed; same independent context resumed only to seal, zero expensive replays.",
+  "WORKTREE_OWNERSHIP": "THIS_TASK_ONLY",
+  "WORKTREE_PATH": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_T237_FORMAL_CERTIFICATE_FROM_PATCH_R1",
+  "ZERO_GRAPH_MASKS": 1024
+}

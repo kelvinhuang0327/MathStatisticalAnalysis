@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "task_id": "B649_T237_FORMAL_CERTIFICATE_FROM_PATCH_R1",
+  "execution_id": "create-worktree",
+  "pid": 41783,
+  "status": "COMPLETED",
+  "durable_capture_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_T237_FORMAL_CERTIFICATE_FROM_PATCH_R1/captures/create-worktree.json",
+  "started_at": "2026-10-17T07:05:27Z",
+  "ended_at": "2026-10-17T07:05:30Z"
+}

@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "command": [
+    "env",
+    "PYTHONPATH=/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/src",
+    "PYTHONDONTWRITEBYTECODE=1",
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/python",
+    "-B",
+    "-m",
+    "pytest",
+    "-q",
+    "-p",
+    "no:cacheprovider",
+    "tests/unit/test_b649_s3_t208_exact_profile_certificate_r2.py"
+  ],
+  "stdout": "............F.......                                                     [100%]\n=================================== FAILURES ===================================\n__________ test_production_verifier_rejects_defect[fraction_ceiling] ___________\n\ncandidate = {'BASE': {'FAMILY_BOUND': 313391636, 'HEAD': '9acea1331e021a9623fa593997d90cfc89a69136', 'HISTORICAL_R15': 'NOT_VERIFI..., 0, 1, -7, ...], [0, 0, 1, 1, 2, -13, ...], ...], 'DP_AGREEMENT': True, 'LABELLED_ASSIGNMENT_COUNT': 73728, ...}, ...}\ndefect = 'fraction_ceiling'\n\n    @pytest.mark.parametrize(\n        \"defect\",\n        [\n            \"wrong_exact_profile\",\n            \"wrong_degree_histogram\",\n            \"missing_core_class\",\n            \"missing_zero_graph\",\n            \"incorrect_r_parity\",\n            \"wrong_residual_capacity\",\n            \"negative_remainder\",\n            \"wrong_s4_sign\",\n            \"unsupported_stronger_s4\",\n            \"fraction_ceiling\",\n            \"incomplete_t_range\",\n            \"wrong_base_sha256\",\n            \"missing_stronger_bound_evidence\",\n            \"candidate_result_inconsistency\",\n            \"unsupported_s5\",\n            \"inconsistent_independent_recount\",\n        ],\n    )\n    def test_production_verifier_rejects_defect(candidate: cert.Document, defect: str) -> None:\n        damaged = deepcopy(candidate)\n>       mutate(damaged, defect)\n\ntests/unit/test_b649_s3_t208_exact_profile_certificate_r2.py:137: \n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n\nvalue = {'BASE': {'FAMILY_BOUND': 313391636, 'HEAD': '9acea1331e021a9623fa593997d90cfc89a69136', 'HISTORICAL_R15': 'NOT_VERIFI..., 0, 1, -7, ...], [0, 0, 1, 1, 2, -13, ...], ...], 'DP_AGREEMENT': True, 'LABELLED_ASSIGNMENT_COUNT': 73728, ...}, ...}\ndefect = 'fraction_ceiling'\n\n    def mutate(value: cert.Document, defect: str) -> None:\n        facts = cert.obj(value[\"FACTS\"])\n        core, zero = cert.obj(value[\"CORE\"]), cert.obj(value[\"ZERO\"])\n        route = cert.obj(value[\"ROUTE_B\"])\n        terms = cast(list[list[int]], route[\"TERMS\"])\n        if defect == \"wrong_exact_profile\":\n            facts[\"PROFILE\"] = \"55555555555434000000\"\n        elif defect == \"wrong_degree_histogram\":\n            cert.obj(facts[\"DEGREE_HISTOGRAM\"])[\"5\"] = 10\n        elif defect == \"missing_core_class\":\n            cast(list[object], core[\"CLASS_ROWS\"]).pop()\n        elif defect == \"missing_zero_graph\":\n            zero[\"MASK_COUNT\"] = 32767\n        elif defect == \"incorrect_r_parity\":\n            cast(list[int], facts[\"R_DOMAIN\"])[1] = 7\n        elif defect == \"wrong_residual_capacity\":\n            cast(list[int], facts[\"RESIDUAL_CAPACITIES\"])[0] = 2\n        elif defect == \"negative_remainder\":\n            cert.obj(value[\"REMAINDER_TERMS\"])[\"T(M)\"] = -1\n        elif defect == \"wrong_s4_sign\":\n            route[\"S4_SIGN\"] = 1\n        elif defect == \"unsupported_stronger_s4\":\n            cert.obj(route[\"STRONGER_BOUND_EVIDENCE\"])[\"OPEN_WEDGE_MULTIPLIER\"] = 8\n            terms[-1][4] += 7\n        elif defect == \"fraction_ceiling\":\n>           row = next(row for row in terms if (4 * row[4]) % 7)\n                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE           StopIteration\n\ntests/unit/test_b649_s3_t208_exact_profile_certificate_r2.py:96: StopIteration\n=========================== short test summary info ============================\nFAILED tests/unit/test_b649_s3_t208_exact_profile_certificate_r2.py::test_production_verifier_rejects_defect[fraction_ceiling]\n1 failed, 19 passed in 25.79s\n",
+  "stderr": "",
+  "exit_status": 1,
+  "started_at": "2026-10-16T11:02:07Z",
+  "ended_at": "2026-10-16T11:02:33Z",
+  "execution_identity": {
+    "repository_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis",
+    "worktree_path": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2",
+    "head": "9acea1331e021a9623fa593997d90cfc89a69136",
+    "tree": "de577e8d6f3ccbe52e663c96ee1528c95a0ee7ec",
+    "launcher_path": "/Users/kelvin/.codex/skills/fable-method/scripts/task_checkpoint.rb",
+    "launcher_sha256": "babba3757a7ea9ad59c7ff9b18b6e4497dbc887b86eebfb09ccae1a36ab96275",
+    "runtime_executable": "/System/Library/Frameworks/Ruby.framework/Versions/2.6/usr/bin/ruby",
+    "runtime_version": "ruby 2.6.10p210 (2022-04-12 revision 67958) [universal.arm64e-darwin25]"
+  }
+}

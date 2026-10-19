@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "command": [
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/python",
+    "-B",
+    "-m",
+    "pytest",
+    "-p",
+    "no:cacheprovider",
+    "-q",
+    "tests/unit/test_b649_min_s2_t257_t237_joint_exact_authority_r1.py",
+    "tests/unit/test_b649_k20_min_s2_route_b_current_owner_refinement_r32.py::test_contained_triple_split_primitive",
+    "tests/unit/test_b649_k20_min_s2_route_b_current_owner_refinement_r32.py::test_canonical_primitive_gate_and_authority_pins"
+  ],
+  "stdout": ".................................                                        [100%]\n33 passed in 12.56s\n",
+  "stderr": "",
+  "exit_status": 0,
+  "started_at": "2026-10-17T09:21:12Z",
+  "ended_at": "2026-10-17T09:21:25Z",
+  "execution_identity": {
+    "repository_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis",
+    "worktree_path": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_T237_FORMAL_CERTIFICATE_FROM_PATCH_R1",
+    "head": "f30863f708e7f4d026d5c99e9b79529e38f9be92",
+    "tree": "a9977cc6451693ad8badd18d0bd7e5e9bb9c709e",
+    "launcher_path": "/Users/kelvin/.codex/skills/fable-method/scripts/task_checkpoint.rb",
+    "launcher_sha256": "babba3757a7ea9ad59c7ff9b18b6e4497dbc887b86eebfb09ccae1a36ab96275",
+    "runtime_executable": "/System/Library/Frameworks/Ruby.framework/Versions/2.6/usr/bin/ruby",
+    "runtime_version": "ruby 2.6.10p210 (2022-04-12 revision 67958) [universal.arm64e-darwin26]"
+  }
+}

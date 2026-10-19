@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "command": [
+    "env",
+    "PYTHONPATH=/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/src",
+    "PYTHONDONTWRITEBYTECODE=1",
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/python",
+    "-B",
+    "-c",
+    "from lottolab.research import b649_s3_t208_exact_profile_certificate_r2 as c; c.main(); import pytest; code=pytest.main([\"-q\",\"-p\",\"no:cacheprovider\",\"tests/unit/test_b649_s3_t208_exact_profile_certificate_r2.py::test_production_verifier_rejects_defect[missing_stronger_bound_evidence]\"]); assert code==0, code; print(\"RESTORE_AND_FINAL_REVERIFY: PASS\")"
+  ],
+  "stdout": "{\"TASK_ID\": \"B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2\", \"UNIVERSAL_T_CAP\": 208, \"FULL_PROFILE_BOUND\": 312835000, \"RESULT_SHA256\": \"7f76e162696850f80c68e25cc4dfcf288aa164003bf513c2d85e94f90955ae3b\"}\n.                                                                        [100%]\n1 passed in 3.08s\nRESTORE_AND_FINAL_REVERIFY: PASS\n",
+  "stderr": "",
+  "exit_status": 0,
+  "started_at": "2026-10-16T11:04:40Z",
+  "ended_at": "2026-10-16T11:04:46Z",
+  "execution_identity": {
+    "repository_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis",
+    "worktree_path": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2",
+    "head": "9acea1331e021a9623fa593997d90cfc89a69136",
+    "tree": "de577e8d6f3ccbe52e663c96ee1528c95a0ee7ec",
+    "launcher_path": "/Users/kelvin/.codex/skills/fable-method/scripts/task_checkpoint.rb",
+    "launcher_sha256": "babba3757a7ea9ad59c7ff9b18b6e4497dbc887b86eebfb09ccae1a36ab96275",
+    "runtime_executable": "/System/Library/Frameworks/Ruby.framework/Versions/2.6/usr/bin/ruby",
+    "runtime_version": "ruby 2.6.10p210 (2022-04-12 revision 67958) [universal.arm64e-darwin25]"
+  }
+}

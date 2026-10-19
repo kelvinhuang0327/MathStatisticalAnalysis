@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "command": [
+    "env",
+    "PYTHONPATH=src",
+    "PYTHONDONTWRITEBYTECODE=1",
+    "OMP_NUM_THREADS=1",
+    "OPENBLAS_NUM_THREADS=1",
+    "MKL_NUM_THREADS=1",
+    "NUMEXPR_NUM_THREADS=1",
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/python",
+    "-B",
+    "-c",
+    "import resource,json\nresource.setrlimit(resource.RLIMIT_CPU,(120,120))\nimport pytest\nfrom lottolab.research import b649_next_triple_resolved_frontier_math_r1 as m\ntarget=['tests/unit/test_b649_next_triple_resolved_frontier_math_r1.py::test_rounding_all_seven_credit_remainders','-q','-p','no:cacheprovider']\noriginal=m.verify_rounding\ntry:\n m.verify_rounding=lambda *args: None\n failed=int(pytest.main(target))\n assert failed==1, failed\nfinally:\n m.verify_rounding=original\nrestored=int(pytest.main(target))\nassert restored==0, restored\nprint(json.dumps({'FALSIFIABILITY_CHECK':'CONFIRMED','MUTATION':'in-memory rounding validator disabled','MUTANT_TEST_EXIT':failed,'RESTORED_TEST_EXIT':restored,'SOURCE_FILES_CHANGED':False},sort_keys=True))\n"
+  ],
+  "stdout": "F                                                                        [100%]\n=================================== FAILURES ===================================\n__________________ test_rounding_all_seven_credit_remainders ___________________\n\n    def test_rounding_all_seven_credit_remainders():\n        # Synthetic arithmetic cases are explicit because all real S4 floors divide by seven.\n        for s4 in range(14):\n            exact = Fraction(1000) - Fraction(4 * s4, 7)\n            ceil = -((-exact.numerator) // exact.denominator)\n            m.verify_rounding(1000, s4, ceil)\n            if exact.denominator != 1:\n>               with pytest.raises(ValueError, match=\"rounding\"):\n                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE               Failed: DID NOT RAISE ValueError\n\ntests/unit/test_b649_next_triple_resolved_frontier_math_r1.py:156: Failed\n=========================== short test summary info ============================\nFAILED tests/unit/test_b649_next_triple_resolved_frontier_math_r1.py::test_rounding_all_seven_credit_remainders\n1 failed in 0.06s\n.                                                                        [100%]\n1 passed in 0.03s\n{\"FALSIFIABILITY_CHECK\": \"CONFIRMED\", \"MUTANT_TEST_EXIT\": 1, \"MUTATION\": \"in-memory rounding validator disabled\", \"RESTORED_TEST_EXIT\": 0, \"SOURCE_FILES_CHANGED\": false}\n",
+  "stderr": "",
+  "exit_status": 0,
+  "started_at": "2026-10-16T06:53:40Z",
+  "ended_at": "2026-10-16T06:53:40Z",
+  "execution_identity": {
+    "repository_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis",
+    "worktree_path": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_NEXT_TRIPLE_RESOLVED_FRONTIER_MATH_R1",
+    "head": "b53a776a025a5218eef73e9a6933b972b4f5395b",
+    "tree": "d1b6d18bd41d45bd2cbc5b947f23cd6561e6d6b1",
+    "launcher_path": "/Users/kelvin/.codex/skills/fable-method/scripts/task_checkpoint.rb",
+    "launcher_sha256": "babba3757a7ea9ad59c7ff9b18b6e4497dbc887b86eebfb09ccae1a36ab96275",
+    "runtime_executable": "/System/Library/Frameworks/Ruby.framework/Versions/2.6/usr/bin/ruby",
+    "runtime_version": "ruby 2.6.10p210 (2022-04-12 revision 67958) [universal.arm64e-darwin25]"
+  }
+}

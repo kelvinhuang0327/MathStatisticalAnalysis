@@ -1,0 +1,39 @@
+{
+  "TASK_ID": "B649_K20_SIX_TICKET_CYCLIC_TRANSFER_EXACT_4320_R1",
+  "AUTHORIZATION_SOURCE": "CURRENT_WORKER_CONVERSATION_USER_MESSAGE",
+  "OWNER_QUESTION": "4,320 個代表已全部精確評分，必要 oracle 重算一致，沒有正增益。主機睡眠使 protected capture 曆時達 7,347 秒，超過原定 5,400 秒；程式 monotonic 計時為 150.96 秒。是否授權本次以排除主機睡眠的 monotonic 時間驗收 wall-time，直接採用既有計算？不重跑、不重設預算，也不增加 CPU 或記憶體上限。",
+  "OWNER_EXACT_REPLY": "授權排除主機睡眠驗收",
+  "SCOPE": "This completed execution only: accept process monotonic wall-time excluding host sleep; adopt existing exact computation; no rerun or budget reset; CPU/memory/worker limits unchanged.",
+  "EXECUTION_ID": "cyclic-exact-4320-r1",
+  "WORKTREE": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_K20_SIX_TICKET_CYCLIC_TRANSFER_EXACT_4320_R1",
+  "ACCEPTED_WALL_SECONDS": 150.95535795799515,
+  "CAPTURE_CALENDAR_WALL_SECONDS": 7347.0,
+  "ORIGINAL_WALL_LIMIT_SECONDS": 5400,
+  "CPU_SECONDS_UNCHANGED": 145.237255,
+  "PEAK_MEMORY_BYTES_UNCHANGED": 889110528,
+  "RESOURCE_LIMITS_UNCHANGED": {
+    "CPU_RLIMIT_SOFT_HARD": [
+      3585,
+      3600
+    ],
+    "CPU_WORKERS": 1,
+    "MAX_CUMULATIVE_CPU_SECONDS": 3600.0,
+    "MAX_TOTAL_MEMORY_BYTES": 2147483648,
+    "MAX_WALL_SECONDS": 5400.0,
+    "MEMORY_MONITOR_INTERVAL_SECONDS": 0.2,
+    "MEMORY_STOP_RESERVE_BYTES": 268435456,
+    "NUMERICAL_THREADS": 1,
+    "PEAK_MEMORY_MEASUREMENT": "conservative sum of app/child peak RSS plus launcher RSS",
+    "WALL_ALARM_SECONDS": 5385
+  },
+  "NO_NEW_NUMERICAL_EXECUTION": true,
+  "NO_BUDGET_RESET": true,
+  "SOURCE_SHA256": "73c2f10e1a5c17b718099a47eecf2026c1154b7d411ef21cbc4e521f8e3ac7a3",
+  "TEST_SHA256": "18ee90fe57c29b1362fd9dcb43b3eee7f54be9f59e5a92791a9132941003c989",
+  "PRE_OWNER_RESULT_LOCATOR": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_K20_SIX_TICKET_CYCLIC_TRANSFER_EXACT_4320_R1/captures/resource-budget-result.pre-owner-acceptance.json",
+  "PRE_OWNER_RESULT_SHA256": "33a275513d4fc7fe06f735f8fe436c9fb44acd052647c0742d44cce6735f7749",
+  "PRE_OWNER_AUDIT_LOCATOR": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_K20_SIX_TICKET_CYCLIC_TRANSFER_EXACT_4320_R1/captures/resource-budget-audit.pre-owner-acceptance.json",
+  "PRE_OWNER_AUDIT_SHA256": "535b75caca070c112cdf4e02c320dfd9bc6b362035ec4a11a88fd91dae6be1d5",
+  "JOURNAL_PREFIX_SHA256": "9737cc7c814b58032b88d8a51540949e438c862052f974841434b74475a57886",
+  "PROTECTED_CAPTURE_SHA256": "e3f0735de50b09d68a7e5f7b99328215ef65941359c9c7e943349a45d3218a8b"
+}

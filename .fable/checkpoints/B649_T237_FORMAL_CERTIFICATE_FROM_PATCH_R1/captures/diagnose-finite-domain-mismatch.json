@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "command": [
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/python",
+    "-B",
+    "-c",
+    "from lottolab.research import b649_min_s2_t257_t237_joint_exact_authority_r1 as c\nimport json\nA,ma=c.enumerate_a();B,mb=c.independent_labelled_recount(c.zero_masks_b())\nprint(json.dumps({'A':ma,'B':mb,'STATE_FIELDS_EQUAL':A==B,'R_MAX_A':c.r_maxima(A),'R_MAX_B':c.r_maxima(B),'ARGMAX':[v for v in A.values() if v['UPPER']==max(x['UPPER'] for x in A.values())]},sort_keys=True))"
+  ],
+  "stdout": "{\"A\": {\"COMPATIBLE_CLASS_GRAPH_PAIRS\": 100834, \"GRAPHICAL_ZERO_DEGREE_CLASSES\": 31, \"LABELLED_CORE_GRAPH_PAIRS\": 6727928, \"LABELLED_CORE_STATES\": 292300, \"RAW_CLASS_STATES\": 3960, \"RAW_ZERO_DEGREE_CLASSES\": 126, \"RETAINED_CLASS_STATES\": 3517, \"ZERO_GRAPH_MASKS\": 1024}, \"ARGMAX\": [{\"C_K\": 1, \"C_Z\": 0, \"M\": [2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 4, 8, 10, 12], \"N\": [0, 0, 0, 1, 1], \"P_PARTS\": [0, 0, 1, 0], \"R\": 12, \"RAW\": 237, \"SIGMA\": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 4, 5], \"T_M_FLOORS\": [0, 0], \"T_N_FLOORS\": [0, 0], \"UPPER\": 236, \"ZETA\": [2, 2, 2, 3, 3]}], \"B\": {\"COMPATIBLE_CLASS_GRAPH_PAIRS\": 100834, \"LABELLED_CORE_GRAPH_PAIRS\": 6727928, \"LABELLED_CORE_STATES\": 292300, \"RAW_LABELLED_SIGMA_STATES\": 368640, \"RETAINED_CLASS_STATES\": 3517, \"ZERO_GRAPH_MASKS\": 1024}, \"R_MAX_A\": {\"10\": 233, \"12\": 236, \"14\": 235, \"16\": 232, \"18\": 231, \"20\": 226, \"22\": 224, \"24\": 222}, \"R_MAX_B\": {\"10\": 233, \"12\": 236, \"14\": 235, \"16\": 232, \"18\": 231, \"20\": 226, \"22\": 224, \"24\": 222}, \"STATE_FIELDS_EQUAL\": true}\n",
+  "stderr": "",
+  "exit_status": 0,
+  "started_at": "2026-10-17T08:58:16Z",
+  "ended_at": "2026-10-17T08:58:28Z",
+  "execution_identity": {
+    "repository_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis",
+    "worktree_path": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_T237_FORMAL_CERTIFICATE_FROM_PATCH_R1",
+    "head": "9acea1331e021a9623fa593997d90cfc89a69136",
+    "tree": "de577e8d6f3ccbe52e663c96ee1528c95a0ee7ec",
+    "launcher_path": "/Users/kelvin/.codex/skills/fable-method/scripts/task_checkpoint.rb",
+    "launcher_sha256": "babba3757a7ea9ad59c7ff9b18b6e4497dbc887b86eebfb09ccae1a36ab96275",
+    "runtime_executable": "/System/Library/Frameworks/Ruby.framework/Versions/2.6/usr/bin/ruby",
+    "runtime_version": "ruby 2.6.10p210 (2022-04-12 revision 67958) [universal.arm64e-darwin26]"
+  }
+}

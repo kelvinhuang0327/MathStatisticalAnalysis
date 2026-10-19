@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "command": [
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/python",
+    "-B",
+    "-c",
+    "from pathlib import Path\nimport hashlib,json,subprocess,time\npatch=Path('/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_T237_THREE_DEFECT_ISOLATED_PATCH_R1')\nw=Path.cwd()\nfiles={'src/lottolab/research/b649_min_s2_t257_t237_joint_exact_authority_r1.py':'317756039a2794565024c5743052a6c06c5f2d24a9441a9452378b3665490043','tests/unit/test_b649_min_s2_t257_t237_joint_exact_authority_r1.py':'64b0026c98aa35a0903bdf3d559df5a377c10d4205d30a721504b6feff90204f'}\ndef snapshot():\n return {'identity':subprocess.check_output(['git','-c','core.fsmonitor=false','rev-parse','HEAD','HEAD^{tree}']).decode(),'status':subprocess.check_output(['git','-c','core.fsmonitor=false','status','--porcelain=v1','--untracked-files=all']).decode(),'patch':{p:hashlib.sha256((patch/p).read_bytes()).hexdigest() for p in files},'targets_absent':all(not (w/p).exists() for p in files)}\nbefore=snapshot();time.sleep(5);assert before==snapshot();assert before['targets_absent'];assert before['patch']==files\nfor rel,digest in files.items():\n raw=(patch/rel).read_bytes();assert hashlib.sha256(raw).hexdigest()==digest\n with (w/rel).open('xb') as f:f.write(raw)\n assert hashlib.sha256((w/rel).read_bytes()).hexdigest()==digest\nprint(json.dumps({'PREWRITE':before,'COPIED':files,'PATCH_WORKTREE_MODIFIED':False,'OTHER_WORKTREE_MODIFIED':False},sort_keys=True))"
+  ],
+  "stdout": "{\"COPIED\": {\"src/lottolab/research/b649_min_s2_t257_t237_joint_exact_authority_r1.py\": \"317756039a2794565024c5743052a6c06c5f2d24a9441a9452378b3665490043\", \"tests/unit/test_b649_min_s2_t257_t237_joint_exact_authority_r1.py\": \"64b0026c98aa35a0903bdf3d559df5a377c10d4205d30a721504b6feff90204f\"}, \"OTHER_WORKTREE_MODIFIED\": false, \"PATCH_WORKTREE_MODIFIED\": false, \"PREWRITE\": {\"identity\": \"9acea1331e021a9623fa593997d90cfc89a69136\\nde577e8d6f3ccbe52e663c96ee1528c95a0ee7ec\\n\", \"patch\": {\"src/lottolab/research/b649_min_s2_t257_t237_joint_exact_authority_r1.py\": \"317756039a2794565024c5743052a6c06c5f2d24a9441a9452378b3665490043\", \"tests/unit/test_b649_min_s2_t257_t237_joint_exact_authority_r1.py\": \"64b0026c98aa35a0903bdf3d559df5a377c10d4205d30a721504b6feff90204f\"}, \"status\": \"\", \"targets_absent\": true}}\n",
+  "stderr": "",
+  "exit_status": 0,
+  "started_at": "2026-10-17T08:57:23Z",
+  "ended_at": "2026-10-17T08:57:29Z",
+  "execution_identity": {
+    "repository_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis",
+    "worktree_path": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_T237_FORMAL_CERTIFICATE_FROM_PATCH_R1",
+    "head": "9acea1331e021a9623fa593997d90cfc89a69136",
+    "tree": "de577e8d6f3ccbe52e663c96ee1528c95a0ee7ec",
+    "launcher_path": "/Users/kelvin/.codex/skills/fable-method/scripts/task_checkpoint.rb",
+    "launcher_sha256": "babba3757a7ea9ad59c7ff9b18b6e4497dbc887b86eebfb09ccae1a36ab96275",
+    "runtime_executable": "/System/Library/Frameworks/Ruby.framework/Versions/2.6/usr/bin/ruby",
+    "runtime_version": "ruby 2.6.10p210 (2022-04-12 revision 67958) [universal.arm64e-darwin26]"
+  }
+}

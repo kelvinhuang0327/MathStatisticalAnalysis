@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import cast
 
@@ -40,12 +41,40 @@ TARGET = {
     "scheduled_at": "2026-09-18T12:30:00Z",
 }
 ARTIFACT_SCHEDULED_AT = "2026-09-18T20:30:00+08:00"
+FIXED_NOW = datetime(2026, 10, 19, 12, 0, 0, tzinfo=UTC)
 
 
 def _json_bytes(value: object) -> bytes:
     return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode(
         "utf-8"
     )
+
+
+def _update_health(
+    health_path: Path,
+    *,
+    updates: dict[str, object] | None = None,
+    remove: tuple[str, ...] = (),
+) -> None:
+    health = cast(dict[str, object], json.loads(health_path.read_text(encoding="utf-8")))
+    for key in remove:
+        health.pop(key, None)
+    health.update({} if updates is None else updates)
+    health_path.write_bytes(_json_bytes(health))
+
+
+def _assert_sanitized_unavailable(
+    response: httpx.Response,
+    *,
+    private_values: tuple[str, ...] = (),
+) -> None:
+    assert response.status_code == 503
+    assert response.json() == {
+        "error_code": "B649_CANONICAL_FORECAST_UNAVAILABLE",
+        "message": "The scheduler-owned B649 canonical forecast is unavailable.",
+    }
+    for private_value in private_values:
+        assert private_value not in response.text
 
 
 def _forecast(draw_number: str = TARGET["draw_number"]) -> dict[str, object]:
@@ -103,6 +132,8 @@ def _health(
     return {
         "schema_version": "b649-goalc-local-scheduler-health-v1",
         "current_status": "PREDRAW_READY",
+        "finished_at": (FIXED_NOW - timedelta(seconds=100)).isoformat(),
+        "stale_after_seconds": 900,
         "current_target": TARGET,
         "forecast_materialization": {
             "status": "COMPLETE",
@@ -157,6 +188,7 @@ def _write_bundle(
 
 
 def _client(monkeypatch: MonkeyPatch, health_path: Path) -> httpx.Client:
+    monkeypatch.setattr(api_module, "_utc_now", lambda: FIXED_NOW)
     monkeypatch.setenv(HEALTH_PATH_ENV, str(health_path))
     return cast(httpx.Client, TestClient(create_app()))
 
@@ -184,6 +216,13 @@ def test_success_projects_scheduler_artifacts_and_ignores_caller_paths(
     assert len(payload["k5_tickets"]) == 5
     assert len(payload["k10_tickets"]) == 10
     assert len(payload["k20_tickets"]) == 20
+    assert payload["portfolio_method_version"] == PORTFOLIO_METHOD_VERSION == "8.0.0"
+    for size in (5, 10, 20):
+        served = [
+            tuple(row["predicted_numbers"])
+            for row in payload[f"k{size}_tickets"]
+        ]
+        assert served == list(SEALED_GEOMETRY_PORTFOLIOS[size].tickets)
     assert payload["forecast_actual_sha256"] == hashlib.sha256(
         forecast_path.read_bytes()
     ).hexdigest()
@@ -216,8 +255,119 @@ def test_corrupt_health_is_sanitized_without_leaking_private_content(
 
     response = _client(monkeypatch, health_path).get(PATH)
 
-    assert response.status_code == 503
-    assert private_detail not in response.text
+    _assert_sanitized_unavailable(response, private_values=(private_detail,))
+
+
+def test_fresh_health_age_100_returns_200(tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
+    health_path, _, _ = _write_bundle(tmp_path)
+    _update_health(
+        health_path,
+        updates={"finished_at": (FIXED_NOW - timedelta(seconds=100)).isoformat()},
+    )
+
+    response = _client(monkeypatch, health_path).get(PATH)
+
+    assert response.status_code == 200
+
+
+def test_freshness_boundary_age_900_returns_200(tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
+    health_path, _, _ = _write_bundle(tmp_path)
+    _update_health(
+        health_path,
+        updates={"finished_at": (FIXED_NOW - timedelta(seconds=900)).isoformat()},
+    )
+
+    response = _client(monkeypatch, health_path).get(PATH)
+
+    assert response.status_code == 200
+
+
+def test_stale_health_age_901_returns_sanitized_503(
+    tmp_path: Path, monkeypatch: MonkeyPatch
+) -> None:
+    health_path, _, _ = _write_bundle(tmp_path)
+    _update_health(
+        health_path,
+        updates={"finished_at": (FIXED_NOW - timedelta(seconds=901)).isoformat()},
+    )
+
+    response = _client(monkeypatch, health_path).get(PATH)
+
+    _assert_sanitized_unavailable(response, private_values=(str(health_path),))
+
+
+@pytest.mark.parametrize(
+    ("updates", "remove"),
+    [
+        ({}, ("finished_at",)),
+        ({"finished_at": None}, ()),
+    ],
+    ids=("missing", "null"),
+)
+def test_missing_or_null_finished_at_fails_closed(
+    tmp_path: Path,
+    monkeypatch: MonkeyPatch,
+    updates: dict[str, object],
+    remove: tuple[str, ...],
+) -> None:
+    health_path, _, _ = _write_bundle(tmp_path)
+    _update_health(health_path, updates=updates, remove=remove)
+
+    response = _client(monkeypatch, health_path).get(PATH)
+
+    _assert_sanitized_unavailable(response, private_values=(str(health_path),))
+
+
+@pytest.mark.parametrize(
+    "finished_at",
+    ["not-a-timestamp", "2026-10-19T11:58:20"],
+    ids=("malformed", "naive"),
+)
+def test_malformed_or_naive_finished_at_fails_closed(
+    tmp_path: Path, monkeypatch: MonkeyPatch, finished_at: str
+) -> None:
+    health_path, _, _ = _write_bundle(tmp_path)
+    _update_health(health_path, updates={"finished_at": finished_at})
+
+    response = _client(monkeypatch, health_path).get(PATH)
+
+    _assert_sanitized_unavailable(response, private_values=(str(health_path),))
+
+
+@pytest.mark.parametrize(
+    ("updates", "remove"),
+    [
+        ({}, ("stale_after_seconds",)),
+        ({"stale_after_seconds": 0}, ()),
+        ({"stale_after_seconds": -1}, ()),
+        ({"stale_after_seconds": True}, ()),
+    ],
+    ids=("missing", "zero", "negative", "boolean"),
+)
+def test_invalid_staleness_threshold_fails_closed(
+    tmp_path: Path,
+    monkeypatch: MonkeyPatch,
+    updates: dict[str, object],
+    remove: tuple[str, ...],
+) -> None:
+    health_path, _, _ = _write_bundle(tmp_path)
+    _update_health(health_path, updates=updates, remove=remove)
+
+    response = _client(monkeypatch, health_path).get(PATH)
+
+    _assert_sanitized_unavailable(response, private_values=(str(health_path),))
+
+
+def test_future_finished_at_fails_closed(tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
+    health_path, _, _ = _write_bundle(tmp_path)
+    _update_health(
+        health_path,
+        updates={"finished_at": (FIXED_NOW + timedelta(seconds=1)).isoformat()},
+    )
+
+    response = _client(monkeypatch, health_path).get(PATH)
+
+    _assert_sanitized_unavailable(response, private_values=(str(health_path),))
 
 
 def test_forecast_digest_mismatch_fails_closed(tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
@@ -225,7 +375,7 @@ def test_forecast_digest_mismatch_fails_closed(tmp_path: Path, monkeypatch: Monk
 
     response = _client(monkeypatch, health_path).get(PATH)
 
-    assert response.status_code == 503
+    _assert_sanitized_unavailable(response)
 
 
 def test_forecast_target_mismatch_fails_closed(tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
@@ -236,7 +386,7 @@ def test_forecast_target_mismatch_fails_closed(tmp_path: Path, monkeypatch: Monk
 
     response = _client(monkeypatch, health_path).get(PATH)
 
-    assert response.status_code == 503
+    _assert_sanitized_unavailable(response)
 
 
 def test_incomplete_portfolio_bucket_fails_closed(tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
@@ -246,7 +396,7 @@ def test_incomplete_portfolio_bucket_fails_closed(tmp_path: Path, monkeypatch: M
 
     response = _client(monkeypatch, health_path).get(PATH)
 
-    assert response.status_code == 503
+    _assert_sanitized_unavailable(response)
 
 
 @pytest.mark.parametrize(
@@ -265,7 +415,7 @@ def test_missing_or_conflicting_method_provenance_fails_closed(
 
     response = _client(monkeypatch, health_path).get(PATH)
 
-    assert response.status_code == 503
+    _assert_sanitized_unavailable(response)
 
 
 @pytest.mark.parametrize(
@@ -284,17 +434,29 @@ def test_conflicting_current_portfolio_method_provenance_fails_closed(
 
     response = _client(monkeypatch, health_path).get(PATH)
 
-    assert response.status_code == 503
+    _assert_sanitized_unavailable(response)
 
 
-def test_v1_portfolio_artifact_fails_closed(tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("portfolio_method_id", "wrong-method"),
+        ("portfolio_method_version", "5.0.0"),
+    ],
+)
+def test_incompatible_portfolio_artifact_provenance_fails_closed(
+    tmp_path: Path,
+    monkeypatch: MonkeyPatch,
+    field: str,
+    value: str,
+) -> None:
     portfolio = _portfolio()
-    portfolio["portfolio_method_version"] = "1.0.0"
+    portfolio[field] = value
     health_path, _, _ = _write_bundle(tmp_path, portfolio=portfolio)
 
     response = _client(monkeypatch, health_path).get(PATH)
 
-    assert response.status_code == 503
+    _assert_sanitized_unavailable(response)
 
 
 def test_health_rollover_race_fails_closed(tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
@@ -315,7 +477,33 @@ def test_health_rollover_race_fails_closed(tmp_path: Path, monkeypatch: MonkeyPa
     monkeypatch.setattr(api_module, "_read_regular_bytes", read_with_rollover)
     response = _client(monkeypatch, health_path).get(PATH)
 
-    assert response.status_code == 503
+    _assert_sanitized_unavailable(response)
+
+
+def test_invalid_freshness_failure_never_leaks_paths_exceptions_or_artifacts(
+    tmp_path: Path, monkeypatch: MonkeyPatch
+) -> None:
+    health_path, forecast_path, portfolio_path = _write_bundle(tmp_path)
+    private_exception = "ValueError: private scheduler detail"
+    private_forecast = "private forecast artifact bytes"
+    private_portfolio = "private portfolio artifact bytes"
+    forecast_path.write_text(private_forecast, encoding="utf-8")
+    portfolio_path.write_text(private_portfolio, encoding="utf-8")
+    _update_health(health_path, updates={"finished_at": private_exception})
+
+    response = _client(monkeypatch, health_path).get(PATH)
+
+    _assert_sanitized_unavailable(
+        response,
+        private_values=(
+            str(health_path),
+            str(forecast_path),
+            str(portfolio_path),
+            private_exception,
+            private_forecast,
+            private_portfolio,
+        ),
+    )
 
 
 def test_production_app_composition_exposes_only_the_get_route() -> None:
@@ -349,7 +537,7 @@ def test_non_sealed_portfolio_tickets_fail_closed(
 
     response = _client(monkeypatch, health_path).get(PATH)
 
-    assert response.status_code == 503
+    _assert_sanitized_unavailable(response)
 
 
 def _scheduler_candidates() -> tuple[PersistedPortfolioCandidate, ...]:

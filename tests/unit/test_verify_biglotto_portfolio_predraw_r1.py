@@ -47,9 +47,14 @@ BASE_R2_SOURCE_IDENTITY = {
     "path": "tools/verify_biglotto_predraw_evidence_r2.py",
     "sha256": "c19144d9ad1f8bb88452524e18fc29588e66909d8957123ff91b7a542f6f2e2c",
 }
-CANDIDATE_R2_SOURCE_IDENTITY = {
+FIXED_HEAD_R2_SOURCE_IDENTITY = {
+    "commit": "1bffdd6087c79a138b64d7970b7bc9b7c3cc43f5",
     "path": "tools/verify_biglotto_predraw_evidence_r2.py",
     "sha256": "e59979c63be9d8e10b9c22ec2dd961363a3fc13e1faa94347f8eaabe6b1d6f07",
+}
+CANDIDATE_R2_SOURCE_IDENTITY = {
+    "path": "tools/verify_biglotto_predraw_evidence_r2.py",
+    "sha256": "f77efa014a834d1831513da11f9279698ac2602a74c7081ef07a0751e022e497",
 }
 
 
@@ -233,7 +238,21 @@ class VerifyBigLottoPortfolioPredrawTests(unittest.TestCase):
         _assert_source_sha256_identity(
             base_r2_sha,
             BASE_R2_SOURCE_IDENTITY["sha256"],
-            "fixed HEAD R2 source",
+            "previous base R2 source",
+        )
+
+        fixed_head_r2_source = subprocess.check_output(
+            [
+                "git",
+                "show",
+                f"{FIXED_HEAD_R2_SOURCE_IDENTITY['commit']}:{FIXED_HEAD_R2_SOURCE_IDENTITY['path']}",
+            ]
+        )
+        fixed_head_r2_sha = hashlib.sha256(fixed_head_r2_source).hexdigest()
+        _assert_source_sha256_identity(
+            fixed_head_r2_sha,
+            FIXED_HEAD_R2_SOURCE_IDENTITY["sha256"],
+            "fixed task HEAD R2 source",
         )
 
         candidate_r2_path = Path(CANDIDATE_R2_SOURCE_IDENTITY["path"])
@@ -248,9 +267,14 @@ class VerifyBigLottoPortfolioPredrawTests(unittest.TestCase):
         wrong_sha256 = "0" * 64
         for identity_name, actual_sha256, expected_sha256 in (
             (
-                "fixed HEAD R2 source",
+                "previous base R2 source",
                 base_r2_sha,
                 BASE_R2_SOURCE_IDENTITY["sha256"],
+            ),
+            (
+                "fixed task HEAD R2 source",
+                fixed_head_r2_sha,
+                FIXED_HEAD_R2_SOURCE_IDENTITY["sha256"],
             ),
             (
                 "working-tree Accuracy candidate R2 source",

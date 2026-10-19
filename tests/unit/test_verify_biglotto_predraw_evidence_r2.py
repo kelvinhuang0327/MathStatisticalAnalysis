@@ -554,21 +554,15 @@ class _SyntheticTsaHarness:
             encoding="ascii",
         )
 
-    def issue_token(self, digest_hex: str) -> bytes:
+    def issue_token(self, digest_hex: str, *, cert_req: bool = True) -> bytes:
         req_path = self.work_dir / f"req_{digest_hex[:12]}.tsq"
         tst_path = self.work_dir / f"token_{digest_hex[:12]}.tst"
+        query_cmd = [self.openssl, "ts", "-query", "-digest", digest_hex, "-sha256"]
+        if cert_req:
+            query_cmd.append("-cert")
+        query_cmd.extend(["-out", str(req_path)])
         subprocess.run(
-            [
-                self.openssl,
-                "ts",
-                "-query",
-                "-digest",
-                digest_hex,
-                "-sha256",
-                "-cert",
-                "-out",
-                str(req_path),
-            ],
+            query_cmd,
             check=True,
             capture_output=True,
         )
@@ -589,6 +583,19 @@ class _SyntheticTsaHarness:
             capture_output=True,
         )
         return tst_path.read_bytes()
+
+    def issue_token_and_request(
+        self, digest_hex: str, *, cert_req: bool = True
+    ) -> tuple[bytes, bytes]:
+        token = self.issue_token(digest_hex, cert_req=cert_req)
+        req_path = self.work_dir / f"req_{digest_hex[:12]}.tsq"
+        return token, req_path.read_bytes()
+
+    def signer_der_sha256(self) -> str:
+        der = subprocess.check_output(
+            [self.openssl, "x509", "-in", str(self.tsa_cert), "-outform", "DER"]
+        )
+        return hashlib.sha256(der).hexdigest()
 
 
 def _make_prediction_fixture(
@@ -856,6 +863,56 @@ class VerifyBigLottoPredrawEvidenceTests(unittest.TestCase):
                 require_independent_verification=True,
             )
         self.assertEqual(caught.exception.code, "TRUSTED_DRAW_CUTOFF_REQUIRED")
+
+    def test_external_signer_certreq_false_and_request_binding(self) -> None:
+        pred = _make_prediction_fixture("199000001")
+        out = _make_outcome_fixture("199000001")
+        contract = _make_contract_fixture(["199000001"])
+        payload = build_canonical_prediction_payload(pred)
+        canon_hash = compute_canonical_payload_sha256(payload)
+        token, request_bytes = self.tsa.issue_token_and_request(canon_hash, cert_req=False)
+        self.assertEqual(_parse_timestamp_token(token).accuracy_microseconds, 1_000)
+        entry = self._evidence_bundle_for_token(pred, canon_hash, token)["199000001"]
+        entry["REQUEST_BYTES"] = request_bytes
+        good_args = dict(
+            evidence_bundle={"199000001": entry},
+            pinned_tsa_cert_pem_path=self.ca_pem_path,
+            pinned_tsa_cert_sha256=self.ca_sha256,
+            pinned_tsa_signer_cert_pem_path=self.tsa.tsa_cert,
+            pinned_tsa_signer_cert_sha256=self.tsa.signer_der_sha256(),
+        )
+        result = verify_predraw_evidence_boundary([pred], [out], contract, **good_args)
+        self.assertEqual(result["CRYPTOGRAPHIC_VERIFIER_STATUS"], "PASS")
+        self.assertEqual(result["EVIDENCE_STATUS"], "DIAGNOSTIC_ONLY")
+        self.assertFalse(result["DRAW_CUTOFF_SOURCE_VERIFIED"])
+
+        missing_signer_args = dict(good_args)
+        missing_signer_args.pop("pinned_tsa_signer_cert_pem_path")
+        missing_signer_args.pop("pinned_tsa_signer_cert_sha256")
+        with self.assertRaises(ContractError) as caught:
+            verify_predraw_evidence_boundary([pred], [out], contract, **missing_signer_args)
+        self.assertEqual(caught.exception.code, "MISSING_EXTERNAL_SIGNER")
+
+        wrong_pin_args = dict(good_args, pinned_tsa_signer_cert_sha256="0" * 64)
+        with self.assertRaises(ContractError) as caught:
+            verify_predraw_evidence_boundary([pred], [out], contract, **wrong_pin_args)
+        self.assertEqual(caught.exception.code, "WRONG_TSA_SIGNER_FINGERPRINT")
+
+        _, wrong_nonce_request = self.tsa.issue_token_and_request(canon_hash, cert_req=False)
+        self.assertNotEqual(request_bytes, wrong_nonce_request)
+        nonce_bundle = {"199000001": dict(entry, REQUEST_BYTES=wrong_nonce_request)}
+        with self.assertRaises(ContractError) as caught:
+            verify_predraw_evidence_boundary(
+                [pred], [out], contract, **dict(good_args, evidence_bundle=nonce_bundle)
+            )
+        self.assertEqual(caught.exception.code, "REQUEST_NONCE_MISMATCH")
+
+        _, wrong_imprint_request = self.tsa.issue_token_and_request("f" * 64, cert_req=False)
+        imprint_bundle = {"199000001": dict(entry, REQUEST_BYTES=wrong_imprint_request)}
+        with self.assertRaises(ContractError):
+            verify_predraw_evidence_boundary(
+                [pred], [out], contract, **dict(good_args, evidence_bundle=imprint_bundle)
+            )
 
     def test_ac5_diagnostic_only_without_evidence_bundle(self) -> None:
         pred = _make_prediction_fixture("199000001")

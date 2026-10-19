@@ -13,6 +13,8 @@ Public entry point:
         evidence_bundle=None,
         pinned_tsa_cert_pem_path=None,
         pinned_tsa_cert_sha256=None,
+        pinned_tsa_signer_cert_pem_path=None,
+        pinned_tsa_signer_cert_sha256=None,
         snapshot_files_by_sha256=None,
         require_independent_verification=False,
     )
@@ -436,6 +438,7 @@ class _ParsedToken:
         "gen_time",
         "hashed_message",
         "policy_oid",
+        "nonce",
         "time_interval",
     )
 
@@ -447,11 +450,13 @@ class _ParsedToken:
         policy_oid: str,
         accuracy_microseconds: int | None,
         time_interval: _TimestampInterval | None,
+        nonce: int | None,
     ) -> None:
         self.algorithm_oid = algorithm_oid
         self.hashed_message = hashed_message
         self.gen_time = gen_time
         self.policy_oid = policy_oid
+        self.nonce = nonce
         self.accuracy_microseconds = accuracy_microseconds
         self.time_interval = time_interval
 
@@ -513,6 +518,16 @@ def _parse_timestamp_token(token_bytes: bytes) -> _ParsedToken:
             ):
                 raise _DerParseError("TSTInfo.accuracy is out of order")
         accuracy_microseconds = _parse_tstinfo_accuracy(accuracy_node)
+        nonce_nodes = [
+            node
+            for node in optional_nodes
+            if node.tag_class == _CLASS_UNIVERSAL and node.tag_number == 0x02
+        ]
+        if len(nonce_nodes) > 1:
+            raise _DerParseError("TSTInfo contains duplicate nonce fields")
+        nonce = _parse_der_integer(nonce_nodes[0], "TSTInfo.nonce") if nonce_nodes else None
+        if nonce is not None and nonce < 0:
+            raise _DerParseError("TSTInfo.nonce must be nonnegative")
         time_interval = _build_timestamp_interval(
             gen_time_epoch_seconds, accuracy_microseconds
         )
@@ -524,6 +539,7 @@ def _parse_timestamp_token(token_bytes: bytes) -> _ParsedToken:
             policy_oid=policy_oid,
             accuracy_microseconds=accuracy_microseconds,
             time_interval=time_interval,
+            nonce=nonce,
         )
     except _DerParseError as exc:
         raise ContractError(
@@ -531,6 +547,53 @@ def _parse_timestamp_token(token_bytes: bytes) -> _ParsedToken:
         ) from exc
     except Exception as exc:
         raise ContractError("INVALID_CMS_SIGNATURE", f"unhandled DER parse failure: {exc}") from exc
+
+
+def _parse_timestamp_request(request_bytes: bytes) -> tuple[str, bytes, str | None, int | None, bool]:
+    """Parse the RFC 3161 request fields needed to correlate a response."""
+    try:
+        request_node, end = _read_der_tlv(request_bytes, 0, require_minimal_length=True)
+        if end != len(request_bytes) or request_node.tag_class != _CLASS_UNIVERSAL or request_node.tag_number != _TAG_SEQUENCE:
+            raise _DerParseError("TimeStampReq must be one complete DER SEQUENCE")
+        children = _read_der_children(request_node.content, require_minimal_length=True)
+        if len(children) < 2 or _parse_der_integer(children[0], "TimeStampReq.version") != 1:
+            raise _DerParseError("TimeStampReq version or required fields are invalid")
+        imprint = children[1]
+        if imprint.tag_class != _CLASS_UNIVERSAL or imprint.tag_number != _TAG_SEQUENCE:
+            raise _DerParseError("TimeStampReq.messageImprint must be a SEQUENCE")
+        imprint_fields = _read_der_children(imprint.content, require_minimal_length=True)
+        if len(imprint_fields) != 2:
+            raise _DerParseError("TimeStampReq.messageImprint fields are invalid")
+        algorithm = _read_der_children(imprint_fields[0].content, require_minimal_length=True)
+        if not algorithm or algorithm[0].tag_number != _TAG_OID:
+            raise _DerParseError("TimeStampReq hash algorithm is missing")
+        algorithm_oid = _decode_oid(algorithm[0].content)
+        hashed_message = imprint_fields[1].content
+        policy_oid = None
+        nonce = None
+        cert_req = False
+        for field in children[2:]:
+            if field.tag_class == _CLASS_UNIVERSAL and field.tag_number == _TAG_OID:
+                if policy_oid is not None:
+                    raise _DerParseError("duplicate TimeStampReq.reqPolicy")
+                policy_oid = _decode_oid(field.content)
+            elif field.tag_class == _CLASS_UNIVERSAL and field.tag_number == 0x02:
+                if nonce is not None:
+                    raise _DerParseError("duplicate TimeStampReq.nonce")
+                nonce = _parse_der_integer(field, "TimeStampReq.nonce")
+                if nonce < 0:
+                    raise _DerParseError("TimeStampReq.nonce must be nonnegative")
+            elif field.tag_class == _CLASS_UNIVERSAL and field.tag_number == _TAG_BOOLEAN:
+                if field.content not in (b"\x00", b"\xff"):
+                    raise _DerParseError("TimeStampReq.certReq is not a DER BOOLEAN")
+                cert_req = field.content == b"\xff"
+            elif field.tag_class == _CLASS_CONTEXT and field.tag_number == 0:
+                continue
+            else:
+                raise _DerParseError("unexpected TimeStampReq optional field")
+        return algorithm_oid, hashed_message, policy_oid, nonce, cert_req
+    except _DerParseError as exc:
+        raise ContractError("INVALID_TIMESTAMP_REQUEST", str(exc)) from exc
 
 
 def _parse_openssl_date(date_str: str) -> datetime:
@@ -555,6 +618,9 @@ def _verify_openssl_token(
     ca_cert_path: Path,
     chain_path: Path | None = None,
     gen_time: datetime,
+    external_signer_cert_path: Path | None = None,
+    external_signer_cert_sha256: str | None = None,
+    request_cert_req: bool | None = None,
 ) -> None:
     openssl_bin = _get_openssl_binary()
 
@@ -586,14 +652,39 @@ def _verify_openssl_token(
             )
 
         cert_text = proc_pkcs7.stdout.decode("utf-8", errors="replace")
-        if not cert_text.strip():
-            raise ContractError(
-                "UNTRUSTED_TSA_CERTIFICATE", "token does not embed signer certificate"
+        has_embedded_certs = bool(cert_text.strip())
+        if request_cert_req is True and not has_embedded_certs:
+            raise ContractError("MISSING_EMBEDDED_SIGNER", "certReq=true requires the signer certificate in SignedData")
+        if request_cert_req is False and has_embedded_certs:
+            raise ContractError("UNEXPECTED_EMBEDDED_CERTIFICATE", "certReq=false response contains certificates")
+
+        signer_chain_path = None
+        if not has_embedded_certs:
+            if external_signer_cert_path is None or not external_signer_cert_sha256:
+                raise ContractError("MISSING_EXTERNAL_SIGNER", "certReq=false token requires an independently pinned signer certificate")
+            if not external_signer_cert_path.is_file():
+                raise ContractError("MISSING_EXTERNAL_SIGNER", f"pinned signer certificate not found: {external_signer_cert_path}")
+            signer_pem = external_signer_cert_path.read_bytes()
+            if signer_pem.count(b"-----BEGIN CERTIFICATE-----") != 1:
+                raise ContractError("INVALID_EXTERNAL_SIGNER", "pinned signer file must contain exactly one PEM certificate")
+            signer_der = subprocess.run(
+                [openssl_bin, "x509", "-in", str(external_signer_cert_path), "-outform", "DER"],
+                capture_output=True, timeout=10, check=False,
             )
+            if signer_der.returncode != 0 or not signer_der.stdout:
+                raise ContractError("INVALID_EXTERNAL_SIGNER", "pinned signer is not a valid X.509 certificate")
+            actual_signer_sha256 = hashlib.sha256(signer_der.stdout).hexdigest()
+            if actual_signer_sha256.lower() != external_signer_cert_sha256.strip().lower():
+                raise ContractError("WRONG_TSA_SIGNER_FINGERPRINT", f"signer DER SHA256 {actual_signer_sha256} != pin {external_signer_cert_sha256}")
+            if chain_path is not None and not chain_path.is_file():
+                raise ContractError("BROKEN_TSA_CHAIN", f"intermediate certificate file not found: {chain_path}")
+            signer_chain_path = td / "external-signer-chain.pem"
+            chain_bytes = chain_path.read_bytes() if chain_path is not None else b""
+            signer_chain_path.write_bytes(signer_pem + b"\n" + chain_bytes)
 
         # 2. Check timeStamping EKU
         has_ts_eku = False
-        if "X509v3 Extended Key Usage:" in cert_text:
+        if has_embedded_certs and "X509v3 Extended Key Usage:" in cert_text:
             lines = cert_text.splitlines()
             for i, line in enumerate(lines):
                 if "X509v3 Extended Key Usage:" in line:
@@ -605,7 +696,7 @@ def _verify_openssl_token(
                     ):
                         has_ts_eku = True
                         break
-        if not has_ts_eku:
+        if has_embedded_certs and not has_ts_eku:
             raise ContractError(
                 "WRONG_TSA_EKU", "TSA signer certificate missing timeStamping extended key usage"
             )
@@ -620,7 +711,7 @@ def _verify_openssl_token(
                 not_after = _parse_openssl_date(not_after_match.group(1))
             except (ValueError, TypeError):
                 pass
-        if (
+        if has_embedded_certs and (
             not_before is not None
             and not_after is not None
             and (gen_time < not_before or gen_time > not_after)
@@ -667,8 +758,10 @@ def _verify_openssl_token(
         if chain_path and chain_path.is_file():
             cmd += ["-untrusted", str(chain_path)]
 
-        proc = subprocess.run(cmd, capture_output=True, timeout=15, check=False)
-        if proc.returncode != 0:
+        proc = None
+        if has_embedded_certs:
+            proc = subprocess.run(cmd, capture_output=True, timeout=15, check=False)
+        if proc is not None and proc.returncode != 0:
             err = proc.stderr.decode("utf-8", errors="replace").lower()
             if (
                 "untrusted" in err
@@ -694,6 +787,42 @@ def _verify_openssl_token(
                 "INVALID_CMS_SIGNATURE",
                 f"OpenSSL ts -verify signature verification failed: {proc.stderr.decode()}",
             )
+
+        # CMS verification with CAdES checking binds ESSCertID(v2) to the exact
+        # signer certificate. For certReq=false, -nointern limits signer
+        # resolution to the separately pinned certificate; the root remains
+        # the sole trust anchor in -CAfile and the chain file is untrusted.
+        cms_cmd = [
+            openssl_bin, "cms", "-verify", "-binary", "-inform", "DER",
+            "-in", str(token_path), "-out", os.devnull,
+        ]
+        if not has_embedded_certs:
+            cms_cmd += ["-nointern", "-certfile", str(signer_chain_path)]
+        elif chain_path is not None:
+            if not chain_path.is_file():
+                raise ContractError("UNTRUSTED_TSA_CERTIFICATE", f"chain certificate file not found: {chain_path}")
+            cms_cmd += ["-certfile", str(chain_path)]
+        cms_cmd += [
+            "-CAfile", str(ca_cert_path), "-purpose", "timestampsign",
+            "-attime", str(int(_datetime_epoch_seconds(gen_time))), "-cades",
+        ]
+        cms_proc = subprocess.run(cms_cmd, capture_output=True, timeout=15, check=False)
+        if cms_proc.returncode != 0:
+            err = cms_proc.stderr.decode("utf-8", errors="replace").lower()
+            detail = cms_proc.stderr.decode("utf-8", errors="replace")
+            if "signer certificate" in err and ("not found" in err or "cannot be found" in err):
+                code = "WRONG_TSA_SIGNER_IDENTIFIER"
+            elif "expired" in err or "not yet valid" in err:
+                code = "CERTIFICATE_TIME_INVALID"
+            elif "purpose" in err or ("timestamp" in err and "certificate" in err):
+                code = "WRONG_TSA_EKU"
+            elif any(term in err for term in ("issuer", "untrusted", "self-signed", "self signed", "certificate verify")):
+                code = "UNTRUSTED_TSA_CERTIFICATE"
+            elif any(term in err for term in ("esscertid", "ess cert id", "signing certificate attribute")):
+                code = "WRONG_ESSCERTIDV2"
+            else:
+                code = "INVALID_CMS_SIGNATURE"
+            raise ContractError(code, f"OpenSSL CMS/CAdES verification failed: {detail}")
 
 
 def _verify_snapshot_bytes(
@@ -758,6 +887,8 @@ def verify_predraw_evidence_boundary(
     evidence_bundle: Any | None = None,
     pinned_tsa_cert_pem_path: str | Path | None = None,
     pinned_tsa_cert_sha256: str | None = None,
+    pinned_tsa_signer_cert_pem_path: str | Path | None = None,
+    pinned_tsa_signer_cert_sha256: str | None = None,
     snapshot_files_by_sha256: Mapping[str, str | Path | bytes] | None = None,
     require_independent_verification: bool = False,
 ) -> dict[str, Any]:
@@ -1020,6 +1151,27 @@ def verify_predraw_evidence_boundary(
             # Parse TSTInfo from token
             parsed_token = _parse_timestamp_token(token_bytes)
 
+            # Optional original request bytes bind the TSTInfo imprint, policy,
+            # and nonce back to the request that produced this response.
+            parsed_request = None
+            request_bytes = ev.get("REQUEST_BYTES")
+            if request_bytes is None and ev.get("REQUEST_PATH") is not None:
+                request_path = Path(ev["REQUEST_PATH"])
+                if not request_path.is_file():
+                    raise ContractError("INVALID_TIMESTAMP_REQUEST", f"request file not found: {request_path}")
+                request_bytes = request_path.read_bytes()
+            if request_bytes is not None:
+                if not isinstance(request_bytes, bytes) or not request_bytes:
+                    raise ContractError("INVALID_TIMESTAMP_REQUEST", "REQUEST_BYTES must be nonempty bytes")
+                parsed_request = _parse_timestamp_request(request_bytes)
+                req_algorithm, req_imprint, req_policy, req_nonce, req_cert_req = parsed_request
+                if req_algorithm != parsed_token.algorithm_oid or req_imprint != parsed_token.hashed_message:
+                    raise ContractError("IMPRINT_MISMATCH", "request and response message imprints differ")
+                if req_policy is not None and req_policy != parsed_token.policy_oid:
+                    raise ContractError("WRONG_TSA_POLICY", f"response policy {parsed_token.policy_oid} != requested policy {req_policy}")
+                if req_nonce is not None and req_nonce != parsed_token.nonce:
+                    raise ContractError("REQUEST_NONCE_MISMATCH", "response nonce is missing or differs from request")
+
             # Check hash algorithm OID
             if parsed_token.algorithm_oid != _OID_SHA256:
                 raise ContractError(
@@ -1085,6 +1237,13 @@ def verify_predraw_evidence_boundary(
                 ca_cert_path=ca_cert_path,
                 chain_path=chain_path,
                 gen_time=parsed_token.gen_time,
+                external_signer_cert_path=(
+                    Path(pinned_tsa_signer_cert_pem_path)
+                    if pinned_tsa_signer_cert_pem_path is not None
+                    else None
+                ),
+                external_signer_cert_sha256=pinned_tsa_signer_cert_sha256,
+                request_cert_req=parsed_request[4] if parsed_request is not None else None,
             )
 
     # No current input provides an independently authenticated official draw

@@ -42,6 +42,14 @@ extend-exclude = [".task-data"]
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
 
+[tool.ruff.lint.per-file-ignores]
+"tools/capture_single_execution_receipt.py" = [
+    "E501",
+    "SIM905",
+    "B905",
+    "UP017",
+]
+
 [tool.pyright]
 include = ["src", "tests", "tools"]
 typeCheckingMode = "strict"

@@ -83,7 +83,7 @@ def test_uninterrupted_interrupted_resume_equivalence_and_fail_closed(tmp_path: 
     assert anchor_ids == list(range(interrupted["A_BOUND_COUNT"]))
     assert len(anchor_ids) == len(set(anchor_ids))
     previous = metadata[7].split("=", 1)[1]
-    for line, record in zip(all_lines[1:], records):
+    for line in all_lines[1:]:
         payload, digest = line.rsplit("|", 1)
         assert digest == hashlib.sha256(f"{previous}\n{payload}".encode()).hexdigest()
         previous = digest
@@ -117,7 +117,11 @@ def test_uninterrupted_interrupted_resume_equivalence_and_fail_closed(tmp_path: 
     damaged = damaged[:-2] + (b"0" if damaged[-2:-1] != b"0" else b"1") + damaged[-1:]
     corrupt.write_bytes(damaged)
     result = subprocess.run(
-        [str(binary), "resume", str(corrupt)], capture_output=True, text=True, timeout=30, check=False
+        [str(binary), "resume", str(corrupt)],
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=False,
     )
     assert result.returncode != 0
     assert "prefix SHA256 mismatch" in result.stderr

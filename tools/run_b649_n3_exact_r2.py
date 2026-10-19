@@ -79,8 +79,14 @@ def inputs() -> tuple[Document, Document]:
 def build() -> None:
     RUN.mkdir(parents=True, exist_ok=True)
     sources = sorted(SOURCE.glob("*.c"))
-    source_hashes = {p.name: digest(p.read_bytes()) for p in sorted(SOURCE.iterdir()) if p.is_file()}
-    engine_sha256 = digest(json.dumps(source_hashes, sort_keys=True, separators=(",", ":")).encode())
+    source_hashes = {
+        p.name: digest(p.read_bytes())
+        for p in sorted(SOURCE.iterdir())
+        if p.is_file()
+    }
+    engine_sha256 = digest(
+        json.dumps(source_hashes, sort_keys=True, separators=(",", ":")).encode()
+    )
     argv = [
         "clang",
         "-std=c11",

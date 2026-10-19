@@ -58,7 +58,7 @@ def binary_evidence(data):
 
 
 def utc_now():
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(timezone.utc).isoformat()  # noqa: UP017 - Python 3.9 compatibility
 
 
 def sha256_argument(value):
@@ -272,9 +272,12 @@ def main():
         }
         completed = None
         try:
-            completed = subprocess.run(command, stdin=subprocess.DEVNULL,
-                                       stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                       check=False)  # The ONLY recorder invocation; no retries.
+            completed = subprocess.run(
+                command,
+                stdin=subprocess.DEVNULL,
+                capture_output=True,
+                check=False,
+            )  # The ONLY recorder invocation; no retries.
         except OSError as exc:
             summary["recorder"]["launch_error"] = f"{type(exc).__name__}: {exc}"
             summary["errors"].append(summary["recorder"]["launch_error"])
@@ -313,9 +316,13 @@ def main():
                 except (OSError, ValueError, KeyError, TypeError) as exc:
                     summary["errors"].append(f"{type(exc).__name__}: {exc}")
                     summary["receipt_acceptance"]["accepted"] = False
-                    summary["receipt_acceptance"]["reason"] = "Recorded dependency pins not established"
+                    summary["receipt_acceptance"]["reason"] = (
+                        "Recorded dependency pins not established"
+                    )
         else:
-            summary["receipt_acceptance"]["reason"] = "Observed process exit code or receipt bytes unavailable"
+            summary["receipt_acceptance"]["reason"] = (
+                "Observed process exit code or receipt bytes unavailable"
+            )
 
         try:
             observed = digest(recorder.read_bytes())
@@ -325,7 +332,9 @@ def main():
         except (OSError, ValueError) as exc:
             summary["errors"].append(f"{type(exc).__name__}: {exc}")
             summary["receipt_acceptance"]["accepted"] = False
-            summary["receipt_acceptance"]["reason"] = "Recorder source pin not established after invocation"
+            summary["receipt_acceptance"]["reason"] = (
+                "Recorder source pin not established after invocation"
+            )
 
         summary["finished_at_utc"] = utc_now()
         # MISMATCH stays MISMATCH even when the receipt itself is accepted.
@@ -349,5 +358,8 @@ if __name__ == "__main__":
     try:
         raise SystemExit(preflight_main() if "--preflight-only" in sys.argv[1:] else main())
     except (OSError, ValueError) as exc:
-        print(f"FAILED: {type(exc).__name__}: {exc}; do not reuse or retry output", file=sys.stderr)
-        raise SystemExit(1)
+        print(
+            f"FAILED: {type(exc).__name__}: {exc}; do not reuse or retry output",
+            file=sys.stderr,
+        )
+        raise SystemExit(1) from None

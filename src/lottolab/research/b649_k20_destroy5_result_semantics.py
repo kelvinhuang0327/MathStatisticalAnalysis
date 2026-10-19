@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import re
-from typing import Iterable
-
+from collections.abc import Iterable
+from dataclasses import dataclass
 
 FROZEN_START_COUNT = 313_239_661
 INITIAL_VERIFIED_INCUMBENT_COUNT = 313_263_888

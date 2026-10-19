@@ -8,7 +8,6 @@ from typing import Any
 
 import pytest
 
-
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DRIVER_PATH = (
     REPO_ROOT

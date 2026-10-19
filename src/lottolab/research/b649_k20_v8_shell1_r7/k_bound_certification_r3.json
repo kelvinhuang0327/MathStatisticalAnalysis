@@ -1,0 +1,498 @@
+{
+ "TASK_ID": "B649_K20_V8_SHELL1_REPAIRED_K_BOUND_CERTIFICATION_R3",
+ "CREATED": "2026-10-08T20:01:26+0800",
+ "BASE": "b9e0937fe0a6d9802eedfdad92518a257a2d7de9",
+ "CANONICAL": {
+  "K20_COUNT": 313263888,
+  "K20_SHA256": "eaed652900d101881b678a1515d2a366bff9de6723dbec2ec9c82fe0d0d7844c",
+  "S1_MINUS_S2_SHELL1": 307923840,
+  "S3_THRESHOLD": 5340048
+ },
+ "FROZEN_INPUTS_SHA256": {
+  "constants.py": "7a04ce5f17f9e4c7422c601b5a884c2a2ecf97f412a0da9beaa7553e0151d251",
+  "profiles.py": "f106f9c106d99d91b745bfdece1f07d44e955adba1d355daa93e73a479c63739",
+  "profiles_k.py": "bb6927c10023df07a81dc514304dada433862693a942b694e03431d74b081312",
+  "survivors.json": "c7287b11ba801f195372fb8db98e52a80c3b975e3cb478795cc95308457dfec2",
+  "k_bound_validation_r2.json": "2ca0110a611938acfe30259baaf922c9fa802f424538c86e2539123cebe70c06"
+ },
+ "IMPLEMENTATION": {
+  "PATH": "k_bound_certify_r3.py",
+  "SHA256": "12f59d58ec77b9e64df02524bb62c910c6ac75ddc7353541e7882ddf2f5091b0"
+ },
+ "FORMULA": {
+  "IDENTITY": "6*T_true = 940 + 3K + 8Q - N1 (Shell-1, E = 94)",
+  "B": "P_A: 3*kmax(deg,t,23);  P_C: 3*kmax(deg,t,20) + 8M + 3*floor((S-4M)/3), M = min_i(deg_i-3), S = sum_i(deg_i-3) over the 4 quad tickets",
+  "S3_UB": "2800*W + 11872*floor((940+B)/6) - 1400*Tstar  (Tstar: P_A 23, P_C 24)",
+  "PRUNE": "307923840 + S3_UB <= 313263888 (equality = no strict gain)"
+ },
+ "PROOF": {
+  "DEFINITIONS": {
+   "G": "graph on the 20 tickets, u~v iff |u&v| = 1; E = 94 edges, deg_u = sum_{x in u}(d_x - 1)",
+   "B_y, d_y": "tickets containing label y, d_y = |B_y|",
+   "m_y(u)": "for u not in B_y: number of tickets in B_y adjacent to u",
+   "T_true / Tstar": "graph triangles with 3 distinct edge labels / triples sharing one label; T3 = T_true + Tstar, Tstar = sum_y C(d_y,3) = 23 (P_A), 24 (P_C)",
+   "K, Q, N1": "#{(y,u): m_y(u) = 3}, = 4, = 1, over ALL labels y; K = K_trio (d_y=3) + K_quad (d_y=4)",
+   "t_u": "number of frequency-3 labels in ticket u"
+  },
+  "HISTOGRAM": "n_d labels of frequency d: sum n_d = 49, sum d n_d = 120, sum d^2 n_d = 2*94 + 120 = 308 => sum (d-2)(d-3) n_d = 308 - 600 + 294 = 2. (d-2)(d-3) is 0 for d in {2,3}, 2 for d in {1,4}, >= 6 otherwise, so exactly one label has d in {1,4}: P_A = 1^1 2^25 3^23 or P_C = 2^28 3^20 4^1.",
+  "PROFILE_DOMAIN": "P_A: deg_u = 6 + t_u - [u holds the singleton], singleton ticket t <= 5, others t <= 6, sum t = 69. P_C: quad ticket deg = 3 + 2t + (5 - t) = 8 + t with t <= 5, others deg = 6 + t with t <= 6, sum t = 60. Every legal configuration maps to one (KIND, sorted SPECIAL, sorted REST) in this domain.",
+  "IDENTITY": [
+   "(i) If u not in B_y meets b, c in B_y, the labels u&b, u&c differ (a common one would lie in b&c = {y}, but y not in u), so {u,b,c} is a true triangle. A true triangle arises exactly from its 3 (edge label y, opposite vertex u) pairs, and the opposite vertex never holds y; star triples never arise (all three hold y). Hence 3*T_true = sum_y sum_{u notin B_y} C(m_y(u), 2).",
+   "(ii) m_y(u) <= d_y <= 4, and for m in 0..4: 2*C(m,2) = m - [m=1] + 3[m=3] + 8[m=4] (values 0, 0, 2, 6, 12).",
+   "(iii) sum_y sum_{u notin B_y} m_y(u) = sum_y sum_{b in B_y} (deg_b - (d_y - 1)) = 6*sum_b deg_b - sum_y d_y(d_y - 1) = 12E - 2E = 10E (|b| = 6; overlap <= 1 => E = sum C(d_y,2)).",
+   "(iv) Doubling (i) and substituting (ii), (iii): 6*T_true = 10E + 3K + 8Q - N1 = 940 + 3K + 8Q - N1. Only d_y in {3,4} give m = 3, and only d_y = 4 gives m = 4 (Q = 0 in P_A)."
+  ],
+  "APEX_LEMMA": "For a trio label y = {b1,b2,b3}, each u with m_y(u) = 3 is a neighbour of every b_i outside B_y, and b_i has exactly deg_{b_i} - 2 such neighbours, so #apexes(y) <= min_i deg_{b_i} - 2.",
+  "KMAX_LEMMA": [
+   "Fix any degree-descending order; charge each trio to its last vertex v (lowest degree), so its apex count is <= deg_v - 2 =: w_v; w is non-increasing and > 0 (deg >= 5). Let x_v = #trios charged to v.",
+   "x_v <= t_v. Trios through v pairwise share only v (two shared tickets would share two labels), so their other pairs are disjoint pairs of earlier vertices: x_v <= floor(r_v/2).",
+   "Prefix P_r = sum_{j<=r} x_j counts trios inside the first r+1 vertices: a linear 3-graph, so P_r <= D(r+1); each uses 3 trio incidences of the prefix, so P_r <= floor(T_r/3); and P_r <= ntrip.",
+   "Greedy G_r = min(G_{r-1} + a_r, c_r) with a_r = min(t_r, floor(r/2)), c_r the prefix cap. By induction P_r <= min(P_{r-1} + a_r, c_r) <= G_r. Abel summation with w non-increasing, w >= 0: K_trio <= sum x_v w_v = sum_r P_r (w_r - w_{r+1}) <= sum_r G_r (w_r - w_{r+1}) = kmax.",
+   "Caps are non-decreasing (asserted), so every greedy increment is >= 0."
+  ],
+  "QUAD_LEMMA": [
+   "Quad label q, B_q = {b1..b4}; a_i = deg_{b_i} - 3 = #neighbours of b_i outside B_q (the other three quad tickets are neighbours via q). Domain: t_i in 0..5 => a_i in 5..10.",
+   "n_j = #{u notin B_q: m_q(u) = j}. Double counting B_q-to-outside edges: sum_j j*n_j = S, hence 4Q + 3K_quad <= S. Every m = 4 ticket neighbours each b_i: Q <= M = min a_i.",
+   "K_quad integer => 3K_quad + 8Q <= f(Q) = 8Q + 3*floor((S - 4Q)/3). f(Q+1) - f(Q) = 8 - 3j with j in {1,2}, i.e. 5 or 2 > 0, so f is maximised at Q = M (S - 4M >= 0): 3K_quad + 8Q <= 8M + 3*floor((S - 4M)/3).",
+   "The R1 term 8*qmax = 8M omits 3K_quad and is unsafe (counterexample 40 < 55)."
+  ],
+  "S3_BOUND": "B >= 3K + 8Q and N1 >= 0 => 6*T_true <= 940 + B; T_true integer => T_true <= floor((940+B)/6). S3 = 2800W + 11872*T3 - 13272*Tstar = 2800W + 11872*T_true - 1400*Tstar is increasing in T_true, so S3 <= S3_UB. Bonferroni-3: union <= S1 - S2 + S3.",
+  "CAP_STAGE": "Each graph triangle owns its 3 wedges and a wedge determines its triple, so 3*T3 <= W. s3_wedge(W) = 2800W + 11872*floor(W/3) - 13272*Tstar is strictly increasing, so the R1 cap prunes exactly W < W0 (P_A 837, P_C 838). R1's extra edge cap is not needed.",
+  "PACKING_UPPER_BOUND": "Only D(k) >= max linear triple systems on k points is needed. Schonheim: each point lies in <= floor((k-1)/2) triples, so D <= floor(k*floor((k-1)/2)/3). For k = 5 (mod 6), k-1 is even, so the leave (K_k minus the triangles) has all degrees even; Schonheim-many triangles would leave exactly C(k,2) - 3*Schonheim = 1 edge (asserted for k = 5, 11, 17), impossible for an even-degree graph, so D <= Schonheim - 1."
+ },
+ "PROOF_ASSUMPTIONS": [
+  "Shell-1 := 20 tickets of 6 labels from 1..49, pairwise overlap <= 1, sum_y C(d_y,2) = 94.",
+  "Objective = OFFICIAL_ANY_PRIZE union count; Bonferroni-3 upper bound S1 - S2 + S3.",
+  "S1 - S2 = 307923840 and triple weights PATH 2800 / STAR 7000 / TRIANGLE 20272 / <=1-edge 0 come from the frozen constants.co_win DP (re-evaluated here) and R2's canonical-evaluator cross-check.",
+  "D(k) = Schonheim - [k = 5 mod 6] is used only as an upper bound, proved by PROOF.PACKING_UPPER_BOUND (no external theorem). The correction is load-bearing: see SCHONHEIM_ONLY_PRUNED."
+ ],
+ "CONSTANTS_REEVALUATED_WITH_FROZEN_CO_WIN": {
+  "SINGLE": 18611432,
+  "PAIR_OVERLAP0": 107800,
+  "PAIR_OVERLAP1": 574000,
+  "PATH": 2800,
+  "STAR": 7000,
+  "TRIANGLE": 20272,
+  "S1_MINUS_S2": 307923840
+ },
+ "OLD_COUNTEREXAMPLE": {
+  "SOURCE": "k_bound_validation_r2.json BOUND_ADMISSIBILITY.P_C_STEP_COUNTEREXAMPLE.tickets",
+  "OLD_QUAD_CONTRIBUTION": 40,
+  "TRUE_QUAD_CONTRIBUTION": 55,
+  "NEW_QUAD_TERM": 55
+ },
+ "DETERMINISTIC_CONFIG_CHECKS": {
+  "P_C_COUNTEREXAMPLE_R2": {
+   "KIND": "P_C",
+   "SPECIAL": [
+    5,
+    5,
+    5,
+    0
+   ],
+   "REST": [
+    5,
+    5,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    3,
+    2,
+    1,
+    1,
+    0,
+    0,
+    0
+   ],
+   "W": 838,
+   "T3": 166,
+   "TSTAR": 24,
+   "T_TRUE": 142,
+   "PATHS": 340,
+   "S3_DIRECT": 3998624,
+   "K_TRIO": 70,
+   "K_QUAD": 5,
+   "Q": 5,
+   "N1": 353,
+   "KMAX_PROFILE_ORDER": 158,
+   "KMAX_TIE_ORDERS": [
+    158,
+    158
+   ],
+   "B": 529,
+   "S3_UB": 5209568,
+   "IDENTITY_HOLDS": true,
+   "APEX_LEMMA_HOLDS": true,
+   "KMAX_ADMISSIBLE": true,
+   "B_ADMISSIBLE": true,
+   "S3_UB_ADMISSIBLE": true,
+   "TRUE_QUAD_CONTRIBUTION": 55,
+   "OLD_QUAD_CONTRIBUTION": 40,
+   "NEW_QUAD_TERM": 55,
+   "QUAD_DEGREES": [
+    13,
+    13,
+    13,
+    8
+   ]
+  },
+  "P_A_K12_K8_LIFT": {
+   "KIND": "P_A",
+   "SPECIAL": [
+    2
+   ],
+   "REST": [
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1
+   ],
+   "W": 828,
+   "T3": 276,
+   "TSTAR": 23,
+   "T_TRUE": 253,
+   "PATHS": 0,
+   "S3_DIRECT": 5289816,
+   "K_TRIO": 195,
+   "K_QUAD": 0,
+   "Q": 0,
+   "N1": 7,
+   "KMAX_PROFILE_ORDER": 195,
+   "KMAX_TIE_ORDERS": [
+    195,
+    195
+   ],
+   "B": 585,
+   "S3_UB": 5301688,
+   "IDENTITY_HOLDS": true,
+   "APEX_LEMMA_HOLDS": true,
+   "KMAX_ADMISSIBLE": true,
+   "B_ADMISSIBLE": true,
+   "S3_UB_ADMISSIBLE": true
+  }
+ },
+ "QUAD_TERM_EXHAUSTIVE_RELAXATION_CHECK": {
+  "RANGE_A_I": [
+   0,
+   12
+  ],
+  "STATS": {
+   "ALL": 1820,
+   "UNSAFE": 0,
+   "TIGHT": 313,
+   "RESIDUE_0": 630,
+   "RESIDUE_1": 595,
+   "RESIDUE_2": 595,
+   "DOMAIN": 126,
+   "DOMAIN_TIGHT": 61,
+   "DOMAIN_OLD_8M_UNDERCOUNTS": 70
+  },
+  "MAX_OLD_UNDERCOUNT_IN_DOMAIN": [
+   [
+    5,
+    10,
+    10,
+    10
+   ],
+   15
+  ],
+  "BOUNDARY_FORMULA_VS_RELAXATION": {
+   "ALL_EQUAL_5555": [
+    40,
+    40
+   ],
+   "ALL_EQUAL_10_10_10_10": [
+    80,
+    80
+   ],
+   "CE_10_10_10_5": [
+    55,
+    55
+   ],
+   "Q0_FORCED_0_5_5_5": [
+    15,
+    15
+   ]
+  }
+ },
+ "PACKING_D_1_TO_20": [
+  0,
+  0,
+  1,
+  1,
+  2,
+  4,
+  7,
+  8,
+  12,
+  13,
+  17,
+  20,
+  26,
+  28,
+  35,
+  37,
+  44,
+  48,
+  57,
+  60
+ ],
+ "CHECKS": {
+  "FROZEN_INPUTS": true,
+  "CONSTANTS_REEVALUATED": true,
+  "IDENTITY_ON_CONFIGS": true,
+  "APEX_LEMMA_ON_CONFIGS": true,
+  "KMAX_ADMISSIBLE_ALL_TIE_ORDERS": true,
+  "B_AND_S3_UB_ADMISSIBLE": true,
+  "OLD_UNDERCOUNT_REPRODUCED": true,
+  "NEW_TERM_COVERS_COUNTEREXAMPLE": true,
+  "QUAD_TERM_GE_RELAXATION_EXHAUSTIVE": true,
+  "PACKING_TABLE_MATCHES_AND_MONOTONE": true,
+  "KMAX_REIMPLEMENTATION_MATCHES_R1": true,
+  "SURVIVOR_RECORDS_VALID_DISTINCT_W_GE_W0": true,
+  "ACCOUNTING_EXACT": true,
+  "CAP_STAGE_COVERAGE": true
+ },
+ "ACCOUNTING": {
+  "INPUT_CANDIDATES": 58480,
+  "BY_KIND": {
+   "P_A": {
+    "INPUT": 4605,
+    "OLD_CODED_WOULD_PRUNE": 3515,
+    "OLD_ONLY_PRUNE_REJECTED": 0,
+    "PRUNED": 3614,
+    "PRUNED_AT_EQUALITY": 0,
+    "REMAINING": 991,
+    "REPAIRED_RATIONAL_PRUNED": 3515,
+    "SCHONHEIM_ONLY_PRUNED": 3548
+   },
+   "P_C": {
+    "INPUT": 53875,
+    "OLD_CODED_WOULD_PRUNE": 48666,
+    "OLD_ONLY_PRUNE_REJECTED": 880,
+    "PRUNED": 48025,
+    "PRUNED_AT_EQUALITY": 0,
+    "REMAINING": 5850,
+    "REPAIRED_RATIONAL_PRUNED": 47196,
+    "SCHONHEIM_ONLY_PRUNED": 47707
+   }
+  },
+  "TOTAL_PRUNED": 51639,
+  "TOTAL_REMAINING": 6841,
+  "NOTE": "Only PRUNED/REMAINING use the certified bound; REPAIRED_RATIONAL / OLD_CODED / SCHONHEIM_ONLY are comparison counts. OLD_ONLY_PRUNE_REJECTED = records the unsafe R1 P_C term would have pruned but the certified bound keeps."
+ },
+ "UNRESOLVED_LOCATOR": {
+  "SOURCE": "survivors.json 0-based array index; predicate 307923840 + S3_UB > 313263888",
+  "COUNT": 6841,
+  "INDEX_LIST_SHA256": "e1db41d1c1ea6fda0456f989b68ecab1fc4a26e2e14b020f576a14efc3f07d3b",
+  "INDEX_LIST_ENCODING": "sha256 of ascii comma-joined ascending indices",
+  "TOP5_BY_UB": [
+   {
+    "index": 462,
+    "KIND": "P_C",
+    "SPECIAL": [
+     4,
+     4,
+     4,
+     4
+    ],
+    "REST": [
+     6,
+     6,
+     6,
+     6,
+     6,
+     5,
+     5,
+     4,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "UB_K": 313445776,
+    "UB_MIN_K_WEDGE": 313445776
+   },
+   {
+    "index": 282,
+    "KIND": "P_C",
+    "SPECIAL": [
+     4,
+     4,
+     4,
+     4
+    ],
+    "REST": [
+     6,
+     6,
+     6,
+     6,
+     6,
+     6,
+     5,
+     3,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "UB_K": 313439504,
+    "UB_MIN_K_WEDGE": 313439504
+   },
+   {
+    "index": 451,
+    "KIND": "P_C",
+    "SPECIAL": [
+     4,
+     4,
+     4,
+     3
+    ],
+    "REST": [
+     6,
+     6,
+     6,
+     6,
+     6,
+     6,
+     5,
+     4,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "UB_K": 313433904,
+    "UB_MIN_K_WEDGE": 313433904
+   },
+   {
+    "index": 472,
+    "KIND": "P_C",
+    "SPECIAL": [
+     5,
+     4,
+     4,
+     4
+    ],
+    "REST": [
+     6,
+     6,
+     6,
+     5,
+     5,
+     5,
+     5,
+     5,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "UB_K": 313433904,
+    "UB_MIN_K_WEDGE": 313433904
+   },
+   {
+    "index": 565,
+    "KIND": "P_C",
+    "SPECIAL": [
+     4,
+     4,
+     4,
+     4
+    ],
+    "REST": [
+     6,
+     6,
+     6,
+     6,
+     5,
+     5,
+     5,
+     5,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "UB_K": 313431104,
+    "UB_MIN_K_WEDGE": 313431104
+   }
+  ]
+ },
+ "BEST_VALID_UPPER_BOUND": 313445776,
+ "BEST_K_ONLY_UPPER_BOUND": 313445776,
+ "GAP_VS_313263888": 181888,
+ "CAP_STAGE_COVERAGE": {
+  "METHOD": "Multiset generating-function DP over the full profile domains (counts only, no profile enumeration). Survivors are distinct, in-domain and have W >= W0; equal cardinality => survivors.json == {domain profiles with W >= W0}, so every excluded profile has W < W0 and is closed by T3 <= floor(W/3) alone.",
+  "BY_KIND": {
+   "P_A": {
+    "DOMAIN_PROFILES": 22169,
+    "W0": 837,
+    "DOMAIN_W_GE_W0": 4605
+   },
+   "P_C": {
+    "DOMAIN_PROFILES": 256038,
+    "W0": 838,
+    "DOMAIN_W_GE_W0": 53875
+   }
+  },
+  "TOTAL_DOMAIN_PROFILES": 278207,
+  "DOMAIN_SIZES_BY_PARTITION_COUNT": {
+   "P_A": 22169,
+   "P_C": 256038
+  },
+  "EXCLUDED_BEFORE_SURVIVORS": 219727,
+  "PACKET_CLAIMED_EXCLUDED": 219712,
+  "DELTA_VS_PACKET": 15,
+  "DELTA_NOTE": "Two independent counts of the profiles.py domain agree; the packet/R1-log figure is short by this delta. Not a gap: coverage is proved for the whole counted domain (every profile outside survivors.json has W < W0).",
+  "STATUS": "CERTIFIED"
+ },
+ "REMAINING_PROOF_GAPS": [
+  "6841 survivor profiles (index-list sha e1db41d1c1ea) have certified UB > 313263888; best UB 313445776. They need a closure method.",
+  "Bonferroni constants (S1-S2, triple weights) rest on the frozen constants.co_win DP and R2's canonical-evaluator cross-check; R3 re-evaluates them with the same DP, not an independent one.",
+  "Shell-1 only: overlap <= 1 and sum C(d,2) = 94. Other shells are out of scope."
+ ],
+ "SCIENTIFIC_STATUS": "CERTIFIED_POSTCAP_BOUND",
+ "NO_CPSAT": true,
+ "CPU_SECONDS": 2.65,
+ "SHELL1_STATUS": "OPEN: only the remaining survivors are uncovered"
+}

@@ -1,0 +1,52 @@
+{
+  "TASK_ID": "B649_K20_MIN_S2_DANGEROUS_CORE_REALIZABILITY_R5",
+  "BASE_HEAD": "6c45ba462172f67fc02e35a3bc7787be16126108",
+  "BASE_TREE": "d5a7c0716319e7f7ee2f11620e3f2ad8a092e3b5",
+  "TASK_BRANCH": "codex/b649-k20-min-s2-dangerous-core-realizability-r5",
+  "PROFILE_COUNTS": {
+    "TOTAL_BOUNDED_PROFILES": 5126,
+    "PAIR_CAPACITY_COMPATIBLE_PROFILES": 4850,
+    "RESIDUAL_DOUBLE_DEGREE_GRAPHICAL_PROFILES": 4850,
+    "DANGEROUS_PROFILES": 4850
+  },
+  "PROFILE_RANKING": "Reused the r4 bounded-profile generator because its result exposes aggregate maxima, not the full per-profile ranking",
+  "INCUMBENT_S3_THRESHOLD_EXCLUSIVE": 4849685,
+  "REUSED_S4_LOWER_BOUND": 112,
+  "FOURTH_ORDER_BONFERRONI_CREDIT": 64,
+  "CLOSED_DANGEROUS_PROFILE_COUNT": 3,
+  "CLOSED_DANGEROUS_PROFILES": [
+    [6, 6, 6, 6, 6, 5, 5, 5, 5, 5, 5, 5, 1, 0, 0, 0, 0, 0, 0, 0],
+    [6, 6, 6, 6, 6, 6, 6, 5, 4, 4, 4, 4, 3, 0, 0, 0, 0, 0, 0, 0],
+    [6, 6, 6, 6, 6, 5, 5, 5, 5, 5, 5, 4, 2, 0, 0, 0, 0, 0, 0, 0]
+  ],
+  "TOP_SURVIVING_PROFILES": [
+    [6, 6, 6, 6, 6, 6, 6, 4, 4, 4, 4, 4, 4, 0, 0, 0, 0, 0, 0, 0],
+    [6, 6, 6, 6, 6, 6, 5, 5, 5, 4, 4, 4, 3, 0, 0, 0, 0, 0, 0, 0],
+    [6, 6, 6, 6, 6, 5, 5, 5, 5, 5, 5, 4, 1, 1, 0, 0, 0, 0, 0, 0],
+    [6, 6, 6, 6, 6, 5, 5, 5, 5, 5, 5, 3, 3, 0, 0, 0, 0, 0, 0, 0],
+    [6, 6, 6, 6, 5, 5, 5, 5, 5, 5, 5, 5, 2, 0, 0, 0, 0, 0, 0, 0]
+  ],
+  "TOP_SURVIVING_MOTIF_CLASS": {
+    "STATUS": "MAYBE_REALIZABLE",
+    "WEDGE_COUNT": 837,
+    "TRIPLE_SUPPORT_MODEL": "22 3-uniform supports; pair capacity at most one; listed degree profile",
+    "DOUBLE_SUPPORT_MODEL": "27 size-two supports only as residual ticket/pair capacities; residual degree sequence is graphical",
+    "MOTIF_RESOLUTION": "Loose-cycle, shared-vertex, and Pasch-like maxima remain unclassified in this tied degree class"
+  },
+  "S3_S4_ENVELOPE": {
+    "S3_UPPER_BOUND": 5363904,
+    "S4_LOWER_BOUND": 112,
+    "FOURTH_ORDER_CREDIT": 64,
+    "FAMILY_UPPER_BOUND": 313753880
+  },
+  "PREVIOUS_FAMILY_UPPER_BOUND": 313777016,
+  "INCUMBENT": 313239661,
+  "REMAINING_FAMILY_GAP": 514219,
+  "FAMILY_STATUS": "OPEN_STRICTLY_TIGHTENED",
+  "SOLVER_STATUS": "NOT_RUN_ANALYTIC_CERTIFICATE",
+  "SOLVER_CONFIGURED_WALL_LIMIT": "NOT_APPLICABLE",
+  "SOLVER_ACTUAL_WALL_TIME": "NOT_APPLICABLE",
+  "SOLVER_CERTIFIED_BOUND": "NOT_APPLICABLE; analytic FAMILY_UPPER_BOUND is 313753880",
+  "NEW_PORTFOLIO_SEARCH_STARTED": "NO",
+  "PRODUCTION_MUTATION": "NONE"
+}

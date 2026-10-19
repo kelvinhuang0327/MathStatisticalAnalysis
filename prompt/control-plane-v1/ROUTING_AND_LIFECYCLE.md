@@ -108,5 +108,7 @@ Both unresolved states use `PENDING_OWNER_REFERENCE`, remain lint-valid, and blo
 rendering. For `SINGLE_PROMPT` and `STANDALONE`, only `PRESENT` with a safe `OWNER_MESSAGE_REF`
 can render; `NONE` remains renderable only through the exact `NOT_REQUIRED` envelope. Render the
 complete Worker Prompt only from `WORKER_TASK_TEMPLATE.md`.
+Use `task.result_dependency` for successful state-changing dependencies; unfrozen results block
+rendering.
 Generated text must remain byte-reproducible for the same five durable sources and manifest.
 <!-- PLANNER_ROUTING:END -->

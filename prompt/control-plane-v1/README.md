@@ -66,6 +66,14 @@ non-placeholder path and branch values. `L24_WORKTREE_REQUIRED_FOR_REPOSITORY_WR
 repository writes without that worktree envelope. `lint --manifest` and `render --manifest` use the
 same fail-closed parsing and L23/L24 validation pipeline before rendering applies L25.
 
+For a state-changing task that depends on a successful upstream result, optional
+`task.result_dependency` records `TASK_STATUS`, `BASE_HEAD`, `TASK_HEAD`, `CHANGED_PATHS`, and
+optional `NON_AUTHORITATIVE_PATHS`. When tracked changes are declared, preflight requires the
+upstream `TASK_HEAD` to resolve to a commit distinct from `BASE_HEAD`, contain the declared paths,
+match the successor worktree and manifest head, and have no tracked worktree changes. Otherwise it
+returns `UNFROZEN_RESEARCH_RESULT` and emits no Worker Prompt. `NO_CHANGE_REQUIRED`, read-only work,
+and paths explicitly marked non-authoritative do not activate this gate.
+
 ## Change flow
 
 1. Edit only the relevant canonical source or sources.

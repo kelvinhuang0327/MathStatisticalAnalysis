@@ -17,21 +17,21 @@ export const CANONICAL_HORIZONS: readonly HorizonDefinition[] = [
     label: 'Short · 50',
     shortLabel: 'Short',
     draws: 50,
-    description: 'Recent 50 historical evaluation draws (exploratory / low statistical power)',
+    description: 'Recent 50 historical draws',
   },
   {
     key: 'RECENT_300',
     label: 'Medium · 300',
     shortLabel: 'Medium',
     draws: 300,
-    description: 'Recent 300 historical evaluation draws (intermediate stability window)',
+    description: 'Recent 300 historical draws',
   },
   {
     key: 'RECENT_750',
     label: 'Long · 750',
     shortLabel: 'Long',
     draws: 750,
-    description: 'Recent 750 historical evaluation draws (primary out-of-sample window)',
+    description: 'Recent 750 historical draws',
   },
   {
     key: 'FULL',
@@ -80,14 +80,14 @@ export interface BestReplayItem {
   id: string
   rank: number | null
   strategyId: string
-  strategyVersion: string
+  strategyVersion: string | null
   legacyMethodId?: string
   methodFamily: string
   game: GameCode
   ticketCount: TicketCount
   horizon: HorizonKey
   horizonLabel: string
-  evaluatedTargets: number
+  evaluatedTargets: number | null
   winningTargets: number | null
   hitRate: number | null
   hitRateFormatted: string
@@ -111,7 +111,7 @@ export interface BestReplaySummary {
   ticketCount: number | string
   horizon: string
   historicalHitRate: string
-  evaluatedTargets: number
+  evaluatedTargets: number | null
   baselineDelta: string
   evidenceStatus: EvidenceStatusLabel
   totalAvailableRecords: number

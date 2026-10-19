@@ -1,0 +1,73 @@
+{
+  "schema": "biglotto_candidate_reproduction_manifest_v1",
+  "classification": "CANDIDATE_REPRODUCTION",
+  "status": "MATCH",
+  "original_reproduction_claimed": false,
+  "original_source_identity_established": false,
+  "source_result": {
+    "path": ".task-data/biglotto-candidate-reproduction-r1/RESULT.json",
+    "bytes": 5177,
+    "sha256": "0bab72d54cad11ce8bd1e26338f1e0badfbcf94c1fb2cf07396483c9f5880708",
+    "schema": "biglotto_candidate_reproduction_result_v1"
+  },
+  "history_fixture": {
+    "source_path": ".task-data/biglotto-candidate-reproduction-r1/candidate_history.json",
+    "path": "data/fixtures/replay/biglotto-candidate-history-r1.json",
+    "bytes": 52097,
+    "sha256": "89086d0130ef8dee2ba84edf07af6299433ce4b73f6c7e8d917b2b96d837f7ee"
+  },
+  "target": {
+    "lottery_type": "BIG_LOTTO",
+    "draw_number": "102000010",
+    "draw_date": "2013/02/01"
+  },
+  "candidate_input": {
+    "database_sha256": "1b44e40df578e8d12a4d4ceeebe09adbb90d44bb732e3e5edb02cdf066542cc1",
+    "association": "CANDIDATE_ONLY",
+    "history_sha256": "89086d0130ef8dee2ba84edf07af6299433ce4b73f6c7e8d917b2b96d837f7ee",
+    "history_count": 635,
+    "history_cutoff": {
+      "draw": "102000009",
+      "date": "2013/01/29",
+      "numbers": [
+        3,
+        7,
+        31,
+        32,
+        34,
+        43
+      ],
+      "special": 41
+    }
+  },
+  "candidate_strategy": {
+    "strategy_id": "ts3_regime_3bet",
+    "source_commit": "520c3922a7c8f47e5b6196fb4b0d54716fa5fd9f",
+    "source_tree": "6e45b343df5e67f9891378f1b005dd7d149ef238",
+    "identity_sha256": "14642e72901faa8dcb1dc102fd8a9bd94394702e6d85da471a7c06d3f10e1a1a"
+  },
+  "capture_expected": {
+    "predicted_numbers": [
+      4,
+      8,
+      30,
+      33,
+      37,
+      44
+    ],
+    "predicted_special": null,
+    "source_trace": "ts3_regime_3bet:get_one_bet:hist=635"
+  },
+  "observed_prediction": {
+    "predicted_numbers": [
+      4,
+      8,
+      30,
+      33,
+      37,
+      44
+    ],
+    "predicted_special": null
+  },
+  "error": null
+}

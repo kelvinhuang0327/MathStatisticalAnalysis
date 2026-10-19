@@ -1,0 +1,258 @@
+{
+  "TASK_ID": "B649_BRANCH3_K20_PROOF_AUTHORITY_CONSOLIDATION_R1",
+  "BASE_HEAD": "0b2822fc544d504367e79397de493a020506c0a7",
+  "BASE_TREE": "d9b85c7bd5fae756804d7fb9c9c7bde8411c0e29",
+  "HASH_ALGORITHM": "SHA256",
+  "HASHED_BEFORE_COPY": true,
+  "COPIED_BYTE_FOR_BYTE": true,
+  "CONTENT_AUTHORITY": "Source file bytes plus verified SHA256 hashes. Source HEADs are provenance; their objects are not required in the target repository.",
+  "SOURCE_WORKTREES": {
+    "A": {
+      "worktree": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_BRANCH3_RESEARCH_AUTHORITY_FREEZE_R1",
+      "head": "909697cbb1fc53b9f9653f6d4a17c875297787b9",
+      "tree": "f65abf3652f06cd5282a7d8dc83c94d5cadd08d0",
+      "clean_before": true,
+      "expected_head": null
+    },
+    "B": {
+      "worktree": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_K20_MIN_S2_HIGHER_ORDER_CLOSURE_R2_FREEZE_R1",
+      "head": "12d56ccb833044e9878066a6fe87f122208f972b",
+      "tree": "9127d9c55e5904570b3ce555fb5a95255f59b7b9",
+      "clean_before": true,
+      "expected_head": "12d56ccb833044e9878066a6fe87f122208f972b"
+    },
+    "C": {
+      "worktree": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_K20_HEAVY_PAIR_R3PLUS_GLOBAL_BOUND_R3",
+      "head": "61d4f76a472b6f305f64950683f9432499a76230",
+      "tree": "657cb706947229c916b34583a883ddc463a1999d",
+      "clean_before": true,
+      "expected_head": "61d4f76a472b6f305f64950683f9432499a76230"
+    },
+    "D": {
+      "worktree": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_K20_MULTI_R2_DEFECT_GLOBAL_BOUND_R3",
+      "head": "e07f8d4a74fc543cb9c845ecd5be817a57c16cff",
+      "tree": "5770e755a29179891bba5c51f2b591a5837b697b",
+      "clean_before": true,
+      "expected_head": "e07f8d4a74fc543cb9c845ecd5be817a57c16cff"
+    }
+  },
+  "COPIED_FILES": [
+    {
+      "path": "src/lottolab/research/b649_k10_nonlinear_p4_p14_higher_order_bound_r1.py",
+      "source": "A",
+      "sha256": "cf2f063f606c3badf055cdec89106bc6e37786f589018a19f732b2c9da71dbbf",
+      "bytes": 31852
+    },
+    {
+      "path": "tests/unit/test_b649_k10_nonlinear_p4_p14_higher_order_bound_r1.py",
+      "source": "A",
+      "sha256": "1014087fbdab5d74ddcbe860ff363296f9c6d3880c84a06ab5a6908a2fb4af35",
+      "bytes": 4204
+    },
+    {
+      "path": "src/lottolab/research/b649_k10_profile_42_3_4_exact_closure_r1.py",
+      "source": "A",
+      "sha256": "afd313df7860320fcf62365e2b680beccce43830687908cd01d313af4e4bd685",
+      "bytes": 26152
+    },
+    {
+      "path": "tests/unit/test_b649_k10_profile_42_3_4_exact_closure_r1.py",
+      "source": "A",
+      "sha256": "eabf08dd17f6c71a1ea7c12edfc78d77609c32563609632e9a136f199f599784",
+      "bytes": 4665
+    },
+    {
+      "path": "src/lottolab/research/b649_k20_outside_min_s2_global_penalty_bound_r1.py",
+      "source": "A",
+      "sha256": "7706e57e77df6e786e77c4824f3c72663fdae73b20aa5f6797192689f2b6ea62",
+      "bytes": 11994
+    },
+    {
+      "path": "tests/unit/test_b649_k20_outside_min_s2_global_penalty_bound_r1.py",
+      "source": "A",
+      "sha256": "271bf39da512dcc1a028f73f27ba06a911b03a5758b58414c295e7fcab5d6ba2",
+      "bytes": 4837
+    },
+    {
+      "path": "docs/research/matrix-native-results/b649-k10-nonlinear-p4-p14-higher-order-bound-r1.json",
+      "source": "A",
+      "sha256": "54551f68c8b1db654af2052678c951a55b235ac812896e913230655ea5ab3e44",
+      "bytes": 85940
+    },
+    {
+      "path": "docs/research/matrix-native-results/b649-k10-profile-42-3-4-exact-closure-r1.json",
+      "source": "A",
+      "sha256": "18d02650a7b176316e0b2efc9d320ca7890f210705f9e268221a30926a926aea",
+      "bytes": 5328
+    },
+    {
+      "path": "docs/research/matrix-native-results/b649-k20-outside-min-s2-global-penalty-bound-r1.json",
+      "source": "A",
+      "sha256": "4f5e5df60593144fb7085bea3871a1ccf7d119e786527e610c852ae1ba3dfdd1",
+      "bytes": 3120
+    },
+    {
+      "path": "src/lottolab/research/b649_k20_min_s2_higher_order_closure_r2.py",
+      "source": "B",
+      "sha256": "6897c974fe9679f2ec567602522bb4c38c996275368b714c6a7fadedd66d6e45",
+      "bytes": 16996
+    },
+    {
+      "path": "tests/unit/test_b649_k20_min_s2_higher_order_closure_r2.py",
+      "source": "B",
+      "sha256": "a22c2c1f007b2e4b2cf741f93bbf68c077908489ee066b3c9f30bd03020968ed",
+      "bytes": 10337
+    },
+    {
+      "path": "src/lottolab/research/b649_k20_heavy_pair_r3plus_global_bound_r3.py",
+      "source": "C",
+      "sha256": "379f55ef87c2f7ffddc00caf7a7b5756810e1a3490ba3eb0d32327684f111139",
+      "bytes": 9738
+    },
+    {
+      "path": "tests/unit/test_b649_k20_heavy_pair_r3plus_global_bound_r3.py",
+      "source": "C",
+      "sha256": "5c17ed428d76bd6e139612d6854e1e6907388825e396181420943cf477ba037a",
+      "bytes": 7955
+    },
+    {
+      "path": "docs/research/matrix-native-results/b649-k20-heavy-pair-r3plus-global-bound-r3-result.json",
+      "source": "C",
+      "sha256": "0f783aaf2dc97fc53fdda2959f0900b424d876c349a14d0ee0dd1f6fedd745c8",
+      "bytes": 6311
+    },
+    {
+      "path": "src/lottolab/research/b649_k20_heavy_pair_defect_global_bound_r2.py",
+      "source": "D",
+      "sha256": "276b4556e8b4c0a2c01d0f368bf37657136a8efcbb6f6f9fef8f03be9327fc9b",
+      "bytes": 25411
+    },
+    {
+      "path": "tests/unit/test_b649_k20_heavy_pair_defect_global_bound_r2.py",
+      "source": "D",
+      "sha256": "03079813631a0cd68ad6047a11cebe13dfcc229e8fb8f93dfdd938218536772d",
+      "bytes": 9198
+    },
+    {
+      "path": "src/lottolab/research/b649_k20_multi_r2_defect_global_bound_r3.py",
+      "source": "D",
+      "sha256": "ea92ca0fd3c3f2ad5f63bdbd2aa2bd87128df96bfc2476b2fbc3afddb10225ad",
+      "bytes": 21870
+    },
+    {
+      "path": "tests/unit/test_b649_k20_multi_r2_defect_global_bound_r3.py",
+      "source": "D",
+      "sha256": "0f6f37c06df1c3b7de29f0de0e7f8e8078e461102bbd4e39dd1249335871a890",
+      "bytes": 3690
+    },
+    {
+      "path": "docs/research/matrix-native-results/b649-k20-heavy-pair-defect-global-bound-r2-result.json",
+      "source": "D",
+      "sha256": "1c7e281d54bce5d5bfcec1c64c65b9b6a7ef9892d3464e754f4c792ed3692953",
+      "bytes": 6055
+    },
+    {
+      "path": "docs/research/matrix-native-results/b649-k20-multi-r2-defect-global-bound-r3-result.json",
+      "source": "D",
+      "sha256": "9e77c1b06a25554e14ef7e1d5e11f32ef184c000300fb8fba0e4bb3a72c6c8a2",
+      "bytes": 37520
+    }
+  ],
+  "REUSED_BASE_FILES": [
+    {
+      "path": "src/lottolab/research/b649_official_any_prize_exact.py",
+      "source": "A",
+      "sha256": "92dcb836254cc6dbcd6c2ad907e619a5eb8cf3917197a8f6de3e5f989825cf66",
+      "bytes": 7721
+    },
+    {
+      "path": "src/lottolab/research/b649_k10_overlap_mass12_bonferroni_screen_r1.py",
+      "source": "A",
+      "sha256": "2b9ded022fb0c67313d72fe838f485455adf8db5d7ee1d02f8d42bdc2965ef07",
+      "bytes": 100410
+    },
+    {
+      "path": "src/lottolab/research/b649_k10_min_overlap_exhaustive_r1.py",
+      "source": "A",
+      "sha256": "effa5a861ab013a5d6236f21ea2d9eea21956b54dadf67dde28ee74a88e4ef37",
+      "bytes": 16346
+    },
+    {
+      "path": "docs/research/matrix-native-results/b649-k10-overlap-mass11-mass12-proof-certificate-r1.json",
+      "source": "A",
+      "sha256": "59663cecd2145f38a8d1a94653c227fd06bcb579af14a0a5c7e8d9625290d8ac",
+      "bytes": 21319
+    },
+    {
+      "path": "src/lottolab/__init__.py",
+      "source": "A",
+      "sha256": "a35bd2a9abf62e383a1ca687a4c6ea39d1459eb4605191ec32a827877237333a",
+      "bytes": 235
+    }
+  ],
+  "PYTHON_IMPORT_EDGES": {
+    "tests/unit/test_b649_k20_multi_r2_defect_global_bound_r3.py": [
+      "src/lottolab/research/b649_k20_multi_r2_defect_global_bound_r3.py"
+    ],
+    "src/lottolab/research/b649_k20_multi_r2_defect_global_bound_r3.py": [
+      "src/lottolab/research/b649_k20_heavy_pair_defect_global_bound_r2.py",
+      "src/lottolab/research/b649_k20_outside_min_s2_global_penalty_bound_r1.py"
+    ],
+    "src/lottolab/research/b649_k20_outside_min_s2_global_penalty_bound_r1.py": [],
+    "src/lottolab/research/b649_k20_heavy_pair_defect_global_bound_r2.py": [
+      "src/lottolab/research/b649_k20_outside_min_s2_global_penalty_bound_r1.py"
+    ],
+    "tests/unit/test_b649_k20_heavy_pair_defect_global_bound_r2.py": [
+      "src/lottolab/research/b649_k20_heavy_pair_defect_global_bound_r2.py",
+      "src/lottolab/research/b649_k20_outside_min_s2_global_penalty_bound_r1.py"
+    ],
+    "tests/unit/test_b649_k20_heavy_pair_r3plus_global_bound_r3.py": [
+      "src/lottolab/research/b649_k20_heavy_pair_r3plus_global_bound_r3.py",
+      "src/lottolab/research/b649_k20_outside_min_s2_global_penalty_bound_r1.py"
+    ],
+    "src/lottolab/research/b649_k20_heavy_pair_r3plus_global_bound_r3.py": [
+      "src/lottolab/research/b649_k20_outside_min_s2_global_penalty_bound_r1.py"
+    ],
+    "tests/unit/test_b649_k20_min_s2_higher_order_closure_r2.py": [
+      "src/lottolab/research/b649_k20_min_s2_higher_order_closure_r2.py"
+    ],
+    "src/lottolab/research/b649_k20_min_s2_higher_order_closure_r2.py": [],
+    "tests/unit/test_b649_k20_outside_min_s2_global_penalty_bound_r1.py": [
+      "src/lottolab/research/b649_k20_outside_min_s2_global_penalty_bound_r1.py"
+    ],
+    "tests/unit/test_b649_k10_profile_42_3_4_exact_closure_r1.py": [
+      "src/lottolab/research/b649_k10_profile_42_3_4_exact_closure_r1.py",
+      "src/lottolab/research/b649_official_any_prize_exact.py"
+    ],
+    "src/lottolab/research/b649_official_any_prize_exact.py": [],
+    "src/lottolab/research/b649_k10_profile_42_3_4_exact_closure_r1.py": [
+      "src/lottolab/research/b649_k10_overlap_mass12_bonferroni_screen_r1.py"
+    ],
+    "src/lottolab/research/b649_k10_overlap_mass12_bonferroni_screen_r1.py": [
+      "src/lottolab/research/b649_k10_min_overlap_exhaustive_r1.py"
+    ],
+    "src/lottolab/research/b649_k10_min_overlap_exhaustive_r1.py": [
+      "src/lottolab/research/b649_official_any_prize_exact.py"
+    ],
+    "tests/unit/test_b649_k10_nonlinear_p4_p14_higher_order_bound_r1.py": [
+      "src/lottolab/research/b649_k10_nonlinear_p4_p14_higher_order_bound_r1.py",
+      "src/lottolab/research/b649_k10_overlap_mass12_bonferroni_screen_r1.py"
+    ],
+    "src/lottolab/research/b649_k10_nonlinear_p4_p14_higher_order_bound_r1.py": [
+      "src/lottolab/research/b649_k10_profile_42_3_4_exact_closure_r1.py"
+    ]
+  },
+  "EXCLUDED_SUPERSEDED_FILES": [
+    "src/lottolab/research/b649_k10_mass_ge13_global_bound_r1.py",
+    "tests/unit/test_b649_k10_mass_ge13_global_bound_r1.py",
+    "docs/research/matrix-native-results/b649-k10-mass-ge13-global-bound-r1.json",
+    "b649_k10_mass14_profiles_exact_u3_r1.py",
+    "b649_k10_mass18_profiles_exact_u3_r1.py",
+    "b649_k10_nonlinear_compressed_cpsat_bound_r1.py"
+  ],
+  "IMPORTED_PRIOR_AUTHORITY": {
+    "b649_k10_profile_42_3_4_exact_closure_r1.py": "Imported by the current K10 rational-dual verifier; its stored record supplies the prior p=3 and p=15 bounds.",
+    "b649_k20_heavy_pair_defect_global_bound_r2.py": "Imported by the current Family B proof for the exact triple table; also supplies the current Family C wedge certificate.",
+    "SOLVER_ENTRY_POINTS": "Retained inside required imported modules only; no solver entry point is invoked for consolidation or verification."
+  }
+}

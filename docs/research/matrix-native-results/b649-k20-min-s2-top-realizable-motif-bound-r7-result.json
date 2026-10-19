@@ -1,0 +1,156 @@
+{
+  "TASK_ID": "B649_K20_MIN_S2_TOP_REALIZABLE_MOTIF_BOUND_R7",
+  "TASK_STATUS": "SUCCESS_B_CERTIFIED_STRICT_TIGHTENING",
+  "BASE_HEAD": "27a0632336c74365c99428d1bb9b43a3161e4c66",
+  "BASE_TREE": "6c031172ff3421fce196bfc70e9314e1c2f3bec7",
+  "TASK_BRANCH": "codex/b649-k20-min-s2-top-realizable-motif-bound-r7",
+  "WORKTREE_PATH": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_K20_MIN_S2_TOP_REALIZABLE_MOTIF_BOUND_R7",
+  "WORKTREE_DISPOSITION": "RETAIN",
+  "TOP_PROFILE_COUNT": 5,
+  "EXACTLY_ANALYZED_PROFILE_COUNT": 4,
+  "TOP_REALIZABLE_MOTIF_CLASS": {
+    "DESCRIPTION": "Four R6-proven full-support realizable profiles, each with 22 linear triple supports and 27 residual double supports. The fifth tied profile remains the R6-proven unrealizable profile. Shared-vertex support-pair count is exactly 141 for each profile. The S3 objective is the full overlap-graph triangle count; the profile caps also bound loose cycles by noncore triangles and Pasch-like configurations by one quarter of the loose-cycle cap.",
+    "WITNESS_MOTIF_SIGNATURES": [
+      {
+        "DEGREE_PROFILE": [6, 6, 6, 6, 6, 6, 6, 4, 4, 4, 4, 4, 4, 0, 0, 0, 0, 0, 0, 0],
+        "FULL_OVERLAP_GRAPH_TRIANGLES": 201,
+        "TRIPLE_SHADOW_TRIANGLES": 182,
+        "LOOSE_THREE_CYCLES": 160,
+        "SHARED_VERTEX_SUPPORT_PAIRS": 141,
+        "PASCH_LIKE_FOUR_SUPPORTS": 4
+      },
+      {
+        "DEGREE_PROFILE": [6, 6, 6, 6, 6, 6, 5, 5, 5, 4, 4, 4, 3, 0, 0, 0, 0, 0, 0, 0],
+        "FULL_OVERLAP_GRAPH_TRIANGLES": 225,
+        "TRIPLE_SHADOW_TRIANGLES": 183,
+        "LOOSE_THREE_CYCLES": 161,
+        "SHARED_VERTEX_SUPPORT_PAIRS": 141,
+        "PASCH_LIKE_FOUR_SUPPORTS": 4
+      },
+      {
+        "DEGREE_PROFILE": [6, 6, 6, 6, 6, 5, 5, 5, 5, 5, 5, 3, 3, 0, 0, 0, 0, 0, 0, 0],
+        "FULL_OVERLAP_GRAPH_TRIANGLES": 214,
+        "TRIPLE_SHADOW_TRIANGLES": 186,
+        "LOOSE_THREE_CYCLES": 164,
+        "SHARED_VERTEX_SUPPORT_PAIRS": 141,
+        "PASCH_LIKE_FOUR_SUPPORTS": 2
+      },
+      {
+        "DEGREE_PROFILE": [6, 6, 6, 6, 5, 5, 5, 5, 5, 5, 5, 5, 2, 0, 0, 0, 0, 0, 0, 0],
+        "FULL_OVERLAP_GRAPH_TRIANGLES": 234,
+        "TRIPLE_SHADOW_TRIANGLES": 186,
+        "LOOSE_THREE_CYCLES": 164,
+        "SHARED_VERTEX_SUPPORT_PAIRS": 141,
+        "PASCH_LIKE_FOUR_SUPPORTS": 4
+      }
+    ],
+    "MAXIMUM_PROOF_SCOPE": "The support-constrained S3 maximum is OPTIMAL only for profile 2. For profiles 1, 4, and 5, certified graph-triangle caps come from the exact degree-class complement relaxation; the listed R6 motif signatures are witnesses, not maximum claims."
+  },
+  "PROFILE_BOUNDS": [
+    {
+      "DEGREE_PROFILE": [6, 6, 6, 6, 6, 6, 6, 4, 4, 4, 4, 4, 4, 0, 0, 0, 0, 0, 0, 0],
+      "REALIZABILITY": "PROVEN_BY_R6_FULL_SUPPORT_WITNESS",
+      "FULL_GRAPH_TRIANGLES_UPPER_BOUND": 275,
+      "OPEN_WEDGES_LOWER_BOUND": 12,
+      "NONCORE_TRIANGLES_UPPER_BOUND": 253,
+      "LOOSE_THREE_CYCLES_UPPER_BOUND": 253,
+      "SHARED_VERTEX_SUPPORT_PAIRS_EXACT": 141,
+      "PASCH_LIKE_FOUR_SUPPORTS_UPPER_BOUND": 63,
+      "S3_UPPER_BOUND": 5316416,
+      "S4_CERTIFIED_LOWER_BOUND": 1680,
+      "FOURTH_ORDER_CREDIT": 960,
+      "PROFILE_FAMILY_UPPER_BOUND": 313705496,
+      "SUPPORT_MODEL_STATUS": "FEASIBLE; incumbent 261 triangles; certified model bound 278, improved to 275 by degree-class certificate"
+    },
+    {
+      "DEGREE_PROFILE": [6, 6, 6, 6, 6, 6, 5, 5, 5, 4, 4, 4, 3, 0, 0, 0, 0, 0, 0, 0],
+      "REALIZABILITY": "PROVEN_BY_R6_FULL_SUPPORT_WITNESS",
+      "FULL_GRAPH_TRIANGLES_UPPER_BOUND": 261,
+      "OPEN_WEDGES_LOWER_BOUND": 54,
+      "NONCORE_TRIANGLES_UPPER_BOUND": 239,
+      "LOOSE_THREE_CYCLES_UPPER_BOUND": 239,
+      "SHARED_VERTEX_SUPPORT_PAIRS_EXACT": 141,
+      "PASCH_LIKE_FOUR_SUPPORTS_UPPER_BOUND": 59,
+      "S3_UPPER_BOUND": 5150208,
+      "S4_CERTIFIED_LOWER_BOUND": 1680,
+      "FOURTH_ORDER_CREDIT": 960,
+      "PROFILE_FAMILY_UPPER_BOUND": 313539288,
+      "SUPPORT_MODEL_STATUS": "OPTIMAL; exact S3 graph-triangle maximum 261"
+    },
+    {
+      "DEGREE_PROFILE": [6, 6, 6, 6, 6, 5, 5, 5, 5, 5, 5, 3, 3, 0, 0, 0, 0, 0, 0, 0],
+      "REALIZABILITY": "PROVEN_BY_R6_FULL_SUPPORT_WITNESS",
+      "FULL_GRAPH_TRIANGLES_UPPER_BOUND": 275,
+      "OPEN_WEDGES_LOWER_BOUND": 12,
+      "NONCORE_TRIANGLES_UPPER_BOUND": 253,
+      "LOOSE_THREE_CYCLES_UPPER_BOUND": 253,
+      "SHARED_VERTEX_SUPPORT_PAIRS_EXACT": 141,
+      "PASCH_LIKE_FOUR_SUPPORTS_UPPER_BOUND": 63,
+      "S3_UPPER_BOUND": 5316416,
+      "S4_CERTIFIED_LOWER_BOUND": 1680,
+      "FOURTH_ORDER_CREDIT": 960,
+      "PROFILE_FAMILY_UPPER_BOUND": 313705496,
+      "SUPPORT_MODEL_STATUS": "FEASIBLE; incumbent 241 triangles; certified model bound 278, improved to 275 by degree-class certificate"
+    },
+    {
+      "DEGREE_PROFILE": [6, 6, 6, 6, 5, 5, 5, 5, 5, 5, 5, 5, 2, 0, 0, 0, 0, 0, 0, 0],
+      "REALIZABILITY": "PROVEN_BY_R6_FULL_SUPPORT_WITNESS",
+      "FULL_GRAPH_TRIANGLES_UPPER_BOUND": 276,
+      "OPEN_WEDGES_LOWER_BOUND": 9,
+      "NONCORE_TRIANGLES_UPPER_BOUND": 254,
+      "LOOSE_THREE_CYCLES_UPPER_BOUND": 254,
+      "SHARED_VERTEX_SUPPORT_PAIRS_EXACT": 141,
+      "PASCH_LIKE_FOUR_SUPPORTS_UPPER_BOUND": 63,
+      "S3_UPPER_BOUND": 5328288,
+      "S4_CERTIFIED_LOWER_BOUND": 1680,
+      "FOURTH_ORDER_CREDIT": 960,
+      "PROFILE_FAMILY_UPPER_BOUND": 313717368,
+      "SUPPORT_MODEL_STATUS": "FEASIBLE; incumbent 261 triangles; certified model bound 278, improved to 276 by degree-class certificate"
+    }
+  ],
+  "S3_S4_ENVELOPE": {
+    "S3_PROOF": "Exact local S3 identity applied to the certified overlap-graph triangle cap for each fixed W=837 profile.",
+    "S4_CENSUS": {
+      "METHOD": "Enumerated every labeled missing-edge graph on the seven zero-triple tickets with at most six missing edges. Active tickets have 12 residual double incidences, so at most 12 cross doubles exist and the inactive induced graph has at least 15 of 21 edges.",
+      "LABELED_MISSING_GRAPHS_EXAMINED": 82160,
+      "MINIMUM_S4_OVER_CENSUS_SUPERSET": 1680,
+      "CERTIFIED_MINIMUM_REQUIRED_FOR_ANY_S3_MAXIMIZER": 1680,
+      "EXACT_MINIMUM_OVER_FULL_SUPPORT_S3_MAXIMIZERS_PROVEN": false,
+      "MINIMIZING_MISSING_DEGREE_SEQUENCE": [2, 2, 2, 2, 2, 1, 1],
+      "LABELED_MINIMIZER_COUNT": 672,
+      "BONFERRONI_FOURTH_ORDER_CREDIT": 960,
+      "INTERPRETATION": "1680 is a certified lower bound for every feasible support system, including every S3 maximizer. The census does not assert that a minimizing seven-ticket graph extends to an entire profile realization."
+    }
+  },
+  "FAMILY_UPPER_BOUND": 313739208,
+  "INCUMBENT": 313239661,
+  "REMAINING_FAMILY_GAP": 499547,
+  "FAMILY_STATUS": "OPEN_STRICTLY_TIGHTENED",
+  "NEXT_ACTIVE_PROFILE": {
+    "DEGREE_PROFILE": [6, 6, 6, 6, 6, 6, 6, 5, 4, 4, 4, 4, 2, 1, 0, 0, 0, 0, 0, 0],
+    "FAMILY_UPPER_BOUND": 313739208,
+    "SOURCE": "Packet-supplied next-unprocessed coarse-profile bound; not rescanned"
+  },
+  "SOLVER_STATUS": {
+    "SUPPORT_CONSTRAINED_CP_SAT": "P1 FEASIBLE, 261 incumbent / 278 certified bound; P2 OPTIMAL at 261; P4 FEASIBLE, 241 incumbent / 278 bound; P5 FEASIBLE, 261 incumbent / 278 bound. FEASIBLE objectives were not treated as proofs.",
+    "DEGREE_CLASS_RELAXATION": "OPTIMAL for all four profiles; weighted open-wedge minima 12, 12, 12, 8 yield divisible open-wedge floors 12, 12, 12, 9 and triangle caps 275, 275, 275, 276.",
+    "SUPPLEMENTAL_DEGREE_ONLY_TRIANGLE_RUN": "FEASIBLE only and weaker; no bound contribution."
+  },
+  "SOLVER_CONFIGURED_WALL_LIMIT": {
+    "SUPPORT_CP_SAT": "12 seconds per profile; one worker",
+    "DEGREE_CLASS_RELAXATION": "10 seconds per profile; one worker",
+    "SUPPLEMENTAL_DEGREE_ONLY": "20 seconds per profile; one worker",
+    "EXTERNAL_HARD_WALL": "90 seconds per solver batch"
+  },
+  "SOLVER_ACTUAL_WALL_TIME": {
+    "SUPPORT_CP_SAT_BATCH_SECONDS": 50.317,
+    "DEGREE_CLASS_RELAXATION_BATCH_SECONDS": 0.877,
+    "SUPPLEMENTAL_DEGREE_ONLY_BATCH_SECONDS": 61.138
+  },
+  "SOLVER_CERTIFIED_BOUND": "Final per-profile overlap-graph triangle caps: 275, 261, 275, 276; corresponding open-wedge lower bounds: 12, 54, 12, 9.",
+  "FOCUSED_TESTS": "PASS: 5 passed",
+  "RUFF": "PASS: ruff 0.15.21",
+  "PYRIGHT": "PASS: pyright 1.1.411, Python 3.13, 2 files, 0 errors, 0 warnings",
+  "NEW_PORTFOLIO_SEARCH_STARTED": "NO",
+  "PRODUCTION_MUTATION": "NONE"
+}

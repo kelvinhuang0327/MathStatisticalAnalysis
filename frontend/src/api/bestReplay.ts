@@ -64,14 +64,13 @@ export function deriveEvidenceStatus(
   rank: number | null,
   hitRate: number | null,
   baselineDelta: number | null,
-  horizon: HorizonKey,
-  evaluatedTargets: number,
+  evaluatedTargets: number | null,
   reproductionStatus?: string,
 ): EvidenceStatusLabel {
   if (!isAvailable || hitRate === null) return 'EVIDENCE UNAVAILABLE'
   if (reproductionStatus === 'CLOSED_UNEXECUTABLE') return 'EXPLORATORY'
-  if (horizon === 'RECENT_50') return 'LOW POWER'
-  if (evaluatedTargets > 0 && evaluatedTargets < 300) return 'LIMITED SAMPLE'
+  if (evaluatedTargets !== null && evaluatedTargets > 0 && evaluatedTargets <= 50) return 'LOW POWER'
+  if (evaluatedTargets !== null && evaluatedTargets > 0 && evaluatedTargets < 300) return 'LIMITED SAMPLE'
   if (rank === 1 && hitRate > 0) return 'DESCRIPTIVE LEADER'
   if (rank !== null && rank <= 3 && baselineDelta !== null && baselineDelta > 0) return 'PARETO FRONTIER'
   if (baselineDelta !== null && baselineDelta <= 0) return 'NO ADJUSTED SUPERIORITY'
@@ -82,8 +81,7 @@ export function deriveEvidenceNotes(
   isAvailable: boolean,
   rank: number | null,
   baselineDelta: number | null,
-  horizon: HorizonKey,
-  evaluatedTargets: number,
+  evaluatedTargets: number | null,
   ticketCount: TicketCount,
 ): string {
   if (!isAvailable) {
@@ -93,10 +91,8 @@ export function deriveEvidenceNotes(
   if (rank === 1) {
     notes.push('Historically strongest strategy at this horizon')
   }
-  if (horizon === 'RECENT_50') {
-    notes.push('Short-window result has low statistical power (50 historical draws)')
-  } else if (evaluatedTargets < 300) {
-    notes.push('Limited observation sample size')
+  if (evaluatedTargets !== null && evaluatedTargets > 0 && evaluatedTargets < 300) {
+    notes.push(`Limited observation sample size (${evaluatedTargets} evaluated draws)`)
   }
   if (baselineDelta !== null) {
     if (baselineDelta > 0) {
@@ -124,25 +120,26 @@ export function transformB649Record(
     record.official_rank !== null
 
   const rank = record.official_rank ?? record.rank ?? null
-  const hitRate = record.official_any_prize_rate
+  const hitRate = record.official_any_prize_rate !== null && record.official_any_prize_rate !== undefined
     ? Number.parseFloat(record.official_any_prize_rate)
-    : record.historical_success_rate
+    : record.historical_success_rate !== null && record.historical_success_rate !== undefined
       ? Number.parseFloat(record.historical_success_rate)
       : null
-  const baselineDelta = record.official_random_baseline_delta
+  const baselineDelta = record.official_random_baseline_delta !== null && record.official_random_baseline_delta !== undefined
     ? Number.parseFloat(record.official_random_baseline_delta)
-    : record.random_baseline_rate_difference
+    : record.random_baseline_rate_difference !== null && record.random_baseline_rate_difference !== undefined
       ? Number.parseFloat(record.random_baseline_rate_difference)
       : null
-  const baselineProbability = record.official_random_baseline_probability
+  const baselineProbability = record.official_random_baseline_probability !== null && record.official_random_baseline_probability !== undefined
     ? Number.parseFloat(record.official_random_baseline_probability)
-    : record.random_baseline_success_rate
+    : record.random_baseline_success_rate !== null && record.random_baseline_success_rate !== undefined
       ? Number.parseFloat(record.random_baseline_success_rate)
       : null
-  const evaluatedTargets =
-    record.effective_backtest_draw_count ?? record.window_available_draws ?? (horizon === 'RECENT_50' ? 50 : horizon === 'RECENT_300' ? 300 : horizon === 'RECENT_750' ? 750 : 1949)
+  const evaluatedTargets = record.effective_backtest_draw_count ?? null
   const winningTargets = record.official_any_prize_count ?? record.success_count ?? null
-  const coverage = record.coverage ? Number.parseFloat(record.coverage) : null
+  const coverage = record.coverage !== null && record.coverage !== undefined
+    ? Number.parseFloat(record.coverage)
+    : null
 
   const prizeCounts: BestReplayPrizeCounts | null = record.official_prize_counts
     ? {
@@ -163,7 +160,6 @@ export function transformB649Record(
     rank,
     hitRate,
     baselineDelta,
-    horizon,
     evaluatedTargets,
     record.reproduction_status,
   )
@@ -171,7 +167,6 @@ export function transformB649Record(
     isAvailable,
     rank,
     baselineDelta,
-    horizon,
     evaluatedTargets,
     ticketCount,
   )
@@ -180,14 +175,14 @@ export function transformB649Record(
     id: `B649-${record.strategy_id}-${ticketCount}-${horizon}`,
     rank,
     strategyId: record.strategy_id,
-    strategyVersion: record.strategy_version,
+    strategyVersion: record.strategy_version || null,
     legacyMethodId: record.legacy_method_id,
     methodFamily: record.method_family,
     game: 'B649',
     ticketCount,
     horizon,
     horizonLabel,
-    evaluatedTargets: isAvailable ? evaluatedTargets : 0,
+    evaluatedTargets,
     winningTargets: isAvailable ? winningTargets : null,
     hitRate: isAvailable ? hitRate : null,
     hitRateFormatted: isAvailable ? formatRatePercentage(hitRate) : 'Unavailable',
@@ -208,7 +203,7 @@ export function transformB649Record(
 export function createUnavailableItem(
   game: GameCode,
   strategyId: string,
-  strategyVersion: string,
+  strategyVersion: string | null,
   methodFamily: string,
   ticketCount: TicketCount,
   horizon: HorizonKey,
@@ -228,7 +223,7 @@ export function createUnavailableItem(
     ticketCount,
     horizon,
     horizonLabel,
-    evaluatedTargets: 0,
+    evaluatedTargets: null,
     winningTargets: null,
     hitRate: null,
     hitRateFormatted: 'Unavailable',
@@ -317,13 +312,13 @@ export async function loadP638BestReplayData(
               id: `P638-${r.strategy_id}-1-${horizon}`,
               rank: null,
               strategyId: r.strategy_id,
-              strategyVersion: 'v1.0',
+              strategyVersion: r.strategy_version || null,
               methodFamily: 'p638_native',
               game: 'P638',
               ticketCount: 1,
               horizon,
               horizonLabel,
-              evaluatedTargets: 0,
+              evaluatedTargets: null,
               winningTargets: null,
               hitRate: null,
               hitRateFormatted: 'Unavailable',
@@ -349,7 +344,7 @@ export async function loadP638BestReplayData(
       createUnavailableItem(
         'P638',
         'no_canonical_data_p638_t1',
-        'v1.0',
+        null,
         'p638_native',
         1,
         horizon,
@@ -368,9 +363,9 @@ export async function loadP638BestReplayData(
     const rankingPage = await getP638Rankings(latestRun.run_id, signal)
 
     return rankingPage.items.map((r: P638Ranking): BestReplayItem => {
-      const evaluatedTargets = latestRun.complete_target_count || 1000
+      const evaluatedTargets = latestRun.complete_target_count ?? null
       const hitRate = r.winning_target_rate
-      const winningTargets = Math.round(hitRate * evaluatedTargets)
+      const winningTargets = r.winning_target_count ?? null
       const rank = r.rank
 
       const prizeCounts: BestReplayPrizeCounts = {
@@ -386,14 +381,12 @@ export async function loadP638BestReplayData(
         rank,
         hitRate,
         null,
-        horizon,
         evaluatedTargets,
       )
       const notes = deriveEvidenceNotes(
         true,
         rank,
         null,
-        horizon,
         evaluatedTargets,
         1,
       )
@@ -402,7 +395,7 @@ export async function loadP638BestReplayData(
         id: `P638-${r.strategy_id}-1-${horizon}`,
         rank,
         strategyId: r.strategy_id,
-        strategyVersion: 'v1.0',
+        strategyVersion: r.strategy_version || null,
         methodFamily: 'p638_native',
         game: 'P638',
         ticketCount: 1,
@@ -451,13 +444,13 @@ export async function loadT539BestReplayData(
               id: `T539-${r.strategy_id}-1-${horizon}`,
               rank: null,
               strategyId: r.strategy_id,
-              strategyVersion: 'v1.0',
+              strategyVersion: r.strategy_version || null,
               methodFamily: 't539_native',
               game: 'T539',
               ticketCount: 1,
               horizon,
               horizonLabel,
-              evaluatedTargets: 0,
+              evaluatedTargets: null,
               winningTargets: null,
               hitRate: null,
               hitRateFormatted: 'Unavailable',
@@ -483,7 +476,7 @@ export async function loadT539BestReplayData(
       createUnavailableItem(
         'T539',
         'no_canonical_data_t539_t1',
-        'v1.0',
+        null,
         't539_native',
         1,
         horizon,
@@ -502,9 +495,9 @@ export async function loadT539BestReplayData(
     const rankingPage = await getT539Rankings(latestRun.run_id, signal)
 
     return rankingPage.items.map((r: T539Ranking): BestReplayItem => {
-      const evaluatedTargets = latestRun.eligible_target_count || 1000
+      const evaluatedTargets = latestRun.eligible_target_count ?? null
       const hitRate = r.winning_target_rate
-      const winningTargets = Math.round(hitRate * evaluatedTargets)
+      const winningTargets = r.winning_target_count ?? null
       const rank = r.rank
 
       const prizeCounts: BestReplayPrizeCounts = {
@@ -520,14 +513,12 @@ export async function loadT539BestReplayData(
         rank,
         hitRate,
         null,
-        horizon,
         evaluatedTargets,
       )
       const notes = deriveEvidenceNotes(
         true,
         rank,
         null,
-        horizon,
         evaluatedTargets,
         1,
       )
@@ -536,7 +527,7 @@ export async function loadT539BestReplayData(
         id: `T539-${r.strategy_id}-1-${horizon}`,
         rank,
         strategyId: r.strategy_id,
-        strategyVersion: 'v1.0',
+        strategyVersion: r.strategy_version || null,
         methodFamily: 't539_native',
         game: 'T539',
         ticketCount: 1,

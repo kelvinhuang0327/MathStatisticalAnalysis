@@ -176,6 +176,7 @@ def _health_authority(
     current_status = health.get("current_status")
     if current_status is not None and current_status != "PREDRAW_READY":
         raise _UnavailableError("scheduler health is not current")
+    _require_fresh_health(health)
 
     target = _target(health.get("current_target"), "current target")
     forecast_health = _mapping(health.get("forecast_materialization"), "forecast health")
@@ -221,6 +222,30 @@ def _health_authority(
         forecast_sha256=forecast_sha256,
         portfolio_path=portfolio_path,
     )
+
+
+def _require_fresh_health(health: Mapping[str, object]) -> None:
+    finished_at_value = health.get("finished_at")
+    if not isinstance(finished_at_value, str):
+        raise _UnavailableError("scheduler health finish time is invalid")
+    finished_at = _instant(finished_at_value, "scheduler health finish time")
+
+    stale_after_seconds = health.get("stale_after_seconds")
+    if type(stale_after_seconds) is not int or stale_after_seconds <= 0:
+        raise _UnavailableError("scheduler health freshness threshold is invalid")
+
+    now = _utc_now()
+    if now.tzinfo is None or now.utcoffset() is None:
+        raise _UnavailableError("server clock is not timezone-aware")
+    age_seconds = (now.astimezone(UTC) - finished_at).total_seconds()
+    if age_seconds < 0:
+        raise _UnavailableError("scheduler health finish time is in the future")
+    if age_seconds > stale_after_seconds:
+        raise _UnavailableError("scheduler health is stale")
+
+
+def _utc_now() -> datetime:
+    return datetime.now(UTC)
 
 
 def _build_response(

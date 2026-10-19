@@ -1,0 +1,412 @@
+TASK_ID: B649_R3_E440_ADV19_PREFLIGHT_RECOVERY_R1
+
+/fable-method
+
+MODEL: 強模型
+MODEL_REASON:
+需要區分測試實作、歷史 Git 身分與
+外部執行環境的問題，並保留原始
+歷史證書的嚴格拒絕語義。
+
+REMAINING_TASK_MODEL:
+強模型 — 新固定 Tree 的正式 FULL Gate
+強模型 — Canonical Family 採納
+
+TASK_CLASS: STATE_CHANGING_IMPLEMENTATION
+WORKER_ROUTE: STANDARD
+JUDGE_MODE: SELF_CHECK_ONLY
+IMPLEMENTATION_DEPTH: NORMAL
+IMPLEMENTATION_DEPTH_REASON:
+已知問題限定於 Advanced 19 項前置驗收，
+以既有 Judge 失敗證據直接定位，
+不擴大至整個 Repository。
+
+## 一、唯一目標
+
+修復 e440 固定 Candidate 在正式
+外部驗收環境中出現的：
+
+17 PASS
+1 FAIL
+1 SKIP
+
+使相同語義的 Advanced 19 項前置驗收
+在可重現的外部環境中達成：
+
+19 PASS
+0 FAIL
+0 ERROR
+0 SKIP
+0 XFAIL
+
+優先修正實際失敗原因。
+不得放寬歷史證書驗證器。
+不得修改 Family 數學結果。
+不得執行 FULL Suite。
+
+## 二、固定來源
+
+REPOSITORY:
+/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis
+
+BASE_HEAD:
+e440d4298551ce93ef3ea9a9226143784afa3eff
+
+BASE_TREE:
+294cbf6bbe7ee8a8ebad947f397852edc1981b57
+
+BASE_PARENT:
+86f644010f41cd627f436c8d5cf9e0b5cca8fcdc
+
+SOURCE_WORKTREE:
+/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_R3_ADV11_DESCENDANT_STABLE_CONTEXT_R1
+
+ONLY_PRODUCT_PATH:
+tests/unit/test_b649_min_s2_advanced_11row_exact_adoption_r1.py
+
+EXPECTED_FILE_SHA256:
+5f1198daf582db4340c2bf424071375a442e8ca9e54fd8d27e4d10d03ef9f067
+
+PROTECTED_VERIFIER:
+src/lottolab/research/b649_min_s2_advanced_11row_exact_adoption_r1.py
+
+HISTORICAL_PARENT:
+69d2d3fe2696623d75e876e5cd96085297da821c
+
+HISTORICAL_CHILD:
+b280d90be0c35b8c5b1ca7798a394332194f8887
+
+## 三、既有失敗證據
+
+PREVIOUS_TASK:
+B649_R3_E440_EXACT_TREE_FULL_GATE_R1
+
+PREVIOUS_FINAL_VERDICT:
+REFUTED
+
+JUDGE_REPORT:
+/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_E440_EXACT_TREE_FULL_GATE_R1/judge-report.md
+
+EXPECTED_JUDGE_REPORT_SHA256:
+028e60ce4b0290a97c3b140b902157e4eb72eb2d1527f6297710c10a9dc22c68
+
+原始前置驗收：
+17 PASS / 1 FAIL / 1 SKIP
+
+Judge 已確認 BASE_HEAD/tree。
+FULL Suite 尚未執行。
+
+另可唯讀參考先前局部成功收據：
+
+/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_ADV11_DESCENDANT_STABLE_CONTEXT_R1/captures/ADV11_MODULE_GATE_R2.json
+
+該收據記錄 Advanced 19 PASS。
+
+目前仍屬 UNKNOWN：
+- 失敗的確切 pytest node ID
+- 第一個 traceback
+- skip 的確切 node ID 與原因
+- 兩次執行環境的承重差異
+
+不得未取證便假定根因。
+
+## 四、必要專案規則
+
+PROJECT_RULES_REQUIRED:
+
+/Users/kelvin/.codex/skills/fable-method/SKILL.md
+
+/Users/kelvin/.codex/skills/fable-method/references/task-checkpoint.md
+
+/Users/kelvin/.codex/skills/fable-method/references/operational-gates.md
+
+/Users/kelvin/.codex/skills/fable-method/references/workspace-containment.md
+
+固定 BASE_HEAD 版本的：
+
+README.md
+.ai/ai-context/RUNBOOK.md
+
+限讀：
+- Git/worktree 身分與安全
+- Python3.13 與 pytest
+- historical source identity
+- 外部 runtime/temp
+- Fable task-owned receipts
+
+開始前回報實際讀取路徑及段落。
+
+## 五、工作樹及授權
+
+WORKTREE_MODE:
+NEW_ISOLATED_VIA_OFFICIAL_FABLE
+
+WORKTREE_PATH:
+/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_R3_E440_ADV19_PREFLIGHT_RECOVERY_R1
+
+WORKTREE_BASE:
+e440d4298551ce93ef3ea9a9226143784afa3eff
+
+WORKTREE_DISPOSITION:
+RETAIN
+
+OWNER_AUTHORIZATION_EVIDENCE:
+Owner 直接將此完整 Packet 提交 Worker，
+授權指定新工作樹、單一測試檔、
+必要 focused 驗收及最多一次本機 commit。
+
+Planner 文字不自行授權實際 mutation。
+
+AUTHORIZED_ACTION_SCOPE:
+只限本 Task 的 Advanced 測試修復、
+獨立執行環境與必要驗收。
+
+ALLOWED_PRODUCT_WRITES:
+tests/unit/test_b649_min_s2_advanced_11row_exact_adoption_r1.py
+
+ALLOWED_OTHER_WRITES:
+- 新工作樹必要 Git metadata
+- 正式 Fable task-owned receipts
+- 任務獨占 Repository 外部測試暫存
+- 任務專用外部測試啟動參數或腳本
+
+COMMIT_AUTHORIZED: YES
+LOCAL_COMMIT_LIMIT: 1
+
+PUSH_AUTHORIZED: NO
+DRAFT_PR_AUTHORIZED: NO
+READY_AUTHORIZED: NO
+MERGE_AUTHORIZED: NO
+DEPLOY_AUTHORIZED: NO
+BRANCH_CLEANUP_AUTHORIZED: NO
+FULL_SUITE_AUTHORIZED: NO
+
+PRESERVE:
+- 已保留的 e440 worktree
+- 原 REFUTED Judge report
+- Primary 全部 dirty/untracked
+- T249/OR-Tools/PIN9 既有成果
+- 28 pins、sealed result、Family ledger
+
+## 六、最小實作步驟
+
+1. 核對 e440 HEAD/tree/parent
+   與 Advanced 測試檔 SHA256。
+
+2. 核對 Judge report SHA256。
+
+3. 限讀上述 R1 Judge checkpoint 中
+   與 Advanced 前置失敗直接相關的
+   report、capture 與 pytest 輸出。
+
+4. 精確列出：
+   FAILED_NODE_ID
+   FIRST_FAILURE_TRACEBACK
+   SKIPPED_NODE_ID
+   EXACT_SKIP_REASON
+
+5. 與先前19 PASS的執行收據比較：
+   - 測試命令及收集選項
+   - cwd、PYTHONPATH
+   - Python/pytest 版本
+   - Git objects 與歷史 Child context
+   - app-data、basetemp、cache
+   - fixture 與子程序結果
+
+6. 找出第一個可觀察的差異，
+   以實際證據確認根因。
+
+   不重新展開無關研究。
+
+7. 在全新固定 Base 工作樹，
+   使用外部 Python3.13，
+   重現必要的 Advanced focused cases。
+
+8. 使用最小修法恢復原始測試契約。
+
+   可修正唯一允許的測試檔
+   或任務專用外部測試啟動配置。
+
+   不改 Protected Verifier。
+
+9. 保留：
+   - 19個原始及現行測試 IDs
+   - 正確歷史 Child 接受
+   - 錯誤 Parent 拒絕
+   - 現行 Candidate 冒充 Child 拒絕
+   - 錯誤 source SHA/blob/tree 拒絕
+   - 錯誤 result SHA 拒絕
+   - 非零退出、stderr 傳遞
+
+10. pytest skip/xfail 不可作為修法。
+    19個測試均須實際執行。
+
+11. 驗證完整 Advanced 模組：
+    19 PASS、0 FAIL、0 ERROR、0 SKIP。
+
+12. 執行 Advanced + T249
+    正常與反向 focused 組合，
+    既有46個 IDs均須實際通過。
+
+13. 使用安全外部 runtime：
+    - app-data mode 0700
+    - basetemp 全路徑不含 b649
+    - cache/bytecode 在工作樹外
+    - 不建立工作樹 .venv
+
+14. Ruff、Pyright Python3.13、
+    git diff --check PASS。
+
+15. source/verifier/pins/result/Family
+    均不變。
+
+16. 只對實際產品修補建立
+    最多一個本機 commit。
+
+    純執行環境修正不得建立
+    無意義的空 commit。
+
+17. 保留局部驗收證據及
+    精確的後續 Gate 啟動方式。
+
+18. 原 R1 REFUTED verdict 保持原狀。
+
+## 七、強制驗收 AC01–AC11
+
+AC01:
+BASE HEAD/tree、來源測試檔身份正確。
+
+AC02:
+精確取得失敗與skip的pytest IDs、
+traceback、skip reason。
+
+AC03:
+根因由可觀察差異支持，
+不得僅以環境不同推測結論。
+
+AC04:
+Advanced全部19個IDs實際PASS，
+沒有skip或xfail。
+
+AC05:
+原先12個歷史失敗/錯誤案例
+均有本輪實際PASS證據。
+
+AC06:
+歷史Child、Parent/source/result
+負向身份檢查沒有弱化。
+
+AC07:
+子程序失敗、stderr仍能正確傳播。
+
+AC08:
+Advanced + T249
+正常與反向46 IDs均PASS。
+
+AC09:
+必要Ruff、Pyright及diff check PASS。
+
+AC10:
+只修改授權範圍；
+沒有Source、Family或28 pins改動。
+
+AC11:
+完成實際修復與可重現的驗收方式，
+不修改舊Judge verdict，
+不執行FULL Suite，
+不修改Main或Remote。
+
+逐項回報：
+PASS / FAIL / NOT_VERIFIED / NOT_RUN。
+
+## 八、Worker必要回覆
+
+TASK_STATUS:
+ADV19_PREFLIGHT_RECOVERED /
+BLOCKED_REQUIRED_EVIDENCE /
+FOCUSED_REPRODUCTION_FAILED /
+FOCUSED_FIX_FAILED /
+NOT_VERIFIED
+
+ACTUAL_RULES_LOADED:
+IMPLEMENTATION_DEPTH:
+DEPTH_SOURCE:
+
+BASE_HEAD:
+BASE_TREE:
+SOURCE_TEST_SHA256:
+
+FAILED_NODE_ID:
+FIRST_FAILURE_TRACEBACK:
+SKIPPED_NODE_ID:
+SKIP_REASON:
+
+FIRST_OBSERVED_DIFFERENCE:
+CONFIRMED_RCA:
+UNRESOLVED_CAUSES:
+
+PREVIOUS_19_PASS_CONTEXT:
+FAILED_PREFLIGHT_CONTEXT:
+CORRECTED_EXECUTION_CONTEXT:
+
+ADVANCED_TOTAL_COLLECTED:
+ADVANCED_PASSED:
+ADVANCED_FAILED:
+ADVANCED_ERRORS:
+ADVANCED_SKIPPED:
+ADVANCED_XFAILED:
+
+HISTORICAL_CHILD_RESULT:
+WRONG_PARENT_NEGATIVE:
+SOURCE_IDENTITY_NEGATIVES:
+RESULT_NEGATIVE:
+SUBPROCESS_FAILURE_NEGATIVE:
+
+COMBINED_NORMAL:
+COMBINED_REVERSE:
+
+RUFF:
+PYRIGHT:
+DIFF_CHECK:
+
+CHANGED_PATHS:
+FINAL_FILE_SHA256:
+LOCAL_COMMIT_COUNT:
+FINAL_COMMIT:
+FINAL_TREE:
+FINAL_PARENT:
+
+AC01_TO_AC11:
+逐項狀態與證據。
+
+PREVIOUS_FULL_JUDGE_VERDICT:
+REFUTED
+
+FULL_SUITE_RERUN: NO
+FULL_SUITE_GREEN: NOT_CLAIMED
+MAIN_MUTATED: NO / NOT_VERIFIED
+REMOTE_WRITE: NO / NOT_VERIFIED
+
+REMAINING_TASK_MODEL:
+強模型 — 新固定 Tree 的正式 FULL Gate
+
+## 九、禁止與停止邊界
+
+不得修改原 REFUTED checkpoint。
+不得修改歷史 Source Verifier。
+不得放寬 Parent/Child 身份。
+不得修改28個 pins、sealed result或Family。
+不得使用 skip、xfail、mock製造PASS。
+不得清空sys.modules隱藏污染。
+不得重跑 Repository FULL Suite。
+不得修改其他產品檔案。
+不得建立第二次 commit。
+不得 reset、clean、force。
+不得 push、PR、merge、部署。
+
+Judge report或必要失敗證據不可讀、
+歷史來源身份不符、
+必須改動授權外產品路徑時，
+停止並回報精確缺口。
+
+END OF TASK

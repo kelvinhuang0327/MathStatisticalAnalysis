@@ -1,0 +1,10 @@
+{
+  "status": "PASS",
+  "check": "corrected preparation generator equals the actual R2 startup bytes; source syntax valid; no smoke rerun required",
+  "startup_path": "/private/tmp/gate-ac10-cb5uv2in/python-env/lib/python3.13/site-packages/ac10-observer.pth",
+  "persistent_startup_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/isolated-revalidation-r1/python-audit-startup.pth",
+  "sha256": "61c55b0e88890a210c995ccd1c3012d67eea3671a1e8ba62c4671b3ddb1dd48e",
+  "preparation_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/isolated-revalidation-r1/revalidate.py",
+  "preparation_sha256": "5c53d74ac1925043fe4fe1fdfe2fac945e98f8a5f6a190ec8a9e006d47e5b079",
+  "new_environment_preparation_rerun": "NOT_RUN; existing exact generated bootstrap was used and observed in R2"
+}

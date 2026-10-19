@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "command": [
+    "/usr/bin/env",
+    "-u",
+    "PYTEST_ADDOPTS",
+    "LOTTOLAB_DATA_DIR=/private/tmp/adv11-descendant-stable-context-r1.8KvGbP/app-data",
+    "TMPDIR=/private/tmp/adv11-descendant-stable-context-r1.8KvGbP/tmp",
+    "TMP=/private/tmp/adv11-descendant-stable-context-r1.8KvGbP/tmp",
+    "TEMP=/private/tmp/adv11-descendant-stable-context-r1.8KvGbP/tmp",
+    "XDG_CACHE_HOME=/private/tmp/adv11-descendant-stable-context-r1.8KvGbP/cache",
+    "PYTHONPYCACHEPREFIX=/private/tmp/adv11-descendant-stable-context-r1.8KvGbP/bytecode",
+    "PYTHONPATH=src",
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/python",
+    "-B",
+    "-m",
+    "lottolab.research.b649_four_donor_family_successor_r1"
+  ],
+  "stdout": "{\"ALL_OWNER_IDS\": [\"65555555555433000000\"], \"CURSOR_PROFILES\": 197, \"FAMILY_UB\": 313389300, \"MAIN_VS_SCIENCE_DIFF_COUNT\": 33, \"NEXT_DISTINCT_BOUND\": 313388988, \"OPEN_PROFILES\": 1513, \"RESOLVED_ROWS\": 4647, \"RESULT_SHA256\": \"cadcae9f42d2e9bbfcccf7a322ae7fa5cb623130ade211a6f6132b2d7a82c3b6\", \"TASK_STATUS\": \"LOCAL_AUTHORITY_SUCCESSOR_CANDIDATE\"}\n",
+  "stderr": "",
+  "exit_status": 0,
+  "started_at": "2026-10-19T12:35:53Z",
+  "ended_at": "2026-10-19T12:35:56Z",
+  "execution_identity": {
+    "repository_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis",
+    "worktree_path": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_R3_ADV11_DESCENDANT_STABLE_CONTEXT_R1",
+    "head": "86f644010f41cd627f436c8d5cf9e0b5cca8fcdc",
+    "tree": "12997d3db7d6b2e9f7b9edf484d148d45798c53a",
+    "launcher_path": "/Users/kelvin/.codex/skills/fable-method/scripts/task_checkpoint.rb",
+    "launcher_sha256": "babba3757a7ea9ad59c7ff9b18b6e4497dbc887b86eebfb09ccae1a36ab96275",
+    "runtime_executable": "/System/Library/Frameworks/Ruby.framework/Versions/2.6/usr/bin/ruby",
+    "runtime_version": "ruby 2.6.10p210 (2022-04-12 revision 67958) [universal.arm64e-darwin26]"
+  }
+}

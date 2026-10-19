@@ -1,0 +1,68 @@
+{
+  "python": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/python",
+  "python_version": "3.13.8 (main, Oct  7 2025, 12:01:51) [Clang 17.0.0 (clang-1700.3.19.1)]",
+  "measured_umask": "0077",
+  "launcher_sha256": "95320ab22be08f30b4412d004993ffedc6e44dc94e731142f2d94f0a421ee42e",
+  "results": [
+    {
+      "name": "ruff",
+      "argv": [
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/ruff",
+        "check",
+        "--no-cache",
+        "tests/unit/test_b649_min_s2_advanced_11row_exact_adoption_r1.py",
+        "tests/unit/test_b649_min_s2_t249_dual_profile_composition_r1.py",
+        "tests/unit/test_b649_t249_collection_isolation_r1.py"
+      ],
+      "cwd": "/private/tmp/adv19-recovery-ea4ub0bv/testrepo",
+      "exit_code": 0,
+      "stdout": "All checks passed!\n",
+      "stderr": ""
+    },
+    {
+      "name": "pyright",
+      "argv": [
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/pyright",
+        "--pythonpath",
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/python",
+        "--pythonversion",
+        "3.13",
+        "--venvpath",
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis",
+        "tests/unit/test_b649_min_s2_advanced_11row_exact_adoption_r1.py",
+        "tests/unit/test_b649_min_s2_t249_dual_profile_composition_r1.py",
+        "tests/unit/test_b649_t249_collection_isolation_r1.py"
+      ],
+      "cwd": "/private/tmp/adv19-recovery-ea4ub0bv/testrepo",
+      "exit_code": 4,
+      "stdout": "WARNING: there is a new pyright version available (v1.1.411 -> v1.1.414).\nPlease install the new version or set PYRIGHT_PYTHON_FORCE_VERSION to `latest`\n\n",
+      "stderr": "'pythonpath' option cannot be used with 'venvpath' option\n"
+    },
+    {
+      "name": "external-diff-check",
+      "argv": [
+        "git",
+        "diff",
+        "--check",
+        "e440d4298551ce93ef3ea9a9226143784afa3eff"
+      ],
+      "cwd": "/private/tmp/adv19-recovery-ea4ub0bv/testrepo",
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "name": "worktree-diff-check",
+      "argv": [
+        "git",
+        "diff",
+        "--check",
+        "e440d4298551ce93ef3ea9a9226143784afa3eff"
+      ],
+      "cwd": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_R3_E440_ADV19_PREFLIGHT_RECOVERY_R1",
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": ""
+    }
+  ]
+}

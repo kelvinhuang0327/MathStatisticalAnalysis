@@ -1,0 +1,10 @@
+{
+  "execution_id": "prepare-unbound-external",
+  "exit_code": 1,
+  "upstream_started": false,
+  "execution_records_created": false,
+  "stderr": "PRIOR_PROCESS_STATE_UNRESOLVED: legacy task-execution state exists without a stable lock anchor; migration gate required: confirm all old protected workers and inherited children are quiescent, then perform an explicitly authorized offline migration",
+  "cause": "Worker created task receipt directory before first task-execution anchor acquisition. Directory contains only baseline.json, packet.txt, prepare_external.py, run_focused.py. No execution records exist.",
+  "pending_authorization": "Task-scoped StableLockAnchor.open_lock initialization only; no repository generation or other task mutation.",
+  "no_bypass": true
+}

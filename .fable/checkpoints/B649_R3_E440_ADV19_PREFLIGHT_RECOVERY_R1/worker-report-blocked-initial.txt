@@ -1,0 +1,106 @@
+TASK_ID: B649_R3_E440_ADV19_PREFLIGHT_RECOVERY_R1
+TASK_STATUS: BLOCKED_REQUIRED_EVIDENCE
+TASK_CLASS: STATE_CHANGING_IMPLEMENTATION
+WORKER_ROUTE: STANDARD
+JUDGE_MODE: SELF_CHECK_ONLY
+IMPLEMENTATION_DEPTH: NORMAL
+DEPTH_SOURCE: PLANNER_SUPPLIED
+
+ACTUAL_RULES_LOADED:
+- /Users/kelvin/.codex/skills/fable-method/SKILL.md: routing, Packet, mutation boundary, lifecycle, launcher selection
+- /Users/kelvin/.codex/skills/fable-method/references/task-checkpoint.md: authoritative state, storage/update, scoped quiescence, protected run, launch failure
+- /Users/kelvin/.codex/skills/fable-method/references/operational-gates.md: Packet/live preflight, runtime outputs, Git actions, worktree identity
+- /Users/kelvin/.codex/skills/fable-method/references/workspace-containment.md: exact Owner-authorized external worktree and external task temp
+- /Users/kelvin/.codex/skills/fable-method/references/implementation-depth.md: NORMAL / PLANNER_SUPPLIED
+- /Users/kelvin/.codex/skills/fable-method/references/test-falsifiability.md: changed checks; no product check changed yet
+- e440d4298551ce93ef3ea9a9226143784afa3eff:README.md lines 5-45: quick start and runtime
+- e440d4298551ce93ef3ea9a9226143784afa3eff:.ai/ai-context/RUNBOOK.md lines 5-20,81-128,150-161: Python3.13/backend, external data, reproducibility, Git safety, receipts
+
+BASE_HEAD: e440d4298551ce93ef3ea9a9226143784afa3eff
+BASE_TREE: 294cbf6bbe7ee8a8ebad947f397852edc1981b57
+BASE_PARENT: 86f644010f41cd627f436c8d5cf9e0b5cca8fcdc
+SOURCE_TEST_SHA256: 5f1198daf582db4340c2bf424071375a442e8ca9e54fd8d27e4d10d03ef9f067
+JUDGE_REPORT_SHA256: 028e60ce4b0290a97c3b140b902157e4eb72eb2d1527f6297710c10a9dc22c68
+
+FAILED_NODE_ID: tests/unit/test_b649_min_s2_advanced_11row_exact_adoption_r1.py::test_candidate_is_not_accepted_as_historical_child
+FIRST_FAILURE_TRACEBACK:
+  test_candidate_is_not_accepted_as_historical_child
+  assert _child_run is not None
+  assert _child_run.exit_code == 0
+  assert len(_child_run.outcomes) == 17
+  > assert all(outcome == "passed" for outcome in _child_run.outcomes.values())
+  E assert False
+  tests/unit/test_b649_min_s2_advanced_11row_exact_adoption_r1.py:761: AssertionError
+FIRST_FAILURE_EVIDENCE: original captures/e440-focused-advanced19-r1.json; exit 1; 17 passed, 1 failed, 1 skipped; SHA256 c47928ba36902263964fa3a76c710f3ce83ab28bb99770a2497c81cc0048171b
+SKIPPED_NODE_ID: [Inferred; not captured with -rs] tests/unit/test_b649_min_s2_advanced_11row_exact_adoption_r1.py::test_protected_judge_report_observation
+SKIP_REASON: [Static source; dynamic confirmation pending] per-worktree Judge report not present on this host
+
+FIRST_OBSERVED_DIFFERENCE: authentic historical Judge report exists in canonical common Git directory and is absent from R1 standalone testrepo common Git directory.
+HISTORICAL_REPORT_RELATIVE_LOCATOR: .git/worktrees/B649_MIN_S2_AB_T242_T241_EXACT_FAMILY_AUTHORITY_R1/task-evidence/fresh-judge-report.md
+HISTORICAL_REPORT_SHA256: 216340c3d1cd2b7724571d95e4c7951d731fd48d04996dd10d53e83b98e12a3b
+HISTORICAL_REPORT_FIRST_LINE: VERIFIED_WITH_CAVEATS
+HISTORICAL_REPORT_JUDGED_TREE: 8c2719af507006a74fd0f5f205d9fbb24c528994
+CONFIRMED_RCA: NOT_VERIFIED by a fresh runtime. Source and exact path absence support a missing non-Git evidence dependency; no causal before/after execution completed.
+UNRESOLVED_CAUSES: Fresh causal reproduction and environment correction remain blocked by Fable task-execution anchor gate.
+
+PREVIOUS_19_PASS_CONTEXT: capture ADV11_MODULE_GATE_R2.json; shared common Git context; authentic report present; external Python .venv/bin/python; env removes PYTEST_ADDOPTS/PYTEST_CURRENT_TEST/ADV11_HISTORICAL_CHILD_CONTEXT; PYTHONPATH=src; no cacheprovider; external app-data/tmp/cache/bytecode and basetemp; receipt HEAD 86f644010f41cd627f436c8d5cf9e0b5cca8fcdc tree 12997d3db7d6b2e9f7b9edf484d148d45798c53a (before candidate commit; not same sealed tree evidence).
+FAILED_PREFLIGHT_CONTEXT: standalone /private/tmp/e440-full-gate.rqGetV/testrepo; HEAD/tree exact e440; report absent; Python3.13.8/pytest9.1.1; pytest -q with external basetemp and cache_dir; capture lacks launch cwd/environment/umask binding; historical child exit0 with17outcomes. Historical source pins match expected child blob/SHA/tree/parent.
+CORRECTED_EXECUTION_CONTEXT: NOT_RUN. Proposed authentic report materialization with exact SHA validation into task-only standalone temp Git metadata; no historical test/verifier edit. prepare_external.py and run_focused.py are prepared but not executed or validated.
+CURRENT_EXTERNAL_PYTHON: /Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/python
+CURRENT_EXTERNAL_PYTHON_VERSION: 3.13.8
+CURRENT_PYTEST_VERSION: 9.1.1
+TASK_EXTERNAL_RUNTIME: /private/tmp/adv19-recovery-ea4ub0bv
+TASK_EXTERNAL_RUNTIME_STATUS: private directories only; testrepo was not created; all Python execution for this task was stopped before upstream.
+
+ADVANCED_TOTAL_COLLECTED: NOT_RUN
+ADVANCED_PASSED: NOT_RUN
+ADVANCED_FAILED: NOT_RUN
+ADVANCED_ERRORS: NOT_RUN
+ADVANCED_SKIPPED: NOT_RUN
+ADVANCED_XFAILED: NOT_RUN
+HISTORICAL_CHILD_RESULT: NOT_RUN (Git Child identity/blobs/SHA verified read-only)
+WRONG_PARENT_NEGATIVE: NOT_RUN
+SOURCE_IDENTITY_NEGATIVES: NOT_RUN
+RESULT_NEGATIVE: NOT_RUN
+SUBPROCESS_FAILURE_NEGATIVE: NOT_RUN
+COMBINED_NORMAL: NOT_RUN
+COMBINED_REVERSE: NOT_RUN
+RUFF: NOT_RUN
+PYRIGHT: NOT_RUN
+DIFF_CHECK: NOT_RUN
+
+CHANGED_PATHS: No product paths. New designated worktree materialization and branch metadata; task Fable checkpoint/lock/receipt/launcher files; task-only external runtime directories.
+FINAL_FILE_SHA256: 5f1198daf582db4340c2bf424071375a442e8ca9e54fd8d27e4d10d03ef9f067
+LOCAL_COMMIT_COUNT: 0
+FINAL_COMMIT: e440d4298551ce93ef3ea9a9226143784afa3eff
+FINAL_TREE: 294cbf6bbe7ee8a8ebad947f397852edc1981b57
+FINAL_PARENT: 86f644010f41cd627f436c8d5cf9e0b5cca8fcdc
+WORKTREE_STATUS: clean
+WORKTREE: /Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_R3_E440_ADV19_PREFLIGHT_RECOVERY_R1
+WORKTREE_BRANCH: codex/b649-r3-e440-adv19-preflight-recovery-r1
+WORKTREE_DISPOSITION: RETAIN
+
+AC01: PASS — exact base identity/source test/report hash matches baseline.json and read-only Git output.
+AC02: NOT_VERIFIED — exact failure and traceback recovered; skip ID/reason source-derived, fresh -rs/JUnit reproduction blocked.
+AC03: NOT_VERIFIED — first observable report-path difference confirmed; causal before/after run pending.
+AC04: NOT_RUN — no pytest launch succeeded.
+AC05: NOT_RUN — historical cases not executed this round.
+AC06: NOT_VERIFIED — no test/verifier content changed, but required negative runtime checks not run.
+AC07: NOT_RUN — child exit/stderr check not executed.
+AC08: NOT_RUN — neither combined order executed.
+AC09: NOT_RUN — Ruff/Pyright/diff check pending.
+AC10: PASS — designated worktree stays clean; original test SHA remains exact, no source/Family/pins/result product changes.
+AC11: NOT_VERIFIED — fix/reproduction not completed; original REFUTED remains unchanged; no FULL, main or remote writes.
+
+LAUNCHER_STATUS: verified canonical path, executable0755, blob00e2cf4a4f06b0f0a8d8e4be6091a4304e6e2ae4; attempted --run rejected before upstream.
+LAUNCHER_BLOCKER: PRIOR_PROCESS_STATE_UNRESOLVED; task receipt directory exists without a stable task-execution lock anchor. Worker created directory before first acquisition. No executions/ directory or records exist. No alternate command, changed execution ID, moved receipt root, or direct-local bypass attempted.
+PENDING_OWNER_ACTION: authorize initialization of this task's specific task-execution lock via verified helper after confirming absence of legacy/active execution; preserve all receipts; retry same prepare-unbound-external invocation. Repository generation/other tasks must remain unchanged.
+NEXT_ACTION: WAIT_FOR_TASK_LOCK_INITIALIZATION_AUTHORIZATION
+
+PREVIOUS_FULL_JUDGE_VERDICT: REFUTED
+FULL_SUITE_RERUN: NO
+FULL_SUITE_GREEN: NOT_CLAIMED
+MAIN_MUTATED: NO (primary HEAD and refs/heads/main remain17a03e3305671d09578d81c29013ca15b9ca4a6d)
+REMOTE_WRITE: NO
+RUNTIME_TRANSITION_OCCURRED: NO
+REMAINING_TASK_MODEL: Strong model — finish current Advanced recovery after lock authorization; then new fixed Tree formal FULL Gate under separate authority.

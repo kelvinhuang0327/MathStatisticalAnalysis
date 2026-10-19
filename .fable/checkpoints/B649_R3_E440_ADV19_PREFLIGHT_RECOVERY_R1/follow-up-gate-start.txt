@@ -1,0 +1,67 @@
+This is the exact recovered focused Gate startup recipe, saved for a separately authorized next Gate.
+This task ran no repository FULL suite. Its recovered product identity is unchanged:
+  HEAD e440d4298551ce93ef3ea9a9226143784afa3eff
+  TREE 294cbf6bbe7ee8a8ebad947f397852edc1981b57
+  PARENT 86f644010f41cd627f436c8d5cf9e0b5cca8fcdc
+  Advanced file SHA256 5f1198daf582db4340c2bf424071375a442e8ca9e54fd8d27e4d10d03ef9f067
+Required historical report SHA256:
+  216340c3d1cd2b7724571d95e4c7951d731fd48d04996dd10d53e83b98e12a3b
+Bind the real persisted report, not a fabricated report or changed skip policy.
+
+The next Owner Packet must supply a fresh stable NEXT_TASK_ID and authorize its own runtime/worktree/receipts and any FULL execution. Do not use this completed recovery Task ID to claim a new run; the protected launcher replays completed receipts. Start with an unused task capture directory, or reconcile/initialize its own task lock under explicit authority before creating that directory. Do not relocate existing state to bypass a gate.
+
+Commands below are a reproducible template; they were NOT launched as a new task here.
+
+set -euo pipefail
+: "${NEXT_TASK_ID:?Use the exact stable Task ID from the next Owner Packet}"
+CANON=/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis
+SOURCE=/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_R3_E440_ADV19_PREFLIGHT_RECOVERY_R1
+EVID="$CANON/.fable/checkpoints/B649_R3_E440_ADV19_PREFLIGHT_RECOVERY_R1"
+LAUNCHER=/Users/kelvin/.codex/skills/fable-method/scripts/task_checkpoint.rb
+PY313="$CANON/.venv/bin/python"
+test "$(git hash-object "$LAUNCHER")" = 00e2cf4a4f06b0f0a8d8e4be6091a4304e6e2ae4
+test -x "$LAUNCHER"
+umask 077
+GATE_RUNTIME=$(mktemp -d /private/tmp/adv19-gate.XXXXXX)
+chmod 700 "$GATE_RUNTIME"
+
+ruby "$LAUNCHER" --run --repo "$CANON" --worktree "$SOURCE" \
+  --task-id "$NEXT_TASK_ID" --execution-id prepare-authentic-history -- \
+  "$PY313" -B "$EVID/prepare_external.py" --runtime "$GATE_RUNTIME" --source "$SOURCE" \
+  --report "$EVID/sealed-historical-judge-report.md"
+
+GATE_REPO="$GATE_RUNTIME/testrepo"
+ruby "$LAUNCHER" --run --repo "$CANON" --worktree "$GATE_REPO" \
+  --task-id "$NEXT_TASK_ID" --execution-id advanced19 -- \
+  "$PY313" -B "$EVID/run_focused.py" --repo "$GATE_REPO" --runtime "$GATE_RUNTIME" \
+  --name gate-advanced --case advanced
+
+ruby "$LAUNCHER" --run --repo "$CANON" --worktree "$GATE_REPO" \
+  --task-id "$NEXT_TASK_ID" --execution-id combined-normal46 -- \
+  "$PY313" -B "$EVID/run_focused.py" --repo "$GATE_REPO" --runtime "$GATE_RUNTIME" \
+  --name combined-normal --case combined
+
+ruby "$LAUNCHER" --run --repo "$CANON" --worktree "$GATE_REPO" \
+  --task-id "$NEXT_TASK_ID" --execution-id combined-reverse46 -- \
+  "$PY313" -B "$EVID/run_focused.py" --repo "$GATE_REPO" --runtime "$GATE_RUNTIME" \
+  --name combined-reverse --case combined --reverse
+
+Expected actual counts:19/19,46/46,46/46;0fail/error/skip/xfail. The scripts preserve original IDs and reverse all46 outer IDs plus all27 T249 child IDs. They record effective configured umask, private app-data mode, cwd, PYTHONPATH, external caches/temp, interpreter/pytest, report path/hash, argv, XML and outcome summaries. They fail before pytest if the authentic report is absent/wrong. Do not pass --allow-missing-report for acceptance: that option exists only for the controlled causal failure reproduction.
+
+Environment needed by a later separately authorized FULL process must be inherited explicitly:
+  LOTTOLAB_DATA_DIR=$GATE_RUNTIME/app-data (mode0700)
+  TMPDIR=TMP=TEMP=$GATE_RUNTIME/tmp
+  XDG_CACHE_HOME=$GATE_RUNTIME/cache
+  XDG_DATA_HOME=$GATE_RUNTIME/xdg-data
+  PYTHONPYCACHEPREFIX=$GATE_RUNTIME/bytecode
+  PYTHONDONTWRITEBYTECODE=1
+  PYTHONPATH=$GATE_REPO/src:$GATE_REPO/tests/unit
+  effective umask0077; no repository-local .venv; basetemp path contains no b649.
+Unset PYTEST_ADDOPTS, PYTEST_CURRENT_TEST, ADV11_HISTORICAL_CHILD_CONTEXT, PYTEST_PLUGINS and all inherited B649_T249_* context flags before starting a fresh parent process. Enable B649_T249_REVERSE_ORDER=1 only for the explicit reverse focused run.
+
+Future FULL argv (documentation only; NOT RUN and NOT authorized by this recovery Packet):
+  [external-Python3.13, -B, -m, pytest, -p, no:cacheprovider,
+   --basetemp=$GATE_RUNTIME/pytest-full, --junitxml=$GATE_RUNTIME/full.xml]
+Execute it only through the canonical protected launcher, after the next Owner Packet's own source/ref/object/lock/runtime gates pass. This recovery does not replace the next Gate's required standalone object/ref accounting, other preflights, independent review, or FULL acceptance criteria. No test-selection/exclusion option is implied for that future FULL command.
+
+The saved scripts deliberately reject any HEAD/tree or Advanced SHA different from the identity above. A changed future candidate requires its own authoritative Packet; do not weaken these identity checks.

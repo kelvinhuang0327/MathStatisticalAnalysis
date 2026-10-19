@@ -1,0 +1,81 @@
+{
+  "commands": [
+    {
+      "argv": [
+        "/usr/bin/git",
+        "clone",
+        "--local",
+        "--no-hardlinks",
+        "--no-checkout",
+        "--no-tags",
+        "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_R3_ADV11_DESCENDANT_STABLE_CONTEXT_R1",
+        "/private/tmp/gate-ac10-cb5uv2in/source"
+      ],
+      "pid": 18798,
+      "ppid": 18791,
+      "exit_status": 0,
+      "started_ns": 1792420262872921000,
+      "ended_ns": 1792420263490235000,
+      "stdout": "",
+      "stderr": "Cloning into '/private/tmp/gate-ac10-cb5uv2in/source'...\ndone.\n"
+    },
+    {
+      "argv": [
+        "/usr/bin/git",
+        "--no-optional-locks",
+        "-C",
+        "/private/tmp/gate-ac10-cb5uv2in/source",
+        "checkout",
+        "--detach",
+        "e440d4298551ce93ef3ea9a9226143784afa3eff"
+      ],
+      "pid": 18800,
+      "ppid": 18791,
+      "exit_status": 0,
+      "started_ns": 1792420263492413000,
+      "ended_ns": 1792420264653446000,
+      "stdout": "",
+      "stderr": "HEAD is now at e440d429 test: stabilize advanced historical runner context\n"
+    },
+    {
+      "argv": [
+        "/usr/bin/git",
+        "--no-optional-locks",
+        "-C",
+        "/private/tmp/gate-ac10-cb5uv2in/source",
+        "remote",
+        "remove",
+        "origin"
+      ],
+      "pid": 18801,
+      "ppid": 18791,
+      "exit_status": 0,
+      "started_ns": 1792420264657416000,
+      "ended_ns": 1792420264946273000,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/python",
+        "-B",
+        "-m",
+        "venv",
+        "--without-pip",
+        "/private/tmp/gate-ac10-cb5uv2in/python-env"
+      ],
+      "pid": 18802,
+      "ppid": 18791,
+      "exit_status": 0,
+      "started_ns": 1792420264948666000,
+      "ended_ns": 1792420265064241000,
+      "stdout": "",
+      "stderr": ""
+    }
+  ],
+  "source_site_packages_read_only": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/lib/python3.13/site-packages",
+  "independent_python": "/private/tmp/gate-ac10-cb5uv2in/python-env/bin/python",
+  "sitecustomize_sha256": "d112d7a1c72e396010a44405815220f08b50f1e32e04ffc0128290c06b46dc39",
+  "no_dependency_install": true,
+  "git_mutations_scope": "new task-owned Git only, before smoke baseline"
+}

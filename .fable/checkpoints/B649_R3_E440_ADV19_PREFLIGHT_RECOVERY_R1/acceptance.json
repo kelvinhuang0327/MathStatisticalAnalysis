@@ -1,0 +1,46 @@
+{
+  "AC01": {
+    "status": "PASS",
+    "evidence": "baseline.json + final-identity-and-audit.json: exact e440 HEAD/tree/parent, Advanced SHA, original Judge report SHA"
+  },
+  "AC02": {
+    "status": "PASS",
+    "evidence": "captures/reproduce-missing-report-advanced.json + runtime-results/missing-report.xml: exact FAILED/SKIPPED IDs, traceback and historical skip reason"
+  },
+  "AC03": {
+    "status": "PASS",
+    "evidence": "Missing authentic report reproduces17P/1F/1S; adding only exact report bytes flips same fixed Advanced19 IDs to19P; test/source unchanged"
+  },
+  "AC04": {
+    "status": "PASS",
+    "evidence": "captures/recovered-advanced19.json + runtime-results/recovered-advanced.summary.json:19 collected and passed;0 fail/error/skip/xfail"
+  },
+  "AC05": {
+    "status": "PASS",
+    "evidence": "All original historical17 cases executed in true pinned Child and mirrored individually; candidate guard asserts Child exit0/17outcomes/allpassed. Covers all originally failing12 without narrowing to them; historical17-nodeids.txt"
+  },
+  "AC06": {
+    "status": "PASS",
+    "evidence": "Advanced incorrect_source_sha_or_tree_rejected + candidate_is_not_accepted_as_historical_child; supplemental wrong_source_sha_blob_and_result_are_rejected; source/test unchanged"
+  },
+  "AC07": {
+    "status": "PASS",
+    "evidence": "Advanced nonzero_child_result_preserves_failure_and_stderr; supplemental actual subprocess_exit_timeout_and_stderr_are_not_hidden"
+  },
+  "AC08": {
+    "status": "PASS",
+    "evidence": "captures/combined-normal-exact46.json + combined-reverse-exact46.json; exact same46 IDs; exact reversal; child T24927 each order allpassed/no solver/no xfail"
+  },
+  "AC09": {
+    "status": "PASS",
+    "evidence": "captures/focused-quality-checks.json: Ruff and both diff checks exit0; captures/pyright-python313-corrected-options.json: Pyright Python3.13 exit0/0diagnostics"
+  },
+  "AC10": {
+    "status": "PASS",
+    "evidence": "No tracked product modifications in dedicated/source/external e440 checkout. Protected verifier/Family/pins/result unchanged; final-identity-and-audit.json"
+  },
+  "AC11": {
+    "status": "PASS",
+    "evidence": "Environment-only repair with persisted exact report and startup recipe; original REFUTED SHA unchanged;0FULL; main/primary HEAD unchanged;0remote;0commits"
+  }
+}

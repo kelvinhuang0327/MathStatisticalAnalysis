@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "command": [
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/python",
+    "-B",
+    "-m",
+    "pytest",
+    "--collect-only",
+    "-q",
+    "--basetemp=/private/tmp/e440-full-gate.rqGetV/pytest-basetemp",
+    "-o",
+    "cache_dir=/private/tmp/e440-full-gate.rqGetV/pytest-cache",
+    "tests/unit/test_b649_k20_min_s2_top_plateau_closure_r9.py"
+  ],
+  "stdout": "tests/unit/test_b649_k20_min_s2_top_plateau_closure_r9.py::test_ranked_plateau_membership_is_deterministic_and_bounded\ntests/unit/test_b649_k20_min_s2_top_plateau_closure_r9.py::test_coarse_family_bound_is_monotone_below_the_plateau\ntests/unit/test_b649_k20_min_s2_top_plateau_closure_r9.py::test_every_plateau_profile_has_a_verified_realizability_and_motif_bound\ntests/unit/test_b649_k20_min_s2_top_plateau_closure_r9.py::test_small_linear_hypergraph_oracle_checks_shadow_and_motif_identities\n\n4 tests collected in 0.06s\n",
+  "stderr": "",
+  "exit_status": 0,
+  "started_at": "2026-10-19T12:59:47Z",
+  "ended_at": "2026-10-19T12:59:48Z",
+  "execution_identity": {
+    "repository_path": "/private/tmp/e440-full-gate.rqGetV/testrepo",
+    "worktree_path": "/private/tmp/e440-full-gate.rqGetV/testrepo",
+    "head": "e440d4298551ce93ef3ea9a9226143784afa3eff",
+    "tree": "294cbf6bbe7ee8a8ebad947f397852edc1981b57",
+    "launcher_path": "/Users/kelvin/.codex/skills/fable-method/scripts/task_checkpoint.rb",
+    "launcher_sha256": "babba3757a7ea9ad59c7ff9b18b6e4497dbc887b86eebfb09ccae1a36ab96275",
+    "runtime_executable": "/System/Library/Frameworks/Ruby.framework/Versions/2.6/usr/bin/ruby",
+    "runtime_version": "ruby 2.6.10p210 (2022-04-12 revision 67958) [universal.arm64e-darwin26]"
+  }
+}

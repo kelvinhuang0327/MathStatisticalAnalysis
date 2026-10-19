@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "task_id": "B649_R3_E440_ADV19_PREFLIGHT_RECOVERY_R1",
+  "execution_id": "bind-authentic-historical-report",
+  "pid": 16224,
+  "status": "COMPLETED",
+  "durable_capture_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_E440_ADV19_PREFLIGHT_RECOVERY_R1/captures/bind-authentic-historical-report.json",
+  "started_at": "2026-10-19T14:23:25Z",
+  "ended_at": "2026-10-19T14:23:26Z"
+}

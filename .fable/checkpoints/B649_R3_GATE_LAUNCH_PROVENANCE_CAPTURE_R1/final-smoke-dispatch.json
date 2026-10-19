@@ -1,0 +1,54 @@
+[
+  {
+    "execution_id": "normal-smoke-final",
+    "argv": [
+      "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/launch_gate.rb",
+      "--execution-id",
+      "normal-smoke-final",
+      "--kind",
+      "smoke",
+      "--source-worktree",
+      "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_R3_ADV11_DESCENDANT_STABLE_CONTEXT_R1",
+      "--expected-head",
+      "e440d4298551ce93ef3ea9a9226143784afa3eff",
+      "--expected-tree",
+      "294cbf6bbe7ee8a8ebad947f397852edc1981b57",
+      "--",
+      "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/smoke_probe.py",
+      "0"
+    ],
+    "exit_code": 0,
+    "expected_exit_code": 0,
+    "stdout": "{\"smoke\": \"normal\", \"observed_pid\": 12601, \"observed_ppid\": 12572, \"observed_pgid\": 12601, \"child_started_ns\": 1792418839956598000, \"launch_receipt_exists_before_child\": true, \"launch_path\": \"/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/normal-smoke-final/launch.json\", \"launch_sha256\": \"bdec09e96beab9712614944976170b808d40e57eb67cafaad47603898214ce09\", \"launch_mtime_ns\": 1792418839747804085, \"observed_cwd\": \"/private/tmp/gate-launch-20261019-12572-sn9d04/work\", \"observed_python\": \"/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/python\", \"observed_version\": \"3.13.8 (main, Oct  7 2025, 12:01:51) [Clang 17.0.0 (clang-1700.3.19.1)]\", \"observed_pytest\": \"9.1.1\", \"observed_appdata\": \"/private/tmp/gate-launch-20261019-12572-sn9d04/appdata\", \"observed_appdata_mode\": \"0700\", \"observed_umask\": \"0077\", \"observed_basetemp\": \"/private/tmp/gate-launch-20261019-12572-sn9d04/basetemp\", \"observed_bytecode_disabled\": true, \"probe_path\": \"/private/tmp/gate-launch-20261019-12572-sn9d04/work/umask-probe.txt\", \"probe_mode\": \"0600\", \"expected_exit\": 0}\n",
+    "stderr": "normal-smoke-stderr\n",
+    "stdout_sha256": "3f6fe8c94a7489334c83511989e9eec5983cdb762f145704aa0d379b0e4c2b9f",
+    "stderr_sha256": "9012e47cf63119afcea7be3605fb17e5469711a5d9833121b73dacac2e91aed3",
+    "launcher_sha256": "e9d3e5e03fded1974fb16fcb177cfc96ccc817bf8e72d2084ff7407a4383be62"
+  },
+  {
+    "execution_id": "negative-smoke-final",
+    "argv": [
+      "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/launch_gate.rb",
+      "--execution-id",
+      "negative-smoke-final",
+      "--kind",
+      "smoke",
+      "--source-worktree",
+      "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_R3_ADV11_DESCENDANT_STABLE_CONTEXT_R1",
+      "--expected-head",
+      "e440d4298551ce93ef3ea9a9226143784afa3eff",
+      "--expected-tree",
+      "294cbf6bbe7ee8a8ebad947f397852edc1981b57",
+      "--",
+      "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/smoke_probe.py",
+      "23"
+    ],
+    "exit_code": 23,
+    "expected_exit_code": 23,
+    "stdout": "{\"smoke\": \"negative\", \"observed_pid\": 12663, \"observed_ppid\": 12625, \"observed_pgid\": 12663, \"child_started_ns\": 1792418842021038000, \"launch_receipt_exists_before_child\": true, \"launch_path\": \"/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/negative-smoke-final/launch.json\", \"launch_sha256\": \"86437e75cd1fbd2194dc0b5e3eb81a3e2f8b990f2d9afe039d67910e648505c4\", \"launch_mtime_ns\": 1792418841840612295, \"observed_cwd\": \"/private/tmp/gate-launch-20261019-12625-ft7sy0/work\", \"observed_python\": \"/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/python\", \"observed_version\": \"3.13.8 (main, Oct  7 2025, 12:01:51) [Clang 17.0.0 (clang-1700.3.19.1)]\", \"observed_pytest\": \"9.1.1\", \"observed_appdata\": \"/private/tmp/gate-launch-20261019-12625-ft7sy0/appdata\", \"observed_appdata_mode\": \"0700\", \"observed_umask\": \"0077\", \"observed_basetemp\": \"/private/tmp/gate-launch-20261019-12625-ft7sy0/basetemp\", \"observed_bytecode_disabled\": true, \"probe_path\": \"/private/tmp/gate-launch-20261019-12625-ft7sy0/work/umask-probe.txt\", \"probe_mode\": \"0600\", \"expected_exit\": 23}\n",
+    "stderr": "negative-smoke-stderr\n",
+    "stdout_sha256": "f0c0c5a68a379441b7624d3b08ae129838a007e1ed784bddaae552bb73a322cb",
+    "stderr_sha256": "853d339a55306a611eb1f132630e22b9e7fe88105c30f19dbb10b495f36335dd",
+    "launcher_sha256": "e9d3e5e03fded1974fb16fcb177cfc96ccc817bf8e72d2084ff7407a4383be62"
+  }
+]

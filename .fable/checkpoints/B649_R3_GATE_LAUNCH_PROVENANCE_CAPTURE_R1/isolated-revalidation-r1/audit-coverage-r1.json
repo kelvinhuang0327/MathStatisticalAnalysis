@@ -1,0 +1,11 @@
+{
+  "status": "FAIL",
+  "reason": "Python startup selected Homebrew stdlib sitecustomize ahead of venv sitecustomize; no Python child audit logs. Open3 spawn did not pass through Kernel/Process prepend hooks; Ruby filesystem writes observed but spawn edges missing.",
+  "runtime_results": "Both authorized smoke kinds completed with 0/23 and unchanged isolated Git; insufficient provenance coverage, no AC10 PASS claimed.",
+  "evidence": [
+    "execution-result.json",
+    "strict-controller-dispatch.json"
+  ],
+  "remediation": "Add .pth startup audit installation and Open3 singleton/C spawn observation. Preserve completed IDs; perform explicit observer-remediation smoke pair with new stable r2 IDs.",
+  "not_a_duplicate_retry": "Prior strict harness exited 0; prior completed results retained; new observer code requires distinct acceptance evidence."
+}

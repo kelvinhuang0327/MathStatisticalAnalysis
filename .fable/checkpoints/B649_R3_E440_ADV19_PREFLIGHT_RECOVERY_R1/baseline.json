@@ -1,0 +1,20 @@
+{
+  "task_id": "B649_R3_E440_ADV19_PREFLIGHT_RECOVERY_R1",
+  "repository": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis",
+  "worktree": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_R3_E440_ADV19_PREFLIGHT_RECOVERY_R1",
+  "runtime_root": "/private/tmp/adv19-recovery-ea4ub0bv",
+  "base_head": "e440d4298551ce93ef3ea9a9226143784afa3eff",
+  "base_tree": "294cbf6bbe7ee8a8ebad947f397852edc1981b57",
+  "base_parent": "86f644010f41cd627f436c8d5cf9e0b5cca8fcdc",
+  "primary_head": "17a03e3305671d09578d81c29013ca15b9ca4a6d",
+  "main_ref": "17a03e3305671d09578d81c29013ca15b9ca4a6d",
+  "primary_status": "?? .b649-pr338-replacement-a-r1/\n?? .b649-prestart-successor-durable-evidence-consumer-r1/\n?? .fable/checkpoints/B649_R3_ADV11_DESCENDANT_STABLE_CONTEXT_R1/\n?? .fable/checkpoints/B649_R3_E440_EXACT_TREE_FULL_GATE_R1/\n?? .fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/\n?? .fable/recovery/",
+  "worktree_status": "",
+  "source_test_sha256": "5f1198daf582db4340c2bf424071375a442e8ca9e54fd8d27e4d10d03ef9f067",
+  "old_judge_report_sha256": "028e60ce4b0290a97c3b140b902157e4eb72eb2d1527f6297710c10a9dc22c68",
+  "historical_judge_report": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.git/worktrees/B649_MIN_S2_AB_T242_T241_EXACT_FAMILY_AUTHORITY_R1/task-evidence/fresh-judge-report.md",
+  "historical_judge_report_sha256": "216340c3d1cd2b7724571d95e4c7951d731fd48d04996dd10d53e83b98e12a3b",
+  "quiescence_seconds": 5,
+  "quiescence_result": "stable; task paths and ref absent before creation",
+  "external_workspace_authority": "Owner Packet exact WORKTREE_PATH/WORKTREE_BASE/RETAIN; external runtime and task launcher explicitly allowed"
+}

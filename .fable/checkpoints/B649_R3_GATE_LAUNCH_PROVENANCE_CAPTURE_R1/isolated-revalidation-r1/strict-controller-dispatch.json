@@ -1,0 +1,18 @@
+{
+  "argv": [
+    "/usr/bin/sandbox-exec",
+    "-f",
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/isolated-revalidation-r1/smoke.sb",
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/python",
+    "-B",
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/isolated-revalidation-r1/run_pair.py"
+  ],
+  "pid": 18895,
+  "ppid": 18894,
+  "started_ns": 1792420366976065000,
+  "ended_ns": 1792420389289470000,
+  "exit_status": 0,
+  "stdout": "{\"status\": \"SMOKE_PAIR_COMPLETED\", \"normal_exit\": 0, \"negative_exit\": 23, \"isolated_source_unchanged\": true, \"old_files_unchanged\": true}\n",
+  "stderr": "",
+  "sandbox_profile_sha256": "27ca52acfcd1e5612cb97ca2cd905189134b11d6e6f1a43ed1dc4f57658c981d"
+}

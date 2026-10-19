@@ -36,6 +36,7 @@ HISTORICAL_SOURCE_SHA256 = "fcf67c2b2023463d5e26448d82905a4e57b7bed7227a7d2ceee7
 CANDIDATE_BASE = "f48cc3043af4760a7d439c7029071803414f2260"
 CANDIDATE_BASE_TREE = "04a9ccbfefd4620b7d2fb7601e8424518308786e"
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
+HISTORICAL_CHILD_CONTEXT_ENV = "ADV11_HISTORICAL_CHILD_CONTEXT"
 
 T264_PROFILES = {"66665555555421000000": 308560, "66666555554411100000": 309183}
 WEAKER = [
@@ -59,6 +60,7 @@ class ChildRun(NamedTuple):
 
 _child_run: ChildRun | None = None
 _HISTORICAL_TEST_NAMES: set[str] = set()
+_execution_context_cache: str | None = None
 
 
 def _git(root: Path, *args: str) -> subprocess.CompletedProcess[str]:
@@ -78,21 +80,14 @@ def _git_text(root: Path, *args: str) -> str:
 
 
 def _execution_context() -> str:
-    head = _git_text(PROJECT_ROOT, "rev-parse", "HEAD")
-    tree = _git_text(PROJECT_ROOT, "rev-parse", "HEAD^{tree}")
-    if head == CANDIDATE_BASE and tree == CANDIDATE_BASE_TREE:
-        return "candidate"
-    if head == HISTORICAL_CHILD and tree == HISTORICAL_CHILD_TREE:
-        parents = _git_text(PROJECT_ROOT, "rev-list", "--parents", "-n", "1", head).split()
-        if parents == [head, HISTORICAL_PARENT]:
-            return "historical-child"
-    parents = _git_text(PROJECT_ROOT, "rev-list", "--parents", "-n", "1", head).split()
-    changed = _git_text(
-        PROJECT_ROOT, "diff-tree", "--no-commit-id", "--name-status", "-r", head
-    ).splitlines()
-    if parents == [head, CANDIDATE_BASE] and changed == [f"M\t{HISTORICAL_TEST}"]:
-        return "candidate"
-    return "other"
+    global _execution_context_cache
+    if _execution_context_cache is None:
+        if os.environ.get(HISTORICAL_CHILD_CONTEXT_ENV) == "1":
+            _verify_historical_checkout(PROJECT_ROOT)
+            _execution_context_cache = "historical-child"
+        else:
+            _execution_context_cache = "candidate-runner"
+    return _execution_context_cache
 
 
 def _child_report(run: ChildRun, test_name: str) -> str:
@@ -106,13 +101,26 @@ def _child_report(run: ChildRun, test_name: str) -> str:
 
 
 def _assert_child_passed(run: ChildRun, test_name: str) -> None:
-    if run.error is not None or run.outcomes.get(test_name) != "passed":
+    if (
+        run.error is not None
+        or run.exit_code != 0
+        or run.outcomes.get(test_name) != "passed"
+    ):
         raise AssertionError(_child_report(run, test_name))
 
 
 def _private_directory(path: Path) -> None:
     path.mkdir(mode=0o700)
     path.chmod(0o700)
+
+
+def _verify_historical_child_identity(head: str, tree: str, parents: list[str]) -> None:
+    if (head, tree, parents) != (
+        HISTORICAL_CHILD,
+        HISTORICAL_CHILD_TREE,
+        [HISTORICAL_CHILD, HISTORICAL_PARENT],
+    ):
+        raise RuntimeError(f"wrong historical Child identity: {head} {tree} {parents}")
 
 
 def _verify_historical_checkout(root: Path) -> None:
@@ -122,12 +130,7 @@ def _verify_historical_checkout(root: Path) -> None:
     head = _git_text(root, "rev-parse", "HEAD")
     tree = _git_text(root, "rev-parse", "HEAD^{tree}")
     parents = _git_text(root, "rev-list", "--parents", "-n", "1", head).split()
-    if (head, tree, parents) != (
-        HISTORICAL_CHILD,
-        HISTORICAL_CHILD_TREE,
-        [HISTORICAL_CHILD, HISTORICAL_PARENT],
-    ):
-        raise RuntimeError(f"wrong historical Child identity: {head} {tree} {parents}")
+    _verify_historical_child_identity(head, tree, parents)
     if _git_text(root, "rev-parse", "--is-shallow-repository") != "false":
         raise RuntimeError("historical Child checkout is shallow")
     objects = _git(root, "rev-list", "--objects", "--missing=print", HISTORICAL_CHILD)
@@ -170,8 +173,14 @@ def _historical_case_results(xml_path: Path) -> tuple[dict[str, str], dict[str, 
 
 
 def _run_historical_child(expected_names: set[str]) -> ChildRun:
-    runtime_root = Path(tempfile.mkdtemp(prefix="B649_R3_ADV11_child_"))
+    runtime_root = Path(tempfile.mkdtemp(prefix="adv11-child-")).resolve()
     runtime_root.chmod(0o700)
+    if runtime_root.is_relative_to(PROJECT_ROOT.resolve()):
+        shutil.rmtree(runtime_root)
+        raise RuntimeError("historical Child runtime directory is inside the repository")
+    if "b649" in str(runtime_root).casefold():
+        shutil.rmtree(runtime_root)
+        raise RuntimeError("historical Child runtime path contains a forbidden B649 segment")
     data_dir, temp_dir, cache_dir, bytecode_dir = (
         runtime_root / name for name in ("app-data", "tmp", "cache", "bytecode")
     )
@@ -215,6 +224,7 @@ def _run_historical_child(expected_names: set[str]) -> ChildRun:
                     "XDG_CACHE_HOME": str(cache_dir),
                     "PYTHONPYCACHEPREFIX": str(bytecode_dir),
                     "PYTHONPATH": str(checkout / "src"),
+                    HISTORICAL_CHILD_CONTEXT_ENV: "1",
                 }
             )
             env.pop("PYTEST_ADDOPTS", None)
@@ -227,6 +237,7 @@ def _run_historical_child(expected_names: set[str]) -> ChildRun:
                 "no:cacheprovider",
                 "--tb=short",
                 "-q",
+                f"--basetemp={runtime_root / 'pytest-basetemp'}",
                 f"--junitxml={xml_path}",
                 HISTORICAL_TEST,
             ]
@@ -246,12 +257,8 @@ def _run_historical_child(expected_names: set[str]) -> ChildRun:
                 missing = sorted(expected_names - outcomes.keys())
                 if missing:
                     error = f"Candidate collected IDs missing from historical Child: {missing}"
-                elif child.returncode and not any(
-                    outcome in {"failed", "error"} for outcome in outcomes.values()
-                ):
-                    error = (
-                        f"historical pytest exited {child.returncode} without a failing test result"
-                    )
+                elif child.returncode:
+                    error = f"historical pytest exited {child.returncode}"
         except Exception as exc:
             error = f"{type(exc).__name__}: {exc}"
 
@@ -283,7 +290,7 @@ def _run_historical_child(expected_names: set[str]) -> ChildRun:
 @pytest.fixture(scope="session", autouse=True)
 def _run_historical_child_session(request: pytest.FixtureRequest) -> None:  # pyright: ignore[reportUnusedFunction]
     global _child_run
-    if _execution_context() != "candidate":
+    if _execution_context() != "candidate-runner":
         return
     expected_names = {
         item.name
@@ -299,13 +306,13 @@ def _mirror_historical_child_status() -> None:  # pyright: ignore[reportUnusedFu
     current = os.environ.get("PYTEST_CURRENT_TEST", "").partition(" (")[0]
     test_name = current.rsplit("::", 1)[-1]
     if (
-        _execution_context() != "candidate"
+        _execution_context() != "candidate-runner"
         or test_name.partition("[")[0] not in _HISTORICAL_TEST_NAMES
     ):
         return
     if _child_run is None:
         raise RuntimeError("historical Child pytest was not executed")
-    if _child_run.error is not None:
+    if _child_run.error is not None or _child_run.exit_code != 0:
         raise RuntimeError(_child_report(_child_run, test_name))
     outcome = _child_run.outcomes.get(test_name)
     if outcome == "error":
@@ -318,7 +325,7 @@ def _mirror_historical_child_status() -> None:  # pyright: ignore[reportUnusedFu
 
 @pytest.fixture(scope="module")
 def result() -> v.Document:
-    if _execution_context() == "candidate":
+    if _execution_context() == "candidate-runner":
         return cast(v.Document, {})
     value = v.compute_result()
     assert (v.ROOT / v.RESULT).read_bytes() == v.render(value)
@@ -729,7 +736,7 @@ def test_remainder_lower_bounds_on_random_graphs() -> None:
 def _mirror_historical_test(function: Callable[..., object]) -> Callable[..., object]:
     @wraps(function)
     def wrapped(*args: object, **kwargs: object) -> object:
-        if _execution_context() != "candidate":
+        if _execution_context() != "candidate-runner":
             return function(*args, **kwargs)
         if _child_run is None:
             raise AssertionError("historical Child pytest was not executed")
@@ -752,6 +759,15 @@ def test_candidate_is_not_accepted_as_historical_child() -> None:
     assert _child_run.exit_code == 0
     assert len(_child_run.outcomes) == 17
     assert all(outcome == "passed" for outcome in _child_run.outcomes.values())
+    assert _execution_context() == "candidate-runner"
+    with pytest.raises(RuntimeError, match="wrong historical Child identity"):
+        _verify_historical_child_identity(
+            HISTORICAL_CHILD,
+            HISTORICAL_CHILD_TREE,
+            [HISTORICAL_CHILD, CANDIDATE_BASE],
+        )
+    with pytest.raises(RuntimeError, match="wrong historical Child identity"):
+        _verify_historical_checkout(PROJECT_ROOT)
     with pytest.raises(ValueError, match="candidate is not Base or its single local child"):
         v.verify_candidate()
     donor = v.DONORS[2]
@@ -773,14 +789,14 @@ def test_nonzero_child_result_preserves_failure_and_stderr() -> None:
         _assert_child_passed(failed, "test_sentinel")
     assert "sentinel stderr" in str(exc_info.value)
 
-    nonzero_without_case = ChildRun(
+    nonzero_with_passed_case = ChildRun(
         exit_code=23,
         outcomes={"test_sentinel": "passed"},
         details={},
         stdout="sentinel stdout",
         stderr="sentinel stderr",
-        error="historical pytest exited 23 without a failing test result",
+        error=None,
         evidence_dir="/task-owned-temp/historical-child",
     )
     with pytest.raises(AssertionError, match="child_exit_code=23"):
-        _assert_child_passed(nonzero_without_case, "test_sentinel")
+        _assert_child_passed(nonzero_with_passed_case, "test_sentinel")

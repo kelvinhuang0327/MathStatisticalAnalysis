@@ -322,6 +322,7 @@ describe('App navigation', () => {
       'Replay Overview',
       'Strategy Intelligence',
       'B649 Replay',
+      'B649 Current Forecast',
       'P638 Replay',
       'T539 Replay',
       'Future Modules',

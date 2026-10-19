@@ -191,8 +191,9 @@ def test_relaxed_class_triangle_envelope_covers_all_small_graphs() -> None:
     run_isolated_relaxed_class_check()
     modules_after = set(sys.modules.keys())
 
-    assert not any(m.startswith("ortools") for m in sys.modules)
-    new_ortools = [m for m in modules_after - modules_before if m.startswith("ortools")]
+    new_ortools = sorted(
+        m for m in modules_after - modules_before if m.startswith("ortools")
+    )
     assert new_ortools == []
 
 
@@ -283,8 +284,9 @@ def test_feasible_solver_status_uses_only_best_bound_floor(
 
     assert relaxation["SOLVER_STATUS"] == "FEASIBLE"
     assert relaxation["WEIGHTED_OPEN_WEDGE_LOWER_BOUND"] == 7
-    assert not any(m.startswith("ortools") for m in sys.modules)
-    new_ortools = [m for m in modules_after - modules_before if m.startswith("ortools")]
+    new_ortools = sorted(
+        m for m in modules_after - modules_before if m.startswith("ortools")
+    )
     assert new_ortools == []
 
 

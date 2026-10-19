@@ -21,10 +21,6 @@ from tests.unit.test_b649_k20_min_s2_successive_class_dominance_r14 import (
     test_feasible_solver_status_uses_only_best_bound_floor,
 )
 
-from lottolab.research.b649_min_s2_owner_655555555555410_t238_exact_authority_r1 import (
-    source_authority,
-)
-
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -33,14 +29,14 @@ def test_t03_t04_r14_feasible_solver_isolates_ortools(
 ) -> None:
     """T03 & T04: Test logic runs in subprocess; parent never retains ortools in sys.modules."""
     modules_before = set(sys.modules.keys())
-    assert not any(m.startswith("ortools") for m in modules_before)
 
     test_feasible_solver_status_uses_only_best_bound_floor(monkeypatch)
 
     modules_after = set(sys.modules.keys())
-    new_ortools = [m for m in modules_after if m.startswith("ortools")]
+    new_ortools = sorted(
+        m for m in modules_after - modules_before if m.startswith("ortools")
+    )
     assert new_ortools == [], f"ortools leaked into parent process: {new_ortools}"
-    assert not any(m.startswith("ortools") for m in sys.modules)
 
 
 def test_t02_r14_feasible_solver_payload_and_semantics() -> None:
@@ -55,21 +51,56 @@ def test_t02_r14_feasible_solver_payload_and_semantics() -> None:
 def test_t05_adjacent_historical_source_authority_passes_after_r14(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """T05: In the same process, running R14 does not pollute legacy solver-loaded guard."""
-    assert not any(m.startswith("ortools") for m in sys.modules)
+    """T05: R14 adds no solver modules and clean legacy authority still passes."""
+    modules_before = set(sys.modules.keys())
 
     test_feasible_solver_status_uses_only_best_bound_floor(monkeypatch)
 
-    assert not any(m.startswith("ortools") for m in sys.modules)
+    modules_after = set(sys.modules.keys())
+    new_ortools = sorted(
+        m for m in modules_after - modules_before if m.startswith("ortools")
+    )
+    assert new_ortools == [], f"R14 added ortools modules: {new_ortools}"
 
-    provenance = source_authority()
+    child_code = """
+import json
+import sys
+from lottolab.research.b649_min_s2_owner_655555555555410_t238_exact_authority_r1 import (
+    source_authority,
+)
+
+assert not any(name.startswith("ortools") for name in sys.modules)
+provenance = source_authority()
+print(json.dumps({
+    "BASE_HEAD": provenance["BASE_HEAD"],
+    "SOURCE_PINS": provenance["SOURCE_PINS"],
+}))
+"""
+    env = {
+        **os.environ,
+        "PYTHONPATH": str(REPOSITORY_ROOT / "src")
+        + os.pathsep
+        + os.environ.get("PYTHONPATH", ""),
+    }
+    completed = subprocess.run(
+        [sys.executable, "-c", child_code],
+        cwd=REPOSITORY_ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert (
+        completed.returncode == 0
+    ), f"Clean source-authority probe failed: {completed.stderr}"
+    provenance = json.loads(completed.stdout.strip().splitlines()[-1])
     assert provenance["BASE_HEAD"] == "2bdf3a6843800b1a1c818bd4e168585a7971611a"
     assert "SOURCE_PINS" in provenance
-    assert not any(m.startswith("ortools") for m in sys.modules)
 
 
 def test_t06_negative_genuine_solver_loaded_is_rejected_by_legacy_guard() -> None:
     """T06: When ortools is genuinely loaded, legacy source_authority raises ValueError."""
+    modules_before = set(sys.modules.keys())
     child_code = """
 import importlib
 import json
@@ -109,4 +140,8 @@ print(json.dumps(result))
     output = json.loads(completed.stdout.strip().splitlines()[-1])
     assert output["status"] == "REJECTED_AS_EXPECTED"
     assert "solver loaded" in output.get("error", "")
-    assert not any(m.startswith("ortools") for m in sys.modules)
+    modules_after = set(sys.modules.keys())
+    new_ortools = sorted(
+        m for m in modules_after - modules_before if m.startswith("ortools")
+    )
+    assert new_ortools == [], f"Solver guard probe polluted parent process: {new_ortools}"

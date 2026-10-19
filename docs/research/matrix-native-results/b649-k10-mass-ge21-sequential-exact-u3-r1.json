@@ -1,0 +1,1766 @@
+{
+  "EXACT_WITNESS_BEST": null,
+  "FIRST_MASS_PROCESSED": 21,
+  "FIRST_SURVIVING_MASS": null,
+  "FIRST_SURVIVING_PROFILE": null,
+  "GAP_VS_INCUMBENT": null,
+  "INCUMBENT_COUNT": 176345645,
+  "K10_GLOBAL_OPTIMUM_STATUS": "PROVEN",
+  "LAST_MASS_COMPLETED": 48,
+  "MAX_LEGAL_U3": null,
+  "NEWLY_CLOSED_PROFILE_COUNT": 34,
+  "NEXT_UNRESOLVED_PROFILE": null,
+  "PRIOR_MASS11_20_PROFILE_SET_CHECK": {
+    "CENSUSES_RERUN": false,
+    "EVIDENCE": {
+      "11-12": "docs/research/matrix-native-results/b649-k10-overlap-mass11-mass12-proof-certificate-r1.json",
+      "13-17": "src/lottolab/research/b649_k10_mass14_profiles_exact_u3_r1.py and its durable captures",
+      "18": "docs/research/matrix-native-results/b649-k10-mass18-profiles-exact-u3-r1.json",
+      "19": "docs/research/matrix-native-results/b649-k10-mass19-profiles-exact-u3-r1.json",
+      "20": "docs/research/matrix-native-results/b649-k10-mass20-profiles-exact-u3-r1.json"
+    },
+    "MASS_PROFILE_CHECKS": [
+      {
+        "MASS": 11,
+        "PROFILE_COUNT": 1,
+        "PROFILE_SET_SHA256": "2be729fda77800ff703c0d01e97841760f1d3fab5aba67453e28f4903ba663d6"
+      },
+      {
+        "MASS": 12,
+        "PROFILE_COUNT": 1,
+        "PROFILE_SET_SHA256": "7f0d7f0fd47139eb4eb66e1a1bd52be2331b74153a382422f7fcf13f54c76954"
+      },
+      {
+        "MASS": 13,
+        "PROFILE_COUNT": 1,
+        "PROFILE_SET_SHA256": "f7e1dc7ae48d1eff6500580b1b837915e38a1654ec065817acb1636d40ccaa40"
+      },
+      {
+        "MASS": 14,
+        "PROFILE_COUNT": 2,
+        "PROFILE_SET_SHA256": "c61b7ab4ec68e79b7ee4db8a2a6bebdd6e6193f5aa612e54afa9394cd5a866a2"
+      },
+      {
+        "MASS": 15,
+        "PROFILE_COUNT": 2,
+        "PROFILE_SET_SHA256": "6e9cb9370de813a477fcc33db9a0df7b3b18f7ad8ad042d536e7be7bf5fc8a41"
+      },
+      {
+        "MASS": 16,
+        "PROFILE_COUNT": 2,
+        "PROFILE_SET_SHA256": "b67d3a6ca0b6512b7def41606ac08776f4099dd240e4a20acd25754c7c13f0dd"
+      },
+      {
+        "MASS": 17,
+        "PROFILE_COUNT": 3,
+        "PROFILE_SET_SHA256": "929cb04ebc06d907c871c1560f70d3da137a7e1149e01dd92632f81dca8d4190"
+      },
+      {
+        "MASS": 18,
+        "PROFILE_COUNT": 3,
+        "PROFILE_SET_SHA256": "00627cbf69caf83c3ef96a0301d2f04319a31c9dbb1588bb7e733ab49bf8ec2e"
+      },
+      {
+        "MASS": 19,
+        "PROFILE_COUNT": 2,
+        "PROFILE_SET_SHA256": "bfced79d14ae031a54823fbdb7e33094136666a8225b01d2314715a563811637"
+      },
+      {
+        "MASS": 20,
+        "PROFILE_COUNT": 3,
+        "PROFILE_SET_SHA256": "f13aa7b9d23b690a8ee51d89ad4c59daaa5ccf6f2562a9310caf9f1d8a37276e"
+      }
+    ],
+    "STATUS": "PASS"
+  },
+  "PROFILES_COMPLETED_THIS_RUN": 34,
+  "PROFILE_RESULTS": [
+    {
+      "BEST_EXACT_COUNT": null,
+      "BURNSIDE_ORBIT_COUNT": 6462,
+      "EXACT_SCORES_RUN": 0,
+      "EXACT_SCORE_RESULTS": [],
+      "GAP_VS_INCUMBENT": -4428445,
+      "INCUMBENT_COUNT": 176345645,
+      "LEGAL_SUPPORT_CLASS_COUNT": 6397,
+      "MASS": 21,
+      "MAXIMIZING_CLASS_COUNT": 1,
+      "MAXIMIZING_SUPPORT_WITNESSES": [],
+      "MAXIMIZING_WITNESS_COUNT": 1,
+      "MAX_LEGAL_U3": 171917200,
+      "PAIR_GRAPH_CLASS_COUNT": 210,
+      "PAIR_GRAPH_LABELED_TOTAL": 15890700,
+      "PARITY_PROBES": [
+        {
+          "class_id": "{\"higher\":[[0,1,2,3,4,5]],\"pairs\":[[0,1],[0,8],[2,3],[2,4],[4,5],[6,7]],\"tickets\":10}",
+          "public_u3_outcome_count": 169756076,
+          "support_u3": 169756076
+        },
+        {
+          "class_id": "{\"higher\":[[0,1,2,3,4,6]],\"pairs\":[[0,1],[0,8],[2,3],[2,4],[4,5],[6,7]],\"tickets\":10}",
+          "public_u3_outcome_count": 170239160,
+          "support_u3": 170239160
+        },
+        {
+          "class_id": "{\"higher\":[[1,2,3,4,5,6]],\"pairs\":[[0,1],[0,2],[0,3],[0,4],[0,5],[0,6]],\"tickets\":10}",
+          "public_u3_outcome_count": 171917200,
+          "support_u3": 171917200
+        }
+      ],
+      "PROFILE": [
+        0,
+        42,
+        6,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0
+      ],
+      "PROFILE_NAME": "MASS21_PROFILE_A",
+      "PROFILE_STATUS": "CLOSED_BY_EXACT_U3",
+      "RETAINED_PAIR_GRAPH_CLASS_COUNT": 210,
+      "STRUCTURAL_SUPPORT_ORBIT_COUNT": 6462
+    },
+    {
+      "BEST_EXACT_COUNT": null,
+      "BURNSIDE_ORBIT_COUNT": 10518,
+      "EXACT_SCORES_RUN": 0,
+      "EXACT_SCORE_RESULTS": [],
+      "GAP_VS_INCUMBENT": -4570293,
+      "INCUMBENT_COUNT": 176345645,
+      "LEGAL_SUPPORT_CLASS_COUNT": 10518,
+      "MASS": 21,
+      "MAXIMIZING_CLASS_COUNT": 2,
+      "MAXIMIZING_SUPPORT_WITNESSES": [],
+      "MAXIMIZING_WITNESS_COUNT": 2,
+      "MAX_LEGAL_U3": 171775352,
+      "PAIR_GRAPH_CLASS_COUNT": 3,
+      "PAIR_GRAPH_LABELED_TOTAL": 1035,
+      "PARITY_PROBES": [
+        {
+          "class_id": "{\"higher\":[[0,1,2],[0,1,2,3],[0,1,2,3,4]],\"pairs\":[[0,1],[2,3]],\"tickets\":10}",
+          "public_u3_outcome_count": 165619398,
+          "support_u3": 165619398
+        },
+        {
+          "class_id": "{\"higher\":[[0,1,2],[0,1,2,3],[0,1,2,4,5]],\"pairs\":[[0,1],[2,3]],\"tickets\":10}",
+          "public_u3_outcome_count": 166537532,
+          "support_u3": 166537532
+        },
+        {
+          "class_id": "{\"higher\":[[0,3,4],[0,5,6,7],[1,2,3,5,8]],\"pairs\":[[0,1],[0,2]],\"tickets\":10}",
+          "public_u3_outcome_count": 171775352,
+          "support_u3": 171775352
+        }
+      ],
+      "PROFILE": [
+        0,
+        44,
+        2,
+        1,
+        1,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "PROFILE_NAME": "MASS21_PROFILE_B",
+      "PROFILE_STATUS": "CLOSED_BY_EXACT_U3",
+      "RETAINED_PAIR_GRAPH_CLASS_COUNT": 3,
+      "STRUCTURAL_SUPPORT_ORBIT_COUNT": 10518
+    },
+    {
+      "BEST_EXACT_COUNT": null,
+      "BURNSIDE_ORBIT_COUNT": 507,
+      "EXACT_SCORES_RUN": 0,
+      "EXACT_SCORE_RESULTS": [],
+      "GAP_VS_INCUMBENT": -4608037,
+      "INCUMBENT_COUNT": 176345645,
+      "LEGAL_SUPPORT_CLASS_COUNT": 507,
+      "MASS": 21,
+      "MAXIMIZING_CLASS_COUNT": 1,
+      "MAXIMIZING_SUPPORT_WITNESSES": [],
+      "MAXIMIZING_WITNESS_COUNT": 1,
+      "MAX_LEGAL_U3": 171737608,
+      "PAIR_GRAPH_CLASS_COUNT": 1,
+      "PAIR_GRAPH_LABELED_TOTAL": 1,
+      "PARITY_PROBES": [
+        {
+          "class_id": "{\"higher\":[[0,1,2],[0,1,2,3],[0,1,2,3],[0,1,2,3]],\"pairs\":[],\"tickets\":10}",
+          "public_u3_outcome_count": 164383296,
+          "support_u3": 164383296
+        },
+        {
+          "class_id": "{\"higher\":[[0,1,2],[0,1,2,3],[0,1,2,3],[0,1,2,4]],\"pairs\":[],\"tickets\":10}",
+          "public_u3_outcome_count": 165012372,
+          "support_u3": 165012372
+        },
+        {
+          "class_id": "{\"higher\":[[0,1,2],[0,3,4,5],[1,3,6,7],[2,4,6,8]],\"pairs\":[],\"tickets\":10}",
+          "public_u3_outcome_count": 171737608,
+          "support_u3": 171737608
+        }
+      ],
+      "PROFILE": [
+        0,
+        45,
+        0,
+        1,
+        3,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "PROFILE_NAME": "MASS21_PROFILE_C",
+      "PROFILE_STATUS": "CLOSED_BY_EXACT_U3",
+      "RETAINED_PAIR_GRAPH_CLASS_COUNT": 1,
+      "STRUCTURAL_SUPPORT_ORBIT_COUNT": 507
+    },
+    {
+      "BEST_EXACT_COUNT": null,
+      "BURNSIDE_ORBIT_COUNT": 9225,
+      "EXACT_SCORES_RUN": 0,
+      "EXACT_SCORE_RESULTS": [],
+      "GAP_VS_INCUMBENT": -4949805,
+      "INCUMBENT_COUNT": 176345645,
+      "LEGAL_SUPPORT_CLASS_COUNT": 9223,
+      "MASS": 22,
+      "MAXIMIZING_CLASS_COUNT": 1,
+      "MAXIMIZING_SUPPORT_WITNESSES": [],
+      "MAXIMIZING_WITNESS_COUNT": 1,
+      "MAX_LEGAL_U3": 171395840,
+      "PAIR_GRAPH_CLASS_COUNT": 23,
+      "PAIR_GRAPH_LABELED_TOTAL": 194580,
+      "PARITY_PROBES": [
+        {
+          "class_id": "{\"higher\":[[0,1,2],[0,1,2,3,4,5]],\"pairs\":[[0,1],[2,3],[4,5],[6,7]],\"tickets\":10}",
+          "public_u3_outcome_count": 168145782,
+          "support_u3": 168145782
+        },
+        {
+          "class_id": "{\"higher\":[[0,1,2],[0,1,2,3,4,6]],\"pairs\":[[0,1],[2,3],[4,5],[6,7]],\"tickets\":10}",
+          "public_u3_outcome_count": 168668290,
+          "support_u3": 168668290
+        },
+        {
+          "class_id": "{\"higher\":[[0,5,6],[1,2,3,4,5,7]],\"pairs\":[[0,1],[0,2],[0,3],[0,4]],\"tickets\":10}",
+          "public_u3_outcome_count": 171395840,
+          "support_u3": 171395840
+        }
+      ],
+      "PROFILE": [
+        0,
+        43,
+        4,
+        1,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0
+      ],
+      "PROFILE_NAME": "MASS22_PROFILE_A",
+      "PROFILE_STATUS": "CLOSED_BY_EXACT_U3",
+      "RETAINED_PAIR_GRAPH_CLASS_COUNT": 23,
+      "STRUCTURAL_SUPPORT_ORBIT_COUNT": 9225
+    },
+    {
+      "BEST_EXACT_COUNT": null,
+      "BURNSIDE_ORBIT_COUNT": 988,
+      "EXACT_SCORES_RUN": 0,
+      "EXACT_SCORE_RESULTS": [],
+      "GAP_VS_INCUMBENT": -5056037,
+      "INCUMBENT_COUNT": 176345645,
+      "LEGAL_SUPPORT_CLASS_COUNT": 988,
+      "MASS": 22,
+      "MAXIMIZING_CLASS_COUNT": 1,
+      "MAXIMIZING_SUPPORT_WITNESSES": [],
+      "MAXIMIZING_WITNESS_COUNT": 1,
+      "MAX_LEGAL_U3": 171289608,
+      "PAIR_GRAPH_CLASS_COUNT": 1,
+      "PAIR_GRAPH_LABELED_TOTAL": 1,
+      "PARITY_PROBES": [
+        {
+          "class_id": "{\"higher\":[[0,1,2],[0,1,2],[0,1,2,3],[0,1,2,3,4]],\"pairs\":[],\"tickets\":10}",
+          "public_u3_outcome_count": 164638152,
+          "support_u3": 164638152
+        },
+        {
+          "class_id": "{\"higher\":[[0,1,2],[0,1,2],[0,1,2,3],[0,1,2,4,5]],\"pairs\":[],\"tickets\":10}",
+          "public_u3_outcome_count": 165035766,
+          "support_u3": 165035766
+        },
+        {
+          "class_id": "{\"higher\":[[0,1,2],[0,3,4],[1,3,5,6],[2,4,5,7,8]],\"pairs\":[],\"tickets\":10}",
+          "public_u3_outcome_count": 171289608,
+          "support_u3": 171289608
+        }
+      ],
+      "PROFILE": [
+        0,
+        45,
+        0,
+        2,
+        1,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "PROFILE_NAME": "MASS22_PROFILE_B",
+      "PROFILE_STATUS": "CLOSED_BY_EXACT_U3",
+      "RETAINED_PAIR_GRAPH_CLASS_COUNT": 1,
+      "STRUCTURAL_SUPPORT_ORBIT_COUNT": 988
+    },
+    {
+      "BEST_EXACT_COUNT": null,
+      "BURNSIDE_ORBIT_COUNT": 3703,
+      "EXACT_SCORES_RUN": 0,
+      "EXACT_SCORE_RESULTS": [],
+      "GAP_VS_INCUMBENT": -5459293,
+      "INCUMBENT_COUNT": 176345645,
+      "LEGAL_SUPPORT_CLASS_COUNT": 3703,
+      "MASS": 23,
+      "MAXIMIZING_CLASS_COUNT": 1,
+      "MAXIMIZING_SUPPORT_WITNESSES": [],
+      "MAXIMIZING_WITNESS_COUNT": 1,
+      "MAX_LEGAL_U3": 170886352,
+      "PAIR_GRAPH_CLASS_COUNT": 3,
+      "PAIR_GRAPH_LABELED_TOTAL": 1035,
+      "PARITY_PROBES": [
+        {
+          "class_id": "{\"higher\":[[0,1,2],[0,1,2],[0,1,2,3,4,5]],\"pairs\":[[0,1],[2,3]],\"tickets\":10}",
+          "public_u3_outcome_count": 165690252,
+          "support_u3": 165690252
+        },
+        {
+          "class_id": "{\"higher\":[[0,1,2],[0,1,2],[0,1,2,4,5,6]],\"pairs\":[[0,1],[2,3]],\"tickets\":10}",
+          "public_u3_outcome_count": 166082196,
+          "support_u3": 166082196
+        },
+        {
+          "class_id": "{\"higher\":[[0,3,4],[0,5,6],[1,2,3,5,7,8]],\"pairs\":[[0,1],[0,2]],\"tickets\":10}",
+          "public_u3_outcome_count": 170886352,
+          "support_u3": 170886352
+        }
+      ],
+      "PROFILE": [
+        0,
+        44,
+        2,
+        2,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0
+      ],
+      "PROFILE_NAME": "MASS23_PROFILE_A",
+      "PROFILE_STATUS": "CLOSED_BY_EXACT_U3",
+      "RETAINED_PAIR_GRAPH_CLASS_COUNT": 3,
+      "STRUCTURAL_SUPPORT_ORBIT_COUNT": 3703
+    },
+    {
+      "BEST_EXACT_COUNT": null,
+      "BURNSIDE_ORBIT_COUNT": 1382,
+      "EXACT_SCORES_RUN": 0,
+      "EXACT_SCORE_RESULTS": [],
+      "GAP_VS_INCUMBENT": -5473293,
+      "INCUMBENT_COUNT": 176345645,
+      "LEGAL_SUPPORT_CLASS_COUNT": 1382,
+      "MASS": 23,
+      "MAXIMIZING_CLASS_COUNT": 1,
+      "MAXIMIZING_SUPPORT_WITNESSES": [],
+      "MAXIMIZING_WITNESS_COUNT": 1,
+      "MAX_LEGAL_U3": 170872352,
+      "PAIR_GRAPH_CLASS_COUNT": 8,
+      "PAIR_GRAPH_LABELED_TOTAL": 16215,
+      "PARITY_PROBES": [
+        {
+          "class_id": "{\"higher\":[[0,1,2,3,4],[0,1,2,3,4]],\"pairs\":[[0,1],[2,3],[4,5]],\"tickets\":10}",
+          "public_u3_outcome_count": 166462828,
+          "support_u3": 166462828
+        },
+        {
+          "class_id": "{\"higher\":[[0,1,2,3,4],[0,1,2,3,5]],\"pairs\":[[0,1],[2,3],[4,5]],\"tickets\":10}",
+          "public_u3_outcome_count": 167304564,
+          "support_u3": 167304564
+        },
+        {
+          "class_id": "{\"higher\":[[0,4,5,6,7],[1,2,3,4,8]],\"pairs\":[[0,1],[0,2],[0,3]],\"tickets\":10}",
+          "public_u3_outcome_count": 170872352,
+          "support_u3": 170872352
+        }
+      ],
+      "PROFILE": [
+        0,
+        44,
+        3,
+        0,
+        0,
+        2,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "PROFILE_NAME": "MASS23_PROFILE_B",
+      "PROFILE_STATUS": "CLOSED_BY_EXACT_U3",
+      "RETAINED_PAIR_GRAPH_CLASS_COUNT": 8,
+      "STRUCTURAL_SUPPORT_ORBIT_COUNT": 1382
+    },
+    {
+      "BEST_EXACT_COUNT": null,
+      "BURNSIDE_ORBIT_COUNT": 725,
+      "EXACT_SCORES_RUN": 0,
+      "EXACT_SCORE_RESULTS": [],
+      "GAP_VS_INCUMBENT": -5522909,
+      "INCUMBENT_COUNT": 176345645,
+      "LEGAL_SUPPORT_CLASS_COUNT": 725,
+      "MASS": 23,
+      "MAXIMIZING_CLASS_COUNT": 2,
+      "MAXIMIZING_SUPPORT_WITNESSES": [],
+      "MAXIMIZING_WITNESS_COUNT": 2,
+      "MAX_LEGAL_U3": 170822736,
+      "PAIR_GRAPH_CLASS_COUNT": 1,
+      "PAIR_GRAPH_LABELED_TOTAL": 45,
+      "PARITY_PROBES": [
+        {
+          "class_id": "{\"higher\":[[0,1,2,3],[0,1,2,3],[0,1,2,3,4]],\"pairs\":[[0,1]],\"tickets\":10}",
+          "public_u3_outcome_count": 165021150,
+          "support_u3": 165021150
+        },
+        {
+          "class_id": "{\"higher\":[[0,1,2,3],[0,1,2,3],[0,1,2,4,5]],\"pairs\":[[0,1]],\"tickets\":10}",
+          "public_u3_outcome_count": 165731398,
+          "support_u3": 165731398
+        },
+        {
+          "class_id": "{\"higher\":[[0,2,3,4],[0,5,6,7],[1,2,5,8,9]],\"pairs\":[[0,1]],\"tickets\":10}",
+          "public_u3_outcome_count": 170822736,
+          "support_u3": 170822736
+        }
+      ],
+      "PROFILE": [
+        0,
+        45,
+        1,
+        0,
+        2,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "PROFILE_NAME": "MASS23_PROFILE_C",
+      "PROFILE_STATUS": "CLOSED_BY_EXACT_U3",
+      "RETAINED_PAIR_GRAPH_CLASS_COUNT": 1,
+      "STRUCTURAL_SUPPORT_ORBIT_COUNT": 725
+    },
+    {
+      "BEST_EXACT_COUNT": null,
+      "BURNSIDE_ORBIT_COUNT": 1974,
+      "EXACT_SCORES_RUN": 0,
+      "EXACT_SCORE_RESULTS": [],
+      "GAP_VS_INCUMBENT": -5914293,
+      "INCUMBENT_COUNT": 176345645,
+      "LEGAL_SUPPORT_CLASS_COUNT": 1974,
+      "MASS": 24,
+      "MAXIMIZING_CLASS_COUNT": 2,
+      "MAXIMIZING_SUPPORT_WITNESSES": [],
+      "MAXIMIZING_WITNESS_COUNT": 2,
+      "MAX_LEGAL_U3": 170431352,
+      "PAIR_GRAPH_CLASS_COUNT": 8,
+      "PAIR_GRAPH_LABELED_TOTAL": 16215,
+      "PARITY_PROBES": [
+        {
+          "class_id": "{\"higher\":[[0,1,2,3],[0,1,2,3,4,5]],\"pairs\":[[0,1],[2,3],[4,5]],\"tickets\":10}",
+          "public_u3_outcome_count": 166290768,
+          "support_u3": 166290768
+        },
+        {
+          "class_id": "{\"higher\":[[0,1,2,3],[0,1,2,3,4,6]],\"pairs\":[[0,1],[2,3],[4,5]],\"tickets\":10}",
+          "public_u3_outcome_count": 166799276,
+          "support_u3": 166799276
+        },
+        {
+          "class_id": "{\"higher\":[[0,4,5,6],[1,2,3,4,7,8]],\"pairs\":[[0,1],[0,2],[0,3]],\"tickets\":10}",
+          "public_u3_outcome_count": 170431352,
+          "support_u3": 170431352
+        }
+      ],
+      "PROFILE": [
+        0,
+        44,
+        3,
+        0,
+        1,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0
+      ],
+      "PROFILE_NAME": "MASS24_PROFILE_A",
+      "PROFILE_STATUS": "CLOSED_BY_EXACT_U3",
+      "RETAINED_PAIR_GRAPH_CLASS_COUNT": 8,
+      "STRUCTURAL_SUPPORT_ORBIT_COUNT": 1974
+    },
+    {
+      "BEST_EXACT_COUNT": null,
+      "BURNSIDE_ORBIT_COUNT": 279,
+      "EXACT_SCORES_RUN": 0,
+      "EXACT_SCORE_RESULTS": [],
+      "GAP_VS_INCUMBENT": -5945037,
+      "INCUMBENT_COUNT": 176345645,
+      "LEGAL_SUPPORT_CLASS_COUNT": 279,
+      "MASS": 24,
+      "MAXIMIZING_CLASS_COUNT": 1,
+      "MAXIMIZING_SUPPORT_WITNESSES": [],
+      "MAXIMIZING_WITNESS_COUNT": 1,
+      "MAX_LEGAL_U3": 170400608,
+      "PAIR_GRAPH_CLASS_COUNT": 1,
+      "PAIR_GRAPH_LABELED_TOTAL": 1,
+      "PARITY_PROBES": [
+        {
+          "class_id": "{\"higher\":[[0,1,2],[0,1,2],[0,1,2],[0,1,2,3,4,5]],\"pairs\":[],\"tickets\":10}",
+          "public_u3_outcome_count": 164135566,
+          "support_u3": 164135566
+        },
+        {
+          "class_id": "{\"higher\":[[0,1,2],[0,1,2],[0,1,2],[0,1,3,4,5,6]],\"pairs\":[],\"tickets\":10}",
+          "public_u3_outcome_count": 165374776,
+          "support_u3": 165374776
+        },
+        {
+          "class_id": "{\"higher\":[[0,1,2],[0,3,4],[1,3,5],[2,4,5,6,7,8]],\"pairs\":[],\"tickets\":10}",
+          "public_u3_outcome_count": 170400608,
+          "support_u3": 170400608
+        }
+      ],
+      "PROFILE": [
+        0,
+        45,
+        0,
+        3,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0
+      ],
+      "PROFILE_NAME": "MASS24_PROFILE_B",
+      "PROFILE_STATUS": "CLOSED_BY_EXACT_U3",
+      "RETAINED_PAIR_GRAPH_CLASS_COUNT": 1,
+      "STRUCTURAL_SUPPORT_ORBIT_COUNT": 279
+    },
+    {
+      "BEST_EXACT_COUNT": null,
+      "BURNSIDE_ORBIT_COUNT": 577,
+      "EXACT_SCORES_RUN": 0,
+      "EXACT_SCORE_RESULTS": [],
+      "GAP_VS_INCUMBENT": -5970909,
+      "INCUMBENT_COUNT": 176345645,
+      "LEGAL_SUPPORT_CLASS_COUNT": 577,
+      "MASS": 24,
+      "MAXIMIZING_CLASS_COUNT": 2,
+      "MAXIMIZING_SUPPORT_WITNESSES": [],
+      "MAXIMIZING_WITNESS_COUNT": 2,
+      "MAX_LEGAL_U3": 170374736,
+      "PAIR_GRAPH_CLASS_COUNT": 1,
+      "PAIR_GRAPH_LABELED_TOTAL": 45,
+      "PARITY_PROBES": [
+        {
+          "class_id": "{\"higher\":[[0,1,2],[0,1,2,3,4],[0,1,2,3,4]],\"pairs\":[[0,1]],\"tickets\":10}",
+          "public_u3_outcome_count": 164841768,
+          "support_u3": 164841768
+        },
+        {
+          "class_id": "{\"higher\":[[0,1,2],[0,1,2,3,4],[0,1,2,3,5]],\"pairs\":[[0,1]],\"tickets\":10}",
+          "public_u3_outcome_count": 165439358,
+          "support_u3": 165439358
+        },
+        {
+          "class_id": "{\"higher\":[[0,2,3],[0,4,5,6,7],[1,2,4,8,9]],\"pairs\":[[0,1]],\"tickets\":10}",
+          "public_u3_outcome_count": 170374736,
+          "support_u3": 170374736
+        }
+      ],
+      "PROFILE": [
+        0,
+        45,
+        1,
+        1,
+        0,
+        2,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "PROFILE_NAME": "MASS24_PROFILE_C",
+      "PROFILE_STATUS": "CLOSED_BY_EXACT_U3",
+      "RETAINED_PAIR_GRAPH_CLASS_COUNT": 1,
+      "STRUCTURAL_SUPPORT_ORBIT_COUNT": 577
+    },
+    {
+      "BEST_EXACT_COUNT": null,
+      "BURNSIDE_ORBIT_COUNT": 834,
+      "EXACT_SCORES_RUN": 0,
+      "EXACT_SCORE_RESULTS": [],
+      "GAP_VS_INCUMBENT": -6411909,
+      "INCUMBENT_COUNT": 176345645,
+      "LEGAL_SUPPORT_CLASS_COUNT": 834,
+      "MASS": 25,
+      "MAXIMIZING_CLASS_COUNT": 3,
+      "MAXIMIZING_SUPPORT_WITNESSES": [],
+      "MAXIMIZING_WITNESS_COUNT": 3,
+      "MAX_LEGAL_U3": 169933736,
+      "PAIR_GRAPH_CLASS_COUNT": 1,
+      "PAIR_GRAPH_LABELED_TOTAL": 45,
+      "PARITY_PROBES": [
+        {
+          "class_id": "{\"higher\":[[0,1,2],[0,1,2,3],[0,1,2,3,4,5]],\"pairs\":[[0,1]],\"tickets\":10}",
+          "public_u3_outcome_count": 164989958,
+          "support_u3": 164989958
+        },
+        {
+          "class_id": "{\"higher\":[[0,1,2],[0,1,2,3],[0,1,2,4,5,6]],\"pairs\":[[0,1]],\"tickets\":10}",
+          "public_u3_outcome_count": 165504976,
+          "support_u3": 165504976
+        },
+        {
+          "class_id": "{\"higher\":[[0,2,3],[0,4,5,6],[1,2,4,7,8,9]],\"pairs\":[[0,1]],\"tickets\":10}",
+          "public_u3_outcome_count": 169933736,
+          "support_u3": 169933736
+        }
+      ],
+      "PROFILE": [
+        0,
+        45,
+        1,
+        1,
+        1,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0
+      ],
+      "PROFILE_NAME": "MASS25_PROFILE_A",
+      "PROFILE_STATUS": "CLOSED_BY_EXACT_U3",
+      "RETAINED_PAIR_GRAPH_CLASS_COUNT": 1,
+      "STRUCTURAL_SUPPORT_ORBIT_COUNT": 834
+    },
+    {
+      "BEST_EXACT_COUNT": null,
+      "BURNSIDE_ORBIT_COUNT": 1080,
+      "EXACT_SCORES_RUN": 0,
+      "EXACT_SCORE_RESULTS": [],
+      "GAP_VS_INCUMBENT": -6727805,
+      "INCUMBENT_COUNT": 176345645,
+      "LEGAL_SUPPORT_CLASS_COUNT": 1079,
+      "MASS": 26,
+      "MAXIMIZING_CLASS_COUNT": 1,
+      "MAXIMIZING_SUPPORT_WITNESSES": [],
+      "MAXIMIZING_WITNESS_COUNT": 1,
+      "MAX_LEGAL_U3": 169617840,
+      "PAIR_GRAPH_CLASS_COUNT": 66,
+      "PAIR_GRAPH_LABELED_TOTAL": 1906884,
+      "PARITY_PROBES": [
+        {
+          "class_id": "{\"higher\":[[0,1,2,3,4,5,6]],\"pairs\":[[0,1],[2,3],[4,5],[6,7],[8,9]],\"tickets\":10}",
+          "public_u3_outcome_count": 168027916,
+          "support_u3": 168027916
+        },
+        {
+          "class_id": "{\"higher\":[[0,1,2,3,4,6,8]],\"pairs\":[[0,1],[2,3],[4,5],[6,7],[8,9]],\"tickets\":10}",
+          "public_u3_outcome_count": 168520184,
+          "support_u3": 168520184
+        },
+        {
+          "class_id": "{\"higher\":[[1,2,3,4,5,6,7]],\"pairs\":[[0,1],[0,2],[0,3],[0,4],[0,5]],\"tickets\":10}",
+          "public_u3_outcome_count": 169617840,
+          "support_u3": 169617840
+        }
+      ],
+      "PROFILE": [
+        0,
+        43,
+        5,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0
+      ],
+      "PROFILE_NAME": "MASS26_PROFILE_A",
+      "PROFILE_STATUS": "CLOSED_BY_EXACT_U3",
+      "RETAINED_PAIR_GRAPH_CLASS_COUNT": 66,
+      "STRUCTURAL_SUPPORT_ORBIT_COUNT": 1080
+    },
+    {
+      "BEST_EXACT_COUNT": null,
+      "BURNSIDE_ORBIT_COUNT": 60,
+      "EXACT_SCORES_RUN": 0,
+      "EXACT_SCORE_RESULTS": [],
+      "GAP_VS_INCUMBENT": -7317009,
+      "INCUMBENT_COUNT": 176345645,
+      "LEGAL_SUPPORT_CLASS_COUNT": 60,
+      "MASS": 26,
+      "MAXIMIZING_CLASS_COUNT": 1,
+      "MAXIMIZING_SUPPORT_WITNESSES": [],
+      "MAXIMIZING_WITNESS_COUNT": 1,
+      "MAX_LEGAL_U3": 169028636,
+      "PAIR_GRAPH_CLASS_COUNT": 1,
+      "PAIR_GRAPH_LABELED_TOTAL": 1,
+      "PARITY_PROBES": [
+        {
+          "class_id": "{\"higher\":[[0,1,2,3],[0,1,2,3,4],[0,1,2,3,4]],\"pairs\":[],\"tickets\":10}",
+          "public_u3_outcome_count": 164894100,
+          "support_u3": 164894100
+        },
+        {
+          "class_id": "{\"higher\":[[0,1,2,3],[0,1,2,3,4],[0,1,2,3,5]],\"pairs\":[],\"tickets\":10}",
+          "public_u3_outcome_count": 165255804,
+          "support_u3": 165255804
+        },
+        {
+          "class_id": "{\"higher\":[[0,1,2,3],[0,4,5,6,7],[1,4,5,8,9]],\"pairs\":[],\"tickets\":10}",
+          "public_u3_outcome_count": 169028636,
+          "support_u3": 169028636
+        }
+      ],
+      "PROFILE": [
+        0,
+        46,
+        0,
+        0,
+        1,
+        2,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "PROFILE_NAME": "MASS26_PROFILE_B",
+      "PROFILE_STATUS": "CLOSED_BY_EXACT_U3",
+      "RETAINED_PAIR_GRAPH_CLASS_COUNT": 1,
+      "STRUCTURAL_SUPPORT_ORBIT_COUNT": 60
+    },
+    {
+      "BEST_EXACT_COUNT": null,
+      "BURNSIDE_ORBIT_COUNT": 1130,
+      "EXACT_SCORES_RUN": 0,
+      "EXACT_SCORE_RESULTS": [],
+      "GAP_VS_INCUMBENT": -7237293,
+      "INCUMBENT_COUNT": 176345645,
+      "LEGAL_SUPPORT_CLASS_COUNT": 1130,
+      "MASS": 27,
+      "MAXIMIZING_CLASS_COUNT": 1,
+      "MAXIMIZING_SUPPORT_WITNESSES": [],
+      "MAXIMIZING_WITNESS_COUNT": 1,
+      "MAX_LEGAL_U3": 169108352,
+      "PAIR_GRAPH_CLASS_COUNT": 8,
+      "PAIR_GRAPH_LABELED_TOTAL": 16215,
+      "PARITY_PROBES": [
+        {
+          "class_id": "{\"higher\":[[0,1,2],[0,1,2,3,4,5,6]],\"pairs\":[[0,1],[2,3],[4,5]],\"tickets\":10}",
+          "public_u3_outcome_count": 166156102,
+          "support_u3": 166156102
+        },
+        {
+          "class_id": "{\"higher\":[[0,1,2],[0,1,2,3,4,6,7]],\"pairs\":[[0,1],[2,3],[4,5]],\"tickets\":10}",
+          "public_u3_outcome_count": 166631570,
+          "support_u3": 166631570
+        },
+        {
+          "class_id": "{\"higher\":[[0,4,5],[1,2,3,4,6,7,8]],\"pairs\":[[0,1],[0,2],[0,3]],\"tickets\":10}",
+          "public_u3_outcome_count": 169108352,
+          "support_u3": 169108352
+        }
+      ],
+      "PROFILE": [
+        0,
+        44,
+        3,
+        1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0
+      ],
+      "PROFILE_NAME": "MASS27_PROFILE_A",
+      "PROFILE_STATUS": "CLOSED_BY_EXACT_U3",
+      "RETAINED_PAIR_GRAPH_CLASS_COUNT": 8,
+      "STRUCTURAL_SUPPORT_ORBIT_COUNT": 1130
+    },
+    {
+      "BEST_EXACT_COUNT": null,
+      "BURNSIDE_ORBIT_COUNT": 303,
+      "EXACT_SCORES_RUN": 0,
+      "EXACT_SCORE_RESULTS": [],
+      "GAP_VS_INCUMBENT": -7314909,
+      "INCUMBENT_COUNT": 176345645,
+      "LEGAL_SUPPORT_CLASS_COUNT": 303,
+      "MASS": 27,
+      "MAXIMIZING_CLASS_COUNT": 2,
+      "MAXIMIZING_SUPPORT_WITNESSES": [],
+      "MAXIMIZING_WITNESS_COUNT": 2,
+      "MAX_LEGAL_U3": 169030736,
+      "PAIR_GRAPH_CLASS_COUNT": 3,
+      "PAIR_GRAPH_LABELED_TOTAL": 1035,
+      "PARITY_PROBES": [
+        {
+          "class_id": "{\"higher\":[[0,1,2,3,4],[0,1,2,3,4,5]],\"pairs\":[[0,1],[2,3]],\"tickets\":10}",
+          "public_u3_outcome_count": 165091948,
+          "support_u3": 165091948
+        },
+        {
+          "class_id": "{\"higher\":[[0,1,2,3,4],[0,1,2,3,5,6]],\"pairs\":[[0,1],[2,3]],\"tickets\":10}",
+          "public_u3_outcome_count": 165780356,
+          "support_u3": 165780356
+        },
+        {
+          "class_id": "{\"higher\":[[0,3,4,5,6],[1,2,3,7,8,9]],\"pairs\":[[0,1],[0,2]],\"tickets\":10}",
+          "public_u3_outcome_count": 169030736,
+          "support_u3": 169030736
+        }
+      ],
+      "PROFILE": [
+        0,
+        45,
+        2,
+        0,
+        0,
+        1,
+        1,
+        0,
+        0,
+        0,
+        0
+      ],
+      "PROFILE_NAME": "MASS27_PROFILE_B",
+      "PROFILE_STATUS": "CLOSED_BY_EXACT_U3",
+      "RETAINED_PAIR_GRAPH_CLASS_COUNT": 3,
+      "STRUCTURAL_SUPPORT_ORBIT_COUNT": 303
+    },
+    {
+      "BEST_EXACT_COUNT": null,
+      "BURNSIDE_ORBIT_COUNT": 51,
+      "EXACT_SCORES_RUN": 0,
+      "EXACT_SCORE_RESULTS": [],
+      "GAP_VS_INCUMBENT": -7760809,
+      "INCUMBENT_COUNT": 176345645,
+      "LEGAL_SUPPORT_CLASS_COUNT": 51,
+      "MASS": 27,
+      "MAXIMIZING_CLASS_COUNT": 1,
+      "MAXIMIZING_SUPPORT_WITNESSES": [],
+      "MAXIMIZING_WITNESS_COUNT": 1,
+      "MAX_LEGAL_U3": 168584836,
+      "PAIR_GRAPH_CLASS_COUNT": 1,
+      "PAIR_GRAPH_LABELED_TOTAL": 1,
+      "PARITY_PROBES": [
+        {
+          "class_id": "{\"higher\":[[0,1,2,3],[0,1,2,3],[0,1,2,3,4,5]],\"pairs\":[],\"tickets\":10}",
+          "public_u3_outcome_count": 164806404,
+          "support_u3": 164806404
+        },
+        {
+          "class_id": "{\"higher\":[[0,1,2,3],[0,1,2,3],[0,1,2,4,5,6]],\"pairs\":[],\"tickets\":10}",
+          "public_u3_outcome_count": 165436068,
+          "support_u3": 165436068
+        },
+        {
+          "class_id": "{\"higher\":[[0,1,2,3],[0,4,5,6],[1,2,4,7,8,9]],\"pairs\":[],\"tickets\":10}",
+          "public_u3_outcome_count": 168584836,
+          "support_u3": 168584836
+        }
+      ],
+      "PROFILE": [
+        0,
+        46,
+        0,
+        0,
+        2,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0
+      ],
+      "PROFILE_NAME": "MASS27_PROFILE_C",
+      "PROFILE_STATUS": "CLOSED_BY_EXACT_U3",
+      "RETAINED_PAIR_GRAPH_CLASS_COUNT": 1,
+      "STRUCTURAL_SUPPORT_ORBIT_COUNT": 51
+    },
+    {
+      "BEST_EXACT_COUNT": null,
+      "BURNSIDE_ORBIT_COUNT": 288,
+      "EXACT_SCORES_RUN": 0,
+      "EXACT_SCORE_RESULTS": [],
+      "GAP_VS_INCUMBENT": -7734909,
+      "INCUMBENT_COUNT": 176345645,
+      "LEGAL_SUPPORT_CLASS_COUNT": 288,
+      "MASS": 28,
+      "MAXIMIZING_CLASS_COUNT": 2,
+      "MAXIMIZING_SUPPORT_WITNESSES": [],
+      "MAXIMIZING_WITNESS_COUNT": 2,
+      "MAX_LEGAL_U3": 168610736,
+      "PAIR_GRAPH_CLASS_COUNT": 1,
+      "PAIR_GRAPH_LABELED_TOTAL": 45,
+      "PARITY_PROBES": [
+        {
+          "class_id": "{\"higher\":[[0,1,2],[0,1,2],[0,1,2,3,4,5,6]],\"pairs\":[[0,1]],\"tickets\":10}",
+          "public_u3_outcome_count": 164165176,
+          "support_u3": 164165176
+        },
+        {
+          "class_id": "{\"higher\":[[0,1,2],[0,1,2],[0,1,3,4,5,6,7]],\"pairs\":[[0,1]],\"tickets\":10}",
+          "public_u3_outcome_count": 164990602,
+          "support_u3": 164990602
+        },
+        {
+          "class_id": "{\"higher\":[[0,2,3],[0,4,5],[1,2,4,6,7,8,9]],\"pairs\":[[0,1]],\"tickets\":10}",
+          "public_u3_outcome_count": 168610736,
+          "support_u3": 168610736
+        }
+      ],
+      "PROFILE": [
+        0,
+        45,
+        1,
+        2,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0
+      ],
+      "PROFILE_NAME": "MASS28_PROFILE_A",
+      "PROFILE_STATUS": "CLOSED_BY_EXACT_U3",
+      "RETAINED_PAIR_GRAPH_CLASS_COUNT": 1,
+      "STRUCTURAL_SUPPORT_ORBIT_COUNT": 288
+    },
+    {
+      "BEST_EXACT_COUNT": null,
+      "BURNSIDE_ORBIT_COUNT": 62,
+      "EXACT_SCORES_RUN": 0,
+      "EXACT_SCORE_RESULTS": [],
+      "GAP_VS_INCUMBENT": -8164569,
+      "INCUMBENT_COUNT": 176345645,
+      "LEGAL_SUPPORT_CLASS_COUNT": 62,
+      "MASS": 28,
+      "MAXIMIZING_CLASS_COUNT": 1,
+      "MAXIMIZING_SUPPORT_WITNESSES": [],
+      "MAXIMIZING_WITNESS_COUNT": 1,
+      "MAX_LEGAL_U3": 168181076,
+      "PAIR_GRAPH_CLASS_COUNT": 1,
+      "PAIR_GRAPH_LABELED_TOTAL": 1,
+      "PARITY_PROBES": [
+        {
+          "class_id": "{\"higher\":[[0,1,2],[0,1,2,3,4],[0,1,2,3,4,5]],\"pairs\":[],\"tickets\":10}",
+          "public_u3_outcome_count": 164652516,
+          "support_u3": 164652516
+        },
+        {
+          "class_id": "{\"higher\":[[0,1,2],[0,1,2,3,4],[0,1,2,3,5,6]],\"pairs\":[],\"tickets\":10}",
+          "public_u3_outcome_count": 165226208,
+          "support_u3": 165226208
+        },
+        {
+          "class_id": "{\"higher\":[[0,1,2],[0,3,4,5,6],[1,3,4,7,8,9]],\"pairs\":[],\"tickets\":10}",
+          "public_u3_outcome_count": 168181076,
+          "support_u3": 168181076
+        }
+      ],
+      "PROFILE": [
+        0,
+        46,
+        0,
+        1,
+        0,
+        1,
+        1,
+        0,
+        0,
+        0,
+        0
+      ],
+      "PROFILE_NAME": "MASS28_PROFILE_B",
+      "PROFILE_STATUS": "CLOSED_BY_EXACT_U3",
+      "RETAINED_PAIR_GRAPH_CLASS_COUNT": 1,
+      "STRUCTURAL_SUPPORT_ORBIT_COUNT": 62
+    },
+    {
+      "BEST_EXACT_COUNT": null,
+      "BURNSIDE_ORBIT_COUNT": 218,
+      "EXACT_SCORES_RUN": 0,
+      "EXACT_SCORE_RESULTS": [],
+      "GAP_VS_INCUMBENT": -8189909,
+      "INCUMBENT_COUNT": 176345645,
+      "LEGAL_SUPPORT_CLASS_COUNT": 218,
+      "MASS": 29,
+      "MAXIMIZING_CLASS_COUNT": 2,
+      "MAXIMIZING_SUPPORT_WITNESSES": [],
+      "MAXIMIZING_WITNESS_COUNT": 2,
+      "MAX_LEGAL_U3": 168155736,
+      "PAIR_GRAPH_CLASS_COUNT": 3,
+      "PAIR_GRAPH_LABELED_TOTAL": 1035,
+      "PARITY_PROBES": [
+        {
+          "class_id": "{\"higher\":[[0,1,2,3],[0,1,2,3,4,5,6]],\"pairs\":[[0,1],[2,3]],\"tickets\":10}",
+          "public_u3_outcome_count": 164888556,
+          "support_u3": 164888556
+        },
+        {
+          "class_id": "{\"higher\":[[0,1,2,3],[0,1,2,4,5,6,7]],\"pairs\":[[0,1],[2,3]],\"tickets\":10}",
+          "public_u3_outcome_count": 165831610,
+          "support_u3": 165831610
+        },
+        {
+          "class_id": "{\"higher\":[[0,3,4,5],[1,2,3,6,7,8,9]],\"pairs\":[[0,1],[0,2]],\"tickets\":10}",
+          "public_u3_outcome_count": 168155736,
+          "support_u3": 168155736
+        }
+      ],
+      "PROFILE": [
+        0,
+        45,
+        2,
+        0,
+        1,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0
+      ],
+      "PROFILE_NAME": "MASS29_PROFILE_A",
+      "PROFILE_STATUS": "CLOSED_BY_EXACT_U3",
+      "RETAINED_PAIR_GRAPH_CLASS_COUNT": 3,
+      "STRUCTURAL_SUPPORT_ORBIT_COUNT": 218
+    },
+    {
+      "BEST_EXACT_COUNT": null,
+      "BURNSIDE_ORBIT_COUNT": 46,
+      "EXACT_SCORES_RUN": 0,
+      "EXACT_SCORE_RESULTS": [],
+      "GAP_VS_INCUMBENT": -9045169,
+      "INCUMBENT_COUNT": 176345645,
+      "LEGAL_SUPPORT_CLASS_COUNT": 46,
+      "MASS": 30,
+      "MAXIMIZING_CLASS_COUNT": 1,
+      "MAXIMIZING_SUPPORT_WITNESSES": [],
+      "MAXIMIZING_WITNESS_COUNT": 1,
+      "MAX_LEGAL_U3": 167300476,
+      "PAIR_GRAPH_CLASS_COUNT": 1,
+      "PAIR_GRAPH_LABELED_TOTAL": 1,
+      "PARITY_PROBES": [
+        {
+          "class_id": "{\"higher\":[[0,1,2],[0,1,2,3],[0,1,2,3,4,5,6]],\"pairs\":[],\"tickets\":10}",
+          "public_u3_outcome_count": 164334408,
+          "support_u3": 164334408
+        },
+        {
+          "class_id": "{\"higher\":[[0,1,2],[0,1,2,3],[0,1,2,4,5,6,7]],\"pairs\":[],\"tickets\":10}",
+          "public_u3_outcome_count": 164858568,
+          "support_u3": 164858568
+        },
+        {
+          "class_id": "{\"higher\":[[0,1,2],[0,3,4,5],[1,3,4,6,7,8,9]],\"pairs\":[],\"tickets\":10}",
+          "public_u3_outcome_count": 167300476,
+          "support_u3": 167300476
+        }
+      ],
+      "PROFILE": [
+        0,
+        46,
+        0,
+        1,
+        1,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0
+      ],
+      "PROFILE_NAME": "MASS30_PROFILE_A",
+      "PROFILE_STATUS": "CLOSED_BY_EXACT_U3",
+      "RETAINED_PAIR_GRAPH_CLASS_COUNT": 1,
+      "STRUCTURAL_SUPPORT_ORBIT_COUNT": 46
+    },
+    {
+      "BEST_EXACT_COUNT": null,
+      "BURNSIDE_ORBIT_COUNT": 26,
+      "EXACT_SCORES_RUN": 0,
+      "EXACT_SCORE_RESULTS": [],
+      "GAP_VS_INCUMBENT": -9464329,
+      "INCUMBENT_COUNT": 176345645,
+      "LEGAL_SUPPORT_CLASS_COUNT": 26,
+      "MASS": 31,
+      "MAXIMIZING_CLASS_COUNT": 1,
+      "MAXIMIZING_SUPPORT_WITNESSES": [],
+      "MAXIMIZING_WITNESS_COUNT": 1,
+      "MAX_LEGAL_U3": 166881316,
+      "PAIR_GRAPH_CLASS_COUNT": 1,
+      "PAIR_GRAPH_LABELED_TOTAL": 45,
+      "PARITY_PROBES": [
+        {
+          "class_id": "{\"higher\":[[0,1,2,3,4,5],[0,1,2,3,4,5]],\"pairs\":[[0,1]],\"tickets\":10}",
+          "public_u3_outcome_count": 163664970,
+          "support_u3": 163664970
+        },
+        {
+          "class_id": "{\"higher\":[[0,1,2,3,4,5],[0,1,2,3,4,6]],\"pairs\":[[0,1]],\"tickets\":10}",
+          "public_u3_outcome_count": 164232474,
+          "support_u3": 164232474
+        },
+        {
+          "class_id": "{\"higher\":[[0,2,3,4,5,6],[1,2,3,7,8,9]],\"pairs\":[[0,1]],\"tickets\":10}",
+          "public_u3_outcome_count": 166881316,
+          "support_u3": 166881316
+        }
+      ],
+      "PROFILE": [
+        0,
+        46,
+        1,
+        0,
+        0,
+        0,
+        2,
+        0,
+        0,
+        0,
+        0
+      ],
+      "PROFILE_NAME": "MASS31_PROFILE_A",
+      "PROFILE_STATUS": "CLOSED_BY_EXACT_U3",
+      "RETAINED_PAIR_GRAPH_CLASS_COUNT": 1,
+      "STRUCTURAL_SUPPORT_ORBIT_COUNT": 26
+    },
+    {
+      "BEST_EXACT_COUNT": null,
+      "BURNSIDE_ORBIT_COUNT": 171,
+      "EXACT_SCORES_RUN": 0,
+      "EXACT_SCORE_RESULTS": [],
+      "GAP_VS_INCUMBENT": -9442293,
+      "INCUMBENT_COUNT": 176345645,
+      "LEGAL_SUPPORT_CLASS_COUNT": 171,
+      "MASS": 32,
+      "MAXIMIZING_CLASS_COUNT": 1,
+      "MAXIMIZING_SUPPORT_WITNESSES": [],
+      "MAXIMIZING_WITNESS_COUNT": 1,
+      "MAX_LEGAL_U3": 166903352,
+      "PAIR_GRAPH_CLASS_COUNT": 23,
+      "PAIR_GRAPH_LABELED_TOTAL": 194580,
+      "PARITY_PROBES": [
+        {
+          "class_id": "{\"higher\":[[0,1,2,3,4,5,6,7]],\"pairs\":[[0,1],[2,3],[4,5],[6,7]],\"tickets\":10}",
+          "public_u3_outcome_count": 165045608,
+          "support_u3": 165045608
+        },
+        {
+          "class_id": "{\"higher\":[[0,1,2,3,4,5,6,8]],\"pairs\":[[0,1],[2,3],[4,5],[6,7]],\"tickets\":10}",
+          "public_u3_outcome_count": 165488036,
+          "support_u3": 165488036
+        },
+        {
+          "class_id": "{\"higher\":[[1,2,3,4,5,6,7,8]],\"pairs\":[[0,1],[0,2],[0,3],[0,4]],\"tickets\":10}",
+          "public_u3_outcome_count": 166903352,
+          "support_u3": 166903352
+        }
+      ],
+      "PROFILE": [
+        0,
+        44,
+        4,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0
+      ],
+      "PROFILE_NAME": "MASS32_PROFILE_A",
+      "PROFILE_STATUS": "CLOSED_BY_EXACT_U3",
+      "RETAINED_PAIR_GRAPH_CLASS_COUNT": 23,
+      "STRUCTURAL_SUPPORT_ORBIT_COUNT": 171
+    },
+    {
+      "BEST_EXACT_COUNT": null,
+      "BURNSIDE_ORBIT_COUNT": 30,
+      "EXACT_SCORES_RUN": 0,
+      "EXACT_SCORE_RESULTS": [],
+      "GAP_VS_INCUMBENT": -9901129,
+      "INCUMBENT_COUNT": 176345645,
+      "LEGAL_SUPPORT_CLASS_COUNT": 30,
+      "MASS": 32,
+      "MAXIMIZING_CLASS_COUNT": 1,
+      "MAXIMIZING_SUPPORT_WITNESSES": [],
+      "MAXIMIZING_WITNESS_COUNT": 1,
+      "MAX_LEGAL_U3": 166444516,
+      "PAIR_GRAPH_CLASS_COUNT": 1,
+      "PAIR_GRAPH_LABELED_TOTAL": 45,
+      "PARITY_PROBES": [
+        {
+          "class_id": "{\"higher\":[[0,1,2,3,4],[0,1,2,3,4,5,6]],\"pairs\":[[0,1]],\"tickets\":10}",
+          "public_u3_outcome_count": 163787274,
+          "support_u3": 163787274
+        },
+        {
+          "class_id": "{\"higher\":[[0,1,2,3,4],[0,1,2,3,5,6,7]],\"pairs\":[[0,1]],\"tickets\":10}",
+          "public_u3_outcome_count": 164458238,
+          "support_u3": 164458238
+        },
+        {
+          "class_id": "{\"higher\":[[0,2,3,4,5],[1,2,3,6,7,8,9]],\"pairs\":[[0,1]],\"tickets\":10}",
+          "public_u3_outcome_count": 166444516,
+          "support_u3": 166444516
+        }
+      ],
+      "PROFILE": [
+        0,
+        46,
+        1,
+        0,
+        0,
+        1,
+        0,
+        1,
+        0,
+        0,
+        0
+      ],
+      "PROFILE_NAME": "MASS32_PROFILE_B",
+      "PROFILE_STATUS": "CLOSED_BY_EXACT_U3",
+      "RETAINED_PAIR_GRAPH_CLASS_COUNT": 1,
+      "STRUCTURAL_SUPPORT_ORBIT_COUNT": 30
+    },
+    {
+      "BEST_EXACT_COUNT": null,
+      "BURNSIDE_ORBIT_COUNT": 120,
+      "EXACT_SCORES_RUN": 0,
+      "EXACT_SCORE_RESULTS": [],
+      "GAP_VS_INCUMBENT": -9939909,
+      "INCUMBENT_COUNT": 176345645,
+      "LEGAL_SUPPORT_CLASS_COUNT": 120,
+      "MASS": 33,
+      "MAXIMIZING_CLASS_COUNT": 2,
+      "MAXIMIZING_SUPPORT_WITNESSES": [],
+      "MAXIMIZING_WITNESS_COUNT": 2,
+      "MAX_LEGAL_U3": 166405736,
+      "PAIR_GRAPH_CLASS_COUNT": 3,
+      "PAIR_GRAPH_LABELED_TOTAL": 1035,
+      "PARITY_PROBES": [
+        {
+          "class_id": "{\"higher\":[[0,1,2],[0,1,2,3,4,5,6,7]],\"pairs\":[[0,1],[2,3]],\"tickets\":10}",
+          "public_u3_outcome_count": 164165050,
+          "support_u3": 164165050
+        },
+        {
+          "class_id": "{\"higher\":[[0,1,2],[0,1,2,4,5,6,7,8]],\"pairs\":[[0,1],[2,3]],\"tickets\":10}",
+          "public_u3_outcome_count": 164528630,
+          "support_u3": 164528630
+        },
+        {
+          "class_id": "{\"higher\":[[0,3,4],[1,2,3,5,6,7,8,9]],\"pairs\":[[0,1],[0,2]],\"tickets\":10}",
+          "public_u3_outcome_count": 166405736,
+          "support_u3": 166405736
+        }
+      ],
+      "PROFILE": [
+        0,
+        45,
+        2,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0
+      ],
+      "PROFILE_NAME": "MASS33_PROFILE_A",
+      "PROFILE_STATUS": "CLOSED_BY_EXACT_U3",
+      "RETAINED_PAIR_GRAPH_CLASS_COUNT": 3,
+      "STRUCTURAL_SUPPORT_ORBIT_COUNT": 120
+    },
+    {
+      "BEST_EXACT_COUNT": null,
+      "BURNSIDE_ORBIT_COUNT": 19,
+      "EXACT_SCORES_RUN": 0,
+      "EXACT_SCORE_RESULTS": [],
+      "GAP_VS_INCUMBENT": -10806369,
+      "INCUMBENT_COUNT": 176345645,
+      "LEGAL_SUPPORT_CLASS_COUNT": 19,
+      "MASS": 34,
+      "MAXIMIZING_CLASS_COUNT": 1,
+      "MAXIMIZING_SUPPORT_WITNESSES": [],
+      "MAXIMIZING_WITNESS_COUNT": 1,
+      "MAX_LEGAL_U3": 165539276,
+      "PAIR_GRAPH_CLASS_COUNT": 1,
+      "PAIR_GRAPH_LABELED_TOTAL": 1,
+      "PARITY_PROBES": [
+        {
+          "class_id": "{\"higher\":[[0,1,2],[0,1,2],[0,1,2,3,4,5,6,7]],\"pairs\":[],\"tickets\":10}",
+          "public_u3_outcome_count": 163086168,
+          "support_u3": 163086168
+        },
+        {
+          "class_id": "{\"higher\":[[0,1,2],[0,1,2],[0,1,3,4,5,6,7,8]],\"pairs\":[],\"tickets\":10}",
+          "public_u3_outcome_count": 163911790,
+          "support_u3": 163911790
+        },
+        {
+          "class_id": "{\"higher\":[[0,1,2],[0,3,4],[1,2,3,5,6,7,8,9]],\"pairs\":[],\"tickets\":10}",
+          "public_u3_outcome_count": 165539276,
+          "support_u3": 165539276
+        }
+      ],
+      "PROFILE": [
+        0,
+        46,
+        0,
+        2,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0
+      ],
+      "PROFILE_NAME": "MASS34_PROFILE_A",
+      "PROFILE_STATUS": "CLOSED_BY_EXACT_U3",
+      "RETAINED_PAIR_GRAPH_CLASS_COUNT": 1,
+      "STRUCTURAL_SUPPORT_ORBIT_COUNT": 19
+    },
+    {
+      "BEST_EXACT_COUNT": null,
+      "BURNSIDE_ORBIT_COUNT": 20,
+      "EXACT_SCORES_RUN": 0,
+      "EXACT_SCORE_RESULTS": [],
+      "GAP_VS_INCUMBENT": -11211529,
+      "INCUMBENT_COUNT": 176345645,
+      "LEGAL_SUPPORT_CLASS_COUNT": 20,
+      "MASS": 35,
+      "MAXIMIZING_CLASS_COUNT": 1,
+      "MAXIMIZING_SUPPORT_WITNESSES": [],
+      "MAXIMIZING_WITNESS_COUNT": 1,
+      "MAX_LEGAL_U3": 165134116,
+      "PAIR_GRAPH_CLASS_COUNT": 1,
+      "PAIR_GRAPH_LABELED_TOTAL": 45,
+      "PARITY_PROBES": [
+        {
+          "class_id": "{\"higher\":[[0,1,2,3],[0,1,2,3,4,5,6,7]],\"pairs\":[[0,1]],\"tickets\":10}",
+          "public_u3_outcome_count": 163131038,
+          "support_u3": 163131038
+        },
+        {
+          "class_id": "{\"higher\":[[0,1,2,3],[0,1,2,4,5,6,7,8]],\"pairs\":[[0,1]],\"tickets\":10}",
+          "public_u3_outcome_count": 163785510,
+          "support_u3": 163785510
+        },
+        {
+          "class_id": "{\"higher\":[[0,2,3,4],[1,2,3,5,6,7,8,9]],\"pairs\":[[0,1]],\"tickets\":10}",
+          "public_u3_outcome_count": 165134116,
+          "support_u3": 165134116
+        }
+      ],
+      "PROFILE": [
+        0,
+        46,
+        1,
+        0,
+        1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0
+      ],
+      "PROFILE_NAME": "MASS35_PROFILE_A",
+      "PROFILE_STATUS": "CLOSED_BY_EXACT_U3",
+      "RETAINED_PAIR_GRAPH_CLASS_COUNT": 1,
+      "STRUCTURAL_SUPPORT_ORBIT_COUNT": 20
+    },
+    {
+      "BEST_EXACT_COUNT": null,
+      "BURNSIDE_ORBIT_COUNT": 4,
+      "EXACT_SCORES_RUN": 0,
+      "EXACT_SCORE_RESULTS": [],
+      "GAP_VS_INCUMBENT": -12216897,
+      "INCUMBENT_COUNT": 176345645,
+      "LEGAL_SUPPORT_CLASS_COUNT": 4,
+      "MASS": 36,
+      "MAXIMIZING_CLASS_COUNT": 1,
+      "MAXIMIZING_SUPPORT_WITNESSES": [],
+      "MAXIMIZING_WITNESS_COUNT": 1,
+      "MAX_LEGAL_U3": 164128748,
+      "PAIR_GRAPH_CLASS_COUNT": 1,
+      "PAIR_GRAPH_LABELED_TOTAL": 1,
+      "PARITY_PROBES": [
+        {
+          "class_id": "{\"higher\":[[0,1,2,3,4,5],[0,1,2,3,4,5,6]],\"pairs\":[],\"tickets\":10}",
+          "public_u3_outcome_count": 162310540,
+          "support_u3": 162310540
+        },
+        {
+          "class_id": "{\"higher\":[[0,1,2,3,4,5],[0,1,2,3,4,6,7]],\"pairs\":[],\"tickets\":10}",
+          "public_u3_outcome_count": 162827560,
+          "support_u3": 162827560
+        },
+        {
+          "class_id": "{\"higher\":[[0,1,2,3,4,5],[0,1,2,6,7,8,9]],\"pairs\":[],\"tickets\":10}",
+          "public_u3_outcome_count": 164128748,
+          "support_u3": 164128748
+        }
+      ],
+      "PROFILE": [
+        0,
+        47,
+        0,
+        0,
+        0,
+        0,
+        1,
+        1,
+        0,
+        0,
+        0
+      ],
+      "PROFILE_NAME": "MASS36_PROFILE_A",
+      "PROFILE_STATUS": "CLOSED_BY_EXACT_U3",
+      "RETAINED_PAIR_GRAPH_CLASS_COUNT": 1,
+      "STRUCTURAL_SUPPORT_ORBIT_COUNT": 4
+    },
+    {
+      "BEST_EXACT_COUNT": null,
+      "BURNSIDE_ORBIT_COUNT": 3,
+      "EXACT_SCORES_RUN": 0,
+      "EXACT_SCORE_RESULTS": [],
+      "GAP_VS_INCUMBENT": -13089097,
+      "INCUMBENT_COUNT": 176345645,
+      "LEGAL_SUPPORT_CLASS_COUNT": 3,
+      "MASS": 38,
+      "MAXIMIZING_CLASS_COUNT": 1,
+      "MAXIMIZING_SUPPORT_WITNESSES": [],
+      "MAXIMIZING_WITNESS_COUNT": 1,
+      "MAX_LEGAL_U3": 163256548,
+      "PAIR_GRAPH_CLASS_COUNT": 1,
+      "PAIR_GRAPH_LABELED_TOTAL": 1,
+      "PARITY_PROBES": [
+        {
+          "class_id": "{\"higher\":[[0,1,2,3,4],[0,1,2,3,4,5,6,7]],\"pairs\":[],\"tickets\":10}",
+          "public_u3_outcome_count": 161944160,
+          "support_u3": 161944160
+        },
+        {
+          "class_id": "{\"higher\":[[0,1,2,3,4],[0,1,2,3,5,6,7,8]],\"pairs\":[],\"tickets\":10}",
+          "public_u3_outcome_count": 162597680,
+          "support_u3": 162597680
+        },
+        {
+          "class_id": "{\"higher\":[[0,1,2,3,4],[0,1,2,5,6,7,8,9]],\"pairs\":[],\"tickets\":10}",
+          "public_u3_outcome_count": 163256548,
+          "support_u3": 163256548
+        }
+      ],
+      "PROFILE": [
+        0,
+        47,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        1,
+        0,
+        0
+      ],
+      "PROFILE_NAME": "MASS38_PROFILE_A",
+      "PROFILE_STATUS": "CLOSED_BY_EXACT_U3",
+      "RETAINED_PAIR_GRAPH_CLASS_COUNT": 1,
+      "STRUCTURAL_SUPPORT_ORBIT_COUNT": 3
+    },
+    {
+      "BEST_EXACT_COUNT": null,
+      "BURNSIDE_ORBIT_COUNT": 23,
+      "EXACT_SCORES_RUN": 0,
+      "EXACT_SCORE_RESULTS": [],
+      "GAP_VS_INCUMBENT": -12564909,
+      "INCUMBENT_COUNT": 176345645,
+      "LEGAL_SUPPORT_CLASS_COUNT": 23,
+      "MASS": 39,
+      "MAXIMIZING_CLASS_COUNT": 1,
+      "MAXIMIZING_SUPPORT_WITNESSES": [],
+      "MAXIMIZING_WITNESS_COUNT": 1,
+      "MAX_LEGAL_U3": 163780736,
+      "PAIR_GRAPH_CLASS_COUNT": 8,
+      "PAIR_GRAPH_LABELED_TOTAL": 16215,
+      "PARITY_PROBES": [
+        {
+          "class_id": "{\"higher\":[[0,1,2,3,4,5,6,7,8]],\"pairs\":[[0,1],[2,3],[4,5]],\"tickets\":10}",
+          "public_u3_outcome_count": 162508556,
+          "support_u3": 162508556
+        },
+        {
+          "class_id": "{\"higher\":[[0,1,2,3,4,6,7,8,9]],\"pairs\":[[0,1],[2,3],[4,5]],\"tickets\":10}",
+          "public_u3_outcome_count": 162917944,
+          "support_u3": 162917944
+        },
+        {
+          "class_id": "{\"higher\":[[1,2,3,4,5,6,7,8,9]],\"pairs\":[[0,1],[0,2],[0,3]],\"tickets\":10}",
+          "public_u3_outcome_count": 163780736,
+          "support_u3": 163780736
+        }
+      ],
+      "PROFILE": [
+        0,
+        45,
+        3,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0
+      ],
+      "PROFILE_NAME": "MASS39_PROFILE_A",
+      "PROFILE_STATUS": "CLOSED_BY_EXACT_U3",
+      "RETAINED_PAIR_GRAPH_CLASS_COUNT": 8,
+      "STRUCTURAL_SUPPORT_ORBIT_COUNT": 23
+    },
+    {
+      "BEST_EXACT_COUNT": null,
+      "BURNSIDE_ORBIT_COUNT": 10,
+      "EXACT_SCORES_RUN": 0,
+      "EXACT_SCORE_RESULTS": [],
+      "GAP_VS_INCUMBENT": -13395529,
+      "INCUMBENT_COUNT": 176345645,
+      "LEGAL_SUPPORT_CLASS_COUNT": 10,
+      "MASS": 40,
+      "MAXIMIZING_CLASS_COUNT": 1,
+      "MAXIMIZING_SUPPORT_WITNESSES": [],
+      "MAXIMIZING_WITNESS_COUNT": 1,
+      "MAX_LEGAL_U3": 162950116,
+      "PAIR_GRAPH_CLASS_COUNT": 1,
+      "PAIR_GRAPH_LABELED_TOTAL": 45,
+      "PARITY_PROBES": [
+        {
+          "class_id": "{\"higher\":[[0,1,2],[0,1,2,3,4,5,6,7,8]],\"pairs\":[[0,1]],\"tickets\":10}",
+          "public_u3_outcome_count": 161587510,
+          "support_u3": 161587510
+        },
+        {
+          "class_id": "{\"higher\":[[0,1,2],[0,1,3,4,5,6,7,8,9]],\"pairs\":[[0,1]],\"tickets\":10}",
+          "public_u3_outcome_count": 162105538,
+          "support_u3": 162105538
+        },
+        {
+          "class_id": "{\"higher\":[[0,2,3],[1,2,3,4,5,6,7,8,9]],\"pairs\":[[0,1]],\"tickets\":10}",
+          "public_u3_outcome_count": 162950116,
+          "support_u3": 162950116
+        }
+      ],
+      "PROFILE": [
+        0,
+        46,
+        1,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0
+      ],
+      "PROFILE_NAME": "MASS40_PROFILE_A",
+      "PROFILE_STATUS": "CLOSED_BY_EXACT_U3",
+      "RETAINED_PAIR_GRAPH_CLASS_COUNT": 1,
+      "STRUCTURAL_SUPPORT_ORBIT_COUNT": 10
+    },
+    {
+      "BEST_EXACT_COUNT": null,
+      "BURNSIDE_ORBIT_COUNT": 2,
+      "EXACT_SCORES_RUN": 0,
+      "EXACT_SCORE_RESULTS": [],
+      "GAP_VS_INCUMBENT": -14833497,
+      "INCUMBENT_COUNT": 176345645,
+      "LEGAL_SUPPORT_CLASS_COUNT": 2,
+      "MASS": 42,
+      "MAXIMIZING_CLASS_COUNT": 1,
+      "MAXIMIZING_SUPPORT_WITNESSES": [],
+      "MAXIMIZING_WITNESS_COUNT": 1,
+      "MAX_LEGAL_U3": 161512148,
+      "PAIR_GRAPH_CLASS_COUNT": 1,
+      "PAIR_GRAPH_LABELED_TOTAL": 1,
+      "PARITY_PROBES": [
+        {
+          "class_id": "{\"higher\":[[0,1,2,3],[0,1,2,3,4,5,6,7,8]],\"pairs\":[],\"tickets\":10}",
+          "public_u3_outcome_count": 160842080,
+          "support_u3": 160842080
+        },
+        {
+          "class_id": "{\"higher\":[[0,1,2,3],[0,1,2,4,5,6,7,8,9]],\"pairs\":[],\"tickets\":10}",
+          "public_u3_outcome_count": 161512148,
+          "support_u3": 161512148
+        }
+      ],
+      "PROFILE": [
+        0,
+        47,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0
+      ],
+      "PROFILE_NAME": "MASS42_PROFILE_A",
+      "PROFILE_STATUS": "CLOSED_BY_EXACT_U3",
+      "RETAINED_PAIR_GRAPH_CLASS_COUNT": 1,
+      "STRUCTURAL_SUPPORT_ORBIT_COUNT": 2
+    },
+    {
+      "BEST_EXACT_COUNT": null,
+      "BURNSIDE_ORBIT_COUNT": 3,
+      "EXACT_SCORES_RUN": 0,
+      "EXACT_SCORE_RESULTS": [],
+      "GAP_VS_INCUMBENT": -16807217,
+      "INCUMBENT_COUNT": 176345645,
+      "LEGAL_SUPPORT_CLASS_COUNT": 3,
+      "MASS": 47,
+      "MAXIMIZING_CLASS_COUNT": 1,
+      "MAXIMIZING_SUPPORT_WITNESSES": [],
+      "MAXIMIZING_WITNESS_COUNT": 1,
+      "MAX_LEGAL_U3": 159538428,
+      "PAIR_GRAPH_CLASS_COUNT": 3,
+      "PAIR_GRAPH_LABELED_TOTAL": 1035,
+      "PARITY_PROBES": [
+        {
+          "class_id": "{\"higher\":[[0,1,2,3,4,5,6,7,8,9]],\"pairs\":[[0,1],[2,3]],\"tickets\":10}",
+          "public_u3_outcome_count": 159489624,
+          "support_u3": 159489624
+        },
+        {
+          "class_id": "{\"higher\":[[0,1,2,3,4,5,6,7,8,9]],\"pairs\":[[0,1],[0,2]],\"tickets\":10}",
+          "public_u3_outcome_count": 159538428,
+          "support_u3": 159538428
+        }
+      ],
+      "PROFILE": [
+        0,
+        46,
+        2,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "PROFILE_NAME": "MASS47_PROFILE_A",
+      "PROFILE_STATUS": "CLOSED_BY_EXACT_U3",
+      "RETAINED_PAIR_GRAPH_CLASS_COUNT": 3,
+      "STRUCTURAL_SUPPORT_ORBIT_COUNT": 3
+    },
+    {
+      "BEST_EXACT_COUNT": null,
+      "BURNSIDE_ORBIT_COUNT": 1,
+      "EXACT_SCORES_RUN": 0,
+      "EXACT_SCORE_RESULTS": [],
+      "GAP_VS_INCUMBENT": -17450097,
+      "INCUMBENT_COUNT": 176345645,
+      "LEGAL_SUPPORT_CLASS_COUNT": 1,
+      "MASS": 48,
+      "MAXIMIZING_CLASS_COUNT": 1,
+      "MAXIMIZING_SUPPORT_WITNESSES": [],
+      "MAXIMIZING_WITNESS_COUNT": 1,
+      "MAX_LEGAL_U3": 158895548,
+      "PAIR_GRAPH_CLASS_COUNT": 1,
+      "PAIR_GRAPH_LABELED_TOTAL": 1,
+      "PARITY_PROBES": [
+        {
+          "class_id": "{\"higher\":[[0,1,2],[0,1,2,3,4,5,6,7,8,9]],\"pairs\":[],\"tickets\":10}",
+          "public_u3_outcome_count": 158895548,
+          "support_u3": 158895548
+        }
+      ],
+      "PROFILE": [
+        0,
+        47,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "PROFILE_NAME": "MASS48_PROFILE_A",
+      "PROFILE_STATUS": "CLOSED_BY_EXACT_U3",
+      "RETAINED_PAIR_GRAPH_CLASS_COUNT": 1,
+      "STRUCTURAL_SUPPORT_ORBIT_COUNT": 1
+    }
+  ],
+  "RESULT_PAYLOAD_SHA256": "5e42412e1d065db8f495756385a58cb3aa625a64e7fe4c2deda265a372790120",
+  "RESULT_STATUS": "ALL_REMAINING_PROFILES_CLOSED",
+  "SURVIVING_PROFILE_COUNT": 0,
+  "TASK_ID": "B649_K10_MASS_GE21_SEQUENTIAL_EXACT_U3_R1",
+  "TOTAL_CPU_CAP_SECONDS": 64800,
+  "TOTAL_CPU_SECONDS_USED": 3024.158,
+  "TOTAL_REMAINING_PROFILE_COUNT": 34
+}

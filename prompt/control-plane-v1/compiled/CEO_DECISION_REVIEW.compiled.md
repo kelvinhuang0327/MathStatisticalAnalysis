@@ -1,7 +1,7 @@
 # CEO Decision Reviewer — Compiled Control Plane v1
 Document status: `DRAFT_FOR_OWNER_REVIEW`
 Generated artifact: do not edit manually.
-Durable-source fingerprint: `sha256:91b4db6bba1f39a04fb5e283f3c0be7f54c990d75fa22fa7a566fb740f6235f2`
+Durable-source fingerprint: `sha256:46b36e09476d0cc162d04118dd252724ac7a850fdd610b4e58f6dd6710de186b`
 This prompt is standalone; embedded rules require no source-file access.
 <!-- SHARED_CORE:START -->
 ## Operating contract

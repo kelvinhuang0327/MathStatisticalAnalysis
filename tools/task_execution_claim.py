@@ -174,6 +174,12 @@ class ClaimStore:
         finally:
             os.close(fd)
 
+    @contextmanager
+    def admission_transaction(self) -> Generator[None]:
+        """Serialize an external authority transition with ClaimStore admission."""
+        with self._transaction():
+            yield
+
     def _read(self, task_key: str) -> Metadata | None:
         _check_path(self.root)
         try:
@@ -319,12 +325,14 @@ class ClaimStore:
         expected_predecessor_owner_id: str | None = None,
         prepare_takeover: Callable[[Metadata, Metadata], None] | None = None,
         capture_output: Callable[[str, bytes], None] | None = None,
+        validate_admission: Callable[[], None] | None = None,
     ) -> int:
-        """Optionally admit an exact predecessor transfer inside the transaction.
+        """Optionally validate admission and transfer a predecessor in the transaction.
 
         The trusted preparation hook must durably prepare successor state before
         returning. Failure leaves predecessor ownership unchanged. Copies keep a
         callback from accidentally changing the gate's ownership/command metadata.
+        Admission validation runs under the same lock as claim inspection and write.
         """
         if not command or not command[0] or any("\0" in arg for arg in command):
             raise ClaimError("A valid foreground command is required")
@@ -360,6 +368,8 @@ class ClaimStore:
                     capture_errors.append(exc)
 
         with self._transaction():
+            if validate_admission is not None:
+                validate_admission()
             state = self.inspect(task_key)
             status = state["status"]
             if status == "STALE_CONFIRMED" and not takeover_stale:

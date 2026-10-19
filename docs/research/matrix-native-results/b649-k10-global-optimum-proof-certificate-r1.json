@@ -153,7 +153,7 @@
       "portfolio_sha256": "13b1126d5b26ce44c9aba24670142eeab49f4a4b51aaf3bbabe7a7f1659ac673",
       "sealed_source": {
         "path": "src/lottolab/application/b649_sealed_geometry_portfolio.py",
-        "sha256": "bda5320447cb1493e8dff7e87d95678545548a8e8c4b6a0c34d55bebc9bc7956",
+        "sha256": "ffd28e1244e6a03a85f9b8221cd5f78663703365ef89f7086bc2824c4941224b",
         "symbol": "_K10"
       },
       "ticket_count": 10
@@ -176,5 +176,5 @@
     },
     "task_id": "B649_K10_GLOBAL_OPTIMUM_PROOF_MINIMAL_CANONICAL_INTEGRATION_R1"
   },
-  "payload_sha256": "a01810f80c9115847a806bdce15cf74070d8143070be49fe14435c2309b506b2"
+  "payload_sha256": "1d9244fafd6202b5d48aac7e467e1648cc1b5e795ec702fc1038cea25ba8630f"
 }

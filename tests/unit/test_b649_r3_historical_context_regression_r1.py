@@ -14,8 +14,7 @@ import pytest
 from lottolab.research import b649_min_s2_advanced_11row_exact_adoption_r1 as v
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
-OBJECT_REPOSITORY = Path("/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis")
-TEST_TEMP_ROOT = Path("/private/tmp/mathstat-b649-r3-exact-candidate-context-compat-r1")
+OBJECT_REPOSITORY = REPOSITORY_ROOT
 HISTORICAL_PARENT = "69d2d3fe2696623d75e876e5cd96085297da821c"
 HISTORICAL_CHILD = "b280d90be0c35b8c5b1ca7798a394332194f8887"
 CANDIDATE_BASE = "3033009550d35023d6d33171c27adc70fbb3af0a"
@@ -68,15 +67,22 @@ def _assert_subprocess_success(
 
 
 @pytest.fixture(scope="session")
-def historical_context_worktrees() -> Iterator[dict[str, Path]]:
-    if TEST_TEMP_ROOT.is_symlink():
-        raise AssertionError(f"Task temporary root must not be a symlink: {TEST_TEMP_ROOT}")
-    TEST_TEMP_ROOT.mkdir(mode=0o700, parents=True, exist_ok=True)
-    if TEST_TEMP_ROOT.stat().st_mode & 0o777 != 0o700:
-        raise AssertionError(f"Task temporary root must be mode 0700: {TEST_TEMP_ROOT}")
+def historical_context_temp_root() -> Iterator[Path]:
+    with tempfile.TemporaryDirectory(prefix="mathstat-b649-r3-") as temporary_directory:
+        temporary_path = Path(temporary_directory)
+        if temporary_path.is_symlink():
+            raise AssertionError(f"Task temporary root must not be a symlink: {temporary_path}")
+        temporary_root = temporary_path.resolve()
+        if os.name == "posix" and temporary_root.stat().st_mode & 0o777 != 0o700:
+            raise AssertionError(f"Task temporary root must be mode 0700: {temporary_root}")
+        yield temporary_root
 
+@pytest.fixture(scope="session")
+def historical_context_worktrees(
+    historical_context_temp_root: Path,
+) -> Iterator[dict[str, Path]]:
     with tempfile.TemporaryDirectory(
-        prefix="historical-context-", dir=TEST_TEMP_ROOT
+        prefix="historical-context-", dir=historical_context_temp_root
     ) as temporary_directory:
         temporary_root = Path(temporary_directory)
         roots = {
@@ -158,6 +164,7 @@ def test_historical_source_test_and_result_blobs_match_candidate_base(
 
 def test_historical_identity_cases_run_at_the_certified_child(
     historical_context_worktrees: dict[str, Path],
+    historical_context_temp_root: Path,
 ) -> None:
     historical_root = historical_context_worktrees["historical_child"]
     env = {
@@ -165,12 +172,12 @@ def test_historical_identity_cases_run_at_the_certified_child(
         "PYTHONPATH": str(historical_root / "src")
         + os.pathsep
         + str(historical_root),
-        "TMPDIR": str(TEST_TEMP_ROOT),
+        "TMPDIR": str(historical_context_temp_root),
     }
     for name in ("GIT_DIR", "GIT_WORK_TREE", "GIT_COMMON_DIR"):
         env.pop(name, None)
     with tempfile.TemporaryDirectory(
-        prefix="historical-pytest-", dir=TEST_TEMP_ROOT
+        prefix="historical-pytest-", dir=historical_context_temp_root
     ) as pytest_temp:
         env["PYTHONPYCACHEPREFIX"] = str(Path(pytest_temp) / "pycache")
         completed = subprocess.run(
@@ -197,6 +204,7 @@ def test_historical_identity_cases_run_at_the_certified_child(
 
 def test_tied_owner_source_pin_check_runs_in_an_independent_process(
     historical_context_worktrees: dict[str, Path],
+    historical_context_temp_root: Path,
 ) -> None:
     historical_root = historical_context_worktrees["historical_child"]
     env = {
@@ -204,12 +212,12 @@ def test_tied_owner_source_pin_check_runs_in_an_independent_process(
         "PYTHONPATH": str(historical_root / "src")
         + os.pathsep
         + str(historical_root),
-        "TMPDIR": str(TEST_TEMP_ROOT),
+        "TMPDIR": str(historical_context_temp_root),
     }
     for name in ("GIT_DIR", "GIT_WORK_TREE", "GIT_COMMON_DIR"):
         env.pop(name, None)
     with tempfile.TemporaryDirectory(
-        prefix="historical-pytest-", dir=TEST_TEMP_ROOT
+        prefix="historical-pytest-", dir=historical_context_temp_root
     ) as pytest_temp:
         env["PYTHONPYCACHEPREFIX"] = str(Path(pytest_temp) / "pycache")
         completed = subprocess.run(

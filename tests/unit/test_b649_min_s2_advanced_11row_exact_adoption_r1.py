@@ -2,17 +2,40 @@
 
 from __future__ import annotations
 
+import hashlib
+import os
 import random
+import shutil
+import subprocess
+import sys
+import tempfile
+from collections.abc import Callable
 from copy import deepcopy
 from fractions import Fraction
+from functools import wraps
 from itertools import combinations
 from math import ceil, comb
 from pathlib import Path
-from typing import cast
+from typing import NamedTuple, cast
+from xml.etree import ElementTree
 
 import pytest
 
 from lottolab.research import b649_min_s2_advanced_11row_exact_adoption_r1 as v
+
+HISTORICAL_PARENT = "69d2d3fe2696623d75e876e5cd96085297da821c"
+HISTORICAL_CHILD = "b280d90be0c35b8c5b1ca7798a394332194f8887"
+HISTORICAL_PARENT_TREE = "3fdfa51d658df73afadf6f16eaef145373a529ca"
+HISTORICAL_CHILD_TREE = "7d94024cebbce0c05d80902256ccae137fcbc279"
+HISTORICAL_TEST = "tests/unit/test_b649_min_s2_advanced_11row_exact_adoption_r1.py"
+HISTORICAL_TEST_BLOB = "c21a91cff3538ee39e51f3c9a05669983cccea00"
+HISTORICAL_TEST_SHA256 = "653dc78f718ee509fd9849d2c095f98f60411fdd972615fa50ddcbe971e197e8"
+HISTORICAL_SOURCE = "src/lottolab/research/b649_min_s2_advanced_11row_exact_adoption_r1.py"
+HISTORICAL_SOURCE_BLOB = "b5bcbdf4f9c515a8b46190e6452f7f2ede32d211"
+HISTORICAL_SOURCE_SHA256 = "fcf67c2b2023463d5e26448d82905a4e57b7bed7227a7d2ceee77044b9580bf3"
+CANDIDATE_BASE = "f48cc3043af4760a7d439c7029071803414f2260"
+CANDIDATE_BASE_TREE = "04a9ccbfefd4620b7d2fb7601e8424518308786e"
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 T264_PROFILES = {"66665555555421000000": 308560, "66666555554411100000": 309183}
 WEAKER = [
@@ -24,8 +47,279 @@ WEAKER = [
 A, B = "66655555555431000000", "66665555544441000000"
 
 
+class ChildRun(NamedTuple):
+    exit_code: int
+    outcomes: dict[str, str]
+    details: dict[str, str]
+    stdout: str
+    stderr: str
+    error: str | None
+    evidence_dir: str | None
+
+
+_child_run: ChildRun | None = None
+_HISTORICAL_TEST_NAMES: set[str] = set()
+
+
+def _git(root: Path, *args: str) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        ["git", "-C", str(root), *args],
+        capture_output=True,
+        check=False,
+        text=True,
+    )
+
+
+def _git_text(root: Path, *args: str) -> str:
+    result = _git(root, *args)
+    if result.returncode:
+        raise RuntimeError(f"git {' '.join(args)} failed: {result.stderr.strip()}")
+    return result.stdout.strip()
+
+
+def _execution_context() -> str:
+    head = _git_text(PROJECT_ROOT, "rev-parse", "HEAD")
+    tree = _git_text(PROJECT_ROOT, "rev-parse", "HEAD^{tree}")
+    if head == CANDIDATE_BASE and tree == CANDIDATE_BASE_TREE:
+        return "candidate"
+    if head == HISTORICAL_CHILD and tree == HISTORICAL_CHILD_TREE:
+        parents = _git_text(PROJECT_ROOT, "rev-list", "--parents", "-n", "1", head).split()
+        if parents == [head, HISTORICAL_PARENT]:
+            return "historical-child"
+    parents = _git_text(PROJECT_ROOT, "rev-list", "--parents", "-n", "1", head).split()
+    changed = _git_text(
+        PROJECT_ROOT, "diff-tree", "--no-commit-id", "--name-status", "-r", head
+    ).splitlines()
+    if parents == [head, CANDIDATE_BASE] and changed == [f"M\t{HISTORICAL_TEST}"]:
+        return "candidate"
+    return "other"
+
+
+def _child_report(run: ChildRun, test_name: str) -> str:
+    status = run.outcomes.get(test_name, "missing")
+    detail = run.details.get(test_name, run.error or "no child test result was recorded")
+    return (
+        f"Historical Child {HISTORICAL_CHILD} test {test_name} returned {status}; "
+        f"child_exit_code={run.exit_code}; evidence_dir={run.evidence_dir}\n"
+        f"child detail:\n{detail}\nchild stderr:\n{run.stderr}"
+    )
+
+
+def _assert_child_passed(run: ChildRun, test_name: str) -> None:
+    if run.error is not None or run.outcomes.get(test_name) != "passed":
+        raise AssertionError(_child_report(run, test_name))
+
+
+def _private_directory(path: Path) -> None:
+    path.mkdir(mode=0o700)
+    path.chmod(0o700)
+
+
+def _verify_historical_checkout(root: Path) -> None:
+    parent_tree = _git_text(root, "rev-parse", f"{HISTORICAL_PARENT}^{{tree}}")
+    if parent_tree != HISTORICAL_PARENT_TREE:
+        raise RuntimeError(f"wrong historical Parent tree: {parent_tree}")
+    head = _git_text(root, "rev-parse", "HEAD")
+    tree = _git_text(root, "rev-parse", "HEAD^{tree}")
+    parents = _git_text(root, "rev-list", "--parents", "-n", "1", head).split()
+    if (head, tree, parents) != (
+        HISTORICAL_CHILD,
+        HISTORICAL_CHILD_TREE,
+        [HISTORICAL_CHILD, HISTORICAL_PARENT],
+    ):
+        raise RuntimeError(f"wrong historical Child identity: {head} {tree} {parents}")
+    if _git_text(root, "rev-parse", "--is-shallow-repository") != "false":
+        raise RuntimeError("historical Child checkout is shallow")
+    objects = _git(root, "rev-list", "--objects", "--missing=print", HISTORICAL_CHILD)
+    missing = [line for line in objects.stdout.splitlines() if line.startswith("?")]
+    if objects.returncode or missing:
+        raise RuntimeError(f"historical Child object graph is incomplete: {missing[:5]}")
+    for path, blob, digest in (
+        (HISTORICAL_TEST, HISTORICAL_TEST_BLOB, HISTORICAL_TEST_SHA256),
+        (HISTORICAL_SOURCE, HISTORICAL_SOURCE_BLOB, HISTORICAL_SOURCE_SHA256),
+    ):
+        entry = _git_text(root, "ls-tree", HISTORICAL_CHILD, "--", path)
+        if entry != f"100644 blob {blob}\t{path}":
+            raise RuntimeError(f"historical source blob identity mismatch: {path}: {entry}")
+        raw = subprocess.run(
+            ["git", "-C", str(root), "show", f"{HISTORICAL_CHILD}:{path}"],
+            capture_output=True,
+            check=False,
+        )
+        if raw.returncode or hashlib.sha256(raw.stdout).hexdigest() != digest:
+            raise RuntimeError(f"historical source SHA256 mismatch: {path}")
+
+
+def _historical_case_results(xml_path: Path) -> tuple[dict[str, str], dict[str, str]]:
+    xml_root = ElementTree.parse(xml_path).getroot()
+    outcomes: dict[str, str] = {}
+    details: dict[str, str] = {}
+    for case in xml_root.iter("testcase"):
+        name = case.attrib.get("name", "")
+        if not name:
+            continue
+        outcome = "passed"
+        for tag in ("error", "failure", "skipped"):
+            node = case.find(tag)
+            if node is not None:
+                outcome = "failed" if tag == "failure" else tag
+                details[name] = node.attrib.get("message", "") + "\n" + (node.text or "")
+                break
+        outcomes[name] = outcome
+    return outcomes, details
+
+
+def _run_historical_child(expected_names: set[str]) -> ChildRun:
+    runtime_root = Path(tempfile.mkdtemp(prefix="B649_R3_ADV11_child_"))
+    runtime_root.chmod(0o700)
+    data_dir, temp_dir, cache_dir, bytecode_dir = (
+        runtime_root / name for name in ("app-data", "tmp", "cache", "bytecode")
+    )
+    for directory in (data_dir, temp_dir, cache_dir, bytecode_dir):
+        _private_directory(directory)
+    checkout = runtime_root / "historical-child"
+    xml_path = runtime_root / "pytest-results.xml"
+    stdout = ""
+    stderr = ""
+    exit_code = -1
+    error: str | None = None
+    outcomes: dict[str, str] = {}
+    details: dict[str, str] = {}
+    added = False
+
+    add = _git(
+        PROJECT_ROOT,
+        "worktree",
+        "add",
+        "--detach",
+        "--quiet",
+        str(checkout),
+        HISTORICAL_CHILD,
+    )
+    if add.returncode:
+        error = f"git worktree add failed ({add.returncode}): {add.stderr.strip()}"
+        stderr = add.stderr
+    else:
+        added = True
+        try:
+            _verify_historical_checkout(checkout)
+            if sys.version_info[:2] != (3, 13):
+                raise RuntimeError(f"expected Python 3.13, got {sys.version.split()[0]}")
+            env = os.environ.copy()
+            env.update(
+                {
+                    "LOTTOLAB_DATA_DIR": str(data_dir),
+                    "TMPDIR": str(temp_dir),
+                    "TMP": str(temp_dir),
+                    "TEMP": str(temp_dir),
+                    "XDG_CACHE_HOME": str(cache_dir),
+                    "PYTHONPYCACHEPREFIX": str(bytecode_dir),
+                    "PYTHONPATH": str(checkout / "src"),
+                }
+            )
+            env.pop("PYTEST_ADDOPTS", None)
+            env.pop("PYTEST_CURRENT_TEST", None)
+            command = [
+                sys.executable,
+                "-m",
+                "pytest",
+                "-p",
+                "no:cacheprovider",
+                "--tb=short",
+                "-q",
+                f"--junitxml={xml_path}",
+                HISTORICAL_TEST,
+            ]
+            child = subprocess.run(
+                command,
+                cwd=checkout,
+                capture_output=True,
+                check=False,
+                env=env,
+                text=True,
+            )
+            exit_code, stdout, stderr = child.returncode, child.stdout, child.stderr
+            if not xml_path.is_file():
+                error = "historical pytest did not produce its result XML"
+            else:
+                outcomes, details = _historical_case_results(xml_path)
+                missing = sorted(expected_names - outcomes.keys())
+                if missing:
+                    error = f"Candidate collected IDs missing from historical Child: {missing}"
+                elif child.returncode and not any(
+                    outcome in {"failed", "error"} for outcome in outcomes.values()
+                ):
+                    error = (
+                        f"historical pytest exited {child.returncode} without a failing test result"
+                    )
+        except Exception as exc:
+            error = f"{type(exc).__name__}: {exc}"
+
+    if added:
+        status = _git(checkout, "status", "--porcelain=v1", "--untracked-files=all")
+        if status.returncode or status.stdout.strip():
+            error = error or f"historical Child worktree is not clean: {status.stdout.strip()}"
+        else:
+            remove = _git(PROJECT_ROOT, "worktree", "remove", str(checkout))
+            if remove.returncode:
+                error = error or f"historical Child cleanup failed: {remove.stderr.strip()}"
+            else:
+                added = False
+
+    (runtime_root / "child.stdout.txt").write_text(stdout, encoding="utf-8")
+    (runtime_root / "child.stderr.txt").write_text(stderr, encoding="utf-8")
+    (runtime_root / "child.exit-code.txt").write_text(f"{exit_code}\n", encoding="utf-8")
+    failed = (
+        error is not None
+        or exit_code != 0
+        or any(outcome in {"failed", "error"} for outcome in outcomes.values())
+    )
+    evidence_dir: str | None = str(runtime_root) if failed or added else None
+    if not failed and not added:
+        shutil.rmtree(runtime_root)
+    return ChildRun(exit_code, outcomes, details, stdout, stderr, error, evidence_dir)
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _run_historical_child_session(request: pytest.FixtureRequest) -> None:  # pyright: ignore[reportUnusedFunction]
+    global _child_run
+    if _execution_context() != "candidate":
+        return
+    expected_names = {
+        item.name
+        for item in request.session.items
+        if Path(str(item.path)).resolve() == Path(__file__).resolve()
+        and item.name.partition("[")[0] in _HISTORICAL_TEST_NAMES
+    }
+    _child_run = _run_historical_child(expected_names)
+
+
+@pytest.fixture(autouse=True)  # pyright: ignore[reportUnusedFunction]
+def _mirror_historical_child_status() -> None:  # pyright: ignore[reportUnusedFunction]
+    current = os.environ.get("PYTEST_CURRENT_TEST", "").partition(" (")[0]
+    test_name = current.rsplit("::", 1)[-1]
+    if (
+        _execution_context() != "candidate"
+        or test_name.partition("[")[0] not in _HISTORICAL_TEST_NAMES
+    ):
+        return
+    if _child_run is None:
+        raise RuntimeError("historical Child pytest was not executed")
+    if _child_run.error is not None:
+        raise RuntimeError(_child_report(_child_run, test_name))
+    outcome = _child_run.outcomes.get(test_name)
+    if outcome == "error":
+        raise RuntimeError(_child_report(_child_run, test_name))
+    if outcome == "skipped":
+        pytest.skip(_child_report(_child_run, test_name))
+    if outcome is None:
+        raise RuntimeError(_child_report(_child_run, test_name))
+
+
 @pytest.fixture(scope="module")
 def result() -> v.Document:
+    if _execution_context() == "candidate":
+        return cast(v.Document, {})
     value = v.compute_result()
     assert (v.ROOT / v.RESULT).read_bytes() == v.render(value)
     return value
@@ -430,3 +724,63 @@ def test_remainder_lower_bounds_on_random_graphs() -> None:
         subset = rng.sample(range(n), rng.randint(0, n))
         inside = sum(b in adj[a] for a, b in combinations(subset, 2))
         assert inside >= v.induced_edge_floor(list(degrees), len(subset))
+
+
+def _mirror_historical_test(function: Callable[..., object]) -> Callable[..., object]:
+    @wraps(function)
+    def wrapped(*args: object, **kwargs: object) -> object:
+        if _execution_context() != "candidate":
+            return function(*args, **kwargs)
+        if _child_run is None:
+            raise AssertionError("historical Child pytest was not executed")
+        current = os.environ.get("PYTEST_CURRENT_TEST", "").partition(" (")[0]
+        test_name = current.rsplit("::", 1)[-1]
+        _assert_child_passed(_child_run, test_name)
+        return None
+
+    return wrapped
+
+
+for _test_name, _test_function in tuple(globals().items()):
+    if _test_name.startswith("test_") and callable(_test_function):
+        _HISTORICAL_TEST_NAMES.add(_test_name)
+        globals()[_test_name] = _mirror_historical_test(_test_function)
+
+
+def test_candidate_is_not_accepted_as_historical_child() -> None:
+    assert _child_run is not None
+    assert _child_run.exit_code == 0
+    assert len(_child_run.outcomes) == 17
+    assert all(outcome == "passed" for outcome in _child_run.outcomes.values())
+    with pytest.raises(ValueError, match="candidate is not Base or its single local child"):
+        v.verify_candidate()
+    donor = v.DONORS[2]
+    with pytest.raises(ValueError, match="source SHA256 mismatch"):
+        v.commit_document(donor._replace(result_sha="0" * 64))
+
+
+def test_nonzero_child_result_preserves_failure_and_stderr() -> None:
+    failed = ChildRun(
+        exit_code=17,
+        outcomes={"test_sentinel": "failed"},
+        details={"test_sentinel": "sentinel assertion failed"},
+        stdout="sentinel stdout",
+        stderr="sentinel stderr",
+        error=None,
+        evidence_dir="/task-owned-temp/historical-child",
+    )
+    with pytest.raises(AssertionError, match="child_exit_code=17") as exc_info:
+        _assert_child_passed(failed, "test_sentinel")
+    assert "sentinel stderr" in str(exc_info.value)
+
+    nonzero_without_case = ChildRun(
+        exit_code=23,
+        outcomes={"test_sentinel": "passed"},
+        details={},
+        stdout="sentinel stdout",
+        stderr="sentinel stderr",
+        error="historical pytest exited 23 without a failing test result",
+        evidence_dir="/task-owned-temp/historical-child",
+    )
+    with pytest.raises(AssertionError, match="child_exit_code=23"):
+        _assert_child_passed(nonzero_without_case, "test_sentinel")

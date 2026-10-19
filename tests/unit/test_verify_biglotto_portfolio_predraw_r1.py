@@ -42,9 +42,27 @@ EXPECTED_K235_SOURCE_TREE = "be6d7120d12201808b2f272d7aeaff36489d5c2e"
 EXPECTED_K235_SOURCE_SHA256 = (
     "9eb3c0e60afa60d11b6d020bf78dffc9e39723a62e72eab0794dbcea8eccb055"
 )
-EXPECTED_VERIFIER_SOURCE_SHA256 = (
-    "c19144d9ad1f8bb88452524e18fc29588e66909d8957123ff91b7a542f6f2e2c"
-)
+BASE_R2_SOURCE_IDENTITY = {
+    "commit": "0855d7b01973c3e3b663f3ce2abc5788f9fd0f84",
+    "path": "tools/verify_biglotto_predraw_evidence_r2.py",
+    "sha256": "c19144d9ad1f8bb88452524e18fc29588e66909d8957123ff91b7a542f6f2e2c",
+}
+CANDIDATE_R2_SOURCE_IDENTITY = {
+    "path": "tools/verify_biglotto_predraw_evidence_r2.py",
+    "sha256": "e59979c63be9d8e10b9c22ec2dd961363a3fc13e1faa94347f8eaabe6b1d6f07",
+}
+
+
+def _assert_source_sha256_identity(
+    actual_sha256: str,
+    expected_sha256: str,
+    identity_name: str,
+) -> None:
+    if actual_sha256 != expected_sha256:
+        raise AssertionError(
+            f"{identity_name} SHA256 mismatch: expected {expected_sha256}, "
+            f"got {actual_sha256}"
+        )
 
 
 def _make_contract_fixture(
@@ -204,10 +222,56 @@ class VerifyBigLottoPortfolioPredrawTests(unittest.TestCase):
         scorer_sha = hashlib.sha256(scorer_path.read_bytes()).hexdigest()
         self.assertEqual(scorer_sha, EXPECTED_K235_SOURCE_SHA256)
 
-        r2_path = Path("tools/verify_biglotto_predraw_evidence_r2.py")
-        self.assertTrue(r2_path.is_file())
-        r2_sha = hashlib.sha256(r2_path.read_bytes()).hexdigest()
-        self.assertEqual(r2_sha, EXPECTED_VERIFIER_SOURCE_SHA256)
+        base_r2_source = subprocess.check_output(
+            [
+                "git",
+                "show",
+                f"{BASE_R2_SOURCE_IDENTITY['commit']}:{BASE_R2_SOURCE_IDENTITY['path']}",
+            ]
+        )
+        base_r2_sha = hashlib.sha256(base_r2_source).hexdigest()
+        _assert_source_sha256_identity(
+            base_r2_sha,
+            BASE_R2_SOURCE_IDENTITY["sha256"],
+            "fixed HEAD R2 source",
+        )
+
+        candidate_r2_path = Path(CANDIDATE_R2_SOURCE_IDENTITY["path"])
+        self.assertTrue(candidate_r2_path.is_file())
+        candidate_r2_sha = hashlib.sha256(candidate_r2_path.read_bytes()).hexdigest()
+        _assert_source_sha256_identity(
+            candidate_r2_sha,
+            CANDIDATE_R2_SOURCE_IDENTITY["sha256"],
+            "working-tree Accuracy candidate R2 source",
+        )
+
+        wrong_sha256 = "0" * 64
+        for identity_name, actual_sha256, expected_sha256 in (
+            (
+                "fixed HEAD R2 source",
+                base_r2_sha,
+                BASE_R2_SOURCE_IDENTITY["sha256"],
+            ),
+            (
+                "working-tree Accuracy candidate R2 source",
+                candidate_r2_sha,
+                CANDIDATE_R2_SOURCE_IDENTITY["sha256"],
+            ),
+        ):
+            with self.subTest(identity=identity_name, mismatch="wrong expected SHA"):
+                with self.assertRaisesRegex(AssertionError, "SHA256 mismatch"):
+                    _assert_source_sha256_identity(
+                        actual_sha256,
+                        wrong_sha256,
+                        identity_name,
+                    )
+            with self.subTest(identity=identity_name, mismatch="wrong actual SHA"):
+                with self.assertRaisesRegex(AssertionError, "SHA256 mismatch"):
+                    _assert_source_sha256_identity(
+                        wrong_sha256,
+                        expected_sha256,
+                        identity_name,
+                    )
 
     # --- AC2: Valid Portfolios for m in {2, 3, 5} ---
     def test_ac2_valid_synthetic_portfolios_m2_m3_m5(self) -> None:

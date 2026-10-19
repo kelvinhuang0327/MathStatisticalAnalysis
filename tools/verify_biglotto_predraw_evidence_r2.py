@@ -29,7 +29,9 @@ import subprocess
 import sys
 import tempfile
 from collections.abc import Mapping
+from dataclasses import dataclass
 from datetime import datetime, timezone
+from fractions import Fraction
 from pathlib import Path
 from typing import Any
 
@@ -208,7 +210,9 @@ class _DerNode:
         self.content = content
 
 
-def _read_der_tlv(data: bytes, offset: int) -> tuple[_DerNode, int]:
+def _read_der_tlv(
+    data: bytes, offset: int, *, require_minimal_length: bool = False
+) -> tuple[_DerNode, int]:
     if offset >= len(data):
         raise _DerParseError("truncated DER: missing tag")
     first = data[offset]
@@ -226,9 +230,16 @@ def _read_der_tlv(data: bytes, offset: int) -> tuple[_DerNode, int]:
         octet_count = length_byte & 0x7F
         if octet_count == 0:
             raise _DerParseError("indefinite-length DER unsupported")
+        if require_minimal_length and octet_count > 126:
+            raise _DerParseError("DER length-of-length uses a reserved count")
         if pos + octet_count > len(data):
             raise _DerParseError("truncated DER: missing length octets")
-        length = int.from_bytes(data[pos : pos + octet_count], "big")
+        length_octets = data[pos : pos + octet_count]
+        if require_minimal_length and length_octets[0] == 0:
+            raise _DerParseError("DER length has a nonminimal leading zero")
+        length = int.from_bytes(length_octets, "big")
+        if require_minimal_length and length < 128:
+            raise _DerParseError("DER length uses long form below 128")
         pos += octet_count
     else:
         length = length_byte
@@ -237,11 +248,15 @@ def _read_der_tlv(data: bytes, offset: int) -> tuple[_DerNode, int]:
     return _DerNode(tag_class, tag_number, is_constructed, data[pos : pos + length]), pos + length
 
 
-def _read_der_children(content: bytes) -> list[_DerNode]:
+def _read_der_children(
+    content: bytes, *, require_minimal_length: bool = False
+) -> list[_DerNode]:
     children: list[_DerNode] = []
     offset = 0
     while offset < len(content):
-        node, offset = _read_der_tlv(content, offset)
+        node, offset = _read_der_tlv(
+            content, offset, require_minimal_length=require_minimal_length
+        )
         children.append(node)
     return children
 
@@ -267,29 +282,178 @@ def _decode_oid(content: bytes) -> str:
     return ".".join(str(a) for a in arcs)
 
 
-def _decode_generalized_time(content: bytes) -> datetime:
+def _datetime_epoch_seconds(value: datetime) -> Fraction:
+    if value.tzinfo is None or value.utcoffset() is None:
+        raise ValueError("timestamp requires timezone information")
+    utc_value = value.astimezone(_UTC)
+    epoch = datetime(1970, 1, 1, tzinfo=_UTC)
+    delta = utc_value - epoch
+    whole_seconds = delta.days * 86400 + delta.seconds
+    return Fraction(whole_seconds, 1) + Fraction(delta.microseconds, 1_000_000)
+
+
+def _decode_generalized_time_parts(content: bytes) -> tuple[datetime, Fraction]:
     try:
         text = content.decode("ascii")
     except UnicodeDecodeError as exc:
         raise _DerParseError("genTime is not ASCII") from exc
-    for fmt in ("%Y%m%d%H%M%SZ", "%Y%m%d%H%M%S%z"):
-        try:
-            return datetime.strptime(text, fmt).replace(tzinfo=_UTC)
-        except ValueError:
-            pass
-    raise _DerParseError(f"unparseable GeneralizedTime: {text}")
+
+    match = re.fullmatch(r"([0-9]{14})(?:\.([0-9]+))?Z", text)
+    if match is None:
+        raise _DerParseError(f"unparseable UTC GeneralizedTime: {text}")
+    fraction_digits = match.group(2)
+    if fraction_digits and fraction_digits.endswith("0"):
+        raise _DerParseError("genTime DER fractional seconds must omit trailing zeroes")
+    try:
+        whole_time = datetime.strptime(match.group(1), "%Y%m%d%H%M%S").replace(tzinfo=_UTC)
+    except ValueError as exc:
+        raise _DerParseError(f"unparseable GeneralizedTime: {text}") from exc
+
+    microseconds = int((fraction_digits or "")[:6].ljust(6, "0"))
+    parsed_time = whole_time.replace(microsecond=microseconds)
+    exact_time = _datetime_epoch_seconds(whole_time)
+    if fraction_digits:
+        exact_time += Fraction(int(fraction_digits), 10 ** len(fraction_digits))
+    return parsed_time, exact_time
+
+
+def _decode_generalized_time(content: bytes) -> datetime:
+    return _decode_generalized_time_parts(content)[0]
+
+
+@dataclass(frozen=True)
+class _TimestampInterval:
+    """Exact parsed bounds; these are not authenticated until token verification succeeds."""
+
+    lower_bound_seconds: Fraction
+    upper_bound_seconds: Fraction
+
+
+def _parse_der_integer(node: _DerNode, label: str) -> int:
+    if node.is_constructed or not node.content:
+        raise _DerParseError(f"{label} must be a nonempty primitive INTEGER")
+    if len(node.content) > 1:
+        first, second = node.content[0], node.content[1]
+        if (first == 0x00 and second < 0x80) or (first == 0xFF and second >= 0x80):
+            raise _DerParseError(f"{label} is not minimally encoded DER INTEGER")
+    return int.from_bytes(node.content, byteorder="big", signed=True)
+
+
+def _parse_tstinfo_accuracy(accuracy_node: _DerNode | None) -> int | None:
+    """Return explicit TSTInfo.accuracy in integer microseconds, or None if absent."""
+    if accuracy_node is None:
+        return None
+    if (
+        accuracy_node.tag_class != _CLASS_UNIVERSAL
+        or accuracy_node.tag_number != _TAG_SEQUENCE
+        or not accuracy_node.is_constructed
+    ):
+        raise _DerParseError("TSTInfo.accuracy must be a SEQUENCE")
+
+    seconds = millis = micros = 0
+    previous_component = -1
+    for component in _read_der_children(
+        accuracy_node.content, require_minimal_length=True
+    ):
+        if component.tag_class == _CLASS_UNIVERSAL and component.tag_number == _TAG_INTEGER:
+            component_index = 0
+            label = "accuracy.seconds"
+        elif component.tag_class == _CLASS_CONTEXT and component.tag_number in (0, 1):
+            component_index = component.tag_number + 1
+            label = "accuracy.millis" if component.tag_number == 0 else "accuracy.micros"
+        else:
+            raise _DerParseError("TSTInfo.accuracy contains an unknown component")
+
+        if component_index <= previous_component:
+            raise _DerParseError("TSTInfo.accuracy components are duplicated or out of order")
+        previous_component = component_index
+        value = _parse_der_integer(component, label)
+        if component_index == 0:
+            if value < 0:
+                raise _DerParseError("accuracy.seconds must not be negative")
+            seconds = value
+        elif not 1 <= value <= 999:
+            raise _DerParseError(f"{label} must be between 1 and 999")
+        elif component_index == 1:
+            millis = value
+        else:
+            micros = value
+
+    return seconds * 1_000_000 + millis * 1_000 + micros
+
+
+def _build_timestamp_interval(
+    gen_time_epoch_seconds: Fraction, accuracy_microseconds: int | None
+) -> _TimestampInterval | None:
+    if accuracy_microseconds is None:
+        return None
+    accuracy_seconds = Fraction(accuracy_microseconds, 1_000_000)
+    return _TimestampInterval(
+        lower_bound_seconds=gen_time_epoch_seconds - accuracy_seconds,
+        upper_bound_seconds=gen_time_epoch_seconds + accuracy_seconds,
+    )
+
+
+def _timestamp_interval_after_lower_bound(
+    interval: _TimestampInterval | None, trusted_not_before: datetime
+) -> bool:
+    """Pure inclusive comparison; it does not establish cutoff provenance or trust."""
+    if interval is None:
+        return False
+    try:
+        return interval.lower_bound_seconds >= _datetime_epoch_seconds(trusted_not_before)
+    except (AttributeError, TypeError, ValueError, OverflowError):
+        return False
+
+
+def _timestamp_interval_strictly_after_lower_bound(
+    interval: _TimestampInterval | None, lower_bound: datetime
+) -> bool:
+    if interval is None:
+        return False
+    try:
+        return interval.lower_bound_seconds > _datetime_epoch_seconds(lower_bound)
+    except (AttributeError, TypeError, ValueError, OverflowError):
+        return False
+
+
+def _timestamp_interval_strictly_before_upper_cutoff(
+    interval: _TimestampInterval | None, trusted_draw_cutoff: datetime
+) -> bool:
+    """Pure strict comparison; it does not establish cutoff provenance or trust."""
+    if interval is None:
+        return False
+    try:
+        return interval.upper_bound_seconds < _datetime_epoch_seconds(trusted_draw_cutoff)
+    except (AttributeError, TypeError, ValueError, OverflowError):
+        return False
 
 
 class _ParsedToken:
-    __slots__ = ("algorithm_oid", "gen_time", "hashed_message", "policy_oid")
+    __slots__ = (
+        "accuracy_microseconds",
+        "algorithm_oid",
+        "gen_time",
+        "hashed_message",
+        "policy_oid",
+        "time_interval",
+    )
 
     def __init__(
-        self, algorithm_oid: str, hashed_message: bytes, gen_time: datetime, policy_oid: str
+        self,
+        algorithm_oid: str,
+        hashed_message: bytes,
+        gen_time: datetime,
+        policy_oid: str,
+        accuracy_microseconds: int | None,
+        time_interval: _TimestampInterval | None,
     ) -> None:
         self.algorithm_oid = algorithm_oid
         self.hashed_message = hashed_message
         self.gen_time = gen_time
         self.policy_oid = policy_oid
+        self.accuracy_microseconds = accuracy_microseconds
+        self.time_interval = time_interval
 
 
 def _parse_timestamp_token(token_bytes: bytes) -> _ParsedToken:
@@ -312,25 +476,54 @@ def _parse_timestamp_token(token_bytes: bytes) -> _ParsedToken:
         if _decode_oid(encap_children[0].content) != _OID_TST_INFO_CONTENT_TYPE:
             raise _DerParseError("encapContentInfo.eContentType is not id-ct-TSTInfo")
         econtent_octets, _ = _read_der_tlv(encap_children[1].content, 0)
-        tst_node, _ = _read_der_tlv(econtent_octets.content, 0)
-        tst_children = _read_der_children(tst_node.content)
+        tst_node, _ = _read_der_tlv(
+            econtent_octets.content, 0, require_minimal_length=True
+        )
+        tst_children = _read_der_children(
+            tst_node.content, require_minimal_length=True
+        )
         if len(tst_children) < 5:
             raise _DerParseError("TSTInfo missing required fields")
 
         policy_oid = _decode_oid(tst_children[1].content)
-        mi_children = _read_der_children(tst_children[2].content)
+        mi_children = _read_der_children(
+            tst_children[2].content, require_minimal_length=True
+        )
         if len(mi_children) != 2:
             raise _DerParseError("messageImprint must carry hashAlgorithm and hashedMessage")
-        alg_children = _read_der_children(mi_children[0].content)
+        alg_children = _read_der_children(
+            mi_children[0].content, require_minimal_length=True
+        )
         algorithm_oid = _decode_oid(alg_children[0].content)
         hashed_message = mi_children[1].content
-        gen_time = _decode_generalized_time(tst_children[4].content)
+        gen_time, gen_time_epoch_seconds = _decode_generalized_time_parts(
+            tst_children[4].content
+        )
+        accuracy_node = None
+        optional_nodes = tst_children[5:]
+        if optional_nodes:
+            if (
+                optional_nodes[0].tag_class == _CLASS_UNIVERSAL
+                and optional_nodes[0].tag_number == _TAG_SEQUENCE
+            ):
+                accuracy_node = optional_nodes[0]
+            elif any(
+                node.tag_class == _CLASS_UNIVERSAL and node.tag_number == _TAG_SEQUENCE
+                for node in optional_nodes[1:]
+            ):
+                raise _DerParseError("TSTInfo.accuracy is out of order")
+        accuracy_microseconds = _parse_tstinfo_accuracy(accuracy_node)
+        time_interval = _build_timestamp_interval(
+            gen_time_epoch_seconds, accuracy_microseconds
+        )
 
         return _ParsedToken(
             algorithm_oid=algorithm_oid,
             hashed_message=hashed_message,
             gen_time=gen_time,
             policy_oid=policy_oid,
+            accuracy_microseconds=accuracy_microseconds,
+            time_interval=time_interval,
         )
     except _DerParseError as exc:
         raise ContractError(
@@ -856,12 +1049,15 @@ def verify_predraw_evidence_boundary(
                         f"accepted policies {acc_list}",
                     )
 
-            # Treat INPUT_CUTOFF as the strict lower bound for the TSA time.
+            # Treat INPUT_CUTOFF as a strict lower bound for the complete TSA interval.
             cutoff_dt = _parse_iso_utc(str(pred_by_draw[did].get("INPUT_CUTOFF")), "INPUT_CUTOFF")
-            if parsed_token.gen_time <= cutoff_dt:
+            if not _timestamp_interval_strictly_after_lower_bound(
+                parsed_token.time_interval, cutoff_dt
+            ):
                 raise ContractError(
                     "TIMESTAMP_NOT_AFTER_INPUT_CUTOFF",
-                    f"genTime {parsed_token.gen_time} is not after input cutoff {cutoff_dt}",
+                    "TSTInfo.accuracy is missing or its lower bound is not strictly after "
+                    f"input cutoff {cutoff_dt}",
                 )
 
             # DRAW_TIME comes from the outcome payload and has no authenticated,
@@ -870,11 +1066,13 @@ def verify_predraw_evidence_boundary(
             draw_cutoff_dt = _parse_iso_utc(
                 str(out_by_draw[did].get("DRAW_TIME")), "DRAW_TIME"
             )
-            if parsed_token.gen_time >= draw_cutoff_dt:
+            if not _timestamp_interval_strictly_before_upper_cutoff(
+                parsed_token.time_interval, draw_cutoff_dt
+            ):
                 raise ContractError(
                     "TIMESTAMP_AFTER_CUTOFF",
-                    f"genTime {parsed_token.gen_time} is at or after untrusted outcome "
-                    f"DRAW_TIME cutoff {draw_cutoff_dt}",
+                    "TSTInfo.accuracy is missing or its upper bound is not strictly before "
+                    f"untrusted outcome DRAW_TIME cutoff {draw_cutoff_dt}",
                 )
 
             # Run OpenSSL verification

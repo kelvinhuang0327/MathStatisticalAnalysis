@@ -18,6 +18,7 @@ import tempfile
 import time
 import unittest
 from datetime import datetime, timedelta, timezone
+from fractions import Fraction
 from pathlib import Path
 from typing import Any
 
@@ -30,12 +31,388 @@ from tools.verify_biglotto_predraw_evidence_r2 import (  # noqa: E402
     ContractError,
     build_canonical_prediction_payload,
     compute_canonical_payload_sha256,
+    _DerParseError,
+    _build_timestamp_interval,
+    _datetime_epoch_seconds,
+    _decode_generalized_time_parts,
+    _parse_tstinfo_accuracy,
+    _read_der_children,
+    _read_der_tlv,
+    _timestamp_interval_after_lower_bound,
+    _timestamp_interval_strictly_before_upper_cutoff,
     _parse_timestamp_token,
     verify_predraw_evidence_boundary,
 )
 
 EXPECTED_SCORER_SHA256 = "d67bd4232165339eacc5feeb579bf3c92016a29393173ffc20475784e12f1bc0"
 EXPECTED_OFFLINE_CLI_SHA256 = "b119f0fcb62d48d1ad5f4a47ab9f36d4853d07c0a7135cd9bbd6e51ad9716c80"
+
+
+class RFC3161AccuracyTests(unittest.TestCase):
+    @staticmethod
+    def _der_tlv(tag: int, content: bytes) -> bytes:
+        if len(content) >= 128:
+            length_bytes = len(content).to_bytes((len(content).bit_length() + 7) // 8, "big")
+            length = bytes([0x80 | len(length_bytes)]) + length_bytes
+        else:
+            length = bytes([len(content)])
+        return bytes([tag]) + length + content
+
+    @classmethod
+    def _der_integer(cls, value: int) -> bytes:
+        if value < 0:
+            length = max(1, (value.bit_length() + 8) // 8)
+            encoded = value.to_bytes(length, "big", signed=True)
+            while len(encoded) > 1 and int.from_bytes(encoded[1:], "big", signed=True) == value:
+                encoded = encoded[1:]
+        else:
+            length = max(1, (value.bit_length() + 7) // 8)
+            encoded = value.to_bytes(length, "big")
+            if encoded[0] & 0x80:
+                encoded = b"\x00" + encoded
+        return cls._der_tlv(0x02, encoded)
+
+    @classmethod
+    def _accuracy_node(cls, *components: bytes) -> Any:
+        encoded = cls._der_tlv(0x30, b"".join(components))
+        node, end = _read_der_tlv(encoded, 0)
+        if end != len(encoded):
+            raise AssertionError("test accuracy DER contains trailing bytes")
+        return node
+
+    @classmethod
+    def _synthetic_tstinfo(
+        cls, policy_tlv: bytes | None = None, imprint_tlv: bytes | None = None,
+        accuracy_tlv: bytes | None = None,
+    ) -> bytes:
+        if policy_tlv is None:
+            policy_tlv = cls._der_tlv(0x06, b"\x2a")
+        if imprint_tlv is None:
+            algorithm = cls._der_tlv(
+                0x30, cls._der_tlv(0x06, bytes.fromhex("608648016503040201"))
+            )
+            imprint_tlv = cls._der_tlv(
+                0x30, algorithm + cls._der_tlv(0x04, b"\x11" * 32)
+            )
+        if accuracy_tlv is None:
+            accuracy_tlv = cls._der_tlv(0x30, b"")
+
+        content = (
+            cls._der_tlv(0x02, b"\x01")
+            + policy_tlv
+            + imprint_tlv
+            + cls._der_tlv(0x02, b"\x01")
+            + cls._der_tlv(0x18, b"20261018123456Z")
+            + accuracy_tlv
+        )
+        return cls._der_tlv(0x30, content)
+
+    @classmethod
+    def _synthetic_timestamp_token(
+        cls, tstinfo: bytes, *, ber_content_info_length: bool = False
+    ) -> bytes:
+        signed_data_oid = cls._der_tlv(
+            0x06, bytes.fromhex("2a864886f70d010702")
+        )
+        tstinfo_oid = cls._der_tlv(
+            0x06, bytes.fromhex("2a864886f70d0109100104")
+        )
+        encapsulated = cls._der_tlv(
+            0x30,
+            tstinfo_oid + cls._der_tlv(0xA0, cls._der_tlv(0x04, tstinfo)),
+        )
+        signed_data = cls._der_tlv(
+            0x30,
+            cls._der_tlv(0x02, b"\x01") + cls._der_tlv(0x31, b"") + encapsulated,
+        )
+        content_info_content = signed_data_oid + cls._der_tlv(0xA0, signed_data)
+        if ber_content_info_length:
+            if len(content_info_content) >= 128:
+                raise AssertionError("synthetic CMS ContentInfo no longer fits BER test")
+            return b"\x30\x81" + bytes([len(content_info_content)]) + content_info_content
+        return cls._der_tlv(0x30, content_info_content)
+
+    def test_timestamp_parser_requires_minimal_tstinfo_der_lengths(self) -> None:
+        legal_tstinfo = self._synthetic_tstinfo()
+        self.assertEqual(len(legal_tstinfo), 0x4F)
+        self.assertEqual(legal_tstinfo[:2], bytes.fromhex("30 4D"))
+        tstinfo_content = legal_tstinfo[2:]
+
+        algorithm = self._der_tlv(
+            0x30, self._der_tlv(0x06, bytes.fromhex("608648016503040201"))
+        )
+        nested_nonminimal_imprint = self._der_tlv(
+            0x30, algorithm + b"\x04\x81\x20" + b"\x11" * 32
+        )
+        cases = (
+            (
+                "VALID_DER_ROOT",
+                legal_tstinfo,
+                "30 4D (77 content octets)",
+                "ACCEPT_TSTINFO_PARSING:accuracy=0",
+            ),
+            (
+                "ROOT_NONMINIMAL_LENGTH",
+                b"\x30\x81\x4d" + tstinfo_content,
+                "30 4D -> 30 81 4D; identical 77 content octets",
+                "REJECT_NONMINIMAL_DER_LENGTH",
+            ),
+            (
+                "ACCURACY_NONMINIMAL_LENGTH",
+                self._synthetic_tstinfo(
+                    accuracy_tlv=self._der_tlv(0x30, b"\x80\x81\x01\x01")
+                ),
+                "accuracy component 80 01 01 -> 80 81 01 01; parent lengths minimal",
+                "REJECT_NONMINIMAL_DER_LENGTH",
+            ),
+            (
+                "TSTINFO_CHILD_NONMINIMAL_LENGTH",
+                self._synthetic_tstinfo(policy_tlv=b"\x06\x81\x01\x2a"),
+                "policy OID 06 01 2A -> 06 81 01 2A; root length minimal",
+                "REJECT_NONMINIMAL_DER_LENGTH",
+            ),
+            (
+                "MESSAGE_IMPRINT_CHILD_NONMINIMAL_LENGTH",
+                self._synthetic_tstinfo(imprint_tlv=nested_nonminimal_imprint),
+                "hashedMessage 04 20 -> 04 81 20; parent lengths minimal",
+                "REJECT_NONMINIMAL_DER_LENGTH",
+            ),
+            (
+                "INDEFINITE_DER_LENGTH",
+                b"\x30\x80" + tstinfo_content + b"\x00\x00",
+                "root length octet 4D -> 80; append EOC 00 00 after the same 77 content octets",
+                "REJECT_INDEFINITE_DER_LENGTH",
+            ),
+            (
+                "LEADING_ZERO_IN_LENGTH",
+                b"\x30\x82\x00\x4d" + tstinfo_content,
+                "TSTInfo root header 30 4D -> 30 82 00 4D",
+                "REJECT_NONMINIMAL_DER_LENGTH",
+            ),
+            (
+                "TRUNCATED_DER_LENGTH",
+                bytes.fromhex("30 82 01"),
+                "TSTInfo root header is 30 82 01 (second length octet absent)",
+                "REJECT_TRUNCATED_DER_LENGTH",
+            ),
+        )
+
+        for case, tstinfo, mutation, expected in cases:
+            with self.subTest(case=case):
+                try:
+                    parsed = _parse_timestamp_token(
+                        self._synthetic_timestamp_token(tstinfo)
+                    )
+                    actual = f"ACCEPT_TSTINFO_PARSING:accuracy={parsed.accuracy_microseconds}"
+                except ContractError as exc:
+                    detail = str(exc).lower()
+                    if "nonminimal" in detail or "long form below 128" in detail:
+                        actual = "REJECT_NONMINIMAL_DER_LENGTH"
+                    elif "indefinite" in detail:
+                        actual = "REJECT_INDEFINITE_DER_LENGTH"
+                    elif "truncated" in detail:
+                        actual = "REJECT_TRUNCATED_DER_LENGTH"
+                    else:
+                        actual = f"REJECT_{exc.code}"
+
+                print(
+                    json.dumps(
+                        {
+                            "CASE": case,
+                            "RAW_BYTES_OR_EXACT_MUTATION": mutation,
+                            "EXPECTED": expected,
+                            "ACTUAL": actual,
+                            "VERDICT": "PASS" if actual == expected else "FAIL",
+                        },
+                        sort_keys=True,
+                    )
+                )
+                self.assertEqual(actual, expected)
+
+    def test_timestamp_parser_preserves_cms_ber_wrapper_compatibility(self) -> None:
+        tstinfo = self._synthetic_tstinfo()
+        der_token = self._synthetic_timestamp_token(tstinfo)
+        ber_token = self._synthetic_timestamp_token(
+            tstinfo, ber_content_info_length=True
+        )
+        try:
+            parsed = _parse_timestamp_token(ber_token)
+            actual = f"ACCEPT_TSTINFO_PARSING:accuracy={parsed.accuracy_microseconds}"
+        except ContractError as exc:
+            actual = f"REJECT_{exc.code}"
+        expected = "ACCEPT_TSTINFO_PARSING:accuracy=0"
+        print(
+            json.dumps(
+                {
+                    "CASE": "CMS_BER_CONTENTINFO_LENGTH",
+                    "RAW_BYTES_OR_EXACT_MUTATION": (
+                        f"ContentInfo root {der_token[:2].hex(' ').upper()} -> "
+                        f"{ber_token[:3].hex(' ').upper()} (BER long form)"
+                    ),
+                    "EXPECTED": expected,
+                    "ACTUAL": actual,
+                    "VERDICT": "PASS" if actual == expected else "FAIL",
+                },
+                sort_keys=True,
+            )
+        )
+        self.assertEqual(actual, expected)
+
+    def test_der_length_canonicality_boundary_matrix(self) -> None:
+        content_127 = b"\x00" * 127
+        content_128 = b"\x00" * 128
+        cases = (
+            ("EMPTY_SEQUENCE", bytes.fromhex("30 00"), True, 0),
+            ("KNOWN_COUNTEREXAMPLE", bytes.fromhex("30 81 00"), False, 0),
+            ("SHORT_FORM_LENGTH_127", b"\x30\x7f" + content_127, True, 127),
+            ("NONMINIMAL_LONG_FORM_LENGTH_127", b"\x30\x81\x7f" + content_127, False, 127),
+            ("MINIMAL_LONG_FORM_LENGTH_128", b"\x30\x81\x80" + content_128, True, 128),
+            (
+                "NONMINIMAL_LEADING_ZERO_LENGTH_128",
+                b"\x30\x82\x00\x80" + content_128,
+                False,
+                128,
+            ),
+            ("INDEFINITE_LENGTH", bytes.fromhex("30 80 00 00"), False, 0),
+            ("TRUNCATED_LENGTH_OCTETS", bytes.fromhex("30 82 01"), False, 0),
+            ("CONTENT_EXCEEDS_BUFFER", bytes.fromhex("30 02 00"), False, 2),
+            ("RESERVED_LENGTH_OF_LENGTH", b"\x30\xff" + b"\x01" * 127, False, 0),
+        )
+        for case, raw, should_accept, expected_content_length in cases:
+            with self.subTest(case=case):
+                try:
+                    nodes = _read_der_children(raw, require_minimal_length=True)
+                    if len(nodes) != 1:
+                        actual = f"ACCEPT_NODE_COUNT_{len(nodes)}"
+                    elif case == "KNOWN_COUNTEREXAMPLE":
+                        accuracy_microseconds = _parse_tstinfo_accuracy(nodes[0])
+                        actual = f"ACCEPTED_{accuracy_microseconds}_MICROSECONDS"
+                    else:
+                        actual = f"ACCEPT_CONTENT_LENGTH_{len(nodes[0].content)}"
+                    rejection_reason = ""
+                except _DerParseError as exc:
+                    rejection_reason = str(exc)
+                    if case == "KNOWN_COUNTEREXAMPLE" and "nonminimal" in rejection_reason:
+                        actual = "REJECT_NONMINIMAL_DER_LENGTH"
+                    else:
+                        actual = "REJECT"
+
+                expected = (
+                    f"ACCEPT_CONTENT_LENGTH_{expected_content_length}"
+                    if should_accept
+                    else "REJECT_NONMINIMAL_DER_LENGTH"
+                    if case == "KNOWN_COUNTEREXAMPLE"
+                    else "REJECT"
+                )
+                verdict = "PASS" if actual == expected else "FAIL"
+                print(
+                    json.dumps(
+                        {
+                            "CASE": case,
+                            "RAW_BYTES": raw.hex(" ").upper(),
+                            "EXPECTED": expected,
+                            "ACTUAL": actual,
+                            "REASON": rejection_reason,
+                            "VERDICT": verdict,
+                        },
+                        sort_keys=True,
+                    )
+                )
+                self.assertEqual(actual, expected)
+
+    def test_accuracy_components_are_exact_integer_microseconds(self) -> None:
+        cases = (
+            ("SECONDS", (self._der_integer(7),), 7_000_000),
+            ("MILLIS_ONLY", (self._der_tlv(0x80, b"\x02"),), 2_000),
+            ("SECONDS_MILLIS", (self._der_integer(7), self._der_tlv(0x80, b"\x02")), 7_002_000),
+            ("SECONDS_MICROS", (self._der_integer(7), self._der_tlv(0x81, b"\x03")), 7_000_003),
+            ("EMPTY_PRESENT_ACCURACY", (), 0),
+            (
+                "ALL_COMPONENTS",
+                (self._der_integer(7), self._der_tlv(0x80, b"\x02"), self._der_tlv(0x81, b"\x03")),
+                7_002_003,
+            ),
+        )
+        for case, components, expected in cases:
+            with self.subTest(case=case):
+                actual = _parse_tstinfo_accuracy(self._accuracy_node(*components))
+                self.assertEqual(actual, expected)
+
+    def test_missing_accuracy_is_unknown_not_zero(self) -> None:
+        self.assertIsNone(_parse_tstinfo_accuracy(None))
+        self.assertIsNone(_build_timestamp_interval(Fraction(1, 1), None))
+
+    def test_accuracy_rejects_malformed_ranges_and_negative_seconds(self) -> None:
+        invalid_cases = (
+            ("MILLIS_ZERO", (self._der_tlv(0x80, b"\x00"),)),
+            ("MILLIS_TOO_LARGE", (self._der_tlv(0x80, b"\x03\xe8"),)),
+            ("MICROS_ZERO", (self._der_tlv(0x81, b"\x00"),)),
+            ("MICROS_TOO_LARGE", (self._der_tlv(0x81, b"\x03\xe8"),)),
+            ("NEGATIVE_SECONDS", (self._der_integer(-1),)),
+            ("EMPTY_INTEGER", (self._der_tlv(0x80, b""),)),
+            ("DUPLICATE_MILLIS", (self._der_tlv(0x80, b"\x01"), self._der_tlv(0x80, b"\x02"))),
+            ("OUT_OF_ORDER", (self._der_tlv(0x81, b"\x01"), self._der_tlv(0x80, b"\x01"))),
+        )
+        for case, components in invalid_cases:
+            with self.subTest(case=case):
+                with self.assertRaises(_DerParseError):
+                    _parse_tstinfo_accuracy(self._accuracy_node(*components))
+        malformed_node, _ = _read_der_tlv(self._der_tlv(0x04, b"\x01"), 0)
+        with self.assertRaises(_DerParseError):
+            _parse_tstinfo_accuracy(malformed_node)
+
+    def test_generalized_time_preserves_submicrosecond_precision_and_utc(self) -> None:
+        parsed, exact = _decode_generalized_time_parts(b"20261018123456.1234567Z")
+        whole = datetime(2026, 10, 18, 12, 34, 56, tzinfo=timezone.utc)
+        expected = _datetime_epoch_seconds(whole) + Fraction(1_234_567, 10_000_000)
+        self.assertEqual(parsed.microsecond, 123_456)
+        self.assertEqual(exact, expected)
+
+    def test_exact_interval_boundary_matrix(self) -> None:
+        cutoff_local = datetime.fromisoformat("2026-10-18T20:00:00+08:00")
+        cutoff_utc = datetime.fromisoformat("2026-10-18T12:00:00+00:00")
+        cutoff_exact = _datetime_epoch_seconds(cutoff_local)
+        self.assertEqual(cutoff_exact, _datetime_epoch_seconds(cutoff_utc))
+
+        cases = (
+            ("GEN_TIME_BEFORE_CUTOFF", Fraction(-1, 1), 100_000, "upper", True),
+            ("UPPER_BOUND_BEFORE_CUTOFF", Fraction(-11, 10_000_000), 1, "upper", True),
+            ("UPPER_BOUND_EQUAL_CUTOFF", Fraction(-1, 1_000_000), 1, "upper", False),
+            ("UPPER_BOUND_AFTER_CUTOFF", Fraction(-9, 10_000_000), 1, "upper", False),
+            ("UNCERTAINTY_CROSSES_CUTOFF", Fraction(-1, 2), 1_000_000, "upper", False),
+            ("LOWER_BOUND_EQUAL_NOT_BEFORE", Fraction(1, 1_000_000), 1, "lower", True),
+            ("LOWER_BOUND_BEFORE_NOT_BEFORE", Fraction(9, 10_000_000), 1, "lower", False),
+            ("UNKNOWN_ACCURACY", Fraction(-10, 1), None, "upper", False),
+        )
+        for case, gen_time_offset, accuracy_microseconds, comparison, expected in cases:
+            with self.subTest(case=case):
+                interval = _build_timestamp_interval(
+                    cutoff_exact + gen_time_offset, accuracy_microseconds
+                )
+                if comparison == "lower":
+                    actual = _timestamp_interval_after_lower_bound(interval, cutoff_local)
+                else:
+                    actual = _timestamp_interval_strictly_before_upper_cutoff(
+                        interval, cutoff_local
+                    )
+                print(
+                    json.dumps(
+                        {
+                            "CASE": case,
+                            "INPUT": {
+                                "cutoff_utc": cutoff_utc.isoformat(),
+                                "gen_time_offset_seconds": str(gen_time_offset),
+                                "accuracy_microseconds": accuracy_microseconds,
+                                "comparison": comparison,
+                            },
+                            "EXPECTED": expected,
+                            "ACTUAL": actual,
+                            "VERDICT": "PASS" if actual == expected else "FAIL",
+                        },
+                        sort_keys=True,
+                    )
+                )
+                self.assertEqual(actual, expected)
 
 
 def _get_openssl_bin() -> str:
@@ -171,7 +548,7 @@ class _SyntheticTsaHarness:
             f"[ tsa ]\ndefault_tsa = tsa_config1\n[ tsa_config1 ]\ndir = {self.work_dir}\n"
             f"serial = {serial_file}\ncrypto_device = builtin\nsigner_cert = {self.tsa_cert}\n"
             f"certs = {self.ca_cert}\nsigner_key = {self.tsa_key}\nsigner_digest = sha256\n"
-            f"default_policy = {policy_oid}\ndigests = sha1, sha256\naccuracy = secs:0\n"
+            f"default_policy = {policy_oid}\ndigests = sha1, sha256\naccuracy = secs:0, millisecs:1\n"
             f"clock_precision_digits = 0\nordering = yes\ntsa_name = yes\ness_cert_id_chain = no\n"
             f"ess_cert_id_alg = sha256\n",
             encoding="ascii",
@@ -294,7 +671,10 @@ class VerifyBigLottoPredrawEvidenceTests(unittest.TestCase):
         payload = build_canonical_prediction_payload(pred)
         canonical_hash = compute_canonical_payload_sha256(payload)
         token_bytes = self.tsa.issue_token(canonical_hash)
-        gen_time = _parse_timestamp_token(token_bytes).gen_time
+        parsed_token = _parse_timestamp_token(token_bytes)
+        self.assertEqual(parsed_token.accuracy_microseconds, 1_000)
+        self.assertIsNotNone(parsed_token.time_interval)
+        gen_time = parsed_token.gen_time
         return self._evidence_bundle_for_token(pred, canonical_hash, token_bytes), gen_time, canonical_hash
 
     def _issue_synthetic_evidence_at_input_cutoff(
@@ -348,6 +728,8 @@ class VerifyBigLottoPredrawEvidenceTests(unittest.TestCase):
             actual = "ACCEPT_SYNTHETIC_DIAGNOSTIC"
             self.assertEqual(result["EVIDENCE_STATUS"], "DIAGNOSTIC_ONLY")
             self.assertTrue(result["CRYPTO_TOKEN_VALID"])
+            self.assertNotIn("TRUSTED_TIME_INTERVAL", result)
+            self.assertNotIn("TSA_TIME_INTERVAL", result)
         except ContractError as exc:
             error_code = exc.code
 

@@ -1,0 +1,1607 @@
+{
+ "TASK_ID": "B649_K20_V8_SHELL1_EXACT_QUAD_BOUND_TIGHTENING_R4",
+ "CREATED": "2026-10-08T20:27:23+0800",
+ "BASE": "b9e0937fe0a6d9802eedfdad92518a257a2d7de9",
+ "CANONICAL": {
+  "K20_COUNT": 313263888,
+  "K20_SHA256": "eaed652900d101881b678a1515d2a366bff9de6723dbec2ec9c82fe0d0d7844c",
+  "S1_MINUS_S2_SHELL1": 307923840,
+  "S3_THRESHOLD": 5340048
+ },
+ "FROZEN_INPUTS_SHA256": {
+  "k_bound_certify_r3.py": "12f59d58ec77b9e64df02524bb62c910c6ac75ddc7353541e7882ddf2f5091b0",
+  "k_bound_certification_r3.json": "669d18a0395e5472dac7c8ec4f7d8fbd25070e3437d20c3e4449c774f5dbbc74",
+  "constants.py": "7a04ce5f17f9e4c7422c601b5a884c2a2ecf97f412a0da9beaa7553e0151d251",
+  "profiles.py": "f106f9c106d99d91b745bfdece1f07d44e955adba1d355daa93e73a479c63739",
+  "profiles_k.py": "bb6927c10023df07a81dc514304dada433862693a942b694e03431d74b081312",
+  "survivors.json": "c7287b11ba801f195372fb8db98e52a80c3b975e3cb478795cc95308457dfec2",
+  "k_bound_validation_r2.json": "2ca0110a611938acfe30259baaf922c9fa802f424538c86e2539123cebe70c06"
+ },
+ "IMPLEMENTATION": {
+  "PATH": "k_quad_exact_bound_r4.py",
+  "SHA256": "e9d7f55cdb991f0f3c3a6dd8405375e30eaba152f969b351505d0098bd1c6f22"
+ },
+ "FORMULA": {
+  "CHANGE_VS_R3": "P_C only: quad term 8M + 3*floor((S-4M)/3)  ->  R(a), a = sorted(deg_i - 3) of the 4 quad tickets",
+  "R": "R(a) = max 8q + 3*(x1+x2+x3+x4) s.t. q + X - x_i <= a_i (i = 1..4), q, x_i >= 0 integers",
+  "B": "P_A: 3*kmax(deg,t,23) (unchanged);  P_C: 3*kmax(deg,t,20) + R(a)",
+  "S3_UB": "2800*W + 11872*floor((940+B)/6) - 1400*Tstar  (R3, unchanged)",
+  "PRUNE": "307923840 + S3_UB <= 313263888 (equality = no strict gain)"
+ },
+ "PROOF": {
+  "QUAD_EXACT": [
+   "Fix a legal P_C configuration, quad label q, B_q = {b1..b4}. b_i & b_j = {q}, so the three other quad tickets are neighbours of b_i via q only, and every other neighbour shares exactly one label with b_i: a_i := deg(b_i) - 3 is exactly the number of neighbours of b_i outside B_q (R3 QUAD_LEMMA).",
+   "For u not in B_q let N_u = {i : u ~ b_i}, so m_q(u) = |N_u|. Column sums: sum_u [i in N_u] = a_i.",
+   "Let Q = #{u : |N_u| = 4}, x_i = #{u : N_u = [4] - {i}}, K_quad = X = sum x_i. Tickets with |N_u| <= 2 add >= 0 to every column, so Q + X - x_i <= a_i for each i; all quantities are non-negative integers.",
+   "Hence (Q, x) is feasible for IP(a) and 3*K_quad + 8*Q = 8Q + 3X <= R(a). This is a statement about every legal configuration with this quad vector; no sampling is involved.",
+   "Exhaustiveness: q <= a_i - (X - x_i) <= min(a) and, for i != j, x_j <= X - x_i <= a_i - q <= 10. quad_exact enumerates q in 0..min(a) and x in 0..10^4, which contains every feasible point, so R(a) is computed exactly.",
+   "Second formulation (R3 quad_relax_max): for fixed q, c = X is feasible iff some x >= 0 with sum c has x_i >= c - r_i (r_i = a_i - q), i.e. sum_i max(0, c - r_i) <= c. Both evaluations agree on all 126 domain vectors.",
+   "Tightness (not needed for validity): any IP-feasible point is realised by an abstract incidence system with column sums a (pad slack with |N_u| <= 2 tickets). Adding the necessary condition 'at most 16 outside tickets' (pads >= max(max slack, ceil(sum slack / 2))) lowers R on 0 of the 126 vectors, so R is the exact worst case under that constraint as well."
+  ],
+  "DOMAIN": "P_C quad ticket = q (freq 4) + 5 labels of freq 2 or 3 (P_C has no other freq-1/4 label), so deg = 3 + 2t + (5 - t) = 8 + t, t in 0..5, a_i in 5..10. Sorted a-vectors: C(6+3, 4) = 126. R depends only on the multiset of a (the IP is symmetric under index permutation). Every P_C record in survivors.json maps into this table (checked for all 53875, not only the open 5850).",
+  "INHERITANCE": "R(a) <= 8M + 3*floor((S-4M)/3) on all 126 vectors, so B_R4 <= B_R3 and UB_R4 <= UB_R3: every R3-pruned profile stays pruned and only R3's open set needs re-evaluation. The identity 6*T_true = 940 + 3K + 8Q - N1, the apex/kmax lemma, the packing bound, the constants and the S3 formula are reused verbatim from the hash-pinned R3 module.",
+  "S3_BOUND": "3*kmax >= 3*K_trio and R(a) >= 3*K_quad + 8*Q give B_R4 >= 3K + 8Q; N1 >= 0 => 6*T_true <= 940 + B_R4; T_true integer => T_true <= floor((940 + B_R4)/6). S3 is increasing in T_true, so S3 <= S3_UB. Prune iff 307923840 + S3_UB <= 313263888; equality is a tie, never a strict gain.",
+  "P_A": "P_A has no frequency-4 label, so Q = K_quad = 0, B is unchanged and P_A_NEWLY_PRUNED = 0 by construction."
+ },
+ "PROOF_ASSUMPTIONS": [
+  "Shell-1 := 20 tickets of 6 labels from 1..49, pairwise overlap <= 1, sum_y C(d_y,2) = 94.",
+  "Objective = OFFICIAL_ANY_PRIZE union count; Bonferroni-3 upper bound S1 - S2 + S3.",
+  "S1 - S2 = 307923840 and triple weights PATH 2800 / STAR 7000 / TRIANGLE 20272 / <=1-edge 0 come from the frozen constants.co_win DP (re-evaluated here) and R2's canonical-evaluator cross-check.",
+  "D(k) = Schonheim - [k = 5 mod 6] is used only as an upper bound, proved by PROOF.PACKING_UPPER_BOUND (no external theorem). The correction is load-bearing: see SCHONHEIM_ONLY_PRUNED."
+ ],
+ "QUAD_EXACT_TABLE_STATS": {
+  "BRUTEFORCE_EQ_R3_RELAX": 126,
+  "CAP16_BINDS": 0,
+  "CLOSED_FORM_MINUS_EXACT_0": 61,
+  "CLOSED_FORM_MINUS_EXACT_3": 45,
+  "CLOSED_FORM_MINUS_EXACT_6": 18,
+  "CLOSED_FORM_MINUS_EXACT_9": 2,
+  "DOMAIN": 126,
+  "EQUAL_TO_CLOSED_FORM": 61,
+  "EXACT_LE_CLOSED_FORM": 126,
+  "TIGHTER_THAN_CLOSED_FORM": 65
+ },
+ "QUAD_EXACT_TABLE": [
+  {
+   "a": [
+    5,
+    5,
+    5,
+    5
+   ],
+   "EXACT": 40,
+   "CLOSED_FORM": 40
+  },
+  {
+   "a": [
+    5,
+    5,
+    5,
+    6
+   ],
+   "EXACT": 40,
+   "CLOSED_FORM": 40
+  },
+  {
+   "a": [
+    5,
+    5,
+    5,
+    7
+   ],
+   "EXACT": 40,
+   "CLOSED_FORM": 40
+  },
+  {
+   "a": [
+    5,
+    5,
+    5,
+    8
+   ],
+   "EXACT": 40,
+   "CLOSED_FORM": 43
+  },
+  {
+   "a": [
+    5,
+    5,
+    5,
+    9
+   ],
+   "EXACT": 40,
+   "CLOSED_FORM": 43
+  },
+  {
+   "a": [
+    5,
+    5,
+    5,
+    10
+   ],
+   "EXACT": 40,
+   "CLOSED_FORM": 43
+  },
+  {
+   "a": [
+    5,
+    5,
+    6,
+    6
+   ],
+   "EXACT": 40,
+   "CLOSED_FORM": 40
+  },
+  {
+   "a": [
+    5,
+    5,
+    6,
+    7
+   ],
+   "EXACT": 40,
+   "CLOSED_FORM": 43
+  },
+  {
+   "a": [
+    5,
+    5,
+    6,
+    8
+   ],
+   "EXACT": 40,
+   "CLOSED_FORM": 43
+  },
+  {
+   "a": [
+    5,
+    5,
+    6,
+    9
+   ],
+   "EXACT": 40,
+   "CLOSED_FORM": 43
+  },
+  {
+   "a": [
+    5,
+    5,
+    6,
+    10
+   ],
+   "EXACT": 40,
+   "CLOSED_FORM": 46
+  },
+  {
+   "a": [
+    5,
+    5,
+    7,
+    7
+   ],
+   "EXACT": 40,
+   "CLOSED_FORM": 43
+  },
+  {
+   "a": [
+    5,
+    5,
+    7,
+    8
+   ],
+   "EXACT": 40,
+   "CLOSED_FORM": 43
+  },
+  {
+   "a": [
+    5,
+    5,
+    7,
+    9
+   ],
+   "EXACT": 40,
+   "CLOSED_FORM": 46
+  },
+  {
+   "a": [
+    5,
+    5,
+    7,
+    10
+   ],
+   "EXACT": 40,
+   "CLOSED_FORM": 46
+  },
+  {
+   "a": [
+    5,
+    5,
+    8,
+    8
+   ],
+   "EXACT": 40,
+   "CLOSED_FORM": 46
+  },
+  {
+   "a": [
+    5,
+    5,
+    8,
+    9
+   ],
+   "EXACT": 40,
+   "CLOSED_FORM": 46
+  },
+  {
+   "a": [
+    5,
+    5,
+    8,
+    10
+   ],
+   "EXACT": 40,
+   "CLOSED_FORM": 46
+  },
+  {
+   "a": [
+    5,
+    5,
+    9,
+    9
+   ],
+   "EXACT": 40,
+   "CLOSED_FORM": 46
+  },
+  {
+   "a": [
+    5,
+    5,
+    9,
+    10
+   ],
+   "EXACT": 40,
+   "CLOSED_FORM": 49
+  },
+  {
+   "a": [
+    5,
+    5,
+    10,
+    10
+   ],
+   "EXACT": 40,
+   "CLOSED_FORM": 49
+  },
+  {
+   "a": [
+    5,
+    6,
+    6,
+    6
+   ],
+   "EXACT": 43,
+   "CLOSED_FORM": 43
+  },
+  {
+   "a": [
+    5,
+    6,
+    6,
+    7
+   ],
+   "EXACT": 43,
+   "CLOSED_FORM": 43
+  },
+  {
+   "a": [
+    5,
+    6,
+    6,
+    8
+   ],
+   "EXACT": 43,
+   "CLOSED_FORM": 43
+  },
+  {
+   "a": [
+    5,
+    6,
+    6,
+    9
+   ],
+   "EXACT": 43,
+   "CLOSED_FORM": 46
+  },
+  {
+   "a": [
+    5,
+    6,
+    6,
+    10
+   ],
+   "EXACT": 43,
+   "CLOSED_FORM": 46
+  },
+  {
+   "a": [
+    5,
+    6,
+    7,
+    7
+   ],
+   "EXACT": 43,
+   "CLOSED_FORM": 43
+  },
+  {
+   "a": [
+    5,
+    6,
+    7,
+    8
+   ],
+   "EXACT": 43,
+   "CLOSED_FORM": 46
+  },
+  {
+   "a": [
+    5,
+    6,
+    7,
+    9
+   ],
+   "EXACT": 43,
+   "CLOSED_FORM": 46
+  },
+  {
+   "a": [
+    5,
+    6,
+    7,
+    10
+   ],
+   "EXACT": 43,
+   "CLOSED_FORM": 46
+  },
+  {
+   "a": [
+    5,
+    6,
+    8,
+    8
+   ],
+   "EXACT": 43,
+   "CLOSED_FORM": 46
+  },
+  {
+   "a": [
+    5,
+    6,
+    8,
+    9
+   ],
+   "EXACT": 43,
+   "CLOSED_FORM": 46
+  },
+  {
+   "a": [
+    5,
+    6,
+    8,
+    10
+   ],
+   "EXACT": 43,
+   "CLOSED_FORM": 49
+  },
+  {
+   "a": [
+    5,
+    6,
+    9,
+    9
+   ],
+   "EXACT": 43,
+   "CLOSED_FORM": 49
+  },
+  {
+   "a": [
+    5,
+    6,
+    9,
+    10
+   ],
+   "EXACT": 43,
+   "CLOSED_FORM": 49
+  },
+  {
+   "a": [
+    5,
+    6,
+    10,
+    10
+   ],
+   "EXACT": 43,
+   "CLOSED_FORM": 49
+  },
+  {
+   "a": [
+    5,
+    7,
+    7,
+    7
+   ],
+   "EXACT": 46,
+   "CLOSED_FORM": 46
+  },
+  {
+   "a": [
+    5,
+    7,
+    7,
+    8
+   ],
+   "EXACT": 46,
+   "CLOSED_FORM": 46
+  },
+  {
+   "a": [
+    5,
+    7,
+    7,
+    9
+   ],
+   "EXACT": 46,
+   "CLOSED_FORM": 46
+  },
+  {
+   "a": [
+    5,
+    7,
+    7,
+    10
+   ],
+   "EXACT": 46,
+   "CLOSED_FORM": 49
+  },
+  {
+   "a": [
+    5,
+    7,
+    8,
+    8
+   ],
+   "EXACT": 46,
+   "CLOSED_FORM": 46
+  },
+  {
+   "a": [
+    5,
+    7,
+    8,
+    9
+   ],
+   "EXACT": 46,
+   "CLOSED_FORM": 49
+  },
+  {
+   "a": [
+    5,
+    7,
+    8,
+    10
+   ],
+   "EXACT": 46,
+   "CLOSED_FORM": 49
+  },
+  {
+   "a": [
+    5,
+    7,
+    9,
+    9
+   ],
+   "EXACT": 46,
+   "CLOSED_FORM": 49
+  },
+  {
+   "a": [
+    5,
+    7,
+    9,
+    10
+   ],
+   "EXACT": 46,
+   "CLOSED_FORM": 49
+  },
+  {
+   "a": [
+    5,
+    7,
+    10,
+    10
+   ],
+   "EXACT": 46,
+   "CLOSED_FORM": 52
+  },
+  {
+   "a": [
+    5,
+    8,
+    8,
+    8
+   ],
+   "EXACT": 49,
+   "CLOSED_FORM": 49
+  },
+  {
+   "a": [
+    5,
+    8,
+    8,
+    9
+   ],
+   "EXACT": 49,
+   "CLOSED_FORM": 49
+  },
+  {
+   "a": [
+    5,
+    8,
+    8,
+    10
+   ],
+   "EXACT": 49,
+   "CLOSED_FORM": 49
+  },
+  {
+   "a": [
+    5,
+    8,
+    9,
+    9
+   ],
+   "EXACT": 49,
+   "CLOSED_FORM": 49
+  },
+  {
+   "a": [
+    5,
+    8,
+    9,
+    10
+   ],
+   "EXACT": 49,
+   "CLOSED_FORM": 52
+  },
+  {
+   "a": [
+    5,
+    8,
+    10,
+    10
+   ],
+   "EXACT": 49,
+   "CLOSED_FORM": 52
+  },
+  {
+   "a": [
+    5,
+    9,
+    9,
+    9
+   ],
+   "EXACT": 52,
+   "CLOSED_FORM": 52
+  },
+  {
+   "a": [
+    5,
+    9,
+    9,
+    10
+   ],
+   "EXACT": 52,
+   "CLOSED_FORM": 52
+  },
+  {
+   "a": [
+    5,
+    9,
+    10,
+    10
+   ],
+   "EXACT": 52,
+   "CLOSED_FORM": 52
+  },
+  {
+   "a": [
+    5,
+    10,
+    10,
+    10
+   ],
+   "EXACT": 55,
+   "CLOSED_FORM": 55
+  },
+  {
+   "a": [
+    6,
+    6,
+    6,
+    6
+   ],
+   "EXACT": 48,
+   "CLOSED_FORM": 48
+  },
+  {
+   "a": [
+    6,
+    6,
+    6,
+    7
+   ],
+   "EXACT": 48,
+   "CLOSED_FORM": 48
+  },
+  {
+   "a": [
+    6,
+    6,
+    6,
+    8
+   ],
+   "EXACT": 48,
+   "CLOSED_FORM": 48
+  },
+  {
+   "a": [
+    6,
+    6,
+    6,
+    9
+   ],
+   "EXACT": 48,
+   "CLOSED_FORM": 51
+  },
+  {
+   "a": [
+    6,
+    6,
+    6,
+    10
+   ],
+   "EXACT": 48,
+   "CLOSED_FORM": 51
+  },
+  {
+   "a": [
+    6,
+    6,
+    7,
+    7
+   ],
+   "EXACT": 48,
+   "CLOSED_FORM": 48
+  },
+  {
+   "a": [
+    6,
+    6,
+    7,
+    8
+   ],
+   "EXACT": 48,
+   "CLOSED_FORM": 51
+  },
+  {
+   "a": [
+    6,
+    6,
+    7,
+    9
+   ],
+   "EXACT": 48,
+   "CLOSED_FORM": 51
+  },
+  {
+   "a": [
+    6,
+    6,
+    7,
+    10
+   ],
+   "EXACT": 48,
+   "CLOSED_FORM": 51
+  },
+  {
+   "a": [
+    6,
+    6,
+    8,
+    8
+   ],
+   "EXACT": 48,
+   "CLOSED_FORM": 51
+  },
+  {
+   "a": [
+    6,
+    6,
+    8,
+    9
+   ],
+   "EXACT": 48,
+   "CLOSED_FORM": 51
+  },
+  {
+   "a": [
+    6,
+    6,
+    8,
+    10
+   ],
+   "EXACT": 48,
+   "CLOSED_FORM": 54
+  },
+  {
+   "a": [
+    6,
+    6,
+    9,
+    9
+   ],
+   "EXACT": 48,
+   "CLOSED_FORM": 54
+  },
+  {
+   "a": [
+    6,
+    6,
+    9,
+    10
+   ],
+   "EXACT": 48,
+   "CLOSED_FORM": 54
+  },
+  {
+   "a": [
+    6,
+    6,
+    10,
+    10
+   ],
+   "EXACT": 48,
+   "CLOSED_FORM": 54
+  },
+  {
+   "a": [
+    6,
+    7,
+    7,
+    7
+   ],
+   "EXACT": 51,
+   "CLOSED_FORM": 51
+  },
+  {
+   "a": [
+    6,
+    7,
+    7,
+    8
+   ],
+   "EXACT": 51,
+   "CLOSED_FORM": 51
+  },
+  {
+   "a": [
+    6,
+    7,
+    7,
+    9
+   ],
+   "EXACT": 51,
+   "CLOSED_FORM": 51
+  },
+  {
+   "a": [
+    6,
+    7,
+    7,
+    10
+   ],
+   "EXACT": 51,
+   "CLOSED_FORM": 54
+  },
+  {
+   "a": [
+    6,
+    7,
+    8,
+    8
+   ],
+   "EXACT": 51,
+   "CLOSED_FORM": 51
+  },
+  {
+   "a": [
+    6,
+    7,
+    8,
+    9
+   ],
+   "EXACT": 51,
+   "CLOSED_FORM": 54
+  },
+  {
+   "a": [
+    6,
+    7,
+    8,
+    10
+   ],
+   "EXACT": 51,
+   "CLOSED_FORM": 54
+  },
+  {
+   "a": [
+    6,
+    7,
+    9,
+    9
+   ],
+   "EXACT": 51,
+   "CLOSED_FORM": 54
+  },
+  {
+   "a": [
+    6,
+    7,
+    9,
+    10
+   ],
+   "EXACT": 51,
+   "CLOSED_FORM": 54
+  },
+  {
+   "a": [
+    6,
+    7,
+    10,
+    10
+   ],
+   "EXACT": 51,
+   "CLOSED_FORM": 57
+  },
+  {
+   "a": [
+    6,
+    8,
+    8,
+    8
+   ],
+   "EXACT": 54,
+   "CLOSED_FORM": 54
+  },
+  {
+   "a": [
+    6,
+    8,
+    8,
+    9
+   ],
+   "EXACT": 54,
+   "CLOSED_FORM": 54
+  },
+  {
+   "a": [
+    6,
+    8,
+    8,
+    10
+   ],
+   "EXACT": 54,
+   "CLOSED_FORM": 54
+  },
+  {
+   "a": [
+    6,
+    8,
+    9,
+    9
+   ],
+   "EXACT": 54,
+   "CLOSED_FORM": 54
+  },
+  {
+   "a": [
+    6,
+    8,
+    9,
+    10
+   ],
+   "EXACT": 54,
+   "CLOSED_FORM": 57
+  },
+  {
+   "a": [
+    6,
+    8,
+    10,
+    10
+   ],
+   "EXACT": 54,
+   "CLOSED_FORM": 57
+  },
+  {
+   "a": [
+    6,
+    9,
+    9,
+    9
+   ],
+   "EXACT": 57,
+   "CLOSED_FORM": 57
+  },
+  {
+   "a": [
+    6,
+    9,
+    9,
+    10
+   ],
+   "EXACT": 57,
+   "CLOSED_FORM": 57
+  },
+  {
+   "a": [
+    6,
+    9,
+    10,
+    10
+   ],
+   "EXACT": 57,
+   "CLOSED_FORM": 57
+  },
+  {
+   "a": [
+    6,
+    10,
+    10,
+    10
+   ],
+   "EXACT": 60,
+   "CLOSED_FORM": 60
+  },
+  {
+   "a": [
+    7,
+    7,
+    7,
+    7
+   ],
+   "EXACT": 56,
+   "CLOSED_FORM": 56
+  },
+  {
+   "a": [
+    7,
+    7,
+    7,
+    8
+   ],
+   "EXACT": 56,
+   "CLOSED_FORM": 56
+  },
+  {
+   "a": [
+    7,
+    7,
+    7,
+    9
+   ],
+   "EXACT": 56,
+   "CLOSED_FORM": 56
+  },
+  {
+   "a": [
+    7,
+    7,
+    7,
+    10
+   ],
+   "EXACT": 56,
+   "CLOSED_FORM": 59
+  },
+  {
+   "a": [
+    7,
+    7,
+    8,
+    8
+   ],
+   "EXACT": 56,
+   "CLOSED_FORM": 56
+  },
+  {
+   "a": [
+    7,
+    7,
+    8,
+    9
+   ],
+   "EXACT": 56,
+   "CLOSED_FORM": 59
+  },
+  {
+   "a": [
+    7,
+    7,
+    8,
+    10
+   ],
+   "EXACT": 56,
+   "CLOSED_FORM": 59
+  },
+  {
+   "a": [
+    7,
+    7,
+    9,
+    9
+   ],
+   "EXACT": 56,
+   "CLOSED_FORM": 59
+  },
+  {
+   "a": [
+    7,
+    7,
+    9,
+    10
+   ],
+   "EXACT": 56,
+   "CLOSED_FORM": 59
+  },
+  {
+   "a": [
+    7,
+    7,
+    10,
+    10
+   ],
+   "EXACT": 56,
+   "CLOSED_FORM": 62
+  },
+  {
+   "a": [
+    7,
+    8,
+    8,
+    8
+   ],
+   "EXACT": 59,
+   "CLOSED_FORM": 59
+  },
+  {
+   "a": [
+    7,
+    8,
+    8,
+    9
+   ],
+   "EXACT": 59,
+   "CLOSED_FORM": 59
+  },
+  {
+   "a": [
+    7,
+    8,
+    8,
+    10
+   ],
+   "EXACT": 59,
+   "CLOSED_FORM": 59
+  },
+  {
+   "a": [
+    7,
+    8,
+    9,
+    9
+   ],
+   "EXACT": 59,
+   "CLOSED_FORM": 59
+  },
+  {
+   "a": [
+    7,
+    8,
+    9,
+    10
+   ],
+   "EXACT": 59,
+   "CLOSED_FORM": 62
+  },
+  {
+   "a": [
+    7,
+    8,
+    10,
+    10
+   ],
+   "EXACT": 59,
+   "CLOSED_FORM": 62
+  },
+  {
+   "a": [
+    7,
+    9,
+    9,
+    9
+   ],
+   "EXACT": 62,
+   "CLOSED_FORM": 62
+  },
+  {
+   "a": [
+    7,
+    9,
+    9,
+    10
+   ],
+   "EXACT": 62,
+   "CLOSED_FORM": 62
+  },
+  {
+   "a": [
+    7,
+    9,
+    10,
+    10
+   ],
+   "EXACT": 62,
+   "CLOSED_FORM": 62
+  },
+  {
+   "a": [
+    7,
+    10,
+    10,
+    10
+   ],
+   "EXACT": 65,
+   "CLOSED_FORM": 65
+  },
+  {
+   "a": [
+    8,
+    8,
+    8,
+    8
+   ],
+   "EXACT": 64,
+   "CLOSED_FORM": 64
+  },
+  {
+   "a": [
+    8,
+    8,
+    8,
+    9
+   ],
+   "EXACT": 64,
+   "CLOSED_FORM": 64
+  },
+  {
+   "a": [
+    8,
+    8,
+    8,
+    10
+   ],
+   "EXACT": 64,
+   "CLOSED_FORM": 64
+  },
+  {
+   "a": [
+    8,
+    8,
+    9,
+    9
+   ],
+   "EXACT": 64,
+   "CLOSED_FORM": 64
+  },
+  {
+   "a": [
+    8,
+    8,
+    9,
+    10
+   ],
+   "EXACT": 64,
+   "CLOSED_FORM": 67
+  },
+  {
+   "a": [
+    8,
+    8,
+    10,
+    10
+   ],
+   "EXACT": 64,
+   "CLOSED_FORM": 67
+  },
+  {
+   "a": [
+    8,
+    9,
+    9,
+    9
+   ],
+   "EXACT": 67,
+   "CLOSED_FORM": 67
+  },
+  {
+   "a": [
+    8,
+    9,
+    9,
+    10
+   ],
+   "EXACT": 67,
+   "CLOSED_FORM": 67
+  },
+  {
+   "a": [
+    8,
+    9,
+    10,
+    10
+   ],
+   "EXACT": 67,
+   "CLOSED_FORM": 67
+  },
+  {
+   "a": [
+    8,
+    10,
+    10,
+    10
+   ],
+   "EXACT": 70,
+   "CLOSED_FORM": 70
+  },
+  {
+   "a": [
+    9,
+    9,
+    9,
+    9
+   ],
+   "EXACT": 72,
+   "CLOSED_FORM": 72
+  },
+  {
+   "a": [
+    9,
+    9,
+    9,
+    10
+   ],
+   "EXACT": 72,
+   "CLOSED_FORM": 72
+  },
+  {
+   "a": [
+    9,
+    9,
+    10,
+    10
+   ],
+   "EXACT": 72,
+   "CLOSED_FORM": 72
+  },
+  {
+   "a": [
+    9,
+    10,
+    10,
+    10
+   ],
+   "EXACT": 75,
+   "CLOSED_FORM": 75
+  },
+  {
+   "a": [
+    10,
+    10,
+    10,
+    10
+   ],
+   "EXACT": 80,
+   "CLOSED_FORM": 80
+  }
+ ],
+ "DETERMINISTIC_CONFIG_CHECK_R2_COUNTEREXAMPLE": {
+  "A": [
+   10,
+   10,
+   10,
+   5
+  ],
+  "COLUMN_SUMS": [
+   10,
+   10,
+   10,
+   5
+  ],
+  "COLUMN_SUMS_EQ_A": true,
+  "Q": 5,
+  "X": [
+   0,
+   0,
+   0,
+   5
+  ],
+  "IP_FEASIBLE": true,
+  "TRUE_QUAD_CONTRIBUTION": 55,
+  "EXACT_TERM": 55,
+  "CLOSED_FORM_TERM": 55,
+  "ADMISSIBLE": true
+ },
+ "CHECKS": {
+  "FROZEN_INPUTS": true,
+  "R3_RESULT_INHERITED": true,
+  "R3_OPEN_SET_REPRODUCED": true,
+  "R3_P_C_FORMULA_REPRODUCED": true,
+  "QUAD_DOMAIN_IS_126": true,
+  "EVERY_P_C_SURVIVOR_A_IN_DOMAIN": true,
+  "BRUTEFORCE_EQ_R3_RELAX_ALL_DOMAIN": true,
+  "EXACT_LE_CLOSED_FORM_ALL_DOMAIN": true,
+  "R3_TIGHTER_COUNT_65_REPRODUCED": true,
+  "CAP16_NONBINDING": true,
+  "CE_CONFIG_ADMISSIBLE": true,
+  "UB_MONOTONE_VS_R3": true,
+  "P_A_UNCHANGED": true
+ },
+ "ACCOUNTING": {
+  "INPUT_CANDIDATES": 6841,
+  "INPUT_INDEX_LIST_SHA256": "e1db41d1c1ea6fda0456f989b68ecab1fc4a26e2e14b020f576a14efc3f07d3b",
+  "BY_KIND": {
+   "P_A": {
+    "INPUT": 991,
+    "NEWLY_PRUNED": 0,
+    "NEWLY_PRUNED_AT_EQUALITY": 0,
+    "REMAINING": 991,
+    "QUAD_TERM_TIGHTENED": 0,
+    "T_TRUE_CAP_LOWERED": 0
+   },
+   "P_C": {
+    "INPUT": 5850,
+    "NEWLY_PRUNED": 326,
+    "NEWLY_PRUNED_AT_EQUALITY": 0,
+    "REMAINING": 5524,
+    "QUAD_TERM_TIGHTENED": 1323,
+    "T_TRUE_CAP_LOWERED": 864
+   }
+  },
+  "TOTAL_NEWLY_PRUNED": 326,
+  "TOTAL_REMAINING": 6515,
+  "R3_FULL_REPRODUCTION": {
+   "P_A": {
+    "PRUNED": 3614,
+    "REMAINING": 991
+   },
+   "P_C": {
+    "PRUNED": 48025,
+    "REMAINING": 5850
+   }
+  },
+  "NOTE": "Applied once to R3's open set only. Every R3-pruned profile stays pruned (UB_R4 <= UB_R3). QUAD_TERM_TIGHTENED = R(a) < closed form; T_TRUE_CAP_LOWERED = floor((940+B)/6) dropped."
+ },
+ "UNRESOLVED_LOCATOR": {
+  "SOURCE": "survivors.json 0-based array index; predicate 307923840 + S3_UB_R4 > 313263888",
+  "COUNT": 6515,
+  "INDEX_LIST_SHA256": "348bb7cf9cda537e65f332863bc21e0d28a65f909b82cd39645f0cf90a6da573",
+  "INDEX_LIST_ENCODING": "sha256 of ascii comma-joined ascending indices",
+  "T_TRUE_UNITS_STILL_NEEDED": {
+   "P_A:1": 244,
+   "P_A:2": 212,
+   "P_A:3": 172,
+   "P_A:4": 142,
+   "P_A:5": 91,
+   "P_A:6": 57,
+   "P_A:7": 42,
+   "P_A:8": 19,
+   "P_A:9": 3,
+   "P_A:10": 6,
+   "P_A:11": 3,
+   "P_C:1": 1581,
+   "P_C:2": 1099,
+   "P_C:3": 713,
+   "P_C:4": 538,
+   "P_C:5": 492,
+   "P_C:6": 373,
+   "P_C:7": 249,
+   "P_C:8": 181,
+   "P_C:9": 123,
+   "P_C:10": 73,
+   "P_C:11": 34,
+   "P_C:12": 24,
+   "P_C:13": 20,
+   "P_C:14": 17,
+   "P_C:15": 6,
+   "P_C:16": 1
+  },
+  "T_TRUE_UNITS_NOTE": "ceil((min(UB_R4, UB_wedge) - 313263888) / 11872): how many fewer true triangles each remaining profile must be shown to have.",
+  "TOP5_BY_UB": [
+   {
+    "index": 462,
+    "KIND": "P_C",
+    "SPECIAL": [
+     4,
+     4,
+     4,
+     4
+    ],
+    "REST": [
+     6,
+     6,
+     6,
+     6,
+     6,
+     5,
+     5,
+     4,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "UB_R4": 313445776,
+    "UB_R3": 313445776,
+    "UB_MIN_R4_WEDGE": 313445776
+   },
+   {
+    "index": 282,
+    "KIND": "P_C",
+    "SPECIAL": [
+     4,
+     4,
+     4,
+     4
+    ],
+    "REST": [
+     6,
+     6,
+     6,
+     6,
+     6,
+     6,
+     5,
+     3,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "UB_R4": 313439504,
+    "UB_R3": 313439504,
+    "UB_MIN_R4_WEDGE": 313439504
+   },
+   {
+    "index": 451,
+    "KIND": "P_C",
+    "SPECIAL": [
+     4,
+     4,
+     4,
+     3
+    ],
+    "REST": [
+     6,
+     6,
+     6,
+     6,
+     6,
+     6,
+     5,
+     4,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "UB_R4": 313433904,
+    "UB_R3": 313433904,
+    "UB_MIN_R4_WEDGE": 313433904
+   },
+   {
+    "index": 472,
+    "KIND": "P_C",
+    "SPECIAL": [
+     5,
+     4,
+     4,
+     4
+    ],
+    "REST": [
+     6,
+     6,
+     6,
+     5,
+     5,
+     5,
+     5,
+     5,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "UB_R4": 313433904,
+    "UB_R3": 313433904,
+    "UB_MIN_R4_WEDGE": 313433904
+   },
+   {
+    "index": 565,
+    "KIND": "P_C",
+    "SPECIAL": [
+     4,
+     4,
+     4,
+     4
+    ],
+    "REST": [
+     6,
+     6,
+     6,
+     6,
+     5,
+     5,
+     5,
+     5,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "UB_R4": 313431104,
+    "UB_R3": 313431104,
+    "UB_MIN_R4_WEDGE": 313431104
+   }
+  ]
+ },
+ "MAX_VALID_UPPER_BOUND": 313445776,
+ "GAP_VS_313263888": 181888,
+ "REMAINING_PROOF_GAPS": [
+  "6515 profiles (index-list sha 348bb7cf9cda) still have certified UB > 313263888; best UB 313445776.",
+  "Bonferroni constants (S1-S2, triple weights) rest on the frozen constants.co_win DP and R2's canonical-evaluator cross-check (inherited from R3; no independent authority yet).",
+  "Shell-1 only: overlap <= 1 and sum C(d,2) = 94."
+ ],
+ "SCIENTIFIC_STATUS": "PARTIAL_BOUND_CERTIFIED",
+ "NO_CPSAT": true,
+ "MULTIPROCESSING": false,
+ "CPU_SECONDS": 1.74
+}

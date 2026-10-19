@@ -10,6 +10,7 @@ from collections.abc import Mapping
 from dataclasses import replace
 from functools import cache
 from math import comb
+from pathlib import Path
 from typing import cast
 
 import pytest
@@ -393,10 +394,19 @@ def test_sealed_authority_replays_full_ledger_and_first_success_c(
 def test_existing_r25_result_is_preserved_before_starting_proof(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    result_before = r25.result_path().read_bytes()
+
     def forbidden() -> dict[str, object]:
         pytest.fail("existing R25 authority caused a proof rerun")
 
     monkeypatch.setattr(r25, "compute_result", forbidden)
     monkeypatch.setattr(sys, "argv", ["r25", "--output", str(r25.result_path())])
-    with pytest.raises(FileExistsError, match="preserve the existing R25 result"):
-        r25.main()
+    if r25.repo_root() == Path(r25.WORKTREE_PATH):
+        with pytest.raises(FileExistsError, match="preserve the existing R25 result"):
+            r25.main()
+    else:
+        with pytest.raises(
+            RuntimeError, match="module resolved outside the exact retained R25 worktree"
+        ):
+            r25.main()
+    assert r25.result_path().read_bytes() == result_before

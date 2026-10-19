@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 import hashlib
 import json
 import os
@@ -26,6 +27,7 @@ TREE = "2" * 40
 OLD_HEAD = "3" * 40
 LABEL = "com.lottolab.checkpoint-fixture"
 DOMAIN = "gui/501"
+DARWIN_NEGATIVE_UID_RAW_ROW = "68784     1    -2 Ss   /usr/libexec/dhcp6d"
 HEALTH_SCHEMA = "b649-goalc-local-scheduler-health-v1"
 
 
@@ -45,6 +47,7 @@ class Harness:
     loaded_old: bool = False
     process_error: bool = False
     lsof_error: bool = False
+    lsof_uid: int = 501
     job_error: bool = False
     process_rows: list[str] = field(
         default_factory=lambda: ["900001 1 501 S /usr/bin/fixture-shell"]
@@ -168,7 +171,7 @@ class Harness:
         elif len(args) == 5 and args[0] == "ps" and args[1] == "-p" and args[3:] == ("-o", "pid="):
             requested = {int(value) for value in args[2].split(",")}
             out = "\n".join(str(pid) for pid in sorted(requested - self.vanished_pids))
-        elif args == ("lsof", "-nP", "-a", "-u", "501", "-F", "pfn"):
+        elif args == ("lsof", "-nP", "-a", "-u", str(self.lsof_uid), "-F", "pfn"):
             if self.lsof_error:
                 return subprocess.CompletedProcess(args, 0, "", "lsof: cannot stat filesystem")
             out = "\n".join(self.file_rows)
@@ -357,6 +360,103 @@ def test_post_unload_absent_pass(harness: Harness, capsys: pytest.CaptureFixture
     for role in ("primary", "scheduler", "shadow", "runtime"):
         assert observation(result, f"old_{role}_ownership")["classification"] == "ABSENT"
     assert {call[0] for call in harness.calls} == {"git", "launchctl", "ps", "lsof"}
+
+
+def test_darwin_exact_negative_uid_row_normalizes_without_launch_uid_alias() -> None:
+    process = checkpoint.parse_process_row(DARWIN_NEGATIVE_UID_RAW_ROW, darwin=True)
+    assert (process.pid, process.ppid, process.uid, process.state, process.command) == (
+        68784,
+        1,
+        4294967294,
+        "Ss",
+        "/usr/libexec/dhcp6d",
+    )
+    assert process.uid != 1428005812
+
+
+@pytest.mark.parametrize(
+    ("uid_token", "expected_uid"),
+    [
+        ("-2147483648", 2147483648),
+        ("0", 0),
+        ("1", 1),
+        ("501", 501),
+        ("2147483647", 2147483647),
+    ],
+)
+def test_darwin_signed_uid_int32_boundaries_and_positive_values(
+    uid_token: str, expected_uid: int
+) -> None:
+    process = checkpoint.parse_process_row(
+        f"68784 1 {uid_token} Ss /usr/libexec/dhcp6d", darwin=True
+    )
+    assert process.uid == expected_uid
+
+
+@pytest.mark.parametrize(
+    "uid_token",
+    [
+        "2147483648",
+        "-2147483649",
+        "+1",
+        "nobody",
+        "-",
+        "+",
+        "1.0",
+        "0x10",
+        "1 2",
+        "00",
+        "-0",
+    ],
+)
+def test_malformed_darwin_uid_token_fails_closed(uid_token: str) -> None:
+    row = f"68784     1    {uid_token} Ss   /usr/libexec/dhcp6d"
+    with pytest.raises(checkpoint.Unverifiable, match="process table row"):
+        checkpoint.parse_process_row(row, darwin=True)
+
+
+def test_process_snapshot_accepts_exact_darwin_negative_uid_row(
+    harness: Harness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(checkpoint.sys, "platform", "darwin")
+    harness.lsof_uid = 1428005812
+    harness.process_rows.append(DARWIN_NEGATIVE_UID_RAW_ROW)
+    args = argparse.Namespace(
+        launch_domain="gui/1428005812",
+        expected_rollback_worktree=str(harness.rollback),
+        expected_rollback_head=OLD_HEAD,
+        old_primary_identity=None,
+        old_scheduler_identity=None,
+        old_shadow_identity=None,
+        primary_lock_path=str(harness.root / "primary.lock"),
+        shadow_lock_path=str(harness.root / "shadow.lock"),
+    )
+    snapshot = checkpoint.process_snapshot(args, harness)
+    assert snapshot["process_count"] == 2
+    assert snapshot["uncertainties"] == []
+    assert checkpoint.object_record(snapshot["runtime"])["classification"] == "ABSENT"
+
+
+def test_malformed_darwin_uid_in_valid_row_fails_closed(
+    harness: Harness,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(checkpoint.sys, "platform", "darwin")
+    harness.loaded = False
+    harness.process_rows.append("68784     1    nobody Ss   /usr/libexec/dhcp6d")
+    code, result = execute(harness, capsys, "post-unload")
+    assert code == 1
+    entry = checkpoint.object_record(checkpoint.object_record(result["checks"])["process_snapshot"])
+    assert entry["classification"] == "UNVERIFIABLE"
+    assert "unparseable process table row" in str(entry["error"])
+
+
+def test_linux_uid_parser_retains_unsigned_decimal_grammar() -> None:
+    process = checkpoint.parse_process_row("900001 1 501 S /usr/bin/fixture-shell", darwin=False)
+    assert process.uid == 501
+    with pytest.raises(checkpoint.Unverifiable, match="process table row"):
+        checkpoint.parse_process_row("900002 1 -2 S /usr/bin/fixture-shell", darwin=False)
 
 
 @pytest.mark.parametrize("state", ["Z", "Z+", "Zs"])

@@ -11,8 +11,9 @@ radius2 authority from sealed-geometry v2.
 K10 OFFICIAL_ANY_PRIZE: PROVEN GLOBAL OPTIMUM by the canonical K10 proof
 certificate. K10 M3_PLUS: GLOBAL OPTIMUM UNKNOWN. The v8 K20 is the exact
 incumbent from the canonical two-ticket ascent result, with v7 retained in
-the portfolio version history. Its validated exact two-ticket neighborhood
-is proven; global K20 optimality remains unknown.
+the portfolio version history.
+It is proven optimal only within its validated exact local neighborhoods.
+K20 global optimality remains unknown.
 K20: GLOBAL OPTIMUM UNKNOWN.
 There is no historical outcome tuning or predictive signal: the portfolios do
 not depend on the target draw, prediction streams, or historical outcomes.

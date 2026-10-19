@@ -105,6 +105,12 @@ jobs:
           9c9d309f89b6050e7b4cb49155fc72ff168f7ef8 3972a602f45062c36d0bac8716a739ca47e95478
           eb2e23902c72720722cd7f12343b5f2b476dd6cc ffac7fbe81470cd0a85ffa01d052ca7779278953
           f2ad83b4e07571a6842ac301d336360cec805a6a 0b089eb90884f14283679528be40295098a5d3ef
+          2e27a2c77934c7352b792ab867eb5be20b095372 2d3bf1e263ee13e9c55d49a70a05128a5362dbd3
+          4093f95f4f27ea23a5dd4d74cd7c99ff1b97b92b 24280b140a7445744fb11497605c2e184555e79c
+          42b8b74f3d4110a8ab4e51544f7756e0701c5e95 4f61bfa8ce7f4afdd2800e654ed7fae89599228c
+          8fac3d41b2d519d92b06d6ceb933fe31072c6409 62f80eecf3f1045c905d345a3e68fb2ad078eaec
+          a441c6ab8000496f4d28d3bd656c41678976e913 d0a67f2734288603afe8b55699493d1fb0e21ad0
+          e3a9843db4339167bffcdc92fb782ff6bb663ed8 f63545acbc883f13ec9c50eea0b3a7e6a2190d3b
           EOF
           if [[ "$invalid" -ne 0 ]]; then
             exit 1
@@ -113,14 +119,28 @@ jobs:
             echo "::error::CHECKOUT_IDENTITY_CHANGED: provenance materialization changed the test checkout"
             exit 1
           fi
-      - name: Run shared certificate tests in an isolated process
+      - name: Run solver-free certificates and remaining tests in separate processes
         run: |
-          uv run pytest \
-            tests/unit/test_b649_three_max_profiles_shared_certificate_r2.py
-      - name: Run remaining backend tests in an isolated process
-        run: |
-          uv run pytest \
-            --ignore=tests/unit/test_b649_three_max_profiles_shared_certificate_r2.py
+          set -euo pipefail
+          # Immutable certificates inspect the loaded research-source closure and
+          # reject solver imports. Give each its own process; run all other tests too.
+          remaining_args=()
+          for path in \
+            tests/unit/test_b649_three_max_profiles_shared_certificate_r2.py \
+            tests/unit/test_b649_min_s2_owner_a_exact_bound_r1.py \
+            tests/unit/test_b649_min_s2_owner_b_exact_bound_r1.py \
+            tests/unit/test_b649_min_s2_post_t256_next_owner_cap248_cert_r1.py \
+            tests/unit/test_b649_min_s2_t249_bonf5_single_row_composition_r1.py \
+            tests/unit/test_b649_min_s2_t249_dual_profile_composition_r1.py \
+            tests/unit/test_b649_min_s2_three_tied_owner_combined_authority_r1.py \
+            tests/unit/test_b649_min_s2_two_bonf5_owners_exact_composition_r1.py \
+            tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py; do
+            if [[ -f "$path" ]]; then
+              uv run pytest "$path"
+              remaining_args+=("--ignore=$path")
+            fi
+          done
+          uv run pytest "${remaining_args[@]}"
 
   frontend:
     runs-on: ubuntu-latest

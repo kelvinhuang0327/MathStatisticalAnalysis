@@ -1,0 +1,499 @@
+VERDICT: VERIFIED_WITH_CAVEATS
+SCIENTIFIC_TERMINAL_VERDICT: VERIFIED_WITH_CAVEATS for EXACT_JUDGED_STAGED_TREE d6e08905b87f1e8208ac7fe892f5b51278e1a9f7.
+SCIENTIFIC_ACCEPTANCE: YES. No material implementation, mathematical, test-integrity, identity or boundary defect observed.
+WORKER_LIFECYCLE_COMPLETION: NOT_VERIFIED — G14 remains a postJudge action. This report does not claim the full commit lifecycle is complete.
+
+TASK_CLASS: READ_ONLY_COMPLETION_REVIEW
+WORKER_ROUTE: NOT_APPLICABLE (candidate Worker route STANDARD_JUDGED)
+JUDGE_MODE: FRESH_CONTEXT
+JUDGE_DEPTH: BOUNDED
+JUDGE_DEPTH_REASON: Initial focused independent reproduction of three isolated scientific artifacts. No security/authentication/authorization, DB migration/production write, payment/irreversible side effect, deploy/cutover, unisolatable shared-core change, missing due full-suite evidence, explicit full independent request, crash/recovery/fault/concurrency/transaction/durability/orphan acceptance trigger. Packet expressly forbids broad repository suite. Prior quota-terminated Judge is a failed capability retry, not source remediation.
+PACKET_JUDGE_DEPTH: NOT_APPLICABLE
+CANONICAL_REQUIRED_JUDGE_DEPTH: BOUNDED
+JUDGE_DEPTH_RECONCILIATION: MATCH
+MISSING_JUDGE_EVIDENCE: NONE for scientific acceptance of this exact staged tree.
+IMPLEMENTATION_MUTATION_REQUIRED: NO
+COVERED_ITEMS: G01,G02,G03,G04,G05,G06,G07,G08,G09,G10,G11,G12,G13,G15.
+MISSING_ITEMS: G14 postJudge lifecycle only; original unsourced per-e table provenance intentionally NOT_VERIFIED under direct human Continuation Delta.
+REUSED_EVIDENCE: No Worker test/lint/typecheck summary substituted for independent verification. Immutable committed generic theorem and sealed prior family authority reused as original scientific inputs, exactly pinned and independently checked.
+INVALIDATED_EVIDENCE: import_execution_audit (system Python3.9 AST parser does not accept Python3.13 type aliases), immediately repeated as import_execution_audit_313 using pinned Python3.13.8 and passed. Prior quota-terminated Judge partial report is NOT an acceptance verdict. Worker pre-final edits/failed Ruff-cache and wrong Pyright arguments are not reused as final evidence.
+ACTUAL_VERIFICATION_RUN_COUNTS: Focused pytest=1 (24 passed); Ruff check=1; Ruff format-check=1; strict Pyright=1; separate independent reduced-model/Route-B/family reproduction=1; runtime closure/generic A probe=1. Complete repository suite=0; solver calls=0; portfolio/support realization searches=0; earlier three-owner cap proof replays=0; commit/remote/PR/merge operations=0. Initial source AST audit=1 failed capability plus1 corrected audit. Git identity/projection/hash inspections are recorded individually in raw captures.
+
+AUTHORITATIVE INPUTS AND IDENTITY
+Packet: /Users/kelvin/.codex/attachments/246e88d5-537f-486d-9419-b80cc3dc3a03/貼上的文字.txt
+Packet SHA256: a686158084a724f9d91bbab4eca285008c9aad3b8ca837aa8b6cbbf78b101d07
+Skill: /Users/kelvin/.codex/skills/fable-judge/SKILL.md
+Canonical contract: /Users/kelvin/.codex/skills/fable-judge/references/judge-depth-contract.md
+Repository: kelvinhuang0327/MathStatisticalAnalysis
+Worktree: /Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_MIN_S2_TWO_TIED_OWNER_EXACT_CERT_R1
+Branch: codex/b649-min-s2-two-tied-owner-exact-cert-r1
+HEAD/BASE_HEAD: a022431765bad9d4fb7aa3bf3ef3ca361e20e5c0
+BASE_TREE: c58074e0b0e3d8aa0e5f52b694ce86e803fedc71
+EXACT_JUDGED_STAGED_TREE: d6e08905b87f1e8208ac7fe892f5b51278e1a9f7
+Git provenance applies. HEAD intentionally remains BASE. Full staged tree object exists; index equals it before/after verification; unstaged diff empty. Only3 additions, all safe mode100644 blobs. Metadata inventory before source content reads; no AGENTS.md in exact tree or worktree ancestors. No symlink/submodule/special-mode candidate content.
+Candidate source: src/lottolab/research/b649_min_s2_two_tied_owner_exact_cert_r1.py
+Candidate blob: 0f6624ae06582ce78776556328c931f233da6f9e
+Candidate SHA256: cedbb029d20367fb42aa3c9be24dea7d3553ac7a930af766db1045ef5a6239a5
+Test source: tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py
+Test blob: cf473839739db2f23bfcc2cebd581553ebd53d26
+Test SHA256: 7e998470b00ee536e0dc064814a58611c5a1d406b070b7ab96d398d47540fbd4
+Result: docs/research/matrix-native-results/b649-min-s2-two-tied-owner-exact-cert-r1-result.json
+Result blob: 23f60df4b5238d25dbc8b84106eb09f72a38df02
+Result SHA256: a56c20bcabb430e9d84b177e3ad4dc27c82b25a0befa516cbbd6046030c0a7cd
+
+EXPLICIT AUTHORITY RECONCILIATION
+The skill's generic instruction that committed HEAD/tree contain all candidate changes conflicts with this Packet's G13 exact staged-tree Judge followed by G14 commit after scientific acceptance. The explicit Packet/Owner ordering controls. Immutable exact tree object, matching index and working bytes form the sealed scientific candidate. No acceptance of BASE-only HEAD is implied. G14 is NOT_VERIFIED and must be checked by Worker after this scientific terminal verdict.
+The direct human Continuation Delta supplied in Judge dispatch supersedes §5G exact original-vector reproduction: Packet gave NO source/formula for [41,42,42,39,41,44,47,54]. Derive actual values from fixed graph model; report proof/coverage/differences; do not back-solve; retain adopted T<=259,238 terms,two-row integration; supplemental stronger result only. Missing original-vector provenance does not block remaining work. Source and result follow this decision explicitly.
+
+CRITERION / EVIDENCE / OBSERVED RESULT / DECISION
+G01 | identity,base_tree,index_vs_judged,changes,safe_inventory,closure_inventory,runtime_source_and_generic,final_identity; focused exact-source/tamper tests | BASE_HEAD/tree exact;3 expected blob/SHA identities exact; all27 loaded research helper pins exactly match base and result; generic source/result/HEAD/tree/blob/proof binding correct; frozen result and historical row hashes correct | PASS
+G02 | focused duplicate/missing-row tests; independent_model_route_family | sealed JSON duplicate keys rejected;4647 unique rows;A/B each exactly once; no row/cursor overlap | PASS
+G03 | read_split; runtime_source_and_generic; focused A-domain and all-term tests; independent Route-B | A model K14/Z6, d=(6^4,5^7,3^2,1,0^6). General committed theorem reused;423 configurations all A_NONNEGATIVE_P;maxF244;223 terms;full bound313218904<313263888;strict gain excluded | PASS
+G04 | direct proof inspection; focused independent shadow-budget/ablation tests; independent B enumeration | each of4 d6 vertices has12 shadow neighbours all in K; only11 non-L alternatives, so >=4 high-L incidences consume L's6. Thus shadow[L]<=1;L's15 pair incidences minus cross sum yield2|G[L]|<=17-sum_L sigma;8 labelled masks exhaust all legal internal cases | PASS
+G05 | direct identity/nonnegativity proof; focused9 independent graphs and all339 Havel-Hakimi core fixtures; independent B floors | degG=6+d,degH=13-d,edges93/97; Goodman298 independently via G edge-wedge,H inclusion-exclusion and degree-product identities;core/zero/mixed incidence exact; omitted corrections cardinalities>=0;floors valid | PASS
+G06 | read_split complete necessary EG/GR filters; focused independent_classes equality; independent_model_route_family | sigma ranges0..6-d sorted only within equal-d classes;zero zeta2..6;parity/sums/full integer EG and GR necessary only.339 core classes,2565 low states,1024 labelled F graphs;152731 compatible relaxed cases;all e0..7 present. Counts checked after enumeration, never loop limits | PASS
+G07 | focused independent integer terms and official-rounding tamper; separate independent integer ceil/floor reproduction | A223/B238 terms match rational helper and official R32 envelope exactly;B T259=(259,313353140,453,200,261387,5112464),K4floor453,S4floor261387;no floating tolerance | PASS
+G08 | independent sealed projection comparison; focused family/projection/integration-tamper tests | exactly A/B bounds changed,all4645 other values and canonical projection equal;input copy preserved | PASS
+G09 | independent cursor equality,digest,counts,each coarse-bound arithmetic; focused cursor tamper |197 identical unique IDs,partition/representative66544333333333332222,bound313394584,entire cursor JSON preserved;resolved/cursor disjoint | PASS
+G10 | independent max over all4647 rows plus cursor; source expected-value checks occur after full max |before313398144 tied A/B;after313397860 sole owner66665555554421100000;delta284;gap133972;1373 resolved open+197 cursor=1570 still-open | PASS
+G11 | focused source/tree/result-hash tamper,wrong profile,rounding,wrong/float update,cursor,truncated term list/wrong cap,duplicate/missing ledger/duplicate JSON tests;shadow ablation |adversarial invalid inputs rejected;removing shadow cap expands2565->2712 states and weakens minimum41->23 (<39), proving restriction exercised | PASS
+G12 | focused_pytest,ruff_check,ruff_format,strict_pyright,runtime_versions,diff_whitespace |24 passed in92.05s;Ruff All checks passed;2 files already formatted;strict Pyright0 errors/0 warnings/0 informations;diff --cached --check exit0;Python3.13.8,pytest9.1.1 | PASS
+G13 | this independent FRESH_CONTEXT BOUNDED report on sealed exact tree;raw command captures and final identity |required independent reproduction occurred;scientific terminal verdict VERIFIED_WITH_CAVEATS | PASS
+G14 | final_identity HEAD remainsBASE;Judge never commits |exactly1 local commit after scientific acceptance and commit-tree equality must be performed by Worker next;not part of this read-only scientific candidate verdict | NOT_VERIFIED
+G15 | independent exact inherited field equality;source/result inspection;runtime import closure probe |prior statuses/caveats/donor authority/pending snapshots preserved verbatim,including SELF_CHECK_ONLY and historical resource-conformance failure;full metadata digest not claimed;no global optimum,no B strict-gain exclusion,no T259 witness,no prior3 proof replay | PASS
+
+MATHEMATICAL ADJUDICATION
+A completeness: every legal structure has sigma_x in0..6-d_x because zeros cannot lie in triple support. A zero's6 G-neighbours with at mostz-1 within Z force zeta in max(0,7-z)..min(6,k). M,H[Z],residual core pair graph and G[Z] are simple graphical lists;the cross pair graph is bipartite graphical. EG/GR reject only impossible degree lists. Equal-d/core and zero permutations preserve all obligations/objective. For every legal realization,the exact general split identity T=F-P has P=sum of t(M),t(H[Z]),common-G-zero counts on M edges,and common-G-core counts on H[Z] edges;P>=0. All423 A configurations take general branch,so no special conditional lemma is invoked. Thus reused maxF244 applies to all legal A structures.
+B incidence: K15,Z5,L3. h=8-d+sigma;F=H[Z] has degreesa,zeta=2+a. r=sum sigma=sum zeta=10+2e;|M|=32+e. Core residual pair incidences=24-r=14-2e>=0 gives0<=e<=7. Sorted sigma is only a relabeling;all8 G[L] masks retained subject to proven pair/shadow budget. Independently all2^C(5,2)=1024 labelled F graphs retained before matching sum/necessary GR.
+B mixed identity: for M edge xy,the exact zero-apex count=5-sigma_x-sigma_y+|N_G(x) intersect N_G(y) intersect Z|. For F edge uv,the exact core-apex count=15-zeta_u-zeta_v+|N_G(u) intersect N_G(v) intersect K|. Summing produces t(H)=t(M)+t(F)+5|M|-sum sigma*h+15e-sum zeta*a+C_Z+C_K. Corrections are nonnegative cardinalities. For J=H[L],each retained correction is at leastmax(0,sigma_x+sigma_y-5). Ignoring other corrections and clamping whole core-core-zero count to0 remains a lower bound. Each zero edge contributes at leastmax(0,15-zeta_u-zeta_v);F triangles are counted exactly.
+B core floor: Q=N_M(v)^complement excludingv gives exact t_v=|M|-h_v-sum_Q h+|M[Q]|. Replacing Q degree sum by largest14-h_v other degrees and dropping nonnegative |M[Q]| gives a vertex lower bound. max_v t_v andceil(sum_v t_v/3) both bound t(M). For J edge xy,the common outside-L neighbours among12 vertices are >=max(0,h_x+h_y-deg_J(x)-deg_J(y)-12). Distinct J edges count distinct two-L triangles;adding t(J) counts three-L triangles without overlap. Taking maximum of the generic and L floors is valid.
+B computed per-e minima: [41,42,42,41,41,44,47,54]. Compatible cases per e:[616,6530,25395,44800,46540,23580,4790,480],total152731. The minimum41>=39 proves adopted t(H)>=39 andT<=259. Supplemental consequenceT<=257 is recorded but not used for the adopted Route-B/integration. Ablation minima:[41,36,24,23,24,31,36,39],states2712,cases175712,minimum23. These are relaxation minimizers,not legal support/portfolio witnesses.
+All route terms computed with exact integers/rationals. k4=max(0,ceil(excess/4));contained=min(k4,200);S4=max(112,448*contained+679*(k4-contained));bound=ceil(S1-S2+S3-4*S4/7). Independent reproduction verifies b*7>=numerator and(b-1)*7<numerator for every term. A bound313218904 excludes strict gain;B bound313353140 remains above incumbent313263888. Full-profile upper-envelope authority does not establish attainability or global optimum.
+
+FINDINGS
+No blocking or suspected implementation findings remain.
+C01 (non-material,confirmed disclosed input limitation): original Packet per-e table lacks a provided source/formula and is not exactly reproduced. criterion_or_rule: original§5G superseded by direct human Continuation Delta. evidence: independent_model_route_family and theorem result comparison. expected under current authority: model-derived table,explicit differences,no original reproduction claim,adopted259. observed: onlye3 differs (original-unsourced39,actual41);ORIGINAL_TABLE_REPRODUCED=false;sourceNOT_PROVIDED_NOT_VERIFIED;all new requirements met. disposition: caveat only,no mandatory source correction.
+C02 (non-material inherited authority limitations): old generic certificate status COMPLETE_SELF_CHECK_ONLY,prior pending result snapshots,and historical SCIENTIFIC_PASS_RESOURCE_CONFORMANCE_FAIL remain verbatim. Complete bounds projection is certified;no refreshed full-metadata digest,witness,cap attainment orGLOBAL_K20_OPTIMUM claimed. These distinctions are deliberately preserved. No source correction required.
+
+SCOPE, EXECUTION AND WRITE ACCOUNTING
+Judge reads exact3 artifacts plus exact allowlisted baseline helpers/results/config. No protected Fable research content opened;metadata tree listing only. No heavy solver,CP-SAT,portfolio enumeration,DB/runtime write,old certificate/ledger rewrite,Git remote operation,PR/merge,source/test/result/index/history edits,or user-owned thread messages. Source import probe found27 research helper modules exactly pinned;ORTools and earlier3 cap-proof modules absent from sys.modules. Every verification command stayed rooted in specified worktree with PYTHONDONTWRITEBYTECODE=1 for candidate imports,pytest -p no:cacheprovider,Ruff --no-cache. No cache deletion/cleanup or blanket claims about historic creator.
+Judge writes (all retained for durable evidence): /tmp/b649-two-owner-fresh-judge-retry-d6e08905.txt; /tmp/b649-two-owner-fresh-judge-retry-runner.py; /tmp/b649-two-owner-fresh-judge-retry-independent.py;exact command-capture JSON files in /tmp/b649-two-owner-fresh-judge-retry-captures-d6e08905/. All intermediate/failed outputs retained,none deleted. No judged-root temp output created.
+Worker accounting provided by root after reconstructing actual commandExecution/fileChange history;verbatim summary follows. Directly cross-checked against exact Git delta and declared_cache_accounting metadata,which shows Ruff/cache and taskpyc times before Judge start;pytest/testbytecode caches absent. The sole-writer handoff authorization/reply is supplied trusted context;Judge does not independently message user-owned chats.
+
+WORKER WRITE LEDGER VERBATIM
+Worker write ledger reconstructed from this root thread's actual commandExecution/fileChange history (read_thread all 4 turns; no truncation for mutation commands). Product writes ONLY these worktree-relative files: src/lottolab/research/b649_min_s2_two_tied_owner_exact_cert_r1.py (initial add, then integrated sole-writer handoff edits/typing/format fixes); tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py (initial add, then complete focused replacement/typing/format fixes); docs/research/matrix-native-results/b649-min-s2-two-tied-owner-exact-cert-r1-result.json (initial generator create, then digest-guarded regeneration from compute_result after handoff). All three RETAIN_AFTER_HANDOFF. No file deletions, no mkdir/temp output files explicitly created by Worker. Ruff initially used default cache and later --no-cache; current ignored .ruff_cache/ retained, mixed historical writer ownership (3.3 plus initial root Ruff checks); current src/lottolab/research/__pycache__/ retained from historical imports/3.3, not attributed solely to root; includes task's cpython-313.pyc. .pytest_cache and tests/unit/__pycache__ absent currently. Final focused checks PYTHONDONTWRITEBYTECODE=1 and -p no:cacheprovider, Ruff --no-cache. No cleanup/reset/stash/restore/archive performed. Stage operation after checks: git -c core.fsmonitor=false add -- EXACT3FILES; diff --cached --check; write-tree -> d6e08905. This writes task index and local Git objects only. HEAD unchanged and NO commit yet. No shared .venv installation/config/runtime or DB change, no old certificate or ledger rewrite, no remote/PR/merge. Only pure import computations for A/B; prior3 cap proofs not invoked. Original failed Judge wrote /tmp/b649-two-owner-fresh-judge-d6e08905.txt partial3463byte report, retained Judge-owned; Worker created NO /tmp files. Your retry /tmp outputs are Judge-owned and retained. Root only listed task-related temp inventory; no contents of unrelated temp/research dirs accessed. Exact original/shared worktree contents remain read-only. Other nonfilesystem app state: Owner-authorized message to 3.3, sole-writer reply received; queued open_in_codex target is verifier line308; goal status metadata. No blanket cleanup or claim of unknown cache creator. This summary is sufficient to append verbatim to your durable report as Worker execution accounting; Git final delta remains exactly3new files.
+
+REAL RAW CHECK SUMMARIES
+focused_pytest: stdout="........................ [100%]\n24 passed in 92.05s (0:01:32)";stderr empty;exit0;start2026-10-12T08:35:49.889800+00:00,end2026-10-12T08:37:36.697373+00:00.
+ruff_check: All checks passed!,exit0;ruff_format:2 files already formatted,exit0.
+strict_pyright:0 errors,0 warnings,0 informations,exit0;only informational available-update warning emitted,not acted upon.
+independent_model_route_family:INDEPENDENT_CHECK_PASS,exit0;actualB andRoute/family values above.
+runtime_source_and_generic:SOURCE_CLOSURE_PROBE_PASS,exit0;candidate runtime source exactworktree;generic A exact record.
+final_identity:FINAL_IDENTITY_PASS,exit0;index stilljudgedtree,workingbytes unchanged,HEAD BASE;diff_whitespace exit0.
+
+NEXT ACTION
+Worker may complete G14: create exactly one authorized local commit after this scientific acceptance,then verify its tree equals d6e08905b87f1e8208ac7fe892f5b51278e1a9f7. Do not alter sealed3 artifacts to update lifecycle labels. Keep worktree/certificates/caches per RETAIN_AFTER_HANDOFF;no publication/remote action authorized or performed. ReportG14 outcome separately. Scientific authority can end with certified two-owner authority;next family research remains separate. No correction/remediation cycle required.
+
+COMMAND EVIDENCE MANIFEST
+Each capture has exact argv,cwd,UTC start/end,elapsed seconds,exit code,full stdout and stderr. There are 26 captures. Metadata listing can be large;no output was omitted from saved capture even where tool display truncated it.
+[
+  {
+    "capture": "/tmp/b649-two-owner-fresh-judge-retry-captures-d6e08905/base_tree.json",
+    "capture_sha256": "9715625dc242807a1f09d2382979189c862a955eb94512f42e03521505099abe",
+    "command_argv": [
+      "git",
+      "rev-parse",
+      "a022431765bad9d4fb7aa3bf3ef3ca361e20e5c0^{tree}"
+    ],
+    "cwd": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_MIN_S2_TWO_TIED_OWNER_EXACT_CERT_R1",
+    "start_utc": "2026-10-12T08:33:25.098237+00:00",
+    "end_utc": "2026-10-12T08:33:25.131745+00:00",
+    "elapsed_seconds": 0.033109292000000005,
+    "exit_code": 0
+  },
+  {
+    "capture": "/tmp/b649-two-owner-fresh-judge-retry-captures-d6e08905/changes.json",
+    "capture_sha256": "bdc1e4225bf0fbcc0a2a9e03dd2eb1cf2c3b2c064dce711aebe4c4b7281aa49f",
+    "command_argv": [
+      "git",
+      "diff",
+      "--raw",
+      "a022431765bad9d4fb7aa3bf3ef3ca361e20e5c0",
+      "d6e08905b87f1e8208ac7fe892f5b51278e1a9f7"
+    ],
+    "cwd": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_MIN_S2_TWO_TIED_OWNER_EXACT_CERT_R1",
+    "start_utc": "2026-10-12T08:33:25.286127+00:00",
+    "end_utc": "2026-10-12T08:33:25.316584+00:00",
+    "elapsed_seconds": 0.030310416000000007,
+    "exit_code": 0
+  },
+  {
+    "capture": "/tmp/b649-two-owner-fresh-judge-retry-captures-d6e08905/closure_inventory.json",
+    "capture_sha256": "4de656431e6d32ac69ed2bd33b604f86a0b06f98541cc983c62fe39c87960db7",
+    "command_argv": [
+      "python3",
+      "-c",
+      "import hashlib,json,pathlib,stat; root=pathlib.Path.cwd(); r=json.loads((root/\"docs/research/matrix-native-results/b649-min-s2-two-tied-owner-exact-cert-r1-result.json\").read_text()); pins=r[\"PROVENANCE\"][\"MODULE_SHA256\"]; listing=json.loads(pathlib.Path(\"/tmp/b649-two-owner-fresh-judge-retry-captures-d6e08905/frozen_tree.json\").read_text())[\"stdout\"].splitlines(); metadata={line.split(\"\\t\",1)[1]:line.split(\"\\t\",1)[0] for line in listing}; paths=list(pins)+[\"pyproject.toml\",\"src/lottolab/__init__.py\",r[\"PROVENANCE\"][\"GENERIC_THEOREM\"][\"RESULT\"],r[\"FROZEN_RESULT\"],r[\"HISTORICAL_CURRENT_CAP_ROWS\"]]; print(\"SAFE_ALLOWLIST_METADATA\"); [(print(p, metadata.get(p),oct((root/p).lstat().st_mode)),None if stat.S_ISREG((root/p).lstat().st_mode) and metadata[p].startswith(\"100644 blob \") else (_ for _ in ()).throw(AssertionError(p))) for p in paths]; print(\"IMPORT_SOURCE_SHA256_MATCHES\"); [(print(p,hashlib.sha256((root/p).read_bytes()).hexdigest(),hashlib.sha256((root/p).read_bytes()).hexdigest()==v),None if hashlib.sha256((root/p).read_bytes()).hexdigest()==v else (_ for _ in ()).throw(AssertionError(p))) for p,v in pins.items()]; print(\"PIN_COUNT\",len(pins))"
+    ],
+    "cwd": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_MIN_S2_TWO_TIED_OWNER_EXACT_CERT_R1",
+    "start_utc": "2026-10-12T08:35:08.952464+00:00",
+    "end_utc": "2026-10-12T08:35:09.070878+00:00",
+    "elapsed_seconds": 0.11787900000000001,
+    "exit_code": 0
+  },
+  {
+    "capture": "/tmp/b649-two-owner-fresh-judge-retry-captures-d6e08905/declared_cache_accounting.json",
+    "capture_sha256": "e08dbad14e949a29c05629d2555af689a22d7053e79c8de49460c1f4e989567f",
+    "command_argv": [
+      "python3",
+      "-c",
+      "import datetime,json,os,pathlib,stat; root=pathlib.Path.cwd(); paths=[\".ruff_cache\",\"src/lottolab/research/__pycache__\",\".pytest_cache\",\"tests/unit/__pycache__\"]; out=[]; [out.append({\"path\":p,\"exists\":(root/p).exists(),\"kind\":stat.S_IFMT((root/p).lstat().st_mode) if (root/p).exists() else None,\"mtime_utc\":datetime.datetime.fromtimestamp((root/p).lstat().st_mtime,datetime.timezone.utc).isoformat() if (root/p).exists() else None}) for p in paths]; p=root/\"src/lottolab/research/__pycache__/b649_min_s2_two_tied_owner_exact_cert_r1.cpython-313.pyc\"; out.append({\"path\":str(p.relative_to(root)),\"exists\":p.exists(),\"mtime_utc\":datetime.datetime.fromtimestamp(p.lstat().st_mtime,datetime.timezone.utc).isoformat() if p.exists() else None,\"size\":p.lstat().st_size if p.exists() else None}); print(json.dumps(out,indent=2)); assert not (root/\".pytest_cache\").exists() and not (root/\"tests/unit/__pycache__\").exists(); print(\"DECLARED_CACHE_ACCOUNTING_MATCH_NO_CONTENT_READ\")"
+    ],
+    "cwd": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_MIN_S2_TWO_TIED_OWNER_EXACT_CERT_R1",
+    "start_utc": "2026-10-12T08:43:30.941962+00:00",
+    "end_utc": "2026-10-12T08:43:31.022013+00:00",
+    "elapsed_seconds": 0.079893542,
+    "exit_code": 0
+  },
+  {
+    "capture": "/tmp/b649-two-owner-fresh-judge-retry-captures-d6e08905/diff_whitespace.json",
+    "capture_sha256": "8f7fbe62d82da617c7b9b2a39234bb1efac17d3d80d2ab26e813cdb237cd56f4",
+    "command_argv": [
+      "git",
+      "-c",
+      "core.fsmonitor=false",
+      "diff",
+      "--cached",
+      "--check"
+    ],
+    "cwd": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_MIN_S2_TWO_TIED_OWNER_EXACT_CERT_R1",
+    "start_utc": "2026-10-12T08:38:54.142363+00:00",
+    "end_utc": "2026-10-12T08:39:18.056500+00:00",
+    "elapsed_seconds": 23.91416,
+    "exit_code": 0
+  },
+  {
+    "capture": "/tmp/b649-two-owner-fresh-judge-retry-captures-d6e08905/final_identity.json",
+    "capture_sha256": "5ee8e4e6f55edb1b6dcf30a8058e9b1b32c151c9ad322934ddf8c46dc0d5f9dc",
+    "command_argv": [
+      "python3",
+      "-c",
+      "import hashlib,json,pathlib,subprocess; root=pathlib.Path.cwd(); cmds=[[\"git\",\"--no-optional-locks\",\"-c\",\"core.fsmonitor=false\",\"diff\",\"--cached\",\"--exit-code\",\"d6e08905b87f1e8208ac7fe892f5b51278e1a9f7\",\"--\"],[\"git\",\"--no-optional-locks\",\"-c\",\"core.fsmonitor=false\",\"diff\",\"--exit-code\",\"--\"],[\"git\",\"--no-optional-locks\",\"-c\",\"core.fsmonitor=false\",\"status\",\"--porcelain=v2\",\"--branch\"]]; [(print(\"COMMAND\",cmd),subprocess.run(cmd,check=True)) for cmd in cmds]; expected={\"src/lottolab/research/b649_min_s2_two_tied_owner_exact_cert_r1.py\":\"cedbb029d20367fb42aa3c9be24dea7d3553ac7a930af766db1045ef5a6239a5\",\"tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py\":\"7e998470b00ee536e0dc064814a58611c5a1d406b070b7ab96d398d47540fbd4\",\"docs/research/matrix-native-results/b649-min-s2-two-tied-owner-exact-cert-r1-result.json\":\"a56c20bcabb430e9d84b177e3ad4dc27c82b25a0befa516cbbd6046030c0a7cd\"}; [(print(\"FINAL_SHA256\",p,hashlib.sha256((root/p).read_bytes()).hexdigest()),None if hashlib.sha256((root/p).read_bytes()).hexdigest()==v else (_ for _ in ()).throw(AssertionError(p))) for p,v in expected.items()]; print(\"FINAL_IDENTITY_PASS\")"
+    ],
+    "cwd": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_MIN_S2_TWO_TIED_OWNER_EXACT_CERT_R1",
+    "start_utc": "2026-10-12T08:41:28.464528+00:00",
+    "end_utc": "2026-10-12T08:41:40.382539+00:00",
+    "elapsed_seconds": 11.918049417,
+    "exit_code": 0
+  },
+  {
+    "capture": "/tmp/b649-two-owner-fresh-judge-retry-captures-d6e08905/focused_pytest.json",
+    "capture_sha256": "8d10876c8209c4967ea780fc5b83c4f3339369a7c3c16043724afed50812a2ec",
+    "command_argv": [
+      "env",
+      "PYTHONPATH=src",
+      "PYTHONDONTWRITEBYTECODE=1",
+      "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/python",
+      "-m",
+      "pytest",
+      "-q",
+      "-p",
+      "no:cacheprovider",
+      "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py"
+    ],
+    "cwd": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_MIN_S2_TWO_TIED_OWNER_EXACT_CERT_R1",
+    "start_utc": "2026-10-12T08:35:49.889800+00:00",
+    "end_utc": "2026-10-12T08:37:36.697373+00:00",
+    "elapsed_seconds": 106.808223208,
+    "exit_code": 0
+  },
+  {
+    "capture": "/tmp/b649-two-owner-fresh-judge-retry-captures-d6e08905/frozen_tree.json",
+    "capture_sha256": "8117151406b3f2a5c248d0a3db01a5e0ece0fee4e45a333912a93dfc2f77ec3a",
+    "command_argv": [
+      "git",
+      "ls-tree",
+      "-r",
+      "d6e08905b87f1e8208ac7fe892f5b51278e1a9f7"
+    ],
+    "cwd": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_MIN_S2_TWO_TIED_OWNER_EXACT_CERT_R1",
+    "start_utc": "2026-10-12T08:33:23.556263+00:00",
+    "end_utc": "2026-10-12T08:33:23.631998+00:00",
+    "elapsed_seconds": 0.075731833,
+    "exit_code": 0
+  },
+  {
+    "capture": "/tmp/b649-two-owner-fresh-judge-retry-captures-d6e08905/identity.json",
+    "capture_sha256": "8bdf6504e977ac029cb7dca6023f3c791d78680cf76a66688f740aa223345f00",
+    "command_argv": [
+      "git",
+      "status",
+      "--porcelain=v2",
+      "--branch"
+    ],
+    "cwd": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_MIN_S2_TWO_TIED_OWNER_EXACT_CERT_R1",
+    "start_utc": "2026-10-12T08:33:04.903059+00:00",
+    "end_utc": "2026-10-12T08:33:06.191064+00:00",
+    "elapsed_seconds": 1.288061541,
+    "exit_code": 0
+  },
+  {
+    "capture": "/tmp/b649-two-owner-fresh-judge-retry-captures-d6e08905/import_execution_audit.json",
+    "capture_sha256": "88e1ba40b74961961642fdd7ffc980cadd2818ea8107b67943377c3cec071df5",
+    "command_argv": [
+      "python3",
+      "-c",
+      "import ast,json,pathlib; root=pathlib.Path.cwd(); r=json.loads((root/\"docs/research/matrix-native-results/b649-min-s2-two-tied-owner-exact-cert-r1-result.json\").read_text()); paths=list(r[\"PROVENANCE\"][\"MODULE_SHA256\"]); print(\"TOP_LEVEL_AUDIT\"); [(print(\"PATH\",p),[print(type(n).__name__, ast.unparse(n)[:1800]) for n in ast.parse((root/p).read_text()).body if not isinstance(n,(ast.FunctionDef,ast.AsyncFunctionDef,ast.ClassDef)) and not (isinstance(n,ast.Expr) and isinstance(n.value,ast.Constant))]) for p in paths]; p=root/\"src/lottolab/research/b649_min_s2_three_tied_owner_combined_authority_r1.py\"; text=p.read_text(); print(\"PRIOR_HELPER_HEADER\",text[:text.index(\"def commit_identity\")]); select={\"b649_k20_min_s2_route_b_current_owner_refinement_r32.py\":[\"route_b_envelope\"],\"b649_k20_min_s2_nb_w808_frontier_r1.py\":[\"exact_route_b_terms\"]}; [(print(\"FORMULA\",p,[ast.get_source_segment((root/p).read_text(),n) for n in ast.parse((root/p).read_text()).body if isinstance(n,ast.FunctionDef) and n.name in select.get(pathlib.Path(p).name,[])])) for p in paths if pathlib.Path(p).name in select]"
+    ],
+    "cwd": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_MIN_S2_TWO_TIED_OWNER_EXACT_CERT_R1",
+    "start_utc": "2026-10-12T08:35:49.522681+00:00",
+    "end_utc": "2026-10-12T08:35:49.746236+00:00",
+    "elapsed_seconds": 0.22338029199999998,
+    "exit_code": 1
+  },
+  {
+    "capture": "/tmp/b649-two-owner-fresh-judge-retry-captures-d6e08905/import_execution_audit_313.json",
+    "capture_sha256": "c7d6728db27f310fd276dd0a9106ab9a66ce340bed6efede02c4a832d79f50b1",
+    "command_argv": [
+      "env",
+      "PYTHONDONTWRITEBYTECODE=1",
+      "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/python",
+      "-c",
+      "import ast,json,pathlib; root=pathlib.Path.cwd(); r=json.loads((root/\"docs/research/matrix-native-results/b649-min-s2-two-tied-owner-exact-cert-r1-result.json\").read_text()); paths=list(r[\"PROVENANCE\"][\"MODULE_SHA256\"]); print(\"TOP_LEVEL_CALL_AUDIT\"); [(print(\"PATH\",p),[print(type(n).__name__,ast.unparse(n)[:1500]) for n in ast.parse((root/p).read_text()).body if not isinstance(n,(ast.FunctionDef,ast.AsyncFunctionDef,ast.ClassDef,ast.Import,ast.ImportFrom)) and any(isinstance(x,ast.Call) for x in ast.walk(n))]) for p in paths]; p=root/\"src/lottolab/research/b649_min_s2_three_tied_owner_combined_authority_r1.py\"; text=p.read_text(); print(\"PRIOR_HELPER_HEADER\",text[:text.index(\"def commit_identity\")]); select={\"b649_k20_min_s2_route_b_current_owner_refinement_r32.py\":[\"route_b_envelope\"],\"b649_k20_min_s2_nb_w808_frontier_r1.py\":[\"exact_route_b_terms\"]}; [(print(\"FORMULA\",p,[ast.get_source_segment((root/p).read_text(),n) for n in ast.parse((root/p).read_text()).body if isinstance(n,ast.FunctionDef) and n.name in select.get(pathlib.Path(p).name,[])])) for p in paths if pathlib.Path(p).name in select]"
+    ],
+    "cwd": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_MIN_S2_TWO_TIED_OWNER_EXACT_CERT_R1",
+    "start_utc": "2026-10-12T08:36:30.698720+00:00",
+    "end_utc": "2026-10-12T08:36:35.781767+00:00",
+    "elapsed_seconds": 5.0831402080000005,
+    "exit_code": 0
+  },
+  {
+    "capture": "/tmp/b649-two-owner-fresh-judge-retry-captures-d6e08905/independent_model_route_family.json",
+    "capture_sha256": "f4a3d0e1acb265aef6ef7fb6bc83182729792983fdd91679071a22b0d8b85b76",
+    "command_argv": [
+      "env",
+      "PYTHONDONTWRITEBYTECODE=1",
+      "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/python",
+      "/tmp/b649-two-owner-fresh-judge-retry-independent.py"
+    ],
+    "cwd": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_MIN_S2_TWO_TIED_OWNER_EXACT_CERT_R1",
+    "start_utc": "2026-10-12T08:38:45.734120+00:00",
+    "end_utc": "2026-10-12T08:38:46.258340+00:00",
+    "elapsed_seconds": 0.524230833,
+    "exit_code": 0
+  },
+  {
+    "capture": "/tmp/b649-two-owner-fresh-judge-retry-captures-d6e08905/index_vs_judged.json",
+    "capture_sha256": "68162aa8e07e8b2fa4f311681431e76239926d4737acb02818bc14cb561cab8e",
+    "command_argv": [
+      "git",
+      "diff",
+      "--cached",
+      "--exit-code",
+      "d6e08905b87f1e8208ac7fe892f5b51278e1a9f7",
+      "--"
+    ],
+    "cwd": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_MIN_S2_TWO_TIED_OWNER_EXACT_CERT_R1",
+    "start_utc": "2026-10-12T08:33:23.898719+00:00",
+    "end_utc": "2026-10-12T08:33:24.980597+00:00",
+    "elapsed_seconds": 1.0816230420000001,
+    "exit_code": 0
+  },
+  {
+    "capture": "/tmp/b649-two-owner-fresh-judge-retry-captures-d6e08905/instruction_identity.json",
+    "capture_sha256": "d34808c506de0cb4749a4b8498f1609cdddffd4d189ca5c7e25df95df9560dc9",
+    "command_argv": [
+      "python3",
+      "-c",
+      "import hashlib,pathlib; paths=[\"/Users/kelvin/.codex/skills/fable-judge/SKILL.md\",\"/Users/kelvin/.codex/skills/fable-judge/references/judge-depth-contract.md\",\"/Users/kelvin/.codex/attachments/246e88d5-537f-486d-9419-b80cc3dc3a03/貼上的文字.txt\",\"/tmp/b649-two-owner-fresh-judge-retry-runner.py\",\"/tmp/b649-two-owner-fresh-judge-retry-independent.py\"]; [(print(p,\"SHA256\",hashlib.sha256(pathlib.Path(p).read_bytes()).hexdigest(),\"BYTES\",pathlib.Path(p).stat().st_size)) for p in paths]"
+    ],
+    "cwd": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_MIN_S2_TWO_TIED_OWNER_EXACT_CERT_R1",
+    "start_utc": "2026-10-12T08:44:28.745268+00:00",
+    "end_utc": "2026-10-12T08:44:28.825276+00:00",
+    "elapsed_seconds": 0.07987483299999999,
+    "exit_code": 0
+  },
+  {
+    "capture": "/tmp/b649-two-owner-fresh-judge-retry-captures-d6e08905/read_config.json",
+    "capture_sha256": "0d813c0988fcddb30f03752982f014d42d9dcbf63ba8aa58c8f1da91226239b5",
+    "command_argv": [
+      "cat",
+      "pyproject.toml",
+      "src/lottolab/__init__.py"
+    ],
+    "cwd": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_MIN_S2_TWO_TIED_OWNER_EXACT_CERT_R1",
+    "start_utc": "2026-10-12T08:35:23.102859+00:00",
+    "end_utc": "2026-10-12T08:35:23.142355+00:00",
+    "elapsed_seconds": 0.03883025000000001,
+    "exit_code": 0
+  },
+  {
+    "capture": "/tmp/b649-two-owner-fresh-judge-retry-captures-d6e08905/read_prior.json",
+    "capture_sha256": "5e2fb5a7a8eac401ee0967a24d24131a3284909470a58c10563f0c87f9174f0a",
+    "command_argv": [
+      "cat",
+      "src/lottolab/research/b649_min_s2_three_tied_owner_combined_authority_r1.py"
+    ],
+    "cwd": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_MIN_S2_TWO_TIED_OWNER_EXACT_CERT_R1",
+    "start_utc": "2026-10-12T08:35:23.103514+00:00",
+    "end_utc": "2026-10-12T08:35:23.121038+00:00",
+    "elapsed_seconds": 0.01736895799999999,
+    "exit_code": 0
+  },
+  {
+    "capture": "/tmp/b649-two-owner-fresh-judge-retry-captures-d6e08905/read_source.json",
+    "capture_sha256": "a8ad155c350e322fdf288c8ed00e44f9cc017dd02e4b5e2f41ff3b6427cd3682",
+    "command_argv": [
+      "cat",
+      "src/lottolab/research/b649_min_s2_two_tied_owner_exact_cert_r1.py"
+    ],
+    "cwd": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_MIN_S2_TWO_TIED_OWNER_EXACT_CERT_R1",
+    "start_utc": "2026-10-12T08:33:43.639116+00:00",
+    "end_utc": "2026-10-12T08:33:43.651521+00:00",
+    "elapsed_seconds": 0.012384958000000001,
+    "exit_code": 0
+  },
+  {
+    "capture": "/tmp/b649-two-owner-fresh-judge-retry-captures-d6e08905/read_split.json",
+    "capture_sha256": "1a535e52e8983e089c2a7a5c1f4cc7ae104876e05555c72a6a8fdff573bb6b1f",
+    "command_argv": [
+      "cat",
+      "src/lottolab/research/b649_k20_min_s2_topw12_split_cap_certificate_r1.py"
+    ],
+    "cwd": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_MIN_S2_TWO_TIED_OWNER_EXACT_CERT_R1",
+    "start_utc": "2026-10-12T08:35:23.101797+00:00",
+    "end_utc": "2026-10-12T08:35:23.121121+00:00",
+    "elapsed_seconds": 0.018854916,
+    "exit_code": 0
+  },
+  {
+    "capture": "/tmp/b649-two-owner-fresh-judge-retry-captures-d6e08905/read_tests.json",
+    "capture_sha256": "b89ff5b3e23ce43595ddc50fb69815bfb585a4620f48efde021cb09a4eb7ecd8",
+    "command_argv": [
+      "cat",
+      "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py"
+    ],
+    "cwd": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_MIN_S2_TWO_TIED_OWNER_EXACT_CERT_R1",
+    "start_utc": "2026-10-12T08:34:11.983715+00:00",
+    "end_utc": "2026-10-12T08:34:11.991587+00:00",
+    "elapsed_seconds": 0.007884625000000006,
+    "exit_code": 0
+  },
+  {
+    "capture": "/tmp/b649-two-owner-fresh-judge-retry-captures-d6e08905/result_summary.json",
+    "capture_sha256": "342cc16ecfc1bb4ab105fa21b6810c8f0da0d3c1cf54cbec4b9406a27386b74d",
+    "command_argv": [
+      "python3",
+      "-c",
+      "import json,pathlib; r=json.loads(pathlib.Path(\"docs/research/matrix-native-results/b649-min-s2-two-tied-owner-exact-cert-r1-result.json\").read_text()); omit={\"PROOF\",\"RESOLVED_ROW_BOUNDS\",\"ROUTE_B_ENVELOPES\",\"CURSOR\"}; print(json.dumps({k:v for k,v in r.items() if k not in omit},ensure_ascii=False,indent=2)); c=r[\"CURSOR\"]; print(\"CURSOR_SUMMARY\",json.dumps({k:v for k,v in c.items() if k not in {\"PROFILE_IDS\",\"COARSE_BOUND_PROJECTION\"}},ensure_ascii=False,indent=2))"
+    ],
+    "cwd": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_MIN_S2_TWO_TIED_OWNER_EXACT_CERT_R1",
+    "start_utc": "2026-10-12T08:34:12.096164+00:00",
+    "end_utc": "2026-10-12T08:34:12.192777+00:00",
+    "elapsed_seconds": 0.096778958,
+    "exit_code": 0
+  },
+  {
+    "capture": "/tmp/b649-two-owner-fresh-judge-retry-captures-d6e08905/ruff_check.json",
+    "capture_sha256": "c96aed42c8586467d400847a1b02dca424b78b748c5b1cabe60def79377f8f78",
+    "command_argv": [
+      "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/ruff",
+      "check",
+      "--no-cache",
+      "src/lottolab/research/b649_min_s2_two_tied_owner_exact_cert_r1.py",
+      "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py"
+    ],
+    "cwd": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_MIN_S2_TWO_TIED_OWNER_EXACT_CERT_R1",
+    "start_utc": "2026-10-12T08:36:30.702088+00:00",
+    "end_utc": "2026-10-12T08:36:34.740692+00:00",
+    "elapsed_seconds": 4.047038166,
+    "exit_code": 0
+  },
+  {
+    "capture": "/tmp/b649-two-owner-fresh-judge-retry-captures-d6e08905/ruff_format.json",
+    "capture_sha256": "a9825cabe1ff34e3e6952c20593af4622930ced7bd7958bfe31be0dff2f876a8",
+    "command_argv": [
+      "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/ruff",
+      "format",
+      "--check",
+      "--no-cache",
+      "src/lottolab/research/b649_min_s2_two_tied_owner_exact_cert_r1.py",
+      "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py"
+    ],
+    "cwd": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_MIN_S2_TWO_TIED_OWNER_EXACT_CERT_R1",
+    "start_utc": "2026-10-12T08:36:30.714845+00:00",
+    "end_utc": "2026-10-12T08:36:34.679665+00:00",
+    "elapsed_seconds": 3.972994458,
+    "exit_code": 0
+  },
+  {
+    "capture": "/tmp/b649-two-owner-fresh-judge-retry-captures-d6e08905/runtime_source_and_generic.json",
+    "capture_sha256": "f6cd28209dfe4790421720c48cd83191cfb7fc9dd43b67bd2120bdcf02b6b4e5",
+    "command_argv": [
+      "env",
+      "PYTHONPATH=src",
+      "PYTHONDONTWRITEBYTECODE=1",
+      "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/python",
+      "-c",
+      "import ast,hashlib,json,pathlib,sys; from lottolab.research import b649_min_s2_two_tied_owner_exact_cert_r1 as c; r=json.loads(c.RESULT_PATH.read_bytes()); loaded={str(pathlib.Path(m.__file__).resolve().relative_to(c.ROOT)):hashlib.sha256(pathlib.Path(m.__file__).read_bytes()).hexdigest() for n,m in sys.modules.copy().items() if n.startswith(\"lottolab.research.\") and n!=c.__name__ and m.__file__}; assert loaded==r[\"PROVENANCE\"][\"MODULE_SHA256\"]; print(\"CANDIDATE_RUNTIME_SOURCE\",c.__file__); print(\"LOADED_RESEARCH_MODULES\",len(loaded)); print(\"CLOSURE_PINS_COMPLETE_AND_EXACT\",True); assert not any(n.startswith(\"ortools\") for n in sys.modules); assert not any(\"tied_owner_a_goodman241\" in n or \"tied_owners_bc_goodman\" in n for n in sys.modules); print(\"ORTOOLS_OR_EARLIER_THREE_CAP_PROOF_MODULES_IMPORTED\",False); generic=r[\"PROVENANCE\"][\"GENERIC_THEOREM\"]; g=json.loads(c.blob(c.GENERIC_HEAD,generic[\"RESULT\"],generic[\"RESULT_SHA256\"])); source=c.blob(c.GENERIC_HEAD,generic[\"SOURCE\"],generic[\"SOURCE_SHA256\"]); assert ast.get_docstring(ast.parse(source),clean=False)==g[\"PROOF\"]; a=c.theorem_a(); assert a==r[\"THEOREMS\"][c.PROFILE_A]; print(\"A_GENERIC_EXACT_ADOPTION\",json.dumps({k:a[k] for k in [\"PROFILE_ID\",\"D\",\"DEGREE_CONFIGURATION_COUNT\",\"BRANCH_COUNTS\",\"TRIANGLE_CAP\",\"MAXIMIZER\",\"IMPLEMENTATION\"]},sort_keys=True)); print(\"GENERIC_PROVENANCE\",json.dumps(generic,sort_keys=True)); print(\"AUTHORITY_STATUS\",r[\"INHERITED_PENDING_TASK_STATUS_VERBATIM\"],r[\"INHERITED_CAVEAT_POLICY_VERBATIM\"]); print(\"SOURCE_CLOSURE_PROBE_PASS\")"
+    ],
+    "cwd": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_MIN_S2_TWO_TIED_OWNER_EXACT_CERT_R1",
+    "start_utc": "2026-10-12T08:40:18.676792+00:00",
+    "end_utc": "2026-10-12T08:41:00.966943+00:00",
+    "elapsed_seconds": 42.291158458999995,
+    "exit_code": 0
+  },
+  {
+    "capture": "/tmp/b649-two-owner-fresh-judge-retry-captures-d6e08905/runtime_versions.json",
+    "capture_sha256": "c663f48d15b3294f0c58ce7e6c536e8adbe4b8f52470944b462779faa8d8e95a",
+    "command_argv": [
+      "env",
+      "PYTHONDONTWRITEBYTECODE=1",
+      "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/python",
+      "-c",
+      "import sys,pytest; print(sys.version); print(\"EXECUTABLE\",sys.executable); print(\"PYTEST\",pytest.__version__)"
+    ],
+    "cwd": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_MIN_S2_TWO_TIED_OWNER_EXACT_CERT_R1",
+    "start_utc": "2026-10-12T08:36:30.705683+00:00",
+    "end_utc": "2026-10-12T08:36:36.025168+00:00",
+    "elapsed_seconds": 5.319259542,
+    "exit_code": 0
+  },
+  {
+    "capture": "/tmp/b649-two-owner-fresh-judge-retry-captures-d6e08905/safe_inventory.json",
+    "capture_sha256": "36ffdf0533732bdcce1631b945f5f8b367fd5a7d5050d0745ee006a3963921e2",
+    "command_argv": [
+      "python3",
+      "-c",
+      "import hashlib,json,pathlib,stat; root=pathlib.Path.cwd(); tree=json.loads(pathlib.Path(\"/tmp/b649-two-owner-fresh-judge-retry-captures-d6e08905/frozen_tree.json\").read_text())[\"stdout\"].splitlines(); print(\"AGENTS_TREE_ENTRIES\",[line for line in tree if line.endswith(\"/AGENTS.md\") or line.endswith(\"\\tAGENTS.md\")]); paths=[\"src/lottolab/research/b649_min_s2_two_tied_owner_exact_cert_r1.py\",\"tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py\",\"docs/research/matrix-native-results/b649-min-s2-two-tied-owner-exact-cert-r1-result.json\"]; expected=[\"cedbb029d20367fb42aa3c9be24dea7d3553ac7a930af766db1045ef5a6239a5\",\"7e998470b00ee536e0dc064814a58611c5a1d406b070b7ab96d398d47540fbd4\",\"a56c20bcabb430e9d84b177e3ad4dc27c82b25a0befa516cbbd6046030c0a7cd\"]; [(print(p,\"mode\",oct((root/p).lstat().st_mode),\"size\",(root/p).stat().st_size,\"sha256\",hashlib.sha256((root/p).read_bytes()).hexdigest()), print(\"EXPECTED_SHA_MATCH\",hashlib.sha256((root/p).read_bytes()).hexdigest()==e)) for p,e in zip(paths,expected) if stat.S_ISREG((root/p).lstat().st_mode)]; print(\"FILESYSTEM_ANCESTOR_AGENTS\",[str(q/\"AGENTS.md\") for q in [root,*root.parents] if (q/\"AGENTS.md\").exists()])"
+    ],
+    "cwd": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_MIN_S2_TWO_TIED_OWNER_EXACT_CERT_R1",
+    "start_utc": "2026-10-12T08:33:43.440298+00:00",
+    "end_utc": "2026-10-12T08:33:43.539150+00:00",
+    "elapsed_seconds": 0.09871041700000002,
+    "exit_code": 0
+  },
+  {
+    "capture": "/tmp/b649-two-owner-fresh-judge-retry-captures-d6e08905/strict_pyright.json",
+    "capture_sha256": "5499a01a24cbad3110b7927d91ad617a6f8c53f979af9196b8c3a412797db50e",
+    "command_argv": [
+      "env",
+      "PYTHONDONTWRITEBYTECODE=1",
+      "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/pyright",
+      "--pythonversion",
+      "3.13",
+      "--venvpath",
+      "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis",
+      "src/lottolab/research/b649_min_s2_two_tied_owner_exact_cert_r1.py",
+      "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py"
+    ],
+    "cwd": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_MIN_S2_TWO_TIED_OWNER_EXACT_CERT_R1",
+    "start_utc": "2026-10-12T08:36:30.710589+00:00",
+    "end_utc": "2026-10-12T08:36:37.905198+00:00",
+    "elapsed_seconds": 7.194525625,
+    "exit_code": 0
+  }
+]
+
+REPORT_SEALED_AT_UTC: 2026-10-12T08:47:06.262623+00:00
+TERMINAL_VERDICT: VERIFIED_WITH_CAVEATS

@@ -13,6 +13,7 @@ import StatusBadge from '../../components/StatusBadge.vue'
 import BestReplayHorizonComparison from './BestReplayHorizonComparison.vue'
 import BestReplayMatrix from './BestReplayMatrix.vue'
 import BestReplayOneToFiveOverview from './BestReplayOneToFiveOverview.vue'
+import { compareNullableNumbers } from './sorting'
 import {
   ALL_TICKET_COUNTS,
   B649_AVAILABLE_TICKET_COUNTS,
@@ -193,7 +194,7 @@ async function loadData(): Promise<void> {
           createUnavailableItem(
             gameCode,
             `no_canonical_data_${gameCode.toLowerCase()}_t${count}`,
-            'v1.0',
+            null,
             'unsupported_dimension',
             count,
             selectedHorizon.value,
@@ -249,7 +250,7 @@ const oneToFiveOverviewItems = computed<Record<PrimaryTicketCount, BestReplayIte
         createUnavailableItem(
           game,
           `no_canonical_data_${game.toLowerCase()}_t${count}`,
-          'v1.0',
+          null,
           'unsupported_dimension',
           count,
           selectedHorizon.value,
@@ -289,19 +290,13 @@ const filteredItems = computed<BestReplayItem[]>(() => {
     }
 
     if (sortField.value === 'rank') {
-      const rA = a.rank ?? 999999
-      const rB = b.rank ?? 999999
-      return (rA - rB) * direction
+      return compareNullableNumbers(a.rank, b.rank, direction)
     }
     if (sortField.value === 'hitRate') {
-      const hA = a.hitRate ?? -1
-      const hB = b.hitRate ?? -1
-      return (hA - hB) * direction
+      return compareNullableNumbers(a.hitRate, b.hitRate, direction)
     }
     if (sortField.value === 'baselineDelta') {
-      const dA = a.baselineDelta ?? -999
-      const dB = b.baselineDelta ?? -999
-      return (dA - dB) * direction
+      return compareNullableNumbers(a.baselineDelta, b.baselineDelta, direction)
     }
     if (sortField.value === 'ticketCount') {
       return (a.ticketCount - b.ticketCount) * direction
@@ -341,7 +336,7 @@ const summary = computed<BestReplaySummary>(() => {
       ticketCount: ticketCountDisplay,
       horizon: horizonDef?.label || selectedHorizon.value,
       historicalHitRate: 'Unavailable',
-      evaluatedTargets: 0,
+      evaluatedTargets: null,
       baselineDelta: 'Unavailable',
       evidenceStatus: 'EVIDENCE UNAVAILABLE',
       totalAvailableRecords: 0,
@@ -384,7 +379,7 @@ const inspectHorizonItems = computed<Partial<Record<string, BestReplayItem | nul
       byHorizon[h.key] = createUnavailableItem(
         'P638',
         targetId,
-        'v1.0',
+        null,
         'p638_native',
         1,
         h.key,
@@ -395,7 +390,7 @@ const inspectHorizonItems = computed<Partial<Record<string, BestReplayItem | nul
       byHorizon[h.key] = createUnavailableItem(
         'T539',
         targetId,
-        'v1.0',
+        null,
         't539_native',
         1,
         h.key,
@@ -585,7 +580,7 @@ onBeforeUnmount(() => {
       <MetricCard
         label="Horizon"
         :value="summary.horizon"
-        :subvalue="summary.evaluatedTargets ? `${summary.evaluatedTargets.toLocaleString()} Historical Draws` : 'No draws evaluated'"
+        :subvalue="summary.evaluatedTargets !== null ? `${summary.evaluatedTargets.toLocaleString()} Historical Draws` : 'Sample count unknown'"
       />
       <MetricCard
         label="Historical Hit Rate"
@@ -596,7 +591,7 @@ onBeforeUnmount(() => {
       <MetricCard
         label="Evidence Guard"
         :value="summary.evidenceStatus"
-        subvalue="Deterministic out-of-sample audit"
+        subvalue="Deterministic historical replay evidence"
         :badge="summary.totalAvailableRecords > 0 ? `${summary.totalAvailableRecords} Validated` : 'No Data'"
         badge-variant="accent"
       />
@@ -823,7 +818,7 @@ onBeforeUnmount(() => {
             <td>
               <div class="strategy-cell">
                 <strong class="strategy-name">{{ item.strategyId }}</strong>
-                <small class="strategy-sub">{{ item.methodFamily }} · {{ item.strategyVersion }}</small>
+                <small class="strategy-sub">{{ item.methodFamily }} · {{ item.strategyVersion || 'Version not provided' }}</small>
               </div>
             </td>
             <td>
@@ -836,10 +831,10 @@ onBeforeUnmount(() => {
               <span class="horizon-tag">{{ item.horizonLabel }}</span>
             </td>
             <td class="font-mono">
-              {{ item.evaluatedTargets > 0 ? item.evaluatedTargets.toLocaleString() : '—' }}
+              {{ item.evaluatedTargets !== null ? item.evaluatedTargets.toLocaleString() : 'Unknown' }}
             </td>
             <td class="font-mono">
-              {{ item.winningTargets !== null ? item.winningTargets.toLocaleString() : '—' }}
+              {{ item.winningTargets !== null ? item.winningTargets.toLocaleString() : 'Not provided' }}
             </td>
             <td class="font-mono">
               <strong v-if="item.isAvailable" class="text-primary">{{ item.hitRateFormatted }}</strong>

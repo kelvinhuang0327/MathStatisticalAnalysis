@@ -1,0 +1,541 @@
+{
+  "TASK_ID": "B649_K20_MIN_S2_CLASS_DOMINANCE_OR_DESCENT_R13",
+  "TASK_STATUS": "SUCCESS_C_CLASS_DOMINANCE",
+  "BASE_HEAD": "0cc283e8bf3fb60c5de0a205a6389b8afeb77e5e",
+  "BASE_TREE": "8f366460b3cc773b0f1bf7f2b6de7bcc1da091cb",
+  "TASK_BRANCH": "codex/b649-k20-min-s2-class-dominance-or-descent-r13",
+  "WORKTREE_PATH": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_K20_MIN_S2_CLASS_DOMINANCE_OR_DESCENT_R13",
+  "WORKTREE_DISPOSITION": "RETAIN",
+  "START_BOUND": 313698664,
+  "END_BOUND": 313695864,
+  "CUMULATIVE_DROP": 2800,
+  "CLASS_LOCAL_DROP": 59360,
+  "PRIOR_RESOLVED_PROFILE_COUNT": 72,
+  "PRIOR_PROFILE_RERUN_COUNT": 0,
+  "CLASS_DOMINANCE_STATUS": "CERTIFIED",
+  "CLASSES_CERTIFIED": [
+    {
+      "SQUARE_SUM": 334,
+      "REMAINING_PROFILE_COUNT": 4,
+      "CLASS_FAMILY_UPPER_BOUND": 313639304,
+      "RANKED_COARSE_CLASS_BOUND": 313698664,
+      "HIGHER_RANK_PROFILE_BOUND": 313689592,
+      "NEXT_LOWER_CLASS_BOUND": 313695864
+    }
+  ],
+  "PROFILES_ELIMINATED_BY_CLASS_BOUND": 4,
+  "CLASS_DOMINANCE_CERTIFICATE": {
+    "SQUARE_SUM": 334,
+    "UPPER_PROFILE": [
+      6,
+      6,
+      6,
+      6,
+      5,
+      5,
+      5,
+      5,
+      5,
+      5,
+      5,
+      3,
+      2,
+      1,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "REMAINING_ELIGIBLE_PROFILE_COUNT": 4,
+    "PROFILE_IDENTITIES": [
+      [
+        6,
+        6,
+        6,
+        6,
+        5,
+        5,
+        5,
+        5,
+        5,
+        5,
+        5,
+        3,
+        2,
+        1,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        6,
+        6,
+        6,
+        6,
+        5,
+        5,
+        5,
+        5,
+        5,
+        5,
+        4,
+        4,
+        2,
+        2,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        6,
+        6,
+        6,
+        6,
+        5,
+        5,
+        5,
+        5,
+        5,
+        4,
+        4,
+        4,
+        4,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        6,
+        6,
+        6,
+        5,
+        5,
+        5,
+        5,
+        5,
+        5,
+        5,
+        5,
+        4,
+        3,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    ],
+    "COMPLETE_PROFILES_EXAMINED": 4,
+    "PAIR_CAPACITY_FILTER": "APPLIED",
+    "RESIDUAL_DOUBLE_SUPPORT_GRAPHICALITY_FILTER": "APPLIED",
+    "SHADOW_GRAPHICALITY_FILTER": "APPLIED",
+    "WEDGE_COUNT": 830,
+    "DEGREE_HISTOGRAM_COUNT": 4,
+    "HISTOGRAM_ENVELOPES": [
+      {
+        "DEGREE_COUNTS_0_TO_6": [
+          5,
+          2,
+          1,
+          1,
+          0,
+          7,
+          4
+        ],
+        "PROFILE": [
+          6,
+          6,
+          6,
+          6,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          3,
+          2,
+          1,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "RELAXATION_STATUS": "OPTIMAL",
+        "FAMILY_UPPER_BOUND": 313639304,
+        "SOLVER": {
+          "SOLVER_STATUS": "OPTIMAL",
+          "SOLVER_WALL_TIME_SECONDS": 0.005998000000000001,
+          "WEIGHTED_OPEN_WEDGE_LOWER_BOUND": 17,
+          "DEGREE_CLASSES": [
+            {
+              "COMPLEMENT_DEGREE": 7,
+              "VERTEX_COUNT": 4
+            },
+            {
+              "COMPLEMENT_DEGREE": 8,
+              "VERTEX_COUNT": 7
+            },
+            {
+              "COMPLEMENT_DEGREE": 10,
+              "VERTEX_COUNT": 1
+            },
+            {
+              "COMPLEMENT_DEGREE": 11,
+              "VERTEX_COUNT": 1
+            },
+            {
+              "COMPLEMENT_DEGREE": 12,
+              "VERTEX_COUNT": 2
+            },
+            {
+              "COMPLEMENT_DEGREE": 13,
+              "VERTEX_COUNT": 5
+            }
+          ]
+        },
+        "TRIANGLE_ENVELOPE": {
+          "WEDGE_COUNT": 830,
+          "OPEN_WEDGE_LOWER_BOUND": 17,
+          "GRAPH_TRIANGLE_UPPER_BOUND": 271
+        },
+        "PROFILE_ENVELOPE": {
+          "WEDGE_COUNT": 830,
+          "GRAPH_TRIANGLE_UPPER_BOUND": 271,
+          "NONCORE_TRIANGLE_UPPER_BOUND": 249,
+          "S3_UPPER_BOUND": 5249328,
+          "S4_LOWER_BOUND": 112,
+          "FOURTH_ORDER_CREDIT": 64,
+          "FAMILY_UPPER_BOUND": 313639304,
+          "COARSE_FAMILY_UPPER_BOUND": 313698664
+        }
+      },
+      {
+        "DEGREE_COUNTS_0_TO_6": [
+          6,
+          0,
+          2,
+          0,
+          2,
+          6,
+          4
+        ],
+        "PROFILE": [
+          6,
+          6,
+          6,
+          6,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          4,
+          4,
+          2,
+          2,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "RELAXATION_STATUS": "OPTIMAL",
+        "FAMILY_UPPER_BOUND": 313615560,
+        "SOLVER": {
+          "SOLVER_STATUS": "OPTIMAL",
+          "SOLVER_WALL_TIME_SECONDS": 0.0009830000000000001,
+          "WEIGHTED_OPEN_WEDGE_LOWER_BOUND": 22,
+          "DEGREE_CLASSES": [
+            {
+              "COMPLEMENT_DEGREE": 7,
+              "VERTEX_COUNT": 4
+            },
+            {
+              "COMPLEMENT_DEGREE": 8,
+              "VERTEX_COUNT": 6
+            },
+            {
+              "COMPLEMENT_DEGREE": 9,
+              "VERTEX_COUNT": 2
+            },
+            {
+              "COMPLEMENT_DEGREE": 11,
+              "VERTEX_COUNT": 2
+            },
+            {
+              "COMPLEMENT_DEGREE": 13,
+              "VERTEX_COUNT": 6
+            }
+          ]
+        },
+        "TRIANGLE_ENVELOPE": {
+          "WEDGE_COUNT": 830,
+          "OPEN_WEDGE_LOWER_BOUND": 23,
+          "GRAPH_TRIANGLE_UPPER_BOUND": 269
+        },
+        "PROFILE_ENVELOPE": {
+          "WEDGE_COUNT": 830,
+          "GRAPH_TRIANGLE_UPPER_BOUND": 269,
+          "NONCORE_TRIANGLE_UPPER_BOUND": 247,
+          "S3_UPPER_BOUND": 5225584,
+          "S4_LOWER_BOUND": 112,
+          "FOURTH_ORDER_CREDIT": 64,
+          "FAMILY_UPPER_BOUND": 313615560,
+          "COARSE_FAMILY_UPPER_BOUND": 313698664
+        }
+      },
+      {
+        "DEGREE_COUNTS_0_TO_6": [
+          6,
+          1,
+          0,
+          0,
+          4,
+          5,
+          4
+        ],
+        "PROFILE": [
+          6,
+          6,
+          6,
+          6,
+          5,
+          5,
+          5,
+          5,
+          5,
+          4,
+          4,
+          4,
+          4,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "RELAXATION_STATUS": "OPTIMAL",
+        "FAMILY_UPPER_BOUND": 313615560,
+        "SOLVER": {
+          "SOLVER_STATUS": "OPTIMAL",
+          "SOLVER_WALL_TIME_SECONDS": 0.000943,
+          "WEIGHTED_OPEN_WEDGE_LOWER_BOUND": 23,
+          "DEGREE_CLASSES": [
+            {
+              "COMPLEMENT_DEGREE": 7,
+              "VERTEX_COUNT": 4
+            },
+            {
+              "COMPLEMENT_DEGREE": 8,
+              "VERTEX_COUNT": 5
+            },
+            {
+              "COMPLEMENT_DEGREE": 9,
+              "VERTEX_COUNT": 4
+            },
+            {
+              "COMPLEMENT_DEGREE": 12,
+              "VERTEX_COUNT": 1
+            },
+            {
+              "COMPLEMENT_DEGREE": 13,
+              "VERTEX_COUNT": 6
+            }
+          ]
+        },
+        "TRIANGLE_ENVELOPE": {
+          "WEDGE_COUNT": 830,
+          "OPEN_WEDGE_LOWER_BOUND": 23,
+          "GRAPH_TRIANGLE_UPPER_BOUND": 269
+        },
+        "PROFILE_ENVELOPE": {
+          "WEDGE_COUNT": 830,
+          "GRAPH_TRIANGLE_UPPER_BOUND": 269,
+          "NONCORE_TRIANGLE_UPPER_BOUND": 247,
+          "S3_UPPER_BOUND": 5225584,
+          "S4_LOWER_BOUND": 112,
+          "FOURTH_ORDER_CREDIT": 64,
+          "FAMILY_UPPER_BOUND": 313615560,
+          "COARSE_FAMILY_UPPER_BOUND": 313698664
+        }
+      },
+      {
+        "DEGREE_COUNTS_0_TO_6": [
+          6,
+          1,
+          0,
+          1,
+          1,
+          8,
+          3
+        ],
+        "PROFILE": [
+          6,
+          6,
+          6,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          4,
+          3,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "RELAXATION_STATUS": "OPTIMAL",
+        "FAMILY_UPPER_BOUND": 313615560,
+        "SOLVER": {
+          "SOLVER_STATUS": "OPTIMAL",
+          "SOLVER_WALL_TIME_SECONDS": 0.000912,
+          "WEIGHTED_OPEN_WEDGE_LOWER_BOUND": 21,
+          "DEGREE_CLASSES": [
+            {
+              "COMPLEMENT_DEGREE": 7,
+              "VERTEX_COUNT": 3
+            },
+            {
+              "COMPLEMENT_DEGREE": 8,
+              "VERTEX_COUNT": 8
+            },
+            {
+              "COMPLEMENT_DEGREE": 9,
+              "VERTEX_COUNT": 1
+            },
+            {
+              "COMPLEMENT_DEGREE": 10,
+              "VERTEX_COUNT": 1
+            },
+            {
+              "COMPLEMENT_DEGREE": 12,
+              "VERTEX_COUNT": 1
+            },
+            {
+              "COMPLEMENT_DEGREE": 13,
+              "VERTEX_COUNT": 6
+            }
+          ]
+        },
+        "TRIANGLE_ENVELOPE": {
+          "WEDGE_COUNT": 830,
+          "OPEN_WEDGE_LOWER_BOUND": 23,
+          "GRAPH_TRIANGLE_UPPER_BOUND": 269
+        },
+        "PROFILE_ENVELOPE": {
+          "WEDGE_COUNT": 830,
+          "GRAPH_TRIANGLE_UPPER_BOUND": 269,
+          "NONCORE_TRIANGLE_UPPER_BOUND": 247,
+          "S3_UPPER_BOUND": 5225584,
+          "S4_LOWER_BOUND": 112,
+          "FOURTH_ORDER_CREDIT": 64,
+          "FAMILY_UPPER_BOUND": 313615560,
+          "COARSE_FAMILY_UPPER_BOUND": 313698664
+        }
+      }
+    ],
+    "GRAPH_TRIANGLE_UPPER_BOUND": 271,
+    "CLASS_FAMILY_UPPER_BOUND": 313639304,
+    "RANKED_COARSE_CLASS_BOUND": 313698664,
+    "CLASS_LOCAL_DROP": 59360,
+    "RELAXATION_SOLVER_WALL_TIME_SECONDS": 0.008836,
+    "COMPLETE_SUFFIX_ENUMERATION": true,
+    "HIGHER_RANK_PROFILE_BOUND": 313689592,
+    "NEXT_LOWER_CLASS_BOUND": 313695864,
+    "DOMINATED_BY_HIGHER_RANK_BOUND": true,
+    "DOMINATED_BY_NEXT_CLASS_BOUND": true
+  },
+  "STAGE_A_WALL_TIME_SECONDS": 0.014981125001213513,
+  "STAGE_A_WALL_BUDGET_SECONDS": 1200.0,
+  "FALLBACK_PROFILE_COUNT": 0,
+  "FALLBACK_PROFILE_CAP": 96,
+  "FALLBACK_WALL_TIME_SECONDS": 0.0,
+  "TOTAL_RESOLVED_PROFILE_COUNT": 76,
+  "NEXT_ACTIVE_BOUND": 313695864,
+  "NEXT_ACTIVE_PROFILE": [
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    5,
+    4,
+    4,
+    4,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    0,
+    0
+  ],
+  "FAMILY_UPPER_BOUND": 313695864,
+  "INCUMBENT": 313239661,
+  "REMAINING_GAP": 456203,
+  "REMAINING_FAMILY_GAP": 456203,
+  "FAMILY_STATUS": "OPEN_STRICTLY_TIGHTENED",
+  "STOP_REASON": "CLASS_DOMINANCE_CERTIFICATE",
+  "RANK_LOOKUP": {
+    "COMPLETE_PROFILES_EXAMINED": 5,
+    "SQUARE_SUM_CLASSES_EXAMINED": 2,
+    "MAX_COMPLETE_PROFILE_PREFIX": 1024,
+    "FULL_4850_PROFILE_RANKING_RERUN": false
+  },
+  "PROFILE_BOUNDS": [],
+  "SOLVER_RUNTIME_PREFLIGHT": {
+    "STATUS": "PASS",
+    "PYTHON_EXECUTABLE": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/python",
+    "PYTHON_VERSION": "3.13.8",
+    "ORTOOLS_VERSION": "9.15.6755",
+    "CP_MODEL_IMPORT": "PASS",
+    "EXTERNAL_TIMEOUT_WRAPPER_PATH": "/opt/homebrew/bin/timeout",
+    "EXTERNAL_TIMEOUT_WRAPPER_VERSION": "timeout (GNU coreutils) 9.10",
+    "EXTERNAL_TIMEOUT_PROBE_EXIT_CODE": 124
+  },
+  "SOLVER_CONFIGURED_WALL_LIMIT": {
+    "STAGE_A_PROOF_WALL_BUDGET_SECONDS": 1200.0,
+    "PROOF_WALL_BUDGET_SECONDS": 3600.0,
+    "EXTERNAL_HARD_TIMEOUT_SECONDS_PER_PROFILE": 90.0,
+    "NATIVE_SUPPORT_SECONDS_PER_PROFILE": 12.0,
+    "NATIVE_MOTIF_SECONDS_PER_PROFILE": 12.0,
+    "NATIVE_DEGREE_CLASS_SECONDS_PER_PROFILE": 10.0,
+    "WORKERS": 1
+  },
+  "ACTUAL_WALL_TIME_SECONDS": 1.0002424160011287,
+  "NEW_PORTFOLIO_SEARCH_STARTED": "NO",
+  "PRODUCTION_MUTATION": "NONE"
+}

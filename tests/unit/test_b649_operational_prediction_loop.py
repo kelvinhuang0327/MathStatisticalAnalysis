@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 from datetime import date, datetime, timedelta
 from pathlib import Path
-from typing import cast
+from types import TracebackType
+from typing import TextIO, cast
 from zoneinfo import ZoneInfo
 
 import pytest
@@ -244,6 +246,18 @@ def test_prediction_saves_two_native_tickets_with_time_and_history_identity(
     )
     assert stored["prediction_created_at"] == "2026-08-14T19:00:00.000000+08:00"
     assert stored["prediction_temporal_class"] == "PRE_DRAW"
+    assert stored["strategy_id"] == "b649_new_horizon_minimax_disagreement_r1"
+    assert stored["strategy_version"] == "v0.1"
+    assert stored["strategy_config"] == {
+        "short_horizon": 30,
+        "middle_horizon": 120,
+        "full_prefix": True,
+        "maximum_cross_ticket_overlap": 2,
+    }
+    assert stored["producer_fingerprint"] == (
+        "cf80ae3e6ab8ebeb33c0c1c4e169ab3e0cb800659184bb79898901e244eac007"
+    )
+    assert stored["pinned_implementation"] == "fc720ea8965faf95021a59d3fe3dae61ae3ef6c3"
     assert stored["history_draw_count"] == 200
     assert stored["history_sha256"] == "1" * 64
     assert _object(stored, "history_cutoff") == {
@@ -253,9 +267,93 @@ def test_prediction_saves_two_native_tickets_with_time_and_history_identity(
     tickets = _object_list(stored, "tickets")
     assert len(tickets) == 2
     assert [ticket["ticket_position"] for ticket in tickets] == [1, 2]
-    assert all(len(_numbers(ticket, "predicted_numbers")) == 6 for ticket in tickets)
+    assert tuple(_numbers(ticket, "predicted_numbers") for ticket in tickets) == (
+        (1, 2, 3, 4, 8, 11),
+        (3, 4, 10, 22, 23, 29),
+    )
     assert (tmp_path / "performance.jsonl").is_file()
     assert (tmp_path / "research-summary.json").is_file()
+
+
+def test_v01_and_v02_horizon_records_keep_separate_identity_and_scores(
+    tmp_path: Path,
+) -> None:
+    history = _history()
+    v01_prediction = create_prediction_payload(
+        history,
+        created_at=datetime.fromisoformat("2026-08-14T19:00:00+08:00"),
+        prediction_run_id="horizon-v01-run",
+    )
+    v02_stream = next(
+        stream
+        for stream in STRATEGY_STREAMS
+        if stream.strategy_id == "b649_new_horizon_minimax_disagreement_r1"
+    )
+    v02_prediction = run_strategy_stream(
+        v02_stream,
+        history,
+        PredictionTarget(
+            lottery_type="BIG_LOTTO",
+            draw_number="115000079",
+            draw_date="2026-08-14",
+            scheduled_at="2026-08-14T20:30:00+08:00",
+        ),
+        created_at=datetime.fromisoformat("2026-08-14T19:10:00+08:00"),
+        prediction_run_id="horizon-v02-run",
+    )
+
+    assert v02_stream.strategy_version == "v0.2"
+    assert v02_stream.strategy_config == {
+        "short_horizon": 30,
+        "middle_horizon": 120,
+        "full_prefix": True,
+        "maximum_cross_ticket_overlap": 0,
+    }
+    assert v02_stream.producer_fingerprint is None
+    assert v02_stream.pinned_implementation is None
+    assert v01_prediction["strategy_version"] == "v0.1"
+    assert v02_prediction["strategy_version"] == "v0.2"
+    assert v02_prediction["strategy_config"] == v02_stream.strategy_config
+    assert v02_prediction["producer_fingerprint"] is None
+    assert v02_prediction["pinned_implementation"] is None
+    v02_tickets = _object_list(v02_prediction, "tickets")
+    v02_numbers = tuple(_numbers(ticket, "predicted_numbers") for ticket in v02_tickets)
+    assert v02_numbers == (
+        (1, 2, 3, 4, 8, 11),
+        (10, 22, 23, 29, 30, 36),
+    )
+    assert len(set(v02_numbers[0]) & set(v02_numbers[1])) == 0
+
+    save_prediction(tmp_path, v01_prediction)
+    save_strategy_prediction(tmp_path, v02_prediction)
+    _, score_paths = update_outcome(
+        tmp_path,
+        draw_number="115000079",
+        main_numbers=(1, 2, 3, 4, 5, 6),
+        special_number=49,
+        source="synthetic-version-identity-check",
+        updated_at=datetime.fromisoformat("2026-08-14T21:00:00+08:00"),
+    )
+
+    score_identities = {
+        (_read_object(path)["strategy_id"], _read_object(path)["strategy_version"])
+        for path in score_paths
+    }
+    assert score_identities == {
+        ("b649_new_horizon_minimax_disagreement_r1", "v0.1"),
+        ("b649_new_horizon_minimax_disagreement_r1", "v0.2"),
+    }
+    performance_rows = [
+        cast(dict[str, object], json.loads(line))
+        for line in (tmp_path / "performance.jsonl").read_text(encoding="utf-8").splitlines()
+    ]
+    assert {
+        (row["strategy_id"], row["strategy_version"], row["scored_count"])
+        for row in performance_rows
+    } == {
+        ("b649_new_horizon_minimax_disagreement_r1", "v0.1", 1),
+        ("b649_new_horizon_minimax_disagreement_r1", "v0.2", 1),
+    }
 
 
 def test_later_prediction_run_does_not_replace_the_older_run(tmp_path: Path) -> None:
@@ -471,9 +569,129 @@ def test_save_strategy_prediction_never_overwrites_an_existing_run(tmp_path: Pat
         created_at=datetime.fromisoformat("2026-08-18T19:00:00+08:00"),
         prediction_run_id="dup-run",
     )
-    save_strategy_prediction(tmp_path, record)
+    path = save_strategy_prediction(tmp_path, record)
+    original_bytes = path.read_bytes()
+    original_sha256 = hashlib.sha256(original_bytes).hexdigest()
+    before = {
+        item.relative_to(tmp_path): item.read_bytes()
+        for item in tmp_path.rglob("*")
+        if item.is_file()
+    }
+
     with pytest.raises(FileExistsError):
         save_strategy_prediction(tmp_path, record)
+
+    assert path.is_file()
+    assert path.read_bytes() == original_bytes
+    assert hashlib.sha256(path.read_bytes()).hexdigest() == original_sha256
+    after = {
+        item.relative_to(tmp_path): item.read_bytes()
+        for item in tmp_path.rglob("*")
+        if item.is_file()
+    }
+    assert after == before
+
+
+def test_legacy_duplicate_save_preserves_prediction_and_derived_history(
+    tmp_path: Path,
+) -> None:
+    prediction = create_prediction_payload(
+        _history(),
+        created_at=datetime.fromisoformat("2026-08-14T19:00:00+08:00"),
+        prediction_run_id="legacy-dup-run",
+    )
+    path = save_prediction(tmp_path, prediction)
+    original_bytes = path.read_bytes()
+    original_sha256 = hashlib.sha256(original_bytes).hexdigest()
+    before = {
+        item.relative_to(tmp_path): item.read_bytes()
+        for item in tmp_path.rglob("*")
+        if item.is_file()
+    }
+
+    assert prediction["prediction_temporal_class"] == "PRE_DRAW"
+    assert (tmp_path / "performance.jsonl").is_file()
+    assert (tmp_path / "research-summary.json").is_file()
+
+    with pytest.raises(FileExistsError):
+        save_prediction(tmp_path, prediction)
+
+    assert path.is_file()
+    assert path.read_bytes() == original_bytes
+    assert hashlib.sha256(path.read_bytes()).hexdigest() == original_sha256
+    after = {
+        item.relative_to(tmp_path): item.read_bytes()
+        for item in tmp_path.rglob("*")
+        if item.is_file()
+    }
+    assert after == before
+
+
+def test_create_json_cleans_only_its_file_after_partial_write_failure(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    prediction = create_prediction_payload(
+        _history(),
+        created_at=datetime.fromisoformat("2026-08-14T19:00:00+08:00"),
+        prediction_run_id="partial-write-run",
+    )
+    draw_number = cast(str, prediction["draw_number"])
+    run_id = cast(str, prediction["prediction_run_id"])
+    new_path = tmp_path / "predictions" / draw_number / f"{run_id}.json"
+    existing_path = new_path.with_name("existing.json")
+    existing_path.parent.mkdir(parents=True)
+    existing_bytes = b'{"preserve":true}\n'
+    existing_path.write_bytes(existing_bytes)
+    original_open = Path.open
+
+    class _PartialWriteFailure:
+        def __init__(self, handle: TextIO) -> None:
+            self.handle = handle
+
+        def __enter__(self) -> _PartialWriteFailure:
+            return self
+
+        def __exit__(
+            self,
+            exc_type: type[BaseException] | None,
+            exc_value: BaseException | None,
+            traceback: TracebackType | None,
+        ) -> None:
+            self.handle.close()
+
+        def write(self, value: str) -> int:
+            self.handle.write(value[:1])
+            self.handle.flush()
+            raise OSError("synthetic partial write failure")
+
+        def flush(self) -> None:
+            self.handle.flush()
+
+        def fileno(self) -> int:
+            return self.handle.fileno()
+
+    def open_with_partial_failure(
+        path: Path,
+        mode: str = "r",
+        buffering: int = -1,
+        encoding: str | None = None,
+        errors: str | None = None,
+        newline: str | None = None,
+    ) -> TextIO:
+        handle = cast(
+            TextIO, original_open(path, mode, buffering, encoding, errors, newline)
+        )
+        if path == new_path and mode == "x":
+            return cast(TextIO, _PartialWriteFailure(handle))
+        return handle
+
+    monkeypatch.setattr(Path, "open", open_with_partial_failure)
+
+    with pytest.raises(OSError, match="synthetic partial write failure"):
+        save_prediction(tmp_path, prediction)
+
+    assert not new_path.exists()
+    assert existing_path.read_bytes() == existing_bytes
 
 
 def test_legacy_flat_prediction_remains_readable_alongside_nested_multi_strategy_layout(

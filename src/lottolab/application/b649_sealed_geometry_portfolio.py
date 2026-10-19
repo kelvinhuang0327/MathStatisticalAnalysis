@@ -3,17 +3,26 @@
 Under a fair BIG_LOTTO draw every single ticket has the same OFFICIAL_ANY_PRIZE
 probability (``7729/249711``), so no ticket beats another one-for-one. What a
 K-ticket set does change is how much its tickets overlap, and with it
-P(at least one ticket wins). K10 remains the frozen HARD_DIV pairwise-overlap
-radius2 authority from sealed-geometry v2; K20 is its direct OFFICIAL_ANY_PRIZE
-terminal successor in v3. K5 is the best-known disjoint construction. They
-carry no predictive signal: they do not depend on the target draw, the
-prediction streams, or any historical outcome. Their probabilities are exact
-counts over the full outcome space, verified by
+P(at least one ticket wins). K5 is pairwise disjoint. For both OFFICIAL_ANY_PRIZE
+and M3_PLUS, every pairwise-disjoint portfolio of size 1..8 attains the global
+optimum proved in ``lottolab.research.b649_k1_k8_global_optimality``; that
+optimum is not unique. K10 remains the frozen HARD_DIV pairwise-overlap
+radius2 authority from sealed-geometry v2.
+K10 OFFICIAL_ANY_PRIZE: PROVEN GLOBAL OPTIMUM by the canonical K10 proof
+certificate. K10 M3_PLUS: GLOBAL OPTIMUM UNKNOWN. The v8 K20 is the exact
+incumbent from the canonical two-ticket ascent result, with v7 retained in
+the portfolio version history.
+It is proven optimal only within its validated exact local neighborhoods.
+K20 global optimality remains unknown.
+K20: GLOBAL OPTIMUM UNKNOWN.
+There is no historical outcome tuning or predictive signal: the portfolios do
+not depend on the target draw, prediction streams, or historical outcomes.
+Their probabilities are exact counts over the full outcome space, verified by
 ``lottolab.research.b649_official_any_prize_exact`` in
 ``tests/unit/test_b649_sealed_geometry_portfolio.py``.
 
-Buckets are independently optimal per K, so they are deliberately NOT nested:
-the best 10 tickets are not the first 10 of the best 20.
+Buckets are selected independently per K and are deliberately NOT nested:
+the K10 tickets are not the first 10 of K20.
 """
 
 from __future__ import annotations
@@ -29,7 +38,9 @@ from typing import Final
 type Ticket = tuple[int, ...]
 
 SEALED_GEOMETRY_METHOD_ID: Final = "B649_SEALED_GEOMETRY_PORTFOLIO"
-SEALED_GEOMETRY_METHOD_VERSION: Final = "3.0.0"
+SEALED_GEOMETRY_METHOD_VERSION: Final = "8.0.0"
+K20_V7_PORTFOLIO_VERSION: Final = "7.0.0"
+K20_PORTFOLIO_VERSION: Final = "8.0.0"
 PROBABILITY_MODEL: Final = "BIG_LOTTO_UNIFORM_FAIR_DRAW"
 PRIZE_EVENT: Final = "OFFICIAL_ANY_PRIZE"
 POOL_SIZE: Final = 49
@@ -52,11 +63,13 @@ class SealedGeometryPortfolio:
     source_sha256: str
     m3_plus_probability: Fraction
     official_any_prize_probability: Fraction
+    portfolio_version: str | None = None
+    source_revision: str | None = None
 
     def provenance(self) -> dict[str, object]:
         """Canonical-JSON-safe provenance (exact fractions as ``"n/d"`` text)."""
 
-        return {
+        provenance: dict[str, object] = {
             "ticket_count": self.ticket_count,
             "portfolio_sha256": self.portfolio_sha256,
             "source_id": self.source_id,
@@ -65,6 +78,11 @@ class SealedGeometryPortfolio:
             "m3_plus_probability": str(self.m3_plus_probability),
             "official_any_prize_probability": str(self.official_any_prize_probability),
         }
+        if self.portfolio_version is not None:
+            provenance["portfolio_version"] = self.portfolio_version
+        if self.source_revision is not None:
+            provenance["source_revision"] = self.source_revision
+        return provenance
 
 
 def canonical_portfolio_sha256(tickets: Sequence[Sequence[int]]) -> str:
@@ -75,8 +93,9 @@ def canonical_portfolio_sha256(tickets: Sequence[Sequence[int]]) -> str:
 
 
 # Reference E (GREEDY_MINMAX_THEN_SUM_OVERLAP_V1) method_e_20[:5]: five pairwise-disjoint
-# tickets. Every family of five disjoint tickets is equivalent under relabeling, and this
-# one reaches the sealed diversification-frontier best-found K5 M3+ (54130/582659) exactly.
+# tickets. Every such K5 portfolio has the same OFFICIAL_ANY_PRIZE and M3+ probabilities.
+# This one is a proven global optimum for both events (ANY 547495/3579191, M3+ 54130/582659).
+# The optimum is not unique.
 _K5 = SealedGeometryPortfolio(
     ticket_count=5,
     tickets=(
@@ -123,40 +142,88 @@ _K10 = SealedGeometryPortfolio(
     official_any_prize_probability=Fraction(536005, 1827672),
 )
 
-# Direct OFFICIAL_ANY_PRIZE terminal successor to sealed-geometry v2.
-_K20 = SealedGeometryPortfolio(
+# Historical K20 v7 remains available so its identity and evidence are not
+# silently redefined when the default portfolio advances.
+_K20_V7 = SealedGeometryPortfolio(
     ticket_count=20,
     tickets=(
         (1, 2, 34, 41, 42, 45),
         (1, 17, 22, 30, 33, 43),
         (2, 5, 33, 35, 40, 48),
-        (3, 4, 6, 10, 15, 23),
+        (3, 4, 10, 15, 26, 27),
+        (3, 8, 13, 28, 31, 36),
         (3, 9, 12, 16, 29, 39),
-        (3, 13, 14, 28, 36, 44),
-        (4, 7, 11, 16, 24, 47),
-        (4, 8, 26, 31, 37, 39),
-        (5, 17, 25, 27, 36, 41),
+        (4, 7, 36, 39, 46, 49),
+        (4, 18, 20, 24, 28, 29),
+        (5, 17, 25, 32, 41, 47),
         (6, 7, 9, 13, 18, 26),
+        (6, 10, 11, 16, 24, 36),
+        (6, 14, 20, 31, 37, 39),
         (7, 8, 10, 14, 19, 29),
-        (8, 9, 11, 15, 20, 28),
-        (11, 12, 14, 18, 23, 31),
-        (12, 13, 15, 19, 24, 32),
+        (8, 9, 11, 15, 20, 46),
+        (11, 12, 18, 23, 27, 49),
+        (13, 15, 19, 24, 37, 49),
         (16, 19, 23, 26, 28, 46),
-        (17, 21, 34, 40, 44, 49),
-        (18, 20, 24, 29, 37, 46),
         (21, 25, 30, 38, 45, 48),
-        (22, 27, 35, 45, 47, 49),
-        (27, 32, 38, 40, 42, 43),
+        (21, 32, 40, 42, 43, 44),
+        (22, 34, 35, 38, 44, 47),
     ),
-    portfolio_sha256="242a04c1236f53d74a939f24495868287a4ad63d63b20903fc91d5987b14a9bd",
-    source_id="B649_SEALED_V2_DIRECT_OFFICIAL_ANY_PRIZE_ITERATIVE_ASCENT_R1_TERMINAL_K20",
+    portfolio_sha256="0045ac8837fc82e9a585d812173341ac12e05c5de201af7f8fedeacafa19e1ff",
+    source_id="B649_K20_EXACT_TWO_TICKET_JOINT_REPLACEMENT_SWEEP_R1",
     source_locator=(
         "docs/research/matrix-native-results/"
-        "b649-sealed-v2-direct-official-any-prize-k20-terminal-r1.json"
+        "b649-k20-exact-two-ticket-joint-replacement-terminal-r1.json"
     ),
-    source_sha256="d52b693cebd00be57d8be0ab6db7fad78138d439e45a1a0ba424e4805074392b",
-    m3_plus_probability=Fraction(1601861, 4661272),
-    official_any_prize_probability=Fraction(7448829, 14316764),
+    source_sha256="e7698ff0d76a91c69378bf9bf0badb4ed9ac4f4dd146c71e5c94300bcfbbff9e",
+    m3_plus_probability=Fraction(4807367, 13983816),
+    official_any_prize_probability=Fraction(44748523, 85900584),
+)
+
+# Canonical exact K20 incumbent from the two-ticket ascent result. The result
+# proves the validated exact two-ticket neighborhood; global optimality is
+# unknown. No historical outcomes were used for tuning.
+_K20 = SealedGeometryPortfolio(
+    ticket_count=20,
+    tickets=(
+        (1, 2, 3, 4, 5, 21),
+        (1, 6, 7, 8, 9, 22),
+        (1, 11, 14, 18, 19, 26),
+        (2, 7, 14, 16, 17, 24),
+        (2, 10, 11, 12, 13, 22),
+        (3, 6, 10, 14, 15, 23),
+        (3, 8, 13, 17, 20, 26),
+        (4, 6, 12, 19, 20, 24),
+        (4, 8, 10, 16, 18, 25),
+        (5, 7, 11, 15, 20, 25),
+        (5, 9, 12, 17, 18, 23),
+        (9, 13, 15, 16, 19, 21),
+        (27, 29, 30, 31, 32, 33),
+        (27, 34, 35, 36, 37, 38),
+        (27, 39, 40, 41, 42, 43),
+        (28, 29, 34, 39, 44, 45),
+        (28, 30, 35, 40, 46, 47),
+        (28, 31, 36, 41, 48, 49),
+        (32, 37, 42, 44, 46, 48),
+        (33, 38, 43, 45, 47, 49),
+    ),
+    portfolio_sha256="eaed652900d101881b678a1515d2a366bff9de6723dbec2ec9c82fe0d0d7844c",
+    source_id="B649_K20_12_8_WINNER_TWO_TICKET_ASCENT_R1",
+    source_locator=(
+        "docs/research/matrix-native-results/"
+        "b649-k20-12-8-winner-two-ticket-ascent-r1-result.json"
+    ),
+    source_sha256="3d5d3f8f2389b66a9b2c45b0e345b81a0d9dc59d08ca9223519be70a055e5a00",
+    m3_plus_probability=Fraction(1201973, 3495954),
+    official_any_prize_probability=Fraction(1864666, 3579191),
+    portfolio_version=K20_PORTFOLIO_VERSION,
+    source_revision="da26b434499927f5611e3c3d12e50485f2e58a6a",
+)
+
+SEALED_GEOMETRY_K20_VERSIONS: Final[Mapping[str, SealedGeometryPortfolio]] = MappingProxyType(
+    {
+        K20_V7_PORTFOLIO_VERSION: _K20_V7,
+        K20_PORTFOLIO_VERSION: _K20,
+    }
 )
 
 SEALED_GEOMETRY_PORTFOLIOS: Final[Mapping[int, SealedGeometryPortfolio]] = MappingProxyType(
@@ -201,8 +268,11 @@ def sealed_geometry_buckets(bucket_sizes: Sequence[int]) -> dict[int, tuple[Tick
 
 
 __all__ = [
+    "K20_PORTFOLIO_VERSION",
+    "K20_V7_PORTFOLIO_VERSION",
     "PRIZE_EVENT",
     "PROBABILITY_MODEL",
+    "SEALED_GEOMETRY_K20_VERSIONS",
     "SEALED_GEOMETRY_METHOD_ID",
     "SEALED_GEOMETRY_METHOD_VERSION",
     "SEALED_GEOMETRY_PORTFOLIOS",

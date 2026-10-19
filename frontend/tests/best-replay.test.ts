@@ -7,6 +7,7 @@ import BestReplayHorizonComparison from '../src/features/best-replay/BestReplayH
 import BestReplayMatrix from '../src/features/best-replay/BestReplayMatrix.vue'
 import BestReplayOneToFiveOverview from '../src/features/best-replay/BestReplayOneToFiveOverview.vue'
 import BestReplayPage from '../src/features/best-replay/BestReplayPage.vue'
+import { compareNullableNumbers } from '../src/features/best-replay/sorting'
 import {
   ALL_TICKET_COUNTS,
   B649_AVAILABLE_TICKET_COUNTS,
@@ -23,10 +24,23 @@ import {
   B649_REPRODUCTION_STATUSES,
   B649_RESEARCH_DISCLAIMER,
   B649_SUCCESS_CRITERIA,
+  type B649MultiTicketRecord,
 } from '../src/api/b649MultiTicketRecords'
-import { loadP638BestReplayData, loadT539BestReplayData } from '../src/api/bestReplay'
+import {
+  loadP638BestReplayData,
+  loadT539BestReplayData,
+  transformB649Record,
+} from '../src/api/bestReplay'
 
 let fetchMock: ReturnType<typeof vi.fn<typeof fetch>>
+let p638CompleteTargetCount: number | null
+let p638WinningTargetCount: number | null
+let p638WinningTargetRate: number | null
+let p638StrategyVersion: string | null
+let t539EligibleTargetCount: number | null
+let t539WinningTargetCount: number | null
+let t539WinningTargetRate: number | null
+let t539StrategyVersion: string | null
 
 function apiResponse(payload: unknown, status = 200): Response {
   return {
@@ -179,7 +193,7 @@ function mockP638Runs() {
         completed_at: '2026-08-01T01:00:00Z',
         strategy_count: 5,
         draw_count: 1000,
-        complete_target_count: 1000,
+        complete_target_count: p638CompleteTargetCount,
         excluded_target_count: 0,
         failed_target_count: 0,
         ticket_count: 1,
@@ -199,8 +213,11 @@ function mockP638Rankings() {
     items: [
       {
         strategy_id: 'p638_zonal_entropy_leader',
+        strategy_version: p638StrategyVersion,
         rank: 1,
-        winning_target_rate: 0.185,
+        eligible_target_count: 1000,
+        winning_target_count: p638WinningTargetCount,
+        winning_target_rate: p638WinningTargetRate,
         prize_tier_counts: [
           { prize_tier: 'first', count: 1 },
           { prize_tier: 'second', count: 2 },
@@ -211,7 +228,10 @@ function mockP638Rankings() {
       },
       {
         strategy_id: 'p638_cyclical_shift_runner_up',
+        strategy_version: 'p638-cyclic-v2',
         rank: 2,
+        eligible_target_count: 1000,
+        winning_target_count: 162,
         winning_target_rate: 0.162,
         prize_tier_counts: [
           { prize_tier: 'first', count: 0 },
@@ -232,6 +252,7 @@ function mockT539Runs() {
         run_id: 't539-canonical-run-1',
         status: 'COMPLETE',
         lottery_type: 'DAILY_539',
+        eligible_target_count: t539EligibleTargetCount,
       },
     ],
     total_count: 1,
@@ -246,8 +267,11 @@ function mockT539Rankings() {
     items: [
       {
         strategy_id: 't539_wave1_cyclic_leader',
+        strategy_version: t539StrategyVersion,
         rank: 1,
-        winning_target_rate: 0.215,
+        eligible_target_count: 1000,
+        winning_target_count: t539WinningTargetCount,
+        winning_target_rate: t539WinningTargetRate,
         ticket_winning_rate: 0.215,
         prize_tier_counts: [
           { prize_tier: 'first', count: 0 },
@@ -259,7 +283,10 @@ function mockT539Rankings() {
       },
       {
         strategy_id: 't539_sidon_runner_up',
+        strategy_version: 't539-sidon-v3',
         rank: 2,
+        eligible_target_count: 1000,
+        winning_target_count: 198,
         winning_target_rate: 0.198,
         ticket_winning_rate: 0.198,
         prize_tier_counts: [
@@ -275,6 +302,15 @@ function mockT539Rankings() {
 }
 
 beforeEach(() => {
+  p638CompleteTargetCount = 1000
+  p638WinningTargetCount = 180
+  p638WinningTargetRate = 0.185
+  p638StrategyVersion = 'p638-zonal-v2'
+  t539EligibleTargetCount = 1000
+  t539WinningTargetCount = 211
+  t539WinningTargetRate = 0.215
+  t539StrategyVersion = 't539-wave1-v4'
+
   fetchMock = vi.fn<typeof fetch>().mockImplementation((input) => {
     const url = new URL(String(input), 'http://localhost')
     if (url.pathname.includes('/b649-multi-ticket-records/summary')) {
@@ -301,6 +337,129 @@ beforeEach(() => {
 })
 
 afterEach(() => vi.unstubAllGlobals())
+
+describe('Best Replay source-value regressions', () => {
+  it('preserves a source P638 complete-target count of zero', async () => {
+    p638CompleteTargetCount = 0
+
+    const item = (await loadP638BestReplayData([1], 'FULL'))[0]
+
+    expect(item?.evaluatedTargets).toBe(0)
+  })
+
+  it('uses the P638 winning-target numerator and strategy version from ranking evidence', async () => {
+    const item = (await loadP638BestReplayData([1], 'FULL'))[0]
+
+    expect(item?.winningTargets).toBe(180)
+    expect(item?.hitRate).toBe(0.185)
+    expect(item?.rank).toBe(1)
+    expect(item?.strategyId).toBe('p638_zonal_entropy_leader')
+    expect(item?.strategyVersion).toBe('p638-zonal-v2')
+  })
+
+  it('keeps a missing P638 numerator and strategy version unavailable', async () => {
+    p638WinningTargetCount = null
+    p638StrategyVersion = null
+
+    const item = (await loadP638BestReplayData([1], 'FULL'))[0]
+
+    expect(item?.winningTargets).toBeNull()
+    expect(item?.strategyVersion).toBeNull()
+  })
+
+  it('does not infer a winning-target count from a rate and sample count', async () => {
+    p638WinningTargetCount = null
+
+    const item = (await loadP638BestReplayData([1], 'FULL'))[0]
+
+    expect(item?.evaluatedTargets).toBe(1000)
+    expect(item?.hitRate).toBe(0.185)
+    expect(item?.winningTargets).toBeNull()
+  })
+
+  it('preserves a sourced B649 sample count and leaves a missing count unknown', () => {
+    const sourcedRecord = {
+      ...mockB649Record(5, 'RECENT_750', 'sample', { draws: 37 }),
+      effective_backtest_draw_count: 37,
+      window_available_draws: 750,
+    } as B649MultiTicketRecord
+    const missingRecord = {
+      ...sourcedRecord,
+      effective_backtest_draw_count: null,
+      window_available_draws: null,
+    }
+
+    expect(transformB649Record(sourcedRecord, 'RECENT_750', 5).evaluatedTargets).toBe(37)
+    expect(transformB649Record(missingRecord, 'RECENT_750', 5).evaluatedTargets).toBeNull()
+  })
+
+  it('keeps missing T539 sample and numerator values unknown', async () => {
+    t539EligibleTargetCount = null
+    t539WinningTargetCount = null
+
+    const item = (await loadT539BestReplayData([1], 'FULL'))[0]
+
+    expect(item?.evaluatedTargets).toBeNull()
+    expect(item?.winningTargets).toBeNull()
+    expect(item?.hitRate).toBe(0.215)
+  })
+
+  it('renders a source P638 sample count of zero as zero in the summary', async () => {
+    p638CompleteTargetCount = 0
+    const wrapper = mount(BestReplayPage)
+    await flushPromises()
+    await wrapper.find('[data-testid="game-btn-p638"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="best-replay-metrics-grid"]').text()).toContain('0 Historical Draws')
+
+    wrapper.unmount()
+  })
+
+  it('renders missing P638 sample, numerator, and version sources as unavailable', async () => {
+    p638CompleteTargetCount = null
+    p638WinningTargetCount = null
+    p638StrategyVersion = null
+    const wrapper = mount(BestReplayPage)
+    await flushPromises()
+    await wrapper.find('[data-testid="game-btn-p638"]').trigger('click')
+    await flushPromises()
+
+    const visibleText = wrapper.text()
+    expect(visibleText).toContain('p638_zonal_entropy_leader')
+    expect(visibleText).toContain('Sample count unknown')
+    expect(visibleText).toContain('Unknown')
+    expect(visibleText).toContain('Not provided')
+    expect(visibleText).not.toContain('v1.0')
+
+    wrapper.unmount()
+  })
+
+  it('sorts missing numeric evidence after sourced values without assigning a numeric fallback', () => {
+    expect(compareNullableNumbers(null, 0.162, 1)).toBe(1)
+    expect(compareNullableNumbers(0.162, null, 1)).toBe(-1)
+    expect(compareNullableNumbers(null, 0.162, -1)).toBe(1)
+    expect(compareNullableNumbers(Number.NaN, 0.162, 1)).toBe(1)
+  })
+
+  it('does not describe RECENT_750 as an out-of-sample audit in the page copy', async () => {
+    const wrapper = mount(BestReplayPage)
+    await flushPromises()
+    await wrapper.find('#horizon-select').setValue('RECENT_750')
+    await flushPromises()
+
+    expect(wrapper.text().toLowerCase()).not.toContain('out-of-sample')
+
+    wrapper.unmount()
+  })
+
+  it('describes RECENT_750 as a historical interval without an OOS claim', () => {
+    const recent750 = CANONICAL_HORIZONS.find((horizon) => horizon.key === 'RECENT_750')
+
+    expect(recent750?.description).toBe('Recent 750 historical draws')
+    expect(recent750?.description.toLowerCase()).not.toContain('out-of-sample')
+  })
+})
 
 describe('BestReplayPage Workspace & Cross-Game Features', () => {
   it('mounts cleanly with SectionHeader, Summary Metrics Cards, 1-5 Overview, and English-only copy', async () => {
@@ -824,7 +983,7 @@ describe('P638 Best Replay Horizon Authority Validation (Correction R1)', () => 
     expect(leader?.hitRate).toBe(0.185)
     expect(leader?.hitRateFormatted).toBe('18.50%')
     expect(leader?.evaluatedTargets).toBe(1000)
-    expect(leader?.winningTargets).toBe(185)
+    expect(leader?.winningTargets).toBe(180)
     expect(leader?.evidenceStatus).toBe('DESCRIPTIVE LEADER')
     expect(leader?.notes).toContain('Descriptive historical evidence only; does not infer future performance')
   })
@@ -841,7 +1000,7 @@ describe('P638 Best Replay Horizon Authority Validation (Correction R1)', () => 
         expect(item.hitRate).toBeNull()
         expect(item.hitRateFormatted).toBe('Unavailable')
         expect(item.winningTargets).toBeNull()
-        expect(item.evaluatedTargets).toBe(0)
+        expect(item.evaluatedTargets).toBeNull()
         expect(item.unavailableReasonCode).toBe('NO_CANONICAL_WINDOW_EVIDENCE')
         expect(item.notes).toContain(
           `P638 canonical evidence does not publish an exact ${unsupportedHorizon} ranking window.`,
@@ -984,7 +1143,7 @@ describe('T539 Best Replay Horizon Authority Validation (Correction R1)', () => 
     expect(leader?.hitRate).toBe(0.215)
     expect(leader?.hitRateFormatted).toBe('21.50%')
     expect(leader?.evaluatedTargets).toBe(1000)
-    expect(leader?.winningTargets).toBe(215)
+    expect(leader?.winningTargets).toBe(211)
     expect(leader?.evidenceStatus).toBe('DESCRIPTIVE LEADER')
     expect(leader?.notes).toContain('Descriptive historical evidence only; does not infer future performance')
   })
@@ -1001,7 +1160,7 @@ describe('T539 Best Replay Horizon Authority Validation (Correction R1)', () => 
         expect(item.hitRate).toBeNull()
         expect(item.hitRateFormatted).toBe('Unavailable')
         expect(item.winningTargets).toBeNull()
-        expect(item.evaluatedTargets).toBe(0)
+        expect(item.evaluatedTargets).toBeNull()
         expect(item.unavailableReasonCode).toBe('NO_CANONICAL_WINDOW_EVIDENCE')
         expect(item.notes).toContain(
           `T539 canonical evidence does not publish an exact ${unsupportedHorizon} ranking window.`,

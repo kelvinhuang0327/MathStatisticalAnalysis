@@ -134,7 +134,9 @@ jobs:
             tests/unit/test_b649_min_s2_t249_dual_profile_composition_r1.py \
             tests/unit/test_b649_min_s2_three_tied_owner_combined_authority_r1.py \
             tests/unit/test_b649_min_s2_two_bonf5_owners_exact_composition_r1.py \
-            tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py; do
+            tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py \
+            tests/unit/test_b649_min_s2_bonferroni5_target_cert_r1.py \
+            tests/unit/test_b649_min_s2_bonf5_tied_owners_cert_r1.py; do
             if [[ -f "$path" ]]; then
               uv run pytest "$path"
               remaining_args+=("--ignore=$path")

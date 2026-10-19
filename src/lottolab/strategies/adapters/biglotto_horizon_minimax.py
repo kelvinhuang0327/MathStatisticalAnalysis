@@ -5,8 +5,11 @@ The donor is ``B649_NEXT_GENERATION_STRATEGY_RESEARCH_R1`` task tree
 its ``research_strategies.py`` SHA-256 is
 ``616ca197a53bbabb9e43e42f004b64caab5be58cc51769d091a17a14dfc733ec``.
 This port preserves the fixed 30/120/full-prefix horizons, ordinal rank
-tie-breaks, consensus-first ticket order, and two-number overlap cap.  It is
-deterministic and consumes only validated causal history.
+tie-breaks, consensus-first ticket order, and disagreement ranking.
+In v0.2, the sole semantic update from v0.1 is tightening the cross-ticket
+overlap cap from two numbers to zero (disjoint two-ticket barbell: the second
+ticket skips any number already selected in the consensus first ticket).
+It is deterministic and consumes only validated causal history.
 
 The research result is historical evidence, not a claim of predictive
 advantage.  No result rows, target outcomes, filesystem data, database state,
@@ -25,7 +28,7 @@ from lottolab.strategies.adapters.base import CausalDrawRow, PortfolioBetAdapter
 _STRATEGY_ID = "b649_new_horizon_minimax_disagreement_r1"
 _SHORT_HORIZON = 30
 _MIDDLE_HORIZON = 120
-_MAXIMUM_CROSS_TICKET_OVERLAP = 2
+_MAXIMUM_CROSS_TICKET_OVERLAP = 0
 
 
 def _frequency_z_scores(
@@ -113,7 +116,7 @@ class BigLottoHorizonMinimaxDisagreementAdapter(PortfolioBetAdapter):
 
     strategy_id = _STRATEGY_ID
     strategy_name = "大樂透 Horizon Minimax Disagreement 2注"
-    strategy_version = "v0.1"
+    strategy_version = "v0.2"
     min_history = 200
     supported_lottery_types = (LotteryType.BIG_LOTTO,)
     native_ticket_count = 2

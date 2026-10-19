@@ -1491,7 +1491,7 @@ _PRODUCTION_DESCRIPTORS = (
     StrategyDescriptor(
         strategy_id="b649_new_horizon_minimax_disagreement_r1",
         strategy_name="大樂透 Horizon Minimax Disagreement 2注",
-        version="v0.1",
+        version="v0.2",
         lottery_types=(LotteryType.BIG_LOTTO,),
         lifecycle_status=LifecycleStatus.ONLINE,
         executable=True,
@@ -1513,6 +1513,7 @@ _PRODUCTION_DESCRIPTORS = (
             "current_significance:NOT_ESTABLISHED",
             "predictive_advantage_claimed:NO",
             "migration_task:BRANCH_B_B649_HORIZON_MINIMAX_TARGET_NATIVE_MIGRATION_R1",
+            "version_update:v0.2_zero_cross_ticket_overlap_cap",
         ),
         response_shape=ResponseShape.PORTFOLIO,
         native_ticket_count=2,

@@ -185,7 +185,8 @@
     "Earlier log-budget and evidence-feedback tests used helper SHA-256 e803a7f304e9e824ca05f1ee9cbf335a8feab23acee80407e5bdd31bc3d1d308. That exact helper source is not present in the current review bundle; the observed SHA is retained. The authorization-race regression used the bundled current helper SHA.",
     "Exact earlier test commands and captured outputs are now preserved in observed_tool_evidence.json, but they are task-history evidence rather than TaskCheckpoint captures.",
     "The complete local suite after the race fix remains unrun and is required by the Judge remediation contract; the user forbids rerunning the complete matrix, so the verdict remains BLOCKED_UNVERIFIABLE.",
-    "The review bundle is an archival snapshot; runtime use continues to point at the installed Skill/helper paths."
+    "The review bundle is an archival snapshot; runtime use continues to point at the installed Skill/helper paths.",
+    "The independent Judge's full DELTA report is preserved as judge_delta_report.md; its reviewed code commit predates only documentation/evidence-bundle commits."
   ],
   "observed_tool_evidence": {
     "path": "tools/fable_review_bundle_r1/observed_tool_evidence.json",
@@ -201,5 +202,21 @@
       "exec-fe8bb272-3918-4c06-a6bb-7c6c9f7c1541"
     ],
     "note": "Exact command and captured output copied from read-only task history; these are not TaskCheckpoint captures. Two failed fixture-path attempts are retained and labeled as precondition failures."
+  },
+  "judge_feedback": {
+    "report_path": "tools/fable_review_bundle_r1/judge_delta_report.md",
+    "sha256": "7d53855679dc55fa0a8348da59f5f9b4aace32c8beae9918312d101b58d2b229",
+    "source_agent": "/root/fable_judge",
+    "reviewed_commit": "6f69cce0f3f3dfaba25c90d89595d4dc6142fd83",
+    "reviewed_tree": "26c92146dcde0e46bd5ef79e58673751ee88cd04",
+    "verdict": "BLOCKED_UNVERIFIABLE",
+    "finding_id": "DELTA-EVIDENCE-1",
+    "severity": "BLOCKING",
+    "missing_judge_evidence": "COMPLETE_LOCAL_SUITE_AFTER_REMEDIATION",
+    "implementation_mutation_required": false,
+    "tests_run_by_judge": 0,
+    "writes_by_judge": 0,
+    "current_candidate_code_unchanged_since_review": true,
+    "note": "Subsequent commits changed only review evidence files; they did not alter the reviewed Skill/helper/receipt producer."
   }
 }

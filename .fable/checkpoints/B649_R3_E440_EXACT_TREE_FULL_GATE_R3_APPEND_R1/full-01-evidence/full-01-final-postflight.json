@@ -1,0 +1,94 @@
+{
+  "schema": "b649-r3-full-postflight-v1",
+  "observed_unix_ns": 1792465295176868000,
+  "execution_id": "e440-full-gate-r3-full-01",
+  "candidate": {
+    "expected_head": "e440d4298551ce93ef3ea9a9226143784afa3eff",
+    "expected_tree": "294cbf6bbe7ee8a8ebad947f397852edc1981b57",
+    "expected_parent": "86f644010f41cd627f436c8d5cf9e0b5cca8fcdc",
+    "identities": {
+      "source": {
+        "path": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_R3_ADV11_DESCENDANT_STABLE_CONTEXT_R1",
+        "returncode": 0,
+        "lines": [
+          "e440d4298551ce93ef3ea9a9226143784afa3eff",
+          "294cbf6bbe7ee8a8ebad947f397852edc1981b57",
+          "86f644010f41cd627f436c8d5cf9e0b5cca8fcdc"
+        ]
+      },
+      "external": {
+        "path": "/private/tmp/mathstat-e440-full-gate-r3-repo",
+        "returncode": 0,
+        "lines": [
+          "e440d4298551ce93ef3ea9a9226143784afa3eff",
+          "294cbf6bbe7ee8a8ebad947f397852edc1981b57",
+          "86f644010f41cd627f436c8d5cf9e0b5cca8fcdc"
+        ]
+      }
+    }
+  },
+  "source_worktree_status": "",
+  "source_worktree_status_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "source_refs": {
+    "before_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/e440-full-gate-r3-full-01/source-refs-before.txt",
+    "before_sha256": "ad258d6d5ddcc61ec337675f0d65b7e3bb7d9ab60df0a72a6e2cc38a6c77cc52",
+    "after_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/e440-full-gate-r3-full-01/source-refs-after.txt",
+    "after_sha256": "8ef33bb43a9047e2e151ea2d85acab11287a6890d192f854ab3deb3e5950b28f",
+    "before_count": 765,
+    "after_count": 764,
+    "added": [
+      "1b4b30dc17147a6fc63273d4e42573f992170221",
+      "4b0c8777ef6cb85b6e0c5ef56d5d4b5308e4a11c",
+      "a176c90f3859531bd47372fdfd128550e84bcc68"
+    ],
+    "removed": [
+      "51db6e86e5e30b04f9be7679ab8bfe5d2355a258",
+      "5e0129febcdc99099fe7b537a389ecf72ea5fc3a",
+      "d002c1985aca50c0c769cef31684b186ab72c1da",
+      "d5eaab6789f1c352a5e57d1ef00dc12eba30364c"
+    ],
+    "changed": [
+      "bf3cce1443695ae757462a8482288612de48ba3a"
+    ],
+    "attribution": "UNKNOWN"
+  },
+  "external_git": {
+    "root": "/private/tmp/mathstat-e440-full-gate-r3-repo",
+    "refs_equal_pre_full_snapshot": false,
+    "refs_command_exit": 0,
+    "pre_snapshot_count": 1,
+    "post_count": 1,
+    "head_tree_parent": [
+      "e440d4298551ce93ef3ea9a9226143784afa3eff",
+      "294cbf6bbe7ee8a8ebad947f397852edc1981b57",
+      "86f644010f41cd627f436c8d5cf9e0b5cca8fcdc"
+    ]
+  },
+  "old_r1_checkpoint": {
+    "path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_E440_EXACT_TREE_FULL_GATE_R1",
+    "exists_after": false,
+    "judge_report_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_E440_EXACT_TREE_FULL_GATE_R1/judge-report.md",
+    "judge_report_exists_after": false,
+    "pre_run_manifest_snapshot": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_E440_EXACT_TREE_FULL_GATE_R3_APPEND_R1/old-r1-checkpoint-before.json",
+    "pre_run_manifest_sha256": "9eb73512ddfdaefeb7484dd1a2c4cee1369bd30431bced928e0003ae676a275b",
+    "pre_run_manifest_root": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_E440_EXACT_TREE_FULL_GATE_R1",
+    "pre_run_entry_count": 15,
+    "pre_run_manifest_sha256_expected": "f41cccd40e17744c656a8e985043bd3c9815da6e514f80e600cb98a7aa44512e",
+    "formal_preflight_reported_complete_manifest_match": true,
+    "cause_of_post_run_absence": "UNKNOWN"
+  },
+  "verified_launcher": {
+    "path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/launch_gate.rb",
+    "exists_after": false,
+    "pre_run_sha256": "e9d3e5e03fded1974fb16fcb177cfc96ccc817bf8e72d2084ff7407a4383be62",
+    "validation_receipt": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/isolated-revalidation-r1/provenance-validation.json",
+    "validation_receipt_sha256": "2ba68c8d90fdcb98624f566452808766bb4a9dcb9bef7e797aa8f114702c6eae"
+  },
+  "task_packet_old_r1_status": "REFUTED",
+  "unexplained_post_run_absences": [
+    "old R1 checkpoint root and judge-report.md",
+    "verified launch_gate.rb"
+  ],
+  "recorder_append_only_audit": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_E440_EXACT_TREE_FULL_GATE_R3_APPEND_R1/full-01-recorder-append-only-final.json",
+  "recorder_append_only_sha256": "c4cb0c6aa4909ea0fe58fe3b4cfd78c7fd36e6f1fbffd266e4d60a4b07679e57"
+}

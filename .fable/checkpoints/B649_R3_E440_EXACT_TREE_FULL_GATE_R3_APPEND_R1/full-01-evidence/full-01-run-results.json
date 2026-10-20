@@ -1,0 +1,158 @@
+{
+  "schema": "b649-r3-full-run-results-v1",
+  "execution_id": "e440-full-gate-r3-full-01",
+  "suite_runs": 1,
+  "suite_limit": 1,
+  "candidate_head": "e440d4298551ce93ef3ea9a9226143784afa3eff",
+  "candidate_tree": "294cbf6bbe7ee8a8ebad947f397852edc1981b57",
+  "candidate_parent": "86f644010f41cd627f436c8d5cf9e0b5cca8fcdc",
+  "actual_argv": [
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/python",
+    "-B",
+    "-m",
+    "pytest",
+    "--basetemp=/private/tmp/gate-launch-20261020-17573-14iut56/basetemp",
+    "-o",
+    "cache_dir=/private/tmp/gate-launch-20261020-17573-14iut56/pytest-cache",
+    "-q"
+  ],
+  "cwd": "/private/tmp/mathstat-e440-full-gate-r3-repo",
+  "python": {
+    "executable": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/python",
+    "real_executable": "/opt/homebrew/Cellar/python@3.13/3.13.8/Frameworks/Python.framework/Versions/3.13/bin/python3.13",
+    "version": "3.13.8 (main, Oct  7 2025, 12:01:51) [Clang 17.0.0 (clang-1700.3.19.1)]",
+    "pytest": "9.1.1",
+    "source_lock_fingerprints": [
+      {
+        "path": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_R3_ADV11_DESCENDANT_STABLE_CONTEXT_R1/uv.lock",
+        "sha256": "073c1a72534fdd64090a6ac1f041204aceb67c4fa0cb663b581d385a5de21875",
+        "git_blob": "94aa656817f9e2e83c220dac11ca52c0e2ded9a0"
+      },
+      {
+        "path": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_R3_ADV11_DESCENDANT_STABLE_CONTEXT_R1/pyproject.toml",
+        "sha256": "b724f5bbe83c2e25521ebe76bcdf0c8cf718ecb54dec45ff847be725f16a5f29",
+        "git_blob": "51aea80579ec54c265a9f1fe93c7ecc7d91cc892"
+      },
+      {
+        "path": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_R3_ADV11_DESCENDANT_STABLE_CONTEXT_R1/.python-version",
+        "sha256": "02e735b3dfe1c32833eb550b7ff8ffa17f5f2bc3fa1e7bae61a8f5a3883ce398",
+        "git_blob": "24ee5b1be9961e38a503c8e764b7385dbb6ba124"
+      }
+    ]
+  },
+  "dependency_manifest": {
+    "path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/e440-full-gate-r3-full-01/dependencies.json",
+    "sha256": "009e63d71b1918eaa07f7a0b51a0c68e8bfbce8e333bbdf649fecce6a03ee54b"
+  },
+  "runtime_root": {
+    "path": "/private/tmp/gate-launch-20261020-17573-14iut56",
+    "mode": "0700",
+    "uid": 1428005812
+  },
+  "appdata": {
+    "path": "/private/tmp/gate-launch-20261020-17573-14iut56/appdata",
+    "mode": "0700",
+    "uid": 1428005812
+  },
+  "basetemp": {
+    "path": "/private/tmp/gate-launch-20261020-17573-14iut56/basetemp",
+    "mode": "0700",
+    "uid": 1428005812
+  },
+  "effective_umask": "0077",
+  "pids": {
+    "taskcheckpoint": 17548,
+    "launcher": 17573,
+    "pytest": 17635
+  },
+  "fd10": {
+    "device": 16777232,
+    "inode": 252984624,
+    "observed_launcher_and_pytest_same_lock": true,
+    "live_snapshot": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_E440_EXACT_TREE_FULL_GATE_R3_APPEND_R1/full-01-evidence/full-01-live-process-lock-snapshot.txt",
+    "live_snapshot_sha256": "24ba1dc96553ec30745b04cf7b059cc45ad09dd87aff7438afa2b32f29185f80"
+  },
+  "pytest": {
+    "nodeids_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_E440_EXACT_TREE_FULL_GATE_R3_APPEND_R1/pytest-nodeids-e440-full-gate-r3-full-01.json",
+    "nodeids_sha256": "c34be04d0253c0021adbb64be34700f8d48b2262aac75bf3a65d331c32c1062a",
+    "collected": 11679,
+    "progress_markers": {
+      ".": 11296,
+      "s": 23,
+      "E": 310,
+      "F": 50
+    },
+    "passed_marker_count": 11296,
+    "failed_marker_count": 50,
+    "error_marker_count": 310,
+    "skipped_marker_count": 23,
+    "xfailed_marker_count": 0,
+    "warnings": "NOT_AVAILABLE; terminal warning summary was not emitted",
+    "pytest_capture_exit_status": 1,
+    "pytest_stdout_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/e440-full-gate-r3-full-01/stdout.txt",
+    "pytest_stdout_sha256": "108600a7e67328011deb9221ff5551caea729efe84fdf3efec1cdf7d55ed08e3",
+    "pytest_stderr_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/e440-full-gate-r3-full-01/stderr.txt",
+    "pytest_stderr_sha256": "2870343f5ad61de62a75615eaeffefcf6abab2a36d0d71a8565c23e5662e0a40",
+    "pytest_outcome_collector_file": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_E440_EXACT_TREE_FULL_GATE_R3_APPEND_R1/pytest-outcomes-e440-full-gate-r3-full-01.json",
+    "pytest_outcome_collector_sha256": "6e4612d5c4619a974538d376a97b4933402e31e9b9bb2f0a9c5825b7f452a3ee",
+    "collector_file_is_nested_not_full": true,
+    "failed_node_ids": "NOT_RECOVERED",
+    "error_node_ids": "NOT_RECOVERED",
+    "first_test_failure_traceback": "NOT_AVAILABLE; progress output recorded outcomes but collector error prevented pytest failure-summary tracebacks and node IDs",
+    "final_pytest_traceback": "Collector sessionfinish raised FileExistsError because shared pytest-outcomes path already existed; see raw stderr."
+  },
+  "outer_taskcheckpoint": {
+    "exit_status": 125,
+    "stdout": "",
+    "stderr": "GATE_LAUNCH_FAILED: Errno::ENOENT: No such file or directory @ rb_sysopen - /Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_E440_EXACT_TREE_FULL_GATE_R1/judge-report.md\n",
+    "capture_path": "/private/tmp/mathstat-e440-full-gate-r3-repo/.fable/checkpoints/B649_R3_E440_EXACT_TREE_FULL_GATE_R3_APPEND_R1/captures/e440-full-gate-r3-full-01.json",
+    "capture_sha256": "a7d79fc3b80e01a0ce1cb92a063865419ceba996c26ae716133b4c035fae72fd",
+    "execution_record_path": "/private/tmp/mathstat-e440-full-gate-r3-repo/.fable/checkpoints/B649_R3_E440_EXACT_TREE_FULL_GATE_R3_APPEND_R1/executions/e440-full-gate-r3-full-01.json",
+    "execution_record_sha256": "f0ec6a0a45396316cbb34971a433a89a000cbb2135c8e3bcaced124cfa58d32d",
+    "status": "COMPLETED"
+  },
+  "timing": {
+    "pytest_started_at": "2026-10-20T02:13:50Z",
+    "pytest_ended_at": "2026-10-20T02:56:59Z",
+    "duration_seconds": 2589.0,
+    "task_started_at": "2026-10-20T02:13:49Z",
+    "task_ended_at": "2026-10-20T02:57:17Z"
+  },
+  "recorder_run": {
+    "path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/e440-full-gate-r3-full-01",
+    "files": [
+      "capture.json",
+      "dependencies.json",
+      "launch.json",
+      "primary-refs-after.txt",
+      "primary-refs-before.txt",
+      "primary-status-after.txt",
+      "primary-status-before.txt",
+      "source-refs-after.txt",
+      "source-refs-before.txt",
+      "source-status-after.txt",
+      "source-status-before.txt",
+      "stderr.txt",
+      "stdout.txt"
+    ],
+    "missing_end_and_sums": true
+  },
+  "evidence": {
+    "raw_capture_root": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_E440_EXACT_TREE_FULL_GATE_R3_APPEND_R1/full-01-evidence/raw-captures",
+    "raw_capture_index_sha256": "e8de666fab2edf53fe5d26e514f889620b43170e49486da6afc03e0526d0e5cc",
+    "raw_capture_sums_sha256": "0696a37552a74cb3bbcd3c9a1e0d4a4805057b95d8faf6c0beb9ca303dc641f5",
+    "run_was_not_retried": true
+  },
+  "outcome": "FULL_SUITE_FAILED",
+  "reasons": [
+    "50 failed and 310 error progress markers among 11679 collected; 23 skipped.",
+    "pytest sessionfinish evidence collector collision raised FileExistsError; no authoritative full failure/error node-ID list or warning summary was persisted.",
+    "Launcher returned GATE_LAUNCH_FAILED after the run because the preflight-bound old R1 judge-report.md path was not readable.",
+    "old R1 checkpoint root and verified Launcher file are absent after execution; cause unknown."
+  ],
+  "limitations": [
+    "Result counts derive from the full pytest terminal progress markers and sum exactly to collected count; the nested 27-item outcomes JSON is not treated as full-suite evidence.",
+    "The main pytest observer FD3 was unlinked/replaced during the run; its complete observer trace could not be sealed. Current path snapshot and discrepancy receipt are preserved.",
+    "No second FULL suite run was performed."
+  ]
+}

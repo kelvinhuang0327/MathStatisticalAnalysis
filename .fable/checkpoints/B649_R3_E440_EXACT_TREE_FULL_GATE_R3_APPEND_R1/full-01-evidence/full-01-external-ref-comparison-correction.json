@@ -1,0 +1,24 @@
+{
+  "schema": "b649-r3-external-ref-comparison-correction-v1",
+  "created_unix_ns": 1792465374773962000,
+  "supersedes_field_only": {
+    "receipt": ".fable/checkpoints/B649_R3_E440_EXACT_TREE_FULL_GATE_R3_APPEND_R1/full-01-evidence/full-01-final-postflight.json",
+    "sha256": "d39bdcb5f69f09fcd69a25124e7b9863d5f2e42d6eb43996775f3aa28a53ec4b",
+    "field": "external_git.refs_equal_pre_full_snapshot"
+  },
+  "reason": "The pre-full snapshot is formatted as refname then object ID; the post-full for-each-ref query was formatted object ID then refname. The initial raw tuple comparison was order-sensitive and yielded a false mismatch.",
+  "normalized_comparison": {
+    "pre_count": 1,
+    "post_count": 1,
+    "same_refnames_and_object_ids": true,
+    "pre": {
+      "refs/heads/codex/b649-r3-e440-adv19-preflight-recovery-r1": "e440d4298551ce93ef3ea9a9226143784afa3eff"
+    },
+    "post": {
+      "refs/heads/codex/b649-r3-e440-adv19-preflight-recovery-r1": "e440d4298551ce93ef3ea9a9226143784afa3eff"
+    },
+    "corrected_value": true
+  },
+  "external_root": "/private/tmp/mathstat-e440-full-gate-r3-repo",
+  "source_ref_drift_remains": "UNKNOWN; separate source/common Git refs changed across this run."
+}

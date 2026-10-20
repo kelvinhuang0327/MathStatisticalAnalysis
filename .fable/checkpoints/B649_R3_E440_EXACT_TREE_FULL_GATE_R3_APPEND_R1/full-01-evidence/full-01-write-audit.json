@@ -1,0 +1,146 @@
+{
+  "candidate": {
+    "head": "e440d4298551ce93ef3ea9a9226143784afa3eff",
+    "parent": "86f644010f41cd627f436c8d5cf9e0b5cca8fcdc",
+    "tree": "294cbf6bbe7ee8a8ebad947f397852edc1981b57"
+  },
+  "evidence": {
+    "observer_discrepancy": "full-01-main-observer-log-discrepancy.json",
+    "postflight": "full-01-final-postflight.json",
+    "recorder_append_only_audit": "full-01-recorder-append-only-final.json",
+    "scope_integrity_amendment": "full-01-scope-integrity-amendment.json",
+    "trace_hash_manifest": "raw-captures/SHA256SUMS",
+    "trace_index": "raw-captures/raw-capture-index.json"
+  },
+  "execution_id": "e440-full-gate-r3-full-01",
+  "known_post_run_integrity_findings": {
+    "cause_of_absences": "UNKNOWN; no attribution is asserted.",
+    "external_clone_refs_corrected_equal_pre_full": true,
+    "old_r1_checkpoint_exists_after": false,
+    "primary_observer_log_discrepancy_path": "full-01-main-observer-log-discrepancy.json",
+    "recorder_r1_runs_baseline_entries": 128,
+    "recorder_r1_runs_preexisting_missing_entries": 128,
+    "source_refs": {
+      "after": {
+        "line_count": 1603,
+        "path": "raw-captures/recorder-run/source-refs-after.txt",
+        "sha256": "8ef33bb43a9047e2e151ea2d85acab11287a6890d192f854ab3deb3e5950b28f"
+      },
+      "before": {
+        "line_count": 1613,
+        "path": "raw-captures/recorder-run/source-refs-before.txt",
+        "sha256": "ad258d6d5ddcc61ec337675f0d65b7e3bb7d9ab60df0a72a6e2cc38a6c77cc52"
+      },
+      "postflight_receipt_summary_conflict": {
+        "raw_snapshot_hashes_match_receipt": true,
+        "receipt_added_count": 3,
+        "receipt_after_count": 764,
+        "receipt_before_count": 765,
+        "receipt_changed_count": 1,
+        "receipt_path": "full-01-final-postflight.json",
+        "receipt_removed_count": 4
+      },
+      "refname_objectid_delta": {
+        "added": [
+          "refs/codex/turn-diffs/checkpoints/687bf56dac0a9db0c9b2e8bbc72275e2/da259b7395cc5c3049da96aa1f92a560/1792463605366/0f4fe0d0-70d3-4932-a977-3652f0ba1d56",
+          "refs/codex/turn-diffs/checkpoints/7129a944c89dcfb6808a3a6c96144204/b40f84bb08d673857758300aaafc395f/1792463001304/679f5f1b-f954-40f1-b1e2-015c50c07288",
+          "refs/heads/archive/main-before-sync-20261020-103215",
+          "refs/heads/codex/b649-k235-strategy-effectiveness-research-r1",
+          "refs/heads/runtime/b649/a7bc0b8d0202bc0562f8094d7f8f75c0434b5bed",
+          "refs/heads/test",
+          "refs/remotes/origin/test"
+        ],
+        "added_count": 7,
+        "changed": [
+          {
+            "after": "a7bc0b8d0202bc0562f8094d7f8f75c0434b5bed",
+            "before": "bf3cce1443695ae757462a8482288612de48ba3a",
+            "ref": "refs/heads/main"
+          }
+        ],
+        "changed_count": 1,
+        "removed": [
+          "refs/codex/turn-diffs/captures/1792462218858/5deabe71-4ab2-4ec5-ad19-f746db168716/base",
+          "refs/codex/turn-diffs/checkpoints/08bc2d92485b8cea9ae7d5db4acbb1df/5aab781d7cec32dc7486b5d4c33ec344/1791858921852/b2ce97e1-4e8e-4668-add9-d4dd02710498",
+          "refs/codex/turn-diffs/checkpoints/10d1f9effba969b9f9da5fcd2bc35636/f271cf407548b59f8751fda4b38e271d/1791859509931/67754017-ef3d-4544-8ea9-e4a03693aa1a",
+          "refs/codex/turn-diffs/checkpoints/3adc7460d00c4c081c07dc7b824d440f/2824b6e2766fe1b43d059954cfc771e6/1791858256221/1b517b69-1611-4281-8b0d-2f74e243ae4f",
+          "refs/codex/turn-diffs/checkpoints/460e3dca5c3b5b11f8c40bff0fad4806/d0f02027dbb58c5d54108eb56104bc23/1791859742423/4096a9a9-e4f1-4b12-86ee-9622419e5248",
+          "refs/codex/turn-diffs/checkpoints/4c2a532dd14294ee90e4658b7a511691/bc4bd6147d88c28114132498cf25851a/1791858567398/cb7e71e1-bdcd-402e-96b8-89d156549e9b",
+          "refs/codex/turn-diffs/checkpoints/4f54b4c031ed6283191df161c87d75c0/44412438c6b70e798808a754ec5e6ce7/1791858153527/092dff4f-55d8-489e-bc2e-5420926fd833",
+          "refs/codex/turn-diffs/checkpoints/53720dd34eaa4d960a45c6aa96f89777/0c545eb1db1428e4e1d44166cb8b2128/1791857912120/42362b65-6ce2-49d2-a65e-56d09696e2bd",
+          "refs/codex/turn-diffs/checkpoints/54ba8a7daab2dbad70597e065cf2085a/0a74c650ac988a9fee15760fe1913811/1791857699855/8fc9b7e3-56ab-4b2f-aa81-2d731b45798f",
+          "refs/codex/turn-diffs/checkpoints/60ebc0469656c79962285bf5c5acc16f/bec024d80c6ee67f8e8e6d28da00f16e/1791859113177/99af9046-0cc3-40c6-895c-906ced99fb46",
+          "refs/codex/turn-diffs/checkpoints/873b290071d6f6755550bac01d1e5eea/e16c8767f31263673b4ad23fb7582c06/1791859061368/daa4109a-4615-4640-a0da-f5537afcfa42",
+          "refs/codex/turn-diffs/checkpoints/88d3b751835912c655b610cfd08aa70a/9714ef48e98fe0f923b466d879c19d2a/1791859346930/e7ada185-9376-4734-8941-16fd7dd114ed",
+          "refs/codex/turn-diffs/checkpoints/9d890b2ee16c7e1f39bb581d0396aad1/47d17f1daa4a9684fef022373f5d0888/1791858607996/cdef502c-181b-4d5a-a140-11557440dd1e",
+          "refs/codex/turn-diffs/checkpoints/aec9e8017e2a8e442c9704cce9333bd1/f4bc723e7e39c52fbabfc9fc8b6f7eeb/1791858520878/eff28121-ea09-490b-babe-6bf5125e7a65",
+          "refs/codex/turn-diffs/checkpoints/b3bf31b5c3d7b9b96baebbb33f016769/d08f8d17efee20ee82cfca3ae4f4817f/1791858974135/11204cc0-c772-449f-b0c0-486851cb5153",
+          "refs/codex/turn-diffs/checkpoints/b785e47f72df2662f14f2b2b5de04510/411086727eddbacc3b36f94a9bab0995/1791859597336/d9e7345f-934f-4903-a193-6478bdff47a8",
+          "refs/codex/turn-diffs/checkpoints/f347b5ac5467b73753cd0010c448c717/a080d5198a71c2001b6ce20f8a424133/1791858077929/aab07d02-4636-463b-a17d-44b0fc15a7a7"
+        ],
+        "removed_count": 17
+      }
+    },
+    "source_worktree_status_after": "",
+    "verified_launcher_exists_after": false
+  },
+  "limitations": [
+    "The pytest outcome collector failed at sessionfinish; per-test failure tracebacks were not captured.",
+    "The preserved main observer log is incomplete.",
+    "Source refs raw-snapshot delta conflicts with the postflight receipt summary; Judge should resolve or report as unverifiable.",
+    "No cause is known for missing historical paths."
+  ],
+  "preserved_trace_audit": {
+    "completeness": "INCOMPLETE: the full pytest observer log inode was open but unlinked and disappeared at process exit; only the saved partial on-disk snapshot is available. Thus zero out-of-scope requests in preserved file-write events is not proof of zero unauthorized writes.",
+    "file_write_request_by_allowed_root_or_class": {
+      "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_E440_EXACT_TREE_FULL_GATE_R3_APPEND_R1": 19,
+      "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/e440-full-gate-r3-full-01": 13,
+      "/dev/null": 10,
+      "/private/tmp/gate-launch-20261020-17573-14iut56": 16530,
+      "/private/tmp/mathstat-e440-full-gate-r3-repo": 1538,
+      "FD_NUMBER": 3523
+    },
+    "file_write_request_count": 21633,
+    "file_write_request_integer_fd_path_count": 3523,
+    "file_write_request_resolved_path_count": 18110,
+    "filesystem_request_count": 50081,
+    "filesystem_request_targets_count": 57953,
+    "malformed_json_lines": 0,
+    "network_outcome": "UNKNOWN_FROM_OBSERVER; the sandbox write-denial probe recorded denied=true and errno=1; packet policy denied network*. No successful network effect is evidenced.",
+    "network_requests": [
+      {
+        "audit_event": "socket.bind",
+        "monotonic_ns": 6835194132750,
+        "operation": "network-request",
+        "pid": 6884,
+        "ppid": 17635,
+        "role": "pytest",
+        "run_tag": "e440-full-gate-r3-full-01",
+        "time_ns": 1792464992342621000
+      }
+    ],
+    "operation_counts": {
+      "None": 101813,
+      "directory-create": 10,
+      "file-open-result": 13,
+      "file-rename": 1,
+      "file-write-request": 21633,
+      "filesystem-request": 50081,
+      "network-request": 1,
+      "observer-start": 341,
+      "open3-child-finished": 70,
+      "open3-child-start": 70,
+      "pytest-observer-plugin-enabled": 1,
+      "python-instrumentation-overlay": 2,
+      "sandbox-write-denial-probe": 1,
+      "subprocess-request": 8031,
+      "temporary-directory": 1
+    },
+    "outside_allowlist_file_write_request_count_in_preserved_traces": 0,
+    "outside_allowlist_file_write_request_examples": [],
+    "parsed_json_events": 182069,
+    "trace_file_count": 342
+  },
+  "schema": "b649-r3-full-write-audit-v1",
+  "scope": "Read-only audit of preserved execution observer traces and contemporaneous post-run receipts; observer records are requests and may not prove syscall success."
+}

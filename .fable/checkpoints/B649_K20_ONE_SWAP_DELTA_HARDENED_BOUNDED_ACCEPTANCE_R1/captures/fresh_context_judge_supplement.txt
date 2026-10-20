@@ -1,0 +1,43 @@
+REFUTED — final acceptance closure cannot pass AC11’s unchanged-Git condition.
+
+The supplemental read-only check independently confirms:
+
+| Item | Current observation | Decision |
+|---|---|---|
+| Canonical HEAD | 1b4b30dc17147a6fc63273d4e42573f992170221 | Differs from baseline bf3cce1443695ae757462a8482288612de48ba3a |
+| Canonical tree | 15172a01eada13f2f38243df57b688610caf6af4 | Differs from baseline 518f60bf6ff8582bd8ae3ee1bcd16c4da24cc5eb |
+| Canonical branch/status | Branch test; one tracked modified path reported | Baseline tracked status was clean |
+| Scientific HEAD/tree | d7466cecf6a73d330f6f613fd0470c40299155df / d77d5e1154328aeefde490e16d26d572597c26de | Matches; tracked status clean |
+| Frozen runtime manifest | Inode 253176771; SHA256 22f53263aa9e3b9c7d1f90ca8aa0f3ca3b80ee5c9e862a6fb0ef57da3fc84076 | Matches |
+| Frozen runtime entries | All 108 entries independently recomputed | Match exactly |
+
+The unrelated modified path was observed only through Git status; its contents and history were not inspected.
+
+finding_id: J2
+severity: BLOCKING
+FINDING_CONFIDENCE: CONFIRMED
+claim: Canonical Git identity changed before acceptance closure.
+criterion_or_rule: AC11 and the Packet’s identity/Git stop boundary.
+expected: Canonical HEAD/tree and tracked status remain at the preflight baseline.
+observed: Different HEAD/tree and a tracked modification.
+attribution: UNKNOWN; this check does not establish who caused the changes.
+
+The earlier VERIFIED_WITH_CAVEATS report remains a historical verdict for the explicitly identified frozen runtime snapshot and the repository state observed during that review. The retained F1/F2, recovery, pair-parity and resource evidence remains unchanged. That historical verdict cannot establish successful final closure after this newly confirmed Git drift.
+
+The transient manifest-read failure is not independently reproducible from this check; current direct reading succeeds and its bytes match. Its cause remains unknown. It does not explain away the separately confirmed Git mismatch.
+
+SUPPLEMENTAL_JUDGE_MODE: FRESH_CONTEXT (continuation of independent review)
+JUDGE_DEPTH: FULL
+FINAL_ACCEPTANCE_GATE: FAILED
+TASK_STATUS: FAILED
+HARDENED_BOUNDED_ACCEPTED: MUST NOT BE CLAIMED FOR FINAL CLOSURE
+FROZEN_RUNTIME_EVIDENCE: PRESERVED; no observed invalidation of its bytes
+AC11_CURRENT_CLOSURE: FAIL
+OTHER_RUNTIME_CRITERIA: Earlier findings retained
+SUPPLEMENTAL_VERIFICATION_COMMANDS: 1 read-only script
+SUPPLEMENTAL_FILESYSTEM_WRITES: 0
+SUPPLEMENTAL_GIT_MUTATIONS: 0
+SUPPLEMENTAL_SCORING_OR_CONTAINER_RUNS: 0
+
+The smallest next Owner decision is how to resolve or explicitly rebaseline the canonical repository drift before any renewed closure attempt. Do not restore Git state automatically or rerun scoring. The current Packet’s stop boundary applies; a new closure decision must preserve the frozen evidence and acknowledge the changed repository identity.
+

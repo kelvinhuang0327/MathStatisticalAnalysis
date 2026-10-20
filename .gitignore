@@ -30,3 +30,7 @@ data/*
 
 # Local task/research execution artifacts — never commit
 .task-data/
+
+# Transient Fable observer process logs
+.fable/checkpoints/**/python-observer-*.jsonl
+.fable/checkpoints/**/git-python-*.jsonl

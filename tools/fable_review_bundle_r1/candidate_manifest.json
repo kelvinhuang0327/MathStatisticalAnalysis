@@ -1,0 +1,181 @@
+{
+  "schema": "fable-review-bundle-v1",
+  "goal_mapping": {
+    "original_task_id": "FABLE_ARTIFACT_BUDGET_AND_LIFECYCLE_R1",
+    "current_goal_id": "FABLE_EVIDENCE_FEEDBACK_AND_STORAGE_OPTIMIZATION_R1",
+    "execution_branch": "codex/fable-artifact-budget-lifecycle-r1",
+    "base_commit": "9b0dc98b10623dac7727f50aa4e47f14f68dcf6d"
+  },
+  "purpose": "Read-only review snapshot and evidence index. Bundled Skill/helper files are archival copies, not runtime imports.",
+  "sources": {
+    "installed_skill": {
+      "path": "/Users/kelvin/.codex/skills/fable-method/SKILL.md",
+      "snapshot": "fable-method/SKILL.md",
+      "sha256": "265bbaf00b76f1e256fa4ee2eeacbd7dac1842096536f1b9ef99a9ba5a04287a"
+    },
+    "original_skill_backup": {
+      "path": "/Users/kelvin/.codex/skills/fable-method/SKILL.md.before_FABLE_ARTIFACT_BUDGET_AND_LIFECYCLE_R1",
+      "snapshot": "fable-method/SKILL.original.md",
+      "sha256": "b176a9bf87cbc2e734984085333842dbc326720b7b588b7277692747dd057462"
+    },
+    "installed_helper": {
+      "path": "/Users/kelvin/.codex/skills/fable-method/scripts/fable_artifact_controls.py",
+      "snapshot": "fable-method/scripts/fable_artifact_controls.py",
+      "sha256": "40f824f0392f8fe074831bc175e66ef9bf8c1b5f71e4e5b9e1dfd51060954e50"
+    },
+    "receipt_producer": {
+      "path": "tools/run_single_execution_receipt.py",
+      "sha256": "afd6025df891b5aaf39d667d3ea3d2534c9db43f5be2798d063d2eae2d60636d"
+    }
+  },
+  "historical_inventory": {
+    "task_directories": 4,
+    "execution_records": 26,
+    "formal_captures": 27,
+    "referenced_captures": 26,
+    "orphan_capture": {
+      "path": ".fable/checkpoints/B649_FSMONITOR_METADATA_CI_PORTABILITY_REMEDIATION_R1/captures/JUDGE_INDEPENDENT_FOCUSED_PYTEST_R1.json",
+      "bytes": 700,
+      "sha256": "5978ae27f376b936876384cfdc836577b8e9e572b030c14ebbda718d0ef693f3",
+      "classification": "capture-only; successful pytest output, not a Judge verdict; preserved"
+    },
+    "outcomes": {
+      "successful_commands": 20,
+      "failed_commands": 5,
+      "interrupted_commands": 1,
+      "recorded_seconds": 34730,
+      "task_completion_rate": "NOT_YET_PROVEN"
+    },
+    "schema_gaps": [
+      "agent attempt counts are not recorded",
+      "retry relationships are not recorded",
+      "Judge decisions are not recorded in TaskCheckpoint schema",
+      "task-level completion is not recorded",
+      "historical worktree lifecycle is not recorded"
+    ],
+    "observer_logs": {
+      "files_found": 0,
+      "bytes_found": 0
+    },
+    "exact_duplicate_outputs": {
+      "groups": 5,
+      "redundant_stdout_stderr_bytes": 804,
+      "action": "retained all formal captures; no historical evidence was deduplicated or deleted"
+    },
+    "disk_sizes_kib": {
+      ".fable": 122024,
+      ".fable/recovery": 121760,
+      ".fable/checkpoints": 252
+    }
+  },
+  "problem_evidence": [
+    {
+      "execution_id": "postjudge-full-suite-r1",
+      "outcome": "COMMAND_FAILED",
+      "duration_seconds": 25,
+      "failure_signature": "pytest_temp_path_inside_git_worktree",
+      "execution_record": {
+        "path": ".fable/checkpoints/B649_K20_2_3_TICKET_EXACT_OBJECTIVE_EXCHANGE_ENGINE_R1/executions/postjudge-full-suite-r1.json",
+        "sha256": "6088431b23a31181826c9ee96a2f6cd41c0faa4e9848739e846d8c894880e624"
+      },
+      "capture": {
+        "path": ".fable/checkpoints/B649_K20_2_3_TICKET_EXACT_OBJECTIVE_EXCHANGE_ENGINE_R1/captures/postjudge-full-suite-r1.json",
+        "sha256": "b9ef12920971d20e979f9089cbc1efc22c7333e25cf58459115c7309f1fae1a2"
+      }
+    },
+    {
+      "execution_id": "postjudge-full-suite-r2",
+      "outcome": "COMMAND_FAILED",
+      "duration_seconds": 2384,
+      "failure_signature": "pytest_temp_path_contains_protected_b649_token",
+      "execution_record": {
+        "path": ".fable/checkpoints/B649_K20_2_3_TICKET_EXACT_OBJECTIVE_EXCHANGE_ENGINE_R1/executions/postjudge-full-suite-r2.json",
+        "sha256": "ec33623dfbb4444a487408e04df6847d8ff8ad02a9cf21e5167a43b6acd17fe8"
+      },
+      "capture": {
+        "path": ".fable/checkpoints/B649_K20_2_3_TICKET_EXACT_OBJECTIVE_EXCHANGE_ENGINE_R1/captures/postjudge-full-suite-r2.json",
+        "sha256": "6b4895c56ddb42f9f4528a888d73f63aeb777974666e8ac3daa0c7a65767f683"
+      }
+    },
+    {
+      "execution_id": "postjudge-full-suite-r3",
+      "outcome": "INTERRUPTED",
+      "duration_seconds": 32237,
+      "failure_signature": "none recorded; SIGNALED:2",
+      "execution_record": {
+        "path": ".fable/checkpoints/B649_K20_2_3_TICKET_EXACT_OBJECTIVE_EXCHANGE_ENGINE_R1/executions/postjudge-full-suite-r3.json",
+        "sha256": "d0bd7dd49451cb224c70c2efcf19cb9d6408ed959b7bd5cfe0faf669084fd749"
+      },
+      "capture": {
+        "path": ".fable/checkpoints/B649_K20_2_3_TICKET_EXACT_OBJECTIVE_EXCHANGE_ENGINE_R1/captures/postjudge-full-suite-r3.json",
+        "sha256": "32e2cb4ed00cfda51775f5ed25bd10eb6796d4d43becb68e247d8373d54d15ed"
+      }
+    }
+  ],
+  "verification_results": {
+    "log_budget_self_test": {
+      "result": "PASS",
+      "tested_helper_sha256": "e803a7f304e9e824ca05f1ee9cbf335a8feab23acee80407e5bdd31bc3d1d308",
+      "submitted_payload_bytes": 12582912,
+      "equivalent_unbounded_jsonl_bytes": 12589056,
+      "retained_bytes": 10425312,
+      "budget_bytes": 10485760,
+      "dropped_events": 33,
+      "formal_capture_and_SHA256SUMS_unchanged": true,
+      "result_origin": "previous synthetic test output summarized in the task conversation, not a TaskCheckpoint capture"
+    },
+    "evidence_feedback_self_test": {
+      "result": "PASS",
+      "tested_helper_sha256": "e803a7f304e9e824ca05f1ee9cbf335a8feab23acee80407e5bdd31bc3d1d308",
+      "unsafe_historical_paths_blocked": 2,
+      "neutral_external_path_passed": true,
+      "baseline_failed_runtime_seconds": 2409,
+      "pytest_processes_after_preflight": 0,
+      "test_runtime_after_preflight_seconds": 0,
+      "formal_fixture_hashes_unchanged": true,
+      "result_origin": "previous synthetic test output summarized in the task conversation, not a TaskCheckpoint capture"
+    },
+    "receipt_deduplication": {
+      "result": "PASS",
+      "producer_sha256": "afd6025df891b5aaf39d667d3ea3d2534c9db43f5be2798d063d2eae2d60636d",
+      "v1_result_plus_receipt_bytes": 840028,
+      "v2_result_plus_receipt_bytes": 363028,
+      "reduction_percent": 56.78,
+      "receipt_bytes_and_SHA_preserved": true,
+      "result_origin": "previous simulated V2 verification output summarized in the task conversation, not a TaskCheckpoint capture"
+    },
+    "authorization_race_regression": {
+      "result": "PASS",
+      "helper_sha256": "40f824f0392f8fe074831bc175e66ef9bf8c1b5f71e4e5b9e1dfd51060954e50",
+      "reviewable_script": "authorization_race_regression.py",
+      "execution_method": "focused inline synthetic run importing the exact installed helper SHA above",
+      "observed_output": {
+        "authorization_change_between_validation_and_remove": "BLOCKED",
+        "worktree_preserved": true,
+        "changed_marker_preserved": true,
+        "claim_artifacts_cleaned_or_restored": true,
+        "temporary_fixture_cleanup": "TemporaryDirectory"
+      },
+      "result_origin": "tool output in the task conversation, not a TaskCheckpoint capture",
+      "packaged_regression_script_rerun": false
+    },
+    "static_checks_after_race_fix": {
+      "ast_parse_helper_and_receipt_producer": "PASS",
+      "git_diff_check": "PASS",
+      "full_research_matrix_rerun": false
+    }
+  },
+  "safety": {
+    "no_existing_worktree_removed": true,
+    "no_formal_evidence_modified_or_deleted": true,
+    "no_mathematical_certificate_rules_changed": true,
+    "first_independent_judge_finding": "authorization changed after validation and was checked only after worktree removal",
+    "race_fix_review": "atomic authorization claim and exact-byte check run before ordinary removal",
+    "most_recent_judge_status_before_this_commit": "BLOCKED_UNVERIFIABLE because the candidate was not sealed"
+  },
+  "limitations": [
+    "20/26 is command success rate only; overall task completion, retries, and Judge rejection rates remain NOT_YET_PROVEN because the source schemas do not record them.",
+    "The packaged test outputs for the earlier synthetic runs are summaries of prior task tool output, not raw TaskCheckpoint captures.",
+    "The review bundle is an archival snapshot; runtime use continues to point at the installed Skill/helper paths."
+  ]
+}

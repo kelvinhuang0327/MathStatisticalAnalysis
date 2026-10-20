@@ -6,9 +6,11 @@ are required for a receipt run; --output-directory names a new directory under a
 parent. The recorder exclusively creates receipt.jsonl; this runner exclusively
 reserves result.json before launching the recorder. Never retry or reuse a run.
 
-result.json and stdout contain the same JSON summary. Binary stdout, stderr and
-receipt evidence are losslessly base64 encoded. recorder.returncode is the raw
-subprocess return code (negative means a signal on POSIX), or null if unavailable.
+result.json and stdout contain the same JSON summary. Recorder stdout and stderr
+remain losslessly base64 encoded; result.json points to receipt.jsonl by a
+relative path, byte count, and SHA-256 instead of embedding the full receipt a
+second time. recorder.returncode is the raw subprocess return code (negative
+means a signal on POSIX), or null if unavailable.
 Runner exit 0 means receipt acceptance ONLY, including a valid MISMATCH; exit 1
 means rejection/infrastructure failure, and argparse errors use exit 2. Candidate
 comparison is independent and never proves historical identity or original parity.
@@ -53,6 +55,12 @@ class BinaryEvidence(TypedDict):
     bytes: int
     sha256: str
     raw_base64: str
+
+
+class BinaryEvidenceReference(TypedDict):
+    bytes: int
+    sha256: str
+    reference: str
 
 
 class DependencyMetadata(TypedDict):
@@ -212,7 +220,7 @@ class RecorderEvidence(TypedDict):
 
 class ReceiptEvidence(TypedDict):
     path: str
-    evidence: BinaryEvidence | None
+    evidence: BinaryEvidenceReference | None
     read_error: str | None
 
 
@@ -245,6 +253,12 @@ def digest(data: bytes) -> str:
 def binary_evidence(data: bytes) -> BinaryEvidence:
     return {"bytes": len(data), "sha256": digest(data),
             "raw_base64": base64.b64encode(data).decode("ascii")}
+
+
+def evidence_reference(data: bytes, reference: str) -> BinaryEvidenceReference:
+    if not reference or Path(reference).is_absolute() or ".." in Path(reference).parts:
+        raise ValueError("Evidence reference must be a safe relative path")
+    return {"bytes": len(data), "sha256": digest(data), "reference": reference}
 
 
 def utc_now() -> str:
@@ -440,7 +454,7 @@ def main() -> int:
         if digest(recorder.read_bytes()) != RECORDER_SHA256:
             raise ValueError("Recorder source changed before invocation")
         summary: RunSummary = {
-            "schema": "biglotto-single-execution-run-v1",
+            "schema": "biglotto-single-execution-run-v2",
             "started_at_utc": utc_now(), "finished_at_utc": None,
             "request": vars(args), "result_path": str(result),
             "candidate_only": True, "scope": "candidate_output_fields_only",
@@ -484,7 +498,7 @@ def main() -> int:
                 if not stat.S_ISREG(os.fstat(receipt_file.fileno()).st_mode):
                     raise ValueError("Receipt leaf is not a regular file")
                 receipt_bytes = receipt_file.read()
-            summary["receipt"]["evidence"] = binary_evidence(receipt_bytes)
+            summary["receipt"]["evidence"] = evidence_reference(receipt_bytes, receipt.name)
         except (OSError, ValueError) as exc:
             read_error = f"{type(exc).__name__}: {exc}"
             summary["receipt"]["read_error"] = read_error
@@ -492,7 +506,8 @@ def main() -> int:
 
         if completed is not None and receipt_bytes is not None:
             verdict = cast(RecorderAPI, module).accept_receipt(
-                receipt_bytes, cast(BinaryEvidence, summary["receipt"]["evidence"])["sha256"],
+                receipt_bytes,
+                cast(BinaryEvidenceReference, summary["receipt"]["evidence"])["sha256"],
                 completed.returncode)
             summary["receipt_acceptance"] = {
                 "accepted": verdict["accepted"], "reason": verdict["reason"],

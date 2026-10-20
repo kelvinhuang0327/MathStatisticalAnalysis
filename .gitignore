@@ -32,5 +32,5 @@ data/*
 .task-data/
 
 # Transient Fable observer process logs
-.fable/checkpoints/**/python-observer-*.jsonl
-.fable/checkpoints/**/git-python-*.jsonl
+.fable/checkpoints/*/python-observer-*.jsonl
+.fable/checkpoints/*/git-python-*.jsonl

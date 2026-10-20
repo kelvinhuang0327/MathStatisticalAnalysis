@@ -28,6 +28,15 @@ OLD_HEAD = "3" * 40
 LABEL = "com.lottolab.checkpoint-fixture"
 DOMAIN = "gui/501"
 DARWIN_NEGATIVE_UID_RAW_ROW = "68784     1    -2 Ss   /usr/libexec/dhcp6d"
+DARWIN_UNKNOWN_STATE_WRITER_COMMAND = (
+    "/fixture/B649_PRODUCTION_release/tools/b649_goalc_local_scheduler.py run"
+)
+DARWIN_UNKNOWN_STATE_RAW_ROW = (
+    "987654321     1    1428005812 ?    " + DARWIN_UNKNOWN_STATE_WRITER_COMMAND
+)
+DARWIN_UNKNOWN_SESSION_LEADER_RAW_ROW = (
+    "987654322     1    0           ?s   /usr/libexec/fixture-system-task"
+)
 HEALTH_SCHEMA = "b649-goalc-local-scheduler-health-v1"
 
 
@@ -375,6 +384,38 @@ def test_darwin_exact_negative_uid_row_normalizes_without_launch_uid_alias() -> 
 
 
 @pytest.mark.parametrize(
+    ("row", "pid", "uid", "state", "command"),
+    [
+        (
+            DARWIN_UNKNOWN_STATE_RAW_ROW,
+            987654321,
+            1428005812,
+            "?",
+            DARWIN_UNKNOWN_STATE_WRITER_COMMAND,
+        ),
+        (
+            DARWIN_UNKNOWN_SESSION_LEADER_RAW_ROW,
+            987654322,
+            0,
+            "?s",
+            "/usr/libexec/fixture-system-task",
+        ),
+    ],
+)
+def test_darwin_unknown_state_rows_preserve_identity_and_command(
+    row: str, pid: int, uid: int, state: str, command: str
+) -> None:
+    process = checkpoint.parse_process_row(row, darwin=True)
+    assert (process.pid, process.ppid, process.uid, process.state, process.command) == (
+        pid,
+        1,
+        uid,
+        state,
+        command,
+    )
+
+
+@pytest.mark.parametrize(
     ("uid_token", "expected_uid"),
     [
         ("-2147483648", 2147483648),
@@ -435,6 +476,46 @@ def test_process_snapshot_accepts_exact_darwin_negative_uid_row(
     assert snapshot["process_count"] == 2
     assert snapshot["uncertainties"] == []
     assert checkpoint.object_record(snapshot["runtime"])["classification"] == "ABSENT"
+
+
+def test_process_snapshot_keeps_unknown_state_scheduler_writer_present(
+    harness: Harness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(checkpoint.sys, "platform", "darwin")
+    harness.rollback_path = Path("/fixture/B649_PRODUCTION_release")
+    harness.lsof_uid = 1428005812
+    harness.process_rows = [DARWIN_UNKNOWN_STATE_RAW_ROW]
+    harness.file_rows = [
+        "p987654321",
+        "fcwd",
+        "n/fixture/B649_PRODUCTION_release",
+    ]
+    args = argparse.Namespace(
+        launch_domain="gui/1428005812",
+        expected_rollback_worktree=str(harness.rollback),
+        expected_rollback_head=OLD_HEAD,
+        old_primary_identity=None,
+        old_scheduler_identity=None,
+        old_shadow_identity=None,
+        primary_lock_path=str(harness.root / "primary.lock"),
+        shadow_lock_path=str(harness.root / "shadow.lock"),
+    )
+
+    snapshot = checkpoint.process_snapshot(args, harness)
+
+    assert snapshot["process_count"] == 1
+    assert snapshot["uncertainties"] == []
+    assert checkpoint.object_record(snapshot["runtime"]) == {
+        "classification": "PRESENT",
+        "pids": [987654321],
+    }
+    assert checkpoint.object_record(snapshot["scheduler"]) == {
+        "classification": "PRESENT",
+        "pids": [987654321],
+    }
+    process = checkpoint.object_record(cast(list[object], snapshot["processes"])[0])
+    assert process["state"] == "?"
+    assert process["command"] == DARWIN_UNKNOWN_STATE_WRITER_COMMAND
 
 
 def test_malformed_darwin_uid_in_valid_row_fails_closed(
@@ -588,6 +669,7 @@ def test_zombie_with_live_file_evidence_is_unverifiable(
         "900002 1 501 <defunct>",
         "900002 1 501 python worker.py",
         "900002 1 501 Q <defunct>",
+        "900002 1 501 ?x <defunct>",
         "900002 1 501 Zgarbage <defunct>",
         "900002 1 501 Z",
         "900002 1 501 Z   ",

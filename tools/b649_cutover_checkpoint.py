@@ -775,11 +775,12 @@ def reconcile_coverage_gap_liveness(runner: Runner, pending: set[int]) -> set[in
 
 def parse_process_row(line: str, *, darwin: bool) -> Process:
     """Parse one ps row, normalizing Darwin's signed 32-bit UID output."""
-    # macOS ps STAT is a run state followed by documented modifiers; command
-    # text alone must not establish the process state.
+    # macOS ps can emit '?' when its Mach task state is unavailable. Preserve
+    # that unknown state; only a proven Z state is treated as a zombie below.
+    # Command text alone must not establish the process state.
     uid_pattern = r"(?:0|-?[1-9][0-9]*)" if darwin else r"\d+"
     match = re.fullmatch(
-        rf"\s*(\d+)\s+(\d+)\s+({uid_pattern})\s+([IRSTUZ][+<>AELNSVWXs]*)\s+(\S.*)",
+        rf"\s*(\d+)\s+(\d+)\s+({uid_pattern})\s+([IRSTUZ?][+<>AELNSVWXs]*)\s+(\S.*)",
         line,
     )
     if match is None:

@@ -11404,3 +11404,317 @@ def test_v8_exit2_recovery_refuses_each_unproven_incident_without_authority_writ
     assert _v8_exit2_state_snapshot(incident) == before
     assert not list(request.config.scheduler_root.glob("b649-v8-exit2-owner-authorization-*.json"))
     assert (harness.launches, tuple(harness.launchd.mutation_calls)) == control_before
+
+
+def _fresh_reconciled_r3_successor_request(
+    incident: StrandedIncident,
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+) -> protected.Request:
+    candidate_request = incident.versioned_successor_request or incident.request
+    new_head = protected.R3_TARGET_TRANSITION_NEW_HEAD
+    new_tree = protected.R3_TARGET_TRANSITION_NEW_TREE
+    new_ref = protected.R3_TARGET_TRANSITION_NEW_DURABLE_REF
+    new_source_path = (
+        candidate_request.config.source_worktree.parent / f"B649_PRODUCTION_{new_head}"
+    )
+    Fixture.make_source(new_source_path)
+    harness.launchd.worktree_identities[new_source_path] = (
+        new_head,
+        new_tree,
+        True,
+    )
+    new_config = replace(
+        candidate_request.config,
+        source_worktree=new_source_path,
+        expected_head=new_head,
+        expected_tree=new_tree,
+        durable_ref=new_ref,
+    )
+    plan, _, _ = cutover.read_control_json(candidate_request.plan_file)
+    plan_source = protected.record(plan["source"])
+    old_source = protected.record(plan_source["old"])
+    new_source: protected.Record = {
+        "source_worktree": str(new_source_path),
+        "head": new_head,
+        "tree": new_tree,
+        "durable_ref": new_ref,
+    }
+    plan["source"] = {**plan_source, "old": old_source, "new": new_source}
+    prestate = protected.record(plan["prestate"])
+    prestate["new_source"] = new_source
+    plan["prestate"] = prestate
+    plan["prestate_digest"] = cutover._prestate_digest(prestate)  # pyright: ignore[reportPrivateUsage]
+    plan["plan_digest"] = cutover._sha256_json(  # pyright: ignore[reportPrivateUsage]
+        {
+            "schema_version": cutover.PLAN_SCHEMA_VERSION,
+            "target": plan["target"],
+            "prestate_digest": plan["prestate_digest"],
+            "new_source": new_source,
+            "new_plist_sha256": prestate["new_plist_sha256"],
+        }
+    )
+    plan_path = harness.fixture.root / "r3-transition-plan.json"
+    plan_path.write_text(protected.canonical(plan), encoding="utf-8")
+    plan_path.chmod(0o600)
+    request = protected.make_request(
+        new_config,
+        candidate_request.legacy_worktree,
+        candidate_request.legacy_head,
+        candidate_request.legacy_tree,
+        plan_path,
+        candidate_request.claim_root,
+        reservation_id=str(uuid4()),
+        prior_execution_receipt_sha256=incident.predecessor_sha256,
+        managed_receipt_sha256=incident.managed_sha256,
+    )
+    monkeypatch.setattr(protected, "R3_TARGET_TRANSITION_NEW_HEAD", new_head)
+    monkeypatch.setattr(protected, "R3_TARGET_TRANSITION_NEW_TREE", new_tree)
+    monkeypatch.setattr(protected, "R3_TARGET_TRANSITION_PLAN_SHA256", request.plan_sha256)
+    monkeypatch.setattr(protected, "R3_TARGET_TRANSITION_PLAN_DIGEST", request.plan_digest)
+    monkeypatch.setattr(
+        protected, "R3_TARGET_TRANSITION_PRESTATE_DIGEST", plan["prestate_digest"]
+    )
+    monkeypatch.setattr(
+        protected,
+        "R3_TARGET_TRANSITION_LEGACY_HEAD",
+        candidate_request.legacy_head,
+    )
+    monkeypatch.setattr(
+        protected,
+        "R3_TARGET_TRANSITION_LEGACY_TREE",
+        candidate_request.legacy_tree,
+    )
+    target = protected.record(plan["target"])
+    monkeypatch.setattr(
+        protected, "R3_TARGET_TRANSITION_SCHEDULER_LABEL", target["label"]
+    )
+    monkeypatch.setattr(
+        protected, "R3_TARGET_TRANSITION_SCHEDULER_PLIST", target["plist_path"]
+    )
+    return request
+
+
+def test_v8_exit2_exact_r3_production_plan_identity_verification() -> None:
+    plan_path = Path(
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/build/B649_CUTOVER_PS_ROW_PLAN_R1/b649-cutover-plan-a7bc0b8-r3.json"
+    )
+    assert plan_path.exists()
+    config = cutover.CutoverConfig(
+        source_worktree=Path(protected.R3_TARGET_TRANSITION_NEW_WORKTREE),
+        expected_head=protected.R3_TARGET_TRANSITION_NEW_HEAD,
+        expected_tree=protected.R3_TARGET_TRANSITION_NEW_TREE,
+        durable_ref=protected.R3_TARGET_TRANSITION_NEW_DURABLE_REF,
+        strict_release_layout=True,
+    )
+    assert protected._is_exact_r3_transition_plan(config, plan_path) is True
+    assert protected._is_supported_exit2_transition_plan(config, plan_path) is True
+
+    # Tampering with expected_head fails
+    bad_head_config = replace(config, expected_head="0" * 40)
+    assert protected._is_exact_r3_transition_plan(bad_head_config, plan_path) is False
+
+    # Tampering with expected_tree fails
+    bad_tree_config = replace(config, expected_tree="0" * 40)
+    assert protected._is_exact_r3_transition_plan(bad_tree_config, plan_path) is False
+
+    # Tampering with durable_ref fails
+    bad_ref_config = replace(config, durable_ref=f"refs/heads/runtime/b649/{'1' * 40}")
+    assert protected._is_exact_r3_transition_plan(bad_ref_config, plan_path) is False
+
+    # Tampering with source_worktree fails
+    bad_worktree_config = replace(config, source_worktree=Path("/foreign/worktree"))
+    assert protected._is_exact_r3_transition_plan(bad_worktree_config, plan_path) is False
+
+
+def test_v8_exit2_reconciled_predecessor_reserves_exact_r3_successor(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    incident, abandoned, released_owner = _release_v8_exit2_predecessor_for_successor_test(
+        harness, monkeypatch, capsys
+    )
+    request = _fresh_reconciled_r3_successor_request(incident, harness, monkeypatch)
+    assert protected.record(released_owner["release_evidence"])["kind"] == (
+        protected.V8_EXIT2_RELEASE_KIND
+    )
+    assert protected._reconciled_predecessor_receipt_sha256(
+        request.config, released_owner
+    ) == incident.predecessor_sha256
+
+    harness.fixture.config = request.config
+    harness.request = replace(request, reservation_id=None, owner_id_argument=False)
+    harness.chain()
+
+    mutations_before = tuple(harness.launchd.mutation_calls)
+    launches_before = harness.launches
+
+    _reserve_argv, new_authorization = _drive_reserve_authorize(
+        harness, monkeypatch, capsys
+    )
+    authorized_target = protected.record(new_authorization["target"])
+    assert new_authorization["reservation_id"] != protected.V8_EXIT2_RESERVATION_ID
+    assert new_authorization["operation_id"] != protected.V8_EXIT2_OPERATION_ID
+    assert new_authorization["reservation_id"] != abandoned["reservation_id"]
+    assert new_authorization["operation_id"] != abandoned["operation_id"]
+    assert authorized_target["head"] == protected.R3_TARGET_TRANSITION_NEW_HEAD
+    assert authorized_target["tree"] == protected.R3_TARGET_TRANSITION_NEW_TREE
+    assert new_authorization["managed_receipt_sha256"] == incident.managed_sha256
+
+    pending_owner = cutover.inspect_control_owner(request.config)
+    assert pending_owner is not None and pending_owner["phase"] == "AUTHORIZATION_PENDING"
+    assert pending_owner["mutation_started"] is False
+    assert pending_owner["authorization"] is None
+
+    proof = protected.record(pending_owner["predecessor_release_evidence"])
+    assert proof["prior_reservation_id"] == released_owner["reservation_id"]
+    assert proof["prior_operation_id"] == released_owner["operation_id"]
+    assert proof["prior_release_evidence"] == released_owner["release_evidence"]
+    assert proof["prior_protected_receipt_sha256"] == incident.predecessor_sha256
+    assert proof["new_reservation_id"] == new_authorization["reservation_id"]
+    assert proof["new_operation_id"] == new_authorization["operation_id"]
+
+    # T6: Synthetic reservation performs no Scheduler/launchd mutation
+    assert tuple(harness.launchd.mutation_calls) == mutations_before
+    assert harness.launches == launches_before
+    assert not request.receipt_path.exists()
+
+
+@pytest.mark.parametrize(
+    "drift_field",
+    [
+        "plan_sha256",
+        "plan_digest",
+        "prestate_digest",
+        "expected_head",
+        "expected_tree",
+        "durable_ref",
+    ],
+)
+def test_v8_exit2_r3_successor_rejects_plan_or_identity_drift(
+    drift_field: str,
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    incident, _abandoned, released_owner = _release_v8_exit2_predecessor_for_successor_test(
+        harness, monkeypatch, capsys
+    )
+    request = _fresh_reconciled_r3_successor_request(incident, harness, monkeypatch)
+
+    if drift_field == "plan_sha256":
+        monkeypatch.setattr(protected, "R3_TARGET_TRANSITION_PLAN_SHA256", "0" * 64)
+    elif drift_field == "plan_digest":
+        monkeypatch.setattr(protected, "R3_TARGET_TRANSITION_PLAN_DIGEST", "0" * 64)
+    elif drift_field == "prestate_digest":
+        monkeypatch.setattr(protected, "R3_TARGET_TRANSITION_PRESTATE_DIGEST", "0" * 64)
+    elif drift_field == "expected_head":
+        monkeypatch.setattr(protected, "R3_TARGET_TRANSITION_NEW_HEAD", "0" * 40)
+    elif drift_field == "expected_tree":
+        monkeypatch.setattr(protected, "R3_TARGET_TRANSITION_NEW_TREE", "0" * 40)
+    elif drift_field == "durable_ref":
+        monkeypatch.setattr(
+            protected,
+            "R3_TARGET_TRANSITION_NEW_DURABLE_REF",
+            f"refs/heads/runtime/b649/{'1' * 40}",
+        )
+
+    # When the R3 identity does not match, _recover_v2_successor_request fails closed
+    with pytest.raises(
+        protected.ProtectedError,
+        match="v2 retirement evidence is outside the exact released-intermediate retry",
+    ):
+        protected._recover_v2_successor_request(  # pyright: ignore[reportPrivateUsage]
+            request.config,
+            request.legacy_worktree,
+            request.legacy_head,
+            request.legacy_tree,
+            request.plan_file,
+            request.claim_root,
+            released_owner,
+            prior_execution_receipt_sha256=cutover.V5_PROTECTED_RECEIPT_SHA256,
+        )
+
+
+@pytest.mark.parametrize(
+    "tamper_field",
+    [
+        "reconciliation_reason",
+        "stranded_protected_receipt_sha256",
+        "plan_sha256",
+        "predecessor_protected_receipt_sha256",
+        "unchanged_managed_receipt_sha256",
+    ],
+)
+def test_v8_exit2_r3_successor_rejects_tampered_reconciliation_evidence(
+    tamper_field: str,
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    incident, _abandoned, released_owner = _release_v8_exit2_predecessor_for_successor_test(
+        harness, monkeypatch, capsys
+    )
+    request = _fresh_reconciled_r3_successor_request(incident, harness, monkeypatch)
+    reconciliation_path = protected._prestart_reconciliation_record_path(  # pyright: ignore[reportPrivateUsage]
+        request.config, protected.V8_EXIT2_RESERVATION_ID
+    )
+    reconciliation, identity, _ = cutover.read_control_json(reconciliation_path)
+    unsigned = {key: value for key, value in reconciliation.items() if key != "record_sha256"}
+    if tamper_field == "reconciliation_reason":
+        unsigned["reason"] = "FOREIGN_REASON"
+    elif tamper_field == "stranded_protected_receipt_sha256":
+        unsigned["stranded_protected_receipt_sha256"] = "0" * 64
+    elif tamper_field == "plan_sha256":
+        unsigned["plan_sha256"] = "0" * 64
+    elif tamper_field == "predecessor_protected_receipt_sha256":
+        unsigned["predecessor_protected_receipt_sha256"] = "0" * 64
+    elif tamper_field == "unchanged_managed_receipt_sha256":
+        unsigned["unchanged_managed_receipt_sha256"] = "0" * 64
+
+    tampered = {**unsigned, "record_sha256": protected.digest(unsigned)}
+    cutover._write_json(reconciliation_path, tampered, expected=identity)  # pyright: ignore[reportPrivateUsage]
+
+    with pytest.raises(protected.ProtectedError):
+        protected._reconciled_predecessor_receipt_sha256(  # pyright: ignore[reportPrivateUsage]
+            request.config, released_owner
+        )
+
+
+def test_v8_exit2_r3_successor_rejects_active_writer_in_claim_store(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    incident, _abandoned, released_owner = _release_v8_exit2_predecessor_for_successor_test(
+        harness, monkeypatch, capsys
+    )
+    request = _fresh_reconciled_r3_successor_request(incident, harness, monkeypatch)
+
+    # Simulate active writer holding the task claim
+    claim_store = claims.ClaimStore(request.claim_root)
+    claim_path = claim_store.location(protected.TASK_KEY)
+    active_claim = {
+        "task_key": protected.TASK_KEY,
+        "owner_pid": os.getpid(),
+        "created_at": "2026-10-20T00:00:00Z",
+        "status": "RUNNING",
+    }
+    claim_path.parent.mkdir(parents=True, exist_ok=True)
+    claim_path.write_text(protected.canonical(active_claim), encoding="utf-8")
+
+    harness.fixture.config = request.config
+    harness.request = replace(request, reservation_id=None, owner_id_argument=False)
+    harness.chain()
+
+    monkeypatch.setattr(
+        protected,
+        "build_reservation_config",
+        _fixed_reservation_config(harness),
+    )
+    argv = list(harness.request.owner_argv()[2:])
+    exit_code = protected.main(argv)
+    assert exit_code == claims.UNVERIFIABLE
+    assert cutover.inspect_control_owner(request.config) == released_owner
+

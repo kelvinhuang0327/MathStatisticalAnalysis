@@ -86,6 +86,33 @@ V8_TARGET_TRANSITION_PLAN_DIGEST = (
     "a37d430aff9a1e129a10c6d43b777d955fd1e977e95c0bca9625db8fdf0084ad"
 )
 
+R3_TARGET_TRANSITION_NEW_HEAD = "a7bc0b8d0202bc0562f8094d7f8f75c0434b5bed"
+R3_TARGET_TRANSITION_NEW_TREE = "29c2bb2dea6f284f149a767488ad3008166488f5"
+R3_TARGET_TRANSITION_NEW_DURABLE_REF = (
+    f"refs/heads/runtime/b649/{R3_TARGET_TRANSITION_NEW_HEAD}"
+)
+R3_TARGET_TRANSITION_NEW_WORKTREE = (
+    "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_PRODUCTION_a7bc0b8d0202bc0562f8094d7f8f75c0434b5bed"
+)
+R3_TARGET_TRANSITION_LEGACY_HEAD = "56c9715ca60bb9af3afe3b5faae83b0dc0471d8f"
+R3_TARGET_TRANSITION_LEGACY_TREE = "74cc4a56afd7ae0e67f9cca591572b32f058c33d"
+R3_TARGET_TRANSITION_LEGACY_WORKTREE = (
+    "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_PRODUCTION_56c9715ca60bb9af3afe3b5faae83b0dc0471d8f"
+)
+R3_TARGET_TRANSITION_PLAN_SHA256 = (
+    "d1c7c7cef2f41ef8a012d29c0555b93fc0224926647ea012ab3fd8ad54e658b0"
+)
+R3_TARGET_TRANSITION_PLAN_DIGEST = (
+    "10d2176a85f9e0114cb48e9fe2403840137b4535f727b3c2bb75ccc1d6483184"
+)
+R3_TARGET_TRANSITION_PRESTATE_DIGEST = (
+    "775de50a1b1bb37bd46277e5b5044b92f74d7a65ac5bac366687d1c5167ae41b"
+)
+R3_TARGET_TRANSITION_SCHEDULER_LABEL = "com.lottolab.b649-goalc-r1"
+R3_TARGET_TRANSITION_SCHEDULER_PLIST = (
+    "/Users/kelvin/Library/LaunchAgents/com.lottolab.b649-goalc-r1.plist"
+)
+
 V8_EXIT2_RESERVATION_ID = "bd9143f4-bb87-4016-a872-b213f9a715e3"
 V8_EXIT2_OPERATION_ID = "9de7d162024ee3cd40c68a67679c4f3a"
 V8_EXIT2_FAILED_RECEIPT_SHA256 = "1c6aab763eaace8588b321b4dff456fec38b88115aab8ede1784f1bf6b9be2ba"
@@ -161,6 +188,38 @@ def _is_frozen_v8_transition_plan(config: cutover.CutoverConfig, plan_file: Path
         and new_source.get("tree") == V8_TARGET_TRANSITION_NEW_TREE
         and new_source.get("durable_ref")
         == f"refs/heads/runtime/b649/{V8_TARGET_TRANSITION_NEW_HEAD}"
+    )
+
+
+def _is_exact_r3_transition_plan(config: cutover.CutoverConfig, plan_file: Path) -> bool:
+    """Select only the pinned R3 plan identity for the Exit-2 successor continuation."""
+    plan, identity, _ = cutover.read_control_json(plan_file)
+    source = record(plan.get("source"))
+    new_source = record(source.get("new"))
+    old_source = record(source.get("old"))
+    target = record(plan.get("target"))
+    return (
+        identity.sha256 == R3_TARGET_TRANSITION_PLAN_SHA256
+        and plan.get("plan_digest") == R3_TARGET_TRANSITION_PLAN_DIGEST
+        and plan.get("prestate_digest") == R3_TARGET_TRANSITION_PRESTATE_DIGEST
+        and config.expected_head == R3_TARGET_TRANSITION_NEW_HEAD
+        and config.expected_tree == R3_TARGET_TRANSITION_NEW_TREE
+        and config.durable_ref == R3_TARGET_TRANSITION_NEW_DURABLE_REF
+        and new_source.get("source_worktree") == str(config.source_worktree)
+        and new_source.get("head") == R3_TARGET_TRANSITION_NEW_HEAD
+        and new_source.get("tree") == R3_TARGET_TRANSITION_NEW_TREE
+        and new_source.get("durable_ref") == R3_TARGET_TRANSITION_NEW_DURABLE_REF
+        and old_source.get("head") == R3_TARGET_TRANSITION_LEGACY_HEAD
+        and old_source.get("tree") == R3_TARGET_TRANSITION_LEGACY_TREE
+        and target.get("label") == R3_TARGET_TRANSITION_SCHEDULER_LABEL
+        and target.get("plist_path") == R3_TARGET_TRANSITION_SCHEDULER_PLIST
+    )
+
+
+def _is_supported_exit2_transition_plan(config: cutover.CutoverConfig, plan_file: Path) -> bool:
+    """Verify that the plan matches either frozen V8 target or exact R3 transition."""
+    return _is_frozen_v8_transition_plan(config, plan_file) or _is_exact_r3_transition_plan(
+        config, plan_file
     )
 
 
@@ -3540,7 +3599,7 @@ def _recover_v2_successor_request(
         and prior_execution_receipt_sha256 == cutover.V5_PROTECTED_RECEIPT_SHA256
         and (legacy_head, legacy_tree) == (cutover.V5_SOURCE_HEAD, cutover.V5_SOURCE_TREE)
         and retirement.get("claim_root") == str(claim_root)
-        and _is_frozen_v8_transition_plan(config, plan_file)
+        and _is_supported_exit2_transition_plan(config, plan_file)
         and _reconciled_predecessor_receipt_sha256(config, prior_owner)
         == cutover.V5_PROTECTED_RECEIPT_SHA256
     ):

@@ -1,0 +1,171 @@
+{
+  "collected_node_ids": [
+    "tests/unit/test_b649_t249_collection_isolation_r1.py::test_parent_preload_closure_difference_is_rejected",
+    "tests/unit/test_b649_t249_collection_isolation_r1.py::test_wrong_source_sha_blob_and_result_are_rejected",
+    "tests/unit/test_b649_t249_collection_isolation_r1.py::test_real_solver_loaded_guard_rejects_without_running_solver",
+    "tests/unit/test_b649_t249_collection_isolation_r1.py::test_subprocess_exit_timeout_and_stderr_are_not_hidden"
+  ],
+  "cwd": "/private/tmp/mathstat-e440-full-gate-r3-repo",
+  "executable": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/python",
+  "pid": 90745,
+  "ppid": 90438,
+  "preexisting_solver_modules_at_collector_import": [],
+  "pytest_exit_code": 0,
+  "pytest_reports": [
+    {
+      "node_id": "tests/unit/test_b649_t249_collection_isolation_r1.py::test_parent_preload_closure_difference_is_rejected",
+      "outcome": "passed",
+      "wasxfail": null,
+      "when": "setup"
+    },
+    {
+      "node_id": "tests/unit/test_b649_t249_collection_isolation_r1.py::test_parent_preload_closure_difference_is_rejected",
+      "outcome": "passed",
+      "wasxfail": null,
+      "when": "call"
+    },
+    {
+      "node_id": "tests/unit/test_b649_t249_collection_isolation_r1.py::test_parent_preload_closure_difference_is_rejected",
+      "outcome": "passed",
+      "wasxfail": null,
+      "when": "teardown"
+    },
+    {
+      "node_id": "tests/unit/test_b649_t249_collection_isolation_r1.py::test_wrong_source_sha_blob_and_result_are_rejected",
+      "outcome": "passed",
+      "wasxfail": null,
+      "when": "setup"
+    },
+    {
+      "node_id": "tests/unit/test_b649_t249_collection_isolation_r1.py::test_wrong_source_sha_blob_and_result_are_rejected",
+      "outcome": "passed",
+      "wasxfail": null,
+      "when": "call"
+    },
+    {
+      "node_id": "tests/unit/test_b649_t249_collection_isolation_r1.py::test_wrong_source_sha_blob_and_result_are_rejected",
+      "outcome": "passed",
+      "wasxfail": null,
+      "when": "teardown"
+    },
+    {
+      "node_id": "tests/unit/test_b649_t249_collection_isolation_r1.py::test_real_solver_loaded_guard_rejects_without_running_solver",
+      "outcome": "passed",
+      "wasxfail": null,
+      "when": "setup"
+    },
+    {
+      "node_id": "tests/unit/test_b649_t249_collection_isolation_r1.py::test_real_solver_loaded_guard_rejects_without_running_solver",
+      "outcome": "passed",
+      "wasxfail": null,
+      "when": "call"
+    },
+    {
+      "node_id": "tests/unit/test_b649_t249_collection_isolation_r1.py::test_real_solver_loaded_guard_rejects_without_running_solver",
+      "outcome": "passed",
+      "wasxfail": null,
+      "when": "teardown"
+    },
+    {
+      "node_id": "tests/unit/test_b649_t249_collection_isolation_r1.py::test_subprocess_exit_timeout_and_stderr_are_not_hidden",
+      "outcome": "passed",
+      "wasxfail": null,
+      "when": "setup"
+    },
+    {
+      "node_id": "tests/unit/test_b649_t249_collection_isolation_r1.py::test_subprocess_exit_timeout_and_stderr_are_not_hidden",
+      "outcome": "passed",
+      "wasxfail": null,
+      "when": "call"
+    },
+    {
+      "node_id": "tests/unit/test_b649_t249_collection_isolation_r1.py::test_subprocess_exit_timeout_and_stderr_are_not_hidden",
+      "outcome": "passed",
+      "wasxfail": null,
+      "when": "teardown"
+    }
+  ],
+  "report_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_E440_EXACT_TREE_FULL_GATE_R3_APPEND_R1/t249-02-evidence/t249-parent-state-e440-full-gate-r3-t249-02.json",
+  "run_tag": "e440-full-gate-r3-t249-02",
+  "schema_version": 1,
+  "solver_import_attempts": [],
+  "solver_modules_final": [],
+  "solver_modules_observed_union": [],
+  "state_snapshots": [
+    {
+      "monotonic_ns": 3799863834666,
+      "solver_modules": [],
+      "stage": "collector_import"
+    },
+    {
+      "monotonic_ns": 3800453429583,
+      "solver_modules": [],
+      "stage": "collection_finish"
+    },
+    {
+      "monotonic_ns": 3800454494291,
+      "solver_modules": [],
+      "stage": "runtest_setup:tests/unit/test_b649_t249_collection_isolation_r1.py::test_parent_preload_closure_difference_is_rejected"
+    },
+    {
+      "monotonic_ns": 3800482718166,
+      "solver_modules": [],
+      "stage": "runtest_call:tests/unit/test_b649_t249_collection_isolation_r1.py::test_parent_preload_closure_difference_is_rejected"
+    },
+    {
+      "monotonic_ns": 3800483135750,
+      "solver_modules": [],
+      "stage": "runtest_teardown:tests/unit/test_b649_t249_collection_isolation_r1.py::test_parent_preload_closure_difference_is_rejected"
+    },
+    {
+      "monotonic_ns": 3800483610375,
+      "solver_modules": [],
+      "stage": "runtest_setup:tests/unit/test_b649_t249_collection_isolation_r1.py::test_wrong_source_sha_blob_and_result_are_rejected"
+    },
+    {
+      "monotonic_ns": 3800554670833,
+      "solver_modules": [],
+      "stage": "runtest_call:tests/unit/test_b649_t249_collection_isolation_r1.py::test_wrong_source_sha_blob_and_result_are_rejected"
+    },
+    {
+      "monotonic_ns": 3800555394625,
+      "solver_modules": [],
+      "stage": "runtest_teardown:tests/unit/test_b649_t249_collection_isolation_r1.py::test_wrong_source_sha_blob_and_result_are_rejected"
+    },
+    {
+      "monotonic_ns": 3800555893583,
+      "solver_modules": [],
+      "stage": "runtest_setup:tests/unit/test_b649_t249_collection_isolation_r1.py::test_real_solver_loaded_guard_rejects_without_running_solver"
+    },
+    {
+      "monotonic_ns": 3802222054625,
+      "solver_modules": [],
+      "stage": "runtest_call:tests/unit/test_b649_t249_collection_isolation_r1.py::test_real_solver_loaded_guard_rejects_without_running_solver"
+    },
+    {
+      "monotonic_ns": 3802222537208,
+      "solver_modules": [],
+      "stage": "runtest_teardown:tests/unit/test_b649_t249_collection_isolation_r1.py::test_real_solver_loaded_guard_rejects_without_running_solver"
+    },
+    {
+      "monotonic_ns": 3802222989666,
+      "solver_modules": [],
+      "stage": "runtest_setup:tests/unit/test_b649_t249_collection_isolation_r1.py::test_subprocess_exit_timeout_and_stderr_are_not_hidden"
+    },
+    {
+      "monotonic_ns": 3802993335875,
+      "solver_modules": [],
+      "stage": "runtest_call:tests/unit/test_b649_t249_collection_isolation_r1.py::test_subprocess_exit_timeout_and_stderr_are_not_hidden"
+    },
+    {
+      "monotonic_ns": 3802993892958,
+      "solver_modules": [],
+      "stage": "runtest_teardown:tests/unit/test_b649_t249_collection_isolation_r1.py::test_subprocess_exit_timeout_and_stderr_are_not_hidden"
+    },
+    {
+      "monotonic_ns": 3802995483750,
+      "solver_modules": [],
+      "stage": "session_finish"
+    }
+  ]
+}

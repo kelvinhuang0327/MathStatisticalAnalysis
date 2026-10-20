@@ -1,0 +1,30 @@
+{
+  "run_tag": "e440-full-gate-r3-pin9-02",
+  "count": 24,
+  "node_ids": [
+    "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_result_bytes_and_proof_binding",
+    "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_exact_source_pins",
+    "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_source_identity_tamper[GENERIC_SOURCE_SHA]",
+    "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_source_identity_tamper[GENERIC_RESULT_SHA]",
+    "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_source_identity_tamper[BASE_TREE]",
+    "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_frozen_result_tamper",
+    "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_a_general_theorem_domain",
+    "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_independent_model_and_shadow_budget",
+    "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_domains_independently_exhausted",
+    "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_goodman_split_identity_independent_graphs",
+    "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_core_and_mixed_floors_on_all_core_classes",
+    "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_b_per_e_results_and_shadow_ablation",
+    "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_wrong_b_profile[66665555555331000000]",
+    "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_wrong_b_profile[00000000000000000000]",
+    "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_wrong_b_profile[6666555555541110000]",
+    "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_all_route_terms_independent",
+    "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_official_rounding_tamper",
+    "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_integration_tamper[bound]",
+    "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_integration_tamper[profile]",
+    "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_integration_tamper[cursor]",
+    "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_integration_tamper[float]",
+    "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_truncated_envelope_and_cap_rejected",
+    "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_duplicate_and_missing_row_rejected",
+    "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_family_and_projection_independent"
+  ]
+}

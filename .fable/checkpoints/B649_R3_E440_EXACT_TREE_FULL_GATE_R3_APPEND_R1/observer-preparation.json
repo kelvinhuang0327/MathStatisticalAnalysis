@@ -1,0 +1,25 @@
+{
+  "files": [
+    {
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_E440_EXACT_TREE_FULL_GATE_R3_APPEND_R1/ruby_write_observer.rb",
+      "bytes": 6798,
+      "sha256": "1a9a49178f27fefc92561cfe9aed0f17efdd021fe85d7ccc383f40902f2e1900",
+      "mode": "0600"
+    },
+    {
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_E440_EXACT_TREE_FULL_GATE_R3_APPEND_R1/python-observer/sitecustomize.py",
+      "bytes": 4230,
+      "sha256": "ca494847b8385f23146773df96836fc33afed7080c4ce85e925adea75bf96cd8",
+      "mode": "0600"
+    },
+    {
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_E440_EXACT_TREE_FULL_GATE_R3_APPEND_R1/python-observer/r3_pytest_collector.py",
+      "bytes": 1672,
+      "sha256": "63a45be4e517d7b38195831fdfc28540879b9e3535949c1c2a84ac5c690afc39",
+      "mode": "0600"
+    }
+  ],
+  "ruby_syntax_stdout": "Syntax OK\n",
+  "python_ast": "PASS",
+  "scope": "R3 evidence root only; no product or Git refs modified"
+}

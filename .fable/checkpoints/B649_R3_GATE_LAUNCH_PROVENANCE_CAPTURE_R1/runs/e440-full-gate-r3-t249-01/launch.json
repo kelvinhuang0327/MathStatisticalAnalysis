@@ -1,0 +1,202 @@
+{
+  "schema_version": 1,
+  "task_id": "B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1",
+  "execution_id": "e440-full-gate-r3-t249-01",
+  "stage": "BEFORE_CHILD_SPAWN",
+  "utc_launch_timestamp": "2026-10-20T02:02:19.287785000Z",
+  "argv": [
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/python",
+    "-B",
+    "-m",
+    "pytest",
+    "--basetemp=/private/tmp/gate-launch-20261020-81564-1gqptp2/basetemp",
+    "-o",
+    "cache_dir=/private/tmp/gate-launch-20261020-81564-1gqptp2/pytest-cache",
+    "-q",
+    "tests/unit/test_b649_t249_collection_isolation_r1.py"
+  ],
+  "cwd": "/private/tmp/mathstat-e440-full-gate-r3-repo",
+  "python": {
+    "executable": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/python",
+    "real_executable": "/opt/homebrew/Cellar/python@3.13/3.13.8/Frameworks/Python.framework/Versions/3.13/bin/python3.13",
+    "version": "3.13.8 (main, Oct  7 2025, 12:01:51) [Clang 17.0.0 (clang-1700.3.19.1)]",
+    "pytest": "9.1.1",
+    "source_lock_fingerprints": [
+      {
+        "path": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_R3_ADV11_DESCENDANT_STABLE_CONTEXT_R1/uv.lock",
+        "sha256": "073c1a72534fdd64090a6ac1f041204aceb67c4fa0cb663b581d385a5de21875",
+        "git_blob": "94aa656817f9e2e83c220dac11ca52c0e2ded9a0"
+      },
+      {
+        "path": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_R3_ADV11_DESCENDANT_STABLE_CONTEXT_R1/pyproject.toml",
+        "sha256": "b724f5bbe83c2e25521ebe76bcdf0c8cf718ecb54dec45ff847be725f16a5f29",
+        "git_blob": "51aea80579ec54c265a9f1fe93c7ecc7d91cc892"
+      },
+      {
+        "path": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_R3_ADV11_DESCENDANT_STABLE_CONTEXT_R1/.python-version",
+        "sha256": "02e735b3dfe1c32833eb550b7ff8ffa17f5f2bc3fa1e7bae61a8f5a3883ce398",
+        "git_blob": "24ee5b1be9961e38a503c8e764b7385dbb6ba124"
+      }
+    ]
+  },
+  "dependency_manifest": {
+    "path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/e440-full-gate-r3-t249-01/dependencies.json",
+    "sha256": "009e63d71b1918eaa07f7a0b51a0c68e8bfbce8e333bbdf649fecce6a03ee54b"
+  },
+  "effective_umask": "0077",
+  "appdata": {
+    "path": "/private/tmp/gate-launch-20261020-81564-1gqptp2/appdata",
+    "mode": "0700",
+    "uid": 1428005812
+  },
+  "runtime_root": {
+    "path": "/private/tmp/gate-launch-20261020-81564-1gqptp2",
+    "mode": "0700",
+    "uid": 1428005812
+  },
+  "basetemp": {
+    "path": "/private/tmp/gate-launch-20261020-81564-1gqptp2/basetemp",
+    "mode": "0700",
+    "uid": 1428005812
+  },
+  "runtime_directories": [
+    {
+      "path": "/private/tmp/gate-launch-20261020-81564-1gqptp2/appdata",
+      "mode": "0700",
+      "uid": 1428005812
+    },
+    {
+      "path": "/private/tmp/gate-launch-20261020-81564-1gqptp2/basetemp",
+      "mode": "0700",
+      "uid": 1428005812
+    },
+    {
+      "path": "/private/tmp/gate-launch-20261020-81564-1gqptp2/pytest-cache",
+      "mode": "0700",
+      "uid": 1428005812
+    },
+    {
+      "path": "/private/tmp/gate-launch-20261020-81564-1gqptp2/python-cache",
+      "mode": "0700",
+      "uid": 1428005812
+    },
+    {
+      "path": "/private/tmp/gate-launch-20261020-81564-1gqptp2/tmp",
+      "mode": "0700",
+      "uid": 1428005812
+    },
+    {
+      "path": "/private/tmp/gate-launch-20261020-81564-1gqptp2/home",
+      "mode": "0700",
+      "uid": 1428005812
+    },
+    {
+      "path": "/private/tmp/gate-launch-20261020-81564-1gqptp2/cache",
+      "mode": "0700",
+      "uid": 1428005812
+    },
+    {
+      "path": "/private/tmp/gate-launch-20261020-81564-1gqptp2/work",
+      "mode": "0700",
+      "uid": 1428005812
+    }
+  ],
+  "environment": {
+    "HOME": "/private/tmp/gate-launch-20261020-81564-1gqptp2/home",
+    "LANG": "en_US.UTF-8",
+    "PATH": "/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin",
+    "TMPDIR": "/private/tmp/gate-launch-20261020-81564-1gqptp2/tmp",
+    "FABLE_PROTECTED_RUN_LOCK_FD": "10",
+    "LOTTOLAB_DATA_DIR": "/private/tmp/gate-launch-20261020-81564-1gqptp2/appdata",
+    "TMP": "/private/tmp/gate-launch-20261020-81564-1gqptp2/tmp",
+    "TEMP": "/private/tmp/gate-launch-20261020-81564-1gqptp2/tmp",
+    "PYTHONDONTWRITEBYTECODE": "1",
+    "PYTHONPYCACHEPREFIX": "/private/tmp/gate-launch-20261020-81564-1gqptp2/python-cache",
+    "XDG_CACHE_HOME": "/private/tmp/gate-launch-20261020-81564-1gqptp2/cache",
+    "XDG_DATA_HOME": "/private/tmp/gate-launch-20261020-81564-1gqptp2/appdata",
+    "UV_CACHE_DIR": "/private/tmp/gate-launch-20261020-81564-1gqptp2/cache",
+    "PIP_CACHE_DIR": "/private/tmp/gate-launch-20261020-81564-1gqptp2/cache",
+    "GIT_OPTIONAL_LOCKS": "0",
+    "GIT_NO_LAZY_FETCH": "1",
+    "PYTHONPATH": "/private/tmp/mathstat-e440-full-gate-r3-repo/src",
+    "GATE_LAUNCH_RECEIPT": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/e440-full-gate-r3-t249-01/launch.json",
+    "GATE_RUNTIME_ROOT": "/private/tmp/gate-launch-20261020-81564-1gqptp2",
+    "GATE_BASETEMP": "/private/tmp/gate-launch-20261020-81564-1gqptp2/basetemp"
+  },
+  "environment_policy": "cleared inherited environment; only listed task values passed",
+  "process": {
+    "pid": 81564,
+    "ppid": 81545,
+    "pgid": 81564,
+    "runtime_executable": "/System/Library/Frameworks/Ruby.framework/Versions/2.6/usr/bin/ruby",
+    "runtime_version": "ruby 2.6.10p210 (2022-04-12 revision 67958) [universal.arm64e-darwin26]"
+  },
+  "source_snapshots": {
+    "source": {
+      "identity": {
+        "path": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_R3_ADV11_DESCENDANT_STABLE_CONTEXT_R1",
+        "head": "e440d4298551ce93ef3ea9a9226143784afa3eff",
+        "tree": "294cbf6bbe7ee8a8ebad947f397852edc1981b57",
+        "parents": [
+          "86f644010f41cd627f436c8d5cf9e0b5cca8fcdc"
+        ],
+        "shallow": "false",
+        "alternates": {
+          "path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.git/objects/info/alternates",
+          "exists": false,
+          "sha256": null
+        },
+        "git_common_dir": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.git"
+      },
+      "refs_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/e440-full-gate-r3-t249-01/source-refs-before.txt",
+      "refs_sha256": "71cf941f006862d57c5b2768403577b4a3297c4021a4d628ba9fed5fecf42554",
+      "refs_count": 1620,
+      "status_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/e440-full-gate-r3-t249-01/source-status-before.txt",
+      "status_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "primary": {
+      "identity": {
+        "path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis",
+        "head": "bf3cce1443695ae757462a8482288612de48ba3a",
+        "tree": "518f60bf6ff8582bd8ae3ee1bcd16c4da24cc5eb",
+        "parents": [
+          "51056e32239fd7dab5cda62b197dd8800b90a825"
+        ],
+        "shallow": "false",
+        "alternates": {
+          "path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.git/objects/info/alternates",
+          "exists": false,
+          "sha256": null
+        },
+        "git_common_dir": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.git"
+      },
+      "refs_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/e440-full-gate-r3-t249-01/primary-refs-before.txt",
+      "refs_sha256": "71cf941f006862d57c5b2768403577b4a3297c4021a4d628ba9fed5fecf42554",
+      "refs_count": 1620,
+      "status_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/e440-full-gate-r3-t249-01/primary-status-before.txt",
+      "status_sha256": "26bb60de50976538ee63f25fafe00436644bfb86b7cd201acb1adad48a96f3dd"
+    },
+    "execution_checkout": {
+      "path": "/private/tmp/mathstat-e440-full-gate-r3-repo",
+      "head": "e440d4298551ce93ef3ea9a9226143784afa3eff",
+      "tree": "294cbf6bbe7ee8a8ebad947f397852edc1981b57",
+      "parents": [
+        "86f644010f41cd627f436c8d5cf9e0b5cca8fcdc"
+      ],
+      "shallow": "false",
+      "alternates": {
+        "path": "/private/tmp/mathstat-e440-full-gate-r3-repo/.git/objects/info/alternates",
+        "exists": false,
+        "sha256": null
+      },
+      "git_common_dir": "/private/tmp/mathstat-e440-full-gate-r3-repo/.git"
+    }
+  },
+  "old_judge_sha256": "028e60ce4b0290a97c3b140b902157e4eb72eb2d1527f6297710c10a9dc22c68",
+  "adapter_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/launch_gate.rb",
+  "adapter_sha256": "e9d3e5e03fded1974fb16fcb177cfc96ccc817bf8e72d2084ff7407a4383be62",
+  "canonical_launcher_path": "/Users/kelvin/.codex/skills/fable-method/scripts/task_checkpoint.rb",
+  "canonical_launcher_blob": "00e2cf4a4f06b0f0a8d8e4be6091a4304e6e2ae4",
+  "canonical_launcher_sha256": "babba3757a7ea9ad59c7ff9b18b6e4497dbc887b86eebfb09ccae1a36ab96275",
+  "protection": "CANONICAL_OUTER_LOCK_INHERITED"
+}

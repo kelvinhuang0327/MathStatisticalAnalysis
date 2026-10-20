@@ -1,0 +1,197 @@
+{
+  "schema_version": 1,
+  "task_id": "B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1",
+  "execution_id": "e440-full-gate-r3-t249-02",
+  "utc_end_timestamp": "2026-10-20T02:06:00.674870000Z",
+  "started_at": "2026-10-20T02:05:56Z",
+  "ended_at": "2026-10-20T02:06:00Z",
+  "exit_status": 0,
+  "launch_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/e440-full-gate-r3-t249-02/launch.json",
+  "launch_sha256": "cb405ac5f54f57afdd198d305401cefa94791c9b2ad533db3bd73f9ab6ad842a",
+  "capture_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/e440-full-gate-r3-t249-02/capture.json",
+  "capture_sha256": "e82268651df3e299d0620be42167fc72efe31e01b8fff787cdab58f47fb91824",
+  "stdout": {
+    "path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/e440-full-gate-r3-t249-02/stdout.txt",
+    "sha256": "be8228587865d3962a8b4d1ef3bcb4f21e4775704eb072f698fda2ba3e54e159",
+    "bytes": 98
+  },
+  "stderr": {
+    "path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/e440-full-gate-r3-t249-02/stderr.txt",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "bytes": 0
+  },
+  "source_snapshots": {
+    "source": {
+      "identity": {
+        "path": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_R3_ADV11_DESCENDANT_STABLE_CONTEXT_R1",
+        "head": "e440d4298551ce93ef3ea9a9226143784afa3eff",
+        "tree": "294cbf6bbe7ee8a8ebad947f397852edc1981b57",
+        "parents": [
+          "86f644010f41cd627f436c8d5cf9e0b5cca8fcdc"
+        ],
+        "shallow": "false",
+        "alternates": {
+          "path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.git/objects/info/alternates",
+          "exists": false,
+          "sha256": null
+        },
+        "git_common_dir": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.git"
+      },
+      "refs_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/e440-full-gate-r3-t249-02/source-refs-after.txt",
+      "refs_sha256": "e1556bff05d03632cf53323a4f22412aea0febd3948d0763ca48ce416bc6aab3",
+      "refs_count": 1618,
+      "status_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/e440-full-gate-r3-t249-02/source-status-after.txt",
+      "status_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "primary": {
+      "identity": {
+        "path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis",
+        "head": "bf3cce1443695ae757462a8482288612de48ba3a",
+        "tree": "518f60bf6ff8582bd8ae3ee1bcd16c4da24cc5eb",
+        "parents": [
+          "51056e32239fd7dab5cda62b197dd8800b90a825"
+        ],
+        "shallow": "false",
+        "alternates": {
+          "path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.git/objects/info/alternates",
+          "exists": false,
+          "sha256": null
+        },
+        "git_common_dir": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.git"
+      },
+      "refs_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/e440-full-gate-r3-t249-02/primary-refs-after.txt",
+      "refs_sha256": "e1556bff05d03632cf53323a4f22412aea0febd3948d0763ca48ce416bc6aab3",
+      "refs_count": 1618,
+      "status_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/e440-full-gate-r3-t249-02/primary-status-after.txt",
+      "status_sha256": "b83ccd2abac07bad8e94639434c2320d8308ca67b1ef27a810cfb1a529ca3486"
+    },
+    "execution_checkout": {
+      "path": "/private/tmp/mathstat-e440-full-gate-r3-repo",
+      "head": "e440d4298551ce93ef3ea9a9226143784afa3eff",
+      "tree": "294cbf6bbe7ee8a8ebad947f397852edc1981b57",
+      "parents": [
+        "86f644010f41cd627f436c8d5cf9e0b5cca8fcdc"
+      ],
+      "shallow": "false",
+      "alternates": {
+        "path": "/private/tmp/mathstat-e440-full-gate-r3-repo/.git/objects/info/alternates",
+        "exists": false,
+        "sha256": null
+      },
+      "git_common_dir": "/private/tmp/mathstat-e440-full-gate-r3-repo/.git"
+    }
+  },
+  "source_refs_diff": {
+    "removed": [
+
+    ],
+    "added": [
+
+    ]
+  },
+  "source_status_diff": {
+    "removed": [
+
+    ],
+    "added": [
+
+    ]
+  },
+  "refs_attribution": "NO_OBSERVED_DRIFT",
+  "attribution_limit": "Endpoint observations cannot identify an actor or exclude transient ref changes between snapshots.",
+  "old_judge_sha256": "028e60ce4b0290a97c3b140b902157e4eb72eb2d1527f6297710c10a9dc22c68",
+  "runtime_manifest": [
+    {
+      "path": "/private/tmp/gate-launch-20261020-90438-g1p3vc/appdata",
+      "mode": "0700",
+      "type": "directory"
+    },
+    {
+      "path": "/private/tmp/gate-launch-20261020-90438-g1p3vc/basetemp",
+      "mode": "0700",
+      "type": "directory"
+    },
+    {
+      "path": "/private/tmp/gate-launch-20261020-90438-g1p3vc/cache",
+      "mode": "0700",
+      "type": "directory"
+    },
+    {
+      "path": "/private/tmp/gate-launch-20261020-90438-g1p3vc/home",
+      "mode": "0700",
+      "type": "directory"
+    },
+    {
+      "path": "/private/tmp/gate-launch-20261020-90438-g1p3vc/pytest-cache",
+      "mode": "0700",
+      "type": "directory"
+    },
+    {
+      "path": "/private/tmp/gate-launch-20261020-90438-g1p3vc/pytest-cache/v",
+      "mode": "0700",
+      "type": "directory"
+    },
+    {
+      "path": "/private/tmp/gate-launch-20261020-90438-g1p3vc/pytest-cache/v/cache",
+      "mode": "0700",
+      "type": "directory"
+    },
+    {
+      "path": "/private/tmp/gate-launch-20261020-90438-g1p3vc/pytest-cache/v/cache/nodeids",
+      "mode": "0600",
+      "type": "file",
+      "sha256": "4b508176b6e11337899e6909f5063688a02a2187f421373822b09754578b5ff6"
+    },
+    {
+      "path": "/private/tmp/gate-launch-20261020-90438-g1p3vc/python-cache",
+      "mode": "0700",
+      "type": "directory"
+    },
+    {
+      "path": "/private/tmp/gate-launch-20261020-90438-g1p3vc/tmp",
+      "mode": "0700",
+      "type": "directory"
+    },
+    {
+      "path": "/private/tmp/gate-launch-20261020-90438-g1p3vc/tmp/t249-test-w5p3g677",
+      "mode": "0700",
+      "type": "directory"
+    },
+    {
+      "path": "/private/tmp/gate-launch-20261020-90438-g1p3vc/tmp/t249-test-w5p3g677/app-data",
+      "mode": "0700",
+      "type": "directory"
+    },
+    {
+      "path": "/private/tmp/gate-launch-20261020-90438-g1p3vc/tmp/t249-test-w5p3g677/tmp",
+      "mode": "0700",
+      "type": "directory"
+    },
+    {
+      "path": "/private/tmp/gate-launch-20261020-90438-g1p3vc/work",
+      "mode": "0700",
+      "type": "directory"
+    }
+  ],
+  "write_accounting": {
+    "adapter_persistent_root": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/e440-full-gate-r3-t249-02",
+    "created_runtime_root": "/private/tmp/gate-launch-20261020-90438-g1p3vc",
+    "adapter_actions": [
+      "create exclusive run directory",
+      "create exclusive external runtime directories",
+      "write dependency manifest, before/after snapshots, launch and end receipts",
+      "invoke pinned Fable capture writer; persist original stdout and stderr"
+    ],
+    "child_writes": "NOT_VERIFIED: requires next Gate task write accounting",
+    "deleted_paths": [
+
+    ],
+    "git_mutation_commands": [
+
+    ],
+    "remote_commands": [
+
+    ],
+    "limit": "This adapter records its own writes and endpoint manifests; it is not a filesystem or OS write sandbox."
+  }
+}

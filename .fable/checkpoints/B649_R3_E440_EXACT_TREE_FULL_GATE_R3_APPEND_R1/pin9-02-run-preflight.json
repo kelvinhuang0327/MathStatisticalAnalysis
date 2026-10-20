@@ -1,0 +1,17 @@
+{
+  "time_ns": 1792461496910123000,
+  "id": "e440-full-gate-r3-pin9-02",
+  "prior_id_01_status": "GATE_LAUNCH_FAILED_BEFORE_PYTEST_CHILD; preserved",
+  "id_not_present_in_recorder": true,
+  "id_not_present_in_fable_records": true,
+  "candidate_head": "e440d4298551ce93ef3ea9a9226143784afa3eff",
+  "candidate_tree": "294cbf6bbe7ee8a8ebad947f397852edc1981b57",
+  "external_head": "e440d4298551ce93ef3ea9a9226143784afa3eff",
+  "external_tree": "294cbf6bbe7ee8a8ebad947f397852edc1981b57",
+  "external_status_before": "?? .fable/checkpoints/B649_R3_E440_EXACT_TREE_FULL_GATE_R3_APPEND_R1/captures/e440-full-gate-r3-pin9-01.json\n?? .fable/checkpoints/B649_R3_E440_EXACT_TREE_FULL_GATE_R3_APPEND_R1/executions/e440-full-gate-r3-pin9-01.json\n",
+  "external_status_expected_control_files_only": true,
+  "sandbox_profile_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_E440_EXACT_TREE_FULL_GATE_R3_APPEND_R1/pin9-02-write-scope.sb",
+  "sandbox_profile_sha256": "fce3e788d50854521a510fb4290b4c6ae9d785c3f7d28973a811d27e316972c1",
+  "sandbox_parse_probe_exit": 0,
+  "full_suite_runs_so_far": 0
+}

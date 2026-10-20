@@ -1,0 +1,18 @@
+{
+  "time_ns": 1792461585142239000,
+  "execution_id": "e440-full-gate-r3-family-01",
+  "candidate_head": "e440d4298551ce93ef3ea9a9226143784afa3eff",
+  "candidate_tree": "294cbf6bbe7ee8a8ebad947f397852edc1981b57",
+  "external_head": "e440d4298551ce93ef3ea9a9226143784afa3eff",
+  "external_tree": "294cbf6bbe7ee8a8ebad947f397852edc1981b57",
+  "external_status_before": "?? .fable/checkpoints/B649_R3_E440_EXACT_TREE_FULL_GATE_R3_APPEND_R1/captures/e440-full-gate-r3-pin9-01.json\n?? .fable/checkpoints/B649_R3_E440_EXACT_TREE_FULL_GATE_R3_APPEND_R1/captures/e440-full-gate-r3-pin9-02.json\n?? .fable/checkpoints/B649_R3_E440_EXACT_TREE_FULL_GATE_R3_APPEND_R1/executions/e440-full-gate-r3-pin9-01.json\n?? .fable/checkpoints/B649_R3_E440_EXACT_TREE_FULL_GATE_R3_APPEND_R1/executions/e440-full-gate-r3-pin9-02.json\n",
+  "historical_report_sha256": "216340c3d1cd2b7724571d95e4c7951d731fd48d04996dd10d53e83b98e12a3b",
+  "prior_pin9_result": "24 passed; persistent evidence pin9-02-evidence",
+  "full_suite_runs_so_far": 0,
+  "family_module_contains_solver_invocation": false,
+  "source_review": "module only invokes pure compute/verify and isolated Git-evidence checks; no OR-Tools/solver entrypoint found",
+  "sandbox_profile": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_E440_EXACT_TREE_FULL_GATE_R3_APPEND_R1/family-write-scope.sb",
+  "sandbox_sha256": "27ca25894c5d740b197c549b5b563b509d390f0e0ce133d3cebe1b5f2c167642",
+  "sandbox_parse_exit": 0,
+  "run_id_unused": true
+}

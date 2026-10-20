@@ -1,0 +1,9 @@
+{
+  "checked_at_local": "2026-10-20",
+  "requested_log_path": "/private/tmp/mathstat-cross-module-86f644-20261019-uup5t9dy/pin9-focused.log",
+  "exists": false,
+  "check": "lstat; FileNotFoundError",
+  "read_performed": false,
+  "sha256": null,
+  "result": "ABSENT"
+}

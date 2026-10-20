@@ -1,0 +1,134 @@
+{
+  "time_ns": 1792462102009486000,
+  "external_git_root": "/private/tmp/mathstat-e440-full-gate-r3-repo",
+  "head": "e440d4298551ce93ef3ea9a9226143784afa3eff",
+  "tree": "294cbf6bbe7ee8a8ebad947f397852edc1981b57",
+  "parent": "86f644010f41cd627f436c8d5cf9e0b5cca8fcdc",
+  "git_no_lazy_fetch": "1",
+  "git_optional_locks": "0",
+  "shallow": false,
+  "alternates_path": "/private/tmp/mathstat-e440-full-gate-r3-repo/.git/objects/info/alternates",
+  "alternates_exists": false,
+  "remotes_empty": true,
+  "reachable_object_closure_entries": 12632,
+  "missing_object_entries": 0,
+  "rev_list_exit_code": 0,
+  "fsck_command": "git fsck --full --strict --no-reflogs",
+  "fsck_exit_code": 0,
+  "fsck_error_lines": [],
+  "fsck_nonerror_report_lines": 1091,
+  "refs_match_initial_external_preflight": true,
+  "refs_sha256": "a1bc6cae6ce4f5fdaf64ef0107c413cd81e6dd4c370de36568ae9f2df51fb215",
+  "count_objects_stdout": "count: 33\nsize: 556\nin-pack: 27854\npacks: 4\nsize-pack: 101051\nprune-packable: 0\ngarbage: 1\nsize-garbage: 0",
+  "count_objects_stderr": "warning: garbage found: .git/objects/30/tmp_obj_jwOu84",
+  "unreferenced_garbage_file": {
+    "path": "/private/tmp/mathstat-e440-full-gate-r3-repo/.git/objects/30/tmp_obj_jwOu84",
+    "size_bytes": 121,
+    "mtime_ns": 1791385674000000000,
+    "action": "left untouched; not part of reachable object closure"
+  },
+  "status_lines": [
+    "?? .fable/checkpoints/B649_R3_E440_EXACT_TREE_FULL_GATE_R3_APPEND_R1/captures/e440-full-gate-r3-family-01.json",
+    "?? .fable/checkpoints/B649_R3_E440_EXACT_TREE_FULL_GATE_R3_APPEND_R1/captures/e440-full-gate-r3-pin9-01.json",
+    "?? .fable/checkpoints/B649_R3_E440_EXACT_TREE_FULL_GATE_R3_APPEND_R1/captures/e440-full-gate-r3-pin9-02.json",
+    "?? .fable/checkpoints/B649_R3_E440_EXACT_TREE_FULL_GATE_R3_APPEND_R1/captures/e440-full-gate-r3-t249-01.json",
+    "?? .fable/checkpoints/B649_R3_E440_EXACT_TREE_FULL_GATE_R3_APPEND_R1/captures/e440-full-gate-r3-t249-02.json",
+    "?? .fable/checkpoints/B649_R3_E440_EXACT_TREE_FULL_GATE_R3_APPEND_R1/executions/e440-full-gate-r3-family-01.json",
+    "?? .fable/checkpoints/B649_R3_E440_EXACT_TREE_FULL_GATE_R3_APPEND_R1/executions/e440-full-gate-r3-pin9-01.json",
+    "?? .fable/checkpoints/B649_R3_E440_EXACT_TREE_FULL_GATE_R3_APPEND_R1/executions/e440-full-gate-r3-pin9-02.json",
+    "?? .fable/checkpoints/B649_R3_E440_EXACT_TREE_FULL_GATE_R3_APPEND_R1/executions/e440-full-gate-r3-t249-01.json",
+    "?? .fable/checkpoints/B649_R3_E440_EXACT_TREE_FULL_GATE_R3_APPEND_R1/executions/e440-full-gate-r3-t249-02.json"
+  ],
+  "commands": [
+    {
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_E440_EXACT_TREE_FULL_GATE_R3_APPEND_R1/git-preflight-r3/identity.stdout.txt",
+      "sha256": "06ca83f7a0f955fc102d7141b40a0080de2762a82a60a6c3423114dee659f96d",
+      "size_bytes": 168
+    },
+    {
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_E440_EXACT_TREE_FULL_GATE_R3_APPEND_R1/git-preflight-r3/identity.stderr.txt",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size_bytes": 0
+    },
+    {
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_E440_EXACT_TREE_FULL_GATE_R3_APPEND_R1/git-preflight-r3/shallow.stdout.txt",
+      "sha256": "2ed27c1421e6928dbe13dbfdb5c59e1045b30341fe7ebe05700006bc5ac572c0",
+      "size_bytes": 6
+    },
+    {
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_E440_EXACT_TREE_FULL_GATE_R3_APPEND_R1/git-preflight-r3/shallow.stderr.txt",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size_bytes": 0
+    },
+    {
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_E440_EXACT_TREE_FULL_GATE_R3_APPEND_R1/git-preflight-r3/alternates.stdout.txt",
+      "sha256": "3f5d78e47a16220d3db81e6760601ca9c9ec4abaf3fe75f9cf92f7f0c6c602c6",
+      "size_bytes": 74
+    },
+    {
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_E440_EXACT_TREE_FULL_GATE_R3_APPEND_R1/git-preflight-r3/alternates.stderr.txt",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size_bytes": 0
+    },
+    {
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_E440_EXACT_TREE_FULL_GATE_R3_APPEND_R1/git-preflight-r3/remotes.stdout.txt",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size_bytes": 0
+    },
+    {
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_E440_EXACT_TREE_FULL_GATE_R3_APPEND_R1/git-preflight-r3/remotes.stderr.txt",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size_bytes": 0
+    },
+    {
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_E440_EXACT_TREE_FULL_GATE_R3_APPEND_R1/git-preflight-r3/refs.stdout.txt",
+      "sha256": "a1bc6cae6ce4f5fdaf64ef0107c413cd81e6dd4c370de36568ae9f2df51fb215",
+      "size_bytes": 100
+    },
+    {
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_E440_EXACT_TREE_FULL_GATE_R3_APPEND_R1/git-preflight-r3/refs.stderr.txt",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size_bytes": 0
+    },
+    {
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_E440_EXACT_TREE_FULL_GATE_R3_APPEND_R1/git-preflight-r3/closure.stdout.txt",
+      "sha256": "5143fbd60e27a709240e08d606db8ec23bfbbff40150a092c0c39acde21d8187",
+      "size_bytes": 891428
+    },
+    {
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_E440_EXACT_TREE_FULL_GATE_R3_APPEND_R1/git-preflight-r3/closure.stderr.txt",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size_bytes": 0
+    },
+    {
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_E440_EXACT_TREE_FULL_GATE_R3_APPEND_R1/git-preflight-r3/fsck.stdout.txt",
+      "sha256": "dbf575bc9c55dacb86c946ee2c7f01cd42414d78d459b9e6c0ac7871b4f940d6",
+      "size_bytes": 60722
+    },
+    {
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_E440_EXACT_TREE_FULL_GATE_R3_APPEND_R1/git-preflight-r3/fsck.stderr.txt",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size_bytes": 0
+    },
+    {
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_E440_EXACT_TREE_FULL_GATE_R3_APPEND_R1/git-preflight-r3/count-objects.stdout.txt",
+      "sha256": "689116acc06d2278d768b09651f5da866d7d16cbd1155da31805c1655fd9938a",
+      "size_bytes": 107
+    },
+    {
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_E440_EXACT_TREE_FULL_GATE_R3_APPEND_R1/git-preflight-r3/count-objects.stderr.txt",
+      "sha256": "ff9ffe7ae3216de821cae21a00d9986b62d4a8179785838828993358971707c0",
+      "size_bytes": 55
+    },
+    {
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_E440_EXACT_TREE_FULL_GATE_R3_APPEND_R1/git-preflight-r3/status.stdout.txt",
+      "sha256": "070bd78d1f162cb683a74d26bd1c1a0aef59332f48913814ee94b883e9bdba35",
+      "size_bytes": 1104
+    },
+    {
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_E440_EXACT_TREE_FULL_GATE_R3_APPEND_R1/git-preflight-r3/status.stderr.txt",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size_bytes": 0
+    }
+  ]
+}

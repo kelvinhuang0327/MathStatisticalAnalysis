@@ -1,0 +1,91 @@
+{
+  "run_tag": "e440-full-gate-r3-t249-01",
+  "exitstatus": 0,
+  "collected": 4,
+  "reports": [
+    {
+      "node_id": "tests/unit/test_b649_t249_collection_isolation_r1.py::test_parent_preload_closure_difference_is_rejected",
+      "when": "setup",
+      "outcome": "passed",
+      "wasxfail": null,
+      "duration": 0.0020691669997177087
+    },
+    {
+      "node_id": "tests/unit/test_b649_t249_collection_isolation_r1.py::test_parent_preload_closure_difference_is_rejected",
+      "when": "call",
+      "outcome": "passed",
+      "wasxfail": null,
+      "duration": 0.05063454199989792
+    },
+    {
+      "node_id": "tests/unit/test_b649_t249_collection_isolation_r1.py::test_parent_preload_closure_difference_is_rejected",
+      "when": "teardown",
+      "outcome": "passed",
+      "wasxfail": null,
+      "duration": 0.0014798339998378651
+    },
+    {
+      "node_id": "tests/unit/test_b649_t249_collection_isolation_r1.py::test_wrong_source_sha_blob_and_result_are_rejected",
+      "when": "setup",
+      "outcome": "passed",
+      "wasxfail": null,
+      "duration": 0.0005940000000919099
+    },
+    {
+      "node_id": "tests/unit/test_b649_t249_collection_isolation_r1.py::test_wrong_source_sha_blob_and_result_are_rejected",
+      "when": "call",
+      "outcome": "passed",
+      "wasxfail": null,
+      "duration": 0.08653412500007107
+    },
+    {
+      "node_id": "tests/unit/test_b649_t249_collection_isolation_r1.py::test_wrong_source_sha_blob_and_result_are_rejected",
+      "when": "teardown",
+      "outcome": "passed",
+      "wasxfail": null,
+      "duration": 0.0009531659998174291
+    },
+    {
+      "node_id": "tests/unit/test_b649_t249_collection_isolation_r1.py::test_real_solver_loaded_guard_rejects_without_running_solver",
+      "when": "setup",
+      "outcome": "passed",
+      "wasxfail": null,
+      "duration": 0.0005541250002352172
+    },
+    {
+      "node_id": "tests/unit/test_b649_t249_collection_isolation_r1.py::test_real_solver_loaded_guard_rejects_without_running_solver",
+      "when": "call",
+      "outcome": "passed",
+      "wasxfail": null,
+      "duration": 2.802593583000089
+    },
+    {
+      "node_id": "tests/unit/test_b649_t249_collection_isolation_r1.py::test_real_solver_loaded_guard_rejects_without_running_solver",
+      "when": "teardown",
+      "outcome": "passed",
+      "wasxfail": null,
+      "duration": 0.0003957090002586483
+    },
+    {
+      "node_id": "tests/unit/test_b649_t249_collection_isolation_r1.py::test_subprocess_exit_timeout_and_stderr_are_not_hidden",
+      "when": "setup",
+      "outcome": "passed",
+      "wasxfail": null,
+      "duration": 0.0010428750001665321
+    },
+    {
+      "node_id": "tests/unit/test_b649_t249_collection_isolation_r1.py::test_subprocess_exit_timeout_and_stderr_are_not_hidden",
+      "when": "call",
+      "outcome": "passed",
+      "wasxfail": null,
+      "duration": 0.7472350000002734
+    },
+    {
+      "node_id": "tests/unit/test_b649_t249_collection_isolation_r1.py::test_subprocess_exit_timeout_and_stderr_are_not_hidden",
+      "when": "teardown",
+      "outcome": "passed",
+      "wasxfail": null,
+      "duration": 0.0007116669999049918
+    }
+  ]
+}

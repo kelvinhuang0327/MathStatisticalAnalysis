@@ -1,0 +1,242 @@
+{
+  "alternates": {
+    "exists": false,
+    "path": "/private/tmp/mathstat-e440-full-gate-r3-repo/.git/objects/info/alternates"
+  },
+  "closure_missing_objects": 0,
+  "commands": [
+    {
+      "argv": [
+        "/usr/bin/git",
+        "-C",
+        "/private/tmp/mathstat-e440-full-gate-r3-repo",
+        "rev-parse",
+        "--show-toplevel",
+        "HEAD",
+        "HEAD^{tree}",
+        "HEAD^"
+      ],
+      "cwd": "/private/tmp/mathstat-e440-full-gate-r3-repo",
+      "ended_ns": 1792460912827065000,
+      "exit_code": 0,
+      "name": "identity",
+      "started_ns": 1792460912788621000,
+      "stderr_bytes": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_bytes": 168,
+      "stdout_sha256": "06ca83f7a0f955fc102d7141b40a0080de2762a82a60a6c3423114dee659f96d"
+    },
+    {
+      "argv": [
+        "/usr/bin/git",
+        "-C",
+        "/private/tmp/mathstat-e440-full-gate-r3-repo",
+        "rev-parse",
+        "--is-shallow-repository"
+      ],
+      "cwd": "/private/tmp/mathstat-e440-full-gate-r3-repo",
+      "ended_ns": 1792460912850652000,
+      "exit_code": 0,
+      "name": "shallow",
+      "started_ns": 1792460912827110000,
+      "stderr_bytes": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_bytes": 6,
+      "stdout_sha256": "2ed27c1421e6928dbe13dbfdb5c59e1045b30341fe7ebe05700006bc5ac572c0"
+    },
+    {
+      "argv": [
+        "/usr/bin/git",
+        "-C",
+        "/private/tmp/mathstat-e440-full-gate-r3-repo",
+        "rev-parse",
+        "--path-format=absolute",
+        "--git-path",
+        "objects/info/alternates"
+      ],
+      "cwd": "/private/tmp/mathstat-e440-full-gate-r3-repo",
+      "ended_ns": 1792460912872439000,
+      "exit_code": 0,
+      "name": "alternates-path",
+      "started_ns": 1792460912850673000,
+      "stderr_bytes": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_bytes": 74,
+      "stdout_sha256": "3f5d78e47a16220d3db81e6760601ca9c9ec4abaf3fe75f9cf92f7f0c6c602c6"
+    },
+    {
+      "argv": [
+        "/usr/bin/git",
+        "-C",
+        "/private/tmp/mathstat-e440-full-gate-r3-repo",
+        "remote",
+        "-v"
+      ],
+      "cwd": "/private/tmp/mathstat-e440-full-gate-r3-repo",
+      "ended_ns": 1792460912892923000,
+      "exit_code": 0,
+      "name": "remotes",
+      "started_ns": 1792460912872461000,
+      "stderr_bytes": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_bytes": 0,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "argv": [
+        "/usr/bin/git",
+        "-C",
+        "/private/tmp/mathstat-e440-full-gate-r3-repo",
+        "count-objects",
+        "-v"
+      ],
+      "cwd": "/private/tmp/mathstat-e440-full-gate-r3-repo",
+      "ended_ns": 1792460912919872000,
+      "exit_code": 0,
+      "name": "count-objects",
+      "saved_output": {
+        "bytes": 107,
+        "path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_E440_EXACT_TREE_FULL_GATE_R3_APPEND_R1/external-count-objects.txt",
+        "sha256": "689116acc06d2278d768b09651f5da866d7d16cbd1155da31805c1655fd9938a"
+      },
+      "started_ns": 1792460912892948000,
+      "stderr_bytes": 55,
+      "stderr_sha256": "ff9ffe7ae3216de821cae21a00d9986b62d4a8179785838828993358971707c0",
+      "stdout_bytes": 107,
+      "stdout_sha256": "689116acc06d2278d768b09651f5da866d7d16cbd1155da31805c1655fd9938a"
+    },
+    {
+      "argv": [
+        "/usr/bin/git",
+        "-C",
+        "/private/tmp/mathstat-e440-full-gate-r3-repo",
+        "for-each-ref",
+        "--sort=refname",
+        "--format=%(refname) %(objectname) %(symref)"
+      ],
+      "cwd": "/private/tmp/mathstat-e440-full-gate-r3-repo",
+      "ended_ns": 1792460912939887000,
+      "exit_code": 0,
+      "name": "refs",
+      "saved_output": {
+        "bytes": 100,
+        "path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_E440_EXACT_TREE_FULL_GATE_R3_APPEND_R1/external-refs-before.txt",
+        "sha256": "a1bc6cae6ce4f5fdaf64ef0107c413cd81e6dd4c370de36568ae9f2df51fb215"
+      },
+      "started_ns": 1792460912920139000,
+      "stderr_bytes": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_bytes": 100,
+      "stdout_sha256": "a1bc6cae6ce4f5fdaf64ef0107c413cd81e6dd4c370de36568ae9f2df51fb215"
+    },
+    {
+      "argv": [
+        "/usr/bin/git",
+        "-C",
+        "/private/tmp/mathstat-e440-full-gate-r3-repo",
+        "rev-list",
+        "--objects",
+        "--missing=print",
+        "HEAD"
+      ],
+      "cwd": "/private/tmp/mathstat-e440-full-gate-r3-repo",
+      "ended_ns": 1792460913014947000,
+      "exit_code": 0,
+      "missing_entries": 0,
+      "name": "closure",
+      "object_entries": 12632,
+      "saved_output": {
+        "bytes": 891428,
+        "path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_E440_EXACT_TREE_FULL_GATE_R3_APPEND_R1/external-commit-closure.txt",
+        "sha256": "5143fbd60e27a709240e08d606db8ec23bfbbff40150a092c0c39acde21d8187"
+      },
+      "started_ns": 1792460912940167000,
+      "stderr_bytes": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_bytes": 891428,
+      "stdout_sha256": "5143fbd60e27a709240e08d606db8ec23bfbbff40150a092c0c39acde21d8187"
+    },
+    {
+      "argv": [
+        "/usr/bin/git",
+        "-C",
+        "/private/tmp/mathstat-e440-full-gate-r3-repo",
+        "fsck",
+        "--full",
+        "--no-reflogs"
+      ],
+      "cwd": "/private/tmp/mathstat-e440-full-gate-r3-repo",
+      "ended_ns": 1792460915896790000,
+      "exit_code": 0,
+      "integrity_error_lines": [],
+      "name": "fsck",
+      "saved_output": {
+        "bytes": 60722,
+        "path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_E440_EXACT_TREE_FULL_GATE_R3_APPEND_R1/external-fsck-output.txt",
+        "sha256": "dbf575bc9c55dacb86c946ee2c7f01cd42414d78d459b9e6c0ac7871b4f940d6"
+      },
+      "started_ns": 1792460913017276000,
+      "stderr_bytes": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_bytes": 60722,
+      "stdout_sha256": "dbf575bc9c55dacb86c946ee2c7f01cd42414d78d459b9e6c0ac7871b4f940d6"
+    },
+    {
+      "argv": [
+        "/usr/bin/git",
+        "-C",
+        "/private/tmp/mathstat-e440-full-gate-r3-repo",
+        "cat-file",
+        "-e",
+        "b280d90be0c35b8c5b1ca7798a394332194f8887^{commit}"
+      ],
+      "cwd": "/private/tmp/mathstat-e440-full-gate-r3-repo",
+      "ended_ns": 1792460915921221000,
+      "exit_code": 0,
+      "name": "historical-child-object",
+      "started_ns": 1792460915897933000,
+      "stderr_bytes": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_bytes": 0,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "argv": [
+        "/usr/bin/git",
+        "-C",
+        "/private/tmp/mathstat-e440-full-gate-r3-repo",
+        "config",
+        "--get-regexp",
+        "^(extensions\\.partialclone|remote\\..*\\.promisor|remote\\..*\\.fetch|remote\\..*\\.url|core\\.repositoryformatversion)$"
+      ],
+      "exit_code": 0,
+      "stderr": "",
+      "stdout": "core.repositoryformatversion 0\n"
+    }
+  ],
+  "external_refs_count": 1,
+  "fsck_exit": 0,
+  "fsck_integrity_error_lines": [],
+  "identity_lines": [
+    "/private/tmp/mathstat-e440-full-gate-r3-repo",
+    "e440d4298551ce93ef3ea9a9226143784afa3eff",
+    "294cbf6bbe7ee8a8ebad947f397852edc1981b57",
+    "86f644010f41cd627f436c8d5cf9e0b5cca8fcdc"
+  ],
+  "remotes": "",
+  "repository": "/private/tmp/mathstat-e440-full-gate-r3-repo",
+  "shallow": "false",
+  "targeted_git_config": {
+    "argv": [
+      "/usr/bin/git",
+      "-C",
+      "/private/tmp/mathstat-e440-full-gate-r3-repo",
+      "config",
+      "--get-regexp",
+      "^(extensions\\.partialclone|remote\\..*\\.promisor|remote\\..*\\.fetch|remote\\..*\\.url|core\\.repositoryformatversion)$"
+    ],
+    "exit_code": 0,
+    "stderr": "",
+    "stdout": "core.repositoryformatversion 0\n"
+  }
+}

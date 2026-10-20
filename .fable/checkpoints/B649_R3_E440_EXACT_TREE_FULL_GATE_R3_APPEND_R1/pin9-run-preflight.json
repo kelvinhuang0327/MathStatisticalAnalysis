@@ -1,0 +1,21 @@
+{
+  "time_ns": 1792461413432079000,
+  "id": "e440-full-gate-r3-pin9-01",
+  "id_not_present_in_recorder": true,
+  "id_not_present_in_fable_records": true,
+  "candidate_head": "e440d4298551ce93ef3ea9a9226143784afa3eff",
+  "candidate_tree": "294cbf6bbe7ee8a8ebad947f397852edc1981b57",
+  "external_head": "e440d4298551ce93ef3ea9a9226143784afa3eff",
+  "external_tree": "294cbf6bbe7ee8a8ebad947f397852edc1981b57",
+  "external_status": "clean",
+  "external_shallow": "false",
+  "external_alternates": false,
+  "historical_report_sha256": "216340c3d1cd2b7724571d95e4c7951d731fd48d04996dd10d53e83b98e12a3b",
+  "protected_generation_marker_sha256": "cf3e680f9be5888a0b3af943f91a22b99ff6588b095e61da652dfff6aab8b496",
+  "sandbox_profile_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_E440_EXACT_TREE_FULL_GATE_R3_APPEND_R1/pin9-write-scope.sb",
+  "sandbox_profile_sha256": "dac6242fecb0feaf67fe88cc2b6d21122e6bd3aed76c716185710ed26b4c4f1b",
+  "sandbox_parse_probe_exit": 0,
+  "sandbox_parse_probe_stdout": "",
+  "sandbox_parse_probe_stderr": "",
+  "run_dir": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/e440-full-gate-r3-pin9-01"
+}

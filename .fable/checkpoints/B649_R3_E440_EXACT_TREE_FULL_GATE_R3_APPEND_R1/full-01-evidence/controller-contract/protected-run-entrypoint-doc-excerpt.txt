@@ -1,0 +1,69 @@
+## task-checkpoint.md protected run entrypoint, source lines 383-450; source SHA256 ddec42a39a41919833fc04e7d351bea85c3cf5d7f097088667e23646871d4c9a
+383:```text
+384:ruby <confirmed-Fable-checkout>/fable-method/scripts/task_checkpoint.rb \
+385:  --run \
+386:  --repo <original-stable-record-root> \
+387:  --worktree <upstream-command-cwd> \
+388:  --task-id <stable-task-id> \
+389:  --execution-id <stable-execution-id> \
+390:  -- <upstream argv...>
+391:```
+392:
+393:`--repo` must explicitly name the original task's stable absolute
+394:ExecutionRecord / durable-capture root. It is never inferred from the CLI's
+395:current directory. `--worktree` must explicitly name an existing absolute
+396:directory and controls only the upstream command's working directory.
+397:`--task-id` and `--execution-id` are caller-supplied stable path components
+398:(non-empty, no path separators, neither `.` nor `..`). Preserve the same root
+399:and identities across sessions and models; never synthesize them from PID,
+400:timestamp, session, model, or current directory, including to bypass a stop.
+401:The original Packet still controls authorization and allowed output paths.
+402:
+403:The upstream spawn closes all unlisted descriptors and explicitly allowlists
+404:the task-lock descriptor at child FD 10. The protected parent may hold that
+405:same lock at another descriptor number. This keeps FD 9 closed for application
+406:runners that reserve it, while the child still holds the task lock if the
+407:wrapper dies. `FABLE_PROTECTED_RUN_LOCK_FD` names the child descriptor and is
+408:the only extra descriptor passed by this boundary.
+409:
+410:The foreground CLI owns the execution record with its own PID while it
+411:supervises the upstream process. Its only new-execution route is:
+412:
+413:```text
+414:ExecutionRecord.acquire!
+415:→ DurableCommandCapture.run_and_capture(argv, ...)
+416:→ ExecutionRecord#complete!
+417:```
+418:
+419:Only a successful acquisition owner invokes the exact argv after `--`,
+420:directly without shell-string reconstruction (including a single executable
+421:argument). The capture is persisted under
+422:`<repo>/.fable/checkpoints/<task_id>/captures/<execution_id>.json` before the
+423:execution record becomes `COMPLETED`.
+424:
+425:On `PRIOR_PROCESS_COMPLETED`, the CLI reuses the saved result without invoking
+426:upstream, reproduces captured stdout and stderr without added status text,
+427:and returns the captured exit code, including non-zero. A captured
+428:`SIGNALED:<number>` result flushes the captured streams and terminates the CLI
+429:with the same signal. Completion describes durable capture, not command success.
+430:
+431:`PRIOR_PROCESS_ACTIVE`, `PRIOR_PROCESS_TERMINATED_INCOMPLETE`, and
+432:`PRIOR_PROCESS_STATE_UNRESOLVED` stop with exit `1` and the classification on
+433:stderr; none launches upstream. Malformed/unreadable state fails closed.
+434:Terminated-incomplete state is retained: the CLI never deletes the record,
+435:rotates identity, or automatically reruns. Rerun authority remains with the
+436:original task contract. Invalid CLI arguments exit `2` before acquisition.
+437:
+438:**Protection boundary**: only long-running commands routed through
+439:`task_checkpoint.rb --run` or an explicitly authorized
+440:`task_checkpoint.rb --recover-run` receive this technical duplicate-execution
+441:protection. Arbitrary direct shell bypasses remain outside that enforcement
+442:boundary. Applicable Worker launches MUST use this CLI and must stop if it
+443:cannot be resolved, rather than silently fall back to a direct command.
+444:
+445:**Deployment requirement**: publication/activation is incomplete until a Worker
+446:can resolve a Fable checkout containing the merged Ruby CLI. Updating only
+447:installed SKILL text is insufficient when the installed package lacks the
+448:Ruby scripts. The placeholder above means that selected launcher, which
+449:defaults to the confirmed deployed checkout; an isolated task worktree is
+450:never the permanent canonical runtime path.

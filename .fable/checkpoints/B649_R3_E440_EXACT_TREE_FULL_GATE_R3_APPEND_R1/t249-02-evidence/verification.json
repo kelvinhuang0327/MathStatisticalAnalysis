@@ -1,0 +1,259 @@
+{
+  "time_ns": 1792462066026907000,
+  "run_id": "e440-full-gate-r3-t249-02",
+  "candidate": {
+    "head": "e440d4298551ce93ef3ea9a9226143784afa3eff",
+    "tree": "294cbf6bbe7ee8a8ebad947f397852edc1981b57",
+    "parent": "86f644010f41cd627f436c8d5cf9e0b5cca8fcdc"
+  },
+  "test_module": "tests/unit/test_b649_t249_collection_isolation_r1.py",
+  "test_source_sha256": "2c87ce9c027196d56cb0442f9f95cccccde95ff87762fbde715126aed7c3bcf2",
+  "pytest_args": [
+    "-q",
+    "-p",
+    "r3_t249_state_collector",
+    "tests/unit/test_b649_t249_collection_isolation_r1.py"
+  ],
+  "pytest_pid": 90745,
+  "controller_pid": 90325,
+  "parent_pid": 90438,
+  "outer_lock_file": "/private/tmp/mathstat-e440-full-gate-r3-repo/.git/fable-locks/task-execution/b6bd4f3138f93f120f8d3d1e7ec175a6f3ce878f2fedb1a38b7e0b68e509fca5/execution.lock",
+  "fd10_identity": {
+    "dev": 16777232,
+    "ino": 252984624,
+    "mode": "0600",
+    "open": true,
+    "regular_file": true
+  },
+  "lock_inode_match": true,
+  "collected": 4,
+  "passed": 4,
+  "failed": 0,
+  "errors": 0,
+  "skipped": 0,
+  "xfailed": 0,
+  "pytest_exit_code": 0,
+  "ortools_parent_contamination": {
+    "preexisting": [],
+    "union_across_observed_test_stages": [],
+    "final": [],
+    "import_attempts": [],
+    "stage_snapshots": 15,
+    "result": "0 modules; 0 import attempts"
+  },
+  "sandbox_denial_probe": {
+    "denied": true,
+    "errno": 1,
+    "exists": false,
+    "monotonic_ns": 3799430061541,
+    "operation": "sandbox-write-denial-probe",
+    "path": "/private/tmp/mathstat-e440-full-gate-r3-repo/src/.r3-write-denial-e440-full-gate-r3-t249-02-90745",
+    "pid": 90745,
+    "ppid": 90438,
+    "role": "pytest",
+    "run_tag": "e440-full-gate-r3-t249-02",
+    "time_ns": 1792461956591133000
+  },
+  "network_events": 0,
+  "source_refs_unchanged": true,
+  "source_status_unchanged": true,
+  "primary_refs_unchanged": true,
+  "runtime_root": {
+    "path": "/private/tmp/gate-launch-20261020-90438-g1p3vc",
+    "mode": "0700",
+    "uid": 1428005812
+  },
+  "appdata": {
+    "path": "/private/tmp/gate-launch-20261020-90438-g1p3vc/appdata",
+    "mode": "0700",
+    "uid": 1428005812
+  },
+  "umask": "0077",
+  "basetemp": {
+    "path": "/private/tmp/gate-launch-20261020-90438-g1p3vc/basetemp",
+    "mode": "0700",
+    "uid": 1428005812
+  },
+  "python": {
+    "executable": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/python",
+    "real_executable": "/opt/homebrew/Cellar/python@3.13/3.13.8/Frameworks/Python.framework/Versions/3.13/bin/python3.13",
+    "version": "3.13.8 (main, Oct  7 2025, 12:01:51) [Clang 17.0.0 (clang-1700.3.19.1)]",
+    "pytest": "9.1.1",
+    "source_lock_fingerprints": [
+      {
+        "path": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_R3_ADV11_DESCENDANT_STABLE_CONTEXT_R1/uv.lock",
+        "sha256": "073c1a72534fdd64090a6ac1f041204aceb67c4fa0cb663b581d385a5de21875",
+        "git_blob": "94aa656817f9e2e83c220dac11ca52c0e2ded9a0"
+      },
+      {
+        "path": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_R3_ADV11_DESCENDANT_STABLE_CONTEXT_R1/pyproject.toml",
+        "sha256": "b724f5bbe83c2e25521ebe76bcdf0c8cf718ecb54dec45ff847be725f16a5f29",
+        "git_blob": "51aea80579ec54c265a9f1fe93c7ecc7d91cc892"
+      },
+      {
+        "path": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_R3_ADV11_DESCENDANT_STABLE_CONTEXT_R1/.python-version",
+        "sha256": "02e735b3dfe1c32833eb550b7ff8ffa17f5f2bc3fa1e7bae61a8f5a3883ce398",
+        "git_blob": "24ee5b1be9961e38a503c8e764b7385dbb6ba124"
+      }
+    ]
+  },
+  "controller_capture_sha256": "f8fb06164fc372a1672a99f8635891994f21c80969ecfa6c9331fea81628ea7e",
+  "recorder_end_sha256": "cb7ef074ab627f4ee1febe7e7e38e2787dfc6ecda6b12f7f5e9bec926e62df47",
+  "files": [
+    {
+      "path": "controller-captures/e440-full-gate-r3-t249-02.json",
+      "size_bytes": 2114,
+      "sha256": "f8fb06164fc372a1672a99f8635891994f21c80969ecfa6c9331fea81628ea7e"
+    },
+    {
+      "path": "controller-executions/e440-full-gate-r3-t249-02.json",
+      "size_bytes": 434,
+      "sha256": "1636fc6c5ffedd8bdda1987db53827b0ea2e11757397a9cfa372f39176643a38"
+    },
+    {
+      "path": "recorder-run/SHA256SUMS",
+      "size_bytes": 1190,
+      "sha256": "aad8d4fce478f73458dfde744bd5eda610ab8cc154f49ffe8caac5a60d0ae335"
+    },
+    {
+      "path": "recorder-run/capture.json",
+      "size_bytes": 1759,
+      "sha256": "e82268651df3e299d0620be42167fc72efe31e01b8fff787cdab58f47fb91824"
+    },
+    {
+      "path": "recorder-run/dependencies.json",
+      "size_bytes": 2510,
+      "sha256": "009e63d71b1918eaa07f7a0b51a0c68e8bfbce8e333bbdf649fecce6a03ee54b"
+    },
+    {
+      "path": "recorder-run/end.json",
+      "size_bytes": 7928,
+      "sha256": "cb7ef074ab627f4ee1febe7e7e38e2787dfc6ecda6b12f7f5e9bec926e62df47"
+    },
+    {
+      "path": "recorder-run/launch.json",
+      "size_bytes": 9397,
+      "sha256": "cb405ac5f54f57afdd198d305401cefa94791c9b2ad533db3bd73f9ab6ad842a"
+    },
+    {
+      "path": "recorder-run/primary-refs-after.txt",
+      "size_bytes": 242195,
+      "sha256": "e1556bff05d03632cf53323a4f22412aea0febd3948d0763ca48ce416bc6aab3"
+    },
+    {
+      "path": "recorder-run/primary-refs-before.txt",
+      "size_bytes": 242195,
+      "sha256": "e1556bff05d03632cf53323a4f22412aea0febd3948d0763ca48ce416bc6aab3"
+    },
+    {
+      "path": "recorder-run/primary-status-after.txt",
+      "size_bytes": 24080,
+      "sha256": "b83ccd2abac07bad8e94639434c2320d8308ca67b1ef27a810cfb1a529ca3486"
+    },
+    {
+      "path": "recorder-run/primary-status-before.txt",
+      "size_bytes": 22179,
+      "sha256": "50e204a463a9f7bb2b9cfdb14940cabc264d681d5dd4e802c18cc665320f01f1"
+    },
+    {
+      "path": "recorder-run/source-refs-after.txt",
+      "size_bytes": 242195,
+      "sha256": "e1556bff05d03632cf53323a4f22412aea0febd3948d0763ca48ce416bc6aab3"
+    },
+    {
+      "path": "recorder-run/source-refs-before.txt",
+      "size_bytes": 242195,
+      "sha256": "e1556bff05d03632cf53323a4f22412aea0febd3948d0763ca48ce416bc6aab3"
+    },
+    {
+      "path": "recorder-run/source-status-after.txt",
+      "size_bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "recorder-run/source-status-before.txt",
+      "size_bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "recorder-run/stderr.txt",
+      "size_bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "recorder-run/stdout.txt",
+      "size_bytes": 98,
+      "sha256": "be8228587865d3962a8b4d1ef3bcb4f21e4775704eb072f698fda2ba3e54e159"
+    },
+    {
+      "path": "observer/python-observer-e440-full-gate-r3-t249-02-metadata-probe-90555.jsonl",
+      "size_bytes": 998,
+      "sha256": "4092ebb39e387535161805356953809c0a18d5a24d1e47e944c6c0376e8c10d2"
+    },
+    {
+      "path": "observer/python-observer-e440-full-gate-r3-t249-02-pytest-90745.jsonl",
+      "size_bytes": 13997,
+      "sha256": "ad1304fcb9bf79b8cb8ab4ed429183de2ec6ead6e29545cff908dc83df951f24"
+    },
+    {
+      "path": "observer/python-observer-e440-full-gate-r3-t249-02-pytest-91226.jsonl",
+      "size_bytes": 922,
+      "sha256": "cf44a9be15220ef96923d9e89f2cb3035bb44b4959fb35cbb3d75b2fb2716e2e"
+    },
+    {
+      "path": "observer/python-observer-e440-full-gate-r3-t249-02-pytest-91232.jsonl",
+      "size_bytes": 922,
+      "sha256": "011586ea07fa7570c92d519806c6580d8ba65ea1e31fdef6cd9e97143ddbd65a"
+    },
+    {
+      "path": "observer/python-observer-e440-full-gate-r3-t249-02-pytest-91255.jsonl",
+      "size_bytes": 922,
+      "sha256": "db08de6f0340f29a08eb553834a8c0ca8c079f7a909b164fd1cd5843a5a2bbaa"
+    },
+    {
+      "path": "observer/git-python-e440-full-gate-r3-t249-02.jsonl",
+      "size_bytes": 123778,
+      "sha256": "c684561bb9ef745ddae1b639b056950c7cf2c747e421bf8d8eeed7b42cad10df"
+    },
+    {
+      "path": "observer/pytest-nodeids-e440-full-gate-r3-t249-02.json",
+      "size_bytes": 541,
+      "sha256": "dacebae29113c797f4c785095f73b3c59cfe7c85622c1315fd0cab396c3e6f0d"
+    },
+    {
+      "path": "observer/pytest-outcomes-e440-full-gate-r3-t249-02.json",
+      "size_bytes": 3169,
+      "sha256": "aa58e17f967e94a20bdc79ab18c4ea5b4e0d34e9c1a3bf5f6be86030394730cf"
+    },
+    {
+      "path": "observer/ruby-observer-e440-full-gate-r3-t249-02-90438.jsonl",
+      "size_bytes": 58350,
+      "sha256": "1014fe5d0b1280417e88976b1eaf19ec9120ed4e1877231a02c55b2a85734150"
+    },
+    {
+      "path": "run-preflight.json",
+      "size_bytes": 4653,
+      "sha256": "1c08d3e5d9caf7238cb5444c4b576801ab90c939d319d9c2880a7dd6bf6e3172"
+    },
+    {
+      "path": "run-dispatch.json",
+      "size_bytes": 2776,
+      "sha256": "773d6abcd63e93ecfe96fe9a1268213a1e67fd4d46af0775a25ff853855cf2cb"
+    },
+    {
+      "path": "observer/ruby_write_observer_v4.rb",
+      "size_bytes": 7197,
+      "sha256": "0a6ab37434e4b1845c80d88604ac327f518ce7352119d7063fd673048f8d8f2d"
+    },
+    {
+      "path": "observer/r3_t249_state_collector.py",
+      "size_bytes": 2616,
+      "sha256": "7615977bfa14946db87a6e75446965635d3d09ee228ca272b8358983900e88ae"
+    },
+    {
+      "path": "observer/t249-02-write-scope.sb",
+      "size_bytes": 529,
+      "sha256": "215c5dfc0c4b6258abfb5fc128420282efb867bc714ecdd4342c6f269f0bf0ab"
+    }
+  ]
+}

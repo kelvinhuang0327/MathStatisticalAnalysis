@@ -1,0 +1,11 @@
+{
+  "execution_id": "e440-full-gate-r3-pin9-01",
+  "observation": "launcher created pre-spawn receipts and completed its metadata probe; TypeError occurred while spawning the actual pytest child, before Python pytest started. Captured stderr has no Ruby backtrace.",
+  "likely_wrapper_fault": "Ruby 2.6 keyword forwarding in the observer Open3.popen3 wrapper was incompatible with the positional spawn-options Hash.",
+  "repair": "new ruby_write_observer_v2.rb removes **kwargs forwarding and preserves positional spawn-option hashes; original observer remains byte-identical and failed attempt evidence is copied under pin9-attempt-01.",
+  "v1_sha256": "1a9a49178f27fefc92561cfe9aed0f17efdd021fe85d7ccc383f40902f2e1900",
+  "v2_sha256": "0034b9612147ed7eb45cbf56a40856bbe12da70402ef7cfac7b98cfe60ea4325",
+  "v2_syntax": "Syntax OK\n",
+  "original_id_reused": false,
+  "attempt_manifest": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_E440_EXACT_TREE_FULL_GATE_R3_APPEND_R1/pin9-attempt-01/attempt-manifest.json"
+}

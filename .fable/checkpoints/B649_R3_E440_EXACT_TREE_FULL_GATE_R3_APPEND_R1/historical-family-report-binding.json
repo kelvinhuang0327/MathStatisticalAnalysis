@@ -1,0 +1,13 @@
+{
+  "time_ns": 1792461292971811000,
+  "source_recovery_copy": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_E440_ADV19_PREFLIGHT_RECOVERY_R1/sealed-historical-judge-report.md",
+  "source_canonical_locator": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.git/worktrees/B649_MIN_S2_AB_T242_T241_EXACT_FAMILY_AUTHORITY_R1/task-evidence/fresh-judge-report.md",
+  "destination_exact_locator": "/private/tmp/mathstat-e440-full-gate-r3-repo/.git/worktrees/B649_MIN_S2_AB_T242_T241_EXACT_FAMILY_AUTHORITY_R1/task-evidence/fresh-judge-report.md",
+  "expected_sha256": "216340c3d1cd2b7724571d95e4c7951d731fd48d04996dd10d53e83b98e12a3b",
+  "source_recovery_sha256": "216340c3d1cd2b7724571d95e4c7951d731fd48d04996dd10d53e83b98e12a3b",
+  "source_canonical_locator_sha256": "216340c3d1cd2b7724571d95e4c7951d731fd48d04996dd10d53e83b98e12a3b",
+  "destination_sha256": "216340c3d1cd2b7724571d95e4c7951d731fd48d04996dd10d53e83b98e12a3b",
+  "destination_mode": "0o600",
+  "written_exclusively": true,
+  "git_refs_changed": false
+}

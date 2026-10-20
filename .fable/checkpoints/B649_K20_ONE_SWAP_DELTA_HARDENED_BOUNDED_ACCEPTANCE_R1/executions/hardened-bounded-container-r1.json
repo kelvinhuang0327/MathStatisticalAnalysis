@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "task_id": "B649_K20_ONE_SWAP_DELTA_HARDENED_BOUNDED_ACCEPTANCE_R1",
+  "execution_id": "hardened-bounded-container-r1",
+  "pid": 25718,
+  "status": "COMPLETED",
+  "durable_capture_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_K20_ONE_SWAP_DELTA_HARDENED_BOUNDED_ACCEPTANCE_R1/captures/hardened-bounded-container-r1.json",
+  "started_at": "2026-10-20T02:25:19Z",
+  "ended_at": "2026-10-20T02:25:38Z"
+}

@@ -1,0 +1,38 @@
+{
+  "time_ns": 1792462157582240000,
+  "baseline_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_E440_EXACT_TREE_FULL_GATE_R3_APPEND_R1/source-refs-before.txt",
+  "latest_run_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/e440-full-gate-r3-t249-02/source-refs-after.txt",
+  "baseline_sha256": "e328440abaa9db4de83b15a0e2cd9f85d350a788b2c37bdbdc2e2b73d82ff078",
+  "latest_sha256": "e1556bff05d03632cf53323a4f22412aea0febd3948d0763ca48ce416bc6aab3",
+  "baseline_ref_count": 1617,
+  "latest_ref_count": 1618,
+  "added_refs": [
+    "refs/codex/turn-diffs/captures/1792461055668/70b1b615-8904-40d3-b3a6-0a8235a4f80e/base 05ce22ee61e78a739580907e4f50f442048289a6 ",
+    "refs/codex/turn-diffs/captures/1792461074333/55993082-7812-486e-bee9-76959c55c1c2/base 05ce22ee61e78a739580907e4f50f442048289a6 ",
+    "refs/codex/turn-diffs/captures/1792461907572/f1bb3037-5195-4e4e-a36d-b30855ff6846/base e1ef5fb386fe47dd6ac0d2dd8afea7d8ee9338e6 ",
+    "refs/codex/turn-diffs/captures/1792461925752/adc13fe9-2eda-418e-a595-3329d6729171/base d4e5576439a3ef5c014593d21f392e96f4317712 ",
+    "refs/codex/turn-diffs/checkpoints/03ea33db223464288492b2def4b996e1/a110974652bcacbb89ad5647280bfed6/1792461231220/f9ec9982-2439-44a2-a981-c49967a1b4e5 ad90954f304b992363e6b7ca1e901501a6a07fa7 ",
+    "refs/codex/turn-diffs/checkpoints/0528dd751c7f3d15de8136117f6eba58/4e87c0fb26cabbd97aa5a0332811390d/1792461456193/7606932e-c5f1-4770-a8f6-73c7e1f75a4f 31621816e3a024fdc8afce93c54f0269ff8af26b ",
+    "refs/codex/turn-diffs/checkpoints/2d8d8dfa2a03885426cc632273ae9e8c/0eca9877383ce7a51bf22e26e3d3bacf/1792460976400/c4c2efb2-a8bc-46ce-a89a-ab24a3799fcf 05ce22ee61e78a739580907e4f50f442048289a6 ",
+    "refs/codex/turn-diffs/checkpoints/2ec21b61d7d89ede188e918a5e464dfa/ea66c6bef0e22f0c60c40890a96fbeaa/1792460990674/e2273547-38b3-4be7-a0bd-94c275129ca9 05ce22ee61e78a739580907e4f50f442048289a6 ",
+    "refs/codex/turn-diffs/checkpoints/3fd6e95bf21b431c19d068464a3c3c74/ab4b17db146387b5b2d8f4ecb8d9cfd3/1792460910468/6c1a9347-4492-4bb8-b147-c21cdc1df454 1b5dc3bb4b9cb3b0b6680ca2c66b535dffe04ab4 ",
+    "refs/codex/turn-diffs/checkpoints/772e09fddaf860fe23409e54e3ae9b96/8d0e545d6109f2563414740c5ae61c75/1792461898839/925c49f5-bfb8-4bcc-86b1-afb9cb3549dd e1ef5fb386fe47dd6ac0d2dd8afea7d8ee9338e6 ",
+    "refs/codex/turn-diffs/checkpoints/95ebfd82819ff8ed484736ceae1a28bb/7cbea5fde19a9e4f6faf4655957d7e0a/1792461114413/614dcb7d-4a51-47ab-a905-d5c2a115d361 05ce22ee61e78a739580907e4f50f442048289a6 ",
+    "refs/codex/turn-diffs/checkpoints/c6d1ab7d8df120aaf16296af49240bd2/3cba8ae9c8f5fbbb6d632591e13eb30b/1792461214131/d1a74f81-0869-4abe-801d-dcedcdcca451 c0932cb55d0ce415f03dc8b275685c80b01a2665 "
+  ],
+  "removed_refs": [
+    "refs/codex/turn-diffs/captures/1792460115870/f2d4d117-38e8-461c-878b-9198e7f2ce58/base 81540cd41147095e3530736472b3396769e369f2 ",
+    "refs/codex/turn-diffs/captures/1792460307440/153fdaec-2a39-4067-a814-65434257ba74/base 81540cd41147095e3530736472b3396769e369f2 ",
+    "refs/codex/turn-diffs/captures/1792460617201/fd802fce-2b1a-4857-a6e2-bde9ae0ab2a4/base 81540cd41147095e3530736472b3396769e369f2 ",
+    "refs/codex/turn-diffs/captures/1792460663416/ba28fdc6-a562-44ee-9abc-a452256e4d7d/base 81540cd41147095e3530736472b3396769e369f2 ",
+    "refs/codex/turn-diffs/captures/1792460727471/5d18f017-cd8c-4b1b-a6fc-c5ef26ac3817/base 81540cd41147095e3530736472b3396769e369f2 ",
+    "refs/codex/turn-diffs/captures/1792460753724/8dec1c79-e072-4e9f-9d00-d60db259f770/base 81540cd41147095e3530736472b3396769e369f2 ",
+    "refs/codex/turn-diffs/checkpoints/0363f8b16e68ffd7abddce944ddce9d5/ee9e96741e5ca4539ce08fad4d782389/1791856998415/380a1d9b-58de-44ae-a6b4-156d558ce1f1 51db6e86e5e30b04f9be7679ab8bfe5d2355a258 ",
+    "refs/codex/turn-diffs/checkpoints/508270f7ca80fb67df46a580662ecb9e/2a84c75be734ad7a06ba960f63053b46/1791857002209/ac7b50a6-462c-4ccb-9fda-9bc7595a34c5 51db6e86e5e30b04f9be7679ab8bfe5d2355a258 ",
+    "refs/codex/turn-diffs/checkpoints/c3c9acf5ae970a07f37860dc8503d688/b4eba05927b0ca2eaadb062c74f88ca0/1791856904442/86282b36-fe61-49c5-9d9e-ebf3d7378890 51db6e86e5e30b04f9be7679ab8bfe5d2355a258 ",
+    "refs/codex/turn-diffs/checkpoints/df09cd875784ab2b66df2ad6cf5ac37b/b96ec7ca907d897797f9b28de51575eb/1791857004900/51566c23-a0d7-4185-acbd-931238966b71 51db6e86e5e30b04f9be7679ab8bfe5d2355a258 ",
+    "refs/codex/turn-diffs/checkpoints/f7480770205ad2a40419bbb203503984/ae6cea46193d39d3decd1853bcf0c899/1791856506377/6fa67a52-ad4b-491b-b0d9-75f0928496a0 51db6e86e5e30b04f9be7679ab8bfe5d2355a258 "
+  ],
+  "attribution": "UNKNOWN",
+  "note": "Each individual protected focused run recorded identical source refs before and after. This cross-snapshot delta is unassigned; no task action is attributed."
+}

@@ -1,0 +1,38 @@
+{
+  "cwd": "/private/tmp/adv19-recovery-ea4ub0bv/testrepo",
+  "python": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/python",
+  "python_version": "3.13.8 (main, Oct  7 2025, 12:01:51) [Clang 17.0.0 (clang-1700.3.19.1)]",
+  "pytest_version": "9.1.1",
+  "env": {
+    "LOTTOLAB_DATA_DIR": "/private/tmp/adv19-recovery-ea4ub0bv/app-data",
+    "TMPDIR": "/private/tmp/adv19-recovery-ea4ub0bv/tmp",
+    "TMP": "/private/tmp/adv19-recovery-ea4ub0bv/tmp",
+    "TEMP": "/private/tmp/adv19-recovery-ea4ub0bv/tmp",
+    "XDG_CACHE_HOME": "/private/tmp/adv19-recovery-ea4ub0bv/cache",
+    "XDG_DATA_HOME": "/private/tmp/adv19-recovery-ea4ub0bv/xdg-data",
+    "PYTHONPYCACHEPREFIX": "/private/tmp/adv19-recovery-ea4ub0bv/bytecode",
+    "PYTHONDONTWRITEBYTECODE": "1",
+    "PYTHONPATH": "/private/tmp/adv19-recovery-ea4ub0bv/testrepo/src:/private/tmp/adv19-recovery-ea4ub0bv/testrepo/tests/unit"
+  },
+  "effective_umask": "0077",
+  "app_data_mode": "0o700",
+  "historical_report": "/private/tmp/adv19-recovery-ea4ub0bv/testrepo/.git/worktrees/B649_MIN_S2_AB_T242_T241_EXACT_FAMILY_AUTHORITY_R1/task-evidence/fresh-judge-report.md",
+  "historical_report_sha256": "216340c3d1cd2b7724571d95e4c7951d731fd48d04996dd10d53e83b98e12a3b",
+  "argv": [
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/python",
+    "-B",
+    "-m",
+    "pytest",
+    "-p",
+    "no:cacheprovider",
+    "-vv",
+    "-rs",
+    "--tb=short",
+    "--basetemp=/private/tmp/adv19-recovery-ea4ub0bv/pytest-combined-normal",
+    "--junitxml=/private/tmp/adv19-recovery-ea4ub0bv/combined-normal.xml",
+    "tests/unit/test_b649_min_s2_advanced_11row_exact_adoption_r1.py",
+    "tests/unit/test_b649_min_s2_t249_dual_profile_composition_r1.py"
+  ],
+  "reverse": false,
+  "started_at": 1792419924.800468
+}

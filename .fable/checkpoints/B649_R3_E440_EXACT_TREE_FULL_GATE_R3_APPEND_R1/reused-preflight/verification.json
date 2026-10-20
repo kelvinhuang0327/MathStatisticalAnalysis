@@ -1,0 +1,80 @@
+{
+  "time_ns": 1792462046536583000,
+  "source_identity": {
+    "head": "e440d4298551ce93ef3ea9a9226143784afa3eff",
+    "tree": "294cbf6bbe7ee8a8ebad947f397852edc1981b57",
+    "parent": "86f644010f41cd627f436c8d5cf9e0b5cca8fcdc"
+  },
+  "advanced19": {
+    "node_count": 19,
+    "counts": {
+      "passed": 19,
+      "failure": 0,
+      "error": 0,
+      "skipped": 0
+    },
+    "exit_code": 0,
+    "pass": true
+  },
+  "combined_normal46": {
+    "node_count": 46,
+    "counts": {
+      "passed": 46,
+      "failure": 0,
+      "error": 0,
+      "skipped": 0
+    },
+    "t249_node_count": 27,
+    "pass": true
+  },
+  "combined_reverse46": {
+    "node_count": 46,
+    "counts": {
+      "passed": 46,
+      "failure": 0,
+      "error": 0,
+      "skipped": 0
+    },
+    "exact_reverse_node_order": true,
+    "t249_exact_reverse_node_order": true,
+    "pass": true
+  },
+  "supplemental50": {
+    "node_count": 50,
+    "counts": {
+      "passed": 50,
+      "failure": 0,
+      "error": 0,
+      "skipped": 0
+    },
+    "exit_code": 0,
+    "pass": true
+  },
+  "t249_child_solver_reports": [
+    {
+      "path": "t249-child-reports/t249-child-48tui75s.json",
+      "node_count": 27,
+      "passed": 27,
+      "solver_modules": [],
+      "sha256": "60c7aceaa110efaf0781230cfb68766442715f35d647851d8b8be5305d463046"
+    },
+    {
+      "path": "t249-child-reports/t249-child-haj01mlp.json",
+      "node_count": 27,
+      "passed": 27,
+      "solver_modules": [],
+      "sha256": "60c7aceaa110efaf0781230cfb68766442715f35d647851d8b8be5305d463046"
+    },
+    {
+      "path": "t249-child-reports/t249-child-wyztjc9u.json",
+      "node_count": 27,
+      "passed": 27,
+      "solver_modules": [],
+      "sha256": "5b5ea8d8f95240359797b2963b34f9a24e7a253f7d03fbdb0b0dbac7baf82162"
+    }
+  ],
+  "historical_pin9_event_attribution": "NOT_VERIFIED; the current PIN9 exact-ID pass does not identify or resolve the historical nine events",
+  "source_worker_report_sha256": "f159f830899cf0af56e162dd3317a57a8bdbcb2a847628e31801180069206378",
+  "source_manifest_sha256": "8cef6bbc33056d3cbc89bd8e7932fce16fc9ae631c3a340d578f42a6ccb46ed5",
+  "reused_preflight_manifest_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_E440_EXACT_TREE_FULL_GATE_R3_APPEND_R1/reused-preflight/reused-preflight-manifest.json"
+}

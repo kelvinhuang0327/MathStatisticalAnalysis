@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "task_id": "B649_R3_E440_EXACT_TREE_FULL_GATE_R3_APPEND_R1",
+  "execution_id": "e440-full-gate-r3-pin9-01",
+  "pid": 54764,
+  "status": "COMPLETED",
+  "durable_capture_path": "/private/tmp/mathstat-e440-full-gate-r3-repo/.fable/checkpoints/B649_R3_E440_EXACT_TREE_FULL_GATE_R3_APPEND_R1/captures/e440-full-gate-r3-pin9-01.json",
+  "started_at": "2026-10-20T01:56:58Z",
+  "ended_at": "2026-10-20T01:57:00Z"
+}

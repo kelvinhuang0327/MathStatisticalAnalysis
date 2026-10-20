@@ -1,0 +1,262 @@
+{
+  "exit_code": 0,
+  "counts": {
+    "passed": 50,
+    "failure": 0,
+    "error": 0,
+    "skipped": 0
+  },
+  "total": 50,
+  "cases": [
+    {
+      "nodeid": "tests/unit/test_b649_min_s2_advanced_11row_exact_adoption_r1.py::test_identities_judges_and_original_dispositions",
+      "outcome": "passed",
+      "detail": ""
+    },
+    {
+      "nodeid": "tests/unit/test_b649_min_s2_advanced_11row_exact_adoption_r1.py::test_protected_judge_report_observation",
+      "outcome": "passed",
+      "detail": ""
+    },
+    {
+      "nodeid": "tests/unit/test_b649_min_s2_advanced_11row_exact_adoption_r1.py::test_incorrect_source_sha_or_tree_rejected",
+      "outcome": "passed",
+      "detail": ""
+    },
+    {
+      "nodeid": "tests/unit/test_b649_min_s2_advanced_11row_exact_adoption_r1.py::test_selection_is_derived_and_weaker_values_rejected",
+      "outcome": "passed",
+      "detail": ""
+    },
+    {
+      "nodeid": "tests/unit/test_b649_min_s2_advanced_11row_exact_adoption_r1.py::test_actual_sources_and_nonregression_vs_641173",
+      "outcome": "passed",
+      "detail": ""
+    },
+    {
+      "nodeid": "tests/unit/test_b649_min_s2_advanced_11row_exact_adoption_r1.py::test_relaxation_domains_recounted_against_donor_evidence",
+      "outcome": "passed",
+      "detail": ""
+    },
+    {
+      "nodeid": "tests/unit/test_b649_min_s2_advanced_11row_exact_adoption_r1.py::test_analytic_step5_certificate",
+      "outcome": "passed",
+      "detail": ""
+    },
+    {
+      "nodeid": "tests/unit/test_b649_min_s2_advanced_11row_exact_adoption_r1.py::test_local_weights_and_bonferroni_closed_forms",
+      "outcome": "passed",
+      "detail": ""
+    },
+    {
+      "nodeid": "tests/unit/test_b649_min_s2_advanced_11row_exact_adoption_r1.py::test_every_load_bearing_envelope_and_rounding",
+      "outcome": "passed",
+      "detail": ""
+    },
+    {
+      "nodeid": "tests/unit/test_b649_min_s2_advanced_11row_exact_adoption_r1.py::test_t264_only_floors_and_universal_cap_separation",
+      "outcome": "passed",
+      "detail": ""
+    },
+    {
+      "nodeid": "tests/unit/test_b649_min_s2_advanced_11row_exact_adoption_r1.py::test_negative_cap_swap_scope_leakage_and_rounding",
+      "outcome": "passed",
+      "detail": ""
+    },
+    {
+      "nodeid": "tests/unit/test_b649_min_s2_advanced_11row_exact_adoption_r1.py::test_negative_wrong_profile",
+      "outcome": "passed",
+      "detail": ""
+    },
+    {
+      "nodeid": "tests/unit/test_b649_min_s2_advanced_11row_exact_adoption_r1.py::test_negative_ledger_mutations",
+      "outcome": "passed",
+      "detail": ""
+    },
+    {
+      "nodeid": "tests/unit/test_b649_min_s2_advanced_11row_exact_adoption_r1.py::test_family_replay",
+      "outcome": "passed",
+      "detail": ""
+    },
+    {
+      "nodeid": "tests/unit/test_b649_min_s2_advanced_11row_exact_adoption_r1.py::test_split_identity_bounds_and_coverage_on_realizations[STEP_3]",
+      "outcome": "passed",
+      "detail": ""
+    },
+    {
+      "nodeid": "tests/unit/test_b649_min_s2_advanced_11row_exact_adoption_r1.py::test_split_identity_bounds_and_coverage_on_realizations[STEP_4]",
+      "outcome": "passed",
+      "detail": ""
+    },
+    {
+      "nodeid": "tests/unit/test_b649_min_s2_advanced_11row_exact_adoption_r1.py::test_remainder_lower_bounds_on_random_graphs",
+      "outcome": "passed",
+      "detail": ""
+    },
+    {
+      "nodeid": "tests/unit/test_b649_min_s2_advanced_11row_exact_adoption_r1.py::test_candidate_is_not_accepted_as_historical_child",
+      "outcome": "passed",
+      "detail": ""
+    },
+    {
+      "nodeid": "tests/unit/test_b649_min_s2_advanced_11row_exact_adoption_r1.py::test_nonzero_child_result_preserves_failure_and_stderr",
+      "outcome": "passed",
+      "detail": ""
+    },
+    {
+      "nodeid": "tests/unit/test_b649_min_s2_t249_dual_profile_composition_r1.py::test_sealed_result_reproduces",
+      "outcome": "passed",
+      "detail": ""
+    },
+    {
+      "nodeid": "tests/unit/test_b649_min_s2_t249_dual_profile_composition_r1.py::test_immutable_inputs_and_judged_sibling_identities",
+      "outcome": "passed",
+      "detail": ""
+    },
+    {
+      "nodeid": "tests/unit/test_b649_min_s2_t249_dual_profile_composition_r1.py::test_exact_integer_full_t_domain",
+      "outcome": "passed",
+      "detail": ""
+    },
+    {
+      "nodeid": "tests/unit/test_b649_min_s2_t249_dual_profile_composition_r1.py::test_exactly_one_row_and_all_4646_others",
+      "outcome": "passed",
+      "detail": ""
+    },
+    {
+      "nodeid": "tests/unit/test_b649_min_s2_t249_dual_profile_composition_r1.py::test_entire_cursor_identity_bounds_and_coverage",
+      "outcome": "passed",
+      "detail": ""
+    },
+    {
+      "nodeid": "tests/unit/test_b649_min_s2_t249_dual_profile_composition_r1.py::test_family_all_rows_all_cursor_ties_and_remaining_profiles",
+      "outcome": "passed",
+      "detail": ""
+    },
+    {
+      "nodeid": "tests/unit/test_b649_min_s2_t249_dual_profile_composition_r1.py::test_all_caveats_status_snapshots_and_no_bonferroni",
+      "outcome": "passed",
+      "detail": ""
+    },
+    {
+      "nodeid": "tests/unit/test_b649_min_s2_t249_dual_profile_composition_r1.py::test_theorem_execution_forbidden",
+      "outcome": "passed",
+      "detail": ""
+    },
+    {
+      "nodeid": "tests/unit/test_b649_min_s2_t249_dual_profile_composition_r1.py::test_wrong_donor_profile_fails_closed[66665555555331000000]",
+      "outcome": "passed",
+      "detail": ""
+    },
+    {
+      "nodeid": "tests/unit/test_b649_min_s2_t249_dual_profile_composition_r1.py::test_wrong_donor_profile_fails_closed[00000000000000000000]",
+      "outcome": "passed",
+      "detail": ""
+    },
+    {
+      "nodeid": "tests/unit/test_b649_min_s2_t249_dual_profile_composition_r1.py::test_mutated_certificate_fails_closed[bound]",
+      "outcome": "passed",
+      "detail": ""
+    },
+    {
+      "nodeid": "tests/unit/test_b649_min_s2_t249_dual_profile_composition_r1.py::test_mutated_certificate_fails_closed[cap]",
+      "outcome": "passed",
+      "detail": ""
+    },
+    {
+      "nodeid": "tests/unit/test_b649_min_s2_t249_dual_profile_composition_r1.py::test_mutated_certificate_fails_closed[first_term]",
+      "outcome": "passed",
+      "detail": ""
+    },
+    {
+      "nodeid": "tests/unit/test_b649_min_s2_t249_dual_profile_composition_r1.py::test_mutated_certificate_fails_closed[last_term]",
+      "outcome": "passed",
+      "detail": ""
+    },
+    {
+      "nodeid": "tests/unit/test_b649_min_s2_t249_dual_profile_composition_r1.py::test_mutated_certificate_fails_closed[rounding]",
+      "outcome": "passed",
+      "detail": ""
+    },
+    {
+      "nodeid": "tests/unit/test_b649_min_s2_t249_dual_profile_composition_r1.py::test_mutated_certificate_fails_closed[bonferroni]",
+      "outcome": "passed",
+      "detail": ""
+    },
+    {
+      "nodeid": "tests/unit/test_b649_min_s2_t249_dual_profile_composition_r1.py::test_composition_mutations_fail_closed[profile]",
+      "outcome": "passed",
+      "detail": ""
+    },
+    {
+      "nodeid": "tests/unit/test_b649_min_s2_t249_dual_profile_composition_r1.py::test_composition_mutations_fail_closed[bound]",
+      "outcome": "passed",
+      "detail": ""
+    },
+    {
+      "nodeid": "tests/unit/test_b649_min_s2_t249_dual_profile_composition_r1.py::test_composition_mutations_fail_closed[float]",
+      "outcome": "passed",
+      "detail": ""
+    },
+    {
+      "nodeid": "tests/unit/test_b649_min_s2_t249_dual_profile_composition_r1.py::test_composition_mutations_fail_closed[cursor_bound]",
+      "outcome": "passed",
+      "detail": ""
+    },
+    {
+      "nodeid": "tests/unit/test_b649_min_s2_t249_dual_profile_composition_r1.py::test_composition_mutations_fail_closed[cursor_id]",
+      "outcome": "passed",
+      "detail": ""
+    },
+    {
+      "nodeid": "tests/unit/test_b649_min_s2_t249_dual_profile_composition_r1.py::test_composition_mutations_fail_closed[cursor_partition]",
+      "outcome": "passed",
+      "detail": ""
+    },
+    {
+      "nodeid": "tests/unit/test_b649_min_s2_t249_dual_profile_composition_r1.py::test_composition_mutations_fail_closed[other_row]",
+      "outcome": "passed",
+      "detail": ""
+    },
+    {
+      "nodeid": "tests/unit/test_b649_min_s2_t249_dual_profile_composition_r1.py::test_source_hash_and_missing_donor_fail_closed",
+      "outcome": "passed",
+      "detail": ""
+    },
+    {
+      "nodeid": "tests/unit/test_b649_min_s2_t249_dual_profile_composition_r1.py::test_missing_snapshot_fails_closed",
+      "outcome": "passed",
+      "detail": ""
+    },
+    {
+      "nodeid": "tests/unit/test_b649_min_s2_t249_dual_profile_composition_r1.py::test_duplicate_missing_rows_and_duplicate_json_fail_closed",
+      "outcome": "passed",
+      "detail": ""
+    },
+    {
+      "nodeid": "tests/unit/test_b649_min_s2_t249_dual_profile_composition_r1.py::test_forged_expected_cursor_fails_closed",
+      "outcome": "passed",
+      "detail": ""
+    },
+    {
+      "nodeid": "tests/unit/test_b649_t249_collection_isolation_r1.py::test_parent_preload_closure_difference_is_rejected",
+      "outcome": "passed",
+      "detail": ""
+    },
+    {
+      "nodeid": "tests/unit/test_b649_t249_collection_isolation_r1.py::test_wrong_source_sha_blob_and_result_are_rejected",
+      "outcome": "passed",
+      "detail": ""
+    },
+    {
+      "nodeid": "tests/unit/test_b649_t249_collection_isolation_r1.py::test_real_solver_loaded_guard_rejects_without_running_solver",
+      "outcome": "passed",
+      "detail": ""
+    },
+    {
+      "nodeid": "tests/unit/test_b649_t249_collection_isolation_r1.py::test_subprocess_exit_timeout_and_stderr_are_not_hidden",
+      "outcome": "passed",
+      "detail": ""
+    }
+  ]
+}

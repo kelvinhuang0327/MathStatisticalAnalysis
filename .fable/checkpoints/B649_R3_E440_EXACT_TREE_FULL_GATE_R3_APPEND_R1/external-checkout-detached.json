@@ -1,0 +1,15 @@
+{
+  "argv": [
+    "/usr/bin/git",
+    "-C",
+    "/private/tmp/mathstat-e440-full-gate-r3-repo",
+    "checkout",
+    "--detach",
+    "e440d4298551ce93ef3ea9a9226143784afa3eff"
+  ],
+  "cwd": null,
+  "started_at": "2026-10-20T01:48:17.351Z",
+  "ended_at": "2026-10-20T01:48:18.256Z",
+  "exit_code": 0,
+  "combined_output": "HEAD is now at e440d429 test: stabilize advanced historical runner context\n"
+}

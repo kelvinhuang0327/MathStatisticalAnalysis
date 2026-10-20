@@ -1,0 +1,10 @@
+{
+  "run_tag": "e440-full-gate-r3-t249-02",
+  "count": 4,
+  "node_ids": [
+    "tests/unit/test_b649_t249_collection_isolation_r1.py::test_parent_preload_closure_difference_is_rejected",
+    "tests/unit/test_b649_t249_collection_isolation_r1.py::test_wrong_source_sha_blob_and_result_are_rejected",
+    "tests/unit/test_b649_t249_collection_isolation_r1.py::test_real_solver_loaded_guard_rejects_without_running_solver",
+    "tests/unit/test_b649_t249_collection_isolation_r1.py::test_subprocess_exit_timeout_and_stderr_are_not_hidden"
+  ]
+}

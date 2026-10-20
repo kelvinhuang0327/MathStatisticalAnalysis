@@ -1,0 +1,19 @@
+{
+  "time_ns": 1792461732132584000,
+  "execution_id": "e440-full-gate-r3-t249-01",
+  "candidate_head": "e440d4298551ce93ef3ea9a9226143784afa3eff",
+  "candidate_tree": "294cbf6bbe7ee8a8ebad947f397852edc1981b57",
+  "external_head": "e440d4298551ce93ef3ea9a9226143784afa3eff",
+  "external_tree": "294cbf6bbe7ee8a8ebad947f397852edc1981b57",
+  "external_status_before": "?? .fable/checkpoints/B649_R3_E440_EXACT_TREE_FULL_GATE_R3_APPEND_R1/captures/e440-full-gate-r3-family-01.json\n?? .fable/checkpoints/B649_R3_E440_EXACT_TREE_FULL_GATE_R3_APPEND_R1/captures/e440-full-gate-r3-pin9-01.json\n?? .fable/checkpoints/B649_R3_E440_EXACT_TREE_FULL_GATE_R3_APPEND_R1/captures/e440-full-gate-r3-pin9-02.json\n?? .fable/checkpoints/B649_R3_E440_EXACT_TREE_FULL_GATE_R3_APPEND_R1/executions/e440-full-gate-r3-family-01.json\n?? .fable/checkpoints/B649_R3_E440_EXACT_TREE_FULL_GATE_R3_APPEND_R1/executions/e440-full-gate-r3-pin9-01.json\n?? .fable/checkpoints/B649_R3_E440_EXACT_TREE_FULL_GATE_R3_APPEND_R1/executions/e440-full-gate-r3-pin9-02.json\n",
+  "test_module": "tests/unit/test_b649_t249_collection_isolation_r1.py",
+  "test_source_sha256": "2c87ce9c027196d56cb0442f9f95cccccde95ff87762fbde715126aed7c3bcf2",
+  "record_parent_solver_modules": true,
+  "record_path_policy": "inside this launch runtime tmp directory; set via R3 Ruby observer V3",
+  "preload_advanced_parent_research": true,
+  "full_suite_runs_so_far": 0,
+  "sandbox_profile_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_E440_EXACT_TREE_FULL_GATE_R3_APPEND_R1/t249-write-scope.sb",
+  "sandbox_profile_sha256": "1b953da129096756d8247527ffedf8ff005ab5a0b52cc7029a483289b1d7684a",
+  "sandbox_parse_exit": 0,
+  "run_id_unused": true
+}

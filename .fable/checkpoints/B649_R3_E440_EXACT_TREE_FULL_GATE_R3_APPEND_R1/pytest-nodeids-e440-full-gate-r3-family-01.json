@@ -1,0 +1,27 @@
+{
+  "run_tag": "e440-full-gate-r3-family-01",
+  "count": 21,
+  "node_ids": [
+    "tests/unit/test_b649_certified_four_donor_family_replay_r1.py::test_four_donors_replay_to_expected_family_projection",
+    "tests/unit/test_b649_certified_four_donor_family_replay_r1.py::test_only_four_resolved_rows_change_and_cursor_is_identical",
+    "tests/unit/test_b649_certified_four_donor_family_replay_r1.py::test_all_four_donor_identities_and_judges_are_retained",
+    "tests/unit/test_b649_certified_four_donor_family_replay_r1.py::test_wrong_base_sha_is_rejected",
+    "tests/unit/test_b649_certified_four_donor_family_replay_r1.py::test_wrong_t237_committed_tree_is_rejected",
+    "tests/unit/test_b649_certified_four_donor_family_replay_r1.py::test_wrong_t237_result_sha_is_rejected",
+    "tests/unit/test_b649_certified_four_donor_family_replay_r1.py::test_wrong_t208_exact_identity_is_rejected",
+    "tests/unit/test_b649_certified_four_donor_family_replay_r1.py::test_wrong_w821_judge_candidate_binding_is_rejected",
+    "tests/unit/test_b649_certified_four_donor_family_replay_r1.py::test_duplicate_resolved_profile_json_is_rejected",
+    "tests/unit/test_b649_certified_four_donor_family_replay_r1.py::test_missing_resolved_profile_is_rejected",
+    "tests/unit/test_b649_certified_four_donor_family_replay_r1.py::test_missing_cursor_profile_is_rejected",
+    "tests/unit/test_b649_certified_four_donor_family_replay_r1.py::test_cursor_bound_mutation_is_rejected",
+    "tests/unit/test_b649_certified_four_donor_family_replay_r1.py::test_wrong_donor_profile_assignment_is_rejected",
+    "tests/unit/test_b649_certified_four_donor_family_replay_r1.py::test_donor_bound_increase_is_rejected",
+    "tests/unit/test_b649_certified_four_donor_family_replay_r1.py::test_unauthorized_fifth_profile_update_is_rejected",
+    "tests/unit/test_b649_certified_four_donor_family_replay_r1.py::test_family_summary_keeps_every_tied_owner_and_verifier_rejects_omission",
+    "tests/unit/test_b649_certified_four_donor_family_replay_r1.py::test_wrong_next_distinct_bound_is_rejected",
+    "tests/unit/test_b649_certified_four_donor_family_replay_r1.py::test_missing_evidence_file_is_rejected",
+    "tests/unit/test_b649_certified_four_donor_family_replay_r1.py::test_wrong_evidence_sha_is_rejected",
+    "tests/unit/test_b649_certified_four_donor_family_replay_r1.py::test_wrong_donor_source_commit_head_is_rejected",
+    "tests/unit/test_b649_certified_four_donor_family_replay_r1.py::test_clean_clone_without_donor_git_objects_succeeds"
+  ]
+}

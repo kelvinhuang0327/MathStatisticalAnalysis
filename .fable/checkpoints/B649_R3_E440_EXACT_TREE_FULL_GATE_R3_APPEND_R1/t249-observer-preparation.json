@@ -1,0 +1,6 @@
+{
+  "path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_E440_EXACT_TREE_FULL_GATE_R3_APPEND_R1/ruby_write_observer_v3.rb",
+  "sha256": "da134097f3388628e2561ec51dec73e595d4c3d762f5bcf75a44e90959bdd4a7",
+  "ruby_syntax": "Syntax OK\n",
+  "additional_instrumentation": "For the T249 collection isolation module only, set B649_T249_PRELOAD_PARENT_RESEARCH=1 and B649_T249_CHILD_REPORT_PATH to a file under the unchanged launcher runtime tmp directory; this asks existing test code to persist its collected IDs, outcomes, pytest exit and parent solver_modules list."
+}

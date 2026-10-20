@@ -1,0 +1,15 @@
+{
+  "reconciled_at_epoch_ns": 1792461234228973000,
+  "reason": "bootstrap wrapper raised AttributeError after subprocess completion while trying to read nonexistent CompletedProcess.pid; initializer stdout/stderr had already been saved. No initializer retry was performed.",
+  "controller_api_invocation": "StableLockAnchor.initialize_repository_generation!(external_root, confirm_legacy_workers_quiescent: true)",
+  "process_exit_code": 0,
+  "stdout_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_E440_EXACT_TREE_FULL_GATE_R3_APPEND_R1/lock-generation-bootstrap.stdout",
+  "stdout_sha256": "254829082c2fd058ba607c6de24be389a9358f14b8ee835ddd0fa0a02417cd9d",
+  "stderr_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_E440_EXACT_TREE_FULL_GATE_R3_APPEND_R1/lock-generation-bootstrap.stderr",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "generation_marker_path": "/private/tmp/mathstat-e440-full-gate-r3-repo/.git/fable-locks/repository-generation.json",
+  "generation_marker_sha256": "cf3e680f9be5888a0b3af943f91a22b99ff6588b095e61da652dfff6aab8b496",
+  "generation_marker_bytes": "{\n  \"format_version\": 1,\n  \"generation\": 2,\n  \"common_directory\": \"/private/tmp/mathstat-e440-full-gate-r3-repo/.git\"\n}",
+  "generation_marker_mode": "0o600",
+  "result": "SUCCESS"
+}

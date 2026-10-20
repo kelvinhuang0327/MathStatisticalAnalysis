@@ -1,0 +1,16 @@
+observed_unix_ns=1792462535146104000
+$ /bin/ps -p 17548,17573,17635 -o pid,ppid,etime,command
+  PID  PPID ELAPSED COMMAND
+17548  1893   01:47 /usr/bin/ruby /Users/kelvin/.codex/skills/fable-method/scripts/task_checkpoint.rb --run --repo /private/tmp/mathstat-e440-full-gate-r3-repo --worktree /private/tmp/mathstat-e440-full-gate-r3-repo --task-id B649_R3_E440_EXACT_TREE_FULL_GATE_R3_APPEND_R1 --execution-id e440-full-gate-r3-full-01 -- /usr/bin/sandbox-exec -f /Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_E440_EXACT_TREE_FULL_GATE_R3_APPEND_R1/full-01-write-scope.sb /usr/bin/ruby -r /Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_E440_EXACT_TREE_FULL_GATE_R3_APPEND_R1/ruby_write_observer_v3.rb /Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/launch_gate.rb --execution-id e440-full-gate-r3-full-01 --kind pytest --cwd /private/tmp/mathstat-e440-full-gate-r3-repo --python /Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/python --source-worktree /Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_R3_ADV11_DESCENDANT_STABLE_CONTEXT_R1 --expected-head e440d4298551ce93ef3ea9a9226143784afa3eff --expected-tree 294cbf6bbe7ee8a8ebad947f397852edc1981b57 -- -q
+17573 17548   01:46 /usr/bin/ruby -r /Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_E440_EXACT_TREE_FULL_GATE_R3_APPEND_R1/ruby_write_observer_v3.rb /Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/launch_gate.rb --execution-id e440-full-gate-r3-full-01 --kind pytest --cwd /private/tmp/mathstat-e440-full-gate-r3-repo --python /Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/python --source-worktree /Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_R3_ADV11_DESCENDANT_STABLE_CONTEXT_R1 --expected-head e440d4298551ce93ef3ea9a9226143784afa3eff --expected-tree 294cbf6bbe7ee8a8ebad947f397852edc1981b57 -- -q
+17635 17573   01:44 /opt/homebrew/Cellar/python@3.13/3.13.8/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -B -m pytest --basetemp=/private/tmp/gate-launch-20261020-17573-14iut56/basetemp -o cache_dir=/private/tmp/gate-launch-20261020-17573-14iut56/pytest-cache -q
+exit_code=0
+$ /usr/sbin/lsof -n -P -p 17548,17573,17635 -a -d 10
+COMMAND   PID   USER   FD   TYPE DEVICE SIZE/OFF      NODE NAME
+ruby    17573 kelvin   10u   REG   1,16      290 252984624 /private/tmp/mathstat-e440-full-gate-r3-repo/.git/fable-locks/task-execution/b6bd4f3138f93f120f8d3d1e7ec175a6f3ce878f2fedb1a38b7e0b68e509fca5/execution.lock
+Python  17635 kelvin   10u   REG   1,16      290 252984624 /private/tmp/mathstat-e440-full-gate-r3-repo/.git/fable-locks/task-execution/b6bd4f3138f93f120f8d3d1e7ec175a6f3ce878f2fedb1a38b7e0b68e509fca5/execution.lock
+exit_code=0
+$ /usr/sbin/lsof -n -P -p 17635 -a -d cwd
+COMMAND   PID   USER   FD   TYPE DEVICE SIZE/OFF      NODE NAME
+Python  17635 kelvin  cwd    DIR   1,16      640 252955529 /private/tmp/mathstat-e440-full-gate-r3-repo
+exit_code=0

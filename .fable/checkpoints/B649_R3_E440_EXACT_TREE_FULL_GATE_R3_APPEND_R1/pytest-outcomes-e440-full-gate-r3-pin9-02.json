@@ -1,0 +1,511 @@
+{
+  "run_tag": "e440-full-gate-r3-pin9-02",
+  "exitstatus": 0,
+  "collected": 24,
+  "reports": [
+    {
+      "node_id": "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_result_bytes_and_proof_binding",
+      "when": "setup",
+      "outcome": "passed",
+      "wasxfail": null,
+      "duration": 1.4905154160001075
+    },
+    {
+      "node_id": "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_result_bytes_and_proof_binding",
+      "when": "call",
+      "outcome": "passed",
+      "wasxfail": null,
+      "duration": 0.004867083000135608
+    },
+    {
+      "node_id": "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_result_bytes_and_proof_binding",
+      "when": "teardown",
+      "outcome": "passed",
+      "wasxfail": null,
+      "duration": 0.00025258300001951284
+    },
+    {
+      "node_id": "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_exact_source_pins",
+      "when": "setup",
+      "outcome": "passed",
+      "wasxfail": null,
+      "duration": 0.00028274999976929394
+    },
+    {
+      "node_id": "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_exact_source_pins",
+      "when": "call",
+      "outcome": "passed",
+      "wasxfail": null,
+      "duration": 1.5534277919996384
+    },
+    {
+      "node_id": "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_exact_source_pins",
+      "when": "teardown",
+      "outcome": "passed",
+      "wasxfail": null,
+      "duration": 0.0006827080001130525
+    },
+    {
+      "node_id": "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_source_identity_tamper[GENERIC_SOURCE_SHA]",
+      "when": "setup",
+      "outcome": "passed",
+      "wasxfail": null,
+      "duration": 0.0004811250000784639
+    },
+    {
+      "node_id": "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_source_identity_tamper[GENERIC_SOURCE_SHA]",
+      "when": "call",
+      "outcome": "passed",
+      "wasxfail": null,
+      "duration": 0.692583666000246
+    },
+    {
+      "node_id": "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_source_identity_tamper[GENERIC_SOURCE_SHA]",
+      "when": "teardown",
+      "outcome": "passed",
+      "wasxfail": null,
+      "duration": 0.0004487910000534612
+    },
+    {
+      "node_id": "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_source_identity_tamper[GENERIC_RESULT_SHA]",
+      "when": "setup",
+      "outcome": "passed",
+      "wasxfail": null,
+      "duration": 0.0003735420000339218
+    },
+    {
+      "node_id": "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_source_identity_tamper[GENERIC_RESULT_SHA]",
+      "when": "call",
+      "outcome": "passed",
+      "wasxfail": null,
+      "duration": 0.9672463750002862
+    },
+    {
+      "node_id": "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_source_identity_tamper[GENERIC_RESULT_SHA]",
+      "when": "teardown",
+      "outcome": "passed",
+      "wasxfail": null,
+      "duration": 0.0005014169996684359
+    },
+    {
+      "node_id": "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_source_identity_tamper[BASE_TREE]",
+      "when": "setup",
+      "outcome": "passed",
+      "wasxfail": null,
+      "duration": 0.00046154199981174315
+    },
+    {
+      "node_id": "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_source_identity_tamper[BASE_TREE]",
+      "when": "call",
+      "outcome": "passed",
+      "wasxfail": null,
+      "duration": 0.019932416999836278
+    },
+    {
+      "node_id": "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_source_identity_tamper[BASE_TREE]",
+      "when": "teardown",
+      "outcome": "passed",
+      "wasxfail": null,
+      "duration": 0.0003536670001267339
+    },
+    {
+      "node_id": "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_frozen_result_tamper",
+      "when": "setup",
+      "outcome": "passed",
+      "wasxfail": null,
+      "duration": 0.0003105419996245473
+    },
+    {
+      "node_id": "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_frozen_result_tamper",
+      "when": "call",
+      "outcome": "passed",
+      "wasxfail": null,
+      "duration": 0.05433570800005327
+    },
+    {
+      "node_id": "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_frozen_result_tamper",
+      "when": "teardown",
+      "outcome": "passed",
+      "wasxfail": null,
+      "duration": 0.00043895799990423257
+    },
+    {
+      "node_id": "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_a_general_theorem_domain",
+      "when": "setup",
+      "outcome": "passed",
+      "wasxfail": null,
+      "duration": 0.0002874580000025162
+    },
+    {
+      "node_id": "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_a_general_theorem_domain",
+      "when": "call",
+      "outcome": "passed",
+      "wasxfail": null,
+      "duration": 0.02325466599995707
+    },
+    {
+      "node_id": "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_a_general_theorem_domain",
+      "when": "teardown",
+      "outcome": "passed",
+      "wasxfail": null,
+      "duration": 0.00026633300012690597
+    },
+    {
+      "node_id": "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_independent_model_and_shadow_budget",
+      "when": "setup",
+      "outcome": "passed",
+      "wasxfail": null,
+      "duration": 0.0002624579997245746
+    },
+    {
+      "node_id": "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_independent_model_and_shadow_budget",
+      "when": "call",
+      "outcome": "passed",
+      "wasxfail": null,
+      "duration": 0.00033754200012481306
+    },
+    {
+      "node_id": "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_independent_model_and_shadow_budget",
+      "when": "teardown",
+      "outcome": "passed",
+      "wasxfail": null,
+      "duration": 0.00022941699990042252
+    },
+    {
+      "node_id": "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_domains_independently_exhausted",
+      "when": "setup",
+      "outcome": "passed",
+      "wasxfail": null,
+      "duration": 0.0002468750003572495
+    },
+    {
+      "node_id": "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_domains_independently_exhausted",
+      "when": "call",
+      "outcome": "passed",
+      "wasxfail": null,
+      "duration": 0.06639570800007277
+    },
+    {
+      "node_id": "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_domains_independently_exhausted",
+      "when": "teardown",
+      "outcome": "passed",
+      "wasxfail": null,
+      "duration": 0.0002695419998417492
+    },
+    {
+      "node_id": "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_goodman_split_identity_independent_graphs",
+      "when": "setup",
+      "outcome": "passed",
+      "wasxfail": null,
+      "duration": 0.0003125829998680274
+    },
+    {
+      "node_id": "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_goodman_split_identity_independent_graphs",
+      "when": "call",
+      "outcome": "passed",
+      "wasxfail": null,
+      "duration": 0.008852999999817257
+    },
+    {
+      "node_id": "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_goodman_split_identity_independent_graphs",
+      "when": "teardown",
+      "outcome": "passed",
+      "wasxfail": null,
+      "duration": 0.000255832999755512
+    },
+    {
+      "node_id": "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_core_and_mixed_floors_on_all_core_classes",
+      "when": "setup",
+      "outcome": "passed",
+      "wasxfail": null,
+      "duration": 0.00023233299998537404
+    },
+    {
+      "node_id": "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_core_and_mixed_floors_on_all_core_classes",
+      "when": "call",
+      "outcome": "passed",
+      "wasxfail": null,
+      "duration": 0.06798049999997602
+    },
+    {
+      "node_id": "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_core_and_mixed_floors_on_all_core_classes",
+      "when": "teardown",
+      "outcome": "passed",
+      "wasxfail": null,
+      "duration": 0.0002509579999241396
+    },
+    {
+      "node_id": "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_b_per_e_results_and_shadow_ablation",
+      "when": "setup",
+      "outcome": "passed",
+      "wasxfail": null,
+      "duration": 0.0003920839999409509
+    },
+    {
+      "node_id": "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_b_per_e_results_and_shadow_ablation",
+      "when": "call",
+      "outcome": "passed",
+      "wasxfail": null,
+      "duration": 0.0002772499997263367
+    },
+    {
+      "node_id": "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_b_per_e_results_and_shadow_ablation",
+      "when": "teardown",
+      "outcome": "passed",
+      "wasxfail": null,
+      "duration": 0.00023049999981594738
+    },
+    {
+      "node_id": "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_wrong_b_profile[66665555555331000000]",
+      "when": "setup",
+      "outcome": "passed",
+      "wasxfail": null,
+      "duration": 0.0003665000003820751
+    },
+    {
+      "node_id": "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_wrong_b_profile[66665555555331000000]",
+      "when": "call",
+      "outcome": "passed",
+      "wasxfail": null,
+      "duration": 0.0003096669997830759
+    },
+    {
+      "node_id": "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_wrong_b_profile[66665555555331000000]",
+      "when": "teardown",
+      "outcome": "passed",
+      "wasxfail": null,
+      "duration": 0.00023591599983774358
+    },
+    {
+      "node_id": "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_wrong_b_profile[00000000000000000000]",
+      "when": "setup",
+      "outcome": "passed",
+      "wasxfail": null,
+      "duration": 0.00026945799982058816
+    },
+    {
+      "node_id": "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_wrong_b_profile[00000000000000000000]",
+      "when": "call",
+      "outcome": "passed",
+      "wasxfail": null,
+      "duration": 0.00022795899985794676
+    },
+    {
+      "node_id": "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_wrong_b_profile[00000000000000000000]",
+      "when": "teardown",
+      "outcome": "passed",
+      "wasxfail": null,
+      "duration": 0.0003362500001458102
+    },
+    {
+      "node_id": "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_wrong_b_profile[6666555555541110000]",
+      "when": "setup",
+      "outcome": "passed",
+      "wasxfail": null,
+      "duration": 0.00030700000024808105
+    },
+    {
+      "node_id": "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_wrong_b_profile[6666555555541110000]",
+      "when": "call",
+      "outcome": "passed",
+      "wasxfail": null,
+      "duration": 0.00022774999979446875
+    },
+    {
+      "node_id": "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_wrong_b_profile[6666555555541110000]",
+      "when": "teardown",
+      "outcome": "passed",
+      "wasxfail": null,
+      "duration": 0.0002123340000252938
+    },
+    {
+      "node_id": "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_all_route_terms_independent",
+      "when": "setup",
+      "outcome": "passed",
+      "wasxfail": null,
+      "duration": 0.00023204199987958418
+    },
+    {
+      "node_id": "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_all_route_terms_independent",
+      "when": "call",
+      "outcome": "passed",
+      "wasxfail": null,
+      "duration": 0.013698792000013782
+    },
+    {
+      "node_id": "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_all_route_terms_independent",
+      "when": "teardown",
+      "outcome": "passed",
+      "wasxfail": null,
+      "duration": 0.00039429200023732847
+    },
+    {
+      "node_id": "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_official_rounding_tamper",
+      "when": "setup",
+      "outcome": "passed",
+      "wasxfail": null,
+      "duration": 0.00032625000039843144
+    },
+    {
+      "node_id": "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_official_rounding_tamper",
+      "when": "call",
+      "outcome": "passed",
+      "wasxfail": null,
+      "duration": 0.003281333999893832
+    },
+    {
+      "node_id": "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_official_rounding_tamper",
+      "when": "teardown",
+      "outcome": "passed",
+      "wasxfail": null,
+      "duration": 0.00023099999998521525
+    },
+    {
+      "node_id": "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_integration_tamper[bound]",
+      "when": "setup",
+      "outcome": "passed",
+      "wasxfail": null,
+      "duration": 0.08997704100011106
+    },
+    {
+      "node_id": "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_integration_tamper[bound]",
+      "when": "call",
+      "outcome": "passed",
+      "wasxfail": null,
+      "duration": 0.007500917000015761
+    },
+    {
+      "node_id": "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_integration_tamper[bound]",
+      "when": "teardown",
+      "outcome": "passed",
+      "wasxfail": null,
+      "duration": 0.00024929200026235776
+    },
+    {
+      "node_id": "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_integration_tamper[profile]",
+      "when": "setup",
+      "outcome": "passed",
+      "wasxfail": null,
+      "duration": 0.0003095840002060868
+    },
+    {
+      "node_id": "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_integration_tamper[profile]",
+      "when": "call",
+      "outcome": "passed",
+      "wasxfail": null,
+      "duration": 0.0014960409998820978
+    },
+    {
+      "node_id": "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_integration_tamper[profile]",
+      "when": "teardown",
+      "outcome": "passed",
+      "wasxfail": null,
+      "duration": 0.0002467089998390293
+    },
+    {
+      "node_id": "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_integration_tamper[cursor]",
+      "when": "setup",
+      "outcome": "passed",
+      "wasxfail": null,
+      "duration": 0.00027458400018076645
+    },
+    {
+      "node_id": "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_integration_tamper[cursor]",
+      "when": "call",
+      "outcome": "passed",
+      "wasxfail": null,
+      "duration": 0.00111679199972059
+    },
+    {
+      "node_id": "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_integration_tamper[cursor]",
+      "when": "teardown",
+      "outcome": "passed",
+      "wasxfail": null,
+      "duration": 0.00021637500003635068
+    },
+    {
+      "node_id": "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_integration_tamper[float]",
+      "when": "setup",
+      "outcome": "passed",
+      "wasxfail": null,
+      "duration": 0.00026404199979879195
+    },
+    {
+      "node_id": "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_integration_tamper[float]",
+      "when": "call",
+      "outcome": "passed",
+      "wasxfail": null,
+      "duration": 0.004240374999881169
+    },
+    {
+      "node_id": "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_integration_tamper[float]",
+      "when": "teardown",
+      "outcome": "passed",
+      "wasxfail": null,
+      "duration": 0.0002272090000587923
+    },
+    {
+      "node_id": "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_truncated_envelope_and_cap_rejected",
+      "when": "setup",
+      "outcome": "passed",
+      "wasxfail": null,
+      "duration": 0.00022787500029153307
+    },
+    {
+      "node_id": "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_truncated_envelope_and_cap_rejected",
+      "when": "call",
+      "outcome": "passed",
+      "wasxfail": null,
+      "duration": 0.006270917000165355
+    },
+    {
+      "node_id": "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_truncated_envelope_and_cap_rejected",
+      "when": "teardown",
+      "outcome": "passed",
+      "wasxfail": null,
+      "duration": 0.00022245900026973686
+    },
+    {
+      "node_id": "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_duplicate_and_missing_row_rejected",
+      "when": "setup",
+      "outcome": "passed",
+      "wasxfail": null,
+      "duration": 0.00022787499983678572
+    },
+    {
+      "node_id": "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_duplicate_and_missing_row_rejected",
+      "when": "call",
+      "outcome": "passed",
+      "wasxfail": null,
+      "duration": 0.0011828750002678134
+    },
+    {
+      "node_id": "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_duplicate_and_missing_row_rejected",
+      "when": "teardown",
+      "outcome": "passed",
+      "wasxfail": null,
+      "duration": 0.00021345799996197456
+    },
+    {
+      "node_id": "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_family_and_projection_independent",
+      "when": "setup",
+      "outcome": "passed",
+      "wasxfail": null,
+      "duration": 0.0002480839998497686
+    },
+    {
+      "node_id": "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_family_and_projection_independent",
+      "when": "call",
+      "outcome": "passed",
+      "wasxfail": null,
+      "duration": 0.01459454200039545
+    },
+    {
+      "node_id": "tests/unit/test_b649_min_s2_two_tied_owner_exact_cert_r1.py::test_family_and_projection_independent",
+      "when": "teardown",
+      "outcome": "passed",
+      "wasxfail": null,
+      "duration": 0.00024291699992318172
+    }
+  ]
+}

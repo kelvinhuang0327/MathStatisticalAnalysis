@@ -1,0 +1,32 @@
+{
+  "checked_at_epoch_ns": 1792461226327934000,
+  "owner_authorization_packet_sha256": "b94c3dd15f1b539188445220430b5fd732db71f447d721bbe4955db115994415",
+  "external_git_root": "/private/tmp/mathstat-e440-full-gate-r3-repo",
+  "git_common_dir": "/private/tmp/mathstat-e440-full-gate-r3-repo/.git",
+  "head": "e440d4298551ce93ef3ea9a9226143784afa3eff",
+  "tree": "294cbf6bbe7ee8a8ebad947f397852edc1981b57",
+  "parent": "86f644010f41cd627f436c8d5cf9e0b5cca8fcdc",
+  "expected_head": "e440d4298551ce93ef3ea9a9226143784afa3eff",
+  "expected_tree": "294cbf6bbe7ee8a8ebad947f397852edc1981b57",
+  "expected_parent": "86f644010f41cd627f436c8d5cf9e0b5cca8fcdc",
+  "worktree_list_porcelain": "worktree /private/tmp/mathstat-e440-full-gate-r3-repo\nHEAD e440d4298551ce93ef3ea9a9226143784afa3eff\ndetached\n\n",
+  "lock_paths": {
+    "generation_marker": {
+      "exists": false
+    },
+    "locks_dir": {
+      "exists": false
+    },
+    "legacy_execution_lock": {
+      "exists": false
+    },
+    "task_state_dir": {
+      "exists": false
+    },
+    "task_executions_dir": {
+      "exists": false
+    }
+  },
+  "matching_live_controller_processes": [],
+  "preconditions_pass": true
+}

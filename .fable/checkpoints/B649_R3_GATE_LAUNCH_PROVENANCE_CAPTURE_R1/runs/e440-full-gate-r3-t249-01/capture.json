@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "command": [
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/python",
+    "-B",
+    "-m",
+    "pytest",
+    "--basetemp=/private/tmp/gate-launch-20261020-81564-1gqptp2/basetemp",
+    "-o",
+    "cache_dir=/private/tmp/gate-launch-20261020-81564-1gqptp2/pytest-cache",
+    "-q",
+    "tests/unit/test_b649_t249_collection_isolation_r1.py"
+  ],
+  "stdout": "....                                                                     [100%]\n4 passed in 4.22s\n",
+  "stderr": "",
+  "exit_status": 0,
+  "started_at": "2026-10-20T02:02:17Z",
+  "ended_at": "2026-10-20T02:02:25Z",
+  "execution_identity": {
+    "repository_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis",
+    "worktree_path": "/private/tmp/mathstat-e440-full-gate-r3-repo",
+    "head": "e440d4298551ce93ef3ea9a9226143784afa3eff",
+    "tree": "294cbf6bbe7ee8a8ebad947f397852edc1981b57",
+    "launcher_path": "/Users/kelvin/.codex/skills/fable-method/scripts/task_checkpoint.rb",
+    "launcher_sha256": "babba3757a7ea9ad59c7ff9b18b6e4497dbc887b86eebfb09ccae1a36ab96275",
+    "runtime_executable": "/System/Library/Frameworks/Ruby.framework/Versions/2.6/usr/bin/ruby",
+    "runtime_version": "ruby 2.6.10p210 (2022-04-12 revision 67958) [universal.arm64e-darwin26]",
+    "provenance_launch_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/e440-full-gate-r3-t249-01/launch.json",
+    "source_head": "e440d4298551ce93ef3ea9a9226143784afa3eff",
+    "source_tree": "294cbf6bbe7ee8a8ebad947f397852edc1981b57",
+    "provenance_launch_sha256": "a034d065d5f91a5cde8e93a68a1d31146c29741e9ee776f1855f7d0cbefb6228"
+  }
+}

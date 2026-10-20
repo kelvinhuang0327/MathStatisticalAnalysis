@@ -1,0 +1,126 @@
+## CLI contract and validation; source lines 3180-3242; source SHA256 babba3757a7ea9ad59c7ff9b18b6e4497dbc887b86eebfb09ccae1a36ab96275
+3180:  parser = OptionParser.new do |opts|
+3181:    opts.banner = 'Usage: task_checkpoint.rb [options] <checkpoint_file_or_task_id>'
+3182:
+3183:    opts.separator '   or: task_checkpoint.rb --run --repo PATH --worktree PATH --task-id ID --execution-id ID -- <argv...>'
+3184:    opts.separator '   or: task_checkpoint.rb --recover-run --repo PATH --worktree PATH --task-id ID --execution-id OLD_ID --application-state PATH -- <argv...>'
+3185:    opts.separator '   or: task_checkpoint.rb --continue-paused-run --repo PATH --worktree PATH --task-id ID --previous-execution-id OLD_ID --execution-id NEW_ID --application-state PATH --owner-authorization PATH -- <argv...>'
+3186:    opts.on('--reconcile', 'Reconcile live state against checkpoint (default)') { selected_modes << (mode = :reconcile) }
+3187:    opts.on('--show', 'Display checkpoint contents') { selected_modes << (mode = :show) }
+3188:    opts.on('--save', 'Save/update checkpoint') { selected_modes << (mode = :save) }
+3189:    opts.on('--run', 'Acquire, capture, and complete a task-owned execution, or reuse its result') { selected_modes << (mode = :run) }
+3190:    opts.on('--recover-run', 'Explicitly resume one stale execution through a durable successor transition') { selected_modes << (mode = :recover_run) }
+3191:    opts.on('--continue-paused-run', 'Start a new execution from an exactly authorized PAUSED_RESUMABLE checkpoint') { selected_modes << (mode = :continue_paused_run) }
+3192:
+3193:    opts.on('--repo PATH', 'Live repository path; --run requires the absolute stable record root') { |v| options[:repository] = v }
+3194:    opts.on('--worktree PATH', 'Live worktree path; --run uses only this absolute upstream cwd') { |v| options[:worktree] = v }
+3195:    opts.on('--task-id ID', 'Caller-supplied stable task identity for --run') { |v| options[:task_id] = v }
+3196:    opts.on('--execution-id ID', 'Caller-supplied stable execution identity for --run') { |v| options[:execution_id] = v }
+3197:    opts.on('--previous-execution-id ID', 'Completed protected execution that owns the paused journal prefix') { |v| options[:previous_execution_id] = v }
+3198:    opts.on('--application-state PATH', 'Absolute durable application checkpoint file required by a protected continuation') { |v| options[:application_state] = v }
+3199:    opts.on('--owner-authorization PATH', 'Current Owner authorization text binding the exact continuation target') { |v| options[:owner_authorization] = v }
+3200:    opts.on('--head SHA', 'Override live git HEAD SHA') { |v| options[:head] = v }
+3201:    opts.on('--tree SHA', 'Override live git tree SHA') { |v| options[:tree] = v }
+3202:    opts.on('--branch NAME', 'Override live git branch') { |v| options[:branch] = v }
+3203:    opts.on('--pr-state STATE', 'Override live PR state') { |v| options[:pr_state] = v }
+3204:    opts.on('--resume-after-task-checkpoint PATH', 'Load the exact Task B checkpoint for deferred resume reconciliation') do |v|
+3205:      options[:resume_after_task_checkpoint_path] = v
+3206:    end
+3207:    opts.on('--auth TOKEN', 'Provide direct conversation authorization token') do |v|
+3208:      (options[:conversation_authorizations] ||= []) << v
+3209:    end
+3210:    opts.on('--auth-target TARGET', 'Require the authorization token to name the exact target') do |v|
+3211:      options[:authorization_target] = v
+3212:    end
+3213:  end
+3214:
+3215:  begin
+3216:    parser.parse!
+3217:    if selected_modes.include?(:run) && selected_modes != [:run]
+3218:      raise OptionParser::InvalidArgument, '--run cannot be combined with another mode'
+3219:    end
+3220:    if selected_modes.include?(:recover_run) && selected_modes != [:recover_run]
+3221:      raise OptionParser::InvalidArgument, '--recover-run cannot be combined with another mode'
+3222:    end
+3223:    if selected_modes.include?(:continue_paused_run) && selected_modes != [:continue_paused_run]
+3224:      raise OptionParser::InvalidArgument, '--continue-paused-run cannot be combined with another mode'
+3225:    end
+3226:    if %i[run recover_run continue_paused_run].include?(mode)
+3227:      unless upstream_argv && !upstream_argv.empty? && ARGV == upstream_argv && !upstream_argv.first.empty?
+3228:        flag = { run: 'run', recover_run: 'recover-run', continue_paused_run: 'continue-paused-run' }.fetch(mode)
+3229:        raise OptionParser::InvalidArgument, "--#{flag} requires upstream argv after -- and no positional arguments before it"
+3230:      end
+3231:      %i[repository worktree].each do |key|
+3232:        value = options[key]
+3233:        unless value && Pathname.new(value).absolute? && File.directory?(value)
+3234:          flag = key == :repository ? 'repo' : 'worktree'
+3235:          raise OptionParser::InvalidArgument, "--#{flag} must explicitly name an existing absolute directory"
+3236:        end
+3237:      end
+3238:      %i[task_id execution_id].each do |key|
+3239:        value = options[key]
+3240:        if value.to_s.strip.empty? || %w[. ..].include?(value) || value.match?(/[\/\\\x00]/)
+3241:          raise OptionParser::InvalidArgument, "--#{key.to_s.tr('_', '-')} must supply a stable non-empty path component"
+3242:        end
+## protected acquisition, lineage, and capture; source lines 3388-3448; source SHA256 babba3757a7ea9ad59c7ff9b18b6e4497dbc887b86eebfb09ccae1a36ab96275
+3388:        capture_command = lambda do |task_lock, child_env|
+3389:          DurableCommandCapture.run_and_capture(upstream_argv, file_path: capture_path,
+3390:                                                chdir: options[:worktree], before_spawn: before_spawn,
+3391:                                                inherited_lock: task_lock, child_env: child_env,
+3392:                                                execution_identity: lambda {
+3393:                                                  DurableCommandCapture.capture_execution_identity(
+3394:                                                    repository_path: options[:repository],
+3395:                                                    worktree_path: options[:worktree]
+3396:                                                  )
+3397:                                                }) do |candidate|
+3398:            result, capture_signal = validate_capture.call(candidate)
+3399:            record.complete!(record_path, durable_capture_path: capture_path)
+3400:            emit_capture.call(candidate)
+3401:          end
+3402:        end
+3403:        capture = if nested_request
+3404:                    # Re-prove the lineage after this record is durable, so of two
+3405:                    # concurrently claimed siblings at least one observes the other.
+3406:                    nested = ExecutionRecord.verify_nested_capability!(
+3407:                      options[:repository], options[:task_id], record.execution_id, nested_request
+3408:                    )
+3409:                    ExecutionRecord.verify_no_active_owner!(
+3410:                      options[:repository], options[:task_id],
+3411:                      except_execution_ids: [record.execution_id, *nested.ancestor_execution_ids],
+3412:                      reject_unrecovered_stale: true,
+3413:                      nested_lineage_execution_ids: nested.ancestor_execution_ids
+3414:                    )
+3415:                    capture_command.call(nested.lock, ExecutionRecord.nested_capability_env(
+3416:                      options[:repository], options[:task_id], nested.lock, record.execution_id, nested.secret
+3417:                    ))
+3418:                  else
+3419:                    ExecutionRecord.with_task_lock(options[:repository], options[:task_id]) do |task_lock|
+3420:                      ExecutionRecord.verify_no_active_owner!(options[:repository], options[:task_id],
+3421:                                                              except_execution_ids: [record.execution_id],
+3422:                                                              reject_unrecovered_stale: %i[run continue_paused_run].include?(mode))
+3423:                      # A normal run and a recovery successor both own this lock
+3424:                      # while their upstream command runs, so each may delegate
+3425:                      # nested execution through its protected lineage.
+3426:                      lineage_owner = record.execution_id
+3427:                      lineage_secret = ExecutionRecord.write_task_lineage!(task_lock, options[:repository],
+3428:                                                                           options[:task_id], lineage_owner)
+3429:                      child_env = if lineage_owner
+3430:                                    ExecutionRecord.nested_capability_env(options[:repository], options[:task_id],
+3431:                                                                          task_lock, lineage_owner, lineage_secret)
+3432:                                  else
+3433:                                    ExecutionRecord.without_nested_capability_env
+3434:                                  end
+3435:                      child_env.merge!(PausedRunContinuationTransition.without_child_environment)
+3436:                      if mode == :continue_paused_run
+3437:                        recovery.recovery_transition.verify_inputs!(
+3438:                          repo_root: options[:repository],
+3439:                          application_state_path: options[:application_state],
+3440:                          owner_authorization_path: options[:owner_authorization],
+3441:                          worktree_path: options[:worktree], command: upstream_argv
+3442:                        )
+3443:                        child_env.merge!(recovery.recovery_transition.child_environment)
+3444:                      end
+3445:                      capture_command.call(task_lock, child_env)
+3446:                    end
+3447:                  end
+3448:      when ExecutionRecord::CLASSIFICATION_COMPLETED

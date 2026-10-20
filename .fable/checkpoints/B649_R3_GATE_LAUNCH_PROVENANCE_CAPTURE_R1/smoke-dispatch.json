@@ -1,0 +1,40 @@
+[
+  {
+    "execution_id": "normal-smoke-r1",
+    "argv": [
+      "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/launch_gate.rb",
+      "--execution-id",
+      "normal-smoke-r1",
+      "--kind",
+      "smoke",
+      "--",
+      "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/smoke_probe.py",
+      "0"
+    ],
+    "exit_code": 0,
+    "expected_exit_code": 0,
+    "stdout": "{\"smoke\": \"normal\", \"observed_pid\": 12162, \"observed_ppid\": 12089, \"observed_pgid\": 12162, \"child_started_ns\": 1792418767541165000, \"launch_receipt_exists_before_child\": true, \"launch_path\": \"/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/normal-smoke-r1/launch.json\", \"launch_sha256\": \"97bae9dac2e0af66d192f797f11359fe20e6da877d770b84a2a79da6c612c745\", \"launch_mtime_ns\": 1792418767384605192, \"observed_cwd\": \"/private/tmp/gate-launch-20261019-12089-1prqad3/work\", \"observed_python\": \"/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/python\", \"observed_version\": \"3.13.8 (main, Oct  7 2025, 12:01:51) [Clang 17.0.0 (clang-1700.3.19.1)]\", \"observed_pytest\": \"9.1.1\", \"observed_appdata\": \"/private/tmp/gate-launch-20261019-12089-1prqad3/appdata\", \"observed_appdata_mode\": \"0700\", \"observed_umask\": \"0077\", \"observed_basetemp\": \"/private/tmp/gate-launch-20261019-12089-1prqad3/basetemp\", \"observed_bytecode_disabled\": true, \"probe_path\": \"/private/tmp/gate-launch-20261019-12089-1prqad3/work/umask-probe.txt\", \"probe_mode\": \"0600\", \"expected_exit\": 0}\n",
+    "stderr": "normal-smoke-stderr\n",
+    "stdout_sha256": "d8b4f93bf386d2cbbb6214358bf7a0873ae6dce5062074dc2ba632ff39b0cf1e",
+    "stderr_sha256": "9012e47cf63119afcea7be3605fb17e5469711a5d9833121b73dacac2e91aed3"
+  },
+  {
+    "execution_id": "negative-smoke-r1",
+    "argv": [
+      "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/launch_gate.rb",
+      "--execution-id",
+      "negative-smoke-r1",
+      "--kind",
+      "smoke",
+      "--",
+      "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/smoke_probe.py",
+      "23"
+    ],
+    "exit_code": 23,
+    "expected_exit_code": 23,
+    "stdout": "{\"smoke\": \"negative\", \"observed_pid\": 12270, \"observed_ppid\": 12207, \"observed_pgid\": 12270, \"child_started_ns\": 1792418769420141000, \"launch_receipt_exists_before_child\": true, \"launch_path\": \"/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/negative-smoke-r1/launch.json\", \"launch_sha256\": \"b8d8fd02c65e552fef315f8fb3cadc355d257ad9a4a4dbff82e6749f2cc5073c\", \"launch_mtime_ns\": 1792418769254994877, \"observed_cwd\": \"/private/tmp/gate-launch-20261019-12207-n9fetk/work\", \"observed_python\": \"/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/python\", \"observed_version\": \"3.13.8 (main, Oct  7 2025, 12:01:51) [Clang 17.0.0 (clang-1700.3.19.1)]\", \"observed_pytest\": \"9.1.1\", \"observed_appdata\": \"/private/tmp/gate-launch-20261019-12207-n9fetk/appdata\", \"observed_appdata_mode\": \"0700\", \"observed_umask\": \"0077\", \"observed_basetemp\": \"/private/tmp/gate-launch-20261019-12207-n9fetk/basetemp\", \"observed_bytecode_disabled\": true, \"probe_path\": \"/private/tmp/gate-launch-20261019-12207-n9fetk/work/umask-probe.txt\", \"probe_mode\": \"0600\", \"expected_exit\": 23}\n",
+    "stderr": "negative-smoke-stderr\n",
+    "stdout_sha256": "201e22bf89c5ec8efa700ba7d8675723588a2f35fbd1a126229f0739247cb243",
+    "stderr_sha256": "853d339a55306a611eb1f132630e22b9e7fe88105c30f19dbb10b495f36335dd"
+  }
+]

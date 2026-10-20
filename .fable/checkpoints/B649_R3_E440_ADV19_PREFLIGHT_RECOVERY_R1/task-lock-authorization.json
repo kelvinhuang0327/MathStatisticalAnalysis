@@ -1,0 +1,15 @@
+{
+  "authorization": "Owner question reply: \u6388\u6b0a\u6b64\u4efb\u52d9\u5c08\u5c6c lock \u521d\u59cb\u5316\u4e26\u7e7c\u7e8c",
+  "scope": "only task-specific anchor; preserve repository generation and all receipts",
+  "precheck": {
+    "records": [],
+    "anchor_exists": false,
+    "legacy_lock": false,
+    "checkpoint_sha": "1728af8a1b7b3ead765fc42aaa86216f3e6fb8f8ebba668962799bc4bc6100b7",
+    "marker_sha": "f5df6e0724f83b5a3f4eea9f4a33dadb7aad1140337878f7a8e300679392b2d6",
+    "launcher_sha": "babba3757a7ea9ad59c7ff9b18b6e4497dbc887b86eebfb09ccae1a36ab96275"
+  },
+  "scope_stable_seconds": 5,
+  "active_task_ruby_processes": [],
+  "executions_started": false
+}

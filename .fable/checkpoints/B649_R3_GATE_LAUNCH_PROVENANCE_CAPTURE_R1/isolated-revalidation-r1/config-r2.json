@@ -1,0 +1,546 @@
+{
+  "evidence_root": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/isolated-revalidation-r1",
+  "original_root": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1",
+  "external_root": "/private/tmp/gate-ac10-cb5uv2in",
+  "isolated_repo": "/private/tmp/gate-ac10-cb5uv2in/source",
+  "runtime_parent": "/private/tmp/gate-ac10-cb5uv2in/runtime",
+  "source": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_R3_ADV11_DESCENDANT_STABLE_CONTEXT_R1",
+  "primary": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis",
+  "python_base": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/python",
+  "python": "/private/tmp/gate-ac10-cb5uv2in/python-env/bin/python",
+  "launcher": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/launch_gate.rb",
+  "smoke": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/smoke_probe.py",
+  "expected_head": "e440d4298551ce93ef3ea9a9226143784afa3eff",
+  "expected_tree": "294cbf6bbe7ee8a8ebad947f397852edc1981b57",
+  "judge": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_E440_EXACT_TREE_FULL_GATE_R1/judge-report.md",
+  "judge_sha256": "028e60ce4b0290a97c3b140b902157e4eb72eb2d1527f6297710c10a9dc22c68",
+  "execution_ids": [
+    "ac10-isolated-normal-r2",
+    "ac10-isolated-negative-r2"
+  ],
+  "old_files": {
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/launcher-usage.md": {
+      "sha256": "f3590c96f52b3f1d2381a53d2ae914ecdc4e75a2c4d89240a5d73211fc522508",
+      "mode": "0o644"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/acceptance.json": {
+      "sha256": "bc1287719cb3f0c256bc02447b70ee628ff278ceaf4c81f1faa887fe4a44b873",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/smoke-dispatch.json": {
+      "sha256": "6cc67ac5b9265d4ee751efc5e012ee1da5eb2c36fbfd1c7f2b5c67358b910c1b",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/smoke_probe.py": {
+      "sha256": "a478acf70154ab4edce1ae5159c951cc15d8f7cba212a4b5df328dbcbfd5206c",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/validation.json": {
+      "sha256": "e78870d3c03d6de6ffc3cd551638e65dd2a371e2caabf3302954336ab436a75c",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/launch_gate.rb": {
+      "sha256": "e9d3e5e03fded1974fb16fcb177cfc96ccc817bf8e72d2084ff7407a4383be62",
+      "mode": "0o700"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/worker-report.md": {
+      "sha256": "7e17f7e58337f436801f5024b2a764c3064b172a7b5af1eb5016c69c6f2674fc",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/preflight.json": {
+      "sha256": "4cb12e2fb4fd21989afd68c45881fdb7e67988f9cfeaf0c034ed0294d59d910f",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/SHA256SUMS": {
+      "sha256": "a39caac3252a2c23afe603f5fabc860190e18b3080eed6581d76dd562d3fdd5a",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/final-smoke-dispatch.json": {
+      "sha256": "97a9c0f507d1e220a772688aea0e0e4802008a4eeee0ab4d0cfda7093965f9e4",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/negative-smoke-r1/end.json": {
+      "sha256": "e327b23b3e551bcd10440c51a4e7957f86c550df54b76ec9293740393d6d1818",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/negative-smoke-r1/stdout.txt": {
+      "sha256": "201e22bf89c5ec8efa700ba7d8675723588a2f35fbd1a126229f0739247cb243",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/negative-smoke-r1/dependencies.json": {
+      "sha256": "009e63d71b1918eaa07f7a0b51a0c68e8bfbce8e333bbdf649fecce6a03ee54b",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/negative-smoke-r1/primary-status-before.txt": {
+      "sha256": "87a3f47aed3b19fa077742beb6f1af94b2379efc70ea02cbf948d6b1668fdd5f",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/negative-smoke-r1/source-refs-before.txt": {
+      "sha256": "1116e760b362be801dc36614d9a90af43348ae67634ca5fcf0087510087efad5",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/negative-smoke-r1/primary-refs-after.txt": {
+      "sha256": "1116e760b362be801dc36614d9a90af43348ae67634ca5fcf0087510087efad5",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/negative-smoke-r1/primary-status-after.txt": {
+      "sha256": "1cb955dada92b1842cafde43d8dd1ad33e3c5bdb2177ae5858f2877678556446",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/negative-smoke-r1/capture.json": {
+      "sha256": "6433e7aa5f4cd7817792081d15886dc0d32b75e698c3d2bd01b512a1348bbb76",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/negative-smoke-r1/source-status-after.txt": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/negative-smoke-r1/stderr.txt": {
+      "sha256": "853d339a55306a611eb1f132630e22b9e7fe88105c30f19dbb10b495f36335dd",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/negative-smoke-r1/source-refs-after.txt": {
+      "sha256": "1116e760b362be801dc36614d9a90af43348ae67634ca5fcf0087510087efad5",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/negative-smoke-r1/primary-refs-before.txt": {
+      "sha256": "1116e760b362be801dc36614d9a90af43348ae67634ca5fcf0087510087efad5",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/negative-smoke-r1/source-status-before.txt": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/negative-smoke-r1/launch.json": {
+      "sha256": "b8d8fd02c65e552fef315f8fb3cadc355d257ad9a4a4dbff82e6749f2cc5073c",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/negative-smoke-r1/SHA256SUMS": {
+      "sha256": "97b8150164a569ccc8185f86f26fba7145b6ef3ab8603954388b77b2a1ff213c",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/normal-smoke-r1/end.json": {
+      "sha256": "e21caad1b9428d340960879a689bd270e544cc7b3f2a0774619ea5abd075cf77",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/normal-smoke-r1/stdout.txt": {
+      "sha256": "d8b4f93bf386d2cbbb6214358bf7a0873ae6dce5062074dc2ba632ff39b0cf1e",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/normal-smoke-r1/dependencies.json": {
+      "sha256": "009e63d71b1918eaa07f7a0b51a0c68e8bfbce8e333bbdf649fecce6a03ee54b",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/normal-smoke-r1/primary-status-before.txt": {
+      "sha256": "de958146095ba750c0faa7d3c964543cfe7e07045dc60c7530e4d1349bd1a732",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/normal-smoke-r1/source-refs-before.txt": {
+      "sha256": "1116e760b362be801dc36614d9a90af43348ae67634ca5fcf0087510087efad5",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/normal-smoke-r1/primary-refs-after.txt": {
+      "sha256": "1116e760b362be801dc36614d9a90af43348ae67634ca5fcf0087510087efad5",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/normal-smoke-r1/primary-status-after.txt": {
+      "sha256": "d6ce09ded947efeac0ef4c14d28aafce56c43b61c088130cef25f4e370198c06",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/normal-smoke-r1/capture.json": {
+      "sha256": "a307ffb6e00037d543bddabaaa0f839249ff7c7607ce5589a1cc07bc61662bc7",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/normal-smoke-r1/source-status-after.txt": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/normal-smoke-r1/stderr.txt": {
+      "sha256": "9012e47cf63119afcea7be3605fb17e5469711a5d9833121b73dacac2e91aed3",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/normal-smoke-r1/source-refs-after.txt": {
+      "sha256": "1116e760b362be801dc36614d9a90af43348ae67634ca5fcf0087510087efad5",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/normal-smoke-r1/primary-refs-before.txt": {
+      "sha256": "1116e760b362be801dc36614d9a90af43348ae67634ca5fcf0087510087efad5",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/normal-smoke-r1/source-status-before.txt": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/normal-smoke-r1/launch.json": {
+      "sha256": "97bae9dac2e0af66d192f797f11359fe20e6da877d770b84a2a79da6c612c745",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/normal-smoke-r1/SHA256SUMS": {
+      "sha256": "84d5aa48f6e42d8135a6f2b4ef8b56de1f0c4fdc7312ac6bac1d8ed55b02ea01",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/negative-smoke-final/end.json": {
+      "sha256": "13573db0882ecfc02a5207fc5ab11fa087da287bbd2d9ef0400317ae8ecc64c6",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/negative-smoke-final/stdout.txt": {
+      "sha256": "f0c0c5a68a379441b7624d3b08ae129838a007e1ed784bddaae552bb73a322cb",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/negative-smoke-final/dependencies.json": {
+      "sha256": "009e63d71b1918eaa07f7a0b51a0c68e8bfbce8e333bbdf649fecce6a03ee54b",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/negative-smoke-final/primary-status-before.txt": {
+      "sha256": "a3a724e81a05bb740d1b8da8c1580fe0c290b6545e8a63336d9bfebb0d606a53",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/negative-smoke-final/source-refs-before.txt": {
+      "sha256": "1116e760b362be801dc36614d9a90af43348ae67634ca5fcf0087510087efad5",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/negative-smoke-final/primary-refs-after.txt": {
+      "sha256": "1116e760b362be801dc36614d9a90af43348ae67634ca5fcf0087510087efad5",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/negative-smoke-final/primary-status-after.txt": {
+      "sha256": "b3010d32a50f667a262674a7e034da770754cbe9caca685a73041fd303d2ee15",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/negative-smoke-final/capture.json": {
+      "sha256": "d92e1aef726d80c0ae7832b2e721373b86926ab81bacc3593deb86b0d15251b2",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/negative-smoke-final/source-status-after.txt": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/negative-smoke-final/stderr.txt": {
+      "sha256": "853d339a55306a611eb1f132630e22b9e7fe88105c30f19dbb10b495f36335dd",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/negative-smoke-final/source-refs-after.txt": {
+      "sha256": "1116e760b362be801dc36614d9a90af43348ae67634ca5fcf0087510087efad5",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/negative-smoke-final/primary-refs-before.txt": {
+      "sha256": "1116e760b362be801dc36614d9a90af43348ae67634ca5fcf0087510087efad5",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/negative-smoke-final/source-status-before.txt": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/negative-smoke-final/launch.json": {
+      "sha256": "86437e75cd1fbd2194dc0b5e3eb81a3e2f8b990f2d9afe039d67910e648505c4",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/negative-smoke-final/SHA256SUMS": {
+      "sha256": "f5f1a595d7ea4a1cfd35f6596b5af5e707411962c5590f32d54bbbabe7eb1af6",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/normal-smoke-final/end.json": {
+      "sha256": "4fef22d9fc0c4bcd1cf69e57492afe2d7ae0b92d03a6964e7fc771ddf26e2138",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/normal-smoke-final/stdout.txt": {
+      "sha256": "3f6fe8c94a7489334c83511989e9eec5983cdb762f145704aa0d379b0e4c2b9f",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/normal-smoke-final/dependencies.json": {
+      "sha256": "009e63d71b1918eaa07f7a0b51a0c68e8bfbce8e333bbdf649fecce6a03ee54b",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/normal-smoke-final/primary-status-before.txt": {
+      "sha256": "0ac2a5dbec31e237ef5810682d029699e3ff12338b8d652489b139d4b307842d",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/normal-smoke-final/source-refs-before.txt": {
+      "sha256": "1116e760b362be801dc36614d9a90af43348ae67634ca5fcf0087510087efad5",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/normal-smoke-final/primary-refs-after.txt": {
+      "sha256": "1116e760b362be801dc36614d9a90af43348ae67634ca5fcf0087510087efad5",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/normal-smoke-final/primary-status-after.txt": {
+      "sha256": "6f39c0c13dbb60e411fbbbd3a31defe5d44bbed1f81c33983f6dd3e85e5ce3b6",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/normal-smoke-final/capture.json": {
+      "sha256": "614d45361e0880199811c85bceba4ca5a99edfb11a380dbb0cfefedea25549f0",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/normal-smoke-final/source-status-after.txt": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/normal-smoke-final/stderr.txt": {
+      "sha256": "9012e47cf63119afcea7be3605fb17e5469711a5d9833121b73dacac2e91aed3",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/normal-smoke-final/source-refs-after.txt": {
+      "sha256": "1116e760b362be801dc36614d9a90af43348ae67634ca5fcf0087510087efad5",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/normal-smoke-final/primary-refs-before.txt": {
+      "sha256": "1116e760b362be801dc36614d9a90af43348ae67634ca5fcf0087510087efad5",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/normal-smoke-final/source-status-before.txt": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/normal-smoke-final/launch.json": {
+      "sha256": "bdec09e96beab9712614944976170b808d40e57eb67cafaad47603898214ce09",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/normal-smoke-final/SHA256SUMS": {
+      "sha256": "891079fcfd2785c04e80dca15a44476db5dc602a6dbaaab775154ae7ac9a9fce",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/isolated-revalidation-r1/strict-controller-dispatch.json": {
+      "sha256": "800a47054f749f1888843d63a7fa2e2b8aacaf7296526b4adf5e96b3c7d01adf",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/isolated-revalidation-r1/controller-dispatch.json": {
+      "sha256": "f28950911ba498b25c451980fdedbb11a0a5daa2c1d79d649968c6e9bcc83304",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/isolated-revalidation-r1/strict-host-before.json": {
+      "sha256": "3702c0b159e6051bb5b2188f4cdf570321dd7b198642d17f532d4db51b596183",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/isolated-revalidation-r1/host-before.json": {
+      "sha256": "bb4019615f26f4549cd2978045bcae4537c81a9000799f9925cc88c96df39ca9",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/isolated-revalidation-r1/git-strict-harness.jsonl": {
+      "sha256": "8effd636e03a9bd13d6ddace0e9f33f88f7dd52df4bf125f46d63ec59037259a",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/isolated-revalidation-r1/setup.json": {
+      "sha256": "05289061306890cc8a08302b1f07e8c6d7065ca6c940804af372265b10c558c5",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/isolated-revalidation-r1/strict-isolated-after.json": {
+      "sha256": "b5645f7984216142ce7c3dd81e7eb032713a79b876fc981eec2d2c2cde9a350d",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/isolated-revalidation-r1/controller.sb": {
+      "sha256": "170dead575f66ca4bdc8d57b31d1b2bd1e730e0bac733bbe4702bdc29284a733",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/isolated-revalidation-r1/strict-isolated-before.json": {
+      "sha256": "b5645f7984216142ce7c3dd81e7eb032713a79b876fc981eec2d2c2cde9a350d",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/isolated-revalidation-r1/config.json": {
+      "sha256": "1a100c1d743acfaca62bef897aeeddc806846ae6ae12f09ac7c66416121b03e5",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/isolated-revalidation-r1/execution-failed.json": {
+      "sha256": "5c65e1fc38187b0e2f28c4f7a20c4af3ba1b310154772dce7dee3cc9cf54babe",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/isolated-revalidation-r1/ac10-isolated-negative-r1-dispatch.json": {
+      "sha256": "057d518e67915df00da8a3d564532b5744f83e7f1e068e988e704967ed5eb8d9",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/isolated-revalidation-r1/harness-18760.jsonl": {
+      "sha256": "098532e9556eef4371785cd511cf81396e2cc8cb4b8dc1fc3300925824288810",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/isolated-revalidation-r1/ruby-18917.jsonl": {
+      "sha256": "d0c440c05a70074b56dc8a212398a43a94e3f1378b5dea26f6bfb98fcac58a09",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/isolated-revalidation-r1/strict-harness-18895.jsonl": {
+      "sha256": "be0c5d7c7f0577bbedf0164b50d3fcb0ed500faefe2000e7e3c770cbf6e5279a",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/isolated-revalidation-r1/failed-command-18817.json": {
+      "sha256": "fdc1d7e2ecad8cc12af13c67c1c5fa64d6cd74b5024a67e9105cf5c8eaa3ce4f",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/isolated-revalidation-r1/harness-18791.jsonl": {
+      "sha256": "82f5854aa5b4d541066e8ae93d1fda8bf94069781c167a65584dc9facc97bc7b",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/isolated-revalidation-r1/git-ac10-isolated-negative-r1.jsonl": {
+      "sha256": "fb198ddf3749d7071213343780891d6d5c01cc5812a332d0b7cf6c30184968a4",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/isolated-revalidation-r1/ac10-isolated-normal-r1-dispatch.json": {
+      "sha256": "b1b877da79d9e3e29fcdea6735e8fc0015ed39f8652ac24ecbd6fde46ae9c5b9",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/isolated-revalidation-r1/ruby-18983.jsonl": {
+      "sha256": "07864702a76e430d2fadf4125328cede8b9b9b7faca5efa8ef0c2d6cea13b17c",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/isolated-revalidation-r1/isolated-before.json": {
+      "sha256": "b5645f7984216142ce7c3dd81e7eb032713a79b876fc981eec2d2c2cde9a350d",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/isolated-revalidation-r1/strict-host-after.json": {
+      "sha256": "5ac976027193c40a2720d7103712708760d0ff60cca62a7179d4c1b687150c45",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/isolated-revalidation-r1/controller-retry.json": {
+      "sha256": "b81f9dba825b2326eef6335f0ce405b1acab3d14b8313a2c7c6e5c60acb7cdd6",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/isolated-revalidation-r1/execution-result.json": {
+      "sha256": "01c7c3cdb9c6b7b3e04c723ff7b41caad85749289b153e1b9d8a2450bb98a6ae",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/isolated-revalidation-r1/git-setup-and-closure.jsonl": {
+      "sha256": "b9b6afcf6256bfded45f94bae11a41814b388c0d4ea6963f68cb76d0ed0578ef",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/isolated-revalidation-r1/git-ac10-isolated-normal-r1.jsonl": {
+      "sha256": "7ca9f5f27284d1f1ad25aa5ebb1026d8f84cd933e32631a0ef6d7c150e6537e9",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/isolated-revalidation-r1/audit-coverage-r1.json": {
+      "sha256": "e5d018d62eef261cb1d341bcaf7969ed04623f2ac5fedc90574c0881325fade9",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/isolated-revalidation-r1/smoke.sb": {
+      "sha256": "27ca52acfcd1e5612cb97ca2cd905189134b11d6e6f1a43ed1dc4f57658c981d",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/ac10-isolated-normal-r1/end.json": {
+      "sha256": "75351d52a0077967704af8f6fcd7cfd6d46abcb319c5edcbc4188cdf3af059fc",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/ac10-isolated-normal-r1/stdout.txt": {
+      "sha256": "eb3a2dc65d6665f9a51f396d7e1afef8c5ddf93cf1f4a1480141c2945e03b8e1",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/ac10-isolated-normal-r1/dependencies.json": {
+      "sha256": "009e63d71b1918eaa07f7a0b51a0c68e8bfbce8e333bbdf649fecce6a03ee54b",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/ac10-isolated-normal-r1/primary-status-before.txt": {
+      "sha256": "b41634eff3214fd13141574e5eea75b91a6e10ddc35c9356cc56b5120c99989c",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/ac10-isolated-normal-r1/source-refs-before.txt": {
+      "sha256": "a1bc6cae6ce4f5fdaf64ef0107c413cd81e6dd4c370de36568ae9f2df51fb215",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/ac10-isolated-normal-r1/primary-refs-after.txt": {
+      "sha256": "ee4ca78e8e4f744d2c2231a966a6f4d8ff7f36a3d5917cafc6b067f259a7abbf",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/ac10-isolated-normal-r1/primary-status-after.txt": {
+      "sha256": "4a3c477749e5842841520de8fe89c7550c49fc22d536599f857fb7677aa21405",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/ac10-isolated-normal-r1/capture.json": {
+      "sha256": "0c6daf0d9e734bb6fd8fdeef9de2b6d69166d7a1b43386efc520a00bd97b0088",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/ac10-isolated-normal-r1/source-status-after.txt": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/ac10-isolated-normal-r1/stderr.txt": {
+      "sha256": "9012e47cf63119afcea7be3605fb17e5469711a5d9833121b73dacac2e91aed3",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/ac10-isolated-normal-r1/source-refs-after.txt": {
+      "sha256": "a1bc6cae6ce4f5fdaf64ef0107c413cd81e6dd4c370de36568ae9f2df51fb215",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/ac10-isolated-normal-r1/primary-refs-before.txt": {
+      "sha256": "ee4ca78e8e4f744d2c2231a966a6f4d8ff7f36a3d5917cafc6b067f259a7abbf",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/ac10-isolated-normal-r1/source-status-before.txt": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/ac10-isolated-normal-r1/launch.json": {
+      "sha256": "83a7411d6574a458c5914c0052d798e35b6fa1d0f345e4b76c0a8ce544130cf2",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/ac10-isolated-normal-r1/SHA256SUMS": {
+      "sha256": "ce70bc0821b6b0c5ff096f3298ba57170af58e0b96bdca9ec815e669f2e12ebd",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/ac10-isolated-negative-r1/end.json": {
+      "sha256": "372293e32b35cc65ccdb8970844836b3898c578829e9d4274cb00fdfb061373b",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/ac10-isolated-negative-r1/stdout.txt": {
+      "sha256": "ea1418b8d42bbf018b3ed7c9bb6f79b00cf144e019e85fcc8d28185821370064",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/ac10-isolated-negative-r1/dependencies.json": {
+      "sha256": "009e63d71b1918eaa07f7a0b51a0c68e8bfbce8e333bbdf649fecce6a03ee54b",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/ac10-isolated-negative-r1/primary-status-before.txt": {
+      "sha256": "4bfc2efdceecaa9e960ac4c7269c4cf133f75f192fbf48ce87889cb04fea8aeb",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/ac10-isolated-negative-r1/source-refs-before.txt": {
+      "sha256": "a1bc6cae6ce4f5fdaf64ef0107c413cd81e6dd4c370de36568ae9f2df51fb215",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/ac10-isolated-negative-r1/primary-refs-after.txt": {
+      "sha256": "ee4ca78e8e4f744d2c2231a966a6f4d8ff7f36a3d5917cafc6b067f259a7abbf",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/ac10-isolated-negative-r1/primary-status-after.txt": {
+      "sha256": "2309492c84526f4d09c9d9fb707b9111050d59f1a13b42da86dfc8af28ddd7b3",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/ac10-isolated-negative-r1/capture.json": {
+      "sha256": "c7e1d783a1a35d638bfcdb6915a975429076c6d537007ee9cd25cecdbbdb5d94",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/ac10-isolated-negative-r1/source-status-after.txt": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/ac10-isolated-negative-r1/stderr.txt": {
+      "sha256": "853d339a55306a611eb1f132630e22b9e7fe88105c30f19dbb10b495f36335dd",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/ac10-isolated-negative-r1/source-refs-after.txt": {
+      "sha256": "a1bc6cae6ce4f5fdaf64ef0107c413cd81e6dd4c370de36568ae9f2df51fb215",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/ac10-isolated-negative-r1/primary-refs-before.txt": {
+      "sha256": "ee4ca78e8e4f744d2c2231a966a6f4d8ff7f36a3d5917cafc6b067f259a7abbf",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/ac10-isolated-negative-r1/source-status-before.txt": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/ac10-isolated-negative-r1/launch.json": {
+      "sha256": "7bedc805738a2c4efbb86d8620da4ce2e3e55168054a44596e51246cee9bf00f",
+      "mode": "0o600"
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/ac10-isolated-negative-r1/SHA256SUMS": {
+      "sha256": "463fea454678da381b01c4022674e2b80bcefd2473f546bed3a898f7a85f2d5a",
+      "mode": "0o600"
+    }
+  },
+  "scoped_quiescence_seconds": 5,
+  "scoped_preflight": {
+    "head": "e440d4298551ce93ef3ea9a9226143784afa3eff\n294cbf6bbe7ee8a8ebad947f397852edc1981b57\n",
+    "status": "",
+    "launcher": "e9d3e5e03fded1974fb16fcb177cfc96ccc817bf8e72d2084ff7407a4383be62",
+    "output_exists": false
+  },
+  "cleanup_disposition": "RETAIN task-owned external runtime and independent Git; no cleanup of existing paths",
+  "owner_authorization": "2026-10-19 user explicitly requests isolated Git revalidation with process/harness write observation; normal/nonzero smoke only, preserve all prior receipts/Judge, no product/source ref writes or suites/solver",
+  "run_tag": "-r2",
+  "sandbox_profile": "smoke-r2.sb"
+}

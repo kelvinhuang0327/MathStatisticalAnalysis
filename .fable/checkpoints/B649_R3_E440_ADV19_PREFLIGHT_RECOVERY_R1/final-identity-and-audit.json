@@ -1,0 +1,86 @@
+{
+  "head": "e440d4298551ce93ef3ea9a9226143784afa3eff",
+  "tree": "294cbf6bbe7ee8a8ebad947f397852edc1981b57",
+  "parent": "86f644010f41cd627f436c8d5cf9e0b5cca8fcdc",
+  "test_sha256": "5f1198daf582db4340c2bf424071375a442e8ca9e54fd8d27e4d10d03ef9f067",
+  "source_verifier_sha256": "fcf67c2b2023463d5e26448d82905a4e57b7bed7227a7d2ceee77044b9580bf3",
+  "primary_head": "17a03e3305671d09578d81c29013ca15b9ca4a6d",
+  "main_ref": "17a03e3305671d09578d81c29013ca15b9ca4a6d",
+  "source_report_sha256": "216340c3d1cd2b7724571d95e4c7951d731fd48d04996dd10d53e83b98e12a3b",
+  "old_refuted_report_sha256": "028e60ce4b0290a97c3b140b902157e4eb72eb2d1527f6297710c10a9dc22c68",
+  "repository_generation_sha256": "f5df6e0724f83b5a3f4eea9f4a33dadb7aad1140337878f7a8e300679392b2d6",
+  "worktrees": {
+    "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_R3_E440_ADV19_PREFLIGHT_RECOVERY_R1": {
+      "identity": "e440d4298551ce93ef3ea9a9226143784afa3eff 294cbf6bbe7ee8a8ebad947f397852edc1981b57 86f644010f41cd627f436c8d5cf9e0b5cca8fcdc",
+      "status": "",
+      "test_sha256": "5f1198daf582db4340c2bf424071375a442e8ca9e54fd8d27e4d10d03ef9f067",
+      "venv_present": false
+    },
+    "/private/tmp/adv19-recovery-ea4ub0bv/testrepo": {
+      "identity": "e440d4298551ce93ef3ea9a9226143784afa3eff 294cbf6bbe7ee8a8ebad947f397852edc1981b57 86f644010f41cd627f436c8d5cf9e0b5cca8fcdc",
+      "status": "",
+      "test_sha256": "5f1198daf582db4340c2bf424071375a442e8ca9e54fd8d27e4d10d03ef9f067",
+      "venv_present": false
+    },
+    "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_R3_ADV11_DESCENDANT_STABLE_CONTEXT_R1": {
+      "identity": "e440d4298551ce93ef3ea9a9226143784afa3eff 294cbf6bbe7ee8a8ebad947f397852edc1981b57 86f644010f41cd627f436c8d5cf9e0b5cca8fcdc",
+      "status": "",
+      "test_sha256": "5f1198daf582db4340c2bf424071375a442e8ca9e54fd8d27e4d10d03ef9f067",
+      "venv_present": false
+    }
+  },
+  "task_local_commit_count": 0,
+  "no_remote_writes": true,
+  "full_suite_runs": 0,
+  "worktree_cache_paths": [],
+  "external_git": {
+    "alternates": false,
+    "remotes": [],
+    "shallow": false,
+    "all_object_files_link_count": 1
+  },
+  "primary_status": "?? .b649-pr338-replacement-a-r1/\n?? .b649-prestart-successor-durable-evidence-consumer-r1/\n?? .fable/checkpoints/B649_R3_ADV11_DESCENDANT_STABLE_CONTEXT_R1/\n?? .fable/checkpoints/B649_R3_E440_ADV19_PREFLIGHT_RECOVERY_R1.json\n?? .fable/checkpoints/B649_R3_E440_ADV19_PREFLIGHT_RECOVERY_R1/\n?? .fable/checkpoints/B649_R3_E440_EXACT_TREE_FULL_GATE_R1/\n?? .fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/\n?? .fable/recovery/",
+  "t249_child_reports": [
+    {
+      "source": "/private/tmp/adv19-recovery-ea4ub0bv/tmp/t249-test-q_y_7iku/t249-child-haj01mlp/node-results.json",
+      "receipt": "t249-child-reports/t249-child-haj01mlp.json",
+      "sha256": "60c7aceaa110efaf0781230cfb68766442715f35d647851d8b8be5305d463046",
+      "count": 27,
+      "order": "normal"
+    },
+    {
+      "source": "/private/tmp/adv19-recovery-ea4ub0bv/tmp/t249-test-t066aexj/t249-child-48tui75s/node-results.json",
+      "receipt": "t249-child-reports/t249-child-48tui75s.json",
+      "sha256": "60c7aceaa110efaf0781230cfb68766442715f35d647851d8b8be5305d463046",
+      "count": 27,
+      "order": "normal"
+    },
+    {
+      "source": "/private/tmp/adv19-recovery-ea4ub0bv/tmp/t249-test-xqpa_rw7/t249-child-wyztjc9u/node-results.json",
+      "receipt": "t249-child-reports/t249-child-wyztjc9u.json",
+      "sha256": "5b5ea8d8f95240359797b2963b34f9a24e7a253f7d03fbdb0b0dbac7baf82162",
+      "count": 27,
+      "order": "reverse"
+    }
+  ],
+  "advanced_counts": {
+    "passed": 19,
+    "failure": 0,
+    "error": 0,
+    "skipped": 0
+  },
+  "combined_normal_counts": {
+    "passed": 46,
+    "failure": 0,
+    "error": 0,
+    "skipped": 0
+  },
+  "combined_reverse_counts": {
+    "passed": 46,
+    "failure": 0,
+    "error": 0,
+    "skipped": 0
+  },
+  "normal_reverse_same_ids": true,
+  "normal_reverse_exact_order_reversal": true
+}

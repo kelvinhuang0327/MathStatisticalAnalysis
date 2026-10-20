@@ -1,0 +1,158 @@
+{
+  "TASK_ID": "B649_T237_FORMAL_CERTIFICATE_FROM_PATCH_R1",
+  "TASK_STATUS": "BLOCKED_MATHEMATICAL_PROOF",
+  "WORKTREE": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_T237_FORMAL_CERTIFICATE_FROM_PATCH_R1",
+  "HEAD": "9acea1331e021a9623fa593997d90cfc89a69136",
+  "TREE": "de577e8d6f3ccbe52e663c96ee1528c95a0ee7ec",
+  "BRANCH": "codex/b649-t237-formal-certificate-from-patch-r1",
+  "AUTHORITATIVE_PACKET_REF": "/Users/kelvin/.codex/attachments/d7e6d153-5a75-4a5d-80c3-f7ded5304b85/pasted-text-1.txt",
+  "IMPLEMENTATION_DEPTH": "NORMAL",
+  "DEPTH_SOURCE": "SKILL_FALLBACK",
+  "PATCH_SOURCE_SHA256": "317756039a2794565024c5743052a6c06c5f2d24a9441a9452378b3665490043",
+  "PATCH_TEST_SHA256": "64b0026c98aa35a0903bdf3d559df5a377c10d4205d30a721504b6feff90204f",
+  "PROTECTED_ENTRY_RECOVERY": {
+    "OWNER_SOURCE": "CURRENT_WORKER_CONVERSATION_USER_MESSAGE",
+    "OWNER_ANSWER": "授權單次正常停止並繼續",
+    "ACTION": [
+      "git",
+      "-C",
+      "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_T237_FORMAL_CERTIFICATE_FROM_PATCH_R1",
+      "-c",
+      "core.fsmonitor=false",
+      "fsmonitor--daemon",
+      "stop"
+    ],
+    "EXIT_STATUS": 0,
+    "PID": 41814,
+    "PID_AFTER": "ABSENT",
+    "LOCK_HOLDER_AFTER": "NONE",
+    "MARKER_UNCHANGED": true,
+    "LAUNCHER_UNCHANGED": true
+  },
+  "ATTEMPTS": [
+    {
+      "id": "create-worktree",
+      "result": "PASS"
+    },
+    {
+      "id": "copy-exact-patch",
+      "first_attempt": "PRIOR_PROCESS_ACTIVE; no execution record or source write",
+      "after_owner_recovery": "PASS; exact bytes copied"
+    },
+    {
+      "id": "generate-result",
+      "result": "exit 0; module import only; NOT acceptance; no main guard"
+    },
+    {
+      "id": "generate-result-main",
+      "result": "exit 1; ValueError: retained class states; no result JSON written"
+    },
+    {
+      "id": "diagnose-finite-domain-mismatch",
+      "result": "exit 0; A and B fields identical; observed mismatches"
+    },
+    {
+      "id": "diagnose-domain-semantics",
+      "result": "exit 0; unique core counts and RAW maxima reproduce Packet"
+    }
+  ],
+  "DIAGNOSIS": {
+    "A_B_STATE_FIELDS_EQUAL": true,
+    "RAW_SIGMA_CLASSES": 3960,
+    "ZERO_GRAPH_MASKS": 1024,
+    "GRAPHICAL_ZERO_CLASSES": 31,
+    "SIGMA_ZETA_PAIRS": 3517,
+    "DISTINCT_RETAINED_SIGMA_CLASSES": 1491,
+    "LABELLED_SIGMA_ZETA_STATES": 292300,
+    "DISTINCT_LABELLED_CORE_STATES": 154050,
+    "COMPATIBLE_CLASS_GRAPH_PAIRS": 100834,
+    "LABELLED_CORE_GRAPH_PAIRS": 6727928,
+    "RAW_R_MAXIMA": {
+      "10": 233,
+      "12": 237,
+      "14": 237,
+      "16": 235,
+      "18": 235,
+      "20": 233,
+      "22": 235,
+      "24": 235
+    },
+    "REMAINDER_FLOOR_R_MAXIMA": {
+      "10": 233,
+      "12": 236,
+      "14": 235,
+      "16": 232,
+      "18": 231,
+      "20": 226,
+      "22": 224,
+      "24": 222
+    }
+  },
+  "PROPOSED_OWNER_DELTA": {
+    "PATHS": [
+      "src/lottolab/research/b649_min_s2_t257_t237_joint_exact_authority_r1.py",
+      "tests/unit/test_b649_min_s2_t257_t237_joint_exact_authority_r1.py"
+    ],
+    "CHANGES": [
+      "Count retained core sigma classes once, separately record the 3517 sigma/zeta pairs.",
+      "Independent labelled method counts each labelled core sigma once, separately records the 292300 sigma/zeta states.",
+      "Match Packet r maxima and cap237 against RAW identity upper bounds justified by P>=0; retain and independently check all four nonnegative remainder floors separately, never set P=0 or assert attainment.",
+      "Add focused regressions for count semantics and RAW/remainder-floor maxima distinction; complete original 14 negative checks."
+    ],
+    "PRESERVED": [
+      "Original Patch worktree untouched",
+      "Immutable Base and T257 donor",
+      "cap237 and bound313122700 target",
+      "Family memory-only; single commit after acceptance; fresh Judge",
+      "No marker/launcher changes; no remote writes"
+    ],
+    "STATUS": "PENDING_OWNER_AUTHORIZATION"
+  },
+  "GATES": {
+    "G01": "PASS",
+    "G02": "PASS",
+    "G03": "NOT_VERIFIED",
+    "G04": "NOT_VERIFIED",
+    "G05": "NOT_VERIFIED",
+    "G06": "NOT_VERIFIED",
+    "G07": "NOT_VERIFIED",
+    "G08": "FAIL: official count mixes core classes with sigma/zeta pairs",
+    "G09": "PASS: both methods 100834",
+    "G10": "FAIL: official labelled core count mixes sigma/zeta states; maxima field mismatch",
+    "G11": "NOT_VERIFIED: RAW domain maximum 237 observed; formal verifier fails",
+    "G12": "NOT_RUN",
+    "G13": "NOT_RUN",
+    "G14": "NOT_RUN; Family authority not mutated",
+    "G15": "NOT_RUN",
+    "G16": "NOT_VERIFIED; no commit or Judge"
+  },
+  "FILESYSTEM_LEDGER": {
+    "RETAINED": [
+      "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_T237_FORMAL_CERTIFICATE_FROM_PATCH_R1",
+      "Git branch/worktree registration",
+      "Task execution/capture records and stable locks",
+      "Exact copied source/test",
+      "Task checkpoint and blocker receipt"
+    ],
+    "DELETED": [
+      "No source deleted; daemon shutdown used Git's normal metadata lifecycle"
+    ],
+    "OUT_OF_SCOPE_WRITES": "NONE_BY_TASK",
+    "SOURCE_CHANGES_AFTER_COPY": "NONE",
+    "RESULT_JSON": "ABSENT",
+    "LOCAL_COMMITS": 0,
+    "REMOTE_WRITE": "NO",
+    "FAMILY_AUTHORITY_MUTATED": "NO",
+    "PATCH_WORKTREE_MODIFIED": "NO",
+    "ORIGINAL_T237_WORKTREE_MODIFIED": "NO"
+  },
+  "NEXT_ACTION": "AWAIT_OWNER_DELTA_FOR_TWO_SCOPED_SOURCE_TEST_SEMANTIC_REPAIRS",
+  "CAPTURE_PINS": {
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_T237_FORMAL_CERTIFICATE_FROM_PATCH_R1/captures/copy-exact-patch.json": "aec0564d0e2f62687eb92ca405c36586c876cbf23276135c5e12d1ad7914a38c",
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_T237_FORMAL_CERTIFICATE_FROM_PATCH_R1/captures/create-worktree.json": "b4c0da807438fc57efb57c9ddd784fec1080d7c106f0ad1c64ec3218ed7f9479",
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_T237_FORMAL_CERTIFICATE_FROM_PATCH_R1/captures/diagnose-domain-semantics.json": "ec7184f1b937f4fff1414dff36b08fe9463ca22752c870ee7f80dc21baa0b1ea",
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_T237_FORMAL_CERTIFICATE_FROM_PATCH_R1/captures/diagnose-finite-domain-mismatch.json": "51bc76ba88cfa04d7095cb0e8df33be1f764bcbac5ddea45abe12420d51d8ee2",
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_T237_FORMAL_CERTIFICATE_FROM_PATCH_R1/captures/generate-result-main.json": "3cac1a04c14d2db6ae31a590305c07e89b534ea50b2b380d1039005fcd427ec3",
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_T237_FORMAL_CERTIFICATE_FROM_PATCH_R1/captures/generate-result.json": "a56fa42d33e084d3f1c0163b004f89e467c2763ac4e23eac5b2e713e8a116ecf"
+  }
+}

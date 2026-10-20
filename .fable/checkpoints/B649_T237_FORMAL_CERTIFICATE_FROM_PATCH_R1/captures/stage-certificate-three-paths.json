@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "command": [
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/python",
+    "-B",
+    "-c",
+    "from pathlib import Path\nimport subprocess,hashlib,json,time\nfiles=['src/lottolab/research/b649_min_s2_t257_t237_joint_exact_authority_r1.py','tests/unit/test_b649_min_s2_t257_t237_joint_exact_authority_r1.py','docs/research/matrix-native-results/b649-min-s2-t257-t237-joint-exact-authority-r1-result.json']\ndef git(*args):return subprocess.check_output(['git','-c','core.fsmonitor=false',*args],text=True).strip()\ndef snapshot():return [git('rev-parse','HEAD','HEAD^{tree}'),git('status','--porcelain=v1','--untracked-files=all'),{p:hashlib.sha256(Path(p).read_bytes()).hexdigest() for p in files}]\na=snapshot();time.sleep(5);assert a==snapshot();assert git('diff','--cached','--name-only')=='';d=json.loads(Path(files[2]).read_text());assert d['SOURCE_SHA256']==a[2][files[0]] and d['TEST_SHA256']==a[2][files[1]]\nassert a[2][files[2]]=='4aa6f817220db51a3648df3dcbe10efbd0d0ad614afa4223404e7dcd62ab01ac'\nsubprocess.run(['git','-c','core.fsmonitor=false','add','--',*files],check=True)\nassert set(git('diff','--cached','--name-only').splitlines())==set(files)\nsubprocess.run(['git','-c','core.fsmonitor=false','diff','--cached','--check'],check=True)\nprint(json.dumps({'STAGED_FILES':files,'CANDIDATE_TREE':git('write-tree'),'FILE_SHA256':a[2],'STATUS':git('status','--porcelain=v1','--untracked-files=all')},sort_keys=True))"
+  ],
+  "stdout": "{\"CANDIDATE_TREE\": \"a9977cc6451693ad8badd18d0bd7e5e9bb9c709e\", \"FILE_SHA256\": {\"docs/research/matrix-native-results/b649-min-s2-t257-t237-joint-exact-authority-r1-result.json\": \"4aa6f817220db51a3648df3dcbe10efbd0d0ad614afa4223404e7dcd62ab01ac\", \"src/lottolab/research/b649_min_s2_t257_t237_joint_exact_authority_r1.py\": \"d8d286d021cacba5dc55803c5db5ba8cbe00a502a9916191be540755d00af131\", \"tests/unit/test_b649_min_s2_t257_t237_joint_exact_authority_r1.py\": \"cd1f2fa08bfd9215bfa46a8dd189a1baefa177aa74f9b420ec8ae759b907bdf7\"}, \"STAGED_FILES\": [\"src/lottolab/research/b649_min_s2_t257_t237_joint_exact_authority_r1.py\", \"tests/unit/test_b649_min_s2_t257_t237_joint_exact_authority_r1.py\", \"docs/research/matrix-native-results/b649-min-s2-t257-t237-joint-exact-authority-r1-result.json\"], \"STATUS\": \"A  docs/research/matrix-native-results/b649-min-s2-t257-t237-joint-exact-authority-r1-result.json\\nA  src/lottolab/research/b649_min_s2_t257_t237_joint_exact_authority_r1.py\\nA  tests/unit/test_b649_min_s2_t257_t237_joint_exact_authority_r1.py\"}\n",
+  "stderr": "",
+  "exit_status": 0,
+  "started_at": "2026-10-17T09:12:40Z",
+  "ended_at": "2026-10-17T09:12:45Z",
+  "execution_identity": {
+    "repository_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis",
+    "worktree_path": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_T237_FORMAL_CERTIFICATE_FROM_PATCH_R1",
+    "head": "9acea1331e021a9623fa593997d90cfc89a69136",
+    "tree": "de577e8d6f3ccbe52e663c96ee1528c95a0ee7ec",
+    "launcher_path": "/Users/kelvin/.codex/skills/fable-method/scripts/task_checkpoint.rb",
+    "launcher_sha256": "babba3757a7ea9ad59c7ff9b18b6e4497dbc887b86eebfb09ccae1a36ab96275",
+    "runtime_executable": "/System/Library/Frameworks/Ruby.framework/Versions/2.6/usr/bin/ruby",
+    "runtime_version": "ruby 2.6.10p210 (2022-04-12 revision 67958) [universal.arm64e-darwin26]"
+  }
+}

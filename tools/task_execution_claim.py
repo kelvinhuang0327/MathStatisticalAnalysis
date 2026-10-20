@@ -23,14 +23,13 @@ import socket
 import stat
 import subprocess
 import sys
-import threading
 import uuid
 from collections.abc import Callable, Generator, Sequence
 from contextlib import contextmanager
 from copy import deepcopy
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import BinaryIO, TypedDict, cast
+from typing import TypedDict, cast
 
 HEARTBEAT_SECONDS = 5.0
 STALE_SECONDS = 30.0
@@ -173,12 +172,6 @@ class ClaimStore:
             yield
         finally:
             os.close(fd)
-
-    @contextmanager
-    def admission_transaction(self) -> Generator[None]:
-        """Serialize an external authority transition with ClaimStore admission."""
-        with self._transaction():
-            yield
 
     def _read(self, task_key: str) -> Metadata | None:
         _check_path(self.root)
@@ -324,15 +317,12 @@ class ClaimStore:
         takeover_stale: bool = False,
         expected_predecessor_owner_id: str | None = None,
         prepare_takeover: Callable[[Metadata, Metadata], None] | None = None,
-        capture_output: Callable[[str, bytes], None] | None = None,
-        validate_admission: Callable[[], None] | None = None,
     ) -> int:
-        """Optionally validate admission and transfer a predecessor in the transaction.
+        """Optionally admit an exact predecessor transfer inside the transaction.
 
         The trusted preparation hook must durably prepare successor state before
         returning. Failure leaves predecessor ownership unchanged. Copies keep a
         callback from accidentally changing the gate's ownership/command metadata.
-        Admission validation runs under the same lock as claim inspection and write.
         """
         if not command or not command[0] or any("\0" in arg for arg in command):
             raise ClaimError("A valid foreground command is required")
@@ -346,30 +336,7 @@ class ClaimStore:
                 return TAKEOVER_REQUIRED
         record: Metadata
         child: subprocess.Popen[bytes]
-        readers: list[threading.Thread] = []
-        capture_errors: list[BaseException] = []
-
-        def drain(name: str, stream: object) -> None:
-            read = cast(BinaryIO, stream).read
-            while True:
-                try:
-                    chunk = read(8192)
-                except BaseException as exc:
-                    capture_errors.append(exc)
-                    return
-                if not chunk:
-                    return
-                try:
-                    assert capture_output is not None
-                    capture_output(name, chunk)
-                except BaseException as exc:
-                    # Keep draining after a sink error so the child cannot block
-                    # on a full pipe. The caller receives an error after exit.
-                    capture_errors.append(exc)
-
         with self._transaction():
-            if validate_admission is not None:
-                validate_admission()
             state = self.inspect(task_key)
             status = state["status"]
             if status == "STALE_CONFIRMED" and not takeover_stale:
@@ -411,51 +378,20 @@ class ClaimStore:
             self._write(record)
             read_fd, write_fd = os.pipe()
             try:
-                launch_command = [sys.executable, "-c", _GATED_EXEC, str(read_fd), *command]
-                if capture_output is None:
-                    child = subprocess.Popen(
-                        launch_command,
-                        pass_fds=(read_fd,),
-                        start_new_session=True,
-                    )
-                else:
-                    child = subprocess.Popen(
-                        launch_command,
-                        pass_fds=(read_fd,),
-                        start_new_session=True,
-                        stdout=subprocess.PIPE,
-                        stderr=subprocess.PIPE,
-                    )
+                child = subprocess.Popen(
+                    [sys.executable, "-c", _GATED_EXEC, str(read_fd), *command],
+                    pass_fds=(read_fd,),
+                    start_new_session=True,
+                )
                 record["child_pid"] = child.pid
                 self._write(record)
-                if capture_output is not None:
-                    if child.stdout is None or child.stderr is None:
-                        raise ClaimError("child output pipes are unavailable")
-                    for name, stream in (("stdout", child.stdout), ("stderr", child.stderr)):
-                        reader = threading.Thread(
-                            target=drain,
-                            args=(name, stream),
-                            daemon=True,
-                        )
-                        reader.start()
-                        readers.append(reader)
                 os.write(write_fd, b"G")
             finally:
                 os.close(read_fd)
                 os.close(write_fd)
             # On unexpected failure retain metadata; pipe EOF prevents an
             # unrecorded child from running. Never clean up an ambiguous owner.
-        code = self._monitor(child, record)
-        for reader in readers:
-            reader.join()
-        if capture_errors:
-            raise ClaimError("child output capture failed") from capture_errors[0]
-        if capture_output is not None:
-            if child.stdout is not None:
-                child.stdout.close()
-            if child.stderr is not None:
-                child.stderr.close()
-        return code
+        return self._monitor(child, record)
 
 
 def main(argv: list[str] | None = None) -> int:

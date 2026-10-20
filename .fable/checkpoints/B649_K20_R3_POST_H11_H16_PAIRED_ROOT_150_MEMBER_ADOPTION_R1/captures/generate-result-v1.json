@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "command": [
+    "env",
+    "PYTHONDONTWRITEBYTECODE=1",
+    "PYTHONPATH=src",
+    "OMP_NUM_THREADS=1",
+    "MKL_NUM_THREADS=1",
+    "OPENBLAS_NUM_THREADS=1",
+    "NUMEXPR_NUM_THREADS=1",
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/python",
+    "-B",
+    "-m",
+    "lottolab.research.b649_k20_r3_post_h11_h16_paired_root_150_member_certificate_r1",
+    "--write"
+  ],
+  "stdout": "",
+  "stderr": "Traceback (most recent call last):\n  File \"<frozen runpy>\", line 198, in _run_module_as_main\n  File \"<frozen runpy>\", line 88, in _run_code\n  File \"/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_K20_R3_POST_H11_H16_PAIRED_ROOT_150_MEMBER_ADOPTION_R1/src/lottolab/research/b649_k20_r3_post_h11_h16_paired_root_150_member_certificate_r1.py\", line 899, in <module>\n    main()\n    ~~~~^^\n  File \"/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_K20_R3_POST_H11_H16_PAIRED_ROOT_150_MEMBER_ADOPTION_R1/src/lottolab/research/b649_k20_r3_post_h11_h16_paired_root_150_member_certificate_r1.py\", line 877, in main\n    result = build_result()\n  File \"/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_K20_R3_POST_H11_H16_PAIRED_ROOT_150_MEMBER_ADOPTION_R1/src/lottolab/research/b649_k20_r3_post_h11_h16_paired_root_150_member_certificate_r1.py\", line 786, in build_result\n    regions = [update_region(s) for s in SPECS]\n               ~~~~~~~~~~~~~^^^\n  File \"/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_K20_R3_POST_H11_H16_PAIRED_ROOT_150_MEMBER_ADOPTION_R1/src/lottolab/research/b649_k20_r3_post_h11_h16_paired_root_150_member_certificate_r1.py\", line 643, in update_region\n    recovered = region_vectors(state_id)\n  File \"/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_K20_R3_POST_H11_H16_PAIRED_ROOT_150_MEMBER_ADOPTION_R1/src/lottolab/research/b649_k20_r3_post_h11_h16_paired_root_150_member_certificate_r1.py\", line 297, in region_vectors\n    raise AssertionError(\"canonical member/compression signature/MAX identity failed\")\nAssertionError: canonical member/compression signature/MAX identity failed\n",
+  "exit_status": 1,
+  "started_at": "2026-10-16T06:54:40Z",
+  "ended_at": "2026-10-16T06:54:48Z",
+  "execution_identity": {
+    "repository_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis",
+    "worktree_path": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_K20_R3_POST_H11_H16_PAIRED_ROOT_150_MEMBER_ADOPTION_R1",
+    "head": "75e30e7b87cce7384ec1ba591061ae53b2e4c8a7",
+    "tree": "26479c39a0f23be7dc9e19282e68de4c013e7ced",
+    "launcher_path": "/Users/kelvin/.codex/skills/fable-method/scripts/task_checkpoint.rb",
+    "launcher_sha256": "babba3757a7ea9ad59c7ff9b18b6e4497dbc887b86eebfb09ccae1a36ab96275",
+    "runtime_executable": "/System/Library/Frameworks/Ruby.framework/Versions/2.6/usr/bin/ruby",
+    "runtime_version": "ruby 2.6.10p210 (2022-04-12 revision 67958) [universal.arm64e-darwin25]"
+  }
+}

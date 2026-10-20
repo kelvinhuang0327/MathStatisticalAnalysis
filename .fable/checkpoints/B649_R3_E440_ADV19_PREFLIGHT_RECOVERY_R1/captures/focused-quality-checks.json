@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "command": [
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/python",
+    "-B",
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_E440_ADV19_PREFLIGHT_RECOVERY_R1/run_quality.py"
+  ],
+  "stdout": "QUALITY_RESULT={\"argv\": [\"/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/ruff\", \"check\", \"--no-cache\", \"tests/unit/test_b649_min_s2_advanced_11row_exact_adoption_r1.py\", \"tests/unit/test_b649_min_s2_t249_dual_profile_composition_r1.py\", \"tests/unit/test_b649_t249_collection_isolation_r1.py\"], \"cwd\": \"/private/tmp/adv19-recovery-ea4ub0bv/testrepo\", \"exit_code\": 0, \"name\": \"ruff\", \"stderr\": \"\", \"stdout\": \"All checks passed!\\n\"}\nQUALITY_RESULT={\"argv\": [\"/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/pyright\", \"--pythonpath\", \"/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/python\", \"--pythonversion\", \"3.13\", \"--venvpath\", \"/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis\", \"tests/unit/test_b649_min_s2_advanced_11row_exact_adoption_r1.py\", \"tests/unit/test_b649_min_s2_t249_dual_profile_composition_r1.py\", \"tests/unit/test_b649_t249_collection_isolation_r1.py\"], \"cwd\": \"/private/tmp/adv19-recovery-ea4ub0bv/testrepo\", \"exit_code\": 4, \"name\": \"pyright\", \"stderr\": \"'pythonpath' option cannot be used with 'venvpath' option\\n\", \"stdout\": \"WARNING: there is a new pyright version available (v1.1.411 -> v1.1.414).\\nPlease install the new version or set PYRIGHT_PYTHON_FORCE_VERSION to `latest`\\n\\n\"}\nQUALITY_RESULT={\"argv\": [\"git\", \"diff\", \"--check\", \"e440d4298551ce93ef3ea9a9226143784afa3eff\"], \"cwd\": \"/private/tmp/adv19-recovery-ea4ub0bv/testrepo\", \"exit_code\": 0, \"name\": \"external-diff-check\", \"stderr\": \"\", \"stdout\": \"\"}\nQUALITY_RESULT={\"argv\": [\"git\", \"diff\", \"--check\", \"e440d4298551ce93ef3ea9a9226143784afa3eff\"], \"cwd\": \"/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_R3_E440_ADV19_PREFLIGHT_RECOVERY_R1\", \"exit_code\": 0, \"name\": \"worktree-diff-check\", \"stderr\": \"\", \"stdout\": \"\"}\n",
+  "stderr": "",
+  "exit_status": 1,
+  "started_at": "2026-10-19T14:27:26Z",
+  "ended_at": "2026-10-19T14:27:30Z",
+  "execution_identity": {
+    "repository_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis",
+    "worktree_path": "/private/tmp/adv19-recovery-ea4ub0bv/testrepo",
+    "head": "e440d4298551ce93ef3ea9a9226143784afa3eff",
+    "tree": "294cbf6bbe7ee8a8ebad947f397852edc1981b57",
+    "launcher_path": "/Users/kelvin/.codex/skills/fable-method/scripts/task_checkpoint.rb",
+    "launcher_sha256": "babba3757a7ea9ad59c7ff9b18b6e4497dbc887b86eebfb09ccae1a36ab96275",
+    "runtime_executable": "/System/Library/Frameworks/Ruby.framework/Versions/2.6/usr/bin/ruby",
+    "runtime_version": "ruby 2.6.10p210 (2022-04-12 revision 67958) [universal.arm64e-darwin26]"
+  }
+}

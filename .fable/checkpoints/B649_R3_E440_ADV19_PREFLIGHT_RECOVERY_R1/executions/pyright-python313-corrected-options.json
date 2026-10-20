@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "task_id": "B649_R3_E440_ADV19_PREFLIGHT_RECOVERY_R1",
+  "execution_id": "pyright-python313-corrected-options",
+  "pid": 18430,
+  "status": "COMPLETED",
+  "durable_capture_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_E440_ADV19_PREFLIGHT_RECOVERY_R1/captures/pyright-python313-corrected-options.json",
+  "started_at": "2026-10-19T14:28:36Z",
+  "ended_at": "2026-10-19T14:28:40Z"
+}

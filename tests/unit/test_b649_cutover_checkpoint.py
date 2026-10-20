@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import argparse
 import hashlib
 import json
 import os
@@ -27,6 +26,7 @@ TREE = "2" * 40
 OLD_HEAD = "3" * 40
 LABEL = "com.lottolab.checkpoint-fixture"
 DOMAIN = "gui/501"
+<<<<<<< HEAD
 DARWIN_NEGATIVE_UID_RAW_ROW = "68784     1    -2 Ss   /usr/libexec/dhcp6d"
 DARWIN_UNKNOWN_STATE_WRITER_COMMAND = (
     "/fixture/B649_PRODUCTION_release/tools/b649_goalc_local_scheduler.py run"
@@ -37,6 +37,8 @@ DARWIN_UNKNOWN_STATE_RAW_ROW = (
 DARWIN_UNKNOWN_SESSION_LEADER_RAW_ROW = (
     "987654322     1    0           ?s   /usr/libexec/fixture-system-task"
 )
+=======
+>>>>>>> archive/main-before-sync-20261020-103215
 HEALTH_SCHEMA = "b649-goalc-local-scheduler-health-v1"
 
 
@@ -56,7 +58,6 @@ class Harness:
     loaded_old: bool = False
     process_error: bool = False
     lsof_error: bool = False
-    lsof_uid: int = 501
     job_error: bool = False
     process_rows: list[str] = field(
         default_factory=lambda: ["900001 1 501 S /usr/bin/fixture-shell"]
@@ -180,7 +181,7 @@ class Harness:
         elif len(args) == 5 and args[0] == "ps" and args[1] == "-p" and args[3:] == ("-o", "pid="):
             requested = {int(value) for value in args[2].split(",")}
             out = "\n".join(str(pid) for pid in sorted(requested - self.vanished_pids))
-        elif args == ("lsof", "-nP", "-a", "-u", str(self.lsof_uid), "-F", "pfn"):
+        elif args == ("lsof", "-nP", "-a", "-u", "501", "-F", "pfn"):
             if self.lsof_error:
                 return subprocess.CompletedProcess(args, 0, "", "lsof: cannot stat filesystem")
             out = "\n".join(self.file_rows)
@@ -371,6 +372,7 @@ def test_post_unload_absent_pass(harness: Harness, capsys: pytest.CaptureFixture
     assert {call[0] for call in harness.calls} == {"git", "launchctl", "ps", "lsof"}
 
 
+<<<<<<< HEAD
 def test_darwin_exact_negative_uid_row_normalizes_without_launch_uid_alias() -> None:
     process = checkpoint.parse_process_row(DARWIN_NEGATIVE_UID_RAW_ROW, darwin=True)
     assert (process.pid, process.ppid, process.uid, process.state, process.command) == (
@@ -540,6 +542,8 @@ def test_linux_uid_parser_retains_unsigned_decimal_grammar() -> None:
         checkpoint.parse_process_row("900002 1 -2 S /usr/bin/fixture-shell", darwin=False)
 
 
+=======
+>>>>>>> archive/main-before-sync-20261020-103215
 @pytest.mark.parametrize("state", ["Z", "Z+", "Zs"])
 @pytest.mark.parametrize("stale_scheduler", [False, True])
 def test_verified_zombie_without_files_is_absent(

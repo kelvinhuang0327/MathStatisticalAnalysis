@@ -1,0 +1,331 @@
+{
+  "task_status": "GATE_LAUNCH_RECORDER_VALIDATED",
+  "attempt": "AC10_ISOLATED_R2",
+  "implementation_depth": "NORMAL",
+  "depth_source": "PLANNER_SUPPLIED",
+  "task_class": "STATE_CHANGING_IMPLEMENTATION",
+  "worker_route": "STANDARD",
+  "judge_mode": "NOT_APPLICABLE",
+  "judge_dispatch": "SUPPRESSED",
+  "owner_continuation": "\u8acb\u5728\u7368\u7acb Git \u74b0\u5883\u91cd\u65b0\u9a57\u8b49\u555f\u52d5\u5668\uff0c\u52a0\u5165\u7a0b\u5e8f\uff0fharness \u5beb\u5165\u4f86\u6e90\u89c0\u6e2c\uff0c\u88dc\u9f4a AC10\u3002\u53ea\u8dd1\u6b63\u5e38\u8207\u975e\u96f6\u9000\u51fa smoke\uff0c\u4fdd\u7559\u65e2\u6709\u6536\u64da\u8207\u820a Judge\uff0c\u4e0d\u4fee\u6539\u7522\u54c1\u6216\u65e2\u6709 source refs\uff0c\u4e5f\u4e0d\u8981\u8dd1 FULL Suite \u6216 solver\u3002",
+  "scope": "Forward evaluation of the byte-identical launcher in a new independent Git environment. Historical UNKNOWN attribution and NOT_VERIFIED receipts remain unchanged.",
+  "AC01_TO_AC10": {
+    "AC01": {
+      "result": "PASS",
+      "detail": "Pinned source and independent clone HEAD/tree/parent match; old Judge SHA unchanged.",
+      "evidence": [
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/isolated-revalidation-r1/strict-r2-isolated-before.json",
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/isolated-revalidation-r1/strict-r2-host-before.json",
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/isolated-revalidation-r1/provenance-validation.json"
+      ]
+    },
+    "AC02": {
+      "result": "PASS",
+      "detail": "Actual child reads/hashes pre-spawn receipt; Ruby launch commit event precedes Python observer startup.",
+      "evidence": [
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/isolated-revalidation-r1/provenance-validation.json",
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/isolated-revalidation-r1/execution-result-r2.json"
+      ]
+    },
+    "AC03": {
+      "result": "PASS",
+      "detail": "Parent/child umask 0077; app-data 0700; task-exclusive external temp/cache; observed probe 0600.",
+      "evidence": [
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/isolated-revalidation-r1/execution-result-r2.json",
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/isolated-revalidation-r1/provenance-validation.json"
+      ]
+    },
+    "AC04": {
+      "result": "PASS",
+      "detail": "Actual argv/cwd/PIDs, Python 3.13.8, pytest 9.1.1, installed dependencies and source lock fingerprints persisted.",
+      "evidence": [
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/isolated-revalidation-r1/execution-result-r2.json"
+      ]
+    },
+    "AC05": {
+      "result": "PASS",
+      "detail": "Complete ref/status snapshots plus full isolated filesystem and Git metadata before/after.",
+      "evidence": [
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/isolated-revalidation-r1/strict-r2-isolated-before.json",
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/isolated-revalidation-r1/strict-r2-isolated-after.json",
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/isolated-revalidation-r1/strict-r2-host-before.json",
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/isolated-revalidation-r1/strict-r2-host-after.json"
+      ]
+    },
+    "AC06": {
+      "result": "PASS",
+      "detail": "Isolated refs and existing host refs unchanged in the observed R2 interval; all deltas explicitly empty. Historical UNKNOWN attribution remains untouched.",
+      "evidence": [
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/isolated-revalidation-r1/provenance-validation.json",
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/isolated-revalidation-r1/strict-r2-host-before.json",
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/isolated-revalidation-r1/strict-r2-host-after.json"
+      ]
+    },
+    "AC07": {
+      "result": "PASS",
+      "detail": "Normal smoke actual exit 0; original stdout/stderr exactly equal dispatch, capture and separate files.",
+      "evidence": [
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/isolated-revalidation-r1/ac10-isolated-normal-r2-dispatch.json",
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/isolated-revalidation-r1/provenance-validation.json"
+      ]
+    },
+    "AC08": {
+      "result": "PASS",
+      "detail": "Negative smoke actual exit 23 with exact negative-smoke-stderr; no swallowed failure.",
+      "evidence": [
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/isolated-revalidation-r1/ac10-isolated-negative-r2-dispatch.json",
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/isolated-revalidation-r1/provenance-validation.json"
+      ]
+    },
+    "AC09": {
+      "result": "PASS",
+      "detail": "Persistent launch/capture/end and observer/Git traces are readable and indexed; all new run files are covered by SHA256SUMS.",
+      "evidence": [
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/isolated-revalidation-r1/provenance-validation.json",
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/isolated-revalidation-r1/SHA256SUMS"
+      ]
+    },
+    "AC10": {
+      "result": "PASS",
+      "detail": "For this new isolated R2 interval: inherited kernel write/network confinement, seven distinct PID denial probes, complete spawn reconciliation, observed writers for every run receipt and child probe, only read-only Git commands, identical full source/.git manifests, unchanged existing source refs/old files/Judge; no suite or solver.",
+      "evidence": [
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/isolated-revalidation-r1/provenance-validation.json",
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/isolated-revalidation-r1/smoke-r2.sb",
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/isolated-revalidation-r1/strict-controller-r2-dispatch.json",
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/isolated-revalidation-r1/strict-r2-isolated-before.json",
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/isolated-revalidation-r1/strict-r2-isolated-after.json",
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/isolated-revalidation-r1/execution-result-r2.json"
+      ]
+    }
+  },
+  "launcher_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/launch_gate.rb",
+  "launcher_sha256": "e9d3e5e03fded1974fb16fcb177cfc96ccc817bf8e72d2084ff7407a4383be62",
+  "persistent_output_root": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/isolated-revalidation-r1",
+  "reference_head": "e440d4298551ce93ef3ea9a9226143784afa3eff",
+  "reference_tree": "294cbf6bbe7ee8a8ebad947f397852edc1981b57",
+  "isolated_git_root": "/private/tmp/gate-ac10-cb5uv2in/source",
+  "isolated_git_metadata": "/private/tmp/gate-ac10-cb5uv2in/source/.git",
+  "normal_smoke_exit": 0,
+  "negative_smoke_exit": 23,
+  "runtime_provenance": [
+    {
+      "execution_id": "ac10-isolated-normal-r2",
+      "ruby_pid": 19663,
+      "harness_pid": 19637,
+      "python_pids": [
+        19675,
+        19696
+      ],
+      "smoke_pid": 19696,
+      "git_pids": [
+        19671,
+        19672,
+        19673,
+        19674,
+        19676,
+        19677,
+        19678,
+        19679,
+        19680,
+        19681,
+        19682,
+        19683,
+        19684,
+        19685,
+        19686,
+        19687,
+        19688,
+        19689,
+        19690,
+        19691,
+        19692,
+        19693,
+        19694,
+        19695,
+        19697,
+        19698,
+        19699,
+        19700,
+        19701,
+        19702,
+        19703,
+        19704,
+        19705,
+        19706,
+        19707,
+        19708,
+        19709,
+        19710,
+        19711,
+        19712,
+        19713
+      ],
+      "git_command_types": [
+        "for-each-ref",
+        "rev-parse",
+        "show",
+        "status"
+      ],
+      "receipt_file_writer_pids": {
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/ac10-isolated-normal-r2/end.json": 19663,
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/ac10-isolated-normal-r2/stdout.txt": 19663,
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/ac10-isolated-normal-r2/dependencies.json": 19663,
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/ac10-isolated-normal-r2/primary-status-before.txt": 19663,
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/ac10-isolated-normal-r2/source-refs-before.txt": 19663,
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/ac10-isolated-normal-r2/primary-refs-after.txt": 19663,
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/ac10-isolated-normal-r2/primary-status-after.txt": 19663,
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/ac10-isolated-normal-r2/capture.json": 19663,
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/ac10-isolated-normal-r2/source-status-after.txt": 19663,
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/ac10-isolated-normal-r2/stderr.txt": 19663,
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/ac10-isolated-normal-r2/source-refs-after.txt": 19663,
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/ac10-isolated-normal-r2/primary-refs-before.txt": 19663,
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/ac10-isolated-normal-r2/source-status-before.txt": 19663,
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/ac10-isolated-normal-r2/launch.json": 19663,
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/ac10-isolated-normal-r2/SHA256SUMS": 19663
+      },
+      "denial_pids": [
+        19663,
+        19675,
+        19696
+      ],
+      "uncovered_receipt_files": [],
+      "out_of_scope_write_requests": [],
+      "ruby_observer_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/isolated-revalidation-r1/ruby-19663.jsonl",
+      "python_observer_paths": [
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/isolated-revalidation-r1/python-child-19696.jsonl",
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/isolated-revalidation-r1/python-child-19675.jsonl"
+      ],
+      "capture_sha256": "a5b3831495e439927c3ee9333621633440d0e66e3b7a16e56e97f433e3b8c69f",
+      "launch_sha256": "b6a6cac93c06c46967c1a61726a3110f107436c2499d87af70d6208a72aecb12",
+      "end_sha256": "092e98c1ce9db95916bd8d5fe90188206fcd6a14177fa5e9e8669af317e2d35c"
+    },
+    {
+      "execution_id": "ac10-isolated-negative-r2",
+      "ruby_pid": 19714,
+      "harness_pid": 19637,
+      "python_pids": [
+        19723,
+        19744
+      ],
+      "smoke_pid": 19744,
+      "git_pids": [
+        19719,
+        19720,
+        19721,
+        19722,
+        19724,
+        19725,
+        19726,
+        19727,
+        19728,
+        19729,
+        19730,
+        19731,
+        19732,
+        19733,
+        19734,
+        19735,
+        19736,
+        19737,
+        19738,
+        19739,
+        19740,
+        19741,
+        19742,
+        19743,
+        19745,
+        19746,
+        19747,
+        19748,
+        19749,
+        19750,
+        19751,
+        19752,
+        19753,
+        19754,
+        19755,
+        19756,
+        19757,
+        19758,
+        19759,
+        19760,
+        19761
+      ],
+      "git_command_types": [
+        "for-each-ref",
+        "rev-parse",
+        "show",
+        "status"
+      ],
+      "receipt_file_writer_pids": {
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/ac10-isolated-negative-r2/end.json": 19714,
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/ac10-isolated-negative-r2/stdout.txt": 19714,
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/ac10-isolated-negative-r2/dependencies.json": 19714,
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/ac10-isolated-negative-r2/primary-status-before.txt": 19714,
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/ac10-isolated-negative-r2/source-refs-before.txt": 19714,
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/ac10-isolated-negative-r2/primary-refs-after.txt": 19714,
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/ac10-isolated-negative-r2/primary-status-after.txt": 19714,
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/ac10-isolated-negative-r2/capture.json": 19714,
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/ac10-isolated-negative-r2/source-status-after.txt": 19714,
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/ac10-isolated-negative-r2/stderr.txt": 19714,
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/ac10-isolated-negative-r2/source-refs-after.txt": 19714,
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/ac10-isolated-negative-r2/primary-refs-before.txt": 19714,
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/ac10-isolated-negative-r2/source-status-before.txt": 19714,
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/ac10-isolated-negative-r2/launch.json": 19714,
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/ac10-isolated-negative-r2/SHA256SUMS": 19714
+      },
+      "denial_pids": [
+        19714,
+        19723,
+        19744
+      ],
+      "uncovered_receipt_files": [],
+      "out_of_scope_write_requests": [],
+      "ruby_observer_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/isolated-revalidation-r1/ruby-19714.jsonl",
+      "python_observer_paths": [
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/isolated-revalidation-r1/python-child-19723.jsonl",
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/isolated-revalidation-r1/python-child-19744.jsonl"
+      ],
+      "capture_sha256": "5ba44068833ffc04384e80840c0f5bcf6cdba35a80283d90265315987bd31d28",
+      "launch_sha256": "9c791343cba00f43945f28b678377cf84b8de21bc3ab73cbe29637a6ceef25a4",
+      "end_sha256": "c12457debc50a83131c223e90ca187374f881b58f5118b26882cb51e79c855e8"
+    }
+  ],
+  "denial_pids": [
+    19637,
+    19663,
+    19675,
+    19696,
+    19714,
+    19723,
+    19744
+  ],
+  "isolated_manifest_entries": 2556,
+  "source_refs_diff": {
+    "source": {
+      "removed": [],
+      "added": []
+    },
+    "primary": {
+      "removed": [],
+      "added": []
+    }
+  },
+  "source_changed": "NO",
+  "git_refs_changed_by_task": "NO existing source refs or isolated refs changed in the R2 observation interval; new clone metadata construction was separately authorized and completed before baseline",
+  "remote_write": "NO",
+  "full_suite_rerun": "NO",
+  "solver_run": "NO",
+  "old_judge_verdict": "REFUTED",
+  "old_judge_sha256": "028e60ce4b0290a97c3b140b902157e4eb72eb2d1527f6297710c10a9dc22c68",
+  "original_old_files_preserved": 70,
+  "all_prior_receipts_preserved": 128,
+  "new_smoke_child_count": 4,
+  "new_smoke_child_count_explanation": "One initial normal/nonzero pair ran but lacked Python/spawn observer coverage (retained FAIL); one remediated normal/nonzero pair passed. Two earlier preparation failures launched zero smoke children. No collection/suite/solver.",
+  "historical_original_task_status": "NOT_VERIFIED",
+  "history_rewritten": false,
+  "observability_limit": "Trusted task-specific Ruby/Python API observers plus Git Trace2, process edges, full isolated filesystem snapshots and inherited macOS kernel sandbox. No global root-level syscall trace or malicious same-UID adversary immunity claimed. Historical R1 unknown attribution remains unchanged.",
+  "runtime_retention": "Task-owned external Git/Python/runtime root retained; no old files or foreign temporary roots removed",
+  "remaining_task_model": "\u5f37\u6a21\u578b \u2014 \u65b0\u56fa\u5b9aTree\u7684\u6b63\u5f0fFULL Gate\uff1b\u6b64\u8f2a\u672a\u57f7\u884c\u4ea6\u672a\u6388\u6b0aFULL Suite",
+  "unauthorized_write_events": "NONE observed in the controlled R2 process tree; only explicitly denied harmless probe requests in task-owned .git. Existing source ref/product write capabilities were denied by the inherited policy."
+}

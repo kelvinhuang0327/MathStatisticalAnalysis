@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "command": [
+    "python3",
+    "-m",
+    "unittest",
+    "tests/unit/test_score_biglotto_prospective_r1.py",
+    "tests/unit/test_run_biglotto_prospective_scoring_r1.py",
+    "tests/unit/test_verify_biglotto_predraw_evidence_r2.py"
+  ],
+  "stdout": "",
+  "stderr": ".....................................................................\n----------------------------------------------------------------------\nRan 69 tests in 3.012s\n\nOK\n",
+  "exit_status": 0,
+  "started_at": "2026-10-17T07:15:06Z",
+  "ended_at": "2026-10-17T07:15:09Z",
+  "execution_identity": {
+    "repository_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis",
+    "worktree_path": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/MSA_BIGLOTTO_RFC3161_OFFLINE_VERIFIER_R2",
+    "head": "5837adc6abfd8a665000a3dce0b1ef5d7ecd3411",
+    "tree": "13e3e00fad73aa91c6fc518549e0291a70d033d8",
+    "launcher_path": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/skill/FABLE_CHECKPOINT_FIXTURE_INDEPENDENT_SLICE_R1/fable-method/scripts/task_checkpoint.rb",
+    "launcher_sha256": "babba3757a7ea9ad59c7ff9b18b6e4497dbc887b86eebfb09ccae1a36ab96275",
+    "runtime_executable": "/System/Library/Frameworks/Ruby.framework/Versions/2.6/usr/bin/ruby",
+    "runtime_version": "ruby 2.6.10p210 (2022-04-12 revision 67958) [universal.arm64e-darwin26]"
+  }
+}

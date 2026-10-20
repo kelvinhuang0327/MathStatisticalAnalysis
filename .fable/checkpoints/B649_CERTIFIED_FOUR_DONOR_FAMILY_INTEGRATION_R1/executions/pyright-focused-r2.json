@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "task_id": "B649_CERTIFIED_FOUR_DONOR_FAMILY_INTEGRATION_R1",
+  "execution_id": "pyright-focused-r2",
+  "pid": 95300,
+  "status": "COMPLETED",
+  "durable_capture_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_CERTIFIED_FOUR_DONOR_FAMILY_INTEGRATION_R1/captures/pyright-focused-r2.json",
+  "started_at": "2026-10-17T11:44:29Z",
+  "ended_at": "2026-10-17T11:44:30Z"
+}

@@ -1,0 +1,158 @@
+{
+  "schema_version": 1,
+  "task_id": "B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1",
+  "execution_id": "negative-smoke-r1",
+  "utc_end_timestamp": "2026-10-19T14:06:10.013059000Z",
+  "started_at": "2026-10-19T14:06:08Z",
+  "ended_at": "2026-10-19T14:06:09Z",
+  "exit_status": 23,
+  "launch_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/negative-smoke-r1/launch.json",
+  "launch_sha256": "b8d8fd02c65e552fef315f8fb3cadc355d257ad9a4a4dbff82e6749f2cc5073c",
+  "capture_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/negative-smoke-r1/capture.json",
+  "capture_sha256": "6433e7aa5f4cd7817792081d15886dc0d32b75e698c3d2bd01b512a1348bbb76",
+  "stdout": {
+    "path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/negative-smoke-r1/stdout.txt",
+    "sha256": "201e22bf89c5ec8efa700ba7d8675723588a2f35fbd1a126229f0739247cb243",
+    "bytes": 1149
+  },
+  "stderr": {
+    "path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/negative-smoke-r1/stderr.txt",
+    "sha256": "853d339a55306a611eb1f132630e22b9e7fe88105c30f19dbb10b495f36335dd",
+    "bytes": 22
+  },
+  "source_snapshots": {
+    "source": {
+      "identity": {
+        "path": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_R3_ADV11_DESCENDANT_STABLE_CONTEXT_R1",
+        "head": "e440d4298551ce93ef3ea9a9226143784afa3eff",
+        "tree": "294cbf6bbe7ee8a8ebad947f397852edc1981b57",
+        "parents": [
+          "86f644010f41cd627f436c8d5cf9e0b5cca8fcdc"
+        ],
+        "shallow": "false",
+        "alternates": {
+          "path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.git/objects/info/alternates",
+          "exists": false,
+          "sha256": null
+        },
+        "git_common_dir": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.git"
+      },
+      "refs_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/negative-smoke-r1/source-refs-after.txt",
+      "refs_sha256": "1116e760b362be801dc36614d9a90af43348ae67634ca5fcf0087510087efad5",
+      "refs_count": 1619,
+      "status_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/negative-smoke-r1/source-status-after.txt",
+      "status_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "primary": {
+      "identity": {
+        "path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis",
+        "head": "17a03e3305671d09578d81c29013ca15b9ca4a6d",
+        "tree": "478c7d40b74e0b7938e2bd4cc600401fcb89067d",
+        "parents": [
+          "ff1f30f5d68bd638e66314651daa33b9db833cd0",
+          "078cba9178b942835fcf771d2dc744b1d85300c8"
+        ],
+        "shallow": "false",
+        "alternates": {
+          "path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.git/objects/info/alternates",
+          "exists": false,
+          "sha256": null
+        },
+        "git_common_dir": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.git"
+      },
+      "refs_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/negative-smoke-r1/primary-refs-after.txt",
+      "refs_sha256": "1116e760b362be801dc36614d9a90af43348ae67634ca5fcf0087510087efad5",
+      "refs_count": 1619,
+      "status_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/negative-smoke-r1/primary-status-after.txt",
+      "status_sha256": "1cb955dada92b1842cafde43d8dd1ad33e3c5bdb2177ae5858f2877678556446"
+    }
+  },
+  "source_refs_diff": {
+    "removed": [
+
+    ],
+    "added": [
+
+    ]
+  },
+  "source_status_diff": {
+    "removed": [
+
+    ],
+    "added": [
+
+    ]
+  },
+  "refs_attribution": "NO_OBSERVED_DRIFT",
+  "attribution_limit": "Endpoint observations cannot identify an actor or exclude transient ref changes between snapshots.",
+  "old_judge_sha256": "028e60ce4b0290a97c3b140b902157e4eb72eb2d1527f6297710c10a9dc22c68",
+  "runtime_manifest": [
+    {
+      "path": "/private/tmp/gate-launch-20261019-12207-n9fetk/appdata",
+      "mode": "0700",
+      "type": "directory"
+    },
+    {
+      "path": "/private/tmp/gate-launch-20261019-12207-n9fetk/basetemp",
+      "mode": "0700",
+      "type": "directory"
+    },
+    {
+      "path": "/private/tmp/gate-launch-20261019-12207-n9fetk/cache",
+      "mode": "0700",
+      "type": "directory"
+    },
+    {
+      "path": "/private/tmp/gate-launch-20261019-12207-n9fetk/home",
+      "mode": "0700",
+      "type": "directory"
+    },
+    {
+      "path": "/private/tmp/gate-launch-20261019-12207-n9fetk/pytest-cache",
+      "mode": "0700",
+      "type": "directory"
+    },
+    {
+      "path": "/private/tmp/gate-launch-20261019-12207-n9fetk/python-cache",
+      "mode": "0700",
+      "type": "directory"
+    },
+    {
+      "path": "/private/tmp/gate-launch-20261019-12207-n9fetk/tmp",
+      "mode": "0700",
+      "type": "directory"
+    },
+    {
+      "path": "/private/tmp/gate-launch-20261019-12207-n9fetk/work",
+      "mode": "0700",
+      "type": "directory"
+    },
+    {
+      "path": "/private/tmp/gate-launch-20261019-12207-n9fetk/work/umask-probe.txt",
+      "mode": "0600",
+      "type": "file",
+      "sha256": "3f3c58f8a7066e813f72f6e4923694caea7f1537f5ec706934f11fb44e69dda3"
+    }
+  ],
+  "write_accounting": {
+    "adapter_persistent_root": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/negative-smoke-r1",
+    "created_runtime_root": "/private/tmp/gate-launch-20261019-12207-n9fetk",
+    "adapter_actions": [
+      "create exclusive run directory",
+      "create exclusive external runtime directories",
+      "write dependency manifest, before/after snapshots, launch and end receipts",
+      "invoke pinned Fable capture writer; persist original stdout and stderr"
+    ],
+    "child_writes": "observed by controlled smoke; see stdout and runtime manifest",
+    "deleted_paths": [
+
+    ],
+    "git_mutation_commands": [
+
+    ],
+    "remote_commands": [
+
+    ],
+    "limit": "This adapter records its own writes and endpoint manifests; it is not a filesystem or OS write sandbox."
+  }
+}

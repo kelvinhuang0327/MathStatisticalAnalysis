@@ -1,0 +1,133 @@
+TASK_ID: B649_R3_E440_ADV19_PREFLIGHT_RECOVERY_R1
+TASK_STATUS: ADV19_PREFLIGHT_RECOVERED
+TASK_CLASS: STATE_CHANGING_IMPLEMENTATION
+WORKER_ROUTE: STANDARD
+JUDGE_MODE: SELF_CHECK_ONLY
+IMPLEMENTATION_DEPTH: NORMAL
+DEPTH_SOURCE: PLANNER_SUPPLIED
+
+ACTUAL_RULES_LOADED:
+- /Users/kelvin/.codex/skills/fable-method/SKILL.md: routing, Packet, mutation boundary, lifecycle, launcher selection
+- /Users/kelvin/.codex/skills/fable-method/references/task-checkpoint.md: authoritative state, storage/update, scoped quiescence, protected run, launch failure
+- /Users/kelvin/.codex/skills/fable-method/references/operational-gates.md: Packet/live preflight, runtime outputs, Git actions, worktree identity
+- /Users/kelvin/.codex/skills/fable-method/references/workspace-containment.md: exact Owner-authorized external worktree and external task temp
+- /Users/kelvin/.codex/skills/fable-method/references/implementation-depth.md: NORMAL / PLANNER_SUPPLIED
+- /Users/kelvin/.codex/skills/fable-method/references/test-falsifiability.md: changed checks; no product check changed yet
+- e440d4298551ce93ef3ea9a9226143784afa3eff:README.md lines 5-45: quick start and runtime
+- e440d4298551ce93ef3ea9a9226143784afa3eff:.ai/ai-context/RUNBOOK.md lines 5-20,81-128,150-161: Python3.13/backend, external data, reproducibility, Git safety, receipts
+
+- /Users/kelvin/.codex/skills/fable-method/references/reporting.md: evidence labels, lifecycle, filesystem accounting, final artifact gate
+
+BASE_HEAD: e440d4298551ce93ef3ea9a9226143784afa3eff
+BASE_TREE: 294cbf6bbe7ee8a8ebad947f397852edc1981b57
+BASE_PARENT: 86f644010f41cd627f436c8d5cf9e0b5cca8fcdc
+SOURCE_TEST_SHA256: 5f1198daf582db4340c2bf424071375a442e8ca9e54fd8d27e4d10d03ef9f067
+
+FAILED_NODE_ID: tests/unit/test_b649_min_s2_advanced_11row_exact_adoption_r1.py::test_candidate_is_not_accepted_as_historical_child
+FIRST_FAILURE_TRACEBACK:
+______________ test_candidate_is_not_accepted_as_historical_child ______________
+
+    def test_candidate_is_not_accepted_as_historical_child() -> None:
+        assert _child_run is not None
+        assert _child_run.exit_code == 0
+        assert len(_child_run.outcomes) == 17
+>       assert all(outcome == "passed" for outcome in _child_run.outcomes.values())
+E       assert False
+E        +  where False = all(<generator object test_candidate_is_not_accepted_as_historical_child.<locals>.<genexpr> at 0x107ca0ee0>)
+
+tests/unit/test_b649_min_s2_advanced_11row_exact_adoption_r1.py:761: AssertionError
+SKIPPED_NODE_ID: tests/unit/test_b649_min_s2_advanced_11row_exact_adoption_r1.py::test_protected_judge_report_observation
+SKIP_REASON: per-worktree Judge report not present on this host
+SKIP_ORIGIN: pinned historical Child test line67; outer mirror line363. Original R1 output omitted -rs; faithful current reconstruction with -vv/-rs/JUnit supplies exact child skip details.
+
+FIRST_OBSERVED_DIFFERENCE: Original19PASS used shared common Git metadata containing the authentic sealed historical Judge report. R1 standalone Git copy contained commit/blob objects but omitted that non-Git report.
+CONFIRMED_RCA: Missing non-Git historical Judge report causes original Child observation test to skip with exit0. Candidate mirrors that skip, then its all17passed assertion fails. Only binding authentic report bytes restores19PASS in the same fixed e440 tree.
+UNRESOLVED_CAUSES: NONE for Advanced19 recovery. Original R1 historical accounting gaps and REFUTED verdict remain attached to that original attempt.
+
+PREVIOUS_19_PASS_CONTEXT: ADV11_MODULE_GATE_R2.json; shared common Git, authentic report present; external Python .venv/bin/python; -p no:cacheprovider --tb=short -q; PYTHONPATH=src; external app-data/TMP/cache/bytecode/basetemp; pre-commit HEAD86f644/tree12997d3. That receipt is contextual evidence, not a fresh exact-e440 run.
+PREVIOUS_19_PASS_VERSION_LIMIT:Exact Python/pytest versions were not recorded in the old successful receipt. Python3.13 is enforced by that runner; current and R1 failed environments are observed3.13.8/9.1.1. This missing historical minor-version observation is not used as causal proof; controlled current before/after runs use the identical interpreter and pytest.
+FAILED_PREFLIGHT_CONTEXT: R1 standalone /private/tmp/e440-full-gate.rqGetV/testrepo; exacte440/tree294cb; Python3.13.8/pytest9.1.1; report absent;19collected17P1F1S. R1 launch env/cwd/umask were not captured. Current controlled missing-report reconstruction records them and reproduces same IDs/failure/skip.
+CORRECTED_EXECUTION_CONTEXT: /private/tmp/adv19-recovery-ea4ub0bv/testrepo; standalone detached exacte440; independent full copied object database, no alternates/remotes/shallow state; original historical Child/Parent graph and source blob/SHA checks enforced; authentic report at original common-Git locator with SHA 216340c3d1cd2b7724571d95e4c7951d731fd48d04996dd10d53e83b98e12a3b; cwd/PYTHONPATH/Python/pytest/app-data/umask/temp/cache fully recorded in runtime-results/*.launch.json.
+PYTHON: /Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/python
+PYTHON_VERSION:3.13.8
+PYTEST_VERSION:9.1.1
+APP_DATA_MODE:0700
+UMASK_SET_BY_FOCUSED_LAUNCHER:0077
+QUALITY_LAUNCHER_MEASURED_UMASK:0077
+WORKTREE_VENV_CREATED:NO
+
+ADVANCED_TOTAL_COLLECTED:19
+ADVANCED_PASSED:19
+ADVANCED_FAILED:0
+ADVANCED_ERRORS:0
+ADVANCED_SKIPPED:0
+ADVANCED_XFAILED:0
+
+HISTORICAL_CHILD_RESULT:PASS; true b280d90be0c35b8c5b1ca7798a394332194f8887, parent69d2d3fe2696623d75e876e5cd96085297da821c, tree7d94024cebbce0c05d80902256ccae137fcbc279; all17 original cases passed, as enforced by the unchanged candidate guard and each mirrored original ID.
+WRONG_PARENT_NEGATIVE:PASS
+SOURCE_IDENTITY_NEGATIVES:PASS; source SHA/tree/Parent checks plus supplemental source/blob/result-negative IDs
+RESULT_NEGATIVE:PASS
+SUBPROCESS_FAILURE_NEGATIVE:PASS; synthetic ChildRun contract plus actual nonzero exit/stderr/timeout subprocess test in supplemental50 run
+COMBINED_NORMAL:46collected/46passed/0fail/0error/0skip/0xfail
+COMBINED_REVERSE:46collected/46passed/0fail/0error/0skip/0xfail; exact reverse outer order and reverse Child T24927 order verified
+
+RUFF:PASS; targeted Advanced, T249 dual-profile and T249 isolation files; exit0
+PYRIGHT:PASS; same3 files, strict project config, --pythonpath external interpreter --pythonversion3.13; exit0;0errors/0warnings/0informations
+PYRIGHT_LAUNCH_NOTE: Initial command incorrectly combined mutually exclusive --pythonpath and --venvpath; exit4 saved. Removed --venvpath and reran Pyright only. Final command prints an expected missing local .venv lookup note and available-version notice; no dependency upgrade or local .venv creation occurred.
+DIFF_CHECK:PASS; both dedicated and external e440 checkouts, git diff --check BASE exit0
+
+CHANGED_PATHS:No product files. Task-owned external launch scripts/report binding, new worktree/branch metadata, task Fable receipts/locks, task-only external runtime.
+FINAL_FILE_SHA256:5f1198daf582db4340c2bf424071375a442e8ca9e54fd8d27e4d10d03ef9f067
+LOCAL_COMMIT_COUNT:0
+COMMIT_REASON:Environment-only repair; no empty commit created.
+FINAL_COMMIT:e440d4298551ce93ef3ea9a9226143784afa3eff
+FINAL_TREE:294cbf6bbe7ee8a8ebad947f397852edc1981b57
+FINAL_PARENT:86f644010f41cd627f436c8d5cf9e0b5cca8fcdc
+WORKTREE:/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_R3_E440_ADV19_PREFLIGHT_RECOVERY_R1
+WORKTREE_BRANCH:codex/b649-r3-e440-adv19-preflight-recovery-r1
+WORKTREE_DISPOSITION:RETAIN
+WORKTREE_STATUS:clean
+
+AC01_TO_AC11:
+AC01: PASS — baseline.json + final-identity-and-audit.json: exact e440 HEAD/tree/parent, Advanced SHA, original Judge report SHA
+AC02: PASS — captures/reproduce-missing-report-advanced.json + runtime-results/missing-report.xml: exact FAILED/SKIPPED IDs, traceback and historical skip reason
+AC03: PASS — Missing authentic report reproduces17P/1F/1S; adding only exact report bytes flips same fixed Advanced19 IDs to19P; test/source unchanged
+AC04: PASS — captures/recovered-advanced19.json + runtime-results/recovered-advanced.summary.json:19 collected and passed;0 fail/error/skip/xfail
+AC05: PASS — All original historical17 cases executed in true pinned Child and mirrored individually; candidate guard asserts Child exit0/17outcomes/allpassed. Covers all originally failing12 without narrowing to them; historical17-nodeids.txt
+AC06: PASS — Advanced incorrect_source_sha_or_tree_rejected + candidate_is_not_accepted_as_historical_child; supplemental wrong_source_sha_blob_and_result_are_rejected; source/test unchanged
+AC07: PASS — Advanced nonzero_child_result_preserves_failure_and_stderr; supplemental actual subprocess_exit_timeout_and_stderr_are_not_hidden
+AC08: PASS — captures/combined-normal-exact46.json + combined-reverse-exact46.json; exact same46 IDs; exact reversal; child T24927 each order allpassed/no solver/no xfail
+AC09: PASS — captures/focused-quality-checks.json: Ruff and both diff checks exit0; captures/pyright-python313-corrected-options.json: Pyright Python3.13 exit0/0diagnostics
+AC10: PASS — No tracked product modifications in dedicated/source/external e440 checkout. Protected verifier/Family/pins/result unchanged; final-identity-and-audit.json
+AC11: PASS — Environment-only repair with persisted exact report and startup recipe; original REFUTED SHA unchanged;0FULL; main/primary HEAD unchanged;0remote;0commits
+
+PREVIOUS_FULL_JUDGE_VERDICT:REFUTED
+PREVIOUS_REFUTED_REPORT_SHA256:028e60ce4b0290a97c3b140b902157e4eb72eb2d1527f6297710c10a9dc22c68
+FULL_SUITE_RERUN:NO
+FULL_SUITE_GREEN:NOT_CLAIMED
+MAIN_MUTATED:NO
+REMOTE_WRITE:NO
+PRIMARY_HEAD_AND_MAIN_REF:17a03e3305671d09578d81c29013ca15b9ca4a6d
+REMAINING_TASK_MODEL:強模型 — 新固定 Tree 的正式 FULL Gate (no product tree change was needed; recovered candidate remains exacte440/tree294cb)
+
+ATTEMPT_ACCOUNTING:5 focused pytest commands: controlled missing-report19 (17P1F1S); recovered Advanced19PASS; supplemental Advanced+T249+isolation50PASS; exact normal46PASS; exact reverse46PASS. No FULL/CI/Judge run. Initial lock gate and Pyright option error preserved, not erased.
+LOCK_RECOVERY:Owner explicitly authorized task-only anchor initialization after5second stable/no-record/no-active-task-Ruby observation. Same original prepare-unbound-external command retried; repository generation SHA remained unchanged; no other task anchors changed.
+SUPPLEMENTAL_SCOPE:Initial combined run included4 isolation contract cases in addition to required46; all50 passed. Required normal/reverse46 were then run explicitly, and their exact ID sets/orders were audited.
+FALSIFIABILITY_CHECK:CONFIRMED for environment fix; same unmodified tree and test IDs fail without authentic evidence and pass after only binding the exact pinned report. No product tests were changed; no skip/xfail/mock/sys.modules clearing introduced.
+
+FILES_WRITTEN_DURING_TASK:Task checkpoint, packet/baseline/authorization/stop receipts, launch scripts, sealed original report copy, saved JUnit/launch/summary/child JSON and final reports/manifests under this task root; designated new worktree and its own branch/Git metadata; external task runtime/testrepo/app-data/cache/temp.
+PRE_EXISTING_FILES_MODIFIED:No product/old report/Family/pin/sealed-result files. Only allowed new-task Git/Fable metadata was created.
+TASK_CREATED_FILES_RETAINED:Task receipts, dedicated worktree/branch, external runtime/testrepo; final manifest accounts persisted receipts.
+TASK_CREATED_FILES_DELETED:Historical subprocess fixture removed only its successful task-created temporary Child worktree/runtime per unchanged baseline fixture; no preexisting worktree or branch was removed. Exact names of success transient subtrees were not retained by that existing fixture.
+PRIMARY_DIRTY_PRESERVATION:All baseline collapsed untracked entries remain; no task writes target preexisting dirty/untracked products. Own task checkpoint/receipt entries were added. Unrelated initial preflight-time Gate provenance entry was observed and left untouched.
+GIT_NETWORK_METADATA_WRITES:NONE
+HARNESS_METADATA:Task checkpoint anchor + specifically authorized task execution anchor only; repository-generation hash unchanged.
+RUNTIME_TRANSITION_OCCURRED:NO
+IMPLEMENTATION_LIFECYCLE_STATUS:COMPLETE
+PR_PUBLICATION_STATUS:NOT_APPLICABLE
+POSTMERGE_LIFECYCLE_STATUS:NOT_APPLICABLE
+BRANCH_CLEANUP_STATUS:NOT_APPLICABLE; retained per Packet
+FULL_PR_LIFECYCLE_CLOSED:NO
+
+FOLLOW_UP_STARTUP:See follow-up-gate-start.txt. Authentic historical report copy is sealed-historical-judge-report.md, SHA 216340c3d1cd2b7724571d95e4c7951d731fd48d04996dd10d53e83b98e12a3b. New formal FULL Gate requires separate Owner Packet; this task did not execute it.
+FABLE_FEEDBACK:Newly created receipt directory without an execution anchor was classified as legacy state despite zero records. Document initial task-lock acquisition before creating the task capture directory, or provide a scoped initializer in a separately authorized skill change. This task made no shared-skill changes.

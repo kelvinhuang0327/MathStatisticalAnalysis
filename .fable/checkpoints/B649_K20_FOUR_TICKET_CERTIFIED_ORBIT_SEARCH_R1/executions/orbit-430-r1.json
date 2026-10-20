@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "task_id": "B649_K20_FOUR_TICKET_CERTIFIED_ORBIT_SEARCH_R1",
+  "execution_id": "orbit-430-r1",
+  "pid": 91744,
+  "status": "STARTED",
+  "durable_capture_path": null,
+  "started_at": "2026-10-16T06:50:44Z",
+  "ended_at": null,
+  "heavy_scientific": true,
+  "heavy_run_root": "/Users/kelvin/.codex/worktrees/b649-k20-orbit-production-caller-r1/MathStatisticalAnalysis/.task-data/B649_K20_ORBIT_SUCCESSOR_DISPATCHER_R1"
+}

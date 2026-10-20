@@ -1,0 +1,292 @@
+{
+  "task_id": "B649_R3_E440_ADV19_PREFLIGHT_RECOVERY_R1",
+  "root": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_E440_ADV19_PREFLIGHT_RECOVERY_R1",
+  "files": [
+    {
+      "path": "acceptance.json",
+      "size_bytes": 2334,
+      "sha256": "aa257f30c33b099adbd43588cea74283cf70754982e1bdaad24e2ce28167bba7"
+    },
+    {
+      "path": "advanced19-nodeids.txt",
+      "size_bytes": 2108,
+      "sha256": "890f95e835e0f290cf2d05eacf08b29e8458992a7459995274de2c8a93113391"
+    },
+    {
+      "path": "baseline.json",
+      "size_bytes": 1713,
+      "sha256": "2181d016e4432ace924238eb6df2ee6da527809e5bd5d980b515ad7a1bc17d69"
+    },
+    {
+      "path": "captures/bind-authentic-historical-report.json",
+      "size_bytes": 1828,
+      "sha256": "ca73fab8c683ae967181d86a51adef58bcdf8374b142b749843fcdcd6338447e"
+    },
+    {
+      "path": "captures/combined-normal-exact46.json",
+      "size_bytes": 9596,
+      "sha256": "bda848f4a99f9bada06fccb60b8eea0d6d6ba3adde7c8578bd14ff3e48128721"
+    },
+    {
+      "path": "captures/combined-normal46.json",
+      "size_bytes": 10125,
+      "sha256": "839a8d9d73fe4a1b8a6d5d9e7fc4be7adf4eb667218c9bc92de625516e57373b"
+    },
+    {
+      "path": "captures/combined-reverse-exact46.json",
+      "size_bytes": 14857,
+      "sha256": "fe4d6c9d751545623b39b10befaec173ca9aab99194370e709e7f875d41f402b"
+    },
+    {
+      "path": "captures/focused-quality-checks.json",
+      "size_bytes": 3020,
+      "sha256": "efc5a0deb0aa4c6ff80bf41da3c7f88f43ff542345992d304deacff9853d2aaf"
+    },
+    {
+      "path": "captures/prepare-unbound-external.json",
+      "size_bytes": 1581,
+      "sha256": "d241e56e0ebf8e8d240568d33d3861951317a580d93617f3122d850d9af67fa5"
+    },
+    {
+      "path": "captures/pyright-python313-corrected-options.json",
+      "size_bytes": 1974,
+      "sha256": "fb968fa2147811c57989a3769badfbbf83c1c95f0a1c3d4d06ae5cb56b16d7c8"
+    },
+    {
+      "path": "captures/recovered-advanced19.json",
+      "size_bytes": 6068,
+      "sha256": "7dc76400f4b7f12cf0e083cda9d883030b735327dc83b8f9c6869c856e66b1f8"
+    },
+    {
+      "path": "captures/reproduce-missing-report-advanced.json",
+      "size_bytes": 7579,
+      "sha256": "da05cf87ce0001778e77929f3156495b680cd83431fdef780620d2021600ed6d"
+    },
+    {
+      "path": "combined46-normal-nodeids.txt",
+      "size_bytes": 5149,
+      "sha256": "0b6af2e8a77f43fa4d9157ba3fd0f5c21ce927b0e485af28fbc00fb31478effa"
+    },
+    {
+      "path": "combined46-reverse-nodeids.txt",
+      "size_bytes": 5149,
+      "sha256": "1dd9d23c30dbcf627d155e276ee1c309351ba8ecc0cca78fc2a01e4c3ffeef81"
+    },
+    {
+      "path": "executions/bind-authentic-historical-report.json",
+      "size_bytes": 450,
+      "sha256": "3b1c6a768947ee561f5ee232038008ae52aec1d93e53d7036cd8f287d0983126"
+    },
+    {
+      "path": "executions/combined-normal-exact46.json",
+      "size_bytes": 432,
+      "sha256": "0abd1e01c167d0373dfdc6c2abf8eab10499c956b9832c34a45b3ca632e490fe"
+    },
+    {
+      "path": "executions/combined-normal46.json",
+      "size_bytes": 420,
+      "sha256": "59ad2a59d333550ae1d8df35293fc722dc1865381ae952805fdbdca45b9e1e46"
+    },
+    {
+      "path": "executions/combined-reverse-exact46.json",
+      "size_bytes": 434,
+      "sha256": "75ce68dc739e5cbcfdc92bcacf95aa96188b31e9bb6c1a4cf72e435ec6fbef91"
+    },
+    {
+      "path": "executions/focused-quality-checks.json",
+      "size_bytes": 430,
+      "sha256": "3ad6b44b3cec18b012e085abaac2b66d23d5cac98ccbbee9c9053da6a102b304"
+    },
+    {
+      "path": "executions/prepare-unbound-external.json",
+      "size_bytes": 434,
+      "sha256": "caa691cca69c1bf271b94561a8d399ed27e4e7c1699ae2342498244151221b18"
+    },
+    {
+      "path": "executions/pyright-python313-corrected-options.json",
+      "size_bytes": 456,
+      "sha256": "a25228ba391cd086fb72b0f23207e2d246a1086362025a8a086463459286850d"
+    },
+    {
+      "path": "executions/recovered-advanced19.json",
+      "size_bytes": 426,
+      "sha256": "f2184dd916ff1f3518aef19909fec232514c215bed802cc92a689628e129ff30"
+    },
+    {
+      "path": "executions/reproduce-missing-report-advanced.json",
+      "size_bytes": 452,
+      "sha256": "e40c1a0d07c5840562c87db07bb67c1128b2922f8fbdaa6dd5a85a9ba9b7d168"
+    },
+    {
+      "path": "final-identity-and-audit.json",
+      "size_bytes": 4033,
+      "sha256": "4fc28e2599cd0b8acf6f878c4d9835ad06ef7e9f530d19ad4cac47018104ec2b"
+    },
+    {
+      "path": "follow-up-gate-start.txt",
+      "size_bytes": 4918,
+      "sha256": "dd7664c0b23e26d7dca17815c6ca967d1fe936eb20223f4c0adb2732a0789762"
+    },
+    {
+      "path": "historical17-nodeids.txt",
+      "size_bytes": 1872,
+      "sha256": "acc0c5c3d7a721528410486e9049f7f6d0ed62159cea57ebe9f61a5bdd240d71"
+    },
+    {
+      "path": "launcher-stop.json",
+      "size_bytes": 775,
+      "sha256": "5b2262bfa0ba76e8f69ad04193579d0ea660ea86923b81e3eb808504f8d3a6f2"
+    },
+    {
+      "path": "original-first-failure-traceback.txt",
+      "size_bytes": 602,
+      "sha256": "1adaa01aaf853f5394565afa8013aaccda5aed3a28936f03eba3dc91e3308cf0"
+    },
+    {
+      "path": "packet.txt",
+      "size_bytes": 9229,
+      "sha256": "94dd45646b1df35f1a22a58d0bdbeec25eb5b0ae7e63047490a71d36c3ab68ac"
+    },
+    {
+      "path": "prepare_external.py",
+      "size_bytes": 3324,
+      "sha256": "5f26743e2d1e1172d9fb6064d8da2b0a22f4c2a11f5423650f2ee7b2174fc556"
+    },
+    {
+      "path": "run_focused.py",
+      "size_bytes": 5882,
+      "sha256": "c8b2eac910a2fcc3f360208b690d2f1eaf0a875f54dd4dbfe9e92353350de788"
+    },
+    {
+      "path": "run_quality.py",
+      "size_bytes": 2870,
+      "sha256": "ea550ce636827b6db2d9d3864d7d2daa347415ebbe561d1b990a3082c95b0f77"
+    },
+    {
+      "path": "runtime-results/combined-normal.launch.json",
+      "size_bytes": 1798,
+      "sha256": "81dcf39951b4ab44c4da8d0d1eca2d95e3be531bc9429c51c17029ccab7d1e07"
+    },
+    {
+      "path": "runtime-results/combined-normal.summary.json",
+      "size_bytes": 8902,
+      "sha256": "d4a4b4102a4f5db535c323f3befbeb5bce6b15644d869c5eb69cb0315ca524e5"
+    },
+    {
+      "path": "runtime-results/combined-normal.xml",
+      "size_bytes": 7232,
+      "sha256": "257e025fb5e542230f0012c9f4a839a45746777a23f7953b0af353f5ae9fe19e"
+    },
+    {
+      "path": "runtime-results/combined-plus-isolation-normal50.launch.json",
+      "size_bytes": 1859,
+      "sha256": "997b76799af33169f355e3aad5e6cf4ec938a142a076140b4792ac3059e6a693"
+    },
+    {
+      "path": "runtime-results/combined-plus-isolation-normal50.summary.json",
+      "size_bytes": 9624,
+      "sha256": "76b64cc184747518175403f19b722507aff290181f3193e74880c56c0beadbf5"
+    },
+    {
+      "path": "runtime-results/combined-plus-isolation-normal50.xml",
+      "size_bytes": 7826,
+      "sha256": "92280b20d864808ceae81c8df928eaf7883e0b9de08ea9e56f176b519aa6da23"
+    },
+    {
+      "path": "runtime-results/combined-reverse.launch.json",
+      "size_bytes": 7128,
+      "sha256": "0378774112b1a6ece06832b95713e774673f6acbc5b92e761be8a627d1a44dd0"
+    },
+    {
+      "path": "runtime-results/combined-reverse.summary.json",
+      "size_bytes": 8902,
+      "sha256": "dd4b249b89d78e7686392cfb175159e98a4fd02bfffc05e9e65b32c2d84eabd8"
+    },
+    {
+      "path": "runtime-results/combined-reverse.xml",
+      "size_bytes": 7232,
+      "sha256": "a179c15b38811af951ccd64fe145ff4ae8e0ea1429bd99b31ba680ff8a2b6de6"
+    },
+    {
+      "path": "runtime-results/missing-report.launch.json",
+      "size_bytes": 1663,
+      "sha256": "b05b421fad7296ac0588b7016ef334daf69ce00b9c8f59854083a4ec474f0ac9"
+    },
+    {
+      "path": "runtime-results/missing-report.summary.json",
+      "size_bytes": 5223,
+      "sha256": "bfa05e1bb6dc1c2b6a6ccaa0271fed68372057cfd4dff5c330ca71937a39d0e6"
+    },
+    {
+      "path": "runtime-results/missing-report.xml",
+      "size_bytes": 4735,
+      "sha256": "46cef1b1d46971410e69b6e8a951976eb6fc3abc6ff186f47c033270a290d6b2"
+    },
+    {
+      "path": "runtime-results/quality-pyright-final.json",
+      "size_bytes": 1256,
+      "sha256": "f59b9322814223fe01b6e5a7e1c8d9ea76c145edfe9e19cf84c6f7e99e68ac60"
+    },
+    {
+      "path": "runtime-results/quality-summary.json",
+      "size_bytes": 2477,
+      "sha256": "b896c2ca8fc77827e15bdbdafaedb533e496f959cf21ed0f845e38e99bf8495e"
+    },
+    {
+      "path": "runtime-results/recovered-advanced.launch.json",
+      "size_bytes": 1732,
+      "sha256": "6bee732591d0299ec3b72cf863cb0d01ac7b27376f576fc04baf692702eb8d8d"
+    },
+    {
+      "path": "runtime-results/recovered-advanced.summary.json",
+      "size_bytes": 3731,
+      "sha256": "7408ad278d34e0c7399ac95abf04762b84da0a5571a764df7b152eb8ef7e539c"
+    },
+    {
+      "path": "runtime-results/recovered-advanced.xml",
+      "size_bytes": 3110,
+      "sha256": "5078b92d695d2b682cd3ed29acceeb3895b7d0a6bdcdb7fa18b26e655db32f85"
+    },
+    {
+      "path": "sealed-historical-judge-report.md",
+      "size_bytes": 18809,
+      "sha256": "216340c3d1cd2b7724571d95e4c7951d731fd48d04996dd10d53e83b98e12a3b"
+    },
+    {
+      "path": "t249-child-reports/t249-child-48tui75s.json",
+      "size_bytes": 7866,
+      "sha256": "60c7aceaa110efaf0781230cfb68766442715f35d647851d8b8be5305d463046"
+    },
+    {
+      "path": "t249-child-reports/t249-child-haj01mlp.json",
+      "size_bytes": 7866,
+      "sha256": "60c7aceaa110efaf0781230cfb68766442715f35d647851d8b8be5305d463046"
+    },
+    {
+      "path": "t249-child-reports/t249-child-wyztjc9u.json",
+      "size_bytes": 7866,
+      "sha256": "5b5ea8d8f95240359797b2963b34f9a24e7a253f7d03fbdb0b0dbac7baf82162"
+    },
+    {
+      "path": "task-lock-authorization.json",
+      "size_bytes": 674,
+      "sha256": "1d3bbad8e673836acfa52a74e3f340084f174408024ac937ee8e0863e99bbac8"
+    },
+    {
+      "path": "worker-report-blocked-initial.txt",
+      "size_bytes": 8228,
+      "sha256": "65b7214e772f512d048b914a4d34a8215b7885752ba7479bf366e057ab678755"
+    },
+    {
+      "path": "worker-report.txt",
+      "size_bytes": 12973,
+      "sha256": "f159f830899cf0af56e162dd3317a57a8bdbcb2a847628e31801180069206378"
+    }
+  ],
+  "authoritative_checkpoint": {
+    "path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_E440_ADV19_PREFLIGHT_RECOVERY_R1.json",
+    "size_bytes": 935,
+    "sha256": "59b2b69aed465eb9dfed34e60e2a3f9f0265249883840f15b327b306e52ab850"
+  },
+  "manifest_self_excluded": true
+}

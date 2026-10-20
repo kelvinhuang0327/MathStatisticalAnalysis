@@ -1,0 +1,107 @@
+{
+  "exit_code": 1,
+  "counts": {
+    "passed": 17,
+    "failure": 1,
+    "error": 0,
+    "skipped": 1
+  },
+  "total": 19,
+  "cases": [
+    {
+      "nodeid": "tests/unit/test_b649_min_s2_advanced_11row_exact_adoption_r1.py::test_identities_judges_and_original_dispositions",
+      "outcome": "passed",
+      "detail": ""
+    },
+    {
+      "nodeid": "tests/unit/test_b649_min_s2_advanced_11row_exact_adoption_r1.py::test_protected_judge_report_observation",
+      "outcome": "skipped",
+      "detail": "Historical Child b280d90be0c35b8c5b1ca7798a394332194f8887 test test_protected_judge_report_observation returned skipped; child_exit_code=0; evidence_dir=None\nchild detail:\nper-worktree Judge report not present on this host\n/private/tmp/adv19-recovery-ea4ub0bv/tmp/adv11-child-2d3cyj3b/historical-child/tests/unit/test_b649_min_s2_advanced_11row_exact_adoption_r1.py:67: per-worktree Judge report not present on this host\nchild stderr:\n/private/tmp/adv19-recovery-ea4ub0bv/testrepo/tests/unit/test_b649_min_s2_advanced_11row_exact_adoption_r1.py:363: Historical Child b280d90be0c35b8c5b1ca7798a394332194f8887 test test_protected_judge_report_observation returned skipped; child_exit_code=0; evidence_dir=None\nchild detail:\nper-worktree Judge report not present on this host\n/private/tmp/adv19-recovery-ea4ub0bv/tmp/adv11-child-2d3cyj3b/historical-child/tests/unit/test_b649_min_s2_advanced_11row_exact_adoption_r1.py:67: per-worktree Judge report not present on this host\nchild stderr:"
+    },
+    {
+      "nodeid": "tests/unit/test_b649_min_s2_advanced_11row_exact_adoption_r1.py::test_incorrect_source_sha_or_tree_rejected",
+      "outcome": "passed",
+      "detail": ""
+    },
+    {
+      "nodeid": "tests/unit/test_b649_min_s2_advanced_11row_exact_adoption_r1.py::test_selection_is_derived_and_weaker_values_rejected",
+      "outcome": "passed",
+      "detail": ""
+    },
+    {
+      "nodeid": "tests/unit/test_b649_min_s2_advanced_11row_exact_adoption_r1.py::test_actual_sources_and_nonregression_vs_641173",
+      "outcome": "passed",
+      "detail": ""
+    },
+    {
+      "nodeid": "tests/unit/test_b649_min_s2_advanced_11row_exact_adoption_r1.py::test_relaxation_domains_recounted_against_donor_evidence",
+      "outcome": "passed",
+      "detail": ""
+    },
+    {
+      "nodeid": "tests/unit/test_b649_min_s2_advanced_11row_exact_adoption_r1.py::test_analytic_step5_certificate",
+      "outcome": "passed",
+      "detail": ""
+    },
+    {
+      "nodeid": "tests/unit/test_b649_min_s2_advanced_11row_exact_adoption_r1.py::test_local_weights_and_bonferroni_closed_forms",
+      "outcome": "passed",
+      "detail": ""
+    },
+    {
+      "nodeid": "tests/unit/test_b649_min_s2_advanced_11row_exact_adoption_r1.py::test_every_load_bearing_envelope_and_rounding",
+      "outcome": "passed",
+      "detail": ""
+    },
+    {
+      "nodeid": "tests/unit/test_b649_min_s2_advanced_11row_exact_adoption_r1.py::test_t264_only_floors_and_universal_cap_separation",
+      "outcome": "passed",
+      "detail": ""
+    },
+    {
+      "nodeid": "tests/unit/test_b649_min_s2_advanced_11row_exact_adoption_r1.py::test_negative_cap_swap_scope_leakage_and_rounding",
+      "outcome": "passed",
+      "detail": ""
+    },
+    {
+      "nodeid": "tests/unit/test_b649_min_s2_advanced_11row_exact_adoption_r1.py::test_negative_wrong_profile",
+      "outcome": "passed",
+      "detail": ""
+    },
+    {
+      "nodeid": "tests/unit/test_b649_min_s2_advanced_11row_exact_adoption_r1.py::test_negative_ledger_mutations",
+      "outcome": "passed",
+      "detail": ""
+    },
+    {
+      "nodeid": "tests/unit/test_b649_min_s2_advanced_11row_exact_adoption_r1.py::test_family_replay",
+      "outcome": "passed",
+      "detail": ""
+    },
+    {
+      "nodeid": "tests/unit/test_b649_min_s2_advanced_11row_exact_adoption_r1.py::test_split_identity_bounds_and_coverage_on_realizations[STEP_3]",
+      "outcome": "passed",
+      "detail": ""
+    },
+    {
+      "nodeid": "tests/unit/test_b649_min_s2_advanced_11row_exact_adoption_r1.py::test_split_identity_bounds_and_coverage_on_realizations[STEP_4]",
+      "outcome": "passed",
+      "detail": ""
+    },
+    {
+      "nodeid": "tests/unit/test_b649_min_s2_advanced_11row_exact_adoption_r1.py::test_remainder_lower_bounds_on_random_graphs",
+      "outcome": "passed",
+      "detail": ""
+    },
+    {
+      "nodeid": "tests/unit/test_b649_min_s2_advanced_11row_exact_adoption_r1.py::test_candidate_is_not_accepted_as_historical_child",
+      "outcome": "failure",
+      "detail": "assert False\n +  where False = all(<generator object test_candidate_is_not_accepted_as_historical_child.<locals>.<genexpr> at 0x1060c3100>)\ntests/unit/test_b649_min_s2_advanced_11row_exact_adoption_r1.py:761: in test_candidate_is_not_accepted_as_historical_child\n    assert all(outcome == \"passed\" for outcome in _child_run.outcomes.values())\nE   assert False\nE    +  where False = all(<generator object test_candidate_is_not_accepted_as_historical_child.<locals>.<genexpr> at 0x1060c3100>)"
+    },
+    {
+      "nodeid": "tests/unit/test_b649_min_s2_advanced_11row_exact_adoption_r1.py::test_nonzero_child_result_preserves_failure_and_stderr",
+      "outcome": "passed",
+      "detail": ""
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "command": [
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/python",
+    "-B",
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_E440_ADV19_PREFLIGHT_RECOVERY_R1/prepare_external.py",
+    "--runtime",
+    "/private/tmp/adv19-recovery-ea4ub0bv",
+    "--source",
+    "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_R3_E440_ADV19_PREFLIGHT_RECOVERY_R1",
+    "--report",
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.git/worktrees/B649_MIN_S2_AB_T242_T241_EXACT_FAMILY_AUTHORITY_R1/task-evidence/fresh-judge-report.md"
+  ],
+  "stdout": "{\"head\": \"e440d4298551ce93ef3ea9a9226143784afa3eff\", \"report_present\": true, \"report_sha256\": \"216340c3d1cd2b7724571d95e4c7951d731fd48d04996dd10d53e83b98e12a3b\", \"repository\": \"/private/tmp/adv19-recovery-ea4ub0bv/testrepo\", \"tree\": \"294cbf6bbe7ee8a8ebad947f397852edc1981b57\"}\n",
+  "stderr": "",
+  "exit_status": 0,
+  "started_at": "2026-10-19T14:23:25Z",
+  "ended_at": "2026-10-19T14:23:26Z",
+  "execution_identity": {
+    "repository_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis",
+    "worktree_path": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_R3_E440_ADV19_PREFLIGHT_RECOVERY_R1",
+    "head": "e440d4298551ce93ef3ea9a9226143784afa3eff",
+    "tree": "294cbf6bbe7ee8a8ebad947f397852edc1981b57",
+    "launcher_path": "/Users/kelvin/.codex/skills/fable-method/scripts/task_checkpoint.rb",
+    "launcher_sha256": "babba3757a7ea9ad59c7ff9b18b6e4497dbc887b86eebfb09ccae1a36ab96275",
+    "runtime_executable": "/System/Library/Frameworks/Ruby.framework/Versions/2.6/usr/bin/ruby",
+    "runtime_version": "ruby 2.6.10p210 (2022-04-12 revision 67958) [universal.arm64e-darwin26]"
+  }
+}

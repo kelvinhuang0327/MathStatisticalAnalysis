@@ -1,0 +1,18 @@
+research: certify universal T257 for exact profile 66665555555321100000
+
+Re-derive the 15-core/5-zero decomposition and nonnegative corrections.
+Two independent finite-domain recounts agree on all 2897 states and cap257.
+Reconstruct every old243/new236 Route-B term, proving profile UB313329096
+and improvement62540. The full Family replay is an in-memory projection
+only: UB313391560, delta76. Shared Family Authority is unchanged.
+
+Add only exact-profile verifier, 33 focused tests and deterministic result.
+Ruff, format and strict Pyright pass. No S5, solver, attainment or global
+optimality claim. No remote write.
+
+Fresh-context scientific Judge: VERIFIED_WITH_CAVEATS; G01-G17 PASS.
+Exact judged tree: 6925613dda4a93bca22b91d74f5084e21d27f031
+Sealed precommit report SHA256:
+dd8cdc8ded41ecf93a8846aea1ae226979eb18d6c8a54f51c51b0e33066403e2
+Final G18/committed-tree/R15 disposition is external in task-evidence.
+

@@ -138,6 +138,18 @@ as a standing repository policy document.
 - List anything not checked in the handoff. A merge does not update other branches or
   worktrees; they get the fix only after updating onto the new `main`.
 
+- Keep merged PR status separate from candidate and original-source claims. As of
+  `2026-10-13`, PR #373/#375 are merged; the local single `BIG_LOTTO` candidate
+  result is `MATCH`. That proves agreement under the candidate history and
+  existing candidate implementation only. The original capture's dataset/version,
+  history identity, and strategy version remain `UNKNOWN`; original-input
+  reproduction and original parity are not confirmed.
+- When explicitly authorized to synchronize local `.ai/` status, update only the
+  named paragraphs/files, record each worktree's HEAD/status and complete file
+  SHA-256 before/after, preserve existing dirty content, and verify old memory-log
+  prefix bytes. This local documentation maintenance does not update Git refs or
+  establish execution, publication, or parity evidence.
+
 `[Inferred]` from the 2026-10-12 Replay status follow-up; not yet a standing repository
 policy document.
 

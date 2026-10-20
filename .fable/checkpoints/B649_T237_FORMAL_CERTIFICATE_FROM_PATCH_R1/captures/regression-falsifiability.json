@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "command": [
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/python",
+    "-B",
+    "-c",
+    "from copy import deepcopy\nimport pytest\nfrom lottolab.research import b649_min_s2_t257_t237_joint_exact_authority_r1 as c\noriginal=c.enumeration\ndef mutated():\n d=deepcopy(original());d['RETAINED_CLASS_STATES']=d['CORE_ZERO_DEGREE_MATCHINGS'];d['LABELLED_CORE_STATES']=d['LABELLED_CORE_ZERO_DEGREE_MATCHINGS'];d['R_CLASS_RAW_MAXIMA']=d['R_CLASS_CORRECTED_MAXIMA'];return d\nc.enumeration=mutated\ncode=pytest.main(['-p','no:cacheprovider','-q','tests/unit/test_b649_min_s2_t257_t237_joint_exact_authority_r1.py','-k','statistics_units_and_independent_recount or raw_and_corrected_maxima_are_distinct'])\nassert code==pytest.ExitCode.TESTS_FAILED,code\nprint('FALSIFIABILITY_CHECK: CONFIRMED; both original output-semantics defects rejected; in-memory mutations end with this process')\n"
+  ],
+  "stdout": "FF                                                                       [100%]\n=================================== FAILURES ===================================\n________________ test_statistics_units_and_independent_recount _________________\n\ndomain = {'RAW_CLASS_STATES': 3960, 'RAW_ZERO_DEGREE_CLASSES': 126, 'GRAPHICAL_ZERO_DEGREE_CLASSES': 31, 'ZERO_GRAPH_MASKS': 1024, ...}\n\n    def test_statistics_units_and_independent_recount(domain: cert.Document) -> None:\n        rows = cast(list[cert.Document], domain[\"STATES\"])\n        unique_sigma = {tuple(cast(list[int], row[\"SIGMA\"])) for row in rows}\n        independent = cert.obj(domain[\"INDEPENDENT_RECOUNT\"])\n        assert sum(1 for _ in cert.raw_sigma_classes()) == domain[\"RAW_CLASS_STATES\"] == 3960\n        assert len(rows) == domain[\"CORE_ZERO_DEGREE_MATCHINGS\"] == 3517\n>       assert len(unique_sigma) == domain[\"RETAINED_CLASS_STATES\"] == 1491\nE       assert 1491 == 3517\nE        +  where 1491 = len({(0, 0, 0, 0, 0, 0, ...), (0, 0, 0, 0, 0, 0, ...), (0, 0, 0, 0, 0, 0, ...), (0, 0, 0, 0, 0, 0, ...), (0, 0, 0, 0, 0, 0, ...), (0, 0, 0, 0, 0, 0, ...), ...})\n\ntests/unit/test_b649_min_s2_t257_t237_joint_exact_authority_r1.py:198: AssertionError\n__________________ test_raw_and_corrected_maxima_are_distinct __________________\n\ndomain = {'RAW_CLASS_STATES': 3960, 'RAW_ZERO_DEGREE_CLASSES': 126, 'GRAPHICAL_ZERO_DEGREE_CLASSES': 31, 'ZERO_GRAPH_MASKS': 1024, ...}\n\n    def test_raw_and_corrected_maxima_are_distinct(domain: cert.Document) -> None:\n        expected_raw = {\n            \"10\": 233,\n            \"12\": 237,\n            \"14\": 237,\n            \"16\": 235,\n            \"18\": 235,\n            \"20\": 233,\n            \"22\": 235,\n            \"24\": 235,\n        }\n        expected_corrected = {\n            \"10\": 233,\n            \"12\": 236,\n            \"14\": 235,\n            \"16\": 232,\n            \"18\": 231,\n            \"20\": 226,\n            \"22\": 224,\n            \"24\": 222,\n        }\n>       assert domain[\"R_CLASS_RAW_MAXIMA\"] == expected_raw\nE       AssertionError: assert {'10': 233, '...16': 232, ...} == {'10': 233, '...16': 235, ...}\nE         \nE         Omitting 1 identical items, use -vv to show\nE         Differing items:\nE         {'18': 231} != {'18': 235}\nE         {'24': 222} != {'24': 235}\nE         {'16': 232} != {'16': 235}\nE         {'20': 226} != {'20': 233}...\nE         \nE         ...Full output truncated (4 lines hidden), use '-vv' to show\n\ntests/unit/test_b649_min_s2_t257_t237_joint_exact_authority_r1.py:237: AssertionError\n=========================== short test summary info ============================\nFAILED tests/unit/test_b649_min_s2_t257_t237_joint_exact_authority_r1.py::test_statistics_units_and_independent_recount\nFAILED tests/unit/test_b649_min_s2_t257_t237_joint_exact_authority_r1.py::test_raw_and_corrected_maxima_are_distinct\n2 failed, 29 deselected in 11.72s\nFALSIFIABILITY_CHECK: CONFIRMED; both original output-semantics defects rejected; in-memory mutations end with this process\n",
+  "stderr": "",
+  "exit_status": 0,
+  "started_at": "2026-10-17T09:10:28Z",
+  "ended_at": "2026-10-17T09:10:40Z",
+  "execution_identity": {
+    "repository_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis",
+    "worktree_path": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_T237_FORMAL_CERTIFICATE_FROM_PATCH_R1",
+    "head": "9acea1331e021a9623fa593997d90cfc89a69136",
+    "tree": "de577e8d6f3ccbe52e663c96ee1528c95a0ee7ec",
+    "launcher_path": "/Users/kelvin/.codex/skills/fable-method/scripts/task_checkpoint.rb",
+    "launcher_sha256": "babba3757a7ea9ad59c7ff9b18b6e4497dbc887b86eebfb09ccae1a36ab96275",
+    "runtime_executable": "/System/Library/Frameworks/Ruby.framework/Versions/2.6/usr/bin/ruby",
+    "runtime_version": "ruby 2.6.10p210 (2022-04-12 revision 67958) [universal.arm64e-darwin26]"
+  }
+}

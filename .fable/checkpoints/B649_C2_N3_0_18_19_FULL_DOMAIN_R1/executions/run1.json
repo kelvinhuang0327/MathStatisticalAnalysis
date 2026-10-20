@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "task_id": "B649_C2_N3_0_18_19_FULL_DOMAIN_R1",
+  "execution_id": "run1",
+  "pid": 60190,
+  "status": "COMPLETED",
+  "durable_capture_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_C2_N3_0_18_19_FULL_DOMAIN_R1/captures/run1.json",
+  "started_at": "2026-10-16T08:54:46Z",
+  "ended_at": "2026-10-16T09:13:20Z",
+  "heavy_scientific": true,
+  "heavy_run_root": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_C2_N3_0_18_19_FULL_DOMAIN_R1/.task-data/B649_C2_N3_0_18_19_FULL_DOMAIN_R1/run1"
+}

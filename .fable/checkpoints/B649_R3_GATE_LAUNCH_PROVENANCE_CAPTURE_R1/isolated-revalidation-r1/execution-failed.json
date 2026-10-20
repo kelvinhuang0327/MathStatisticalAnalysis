@@ -1,0 +1,6 @@
+{
+  "error_type": "TypeError",
+  "error": "Object of type PosixPath is not JSON serializable",
+  "pid": 18760,
+  "time_ns": 1792420225727225000
+}

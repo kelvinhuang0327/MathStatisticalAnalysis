@@ -1,0 +1,33 @@
+{
+  "argv": [
+    "/usr/bin/sandbox-exec",
+    "-f",
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/isolated-revalidation-r1/smoke.sb",
+    "/usr/bin/ruby",
+    "-r",
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/isolated-revalidation-r1/ruby_observer.rb",
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/launch_gate.rb",
+    "--execution-id",
+    "ac10-isolated-normal-r1",
+    "--kind",
+    "smoke",
+    "--python",
+    "/private/tmp/gate-ac10-cb5uv2in/python-env/bin/python",
+    "--source-worktree",
+    "/private/tmp/gate-ac10-cb5uv2in/source",
+    "--expected-head",
+    "e440d4298551ce93ef3ea9a9226143784afa3eff",
+    "--expected-tree",
+    "294cbf6bbe7ee8a8ebad947f397852edc1981b57",
+    "--",
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/smoke_probe.py",
+    "0"
+  ],
+  "pid": 18817,
+  "ppid": 18791,
+  "exit_status": 71,
+  "started_ns": 1792420268651224000,
+  "ended_ns": 1792420268692493000,
+  "stdout": "",
+  "stderr": "sandbox-exec: sandbox_apply: Operation not permitted\n"
+}

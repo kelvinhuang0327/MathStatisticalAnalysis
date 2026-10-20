@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "task_id": "B649_K20_REMAINING_29_COMPACT_CENSUS_R1",
+  "execution_id": "remaining-29-compact-census-r1",
+  "pid": 73662,
+  "status": "COMPLETED",
+  "durable_capture_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_K20_REMAINING_29_COMPACT_CENSUS_R1/captures/remaining-29-compact-census-r1.json",
+  "started_at": "2026-10-19T03:27:35Z",
+  "ended_at": "2026-10-19T03:41:35Z"
+}

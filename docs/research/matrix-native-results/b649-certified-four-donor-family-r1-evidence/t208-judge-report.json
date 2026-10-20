@@ -1,0 +1,813 @@
+{
+  "ACTUAL_VERIFICATION_RUN_COUNTS": {
+    "CP_SAT": 0,
+    "certificate_cli": 1,
+    "complete_local_suite": 0,
+    "focused_pytest": 1,
+    "full_portfolio_enumeration": 0,
+    "heavy_solver": 0,
+    "independent_mathematical_reproduction": 1,
+    "judge_remediation": 0,
+    "protected_commands": 5,
+    "ruff": 1,
+    "strict_pyright": 1,
+    "tests_passed": 20
+  },
+  "AUTHORIZATION_STATUS": "Exact local one-commit certificate/Judge scope only; no expansion.",
+  "BASE_HEAD": "9acea1331e021a9623fa593997d90cfc89a69136",
+  "BASE_RESULT_SHA256": "9fbe17d020573835cd69f16296fee224ff4f83aef8b3e7a644f2ffaabdfe92c9",
+  "BASE_TREE": "de577e8d6f3ccbe52e663c96ee1528c95a0ee7ec",
+  "BRANCH": "codex/b649-s3-t208-certificate-r2",
+  "CANONICAL_REQUIRED_JUDGE_DEPTH": "FULL",
+  "CAVEATS": [
+    {
+      "description": "Upper-bound certification only. Legal attainment and GLOBAL_K20_OPTIMUM remain UNKNOWN; relaxation maxima do not establish support realizability.",
+      "id": "C01",
+      "material": false
+    },
+    {
+      "description": "Conditional Family delta1096 remains NOT_ADOPTED. No Family integration, publication, push, PR or merge is authorized or performed.",
+      "id": "C02",
+      "material": false
+    },
+    {
+      "description": "Historical R15 remains NOT_VERIFIED, as in immutable Base. This local exact-profile certificate does not retroactively certify unrelated history.",
+      "id": "C03",
+      "material": false
+    },
+    {
+      "description": "G17 is task-relative non-mutation. Exact candidate/Base/imported authority identity and primary HEAD/tree are verified; task write ledger is consistent. There is no sealed pre/post dirty-content or other-worktree snapshot, so this report makes no global shared-workstation byte-immutability claim.",
+      "id": "C04",
+      "material": false
+    }
+  ],
+  "CLEANUP_STATUS": "Task worktree/branch and certificate retained per Packet; no cleanup action taken.",
+  "COMMITTED_PATHS": [
+    "docs/research/matrix-native-results/b649-s3-t208-exact-profile-certificate-r2-result.json",
+    "src/lottolab/research/b649_s3_t208_exact_profile_certificate_r2.py",
+    "tests/unit/test_b649_s3_t208_exact_profile_certificate_r2.py"
+  ],
+  "COMMIT_TREE_MATCH": "YES",
+  "COVERED_ITEMS": [
+    "J01",
+    "J02",
+    "J03",
+    "J04",
+    "J05",
+    "J06",
+    "J07",
+    "J08",
+    "J09",
+    "J10",
+    "J11",
+    "J12",
+    "G01",
+    "G02",
+    "G03",
+    "G04",
+    "G05",
+    "G06",
+    "G07",
+    "G08",
+    "G09",
+    "G10",
+    "G11",
+    "G12",
+    "G13",
+    "G14",
+    "G15",
+    "G16",
+    "G17",
+    "G18"
+  ],
+  "CRITERIA": [
+    {
+      "criterion": "J01",
+      "decision": "PASS",
+      "evidence": "judge-preflight.json; all five final-tree capture execution_identity; final Git observation",
+      "observed_result": "HEAD/tree match sealed target, clean candidate; one parent and one local commit.",
+      "requirement": "Exact commit/tree identity"
+    },
+    {
+      "criterion": "J02",
+      "decision": "PASS",
+      "evidence": "certificate source lines 1-78, facts(); independent facts/local-intersection reproduction",
+      "observed_result": "20 tickets, six labels each; 22 triple and 27 pair supports, pair-linearity; profile 5^11,4^2,3^1,0^6 gives g=6+d. No other profile cap imported.",
+      "requirement": "Full exact-profile applicability"
+    },
+    {
+      "criterion": "J03",
+      "decision": "PASS",
+      "evidence": "module universal proof; independent full core/zero recount; derivation in MATHEMATICAL_REVIEW",
+      "observed_result": "Every legal support realization maps to the necessary cross-degree domain; max relaxed bound is 208 without attainment assumption.",
+      "requirement": "Universal T cap coverage"
+    },
+    {
+      "criterion": "J04",
+      "decision": "PASS",
+      "evidence": "judge-independent-reproduction capture",
+      "observed_result": "All 432 classes and all 73,728 labelled assignments agree by r/score/multiplicity; max-plus checked; all 32,768 masks agree with complete graphical sorted degree sets via Erdős–Gallai.",
+      "requirement": "Core and zero independent recounts"
+    },
+    {
+      "criterion": "J05",
+      "decision": "PASS",
+      "evidence": "module exact identity; independent generic decomposition sanity checks; mathematical derivation",
+      "observed_result": "P comprises four nonnegative, disjoint KKK/ZZZ/KKZ/KZZ counting classes and is subtracted. P=0 is not asserted.",
+      "requirement": "Nonnegative corrections"
+    },
+    {
+      "criterion": "J06",
+      "decision": "PASS",
+      "evidence": "immutable R2/R4/R30/R32 regular source pins; independent local coefficient DP",
+      "observed_result": "Applicable minimum-S2 local counting and g_max=11 motif theorem used; source closure 21 files matches immutable Base. R32 catalog cap authorization is not transplanted; T cap comes from this independent proof.",
+      "requirement": "Route-B authority applicability"
+    },
+    {
+      "criterion": "J07",
+      "decision": "PASS",
+      "evidence": "judge-independent-reproduction; read-only CLI",
+      "observed_result": "All 187 integers 22..208, six columns each, equal formal evaluator and independent Fraction/explicit numerator-denominator ceiling. All maxima enumerated; argmax is [208].",
+      "requirement": "All Route-B terms and rounding"
+    },
+    {
+      "criterion": "J08",
+      "decision": "PASS",
+      "evidence": "module motif theorem; independent 187-term computation and local weights",
+      "observed_result": "J<=4*K4+9*(W-3t), not reference multiplier 10. At 208, q=122, S4>=54,656, bound=312,835,000. Reference bound 312,847,544 independently retained.",
+      "requirement": "Stronger bound proof"
+    },
+    {
+      "criterion": "J09",
+      "decision": "PASS",
+      "evidence": "Bonferroni finite table; module and imported bound code; tests",
+      "observed_result": "At most seven winners by disjoint hit-triple pairs; U<=S1-S2+S3-4*S4/7. All m=0..7 satisfy pointwise inequality; S5 is NONE; NOT_USED.",
+      "requirement": "No unsupported S5 or sign error"
+    },
+    {
+      "criterion": "J10",
+      "decision": "PASS",
+      "evidence": "independent reproduction; read-only CLI; preflight regular-file hashes",
+      "observed_result": "Generated deterministic bytes, working result and HEAD blob are identical; SHA256 7f76e162696850f80c68e25cc4dfcf288aa164003bf513c2d85e94f90955ae3b.",
+      "requirement": "Result equals committed bytes"
+    },
+    {
+      "criterion": "J11",
+      "decision": "PASS",
+      "evidence": "base object/result hashes; exact three-file diff; task command/write ledger",
+      "observed_result": "Immutable Family result unchanged; only three new certificate paths committed. Conditional delta 1096 explicitly NOT_ADOPTED.",
+      "requirement": "No Family Authority mutation"
+    },
+    {
+      "criterion": "J12",
+      "decision": "PASS",
+      "evidence": "result BASE/PROOF; original research thread read; Packet and handoff failed-attempt records",
+      "observed_result": "Original research remains bounded research, prior certificate was not certified; historical R15 remains NOT_VERIFIED; no legal attainment/global optimum claimed.",
+      "requirement": "Historical caveats preserved"
+    },
+    {
+      "criterion": "G01",
+      "decision": "PASS",
+      "evidence": "independent Git raw-object hashes, result bytes/hash",
+      "observed_result": "Pinned Base commit/tree/result SHA256 independently confirmed.",
+      "requirement": "Base identity"
+    },
+    {
+      "criterion": "G02",
+      "decision": "PASS",
+      "evidence": "original Packet; read_thread 01a143f5-0ccd-7f81-8a69-b748cd481c8f; result provenance",
+      "observed_result": "Original research task and source thread identified. Optional ZIP explicitly NOT_USED; no claim of ZIP certification.",
+      "requirement": "Research and candidate provenance"
+    },
+    {
+      "criterion": "G03",
+      "decision": "PASS",
+      "evidence": "J02; independent facts and local model count",
+      "observed_result": "5^11,4^2,3^1,0^6; 14 core and six zero vertices under frozen support assumptions.",
+      "requirement": "Exact profile model"
+    },
+    {
+      "criterion": "G04",
+      "decision": "PASS",
+      "evidence": "independent reproduction",
+      "observed_result": "sum d=66, sum d²=316, E=93, W=821, J=2259, Goodman=287, A_max=193.",
+      "requirement": "Derived invariants"
+    },
+    {
+      "criterion": "G05",
+      "decision": "PASS",
+      "evidence": "J05; MATHEMATICAL_REVIEW",
+      "observed_result": "Complement degree balance and triangle decomposition yield exact T identity with constant 233.",
+      "requirement": "Core-zero exact identity"
+    },
+    {
+      "criterion": "G06",
+      "decision": "PASS",
+      "evidence": "J05; MATHEMATICAL_REVIEW",
+      "observed_result": "Each is a cardinality; classes have distinct vertex composition; sign is negative.",
+      "requirement": "Four nonnegative remainders"
+    },
+    {
+      "criterion": "G07",
+      "decision": "PASS",
+      "evidence": "module universal coverage; MATHEMATICAL_REVIEW",
+      "observed_result": "sigma in 0..6-d; 1<=zeta<=6; even r in 6..18; no legal realization excluded.",
+      "requirement": "Cross-degree restrictions"
+    },
+    {
+      "criterion": "G08",
+      "decision": "PASS",
+      "evidence": "judge-independent-reproduction",
+      "observed_result": "Full class rows and all r/score multiplicities independently reproduced.",
+      "requirement": "432 core classes"
+    },
+    {
+      "criterion": "G09",
+      "decision": "PASS",
+      "evidence": "judge-independent-reproduction",
+      "observed_result": "Full 15-bit mask range scanned; mask-domain SHA and every per-r graphical sequence set match.",
+      "requirement": "32768 zero masks"
+    },
+    {
+      "criterion": "G10",
+      "decision": "PASS",
+      "evidence": "judge-independent-reproduction",
+      "observed_result": "Histogram and labelled enumeration/max-plus agree by class spectrum; edge masks and Erdős–Gallai agree by r and sequence.",
+      "requirement": "Independent recount agreement"
+    },
+    {
+      "criterion": "G11",
+      "decision": "PASS",
+      "evidence": "J03/J04/J05",
+      "observed_result": "All seven per-r relaxed maxima match required table; global maximum 208.",
+      "requirement": "Universal T<=208"
+    },
+    {
+      "criterion": "G12",
+      "decision": "PASS",
+      "evidence": "J07",
+      "observed_result": "All six values in all 187 terms independently checked; complete range and argmax.",
+      "requirement": "All 187 exact Route-B terms"
+    },
+    {
+      "criterion": "G13",
+      "decision": "PASS",
+      "evidence": "J08/J09",
+      "observed_result": "g_max-2=9 motif theorem proves stronger S4; reference-ten formula is separately preserved and insufficient alone.",
+      "requirement": "Additional proof for 312835000"
+    },
+    {
+      "criterion": "G14",
+      "decision": "PASS",
+      "evidence": "judge-focused-pytest; judge-ruff; judge-strict-pyright; judge-certificate-cli",
+      "observed_result": "20 tests passed; Ruff passed; strict Pyright 0 errors/warnings/informations; read-only CLI passed.",
+      "requirement": "Focused tests and quality"
+    },
+    {
+      "criterion": "G15",
+      "decision": "PASS",
+      "evidence": "unique-local-commit lifecycle capture; final Git diff/count",
+      "observed_result": "Exactly one commit above immutable Base; exact allowed three-path set, all 100644 additions; no checkpoints in commit.",
+      "requirement": "One local commit and three paths"
+    },
+    {
+      "criterion": "G16",
+      "decision": "PASS",
+      "evidence": "this report; five final-tree execution identities",
+      "observed_result": "VERIFIED_WITH_CAVEATS at exact final committed HEAD/tree; candidate unchanged after sealing.",
+      "requirement": "Fresh-context Judge accepts same tree"
+    },
+    {
+      "criterion": "G17",
+      "decision": "PASS",
+      "evidence": "J11; task command/write ledger; primary create/final identities and counts",
+      "observed_result": "No this-task source write outside new certificate checkout; primary HEAD/tree unchanged; 55 non-task status entries remain. No dirty-content/other-worktree byte-immutability claim.",
+      "requirement": "Task-relative preservation"
+    },
+    {
+      "criterion": "G18",
+      "decision": "PASS",
+      "evidence": "exact command/write ledger; static execution path review; Judge command list",
+      "observed_result": "No push, PR, merge, heavy solver, CP-SAT solve, full portfolio enumeration or Family adoption. Official task-owned Git metadata/receipts and recorded fsmonitor lifecycle accounted for.",
+      "requirement": "No unauthorized side effects"
+    }
+  ],
+  "FAILED_ATTEMPT_REVIEW": {
+    "judge_failed_runs": [],
+    "no_failures_hidden": true,
+    "observed_durable_failures": {
+      "falsifiability": "outer exit0 with expected inner pytest failure after process-local no-op verifier. This confirms the negative check can fail; fresh final verifier checks pass.",
+      "focused-tests-v1": "exit1,19passed1failed; old Fraction fixture had no fractional S4 case; final test now mutates a genuinely fractional K4 ceiling and all20 pass.",
+      "strict-pyright-v1": "exit1: missing list annotation plus venv warning; final source and final strict check pass.",
+      "strict-pyright-v2": "exit1: inferred Python3.9 rejects type alias; final check explicitly uses3.13 and passes."
+    },
+    "worker": [
+      {
+        "ACTION": "create native goal",
+        "RESULT": "Existing active native goal already represents user request; no goal created or prior goal resumed."
+      },
+      {
+        "ACTION": "first protected ruff-v1 attempt",
+        "RESULT": "PRIOR_PROCESS_ACTIVE before execution acquisition; no ruff record created. Task-owned git fsmonitor inherited FD10."
+      },
+      {
+        "ACTION": "initial direct Pyright parameter selection",
+        "RESULT": "--pythonpath and --venvpath mutually exclusive; no analysis performed."
+      },
+      {
+        "ACTION": "strict-pyright-v1",
+        "RESULT": "one missing list annotation; fixed before commit."
+      },
+      {
+        "ACTION": "strict-pyright-v2",
+        "RESULT": "environment inferred Python 3.9; corrected --pythonversion 3.13; no source changes."
+      },
+      {
+        "ACTION": "focused-tests-v1",
+        "RESULT": "19 passed, 1 test fixture StopIteration; all S4 multiples of 7; test corrected to a genuinely fractional K4 ceiling."
+      }
+    ]
+  },
+  "FAMILY_AUTHORITY_MUTATED": false,
+  "FINAL_CANDIDATE_STATUS": "",
+  "FINAL_COMMITTED_TREE": "6745a903fb1dabbea3939212fad0613020429d26",
+  "FINAL_LOCAL_COMMIT": "6a7178354c302daa0ea98b638a687a043cade4d1",
+  "FINDINGS": [],
+  "G01_TO_G18": {
+    "G01": "PASS",
+    "G02": "PASS",
+    "G03": "PASS",
+    "G04": "PASS",
+    "G05": "PASS",
+    "G06": "PASS",
+    "G07": "PASS",
+    "G08": "PASS",
+    "G09": "PASS",
+    "G10": "PASS",
+    "G11": "PASS",
+    "G12": "PASS",
+    "G13": "PASS",
+    "G14": "PASS",
+    "G15": "PASS",
+    "G16": "PASS",
+    "G17": "PASS",
+    "G18": "PASS"
+  },
+  "GENERATED_AT": "2026-10-16T11:15:15.579086+00:00",
+  "GLOBAL_K20_OPTIMUM": "UNKNOWN",
+  "HARNESS_CHANGE_REQUIRED_FOR_ACTUAL_RENAME": "NO",
+  "IMPLEMENTATION_MUTATION_REQUIRED": "NO",
+  "INDEPENDENT_OBSERVED_RESULTS": {
+    "ALL_FORMAL_FRACTION_TERMS": "PASS",
+    "ALL_R_SCORE_MULTIPLICITIES": "PASS",
+    "ARGMAX": [
+      208
+    ],
+    "BASE_OBJECTS": "PASS",
+    "CORE_CLASSES": 432,
+    "CORE_LABELLED_ASSIGNMENTS": 73728,
+    "CORE_MAX_PLUS": "PASS",
+    "DERIVED_FACTS": {
+      "A_MAX": 193,
+      "E_G": 93,
+      "GOODMAN": 287,
+      "J": 2259,
+      "SUM_D": 66,
+      "SUM_D2": 316,
+      "W": 821
+    },
+    "ELAPSED_SECONDS": 4.908191374997841,
+    "EVALUATOR_PINS": 21,
+    "FULL_BOUND": 312835000,
+    "GENERAL_IDENTITY_SAMPLES": 64,
+    "HEAD": "6a7178354c302daa0ea98b638a687a043cade4d1",
+    "LOCAL_QUARTET_PROFILES": 96,
+    "LOCAL_QUARTET_TABLE": {
+      "(0, 0)": 0,
+      "(1, 0)": 0,
+      "(2, 0)": 0,
+      "(3, 0)": 0,
+      "(3, 1)": 0,
+      "(4, 0)": 0,
+      "(4, 1)": 0,
+      "(5, 0)": 112,
+      "(5, 1)": 0,
+      "(6, 0)": 679,
+      "(6, 1)": 448
+    },
+    "LOCAL_TRIPLE_TABLE": {
+      "(0, 0)": 0,
+      "(1, 0)": 0,
+      "(2, 0)": 2800,
+      "(3, 0)": 20272,
+      "(3, 1)": 7000
+    },
+    "PAIR_WEIGHTS": [
+      107800,
+      574000
+    ],
+    "REFERENCE_T207": [
+      207,
+      312837720,
+      65,
+      65,
+      29120,
+      4464320
+    ],
+    "REFERENCE_T208": [
+      208,
+      312847544,
+      73,
+      73,
+      32704,
+      4476192
+    ],
+    "RESULT_COMMITTED_BYTE_IDENTITY": "PASS",
+    "ROUTE_TERMS": 187,
+    "R_TABLE": [
+      [
+        6,
+        -31,
+        6,
+        208
+      ],
+      [
+        8,
+        -44,
+        12,
+        201
+      ],
+      [
+        10,
+        -60,
+        20,
+        193
+      ],
+      [
+        12,
+        -76,
+        30,
+        187
+      ],
+      [
+        14,
+        -92,
+        42,
+        183
+      ],
+      [
+        16,
+        -108,
+        56,
+        181
+      ],
+      [
+        18,
+        -124,
+        66,
+        175
+      ]
+    ],
+    "S4_208": 54656,
+    "SINGLE_WEIGHT": 18611432,
+    "STRONGER_MULTIPLIER": 9,
+    "T207": [
+      207,
+      312824920,
+      115,
+      115,
+      51520,
+      4464320
+    ],
+    "T208": [
+      208,
+      312835000,
+      122,
+      122,
+      54656,
+      4476192
+    ],
+    "TREE": "6745a903fb1dabbea3939212fad0613020429d26",
+    "ZERO_ALL_GRAPHICAL_SEQUENCES": "PASS",
+    "ZERO_MASKS": 32768,
+    "ZERO_MASK_COUNTS": {
+      "10": 105,
+      "12": 455,
+      "14": 1365,
+      "16": 3003,
+      "18": 5005,
+      "6": 1,
+      "8": 15
+    }
+  },
+  "INVALIDATED_EVIDENCE": [
+    {
+      "evidence": "All Worker precommit focused pytest/Ruff/Pyright/result-generation validations",
+      "reason": "Different HEAD/tree from final sealed commit; not reused as Judge final-tree acceptance. Required relevant checks independently run once on committed snapshot."
+    }
+  ],
+  "J01_TO_J12": {
+    "J01": "PASS",
+    "J02": "PASS",
+    "J03": "PASS",
+    "J04": "PASS",
+    "J05": "PASS",
+    "J06": "PASS",
+    "J07": "PASS",
+    "J08": "PASS",
+    "J09": "PASS",
+    "J10": "PASS",
+    "J11": "PASS",
+    "J12": "PASS"
+  },
+  "JUDGED_HEAD": "6a7178354c302daa0ea98b638a687a043cade4d1",
+  "JUDGED_TREE": "6745a903fb1dabbea3939212fad0613020429d26",
+  "JUDGE_CONTEXT_LINEAGE": {
+    "agent_task": "/root/t208_judge",
+    "fork_turns": "none",
+    "implementation_context_inherited": false,
+    "parent_role": "Worker",
+    "worker_handoff_is_claims_only": true
+  },
+  "JUDGE_DEPTH": "FULL",
+  "JUDGE_DEPTH_REASON": "Planner/Owner explicitly requires full independent reproduction of all load-bearing mathematics, both recount methods and all exact Route-B terms; unrelated full-suite is explicitly prohibited.",
+  "JUDGE_DEPTH_RECONCILIATION": "MATCH",
+  "JUDGE_MODE": "FRESH_CONTEXT",
+  "JUDGE_PROCEDURAL_NOTE": "Explanatory commentary preceded the formal routing block; initial reads were read-only. The declared fresh/full boundary preceded all runtime reproduction. No candidate implementation context was inherited.",
+  "JUDGE_SESSION_NAME_ACTUAL": "UNKNOWN",
+  "JUDGE_SESSION_NAME_REQUESTED": "33-judge",
+  "JUDGE_SESSION_NAMING_CAPABILITY": "REQUEST_METADATA_ONLY",
+  "JUDGE_SESSION_RELATION": "FRESH_CONTEXT_CHILD",
+  "JUDGE_SESSION_REUSED": "NO",
+  "LAUNCHER": {
+    "BLOB": "00e2cf4a4f06b0f0a8d8e4be6091a4304e6e2ae4",
+    "MODE": "0755",
+    "PATH": "/Users/kelvin/.codex/skills/fable-method/scripts/task_checkpoint.rb",
+    "SHA256": "babba3757a7ea9ad59c7ff9b18b6e4497dbc887b86eebfb09ccae1a36ab96275"
+  },
+  "LAUNCHER_STATUS": "PRESENT_RUNNABLE",
+  "LEGAL_ATTAINMENT": "UNKNOWN",
+  "LOCAL_COMMIT_COUNT": 1,
+  "MATHEMATICAL_REVIEW": {
+    "BONFERRONI": "For each outcome choose three hit labels from every winner. Pair-linearity makes their three label pairs disjoint, so at most C(7,2)/3=7 tickets win. Direct exact evaluation for m=0..7 proves 1[m>0]<=m-C(m,2)+C(m,3)-(4/7)C(m,4). Summation gives the negative S4 correction; S5 is unused.",
+    "COVERAGE": "All triple supports lie inside K, so every G cross-edge consumes one of the 6-d residual pair labels at its core endpoint. Hence 0<=sigma<=6-d (eleven 0..1, two 0..2, one 0..3). Every zero vertex has six G neighbours and at most five inside Z, giving 1<=zeta<=6. Cross balance sum sigma=sum zeta=r gives 6<=r<=18. H-degrees are 7-d+sigma on K and zeta-1 on Z; consequently 2e(M)=32+r and 2e(N)=r-6, so r is even. Every labelled zero graph is in the full 15-bit mask range. Relaxation may include unrealizable states; its maxima remain upper bounds.",
+    "FINITE_RECOUNTS": "Core histogram weights C(11,n) reproduce all 73,728 labelled assignments and every r/score multiplicity; independent max-plus confirms maxima. All 32,768 zero graphs are scanned even though necessary balance retains only edge counts 0..6. Complete graphical sorted degree-sequence sets agree with an independent Erdős–Gallai enumeration for every retained r.",
+    "IDENTITY_DERIVATION": "For each xy in M, |N_H(x) intersect N_H(y) intersect Z|=6-sigma_x-sigma_y+c_Z(x,y); for uv in N, the analogous K count is 14-zeta_u-zeta_v+c_K(u,v). Splitting every H triangle by K/Z vertex composition gives T(H)=P+6e(M)-sum sigma deg_M+14e(N)-sum zeta deg_N. Substitution yields T(H)=P+54-sum sigma*(sigma-d-4)-sum zeta². Subtract from Goodman 287 to get T(G)=233+sum sigma*(sigma-d-4)+sum zeta²-P.",
+    "INVARIANTS": "All 49 labels have support size 2 or 3; 22*3+27*2=120=20*6. A vertex in d triple supports has 2d+(6-d)=6+d distinct neighbours by pair-linearity. Thus 2E=120+66=186; W=sum C(6+d,2)=821; J=sum C(6+d,3)=2259; Goodman=C(20,3)-1/2 sum g(19-g)=287. A_max=floor((sum d²+4 sum d)/3)=floor(580/3)=193.",
+    "K4_STRONGER_PROOF": "At v, every nonclique triple in its g_v-neighbourhood contains a missing pair. Each missing pair belongs to exactly g_v-2 neighbour triples. Union counting gives C(g_v,3)<=number_of_neighbour_cliques+(g_v-2)*o_v. Sum over v: clique terms count every K4 four times, and sum o_v=W-3t. Since g_max=11, J<=4*K4+9*(W-3t). Thus K4>=max(0,ceil((2259-9*(821-3t))/4)). Multiplier ten is weaker and is retained only as the reference comparison.",
+    "REMAINDERS": [
+      {
+        "composition": "KKK",
+        "meaning": "H triangles with three K vertices",
+        "sign": "nonnegative cardinality, subtracted",
+        "term": "T(M)"
+      },
+      {
+        "composition": "ZZZ",
+        "meaning": "H triangles with three Z vertices",
+        "sign": "nonnegative cardinality, subtracted",
+        "term": "T(N)"
+      },
+      {
+        "composition": "KKZ",
+        "meaning": "An unordered M edge xy and a common G neighbour z in Z, equivalently an induced G two-edge path with K endpoints",
+        "sign": "nonnegative cardinality, subtracted",
+        "term": "sum_EM c_Z"
+      },
+      {
+        "composition": "KZZ",
+        "meaning": "An unordered N edge uv and a common G neighbour x in K, equivalently an induced G two-edge path with Z endpoints",
+        "sign": "nonnegative cardinality, subtracted",
+        "term": "sum_EN c_K"
+      }
+    ],
+    "REMAINDER_DISJOINTNESS": "Within each mixed class the unordered same-side edge is uniquely determined by the three vertices, so counted once. Distinct K/Z compositions prevent overlap between classes. The mixed remainders count G paths, not H triangles; they arise from exact common-neighbour expansion. Dropping P>=0 relaxes an exact identity; P is never assumed zero.",
+    "ROUTE_ALL_TERMS": "All t=22..208 are checked, even if some are not realizable. The independent ceiling uses exact Fraction numerator/denominator division, separate from formal helpers. Maximum is312835000 with all argmax=[208]; at208 q=122, allowance122, S4=54656,S3=4476192. At207 stronger bound312824920. Reference-ten maxima312847544 and t207312837720 agree with Packet. No expected bound is fed into the formal evaluator.",
+    "ROUTE_AUTHORITY": "The formal R32 route_b_envelope is a pure profile evaluator; its broader historical catalog's solver-proof admission is not used as a cap certificate here. The new universal T proof supplies the cap. R2/R4/R30/R32 local min-S2 mathematics applies under the same frozen model, and 21 imported source files match the immutable Base bytes. Independent seven-set category DP, multiplying by seven possible special choices, reproduces S1, both pair weights, all triple local types and all 96 possible quartet graph/contained-triple types.",
+    "S3": "At total graph triangle count t, there are W-3t two-edge induced wedges, t-22 pair-label triangles and exactly 22 triple-support triangles. Independent local counts 2800,20272,7000 give S3=2800*(W-3t)+20272*(t-22)+7000*22=2800*821+11872*(t-22)-30800.",
+    "S4_VALIDITY": "A four-vertex clique contains at most one triple support (two triples would share a pair). For support S, its common outside neighbours are at most min_v_in_S(g_v-2)<=one third of their sum. Summing over supports bounds contained-triple quartets by A_max=193. With true K4 count k, nonnegative omitted S4 terms and independent clique weights 448/679 give S4>=679*k-231*min(k,193). This function has positive slopes 448 and 679, so substituting q<=k is valid. Combine with global floor112. The global floor follows from the R2 contradiction: balanced square sum222 gives at least486 core/outside incidences on374 support/outside pairs. If no quartet contributes, at least112 pairs have two incidences and must inject into only66 distinct core edges; two outside common neighbours of a core edge would form a contributing five/six-edge quartet. Contradiction."
+  },
+  "MISSING_ITEMS": [],
+  "MISSING_JUDGE_EVIDENCE": "NONE",
+  "NATIVE_RULES": "No applicable AGENTS.md found at inspected ancestor/native entry paths; relevant README and .ai context/runbook and pyproject strict-tool requirements read. No source or dependency install performed.",
+  "NEXT_ACTION": "END_WITH_EXACT_T208_CERTIFICATE_DISPOSITION; no correction, second commit or Family integration.",
+  "ORIGINAL_PACKET": "/Users/kelvin/.codex/attachments/08778873-958d-4ed1-85b6-ab44a0a71713/pasted-text-1.txt",
+  "ORIGINAL_PACKET_SHA256": "4ff399abe117eda43757da78dd0c236dbd7e86781850110cae132faca38003f1",
+  "PACKET_JUDGE_DEPTH": "NOT_APPLICABLE",
+  "PARENT_SESSION_NAME": "33",
+  "PRIMARY_BOUNDED_OBSERVATION": {
+    "final_head": "df217c8784d974f73d2f5ed49c2cb45679425455",
+    "final_tree": "7250eccf353e2c9c99047adc6331e6fc7bc9e09f",
+    "global_byte_immutability_claim": false,
+    "initial_durable_head": "df217c8784d974f73d2f5ed49c2cb45679425455",
+    "initial_durable_tree": "7250eccf353e2c9c99047adc6331e6fc7bc9e09f",
+    "initial_non_task_count_source": "Worker chat observation55; no sealed baseline manifest.",
+    "non_task_entries_count": 55,
+    "status_entries_before_report": 95,
+    "task_fable_entries_before_report": 40
+  },
+  "PUBLICATION_STATUS": "NOT_RUN; forbidden by Packet",
+  "REMOTE_WRITE": false,
+  "REPORT_SCHEMA_VERSION": 1,
+  "REPOSITORY": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis",
+  "RESULT_SHA256": "7f76e162696850f80c68e25cc4dfcf288aa164003bf513c2d85e94f90955ae3b",
+  "REUSED_EVIDENCE": [
+    {
+      "evidence": "Worker unique-local-commit/create-worktree captures and write/failed-attempt ledger",
+      "scope": "Historical authorized lifecycle/accounting only, not final-tree mathematical or quality PASS evidence."
+    },
+    {
+      "evidence": "Original research thread read directly",
+      "scope": "Provenance/bounded-research historical status only; every mathematical result independently reproduced."
+    }
+  ],
+  "RULE_PINS": {
+    "/Users/kelvin/.codex/skills/fable-judge/SKILL.md": "491e120f12455d4046638ac89dfb55f794e953c8b98c4a12b7d094c58ecdfaa3",
+    "/Users/kelvin/.codex/skills/fable-judge/references/judge-depth-contract.md": "c02a2189582fcb0a08deef1d6e0faa3576eaf842b4f919d86d89045619193159",
+    "/Users/kelvin/.codex/skills/fable-method/SKILL.md": "747c0e75d8ecab37f475719943f26f457eda73014b1281971c89f6e4c4a21693",
+    "/Users/kelvin/.codex/skills/fable-method/references/judge-handoff.md": "0aeb32bc6a93afc064b8be5cce4c106fd1e76684b428277a38ffac1306ccabf4",
+    "/Users/kelvin/.codex/skills/fable-method/references/task-checkpoint.md": "ddec42a39a41919833fc04e7d351bea85c3cf5d7f097088667e23646871d4c9a"
+  },
+  "RUN_TIMING": {
+    "focused_pytest_reported_seconds": 29.02,
+    "independent_mathematical_seconds": 4.908191374997841,
+    "other_run_start_end": "See durable captures; no unmeasured timing estimate."
+  },
+  "TASK_CLASS": "READ_ONLY_COMPLETION_REVIEW",
+  "TASK_ID": "B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2",
+  "TECHNICAL_OUTCOME": {
+    "ALL_ROUTE_B_TERMS": "PASS",
+    "FULL_PROFILE_BOUND": 312835000,
+    "PROFILE_DELTA": 555396,
+    "ROUTE_B_ARGMAX": [
+      208
+    ],
+    "STRONGER_BOUND_PROOF": "PROVEN",
+    "UNIVERSAL_T_CAP": 208
+  },
+  "VERDICT": "VERIFIED_WITH_CAVEATS",
+  "VERIFICATION_RUNS": {
+    "judge-certificate-cli": {
+      "capture": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/captures/judge-certificate-cli.json",
+      "command": [
+        "env",
+        "PYTHONPATH=/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/src",
+        "PYTHONDONTWRITEBYTECODE=1",
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/python",
+        "-B",
+        "-m",
+        "lottolab.research.b649_s3_t208_exact_profile_certificate_r2"
+      ],
+      "ended_at": "2026-10-16T11:11:48Z",
+      "exit_status": 0,
+      "head": "6a7178354c302daa0ea98b638a687a043cade4d1",
+      "sha256": "b0769ec548a896d5baa01f26e3eef4a3f7b636d44dc9c35ea9ca8127533d720b",
+      "started_at": "2026-10-16T11:11:44Z",
+      "stderr": "",
+      "stdout": "{\"TASK_ID\": \"B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2\", \"UNIVERSAL_T_CAP\": 208, \"FULL_PROFILE_BOUND\": 312835000, \"RESULT_SHA256\": \"7f76e162696850f80c68e25cc4dfcf288aa164003bf513c2d85e94f90955ae3b\"}\n",
+      "tree": "6745a903fb1dabbea3939212fad0613020429d26"
+    },
+    "judge-focused-pytest": {
+      "capture": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/captures/judge-focused-pytest.json",
+      "command": [
+        "env",
+        "PYTHONPATH=/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/src",
+        "PYTHONDONTWRITEBYTECODE=1",
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/python",
+        "-B",
+        "-m",
+        "pytest",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "tests/unit/test_b649_s3_t208_exact_profile_certificate_r2.py"
+      ],
+      "ended_at": "2026-10-16T11:11:03Z",
+      "exit_status": 0,
+      "head": "6a7178354c302daa0ea98b638a687a043cade4d1",
+      "sha256": "2af372eacf05b2808d76a78b694007a92b184ab8f9d6ea14f79adc6a041ccf6b",
+      "started_at": "2026-10-16T11:10:34Z",
+      "stderr": "",
+      "stdout": "....................                                                     [100%]\n20 passed in 29.02s\n",
+      "tree": "6745a903fb1dabbea3939212fad0613020429d26"
+    },
+    "judge-independent-reproduction": {
+      "capture": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/captures/judge-independent-reproduction.json",
+      "command": [
+        "env",
+        "PYTHONPATH=/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/src",
+        "PYTHONDONTWRITEBYTECODE=1",
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/python",
+        "-B",
+        "-c",
+        "from pathlib import Path\nfrom itertools import combinations,combinations_with_replacement,product\nfrom collections import Counter,defaultdict\nfrom fractions import Fraction\nfrom math import comb\nimport hashlib,json,subprocess,random,time\nstart=time.monotonic()\nroot=Path.cwd()\ndef git(*a):return subprocess.check_output([\"git\",\"-c\",\"core.fsmonitor=false\",\"--no-optional-locks\",*a])\nhead=\"6a7178354c302daa0ea98b638a687a043cade4d1\"; tree=\"6745a903fb1dabbea3939212fad0613020429d26\"; base=\"9acea1331e021a9623fa593997d90cfc89a69136\"\nassert git(\"rev-parse\",\"HEAD\").decode().strip()==head and git(\"rev-parse\",\"HEAD^{tree}\").decode().strip()==tree\nassert not git(\"status\",\"--porcelain=v1\",\"--untracked-files=all\").strip()\nfor kind,pin in [(\"commit\",base),(\"tree\",\"de577e8d6f3ccbe52e663c96ee1528c95a0ee7ec\")]:\n raw=git(\"cat-file\",kind,pin);assert hashlib.sha1(kind.encode()+b\" \"+str(len(raw)).encode()+b\"\\0\"+raw).hexdigest()==pin\nassert git(\"rev-parse\",base+\"^{tree}\").decode().strip()==\"de577e8d6f3ccbe52e663c96ee1528c95a0ee7ec\"\nbp=\"docs/research/matrix-native-results/b649-min-s2-owner-ab-t249-t260k4-composition-r1-result.json\"\nraw=git(\"cat-file\",\"blob\",base+\":\"+bp);assert hashlib.sha256(raw).hexdigest()==\"9fbe17d020573835cd69f16296fee224ff4f83aef8b3e7a644f2ffaabdfe92c9\"\nassert (root/bp).read_bytes()==raw\nd=[int(c) for c in \"55555555555443000000\"]; g=[6+x for x in d];R=range(6,19,2)\nfacts={\"SUM_D\":sum(d),\"SUM_D2\":sum(x*x for x in d),\"E_G\":sum(g)//2,\"W\":sum(comb(x,2) for x in g),\"J\":sum(comb(x,3) for x in g),\"GOODMAN\":comb(20,3)-sum(x*(19-x) for x in g)//2,\"A_MAX\":sum(x*(y-2) for x,y in zip(d,g))//3}\nassert facts==dict(SUM_D=66,SUM_D2=316,E_G=93,W=821,J=2259,GOODMAN=287,A_MAX=193)\np=\"docs/research/matrix-native-results/b649-s3-t208-exact-profile-certificate-r2-result.json\"\ncommitted=git(\"cat-file\",\"blob\",\"HEAD:\"+p);assert committed==(root/p).read_bytes()\nassert hashlib.sha256(committed).hexdigest()==\"7f76e162696850f80c68e25cc4dfcf288aa164003bf513c2d85e94f90955ae3b\"\nresult=json.loads(committed)\nfor key,val in facts.items():assert result[\"FACTS\"][key]==val\nhist=defaultdict(Counter);classes=[]\nfor n,a,b,c in product(range(12),range(3),range(3),range(4)):\n sigma=[1]*n+[0]*(11-n)+[a,b,c];score=sum(s*(s-x-4) for s,x in zip(sigma,d[:14]));r=sum(sigma);mult=comb(11,n)\n hist[r][score]+=mult;classes.append([n,a,b,c,r,score,mult])\nlabelled=defaultdict(Counter)\nfor s in product(*[range(7-x) for x in d[:14]]):\n labelled[sum(s)][sum(v*(v-x-4) for v,x in zip(s,d[:14]))]+=1\nassert hist==labelled and len(classes)==432 and sum(sum(v.values()) for v in labelled.values())==73728\nassert classes==result[\"CORE\"][\"CLASS_ROWS\"]\nassert {str(r):[[s,n] for s,n in sorted(cs.items())] for r,cs in sorted(labelled.items())}==result[\"CORE\"][\"R_SCORE_MULTIPLICITIES\"]\nmaxplus={0:0}\nfor x in d[:14]:\n nxt={}\n for r,v in maxplus.items():\n  for s in range(7-x):nxt[r+s]=max(nxt.get(r+s,-10**9),v+s*(s-x-4))\n maxplus=nxt\nassert maxplus=={r:max(cs) for r,cs in labelled.items()}\nedges=list(combinations(range(6),2)); seqs={r:set() for r in R}; counts=Counter();zmax={};digest=hashlib.sha256()\nfor m in range(32768):\n digest.update(m.to_bytes(2,\"big\"));deg=[0]*6\n for b,(x,y) in enumerate(edges):\n  if (m>>b)&1:deg[x]+=1;deg[y]+=1\n r=6+sum(deg)\n if r not in seqs:continue\n seqs[r].add(tuple(sorted(deg)));counts[r]+=1;score=sum((v+1)**2 for v in deg);zmax[r]=max(zmax.get(r,0),score)\neg={r:set() for r in R}\nfor s in combinations_with_replacement(range(6),6):\n r=6+sum(s)\n if r not in eg:continue\n a=tuple(reversed(s))\n if sum(a)%2==0 and all(sum(a[:k])<=k*(k-1)+sum(min(k,v) for v in a[k:]) for k in range(1,7)):eg[r].add(s)\nassert eg==seqs\nassert {str(r):[list(s) for s in sorted(v)] for r,v in seqs.items()}==result[\"ZERO\"][\"GRAPHICAL_SEQUENCES\"]\nassert {str(r):counts[r] for r in R}==result[\"ZERO\"][\"FEASIBLE_MASK_COUNTS\"]\nassert digest.hexdigest()==result[\"ZERO\"][\"MASK_DOMAIN_SHA256\"]\ntable=[[r,maxplus[r],zmax[r],233+maxplus[r]+zmax[r]] for r in R]\nassert table==[[6,-31,6,208],[8,-44,12,201],[10,-60,20,193],[12,-76,30,187],[14,-92,42,183],[16,-108,56,181],[18,-124,66,175]]==result[\"R_CLASS_MAXIMA\"]\n# Independent general complement decomposition on deterministic small graph samples.\nrng=random.Random(208);K=set(range(14));Z=set(range(14,20))\ndef triangles(A,V):return sum(all(y in A[x] for x,y in combinations(t,2)) for t in combinations(V,3))\nfor sample in range(64):\n A=[set() for _ in range(20)]\n for x,y in combinations(range(20),2):\n  if rng.randrange(2):A[x].add(y);A[y].add(x)\n H=[set(range(20))-{x}-A[x] for x in range(20)]\n EM=[(x,y) for x,y in combinations(K,2) if y in H[x]]; EN=[(x,y) for x,y in combinations(Z,2) if y in H[x]]\n sig={x:len(A[x]&Z) for x in K}; zet={u:len(A[u]&K) for u in Z}\n pieces=[triangles(H,K),triangles(H,Z),sum(len(A[x]&A[y]&Z) for x,y in EM),sum(len(A[x]&A[y]&K) for x,y in EN)]\n rhs=sum(pieces)+6*len(EM)-sum(sig[x]*len(H[x]&K) for x in K)+14*len(EN)-sum(zet[u]*len(H[u]&Z) for u in Z)\n assert rhs==triangles(H,range(20)) and min(pieces)>=0\n assert triangles(A,range(20))+rhs==comb(20,3)-sum(len(a)*(19-len(a)) for a in A)//2\n# Independent seven-set coefficient DP. Each winning seven-set has seven special choices.\ndef local_weight(k,E,T=()):\n cnt=Counter()\n for e in E:\n  if not set(e)<=set(T):cnt[sum(1<<x for x in e)]+=1\n if T:cnt[sum(1<<x for x in T)]+=1\n for x in range(k):\n  used=sum(n for mask,n in cnt.items() if mask&(1<<x));cnt[1<<x]+=6-used\n cnt[0]=49-sum(cnt.values())\n states={(0,(0,)*k):1}\n for mask,n in cnt.items():\n  nxt=defaultdict(int)\n  for (used,hit),ways in states.items():\n   for take in range(min(n,7-used)+1):\n    h=tuple(min(3,hit[x]+take*((mask>>x)&1)) for x in range(k));nxt[(used+take,h)]+=ways*comb(n,take)\n  states=nxt\n return 7*states.get((7,(3,)*k),0)\nsingle=local_weight(1,[]); pair=[local_weight(2,[]),local_weight(2,[(0,1)])]\ntriple_edges=list(combinations(range(3),2));quartet_edges=list(combinations(range(4),2))\ntriple_table={}\nfor m in range(8):\n E=[e for i,e in enumerate(triple_edges) if (m>>i)&1];v=local_weight(3,E);triple_table[str((len(E),0))]=v\n assert v==({0:0,1:0,2:2800,3:20272}[len(E)])\ntriple_table[\"(3, 1)\"]=local_weight(3,triple_edges,(0,1,2));assert triple_table[\"(3, 1)\"]==7000\nquartet_table={}; local_count=0\nfor m in range(64):\n E=[e for i,e in enumerate(quartet_edges) if (m>>i)&1]\n for T in [()]+[t for t in combinations(range(4),3) if all(e in E for e in combinations(t,2))]:\n  value=local_weight(4,E,T);local_count+=1;typ=(len(E),int(bool(T)))\n  assert value==({(5,0):112,(6,0):679,(6,1):448}.get(typ,0));quartet_table[str(typ)]=value\nassert single==18611432 and pair==[107800,574000]\nassert single*20==372228640 and 93*pair[1]+97*pair[0]==63838600\ndef ceiling(x):return -((-x.numerator)//x.denominator)\nterms=[];reference=[]\nfor mult,dest in [(9,terms),(10,reference)]:\n for t in range(22,209):\n  w=facts[\"W\"]-3*t;q=max(0,ceiling(Fraction(facts[\"J\"]-mult*w,4)));a=min(q,facts[\"A_MAX\"])\n  s4=max(112,679*q-231*a);s3=2800*(facts[\"W\"]-3*t)+20272*(t-22)+7000*22\n  b=ceiling(Fraction(372228640-63838600+s3)-Fraction(4*s4,7));dest.append([t,b,q,a,s4,s3])\nassert terms==result[\"ROUTE_B\"][\"TERMS\"] and reference==result[\"ROUTE_B\"][\"REFERENCE_MULTIPLIER_10_TERMS\"]\nassert len(terms)==187 and max(row[1] for row in terms)==312835000\nassert [row[0] for row in terms if row[1]==312835000]==[208]\nassert reference[-2][1]==312837720 and reference[-1][1]==312847544\nfor m in range(8):\n lhs=Fraction(m-comb(m,2)+comb(m,3))-Fraction(4*comb(m,4),7);assert lhs>=int(m>0)\nfrom lottolab.research import b649_s3_t208_exact_profile_certificate_r2 as cert\nassert [list(x) for x in cert.r32.route_b_envelope(tuple(d),208,112)]==terms\ncomputed=cert.render(cert.compute_result());assert computed==committed\nfor p,digest in result[\"EVALUATOR_SOURCE_PINS\"].items():\n assert git(\"ls-tree\",\"HEAD\",\"--\",p).decode().startswith(\"100644 blob \")\n b=git(\"cat-file\",\"blob\",\"HEAD:\"+p);assert b==git(\"cat-file\",\"blob\",base+\":\"+p)==(root/p).read_bytes()\n assert hashlib.sha256(b).hexdigest()==digest\nassert git(\"rev-parse\",\"HEAD\").decode().strip()==head and git(\"rev-parse\",\"HEAD^{tree}\").decode().strip()==tree\nassert not git(\"status\",\"--porcelain=v1\",\"--untracked-files=all\").strip()\nprint(json.dumps({\"HEAD\":head,\"TREE\":tree,\"BASE_OBJECTS\":\"PASS\",\"DERIVED_FACTS\":facts,\"CORE_CLASSES\":len(classes),\"CORE_LABELLED_ASSIGNMENTS\":73728,\"ALL_R_SCORE_MULTIPLICITIES\":\"PASS\",\"CORE_MAX_PLUS\":\"PASS\",\"ZERO_MASKS\":32768,\"ZERO_ALL_GRAPHICAL_SEQUENCES\":\"PASS\",\"ZERO_MASK_COUNTS\":dict(counts),\"R_TABLE\":table,\"GENERAL_IDENTITY_SAMPLES\":64,\"LOCAL_QUARTET_PROFILES\":local_count,\"LOCAL_QUARTET_TABLE\":quartet_table,\"LOCAL_TRIPLE_TABLE\":triple_table,\"SINGLE_WEIGHT\":single,\"PAIR_WEIGHTS\":pair,\"ROUTE_TERMS\":len(terms),\"ALL_FORMAL_FRACTION_TERMS\":\"PASS\",\"T207\":terms[-2],\"T208\":terms[-1],\"REFERENCE_T207\":reference[-2],\"REFERENCE_T208\":reference[-1],\"ARGMAX\":[208],\"FULL_BOUND\":312835000,\"STRONGER_MULTIPLIER\":9,\"S4_208\":54656,\"EVALUATOR_PINS\":len(result[\"EVALUATOR_SOURCE_PINS\"]),\"RESULT_COMMITTED_BYTE_IDENTITY\":\"PASS\",\"ELAPSED_SECONDS\":time.monotonic()-start},sort_keys=True))\n"
+      ],
+      "ended_at": "2026-10-16T11:10:16Z",
+      "exit_status": 0,
+      "head": "6a7178354c302daa0ea98b638a687a043cade4d1",
+      "sha256": "b2c9cefb2d525737e9de0848adf605607a01c360a95cdd99593aa19ee8d283aa",
+      "started_at": "2026-10-16T11:10:11Z",
+      "stderr": "",
+      "stdout": "{\"ALL_FORMAL_FRACTION_TERMS\": \"PASS\", \"ALL_R_SCORE_MULTIPLICITIES\": \"PASS\", \"ARGMAX\": [208], \"BASE_OBJECTS\": \"PASS\", \"CORE_CLASSES\": 432, \"CORE_LABELLED_ASSIGNMENTS\": 73728, \"CORE_MAX_PLUS\": \"PASS\", \"DERIVED_FACTS\": {\"A_MAX\": 193, \"E_G\": 93, \"GOODMAN\": 287, \"J\": 2259, \"SUM_D\": 66, \"SUM_D2\": 316, \"W\": 821}, \"ELAPSED_SECONDS\": 4.908191374997841, \"EVALUATOR_PINS\": 21, \"FULL_BOUND\": 312835000, \"GENERAL_IDENTITY_SAMPLES\": 64, \"HEAD\": \"6a7178354c302daa0ea98b638a687a043cade4d1\", \"LOCAL_QUARTET_PROFILES\": 96, \"LOCAL_QUARTET_TABLE\": {\"(0, 0)\": 0, \"(1, 0)\": 0, \"(2, 0)\": 0, \"(3, 0)\": 0, \"(3, 1)\": 0, \"(4, 0)\": 0, \"(4, 1)\": 0, \"(5, 0)\": 112, \"(5, 1)\": 0, \"(6, 0)\": 679, \"(6, 1)\": 448}, \"LOCAL_TRIPLE_TABLE\": {\"(0, 0)\": 0, \"(1, 0)\": 0, \"(2, 0)\": 2800, \"(3, 0)\": 20272, \"(3, 1)\": 7000}, \"PAIR_WEIGHTS\": [107800, 574000], \"REFERENCE_T207\": [207, 312837720, 65, 65, 29120, 4464320], \"REFERENCE_T208\": [208, 312847544, 73, 73, 32704, 4476192], \"RESULT_COMMITTED_BYTE_IDENTITY\": \"PASS\", \"ROUTE_TERMS\": 187, \"R_TABLE\": [[6, -31, 6, 208], [8, -44, 12, 201], [10, -60, 20, 193], [12, -76, 30, 187], [14, -92, 42, 183], [16, -108, 56, 181], [18, -124, 66, 175]], \"S4_208\": 54656, \"SINGLE_WEIGHT\": 18611432, \"STRONGER_MULTIPLIER\": 9, \"T207\": [207, 312824920, 115, 115, 51520, 4464320], \"T208\": [208, 312835000, 122, 122, 54656, 4476192], \"TREE\": \"6745a903fb1dabbea3939212fad0613020429d26\", \"ZERO_ALL_GRAPHICAL_SEQUENCES\": \"PASS\", \"ZERO_MASKS\": 32768, \"ZERO_MASK_COUNTS\": {\"6\": 1, \"8\": 15, \"10\": 105, \"12\": 455, \"14\": 1365, \"16\": 3003, \"18\": 5005}}\n",
+      "tree": "6745a903fb1dabbea3939212fad0613020429d26"
+    },
+    "judge-ruff": {
+      "capture": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/captures/judge-ruff.json",
+      "command": [
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/ruff",
+        "check",
+        "--no-cache",
+        "src/lottolab/research/b649_s3_t208_exact_profile_certificate_r2.py",
+        "tests/unit/test_b649_s3_t208_exact_profile_certificate_r2.py"
+      ],
+      "ended_at": "2026-10-16T11:11:11Z",
+      "exit_status": 0,
+      "head": "6a7178354c302daa0ea98b638a687a043cade4d1",
+      "sha256": "9a5e7c8a38fa69790af810b7d2c19362db1ffb302ae284f5564a5b1deadf6f37",
+      "started_at": "2026-10-16T11:11:11Z",
+      "stderr": "",
+      "stdout": "All checks passed!\n",
+      "tree": "6745a903fb1dabbea3939212fad0613020429d26"
+    },
+    "judge-strict-pyright": {
+      "capture": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/captures/judge-strict-pyright.json",
+      "command": [
+        "env",
+        "PYTHONDONTWRITEBYTECODE=1",
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/pyright",
+        "--pythonversion",
+        "3.13",
+        "--venvpath",
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis",
+        "src/lottolab/research/b649_s3_t208_exact_profile_certificate_r2.py",
+        "tests/unit/test_b649_s3_t208_exact_profile_certificate_r2.py"
+      ],
+      "ended_at": "2026-10-16T11:11:18Z",
+      "exit_status": 0,
+      "head": "6a7178354c302daa0ea98b638a687a043cade4d1",
+      "sha256": "39ff857a406d360c08c7ace6e6c4b0ca62977d1f658d2c04f950b5471c54b50f",
+      "started_at": "2026-10-16T11:11:17Z",
+      "stderr": "",
+      "stdout": "0 errors, 0 warnings, 0 informations\nWARNING: there is a new pyright version available (v1.1.411 -> v1.1.414).\nPlease install the new version or set PYRIGHT_PYTHON_FORCE_VERSION to `latest`\n\n",
+      "tree": "6745a903fb1dabbea3939212fad0613020429d26"
+    }
+  },
+  "WORKER_HANDOFF": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/worker-handoff.json",
+  "WORKER_HANDOFF_SHA256": "ccee65362824a731192a95bfc0e07c929b27ac813239eccc6cb5e653fc0b51de",
+  "WORKER_ROUTE": "NOT_APPLICABLE",
+  "WORKTREE": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2",
+  "WRITE_ACCOUNTING": {
+    "candidate_unchanged_after_seal": true,
+    "judge_deleted_files": [],
+    "judge_git_lifecycle_mutations": [],
+    "judge_product_writes": [],
+    "judge_retained_files": [
+      "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/judge-preflight.json",
+      "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/judge-report.json",
+      "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/captures/judge-independent-reproduction.json",
+      "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/captures/judge-focused-pytest.json",
+      "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/captures/judge-ruff.json",
+      "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/captures/judge-strict-pyright.json",
+      "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/captures/judge-certificate-cli.json",
+      "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/executions/judge-independent-reproduction.json",
+      "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/executions/judge-focused-pytest.json",
+      "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/executions/judge-ruff.json",
+      "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/executions/judge-strict-pyright.json",
+      "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/executions/judge-certificate-cli.json"
+    ],
+    "judge_scratch": "NONE; PYTHONDONTWRITEBYTECODE=1 and python -B; pytest cache disabled; Ruff --no-cache.",
+    "official_runtime_metadata": "Five sequential protected runs update the existing task-owned stable common-metadata execution lock lineage and create their official execution/capture files. No marker initialization or alternate launcher.",
+    "worker_process_termination_ledger": [
+      {
+        "COMMAND": "git fsmonitor--daemon run --detach --ipc-threads=8",
+        "EVIDENCE": "FD10 bound exact task lock inode 248062733; open directory and fsmonitor socket under exact new task worktree.",
+        "EXIT": 0,
+        "FORCE_USED": false,
+        "PID": 97073,
+        "POST_OBSERVATION": "lsof exact lock: no open handles",
+        "SHUTDOWN": "git -c core.fsmonitor=false -C <exact task worktree> fsmonitor--daemon stop",
+        "TASK_OWNED": true
+      }
+    ],
+    "worker_retained_deleted_ledger": {
+      "BYTECODE_AND_PYTEST_CACHE": "disabled; no new in-tree files",
+      "DELETED_TASK_TEMP": [
+        ".ruff_cache/CACHEDIR.TAG",
+        ".ruff_cache/.gitignore",
+        ".ruff_cache/0.15.21/10782392310438632730",
+        ".ruff_cache/0.15.21/9195585411781702428",
+        ".ruff_cache/0.15.21",
+        ".ruff_cache"
+      ],
+      "FAILED_FALSIFIABILITY_MUTATION": "Process-local no-op verifier only; no source write; expected failed negative test observed; restored fresh-process negative test passes.",
+      "RETAINED_FABLE": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/{executions,captures}/*.json; worker-handoff.json; later Judge report and captures",
+      "RETAINED_GIT": "one codex/b649-s3-t208-certificate-r2 branch, linked worktree metadata, index/objects and one commit; task-owned execution anchor",
+      "RETAINED_PRODUCT": [
+        "docs/research/matrix-native-results/b649-s3-t208-exact-profile-certificate-r2-result.json",
+        "src/lottolab/research/b649_s3_t208_exact_profile_certificate_r2.py",
+        "tests/unit/test_b649_s3_t208_exact_profile_certificate_r2.py"
+      ],
+      "RETAINED_WORKSPACE": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2"
+    }
+  }
+}

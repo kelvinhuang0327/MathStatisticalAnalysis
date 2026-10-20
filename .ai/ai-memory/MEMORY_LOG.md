@@ -23,31 +23,30 @@
 - This task does not authorize Replay implementation, Replay architecture-fit work, or
   local-main reconciliation of `ae1bee5…`.
 
-## 2026-10-12 — Replay planning status follow-up (post-bootstrap merge)
+## 2026-10-13 — BIG_LOTTO merged pilot and local candidate status
 
-- `[Confirmed]` Bootstrap commit `f23b18747adecb241ccd0bdcbb3c121ac2635b3a` is an ancestor
-  of the observed `origin/main` at `30d455a35f3e662441b7fd6d704d95fda554abae`; the earlier
-  "after this bootstrap is merged" wording is now outdated.
-- `[Confirmed]` `lottery.replay.read_models` remains `INVENTORIED` in
-  `docs/migration/migration-ledger.yaml`, with no PR or parity evidence. This note updates
-  planning context only; it records no Replay implementation or validation.
-- `[Inferred]` The next safe planning step remains a separate read-only Replay
-  architecture-fit review against current `main`. This recommendation does not authorize
-  Replay implementation.
+- `[Confirmed]` PR #373 merged at `2026-10-13T04:44:57Z` with merge commit `a895e02f0f3a71c29c33bee6612a73ff0bd9fac8`; PR #375 merged at `2026-10-13T07:10:39Z` with merge commit `61bad6d9ed4bdb6977d076d6b7fa28ac7b05f82a`. Both local `origin/main` refs and the observed remote `main` point to the latter commit.
+- `[Confirmed]` Local `RESULT.json` reports `CANDIDATE_REPRODUCTION` / `MATCH` for `BIG_LOTTO` draw `102000010` (`2013/02/01`), with numbers `[4, 8, 30, 33, 37, 44]` and special `null`. The candidate history has 635 rows through draw `102000009` (`2013/01/29`).
+- Sources under the primary checkout's `.task-data/biglotto-candidate-reproduction-r1/`: `RESULT.json` SHA-256 `0bab72d54cad11ce8bd1e26338f1e0badfbcf94c1fb2cf07396483c9f5880708`; `candidate_history.json` SHA-256 `89086d0130ef8dee2ba84edf07af6299433ce4b73f6c7e8d917b2b96d837f7ee`.
+- `MATCH` establishes agreement under this candidate history and existing candidate implementation only. The original capture's dataset/version, history identity, and strategy version remain `UNKNOWN`; original-input reproduction and original parity are not confirmed. `original_reproduction_claimed` and `original_source_identity_established` are both `false`.
+- This entry synchronizes local documentation only. It records no new strategy execution, tests, pilot, CI, commit, push, or PR creation, and does not authorize them.
 
-## 2026-10-13 — BIG_LOTTO capture-conversion pilot merge status
+## 2026-10-14 — Replay planning historical status follow-up (2026-10-12 observation)
 
-- `[Confirmed]` PR #373 merged into `main` at `a895e02f0f3a71c29c33bee6612a73ff0bd9fac8`. Its PR CI run [38338693595](https://github.com/kelvinhuang0327/MathStatisticalAnalysis/actions/runs/38338693595) and main push CI run [38347945573](https://github.com/kelvinhuang0327/MathStatisticalAnalysis/actions/runs/38347945573) both completed successfully.
-- `[Confirmed]` The pilot converted one captured BIG_LOTTO record through canonical snapshot/scoring artifacts and checked the target GET response for eight mapped fields: ordinal, target draw number/date, strategy ID, predicted main numbers, source prediction status, main-number hit count, and special-number hit. It establishes captured-record conversion parity only.
-- `[Unknown]` The original dataset/version, identity of the original 635 history rows, capture-time strategy/runtime identity, and original legacy HTTP response remain unknown or unverified. Prediction regeneration was not run.
-- `[Inferred]` The next bounded step is one `CANDIDATE_REPRODUCTION` using an identified candidate history and declared strategy/runtime. Candidate agreement cannot establish original-source identity or historical regeneration.
-- `[Confirmed]` The migration-ledger entry `lottery.replay.read_models` remains `INVENTORIED`; this pilot does not change its phase or parity-evidence field.
+- `[Confirmed]` This entry records the historical observations in “2026-10-12 — Replay planning status follow-up (post-bootstrap merge)” from `/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis-agent/.ai/ai-memory/MEMORY_LOG.md`. The observation date is `2026-10-12`; the recording date is `2026-10-14`. Remote refs and the migration ledger have not been re-observed for this entry.
+- `[Confirmed]` On `2026-10-12`, bootstrap commit `f23b18747adecb241ccd0bdcbb3c121ac2635b3a` was an ancestor of the then-observed `origin/main` at `30d455a35f3e662441b7fd6d704d95fda554abae`; at that observation, the earlier “after this bootstrap is merged” wording was outdated. This is a historical observation, not a statement about remote refs on `2026-10-14`.
+- `[Confirmed]` At that historical observation, `lottery.replay.read_models` remained `INVENTORIED` in `docs/migration/migration-ledger.yaml`, with no PR or parity evidence. This entry updates planning context only; it records no Replay implementation or validation.
+- `[Inferred]` The subsequent planning recommendation recorded on `2026-10-12` was a separate read-only Replay architecture-fit review against the then-current `main`. This recommendation does not authorize Replay implementation.
 
-## 2026-10-14 — Replay status publication (R2)
+## 2026-10-14 — r7 candidate run and bounded acceptance follow-up
 
-- `[Confirmed]` Old r7 recorded exit 0, `accepted: true`, and candidate `MATCH` at commit `560503e9e0ab897c603205151368b10d33af94c4` / tree `bf43fa58a2bb2b5c9c0d337b6a0c7e90e3c42a41`; its receipt applies only to those old tool bytes.
-- `[Confirmed]` PR #379 merged at 2026-10-14T09:47:50Z into commit `b16cd98dc30c2459701c53024c8bf9b2328da925` / tree `d09c71985187a3151eb1641804bc592da9a635ba`; CI run 38532436278 succeeded for backend and frontend. These new tool bytes have not run through the fixed CPython 3.9.6 receipt path; old r7 and CI are not new runtime or historical-parity evidence.
-- `[Unknown]` Original execution source, complete ordered history, dataset/snapshot, runtime, and loaded-module identity remain `UNKNOWN`; original legacy HTTP response remains unverified, historical parity incomplete, and CTO progress 5/6 (83.3%). The single-record/eight-field conversion result and migration-ledger `INVENTORIED` phase remain unchanged.
+- `[Confirmed]` Prior observations: r7 was a single candidate run using tool commit `560503e9e0ab897c603205151368b10d33af94c4`, tree `bf43fa58a2bb2b5c9c0d337b6a0c7e90e3c42a41`. Independent bounded acceptance was `FRESH_CONTEXT` / `VERIFIED_WITH_CAVEATS`; execution evidence recorded exit `0`, receipt `accepted: true`, and candidate `MATCH`, while original historical parity remains `UNKNOWN`. Source tracing found candidate storage commit `f889545a79d349a25031e12c3419d7e05acbaabe`; this does not establish the five historical execution identities: actual execution source, complete ordered 635-row history, dataset/snapshot, runtime, and module identity, all still `UNKNOWN`. CTO milestones are 5/6 (83.3%); the sole incomplete milestone is original-source parity evidence. Candidate `MATCH` does not establish historical reproduction. This entry records prior evidence only, with no new execution or remote/runtime revalidation.
+## 2026-10-14 — PR #379 merge and remaining candidate evidence
+
+- `[Confirmed]` PR #379 merged at `2026-10-14T09:47:50Z` as merge commit `b16cd98dc30c2459701c53024c8bf9b2328da925` (tree `d09c71985187a3151eb1641804bc592da9a635ba`); its final PR head was `0c05ecf3e2d8274d48ebdaf8291323f7d7d9b497`. CI run `38532436278` completed successfully for backend and frontend. These results do not establish runtime validation of the tools in the pinned CPython 3.9.6 receipt path.
+- `[Confirmed]` The earlier r7 single-execution and bounded-acceptance evidence applies to tool commit `560503e9e0ab897c603205151368b10d33af94c4` / tree `bf43fa58a2bb2b5c9c0d337b6a0c7e90e3c42a41`, not the updated bytes merged by PR #379.
+- `[Confirmed]` The candidate result remains `MATCH` only under the frozen candidate history. Actual original execution source, complete ordered history, dataset/snapshot, runtime, and loaded-module identity remain `UNKNOWN`; CTO progress remains 5/6 (83.3%), with original-source parity as the one incomplete milestone.
+- `[Inferred]` Closing that milestone requires contemporaneous original-execution evidence binding those identities; another candidate-only run cannot establish them.
 
 ## 2026-10-15 — r2 single candidate receipt status
 

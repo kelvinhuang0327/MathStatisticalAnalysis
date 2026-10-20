@@ -1,0 +1,11 @@
+______________ test_candidate_is_not_accepted_as_historical_child ______________
+
+    def test_candidate_is_not_accepted_as_historical_child() -> None:
+        assert _child_run is not None
+        assert _child_run.exit_code == 0
+        assert len(_child_run.outcomes) == 17
+>       assert all(outcome == "passed" for outcome in _child_run.outcomes.values())
+E       assert False
+E        +  where False = all(<generator object test_candidate_is_not_accepted_as_historical_child.<locals>.<genexpr> at 0x107ca0ee0>)
+
+tests/unit/test_b649_min_s2_advanced_11row_exact_adoption_r1.py:761: AssertionError

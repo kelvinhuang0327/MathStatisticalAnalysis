@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "task_id": "B649_CERTIFIED_FOUR_DONOR_FAMILY_INTEGRATION_R1",
+  "execution_id": "stable-snapshot-before-stage-r1",
+  "pid": 96008,
+  "status": "COMPLETED",
+  "durable_capture_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_CERTIFIED_FOUR_DONOR_FAMILY_INTEGRATION_R1/captures/stable-snapshot-before-stage-r1.json",
+  "started_at": "2026-10-17T11:45:08Z",
+  "ended_at": "2026-10-17T11:45:13Z"
+}

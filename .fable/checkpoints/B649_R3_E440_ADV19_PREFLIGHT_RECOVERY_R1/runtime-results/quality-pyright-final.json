@@ -1,0 +1,25 @@
+{
+  "python": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/python",
+  "python_version": "3.13.8 (main, Oct  7 2025, 12:01:51) [Clang 17.0.0 (clang-1700.3.19.1)]",
+  "measured_umask": "0077",
+  "launcher_sha256": "ea550ce636827b6db2d9d3864d7d2daa347415ebbe561d1b990a3082c95b0f77",
+  "results": [
+    {
+      "name": "pyright",
+      "argv": [
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/pyright",
+        "--pythonpath",
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/python",
+        "--pythonversion",
+        "3.13",
+        "tests/unit/test_b649_min_s2_advanced_11row_exact_adoption_r1.py",
+        "tests/unit/test_b649_min_s2_t249_dual_profile_composition_r1.py",
+        "tests/unit/test_b649_t249_collection_isolation_r1.py"
+      ],
+      "cwd": "/private/tmp/adv19-recovery-ea4ub0bv/testrepo",
+      "exit_code": 0,
+      "stdout": "0 errors, 0 warnings, 0 informations\nWARNING: there is a new pyright version available (v1.1.411 -> v1.1.414).\nPlease install the new version or set PYRIGHT_PYTHON_FORCE_VERSION to `latest`\n\n",
+      "stderr": "venv .venv subdirectory not found in venv path /private/tmp/adv19-recovery-ea4ub0bv/testrepo.\n"
+    }
+  ]
+}

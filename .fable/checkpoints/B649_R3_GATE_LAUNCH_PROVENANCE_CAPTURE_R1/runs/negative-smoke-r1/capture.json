@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "command": [
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/python",
+    "-B",
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/smoke_probe.py",
+    "23"
+  ],
+  "stdout": "{\"smoke\": \"negative\", \"observed_pid\": 12270, \"observed_ppid\": 12207, \"observed_pgid\": 12270, \"child_started_ns\": 1792418769420141000, \"launch_receipt_exists_before_child\": true, \"launch_path\": \"/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/negative-smoke-r1/launch.json\", \"launch_sha256\": \"b8d8fd02c65e552fef315f8fb3cadc355d257ad9a4a4dbff82e6749f2cc5073c\", \"launch_mtime_ns\": 1792418769254994877, \"observed_cwd\": \"/private/tmp/gate-launch-20261019-12207-n9fetk/work\", \"observed_python\": \"/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/python\", \"observed_version\": \"3.13.8 (main, Oct  7 2025, 12:01:51) [Clang 17.0.0 (clang-1700.3.19.1)]\", \"observed_pytest\": \"9.1.1\", \"observed_appdata\": \"/private/tmp/gate-launch-20261019-12207-n9fetk/appdata\", \"observed_appdata_mode\": \"0700\", \"observed_umask\": \"0077\", \"observed_basetemp\": \"/private/tmp/gate-launch-20261019-12207-n9fetk/basetemp\", \"observed_bytecode_disabled\": true, \"probe_path\": \"/private/tmp/gate-launch-20261019-12207-n9fetk/work/umask-probe.txt\", \"probe_mode\": \"0600\", \"expected_exit\": 23}\n",
+  "stderr": "negative-smoke-stderr\n",
+  "exit_status": 23,
+  "started_at": "2026-10-19T14:06:08Z",
+  "ended_at": "2026-10-19T14:06:09Z",
+  "execution_identity": {
+    "repository_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis",
+    "worktree_path": "/private/tmp/gate-launch-20261019-12207-n9fetk/work",
+    "head": null,
+    "tree": null,
+    "launcher_path": "/Users/kelvin/.codex/skills/fable-method/scripts/task_checkpoint.rb",
+    "launcher_sha256": "babba3757a7ea9ad59c7ff9b18b6e4497dbc887b86eebfb09ccae1a36ab96275",
+    "runtime_executable": "/System/Library/Frameworks/Ruby.framework/Versions/2.6/usr/bin/ruby",
+    "runtime_version": "ruby 2.6.10p210 (2022-04-12 revision 67958) [universal.arm64e-darwin26]",
+    "provenance_launch_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/negative-smoke-r1/launch.json",
+    "source_head": "e440d4298551ce93ef3ea9a9226143784afa3eff",
+    "source_tree": "294cbf6bbe7ee8a8ebad947f397852edc1981b57",
+    "provenance_launch_sha256": "b8d8fd02c65e552fef315f8fb3cadc355d257ad9a4a4dbff82e6749f2cc5073c"
+  }
+}

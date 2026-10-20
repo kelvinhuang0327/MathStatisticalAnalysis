@@ -1,0 +1,18 @@
+{
+  "argv": [
+    "/usr/bin/sandbox-exec",
+    "-f",
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/isolated-revalidation-r1/controller.sb",
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/python",
+    "-B",
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/isolated-revalidation-r1/revalidate.py"
+  ],
+  "pid": 18791,
+  "ppid": 18790,
+  "started_ns": 1792420262306252000,
+  "ended_ns": 1792420268730189000,
+  "exit_status": 1,
+  "stdout": "",
+  "stderr": "Traceback (most recent call last):\n  File \"/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/isolated-revalidation-r1/revalidate.py\", line 135, in <module>\n    result = command(argv, environment=env, expected=expected_exit)\n  File \"/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/isolated-revalidation-r1/revalidate.py\", line 50, in command\n    raise RuntimeError(\"controlled command failed: \" + repr(argv) + \": \" + result[\"stderr\"])\nRuntimeError: controlled command failed: ['/usr/bin/sandbox-exec', '-f', '/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/isolated-revalidation-r1/smoke.sb', '/usr/bin/ruby', '-r', '/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/isolated-revalidation-r1/ruby_observer.rb', '/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/launch_gate.rb', '--execution-id', 'ac10-isolated-normal-r1', '--kind', 'smoke', '--python', '/private/tmp/gate-ac10-cb5uv2in/python-env/bin/python', '--source-worktree', '/private/tmp/gate-ac10-cb5uv2in/source', '--expected-head', 'e440d4298551ce93ef3ea9a9226143784afa3eff', '--expected-tree', '294cbf6bbe7ee8a8ebad947f397852edc1981b57', '--', '/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/smoke_probe.py', '0']: sandbox-exec: sandbox_apply: Operation not permitted\n\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/isolated-revalidation-r1/revalidate.py\", line 170, in <module>\n    save(\"execution-failed.json\", {\"error_type\": type(error).__name__, \"error\": str(error), \"pid\": os.getpid(), \"time_ns\": time.time_ns()})\n    ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/isolated-revalidation-r1/revalidate.py\", line 30, in save\n    with path.open(\"x\") as stream:\n         ~~~~~~~~~^^^^^\n  File \"/opt/homebrew/Cellar/python@3.13/3.13.8/Frameworks/Python.framework/Versions/3.13/lib/python3.13/pathlib/_local.py\", line 537, in open\n    return io.open(self, mode, buffering, encoding, errors, newline)\n           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nFileExistsError: [Errno 17] File exists: '/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/isolated-revalidation-r1/execution-failed.json'\n",
+  "controller_sb_sha256": "170dead575f66ca4bdc8d57b31d1b2bd1e730e0bac733bbe4702bdc29284a733"
+}

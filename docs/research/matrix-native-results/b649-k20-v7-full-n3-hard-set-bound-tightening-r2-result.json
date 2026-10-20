@@ -1,0 +1,1324 @@
+{
+  "BEST_CANONICAL_RECOUNT_STATUS": "PASS",
+  "BEST_VERIFIED_COUNT": 313239661,
+  "BEST_VERIFIED_PORTFOLIO": [
+    [
+      1,
+      2,
+      34,
+      41,
+      42,
+      45
+    ],
+    [
+      1,
+      17,
+      22,
+      30,
+      33,
+      43
+    ],
+    [
+      2,
+      5,
+      33,
+      35,
+      40,
+      48
+    ],
+    [
+      3,
+      4,
+      10,
+      15,
+      26,
+      27
+    ],
+    [
+      3,
+      8,
+      13,
+      28,
+      31,
+      36
+    ],
+    [
+      3,
+      9,
+      12,
+      16,
+      29,
+      39
+    ],
+    [
+      4,
+      7,
+      36,
+      39,
+      46,
+      49
+    ],
+    [
+      4,
+      18,
+      20,
+      24,
+      28,
+      29
+    ],
+    [
+      5,
+      17,
+      25,
+      32,
+      41,
+      47
+    ],
+    [
+      6,
+      7,
+      9,
+      13,
+      18,
+      26
+    ],
+    [
+      6,
+      10,
+      11,
+      16,
+      24,
+      36
+    ],
+    [
+      6,
+      14,
+      20,
+      31,
+      37,
+      39
+    ],
+    [
+      7,
+      8,
+      10,
+      14,
+      19,
+      29
+    ],
+    [
+      8,
+      9,
+      11,
+      15,
+      20,
+      46
+    ],
+    [
+      11,
+      12,
+      18,
+      23,
+      27,
+      49
+    ],
+    [
+      13,
+      15,
+      19,
+      24,
+      37,
+      49
+    ],
+    [
+      16,
+      19,
+      23,
+      26,
+      28,
+      46
+    ],
+    [
+      21,
+      25,
+      30,
+      38,
+      45,
+      48
+    ],
+    [
+      21,
+      32,
+      40,
+      42,
+      43,
+      44
+    ],
+    [
+      22,
+      34,
+      35,
+      38,
+      44,
+      47
+    ]
+  ],
+  "BEST_VERIFIED_SHA": "0045ac8837fc82e9a585d812173341ac12e05c5de201af7f8fedeacafa19e1ff",
+  "BOUND_PROOFS": [
+    "If U is the complement of kept coverage, i_U(B,C)>=i_full(B,C)-sum_R i_full(B,C,R). Each unconditional triple count is computed exactly from eight Venn-atom cardinalities. Common-number subset counts supply another lower bound L. Then iBC-iABC>=max(0,L-min(iAB,iAC)), proving the cheap pair upper bound. Every count and bound is integral.",
+    "Every ticket is scored over all C(49,6) tickets. A ticket with r<F0-2*rho cannot appear in a triple reaching F0, because union<=sum(r)<=r+2*rho<F0. The threshold is mathematical, never fixed top-L.",
+    "Every unordered triple has a unique smallest global-order anchor. Within its suffix, conditional sorting enumerates each remaining unordered pair exactly once.",
+    "For fixed A, F(A,B,C)=r(A)+|res(B)\\res(A)|+|res(C)\\(res(A) union res(B))|<=r(A)+gA(B)+gA(C). The sum of the two largest remaining gA values bounds the whole block.",
+    "Discarding a suffix ticket T requires r(A)+r(a+1)+r(T)<target; every other suffix ticket has r<=r(a+1), so no competitive pair involving T is lost.",
+    "iABC<=min(iAB,iAC,iBC), so the retained pair bound remains admissible. Exact keys identify two colex ticket ranks; hash collisions cause replacement, never false reuse.",
+    "All new pruning is strict (<target), preserving every optimum tie. Accounted blocks are disjoint. Closure requires their sum to equal C(13983816,3). Timeout includes the active conditional block and every later global anchor in its upper bound."
+  ],
+  "BUILD": {
+    "ARGV": [
+      "clang",
+      "-std=c11",
+      "-O3",
+      "-Wall",
+      "-Wextra",
+      "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/src/lottolab/research/b649_n3_exact/n3_core.c",
+      "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/src/lottolab/research/b649_n3_exact/n3_lower.c",
+      "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/src/lottolab/research/b649_n3_exact/n3_main.c",
+      "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/src/lottolab/research/b649_n3_exact/n3_mtab.c",
+      "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/src/lottolab/research/b649_n3_exact/n3_overlap.c",
+      "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/src/lottolab/research/b649_n3_exact/n3_sig.c",
+      "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/src/lottolab/research/b649_n3_exact/n3_solve.c",
+      "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/src/lottolab/research/b649_n3_exact/n3_solve_legacy.c"
+    ],
+    "BASE_HEAD": "65ec153ad6ede279709ba4b391bd2800309a5d86",
+    "BINARY_SHA256": "d5490564f2b7a28a98657c51a205b370713665c7e43b9782289746c44e6a1568",
+    "SOURCE_SHA256": {
+      "n3.h": "9b9932f6775700e48cf2e895db484ddbff1e36383893489c0af57fc394cbf051",
+      "n3_bounds.h": "0af2bd004d7dd0c411a3ef339a053029e3c67c0e63b57b65f63e47004debd3eb",
+      "n3_core.c": "a3225d642cbdd2ca514d6fd55a542963ce3341fde2805b1579efef874b407f23",
+      "n3_lower.c": "4345ad7d520e9eac38cd64171a750c8bd1125c6daf8190abc5a6140426689359",
+      "n3_main.c": "d269e27db5476a1ee474d6515bea5b6916ec07670a0e482b1cd16369ac0387e1",
+      "n3_mtab.c": "c1d2e217fa73d53b830ccc07cb2c67479dbcb11a9decfe1d30416f46d70065c9",
+      "n3_mtab.h": "06d9d911a0f8fb262554a927d3f51848ba60ef4495df761d97844f791e14775a",
+      "n3_overlap.c": "d32d02d09d91e4321a1223b32246f8a1b1aca2d0bb317f6b94355f1ffa2a0379",
+      "n3_sig.c": "0850a1f1c5a6101b59371c194102563c920e2a8a0c1bb09cdcd2a91d15e9a43b",
+      "n3_sig.h": "1d0b52c9b1bb8821c7231c8044876358837c9d45d0285fe80512d1fad99b3033",
+      "n3_solve.c": "777d6f1835c4189b0878ed4ed0f4f7f321b3497ab2bcd75fa885c08b1c894ec1",
+      "n3_solve.h": "aa72c831cc1a71d14346c64ee20e03c5db1515d750be90e815ccabdfeeb85931",
+      "n3_solve_legacy.c": "4e3cbd1501c9ff479c6387f4a7593f780ceee2e9366ae1dbd1bca45b3eaab74a"
+    }
+  },
+  "CORRECTNESS": {
+    "ARGV": [
+      "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/python",
+      "-m",
+      "pytest",
+      "tests/unit/test_b649_n3_exact_r2.py",
+      "-q",
+      "-s"
+    ],
+    "BOUND_CHECKS": 1188000,
+    "BRUTE_CASES": 1200,
+    "EXIT_CODE": 0,
+    "FRONTIER_CHECKS": 2400,
+    "LOTTERY_LOWER_BOUND_CHECKS": 80000,
+    "MISMATCHES": 0,
+    "MUTATIONS_REJECTED": [
+      "MUTANT_CONDITIONAL_BOUND",
+      "MUTANT_PRUNE_EQUAL",
+      "MUTANT_CACHE_VALUE",
+      "MUTANT_SUFFIX_CUTOFF",
+      "MUTANT_SHARED_LOWER_BOUND",
+      "MUTANT_GEOMETRIC_LOWER_BOUND"
+    ],
+    "OLD_NEW_PARITY_CASES": 460,
+    "POOL49_GEOMETRY_CHECKS": 80,
+    "SOURCE_SHA256": {
+      "n3.h": "9b9932f6775700e48cf2e895db484ddbff1e36383893489c0af57fc394cbf051",
+      "n3_bounds.h": "0af2bd004d7dd0c411a3ef339a053029e3c67c0e63b57b65f63e47004debd3eb",
+      "n3_core.c": "a3225d642cbdd2ca514d6fd55a542963ce3341fde2805b1579efef874b407f23",
+      "n3_lower.c": "4345ad7d520e9eac38cd64171a750c8bd1125c6daf8190abc5a6140426689359",
+      "n3_main.c": "d269e27db5476a1ee474d6515bea5b6916ec07670a0e482b1cd16369ac0387e1",
+      "n3_mtab.c": "c1d2e217fa73d53b830ccc07cb2c67479dbcb11a9decfe1d30416f46d70065c9",
+      "n3_mtab.h": "06d9d911a0f8fb262554a927d3f51848ba60ef4495df761d97844f791e14775a",
+      "n3_overlap.c": "d32d02d09d91e4321a1223b32246f8a1b1aca2d0bb317f6b94355f1ffa2a0379",
+      "n3_sig.c": "0850a1f1c5a6101b59371c194102563c920e2a8a0c1bb09cdcd2a91d15e9a43b",
+      "n3_sig.h": "1d0b52c9b1bb8821c7231c8044876358837c9d45d0285fe80512d1fad99b3033",
+      "n3_solve.c": "777d6f1835c4189b0878ed4ed0f4f7f321b3497ab2bcd75fa885c08b1c894ec1",
+      "n3_solve.h": "aa72c831cc1a71d14346c64ee20e03c5db1515d750be90e815ccabdfeeb85931",
+      "n3_solve_legacy.c": "4e3cbd1501c9ff479c6387f4a7593f780ceee2e9366ae1dbd1bca45b3eaab74a"
+    },
+    "STATUS": "PASS",
+    "ZERO_INCUMBENT_CASES": 3
+  },
+  "DEPTH_SOURCE": "PLANNER_SUPPLIED",
+  "DESTRUCTIVE_ACTION": "rm of this single task-created temporary file",
+  "DESTRUCTIVE_ACTION_AT": "2026-10-06T05:55:55+00:00",
+  "DESTRUCTIVE_ACTION_AUTHORIZATION_SOURCE": "Task-authorized verification scratch cleanup",
+  "DESTRUCTIVE_ACTION_OCCURRED": true,
+  "DESTRUCTIVE_TARGET": "/tmp/b649-n3-r2-build-check",
+  "DESTRUCTIVE_TARGET_POSTSTATE": "Confirmed absent by test ! -e, exit 0",
+  "DESTRUCTIVE_TARGET_PRESTATE": "Task-created compiler-check executable (87064 bytes)",
+  "DEVELOPMENT_ATTEMPTS": [
+    {
+      "VARIANT": "cache-only",
+      "WALL_SECONDS": 310.05443849999574,
+      "WALL_SPEEDUP": 0.9711401260911459
+    },
+    {
+      "VARIANT": "-v2",
+      "WALL_SECONDS": 149.2519128749991,
+      "WALL_SPEEDUP": 2.0174368334708492
+    },
+    {
+      "VARIANT": "-v3",
+      "WALL_SECONDS": 30.76082741600112,
+      "WALL_SPEEDUP": 9.78862832354686
+    }
+  ],
+  "DEVELOPMENT_PROFILE_LIMIT": {
+    "ANCHORS": 16,
+    "SECONDS_PER_VARIANT": 360,
+    "SET": 8,
+    "VARIANTS_MAX": 4
+  },
+  "ENGINEERING_SUCCESS": true,
+  "ENHANCED_EVIDENCE": [
+    {
+      "CHECK": "Native production search on explicit coverage-set brute oracle; six mutants rejected",
+      "INVARIANT": "Admissibility, all optimum ties, disjoint accounting, collision safety, timeout frontier",
+      "RESULT": "RUN_THIS_TASK PASS"
+    },
+    {
+      "CHECK": "All 1360 saved optima replayed through unchanged exact coverage/overlap kernel and new bounds, 20 direct-union witnesses",
+      "INVARIANT": "Previous closed real set optima preserved",
+      "RESULT": "RUN_THIS_TASK PASS; old optimality proofs reused, no full real reruns"
+    }
+  ],
+  "EXACT_PREFIX_PROFILE": {
+    "RUNS": {
+      "NEW": {
+        "ACCOUNTING_COMPLETE": false,
+        "ANCHORS_COMPLETED": 16,
+        "ANCHORS_PRUNED_CONDITIONAL": 0,
+        "A_BOUND_COUNT": 26579,
+        "A_BREAK_POSITION": -1,
+        "A_EXPLORED": 16,
+        "A_LAST": 15,
+        "BEST_F": 5373404,
+        "B_EXPLORED": 52499,
+        "B_LOOP_BREAKS": 16,
+        "B_PRUNED": 0,
+        "CACHE_HITS": 0,
+        "CACHE_MISSES": 3599310,
+        "CANDIDATE_PREFIX_L": 224961,
+        "CLOSED": false,
+        "CONDITIONAL_CANDIDATES": 3599240,
+        "C_LOOP_BREAKS": 52499,
+        "GA_EVALS": 3599240,
+        "IMPROVED": false,
+        "INCUMBENT_F0": 5373404,
+        "LEAF_DIRECT_AUDITS": 15,
+        "LEAF_DIRECT_AUDIT_FAILURES": 0,
+        "LEAVES_EXACT": 70,
+        "LEAVES_PRUNED_LOWER": 95254695,
+        "LEAVES_PRUNED_MARGINAL": 0,
+        "LEAVES_PRUNED_PAIR": 0,
+        "LOWER_BOUND_CALLS": 95254765,
+        "MTAB_BUILDS": 0,
+        "OPEN_UPPER_BOUND": 5501595,
+        "OPTIMAL_TRIPLE_COUNT": 8,
+        "PAIR_CALLS": 70,
+        "PAIR_SHARED_COUNTS": [
+          23,
+          1817849,
+          44968207,
+          37164350,
+          10282284,
+          1022052,
+          0
+        ],
+        "PRUNE_AUDITS": 27,
+        "PRUNE_AUDIT_FAILURES": 0,
+        "RAN": true,
+        "RMIN": 1705668,
+        "SECONDS": 19.824,
+        "SECONDS_CONDITIONAL": 14.036967,
+        "SECONDS_MTAB": 0.0,
+        "SECONDS_PAIR": 0.0,
+        "SECONDS_TRIPLE": 0.0,
+        "SOLVER_BUDGET_SECONDS": 349.095,
+        "STOP_REASON": "ANCHOR_PROFILE_LIMIT",
+        "TIES": [
+          [
+            [
+              12,
+              13,
+              15,
+              19,
+              24,
+              37
+            ],
+            [
+              3,
+              9,
+              16,
+              29,
+              39,
+              49
+            ],
+            [
+              4,
+              7,
+              12,
+              36,
+              39,
+              46
+            ]
+          ],
+          [
+            [
+              3,
+              9,
+              12,
+              16,
+              29,
+              37
+            ],
+            [
+              13,
+              15,
+              19,
+              24,
+              39,
+              49
+            ],
+            [
+              4,
+              7,
+              36,
+              37,
+              46,
+              49
+            ]
+          ],
+          [
+            [
+              4,
+              9,
+              12,
+              19,
+              36,
+              37
+            ],
+            [
+              3,
+              7,
+              24,
+              39,
+              46,
+              49
+            ],
+            [
+              12,
+              13,
+              15,
+              16,
+              29,
+              39
+            ]
+          ],
+          [
+            [
+              12,
+              13,
+              15,
+              19,
+              24,
+              39
+            ],
+            [
+              3,
+              9,
+              16,
+              29,
+              37,
+              49
+            ],
+            [
+              4,
+              7,
+              12,
+              36,
+              37,
+              46
+            ]
+          ],
+          [
+            [
+              3,
+              9,
+              12,
+              16,
+              29,
+              39
+            ],
+            [
+              13,
+              15,
+              19,
+              24,
+              37,
+              49
+            ],
+            [
+              4,
+              7,
+              36,
+              39,
+              46,
+              49
+            ]
+          ],
+          [
+            [
+              4,
+              9,
+              12,
+              19,
+              36,
+              39
+            ],
+            [
+              3,
+              7,
+              24,
+              37,
+              46,
+              49
+            ],
+            [
+              12,
+              13,
+              15,
+              16,
+              29,
+              37
+            ]
+          ],
+          [
+            [
+              3,
+              7,
+              12,
+              24,
+              37,
+              46
+            ],
+            [
+              4,
+              9,
+              19,
+              36,
+              39,
+              49
+            ],
+            [
+              13,
+              15,
+              16,
+              29,
+              37,
+              49
+            ]
+          ],
+          [
+            [
+              3,
+              7,
+              12,
+              24,
+              39,
+              46
+            ],
+            [
+              4,
+              9,
+              19,
+              36,
+              37,
+              49
+            ],
+            [
+              13,
+              15,
+              16,
+              29,
+              39,
+              49
+            ]
+          ]
+        ],
+        "TIES_STORED": 8,
+        "TIME_LIMIT_SECONDS": 360.0,
+        "TRIPLES_ACCOUNTED": "455747139285931747520",
+        "TRIPLES_TOTAL": "455749036306284480760",
+        "TRIPLE_CALLS": 70,
+        "WALL_SECONDS": 30.76082741600112
+      },
+      "OLD": {
+        "ACCOUNTING_COMPLETE": false,
+        "ANCHORS_COMPLETED": 0,
+        "ANCHORS_PRUNED_CONDITIONAL": 0,
+        "A_BOUND_COUNT": 26579,
+        "A_BREAK_POSITION": -1,
+        "A_EXPLORED": 16,
+        "A_LAST": 15,
+        "BEST_F": 5373404,
+        "B_EXPLORED": 69155,
+        "B_LOOP_BREAKS": 16,
+        "B_PRUNED": 486501,
+        "CACHE_HITS": 0,
+        "CACHE_MISSES": 0,
+        "CANDIDATE_PREFIX_L": 224961,
+        "CLOSED": false,
+        "CONDITIONAL_CANDIDATES": 0,
+        "C_LOOP_BREAKS": 69155,
+        "GA_EVALS": 3352520,
+        "IMPROVED": false,
+        "INCUMBENT_F0": 5373404,
+        "LEAF_DIRECT_AUDITS": 15,
+        "LEAF_DIRECT_AUDIT_FAILURES": 0,
+        "LEAVES_EXACT": 70,
+        "LEAVES_PRUNED_MARGINAL": 1932749547,
+        "LEAVES_PRUNED_PAIR": 95254695,
+        "MTAB_BUILDS": 0,
+        "OPEN_UPPER_BOUND": 5501595,
+        "OPTIMAL_TRIPLE_COUNT": 8,
+        "PAIR_CALLS": 95254765,
+        "PRUNE_AUDITS": 58,
+        "PRUNE_AUDIT_FAILURES": 0,
+        "RAN": true,
+        "RMIN": 1705668,
+        "SECONDS": 283.176,
+        "SECONDS_CONDITIONAL": 0.0,
+        "SECONDS_MTAB": 0.0,
+        "SECONDS_PAIR": 253.178,
+        "SECONDS_TRIPLE": 0.003,
+        "SOLVER_BUDGET_SECONDS": 342.926,
+        "STOP_REASON": "ANCHOR_PROFILE_LIMIT",
+        "TIES": [
+          [
+            [
+              12,
+              13,
+              15,
+              19,
+              24,
+              37
+            ],
+            [
+              3,
+              9,
+              16,
+              29,
+              39,
+              49
+            ],
+            [
+              4,
+              7,
+              12,
+              36,
+              39,
+              46
+            ]
+          ],
+          [
+            [
+              3,
+              9,
+              12,
+              16,
+              29,
+              37
+            ],
+            [
+              13,
+              15,
+              19,
+              24,
+              39,
+              49
+            ],
+            [
+              4,
+              7,
+              36,
+              37,
+              46,
+              49
+            ]
+          ],
+          [
+            [
+              4,
+              9,
+              12,
+              19,
+              36,
+              37
+            ],
+            [
+              3,
+              7,
+              24,
+              39,
+              46,
+              49
+            ],
+            [
+              12,
+              13,
+              15,
+              16,
+              29,
+              39
+            ]
+          ],
+          [
+            [
+              12,
+              13,
+              15,
+              19,
+              24,
+              39
+            ],
+            [
+              3,
+              9,
+              16,
+              29,
+              37,
+              49
+            ],
+            [
+              4,
+              7,
+              12,
+              36,
+              37,
+              46
+            ]
+          ],
+          [
+            [
+              3,
+              9,
+              12,
+              16,
+              29,
+              39
+            ],
+            [
+              13,
+              15,
+              19,
+              24,
+              37,
+              49
+            ],
+            [
+              4,
+              7,
+              36,
+              39,
+              46,
+              49
+            ]
+          ],
+          [
+            [
+              4,
+              9,
+              12,
+              19,
+              36,
+              39
+            ],
+            [
+              3,
+              7,
+              24,
+              37,
+              46,
+              49
+            ],
+            [
+              12,
+              13,
+              15,
+              16,
+              29,
+              37
+            ]
+          ],
+          [
+            [
+              3,
+              7,
+              12,
+              24,
+              37,
+              46
+            ],
+            [
+              4,
+              9,
+              19,
+              36,
+              39,
+              49
+            ],
+            [
+              13,
+              15,
+              16,
+              29,
+              37,
+              49
+            ]
+          ],
+          [
+            [
+              3,
+              7,
+              12,
+              24,
+              39,
+              46
+            ],
+            [
+              4,
+              9,
+              19,
+              36,
+              37,
+              49
+            ],
+            [
+              13,
+              15,
+              16,
+              29,
+              39,
+              49
+            ]
+          ]
+        ],
+        "TIES_STORED": 8,
+        "TIME_LIMIT_SECONDS": 360.0,
+        "TRIPLES_ACCOUNTED": "1564374865706160",
+        "TRIPLES_TOTAL": "455749036306284480760",
+        "TRIPLE_CALLS": 70,
+        "WALL_SECONDS": 301.1063065000053
+      }
+    },
+    "SAME_ANCHOR_PREFIX": true,
+    "WALL_SPEEDUP": 9.78862832354686
+  },
+  "EXECUTION_NOTE": "Concurrent protected correctness launch was rejected while proof replay was active; no child ran. The same launch identity succeeded after replay completed. All expensive runs were serialized through the protected launcher.",
+  "FIELD_DEFINITIONS": {
+    "BEST_COUNT": "Full canonical portfolio outcome count = frozen remainder count + 7*residual union",
+    "CACHE_MISSES": "Exact pair overlap oracle calls, including conditional anchor marginals and BC leaves",
+    "NODES": "Expanded anchors + expanded B nodes + exactly evaluated triple leaves, matching R1 convention",
+    "UPPER_BOUND": "Residual winning 7-subsets, matching the R1 F0/open-bound units"
+  },
+  "FROZEN_SELECTION_MANIFEST_SHA256": "0ab83a1bca35753aed4dcded9e3f46859979a8d5e0e190f41f05c581152b4165",
+  "IMPLEMENTATION_DEPTH": "ENHANCED",
+  "INTENT": "code does unconditional-r remaining-slot pruning in R1; the check/task expects exact complete-N3 tightening or closure; the opened spec says no heuristic pruning and no top-L truncation.",
+  "JUDGE_DISPATCH": "SUPPRESSED",
+  "JUDGE_MODE": "NOT_APPLICABLE",
+  "MEMOIZATION_DISPOSITION": "Cache-only profiling gave no speedup; default cache is disabled in the fixed improved solver. Optional exact-key cache remains validated.",
+  "MERGE": false,
+  "NEW_BOUND_RULE": "Before exact BC overlap, also apply the geometric kept-ticket union bound. Count a provable subset of res(B) intersect res(C): 3+ common-number coverage, or a 9-term two-common-number subset count. Prune only if base+gA(C)-max(0,lower-min(iAB,iAC))<target. For each globally ordered anchor A, exactly score and sort all potentially competitive suffix tickets by gA(T)=r(T)-i(A,T); upper bound r(A)+gA(B)+gA(C). Retain equality. Optional exact unordered-rank-key pair cache recomputes on collision or eviction; it is disabled in the measured final solver. Unchanged R1 pair bound and exact inclusion-exclusion leaf value.",
+  "OLD_BOUND_RULE": "Global r-order; B/C remaining-slot bounds use unconditional r, with lazy per-anchor i(A,T) memoization; pair bound uses iABC<=min(iAB,iAC,iBC).",
+  "PARITY_MISMATCHES": 0,
+  "PARITY_SCOPE": "Exhaustive old/new toy solver comparison plus preservation/replay of every stored optimum from each previously proven real set; previous full real searches were NOT rerun.",
+  "PER_SET_TIME_LIMIT_SECONDS": 3600,
+  "PINNED_SOURCE": {
+    "COMMIT": "c5c2c704f20ae1be3588355ed0ca9e6ece1a2ba2",
+    "PATH": "docs/research/matrix-native-results/b649-k20-v7-destroy3-global-pool-exhaustive-r1-result.json",
+    "RECORDS": 1140,
+    "SHA256": "cc2d71ad4eeaad3d6ef4ad7f551a197da4fe77bb2a6d5cea17c9e82e5c7d5f20"
+  },
+  "PR": false,
+  "PREVIOUS_PROVEN_SET_REPLAYS": {
+    "FULL_REAL_RERUNS": 0,
+    "PARITY_MISMATCHES": 0,
+    "SETS": [
+      {
+        "DIRECT_CHECKS": 4,
+        "MISMATCHES": 0,
+        "OLD_CLOSED": true,
+        "REFERENCE_F": 5980639,
+        "SEARCH_RAN": false,
+        "SET": 1,
+        "WITNESSES": 16
+      },
+      {
+        "DIRECT_CHECKS": 4,
+        "MISMATCHES": 0,
+        "OLD_CLOSED": true,
+        "REFERENCE_F": 5879400,
+        "SEARCH_RAN": false,
+        "SET": 2,
+        "WITNESSES": 16
+      },
+      {
+        "DIRECT_CHECKS": 4,
+        "MISMATCHES": 0,
+        "OLD_CLOSED": true,
+        "REFERENCE_F": 5879400,
+        "SEARCH_RAN": false,
+        "SET": 3,
+        "WITNESSES": 16
+      },
+      {
+        "DIRECT_CHECKS": 4,
+        "MISMATCHES": 0,
+        "OLD_CLOSED": true,
+        "REFERENCE_F": 5833022,
+        "SEARCH_RAN": false,
+        "SET": 4,
+        "WITNESSES": 16
+      },
+      {
+        "DIRECT_CHECKS": 4,
+        "MISMATCHES": 0,
+        "OLD_CLOSED": true,
+        "REFERENCE_F": 6232206,
+        "SEARCH_RAN": false,
+        "SET": 6,
+        "WITNESSES": 1296
+      }
+    ]
+  },
+  "PRIMARY_SUCCESS": true,
+  "PRODUCTION_CHANGE": "NONE",
+  "PROJECT_MEMORY_WRITTEN": false,
+  "PROOF_SCOPE": "For each reported frozen 17-ticket remainder: COMPLETE LEGAL TICKET UNIVERSE of three distinct replacement tickets for PROVEN_COMPLETE sets; conservative partial frontier bound for time-limited sets. No claim of global K20 portfolio optimality or closure of other destroy sets.",
+  "PUSH": false,
+  "R1_SOURCE_PROVENANCE": {
+    "DIRECTORY": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.task-data/B649_K20_V7_FULL_N3_SIGNATURE_COMPRESSION_FEASIBILITY_R1/run1/engine",
+    "LEGACY_SEARCH_DELTA": "Observed source diff: solver_run renamed to solver_run_legacy; five-line exact anchor-profile stopping guard added. All legacy search bounds and exact arithmetic are unchanged.",
+    "ORIGINAL_BINARY_SHA256": "b9a8079d980c864cd8533f4c10537969bf3fafe9064714efcdd558f543178c89",
+    "SOURCE_SHA256": {
+      "n3.h": "9598ede1eb70699519e2fa34c7295e593ffae08991b98708268099fa30c78457",
+      "n3_core.c": "27be19194f9b073dfbd01613f2226c698f366ac16d8149782073818e86a05720",
+      "n3_main.c": "a3cb26805dc17d0fc3456b308b9567729665617fc83e6396e1aa82d4e9bd0b1b",
+      "n3_mtab.c": "c1d2e217fa73d53b830ccc07cb2c67479dbcb11a9decfe1d30416f46d70065c9",
+      "n3_mtab.h": "06d9d911a0f8fb262554a927d3f51848ba60ef4495df761d97844f791e14775a",
+      "n3_overlap.c": "d32d02d09d91e4321a1223b32246f8a1b1aca2d0bb317f6b94355f1ffa2a0379",
+      "n3_sig.c": "0850a1f1c5a6101b59371c194102563c920e2a8a0c1bb09cdcd2a91d15e9a43b",
+      "n3_sig.h": "1d0b52c9b1bb8821c7231c8044876358837c9d45d0285fe80512d1fad99b3033",
+      "n3_solve.c": "efafc2d8553d735f023a2c388e2e293ea7760a04da615199c8825c14afc9262c",
+      "n3_solve.h": "3c08e540b42812eef53992e843b518a95e8a12f78d64c58552fd39b45398fb90"
+    },
+    "UNCHANGED_EXACT_KERNELS": [
+      "n3_overlap.c",
+      "n3_mtab.c",
+      "n3_mtab.h",
+      "n3_sig.c",
+      "n3_sig.h"
+    ]
+  },
+  "REAL_SET_PARITY_DERIVATION": "Reused sealed old full-search proofs establish the optimum and all ties. The unchanged exact overlap kernel cannot produce a larger valid union. Every saved optimum survives all new bounds in each anchor rotation. The admissibility and unique-enumeration proofs therefore establish old/new optimum parity without rerunning those closed searches.",
+  "RESOURCE_POLICY": {
+    "CPU_WORKERS": 1,
+    "DEFAULT_CACHE_BYTES": 0,
+    "OPTIONAL_CACHE_MAX_BYTES": 402653184
+  },
+  "RUNTIME_TRANSITION_OCCURRED": false,
+  "RUN_DIRECTORY": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.task-data/B649_K20_V7_FULL_N3_HARD_SET_BOUND_TIGHTENING_R2",
+  "SCHEMA_VERSION": "B649_K20_FULL_N3_HARD_SET_BOUND_TIGHTENING_RESULT_V2",
+  "SEAL": {
+    "ALGORITHM": "SHA-256",
+    "CANONICAL_PAYLOAD_DEFINITION": "UTF-8 JSON with sorted keys, compact separators and SEAL omitted",
+    "CANONICAL_PAYLOAD_SHA256": "db93cf0750e705b6aa8bf523fc60a6b84756d9a4950171018e4f151b59a0e3ce"
+  },
+  "SEALED_AT_LOCAL": "2026-10-06T14:14:07.405106+08:00",
+  "SECONDARY_SUCCESS": false,
+  "SET5_STATUS": "NOT_RUN_OPTIONAL",
+  "SET7_STATUS": "NOT_RUN_OPTIONAL",
+  "SET8_BEST_COUNT": 313239661,
+  "SET8_NODES": 12793403,
+  "SET8_STATUS": "PROVEN_COMPLETE",
+  "SET8_UPPER_BOUND": 5373404,
+  "SET8_WALL_SECONDS": 2910.686585124997,
+  "SETS": [
+    {
+      "ACCOUNTING_COMPLETE": true,
+      "ANCHORS_COMPLETED": 26579,
+      "ANCHORS_EXPANDED": 26579,
+      "ANCHORS_INITIAL_BOUND_TOTAL": 26579,
+      "ANCHORS_PER_SECOND": 9.166481007978382,
+      "BEST_COUNT": 313239661,
+      "BEST_RESIDUAL_UNION": 5373404,
+      "CACHE_HITS": 0,
+      "CACHE_MISSES": 491608595,
+      "CANONICAL_RECOUNTS": [
+        {
+          "COUNT": 313239661,
+          "PORTFOLIO_SHA256": "0045ac8837fc82e9a585d812173341ac12e05c5de201af7f8fedeacafa19e1ff",
+          "REPLACEMENTS": [
+            [
+              3,
+              9,
+              12,
+              16,
+              29,
+              39
+            ],
+            [
+              13,
+              15,
+              19,
+              24,
+              37,
+              49
+            ],
+            [
+              4,
+              7,
+              36,
+              39,
+              46,
+              49
+            ]
+          ]
+        },
+        {
+          "COUNT": 313239661,
+          "PORTFOLIO_SHA256": "7999a84fa5e1adacb5c95bc58e438f7d5d5e77c1b450a9e49162897dbdd3d283",
+          "REPLACEMENTS": [
+            [
+              3,
+              9,
+              12,
+              16,
+              29,
+              37
+            ],
+            [
+              13,
+              15,
+              19,
+              24,
+              39,
+              49
+            ],
+            [
+              4,
+              7,
+              36,
+              37,
+              46,
+              49
+            ]
+          ]
+        },
+        {
+          "COUNT": 313239661,
+          "PORTFOLIO_SHA256": "8308f62f75f4180921c1ee1b431939f9b3f6dd8bf0470dee7ba0bdd18192567b",
+          "REPLACEMENTS": [
+            [
+              12,
+              13,
+              15,
+              19,
+              24,
+              39
+            ],
+            [
+              3,
+              9,
+              16,
+              29,
+              37,
+              49
+            ],
+            [
+              4,
+              7,
+              12,
+              36,
+              37,
+              46
+            ]
+          ]
+        },
+        {
+          "COUNT": 313239661,
+          "PORTFOLIO_SHA256": "8c09d7ef3b25cca4108c6c563396d87173f6fb2ffa40027d2f0bca9a6ee0a06d",
+          "REPLACEMENTS": [
+            [
+              12,
+              13,
+              15,
+              19,
+              24,
+              37
+            ],
+            [
+              3,
+              9,
+              16,
+              29,
+              39,
+              49
+            ],
+            [
+              4,
+              7,
+              12,
+              36,
+              39,
+              46
+            ]
+          ]
+        }
+      ],
+      "CANONICAL_UPPER_COUNT": 313239661,
+      "CONDITIONAL_ANCHORS_PRUNED": 18655,
+      "DESTROY_POSITIONS": [
+        5,
+        6,
+        15
+      ],
+      "F0": 5373404,
+      "KEPT_TICKETS": [
+        [
+          1,
+          2,
+          34,
+          41,
+          42,
+          45
+        ],
+        [
+          1,
+          17,
+          22,
+          30,
+          33,
+          43
+        ],
+        [
+          2,
+          5,
+          33,
+          35,
+          40,
+          48
+        ],
+        [
+          3,
+          4,
+          10,
+          15,
+          26,
+          27
+        ],
+        [
+          3,
+          8,
+          13,
+          28,
+          31,
+          36
+        ],
+        [
+          4,
+          18,
+          20,
+          24,
+          28,
+          29
+        ],
+        [
+          5,
+          17,
+          25,
+          32,
+          41,
+          47
+        ],
+        [
+          6,
+          7,
+          9,
+          13,
+          18,
+          26
+        ],
+        [
+          6,
+          10,
+          11,
+          16,
+          24,
+          36
+        ],
+        [
+          6,
+          14,
+          20,
+          31,
+          37,
+          39
+        ],
+        [
+          7,
+          8,
+          10,
+          14,
+          19,
+          29
+        ],
+        [
+          8,
+          9,
+          11,
+          15,
+          20,
+          46
+        ],
+        [
+          11,
+          12,
+          18,
+          23,
+          27,
+          49
+        ],
+        [
+          16,
+          19,
+          23,
+          26,
+          28,
+          46
+        ],
+        [
+          21,
+          25,
+          30,
+          38,
+          45,
+          48
+        ],
+        [
+          21,
+          32,
+          40,
+          42,
+          43,
+          44
+        ],
+        [
+          22,
+          34,
+          35,
+          38,
+          44,
+          47
+        ]
+      ],
+      "LEAF_AUDIT_FAILURES": 0,
+      "LEAF_DIRECT_AUDITS": 15,
+      "LEAVES_PRUNED_LOWER": 20287544440,
+      "LOWER_BOUND_CALLS": 20287544512,
+      "NATIVE_RESULT_SHA256": "9f65c417dad212bd1f9fc808f2345ab20fb71de78e6b33a9845340d50bab4f88",
+      "NODES": 12793403,
+      "NODES_PER_SECOND": 4412.148148045962,
+      "PAIR_CANDIDATES_PER_SECOND": 6996703.843928065,
+      "PAIR_REQUESTS": 72,
+      "PAIR_SHARED_COUNTS": [
+        24,
+        3228840,
+        10257203456,
+        7787910744,
+        2024994278,
+        214207170,
+        0
+      ],
+      "PEAK_RSS_BYTES": 540000256,
+      "PROJECTION_DEFINITION": "Linear estimate from fully completed anchors; not a proof or deadline guarantee",
+      "PROJECTION_REMAINING_SECONDS": 0,
+      "PROOF_SCOPE": "COMPLETE LEGAL TICKET UNIVERSE",
+      "PRUNE_AUDITS": 35,
+      "PRUNE_AUDIT_FAILURES": 0,
+      "REMOVED_TICKETS": [
+        [
+          3,
+          9,
+          12,
+          16,
+          29,
+          39
+        ],
+        [
+          4,
+          7,
+          36,
+          39,
+          46,
+          49
+        ],
+        [
+          13,
+          15,
+          19,
+          24,
+          37,
+          49
+        ]
+      ],
+      "RESIDUAL_SUBSETS": 46525465,
+      "SET": 8,
+      "SOLVER_SECONDS": 2899.586,
+      "STATUS": "PROVEN_COMPLETE",
+      "TRIPLES_ACCOUNTED": "455749036306284480760",
+      "TRIPLES_TOTAL": "455749036306284480760",
+      "UPPER_BOUND": 5373404,
+      "WALL_SECONDS": 2910.686585124997
+    },
+    {
+      "SET": 5,
+      "STATUS": "NOT_RUN_OPTIONAL"
+    },
+    {
+      "SET": 7,
+      "STATUS": "NOT_RUN_OPTIONAL"
+    }
+  ],
+  "SOURCE_RESULT_SEAL": {
+    "ALGORITHM": "SHA-256",
+    "CANONICAL_PAYLOAD_DEFINITION": "UTF-8 JSON with sorted keys, compact separators and SEAL omitted.",
+    "CANONICAL_PAYLOAD_SHA256": "d45d4cd94909c73df9b491ca5736856787e000f5607987735988f475abd184a8"
+  },
+  "SOURCE_RESULT_SHA256": "05f61c34dc83f7dbffbfd0b8e4b1376c4aef72ea41502677c47c8f5d0978ef80",
+  "START_COUNT": 313239661,
+  "START_SHA256": "0045ac8837fc82e9a585d812173341ac12e05c5de201af7f8fedeacafa19e1ff",
+  "STRICT_IMPROVER_FOUND": false,
+  "TASK_CLASS": "STATE_CHANGING_IMPLEMENTATION",
+  "TASK_EVIDENCE_RETENTION": {
+    "DISPOSITION": "RETAINED_FOR_REPRODUCIBLE_RESEARCH_EVIDENCE",
+    "PROTECTED_LAUNCH_RECEIPTS": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_K20_V7_FULL_N3_HARD_SET_BOUND_TIGHTENING_R2",
+    "RUN_DIRECTORY": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.task-data/B649_K20_V7_FULL_N3_HARD_SET_BOUND_TIGHTENING_R2"
+  },
+  "TASK_ID": "B649_K20_V7_FULL_N3_HARD_SET_BOUND_TIGHTENING_R2",
+  "TASK_STATUS": "BOUNDED_EXACT_EXPERIMENT_COMPLETE",
+  "WORKER_ROUTE": "STANDARD"
+}

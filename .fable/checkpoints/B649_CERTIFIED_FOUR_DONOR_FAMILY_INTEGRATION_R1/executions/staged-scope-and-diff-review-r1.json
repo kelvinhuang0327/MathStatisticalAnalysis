@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "task_id": "B649_CERTIFIED_FOUR_DONOR_FAMILY_INTEGRATION_R1",
+  "execution_id": "staged-scope-and-diff-review-r1",
+  "pid": 96239,
+  "status": "COMPLETED",
+  "durable_capture_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_CERTIFIED_FOUR_DONOR_FAMILY_INTEGRATION_R1/captures/staged-scope-and-diff-review-r1.json",
+  "started_at": "2026-10-17T11:45:24Z",
+  "ended_at": "2026-10-17T11:45:24Z"
+}

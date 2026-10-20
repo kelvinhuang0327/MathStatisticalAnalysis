@@ -1,6 +1,6 @@
 # Project Context
 
-Status: Replay evidence as of 2026-10-14 · merged base `b16cd98dc30c2459701c53024c8bf9b2328da925`
+Status: bootstrap R1 · 2026-07-20 · fixed base `origin/main` 8d5af3c86544d7bceb1cf444422e5162759da661
 
 ## Layering and dependency direction
 
@@ -70,21 +70,46 @@ This code inventory is separate from the migration/parity status of the
 `lottery.replay.read_models` capability.
 
 The bootstrap is merged into `origin/main`; it does not change that ledger
-status. `[Confirmed]`
+status or provide PR/parity evidence for this capability. `[Confirmed]`
+`[Inferred]` The next safe planning step is a separate read-only Replay
+architecture-fit review against current `main`. This is a planning
+recommendation, not an existing repository milestone.
 
-### Separate BIG_LOTTO captured-record pilot
+### BIG_LOTTO pilot and candidate status — 2026-10-14
 
-The single-record BIG_LOTTO capture-conversion pilot ([PR #373](https://github.com/kelvinhuang0327/MathStatisticalAnalysis/pull/373)) merged on 2026-10-13 at `a895e02f0f3a71c29c33bee6612a73ff0bd9fac8`. It converted one captured record through the canonical snapshot and scoring artifacts, then checked the target GET response against eight mapped fields: ordinal, target draw number/date, strategy ID, predicted main numbers, source prediction status, main-number hit count, and special-number hit. `[Confirmed]` (data/manifests/biglotto-single-endpoint-pilot-r1.json)
-
-The original dataset/version, identity of the original 635 history rows, capture-time strategy/runtime identity, and original legacy HTTP response remain unknown or unverified; prediction regeneration was not run. `[Confirmed]` (data/manifests/biglotto-single-endpoint-pilot-r1.json)
-
-`[Confirmed]` As of 2026-10-14, old r7 evidence records exit 0, `accepted: true`, and candidate `MATCH` for commit `560503e9e0ab897c603205151368b10d33af94c4` / tree `bf43fa58a2bb2b5c9c0d337b6a0c7e90e3c42a41`; this applies only to those old tool bytes.
-
-`[Confirmed]` [PR #379](https://github.com/kelvinhuang0327/MathStatisticalAnalysis/pull/379) merged at 2026-10-14T09:47:50Z into commit `b16cd98dc30c2459701c53024c8bf9b2328da925` / tree `d09c71985187a3151eb1641804bc592da9a635ba`. [CI run 38532436278](https://github.com/kelvinhuang0327/MathStatisticalAnalysis/actions/runs/38532436278) succeeded for backend and frontend. On 2026-10-15, the r2 candidate run of tool commit `b74d02ad1383b21b863c6272966d8a36f481ee29` completed once on CPython 3.9.6 / NumPy 1.26.2 / SciPy 1.12.0 (runner and recorder exit `0`); the receipt was accepted and candidate fields `MATCH`. Evidence root `/Users/kelvin/Documents/ChatGPT/ReplayEvidence/`: output manifest `biglotto-final-receipt-r2-20261015-output.manifest.json` SHA-256 `8efca11b4959707d5fad184af1038d6dc51c07bc7dfbffa01b7dd6e0991ffd1e`, binding `receipt.jsonl` SHA-256 `f8615e2ff27886193f6e496f5f96fc3cfb0850fe7c07e393f5560799364d870c`. This is candidate-only evidence; `original_source_identity_established: false` and historical parity is `UNKNOWN`.
-
-`[Unknown]` Original execution source, complete ordered history, dataset/snapshot, runtime, and loaded-module identity remain `UNKNOWN`; the original legacy HTTP response remains unverified. Historical parity is incomplete; CTO progress remains 5/6 (83.3%). Resolving those identities and historical parity remains outstanding.
-
-This pilot does not change `lottery.replay.read_models`: its migration-ledger phase remains `INVENTORIED`, with no PR or parity-evidence entry. `[Confirmed]` (docs/migration/migration-ledger.yaml)
+- `[Confirmed]` [PR #373](https://github.com/kelvinhuang0327/MathStatisticalAnalysis/pull/373)
+  merged at `2026-10-13T04:44:57Z` (merge commit
+  `a895e02f0f3a71c29c33bee6612a73ff0bd9fac8`); [PR #375](https://github.com/kelvinhuang0327/MathStatisticalAnalysis/pull/375)
+  merged at `2026-10-13T07:10:39Z` (merge commit
+  `61bad6d9ed4bdb6977d076d6b7fa28ac7b05f82a`).
+  At that earlier observation, both local `origin/main` refs and the observed remote
+  `main` pointed to the latter commit.
+- `[Confirmed]` [PR #379](https://github.com/kelvinhuang0327/MathStatisticalAnalysis/pull/379)
+  merged at `2026-10-14T09:47:50Z` as `b16cd98dc30c2459701c53024c8bf9b2328da925`
+  (tree `d09c71985187a3151eb1641804bc592da9a635ba`). CI run `38532436278`
+  passed its backend and frontend jobs. On 2026-10-15, the r2 candidate run of tool
+  commit `b74d02ad1383b21b863c6272966d8a36f481ee29` completed once on CPython
+  3.9.6 / NumPy 1.26.2 / SciPy 1.12.0 (runner and recorder exit `0`); the receipt
+  was accepted and candidate fields `MATCH`. Output manifest
+  `biglotto-final-receipt-r2-20261015-output.manifest.json` (SHA-256
+  `8efca11b4959707d5fad184af1038d6dc51c07bc7dfbffa01b7dd6e0991ffd1e`)
+  binds `receipt.jsonl` (SHA-256 `f8615e2ff27886193f6e496f5f96fc3cfb0850fe7c07e393f5560799364d870c`).
+  Evidence root: `/Users/kelvin/Documents/ChatGPT/ReplayEvidence/`. The original
+  source identity remains unestablished (`false`); historical parity is `UNKNOWN`.
+- `[Confirmed]` The local single candidate result for `BIG_LOTTO` draw
+  `102000010` (`2013/02/01`) is `MATCH`: predicted numbers
+  `[4, 8, 30, 33, 37, 44]`, special `null`, using 635 candidate history rows
+  through draw `102000009` (`2013/01/29`).
+  Source: `.task-data/biglotto-candidate-reproduction-r1/RESULT.json`
+  (SHA-256 `0bab72d54cad11ce8bd1e26338f1e0badfbcf94c1fb2cf07396483c9f5880708`);
+  `candidate_history.json` SHA-256
+  `89086d0130ef8dee2ba84edf07af6299433ce4b73f6c7e8d917b2b96d837f7ee`.
+- `MATCH` confirms agreement under this candidate history and existing candidate
+  implementation only. The original capture's actual execution source, complete
+  ordered history, dataset/snapshot, runtime, and loaded-module identity remain
+  `UNKNOWN`. Original-input reproduction and original
+  parity are not confirmed; the result records
+  `original_reproduction_claimed: false` and `original_source_identity_established: false`.
 
 ### BIG_LOTTO bounded source-check closeout — 2026-10-16
 

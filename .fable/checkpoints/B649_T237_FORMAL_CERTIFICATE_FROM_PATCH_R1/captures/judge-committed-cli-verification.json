@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "command": [
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/python",
+    "-B",
+    "-c",
+    "from lottolab.research import b649_min_s2_t257_t237_joint_exact_authority_r1 as c; c.main()"
+  ],
+  "stdout": "{\"FAMILY_BOUND\": 313391172, \"FULL_PROFILE_BOUND\": 313122700, \"PROFILE\": \"65555555555432100000\", \"RESULT_SHA256\": \"4aa6f817220db51a3648df3dcbe10efbd0d0ad614afa4223404e7dcd62ab01ac\", \"T_CAP\": 237}\n",
+  "stderr": "",
+  "exit_status": 0,
+  "started_at": "2026-10-17T09:23:31Z",
+  "ended_at": "2026-10-17T09:23:44Z",
+  "execution_identity": {
+    "repository_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis",
+    "worktree_path": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_T237_FORMAL_CERTIFICATE_FROM_PATCH_R1",
+    "head": "f30863f708e7f4d026d5c99e9b79529e38f9be92",
+    "tree": "a9977cc6451693ad8badd18d0bd7e5e9bb9c709e",
+    "launcher_path": "/Users/kelvin/.codex/skills/fable-method/scripts/task_checkpoint.rb",
+    "launcher_sha256": "babba3757a7ea9ad59c7ff9b18b6e4497dbc887b86eebfb09ccae1a36ab96275",
+    "runtime_executable": "/System/Library/Frameworks/Ruby.framework/Versions/2.6/usr/bin/ruby",
+    "runtime_version": "ruby 2.6.10p210 (2022-04-12 revision 67958) [universal.arm64e-darwin26]"
+  }
+}

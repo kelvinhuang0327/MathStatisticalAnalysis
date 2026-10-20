@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "command": [
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/python",
+    "-B",
+    "-c",
+    "from lottolab.research import b649_min_s2_t257_t237_joint_exact_authority_r1 as c\nimport json\nA,meta=c.enumerate_a();unique={s for s,z in A};rawmax={};uppermax={}\nfor (s,z),row in A.items():\n r=sum(s);rawmax[r]=max(rawmax.get(r,-1),row['RAW']);uppermax[r]=max(uppermax.get(r,-1),row['UPPER'])\nprint(json.dumps({'DISTINCT_SIGMA_CLASSES':len(unique),'LABELLED_SIGMA_STATES_ONCE':sum(c.orbit_size(s) for s in unique),'SIGMA_ZETA_PAIRS':len(A),'RAW_IDENTITY_R_MAXIMA':dict(sorted(rawmax.items())),'REMAINDER_FLOOR_R_MAXIMA':dict(sorted(uppermax.items())),'SOURCE_SHA256':c.sha(c.working_bytes(c.SOURCE)),'TEST_SHA256':c.sha(c.working_bytes(c.TEST))},sort_keys=True))"
+  ],
+  "stdout": "{\"DISTINCT_SIGMA_CLASSES\": 1491, \"LABELLED_SIGMA_STATES_ONCE\": 154050, \"RAW_IDENTITY_R_MAXIMA\": {\"10\": 233, \"12\": 237, \"14\": 237, \"16\": 235, \"18\": 235, \"20\": 233, \"22\": 235, \"24\": 235}, \"REMAINDER_FLOOR_R_MAXIMA\": {\"10\": 233, \"12\": 236, \"14\": 235, \"16\": 232, \"18\": 231, \"20\": 226, \"22\": 224, \"24\": 222}, \"SIGMA_ZETA_PAIRS\": 3517, \"SOURCE_SHA256\": \"317756039a2794565024c5743052a6c06c5f2d24a9441a9452378b3665490043\", \"TEST_SHA256\": \"64b0026c98aa35a0903bdf3d559df5a377c10d4205d30a721504b6feff90204f\"}\n",
+  "stderr": "",
+  "exit_status": 0,
+  "started_at": "2026-10-17T08:58:43Z",
+  "ended_at": "2026-10-17T08:58:43Z",
+  "execution_identity": {
+    "repository_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis",
+    "worktree_path": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_T237_FORMAL_CERTIFICATE_FROM_PATCH_R1",
+    "head": "9acea1331e021a9623fa593997d90cfc89a69136",
+    "tree": "de577e8d6f3ccbe52e663c96ee1528c95a0ee7ec",
+    "launcher_path": "/Users/kelvin/.codex/skills/fable-method/scripts/task_checkpoint.rb",
+    "launcher_sha256": "babba3757a7ea9ad59c7ff9b18b6e4497dbc887b86eebfb09ccae1a36ab96275",
+    "runtime_executable": "/System/Library/Frameworks/Ruby.framework/Versions/2.6/usr/bin/ruby",
+    "runtime_version": "ruby 2.6.10p210 (2022-04-12 revision 67958) [universal.arm64e-darwin26]"
+  }
+}

@@ -1,0 +1,389 @@
+{
+  "AUTHORIZATION_SOURCE": "CURRENT_WORKER_CONVERSATION_USER_MESSAGE_WITH_REFERENCED_EXECUTABLE_PACKET",
+  "BASE_HEAD": "9acea1331e021a9623fa593997d90cfc89a69136",
+  "BASE_TREE": "de577e8d6f3ccbe52e663c96ee1528c95a0ee7ec",
+  "BRANCH": "codex/b649-s3-t208-certificate-r2",
+  "CANDIDATE_ZIP": "NOT_USED",
+  "CANONICAL_REQUIRED_JUDGE_DEPTH": "FULL",
+  "CAVEATS": [
+    "LEGAL_ATTAINMENT UNKNOWN",
+    "GLOBAL_K20_OPTIMUM UNKNOWN",
+    "Conditional Family delta 1096 is NOT_ADOPTED; no Family ledger changed.",
+    "Historical R15 NOT_VERIFIED retained.",
+    "Other external actors may mutate shared primary dirty state; no whole-workstation immutability claim.",
+    "Precommit test evidence is not exact committed HEAD evidence; Judge must reproduce on committed tree."
+  ],
+  "CHECKS": {
+    "create-worktree": {
+      "COMMAND": [
+        "git",
+        "-C",
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis",
+        "worktree",
+        "add",
+        "-b",
+        "codex/b649-s3-t208-certificate-r2",
+        "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2",
+        "9acea1331e021a9623fa593997d90cfc89a69136"
+      ],
+      "ENDED_AT": "2026-10-16T10:08:40Z",
+      "EXIT_STATUS": 0,
+      "PATH": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/captures/create-worktree.json",
+      "STARTED_AT": "2026-10-16T10:08:38Z",
+      "STDERR_SUMMARY": "Preparing worktree (new branch 'codex/b649-s3-t208-certificate-r2')\n",
+      "STDOUT_SUMMARY": "HEAD is now at 9acea133 research: compose accepted T249 and T260-K4 certificates into Family authority\n"
+    },
+    "falsifiability": {
+      "COMMAND": [
+        "env",
+        "PYTHONPATH=/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/src",
+        "PYTHONDONTWRITEBYTECODE=1",
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/python",
+        "-B",
+        "-c",
+        "import pytest; from lottolab.research import b649_s3_t208_exact_profile_certificate_r2 as c; c.verify_result=lambda candidate: None; code=pytest.main([\"-q\",\"-p\",\"no:cacheprovider\",\"tests/unit/test_b649_s3_t208_exact_profile_certificate_r2.py::test_production_verifier_rejects_defect[missing_stronger_bound_evidence]\"]); assert code==1, code; print(\"FALSIFIABILITY_CONFIRMED: no-op production verifier causes expected DID NOT RAISE failure; mutation is process-local\")"
+      ],
+      "ENDED_AT": "2026-10-16T11:04:05Z",
+      "EXIT_STATUS": 0,
+      "PATH": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/captures/falsifiability.json",
+      "STARTED_AT": "2026-10-16T11:04:03Z",
+      "STDERR_SUMMARY": "",
+      "STDOUT_SUMMARY": "ass\",\n            \"missing_zero_graph\",\n            \"incorrect_r_parity\",\n            \"wrong_residual_capacity\",\n            \"negative_remainder\",\n            \"wrong_s4_sign\",\n            \"unsupported_stronger_s4\",\n            \"fraction_ceiling\",\n            \"incomplete_t_range\",\n            \"wrong_base_sha256\",\n            \"missing_stronger_bound_evidence\",\n            \"candidate_result_inconsistency\",\n            \"unsupported_s5\",\n            \"inconsistent_independent_recount\",\n        ],\n    )\n    def test_production_verifier_rejects_defect(candidate: cert.Document, defect: str) -> None:\n        damaged = deepcopy(candidate)\n        mutate(damaged, defect)\n>       with pytest.raises(ValueError, match=\"candidate/result inconsistency\"):\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE       Failed: DID NOT RAISE ValueError\n\ntests/unit/test_b649_s3_t208_exact_profile_certificate_r2.py:140: Failed\n=========================== short test summary info ============================\nFAILED tests/unit/test_b649_s3_t208_exact_profile_certificate_r2.py::test_production_verifier_rejects_defect[missing_stronger_bound_evidence]\n1 failed in 1.53s\nFALSIFIABILITY_CONFIRMED: no-op production verifier causes expected DID NOT RAISE failure; mutation is process-local\n"
+    },
+    "final-candidate-validation": {
+      "COMMAND": [
+        "env",
+        "PYTHONPATH=/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/src",
+        "PYTHONDONTWRITEBYTECODE=1",
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/python",
+        "-B",
+        "-c",
+        "from lottolab.research import b649_s3_t208_exact_profile_certificate_r2 as c; c.main(); import pytest; code=pytest.main([\"-q\",\"-p\",\"no:cacheprovider\",\"tests/unit/test_b649_s3_t208_exact_profile_certificate_r2.py::test_production_verifier_rejects_defect[missing_stronger_bound_evidence]\"]); assert code==0, code; print(\"RESTORE_AND_FINAL_REVERIFY: PASS\")"
+      ],
+      "ENDED_AT": "2026-10-16T11:04:46Z",
+      "EXIT_STATUS": 0,
+      "PATH": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/captures/final-candidate-validation.json",
+      "STARTED_AT": "2026-10-16T11:04:40Z",
+      "STDERR_SUMMARY": "",
+      "STDOUT_SUMMARY": "{\"TASK_ID\": \"B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2\", \"UNIVERSAL_T_CAP\": 208, \"FULL_PROFILE_BOUND\": 312835000, \"RESULT_SHA256\": \"7f76e162696850f80c68e25cc4dfcf288aa164003bf513c2d85e94f90955ae3b\"}\n.                                                                        [100%]\n1 passed in 3.08s\nRESTORE_AND_FINAL_REVERIFY: PASS\n"
+    },
+    "focused-tests-v1": {
+      "COMMAND": [
+        "env",
+        "PYTHONPATH=/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/src",
+        "PYTHONDONTWRITEBYTECODE=1",
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/python",
+        "-B",
+        "-m",
+        "pytest",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "tests/unit/test_b649_s3_t208_exact_profile_certificate_r2.py"
+      ],
+      "ENDED_AT": "2026-10-16T11:02:33Z",
+      "EXIT_STATUS": 1,
+      "PATH": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/captures/focused-tests-v1.json",
+      "STARTED_AT": "2026-10-16T11:02:07Z",
+      "STDERR_SUMMARY": "",
+      "STDOUT_SUMMARY": "obj(facts[\"DEGREE_HISTOGRAM\"])[\"5\"] = 10\n        elif defect == \"missing_core_class\":\n            cast(list[object], core[\"CLASS_ROWS\"]).pop()\n        elif defect == \"missing_zero_graph\":\n            zero[\"MASK_COUNT\"] = 32767\n        elif defect == \"incorrect_r_parity\":\n            cast(list[int], facts[\"R_DOMAIN\"])[1] = 7\n        elif defect == \"wrong_residual_capacity\":\n            cast(list[int], facts[\"RESIDUAL_CAPACITIES\"])[0] = 2\n        elif defect == \"negative_remainder\":\n            cert.obj(value[\"REMAINDER_TERMS\"])[\"T(M)\"] = -1\n        elif defect == \"wrong_s4_sign\":\n            route[\"S4_SIGN\"] = 1\n        elif defect == \"unsupported_stronger_s4\":\n            cert.obj(route[\"STRONGER_BOUND_EVIDENCE\"])[\"OPEN_WEDGE_MULTIPLIER\"] = 8\n            terms[-1][4] += 7\n        elif defect == \"fraction_ceiling\":\n>           row = next(row for row in terms if (4 * row[4]) % 7)\n                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE           StopIteration\n\ntests/unit/test_b649_s3_t208_exact_profile_certificate_r2.py:96: StopIteration\n=========================== short test summary info ============================\nFAILED tests/unit/test_b649_s3_t208_exact_profile_certificate_r2.py::test_production_verifier_rejects_defect[fraction_ceiling]\n1 failed, 19 passed in 25.79s\n"
+    },
+    "focused-tests-v2": {
+      "COMMAND": [
+        "env",
+        "PYTHONPATH=/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/src",
+        "PYTHONDONTWRITEBYTECODE=1",
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/python",
+        "-B",
+        "-m",
+        "pytest",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "tests/unit/test_b649_s3_t208_exact_profile_certificate_r2.py"
+      ],
+      "ENDED_AT": "2026-10-16T11:03:35Z",
+      "EXIT_STATUS": 0,
+      "PATH": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/captures/focused-tests-v2.json",
+      "STARTED_AT": "2026-10-16T11:03:06Z",
+      "STDERR_SUMMARY": "",
+      "STDOUT_SUMMARY": "....................                                                     [100%]\n20 passed in 28.86s\n"
+    },
+    "generate-result-v1": {
+      "COMMAND": [
+        "env",
+        "PYTHONPATH=/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/src",
+        "PYTHONDONTWRITEBYTECODE=1",
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/python",
+        "-B",
+        "-m",
+        "lottolab.research.b649_s3_t208_exact_profile_certificate_r2",
+        "--write-result"
+      ],
+      "ENDED_AT": "2026-10-16T11:01:35Z",
+      "EXIT_STATUS": 0,
+      "PATH": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/captures/generate-result-v1.json",
+      "STARTED_AT": "2026-10-16T11:01:33Z",
+      "STDERR_SUMMARY": "",
+      "STDOUT_SUMMARY": "{\"TASK_ID\": \"B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2\", \"UNIVERSAL_T_CAP\": 208, \"FULL_PROFILE_BOUND\": 312835000, \"RESULT_SHA256\": \"c67c760c909a55818175008cd04be877a7bc265a73e3f70e93b5172fef9a33b5\"}\n"
+    },
+    "generate-result-v2": {
+      "COMMAND": [
+        "env",
+        "PYTHONPATH=/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/src",
+        "PYTHONDONTWRITEBYTECODE=1",
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/python",
+        "-B",
+        "-c",
+        "from lottolab.research import b649_s3_t208_exact_profile_certificate_r2 as c; p=c.ROOT/c.RESULT; old=p.read_bytes(); c.require(c.sha(old)==\"c67c760c909a55818175008cd04be877a7bc265a73e3f70e93b5172fef9a33b5\", \"unexplained result mutation\"); value=c.compute_result(); payload=c.render(value); p.write_bytes(payload); print(c.sha(payload))"
+      ],
+      "ENDED_AT": "2026-10-16T11:02:06Z",
+      "EXIT_STATUS": 0,
+      "PATH": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/captures/generate-result-v2.json",
+      "STARTED_AT": "2026-10-16T11:02:04Z",
+      "STDERR_SUMMARY": "",
+      "STDOUT_SUMMARY": "5e015428d74ad34b440d47d6ba89307e9e712038a9e176cc998ac9eb0ab1cb69\n"
+    },
+    "generate-result-v3": {
+      "COMMAND": [
+        "env",
+        "PYTHONPATH=/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/src",
+        "PYTHONDONTWRITEBYTECODE=1",
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/python",
+        "-B",
+        "-c",
+        "from lottolab.research import b649_s3_t208_exact_profile_certificate_r2 as c; p=c.ROOT/c.RESULT; old=p.read_bytes(); c.require(c.sha(old)==\"5e015428d74ad34b440d47d6ba89307e9e712038a9e176cc998ac9eb0ab1cb69\", \"unexplained result mutation\"); payload=c.render(c.compute_result()); p.write_bytes(payload); print(c.sha(payload))"
+      ],
+      "ENDED_AT": "2026-10-16T11:03:06Z",
+      "EXIT_STATUS": 0,
+      "PATH": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/captures/generate-result-v3.json",
+      "STARTED_AT": "2026-10-16T11:03:04Z",
+      "STDERR_SUMMARY": "",
+      "STDOUT_SUMMARY": "7f76e162696850f80c68e25cc4dfcf288aa164003bf513c2d85e94f90955ae3b\n"
+    },
+    "ruff-final": {
+      "COMMAND": [
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/ruff",
+        "check",
+        "--no-cache",
+        "src/lottolab/research/b649_s3_t208_exact_profile_certificate_r2.py",
+        "tests/unit/test_b649_s3_t208_exact_profile_certificate_r2.py"
+      ],
+      "ENDED_AT": "2026-10-16T11:04:01Z",
+      "EXIT_STATUS": 0,
+      "PATH": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/captures/ruff-final.json",
+      "STARTED_AT": "2026-10-16T11:04:00Z",
+      "STDERR_SUMMARY": "",
+      "STDOUT_SUMMARY": "All checks passed!\n"
+    },
+    "ruff-v1": {
+      "COMMAND": [
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/ruff",
+        "check",
+        "src/lottolab/research/b649_s3_t208_exact_profile_certificate_r2.py",
+        "tests/unit/test_b649_s3_t208_exact_profile_certificate_r2.py"
+      ],
+      "ENDED_AT": "2026-10-16T11:01:20Z",
+      "EXIT_STATUS": 0,
+      "PATH": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/captures/ruff-v1.json",
+      "STARTED_AT": "2026-10-16T11:01:20Z",
+      "STDERR_SUMMARY": "",
+      "STDOUT_SUMMARY": "All checks passed!\n"
+    },
+    "strict-pyright-v1": {
+      "COMMAND": [
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/pyright",
+        "--pythonpath",
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/python",
+        "src/lottolab/research/b649_s3_t208_exact_profile_certificate_r2.py",
+        "tests/unit/test_b649_s3_t208_exact_profile_certificate_r2.py"
+      ],
+      "ENDED_AT": "2026-10-16T11:01:33Z",
+      "EXIT_STATUS": 1,
+      "PATH": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/captures/strict-pyright-v1.json",
+      "STARTED_AT": "2026-10-16T11:01:31Z",
+      "STDERR_SUMMARY": "venv .venv subdirectory not found in venv path /Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2.\n",
+      "STDOUT_SUMMARY": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/src/lottolab/research/b649_s3_t208_exact_profile_certificate_r2.py\n  /Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/src/lottolab/research/b649_s3_t208_exact_profile_certificate_r2.py:352:9 - error: Type of \"append\" is partially unknown\n    Type of \"append\" is \"(object: Unknown, /) -> None\" (reportUnknownMemberType)\n1 error, 0 warnings, 0 informations\nWARNING: there is a new pyright version available (v1.1.411 -> v1.1.414).\nPlease install the new version or set PYRIGHT_PYTHON_FORCE_VERSION to `latest`\n\n"
+    },
+    "strict-pyright-v2": {
+      "COMMAND": [
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/pyright",
+        "--venvpath",
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis",
+        "src/lottolab/research/b649_s3_t208_exact_profile_certificate_r2.py",
+        "tests/unit/test_b649_s3_t208_exact_profile_certificate_r2.py"
+      ],
+      "ENDED_AT": "2026-10-16T11:04:03Z",
+      "EXIT_STATUS": 1,
+      "PATH": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/captures/strict-pyright-v2.json",
+      "STARTED_AT": "2026-10-16T11:04:01Z",
+      "STDERR_SUMMARY": "",
+      "STDOUT_SUMMARY": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/src/lottolab/research/b649_s3_t208_exact_profile_certificate_r2.py\n  /Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/src/lottolab/research/b649_s3_t208_exact_profile_certificate_r2.py:95:1 - error: Type alias statement requires Python 3.12 or newer\n1 error, 0 warnings, 0 informations\nWARNING: there is a new pyright version available (v1.1.411 -> v1.1.414).\nPlease install the new version or set PYRIGHT_PYTHON_FORCE_VERSION to `latest`\n\n"
+    },
+    "strict-pyright-v3": {
+      "COMMAND": [
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/pyright",
+        "--pythonversion",
+        "3.13",
+        "--venvpath",
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis",
+        "src/lottolab/research/b649_s3_t208_exact_profile_certificate_r2.py",
+        "tests/unit/test_b649_s3_t208_exact_profile_certificate_r2.py"
+      ],
+      "ENDED_AT": "2026-10-16T11:04:14Z",
+      "EXIT_STATUS": 0,
+      "PATH": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/captures/strict-pyright-v3.json",
+      "STARTED_AT": "2026-10-16T11:04:13Z",
+      "STDERR_SUMMARY": "",
+      "STDOUT_SUMMARY": "0 errors, 0 warnings, 0 informations\nWARNING: there is a new pyright version available (v1.1.411 -> v1.1.414).\nPlease install the new version or set PYRIGHT_PYTHON_FORCE_VERSION to `latest`\n\n"
+    },
+    "unique-local-commit": {
+      "COMMAND": [
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/python",
+        "-B",
+        "-c",
+        "import subprocess,pathlib,hashlib,json; r=pathlib.Path.cwd(); paths={\"src/lottolab/research/b649_s3_t208_exact_profile_certificate_r2.py\":\"33da4fad8af7d794c42de10f4f4da76b3428dfacada4851da2527eea2184079c\",\"tests/unit/test_b649_s3_t208_exact_profile_certificate_r2.py\":\"5de05d84e71ad88a69228665bf864f20436567b1f9f64a74181d8ca6c610a7bf\",\"docs/research/matrix-native-results/b649-s3-t208-exact-profile-certificate-r2-result.json\":\"7f76e162696850f80c68e25cc4dfcf288aa164003bf513c2d85e94f90955ae3b\"}; g=lambda *args:subprocess.check_output([\"git\",\"-c\",\"core.fsmonitor=false\",\"--no-optional-locks\",*args]); assert g(\"rev-parse\",\"HEAD\").decode().strip()==\"9acea1331e021a9623fa593997d90cfc89a69136\"; assert not g(\"diff\",\"--cached\",\"--name-only\").strip(); assert all(hashlib.sha256((r/p).read_bytes()).hexdigest()==s for p,s in paths.items()); assert set(g(\"ls-files\",\"--others\",\"--exclude-standard\").decode().splitlines())==set(paths); g(\"add\",\"--\",*paths); assert set(g(\"diff\",\"--cached\",\"--name-only\").decode().splitlines())==set(paths); g(\"diff\",\"--cached\",\"--check\"); print(g(\"commit\",\"-m\",\"research: certify exact-profile T208 and Route-B 312835000\").decode()); print(json.dumps({\"FINAL_LOCAL_COMMIT\":g(\"rev-parse\",\"HEAD\").decode().strip(),\"FINAL_COMMITTED_TREE\":g(\"rev-parse\",\"HEAD^{tree}\").decode().strip(),\"COMMITTED_PATHS\":g(\"diff-tree\",\"--no-commit-id\",\"--name-only\",\"-r\",\"HEAD\").decode().splitlines(),\"LOCAL_COMMIT_COUNT\":int(g(\"rev-list\",\"--count\",\"9acea1331e021a9623fa593997d90cfc89a69136..HEAD\")),\"WORKTREE_STATUS\":g(\"status\",\"--porcelain=v1\",\"--untracked-files=all\").decode()}))"
+      ],
+      "ENDED_AT": "2026-10-16T11:05:27Z",
+      "EXIT_STATUS": 0,
+      "PATH": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/captures/unique-local-commit.json",
+      "STARTED_AT": "2026-10-16T11:05:26Z",
+      "STDERR_SUMMARY": "",
+      "STDOUT_SUMMARY": "[codex/b649-s3-t208-certificate-r2 6a717835] research: certify exact-profile T208 and Route-B 312835000\n 3 files changed, 8966 insertions(+)\n create mode 100644 docs/research/matrix-native-results/b649-s3-t208-exact-profile-certificate-r2-result.json\n create mode 100644 src/lottolab/research/b649_s3_t208_exact_profile_certificate_r2.py\n create mode 100644 tests/unit/test_b649_s3_t208_exact_profile_certificate_r2.py\n\n{\"FINAL_LOCAL_COMMIT\": \"6a7178354c302daa0ea98b638a687a043cade4d1\", \"FINAL_COMMITTED_TREE\": \"6745a903fb1dabbea3939212fad0613020429d26\", \"COMMITTED_PATHS\": [\"docs/research/matrix-native-results/b649-s3-t208-exact-profile-certificate-r2-result.json\", \"src/lottolab/research/b649_s3_t208_exact_profile_certificate_r2.py\", \"tests/unit/test_b649_s3_t208_exact_profile_certificate_r2.py\"], \"LOCAL_COMMIT_COUNT\": 1, \"WORKTREE_STATUS\": \"\"}\n"
+    }
+  },
+  "COMMITTED_PATHS": [
+    "docs/research/matrix-native-results/b649-s3-t208-exact-profile-certificate-r2-result.json",
+    "src/lottolab/research/b649_s3_t208_exact_profile_certificate_r2.py",
+    "tests/unit/test_b649_s3_t208_exact_profile_certificate_r2.py"
+  ],
+  "COMMIT_AUTHORIZATION": "Owner-delivered Packet explicitly limits local commit to one and names exact task, repository and three paths. No outward-facing or destructive action performed.",
+  "DEPTH_SOURCE": "SKILL_FALLBACK",
+  "FAILED_ATTEMPTS": [
+    {
+      "ACTION": "create native goal",
+      "RESULT": "Existing active native goal already represents user request; no goal created or prior goal resumed."
+    },
+    {
+      "ACTION": "first protected ruff-v1 attempt",
+      "RESULT": "PRIOR_PROCESS_ACTIVE before execution acquisition; no ruff record created. Task-owned git fsmonitor inherited FD10."
+    },
+    {
+      "ACTION": "initial direct Pyright parameter selection",
+      "RESULT": "--pythonpath and --venvpath mutually exclusive; no analysis performed."
+    },
+    {
+      "ACTION": "strict-pyright-v1",
+      "RESULT": "one missing list annotation; fixed before commit."
+    },
+    {
+      "ACTION": "strict-pyright-v2",
+      "RESULT": "environment inferred Python 3.9; corrected --pythonversion 3.13; no source changes."
+    },
+    {
+      "ACTION": "focused-tests-v1",
+      "RESULT": "19 passed, 1 test fixture StopIteration; all S4 multiples of 7; test corrected to a genuinely fractional K4 ceiling."
+    }
+  ],
+  "FORBIDDEN_ACTIONS": [
+    "second commit",
+    "amend",
+    "rebase",
+    "reset",
+    "push",
+    "PR",
+    "merge",
+    "Family Authority mutation",
+    "other profile/worktree changes",
+    "heavy solver",
+    "CP-SAT",
+    "full portfolio enumeration",
+    "marker initialization",
+    "launcher bypass",
+    "candidate repair after commit"
+  ],
+  "G01_TO_G18_WORKER": {
+    "G01": "PASS",
+    "G02": "PASS",
+    "G03": "PASS",
+    "G04": "PASS",
+    "G05": "PASS",
+    "G06": "PASS",
+    "G07": "PASS",
+    "G08": "PASS",
+    "G09": "PASS",
+    "G10": "PASS",
+    "G11": "PASS",
+    "G12": "PASS",
+    "G13": "PASS",
+    "G14": "PASS",
+    "G15": "PASS",
+    "G16": "NOT_RUN",
+    "G17": "PASS",
+    "G18": "PASS"
+  },
+  "HARNESS_CHANGE_REQUIRED_FOR_ACTUAL_RENAME": "NO",
+  "HEAD": "6a7178354c302daa0ea98b638a687a043cade4d1",
+  "IMPLEMENTATION_DEPTH": "NORMAL",
+  "IMPLEMENTATION_MUTATION_REQUIRED": "NO",
+  "JUDGE_DEPTH": "FULL",
+  "JUDGE_DEPTH_REASON": "Owner requests independent reproduction of universal proof, both recount methods, every Route-B term and all J01-J12 criteria; unrelated full-suite explicitly forbidden.",
+  "JUDGE_DEPTH_RECONCILIATION": "MATCH",
+  "JUDGE_MODE": "FRESH_CONTEXT",
+  "JUDGE_REPORT_PATH": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/judge-report.json",
+  "JUDGE_SESSION_NAME_ACTUAL": "UNKNOWN",
+  "JUDGE_SESSION_NAME_REQUESTED": "33-judge",
+  "JUDGE_SESSION_NAMING_CAPABILITY": "REQUEST_METADATA_ONLY",
+  "JUDGE_SESSION_RELATION": "FRESH_CONTEXT_CHILD",
+  "JUDGE_SESSION_REUSED": "NO",
+  "LOCAL_COMMIT_COUNT": 1,
+  "MISSING_JUDGE_EVIDENCE": "INDEPENDENT_COMMITTED_TREE_REPRODUCTION",
+  "ORIGINAL_PACKET": "/Users/kelvin/.codex/attachments/08778873-958d-4ed1-85b6-ab44a0a71713/pasted-text-1.txt",
+  "ORIGINAL_PACKET_SHA256": "4ff399abe117eda43757da78dd0c236dbd7e86781850110cae132faca38003f1",
+  "ORIGINAL_RESEARCH_TASK": "B649_S3_NEXT_OWNER_INDEPENDENT_SYMBOLIC_R1",
+  "PACKET_JUDGE_DEPTH": "NOT_APPLICABLE",
+  "PARENT_SESSION_NAME": "33",
+  "PROCESS_TERMINATION_LEDGER": [
+    {
+      "COMMAND": "git fsmonitor--daemon run --detach --ipc-threads=8",
+      "EVIDENCE": "FD10 bound exact task lock inode 248062733; open directory and fsmonitor socket under exact new task worktree.",
+      "EXIT": 0,
+      "FORCE_USED": false,
+      "PID": 97073,
+      "POST_OBSERVATION": "lsof exact lock: no open handles",
+      "SHUTDOWN": "git -c core.fsmonitor=false -C <exact task worktree> fsmonitor--daemon stop",
+      "TASK_OWNED": true
+    }
+  ],
+  "REPOSITORY": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis",
+  "RESEARCH_THREAD": "01a143f5-0ccd-7f81-8a69-b748cd481c8f",
+  "RESEARCH_TURN": "01a143f5-18d7-7df3-81f1-6404044aa724",
+  "RESULT_SHA256": "7f76e162696850f80c68e25cc4dfcf288aa164003bf513c2d85e94f90955ae3b",
+  "ROUTE": "STANDARD_JUDGED",
+  "SKILL_LOCATOR": "/Users/kelvin/.codex/skills/fable-method/SKILL.md",
+  "SKILL_SHA256": "747c0e75d8ecab37f475719943f26f457eda73014b1281971c89f6e4c4a21693",
+  "STATUS": "",
+  "TASK_ID": "B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2",
+  "TREE": "6745a903fb1dabbea3939212fad0613020429d26",
+  "WORKTREE": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2",
+  "WRITE_LEDGER": {
+    "BYTECODE_AND_PYTEST_CACHE": "disabled; no new in-tree files",
+    "DELETED_TASK_TEMP": [
+      ".ruff_cache/CACHEDIR.TAG",
+      ".ruff_cache/.gitignore",
+      ".ruff_cache/0.15.21/10782392310438632730",
+      ".ruff_cache/0.15.21/9195585411781702428",
+      ".ruff_cache/0.15.21",
+      ".ruff_cache"
+    ],
+    "FAILED_FALSIFIABILITY_MUTATION": "Process-local no-op verifier only; no source write; expected failed negative test observed; restored fresh-process negative test passes.",
+    "RETAINED_FABLE": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/{executions,captures}/*.json; worker-handoff.json; later Judge report and captures",
+    "RETAINED_GIT": "one codex/b649-s3-t208-certificate-r2 branch, linked worktree metadata, index/objects and one commit; task-owned execution anchor",
+    "RETAINED_PRODUCT": [
+      "docs/research/matrix-native-results/b649-s3-t208-exact-profile-certificate-r2-result.json",
+      "src/lottolab/research/b649_s3_t208_exact_profile_certificate_r2.py",
+      "tests/unit/test_b649_s3_t208_exact_profile_certificate_r2.py"
+    ],
+    "RETAINED_WORKSPACE": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2"
+  }
+}

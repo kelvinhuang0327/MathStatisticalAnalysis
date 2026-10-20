@@ -1,0 +1,181 @@
+{
+  "schema_version": 1,
+  "task_id": "B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1",
+  "execution_id": "negative-smoke-r1",
+  "stage": "BEFORE_CHILD_SPAWN",
+  "utc_launch_timestamp": "2026-10-19T14:06:09.254068000Z",
+  "argv": [
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/python",
+    "-B",
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/smoke_probe.py",
+    "23"
+  ],
+  "cwd": "/private/tmp/gate-launch-20261019-12207-n9fetk/work",
+  "python": {
+    "executable": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/python",
+    "real_executable": "/opt/homebrew/Cellar/python@3.13/3.13.8/Frameworks/Python.framework/Versions/3.13/bin/python3.13",
+    "version": "3.13.8 (main, Oct  7 2025, 12:01:51) [Clang 17.0.0 (clang-1700.3.19.1)]",
+    "pytest": "9.1.1",
+    "source_lock_fingerprints": [
+      {
+        "path": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_R3_ADV11_DESCENDANT_STABLE_CONTEXT_R1/uv.lock",
+        "sha256": "073c1a72534fdd64090a6ac1f041204aceb67c4fa0cb663b581d385a5de21875",
+        "git_blob": "94aa656817f9e2e83c220dac11ca52c0e2ded9a0"
+      },
+      {
+        "path": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_R3_ADV11_DESCENDANT_STABLE_CONTEXT_R1/pyproject.toml",
+        "sha256": "b724f5bbe83c2e25521ebe76bcdf0c8cf718ecb54dec45ff847be725f16a5f29",
+        "git_blob": "51aea80579ec54c265a9f1fe93c7ecc7d91cc892"
+      },
+      {
+        "path": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_R3_ADV11_DESCENDANT_STABLE_CONTEXT_R1/.python-version",
+        "sha256": "02e735b3dfe1c32833eb550b7ff8ffa17f5f2bc3fa1e7bae61a8f5a3883ce398",
+        "git_blob": "24ee5b1be9961e38a503c8e764b7385dbb6ba124"
+      }
+    ]
+  },
+  "dependency_manifest": {
+    "path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/negative-smoke-r1/dependencies.json",
+    "sha256": "009e63d71b1918eaa07f7a0b51a0c68e8bfbce8e333bbdf649fecce6a03ee54b"
+  },
+  "effective_umask": "0077",
+  "appdata": {
+    "path": "/private/tmp/gate-launch-20261019-12207-n9fetk/appdata",
+    "mode": "0700",
+    "uid": 1428005812
+  },
+  "runtime_root": {
+    "path": "/private/tmp/gate-launch-20261019-12207-n9fetk",
+    "mode": "0700",
+    "uid": 1428005812
+  },
+  "basetemp": {
+    "path": "/private/tmp/gate-launch-20261019-12207-n9fetk/basetemp",
+    "mode": "0700",
+    "uid": 1428005812
+  },
+  "runtime_directories": [
+    {
+      "path": "/private/tmp/gate-launch-20261019-12207-n9fetk/appdata",
+      "mode": "0700",
+      "uid": 1428005812
+    },
+    {
+      "path": "/private/tmp/gate-launch-20261019-12207-n9fetk/basetemp",
+      "mode": "0700",
+      "uid": 1428005812
+    },
+    {
+      "path": "/private/tmp/gate-launch-20261019-12207-n9fetk/pytest-cache",
+      "mode": "0700",
+      "uid": 1428005812
+    },
+    {
+      "path": "/private/tmp/gate-launch-20261019-12207-n9fetk/python-cache",
+      "mode": "0700",
+      "uid": 1428005812
+    },
+    {
+      "path": "/private/tmp/gate-launch-20261019-12207-n9fetk/tmp",
+      "mode": "0700",
+      "uid": 1428005812
+    },
+    {
+      "path": "/private/tmp/gate-launch-20261019-12207-n9fetk/home",
+      "mode": "0700",
+      "uid": 1428005812
+    },
+    {
+      "path": "/private/tmp/gate-launch-20261019-12207-n9fetk/cache",
+      "mode": "0700",
+      "uid": 1428005812
+    },
+    {
+      "path": "/private/tmp/gate-launch-20261019-12207-n9fetk/work",
+      "mode": "0700",
+      "uid": 1428005812
+    }
+  ],
+  "environment": {
+    "HOME": "/private/tmp/gate-launch-20261019-12207-n9fetk/home",
+    "LANG": "en_US.UTF-8",
+    "PATH": "/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin",
+    "TMPDIR": "/private/tmp/gate-launch-20261019-12207-n9fetk/tmp",
+    "LOTTOLAB_DATA_DIR": "/private/tmp/gate-launch-20261019-12207-n9fetk/appdata",
+    "TMP": "/private/tmp/gate-launch-20261019-12207-n9fetk/tmp",
+    "TEMP": "/private/tmp/gate-launch-20261019-12207-n9fetk/tmp",
+    "PYTHONDONTWRITEBYTECODE": "1",
+    "PYTHONPYCACHEPREFIX": "/private/tmp/gate-launch-20261019-12207-n9fetk/python-cache",
+    "XDG_CACHE_HOME": "/private/tmp/gate-launch-20261019-12207-n9fetk/cache",
+    "XDG_DATA_HOME": "/private/tmp/gate-launch-20261019-12207-n9fetk/appdata",
+    "UV_CACHE_DIR": "/private/tmp/gate-launch-20261019-12207-n9fetk/cache",
+    "PIP_CACHE_DIR": "/private/tmp/gate-launch-20261019-12207-n9fetk/cache",
+    "GIT_OPTIONAL_LOCKS": "0",
+    "GIT_NO_LAZY_FETCH": "1",
+    "GATE_LAUNCH_RECEIPT": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/negative-smoke-r1/launch.json",
+    "GATE_RUNTIME_ROOT": "/private/tmp/gate-launch-20261019-12207-n9fetk",
+    "GATE_BASETEMP": "/private/tmp/gate-launch-20261019-12207-n9fetk/basetemp"
+  },
+  "environment_policy": "cleared inherited environment; only listed task values passed",
+  "process": {
+    "pid": 12207,
+    "ppid": 12078,
+    "pgid": 12078,
+    "runtime_executable": "/System/Library/Frameworks/Ruby.framework/Versions/2.6/usr/bin/ruby",
+    "runtime_version": "ruby 2.6.10p210 (2022-04-12 revision 67958) [universal.arm64e-darwin26]"
+  },
+  "source_snapshots": {
+    "source": {
+      "identity": {
+        "path": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_R3_ADV11_DESCENDANT_STABLE_CONTEXT_R1",
+        "head": "e440d4298551ce93ef3ea9a9226143784afa3eff",
+        "tree": "294cbf6bbe7ee8a8ebad947f397852edc1981b57",
+        "parents": [
+          "86f644010f41cd627f436c8d5cf9e0b5cca8fcdc"
+        ],
+        "shallow": "false",
+        "alternates": {
+          "path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.git/objects/info/alternates",
+          "exists": false,
+          "sha256": null
+        },
+        "git_common_dir": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.git"
+      },
+      "refs_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/negative-smoke-r1/source-refs-before.txt",
+      "refs_sha256": "1116e760b362be801dc36614d9a90af43348ae67634ca5fcf0087510087efad5",
+      "refs_count": 1619,
+      "status_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/negative-smoke-r1/source-status-before.txt",
+      "status_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "primary": {
+      "identity": {
+        "path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis",
+        "head": "17a03e3305671d09578d81c29013ca15b9ca4a6d",
+        "tree": "478c7d40b74e0b7938e2bd4cc600401fcb89067d",
+        "parents": [
+          "ff1f30f5d68bd638e66314651daa33b9db833cd0",
+          "078cba9178b942835fcf771d2dc744b1d85300c8"
+        ],
+        "shallow": "false",
+        "alternates": {
+          "path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.git/objects/info/alternates",
+          "exists": false,
+          "sha256": null
+        },
+        "git_common_dir": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.git"
+      },
+      "refs_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/negative-smoke-r1/primary-refs-before.txt",
+      "refs_sha256": "1116e760b362be801dc36614d9a90af43348ae67634ca5fcf0087510087efad5",
+      "refs_count": 1619,
+      "status_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/runs/negative-smoke-r1/primary-status-before.txt",
+      "status_sha256": "87a3f47aed3b19fa077742beb6f1af94b2379efc70ea02cbf948d6b1668fdd5f"
+    }
+  },
+  "old_judge_sha256": "028e60ce4b0290a97c3b140b902157e4eb72eb2d1527f6297710c10a9dc22c68",
+  "adapter_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_R3_GATE_LAUNCH_PROVENANCE_CAPTURE_R1/launch_gate.rb",
+  "adapter_sha256": "40db7990f2ad9c76c447dfe865fa619cbce5718f045578496af9f6c984673310",
+  "canonical_launcher_path": "/Users/kelvin/.codex/skills/fable-method/scripts/task_checkpoint.rb",
+  "canonical_launcher_blob": "00e2cf4a4f06b0f0a8d8e4be6091a4304e6e2ae4",
+  "canonical_launcher_sha256": "babba3757a7ea9ad59c7ff9b18b6e4497dbc887b86eebfb09ccae1a36ab96275",
+  "protection": "SHORT_SMOKE_ONLY; no ExecutionRecord claimed"
+}

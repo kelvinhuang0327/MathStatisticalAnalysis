@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "task_id": "B649_T237_FORMAL_CERTIFICATE_FROM_PATCH_R1",
+  "execution_id": "stage-certificate-three-paths",
+  "pid": 68484,
+  "status": "COMPLETED",
+  "durable_capture_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_T237_FORMAL_CERTIFICATE_FROM_PATCH_R1/captures/stage-certificate-three-paths.json",
+  "started_at": "2026-10-17T09:12:40Z",
+  "ended_at": "2026-10-17T09:12:45Z"
+}

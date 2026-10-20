@@ -1,0 +1,74 @@
+{
+  "TASK_ID": "B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2",
+  "RECEIPT_PURPOSE": "Record late direct Owner source clarification without changing the sealed candidate or inventing historical provenance.",
+  "AUTHORIZATION_SOURCE": "CURRENT_WORKER_CONVERSATION_USER_MESSAGE: reply to request_user_input_async call_c61bdf8729d64906902716c6ceb6c85d, question index 0",
+  "OWNER_DIRECT_SOURCE_DECLARATION": {
+    "ORIGINAL_RESEARCH_TASK_ID": "B649_S3_NEXT_OWNER_INDEPENDENT_SYMBOLIC_R1",
+    "ORIGINAL_RESEARCH_CONVERSATION_ID": "UNKNOWN_NOT_VERIFIED",
+    "ORIGINAL_RESEARCH_PROOF_ARTIFACT": "NOT_VERIFIED",
+    "CERTIFICATE_SOURCE_MODE": "INDEPENDENT_REDERIVATION",
+    "SCIENTIFIC_AUTHORITY": {
+      "BASE_HEAD": "9acea1331e021a9623fa593997d90cfc89a69136",
+      "BASE_TREE": "de577e8d6f3ccbe52e663c96ee1528c95a0ee7ec",
+      "BASE_RESULT_SHA256": "9fbe17d020573835cd69f16296fee224ff4f83aef8b3e7a644f2ffaabdfe92c9",
+      "TARGET_PROFILE": "55555555555443000000"
+    },
+    "ORIGINAL_RESEARCH_CHAT_NOT_REQUIRED": true,
+    "DO_NOT_REPEAT_EXCLUDED_CHAT_SEARCHES": true,
+    "ZIP": {
+      "FILENAME": "B649_T208_uncommitted_certificate_candidate.zip",
+      "CHATGPT_SANDBOX_PATH": "/mnt/data/B649_T208_uncommitted_certificate_candidate.zip",
+      "REPORTED_SHA256": "5647a23ddb72cdea833d561f3231a55d847da19610ebd0a42df2951467745058",
+      "REPORTED_STATUS": "UNCOMMITTED_UNJUDGED_CANDIDATE",
+      "ACTUAL_LOCAL_ATTACHMENT_LOCATOR": "NOT_PROVIDED_IN_THIS_REPLY",
+      "USAGE": "NOT_USED",
+      "ACTUAL_BYTES_HASH_VERIFIED": false
+    },
+    "COMMIT_AUTHORIZED": "YES",
+    "LOCAL_COMMIT_LIMIT": 1,
+    "NO_SECOND_COMMIT": true,
+    "PUSH_AUTHORIZED": "NO",
+    "PR_AUTHORIZED": "NO",
+    "MERGE_AUTHORIZED": "NO",
+    "FAMILY_AUTHORITY_MUTATION": "NO",
+    "HEAVY_SOLVER_AUTHORIZED": "NO",
+    "PROTECTED_ENTRY_BYPASS_AUTHORIZED": false,
+    "MARKER_MUTATION_AUTHORIZED": false
+  },
+  "SEALED_CANDIDATE": {
+    "HEAD": "6a7178354c302daa0ea98b638a687a043cade4d1",
+    "TREE": "6745a903fb1dabbea3939212fad0613020429d26",
+    "RESULT_SHA256": "7f76e162696850f80c68e25cc4dfcf288aa164003bf513c2d85e94f90955ae3b",
+    "LOCAL_COMMIT_COUNT": 1,
+    "WORKTREE_STATUS": "CLEAN"
+  },
+  "DISPOSITION": {
+    "MATHEMATICAL_AUTHORITY": "Immutable Base and independently derived certificate; historical chat/ZIP are not mathematical premises.",
+    "HISTORICAL_PROVENANCE_STATUS": "UNKNOWN_NOT_VERIFIED under Owner clarification",
+    "EMBEDDED_RESEARCH_SOURCE_FIELDS": "Retained as sealed historical metadata only. They must not be presented as independently certified original execution provenance.",
+    "SUPERSEDES_REPORTING_ONLY": [
+      "Original-research provenance wording in committed RESEARCH_SOURCE/CANDIDATE_ZIP fields",
+      "Original-research provenance wording in prior Worker handoff and final receipt",
+      "G02 historical-source identification wording in prior Judge report"
+    ],
+    "CANDIDATE_BYTES_CHANGED": false,
+    "PRIOR_MATH_VERDICT": "VERIFIED_WITH_CAVEATS; remains subject to supplemental independent source-only reconciliation",
+    "REUSABLE_NUMERIC_EVIDENCE": "Same HEAD/tree, command and environment remain unchanged; no repeat numerical testing requested.",
+    "NEW_SEARCHES": 0,
+    "ZIP_READS": 0,
+    "NEW_SOLVER_RUNS": 0,
+    "NEW_COMMITS": 0
+  },
+  "PRIOR_RECEIPTS": {
+    "WORKER": {
+      "PATH": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/final-worker-receipt.json",
+      "SHA256": "8964b536b8a26815a1ca5b8092298f4d22cedbff49a998ccc7c8d97f23ced2eb"
+    },
+    "JUDGE": {
+      "PATH": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/judge-report.json",
+      "SHA256": "12b0dace8690fbae019a8a0d262f96d695251abf115ddd457206b55dbb8a4e20"
+    }
+  },
+  "WRITE_SCOPE": "Only this task's minimal Fable clarification and supplemental Judge receipts; no product/source/test/result/Git mutation.",
+  "SUPPLEMENTAL_JUDGE_REPORT": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_S3_T208_EXACT_PROFILE_CERTIFICATE_COMMITTED_R2/judge-source-clarification-r1.json"
+}

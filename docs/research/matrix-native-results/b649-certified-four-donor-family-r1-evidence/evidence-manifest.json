@@ -1,0 +1,160 @@
+{
+  "DESCRIPTION": "Managed, self-contained source closure for four certified donor proofs in B649 min-S2 family replay.",
+  "ENTRIES": {
+    "b649-min-s2-666655555553211-t257-formal-r2-result.json": {
+      "bytes": 2744001,
+      "donor": "T257",
+      "head": "bbfee5c20258fe69dbe48f070f86c6afa0020416",
+      "original_locator": "bbfee5c20258fe69dbe48f070f86c6afa0020416:docs/research/matrix-native-results/b649-min-s2-666655555553211-t257-formal-r2-result.json",
+      "role": "donor_result",
+      "sha256": "f2a2a48ff023dbb6a259911fb8b01b9a318b0982b5681f479549d35fdb1c3b42",
+      "tree": "6925613dda4a93bca22b91d74f5084e21d27f031"
+    },
+    "b649-min-s2-t257-t237-joint-exact-authority-r1-result.json": {
+      "bytes": 3953858,
+      "donor": "T237",
+      "head": "f30863f708e7f4d026d5c99e9b79529e38f9be92",
+      "original_locator": "f30863f708e7f4d026d5c99e9b79529e38f9be92:docs/research/matrix-native-results/b649-min-s2-t257-t237-joint-exact-authority-r1-result.json",
+      "role": "donor_result",
+      "sha256": "4aa6f817220db51a3648df3dcbe10efbd0d0ad614afa4223404e7dcd62ab01ac",
+      "tree": "a9977cc6451693ad8badd18d0bd7e5e9bb9c709e"
+    },
+    "b649-next-unique-max-owner-w821-z3-resume-r2-result.json": {
+      "bytes": 2305856,
+      "donor": "W821_R2",
+      "head": "4b7a20446743f8e060c85c9002cd1c137f90b398",
+      "original_locator": "4b7a20446743f8e060c85c9002cd1c137f90b398:docs/research/matrix-native-results/b649-next-unique-max-owner-w821-z3-resume-r2-result.json",
+      "role": "donor_result",
+      "sha256": "2c8dee1b784aa674b80b52d76f600e5d50fbfc98ed15a0a3cb87ea57828ab96e",
+      "tree": "89e6e1175b7d7b0526a25c89136cb88a2e878e80"
+    },
+    "b649-s3-t208-exact-profile-certificate-r2-result.json": {
+      "bytes": 106435,
+      "donor": "T208",
+      "head": "6a7178354c302daa0ea98b638a687a043cade4d1",
+      "original_locator": "6a7178354c302daa0ea98b638a687a043cade4d1:docs/research/matrix-native-results/b649-s3-t208-exact-profile-certificate-r2-result.json",
+      "role": "donor_result",
+      "sha256": "7f76e162696850f80c68e25cc4dfcf288aa164003bf513c2d85e94f90955ae3b",
+      "tree": "6745a903fb1dabbea3939212fad0613020429d26"
+    },
+    "b649_min_s2_666655555553211_t257_formal_r2.py": {
+      "bytes": 30578,
+      "donor": "T257",
+      "head": "bbfee5c20258fe69dbe48f070f86c6afa0020416",
+      "original_locator": "bbfee5c20258fe69dbe48f070f86c6afa0020416:src/lottolab/research/b649_min_s2_666655555553211_t257_formal_r2.py",
+      "role": "donor_source",
+      "sha256": "3d87309630afe1e2d145356ca44faf965000e141ede48a5482ba4dfd22db0448",
+      "tree": "6925613dda4a93bca22b91d74f5084e21d27f031"
+    },
+    "b649_min_s2_t257_t237_joint_exact_authority_r1.py": {
+      "bytes": 46182,
+      "donor": "T237",
+      "head": "f30863f708e7f4d026d5c99e9b79529e38f9be92",
+      "original_locator": "f30863f708e7f4d026d5c99e9b79529e38f9be92:src/lottolab/research/b649_min_s2_t257_t237_joint_exact_authority_r1.py",
+      "role": "donor_source",
+      "sha256": "d8d286d021cacba5dc55803c5db5ba8cbe00a502a9916191be540755d00af131",
+      "tree": "a9977cc6451693ad8badd18d0bd7e5e9bb9c709e"
+    },
+    "b649_next_unique_max_owner_w821_z3_resume_r2.py": {
+      "bytes": 50571,
+      "donor": "W821_R2",
+      "head": "4b7a20446743f8e060c85c9002cd1c137f90b398",
+      "original_locator": "4b7a20446743f8e060c85c9002cd1c137f90b398:src/lottolab/research/b649_next_unique_max_owner_w821_z3_resume_r2.py",
+      "role": "donor_source",
+      "sha256": "0bb936a694b433cb88e91667e6e7885f3579a4c17beced97393a317dbe42ec9e",
+      "tree": "89e6e1175b7d7b0526a25c89136cb88a2e878e80"
+    },
+    "b649_s3_t208_exact_profile_certificate_r2.py": {
+      "bytes": 20115,
+      "donor": "T208",
+      "head": "6a7178354c302daa0ea98b638a687a043cade4d1",
+      "original_locator": "6a7178354c302daa0ea98b638a687a043cade4d1:src/lottolab/research/b649_s3_t208_exact_profile_certificate_r2.py",
+      "role": "donor_source",
+      "sha256": "33da4fad8af7d794c42de10f4f4da76b3428dfacada4851da2527eea2184079c",
+      "tree": "6745a903fb1dabbea3939212fad0613020429d26"
+    },
+    "t208-judge-report.json": {
+      "bytes": 50565,
+      "donor": "T208",
+      "head": "6a7178354c302daa0ea98b638a687a043cade4d1",
+      "original_locator": ".fable/checkpoints/B649_CERTIFIED_FOUR_DONOR_FAMILY_INTEGRATION_R1/evidence/t208-judge-report.json",
+      "role": "judge_report",
+      "sha256": "12b0dace8690fbae019a8a0d262f96d695251abf115ddd457206b55dbb8a4e20",
+      "tree": "6745a903fb1dabbea3939212fad0613020429d26"
+    },
+    "t208-source-clarification.json": {
+      "bytes": 24008,
+      "donor": "T208",
+      "head": "6a7178354c302daa0ea98b638a687a043cade4d1",
+      "original_locator": ".fable/checkpoints/B649_CERTIFIED_FOUR_DONOR_FAMILY_INTEGRATION_R1/evidence/t208-source-clarification.json",
+      "role": "source_clarification",
+      "sha256": "7b2f52c99430985fa74de5fa95bd062542944104467f4d33fbad415d6663184d",
+      "tree": "6745a903fb1dabbea3939212fad0613020429d26"
+    },
+    "t237-judge-report.json": {
+      "bytes": 47386,
+      "donor": "T237",
+      "head": "f30863f708e7f4d026d5c99e9b79529e38f9be92",
+      "original_locator": ".fable/checkpoints/B649_CERTIFIED_FOUR_DONOR_FAMILY_INTEGRATION_R1/evidence/t237-judge-report.json",
+      "role": "judge_report",
+      "sha256": "bbed01db2176856535aacc5915a2989727bd8889bb3276e01a3c5c08cafae595",
+      "tree": "a9977cc6451693ad8badd18d0bd7e5e9bb9c709e"
+    },
+    "t257-certified-commit-message.txt": {
+      "bytes": 918,
+      "donor": "T257",
+      "head": "bbfee5c20258fe69dbe48f070f86c6afa0020416",
+      "original_locator": "git show -s --format=%B bbfee5c20258fe69dbe48f070f86c6afa0020416",
+      "role": "judge_receipt",
+      "sha256": "4be4c71090d90b42567a95a88aa66e0d2985dc34176cdccf01ba40aa3877d72f",
+      "tree": "6925613dda4a93bca22b91d74f5084e21d27f031"
+    },
+    "test_b649_min_s2_666655555553211_t257_formal_r2.py": {
+      "bytes": 8885,
+      "donor": "T257",
+      "head": "bbfee5c20258fe69dbe48f070f86c6afa0020416",
+      "original_locator": "bbfee5c20258fe69dbe48f070f86c6afa0020416:tests/unit/test_b649_min_s2_666655555553211_t257_formal_r2.py",
+      "role": "donor_test",
+      "sha256": "1d2dd3c3365f4a81acf2512b6fe22fdb83afdb0768a81a58466871fa6f904340",
+      "tree": "6925613dda4a93bca22b91d74f5084e21d27f031"
+    },
+    "test_b649_min_s2_t257_t237_joint_exact_authority_r1.py": {
+      "bytes": 16054,
+      "donor": "T237",
+      "head": "f30863f708e7f4d026d5c99e9b79529e38f9be92",
+      "original_locator": "f30863f708e7f4d026d5c99e9b79529e38f9be92:tests/unit/test_b649_min_s2_t257_t237_joint_exact_authority_r1.py",
+      "role": "donor_test",
+      "sha256": "cd1f2fa08bfd9215bfa46a8dd189a1baefa177aa74f9b420ec8ae759b907bdf7",
+      "tree": "a9977cc6451693ad8badd18d0bd7e5e9bb9c709e"
+    },
+    "test_b649_next_unique_max_owner_w821_z3_resume_r2.py": {
+      "bytes": 37685,
+      "donor": "W821_R2",
+      "head": "4b7a20446743f8e060c85c9002cd1c137f90b398",
+      "original_locator": "4b7a20446743f8e060c85c9002cd1c137f90b398:tests/unit/test_b649_next_unique_max_owner_w821_z3_resume_r2.py",
+      "role": "donor_test",
+      "sha256": "3b51007a8ea130b743c99b8fc55c4df83abb22233f7bbddbac366a689f067c22",
+      "tree": "89e6e1175b7d7b0526a25c89136cb88a2e878e80"
+    },
+    "test_b649_s3_t208_exact_profile_certificate_r2.py": {
+      "bytes": 5541,
+      "donor": "T208",
+      "head": "6a7178354c302daa0ea98b638a687a043cade4d1",
+      "original_locator": "6a7178354c302daa0ea98b638a687a043cade4d1:tests/unit/test_b649_s3_t208_exact_profile_certificate_r2.py",
+      "role": "donor_test",
+      "sha256": "5de05d84e71ad88a69228665bf864f20436567b1f9f64a74181d8ca6c610a7bf",
+      "tree": "6745a903fb1dabbea3939212fad0613020429d26"
+    },
+    "w821-fresh-judge-report.md": {
+      "bytes": 8937,
+      "donor": "W821_R2",
+      "head": "4b7a20446743f8e060c85c9002cd1c137f90b398",
+      "original_locator": ".fable/checkpoints/B649_CERTIFIED_FOUR_DONOR_FAMILY_INTEGRATION_R1/evidence/w821-fresh-judge-report.md",
+      "role": "judge_report",
+      "sha256": "cadf94ef1a021ca6b453edfe3da45c31b0b87c5f8cd4e2894ddf7c78950de16a",
+      "tree": "89e6e1175b7d7b0526a25c89136cb88a2e878e80"
+    }
+  },
+  "ORIGINAL_TASK_ID": "B649_CERTIFIED_FOUR_DONOR_FAMILY_INTEGRATION_R1",
+  "TASK_ID": "B649_FOUR_DONOR_PORTABLE_PROOF_CLOSURE_R1"
+}

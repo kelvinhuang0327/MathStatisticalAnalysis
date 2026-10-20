@@ -1,0 +1,96 @@
+VERIFIED_WITH_CAVEATS
+
+All AC1–AC12 pass for the frozen bounded-acceptance snapshot. No blocking defect was found. The caveat is incomplete naming of deleted temporary files; their scoped families and runner-operation count are recorded, but individual random filenames cannot be reconstructed.
+
+TASK_ID: B649_K20_ONE_SWAP_DELTA_HARDENED_BOUNDED_ACCEPTANCE_R1
+TASK_CLASS: READ_ONLY_COMPLETION_REVIEW
+WORKER_ROUTE: NOT_APPLICABLE
+JUDGE_MODE: FRESH_CONTEXT
+JUDGE_DEPTH: FULL
+JUDGE_DEPTH_REASON: deterministic fault injection and crash/resume recovery
+PACKET_JUDGE_DEPTH: NOT_APPLICABLE
+CANONICAL_REQUIRED_JUDGE_DEPTH: FULL
+JUDGE_DEPTH_RECONCILIATION: MATCH
+MISSING_JUDGE_EVIDENCE: NONE
+IMPLEMENTATION_MUTATION_REQUIRED: NO
+COVERED_ITEMS: AC1–AC12; harness, supervisor, runtime receipts, artifact identity, checkpoint chains, write accounting
+MISSING_ITEMS: NONE for the bounded acceptance criteria
+INVALIDATED_EVIDENCE: NONE
+JUDGE_TASK_NAME: /root/judge
+REQUESTED_SESSION_NAME: /root-judge
+SESSION_NAME_LIMITATION: Actual collaboration task name is /root/judge.
+JUDGE_FILESYSTEM_WRITES: 0
+JUDGE_GIT_MUTATIONS: 0
+JUDGE_CONTAINER_OR_SCORING_RUNS: 0
+
+The authoritative Packet SHA256 is 7c7d4945fca1d2a0ae5b983fd90a9f304dd7eba9b15a9bef6fb94bf8dc1f51be.
+
+The judged artifact root is /Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.task-data/B649_K20_ONE_SWAP_DELTA_HARDENED_BOUNDED_ACCEPTANCE_R1.
+
+Its exact ARTIFACT_MANIFEST_SHA256 is 22f53263aa9e3b9c7d1f90ca8aa0f3ca3b80ee5c9e862a6fb0ef57da3fc84076, computed over the saved runtime_artifact_manifest.json bytes. I independently inventoried and matched all 108 entries, including types, modes, file sizes and SHA256 values. No symlink, special file or nested Git directory was found. The absent-root baseline manifest SHA256 is 023bf2e22f37f306a199f8d6cff34ac79d7e1540c67cd8f636ecd6855bf6e274; its absence claim is supported by the durable preflight observation. The delta contains exactly 108 added entries, no changed or removed baseline entries, and the newly created root.
+
+Git provenance for the generated artifact snapshot is NOT_APPLICABLE: these intentionally ignored outputs are not a Git candidate. Their scientific inputs retain separately verified Git provenance:
+
+- Scientific worktree: /Users/kelvin/.codex/worktrees/b649-k20-orbit-production-caller-r1/MathStatisticalAnalysis; branch codex/b649-k20-orbit-production-caller-r1; HEAD d7466cecf6a73d330f6f613fd0470c40299155df; tree d77d5e1154328aeefde490e16d26d572597c26de; clean.
+- Canonical repository: /Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis; HEAD bf3cce1443695ae757462a8482288612de48ba3a; tree 518f60bf6ff8582bd8ae3ee1bcd16c4da24cc5eb; tracked status clean.
+
+RUNTIME_SOURCE_IDENTITY is the explicit combination of that scientific HEAD/tree, the Packet’s pinned scientific files and image, and the harness/supervisor bytes bound by the launch receipt. It is not a substitute manifest digest. PINS_FILE_SHA256 is NOT_APPLICABLE: no standalone SOURCE_PINS file is supplied; individual pins are verified against the Packet and runner constants.
+
+| Criterion | Evidence | Observed result | Decision |
+|---|---|---|---|
+| AC1: Fixed sources/artifacts match | Direct SHA256 checks, preflight inventory, launch and inspect receipts | Original runner, hardened runner, delta engine, V2, Top12, launcher, scientific baseline and import closure match; image identity agrees | PASS |
+| AC2: Exact hardened runner | Direct source hash and harness’s pre-execution hash gate | ccff257fb4fef627eaad805a0608edc9b0da61ecf5f32b2b15c955ace6e6feff | PASS |
+| AC3: F1 collision/fail-closed behavior | Complete F1 harness inspection; raw output and execution/result receipts | 5/5 pass; deterministic collision then success, incumbent preserved, eight-collision exhaustion rejected, injected EACCES rejected without committed state; nonce width 256 bits; O_EXCL/O_NOFOLLOW retained; nonce-independent evidence | PASS |
+| AC4: Six trusted-head tests | Complete F2 harness inspection; raw output and phase receipt | Correct head accepted; missing, malformed and unequal heads rejected; forged head rejected; temporary/environment/sidecar inputs do not supply implicit trust | PASS |
+| AC5: Rehashed forgery still rejected | Saved clean/forged checkpoints, controller anchor, child argv; independent digest/order-chain reconstruction | Forged cumulative value is changed by one and internally valid; forged SHA differs from the legitimate fixed controller head; runtime rejects with TRUSTED_HEAD_MISMATCH | PASS |
+| AC6: A/B/C equality | All phase receipts, 24 checkpoint files, independent chain and byte comparisons | All eight checkpoints identical across A/B/C; all 5,148 cumulative values and summaries identical; B resumes at 384 in a new PID; C exits 86 after 65 uncommitted mains and resumes from 384 in another PID | PASS |
+| AC7: Every bounded V2 pair equal | Direct compact_count loop inspection; raw parity result; independent comparison and accumulation of both retained streams | 5,271,552 bytes/pairs equal, tolerance zero; independently recomputed 5,148 column totals and checkpoint chunk totals match A/B/C | PASS |
+| AC8: Resource enforcement | Actual cgroup readbacks, container inspections, sequential child lifecycle | cgroup v2; memory.max 1,073,741,824; swap.max 0; peak 129,675,264; OOM events zero; maximum active scoring workers one | PASS |
+| AC9: Fable identity/lifecycle | Execution record, capture, launch hashes and host-result hash | Execution hardened-bounded-container-r1 COMPLETED; capture exit 0; scientific HEAD/tree and canonical launcher identity agree | PASS |
+| AC10: No full census/count | Complete harness/supervisor review, bounded selection gates, nine phase records | Every scoring path stays within the fixed 1,024-main selection; no full census or new full exact count | PASS |
+| AC11: Prior inputs unchanged | Independent comparison of all 233 prior entries, exact entry-set check, Git identity/status checks | All prior entries and pinned source state unchanged; no observed source or Git mutation | PASS |
+| AC12: No production-anchor claim | Harness, runtime result and worker result | Explicit F2_DURABLE_FABLE_ANCHOR_INTEGRATION: NOT IMPLEMENTED | PASS |
+
+The external anchor is controller PID 1’s saved result from the successful F1 child, obtained before the F2 child is launched. Its unchanged value appears in F2 argv:
+
+f577e1ffd4aed3e7947b2640a14d0f7125b366a3fc79884a1393c69119fa49b5
+
+The forged checkpoint SHA is:
+
+636bb38a1ec0b0be3222daf9251b6b81390af97c063a448c71d2e3feb82af46a
+
+I independently reconstructed the clean and forged internal chains without scoring. Both internal chains validate, establishing that external-head rejection is material rather than an incidental malformed-payload rejection.
+
+Both complete pair streams have SHA256 1cd145ea4daebcfca44e615b74d431ec50a79f1118bb10860a099dfaee1dfac2. The common final checkpoint SHA is 9bcb41e03cda769e364102679b398140c3ea69fff0c29cf57b6c09ad68b92992.
+
+Finding J1:
+
+severity: NON_BLOCKING
+FINDING_CONFIDENCE: CONFIRMED
+claim: Deleted temporary files lack individually persisted random filenames.
+criterion_or_rule: Complete filesystem write accounting.
+evidence: write_ledger.json explicitly records this limitation, temporary families, 28 runner temporary-create/commit operations, and canonical launcher temporary families.
+expected: Individually traceable temporary-file accounting.
+observed: Retained entries are fully reconciled; deleted random names are represented by scoped families rather than individual paths.
+
+This limitation does not leave AC1–AC12 unadjudicated. The baseline output root was absent, the container’s sole writable bind is the task output root, all retained entries reconcile, deterministic collision sentinels remain inspectable, and prior artifacts/source state independently match. The 28 runner temporary operations reconcile to 24 A/B/C checkpoint commits, two F1 session commits and two successful F1 atomic-create calls. Exact deleted-name recovery remains unavailable; this report does not claim a complete historical per-path audit.
+
+Evidence reuse and verification counts:
+
+- Reused one completed authorized container run containing nine sequential phase executions: eight exit 0 and the expected crash phase exit 86.
+- Independently matched all nine raw stdout/stderr hashes and successful phase-result records to their execution receipts.
+- Performed three assertion-based, read-only verification scripts covering manifest/ledger/Git/receipt/pair reconciliation; pins/environment/prior-entry reconciliation; and independent checkpoint-chain/anchor reconstruction.
+- Independently reconstructed 26 checkpoint chains’ entries: 24 A/B/C checkpoints plus clean and forged F2 checkpoints.
+- New scientific scoring executions, full-suite reruns, container launches and retries: zero.
+- No implementation or repairs performed.
+
+Measured reused timings are 18.851494375 seconds host wall time and 15.719217463 seconds controller wall time. Independent review duration was not measured.
+
+Authorization is supported by the parent’s confirmation of the direct human instruction and its preserved preflight text. Cleanup is supported by the inspected terminal container state and the hash-bound host receipt recording removal of container da1cdd2f4d96f5384b928496d59b4ed9f5104cdd078f0bebcd3eab266d928ea0. I did not make a new Docker query or launch anything. No publication, commit, push, merge or production durable-anchor integration occurred.
+
+F2’s adversarial chain contains one legitimate 128-main checkpoint; separate A/B/C tests cover complete eight-checkpoint chains. The crash test covers the requested mid-uncommitted-chunk process exit, not power-loss or arbitrary filesystem-failure durability.
+
+The worker-result SHA256 independently matches 16148509c92c2aeca0f98d2ca292ba561822ee06b9a6342ea7138ab888740407. Fable execution-record and capture SHA256 values independently match cf72160de03ac279972d2584eae478aaf27eccf1bc324ffef9d486d218a70831 and bd9886bea0ea166dea622fbe39f3a2987f91915301b0a3b2c1431f88e35e1d78.
+
+The smallest next action is to persist this review and final closure records, preserving and rechecking every frozen runtime entry. Those later additive records are separate from the exact snapshot judged here. The bounded technical outcome supports HARDENED_BOUNDED_ACCEPTED; formal durable trusted-anchor integration remains future work.
+

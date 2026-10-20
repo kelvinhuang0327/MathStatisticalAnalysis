@@ -122,7 +122,8 @@
       "budget_bytes": 10485760,
       "dropped_events": 33,
       "formal_capture_and_SHA256SUMS_unchanged": true,
-      "result_origin": "previous synthetic test output summarized in the task conversation, not a TaskCheckpoint capture"
+      "result_origin": "Exact command and output are preserved in observed_tool_evidence.json; the source is the task conversation, not a TaskCheckpoint capture.",
+      "observed_tool_evidence_item_id": "exec-a7c3c18c-b63d-42f5-b488-5d679b5015a4"
     },
     "evidence_feedback_self_test": {
       "result": "PASS",
@@ -133,7 +134,8 @@
       "pytest_processes_after_preflight": 0,
       "test_runtime_after_preflight_seconds": 0,
       "formal_fixture_hashes_unchanged": true,
-      "result_origin": "previous synthetic test output summarized in the task conversation, not a TaskCheckpoint capture"
+      "result_origin": "Exact command and output are preserved in observed_tool_evidence.json; the source is the task conversation, not a TaskCheckpoint capture.",
+      "observed_tool_evidence_item_id": "exec-d9bc0203-75c2-416d-b64c-7f215778bec2"
     },
     "receipt_deduplication": {
       "result": "PASS",
@@ -142,7 +144,8 @@
       "v2_result_plus_receipt_bytes": 363028,
       "reduction_percent": 56.78,
       "receipt_bytes_and_SHA_preserved": true,
-      "result_origin": "previous simulated V2 verification output summarized in the task conversation, not a TaskCheckpoint capture"
+      "result_origin": "Exact command and output are preserved in observed_tool_evidence.json; the source is the task conversation, not a TaskCheckpoint capture.",
+      "observed_tool_evidence_item_id": "exec-1ed370e0-9ae9-42c8-a37f-ab8c9a195d7b"
     },
     "authorization_race_regression": {
       "result": "PASS",
@@ -156,13 +159,16 @@
         "claim_artifacts_cleaned_or_restored": true,
         "temporary_fixture_cleanup": "TemporaryDirectory"
       },
-      "result_origin": "tool output in the task conversation, not a TaskCheckpoint capture",
-      "packaged_regression_script_rerun": false
+      "result_origin": "Exact command and output are preserved in observed_tool_evidence.json; the source is the task conversation, not a TaskCheckpoint capture.",
+      "packaged_regression_script_rerun": false,
+      "observed_tool_evidence_item_id": "exec-dec984c1-db62-4209-bf39-0542e4543665"
     },
     "static_checks_after_race_fix": {
       "ast_parse_helper_and_receipt_producer": "PASS",
       "git_diff_check": "PASS",
-      "full_research_matrix_rerun": false
+      "full_research_matrix_rerun": false,
+      "observed_tool_evidence_item_id": "exec-fe8bb272-3918-4c06-a6bb-7c6c9f7c1541",
+      "result_origin": "Exact post-commit source/hash integrity command output is preserved in observed_tool_evidence.json."
     }
   },
   "safety": {
@@ -171,11 +177,29 @@
     "no_mathematical_certificate_rules_changed": true,
     "first_independent_judge_finding": "authorization changed after validation and was checked only after worktree removal",
     "race_fix_review": "atomic authorization claim and exact-byte check run before ordinary removal",
-    "most_recent_judge_status_before_this_commit": "BLOCKED_UNVERIFIABLE because the candidate was not sealed"
+    "most_recent_judge_status_before_this_commit": "BLOCKED_UNVERIFIABLE because the candidate was not sealed",
+    "most_recent_judge_status_after_commit": "BLOCKED_UNVERIFIABLE: DELTA-EVIDENCE-1 requires a complete local suite after the load-bearing race fix; this task explicitly forbids rerunning the complete test matrix."
   },
   "limitations": [
     "20/26 is command success rate only; overall task completion, retries, and Judge rejection rates remain NOT_YET_PROVEN because the source schemas do not record them.",
-    "The packaged test outputs for the earlier synthetic runs are summaries of prior task tool output, not raw TaskCheckpoint captures.",
+    "Earlier log-budget and evidence-feedback tests used helper SHA-256 e803a7f304e9e824ca05f1ee9cbf335a8feab23acee80407e5bdd31bc3d1d308. That exact helper source is not present in the current review bundle; the observed SHA is retained. The authorization-race regression used the bundled current helper SHA.",
+    "Exact earlier test commands and captured outputs are now preserved in observed_tool_evidence.json, but they are task-history evidence rather than TaskCheckpoint captures.",
+    "The complete local suite after the race fix remains unrun and is required by the Judge remediation contract; the user forbids rerunning the complete matrix, so the verdict remains BLOCKED_UNVERIFIABLE.",
     "The review bundle is an archival snapshot; runtime use continues to point at the installed Skill/helper paths."
-  ]
+  ],
+  "observed_tool_evidence": {
+    "path": "tools/fable_review_bundle_r1/observed_tool_evidence.json",
+    "sha256": "a6f2fc607f5fa8550800a29089375e6f578167acc0858624c5d1ae84f4c5c067",
+    "source_thread_id": "01a15879-8dca-7090-bdb1-e358ebc338c3",
+    "source_tool_item_ids": [
+      "exec-2f617cf9-2197-4c58-a691-68da105a547e",
+      "exec-a7c3c18c-b63d-42f5-b488-5d679b5015a4",
+      "exec-d9bc0203-75c2-416d-b64c-7f215778bec2",
+      "exec-1ed370e0-9ae9-42c8-a37f-ab8c9a195d7b",
+      "exec-e2e8799c-d618-4cfc-83cc-d066528b379c",
+      "exec-dec984c1-db62-4209-bf39-0542e4543665",
+      "exec-fe8bb272-3918-4c06-a6bb-7c6c9f7c1541"
+    ],
+    "note": "Exact command and captured output copied from read-only task history; these are not TaskCheckpoint captures. Two failed fixture-path attempts are retained and labeled as precondition failures."
+  }
 }

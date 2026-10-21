@@ -29,7 +29,7 @@ function drawRecord(
 }
 
 const b649Draw = drawRecord('BIG_LOTTO', '0002', [1, 3, 9, 17, 24, 49], [7])
-const p638Draw = drawRecord('POWER_LOTTO', '0003', [2, 5, 9, 15, 27, 38], [11])
+const p638Draw = drawRecord('POWER_LOTTO', '0003', [2, 5, 9, 15, 27, 38], [7])
 const t539Draw = drawRecord('DAILY_539', '0004', [3, 8, 13, 28, 35], [])
 
 const emptyPage = {
@@ -222,12 +222,18 @@ describe('DrawHistoryPage', () => {
     await wrapper.get('select[name="lottery-type"]').setValue('POWER_LOTTO')
     await flushPromises()
     expect(requestUrl(1).searchParams.get('lottery_type')).toBe('POWER_LOTTO')
+    expect(p638Draw.main_numbers).toHaveLength(6)
+    expect(p638Draw.main_numbers.every((number) => number >= 1 && number <= 38)).toBe(true)
+    expect(p638Draw.special_numbers).toEqual([7])
+    expect(p638Draw.special_numbers).toHaveLength(1)
+    expect(p638Draw.special_numbers[0]).toBeGreaterThanOrEqual(1)
+    expect(p638Draw.special_numbers[0]).toBeLessThanOrEqual(8)
     expect(wrapper.findAll('th').map((cell) => cell.text())).toContain('First zone')
     expect(wrapper.findAll('th').map((cell) => cell.text())).toContain('Second zone')
     expect(wrapper.findAll('.ball--main')).toHaveLength(6)
     expect(wrapper.findAll('.ball--special')).toHaveLength(1)
     expect(wrapper.get('.ball--main').attributes('aria-label')).toBe('First zone number 2')
-    expect(wrapper.get('.ball--special').attributes('aria-label')).toBe('Second zone number 11')
+    expect(wrapper.get('.ball--special').attributes('aria-label')).toBe('Second zone number 7')
     expect(wrapper.get('code.draw-identity').text()).toBe('0003')
 
     await wrapper.get('select[name="lottery-type"]').setValue('DAILY_539')

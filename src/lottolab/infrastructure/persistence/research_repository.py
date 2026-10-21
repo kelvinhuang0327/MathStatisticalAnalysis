@@ -2066,6 +2066,42 @@ class SQLiteResearchRepository:
             resumable_runs=resumable,
         )
 
+    def fetch_b649_cross_strategy_candidate_rows(
+        self,
+        *,
+        lottery_type: str = "BIG_LOTTO",
+        run_ids: Sequence[str] | None = None,
+        target_draw_numbers: Sequence[str] | None = None,
+        limit: int | None = None,
+        after: B649CandidateCursor | None = None,
+    ) -> B649CandidatePage:
+        with open_database(self._paths, read_only=True) as connection:
+            return fetch_b649_cross_strategy_candidate_rows(
+                connection,
+                lottery_type=lottery_type,
+                run_ids=run_ids,
+                target_draw_numbers=target_draw_numbers,
+                limit=limit,
+                after=after,
+            )
+
+    def fetch_b649_target_outcome_rows(
+        self,
+        *,
+        lottery_type: str = "BIG_LOTTO",
+        target_draw_numbers: Sequence[str] | None = None,
+        limit: int | None = None,
+        after: B649OutcomeCursor | None = None,
+    ) -> B649OutcomePage:
+        with open_database(self._paths, read_only=True) as connection:
+            return fetch_b649_target_outcome_rows(
+                connection,
+                lottery_type=lottery_type,
+                target_draw_numbers=target_draw_numbers,
+                limit=limit,
+                after=after,
+            )
+
     def _write_transaction(self, operation: Callable[[sqlite3.Connection], _T]) -> _T:
         last_busy_error: sqlite3.OperationalError | None = None
         for attempt in range(WRITE_RETRY_ATTEMPTS):
@@ -3096,11 +3132,557 @@ def fetch_research_table_names(connection: sqlite3.Connection) -> frozenset[str]
     )
 
 
+@dataclass(frozen=True, slots=True)
+class B649CrossStrategyCandidateRow:
+    """Immutable prediction candidate row across runs and strategies."""
+
+    run_id: str
+    strategy_snapshot_id: str
+    strategy_id: str
+    strategy_version: str
+    replicate: int
+    target_draw_number: str
+    target_draw_date: str
+    history_cutoff_draw_number: str
+    history_cutoff_draw_date: str
+    target_draw_sha256: str
+    history_cutoff_draw_sha256: str
+    native_position: int
+    ordered_portfolio_position: int | None
+    main_numbers_json: str
+    main_numbers: tuple[int, int, int, int, int, int]
+    ticket_sha256: str
+    execution_status: str
+    causal_eligible: int
+
+
+@dataclass(frozen=True, slots=True)
+class B649CandidateCursor:
+    """Keyset pagination cursor for cross-strategy candidate rows."""
+
+    target_draw_date: str
+    target_draw_number: int
+    strategy_id: str
+    strategy_version: str
+    replicate: int
+    run_id: str
+    strategy_snapshot_id: str
+    native_position: int
+
+
+@dataclass(frozen=True, slots=True)
+class B649CandidatePage:
+    """One deterministic page of cross-strategy candidate rows."""
+
+    items: tuple[B649CrossStrategyCandidateRow, ...]
+    next_cursor: B649CandidateCursor | None
+
+
+@dataclass(frozen=True, slots=True)
+class B649TargetOutcomeRow:
+    """Verified official outcome draw with main and special numbers."""
+
+    target_draw_number: str
+    target_draw_date: str
+    winning_main_numbers: tuple[int, int, int, int, int, int]
+    winning_special_number: int
+    target_draw_sha256: str
+
+
+@dataclass(frozen=True, slots=True)
+class B649OutcomeCursor:
+    """Keyset pagination cursor for target outcome rows."""
+
+    target_draw_date: str
+    target_draw_number: int
+
+
+@dataclass(frozen=True, slots=True)
+class B649OutcomePage:
+    """One deterministic page of target outcome rows."""
+
+    items: tuple[B649TargetOutcomeRow, ...]
+    next_cursor: B649OutcomeCursor | None
+
+
+def _decode_b649_int_list(raw_json: str, *, label: str) -> list[int]:
+    try:
+        raw_obj = cast(object, json.loads(raw_json))
+    except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+        raise ResearchRepositoryError(f"{label} is invalid JSON: {raw_json}") from exc
+    if not isinstance(raw_obj, list):
+        raise ResearchRepositoryError(f"{label} must be a JSON array: {raw_json}")
+    raw_list = cast(list[object], raw_obj)
+    ints: list[int] = []
+    for item in raw_list:
+        if type(item) is not int:
+            raise ResearchRepositoryError(f"{label} items must be integers: {raw_json}")
+        ints.append(item)
+    return ints
+
+
+def _require_b649_query_only(connection: sqlite3.Connection) -> None:
+    query_only_row = connection.execute("PRAGMA query_only").fetchone()
+    if query_only_row is None or int(query_only_row[0]) != 1:
+        raise ResearchRepositoryError("research store connection is not query-only")
+
+
+def _verify_b649_candidate_draw_sha_consistency(
+    connection: sqlite3.Connection,
+    *,
+    lottery_type: str,
+    run_ids: Sequence[str] | None,
+    target_draw_numbers: Sequence[str] | None,
+) -> None:
+    clauses = ["target.target_lottery_type = ?"]
+    params: list[object] = [lottery_type]
+    if run_ids is not None:
+        if not run_ids:
+            return
+        placeholders = ",".join("?" for _ in run_ids)
+        clauses.append(f"target.run_id IN ({placeholders})")
+        params.extend(run_ids)
+    if target_draw_numbers is not None:
+        if not target_draw_numbers:
+            return
+        placeholders = ",".join("?" for _ in target_draw_numbers)
+        clauses.append(f"target.target_draw_number IN ({placeholders})")
+        params.extend(target_draw_numbers)
+
+    where_sql = " AND ".join(clauses)
+
+    target_conflict = connection.execute(
+        f"""
+        SELECT target.target_draw_number, COUNT(DISTINCT target_draw.draw_sha256),
+               GROUP_CONCAT(DISTINCT target_draw.draw_sha256)
+        FROM research_prediction_targets AS target
+        JOIN research_draw_bindings AS target_draw
+          ON target_draw.id = target.target_draw_binding_id
+        WHERE {where_sql}
+        GROUP BY target.target_draw_number
+        HAVING COUNT(DISTINCT target_draw.draw_sha256) > 1
+        LIMIT 1
+        """,
+        tuple(params),
+    ).fetchone()
+    if target_conflict is not None:
+        raise ResearchConflictError(
+            f"conflicting target draw SHA detected for draw {target_conflict[0]}: "
+            f"{target_conflict[2]}"
+        )
+
+    cutoff_conflict = connection.execute(
+        f"""
+        SELECT target.history_cutoff_draw_number, COUNT(DISTINCT cutoff_draw.draw_sha256),
+               GROUP_CONCAT(DISTINCT cutoff_draw.draw_sha256)
+        FROM research_prediction_targets AS target
+        JOIN research_draw_bindings AS cutoff_draw
+          ON cutoff_draw.id = target.history_cutoff_binding_id
+        WHERE {where_sql}
+        GROUP BY target.history_cutoff_draw_number
+        HAVING COUNT(DISTINCT cutoff_draw.draw_sha256) > 1
+        LIMIT 1
+        """,
+        tuple(params),
+    ).fetchone()
+    if cutoff_conflict is not None:
+        raise ResearchConflictError(
+            f"conflicting cutoff draw SHA detected for draw {cutoff_conflict[0]}: "
+            f"{cutoff_conflict[2]}"
+        )
+
+
+def _verify_b649_outcome_draw_sha_consistency(
+    connection: sqlite3.Connection,
+    *,
+    lottery_type: str,
+    target_draw_numbers: Sequence[str] | None,
+) -> None:
+    clauses = ["lottery_type = ?"]
+    params: list[object] = [lottery_type]
+    if target_draw_numbers is not None:
+        if not target_draw_numbers:
+            return
+        placeholders = ",".join("?" for _ in target_draw_numbers)
+        clauses.append(f"draw_number IN ({placeholders})")
+        params.extend(target_draw_numbers)
+
+    where_sql = " AND ".join(clauses)
+    conflict = connection.execute(
+        f"""
+        SELECT draw_number, COUNT(DISTINCT draw_sha256),
+               GROUP_CONCAT(DISTINCT draw_sha256)
+        FROM research_draw_bindings
+        WHERE {where_sql}
+        GROUP BY draw_number
+        HAVING COUNT(DISTINCT draw_sha256) > 1
+        LIMIT 1
+        """,
+        tuple(params),
+    ).fetchone()
+    if conflict is not None:
+        raise ResearchConflictError(
+            f"conflicting draw binding SHA detected for draw {conflict[0]}: {conflict[2]}"
+        )
+
+
+def fetch_b649_cross_strategy_candidate_rows(
+    connection: sqlite3.Connection,
+    *,
+    lottery_type: str = "BIG_LOTTO",
+    run_ids: Sequence[str] | None = None,
+    target_draw_numbers: Sequence[str] | None = None,
+    limit: int | None = None,
+    after: B649CandidateCursor | None = None,
+) -> B649CandidatePage:
+    """Read cross-strategy, cross-run B649 candidate prediction tickets.
+
+    Enforces query-only access, schema presence, causal cutoff strictly before
+    target, valid execution status ('OK'), causal eligibility (1), draw SHA
+    consistency across runs, and deterministic ordering.
+    """
+    _require_b649_query_only(connection)
+    if limit is not None:
+        _validate_page_limit(limit)
+
+    table_names = fetch_research_table_names(connection)
+    required_tables = {
+        "research_draw_bindings",
+        "research_prediction_targets",
+        "research_prediction_tickets",
+        "research_strategy_snapshots",
+    }
+    missing = required_tables - table_names
+    if missing:
+        raise ResearchRepositoryError(
+            f"research store missing required tables: {sorted(missing)}"
+        )
+
+    _verify_b649_candidate_draw_sha_consistency(
+        connection,
+        lottery_type=lottery_type,
+        run_ids=run_ids,
+        target_draw_numbers=target_draw_numbers,
+    )
+
+    clauses = [
+        "target.target_lottery_type = ?",
+        "target.execution_status = 'OK'",
+        "target.causal_eligible = 1",
+        "target.history_cutoff_draw_date < target.target_draw_date",
+        (
+            "CAST(target.history_cutoff_draw_number AS INTEGER) < "
+            "CAST(target.target_draw_number AS INTEGER)"
+        ),
+    ]
+    params: list[object] = [lottery_type]
+
+    if run_ids is not None:
+        if not run_ids:
+            return B649CandidatePage(items=(), next_cursor=None)
+        placeholders = ",".join("?" for _ in run_ids)
+        clauses.append(f"target.run_id IN ({placeholders})")
+        params.extend(run_ids)
+
+    if target_draw_numbers is not None:
+        if not target_draw_numbers:
+            return B649CandidatePage(items=(), next_cursor=None)
+        placeholders = ",".join("?" for _ in target_draw_numbers)
+        clauses.append(f"target.target_draw_number IN ({placeholders})")
+        params.extend(target_draw_numbers)
+
+    if after is not None:
+        clauses.append(
+            """
+            (
+                target.target_draw_date,
+                CAST(target.target_draw_number AS INTEGER),
+                strategy.strategy_id,
+                strategy.strategy_version,
+                strategy.replicate,
+                target.run_id,
+                target.strategy_snapshot_id,
+                ticket.native_position
+            ) > (?, ?, ?, ?, ?, ?, ?, ?)
+            """
+        )
+        params.extend(
+            (
+                after.target_draw_date,
+                after.target_draw_number,
+                after.strategy_id,
+                after.strategy_version,
+                after.replicate,
+                after.run_id,
+                after.strategy_snapshot_id,
+                after.native_position,
+            )
+        )
+
+    limit_clause = ""
+    if limit is not None:
+        limit_clause = "LIMIT ?"
+        params.append(limit + 1)
+
+    where_sql = " AND ".join(clauses)
+    query = f"""
+        SELECT
+            target.run_id,
+            target.strategy_snapshot_id,
+            strategy.strategy_id,
+            strategy.strategy_version,
+            strategy.replicate,
+            target.target_draw_number,
+            target.target_draw_date,
+            target.history_cutoff_draw_number,
+            target.history_cutoff_draw_date,
+            target_draw.draw_sha256 AS target_draw_sha256,
+            cutoff_draw.draw_sha256 AS history_cutoff_draw_sha256,
+            ticket.native_position,
+            ticket.ordered_portfolio_position,
+            ticket.main_numbers_json,
+            ticket.ticket_sha256,
+            target.execution_status,
+            target.causal_eligible
+        FROM research_prediction_targets AS target
+        JOIN research_strategy_snapshots AS strategy
+          ON strategy.id = target.strategy_snapshot_id
+        JOIN research_prediction_tickets AS ticket
+          ON ticket.target_id = target.id
+        JOIN research_draw_bindings AS target_draw
+          ON target_draw.id = target.target_draw_binding_id
+        JOIN research_draw_bindings AS cutoff_draw
+          ON cutoff_draw.id = target.history_cutoff_binding_id
+        WHERE {where_sql}
+        ORDER BY
+            target.target_draw_date ASC,
+            CAST(target.target_draw_number AS INTEGER) ASC,
+            strategy.strategy_id ASC,
+            strategy.strategy_version ASC,
+            strategy.replicate ASC,
+            target.run_id ASC,
+            target.strategy_snapshot_id ASC,
+            ticket.native_position ASC
+        {limit_clause}
+    """
+
+    raw_rows = connection.execute(query, tuple(params)).fetchall()
+    page_rows = raw_rows[:limit] if limit is not None else raw_rows
+    items: list[B649CrossStrategyCandidateRow] = []
+
+    for r in page_rows:
+        main_numbers_raw = str(r[13])
+        decoded_ints = _decode_b649_int_list(
+            main_numbers_raw, label=f"ticket main_numbers_json for target {r[5]}"
+        )
+        if len(decoded_ints) != 6:
+            raise ResearchRepositoryError(
+                f"ticket main_numbers_json must decode to 6 integers: {main_numbers_raw}"
+            )
+        if any(x < 1 or x > 49 for x in decoded_ints):
+            raise ResearchRepositoryError(
+                f"ticket main numbers must be in range 1..49: {main_numbers_raw}"
+            )
+        if len(set(decoded_ints)) != 6:
+            raise ResearchRepositoryError(
+                f"ticket main numbers must contain 6 unique integers: {main_numbers_raw}"
+            )
+
+        items.append(
+            B649CrossStrategyCandidateRow(
+                run_id=str(r[0]),
+                strategy_snapshot_id=str(r[1]),
+                strategy_id=str(r[2]),
+                strategy_version=str(r[3]),
+                replicate=int(r[4]),
+                target_draw_number=str(r[5]),
+                target_draw_date=str(r[6]),
+                history_cutoff_draw_number=str(r[7]),
+                history_cutoff_draw_date=str(r[8]),
+                target_draw_sha256=str(r[9]),
+                history_cutoff_draw_sha256=str(r[10]),
+                native_position=int(r[11]),
+                ordered_portfolio_position=None if r[12] is None else int(r[12]),
+                main_numbers_json=main_numbers_raw,
+                main_numbers=cast(tuple[int, int, int, int, int, int], tuple(decoded_ints)),
+                ticket_sha256=str(r[14]),
+                execution_status=str(r[15]),
+                causal_eligible=int(r[16]),
+            )
+        )
+
+    next_cursor = None
+    if limit is not None and len(raw_rows) > limit and page_rows:
+        last = page_rows[-1]
+        next_cursor = B649CandidateCursor(
+            target_draw_date=str(last[6]),
+            target_draw_number=int(last[5]),
+            strategy_id=str(last[2]),
+            strategy_version=str(last[3]),
+            replicate=int(last[4]),
+            run_id=str(last[0]),
+            strategy_snapshot_id=str(last[1]),
+            native_position=int(last[11]),
+        )
+
+    return B649CandidatePage(items=tuple(items), next_cursor=next_cursor)
+
+
+def fetch_b649_target_outcome_rows(
+    connection: sqlite3.Connection,
+    *,
+    lottery_type: str = "BIG_LOTTO",
+    target_draw_numbers: Sequence[str] | None = None,
+    limit: int | None = None,
+    after: B649OutcomeCursor | None = None,
+) -> B649OutcomePage:
+    """Read verified official outcome draws (winning main and special numbers).
+
+    Enforces query-only connection, draw SHA consistency, strictly 6 unique
+    main numbers (1..49), exactly 1 special number (1..49), and non-overlap
+    between special and main numbers.
+    """
+    _require_b649_query_only(connection)
+    if limit is not None:
+        _validate_page_limit(limit)
+
+    table_names = fetch_research_table_names(connection)
+    if "research_draw_bindings" not in table_names:
+        raise ResearchRepositoryError("research store missing research_draw_bindings table")
+
+    _verify_b649_outcome_draw_sha_consistency(
+        connection,
+        lottery_type=lottery_type,
+        target_draw_numbers=target_draw_numbers,
+    )
+
+    clauses = [
+        "lottery_type = ?",
+        "draw_number != replace(draw_date, '-', '')",
+    ]
+    params: list[object] = [lottery_type]
+
+    if target_draw_numbers is not None:
+        if not target_draw_numbers:
+            return B649OutcomePage(items=(), next_cursor=None)
+        placeholders = ",".join("?" for _ in target_draw_numbers)
+        clauses.append(f"draw_number IN ({placeholders})")
+        params.extend(target_draw_numbers)
+
+    if after is not None:
+        clauses.append(
+            """
+            (
+                draw_date,
+                CAST(draw_number AS INTEGER)
+            ) > (?, ?)
+            """
+        )
+        params.extend((after.target_draw_date, after.target_draw_number))
+
+    limit_clause = ""
+    if limit is not None:
+        limit_clause = "LIMIT ?"
+        params.append(limit + 1)
+
+    where_sql = " AND ".join(clauses)
+    query = f"""
+        SELECT DISTINCT
+            draw_number,
+            draw_date,
+            main_numbers_json,
+            special_numbers_json,
+            draw_sha256
+        FROM research_draw_bindings
+        WHERE {where_sql}
+        ORDER BY
+            draw_date ASC,
+            CAST(draw_number AS INTEGER) ASC
+        {limit_clause}
+    """
+
+    raw_rows = connection.execute(query, tuple(params)).fetchall()
+    page_rows = raw_rows[:limit] if limit is not None else raw_rows
+    items: list[B649TargetOutcomeRow] = []
+
+    for r in page_rows:
+        draw_number = str(r[0])
+        draw_date = str(r[1])
+        main_json = str(r[2])
+        special_json = str(r[3])
+        draw_sha = str(r[4])
+
+        main_ints = _decode_b649_int_list(
+            main_json, label=f"draw main_numbers_json for draw {draw_number}"
+        )
+        if len(main_ints) != 6:
+            raise ResearchRepositoryError(
+                f"draw main numbers must decode to 6 integers: {main_json} for draw {draw_number}"
+            )
+        if any(x < 1 or x > 49 for x in main_ints):
+            raise ResearchRepositoryError(
+                f"draw main numbers must be in range 1..49: {main_json} for draw {draw_number}"
+            )
+        if len(set(main_ints)) != 6:
+            raise ResearchRepositoryError(
+                f"draw main numbers must contain 6 unique integers: "
+                f"{main_json} for draw {draw_number}"
+            )
+
+        special_ints = _decode_b649_int_list(
+            special_json, label=f"draw special_numbers_json for draw {draw_number}"
+        )
+        if len(special_ints) != 1:
+            raise ResearchRepositoryError(
+                f"draw special numbers must contain exactly one integer: "
+                f"{special_json} for draw {draw_number}"
+            )
+        special_int = special_ints[0]
+        if special_int < 1 or special_int > 49:
+            raise ResearchRepositoryError(
+                f"draw special number must be in range 1..49: {special_int} for draw {draw_number}"
+            )
+        if special_int in main_ints:
+            raise ResearchRepositoryError(
+                f"draw special number {special_int} conflicts with main numbers "
+                f"{main_ints} for draw {draw_number}"
+            )
+
+        items.append(
+            B649TargetOutcomeRow(
+                target_draw_number=draw_number,
+                target_draw_date=draw_date,
+                winning_main_numbers=cast(
+                    tuple[int, int, int, int, int, int],
+                    tuple(sorted(main_ints)),
+                ),
+                winning_special_number=special_int,
+                target_draw_sha256=draw_sha,
+            )
+        )
+
+    next_cursor = None
+    if limit is not None and len(raw_rows) > limit and page_rows:
+        last = page_rows[-1]
+        next_cursor = B649OutcomeCursor(
+            target_draw_date=str(last[1]),
+            target_draw_number=int(last[0]),
+        )
+
+    return B649OutcomePage(items=tuple(items), next_cursor=next_cursor)
+
+
 __all__ = [
     "BUSY_TIMEOUT_MS",
     "IMMUTABLE_TABLE_NAMES",
     "WRITE_RETRY_ATTEMPTS",
     "WRITE_RETRY_BACKOFF_SECONDS",
+    "B649CandidateCursor",
+    "B649CandidatePage",
+    "B649CrossStrategyCandidateRow",
+    "B649OutcomeCursor",
+    "B649OutcomePage",
+    "B649TargetOutcomeRow",
     "ClosureInput",
     "CompletedTargetCursor",
     "CoverageCursor",
@@ -3124,6 +3706,8 @@ __all__ = [
     "TicketCursor",
     "TicketInput",
     "TicketResultInput",
+    "fetch_b649_cross_strategy_candidate_rows",
+    "fetch_b649_target_outcome_rows",
     "fetch_historical_replay_discovery_corpus_rows",
     "fetch_research_draw_bindings_for_dataset",
     "fetch_research_table_names",

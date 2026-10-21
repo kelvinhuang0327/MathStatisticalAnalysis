@@ -310,22 +310,40 @@ afterEach(() => {
 })
 
 describe('App navigation', () => {
-  it('navigates among every local workspace without a router', async () => {
+  it('marks Data Operations current for the empty-hash default route', async () => {
+    window.location.hash = ''
     const wrapper = mount(App)
     await flushPromises()
 
-    const navigation = wrapper.get('nav[aria-label="Primary navigation"]')
+    expect(wrapper.find('#data-center-title').exists()).toBe(true)
+    expect(wrapper.get('nav[aria-label="主要導覽"] a[href="#/data-operations"]').attributes('aria-current')).toBe(
+      'page',
+    )
+    wrapper.unmount()
+  })
+
+  it('keeps the four primary entries and every legacy hash page available', async () => {
+    const wrapper = mount(App)
+    await flushPromises()
+
+    const navigation = wrapper.get('nav[aria-label="主要導覽"]')
     expect(navigation.findAll('a').map((link) => link.text())).toEqual([
-      'Data Operations',
-      'History',
-      'Best Replay',
-      'Replay Overview',
-      'Strategy Intelligence',
-      'B649 Replay',
-      'B649 Current Forecast',
-      'P638 Replay',
-      'T539 Replay',
-      'Future Modules',
+      '資料管理',
+      '本期預測',
+      '策略排行榜',
+      '歷史回測',
+    ])
+    expect(wrapper.get('.brand strong').text()).toBe('MathStatisticalAnalysis')
+    expect((wrapper.get('#global-game-switcher').element as HTMLSelectElement).value).toBe('B649')
+    expect(
+      wrapper.findAll('#global-game-switcher option').map((option) => [
+        (option.element as HTMLOptionElement).value,
+        option.text(),
+      ]),
+    ).toEqual([
+      ['B649', 'B649 · BIG_LOTTO'],
+      ['P638', 'P638 · POWER_LOTTO'],
+      ['T539', 'T539 · DAILY_539'],
     ])
     expect(wrapper.find('#data-center-title').exists()).toBe(true)
 
@@ -335,7 +353,7 @@ describe('App navigation', () => {
     expect(wrapper.find('#replay-overview-title').exists()).toBe(true)
     expect(
       navigation
-        .find('a[href="#/replay-overview"]')
+        .find('a[href="#/best-replay"]')
         .attributes('aria-current'),
     ).toBe('page')
 
@@ -343,36 +361,23 @@ describe('App navigation', () => {
     window.dispatchEvent(new HashChangeEvent('hashchange'))
     await flushPromises()
     expect(wrapper.find('#historical-success-title').exists()).toBe(true)
-    expect(
-      navigation
-        .find('a[href="#/strategy-intelligence"]')
-        .attributes('aria-current'),
-    ).toBe('page')
 
     window.location.hash = '#/historical-base-data'
     window.dispatchEvent(new HashChangeEvent('hashchange'))
     await flushPromises()
     expect(wrapper.find('#historical-base-data-title').exists()).toBe(true)
-    expect(
-      navigation.find('a[href="#/future-modules"]').attributes('aria-current'),
-    ).toBe('page')
 
     window.location.hash = '#/b649-multi-ticket-records'
     window.dispatchEvent(new HashChangeEvent('hashchange'))
     await flushPromises()
     expect(wrapper.find('#b649-records-title').exists()).toBe(true)
-    expect(
-      navigation
-        .find('a[href="#/b649-replay"]')
-        .attributes('aria-current'),
-    ).toBe('page')
 
     window.location.hash = '#/b649-owner-ranking'
     window.dispatchEvent(new HashChangeEvent('hashchange'))
     await flushPromises()
     expect(wrapper.text()).toContain('B649 R2 ranking projection could not be loaded')
     expect(
-      navigation.find('a[href="#/b649-replay"]').attributes('aria-current'),
+      navigation.find('a[href="#/b649-owner-ranking"]').attributes('aria-current'),
     ).toBe('page')
 
     window.location.hash = '#/data-center'
@@ -386,21 +391,17 @@ describe('App navigation', () => {
     await flushPromises()
     expect(wrapper.find('#history-title').exists()).toBe(true)
     expect(wrapper.find('#draw-history-title').exists()).toBe(true)
-    expect(navigation.find('a[href="#/history"]').attributes('aria-current')).toBe('page')
 
     window.location.hash = '#/strategy-evidence'
     window.dispatchEvent(new HashChangeEvent('hashchange'))
     await flushPromises()
     expect(wrapper.find('#strategy-evidence-title').exists()).toBe(true)
-    expect(
-      navigation.find('a[href="#/strategy-intelligence"]').attributes('aria-current'),
-    ).toBe('page')
 
     window.location.hash = '#/replay-history'
     window.dispatchEvent(new HashChangeEvent('hashchange'))
     await flushPromises()
     expect(wrapper.find('#replay-history-title').exists()).toBe(true)
-    expect(navigation.find('a[href="#/future-modules"]').attributes('aria-current')).toBe('page')
+    expect(navigation.find('a[href="#/best-replay"]').attributes('aria-current')).toBe('page')
 
     window.location.hash = '#/strategies'
     window.dispatchEvent(new HashChangeEvent('hashchange'))
@@ -411,6 +412,72 @@ describe('App navigation', () => {
     window.dispatchEvent(new HashChangeEvent('hashchange'))
     await flushPromises()
     expect(wrapper.find('[data-testid="ranking-matrix-page"]').exists()).toBe(true)
+    expect(navigation.find('a[href="#/b649-owner-ranking"]').attributes('aria-current')).toBe('page')
+    wrapper.unmount()
+  })
+
+  it('keeps game routes truthful and leaves Data Operations controls authoritative', async () => {
+    const wrapper = mount(App)
+    await flushPromises()
+
+    const syncButtons = wrapper.findAll('.sync-games-bar button')
+    expect(syncButtons[0]?.classes()).toContain('button--primary')
+
+    await wrapper.get('#global-game-switcher').setValue('P638')
+    await flushPromises()
+    expect(window.location.hash).toBe('#/data-operations?game=P638')
+    expect(wrapper.find('#data-center-title').exists()).toBe(true)
+    expect(wrapper.findAll('.sync-games-bar button')[0]?.classes()).toContain('button--primary')
+
+    window.location.hash = '#/b649-current-forecast'
+    window.dispatchEvent(new HashChangeEvent('hashchange'))
+    await flushPromises()
+    expect(wrapper.find('#b649-current-forecast-title').exists()).toBe(true)
+
+    await wrapper.get('#global-game-switcher').setValue('P638')
+    await flushPromises()
+    expect(window.location.hash).toBe('#/unavailable?page=forecast&game=P638')
+    expect(wrapper.get('[data-testid="unavailable-page"]').text()).toContain('P638')
+    expect(wrapper.find('#b649-current-forecast-title').exists()).toBe(false)
+
+    await wrapper.get('#global-game-switcher').setValue('T539')
+    await flushPromises()
+    expect(window.location.hash).toBe('#/unavailable?page=forecast&game=T539')
+    expect(wrapper.get('[data-testid="unavailable-page"]').text()).toContain('T539')
+
+    window.location.hash = '#/b649-owner-ranking'
+    window.dispatchEvent(new HashChangeEvent('hashchange'))
+    await flushPromises()
+    await wrapper.get('#global-game-switcher').setValue('P638')
+    await flushPromises()
+    expect(window.location.hash).toBe('#/unavailable?page=ranking&game=P638')
+    expect(wrapper.get('[data-testid="unavailable-page"]').text()).toContain('策略排行榜')
+
+    window.location.hash = '#/data-center'
+    window.dispatchEvent(new HashChangeEvent('hashchange'))
+    await flushPromises()
+    await wrapper.get('#global-game-switcher').setValue('P638')
+    await flushPromises()
+    expect(window.location.hash).toBe('#/data-center?game=P638')
+    expect(wrapper.find('#data-center-title').exists()).toBe(true)
+    expect(wrapper.findAll('.sync-games-bar button')[0]?.classes()).toContain('button--primary')
+
+    window.location.hash = '#/best-replay'
+    window.dispatchEvent(new HashChangeEvent('hashchange'))
+    await flushPromises()
+    await wrapper.get('#game-select').setValue('ALL')
+    expect((wrapper.get('#global-game-switcher').element as HTMLSelectElement).value).toBe('ALL')
+    await wrapper.get('#global-game-switcher').setValue('T539')
+    await flushPromises()
+    expect(window.location.hash).toBe('#/t539-replay')
+
+    window.location.hash = '#/best-replay'
+    window.dispatchEvent(new HashChangeEvent('hashchange'))
+    await flushPromises()
+    await wrapper.get('[data-testid="game-btn-p638"]').trigger('click')
+    await flushPromises()
+    expect(window.location.hash).toBe('#/p638-replay')
+    expect((wrapper.get('#global-game-switcher').element as HTMLSelectElement).value).toBe('P638')
     wrapper.unmount()
   })
 
@@ -531,7 +598,7 @@ describe('App navigation', () => {
     await flushPromises()
     expect(resolveStaleDetail).toBeDefined()
 
-    await wrapper.get('select').setValue('run-b')
+    await wrapper.get('main select').setValue('run-b')
     await flushPromises()
     resolveStaleDetail?.(apiResponse(replay('target-a')))
     await flushPromises()
@@ -546,12 +613,12 @@ describe('App navigation', () => {
     await flushPromises()
 
     expect(document.activeElement).toBe(document.body)
-    expect(keyboardTab().getAttribute('aria-label')).toBe('LottoLab home')
-    expect(keyboardTab().textContent?.trim()).toBe('Data Operations')
+    expect(keyboardTab().getAttribute('aria-label')).toBe('MathStatisticalAnalysis 首頁')
+    expect(keyboardTab().textContent?.trim()).toBe('資料管理')
     await activateFocused('Enter')
 
     expect(window.location.hash).toBe('#/data-operations')
-    expect(document.activeElement?.textContent?.trim()).toBe('Data Operations')
+    expect(document.activeElement?.textContent?.trim()).toBe('資料管理')
     expect((document.activeElement as HTMLElement).getAttribute('aria-current')).toBe('page')
     expect(tabUntil((element) => element.matches('input[type="file"]'))).toBe(
       wrapper.get('input[type="file"]').element,
@@ -568,17 +635,27 @@ describe('App navigation', () => {
     expect(document.activeElement?.textContent?.trim()).toBe('Run scheduled trigger')
     expect(keyboardTab(true).textContent?.trim()).toBe('Bounded backfill')
     expect(keyboardTab().textContent?.trim()).toBe('Run scheduled trigger')
-    tabUntil(
+    const backtestLink = tabUntil(
       (element) =>
-        element.matches('nav[aria-label="Primary navigation"] a') &&
-        element.textContent?.trim() === 'History',
+        element.matches('nav[aria-label="主要導覽"] a') &&
+        element.textContent?.trim() === '歷史回測',
       true,
     )
     await activateFocused('Enter')
+    expect(window.location.hash).toBe('#/best-replay')
+    expect(backtestLink.getAttribute('aria-current')).toBe('page')
 
-    expect(window.location.hash).toBe('#/history')
-    expect(document.activeElement?.textContent?.trim()).toBe('History')
-    expect((document.activeElement as HTMLElement).getAttribute('aria-current')).toBe('page')
+    const gameSwitcher = tabUntil((element) => element.id === 'global-game-switcher') as HTMLSelectElement
+    gameSwitcher.value = 'P638'
+    gameSwitcher.dispatchEvent(new Event('change', { bubbles: true }))
+    await flushPromises()
+    expect(window.location.hash).toBe('#/p638-replay')
+    expect((wrapper.get('#global-game-switcher').element as HTMLSelectElement).value).toBe('P638')
+
+    window.location.hash = '#/history'
+    window.dispatchEvent(new HashChangeEvent('hashchange'))
+    await flushPromises()
+    expect(wrapper.find('#history-title').exists()).toBe(true)
     expect(tabUntil((element) => element.textContent?.trim() === 'Draw History')).toBe(
       wrapper.get('nav[aria-label="History sections"]').findAll('button')[0]?.element,
     )
@@ -589,19 +666,6 @@ describe('App navigation', () => {
     await activateFocused('Enter')
     expect(wrapper.text()).toContain('Run Detail')
     expect(wrapper.text()).toContain('Sanitized keyboard fixture failure.')
-
-    tabUntil((element) => element.textContent?.trim() === 'Ingestion History', true)
-    tabUntil(
-      (element) =>
-        element.matches('nav[aria-label="Primary navigation"] a') &&
-        element.textContent?.trim() === 'Strategy Intelligence',
-      true,
-    )
-    await activateFocused('Enter')
-
-    expect(window.location.hash).toBe('#/strategy-intelligence')
-    expect(document.activeElement?.textContent?.trim()).toBe('Strategy Intelligence')
-    expect((document.activeElement as HTMLElement).getAttribute('aria-current')).toBe('page')
 
     window.location.hash = '#/strategy-evidence'
     window.dispatchEvent(new HashChangeEvent('hashchange'))
@@ -729,8 +793,8 @@ describe('App navigation', () => {
 
     tabUntil(
       (element) =>
-        element.matches('nav[aria-label="Primary navigation"] a') &&
-        element.textContent?.trim() === 'T539 Replay',
+        element.matches('nav[aria-label="主要導覽"] a') &&
+        element.textContent?.trim() === '歷史回測',
     )
     expect((document.activeElement as HTMLElement).getAttribute('aria-current')).toBe('page')
 

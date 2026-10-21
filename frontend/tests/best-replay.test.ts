@@ -516,6 +516,37 @@ describe('BestReplayPage Workspace & Cross-Game Features', () => {
     wrapper.unmount()
   })
 
+  it('keeps dropdown game changes in sync with button ticket defaults and game data', async () => {
+    const wrapper = mount(BestReplayPage)
+    await flushPromises()
+
+    const gameSelect = wrapper.find<HTMLSelectElement>('#game-select')
+    expect(wrapper.find('[data-testid="summary-tickets"]').text()).toContain('5')
+
+    await gameSelect.setValue('P638')
+    await flushPromises()
+    expect(gameSelect.element.value).toBe('P638')
+    expect(wrapper.find('[data-testid="summary-game"]').text()).toContain('P638')
+    expect(wrapper.find('[data-testid="summary-tickets"]').text()).toContain('1')
+    expect(wrapper.find('[data-testid="game-btn-p638"]').classes()).toContain('game-nav-btn--active')
+
+    await gameSelect.setValue('T539')
+    await flushPromises()
+    expect(gameSelect.element.value).toBe('T539')
+    expect(wrapper.find('[data-testid="summary-game"]').text()).toContain('T539')
+    expect(wrapper.find('[data-testid="summary-tickets"]').text()).toContain('1')
+    expect(wrapper.find('[data-testid="game-btn-t539"]').classes()).toContain('game-nav-btn--active')
+
+    await gameSelect.setValue('B649')
+    await flushPromises()
+    expect(gameSelect.element.value).toBe('B649')
+    expect(wrapper.find('[data-testid="summary-game"]').text()).toContain('B649')
+    expect(wrapper.find('[data-testid="summary-tickets"]').text()).toContain('5')
+    expect(wrapper.find('[data-testid="game-btn-b649"]').classes()).toContain('game-nav-btn--active')
+
+    wrapper.unmount()
+  })
+
   it('guarantees 1, 2, 3, 4, 5 ticket buttons ALWAYS exist and are interactive across all games', async () => {
     const wrapper = mount(BestReplayPage)
     await flushPromises()

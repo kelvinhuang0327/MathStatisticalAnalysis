@@ -728,7 +728,7 @@ onBeforeUnmount(() => {
         <!-- Game Selector Dropdown (accessible fallback) -->
         <div class="control-group">
           <label for="game-select" class="control-label">Game</label>
-          <select id="game-select" v-model="selectedGame" class="select-input" @change="selectGame(selectedGame)">
+          <select id="game-select" :value="selectedGame" class="select-input" @change="selectGame(($event.target as HTMLSelectElement).value as GameFilter)">
             <option value="B649">B649 (Big Lotto 6/49)</option>
             <option value="P638">P638 (Power Lotto 6/38)</option>
             <option value="T539">T539 (Daily Cash 5/39)</option>

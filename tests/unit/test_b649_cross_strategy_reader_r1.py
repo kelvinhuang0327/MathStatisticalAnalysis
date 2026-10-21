@@ -16,6 +16,7 @@ from lottolab.infrastructure.persistence.research_repository import (
     B649CandidatePage,
     B649CrossStrategyCandidateRow,
     B649OutcomeCursor,
+    B649OutcomeDrawBinding,
     B649OutcomePage,
     B649TargetOutcomeRow,
     ClosureInput,
@@ -56,6 +57,7 @@ def _draw(
     main_numbers_json: str = "[1,2,3,4,5,6]",
     special_numbers_json: str = "[7]",
     draw_data_version: str = "draw-v1",
+    draw_sha256: str | None = None,
 ) -> DrawBindingInput:
     return DrawBindingInput(
         lottery_type="BIG_LOTTO",
@@ -63,7 +65,7 @@ def _draw(
         draw_date=draw_date,
         main_numbers_json=main_numbers_json,
         special_numbers_json=special_numbers_json,
-        draw_sha256=_digest(digest_char),
+        draw_sha256=draw_sha256 or _digest(digest_char),
         draw_data_version=draw_data_version,
     )
 
@@ -141,6 +143,7 @@ def _make_target(
     target_order: int = 0,
     target_draw: DrawBindingInput,
     history_cutoff: DrawBindingInput,
+    input_dataset_identity: str = "dataset",
     history_draw_count: int = 1,
     causal_eligible: bool = True,
     execution_status: ResearchExecutionStatus = ResearchExecutionStatus.OK,
@@ -151,7 +154,7 @@ def _make_target(
         run_id=run_id,
         strategy_snapshot_id=strategy_id,
         target_order=target_order,
-        input_dataset_identity="dataset",
+        input_dataset_identity=input_dataset_identity,
         input_dataset_sha256=_digest("a"),
         history_cutoff=history_cutoff,
         history_draw_count=history_draw_count,
@@ -197,6 +200,9 @@ def test_01_single_run_valid_tickets_readable(tmp_path: Path) -> None:
     for idx, row in enumerate(page.items, start=1):
         assert isinstance(row, B649CrossStrategyCandidateRow)
         assert row.run_id == run_id
+        assert row.target_id
+        assert row.input_dataset_identity == "dataset"
+        assert row.input_dataset_sha256 == _digest("a")
         assert row.strategy_id == "strat-alpha"
         assert row.strategy_version == "1"
         assert row.replicate == 1
@@ -204,7 +210,11 @@ def test_01_single_run_valid_tickets_readable(tmp_path: Path) -> None:
         assert row.target_draw_date == "2026-01-08"
         assert row.history_cutoff_draw_number == "0001"
         assert row.history_cutoff_draw_date == "2026-01-01"
+        assert row.target_draw_binding_id.startswith("draw-")
+        assert row.target_draw_data_version == "draw-v1"
         assert row.target_draw_sha256 == _digest("2")
+        assert row.history_cutoff_draw_binding_id.startswith("draw-")
+        assert row.history_cutoff_draw_data_version == "draw-v1"
         assert row.history_cutoff_draw_sha256 == _digest("1")
         assert row.native_position == idx
         assert row.ordered_portfolio_position == idx
@@ -317,7 +327,10 @@ def test_03_partial_target_presence_not_lost(tmp_path: Path) -> None:
     assert all(r.strategy_id == "strat-omnipresent" for r in draw_3_items)
 
 
-def test_04_conflicting_draw_sha_rejected(tmp_path: Path) -> None:
+@pytest.mark.parametrize("conflict", ["date", "main", "special"])
+def test_04_conflicting_canonical_draw_outcome_rejected(
+    tmp_path: Path, conflict: str
+) -> None:
     paths = _paths(tmp_path)
     repository = SQLiteResearchRepository(paths)
 
@@ -330,12 +343,29 @@ def test_04_conflicting_draw_sha_rejected(tmp_path: Path) -> None:
 
     cutoff_draw = _draw("0001", "2026-01-01", digest_char="1")
     target_draw_a = _draw("0002", "2026-01-08", digest_char="2")
-    target_draw_b = _draw(
-        "0002",
-        "2026-01-08",
-        digest_char="9",
-        draw_data_version="draw-v2-conflicted",
-    )
+    if conflict == "date":
+        target_draw_b = _draw(
+            "0002",
+            "2026-01-09",
+            digest_char="9",
+            draw_data_version="draw-v2-conflicted",
+        )
+    elif conflict == "main":
+        target_draw_b = _draw(
+            "0002",
+            "2026-01-08",
+            digest_char="9",
+            main_numbers_json="[1,2,3,4,5,8]",
+            draw_data_version="draw-v2-conflicted",
+        )
+    else:
+        target_draw_b = _draw(
+            "0002",
+            "2026-01-08",
+            digest_char="9",
+            special_numbers_json="[8]",
+            draw_data_version="draw-v2-conflicted",
+        )
 
     repository.commit_target(
         _make_target(
@@ -362,10 +392,10 @@ def test_04_conflicting_draw_sha_rejected(tmp_path: Path) -> None:
     )
 
     with open_database(paths, read_only=True) as conn:
-        with pytest.raises(ResearchConflictError, match="conflicting target draw SHA"):
+        with pytest.raises(ResearchConflictError, match="conflicting target draw outcome"):
             fetch_b649_cross_strategy_candidate_rows(conn)
 
-        with pytest.raises(ResearchConflictError, match="conflicting draw binding SHA"):
+        with pytest.raises(ResearchConflictError, match="conflicting draw outcome"):
             fetch_b649_target_outcome_rows(conn)
 
 
@@ -748,6 +778,87 @@ def test_10_invalid_or_conflicting_special_numbers_rejected(tmp_path: Path) -> N
         fetch_b649_target_outcome_rows(conn, target_draw_numbers=["0005"])
 
 
+@pytest.mark.parametrize(
+    ("special_numbers_json", "error_pattern"),
+    [
+        ("{}", "must be a JSON array"),
+        ("[7.0]", "items must be integers"),
+    ],
+)
+def test_10e_malformed_special_number_shapes_rejected(
+    tmp_path: Path, special_numbers_json: str, error_pattern: str
+) -> None:
+    paths = _paths(tmp_path)
+    repository = SQLiteResearchRepository(paths)
+    run_id, strategy_id = _bootstrap_run_and_strategy(
+        repository, suffix="t10e", strategy_id="strat-malformed-special"
+    )
+    cutoff = _draw("0001", "2026-01-01", digest_char="1")
+    target = _draw(
+        "0002",
+        "2026-01-08",
+        digest_char="2",
+        special_numbers_json=special_numbers_json,
+    )
+    repository.commit_target(
+        _make_target(
+            run_id,
+            strategy_id,
+            history_cutoff=cutoff,
+            target_draw=target,
+            tickets=(),
+        ),
+        idempotency_key="t10e-target",
+    )
+
+    with (
+        open_database(paths, read_only=True) as conn,
+        pytest.raises(ResearchRepositoryError, match=error_pattern),
+    ):
+        fetch_b649_target_outcome_rows(conn, target_draw_numbers=["0002"])
+
+
+@pytest.mark.parametrize(
+    ("main_numbers_json", "error_pattern"),
+    [
+        ("[1,2,3,4,5]", "must decode to 6 integers"),
+        ("[1,2,3,4,5,5]", "must contain 6 unique integers"),
+        ("[1,2,3,4,5,50]", r"in range 1\.\.49"),
+    ],
+)
+def test_10f_invalid_main_number_shapes_rejected(
+    tmp_path: Path, main_numbers_json: str, error_pattern: str
+) -> None:
+    paths = _paths(tmp_path)
+    repository = SQLiteResearchRepository(paths)
+    run_id, strategy_id = _bootstrap_run_and_strategy(
+        repository, suffix="t10f", strategy_id="strat-invalid-main"
+    )
+    cutoff = _draw("0001", "2026-01-01", digest_char="1")
+    target = _draw(
+        "0002",
+        "2026-01-08",
+        digest_char="2",
+        main_numbers_json=main_numbers_json,
+    )
+    repository.commit_target(
+        _make_target(
+            run_id,
+            strategy_id,
+            history_cutoff=cutoff,
+            target_draw=target,
+            tickets=(),
+        ),
+        idempotency_key="t10f-target",
+    )
+
+    with (
+        open_database(paths, read_only=True) as conn,
+        pytest.raises(ResearchRepositoryError, match=error_pattern),
+    ):
+        fetch_b649_target_outcome_rows(conn, target_draw_numbers=["0002"])
+
+
 def test_11_candidate_reader_does_not_expose_post_draw_outcomes(tmp_path: Path) -> None:
     paths = _paths(tmp_path)
     repository = SQLiteResearchRepository(paths)
@@ -828,16 +939,27 @@ def test_12_read_only_connection_no_writes_permitted(tmp_path: Path) -> None:
         idempotency_key="t12-target",
     )
 
-    def get_row_counts() -> dict[str, int]:
+    def get_store_signature() -> tuple[dict[str, int], int, tuple[tuple[object, ...], ...]]:
         with open_database(paths, read_only=True) as c:
-            return {
+            row_counts = {
                 table: cast(int, c.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0])
                 for table in V2_TABLE_NAMES
             }
+            user_version = int(c.execute("PRAGMA user_version").fetchone()[0])
+            schema_rows = tuple(
+                tuple(row)
+                for row in c.execute(
+                    "SELECT type, name, sql FROM sqlite_master "
+                    "WHERE type IN ('table', 'index', 'trigger', 'view') "
+                    "ORDER BY type, name"
+                ).fetchall()
+            )
+            return row_counts, user_version, schema_rows
 
-    counts_before = get_row_counts()
+    store_before = get_store_signature()
 
     with open_database(paths, read_only=True) as conn:
+        assert int(conn.execute("PRAGMA query_only").fetchone()[0]) == 1
         cand_page = fetch_b649_cross_strategy_candidate_rows(conn)
         assert len(cand_page.items) == 3
         out_page = fetch_b649_target_outcome_rows(conn)
@@ -846,8 +968,8 @@ def test_12_read_only_connection_no_writes_permitted(tmp_path: Path) -> None:
         with pytest.raises(sqlite3.OperationalError):
             conn.execute("INSERT INTO research_runs (id) VALUES ('fail')")
 
-    counts_after = get_row_counts()
-    assert counts_before == counts_after
+    store_after = get_store_signature()
+    assert store_before == store_after
 
 
 def test_13_pagination_across_target_boundaries_no_leak_or_loss(tmp_path: Path) -> None:
@@ -895,10 +1017,33 @@ def test_13_pagination_across_target_boundaries_no_leak_or_loss(tmp_path: Path) 
         ),
         idempotency_key="t13-target4",
     )
+    alternate_run_id, alternate_strategy_id = _bootstrap_run_and_strategy(
+        repository,
+        suffix="t13-alt",
+        strategy_id="strat-paging-alt",
+        expected_target_count=1,
+    )
+    alternate_draw_2 = _draw(
+        "0002",
+        "2026-01-08",
+        digest_char="9",
+        draw_data_version="draw-v2-equivalent",
+    )
+    repository.commit_target(
+        _make_target(
+            alternate_run_id,
+            alternate_strategy_id,
+            target_order=0,
+            history_cutoff=cutoff,
+            target_draw=alternate_draw_2,
+            tickets=_tickets(count=1, offset=30),
+        ),
+        idempotency_key="t13-equivalent-target2",
+    )
 
     with open_database(paths, read_only=True) as conn:
         all_candidates = fetch_b649_cross_strategy_candidate_rows(conn).items
-        assert len(all_candidates) == 12
+        assert len(all_candidates) == 13
 
         collected: list[B649CrossStrategyCandidateRow] = []
         cursor: B649CandidateCursor | None = None
@@ -912,12 +1057,21 @@ def test_13_pagination_across_target_boundaries_no_leak_or_loss(tmp_path: Path) 
             if cursor is None:
                 break
 
-    assert pages_count == 3  # 5 + 5 + 2 = 12 items
-    assert len(collected) == 12
+    assert pages_count == 3  # 5 + 5 + 3 = 13 items
+    assert len(collected) == 13
     assert collected == list(all_candidates)
 
-    identities = [(r.target_draw_number, r.native_position) for r in collected]
-    assert len(set(identities)) == 12
+    identities = [
+        (r.run_id, r.strategy_snapshot_id, r.target_draw_number, r.native_position)
+        for r in collected
+    ]
+    assert len(set(identities)) == 13
+    assert [r.native_position for r in collected if r.run_id == run_id] == [
+        1,
+        2,
+        3,
+        4,
+    ] * 3
 
     with open_database(paths, read_only=True) as conn:
         out_page1 = fetch_b649_target_outcome_rows(conn, limit=2)
@@ -930,6 +1084,14 @@ def test_13_pagination_across_target_boundaries_no_leak_or_loss(tmp_path: Path) 
         assert out_page2.next_cursor is None
         assert [r.target_draw_number for r in out_page1.items] == ["0001", "0002"]
         assert [r.target_draw_number for r in out_page2.items] == ["0003", "0004"]
+        equivalent_outcome = next(
+            row for row in out_page1.items if row.target_draw_number == "0002"
+        )
+        assert len(equivalent_outcome.source_bindings) == 2
+        assert set(equivalent_outcome.source_draw_sha256s) == {
+            _digest("2"),
+            _digest("9"),
+        }
 
 
 def test_14_legacy_discovery_reader_contract_unchanged(tmp_path: Path) -> None:
@@ -1026,3 +1188,216 @@ def test_14_legacy_discovery_reader_contract_unchanged(tmp_path: Path) -> None:
     assert discovery_rows.source_metadata is not None
     assert len(discovery_rows.strategy_rows) == 2
     assert len(discovery_rows.common_rows) == 2
+
+
+def test_15_conflicting_target_cutoff_outcomes_still_rejected(tmp_path: Path) -> None:
+    paths = _paths(tmp_path)
+    repository = SQLiteResearchRepository(paths)
+    run_a, strat_a = _bootstrap_run_and_strategy(
+        repository, suffix="t15a", strategy_id="strat-cutoff-a", expected_target_count=1
+    )
+    run_b, strat_b = _bootstrap_run_and_strategy(
+        repository, suffix="t15b", strategy_id="strat-cutoff-b", expected_target_count=1
+    )
+
+    cutoff_a = _draw("0001", "2026-01-01", digest_char="1")
+    cutoff_b = _draw(
+        "0001",
+        "2026-01-01",
+        digest_char="9",
+        special_numbers_json="[8]",
+        draw_data_version="draw-v2-conflicting-cutoff",
+    )
+    target = _draw("0003", "2026-01-15", digest_char="3")
+    for run_id, strategy_id, cutoff, suffix in (
+        (run_a, strat_a, cutoff_a, "a"),
+        (run_b, strat_b, cutoff_b, "b"),
+    ):
+        repository.commit_target(
+            _make_target(
+                run_id,
+                strategy_id,
+                history_cutoff=cutoff,
+                target_draw=target,
+                tickets=_tickets(count=1),
+            ),
+            idempotency_key=f"t15-target-{suffix}",
+        )
+
+    with open_database(paths, read_only=True) as conn:
+        with pytest.raises(
+            ResearchConflictError, match="conflicting history cutoff draw outcome"
+        ):
+            fetch_b649_cross_strategy_candidate_rows(conn)
+        with pytest.raises(ResearchConflictError, match="conflicting draw outcome"):
+            fetch_b649_target_outcome_rows(conn, target_draw_numbers=["0001"])
+
+
+def test_16_114000064_equivalent_source_bindings_are_preserved(tmp_path: Path) -> None:
+    paths = _paths(tmp_path)
+    repository = SQLiteResearchRepository(paths)
+    run_a, strat_a = _bootstrap_run_and_strategy(
+        repository,
+        suffix="t16-r3",
+        strategy_id="strat-r3",
+        strategy_version="3",
+        replicate=1,
+        expected_target_count=1,
+    )
+    run_b, strat_b = _bootstrap_run_and_strategy(
+        repository,
+        suffix="t16-legacy",
+        strategy_id="strat-legacy",
+        strategy_version="legacy-1",
+        replicate=2,
+        expected_target_count=1,
+    )
+
+    cutoff = _draw(
+        "114000063",
+        "2025-06-17",
+        digest_char="1",
+        main_numbers_json="[1,2,3,4,5,6]",
+        special_numbers_json="[7]",
+        draw_data_version="shared-cutoff-v1",
+    )
+    source_a = _draw(
+        "114000064",
+        "2025-06-24",
+        digest_char="2",
+        main_numbers_json="[3,8,20,37,45,49]",
+        special_numbers_json="[21]",
+        draw_data_version="R3",
+        draw_sha256="3274765b0dca3b575d633b3fb902d0bf77d853e102d33a7169883f724fe65d2e",
+    )
+    source_b = _draw(
+        "114000064",
+        "2025-06-24",
+        digest_char="9",
+        main_numbers_json="[49,45,37,20,8,3]",
+        special_numbers_json="[21]",
+        draw_data_version="LOTTOLAB_LEGACY_REFERENCE_CORPUS_V1",
+        draw_sha256="5c2d0c1f25056883487359c21c9a1a87449d76ef63924c4ddee6fdcb72a09725",
+    )
+
+    repository.commit_target(
+        _make_target(
+            run_a,
+            strat_a,
+            history_cutoff=cutoff,
+            target_draw=source_a,
+            input_dataset_identity="dataset-t16-r3",
+            tickets=_tickets(count=2),
+        ),
+        idempotency_key="t16-source-a",
+    )
+    with open_database(paths, read_only=True) as conn:
+        candidates_before_b = fetch_b649_cross_strategy_candidate_rows(
+            conn, target_draw_numbers=["114000064"]
+        ).items
+
+    repository.commit_target(
+        _make_target(
+            run_b,
+            strat_b,
+            history_cutoff=cutoff,
+            target_draw=source_b,
+            input_dataset_identity="dataset-t16-legacy",
+            tickets=_tickets(count=2, offset=10),
+        ),
+        idempotency_key="t16-source-b",
+    )
+
+    with open_database(paths, read_only=True) as conn:
+        candidate_page = fetch_b649_cross_strategy_candidate_rows(
+            conn, target_draw_numbers=["114000064"]
+        )
+        outcome_page = fetch_b649_target_outcome_rows(
+            conn, target_draw_numbers=["114000064"]
+        )
+        cutoff_page = fetch_b649_target_outcome_rows(
+            conn, target_draw_numbers=["114000063"]
+        )
+
+    assert len(candidates_before_b) == 2
+    candidates_a_after_b = tuple(
+        row for row in candidate_page.items if row.run_id == run_a
+    )
+    candidates_b = tuple(row for row in candidate_page.items if row.run_id == run_b)
+    assert candidates_a_after_b == candidates_before_b
+    assert [row.native_position for row in candidates_a_after_b] == [1, 2]
+    assert [row.native_position for row in candidates_b] == [1, 2]
+    assert {row.target_draw_sha256 for row in candidates_a_after_b} == {
+        source_a.draw_sha256
+    }
+    assert {row.target_draw_sha256 for row in candidates_b} == {source_b.draw_sha256}
+    assert {row.target_draw_data_version for row in candidates_a_after_b} == {"R3"}
+    assert {
+        row.target_draw_data_version for row in candidates_b
+    } == {"LOTTOLAB_LEGACY_REFERENCE_CORPUS_V1"}
+    assert {row.target_draw_binding_id for row in candidates_a_after_b} == {
+        row.target_draw_binding_id for row in candidates_before_b
+    }
+    assert {row.input_dataset_identity for row in candidate_page.items} == {
+        "dataset-t16-r3",
+        "dataset-t16-legacy",
+    }
+    assert {row.input_dataset_sha256 for row in candidate_page.items} == {_digest("a")}
+    assert all(row.target_id for row in candidate_page.items)
+    assert len(
+        {row.history_cutoff_draw_binding_id for row in candidate_page.items}
+    ) == 1
+    assert {
+        row.history_cutoff_draw_data_version for row in candidate_page.items
+    } == {"shared-cutoff-v1"}
+    assert {row.history_cutoff_draw_sha256 for row in candidate_page.items} == {
+        cutoff.draw_sha256
+    }
+
+    assert len(outcome_page.items) == 1
+    outcome = outcome_page.items[0]
+    assert outcome.target_draw_number == "114000064"
+    assert outcome.target_draw_date == "2025-06-24"
+    assert outcome.winning_main_numbers == (3, 8, 20, 37, 45, 49)
+    assert outcome.winning_special_number == 21
+    assert outcome.target_draw_sha256 is None
+    assert set(outcome.source_draw_sha256s) == {source_a.draw_sha256, source_b.draw_sha256}
+    assert len(outcome.source_bindings) == 2
+    assert all(isinstance(binding, B649OutcomeDrawBinding) for binding in outcome.source_bindings)
+    binding_identities = {
+        (binding.binding_id, binding.draw_sha256, binding.draw_data_version)
+        for binding in outcome.source_bindings
+    }
+    assert binding_identities == {
+        (candidates_a_after_b[0].target_draw_binding_id, source_a.draw_sha256, "R3"),
+        (
+            candidates_b[0].target_draw_binding_id,
+            source_b.draw_sha256,
+            "LOTTOLAB_LEGACY_REFERENCE_CORPUS_V1",
+        ),
+    }
+    source_provenance = {
+        (
+            provenance.run_id,
+            provenance.strategy_id,
+            provenance.strategy_version,
+            provenance.replicate,
+            provenance.input_dataset_identity,
+        )
+        for binding in outcome.source_bindings
+        for provenance in binding.provenance
+        if provenance.source_role == "TARGET"
+    }
+    assert source_provenance == {
+        (run_a, "strat-r3", "3", 1, "dataset-t16-r3"),
+        (run_b, "strat-legacy", "legacy-1", 2, "dataset-t16-legacy"),
+    }
+    assert len(cutoff_page.items) == 1
+    assert len(cutoff_page.items[0].source_bindings) == 1
+    cutoff_provenance = {
+        provenance.run_id
+        for binding in cutoff_page.items[0].source_bindings
+        for provenance in binding.provenance
+        if provenance.source_role == "HISTORY_CUTOFF"
+    }
+    assert cutoff_provenance == {run_a, run_b}

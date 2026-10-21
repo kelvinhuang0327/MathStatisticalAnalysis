@@ -3137,6 +3137,9 @@ class B649CrossStrategyCandidateRow:
     """Immutable prediction candidate row across runs and strategies."""
 
     run_id: str
+    target_id: str
+    input_dataset_identity: str
+    input_dataset_sha256: str
     strategy_snapshot_id: str
     strategy_id: str
     strategy_version: str
@@ -3145,7 +3148,11 @@ class B649CrossStrategyCandidateRow:
     target_draw_date: str
     history_cutoff_draw_number: str
     history_cutoff_draw_date: str
+    target_draw_binding_id: str
+    target_draw_data_version: str
     target_draw_sha256: str
+    history_cutoff_draw_binding_id: str
+    history_cutoff_draw_data_version: str
     history_cutoff_draw_sha256: str
     native_position: int
     ordered_portfolio_position: int | None
@@ -3179,6 +3186,36 @@ class B649CandidatePage:
 
 
 @dataclass(frozen=True, slots=True)
+class B649OutcomeSourceProvenance:
+    """One target or cutoff reference that used an outcome binding."""
+
+    source_role: str
+    target_id: str
+    run_id: str
+    strategy_snapshot_id: str
+    strategy_id: str
+    strategy_version: str
+    replicate: int
+    target_order: int
+    input_dataset_identity: str
+    input_dataset_sha256: str
+    target_draw_number: str
+    target_draw_date: str
+    history_cutoff_draw_number: str
+    history_cutoff_draw_date: str
+
+
+@dataclass(frozen=True, slots=True)
+class B649OutcomeDrawBinding:
+    """An original source binding retained for one canonical draw outcome."""
+
+    binding_id: str
+    draw_sha256: str
+    draw_data_version: str
+    provenance: tuple[B649OutcomeSourceProvenance, ...]
+
+
+@dataclass(frozen=True, slots=True)
 class B649TargetOutcomeRow:
     """Verified official outcome draw with main and special numbers."""
 
@@ -3186,7 +3223,19 @@ class B649TargetOutcomeRow:
     target_draw_date: str
     winning_main_numbers: tuple[int, int, int, int, int, int]
     winning_special_number: int
-    target_draw_sha256: str
+    source_bindings: tuple[B649OutcomeDrawBinding, ...]
+
+    @property
+    def source_draw_sha256s(self) -> tuple[str, ...]:
+        """Return every original source SHA in deterministic binding order."""
+        return tuple(binding.draw_sha256 for binding in self.source_bindings)
+
+    @property
+    def target_draw_sha256(self) -> str | None:
+        """Retain the legacy accessor only when the outcome has one source."""
+        if len(self.source_bindings) != 1:
+            return None
+        return self.source_bindings[0].draw_sha256
 
 
 @dataclass(frozen=True, slots=True)
@@ -3221,13 +3270,170 @@ def _decode_b649_int_list(raw_json: str, *, label: str) -> list[int]:
     return ints
 
 
+def _canonical_b649_outcome(
+    draw_number: str,
+    draw_date: str,
+    main_numbers_json: str,
+    special_numbers_json: str,
+) -> tuple[str, tuple[int, ...], int]:
+    """Validate and normalize the event content independently of source SHA."""
+    main_ints = _decode_b649_int_list(
+        main_numbers_json, label=f"draw main_numbers_json for draw {draw_number}"
+    )
+    if len(main_ints) != 6:
+        raise ResearchRepositoryError(
+            f"draw main numbers must decode to 6 integers: "
+            f"{main_numbers_json} for draw {draw_number}"
+        )
+    if any(value < 1 or value > 49 for value in main_ints):
+        raise ResearchRepositoryError(
+            f"draw main numbers must be in range 1..49: "
+            f"{main_numbers_json} for draw {draw_number}"
+        )
+    if len(set(main_ints)) != 6:
+        raise ResearchRepositoryError(
+            f"draw main numbers must contain 6 unique integers: "
+            f"{main_numbers_json} for draw {draw_number}"
+        )
+
+    special_ints = _decode_b649_int_list(
+        special_numbers_json,
+        label=f"draw special_numbers_json for draw {draw_number}",
+    )
+    if len(special_ints) != 1:
+        raise ResearchRepositoryError(
+            f"draw special numbers must contain exactly one integer: "
+            f"{special_numbers_json} for draw {draw_number}"
+        )
+    special_int = special_ints[0]
+    if not 1 <= special_int <= 49:
+        raise ResearchRepositoryError(
+            f"draw special number must be in range 1..49: "
+            f"{special_int} for draw {draw_number}"
+        )
+    if special_int in main_ints:
+        raise ResearchRepositoryError(
+            f"draw special number {special_int} conflicts with main numbers "
+            f"{main_ints} for draw {draw_number}"
+        )
+    return draw_date, tuple(sorted(main_ints)), special_int
+
+
+def _fetch_b649_outcome_provenance(
+    connection: sqlite3.Connection,
+    *,
+    table_names: frozenset[str],
+    binding_ids: Sequence[str],
+) -> dict[str, tuple[B649OutcomeSourceProvenance, ...]]:
+    if not binding_ids or not {
+        "research_prediction_targets",
+        "research_strategy_snapshots",
+    }.issubset(table_names):
+        return {}
+
+    rows: list[tuple[object, ...]] = []
+    for offset in range(0, len(binding_ids), 400):
+        selected_binding_ids = binding_ids[offset : offset + 400]
+        placeholders = ",".join("?" for _ in selected_binding_ids)
+        rows.extend(
+            connection.execute(
+                f"""
+        SELECT
+            binding.id,
+            'TARGET' AS source_role,
+            target.id,
+            target.run_id,
+            target.strategy_snapshot_id,
+            strategy.strategy_id,
+            strategy.strategy_version,
+            strategy.replicate,
+            target.target_order,
+            target.input_dataset_identity,
+            target.input_dataset_sha256,
+            target.target_draw_number,
+            target.target_draw_date,
+            target.history_cutoff_draw_number,
+            target.history_cutoff_draw_date
+        FROM research_prediction_targets AS target
+        JOIN research_draw_bindings AS binding
+          ON binding.id = target.target_draw_binding_id
+        JOIN research_strategy_snapshots AS strategy
+          ON strategy.id = target.strategy_snapshot_id
+        WHERE binding.id IN ({placeholders})
+        UNION ALL
+        SELECT
+            binding.id,
+            'HISTORY_CUTOFF' AS source_role,
+            target.id,
+            target.run_id,
+            target.strategy_snapshot_id,
+            strategy.strategy_id,
+            strategy.strategy_version,
+            strategy.replicate,
+            target.target_order,
+            target.input_dataset_identity,
+            target.input_dataset_sha256,
+            target.target_draw_number,
+            target.target_draw_date,
+            target.history_cutoff_draw_number,
+            target.history_cutoff_draw_date
+        FROM research_prediction_targets AS target
+        JOIN research_draw_bindings AS binding
+          ON binding.id = target.history_cutoff_binding_id
+        JOIN research_strategy_snapshots AS strategy
+          ON strategy.id = target.strategy_snapshot_id
+        WHERE binding.id IN ({placeholders})
+        """,
+                (*selected_binding_ids, *selected_binding_ids),
+            ).fetchall()
+        )
+
+    provenance_by_binding: dict[str, list[B649OutcomeSourceProvenance]] = {}
+    for row in rows:
+        provenance = B649OutcomeSourceProvenance(
+            source_role=str(row[1]),
+            target_id=str(row[2]),
+            run_id=str(row[3]),
+            strategy_snapshot_id=str(row[4]),
+            strategy_id=str(row[5]),
+            strategy_version=str(row[6]),
+            replicate=cast(int, row[7]),
+            target_order=cast(int, row[8]),
+            input_dataset_identity=str(row[9]),
+            input_dataset_sha256=str(row[10]),
+            target_draw_number=str(row[11]),
+            target_draw_date=str(row[12]),
+            history_cutoff_draw_number=str(row[13]),
+            history_cutoff_draw_date=str(row[14]),
+        )
+        provenance_by_binding.setdefault(str(row[0]), []).append(provenance)
+
+    return {
+        binding_id: tuple(
+            sorted(
+                provenance,
+                key=lambda value: (
+                    value.source_role,
+                    value.run_id,
+                    value.strategy_id,
+                    value.strategy_version,
+                    value.replicate,
+                    value.target_id,
+                    value.target_order,
+                ),
+            )
+        )
+        for binding_id, provenance in provenance_by_binding.items()
+    }
+
+
 def _require_b649_query_only(connection: sqlite3.Connection) -> None:
     query_only_row = connection.execute("PRAGMA query_only").fetchone()
     if query_only_row is None or int(query_only_row[0]) != 1:
         raise ResearchRepositoryError("research store connection is not query-only")
 
 
-def _verify_b649_candidate_draw_sha_consistency(
+def _verify_b649_candidate_draw_outcome_consistency(
     connection: sqlite3.Connection,
     *,
     lottery_type: str,
@@ -3251,79 +3457,69 @@ def _verify_b649_candidate_draw_sha_consistency(
 
     where_sql = " AND ".join(clauses)
 
-    target_conflict = connection.execute(
+    binding_rows = connection.execute(
         f"""
-        SELECT target.target_draw_number, COUNT(DISTINCT target_draw.draw_sha256),
-               GROUP_CONCAT(DISTINCT target_draw.draw_sha256)
+        SELECT
+            target.target_lottery_type,
+            target.target_draw_number,
+            target.target_draw_date,
+            target_draw.lottery_type,
+            target_draw.draw_number,
+            target_draw.draw_date,
+            target_draw.main_numbers_json,
+            target_draw.special_numbers_json,
+            'TARGET' AS source_role
         FROM research_prediction_targets AS target
         JOIN research_draw_bindings AS target_draw
           ON target_draw.id = target.target_draw_binding_id
         WHERE {where_sql}
-        GROUP BY target.target_draw_number
-        HAVING COUNT(DISTINCT target_draw.draw_sha256) > 1
-        LIMIT 1
-        """,
-        tuple(params),
-    ).fetchone()
-    if target_conflict is not None:
-        raise ResearchConflictError(
-            f"conflicting target draw SHA detected for draw {target_conflict[0]}: "
-            f"{target_conflict[2]}"
-        )
-
-    cutoff_conflict = connection.execute(
-        f"""
-        SELECT target.history_cutoff_draw_number, COUNT(DISTINCT cutoff_draw.draw_sha256),
-               GROUP_CONCAT(DISTINCT cutoff_draw.draw_sha256)
+        UNION ALL
+        SELECT
+            target.history_cutoff_lottery_type,
+            target.history_cutoff_draw_number,
+            target.history_cutoff_draw_date,
+            cutoff_draw.lottery_type,
+            cutoff_draw.draw_number,
+            cutoff_draw.draw_date,
+            cutoff_draw.main_numbers_json,
+            cutoff_draw.special_numbers_json,
+            'HISTORY_CUTOFF' AS source_role
         FROM research_prediction_targets AS target
         JOIN research_draw_bindings AS cutoff_draw
           ON cutoff_draw.id = target.history_cutoff_binding_id
         WHERE {where_sql}
-        GROUP BY target.history_cutoff_draw_number
-        HAVING COUNT(DISTINCT cutoff_draw.draw_sha256) > 1
-        LIMIT 1
         """,
-        tuple(params),
-    ).fetchone()
-    if cutoff_conflict is not None:
-        raise ResearchConflictError(
-            f"conflicting cutoff draw SHA detected for draw {cutoff_conflict[0]}: "
-            f"{cutoff_conflict[2]}"
+        (*params, *params),
+    ).fetchall()
+
+    outcomes_by_key: dict[tuple[str, str], tuple[str, tuple[int, ...], int]] = {}
+    roles_by_key: dict[tuple[str, str], set[str]] = {}
+    for row in binding_rows:
+        expected_key = (str(row[0]), str(row[1]))
+        binding_key = (str(row[3]), str(row[4]))
+        source_role = str(row[8])
+        if expected_key != binding_key or str(row[2]) != str(row[5]):
+            raise ResearchConflictError(
+                f"{source_role.lower()} draw binding identity mismatch for draw "
+                f"{expected_key[1]}"
+            )
+        outcome = _canonical_b649_outcome(
+            expected_key[1], str(row[5]), str(row[6]), str(row[7])
         )
-
-
-def _verify_b649_outcome_draw_sha_consistency(
-    connection: sqlite3.Connection,
-    *,
-    lottery_type: str,
-    target_draw_numbers: Sequence[str] | None,
-) -> None:
-    clauses = ["lottery_type = ?"]
-    params: list[object] = [lottery_type]
-    if target_draw_numbers is not None:
-        if not target_draw_numbers:
-            return
-        placeholders = ",".join("?" for _ in target_draw_numbers)
-        clauses.append(f"draw_number IN ({placeholders})")
-        params.extend(target_draw_numbers)
-
-    where_sql = " AND ".join(clauses)
-    conflict = connection.execute(
-        f"""
-        SELECT draw_number, COUNT(DISTINCT draw_sha256),
-               GROUP_CONCAT(DISTINCT draw_sha256)
-        FROM research_draw_bindings
-        WHERE {where_sql}
-        GROUP BY draw_number
-        HAVING COUNT(DISTINCT draw_sha256) > 1
-        LIMIT 1
-        """,
-        tuple(params),
-    ).fetchone()
-    if conflict is not None:
-        raise ResearchConflictError(
-            f"conflicting draw binding SHA detected for draw {conflict[0]}: {conflict[2]}"
-        )
+        previous = outcomes_by_key.get(expected_key)
+        if previous is not None and previous != outcome:
+            roles = roles_by_key[expected_key] | {source_role}
+            role_label = " and ".join(
+                "target" if role == "TARGET" else "history cutoff"
+                for role in ("TARGET", "HISTORY_CUTOFF")
+                if role in roles
+            )
+            raise ResearchConflictError(
+                f"conflicting {role_label} draw outcome detected for draw "
+                f"{expected_key[1]}"
+            )
+        outcomes_by_key[expected_key] = outcome
+        roles_by_key.setdefault(expected_key, set()).add(source_role)
 
 
 def fetch_b649_cross_strategy_candidate_rows(
@@ -3338,8 +3534,8 @@ def fetch_b649_cross_strategy_candidate_rows(
     """Read cross-strategy, cross-run B649 candidate prediction tickets.
 
     Enforces query-only access, schema presence, causal cutoff strictly before
-    target, valid execution status ('OK'), causal eligibility (1), draw SHA
-    consistency across runs, and deterministic ordering.
+    target, valid execution status ('OK'), causal eligibility (1), canonical
+    draw outcome consistency across runs, and deterministic ordering.
     """
     _require_b649_query_only(connection)
     if limit is not None:
@@ -3358,7 +3554,7 @@ def fetch_b649_cross_strategy_candidate_rows(
             f"research store missing required tables: {sorted(missing)}"
         )
 
-    _verify_b649_candidate_draw_sha_consistency(
+    _verify_b649_candidate_draw_outcome_consistency(
         connection,
         lottery_type=lottery_type,
         run_ids=run_ids,
@@ -3428,6 +3624,9 @@ def fetch_b649_cross_strategy_candidate_rows(
     query = f"""
         SELECT
             target.run_id,
+            target.id,
+            target.input_dataset_identity,
+            target.input_dataset_sha256,
             target.strategy_snapshot_id,
             strategy.strategy_id,
             strategy.strategy_version,
@@ -3436,7 +3635,11 @@ def fetch_b649_cross_strategy_candidate_rows(
             target.target_draw_date,
             target.history_cutoff_draw_number,
             target.history_cutoff_draw_date,
+            target_draw.id AS target_draw_binding_id,
+            target_draw.draw_data_version AS target_draw_data_version,
             target_draw.draw_sha256 AS target_draw_sha256,
+            cutoff_draw.id AS history_cutoff_draw_binding_id,
+            cutoff_draw.draw_data_version AS history_cutoff_draw_data_version,
             cutoff_draw.draw_sha256 AS history_cutoff_draw_sha256,
             ticket.native_position,
             ticket.ordered_portfolio_position,
@@ -3471,9 +3674,9 @@ def fetch_b649_cross_strategy_candidate_rows(
     items: list[B649CrossStrategyCandidateRow] = []
 
     for r in page_rows:
-        main_numbers_raw = str(r[13])
+        main_numbers_raw = str(r[20])
         decoded_ints = _decode_b649_int_list(
-            main_numbers_raw, label=f"ticket main_numbers_json for target {r[5]}"
+            main_numbers_raw, label=f"ticket main_numbers_json for target {r[8]}"
         )
         if len(decoded_ints) != 6:
             raise ResearchRepositoryError(
@@ -3491,23 +3694,30 @@ def fetch_b649_cross_strategy_candidate_rows(
         items.append(
             B649CrossStrategyCandidateRow(
                 run_id=str(r[0]),
-                strategy_snapshot_id=str(r[1]),
-                strategy_id=str(r[2]),
-                strategy_version=str(r[3]),
-                replicate=int(r[4]),
-                target_draw_number=str(r[5]),
-                target_draw_date=str(r[6]),
-                history_cutoff_draw_number=str(r[7]),
-                history_cutoff_draw_date=str(r[8]),
-                target_draw_sha256=str(r[9]),
-                history_cutoff_draw_sha256=str(r[10]),
-                native_position=int(r[11]),
-                ordered_portfolio_position=None if r[12] is None else int(r[12]),
+                target_id=str(r[1]),
+                input_dataset_identity=str(r[2]),
+                input_dataset_sha256=str(r[3]),
+                strategy_snapshot_id=str(r[4]),
+                strategy_id=str(r[5]),
+                strategy_version=str(r[6]),
+                replicate=int(r[7]),
+                target_draw_number=str(r[8]),
+                target_draw_date=str(r[9]),
+                history_cutoff_draw_number=str(r[10]),
+                history_cutoff_draw_date=str(r[11]),
+                target_draw_binding_id=str(r[12]),
+                target_draw_data_version=str(r[13]),
+                target_draw_sha256=str(r[14]),
+                history_cutoff_draw_binding_id=str(r[15]),
+                history_cutoff_draw_data_version=str(r[16]),
+                history_cutoff_draw_sha256=str(r[17]),
+                native_position=int(r[18]),
+                ordered_portfolio_position=None if r[19] is None else int(r[19]),
                 main_numbers_json=main_numbers_raw,
                 main_numbers=cast(tuple[int, int, int, int, int, int], tuple(decoded_ints)),
-                ticket_sha256=str(r[14]),
-                execution_status=str(r[15]),
-                causal_eligible=int(r[16]),
+                ticket_sha256=str(r[21]),
+                execution_status=str(r[22]),
+                causal_eligible=int(r[23]),
             )
         )
 
@@ -3515,14 +3725,14 @@ def fetch_b649_cross_strategy_candidate_rows(
     if limit is not None and len(raw_rows) > limit and page_rows:
         last = page_rows[-1]
         next_cursor = B649CandidateCursor(
-            target_draw_date=str(last[6]),
-            target_draw_number=int(last[5]),
-            strategy_id=str(last[2]),
-            strategy_version=str(last[3]),
-            replicate=int(last[4]),
+            target_draw_date=str(last[9]),
+            target_draw_number=int(last[8]),
+            strategy_id=str(last[5]),
+            strategy_version=str(last[6]),
+            replicate=int(last[7]),
             run_id=str(last[0]),
-            strategy_snapshot_id=str(last[1]),
-            native_position=int(last[11]),
+            strategy_snapshot_id=str(last[4]),
+            native_position=int(last[18]),
         )
 
     return B649CandidatePage(items=tuple(items), next_cursor=next_cursor)
@@ -3538,9 +3748,8 @@ def fetch_b649_target_outcome_rows(
 ) -> B649OutcomePage:
     """Read verified official outcome draws (winning main and special numbers).
 
-    Enforces query-only connection, draw SHA consistency, strictly 6 unique
-    main numbers (1..49), exactly 1 special number (1..49), and non-overlap
-    between special and main numbers.
+    Bindings are equivalent when their canonical date and winning numbers
+    match; every original binding identity and source reference is retained.
     """
     _require_b649_query_only(connection)
     if limit is not None:
@@ -3550,16 +3759,7 @@ def fetch_b649_target_outcome_rows(
     if "research_draw_bindings" not in table_names:
         raise ResearchRepositoryError("research store missing research_draw_bindings table")
 
-    _verify_b649_outcome_draw_sha_consistency(
-        connection,
-        lottery_type=lottery_type,
-        target_draw_numbers=target_draw_numbers,
-    )
-
-    clauses = [
-        "lottery_type = ?",
-        "draw_number != replace(draw_date, '-', '')",
-    ]
+    clauses = ["lottery_type = ?"]
     params: list[object] = [lottery_type]
 
     if target_draw_numbers is not None:
@@ -3569,107 +3769,123 @@ def fetch_b649_target_outcome_rows(
         clauses.append(f"draw_number IN ({placeholders})")
         params.extend(target_draw_numbers)
 
-    if after is not None:
-        clauses.append(
-            """
-            (
-                draw_date,
-                CAST(draw_number AS INTEGER)
-            ) > (?, ?)
-            """
-        )
-        params.extend((after.target_draw_date, after.target_draw_number))
-
-    limit_clause = ""
-    if limit is not None:
-        limit_clause = "LIMIT ?"
-        params.append(limit + 1)
-
     where_sql = " AND ".join(clauses)
     query = f"""
-        SELECT DISTINCT
+        SELECT
+            id,
+            lottery_type,
             draw_number,
             draw_date,
             main_numbers_json,
             special_numbers_json,
-            draw_sha256
+            draw_sha256,
+            draw_data_version
         FROM research_draw_bindings
         WHERE {where_sql}
-        ORDER BY
-            draw_date ASC,
-            CAST(draw_number AS INTEGER) ASC
-        {limit_clause}
     """
 
     raw_rows = connection.execute(query, tuple(params)).fetchall()
-    page_rows = raw_rows[:limit] if limit is not None else raw_rows
-    items: list[B649TargetOutcomeRow] = []
-
-    for r in page_rows:
-        draw_number = str(r[0])
-        draw_date = str(r[1])
-        main_json = str(r[2])
-        special_json = str(r[3])
-        draw_sha = str(r[4])
-
-        main_ints = _decode_b649_int_list(
-            main_json, label=f"draw main_numbers_json for draw {draw_number}"
+    outcomes_by_key: dict[tuple[str, str], tuple[str, tuple[int, ...], int]] = {}
+    bindings_by_key: dict[tuple[str, str], list[B649OutcomeDrawBinding]] = {}
+    for row in raw_rows:
+        binding_id = str(row[0])
+        binding_lottery_type = str(row[1])
+        draw_number = str(row[2])
+        draw_date = str(row[3])
+        if binding_lottery_type != lottery_type:
+            raise ResearchConflictError(
+                f"draw binding lottery type mismatch for draw {draw_number}"
+            )
+        canonical_outcome = _canonical_b649_outcome(
+            draw_number,
+            draw_date,
+            str(row[4]),
+            str(row[5]),
         )
-        if len(main_ints) != 6:
-            raise ResearchRepositoryError(
-                f"draw main numbers must decode to 6 integers: {main_json} for draw {draw_number}"
+        key = (binding_lottery_type, draw_number)
+        previous = outcomes_by_key.get(key)
+        if previous is not None and previous != canonical_outcome:
+            raise ResearchConflictError(
+                f"conflicting draw outcome detected for draw {draw_number}"
             )
-        if any(x < 1 or x > 49 for x in main_ints):
-            raise ResearchRepositoryError(
-                f"draw main numbers must be in range 1..49: {main_json} for draw {draw_number}"
+        outcomes_by_key[key] = canonical_outcome
+        bindings_by_key.setdefault(key, []).append(
+            B649OutcomeDrawBinding(
+                binding_id=binding_id,
+                draw_sha256=str(row[6]),
+                draw_data_version=str(row[7]),
+                provenance=(),
             )
-        if len(set(main_ints)) != 6:
-            raise ResearchRepositoryError(
-                f"draw main numbers must contain 6 unique integers: "
-                f"{main_json} for draw {draw_number}"
-            )
-
-        special_ints = _decode_b649_int_list(
-            special_json, label=f"draw special_numbers_json for draw {draw_number}"
         )
-        if len(special_ints) != 1:
-            raise ResearchRepositoryError(
-                f"draw special numbers must contain exactly one integer: "
-                f"{special_json} for draw {draw_number}"
-            )
-        special_int = special_ints[0]
-        if special_int < 1 or special_int > 49:
-            raise ResearchRepositoryError(
-                f"draw special number must be in range 1..49: {special_int} for draw {draw_number}"
-            )
-        if special_int in main_ints:
-            raise ResearchRepositoryError(
-                f"draw special number {special_int} conflicts with main numbers "
-                f"{main_ints} for draw {draw_number}"
-            )
 
-        items.append(
+    binding_ids = tuple(
+        sorted(
+            binding.binding_id
+            for bindings in bindings_by_key.values()
+            for binding in bindings
+        )
+    )
+    provenance_by_binding = _fetch_b649_outcome_provenance(
+        connection,
+        table_names=table_names,
+        binding_ids=binding_ids,
+    )
+
+    outcome_rows: list[B649TargetOutcomeRow] = []
+    for (binding_lottery_type, draw_number), canonical_outcome in outcomes_by_key.items():
+        draw_date, main_numbers, special_number = canonical_outcome
+        # Preserve the established exclusion of date-shaped synthetic draw IDs.
+        if draw_number == draw_date.replace("-", ""):
+            continue
+        source_bindings = tuple(
+            B649OutcomeDrawBinding(
+                binding_id=binding.binding_id,
+                draw_sha256=binding.draw_sha256,
+                draw_data_version=binding.draw_data_version,
+                provenance=provenance_by_binding.get(binding.binding_id, ()),
+            )
+            for binding in sorted(
+                bindings_by_key[(binding_lottery_type, draw_number)],
+                key=lambda value: (value.draw_data_version, value.binding_id),
+            )
+        )
+        outcome_rows.append(
             B649TargetOutcomeRow(
                 target_draw_number=draw_number,
                 target_draw_date=draw_date,
                 winning_main_numbers=cast(
-                    tuple[int, int, int, int, int, int],
-                    tuple(sorted(main_ints)),
+                    tuple[int, int, int, int, int, int], main_numbers
                 ),
-                winning_special_number=special_int,
-                target_draw_sha256=draw_sha,
+                winning_special_number=special_number,
+                source_bindings=source_bindings,
             )
         )
 
+    outcome_rows.sort(
+        key=lambda value: (
+            value.target_draw_date,
+            int(value.target_draw_number),
+            value.target_draw_number,
+        )
+    )
+    if after is not None:
+        cursor_key = (after.target_draw_date, after.target_draw_number)
+        outcome_rows = [
+            row
+            for row in outcome_rows
+            if (row.target_draw_date, int(row.target_draw_number)) > cursor_key
+        ]
+
+    page_rows = outcome_rows if limit is None else outcome_rows[:limit]
     next_cursor = None
-    if limit is not None and len(raw_rows) > limit and page_rows:
+    if limit is not None and len(outcome_rows) > limit and page_rows:
         last = page_rows[-1]
         next_cursor = B649OutcomeCursor(
-            target_draw_date=str(last[1]),
-            target_draw_number=int(last[0]),
+            target_draw_date=last.target_draw_date,
+            target_draw_number=int(last.target_draw_number),
         )
 
-    return B649OutcomePage(items=tuple(items), next_cursor=next_cursor)
+    return B649OutcomePage(items=tuple(page_rows), next_cursor=next_cursor)
 
 
 __all__ = [
@@ -3681,7 +3897,9 @@ __all__ = [
     "B649CandidatePage",
     "B649CrossStrategyCandidateRow",
     "B649OutcomeCursor",
+    "B649OutcomeDrawBinding",
     "B649OutcomePage",
+    "B649OutcomeSourceProvenance",
     "B649TargetOutcomeRow",
     "ClosureInput",
     "CompletedTargetCursor",

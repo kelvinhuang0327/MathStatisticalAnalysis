@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
+import { config, flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { listIngestionRuns } from '../src/api/drawData'
@@ -412,11 +412,15 @@ async function previewOne(wrapper: VueWrapper): Promise<void> {
 }
 
 beforeEach(() => {
+  config.global.stubs = {
+    DrawPeriodOverview: true,
+  }
   fetchMock = vi.fn<typeof fetch>()
   vi.stubGlobal('fetch', fetchMock)
 })
 
 afterEach(() => {
+  config.global.stubs = {}
   vi.unstubAllGlobals()
 })
 
@@ -1052,6 +1056,15 @@ describe('Duplicates / Conflicts metric card truthfulness', () => {
     expect(card.find('.metric-card__value').text()).toBe('5')
     expect(card.find('.metric-card__subvalue').text()).toBe('2 duplicate · 3 conflict')
     expect(card.classes()).toContain('metric-card--danger')
+    wrapper.unmount()
+  })
+
+  it('renders DrawPeriodOverview in the main operations page', async () => {
+    fetchMock.mockResolvedValue(apiResponse(emptyRuns))
+    const wrapper = mount(DataCenterPage)
+    await flushPromises()
+
+    expect(wrapper.find('draw-period-overview-stub').exists()).toBe(true)
     wrapper.unmount()
   })
 })

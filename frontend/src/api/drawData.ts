@@ -62,7 +62,7 @@ export interface BatchCommitOutcome {
 }
 
 export interface DrawHistoryQuery {
-  lotteryType: 'BIG_LOTTO'
+  lotteryType: IngestionRunLotteryType
   drawNumber: string
   dateFrom: string
   dateTo: string

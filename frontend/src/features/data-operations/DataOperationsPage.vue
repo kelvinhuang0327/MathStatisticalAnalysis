@@ -19,6 +19,7 @@ import { isValidIsoCalendarDate } from '../../utils/isoDate'
 import MetricCard from '../../components/MetricCard.vue'
 import StatusBadge from '../../components/StatusBadge.vue'
 import SectionHeader from '../../components/SectionHeader.vue'
+import DrawPeriodOverview from './DrawPeriodOverview.vue'
 
 type FileStatus =
   | 'READING'
@@ -626,6 +627,9 @@ onBeforeUnmount(() => {
         :variant="totalFailedRows > 0 ? 'danger' : metricUnavailable?.variant ?? 'success'"
       />
     </div>
+
+    <!-- Draw Period Overview for B649, P638, T539 -->
+    <DrawPeriodOverview />
 
     <!-- Section 1: File Upload & Batch Preview -->
     <article class="panel upload-panel" style="margin-top: 24px">

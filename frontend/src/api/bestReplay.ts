@@ -43,7 +43,7 @@ export function formatRatePercentage(rate: number | null | undefined): string {
 export function formatDeltaPercentage(delta: number | null | undefined): string {
   if (delta === null || delta === undefined || Number.isNaN(delta)) return 'Unavailable'
   const sign = delta > 0 ? '+' : ''
-  return `${sign}${(delta * 100).toFixed(2)}%`
+  return `${sign}${(delta * 100).toFixed(2)} pp`
 }
 
 export function extractBestHit(prizeCounts: BestReplayPrizeCounts | null | undefined): string {

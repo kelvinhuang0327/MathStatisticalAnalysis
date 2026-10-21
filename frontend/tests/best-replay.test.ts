@@ -27,6 +27,8 @@ import {
   type B649MultiTicketRecord,
 } from '../src/api/b649MultiTicketRecords'
 import {
+  formatDeltaPercentage,
+  formatRatePercentage,
   loadP638BestReplayData,
   loadT539BestReplayData,
   transformB649Record,
@@ -583,7 +585,7 @@ describe('BestReplayPage Workspace & Cross-Game Features', () => {
     expect(wrapper.text()).toContain('legacy_biglotto__portfolio_optimizer__fixture')
     expect(wrapper.text()).toContain('Rank #1 · B649')
     expect(wrapper.text()).toContain('27.66%')
-    expect(wrapper.text()).toContain('+0.68%')
+    expect(wrapper.text()).toContain('+0.68 pp')
 
     wrapper.unmount()
   })
@@ -804,7 +806,7 @@ describe('BestReplayOneToFiveOverview Component Direct Unit Tests', () => {
       hitRateFormatted: '27.66%',
       baselineProbability: 0.269,
       baselineDelta: 0.0067,
-      baselineDeltaFormatted: '+0.67%',
+      baselineDeltaFormatted: '+0.67 pp',
       coverage: 0.9069,
       bestHit: '2nd Prize (1)',
       prizeCounts: { first: 0, second: 1, third: 0, fourth: 0, fifth: 0 },
@@ -830,7 +832,7 @@ describe('BestReplayOneToFiveOverview Component Direct Unit Tests', () => {
 
     expect(wrapper.findAll('.overview-card').length).toBe(5)
     expect(wrapper.find('[data-testid="overview-card-5"]').text()).toContain('27.66%')
-    expect(wrapper.find('[data-testid="overview-card-5"]').text()).toContain('+0.67%')
+    expect(wrapper.find('[data-testid="overview-card-5"]').text()).toContain('+0.67 pp')
     expect(wrapper.find('[data-testid="overview-card-1"]').text()).toContain('Evidence Unavailable')
 
     wrapper.unmount()
@@ -855,7 +857,7 @@ describe('BestReplayMatrix Component', () => {
       hitRateFormatted: '27.66%',
       baselineProbability: 0.269,
       baselineDelta: 0.0067,
-      baselineDeltaFormatted: '+0.67%',
+      baselineDeltaFormatted: '+0.67 pp',
       coverage: 0.9,
       bestHit: '2nd Prize (1)',
       prizeCounts: { first: 0, second: 1, third: 0, fourth: 0, fifth: 0 },
@@ -908,7 +910,7 @@ describe('BestReplayMatrix Component', () => {
 
     const availableCell = wrapper.find('.matrix-cell--available')
     expect(availableCell.text()).toContain('27.66%')
-    expect(availableCell.text()).toContain('+0.67%')
+    expect(availableCell.text()).toContain('+0.67 pp')
 
     const unavailableCells = wrapper.findAll('.matrix-cell--unavailable')
     expect(unavailableCells.length).toBe(19)
@@ -935,7 +937,7 @@ describe('BestReplayHorizonComparison Component', () => {
       hitRateFormatted: '27.66%',
       baselineProbability: 0.269,
       baselineDelta: 0.0067,
-      baselineDeltaFormatted: '+0.67%',
+      baselineDeltaFormatted: '+0.67 pp',
       coverage: 0.9,
       bestHit: '2nd Prize (1)',
       prizeCounts: { first: 0, second: 1, third: 0, fourth: 0, fifth: 0 },
@@ -961,7 +963,7 @@ describe('BestReplayHorizonComparison Component', () => {
 
     const fullCard = wrapper.find('[data-testid="horizon-card-full"]')
     expect(fullCard.text()).toContain('27.66%')
-    expect(fullCard.text()).toContain('+0.67%')
+    expect(fullCard.text()).toContain('+0.67 pp')
     expect(fullCard.text()).toContain('DESCRIPTIVE LEADER')
 
     const shortCard = wrapper.find('[data-testid="horizon-card-recent-50"]')
@@ -1312,7 +1314,7 @@ describe('MSA_UI_HISTORICAL_REPLAY_UX_R1 Focused Acceptance Suite', () => {
     // Hit rate, sample size, delta
     expect(summaryPanel.text()).toContain('27.66%')
     expect(summaryPanel.text()).toContain('1,949 Historical Draws')
-    expect(summaryPanel.text()).toContain('+0.68%')
+    expect(summaryPanel.text()).toContain('+0.68 pp')
 
     wrapper.unmount()
   })
@@ -1574,6 +1576,142 @@ describe('MSA_UI_HISTORICAL_REPLAY_UX_R1 Focused Acceptance Suite', () => {
     expect(wrapper.find('[data-testid="summary-game"]').text()).toContain('P638')
     expect(wrapper.text()).toContain('p638_zonal_entropy_leader')
     expect(wrapper.text()).not.toContain('portfolio_optimizer')
+
+    wrapper.unmount()
+  })
+})
+
+describe('MSA_UI_REPLAY_DELTA_UNIT_R1 Best Replay Delta Unit Semantics', () => {
+  it('formats single hit rates using percent (%) and never percentage points (pp)', () => {
+    expect(formatRatePercentage(0.2766)).toBe('27.66%')
+    expect(formatRatePercentage(0.185)).toBe('18.50%')
+    expect(formatRatePercentage(0)).toBe('0.00%')
+    expect(formatRatePercentage(null)).toBe('Unavailable')
+    expect(formatRatePercentage(undefined)).toBe('Unavailable')
+    expect(formatRatePercentage(Number.NaN)).toBe('Unavailable')
+
+    expect(formatRatePercentage(0.2766)).not.toContain('pp')
+  })
+
+  it('formats baseline delta using percentage points (pp) for positive, negative, zero, and missing', () => {
+    // positive delta
+    expect(formatDeltaPercentage(0.0068)).toBe('+0.68 pp')
+    expect(formatDeltaPercentage(0.0012)).toBe('+0.12 pp')
+    // negative delta
+    expect(formatDeltaPercentage(-0.0068)).toBe('-0.68 pp')
+    expect(formatDeltaPercentage(-0.0054)).toBe('-0.54 pp')
+    // zero delta
+    expect(formatDeltaPercentage(0)).toBe('0.00 pp')
+    // null / undefined / NaN
+    expect(formatDeltaPercentage(null)).toBe('Unavailable')
+    expect(formatDeltaPercentage(undefined)).toBe('Unavailable')
+    expect(formatDeltaPercentage(Number.NaN)).toBe('Unavailable')
+
+    // does not output % for delta
+    expect(formatDeltaPercentage(0.0068)).not.toContain('%')
+    expect(formatDeltaPercentage(-0.0068)).not.toContain('%')
+    expect(formatDeltaPercentage(0)).not.toContain('%')
+  })
+
+  it('transforms B649 records with correct rate (%) and delta (pp) semantics', () => {
+    const recordPos = mockB649Record(5, 'FULL', 'pos_delta', { rank: 1, rate: '0.276600', delta: '0.006800' })
+    const itemPos = transformB649Record(recordPos, 'FULL', 5)
+    expect(itemPos.hitRateFormatted).toBe('27.66%')
+    expect(itemPos.baselineDeltaFormatted).toBe('+0.68 pp')
+
+    const recordNeg = mockB649Record(5, 'FULL', 'neg_delta', { rank: 2, rate: '0.240100', delta: '-0.006800' })
+    const itemNeg = transformB649Record(recordNeg, 'FULL', 5)
+    expect(itemNeg.hitRateFormatted).toBe('24.01%')
+    expect(itemNeg.baselineDeltaFormatted).toBe('-0.68 pp')
+
+    const recordZero = mockB649Record(5, 'FULL', 'zero_delta', { rank: 3, rate: '0.269800', delta: '0.000000' })
+    const itemZero = transformB649Record(recordZero, 'FULL', 5)
+    expect(itemZero.hitRateFormatted).toBe('26.98%')
+    expect(itemZero.baselineDeltaFormatted).toBe('0.00 pp')
+
+    const recordNull = {
+      ...mockB649Record(5, 'FULL', 'null_delta', { rank: 4 }),
+      official_random_baseline_delta: null,
+      random_baseline_rate_difference: null,
+    } as unknown as B649MultiTicketRecord
+    const itemNull = transformB649Record(recordNull, 'FULL', 5)
+    expect(itemNull.baselineDeltaFormatted).toBe('Unavailable')
+  })
+
+  it('guarantees UI summary and detailed research table display consistent pp units for B649', async () => {
+    const wrapper = mount(BestReplayPage)
+    await flushPromises()
+
+    // Expand details
+    await wrapper.find('[data-testid="toggle-research-details"]').trigger('click')
+    await flushPromises()
+
+    // 1. Summary displays delta in pp and rate in %
+    const summaryPanel = wrapper.find('[data-testid="concise-summary-panel"]')
+    expect(summaryPanel.text()).toContain('27.66%')
+    expect(summaryPanel.text()).toContain('+0.68 pp')
+    expect(summaryPanel.text()).not.toContain('+0.68%')
+    expect(summaryPanel.text()).not.toContain('27.66 pp')
+
+    // 2. Table rows display delta in pp and rate in %
+    const rows = wrapper.findAll('tbody tr')
+    expect(rows.length).toBeGreaterThanOrEqual(3)
+
+    // Row 1 (portfolio_optimizer): rate 27.66%, delta +0.68 pp
+    const row1Text = rows[0]!.text()
+    expect(row1Text).toContain('27.66%')
+    expect(row1Text).toContain('+0.68 pp')
+
+    // Row 2 (6bet_ewma): rate 25.12%, delta +0.12 pp
+    const row2Text = rows[1]!.text()
+    expect(row2Text).toContain('25.12%')
+    expect(row2Text).toContain('+0.12 pp')
+
+    // Row 3 (coldpool_15): rate 24.01%, delta -0.54 pp
+    const row3Text = rows[2]!.text()
+    expect(row3Text).toContain('24.01%')
+    expect(row3Text).toContain('-0.54 pp')
+
+    wrapper.unmount()
+  })
+
+  it('keeps P638 and T539 baseline delta unavailable without synthesizing a delta', async () => {
+    const wrapper = mount(BestReplayPage)
+    await flushPromises()
+
+    // P638 check
+    await wrapper.find('[data-testid="game-btn-p638"]').trigger('click')
+    await flushPromises()
+
+    const p638Summary = wrapper.find('[data-testid="concise-summary-panel"]')
+    expect(p638Summary.text()).toContain('Baseline delta unavailable')
+    expect(p638Summary.text()).toContain('18.50%')
+    expect(p638Summary.text()).not.toContain('pp')
+
+    const p638Rows = wrapper.findAll('tbody tr')
+    expect(p638Rows.length).toBeGreaterThan(0)
+    for (const row of p638Rows) {
+      expect(row.text()).toContain('Unavailable')
+      expect(row.text()).not.toContain('0.00 pp')
+      expect(row.text()).not.toContain('+0.00 pp')
+    }
+
+    // T539 check
+    await wrapper.find('[data-testid="game-btn-t539"]').trigger('click')
+    await flushPromises()
+
+    const t539Summary = wrapper.find('[data-testid="concise-summary-panel"]')
+    expect(t539Summary.text()).toContain('Baseline delta unavailable')
+    expect(t539Summary.text()).toContain('21.50%')
+    expect(t539Summary.text()).not.toContain('pp')
+
+    const t539Rows = wrapper.findAll('tbody tr')
+    expect(t539Rows.length).toBeGreaterThan(0)
+    for (const row of t539Rows) {
+      expect(row.text()).toContain('Unavailable')
+      expect(row.text()).not.toContain('0.00 pp')
+      expect(row.text()).not.toContain('+0.00 pp')
+    }
 
     wrapper.unmount()
   })

@@ -58,6 +58,27 @@ const sortDirection = ref<'asc' | 'desc'>('asc')
 const activeInspectStrategyId = ref<string | null>(null)
 const activeInspectTicketCount = ref<TicketCount>(5)
 
+// Expandable detailed research state (summary-first presentation)
+const isDetailsExpanded = ref(false)
+
+function toggleDetails(): void {
+  isDetailsExpanded.value = !isDetailsExpanded.value
+}
+
+function handleDetailsToggle(event: Event): void {
+  const target = event.target as HTMLDetailsElement | null
+  if (target) {
+    isDetailsExpanded.value = target.open
+  }
+}
+
+const selectedGameTitle = computed(() => {
+  if (selectedGame.value === 'B649') return 'B649 (Big Lotto 6/49)'
+  if (selectedGame.value === 'P638') return 'P638 (Power Lotto 6/38)'
+  if (selectedGame.value === 'T539') return 'T539 (Daily Cash 5/39)'
+  return 'All Available Games'
+})
+
 // Async & Data States
 const state = ref<LoadingState>('loading')
 const errorMessage = ref('')
@@ -564,47 +585,133 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
-    <!-- Main Summary Metrics Grid -->
-    <div class="metrics-grid" data-testid="best-replay-metrics-grid">
-      <MetricCard
-        label="Best Strategy"
-        :value="summary.bestStrategyLabel || 'None'"
-        :subvalue="summary.bestStrategyId ? `Rank #1 · ${summary.game}` : 'No candidate evaluated'"
-        variant="accent"
-      />
-      <MetricCard
-        label="Ticket Count"
-        :value="summary.ticketCount"
-        :subvalue="isMultiSelectMode ? 'Multi-ticket selection active' : 'Single ticket dimension'"
-      />
-      <MetricCard
-        label="Horizon"
-        :value="summary.horizon"
-        :subvalue="summary.evaluatedTargets !== null ? `${summary.evaluatedTargets.toLocaleString()} Historical Draws` : 'Sample count unknown'"
-      />
-      <MetricCard
-        label="Historical Hit Rate"
-        :value="summary.historicalHitRate"
-        :subvalue="summary.baselineDelta !== 'Unavailable' ? `Delta vs baseline: ${summary.baselineDelta}` : 'Baseline delta unavailable'"
-        variant="success"
-      />
-      <MetricCard
-        label="Evidence Guard"
-        :value="summary.evidenceStatus"
-        subvalue="Deterministic historical replay evidence"
-        :badge="summary.totalAvailableRecords > 0 ? `${summary.totalAvailableRecords} Validated` : 'No Data'"
-        badge-variant="accent"
-      />
-    </div>
+    <!-- Concise Backtest Summary Panel (Clean, White Background, Tech Blue Theme) -->
+    <section
+      class="concise-summary-panel"
+      data-testid="concise-summary-panel"
+      aria-labelledby="concise-summary-title"
+    >
+      <div class="concise-summary-panel__header">
+        <div class="concise-summary-panel__title-group">
+          <span class="concise-summary-panel__eyebrow">Executive Summary</span>
+          <h3 id="concise-summary-title" class="concise-summary-panel__title">
+            Backtest Overview
+          </h3>
+        </div>
 
-    <!-- Quantitative Research Disclaimer Notice -->
-    <div class="research-notice-banner" role="note">
-      <span class="notice-icon" aria-hidden="true">🛡️</span>
-      <div class="notice-text">
-        <strong>Strict Evidence Protocol:</strong>
-        Historical hit rates, ranks, and baseline lifts are descriptive quantitative records. All missing ticket counts are explicitly marked as unavailable rather than zero. No future predictive accuracy, monetary ROI, or winning guarantees are claimed.
+        <div class="concise-summary-panel__meta-pills" role="group" aria-label="Selected Dimensions">
+          <div class="summary-pill summary-pill--game" data-testid="summary-game">
+            <span class="summary-pill__label">Game:</span>
+            <strong class="summary-pill__val">{{ selectedGameTitle }}</strong>
+          </div>
+          <div class="summary-pill summary-pill--tickets" data-testid="summary-tickets">
+            <span class="summary-pill__label">Tickets:</span>
+            <strong class="summary-pill__val">{{ summary.ticketCount }}</strong>
+          </div>
+          <div class="summary-pill summary-pill--horizon" data-testid="summary-horizon">
+            <span class="summary-pill__label">Period:</span>
+            <strong class="summary-pill__val">{{ summary.horizon }}</strong>
+          </div>
+          <div class="summary-pill summary-pill--status" data-testid="summary-status">
+            <span class="summary-pill__label">Status:</span>
+            <strong class="summary-pill__val">{{ summary.evidenceStatus }}</strong>
+          </div>
+        </div>
       </div>
-    </div>
+
+      <!-- Main Summary Metrics Grid -->
+      <div class="metrics-grid" data-testid="best-replay-metrics-grid">
+        <MetricCard
+          label="Best Strategy"
+          :value="summary.bestStrategyLabel || 'None'"
+          :subvalue="summary.bestStrategyId ? `Rank #1 · ${summary.game}` : 'No candidate evaluated'"
+          variant="accent"
+          data-testid="summary-strategy-rank"
+        />
+        <MetricCard
+          label="Ticket Count"
+          :value="summary.ticketCount"
+          :subvalue="isMultiSelectMode ? 'Multi-ticket selection active' : 'Single ticket dimension'"
+          data-testid="summary-ticket-card"
+        />
+        <MetricCard
+          label="Horizon"
+          :value="summary.horizon"
+          :subvalue="summary.evaluatedTargets !== null ? `${summary.evaluatedTargets.toLocaleString()} Historical Draws` : 'Sample count unknown'"
+          data-testid="summary-sample-size"
+        />
+        <MetricCard
+          label="Historical Hit Rate"
+          :value="summary.historicalHitRate"
+          :subvalue="summary.baselineDelta !== 'Unavailable' ? `Delta vs baseline: ${summary.baselineDelta}` : 'Baseline delta unavailable'"
+          variant="success"
+          data-testid="summary-hit-rate"
+        />
+        <MetricCard
+          label="Evidence Guard"
+          :value="summary.evidenceStatus"
+          subvalue="Deterministic historical replay evidence"
+          :badge="summary.totalAvailableRecords > 0 ? `${summary.totalAvailableRecords} Validated` : 'No Data'"
+          badge-variant="accent"
+          data-testid="summary-evidence-guard"
+        />
+      </div>
+
+      <!-- Summary Error Banner if API Fails -->
+      <div v-if="state === 'error'" class="summary-error-banner" data-testid="summary-error-banner">
+        <span class="error-banner-icon" aria-hidden="true">⚠️</span>
+        <div class="error-banner-body">
+          <strong>Failed to load backtest data:</strong> {{ errorMessage }}
+        </div>
+        <button type="button" class="button button--sm button--quiet" @click="loadData">
+          Retry
+        </button>
+      </div>
+
+      <div class="concise-summary-panel__footer">
+        <span class="summary-footer-note">
+          Descriptive historical records only. Does not infer future accuracy, monetary ROI, or winning guarantees.
+        </span>
+      </div>
+    </section>
+
+    <!-- Expandable Detailed Research Section -->
+    <details
+      class="research-details-disclosure"
+      :open="isDetailsExpanded"
+      data-testid="research-details-disclosure"
+      @toggle="handleDetailsToggle"
+    >
+      <summary
+        class="research-details-toggle"
+        data-testid="toggle-research-details"
+        role="button"
+        :aria-expanded="isDetailsExpanded"
+        aria-controls="detailed-research-content"
+        @click.prevent="toggleDetails"
+      >
+        <span class="toggle-icon" aria-hidden="true">{{ isDetailsExpanded ? '▼' : '▶' }}</span>
+        <strong class="toggle-text">
+          {{ isDetailsExpanded ? 'Hide Complete Research Evidence' : 'View Complete Research Evidence' }}
+        </strong>
+        <span class="toggle-hint">
+          — Multi-ticket overview, evaluation filters, ranking table, and matrix heatmap
+        </span>
+      </summary>
+
+      <div
+        id="detailed-research-content"
+        class="detailed-research-content"
+        data-testid="detailed-research-content"
+      >
+        <!-- Quantitative Research Disclaimer Notice -->
+        <div class="research-notice-banner" role="note">
+          <span class="notice-icon" aria-hidden="true">🛡️</span>
+          <div class="notice-text">
+            <strong>Strict Evidence Protocol:</strong>
+            Historical hit rates, ranks, and baseline lifts are descriptive quantitative records. All missing ticket counts are explicitly marked as unavailable rather than zero. No future predictive accuracy, monetary ROI, or winning guarantees are claimed.
+          </div>
+        </div>
 
     <!-- 1–5 Best Strategy Overview (Cards) -->
     <BestReplayOneToFiveOverview
@@ -962,6 +1069,8 @@ onBeforeUnmount(() => {
         </div>
       </div>
     </template>
+      </div>
+    </details>
   </section>
 </template>
 
@@ -1426,5 +1535,286 @@ onBeforeUnmount(() => {
 .chip-rate {
   font: 700 11px/1 var(--font-mono);
   color: var(--color-success);
+}
+
+/* ==========================================================================
+   Concise Backtest Summary Panel (Clean White Background, Tech Blue Scoped)
+   ========================================================================== */
+
+.concise-summary-panel {
+  background: #ffffff;
+  border: 1px solid #dbeafe;
+  border-radius: var(--radius-lg);
+  padding: 20px 24px;
+  margin-top: 18px;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 20px -2px rgba(37, 99, 235, 0.08), 0 2px 6px -1px rgba(0, 0, 0, 0.04);
+  color: #0f172a;
+}
+
+.concise-summary-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #f1f5f9;
+  flex-wrap: wrap;
+}
+
+.concise-summary-panel__title-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.concise-summary-panel__eyebrow {
+  font: 800 11px/1 var(--font-mono);
+  color: #2563eb;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  background: #eff6ff;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid #bfdbfe;
+}
+
+.concise-summary-panel__title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0;
+}
+
+.concise-summary-panel__meta-pills {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.summary-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  font-size: 12px;
+  font-weight: 600;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  color: #334155;
+}
+
+.summary-pill__label {
+  color: #64748b;
+  font-weight: 500;
+}
+
+.summary-pill__val {
+  color: #0f172a;
+}
+
+.summary-pill--game {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+  color: #1d4ed8;
+  font-family: var(--font-mono);
+  font-weight: 700;
+}
+
+.summary-pill--game .summary-pill__val {
+  color: #1d4ed8;
+}
+
+.summary-pill--tickets {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+  color: #166534;
+}
+
+.summary-pill--horizon {
+  background: #fdf4ff;
+  border-color: #f5d0fe;
+  color: #86198f;
+}
+
+.summary-pill--status {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #334155;
+}
+
+.concise-summary-panel .metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 14px;
+}
+
+.concise-summary-panel :deep(.metric-card) {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+  transition: all 0.15s ease;
+}
+
+.concise-summary-panel :deep(.metric-card:hover) {
+  border-color: #93c5fd;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.08);
+}
+
+.concise-summary-panel :deep(.metric-card__label) {
+  color: #64748b;
+  font: 700 11px/1 var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.concise-summary-panel :deep(.metric-card__value) {
+  color: #0f172a;
+  font-size: 18px;
+  font-weight: 800;
+  margin-top: 6px;
+  font-family: var(--font-mono);
+}
+
+.concise-summary-panel :deep(.metric-card__subvalue) {
+  color: #475569;
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+.concise-summary-panel :deep(.metric-card--accent) {
+  border-left: 3.5px solid #2563eb;
+}
+
+.concise-summary-panel :deep(.metric-card--accent .metric-card__value) {
+  color: #1d4ed8;
+}
+
+.concise-summary-panel :deep(.metric-card--success) {
+  border-left: 3.5px solid #10b981;
+}
+
+.concise-summary-panel :deep(.metric-card--success .metric-card__value) {
+  color: #047857;
+}
+
+.concise-summary-panel :deep(.metric-card__badge) {
+  background: #eff6ff;
+  color: #2563eb;
+  border: 1px solid #bfdbfe;
+  font-family: var(--font-mono);
+}
+
+.summary-error-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 14px;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+  font-size: 13px;
+}
+
+.error-banner-icon {
+  font-size: 16px;
+}
+
+.error-banner-body {
+  flex: 1;
+}
+
+.concise-summary-panel__footer {
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.summary-footer-note {
+  font-size: 11.5px;
+  color: #64748b;
+  line-height: 1.4;
+}
+
+/* ==========================================================================
+   Expandable Detailed Research Section
+   ========================================================================== */
+
+.research-details-disclosure {
+  margin-top: 8px;
+  margin-bottom: 24px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  background: rgba(15, 23, 42, 0.4);
+  transition: all 0.2s ease;
+}
+
+.research-details-disclosure[open] {
+  border-color: rgba(59, 130, 246, 0.35);
+  background: rgba(15, 23, 42, 0.6);
+}
+
+.research-details-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 18px;
+  cursor: pointer;
+  user-select: none;
+  font-size: 13.5px;
+  color: var(--text-primary);
+  background: rgba(30, 41, 59, 0.6);
+  border-radius: var(--radius-md);
+  transition: background 0.15s ease, color 0.15s ease;
+  list-style: none;
+}
+
+.research-details-toggle::-webkit-details-marker {
+  display: none;
+}
+
+.research-details-toggle:hover {
+  background: rgba(37, 99, 235, 0.15);
+  color: #38bdf8;
+}
+
+.toggle-icon {
+  font-size: 11px;
+  color: #38bdf8;
+  width: 14px;
+  display: inline-block;
+  transition: transform 0.2s ease;
+}
+
+.toggle-text {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.toggle-hint {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  margin-left: 4px;
+}
+
+@media (max-width: 640px) {
+  .toggle-hint {
+    display: none;
+  }
+}
+
+.detailed-research-content {
+  padding: 16px 18px 24px;
+  border-top: 1px solid var(--border-subtle);
 }
 </style>

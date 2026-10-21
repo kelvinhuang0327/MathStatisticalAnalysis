@@ -1290,3 +1290,291 @@ describe('T539 Best Replay Horizon Authority Validation (Correction R1)', () => 
     wrapper.unmount()
   })
 })
+
+describe('MSA_UI_HISTORICAL_REPLAY_UX_R1 Focused Acceptance Suite', () => {
+  it('AC2 & AC3 & AC5: B649 concise summary displays accurate data from loaded official records', async () => {
+    const wrapper = mount(BestReplayPage)
+    await flushPromises()
+
+    const summaryPanel = wrapper.find('[data-testid="concise-summary-panel"]')
+    expect(summaryPanel.exists()).toBe(true)
+
+    // Game, tickets, horizon, status
+    expect(wrapper.find('[data-testid="summary-game"]').text()).toContain('B649 (Big Lotto 6/49)')
+    expect(wrapper.find('[data-testid="summary-tickets"]').text()).toContain('5 Tickets')
+    expect(wrapper.find('[data-testid="summary-horizon"]').text()).toContain('Full')
+    expect(wrapper.find('[data-testid="summary-status"]').text()).toContain('DESCRIPTIVE LEADER')
+
+    // Strategy & rank
+    expect(summaryPanel.text()).toContain('portfolio_optimizer')
+    expect(summaryPanel.text()).toContain('Rank #1 · B649')
+
+    // Hit rate, sample size, delta
+    expect(summaryPanel.text()).toContain('27.66%')
+    expect(summaryPanel.text()).toContain('1,949 Historical Draws')
+    expect(summaryPanel.text()).toContain('+0.68%')
+
+    wrapper.unmount()
+  })
+
+  it('AC2 & AC3 & AC5: P638 concise summary displays accurate data and isolates from B649', async () => {
+    const wrapper = mount(BestReplayPage)
+    await flushPromises()
+
+    await wrapper.find('[data-testid="game-btn-p638"]').trigger('click')
+    await flushPromises()
+
+    const summaryPanel = wrapper.find('[data-testid="concise-summary-panel"]')
+    expect(summaryPanel.exists()).toBe(true)
+
+    expect(wrapper.find('[data-testid="summary-game"]').text()).toContain('P638 (Power Lotto 6/38)')
+    expect(wrapper.find('[data-testid="summary-tickets"]').text()).toContain('1 Tickets')
+    expect(wrapper.find('[data-testid="summary-horizon"]').text()).toContain('Full')
+    expect(wrapper.find('[data-testid="summary-status"]').text()).toContain('DESCRIPTIVE LEADER')
+
+    expect(summaryPanel.text()).toContain('p638_zonal_entropy_leader')
+    expect(summaryPanel.text()).toContain('Rank #1 · P638')
+    expect(summaryPanel.text()).toContain('18.50%')
+    expect(summaryPanel.text()).toContain('1,000 Historical Draws')
+    expect(summaryPanel.text()).toContain('Baseline delta unavailable')
+
+    // Verify no B649 or T539 data is present
+    expect(summaryPanel.text()).not.toContain('portfolio_optimizer')
+    expect(summaryPanel.text()).not.toContain('t539_wave1_cyclic_leader')
+
+    wrapper.unmount()
+  })
+
+  it('AC2 & AC3 & AC5: T539 concise summary displays accurate data and isolates from other games', async () => {
+    const wrapper = mount(BestReplayPage)
+    await flushPromises()
+
+    await wrapper.find('[data-testid="game-btn-t539"]').trigger('click')
+    await flushPromises()
+
+    const summaryPanel = wrapper.find('[data-testid="concise-summary-panel"]')
+    expect(summaryPanel.exists()).toBe(true)
+
+    expect(wrapper.find('[data-testid="summary-game"]').text()).toContain('T539 (Daily Cash 5/39)')
+    expect(wrapper.find('[data-testid="summary-tickets"]').text()).toContain('1 Tickets')
+    expect(wrapper.find('[data-testid="summary-horizon"]').text()).toContain('Full')
+    expect(wrapper.find('[data-testid="summary-status"]').text()).toContain('DESCRIPTIVE LEADER')
+
+    expect(summaryPanel.text()).toContain('t539_wave1_cyclic_leader')
+    expect(summaryPanel.text()).toContain('Rank #1 · T539')
+    expect(summaryPanel.text()).toContain('21.50%')
+    expect(summaryPanel.text()).toContain('1,000 Historical Draws')
+    expect(summaryPanel.text()).toContain('Baseline delta unavailable')
+
+    // Verify no B649 or P638 data is present
+    expect(summaryPanel.text()).not.toContain('portfolio_optimizer')
+    expect(summaryPanel.text()).not.toContain('p638_zonal_entropy_leader')
+
+    wrapper.unmount()
+  })
+
+  it('AC4: History windows are isolated and never cross-pollinate rates or sample sizes', async () => {
+    const wrapper = mount(BestReplayPage)
+    await flushPromises()
+
+    // Under B649, switch to RECENT_50
+    await wrapper.find('#horizon-select').setValue('RECENT_50')
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="summary-horizon"]').text()).toContain('Short · 50')
+    expect(wrapper.find('[data-testid="concise-summary-panel"]').text()).toContain('50 Historical Draws')
+    expect(wrapper.find('[data-testid="concise-summary-panel"]').text()).not.toContain('1,949 Historical Draws')
+
+    // Under P638, non-FULL horizons are marked unavailable
+    await wrapper.find('[data-testid="game-btn-p638"]').trigger('click')
+    await wrapper.find('#horizon-select').setValue('RECENT_300')
+    await flushPromises()
+
+    const p638Summary = wrapper.find('[data-testid="concise-summary-panel"]')
+    expect(p638Summary.text()).toContain('Evidence Unavailable')
+    expect(p638Summary.text()).toContain('EVIDENCE UNAVAILABLE')
+    expect(p638Summary.text()).not.toContain('18.50%')
+
+    wrapper.unmount()
+  })
+
+  it('AC5 & AC7: Distinguishes true 0, missing/null, and unavailable states cleanly', async () => {
+    // Zero sample count
+    p638CompleteTargetCount = 0
+    const wrapper = mount(BestReplayPage)
+    await flushPromises()
+
+    await wrapper.find('[data-testid="game-btn-p638"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="concise-summary-panel"]').text()).toContain('0 Historical Draws')
+    expect(wrapper.find('[data-testid="concise-summary-panel"]').text()).not.toContain('Sample count unknown')
+
+    // Null sample count
+    p638CompleteTargetCount = null
+    await wrapper.find('[data-testid="game-btn-b649"]').trigger('click')
+    await flushPromises()
+    await wrapper.find('[data-testid="game-btn-p638"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="concise-summary-panel"]').text()).toContain('Sample count unknown')
+
+    // Unavailable ticket count (e.g. 4 tickets in B649)
+    await wrapper.find('[data-testid="game-btn-b649"]').trigger('click')
+    await wrapper.find('[data-testid="ticket-btn-4"]').trigger('click')
+    await flushPromises()
+
+    const unavailableSummary = wrapper.find('[data-testid="concise-summary-panel"]')
+    expect(unavailableSummary.text()).toContain('Evidence Unavailable')
+    expect(unavailableSummary.text()).toContain('EVIDENCE UNAVAILABLE')
+    expect(unavailableSummary.text()).toContain('Unavailable')
+
+    // Ensure 0.00% is not shown as a fake fallback
+    expect(unavailableSummary.text().includes('0.00%')).toBe(false)
+
+    wrapper.unmount()
+  })
+
+  it('AC8 & AC9: Detailed research section is expandable, collapsible, and preserves selection state', async () => {
+    const wrapper = mount(BestReplayPage)
+    await flushPromises()
+
+    const toggle = wrapper.find('[data-testid="toggle-research-details"]')
+    expect(toggle.exists()).toBe(true)
+
+    // Initial state: details section is collapsed
+    const disclosure = wrapper.find('[data-testid="research-details-disclosure"]')
+    expect(disclosure.exists()).toBe(true)
+    expect(toggle.text()).toContain('View Complete Research Evidence')
+
+    // Click to expand
+    await toggle.trigger('click')
+    await flushPromises()
+
+    expect(toggle.text()).toContain('Hide Complete Research Evidence')
+    const detailedContent = wrapper.find('[data-testid="detailed-research-content"]')
+    expect(detailedContent.exists()).toBe(true)
+
+    // Verify 1-5 overview, filter bar, and data table exist
+    expect(wrapper.find('[data-testid="one-to-five-overview"]').exists()).toBe(true)
+    expect(wrapper.findAll('tbody tr').length).toBeGreaterThan(0)
+
+    // User changes ticket selection inside detailed content
+    await wrapper.find('[data-testid="ticket-btn-10"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="summary-tickets"]').text()).toContain('10 Tickets')
+
+    // Collapse detailed section
+    await toggle.trigger('click')
+    await flushPromises()
+
+    expect(toggle.text()).toContain('View Complete Research Evidence')
+    // Selection state is preserved across collapse
+    expect(wrapper.find('[data-testid="summary-tickets"]').text()).toContain('10 Tickets')
+
+    // Re-expand: selection is still 10 tickets
+    await toggle.trigger('click')
+    await flushPromises()
+
+    expect(toggle.text()).toContain('Hide Complete Research Evidence')
+    expect(wrapper.find('[data-testid="summary-tickets"]').text()).toContain('10 Tickets')
+
+    wrapper.unmount()
+  })
+
+  it('AC8: Preserves Ranking Table, Horizon Comparison, and 1-20 Matrix views inside detailed area', async () => {
+    const wrapper = mount(BestReplayPage)
+    await flushPromises()
+
+    // Expand details
+    await wrapper.find('[data-testid="toggle-research-details"]').trigger('click')
+    await flushPromises()
+
+    // View 1: Ranking Table
+    expect(wrapper.find('.table-workspace').exists()).toBe(true)
+
+    // View 2: Switch to Horizon Comparison
+    const comparisonBtn = wrapper.findAll('.view-mode-tabs button').find((b) => b.text().includes('Horizon Comparison'))
+    await comparisonBtn?.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.find('.comparison-workspace').exists()).toBe(true)
+
+    // View 3: Switch to 1-20 Matrix
+    const matrixBtn = wrapper.findAll('.view-mode-tabs button').find((b) => b.text().includes('1–20 Matrix'))
+    await matrixBtn?.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.find('.matrix-workspace').exists()).toBe(true)
+
+    wrapper.unmount()
+  })
+
+  it('AC7: Handles API 503 and network failure gracefully with retry', async () => {
+    fetchMock.mockImplementationOnce(() =>
+      Promise.resolve({
+        ok: false,
+        status: 503,
+        json: () => Promise.resolve({ detail: 'Service Unavailable' }),
+      } as unknown as Response),
+    )
+
+    const wrapper = mount(BestReplayPage)
+    await flushPromises()
+
+    // Error banner in summary panel and ErrorState inside detailed area
+    const errorBanner = wrapper.find('[data-testid="summary-error-banner"]')
+    expect(errorBanner.exists()).toBe(true)
+    expect(errorBanner.text()).toContain('Failed to load')
+
+    expect(wrapper.find('.error-state').exists()).toBe(true)
+
+    wrapper.unmount()
+  })
+
+  it('AC10: Async race condition prevents stale responses from overwriting latest game data', async () => {
+    let resolveB649!: (res: Response) => void
+    const b649Promise = new Promise<Response>((resolve) => {
+      resolveB649 = resolve
+    })
+
+    fetchMock.mockImplementation((input) => {
+      const url = new URL(String(input), 'http://localhost')
+      if (url.pathname.includes('/b649-multi-ticket-records/summary')) {
+        return Promise.resolve(apiResponse(mockB649Summary()))
+      }
+      if (url.pathname.includes('/b649-multi-ticket-records')) {
+        // Delayed response for B649
+        return b649Promise
+      }
+      if (url.pathname.includes('/p638-historical/runs') && url.pathname.includes('/rankings')) {
+        return Promise.resolve(apiResponse(mockP638Rankings()))
+      }
+      if (url.pathname.includes('/p638-historical/runs')) {
+        return Promise.resolve(apiResponse(mockP638Runs()))
+      }
+      return Promise.resolve(apiResponse({}))
+    })
+
+    const wrapper = mount(BestReplayPage)
+    // Don't flush yet for B649; immediately switch to P638
+    await wrapper.find('[data-testid="game-btn-p638"]').trigger('click')
+    await flushPromises()
+
+    // P638 has loaded fast
+    expect(wrapper.find('[data-testid="summary-game"]').text()).toContain('P638')
+    expect(wrapper.text()).toContain('p638_zonal_entropy_leader')
+
+    // Now resolve the delayed B649 response
+    resolveB649(apiResponse(mockB649RecordsPage(new URL('http://localhost/api/v1/b649-multi-ticket-records?prefix_count=5&window=FULL'))))
+    await flushPromises()
+
+    // Current page MUST still be P638, not overwritten by stale B649 response
+    expect(wrapper.find('[data-testid="summary-game"]').text()).toContain('P638')
+    expect(wrapper.text()).toContain('p638_zonal_entropy_leader')
+    expect(wrapper.text()).not.toContain('portfolio_optimizer')
+
+    wrapper.unmount()
+  })
+})

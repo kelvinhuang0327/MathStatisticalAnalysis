@@ -1747,3 +1747,132 @@ describe('MSA_UI_REPLAY_DELTA_UNIT_R1 Best Replay Delta Unit Semantics', () => {
     wrapper.unmount()
   })
 })
+
+describe('MSA_UI_REPLAY_COMPARABILITY_R1', () => {
+  it('keeps ALL in cross-game exploration, exposes each supported dimension, and groups official ranks by game and ticket count', async () => {
+    const wrapper = mount(BestReplayPage)
+    await flushPromises()
+
+    await wrapper.find('#game-select').setValue('ALL')
+    await flushPromises()
+
+    const summaryPanel = wrapper.find('[data-testid="concise-summary-panel"]')
+    const scopeNotice = wrapper.find('[data-testid="rank-scope-notice"]')
+    expect(scopeNotice.text()).toContain('Cross-game data exploration')
+    expect(scopeNotice.text()).toContain('No overall best strategy is shown')
+    expect(scopeNotice.text()).toContain('Official ranks apply only within the same game, ticket count, and historical window')
+    expect(summaryPanel.text()).not.toContain('Rank #1 · ALL')
+    expect(summaryPanel.find('[data-testid="summary-strategy-rank"]').exists()).toBe(false)
+    expect(summaryPanel.find('[data-testid="summary-hit-rate"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="one-to-five-overview"]').exists()).toBe(false)
+
+    expect(wrapper.find('[data-testid="summary-tickets"]').text()).toContain('1T, 5T, 10T, 15T, 20T')
+    expect(wrapper.find('[data-testid="game-dimension-summary"]').text()).toContain(
+      'B649: 5T, 10T, 15T, 20T · P638: 1T · T539: 1T',
+    )
+    expect(wrapper.find('[data-testid="summary-status"]').text()).toContain('EXPLORATORY')
+
+    const readRows = () => wrapper.findAll('tbody tr').map((row) => {
+      const cells = row.findAll('td').map((cell) => cell.text())
+      return {
+        rank: cells[0] ?? '',
+        strategy: cells[1] ?? '',
+        game: cells[2] ?? '',
+        ticket: cells[3] ?? '',
+        horizon: cells[4] ?? '',
+        hitRate: cells[7] ?? '',
+        baselineDelta: cells[8] ?? '',
+      }
+    })
+    const rows = readRows()
+    const nextPageButton = wrapper.findAll('.pagination-buttons button')[1]
+    expect(nextPageButton).toBeDefined()
+    await nextPageButton!.trigger('click')
+    await flushPromises()
+    rows.push(...readRows())
+
+    for (const strategy of [
+      'legacy_biglotto__portfolio_optimizer__fixture',
+      'p638_zonal_entropy_leader',
+      't539_wave1_cyclic_leader',
+    ]) {
+      expect(rows.some((row) => row.strategy.includes(strategy))).toBe(true)
+    }
+
+    const groups = [...new Set(rows.map((row) => row.game + '-' + row.ticket))]
+    expect(groups).toEqual([
+      'B649-1T',
+      'B649-5T',
+      'B649-10T',
+      'B649-15T',
+      'B649-20T',
+      'P638-1T',
+      'P638-5T',
+      'P638-10T',
+      'P638-15T',
+      'P638-20T',
+      'T539-1T',
+      'T539-5T',
+      'T539-10T',
+      'T539-15T',
+      'T539-20T',
+    ])
+
+    const b649FiveRows = rows.filter((row) => row.game === 'B649' && row.ticket === '5T')
+    expect(b649FiveRows.map((row) => row.rank)).toEqual(['#1', '#2', '#3'])
+    expect(b649FiveRows[0]?.strategy).toContain('portfolio_optimizer')
+    expect(b649FiveRows[0]?.horizon).toContain('Full')
+    expect(b649FiveRows[0]?.hitRate).toContain('27.66%')
+    expect(b649FiveRows[0]?.baselineDelta).toContain('+0.68 pp')
+
+    const p638Leader = rows.find((row) => row.game === 'P638' && row.ticket === '1T' && row.rank === '#1')
+    expect(p638Leader?.strategy).toContain('p638_zonal_entropy_leader')
+    expect(p638Leader?.hitRate).toContain('18.50%')
+    expect(p638Leader?.baselineDelta).toContain('Unavailable')
+
+    const t539Leader = rows.find((row) => row.game === 'T539' && row.ticket === '1T' && row.rank === '#1')
+    expect(t539Leader?.strategy).toContain('t539_wave1_cyclic_leader')
+    expect(t539Leader?.hitRate).toContain('21.50%')
+    expect(t539Leader?.baselineDelta).toContain('Unavailable')
+
+    const unavailableP638Five = rows.find((row) => row.game === 'P638' && row.ticket === '5T')
+    expect(unavailableP638Five?.rank).toBe('—')
+    expect(unavailableP638Five?.hitRate).toBe('Unavailable')
+
+    wrapper.unmount()
+  })
+
+  it('does not summarize B649 5T and 10T as one winner while retaining each official rank', async () => {
+    const wrapper = mount(BestReplayPage)
+    await flushPromises()
+
+    const allAvailablePreset = wrapper.findAll('.preset-buttons button').find((button) => button.text().includes('All Available'))
+    expect(allAvailablePreset).toBeDefined()
+    await allAvailablePreset!.trigger('click')
+    await wrapper.find('[data-testid="ticket-btn-15"]').trigger('click')
+    await wrapper.find('[data-testid="ticket-btn-20"]').trigger('click')
+    await flushPromises()
+
+    const summaryPanel = wrapper.find('[data-testid="concise-summary-panel"]')
+    const scopeNotice = wrapper.find('[data-testid="rank-scope-notice"]')
+    expect(scopeNotice.text()).toContain('Multi-cost data exploration')
+    expect(scopeNotice.text()).toContain('No overall best strategy is shown')
+    expect(summaryPanel.text()).not.toContain('Rank #1 · B649')
+    expect(summaryPanel.find('[data-testid="summary-strategy-rank"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="summary-tickets"]').text()).toContain('5T, 10T')
+
+    const rows = wrapper.findAll('tbody tr').map((row) => {
+      const cells = row.findAll('td').map((cell) => cell.text())
+      return {
+        rank: cells[0] ?? '',
+        game: cells[2] ?? '',
+        ticket: cells[3] ?? '',
+      }
+    })
+    expect([...new Set(rows.map((row) => row.game + '-' + row.ticket))]).toEqual(['B649-5T', 'B649-10T'])
+    expect(rows.filter((row) => row.ticket === '5T').map((row) => row.rank)).toEqual(['#1', '#2', '#3'])
+    expect(rows.filter((row) => row.ticket === '10T').map((row) => row.rank)).toEqual(['#1', '#2', '#3'])
+
+    wrapper.unmount()
+  })
+})

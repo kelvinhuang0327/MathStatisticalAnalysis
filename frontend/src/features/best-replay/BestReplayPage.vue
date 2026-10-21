@@ -94,6 +94,22 @@ const availableTicketCountsForGame = computed<readonly TicketCount[]>(() => {
   return [...new Set([...B649_AVAILABLE_TICKET_COUNTS, ...P638_AVAILABLE_TICKET_COUNTS, ...T539_AVAILABLE_TICKET_COUNTS])].sort((a, b) => a - b)
 })
 
+const hasSingleComparableSet = computed(
+  () => selectedGame.value !== 'ALL' && selectedTicketCounts.value.length === 1,
+)
+
+const allGameAvailableDimensions = computed(() =>
+  [
+    `B649: ${B649_AVAILABLE_TICKET_COUNTS.map((count) => `${count}T`).join(', ')}`,
+    `P638: ${P638_AVAILABLE_TICKET_COUNTS.map((count) => `${count}T`).join(', ')}`,
+    `T539: ${T539_AVAILABLE_TICKET_COUNTS.map((count) => `${count}T`).join(', ')}`,
+  ].join(' · '),
+)
+
+const explorationModeLabel = computed(() =>
+  selectedGame.value === 'ALL' ? 'Cross-game data exploration' : 'Multi-cost data exploration',
+)
+
 const availableFamilies = computed<string[]>(() => {
   const families = new Set<string>()
   for (const item of rawItems.value) {
@@ -105,12 +121,18 @@ const availableFamilies = computed<string[]>(() => {
 function selectGame(game: GameFilter): void {
   if (selectedGame.value === game) return
   selectedGame.value = game
-  if (game === 'B649') {
+  if (game === 'ALL') {
+    selectedTicketCounts.value = [...availableTicketCountsForGame.value]
+    activeInspectTicketCount.value = selectedTicketCounts.value[0] ?? 1
+    isMultiSelectMode.value = true
+  } else if (game === 'B649') {
     selectedTicketCounts.value = [5]
     activeInspectTicketCount.value = 5
+    isMultiSelectMode.value = false
   } else if (game === 'P638' || game === 'T539') {
     selectedTicketCounts.value = [1]
     activeInspectTicketCount.value = 1
+    isMultiSelectMode.value = false
   }
   activeInspectStrategyId.value = null
   currentPage.value = 1
@@ -176,7 +198,6 @@ async function loadData(): Promise<void> {
 
   try {
     const activeGame = selectedGame.value
-    const gameCode = (activeGame === 'ALL' ? 'B649' : activeGame) as GameCode
 
     // Query ticket counts needed: all primary 1..5 plus currently selected counts
     const countsToQuery = Array.from(new Set([...PRIMARY_TICKET_COUNTS, ...selectedTicketCounts.value]))
@@ -204,35 +225,47 @@ async function loadData(): Promise<void> {
       (item) => selectedTicketCounts.value.includes(item.ticketCount) && (activeGame === 'ALL' || item.game === activeGame),
     )
 
-    // For any queried ticket counts where NO canonical evidence exists for the active game,
-    // generate explicit unavailable placeholder items so they are rendered as UNAVAILABLE rather than hidden/zero.
-    for (const count of selectedTicketCounts.value) {
-      const hasCount = filteredBySelectedTickets.some(
-        (item) => item.ticketCount === count && (activeGame === 'ALL' || item.game === activeGame),
-      )
-      if (!hasCount) {
-        filteredBySelectedTickets.push(
-          createUnavailableItem(
-            gameCode,
-            `no_canonical_data_${gameCode.toLowerCase()}_t${count}`,
-            null,
-            'unsupported_dimension',
-            count,
-            selectedHorizon.value,
-            'NO_CANONICAL_REPLAY_EVIDENCE',
-            `No canonical multi-ticket backtest evidence is recorded for ticket count ${count}.`,
-          ),
+    const gamesToShow: GameCode[] = activeGame === 'ALL' ? ['B649', 'P638', 'T539'] : [activeGame]
+    for (const game of gamesToShow) {
+      for (const count of selectedTicketCounts.value) {
+        const hasCombination = filteredBySelectedTickets.some(
+          (item) => item.game === game && item.ticketCount === count,
         )
+        if (!hasCombination) {
+          const unavailableNote = activeGame === 'ALL'
+            ? `No canonical replay evidence is recorded for ${game} at ${count}T.`
+            : undefined
+          filteredBySelectedTickets.push(
+            createUnavailableItem(
+              game,
+              `no_canonical_data_${game.toLowerCase()}_t${count}`,
+              null,
+              'unsupported_dimension',
+              count,
+              selectedHorizon.value,
+              'NO_CANONICAL_REPLAY_EVIDENCE',
+              unavailableNote,
+            ),
+          )
+        }
       }
     }
 
     rawItems.value = filteredBySelectedTickets
     state.value = filteredBySelectedTickets.length ? 'ready' : 'empty'
 
-    // Set active inspection strategy
-    if (!activeInspectStrategyId.value || !filteredBySelectedTickets.some((item) => item.strategyId === activeInspectStrategyId.value)) {
+    // Set active inspection strategy and ticket count to a matching source record.
+    if (
+      !activeInspectStrategyId.value ||
+      !filteredBySelectedTickets.some(
+        (item) =>
+          item.strategyId === activeInspectStrategyId.value &&
+          item.ticketCount === activeInspectTicketCount.value,
+      )
+    ) {
       const topLeader = filteredBySelectedTickets.find((item) => item.isAvailable && item.rank === 1) || filteredBySelectedTickets.find((item) => item.isAvailable)
       activeInspectStrategyId.value = topLeader ? topLeader.strategyId : filteredBySelectedTickets[0]?.strategyId || null
+      if (topLeader) activeInspectTicketCount.value = topLeader.ticketCount
     }
   } catch (err: unknown) {
     if (generation !== fetchGeneration) return
@@ -305,6 +338,11 @@ const filteredItems = computed<BestReplayItem[]>(() => {
   // Sort
   const direction = sortDirection.value === 'asc' ? 1 : -1
   return [...list].sort((a, b) => {
+    if (sortField.value === 'rank' && !hasSingleComparableSet.value) {
+      const gameAndTicketComparison = a.game.localeCompare(b.game) || a.ticketCount - b.ticketCount
+      if (gameAndTicketComparison !== 0) return gameAndTicketComparison
+    }
+
     // Available items always sort before completely unavailable items unless sorting by ID/game
     if (a.isAvailable !== b.isAvailable) {
       return a.isAvailable ? -1 : 1
@@ -344,12 +382,27 @@ function compactStrategyLabel(strategyId: string): string {
 // Main Summary Computation (Canonical Rank #1)
 const summary = computed<BestReplaySummary>(() => {
   const available = filteredItems.value.filter((item) => item.isAvailable)
-  const best = available.find((item) => item.rank === 1) || available[0]
   const horizonDef = CANONICAL_HORIZONS.find((h) => h.key === selectedHorizon.value)
   const ticketCountDisplay = selectedTicketCounts.value.length === 1
     ? `${selectedTicketCounts.value[0]} Tickets`
     : selectedTicketCounts.value.map((c) => `${c}T`).join(', ') || 'None'
 
+  if (!hasSingleComparableSet.value) {
+    return {
+      bestStrategyId: null,
+      bestStrategyLabel: null,
+      ticketCount: ticketCountDisplay,
+      horizon: horizonDef?.label || selectedHorizon.value,
+      historicalHitRate: 'Unavailable',
+      evaluatedTargets: null,
+      baselineDelta: 'Unavailable',
+      evidenceStatus: 'EXPLORATORY',
+      totalAvailableRecords: available.length,
+      game: selectedGame.value,
+    }
+  }
+
+  const best = available.find((item) => item.rank === 1)
   if (!best) {
     return {
       bestStrategyId: null,
@@ -620,7 +673,7 @@ onBeforeUnmount(() => {
       </div>
 
       <!-- Main Summary Metrics Grid -->
-      <div class="metrics-grid" data-testid="best-replay-metrics-grid">
+      <div v-if="hasSingleComparableSet" class="metrics-grid" data-testid="best-replay-metrics-grid">
         <MetricCard
           label="Best Strategy"
           :value="summary.bestStrategyLabel || 'None'"
@@ -655,6 +708,20 @@ onBeforeUnmount(() => {
           badge-variant="accent"
           data-testid="summary-evidence-guard"
         />
+      </div>
+      <div v-else class="research-notice-banner" role="note" data-testid="rank-scope-notice">
+        <span class="notice-icon" aria-hidden="true">🔎</span>
+        <div class="notice-text">
+          <strong>{{ explorationModeLabel }}</strong>
+          <span>
+            No overall best strategy is shown. Official ranks apply only within the same game,
+            ticket count, and historical window.
+          </span>
+          <p v-if="selectedGame === 'ALL'" data-testid="game-dimension-summary">
+            Available official dimensions: {{ allGameAvailableDimensions }}
+          </p>
+          <p>{{ summary.totalAvailableRecords }} formal records available in this selection.</p>
+        </div>
       </div>
 
       <!-- Summary Error Banner if API Fails -->
@@ -715,7 +782,8 @@ onBeforeUnmount(() => {
 
     <!-- 1–5 Best Strategy Overview (Cards) -->
     <BestReplayOneToFiveOverview
-      :game="(selectedGame === 'ALL' ? 'B649' : selectedGame) as GameCode"
+      v-if="selectedGame !== 'ALL'"
+      :game="selectedGame as GameCode"
       :horizon="selectedHorizon"
       :selected-ticket-count="selectedTicketCounts[0] || 1"
       :items-by-ticket-count="oneToFiveOverviewItems"
@@ -863,7 +931,11 @@ onBeforeUnmount(() => {
         <div class="table-actions-header">
           <div class="table-title-meta">
             <span class="meta-label">Active Ordering:</span>
-            <strong class="meta-val">{{ sortField === 'rank' ? 'Official Rank' : `${sortField} (${sortDirection})` }}</strong>
+            <strong class="meta-val">
+              {{ sortField === 'rank'
+                ? (hasSingleComparableSet ? 'Official Rank' : 'Official Rank by Game and Ticket Count')
+                : `${sortField} (${sortDirection})` }}
+            </strong>
           </div>
           <button
             v-if="sortField !== 'rank' || sortDirection !== 'asc'"

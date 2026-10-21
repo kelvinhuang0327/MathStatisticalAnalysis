@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type {
   DrawHistoryResponse,
+  DrawSyncRequest,
   DrawSyncResponse,
   IngestionRunPage,
 } from '../src/api/drawData'
@@ -222,6 +223,63 @@ function p638Response(input: RequestInfo | URL): Response {
   return apiResponse({})
 }
 
+function dataOperationsSyncResponse(
+  init: RequestInit | undefined,
+  operationType: DrawSyncResponse['operation_type'],
+): Response {
+  const request = JSON.parse(String(init?.body)) as DrawSyncRequest
+  return apiResponse({
+    ...syncResponse,
+    operation_type: operationType,
+    requested_start: request.date_from,
+    requested_end: request.date_to,
+    resolved_start: request.date_from,
+    resolved_end: request.date_to,
+    result: {
+      ...syncResponse.result,
+      lottery_type: request.lottery_type,
+    },
+  } satisfies DrawSyncResponse)
+}
+
+function dataOperationsResponse(input: RequestInfo | URL, init?: RequestInit): Response {
+  const url = new URL(String(input), 'http://localhost')
+  const method = (init?.method ?? 'GET').toUpperCase()
+
+  if (method === 'GET' && url.pathname === '/api/v1/draws') return apiResponse(emptyDraws)
+  if (method === 'GET' && url.pathname === '/api/v1/ingestion-runs') return apiResponse(emptyRuns)
+  if (method === 'POST' && url.pathname === '/api/v1/draw-sync/manual') {
+    return dataOperationsSyncResponse(init, 'MANUAL_SYNC')
+  }
+  if (method === 'POST' && url.pathname === '/api/v1/draw-sync/missing-scan') {
+    return dataOperationsSyncResponse(init, 'MISSING_DRAW_SCAN')
+  }
+  return apiResponse({})
+}
+
+function mockDataOperationsApi(): void {
+  fetchMock.mockImplementation((input, init) =>
+    Promise.resolve(dataOperationsResponse(input, init)),
+  )
+}
+
+function requestsFor(method: string, pathname: string) {
+  return fetchMock.mock.calls.filter(([input, init]) => {
+    const url = new URL(String(input), 'http://localhost')
+    return (init?.method ?? 'GET').toUpperCase() === method && url.pathname === pathname
+  })
+}
+
+function drawSyncPostRequests() {
+  return fetchMock.mock.calls.filter(([input, init]) => {
+    const url = new URL(String(input), 'http://localhost')
+    return (
+      (init?.method ?? 'GET').toUpperCase() === 'POST' &&
+      url.pathname.startsWith('/api/v1/draw-sync/')
+    )
+  })
+}
+
 describe('strict ISO calendar date validation', () => {
   it('accepts real ISO calendar dates and preserves optional empty semantics', () => {
     expect(isValidIsoCalendarDate('2026-08-25')).toBe(true)
@@ -247,44 +305,49 @@ describe('strict ISO calendar date validation', () => {
 
 describe('Data Operations date-gated sync', () => {
   it('disables every sync action and dispatches nothing for invalid required dates', async () => {
-    fetchMock.mockResolvedValue(apiResponse(emptyRuns))
+    mockDataOperationsApi()
     const wrapper = mount(DataOperationsPage)
     await flushPromises()
 
     const dateInputs = dateFilterInputs(wrapper)
-    const manualSync = wrapper.get('[data-testid="manual-sync"]')
-    const scheduledSync = wrapper.get('[data-testid="scheduled-sync"]')
-    expect(manualSync.attributes('disabled')).toBeDefined()
-    expect(scheduledSync.attributes('disabled')).toBeDefined()
+    const syncActions = [
+      'Manual sync',
+      'Scan missing draws',
+      'Bounded backfill',
+      'Run scheduled trigger',
+    ]
+    expect(requestsFor('GET', '/api/v1/draws').length).toBeGreaterThan(0)
+    expect(requestsFor('GET', '/api/v1/ingestion-runs').length).toBeGreaterThan(0)
+    for (const actionText of syncActions) {
+      expect(buttonWithText(wrapper, actionText)?.attributes('disabled')).toBeDefined()
+    }
     expect(dateInputs[0]?.attributes('aria-invalid')).toBe('true')
     expect(dateInputs[0]?.attributes('aria-describedby')).toBe('sync-date-from-error')
     expect(wrapper.get('#sync-date-from-error').text()).toBe('Date is required.')
-    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(drawSyncPostRequests()).toHaveLength(0)
 
     await dateInputs[0]?.setValue('2026-08-25')
     for (const invalidDate of ['2026-99-99', '2026-02-30', 'not-a-date']) {
       await dateInputs[0]?.setValue(invalidDate)
       await dateInputs[1]?.setValue('2026-08-25')
-      expect(manualSync.attributes('disabled')).toBeDefined()
-      expect(scheduledSync.attributes('disabled')).toBeDefined()
+      for (const actionText of syncActions) {
+        const action = buttonWithText(wrapper, actionText)
+        expect(action?.attributes('disabled')).toBeDefined()
+        await action?.trigger('click')
+      }
       expect(dateInputs[0]?.attributes('aria-invalid')).toBe('true')
       expect(wrapper.get('#sync-date-from-error').text()).toBe(
         'Enter a valid Gregorian date in YYYY-MM-DD format.',
       )
-
-      await manualSync.trigger('click')
-      await scheduledSync.trigger('click')
-      expect(fetchMock).toHaveBeenCalledTimes(1)
+      await flushPromises()
+      expect(drawSyncPostRequests()).toHaveLength(0)
     }
 
     wrapper.unmount()
   })
 
-  it('keeps a valid date range enabled and sends the existing sync request', async () => {
-    fetchMock
-      .mockResolvedValueOnce(apiResponse(emptyRuns))
-      .mockResolvedValueOnce(apiResponse(syncResponse))
-      .mockResolvedValueOnce(apiResponse(emptyRuns))
+  it('maps each canonical game to a manual-sync POST with the exact valid request body', async () => {
+    mockDataOperationsApi()
     const wrapper = mount(DataOperationsPage)
     await flushPromises()
 
@@ -293,14 +356,82 @@ describe('Data Operations date-gated sync', () => {
     await dateInputs[1]?.setValue('2026-08-25')
     const manualSync = wrapper.get('[data-testid="manual-sync"]')
     expect(manualSync.attributes('disabled')).toBeUndefined()
-    await manualSync.trigger('click')
+
+    const gameMappings = [
+      { label: 'B649', lotteryType: 'BIG_LOTTO' },
+      { label: 'P638', lotteryType: 'POWER_LOTTO' },
+      { label: 'T539', lotteryType: 'DAILY_539' },
+    ] as const
+    const gameButtons = wrapper.get('.sync-games-bar')
+    for (const game of gameMappings) {
+      const gameButton = gameButtons
+        .findAll('button')
+        .find((button) => button.text() === game.label)
+      expect(gameButton).toBeDefined()
+      await gameButton?.trigger('click')
+      await manualSync.trigger('click')
+      await flushPromises()
+    }
+
+    const manualRequests = requestsFor('POST', '/api/v1/draw-sync/manual')
+    expect(manualRequests).toHaveLength(gameMappings.length)
+    expect(drawSyncPostRequests().map(([input]) => new URL(String(input), 'http://localhost').pathname)).toEqual(
+      gameMappings.map(() => '/api/v1/draw-sync/manual'),
+    )
+    for (const [index, game] of gameMappings.entries()) {
+      expect(JSON.parse(String(manualRequests[index]?.[1]?.body))).toEqual({
+        lottery_type: game.lotteryType,
+        date_from: '2024-02-29',
+        date_to: '2026-08-25',
+      })
+    }
+    wrapper.unmount()
+  })
+
+  it('dispatches missing-scan by exact route with the selected game and valid dates', async () => {
+    mockDataOperationsApi()
+    const wrapper = mount(DataOperationsPage)
     await flushPromises()
 
-    expect(fetchMock.mock.calls[1]?.[0]).toBe('/api/v1/draw-sync/manual')
-    expect(JSON.parse(String((fetchMock.mock.calls[1]?.[1] as RequestInit).body))).toMatchObject({
+    const dateInputs = dateFilterInputs(wrapper)
+    await dateInputs[0]?.setValue('2024-02-29')
+    await dateInputs[1]?.setValue('2026-08-25')
+    const gameButton = wrapper
+      .get('.sync-games-bar')
+      .findAll('button')
+      .find((button) => button.text() === 'P638')
+    expect(gameButton).toBeDefined()
+    await gameButton?.trigger('click')
+    await buttonWithText(wrapper, 'Scan missing draws')?.trigger('click')
+    await flushPromises()
+
+    const missingScanRequests = requestsFor('POST', '/api/v1/draw-sync/missing-scan')
+    expect(missingScanRequests).toHaveLength(1)
+    expect(JSON.parse(String(missingScanRequests[0]?.[1]?.body))).toEqual({
+      lottery_type: 'POWER_LOTTO',
       date_from: '2024-02-29',
       date_to: '2026-08-25',
     })
+    expect(requestsFor('POST', '/api/v1/draw-sync/manual')).toHaveLength(0)
+    expect(drawSyncPostRequests()).toHaveLength(1)
+    wrapper.unmount()
+  })
+
+  it('does not dispatch missing-scan when either date is invalid', async () => {
+    mockDataOperationsApi()
+    const wrapper = mount(DataOperationsPage)
+    await flushPromises()
+
+    const dateInputs = dateFilterInputs(wrapper)
+    await dateInputs[0]?.setValue('2024-02-29')
+    await dateInputs[1]?.setValue('2026-02-30')
+    const missingScan = buttonWithText(wrapper, 'Scan missing draws')
+    expect(missingScan?.attributes('disabled')).toBeDefined()
+    await missingScan?.trigger('click')
+    await flushPromises()
+
+    expect(requestsFor('POST', '/api/v1/draw-sync/missing-scan')).toHaveLength(0)
+    expect(drawSyncPostRequests()).toHaveLength(0)
     wrapper.unmount()
   })
 })

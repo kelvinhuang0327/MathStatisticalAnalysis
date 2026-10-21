@@ -11,6 +11,7 @@ import LotteryNumberBall from '../../components/LotteryNumberBall.vue'
 import { isOptionalIsoCalendarDate } from '../../utils/isoDate'
 
 type LoadState = 'loading' | 'ready' | 'empty' | 'error'
+type DrawRecord = DrawHistoryResponse['records'][number]
 
 const query = reactive<DrawHistoryQuery>({
   lotteryType: 'BIG_LOTTO',
@@ -38,20 +39,37 @@ const dateToError = computed(() =>
     ? 'Enter a valid Gregorian date in YYYY-MM-DD format.'
     : '',
 )
+const mainNumberColumnLabel = computed(() =>
+  query.lotteryType === 'POWER_LOTTO' ? 'First zone' : 'Main numbers',
+)
+const secondaryNumberColumnLabel = computed(() => {
+  if (query.lotteryType === 'POWER_LOTTO') return 'Second zone'
+  if (query.lotteryType === 'DAILY_539') return 'No secondary number'
+  return 'Special number'
+})
 let requestController: AbortController | undefined
+let requestVersion = 0
 
 async function loadHistory(): Promise<void> {
   if (!dateFiltersValid.value) return
   requestController?.abort()
-  requestController = new AbortController()
+  const controller = new AbortController()
+  requestController = controller
+  const version = ++requestVersion
+  const requestedQuery = { ...query }
   loadState.value = 'loading'
+  result.value = null
   errorMessage.value = ''
   try {
-    const page = await listDraws({ ...query }, requestController.signal)
+    const page = await listDraws(requestedQuery, controller.signal)
+    if (version !== requestVersion) return
+    if (page.records.some((record) => record.lottery_type !== requestedQuery.lotteryType)) {
+      throw new Error('Draw History returned records for a different lottery type.')
+    }
     result.value = page
     loadState.value = page.records.length === 0 ? 'empty' : 'ready'
   } catch (error: unknown) {
-    if (isAbort(error)) return
+    if (version !== requestVersion || isAbort(error)) return
     result.value = null
     loadState.value = 'error'
     errorMessage.value = error instanceof Error ? error.message : 'Draw History could not load.'
@@ -86,6 +104,35 @@ async function changePageSize(): Promise<void> {
   await loadHistory()
 }
 
+async function changeLotteryType(event: Event): Promise<void> {
+  const selectedType = (event.target as HTMLSelectElement).value
+  if (!isLotteryType(selectedType) || selectedType === query.lotteryType) return
+  query.lotteryType = selectedType
+  query.page = 1
+  query.drawNumber = ''
+  await loadHistory()
+}
+
+function isLotteryType(value: string): value is DrawHistoryQuery['lotteryType'] {
+  return value === 'BIG_LOTTO' || value === 'POWER_LOTTO' || value === 'DAILY_539'
+}
+
+function mainNumberAriaLabel(value: number): string {
+  return query.lotteryType === 'POWER_LOTTO'
+    ? `First zone number ${value}`
+    : `Main number ${value}`
+}
+
+function secondaryNumberAriaLabel(value: number): string {
+  return query.lotteryType === 'POWER_LOTTO'
+    ? `Second zone number ${value}`
+    : `Special number ${value}`
+}
+
+function secondaryNumbers(record: DrawRecord): number[] {
+  return query.lotteryType === 'DAILY_539' ? [] : record.special_numbers
+}
+
 function displayText(value: unknown): string {
   return typeof value === 'string' && value ? value : '—'
 }
@@ -100,7 +147,10 @@ function isAbort(error: unknown): boolean {
 }
 
 onMounted(loadHistory)
-onBeforeUnmount(() => requestController?.abort())
+onBeforeUnmount(() => {
+  requestVersion += 1
+  requestController?.abort()
+})
 </script>
 
 <template>
@@ -110,7 +160,7 @@ onBeforeUnmount(() => requestController?.abort())
         <p class="eyebrow">P600D · immutable records</p>
         <h1 id="draw-history-title">Draw History</h1>
         <p class="page-intro">
-          Search locally imported {{ lotteryTypeDisplayLabel('BIG_LOTTO') }} draws. Results use deterministic date and string-identity ordering.
+          Search locally imported {{ lotteryTypeDisplayLabel(query.lotteryType) }} draws. Results use deterministic date and string-identity ordering.
         </p>
       </div>
       <div class="scope-card" aria-label="History result count">
@@ -124,8 +174,10 @@ onBeforeUnmount(() => requestController?.abort())
       <div class="filter-grid">
         <label>
           <span>Lottery type</span>
-          <select :value="query.lotteryType" disabled>
+          <select :value="query.lotteryType" name="lottery-type" @change="changeLotteryType">
             <option value="BIG_LOTTO">{{ lotteryTypeDisplayLabel('BIG_LOTTO') }}</option>
+            <option value="POWER_LOTTO">{{ lotteryTypeDisplayLabel('POWER_LOTTO') }}</option>
+            <option value="DAILY_539">{{ lotteryTypeDisplayLabel('DAILY_539') }}</option>
           </select>
         </label>
         <label>
@@ -178,7 +230,7 @@ onBeforeUnmount(() => requestController?.abort())
         <caption>Draw history — no edit or delete operations</caption>
         <thead>
           <tr>
-            <th>Draw</th><th>Date</th><th>Main numbers</th><th>Special</th><th>Source</th><th>Ingestion</th><th>Timestamps</th>
+            <th>Draw</th><th>Date</th><th>{{ mainNumberColumnLabel }}</th><th>{{ secondaryNumberColumnLabel }}</th><th>Source</th><th>Ingestion</th><th>Timestamps</th>
           </tr>
         </thead>
         <tbody>
@@ -196,18 +248,21 @@ onBeforeUnmount(() => requestController?.abort())
                   :value="number"
                   variant="main"
                   size="sm"
+                  :aria-label="mainNumberAriaLabel(number)"
                 />
               </span>
             </td>
             <td>
               <span class="number-chips">
                 <LotteryNumberBall
-                  v-for="sp in record.special_numbers"
+                  v-for="sp in secondaryNumbers(record)"
                   :key="sp"
                   :value="sp"
                   variant="special"
                   size="sm"
+                  :aria-label="secondaryNumberAriaLabel(sp)"
                 />
+                <span v-if="query.lotteryType === 'DAILY_539'">—</span>
               </span>
             </td>
             <td>

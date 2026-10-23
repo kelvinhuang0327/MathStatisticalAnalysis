@@ -19,6 +19,16 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'select-ticket', count: PrimaryTicketCount): void
 }>()
+
+const dimensionLabel = props.game === 'B649' ? 'prefix count' : 'ticket count'
+const successDefinition = props.game === 'B649'
+  ? 'official_any_prize_rate · M3_PLUS criterion'
+  : `${props.game} winning_target_rate · canonical run ranking`
+
+function hasUsableRate(count: PrimaryTicketCount): boolean {
+  const item = props.itemsByTicketCount[count]
+  return item?.isAvailable === true && item.hitRate !== null
+}
 </script>
 
 <template>
@@ -27,8 +37,11 @@ const emit = defineEmits<{
       <div class="overview-title-group">
         <h3 class="overview-title">1–5 Best Strategy Overview</h3>
         <span class="overview-subtitle">
-          Canonical Rank #1 summary across 1–5 tickets for {{ props.game }} · {{ props.horizon }}
+          Source Rank #1 per {{ dimensionLabel }} for {{ props.game }} · {{ props.horizon }}
         </span>
+        <small class="overview-scope-note">
+          Each card is a separate scope. {{ successDefinition }}. Rates and ranks are not compared across counts.
+        </small>
       </div>
     </div>
 
@@ -40,8 +53,8 @@ const emit = defineEmits<{
         class="overview-card"
         :class="{
           'overview-card--selected': props.selectedTicketCount === count,
-          'overview-card--available': props.itemsByTicketCount[count]?.isAvailable,
-          'overview-card--unavailable': !props.itemsByTicketCount[count]?.isAvailable,
+          'overview-card--available': hasUsableRate(count),
+          'overview-card--unavailable': !hasUsableRate(count),
         }"
         :aria-pressed="props.selectedTicketCount === count"
         :data-testid="`overview-card-${count}`"
@@ -50,25 +63,27 @@ const emit = defineEmits<{
         <div class="card-top">
           <div class="ticket-badge">
             <span class="ticket-num">{{ count }}</span>
-            <span class="ticket-label">Tickets</span>
+            <span class="ticket-label">{{ props.game === 'B649' ? 'Prefix' : 'Tickets' }}</span>
           </div>
           <span
-            v-if="props.itemsByTicketCount[count]?.isAvailable && props.itemsByTicketCount[count]?.rank"
+            v-if="props.itemsByTicketCount[count] && props.itemsByTicketCount[count]?.rank !== null"
             class="rank-chip"
           >
-            Rank #{{ props.itemsByTicketCount[count]?.rank }}
+            Source Rank #{{ props.itemsByTicketCount[count]?.rank }}{{ hasUsableRate(count) ? '' : ' · Rate unavailable' }}
           </span>
           <span v-else class="unavailable-chip">
-            Unavailable
+            {{ props.itemsByTicketCount[count]?.unavailableReasonCode === 'SOURCE_RANK_ONE_UNAVAILABLE' ? 'No Rank #1' : 'Unavailable' }}
           </span>
         </div>
 
-        <template v-if="props.itemsByTicketCount[count]?.isAvailable">
+        <template v-if="hasUsableRate(count)">
           <div class="strategy-identity">
             <strong class="strategy-id" :title="props.itemsByTicketCount[count]?.strategyId">
               {{ props.itemsByTicketCount[count]?.strategyId }}
             </strong>
-            <small class="method-family">{{ props.itemsByTicketCount[count]?.methodFamily }}</small>
+            <small class="method-family">
+              {{ props.itemsByTicketCount[count]?.methodFamily }} · {{ props.itemsByTicketCount[count]?.strategyVersion || 'Version not provided' }}
+            </small>
           </div>
 
           <div class="card-metrics">
@@ -118,12 +133,17 @@ const emit = defineEmits<{
         <template v-else>
           <div class="unavailable-body">
             <div class="unavailable-icon" aria-hidden="true">🔒</div>
-            <strong class="unavailable-heading">Evidence Unavailable</strong>
+            <strong class="unavailable-heading">
+              {{ props.itemsByTicketCount[count]?.rank !== null && props.itemsByTicketCount[count]?.rank !== undefined ? 'Source rate unavailable' : 'Evidence Unavailable' }}
+            </strong>
+            <strong v-if="props.itemsByTicketCount[count]?.rank !== null && props.itemsByTicketCount[count]?.rank !== undefined" class="strategy-id">
+              {{ props.itemsByTicketCount[count]?.strategyId }} · {{ props.itemsByTicketCount[count]?.strategyVersion || 'Version not provided' }}
+            </strong>
             <span class="reason-code-tag">
-              {{ props.itemsByTicketCount[count]?.unavailableReasonCode || 'NO_CANONICAL_REPLAY_EVIDENCE' }}
+              {{ props.itemsByTicketCount[count]?.unavailableReasonCode || (props.itemsByTicketCount[count]?.rank !== null && props.itemsByTicketCount[count]?.rank !== undefined ? 'SOURCE_RATE_UNAVAILABLE' : 'NO_CANONICAL_REPLAY_EVIDENCE') }}
             </span>
             <p class="unavailable-desc">
-              {{ props.itemsByTicketCount[count]?.notes || `No canonical multi-ticket backtest evidence is recorded for ticket count ${count}.` }}
+              {{ props.itemsByTicketCount[count]?.notes || `No canonical replay evidence is recorded for ${dimensionLabel} ${count}.` }}
             </p>
           </div>
           <div class="card-footer">
@@ -169,6 +189,11 @@ const emit = defineEmits<{
 .overview-subtitle {
   font-size: 12px;
   color: var(--text-secondary);
+}
+
+.overview-scope-note {
+  font-size: 10px;
+  color: var(--text-tertiary);
 }
 
 .overview-grid {

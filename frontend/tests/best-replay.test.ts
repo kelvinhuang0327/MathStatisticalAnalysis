@@ -514,6 +514,158 @@ describe('BestReplayPage Workspace & Cross-Game Features', () => {
     wrapper.unmount()
   })
 
+  it('keeps dropdown ticket, summary, inspection, and API scope aligned across B649 → P638 → T539 → B649', async () => {
+    const wrapper = mount(BestReplayPage)
+    await flushPromises()
+
+    const gameSelect = wrapper.find('#game-select')
+    const expectSelection = (game: 'B649' | 'P638' | 'T539', count: number) => {
+      expect((gameSelect.element as HTMLSelectElement).value).toBe(game)
+      for (const ticketCount of [1, 2, 3, 4, 5]) {
+        expect(wrapper.find(`[data-testid="ticket-btn-${ticketCount}"]`).attributes('aria-pressed'))
+          .toBe(String(ticketCount === count))
+      }
+      expect(wrapper.find('[data-testid="best-replay-metrics-grid"]').text()).toContain(`${count} Tickets`)
+
+      const inspection = wrapper.findComponent(BestReplayHorizonComparison)
+      expect(inspection.exists()).toBe(true)
+      expect(inspection.props('game')).toBe(game)
+      expect(inspection.props('ticketCount')).toBe(count)
+      expect(inspection.text()).toContain(`${game} · Ticket Count ${count}`)
+    }
+
+    expectSelection('B649', 5)
+
+    await gameSelect.setValue('P638')
+    await flushPromises()
+    expectSelection('P638', 1)
+    expect(wrapper.text()).toContain('p638_zonal_entropy_leader')
+
+    await gameSelect.setValue('T539')
+    await flushPromises()
+    expectSelection('T539', 1)
+    expect(wrapper.text()).toContain('t539_wave1_cyclic_leader')
+    expect(wrapper.text()).not.toContain('p638_zonal_entropy_leader')
+
+    await gameSelect.setValue('B649')
+    await flushPromises()
+    expectSelection('B649', 5)
+    expect(wrapper.text()).toContain('legacy_biglotto__portfolio_optimizer__fixture')
+
+    const requestedUrls = fetchMock.mock.calls.map(([input]) => new URL(String(input), 'http://localhost'))
+    expect(requestedUrls.some((url) => url.pathname.includes('/p638-historical/runs'))).toBe(true)
+    expect(requestedUrls.some((url) => url.pathname.includes('/t539-historical/runs'))).toBe(true)
+    expect(requestedUrls.some((url) =>
+      url.pathname.includes('/b649-multi-ticket-records') && url.searchParams.get('prefix_count') === '5',
+    )).toBe(true)
+
+    wrapper.unmount()
+  })
+
+  it('keeps dropdown and game-button selection behavior in parity', async () => {
+    const wrapper = mount(BestReplayPage)
+    await flushPromises()
+
+    await wrapper.find('#game-select').setValue('P638')
+    await flushPromises()
+    expect(wrapper.find('[data-testid="ticket-btn-1"]').attributes('aria-pressed')).toBe('true')
+
+    await wrapper.find('[data-testid="game-btn-t539"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('#game-select').element).toHaveProperty('value', 'T539')
+    expect(wrapper.find('[data-testid="ticket-btn-1"]').attributes('aria-pressed')).toBe('true')
+    expect(wrapper.find('[data-testid="ticket-btn-5"]').attributes('aria-pressed')).toBe('false')
+    expect(wrapper.findComponent(BestReplayHorizonComparison).props('ticketCount')).toBe(1)
+
+    await wrapper.find('[data-testid="game-btn-b649"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('#game-select').element).toHaveProperty('value', 'B649')
+    expect(wrapper.find('[data-testid="ticket-btn-5"]').attributes('aria-pressed')).toBe('true')
+    expect(wrapper.find('[data-testid="ticket-btn-1"]').attributes('aria-pressed')).toBe('false')
+    expect(wrapper.findComponent(BestReplayHorizonComparison).props('ticketCount')).toBe(5)
+
+    wrapper.unmount()
+  })
+
+  it('preserves a custom ticket selection when the dropdown reselects the same game', async () => {
+    const wrapper = mount(BestReplayPage)
+    await flushPromises()
+    await wrapper.find('[data-testid="ticket-btn-10"]').trigger('click')
+    await flushPromises()
+    const callsBeforeSameGameSelection = fetchMock.mock.calls.length
+
+    await wrapper.find('#game-select').setValue('B649')
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="ticket-btn-10"]').attributes('aria-pressed')).toBe('true')
+    expect(wrapper.find('[data-testid="ticket-btn-5"]').attributes('aria-pressed')).toBe('false')
+    expect(fetchMock.mock.calls).toHaveLength(callsBeforeSameGameSelection)
+
+    wrapper.unmount()
+  })
+
+  it('clears multi-select mode when a game change restores its single legal default', async () => {
+    const wrapper = mount(BestReplayPage)
+    await flushPromises()
+
+    const allAvailablePreset = wrapper.findAll('button').find((button) => button.text().trim() === 'All Available')
+    expect(allAvailablePreset).toBeDefined()
+    await allAvailablePreset!.trigger('click')
+    await flushPromises()
+    expect(wrapper.find('[data-testid="best-replay-metrics-grid"]').text()).toContain('Multi-ticket selection active')
+
+    await wrapper.find('#game-select').setValue('P638')
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="ticket-btn-1"]').attributes('aria-pressed')).toBe('true')
+    expect(wrapper.find('[data-testid="ticket-btn-5"]').attributes('aria-pressed')).toBe('false')
+    expect(wrapper.find('[data-testid="best-replay-metrics-grid"]').text()).toContain('Single ticket dimension')
+
+    wrapper.unmount()
+  })
+
+  it('ignores a late P638 response after a rapid dropdown switch to T539', async () => {
+    let releaseP638Runs: ((response: Response) => void) | undefined
+    let p638Signal: AbortSignal | null | undefined
+    const defaultFetch = fetchMock.getMockImplementation()
+    expect(defaultFetch).toBeDefined()
+    fetchMock.mockImplementation((input, init) => {
+      const url = new URL(String(input), 'http://localhost')
+      if (url.pathname === '/api/v1/p638-historical/runs') {
+        p638Signal = init?.signal
+        return new Promise<Response>((resolve) => {
+          releaseP638Runs = resolve
+        })
+      }
+      return defaultFetch!(input, init)
+    })
+
+    const wrapper = mount(BestReplayPage)
+    await flushPromises()
+    const gameSelect = wrapper.find('#game-select')
+
+    await gameSelect.setValue('P638')
+    expect(releaseP638Runs).toBeDefined()
+    await gameSelect.setValue('T539')
+    await flushPromises()
+
+    expect(p638Signal?.aborted).toBe(true)
+    expect((gameSelect.element as HTMLSelectElement).value).toBe('T539')
+    expect(wrapper.text()).toContain('t539_wave1_cyclic_leader')
+    expect(wrapper.text()).not.toContain('p638_zonal_entropy_leader')
+
+    releaseP638Runs?.(apiResponse(mockP638Runs()))
+    await flushPromises()
+
+    expect((gameSelect.element as HTMLSelectElement).value).toBe('T539')
+    expect(wrapper.find('[data-testid="ticket-btn-1"]').attributes('aria-pressed')).toBe('true')
+    expect(wrapper.find('[data-testid="ticket-btn-5"]').attributes('aria-pressed')).toBe('false')
+    expect(wrapper.text()).toContain('t539_wave1_cyclic_leader')
+    expect(wrapper.text()).not.toContain('p638_zonal_entropy_leader')
+
+    wrapper.unmount()
+  })
+
   it('guarantees 1, 2, 3, 4, 5 ticket buttons ALWAYS exist and are interactive across all games', async () => {
     const wrapper = mount(BestReplayPage)
     await flushPromises()

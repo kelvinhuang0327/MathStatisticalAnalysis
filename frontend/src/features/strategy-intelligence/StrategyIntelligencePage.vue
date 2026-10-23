@@ -81,7 +81,9 @@ const combinedStrategies = computed<StrategyCombinedItem[]>(() => {
       verificationStatus: verStatus,
       empiricalEligibility: isRegistered && isVerified ? 'EMPIRICAL ELIGIBLE' : 'EMPIRICAL INELIGIBLE',
       evidenceStatus: isRegistered ? 'CANONICAL EVIDENCE REGISTERED' : 'CANONICAL EVIDENCE MISSING',
-      unavailableReasonCode: matchedEvidence?.unavailable_reason_code ?? 'NO_CANONICAL_STRATEGY_EVALUATION_EVIDENCE',
+      unavailableReasonCode: matchedEvidence
+        ? matchedEvidence.unavailable_reason_code
+        : 'NO_CANONICAL_STRATEGY_EVALUATION_EVIDENCE',
     }
   })
 })
@@ -194,6 +196,11 @@ function selectGame(lotteryType: LotteryType): void {
   void loadData()
 }
 
+function selectGameFromDropdown(event: Event): void {
+  const select = event.target as HTMLSelectElement
+  selectGame(select.value as LotteryType)
+}
+
 onMounted(() => {
   isMounted = true
   void loadData()
@@ -280,10 +287,10 @@ onBeforeUnmount(() => {
           <label for="game-scope-select" class="sr-only">Select Lottery Game</label>
           <select
             id="game-scope-select"
-            v-model="selectedLotteryType"
+            :value="selectedLotteryType"
             class="select-input select-input--sm"
             data-testid="game-scope-select"
-            @change="selectGame(selectedLotteryType)"
+            @change="selectGameFromDropdown"
           >
             <option v-for="game in GAME_OPTIONS" :key="game.code" :value="game.lotteryType">
               {{ game.code }} ({{ game.fullName }})

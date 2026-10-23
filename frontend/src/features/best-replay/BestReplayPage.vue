@@ -87,13 +87,21 @@ function selectGame(game: GameFilter): void {
   if (game === 'B649') {
     selectedTicketCounts.value = [5]
     activeInspectTicketCount.value = 5
+    isMultiSelectMode.value = false
   } else if (game === 'P638' || game === 'T539') {
     selectedTicketCounts.value = [1]
     activeInspectTicketCount.value = 1
+    isMultiSelectMode.value = false
   }
   activeInspectStrategyId.value = null
   currentPage.value = 1
   resetSort()
+}
+
+function handleGameDropdownChange(event: Event): void {
+  const target = event.currentTarget
+  if (!(target instanceof HTMLSelectElement)) return
+  selectGame(target.value as GameFilter)
 }
 
 // Quick Preset Handlers
@@ -621,7 +629,7 @@ onBeforeUnmount(() => {
         <!-- Game Selector Dropdown (accessible fallback) -->
         <div class="control-group">
           <label for="game-select" class="control-label">Game</label>
-          <select id="game-select" v-model="selectedGame" class="select-input" @change="selectGame(selectedGame)">
+          <select id="game-select" :value="selectedGame" class="select-input" data-testid="game-select" @change="handleGameDropdownChange">
             <option value="B649">B649 (Big Lotto 6/49)</option>
             <option value="P638">P638 (Power Lotto 6/38)</option>
             <option value="T539">T539 (Daily Cash 5/39)</option>

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 
+import MultiWindowSuccessWindowsPanel from '../multiwindow-success/MultiWindowSuccessWindowsPanel.vue'
 import {
   getT539Coverage,
   getT539Metrics,
@@ -363,6 +364,8 @@ onBeforeUnmount(() => {
           <code>{{ selectedRun.adapter_source_commit }}</code>
         </p>
       </article>
+
+      <MultiWindowSuccessWindowsPanel lottery="T539" :run-id="selectedRunId" />
 
       <section aria-labelledby="t539-ranking-title" class="panel">
         <div class="panel__heading">

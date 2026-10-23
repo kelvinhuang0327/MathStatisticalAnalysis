@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 
+import MultiWindowSuccessWindowsPanel from '../multiwindow-success/MultiWindowSuccessWindowsPanel.vue'
 import {
   getP638Metrics,
   getP638Rankings,
@@ -294,6 +295,8 @@ onBeforeUnmount(() => {
         <label class="filter-field"><span>Historical run</span><select v-model="selectedRunId" @change="loadSelectedRun(selectedRunId)"><option v-for="run in runsPage.items" :key="run.run_id" :value="run.run_id">{{ run.run_id }} · {{ run.source_run_id }}</option></select></label>
         <p v-if="selectedRun" class="panel__note">Source replay <code>{{ selectedRun.source_replay_sha256 }}</code> · draw authority <code>{{ selectedRun.source_draw_db_sha256 }}</code> · SSOT <code>{{ selectedRun.second_zone_ssot_version }}</code></p>
       </article>
+
+      <MultiWindowSuccessWindowsPanel lottery="P638" :run-id="selectedRunId" />
 
       <div v-if="metricsState === 'loading'" class="state-panel">Loading aggregate P638 statistics…</div>
       <div v-else-if="metricsState === 'unavailable' || metricsState === 'error'" class="state-panel state-panel--error"><p>{{ metricsMessage }}</p><button class="button button--quiet" type="button" @click="loadSelectedRun(selectedRunId)">Retry</button></div>

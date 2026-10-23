@@ -101,6 +101,17 @@ def test_projection_query_dependencies_are_confined_to_the_read_only_api() -> No
     generated_contract = (
         REPO_ROOT / "frontend" / "src" / "api" / "generated" / "openapi.d.ts"
     )
+    replay_scoring_client = (
+        REPO_ROOT / "frontend" / "src" / "api" / "replayScoringProjections.ts"
+    )
+    replay_history_page = (
+        REPO_ROOT
+        / "frontend"
+        / "src"
+        / "features"
+        / "replay-history"
+        / "ReplayHistoryPage.vue"
+    )
     scanned = (
         *(SRC / "interfaces").rglob("*.py"),
         *(REPO_ROOT / "frontend" / "src").rglob("*"),
@@ -115,7 +126,14 @@ def test_projection_query_dependencies_are_confined_to_the_read_only_api() -> No
             ):
                 referenced_paths.add(path)
 
-    assert referenced_paths == {api_app, api_router, ranking_router, local_app}
+    assert referenced_paths == {
+        api_app,
+        api_router,
+        ranking_router,
+        local_app,
+        replay_scoring_client,
+        replay_history_page,
+    }
 
     router_imports = _imports(api_router)
     assert "lottolab.application.ports" in router_imports

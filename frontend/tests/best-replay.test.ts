@@ -380,17 +380,116 @@ describe('Best Replay source-value regressions', () => {
   it('preserves a sourced B649 sample count and leaves a missing count unknown', () => {
     const sourcedRecord = {
       ...mockB649Record(5, 'RECENT_750', 'sample', { draws: 37 }),
-      effective_backtest_draw_count: 37,
+      successful_execution_count: 37,
+      effective_backtest_draw_count: 1,
       window_available_draws: 750,
     } as B649MultiTicketRecord
     const missingRecord = {
       ...sourcedRecord,
-      effective_backtest_draw_count: null,
-      window_available_draws: null,
+      successful_execution_count: null,
     }
 
     expect(transformB649Record(sourcedRecord, 'RECENT_750', 5).evaluatedTargets).toBe(37)
     expect(transformB649Record(missingRecord, 'RECENT_750', 5).evaluatedTargets).toBeNull()
+  })
+
+  it('uses the raw B649 denominator for 80/300 instead of the reduced criterion denominator', () => {
+    const record = {
+      ...mockB649Record(10, 'RECENT_300', 'denominator', {
+        rank: 15, draws: 300, hits: 80, rate: '0.266666666666666667',
+      }),
+      success_count: 56,
+      effective_backtest_draw_count: 75,
+    } as B649MultiTicketRecord
+
+    const item = transformB649Record(record, 'RECENT_300', 10)
+
+    expect(item.evaluatedTargets).toBe(300)
+    expect(item.winningTargets).toBe(80)
+    expect(item.hitRateFormatted).toBe('26.67%')
+    expect(item.rank).toBe(15)
+    expect(item.evidenceStatus).not.toBe('LIMITED SAMPLE')
+    expect(item.notes).not.toContain('Limited observation sample size')
+  })
+
+  it('preserves a genuine B649 zero success rate over a positive denominator', () => {
+    const record = {
+      ...mockB649Record(5, 'RECENT_300', 'zero-success', {
+        rank: 1, draws: 300, hits: 0, rate: '0.000000000000000000',
+      }),
+      effective_backtest_draw_count: 1,
+    } as B649MultiTicketRecord
+
+    const item = transformB649Record(record, 'RECENT_300', 5)
+
+    expect(item.evaluatedTargets).toBe(300)
+    expect(item.winningTargets).toBe(0)
+    expect(item.hitRate).toBe(0)
+    expect(item.hitRateFormatted).toBe('0.00%')
+    expect(item.isAvailable).toBe(true)
+  })
+
+  it.each([null, 1])('treats B649 N=0 as unavailable even with a zero placeholder and rank %s', (rank) => {
+    const record = {
+      ...mockB649Record(5, 'RECENT_300', 'zero-evaluations', {
+        draws: 0, hits: 0, rate: '0.000000000000000000',
+      }),
+      rank,
+      official_rank: rank,
+      effective_backtest_draw_count: 1,
+      unranked_reason: 'NO_SUCCESSFUL_EXECUTIONS_IN_WINDOW',
+    } as B649MultiTicketRecord
+
+    const item = transformB649Record(record, 'RECENT_300', 5)
+
+    expect(item.evaluatedTargets).toBe(0)
+    expect(item.winningTargets).toBeNull()
+    expect(item.hitRate).toBeNull()
+    expect(item.hitRateFormatted).toBe('Unavailable')
+    expect(item.evidenceStatus).toBe('EVIDENCE UNAVAILABLE')
+    expect(item.isAvailable).toBe(false)
+  })
+
+  it.each([
+    { name: '80/300', count: 80, evaluated: 300, effective: 75, rate: '0.266666666666666667', rank: 1, winning: '80', displayedRate: '26.67%' },
+    { name: '0/N', count: 0, evaluated: 300, effective: 1, rate: '0.000000000000000000', rank: 1, winning: '0', displayedRate: '0.00%' },
+    { name: 'N=0', count: 0, evaluated: 0, effective: 1, rate: '0.000000000000000000', rank: null, winning: 'Not provided', displayedRate: 'Unavailable' },
+  ])('renders B649 $name with the raw Evaluated count and correct rate availability', async (testCase) => {
+    // Synthetic API values only; no backtest or rate recomputation.
+    const defaultFetch = fetchMock.getMockImplementation()!
+    fetchMock.mockImplementation((input, init) => {
+      const url = new URL(String(input), 'http://localhost')
+      if (url.pathname === '/api/v1/b649-multi-ticket-records'
+        && url.searchParams.get('prefix_count') === '5'
+        && url.searchParams.get('window') === 'FULL') {
+        const page = mockB649RecordsPage(url)
+        const record = {
+          ...mockB649Record(5, 'FULL', 'denominator', {
+            draws: testCase.evaluated, hits: testCase.count, rate: testCase.rate,
+          }),
+          rank: testCase.rank,
+          official_rank: testCase.rank,
+          effective_backtest_draw_count: testCase.effective,
+          unranked_reason: testCase.rank === null ? 'NO_SUCCESSFUL_EXECUTIONS_IN_WINDOW' : null,
+        }
+        return Promise.resolve(apiResponse({ ...page, items: [record], total: 1 }))
+      }
+      return defaultFetch(input, init)
+    })
+
+    const wrapper = mount(BestReplayPage)
+    await flushPromises()
+    const cells = wrapper.find('tbody tr.data-row').findAll('td')
+
+    expect(cells[5]?.text()).toBe(String(testCase.evaluated))
+    expect(cells[6]?.text()).toBe(testCase.winning)
+    expect(cells[7]?.text()).toBe(testCase.displayedRate)
+    if (testCase.evaluated === 0) {
+      expect(wrapper.find('tbody').text()).not.toContain('0.00%')
+    } else {
+      expect(wrapper.find('[data-testid="best-replay-metrics-grid"]').text()).toContain('300 Historical Draws')
+    }
+    wrapper.unmount()
   })
 
   it('keeps missing T539 sample and numerator values unknown', async () => {

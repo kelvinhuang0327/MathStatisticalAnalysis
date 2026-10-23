@@ -71,13 +71,16 @@ def build_ticket(
     main_hit_count: int = 0,
     special_hit: bool = False,
 ) -> HistoricalTicket:
-    start = ((position - 1) * 2) % 43 + 1
-    main_numbers = tuple(range(start, start + 6))
-    special_number = start + 6 if start + 6 <= 49 else 1
+    # Match build_draw's canonical target rather than inventing hit counters.
+    # Keep impossible signatures constructible for the explicit rejection tests.
+    hits = tuple(range(1, main_hit_count + 1))
+    special = (7,) if special_hit and main_hit_count < 6 else ()
+    misses = tuple(range(8, 8 + max(0, 6 - len(hits) - len(special))))
+    main_numbers = (*hits, *special, *misses)
     return HistoricalTicket(
         portfolio_position=position,
         main_numbers=main_numbers,
-        special_numbers=(special_number,),
+        special_numbers=(),
         main_hit_count=main_hit_count,
         special_hit=special_hit,
         ticket_sha256=f"{position:02x}{main_hit_count:02x}{int(special_hit):02x}".ljust(64, "0"),

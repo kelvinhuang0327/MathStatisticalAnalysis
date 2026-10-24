@@ -20,6 +20,7 @@ type State =
   | 'not-found'
   | 'invalid-request'
   | 'unavailable'
+  | 'http-error'
   | 'malformed'
 type Response = P638MultiWindowSuccessWindowsResponse | T539MultiWindowSuccessWindowsResponse
 
@@ -84,6 +85,13 @@ async function load(): Promise<void> {
 
 function mapErrorState(error: unknown): State {
   if (error instanceof MultiWindowSuccessWindowsRequestError) {
+    if (
+      error.kind === 'UNAVAILABLE' &&
+      error.status >= 400 &&
+      error.status !== 503
+    ) {
+      return 'http-error'
+    }
     const states: Record<MultiWindowRequestErrorKind, State> = {
       NOT_CONFIGURED: 'not-configured',
       NOT_FOUND: 'not-found',
@@ -104,6 +112,21 @@ function formatExact(value: { decimal_18: string; numerator: string; denominator
 
 function formatCount(value: number): string {
   return value.toLocaleString()
+}
+
+function formatOptionalCount(value: number | null | undefined): string {
+  return value === null || value === undefined ? 'Not provided by API' : formatCount(value)
+}
+
+function targetBoundary(date: string | null | undefined, id: string | null | undefined): string {
+  const parts = [date, id].filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+  return parts.length ? parts.join(' · ') : 'Not provided by API'
+}
+
+function sourceValue(value: string | null | undefined): string {
+  return typeof value === 'string' && value.trim().length > 0
+    ? value
+    : 'Not provided by API'
 }
 
 function isAbort(error: unknown): boolean {
@@ -149,7 +172,7 @@ onBeforeUnmount(() => {
       Loading multi-window results for {{ runId }}…
     </p>
     <p v-else-if="state === 'empty'" class="state-panel" data-testid="multi-window-empty">
-      No multi-window success-window rows are available for this run.
+      API query: SUCCESS_EMPTY · No multi-window success-window rows are available for this run.
     </p>
     <div
       v-else-if="state !== 'ready'"
@@ -159,10 +182,17 @@ onBeforeUnmount(() => {
       aria-live="polite"
       :data-testid="`${lottery.toLowerCase()}-multi-window-error-${errorStatus ?? 'response'}`"
     >
-      <p v-if="state === 'not-found'">HTTP 404: no multi-window results were found for this run.</p>
-      <p v-else-if="state === 'invalid-request'">HTTP 422: the multi-window request was rejected.</p>
-      <p v-else-if="state === 'not-configured'">HTTP 503: the Historical Results source is not configured.</p>
-      <p v-else-if="state === 'unavailable'">{{ errorStatus ? `HTTP ${errorStatus}` : 'Service unavailable' }}: multi-window results could not load.</p>
+      <p v-if="state === 'not-found'">HTTP_ERROR · HTTP 404: no multi-window results were found for this run.</p>
+      <p v-else-if="state === 'invalid-request'">HTTP_ERROR · HTTP 422: the multi-window request was rejected.</p>
+      <p v-else-if="state === 'not-configured'">
+        SOURCE_NOT_CONFIGURED · HTTP 503: the Historical Results source is not configured.
+      </p>
+      <p v-else-if="state === 'unavailable'">
+        API_UNAVAILABLE{{ errorStatus ? ' · HTTP ' + errorStatus : '' }}: multi-window results could not load.
+      </p>
+      <p v-else-if="state === 'http-error'">
+        HTTP_ERROR · HTTP {{ errorStatus }}: the multi-window request failed.
+      </p>
       <p v-else>Multi-window API response was malformed.</p>
       <p v-if="message">{{ message }}</p>
       <p v-if="errorCode">Error code: <code>{{ errorCode }}</code></p>
@@ -177,13 +207,37 @@ onBeforeUnmount(() => {
     </div>
 
     <template v-else-if="result">
-      <p class="table-note">
-        {{ result.lottery_type }} · {{ result.rows.length }} rows · evidence {{ result.evidence_status }} ·
-        run status {{ result.status }}
+      <p class="table-note" data-testid="multi-window-query-success">
+        API query: SUCCESS_WITH_DATA · {{ result.lottery_type }} · {{ result.rows.length }} rows ·
+        evidence {{ result.evidence_status }} · run status {{ result.status }}
+      </p>
+      <dl class="source-facts" aria-label="Multi-window source identity">
+        <div><dt>Event</dt><dd>{{ sourceValue(result.event) }}</dd></div>
+        <div><dt>Source SHA-256</dt><dd><code>{{ sourceValue(result.source_sha256) }}</code></dd></div>
+        <div><dt>Source commit</dt><dd><code>{{ sourceValue(result.source_commit) }}</code></dd></div>
+        <div>
+          <dt>Strategy-set fingerprint</dt>
+          <dd><code>{{ sourceValue(result.strategy_set_fingerprint) }}</code></dd>
+        </div>
+        <div><dt>Source authority</dt><dd>{{ sourceValue(result.source_authority) }}</dd></div>
+        <div><dt>Official evaluator</dt><dd>{{ sourceValue(result.null_contract.official_evaluator) }}</dd></div>
+        <div><dt>Prize-rule version</dt><dd>{{ sourceValue(result.null_contract.prize_rule_version) }}</dd></div>
+        <div>
+          <dt>Prize-rule source SHA-256</dt>
+          <dd><code>{{ sourceValue(result.null_contract.prize_rule_source_sha256) }}</code></dd>
+        </div>
+      </dl>
+      <p class="panel__note">
+        OFFICIAL_ANY_PRIZE means at least one ticket receives an official prize. Target success rates
+        and ticket success rates are separate API events and denominators; each row retains its own
+        strategy and window kind/role.
       </p>
       <div class="table-wrap">
         <table>
-          <caption>Multi-window results; exact fractions and null values are preserved from the API.</caption>
+          <caption>
+            Event {{ result.event }}. Exact fractions, source counts, and null values are preserved from the API;
+            window identities are not combined.
+          </caption>
           <thead>
             <tr>
               <th>Strategy / tickets</th>
@@ -209,6 +263,14 @@ onBeforeUnmount(() => {
               <td>
                 <strong>{{ row.window_kind }}</strong>
                 <small>{{ row.window_role }}</small>
+                <small>
+                  Target span: {{ targetBoundary(row.first_target_date, row.first_target_id) }} →
+                  {{ targetBoundary(row.last_target_date, row.last_target_id) }}
+                </small>
+                <small>
+                  Source targets: {{ formatCount(row.source_target_count) }} · requested targets:
+                  {{ formatOptionalCount(row.requested_target_count) }}
+                </small>
               </td>
               <td>
                 <span>{{ formatExact(row.observed_winning_target_rate) }}</span>

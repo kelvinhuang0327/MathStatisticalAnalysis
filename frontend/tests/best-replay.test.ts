@@ -34,10 +34,12 @@ import {
 
 let fetchMock: ReturnType<typeof vi.fn<typeof fetch>>
 let p638CompleteTargetCount: number | null
+let p638RankingEligibleTargetCount: number | null
 let p638WinningTargetCount: number | null
 let p638WinningTargetRate: number | null
 let p638StrategyVersion: string | null
 let t539EligibleTargetCount: number | null
+let t539RankingEligibleTargetCount: number | null
 let t539WinningTargetCount: number | null
 let t539WinningTargetRate: number | null
 let t539StrategyVersion: string | null
@@ -212,10 +214,11 @@ function mockP638Rankings() {
     run_id: 'p638-canonical-run-1',
     items: [
       {
+        run_id: 'p638-canonical-run-1',
         strategy_id: 'p638_zonal_entropy_leader',
         strategy_version: p638StrategyVersion,
         rank: 1,
-        eligible_target_count: 1000,
+        eligible_target_count: p638RankingEligibleTargetCount,
         winning_target_count: p638WinningTargetCount,
         winning_target_rate: p638WinningTargetRate,
         prize_tier_counts: [
@@ -227,6 +230,7 @@ function mockP638Rankings() {
         ],
       },
       {
+        run_id: 'p638-canonical-run-1',
         strategy_id: 'p638_cyclical_shift_runner_up',
         strategy_version: 'p638-cyclic-v2',
         rank: 2,
@@ -253,6 +257,7 @@ function mockT539Runs() {
         status: 'COMPLETE',
         lottery_type: 'DAILY_539',
         eligible_target_count: t539EligibleTargetCount,
+        as_of_date: '2026-08-01',
       },
     ],
     total_count: 1,
@@ -266,10 +271,11 @@ function mockT539Rankings() {
     run_id: 't539-canonical-run-1',
     items: [
       {
+        run_id: 't539-canonical-run-1',
         strategy_id: 't539_wave1_cyclic_leader',
         strategy_version: t539StrategyVersion,
         rank: 1,
-        eligible_target_count: 1000,
+        eligible_target_count: t539RankingEligibleTargetCount,
         winning_target_count: t539WinningTargetCount,
         winning_target_rate: t539WinningTargetRate,
         ticket_winning_rate: 0.215,
@@ -282,6 +288,7 @@ function mockT539Rankings() {
         ],
       },
       {
+        run_id: 't539-canonical-run-1',
         strategy_id: 't539_sidon_runner_up',
         strategy_version: 't539-sidon-v3',
         rank: 2,
@@ -303,10 +310,12 @@ function mockT539Rankings() {
 
 beforeEach(() => {
   p638CompleteTargetCount = 1000
+  p638RankingEligibleTargetCount = 1000
   p638WinningTargetCount = 180
   p638WinningTargetRate = 0.185
   p638StrategyVersion = 'p638-zonal-v2'
   t539EligibleTargetCount = 1000
+  t539RankingEligibleTargetCount = 1000
   t539WinningTargetCount = 211
   t539WinningTargetRate = 0.215
   t539StrategyVersion = 't539-wave1-v4'
@@ -355,6 +364,101 @@ describe('Best Replay source-value regressions', () => {
     expect(item?.rank).toBe(1)
     expect(item?.strategyId).toBe('p638_zonal_entropy_leader')
     expect(item?.strategyVersion).toBe('p638-zonal-v2')
+  })
+
+  it('shows the ranking denominator and source run metadata on the Best Replay page', async () => {
+    p638CompleteTargetCount = 750
+    p638RankingEligibleTargetCount = 300
+    p638WinningTargetCount = 80
+    p638WinningTargetRate = 80 / 300
+
+    const wrapper = mount(BestReplayPage)
+    await flushPromises()
+    await wrapper.find('[data-testid="game-btn-p638"]').trigger('click')
+    await flushPromises()
+
+    const cells = wrapper.find('tbody tr.data-row').findAll('td')
+    expect(cells[5]?.text()).toBe('300')
+    expect(cells[6]?.text()).toBe('80')
+    expect(cells[7]?.text()).toBe('26.67%')
+    expect(wrapper.text()).toContain('Source run: p638-canonical-run-1')
+    expect(wrapper.text()).toContain('Source completed: 2026-08-01T01:00:00Z')
+
+    wrapper.unmount()
+  })
+
+  it('shows the T539 ranking denominator and sourced as-of date without inventing a timestamp', async () => {
+    t539EligibleTargetCount = 750
+    t539RankingEligibleTargetCount = 250
+    t539WinningTargetCount = 50
+    t539WinningTargetRate = 0.2
+
+    const wrapper = mount(BestReplayPage)
+    await flushPromises()
+    await wrapper.find('[data-testid="game-btn-t539"]').trigger('click')
+    await flushPromises()
+
+    const cells = wrapper.find('tbody tr.data-row').findAll('td')
+    expect(cells[5]?.text()).toBe('250')
+    expect(cells[6]?.text()).toBe('50')
+    expect(cells[7]?.text()).toBe('20.00%')
+    expect(wrapper.text()).toContain('Source run: t539-canonical-run-1')
+    expect(wrapper.text()).toContain('Source as of: 2026-08-01')
+    expect(wrapper.text()).not.toContain('Source completed:')
+
+    wrapper.unmount()
+  })
+
+  it.each(['P638', 'T539'] as const)('does not display 0% when the %s ranking denominator is zero', async (game) => {
+    if (game === 'P638') {
+      p638RankingEligibleTargetCount = 0
+      p638WinningTargetCount = 0
+      p638WinningTargetRate = 0
+    } else {
+      t539RankingEligibleTargetCount = 0
+      t539WinningTargetCount = 0
+      t539WinningTargetRate = 0
+    }
+
+    const wrapper = mount(BestReplayPage)
+    await flushPromises()
+    await wrapper.find(`[data-testid="game-btn-${game.toLowerCase()}"]`).trigger('click')
+    await flushPromises()
+
+    const rows = wrapper.findAll('tbody tr.data-row')
+    expect(rows[0]?.text()).toContain(game === 'P638' ? 'p638_zonal_entropy_leader' : 't539_wave1_cyclic_leader')
+    const cells = rows[0]!.findAll('td')
+    expect(cells[5]?.text()).toBe('0')
+    expect(cells[6]?.text()).toBe('0')
+    expect(cells[7]?.text()).toContain('Unavailable')
+    expect(wrapper.text()).not.toContain('0.00%')
+
+    wrapper.unmount()
+  })
+
+  it.each([
+    ['P638_HISTORICAL_NOT_CONFIGURED', 'API not configured'],
+    ['P638_HISTORICAL_UNAVAILABLE', 'Historical API query failed'],
+  ])('shows a P638 503 as %s instead of synthetic no-data success', async (errorCode, expectedState) => {
+    const defaultFetch = fetchMock.getMockImplementation()!
+    fetchMock.mockImplementation((input, init) => {
+      const url = new URL(String(input), 'http://localhost')
+      if (url.pathname.startsWith('/api/v1/p638-historical/')) {
+        return Promise.resolve(apiResponse({ error_code: errorCode, message: 'P638 source request failed.' }, 503))
+      }
+      return defaultFetch(input, init)
+    })
+
+    const wrapper = mount(BestReplayPage)
+    await flushPromises()
+    await wrapper.find('[data-testid="game-btn-p638"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain(expectedState)
+    expect(wrapper.text()).toContain('P638 source request failed.')
+    expect(wrapper.find('tbody tr.data-row').exists()).toBe(false)
+
+    wrapper.unmount()
   })
 
   it('keeps a missing P638 numerator and strategy version unavailable', async () => {
@@ -504,19 +608,22 @@ describe('Best Replay source-value regressions', () => {
   })
 
   it('renders a source P638 sample count of zero as zero in the summary', async () => {
-    p638CompleteTargetCount = 0
+    p638RankingEligibleTargetCount = 0
+    p638WinningTargetCount = 0
+    p638WinningTargetRate = 0
     const wrapper = mount(BestReplayPage)
     await flushPromises()
     await wrapper.find('[data-testid="game-btn-p638"]').trigger('click')
     await flushPromises()
 
     expect(wrapper.find('[data-testid="best-replay-metrics-grid"]').text()).toContain('0 Historical Draws')
+    expect(wrapper.text()).not.toContain('0.00%')
 
     wrapper.unmount()
   })
 
   it('renders missing P638 sample, numerator, and version sources as unavailable', async () => {
-    p638CompleteTargetCount = null
+    p638RankingEligibleTargetCount = null
     p638WinningTargetCount = null
     p638StrategyVersion = null
     const wrapper = mount(BestReplayPage)
@@ -1356,10 +1463,10 @@ describe('Best Replay comparability guards', () => {
     await wrapper.find('[data-testid="game-btn-p638"]').trigger('click')
     await flushPromises()
 
-    expect(wrapper.find('[data-testid="best-replay-metrics-grid"]').text()).toContain('Unavailable')
-    const rankOneRow = wrapper.find('tbody tr.data-row')
-    expect(rankOneRow.text()).toContain('Unavailable')
-    expect(wrapper.find('tbody').text()).not.toContain('0.00%')
+    expect(wrapper.text()).toContain('Failed to load best replay records')
+    expect(wrapper.text()).toContain('returned an unexpected response')
+    expect(wrapper.find('tbody tr.data-row').exists()).toBe(false)
+    expect(wrapper.text()).not.toContain('0.00%')
 
     wrapper.unmount()
   })

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 import DataTable from '../../components/DataTable.vue'
 import EmptyState from '../../components/EmptyState.vue'
@@ -54,6 +54,7 @@ const selectedLifecycle = ref<LifecycleFilter>('ALL')
 const selectedExecutable = ref<ExecutableFilter>('')
 const selectedEvidenceStatus = ref<EvidenceStatusFilter>('ALL')
 const viewMode = ref<ViewMode>('table')
+const selectedStrategyId = ref<string | null>(null)
 
 const hasActiveFilters = computed(
   () =>
@@ -99,6 +100,44 @@ const filteredItems = computed<StrategyCombinedItem[]>(() => {
 
   return list
 })
+
+const activeQueryConditions = computed(() => {
+  const conditions: string[] = []
+  const query = searchQuery.value.trim()
+
+  if (query) conditions.push(`Search: ${query}`)
+  if (selectedGame.value !== 'ALL') conditions.push(`Game: ${selectedGame.value}`)
+  if (selectedLifecycle.value !== 'ALL') conditions.push(`Lifecycle: ${selectedLifecycle.value}`)
+  if (selectedExecutable.value !== '') {
+    conditions.push(`Execution: ${selectedExecutable.value === 'true' ? 'Executable' : 'Metadata only'}`)
+  }
+  if (selectedEvidenceStatus.value !== 'ALL') {
+    conditions.push(
+      `Evidence: ${selectedEvidenceStatus.value === 'REGISTERED' ? 'Canonical Registered' : 'Evidence Missing'}`,
+    )
+  }
+
+  return conditions
+})
+
+const selectedStrategy = computed(() =>
+  filteredItems.value.find((item) => item.strategyId === selectedStrategyId.value),
+)
+
+watch(
+  () => props.selectedLotteryType,
+  () => {
+    selectedStrategyId.value = null
+  },
+)
+
+function openStrategyDetails(strategy: StrategyCombinedItem): void {
+  selectedStrategyId.value = strategy.strategyId
+}
+
+function returnToResults(): void {
+  selectedStrategyId.value = null
+}
 
 function resetFilters(): void {
   searchQuery.value = ''
@@ -211,6 +250,21 @@ function resetFilters(): void {
       </template>
     </FilterBar>
 
+    <div
+      class="query-context"
+      role="status"
+      aria-live="polite"
+      aria-label="Current strategy query"
+      data-testid="strategy-query-context"
+    >
+      <div>
+        <strong>Catalog scope: {{ currentGameCode }}</strong>
+        <span v-if="activeQueryConditions.length"> · {{ activeQueryConditions.join(' · ') }}</span>
+        <span v-else> · All filters</span>
+      </div>
+      <span>{{ filteredItems.length }} of {{ items.length }} strategies match</span>
+    </div>
+
     <!-- Best Strategy Overview Panel -->
     <section class="panel best-strategy-panel" aria-labelledby="best-strategy-overview-title">
       <div class="panel__heading">
@@ -320,6 +374,71 @@ function resetFilters(): void {
       description="No strategies are registered in the canonical strategy catalog for this game."
     />
 
+    <section
+      v-else-if="selectedStrategy"
+      class="panel strategy-detail"
+      aria-labelledby="strategy-detail-title"
+      data-testid="strategy-detail"
+    >
+      <header class="strategy-detail__header">
+        <div>
+          <p class="step-label">Strategy details · {{ currentGameCode }}</p>
+          <h3 id="strategy-detail-title">{{ selectedStrategy.displayName }}</h3>
+          <code class="strategy-id-code">{{ selectedStrategy.strategyId }}</code>
+        </div>
+        <button
+          type="button"
+          class="button button--quiet"
+          data-testid="strategy-detail-return"
+          @click="returnToResults"
+        >
+          Back to results
+        </button>
+      </header>
+
+      <p class="strategy-detail__context">
+        Returning preserves this catalog scope and query:
+        {{ activeQueryConditions.length ? activeQueryConditions.join(' · ') : 'All filters' }}.
+      </p>
+
+      <div class="strategy-detail__grid">
+        <section class="strategy-detail__section" aria-labelledby="strategy-descriptor-title">
+          <h4 id="strategy-descriptor-title">Strategy descriptor</h4>
+          <dl>
+            <div><dt>Version</dt><dd>{{ selectedStrategy.version }}</dd></div>
+            <div><dt>Supported games</dt><dd>{{ selectedStrategy.gameLabels.join(', ') }}</dd></div>
+            <div><dt>Lifecycle</dt><dd>{{ selectedStrategy.lifecycleStatus }}</dd></div>
+            <div><dt>Execution</dt><dd>{{ selectedStrategy.executable ? 'Executable' : 'Metadata only' }}</dd></div>
+            <div><dt>Minimum history</dt><dd>{{ selectedStrategy.minimumHistory }} draws</dd></div>
+          </dl>
+        </section>
+
+        <section class="strategy-detail__section" aria-labelledby="strategy-evidence-title">
+          <h4 id="strategy-evidence-title">Evidence and availability</h4>
+          <dl>
+            <div><dt>Empirical eligibility</dt><dd>{{ selectedStrategy.empiricalEligibility }}</dd></div>
+            <div><dt>Evidence status</dt><dd>{{ selectedStrategy.evidenceStatus }}</dd></div>
+            <div><dt>Registration</dt><dd>{{ selectedStrategy.registrationStatus }}</dd></div>
+            <div><dt>Definition</dt><dd>{{ selectedStrategy.definitionStatus }}</dd></div>
+            <div><dt>Verification</dt><dd>{{ selectedStrategy.verificationStatus }}</dd></div>
+            <div><dt>Adapter</dt><dd>{{ selectedStrategy.adapterAvailable ? 'Available' : 'Unavailable' }}</dd></div>
+            <div>
+              <dt>Unavailable reason</dt>
+              <dd>{{ selectedStrategy.unavailableReasonCode ?? 'None' }}</dd>
+            </div>
+          </dl>
+        </section>
+      </div>
+
+      <section class="strategy-detail__section strategy-detail__sources" aria-labelledby="strategy-sources-title">
+        <h4 id="strategy-sources-title">Provenance</h4>
+        <ul v-if="selectedStrategy.provenance.length" class="provenance-list">
+          <li v-for="source in selectedStrategy.provenance" :key="source"><code>{{ source }}</code></li>
+        </ul>
+        <p v-else class="text-muted">No provenance sources are recorded.</p>
+      </section>
+    </section>
+
     <!-- Main Content: Table View -->
     <template v-else-if="viewMode === 'table'">
       <DataTable
@@ -347,6 +466,14 @@ function resetFilters(): void {
             <div class="strategy-identity">
               <strong class="strategy-display-name">{{ strategy.displayName }}</strong>
               <code class="strategy-id-code">{{ strategy.strategyId }}</code>
+              <button
+                type="button"
+                class="button button--quiet button--sm strategy-details-action"
+                :data-testid="`strategy-details-${strategy.strategyId}`"
+                @click="openStrategyDetails(strategy)"
+              >
+                Details
+              </button>
             </div>
           </td>
           <td>
@@ -475,6 +602,15 @@ function resetFilters(): void {
             }}
           </p>
 
+          <button
+            type="button"
+            class="button button--quiet button--sm strategy-details-action"
+            :data-testid="`strategy-details-${strategy.strategyId}`"
+            @click="openStrategyDetails(strategy)"
+          >
+            View strategy details
+          </button>
+
           <details v-if="strategy.provenance.length" class="provenance-details">
             <summary>Provenance ({{ strategy.provenance.length }})</summary>
             <ul class="provenance-list">
@@ -490,6 +626,106 @@ function resetFilters(): void {
 </template>
 
 <style scoped>
+.query-context {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 12px 0 20px;
+  padding: 10px 14px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: rgba(12, 17, 28, 0.55);
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.query-context strong {
+  color: var(--text-primary);
+}
+
+.query-context > span {
+  flex-shrink: 0;
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+.strategy-detail {
+  padding: 20px;
+}
+
+.strategy-detail__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.strategy-detail__header h3 {
+  margin: 4px 0;
+  color: var(--text-primary);
+}
+
+.strategy-detail__context {
+  margin: 16px 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.strategy-detail__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.strategy-detail__section {
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: rgba(12, 17, 28, 0.5);
+}
+
+.strategy-detail__section h4 {
+  margin: 0 0 12px;
+  color: var(--text-primary);
+  font-size: 13px;
+}
+
+.strategy-detail__section dl {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+}
+
+.strategy-detail__section dl > div {
+  display: grid;
+  grid-template-columns: minmax(130px, 0.8fr) minmax(0, 1.2fr);
+  gap: 12px;
+}
+
+.strategy-detail__section dt {
+  color: var(--text-tertiary);
+  font-size: 11px;
+}
+
+.strategy-detail__section dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.strategy-detail__sources {
+  margin-top: 16px;
+}
+
+.strategy-details-action {
+  margin-top: 8px;
+}
+
 .strategy-overview-workspace {
   display: flex;
   flex-direction: column;
@@ -906,5 +1142,17 @@ function resetFilters(): void {
 .game-full-name {
   color: var(--text-secondary);
   font-size: 11px;
+}
+
+@media (max-width: 720px) {
+  .query-context,
+  .strategy-detail__header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .strategy-detail__grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

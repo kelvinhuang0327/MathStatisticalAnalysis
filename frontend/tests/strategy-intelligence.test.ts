@@ -388,6 +388,142 @@ describe('StrategyIntelligencePage Cross-Game Unified UI', () => {
     wrapper.unmount()
   })
 
+  it('keeps the search and descriptor filters visible and narrows results correctly', async () => {
+    const makeItem = (overrides: Record<string, unknown> = {}) => ({
+      strategyId: 'cross_game_markov_transition',
+      displayName: 'Cross Game Markov Transition',
+      version: 'v2.0',
+      supportedLotteryTypes: ['BIG_LOTTO', 'DAILY_539'],
+      gameLabels: ['B649', 'T539'],
+      minimumHistory: 15,
+      lifecycleStatus: 'ONLINE',
+      executable: true,
+      provenance: ['fixture:cross_game'],
+      adapterAvailable: true,
+      registrationStatus: 'CANONICAL_EVIDENCE_REGISTERED',
+      definitionStatus: 'DEFINITION_AVAILABLE',
+      verificationStatus: 'EVIDENCE_VERIFIED',
+      empiricalEligibility: 'EMPIRICAL ELIGIBLE',
+      evidenceStatus: 'CANONICAL EVIDENCE REGISTERED',
+      unavailableReasonCode: null,
+      ...overrides,
+    })
+
+    const items = [
+      makeItem(),
+      makeItem({
+        strategyId: 'cross_game_missing_evidence',
+        displayName: 'Cross Game Missing Evidence',
+        registrationStatus: 'CANONICAL_EVIDENCE_MISSING',
+        evidenceStatus: 'CANONICAL EVIDENCE MISSING',
+        verificationStatus: 'EVIDENCE_MISSING',
+        empiricalEligibility: 'EMPIRICAL INELIGIBLE',
+        unavailableReasonCode: 'NO_CANONICAL_STRATEGY_EVALUATION_EVIDENCE',
+      }),
+      makeItem({
+        strategyId: 'cross_game_b649_only',
+        displayName: 'Cross Game B649 Only',
+        gameLabels: ['B649'],
+      }),
+      makeItem({
+        strategyId: 'cross_game_idea',
+        displayName: 'Cross Game Idea',
+        lifecycleStatus: 'IDEA',
+      }),
+      makeItem({
+        strategyId: 'cross_game_metadata',
+        displayName: 'Cross Game Metadata',
+        executable: false,
+      }),
+    ]
+    const wrapper = mount(StrategyIntelligenceOverview, {
+      props: {
+        items: items as any,
+        totalCount: items.length,
+        executableCount: 4,
+        metadataOnlyCount: 1,
+        lifecycleCounts: { ONLINE: 4, IDEA: 1 },
+        unavailableReasons: ['NO_CANONICAL_STRATEGY_EVALUATION_EVIDENCE'],
+        selectedLotteryType: 'BIG_LOTTO',
+      },
+    })
+
+    await wrapper.get('#strategy-search').setValue('cross_game')
+    await wrapper.get('#game-filter').setValue('T539')
+    await wrapper.get('#lifecycle-filter').setValue('ONLINE')
+    await wrapper.get('#executable-filter').setValue('true')
+    await wrapper.get('#evidence-filter').setValue('REGISTERED')
+
+    expect(wrapper.findAll('tbody tr.data-row')).toHaveLength(1)
+    expect(wrapper.text()).toContain('Cross Game Markov Transition')
+    expect(wrapper.text()).not.toContain('Cross Game Missing Evidence')
+    expect(wrapper.text()).not.toContain('Cross Game B649 Only')
+    expect(wrapper.text()).not.toContain('Cross Game Idea')
+    expect(wrapper.text()).not.toContain('Cross Game Metadata')
+    expect(wrapper.get('[data-testid="strategy-query-context"]').text()).toContain(
+      'Catalog scope: B649 · Search: cross_game · Game: T539 · Lifecycle: ONLINE · Execution: Executable · Evidence: Canonical Registered',
+    )
+    expect(wrapper.get('[data-testid="strategy-query-context"]').text()).toContain('1 of 5 strategies match')
+
+    await wrapper.get('[data-testid="strategy-details-cross_game_markov_transition"]').trigger('click')
+    const detail = wrapper.get('[data-testid="strategy-detail"]')
+    expect(detail.text()).toContain('Strategy details · B649')
+    expect(detail.text()).toContain('Evidence and availability')
+    expect(detail.text()).toContain('Minimum history')
+    expect(detail.text()).toContain('fixture:cross_game')
+    expect(detail.text()).toContain('Search: cross_game · Game: T539')
+
+    await wrapper.get('[data-testid="strategy-detail-return"]').trigger('click')
+    expect(wrapper.get('#strategy-search').element).toHaveProperty('value', 'cross_game')
+    expect((wrapper.get('#game-filter').element as HTMLSelectElement).value).toBe('T539')
+    expect(wrapper.findAll('tbody tr.data-row')).toHaveLength(1)
+
+    wrapper.unmount()
+  })
+
+  it('preserves same-page query conditions across lottery and tab changes without mixing rows', async () => {
+    const wrapper = mount(StrategyIntelligencePage)
+    await flushPromises()
+
+    await wrapper.get('#strategy-search').setValue('cross_game_markov_transition')
+    await wrapper.get('#game-filter').setValue('T539')
+    await wrapper.get('#lifecycle-filter').setValue('ONLINE')
+    await wrapper.get('#executable-filter').setValue('true')
+    await wrapper.get('#evidence-filter').setValue('MISSING')
+
+    expect(wrapper.findAll('tbody tr.data-row')).toHaveLength(1)
+    await wrapper.get('[data-testid="strategy-details-cross_game_markov_transition"]').trigger('click')
+    expect(wrapper.get('[data-testid="strategy-detail"]').text()).toContain('Strategy details · B649')
+
+    await wrapper.get('[data-testid="game-selector-t539"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.get('[data-testid="game-selector-t539"]').attributes('aria-checked')).toBe('true')
+    expect(wrapper.find('[data-testid="strategy-detail"]').exists()).toBe(false)
+    expect((wrapper.get('#strategy-search').element as HTMLInputElement).value).toBe(
+      'cross_game_markov_transition',
+    )
+    expect((wrapper.get('#game-filter').element as HTMLSelectElement).value).toBe('T539')
+    expect((wrapper.get('#lifecycle-filter').element as HTMLSelectElement).value).toBe('ONLINE')
+    expect((wrapper.get('#executable-filter').element as HTMLSelectElement).value).toBe('true')
+    expect((wrapper.get('#evidence-filter').element as HTMLSelectElement).value).toBe('MISSING')
+    expect(wrapper.get('[data-testid="strategy-query-context"]').text()).toContain('Catalog scope: T539')
+    expect(wrapper.findAll('tbody tr.data-row')).toHaveLength(1)
+    expect(wrapper.text()).toContain('Cross Game Markov Transition')
+    expect(wrapper.text()).not.toContain(t539Strategy.display_name)
+    expect(wrapper.text()).not.toContain(p638Strategy.display_name)
+
+    await wrapper.findAll('button[role="tab"]')[1].trigger('click')
+    await wrapper.findAll('button[role="tab"]')[0].trigger('click')
+    expect((wrapper.get('#strategy-search').element as HTMLInputElement).value).toBe(
+      'cross_game_markov_transition',
+    )
+    expect((wrapper.get('#game-filter').element as HTMLSelectElement).value).toBe('T539')
+    expect(wrapper.findAll('tbody tr.data-row')).toHaveLength(1)
+
+    wrapper.unmount()
+  })
+
   it('dropdown API errors clear the previous game rows and retain the selected scope', async () => {
     const wrapper = mount(StrategyIntelligencePage)
     await flushPromises()

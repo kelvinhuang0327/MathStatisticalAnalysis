@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import StatusBadge from '../../components/StatusBadge.vue'
+import BestReplaySourceMeta from './BestReplaySourceMeta.vue'
 import {
   PRIMARY_TICKET_COUNTS,
   type BestReplayItem,
@@ -84,6 +85,10 @@ function hasUsableRate(count: PrimaryTicketCount): boolean {
             <small class="method-family">
               {{ props.itemsByTicketCount[count]?.methodFamily }} · {{ props.itemsByTicketCount[count]?.strategyVersion || 'Version not provided' }}
             </small>
+            <BestReplaySourceMeta
+              v-if="props.itemsByTicketCount[count]"
+              :item="props.itemsByTicketCount[count]!"
+            />
           </div>
 
           <div class="card-metrics">
@@ -139,6 +144,10 @@ function hasUsableRate(count: PrimaryTicketCount): boolean {
             <strong v-if="props.itemsByTicketCount[count]?.rank !== null && props.itemsByTicketCount[count]?.rank !== undefined" class="strategy-id">
               {{ props.itemsByTicketCount[count]?.strategyId }} · {{ props.itemsByTicketCount[count]?.strategyVersion || 'Version not provided' }}
             </strong>
+            <BestReplaySourceMeta
+              v-if="props.itemsByTicketCount[count]"
+              :item="props.itemsByTicketCount[count]!"
+            />
             <span class="reason-code-tag">
               {{ props.itemsByTicketCount[count]?.unavailableReasonCode || (props.itemsByTicketCount[count]?.rank !== null && props.itemsByTicketCount[count]?.rank !== undefined ? 'SOURCE_RATE_UNAVAILABLE' : 'NO_CANONICAL_REPLAY_EVIDENCE') }}
             </span>

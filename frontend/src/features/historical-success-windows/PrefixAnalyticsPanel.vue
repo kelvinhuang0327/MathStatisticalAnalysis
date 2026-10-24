@@ -163,22 +163,37 @@ async function loadReplay(offset = 0): Promise<void> {
 
 function errorMessage(error: unknown, label: string): string {
   if (error instanceof HistoricalPrefixAnalyticsRequestError) {
-    if (error.status === 404) return 'That exact strategy, version, and replicate was not found.'
-    if (error.status === 422) return 'The API rejected these prefix or pagination values.'
-    if (error.status === 503) return 'The Historical Prefix Analytics provider is unavailable.'
-    return `${label} failed (HTTP ${error.status}): ${error.message}`
+    if (error.errorCode?.toUpperCase().includes('NOT_CONFIGURED')) {
+      return 'SOURCE_NOT_CONFIGURED (HTTP ' + error.status + '): ' + error.message
+    }
+    if (error.status === 404) {
+      return 'HTTP_ERROR (404): That exact strategy, version, and replicate was not found.'
+    }
+    if (error.status === 422) {
+      return 'HTTP_ERROR (422): The API rejected these prefix or pagination values.'
+    }
+    if (error.status === 503) {
+      return 'API_UNAVAILABLE (503): ' + error.message
+    }
+    return 'HTTP_ERROR (HTTP ' + error.status + '): ' + label + ' failed: ' + error.message
   }
-  return error instanceof Error ? error.message : `${label} request failed.`
+  const detail = error instanceof Error ? error.message : label + ' request failed.'
+  return 'API_UNAVAILABLE: ' + detail
 }
-
 function errorCode(error: unknown): string | null {
   return error instanceof HistoricalPrefixAnalyticsRequestError ? error.errorCode : null
 }
 
 function exactRatio(value: { numerator: number; denominator: number; is_available: boolean }): string {
-  return value.is_available ? `${value.numerator} / ${value.denominator}` : 'Unavailable'
+  if (value.denominator === 0) return 'Unavailable (ZERO_DENOMINATOR)'
+  return value.is_available ? value.numerator + ' / ' + value.denominator : 'Unavailable'
 }
 
+function sourceValue(value: string | null | undefined): string {
+  return typeof value === 'string' && value.trim().length > 0
+    ? value
+    : 'Not provided by API'
+}
 function strategyKey(identity: HistoricalPrefixAnalyticsStrategyIdentity): string {
   return JSON.stringify([identity.strategy_id, identity.strategy_version, identity.replicate])
 }
@@ -208,6 +223,15 @@ onBeforeUnmount(() => {
 
 <template>
   <section class="prefix-analytics" aria-labelledby="prefix-analytics-title">
+    <p
+      class="prefix-analytics__boundary"
+      data-testid="prefix-analytics-provider-status"
+      role="status"
+    >
+      Formal provider: NOT IMPLEMENTED · official source: SOURCE_MISSING. The API contract exists,
+      but no formal historical source is wired. Payload fields below are shown as the API returned
+      them and are not verified formal historical results.
+    </p>
     <button
       class="prefix-analytics__toggle"
       type="button"
@@ -224,9 +248,12 @@ onBeforeUnmount(() => {
 
     <div v-show="isOpen" id="prefix-analytics-content" class="prefix-analytics__content">
       <p class="prefix-analytics__boundary">
-        Historical descriptive analytics only. This API source is separate from the
-        import-based Historical Prefix Success Windows results below; their results are not
-        combined. Rankings describe this historical result and do not promise future performance.
+        PREFIX_PORTFOLIO_SUCCESS means that, for one valid target draw and this exact strategy
+        identity and prefix, at least one selected ticket has main_hit_count &gt;= 1. Its denominator
+        is valid target draws for the same identity. OFFICIAL_ANY_PRIZE means at least one ticket
+        receives an official prize. OFFICIAL_ANY_PRIZE is a distinct event and is not this prefix
+        ratio. These results are separate from the import-based Historical Prefix Success Windows
+        results below; the data is never combined and makes no future-performance promise.
       </p>
 
       <section class="prefix-analytics__section" aria-labelledby="prefix-rankings-title">
@@ -249,17 +276,20 @@ onBeforeUnmount(() => {
           <button class="prefix-analytics__button" type="button" @click="loadRankings">Retry rankings</button>
         </div>
         <p v-else-if="rankingsState === 'empty'" class="prefix-analytics__state">
-          The API returned no ranking groups.
+          API query: SUCCESS_EMPTY · The API returned no ranking groups.
         </p>
 
         <template v-else-if="rankingsState === 'ready' && rankings">
+          <p class="prefix-analytics__state" data-testid="prefix-rankings-query-success">
+            API query: SUCCESS_WITH_DATA · {{ rankings.groups.length }} ranking groups returned.
+          </p>
           <dl class="prefix-analytics__source" aria-label="Ranking source identity">
-            <div><dt>Dataset</dt><dd>{{ rankings.metadata.dataset_identity }} · {{ rankings.metadata.lottery_type }}</dd></div>
-            <div><dt>Source import identity</dt><dd><code>{{ rankings.metadata.source_import_identity_sha256 }}</code></dd></div>
-            <div><dt>Source manifest</dt><dd><code>{{ rankings.metadata.source_manifest_sha256 }}</code></dd></div>
-            <div><dt>Source artifact</dt><dd><code>{{ rankings.metadata.source_artifact_sha256 }}</code></dd></div>
-            <div><dt>Dataset SHA-256</dt><dd><code>{{ rankings.metadata.dataset_sha256 }}</code></dd></div>
-            <div><dt>Ranking policy</dt><dd>{{ rankings.metadata.ranking_policy_id }}</dd></div>
+            <div><dt>Dataset</dt><dd>{{ sourceValue(rankings.metadata.dataset_identity) }} · {{ sourceValue(rankings.metadata.lottery_type) }}</dd></div>
+            <div><dt>Source import identity</dt><dd><code>{{ sourceValue(rankings.metadata.source_import_identity_sha256) }}</code></dd></div>
+            <div><dt>Source manifest</dt><dd><code>{{ sourceValue(rankings.metadata.source_manifest_sha256) }}</code></dd></div>
+            <div><dt>Source artifact</dt><dd><code>{{ sourceValue(rankings.metadata.source_artifact_sha256) }}</code></dd></div>
+            <div><dt>Dataset SHA-256</dt><dd><code>{{ sourceValue(rankings.metadata.dataset_sha256) }}</code></dd></div>
+            <div><dt>Ranking policy</dt><dd>{{ sourceValue(rankings.metadata.ranking_policy_id) }}</dd></div>
           </dl>
 
           <article v-for="group in rankings.groups" :key="group.prefix_count" class="prefix-analytics__group">
@@ -272,14 +302,17 @@ onBeforeUnmount(() => {
             </p>
             <div v-else class="prefix-analytics__table-wrap">
               <table class="prefix-analytics__table">
-                <caption>Ranking values and eligibility are from the rankings API response.</caption>
+                <caption>
+                  Rank and eligibility are from the rankings API. Success is
+                  PREFIX_PORTFOLIO_SUCCESS; exact ratios use the API numerator and denominator.
+                </caption>
                 <thead>
                   <tr>
                     <th scope="col">Rank</th>
                     <th scope="col">Exact strategy identity</th>
                     <th scope="col">Eligibility / status</th>
                     <th scope="col">Observed / success counts</th>
-                    <th scope="col">Exact portfolio success ratio</th>
+                    <th scope="col">PREFIX_PORTFOLIO_SUCCESS (successes / valid target draws)</th>
                     <th scope="col">Replay</th>
                   </tr>
                 </thead>
@@ -341,30 +374,36 @@ onBeforeUnmount(() => {
           <button class="prefix-analytics__button" type="button" @click="loadOverview(overviewPrefixCount)">Retry overview</button>
         </div>
         <p v-else-if="overviewState === 'empty'" class="prefix-analytics__state">
-          No strategy summaries were returned for prefix {{ overviewPrefixCount }}.
+          API query: SUCCESS_EMPTY · No strategy summaries were returned for prefix {{ overviewPrefixCount }}.
         </p>
 
         <template v-else-if="overviewState === 'ready' && overview">
+          <p class="prefix-analytics__state" data-testid="prefix-overview-query-success">
+            API query: SUCCESS_WITH_DATA · {{ overview.summaries.length }} strategy summaries returned.
+          </p>
           <dl class="prefix-analytics__source" aria-label="Overview source identity">
-            <div><dt>Dataset</dt><dd>{{ overview.metadata.dataset_identity }} · {{ overview.metadata.lottery_type }}</dd></div>
-            <div><dt>Source import identity</dt><dd><code>{{ overview.metadata.source_import_identity_sha256 }}</code></dd></div>
-            <div><dt>Source manifest</dt><dd><code>{{ overview.metadata.source_manifest_sha256 }}</code></dd></div>
-            <div><dt>Source artifact</dt><dd><code>{{ overview.metadata.source_artifact_sha256 }}</code></dd></div>
-            <div><dt>Dataset SHA-256</dt><dd><code>{{ overview.metadata.dataset_sha256 }}</code></dd></div>
-            <div><dt>Ranking policy</dt><dd>{{ overview.metadata.ranking_policy_id }}</dd></div>
+            <div><dt>Dataset</dt><dd>{{ sourceValue(overview.metadata.dataset_identity) }} · {{ sourceValue(overview.metadata.lottery_type) }}</dd></div>
+            <div><dt>Source import identity</dt><dd><code>{{ sourceValue(overview.metadata.source_import_identity_sha256) }}</code></dd></div>
+            <div><dt>Source manifest</dt><dd><code>{{ sourceValue(overview.metadata.source_manifest_sha256) }}</code></dd></div>
+            <div><dt>Source artifact</dt><dd><code>{{ sourceValue(overview.metadata.source_artifact_sha256) }}</code></dd></div>
+            <div><dt>Dataset SHA-256</dt><dd><code>{{ sourceValue(overview.metadata.dataset_sha256) }}</code></dd></div>
+            <div><dt>Ranking policy</dt><dd>{{ sourceValue(overview.metadata.ranking_policy_id) }}</dd></div>
           </dl>
 
           <p class="prefix-analytics__count">{{ overview.total_count }} strategy summaries returned by the API.</p>
           <div class="prefix-analytics__table-wrap">
             <table class="prefix-analytics__table">
-              <caption>Overview counts, eligibility, and exact ratios are shown as returned by the strategies API.</caption>
+              <caption>
+                Counts, eligibility, and PREFIX_PORTFOLIO_SUCCESS numerator/denominator are returned by
+                the strategies API for each exact strategy identity and prefix.
+              </caption>
               <thead>
                 <tr>
                   <th scope="col">Exact strategy identity</th>
                   <th scope="col">Prefix / status</th>
                   <th scope="col">Ranking eligibility</th>
                   <th scope="col">Observed / success counts</th>
-                  <th scope="col">Exact portfolio success ratio</th>
+                  <th scope="col">PREFIX_PORTFOLIO_SUCCESS (successes / valid target draws)</th>
                   <th scope="col">Replay</th>
                 </tr>
               </thead>
@@ -443,17 +482,20 @@ onBeforeUnmount(() => {
             <button class="prefix-analytics__button" type="button" @click="loadReplay(replay?.offset ?? 0)">Retry replay</button>
           </div>
           <p v-else-if="replayState === 'empty'" class="prefix-analytics__state">
-            The replay API returned no rows for this page.
+            API query: SUCCESS_EMPTY · The replay API returned no rows for this page.
           </p>
 
           <template v-else-if="replayState === 'ready' && replay">
+            <p class="prefix-analytics__state" data-testid="prefix-replay-query-success">
+              API query: SUCCESS_WITH_DATA · {{ replay.items.length }} replay rows returned.
+            </p>
             <dl class="prefix-analytics__source" aria-label="Replay source identity">
-              <div><dt>Dataset</dt><dd>{{ replay.metadata.dataset_identity }} · {{ replay.metadata.lottery_type }}</dd></div>
-              <div><dt>Source import identity</dt><dd><code>{{ replay.metadata.source_import_identity_sha256 }}</code></dd></div>
-              <div><dt>Source manifest</dt><dd><code>{{ replay.metadata.source_manifest_sha256 }}</code></dd></div>
-              <div><dt>Source artifact</dt><dd><code>{{ replay.metadata.source_artifact_sha256 }}</code></dd></div>
-              <div><dt>Dataset SHA-256</dt><dd><code>{{ replay.metadata.dataset_sha256 }}</code></dd></div>
-              <div><dt>Ranking policy</dt><dd>{{ replay.metadata.ranking_policy_id }}</dd></div>
+              <div><dt>Dataset</dt><dd>{{ sourceValue(replay.metadata.dataset_identity) }} · {{ sourceValue(replay.metadata.lottery_type) }}</dd></div>
+              <div><dt>Source import identity</dt><dd><code>{{ sourceValue(replay.metadata.source_import_identity_sha256) }}</code></dd></div>
+              <div><dt>Source manifest</dt><dd><code>{{ sourceValue(replay.metadata.source_manifest_sha256) }}</code></dd></div>
+              <div><dt>Source artifact</dt><dd><code>{{ sourceValue(replay.metadata.source_artifact_sha256) }}</code></dd></div>
+              <div><dt>Dataset SHA-256</dt><dd><code>{{ sourceValue(replay.metadata.dataset_sha256) }}</code></dd></div>
+              <div><dt>Ranking policy</dt><dd>{{ sourceValue(replay.metadata.ranking_policy_id) }}</dd></div>
             </dl>
             <nav class="prefix-analytics__pagination" aria-label="Prefix replay pages">
               <button class="prefix-analytics__button" type="button" :disabled="!canReplayPrevious" @click="loadReplay(Math.max(0, replay.offset - replay.limit))">
@@ -466,13 +508,16 @@ onBeforeUnmount(() => {
             </nav>
             <div class="prefix-analytics__table-wrap">
               <table class="prefix-analytics__table prefix-analytics__replay-table">
-                <caption>Per-draw replay rows returned by the selected strategy replay endpoint.</caption>
+                <caption>
+                  Per-draw API rows for the selected strategy identity and prefix. PREFIX_PORTFOLIO_SUCCESS
+                  is the API boolean; it is distinct from OFFICIAL_ANY_PRIZE.
+                </caption>
                 <thead>
                   <tr>
                     <th scope="col">Target draw</th>
                     <th scope="col">Exact identity</th>
                     <th scope="col">Prefix</th>
-                    <th scope="col">Success</th>
+                    <th scope="col">PREFIX_PORTFOLIO_SUCCESS</th>
                     <th scope="col">Best main hits</th>
                     <th scope="col">Total main hits</th>
                     <th scope="col">Included ticket positions</th>

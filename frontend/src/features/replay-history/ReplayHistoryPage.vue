@@ -236,22 +236,28 @@ function resetOptimalSelection(): void {
   clearScoringDetail()
 }
 
-function scoringErrorMessage(error: unknown): string {
-  if (error instanceof ReplayScoringProjectionsRequestError) {
-    if (error.status === 0) return error.message
-    const statusLabel =
-      error.status === 404
-        ? 'Scoring artifact not found (404)'
-        : error.status === 422
-          ? 'Scoring detail request was rejected (422)'
-          : error.status === 503
-            ? 'Scoring service unavailable (503)'
-            : `Scoring detail request failed (${error.status})`
-    return `${statusLabel}: ${error.message}`
-  }
-  return error instanceof Error ? error.message : 'Unable to load scoring artifact detail'
+function apiFailureLabel(status: number, errorCode: string | undefined): string {
+  if (errorCode?.toUpperCase().includes('NOT_CONFIGURED')) return 'SOURCE_NOT_CONFIGURED'
+  if (status === 0 || status === 503) return 'API_UNAVAILABLE'
+  return 'HTTP_ERROR'
 }
 
+function replayApiErrorMessage(error: unknown, label: string): string {
+  if (
+    error instanceof ReplayScoringProjectionsRequestError ||
+    error instanceof ReplayPortfolioRankingsRequestError
+  ) {
+    const statusLabel = apiFailureLabel(error.status, error.errorCode)
+    const status = error.status > 0 ? ' (HTTP ' + error.status + ')' : ''
+    return statusLabel + status + ': ' + error.message
+  }
+  const detail = error instanceof Error ? error.message : 'Unknown API error.'
+  return 'API_UNAVAILABLE: ' + label + ': ' + detail
+}
+
+function scoringErrorMessage(error: unknown): string {
+  return replayApiErrorMessage(error, 'Scoring detail request failed')
+}
 function selectedPredictionFilters(): ReplayScoringPredictionsQuery {
   const filters = predictionFilters.value
   return {
@@ -377,12 +383,7 @@ async function loadOptimalRankings(): Promise<void> {
     optimalState.value = result.groups.some((group) => group.candidates.length) ? 'ready' : 'empty'
   } catch (error) {
     if (controller.signal.aborted) return
-    optimalError.value =
-      error instanceof ReplayPortfolioRankingsRequestError
-        ? error.message
-        : error instanceof Error
-          ? error.message
-          : 'Unable to load optimal replay rankings'
+    optimalError.value = replayApiErrorMessage(error, 'Replay rankings request failed')
     optimalState.value = 'error'
   }
 }
@@ -635,16 +636,33 @@ function predictedNumbers(value: number[] | null | undefined): string {
       </form>
 
       <p v-if="optimalState === 'loading'" class="state-panel">Loading rankings…</p>
-      <p v-else-if="optimalState === 'empty'" class="state-panel">No candidates were found.</p>
-      <p v-else-if="optimalState === 'error'" class="state-panel state-panel--error">
+      <p v-else-if="optimalState === 'empty'" class="state-panel" data-testid="optimal-ranking-empty">
+        API query: SUCCESS_EMPTY · No candidates were returned.
+      </p>
+      <p v-else-if="optimalState === 'error'" class="state-panel state-panel--error" role="alert">
         {{ optimalError }}
       </p>
 
       <template v-if="optimalResult && optimalState === 'ready'">
+        <p class="table-note" data-testid="optimal-ranking-success">
+          API query: SUCCESS_WITH_DATA · rankings and positions below are returned by the API.
+        </p>
+        <p class="panel__note">
+          OFFICIAL_ANY_PRIZE means at least one ticket receives an official prize. Prize tiers and
+          rank order come from the API; this page does not recalculate them.
+        </p>
         <dl class="source-facts">
           <div>
             <dt>Source scoring artifact</dt>
             <dd><code>{{ optimalResult.source_scoring_artifact_payload_sha256 }}</code></dd>
+          </div>
+          <div>
+            <dt>Source replay artifact</dt>
+            <dd><code>{{ optimalResult.source_replay_artifact_payload_sha256 }}</code></dd>
+          </div>
+          <div>
+            <dt>Ranking artifact SHA-256</dt>
+            <dd><code>{{ optimalResult.artifact_sha256 }}</code></dd>
           </div>
           <div><dt>Lottery</dt><dd>{{ lotteryLabel(optimalResult.lottery_type) }}</dd></div>
           <div><dt>Dataset</dt><dd>{{ optimalResult.dataset_id }} · {{ optimalResult.dataset_version }}</dd></div>
@@ -662,7 +680,7 @@ function predictedNumbers(value: number[] | null | undefined): string {
           <p v-if="scoringDetailState === 'loading'" class="state-panel">
             Loading scoring artifact, predictions, and aggregates…
           </p>
-          <div v-else-if="scoringDetailState === 'error'" class="state-panel state-panel--error">
+          <div v-else-if="scoringDetailState === 'error'" class="state-panel state-panel--error" role="alert">
             <p>{{ scoringDetailError }}</p>
             <button class="button button--quiet" type="button" @click="loadScoringArtifactDetail">
               Retry scoring detail
@@ -670,6 +688,9 @@ function predictedNumbers(value: number[] | null | undefined): string {
           </div>
 
           <template v-else-if="scoringDetailState === 'ready' && scoringDetailRun && scoringOverallAggregate">
+            <p class="table-note" data-testid="scoring-detail-query-success">
+              API query: SUCCESS_WITH_DATA · scoring artifact, aggregates, and prediction rows are read-only API results.
+            </p>
             <dl class="source-facts">
               <div>
                 <dt>Scoring artifact SHA-256</dt>
@@ -720,7 +741,9 @@ function predictedNumbers(value: number[] | null | undefined): string {
                   </tbody>
                 </table>
               </div>
-              <p v-else class="state-panel">No strategy aggregate rows are available.</p>
+              <p v-else class="state-panel">
+                Strategy aggregates API: SUCCESS_EMPTY · No strategy aggregate rows are available.
+              </p>
             </section>
 
             <section aria-labelledby="overall-scoring-aggregate-title">
@@ -768,16 +791,19 @@ function predictedNumbers(value: number[] | null | undefined): string {
               <p v-if="scoringPredictionsState === 'loading'" class="state-panel">
                 Loading predictions…
               </p>
-              <div v-else-if="scoringPredictionsState === 'error'" class="state-panel state-panel--error">
+              <div v-else-if="scoringPredictionsState === 'error'" class="state-panel state-panel--error" role="alert">
                 <p>{{ scoringPredictionsError }}</p>
                 <button class="button button--quiet" type="button" @click="loadFilteredScoringPredictions">
                   Retry predictions
                 </button>
               </div>
               <p v-else-if="scoringPredictionsState === 'empty'" class="state-panel">
-                No predictions match these filters.
+                Predictions API: SUCCESS_EMPTY · No predictions match these filters.
               </p>
-              <div v-else-if="scoringPredictionsState === 'ready'" class="table-wrap">
+              <p v-else-if="scoringPredictionsState === 'ready'" class="table-note">
+                Predictions API: SUCCESS_WITH_DATA · {{ scoringPredictions.length }} rows returned.
+              </p>
+              <div v-if="scoringPredictionsState === 'ready'" class="table-wrap">
                 <table>
                   <caption>Prediction status fields and scoring results are shown independently</caption>
                   <thead>

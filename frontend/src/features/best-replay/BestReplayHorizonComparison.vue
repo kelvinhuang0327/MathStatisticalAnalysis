@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import StatusBadge from '../../components/StatusBadge.vue'
+import BestReplaySourceMeta from './BestReplaySourceMeta.vue'
 import {
   CANONICAL_HORIZONS,
   type BestReplayItem,
@@ -54,6 +55,10 @@ const successDefinition = props.game === 'B649'
               Source Rank {{ itemsByHorizon[h.key]?.rank !== null && itemsByHorizon[h.key]?.rank !== undefined ? `#${itemsByHorizon[h.key]?.rank}` : 'Unavailable' }}
               · Rate {{ itemsByHorizon[h.key]?.isAvailable && itemsByHorizon[h.key]?.hitRate !== null ? 'available' : 'Unavailable' }}
             </small>
+            <BestReplaySourceMeta
+              v-if="itemsByHorizon[h.key]"
+              :item="itemsByHorizon[h.key]!"
+            />
           </div>
           <StatusBadge
             v-if="itemsByHorizon[h.key]"

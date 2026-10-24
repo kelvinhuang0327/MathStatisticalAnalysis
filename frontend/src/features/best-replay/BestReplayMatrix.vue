@@ -23,7 +23,17 @@ function getCellTitle(row: BestReplayMatrixRow, count: TicketCount): string {
     : `${row.game} canonical run ranking · winning_target_rate`
   if (cell) {
     const rateStatus = cell.isAvailable ? cell.hitRateFormatted : 'Unavailable'
-    return `${row.strategyLabel} · ${row.game} · ${dimension} ${count} · ${cell.horizon} · ${source} · source rank ${cell.rank ?? 'unavailable'} · rate ${rateStatus} (Delta: ${cell.baselineDeltaFormatted})`
+    const sourceIdentity = cell.sourceRunId
+      ? `source run ${cell.sourceRunId}`
+      : cell.legacyMethodId
+        ? `source identity ${cell.legacyMethodId}`
+        : 'source identity not provided'
+    const sourceTime = cell.sourceCompletedAt
+      ? ` · completed ${cell.sourceCompletedAt}`
+      : cell.sourceAsOfDate
+        ? ` · as of ${cell.sourceAsOfDate}`
+        : ''
+    return `${row.strategyLabel} · ${row.game} · ${dimension} ${count} · ${cell.horizon} · ${source} · ${sourceIdentity}${sourceTime} · source rank ${cell.rank ?? 'unavailable'} · rate ${rateStatus} (Delta: ${cell.baselineDeltaFormatted})`
   }
   return `${row.strategyLabel} · ${row.game} · ${dimension} ${count}: no source record`
 }

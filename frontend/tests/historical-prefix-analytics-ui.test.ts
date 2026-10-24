@@ -210,6 +210,8 @@ describe('Historical Prefix Analytics panel', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1)
     expect(wrapper.text()).toContain('Historical Success Windows')
     expect(wrapper.text()).toContain('Historical Prefix Analytics')
+    expect(wrapper.get('[data-testid="prefix-analytics-provider-status"]').text()).toContain('NOT IMPLEMENTED')
+    expect(wrapper.get('[data-testid="prefix-analytics-provider-status"]').text()).toContain('SOURCE_MISSING')
     expect(wrapper.get('.prefix-analytics__toggle').attributes('aria-expanded')).toBe('false')
 
     await wrapper.get('.prefix-analytics__toggle').trigger('click')
@@ -224,6 +226,9 @@ describe('Historical Prefix Analytics panel', () => {
     expect(new URL(String(overviewCall?.[0]), 'http://localhost').searchParams.get('prefix_count')).toBe('10')
     expect(wrapper.text()).toContain('Source import identity')
     expect(wrapper.text()).toContain('a'.repeat(64))
+    expect(wrapper.text()).toContain('SUCCESS_WITH_DATA')
+    expect(wrapper.text()).toContain('PREFIX_PORTFOLIO_SUCCESS')
+    expect(wrapper.text()).toContain('OFFICIAL_ANY_PRIZE is a distinct event')
     expect(wrapper.text()).toContain('separate from the import-based Historical Prefix Success Windows results')
     wrapper.unmount()
   })
@@ -261,7 +266,7 @@ describe('Historical Prefix Analytics panel', () => {
         return Promise.resolve(apiResponse(makeOverview(10, [makeIdentity('unavailable')], {
           numerator: 0,
           denominator: 0,
-          is_available: false,
+          is_available: true,
         })))
       }
       return Promise.resolve(responseFor(input))
@@ -271,6 +276,7 @@ describe('Historical Prefix Analytics panel', () => {
     await unavailable.get('.prefix-analytics__toggle').trigger('click')
     await flushPromises()
     expect(unavailable.text()).toContain('Unavailable')
+    expect(unavailable.text()).toContain('ZERO_DENOMINATOR')
     expect(unavailable.text()).not.toContain('0 / 0')
     expect(unavailable.text()).not.toContain('0%')
     unavailable.unmount()
@@ -328,7 +334,8 @@ describe('Historical Prefix Analytics panel', () => {
   it.each([
     [404, 'That exact strategy, version, and replicate was not found.'],
     [422, 'The API rejected these prefix or pagination values.'],
-    [503, 'The Historical Prefix Analytics provider is unavailable.'],
+    [503, 'API_UNAVAILABLE'],
+    [500, 'HTTP_ERROR'],
   ])('shows the retry state for replay HTTP %s', async (status, message) => {
     const identity = makeIdentity('missing-strategy')
     fetchMock.mockImplementation((input) => {
@@ -354,6 +361,29 @@ describe('Historical Prefix Analytics panel', () => {
     wrapper.unmount()
   })
 
+  it('labels a missing source separately from HTTP and service failures', async () => {
+    fetchMock.mockImplementation((input) => {
+      const url = new URL(String(input), 'http://localhost')
+      if (url.pathname === RANKINGS_URL || url.pathname === STRATEGIES_URL) {
+        return Promise.resolve(
+          apiResponse(
+            { message: 'Formal provider is not configured.', error_code: 'PREFIX_SOURCE_NOT_CONFIGURED' },
+            503,
+          ),
+        )
+      }
+      return Promise.resolve(responseFor(input))
+    })
+    const wrapper = mount(PrefixAnalyticsPanel)
+    await flushPromises()
+    await wrapper.get('.prefix-analytics__toggle').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('SOURCE_NOT_CONFIGURED')
+    expect(wrapper.text()).toContain('PREFIX_SOURCE_NOT_CONFIGURED')
+    wrapper.unmount()
+  })
+
   it('shows empty ranking, overview, and replay responses', async () => {
     const identity = makeIdentity('replay-empty')
     fetchMock.mockImplementation((input) => {
@@ -369,6 +399,7 @@ describe('Historical Prefix Analytics panel', () => {
     await flushPromises()
     expect(wrapper.text()).toContain('No eligible strategies were returned')
     expect(wrapper.text()).toContain('No strategy summaries were returned')
+    expect(wrapper.text()).toContain('SUCCESS_EMPTY')
     wrapper.unmount()
 
     fetchMock.mockReset()

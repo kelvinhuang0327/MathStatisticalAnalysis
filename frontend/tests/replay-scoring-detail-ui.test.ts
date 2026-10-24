@@ -209,6 +209,10 @@ describe('Replay scoring artifact detail', () => {
     expect(wrapper.text()).toContain('Outcome not found')
     expect(wrapper.text()).toContain('Identity mismatch')
     expect(wrapper.text()).toContain('12')
+    expect(wrapper.text()).toContain('API query: SUCCESS_WITH_DATA')
+    expect(wrapper.text()).toContain(
+      'Prize tiers and rank order come from the API; this page does not recalculate them.',
+    )
 
     const initialDetailRequests = requests.filter(({ url }) => url.pathname.includes('/replay-scoring/'))
     expect(initialDetailRequests.map(({ url }) => url.pathname)).toEqual(
@@ -285,7 +289,9 @@ describe('Replay scoring artifact detail', () => {
     await flushPromises()
 
     expect(wrapper.text()).toContain('No strategy aggregate rows are available.')
+    expect(wrapper.text()).toContain('Strategy aggregates API: SUCCESS_EMPTY')
     expect(wrapper.text()).toContain('No predictions match these filters.')
+    expect(wrapper.text()).toContain('Predictions API: SUCCESS_EMPTY')
     expect(wrapper.text()).not.toContain('Scored predictions: 0%')
     wrapper.unmount()
   })
@@ -314,11 +320,45 @@ describe('Replay scoring artifact detail', () => {
     await flushPromises()
 
     expect(wrapper.text()).toContain(`${status}`)
+    expect(wrapper.text()).toContain(status === 503 ? 'API_UNAVAILABLE' : 'HTTP_ERROR')
     expect(wrapper.text()).toContain('mocked failure')
     await wrapper.findAll('button').find((button) => button.text() === 'Retry scoring detail')?.trigger('click')
     await flushPromises()
     expect(wrapper.text()).toContain('detail-dataset · detail-v7')
     expect(wrapper.text()).not.toContain('Retry scoring detail')
+    wrapper.unmount()
+  })
+
+  it('distinguishes an unconfigured scoring provider from an unavailable service', async () => {
+    let rootAttempts = 0
+    const fetchMock = vi.fn<typeof fetch>().mockImplementation((input) => {
+      const url = new URL(String(input), 'http://localhost')
+      if (url.pathname.includes('/replay-rankings/optimal')) {
+        return Promise.resolve(apiResponse(rankingResponse(sourceHash)))
+      }
+      if (url.pathname === '/api/v1/replay-scoring/' + sourceHash && rootAttempts++ === 0) {
+        return Promise.resolve(
+          apiResponse(
+            { error_code: 'REPLAY_SCORING_NOT_CONFIGURED', message: 'No scoring projection reader.' },
+            503,
+          ),
+        )
+      }
+      if (url.pathname.includes('/replay-scoring/')) {
+        return Promise.resolve(apiResponse(detailPayload(url, sourceHash)))
+      }
+      return Promise.resolve(apiResponse({ items: [], total_count: 0, limit: 50, offset: 0 }))
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const wrapper = mount(ReplayHistoryPage)
+    await flushPromises()
+    await selectOptimalAndLoadRankings(wrapper)
+    await detailButton(wrapper)?.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('SOURCE_NOT_CONFIGURED')
+    expect(wrapper.text()).toContain('No scoring projection reader.')
     wrapper.unmount()
   })
 

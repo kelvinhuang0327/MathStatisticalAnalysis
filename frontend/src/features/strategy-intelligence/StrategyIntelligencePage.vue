@@ -52,7 +52,7 @@ function englishDisplayName(value: string, strategyId: string): string {
 const currentGameCode = computed(() => lotteryTypeDisplayLabel(selectedLotteryType.value))
 
 const combinedStrategies = computed<StrategyCombinedItem[]>(() => {
-  if (!overviewData.value) return []
+  if (loadState.value !== 'ready' || !overviewData.value) return []
   const evidenceItems = evidenceData.value?.items ?? []
   const evidenceMap = new Map(
     evidenceItems.map((e) => [`${e.strategy_id}::${e.strategy_version}`, e]),
@@ -166,7 +166,6 @@ async function loadData(): Promise<void> {
 
   loadState.value = 'loading'
   errorMessage.value = ''
-  overviewData.value = null
 
   try {
     const [overviewResponse, evidenceResponse] = await Promise.all([
@@ -375,16 +374,20 @@ onBeforeUnmount(() => {
 
     <!-- Loading State -->
     <SkeletonLoader
-      v-else-if="loadState === 'loading'"
+      v-if="loadState === 'loading'"
       type="table"
       :rows="8"
       height="48px"
     />
 
-    <!-- Ready Workspace Views -->
-    <div v-else-if="loadState === 'ready'" class="tab-content-wrapper">
+    <!-- Keep result views mounted while requests run so same-page query state survives. -->
+    <div
+      v-if="overviewData && evidenceData"
+      v-show="loadState === 'ready'"
+      class="tab-content-wrapper"
+    >
       <!-- Tab 1: Strategy Overview -->
-      <div v-if="activeTab === 'overview'" role="tabpanel" aria-label="Strategy Overview">
+      <div v-show="activeTab === 'overview'" role="tabpanel" aria-label="Strategy Overview">
         <StrategyIntelligenceOverview
           :items="combinedStrategies"
           :selected-lottery-type="selectedLotteryType"
@@ -399,7 +402,7 @@ onBeforeUnmount(() => {
       </div>
 
       <!-- Tab 2: Portfolio Hit Rate -->
-      <div v-else-if="activeTab === 'portfolio'" role="tabpanel" aria-label="Portfolio Hit Rate">
+      <div v-if="activeTab === 'portfolio'" role="tabpanel" aria-label="Portfolio Hit Rate">
         <StrategyIntelligencePortfolio
           :selected-lottery-type="selectedLotteryType"
           :combination-status="summary.portfolioStatus"

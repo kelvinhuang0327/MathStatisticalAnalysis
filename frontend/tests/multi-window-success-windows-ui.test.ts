@@ -153,6 +153,9 @@ describe('multi-window success windows API and UI', () => {
     })
     await flushPromises()
     expect(wrapper.text()).toContain('old-strategy')
+    expect(wrapper.text()).toContain('Target span: 2026-01-01 · target-1')
+    expect(wrapper.text()).toContain('2026-02-01 · target-8')
+    expect(wrapper.text()).toContain('Source targets: 8 · requested targets: 8')
     expect(wrapper.text()).toContain('0.125000000000000000 (1/8)')
     expect(wrapper.text()).toContain('0.187500000000000000 (3/16)')
     expect(wrapper.text()).toContain('0.500000000000000000 (1/2)')
@@ -206,8 +209,8 @@ describe('multi-window success windows API and UI', () => {
   })
 
   it.each([
-    [404, 'P638_CURRENT_RUN_NOT_FOUND', 'HTTP 404'],
-    [422, 'REQUEST_VALIDATION_FAILED', 'HTTP 422'],
+    [404, 'P638_CURRENT_RUN_NOT_FOUND', 'HTTP_ERROR · HTTP 404'],
+    [422, 'REQUEST_VALIDATION_FAILED', 'HTTP_ERROR · HTTP 422'],
     [503, 'P638_HISTORICAL_UNAVAILABLE', 'HTTP 503'],
   ])('shows HTTP %s and retries the selected run', async (status, errorCode, expectedText) => {
     const fetchMock = vi
@@ -256,6 +259,7 @@ describe('multi-window success windows API and UI', () => {
     })
     await flushPromises()
     expect(wrapper.text()).toContain('No multi-window success-window rows are available')
+    expect(wrapper.text()).toContain('API query: SUCCESS_EMPTY')
 
     await wrapper.setProps({ runId: 'null-run' })
     await flushPromises()
@@ -271,4 +275,53 @@ describe('multi-window success windows API and UI', () => {
     expect(wrapper.text()).not.toContain('0.500000000000000000')
     wrapper.unmount()
   })
+  it('shows success state, distinct event definition, and response provenance', async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValueOnce(
+      apiResponse(response('source-run', 'POWER_LOTTO')),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    const wrapper = mount(MultiWindowSuccessWindowsPanel, {
+      props: { lottery: 'P638', runId: 'source-run' },
+    })
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('API query: SUCCESS_WITH_DATA')
+    expect(wrapper.text()).toContain('Event')
+    expect(wrapper.text()).toContain('ANY_PRIZE')
+    expect(wrapper.text()).toContain(
+      'OFFICIAL_ANY_PRIZE means at least one ticket receives an official prize.',
+    )
+    expect(wrapper.text()).toContain('Source SHA-256')
+    expect(wrapper.text()).toContain('a'.repeat(64))
+    expect(wrapper.text()).toContain('Source commit')
+    expect(wrapper.text()).toContain('b'.repeat(40))
+    expect(wrapper.text()).toContain('Strategy-set fingerprint')
+    expect(wrapper.text()).toContain('c'.repeat(64))
+    expect(wrapper.text()).toContain('fixture authority')
+    wrapper.unmount()
+  })
+
+  it.each([
+    [503, 'HISTORICAL_RESULTS_NOT_CONFIGURED', 'SOURCE_NOT_CONFIGURED'],
+    [503, 'P638_HISTORICAL_UNAVAILABLE', 'API_UNAVAILABLE'],
+    [500, 'INTERNAL_ERROR', 'HTTP_ERROR'],
+  ])('distinguishes source configuration and HTTP state for status %s', async (status, errorCode, expectedState) => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn<typeof fetch>().mockResolvedValueOnce(
+        apiResponse({ error_code: errorCode, message: 'API detail' }, status),
+      ),
+    )
+
+    const wrapper = mount(MultiWindowSuccessWindowsPanel, {
+      props: { lottery: 'P638', runId: 'error-run' },
+    })
+    await flushPromises()
+
+    expect(wrapper.text()).toContain(expectedState)
+    expect(wrapper.text()).toContain(errorCode)
+    wrapper.unmount()
+  })
+
 })

@@ -13,7 +13,11 @@ import StatusBadge from '../../components/StatusBadge.vue'
 import BestReplayHorizonComparison from './BestReplayHorizonComparison.vue'
 import BestReplayMatrix from './BestReplayMatrix.vue'
 import BestReplayOneToFiveOverview from './BestReplayOneToFiveOverview.vue'
+import BestReplaySourceMeta from './BestReplaySourceMeta.vue'
 import { compareNullableNumbers } from './sorting'
+import { B649RecordsRequestError } from '../../api/b649MultiTicketRecords'
+import { P638HistoricalRequestError } from '../../api/p638Historical'
+import { T539HistoricalRequestError } from '../../api/t539Historical'
 import {
   ALL_TICKET_COUNTS,
   B649_AVAILABLE_TICKET_COUNTS,
@@ -33,12 +37,11 @@ import {
 import {
   createUnavailableItem,
   loadB649BestReplayData,
-  loadP638BestReplayData,
-  loadT539BestReplayData,
 } from '../../api/bestReplay'
+import { loadP638SourceEvidence, loadT539SourceEvidence } from './sourceEvidence'
 
 type ViewMode = 'table' | 'comparison' | 'matrix'
-type LoadingState = 'loading' | 'ready' | 'empty' | 'error'
+type LoadingState = 'loading' | 'ready' | 'empty' | 'not-configured' | 'unavailable' | 'error'
 
 const PAGE_SIZE = 15
 
@@ -223,10 +226,10 @@ async function loadData(): Promise<void> {
         promises.push(loadB649BestReplayData(countsToQuery, horizon.key, controller.signal))
       }
       if (activeGame === 'P638' || activeGame === 'ALL') {
-        promises.push(loadP638BestReplayData(countsToQuery, horizon.key, controller.signal))
+        promises.push(loadP638SourceEvidence(horizon.key, controller.signal))
       }
       if (activeGame === 'T539' || activeGame === 'ALL') {
-        promises.push(loadT539BestReplayData(countsToQuery, horizon.key, controller.signal))
+        promises.push(loadT539SourceEvidence(horizon.key, controller.signal))
       }
     }
 
@@ -292,9 +295,27 @@ async function loadData(): Promise<void> {
     if (err instanceof DOMException && err.name === 'AbortError') return
     rawItems.value = []
     allLoadedItems.value = []
-    state.value = 'error'
+    state.value = getErrorState(err)
     errorMessage.value = err instanceof Error ? err.message : 'Failed to load best replay records.'
   }
+}
+
+function getErrorState(error: unknown): LoadingState {
+  if (
+    (error instanceof P638HistoricalRequestError && error.kind === 'NOT_CONFIGURED')
+    || (error instanceof T539HistoricalRequestError && error.kind === 'NOT_CONFIGURED')
+    || (error instanceof B649RecordsRequestError && error.errorCode?.includes('NOT_CONFIGURED'))
+  ) {
+    return 'not-configured'
+  }
+  if (
+    (error instanceof P638HistoricalRequestError && error.kind === 'UNAVAILABLE')
+    || (error instanceof T539HistoricalRequestError && error.kind === 'UNAVAILABLE')
+    || (error instanceof B649RecordsRequestError && error.status === 503)
+  ) {
+    return 'unavailable'
+  }
+  return 'error'
 }
 
 // 1–5 Overview items computation
@@ -377,8 +398,8 @@ const filteredGroups = computed<FilteredComparisonGroup[]>(() => {
 
   const direction = sortDirection.value === 'asc' ? 1 : -1
   const compareWithinGroup = (a: BestReplayItem, b: BestReplayItem): number => {
-    // Available items always sort before completely unavailable items unless sorting by ID/game
-    if (a.isAvailable !== b.isAvailable) {
+    // Source rank ordering must keep ranked rows in the order published by the API.
+    if (sortField.value !== 'rank' && a.isAvailable !== b.isAvailable) {
       return a.isAvailable ? -1 : 1
     }
 
@@ -435,6 +456,14 @@ const summary = computed<BestReplaySummary>(() => {
         item.ticketCount === selectedTicketCounts.value[0],
     )
     : undefined
+  const sourceRankOne = hasOneSelectedScope
+    ? rawItems.value.find(
+      (item) =>
+        item.rank === 1 &&
+        item.game === selectedGame.value &&
+        item.ticketCount === selectedTicketCounts.value[0],
+    )
+    : undefined
   const horizonDef = CANONICAL_HORIZONS.find((h) => h.key === selectedHorizon.value)
   const ticketCountDisplay = selectedGame.value === 'ALL'
     ? selectedTicketCounts.value.length === 1
@@ -460,7 +489,7 @@ const summary = computed<BestReplaySummary>(() => {
       ticketCount: ticketCountDisplay,
       horizon: horizonDef?.label || selectedHorizon.value,
       historicalHitRate: mixedScope ? 'See each group' : 'Unavailable',
-      evaluatedTargets: null,
+      evaluatedTargets: sourceRankOne?.evaluatedTargets ?? null,
       baselineDelta: 'Unavailable',
       evidenceStatus: mixedScope ? 'HISTORICAL ONLY' : 'EVIDENCE UNAVAILABLE',
       totalAvailableRecords: available.length,
@@ -904,7 +933,21 @@ onBeforeUnmount(() => {
 
     <!-- Error State -->
     <ErrorState
-      v-if="state === 'error'"
+      v-if="state === 'not-configured'"
+      title="Historical API not configured"
+      :message="errorMessage"
+      @retry="loadData"
+    />
+
+    <ErrorState
+      v-else-if="state === 'unavailable'"
+      title="Historical API query failed"
+      :message="errorMessage"
+      @retry="loadData"
+    />
+
+    <ErrorState
+      v-else-if="state === 'error'"
       title="Failed to load best replay records"
       :message="errorMessage"
       @retry="loadData"
@@ -1009,6 +1052,7 @@ onBeforeUnmount(() => {
               <div class="strategy-cell">
                 <strong class="strategy-name">{{ item.strategyId }}</strong>
                 <small class="strategy-sub">{{ item.methodFamily }} · {{ item.strategyVersion || 'Version not provided' }}</small>
+                <BestReplaySourceMeta :item="item" />
               </div>
             </td>
             <td>

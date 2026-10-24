@@ -1,14 +1,11 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-
 import {
   ALL_TICKET_COUNTS,
-  type BestReplayItem,
   type BestReplayMatrixRow,
   type TicketCount,
 } from './types'
 
-const props = defineProps<{
+defineProps<{
   rows: BestReplayMatrixRow[]
   selectedTicketCount?: TicketCount | null
   selectedStrategyId?: string | null
@@ -18,29 +15,17 @@ const emit = defineEmits<{
   (e: 'select-cell', strategyId: string, ticketCount: TicketCount): void
 }>()
 
-// Calculate max hit rate across all available cells for relative intensity coloring
-const maxHitRate = computed(() => {
-  let max = 0.01
-  for (const row of props.rows) {
-    for (const count of ALL_TICKET_COUNTS) {
-      const cell = row.cells[count]
-      if (cell && cell.isAvailable && cell.hitRate !== null && cell.hitRate > max) {
-        max = cell.hitRate
-      }
-    }
+function getCellTitle(row: BestReplayMatrixRow, count: TicketCount): string {
+  const cell = row.cells[count]
+  const dimension = row.game === 'B649' ? 'prefix count' : 'ticket count'
+  const source = row.game === 'B649'
+    ? 'official_any_prize_rate · M3_PLUS criterion'
+    : `${row.game} canonical run ranking · winning_target_rate`
+  if (cell) {
+    const rateStatus = cell.isAvailable ? cell.hitRateFormatted : 'Unavailable'
+    return `${row.strategyLabel} · ${row.game} · ${dimension} ${count} · ${cell.horizon} · ${source} · source rank ${cell.rank ?? 'unavailable'} · rate ${rateStatus} (Delta: ${cell.baselineDeltaFormatted})`
   }
-  return max
-})
-
-function getCellBgStyle(cell: BestReplayItem | null): Record<string, string> {
-  if (!cell || !cell.isAvailable || cell.hitRate === null) {
-    return {}
-  }
-  const intensity = Math.min(1, Math.max(0.15, cell.hitRate / maxHitRate.value))
-  return {
-    backgroundColor: `rgba(124, 58, 237, ${intensity * 0.45})`,
-    borderColor: `rgba(139, 92, 246, ${intensity * 0.7})`,
-  }
+  return `${row.strategyLabel} · ${row.game} · ${dimension} ${count}: no source record`
 }
 </script>
 
@@ -49,12 +34,15 @@ function getCellBgStyle(cell: BestReplayItem | null): Record<string, string> {
     <div class="matrix-legend">
       <div class="legend-item">
         <span class="legend-box legend-box--available" />
-        <span>Canonical Evidence Available (Heatmap Intensity)</span>
+        <span>Source record available</span>
       </div>
       <div class="legend-item">
         <span class="legend-box legend-box--unavailable" />
         <span>Evidence Unavailable (Explicitly Distinct from Zero)</span>
       </div>
+      <p class="matrix-scope-note">
+        Each game and ticket or prefix count is a separate source-defined scope. Source rank and rate are shown per cell; shading does not compare rates across columns.
+      </p>
     </div>
 
     <div class="matrix-table-wrapper">
@@ -69,7 +57,7 @@ function getCellBgStyle(cell: BestReplayItem | null): Record<string, string> {
               class="col-ticket"
               :class="{ 'col-ticket--selected': selectedTicketCount === count }"
             >
-              {{ count }}T
+              {{ count }}
             </th>
           </tr>
         </thead>
@@ -81,7 +69,7 @@ function getCellBgStyle(cell: BestReplayItem | null): Record<string, string> {
             :class="{ 'matrix-row--selected': selectedStrategyId === row.strategyId }"
           >
             <td class="col-strategy sticky-col">
-              <span class="strategy-label" :title="row.strategyId">
+              <span class="strategy-label" :title="row.strategyLabel">
                 {{ row.strategyLabel || row.strategyId }}
               </span>
               <small class="family-tag">{{ row.methodFamily }}</small>
@@ -98,19 +86,15 @@ function getCellBgStyle(cell: BestReplayItem | null): Record<string, string> {
                 'matrix-cell--unavailable': !row.cells[count]?.isAvailable,
                 'matrix-cell--active': selectedTicketCount === count && selectedStrategyId === row.strategyId,
               }"
-              :style="getCellBgStyle(row.cells[count])"
               :tabindex="row.cells[count]?.isAvailable ? 0 : -1"
-              :title="
-                row.cells[count]?.isAvailable
-                  ? `${row.strategyId} (${count} Tickets): ${row.cells[count]?.hitRateFormatted} (Delta: ${row.cells[count]?.baselineDeltaFormatted})`
-                  : `${row.strategyId} (${count} Tickets): Evidence Unavailable`
-              "
+              :title="getCellTitle(row, count)"
               @click="emit('select-cell', row.strategyId, count)"
               @keydown.enter="emit('select-cell', row.strategyId, count)"
               @keydown.space.prevent="emit('select-cell', row.strategyId, count)"
             >
               <template v-if="row.cells[count]?.isAvailable">
                 <span class="cell-rate">{{ row.cells[count]?.hitRateFormatted }}</span>
+                <small class="cell-rank">Source #{{ row.cells[count]?.rank ?? 'Unavailable' }}</small>
                 <small
                   v-if="row.cells[count]?.baselineDeltaFormatted !== 'Unavailable'"
                   class="cell-delta"
@@ -124,6 +108,9 @@ function getCellBgStyle(cell: BestReplayItem | null): Record<string, string> {
               </template>
               <template v-else>
                 <span class="cell-unavailable" aria-label="Evidence Unavailable">—</span>
+                <small v-if="row.cells[count]?.rank !== null && row.cells[count]?.rank !== undefined" class="cell-rank">
+                  Source #{{ row.cells[count]?.rank }} · Rate unavailable
+                </small>
               </template>
             </td>
           </tr>
@@ -153,6 +140,13 @@ function getCellBgStyle(cell: BestReplayItem | null): Record<string, string> {
   flex-wrap: wrap;
   font-size: 12px;
   color: var(--text-secondary);
+}
+
+.matrix-scope-note {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 11px;
 }
 
 .legend-item {
@@ -288,6 +282,8 @@ function getCellBgStyle(cell: BestReplayItem | null): Record<string, string> {
 
 .matrix-cell--available {
   cursor: pointer;
+  background: rgba(124, 58, 237, 0.12);
+  border-color: rgba(139, 92, 246, 0.3);
 }
 
 .matrix-cell--available:hover,
@@ -314,6 +310,14 @@ function getCellBgStyle(cell: BestReplayItem | null): Record<string, string> {
   font-family: var(--font-mono);
   font-size: 11.5px;
   color: var(--text-primary);
+}
+
+.cell-rank {
+  display: block;
+  margin-top: 2px;
+  color: var(--text-secondary);
+  font-size: 9px;
+  font-family: var(--font-mono);
 }
 
 .cell-delta {

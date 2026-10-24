@@ -35,6 +35,7 @@ from lottolab.evidence import canonical_json
 
 CONTRACT_VERSION = "1.0.0"
 CONTRACT_VERSION_V2 = "2.0.0"
+CONTRACT_VERSION_V3 = "3.0.0"
 PORTFOLIO_TICKET_COUNT = 20
 _SYNTHETIC_PREFIX = "SYNTHETIC_"
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
@@ -330,8 +331,12 @@ def _validate_v2_numbers(
     main_numbers: tuple[int, ...],
     special_numbers: tuple[int, ...],
     lottery_type: HistoricalLotteryType,
+    special_number_count: int | None = None,
 ) -> None:
     mechanics = HISTORICAL_LOTTERY_MECHANICS[lottery_type]
+    expected_special_count = (
+        mechanics.special_number_count if special_number_count is None else special_number_count
+    )
     if len(main_numbers) != mechanics.main_number_count:
         raise ValueError(f"a {kind} must have exactly {mechanics.main_number_count} main numbers")
     if any(
@@ -343,10 +348,8 @@ def _validate_v2_numbers(
         )
     if mechanics.main_numbers_unique and len(set(main_numbers)) != len(main_numbers):
         raise ValueError("main numbers must be unique")
-    if len(special_numbers) != mechanics.special_number_count:
-        raise ValueError(
-            f"a {kind} must have exactly {mechanics.special_number_count} special number(s)"
-        )
+    if len(special_numbers) != expected_special_count:
+        raise ValueError(f"a {kind} must have exactly {expected_special_count} special number(s)")
     if special_numbers:
         if mechanics.special_number_min is None or mechanics.special_number_max is None:
             raise ValueError("special numbers are not supported for this lottery")
@@ -405,6 +408,55 @@ class HistoricalResultImportV2(BaseModel):
                     main_numbers=ticket.main_numbers,
                     special_numbers=ticket.special_numbers,
                     lottery_type=lottery_type,
+                )
+        return self
+
+
+class HistoricalResultImportV3(BaseModel):
+    """BIG_LOTTO six-number tickets; only the draw has a separate special number.
+
+    V1/V2 retain their legacy separate-zone semantics. V3 binds the corrected
+    semantics through contract_version in the canonical import identity.
+    """
+
+    model_config = _CLOSED
+
+    contract_version: Literal["3.0.0"]
+    generated_at: str = Field(min_length=1)
+    manifest_sha256: Sha256Hex
+    import_identity_sha256: Sha256Hex
+    source: _SourceWire
+    dataset: _DatasetWire
+    strategy_descriptors: tuple[_StrategyDescriptorWire, ...] = Field(min_length=1)
+    draw_snapshots: tuple[_DrawSnapshotWireV2, ...] = Field(min_length=1)
+    portfolios: tuple[_PortfolioWireV2, ...] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def _check_big_lotto_identities_and_numbers(self) -> HistoricalResultImportV3:
+        strategy_keys = [
+            (descriptor.strategy_id, descriptor.strategy_version, descriptor.replicate)
+            for descriptor in self.strategy_descriptors
+        ]
+        if len(strategy_keys) != len(set(strategy_keys)):
+            raise ValueError("strategy_descriptors contains a duplicate (id, version, replicate)")
+        draw_numbers = [draw.draw_number for draw in self.draw_snapshots]
+        if len(draw_numbers) != len(set(draw_numbers)):
+            raise ValueError("draw_snapshots contains a duplicate draw_number")
+        for draw in self.draw_snapshots:
+            _validate_v2_numbers(
+                kind="draw",
+                main_numbers=draw.main_numbers,
+                special_numbers=draw.special_numbers,
+                lottery_type=HistoricalLotteryType.BIG_LOTTO,
+            )
+        for portfolio in self.portfolios:
+            for ticket in portfolio.tickets:
+                _validate_v2_numbers(
+                    kind="ticket",
+                    main_numbers=ticket.main_numbers,
+                    special_numbers=ticket.special_numbers,
+                    lottery_type=HistoricalLotteryType.BIG_LOTTO,
+                    special_number_count=0,
                 )
         return self
 
@@ -544,7 +596,9 @@ def _compute_prefix_sha256_v2(ticket_hashes: list[str], lottery_type: Historical
     return canonical_json.sha256_hex(canonical_json.canonical_bytes(payload))
 
 
-def _compute_import_identity_sha256_v2(envelope: HistoricalResultImportV2) -> str:
+def _compute_import_identity_sha256_v2(
+    envelope: HistoricalResultImportV2 | HistoricalResultImportV3,
+) -> str:
     lottery_type = envelope.dataset.lottery_type
     strategy_identities = sorted(
         descriptor.descriptor_sha256 for descriptor in envelope.strategy_descriptors
@@ -658,7 +712,9 @@ def _build_domain_import(envelope: HistoricalResultImportV1) -> HistoricalRunImp
     )
 
 
-def _build_domain_import_v2(envelope: HistoricalResultImportV2) -> HistoricalRunImport:
+def _build_domain_import_v2(
+    envelope: HistoricalResultImportV2 | HistoricalResultImportV3,
+) -> HistoricalRunImport:
     source = HistoricalSourceDescriptor(
         source_kind=envelope.source.source_kind,
         source_repository=envelope.source.source_repository,
@@ -933,9 +989,17 @@ def _verify_v1_historical_import(raw: bytes) -> HistoricalImportVerificationResu
 
 def _verify_v2_historical_import(
     parsed: dict[str, Any],
+    *,
+    canonical_big_lotto: bool = False,
 ) -> HistoricalImportVerificationResult:
+    """Share hash/reference verification while explicitly versioning hit semantics."""
+    envelope: HistoricalResultImportV2 | HistoricalResultImportV3
     try:
-        envelope = HistoricalResultImportV2.model_validate(parsed)
+        envelope = (
+            HistoricalResultImportV3.model_validate(parsed)
+            if canonical_big_lotto
+            else HistoricalResultImportV2.model_validate(parsed)
+        )
     except ValidationError as exc:
         return _reject(
             HistoricalImportOutcome.IMPORT_INPUT_UNVERIFIED, field="root", message=str(exc)
@@ -1030,7 +1094,12 @@ def _verify_v2_historical_import(
         target_special = set(target.special_numbers)
         for ticket in tickets:
             recomputed_main_hits = len(set(ticket.main_numbers) & target_main)
-            recomputed_special_hit = bool(set(ticket.special_numbers) & target_special)
+            # BIG_LOTTO V3 scores the draw's special number among the six
+            # selected main numbers, matching score_big_lotto_ticket.
+            special_candidates = (
+                ticket.main_numbers if canonical_big_lotto else ticket.special_numbers
+            )
+            recomputed_special_hit = bool(set(special_candidates) & target_special)
             if (
                 recomputed_main_hits != ticket.main_hit_count
                 or recomputed_special_hit != ticket.special_hit
@@ -1079,7 +1148,7 @@ def _verify_v2_historical_import(
 
 
 def verify_and_normalize_historical_import(raw: bytes) -> HistoricalImportVerificationResult:
-    """Dispatch explicitly to the frozen V1 or multi-lottery V2 import contract."""
+    """Dispatch to legacy V1/V2 or canonical six-number BIG_LOTTO V3."""
 
     if type(raw) is not bytes:
         return _reject(
@@ -1105,6 +1174,8 @@ def verify_and_normalize_historical_import(raw: bytes) -> HistoricalImportVerifi
         return _verify_v1_historical_import(raw)
     if contract_version == CONTRACT_VERSION_V2:
         return _verify_v2_historical_import(parsed)
+    if contract_version == CONTRACT_VERSION_V3:
+        return _verify_v2_historical_import(parsed, canonical_big_lotto=True)
     return _reject(
         HistoricalImportOutcome.IMPORT_INPUT_UNVERIFIED,
         field="contract_version",

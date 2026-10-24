@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 
+import MultiWindowSuccessWindowsPanel from '../multiwindow-success/MultiWindowSuccessWindowsPanel.vue'
 import {
   getP638Metrics,
   getP638Rankings,
@@ -153,8 +154,45 @@ async function loadRankings(): Promise<void> {
   }
 }
 
-function formatRate(value: number): string {
-  return `${(value * 100).toFixed(1)}%`
+function isValidRate(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1
+}
+
+function isValidCount(value: unknown): value is number {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0
+}
+
+function formatRate(value: unknown): string {
+  return isValidRate(value) ? `${(value * 100).toFixed(1)}%` : 'Unavailable'
+}
+
+function formatFraction(numerator: unknown, denominator: unknown): string {
+  if (!isValidCount(numerator) || !isValidCount(denominator)) return 'Unavailable'
+  return `${formatCount(numerator)}/${formatCount(denominator)}`
+}
+
+function fractionUnavailableMessage(numerator: unknown, denominator: unknown): string {
+  if (!isValidCount(numerator) || !isValidCount(denominator)) {
+    return 'Count fraction unavailable: invalid count data.'
+  }
+  if (denominator === 0) return 'Count fraction unavailable: denominator is zero.'
+  if (numerator > denominator) return 'Count fraction unavailable: winning count exceeds denominator.'
+  return ''
+}
+
+function hasSourceRateCountMismatch(rate: unknown, numerator: unknown, denominator: unknown): boolean {
+  if (
+    !isValidRate(rate) ||
+    !isValidCount(numerator) ||
+    !isValidCount(denominator) ||
+    denominator === 0 ||
+    numerator > denominator
+  ) {
+    return false
+  }
+  // Rates are shown to one decimal place, so differences within half of that
+  // percentage-point step are consistent with the displayed precision.
+  return Math.abs(rate - numerator / denominator) > 0.0005
 }
 
 function formatTierCounts(items: Array<{ prize_tier: string; count: number }>): string {
@@ -191,8 +229,8 @@ function isAbort(error: unknown): boolean {
   return (error instanceof DOMException || error instanceof Error) && error.name === 'AbortError'
 }
 
-function formatCount(value: number): string {
-  return value.toLocaleString()
+function formatCount(value: unknown): string {
+  return isValidCount(value) ? value.toLocaleString() : 'Unavailable'
 }
 
 function distributionText(items: Array<{ value: number; count: number }>): string {
@@ -273,8 +311,42 @@ onBeforeUnmount(() => {
               <td>{{ row.native_ticket_count }}</td>
               <td>{{ formatCount(row.eligible_target_count) }}</td>
               <td>{{ formatCount(row.winning_target_count) }}</td>
-              <td>{{ formatRate(row.winning_target_rate) }}</td>
-              <td>{{ formatRate(row.ticket_winning_rate) }}</td>
+              <td>
+                {{ formatRate(row.winning_target_rate) }}
+                <small>({{ formatFraction(row.winning_target_count, row.eligible_target_count) }})</small>
+                <small
+                  v-if="fractionUnavailableMessage(row.winning_target_count, row.eligible_target_count)"
+                  class="table-note"
+                  role="status"
+                >
+                  {{ fractionUnavailableMessage(row.winning_target_count, row.eligible_target_count) }}
+                </small>
+                <small
+                  v-if="hasSourceRateCountMismatch(row.winning_target_rate, row.winning_target_count, row.eligible_target_count)"
+                  class="table-note source-rate-mismatch"
+                  role="status"
+                >
+                  Source rate/count mismatch
+                </small>
+              </td>
+              <td>
+                {{ formatRate(row.ticket_winning_rate) }}
+                <small>({{ formatFraction(row.winning_ticket_count, row.total_complete_ticket_count) }})</small>
+                <small
+                  v-if="fractionUnavailableMessage(row.winning_ticket_count, row.total_complete_ticket_count)"
+                  class="table-note"
+                  role="status"
+                >
+                  {{ fractionUnavailableMessage(row.winning_ticket_count, row.total_complete_ticket_count) }}
+                </small>
+                <small
+                  v-if="hasSourceRateCountMismatch(row.ticket_winning_rate, row.winning_ticket_count, row.total_complete_ticket_count)"
+                  class="table-note source-rate-mismatch"
+                  role="status"
+                >
+                  Source rate/count mismatch
+                </small>
+              </td>
               <td>{{ row.highest_prize_tier_achieved ?? 'No wins' }}</td>
               <td><small>{{ formatTierCounts(row.prize_tier_counts) }}</small></td>
             </tr>
@@ -294,6 +366,8 @@ onBeforeUnmount(() => {
         <label class="filter-field"><span>Historical run</span><select v-model="selectedRunId" @change="loadSelectedRun(selectedRunId)"><option v-for="run in runsPage.items" :key="run.run_id" :value="run.run_id">{{ run.run_id }} · {{ run.source_run_id }}</option></select></label>
         <p v-if="selectedRun" class="panel__note">Source replay <code>{{ selectedRun.source_replay_sha256 }}</code> · draw authority <code>{{ selectedRun.source_draw_db_sha256 }}</code> · SSOT <code>{{ selectedRun.second_zone_ssot_version }}</code></p>
       </article>
+
+      <MultiWindowSuccessWindowsPanel lottery="P638" :run-id="selectedRunId" />
 
       <div v-if="metricsState === 'loading'" class="state-panel">Loading aggregate P638 statistics…</div>
       <div v-else-if="metricsState === 'unavailable' || metricsState === 'error'" class="state-panel state-panel--error"><p>{{ metricsMessage }}</p><button class="button button--quiet" type="button" @click="loadSelectedRun(selectedRunId)">Retry</button></div>

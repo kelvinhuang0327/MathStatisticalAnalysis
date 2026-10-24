@@ -28,6 +28,7 @@ from lottolab.domain.lottery_rules import (
     BigLottoPrizeTierId,
     NoPrizeResult,
     resolve_big_lotto_prize_tier,
+    score_big_lotto_ticket,
 )
 
 RESULT_SCHEMA_VERSION = "1.0.0"
@@ -333,6 +334,21 @@ def _validate_input(
                 raise _input_error(
                     "ticket has a hit signature rejected by the canonical prize resolver"
                 ) from exc
+            target = draws[portfolio.target_draw_number]
+            if len(target.special_numbers) != 1:
+                raise _input_error("target draw must contain exactly one special number")
+            try:
+                score = score_big_lotto_ticket(
+                    predicted_main_numbers=ticket.main_numbers,
+                    winning_main_numbers=target.main_numbers,
+                    winning_special_number=target.special_numbers[0],
+                )
+            except (TypeError, ValueError) as exc:
+                raise _input_error(
+                    "ticket or target rejected by canonical BIG_LOTTO scoring"
+                ) from exc
+            if (ticket.main_hit_count, ticket.special_hit) != (score.main_hits, score.special_hit):
+                raise _input_error("ticket hit values do not match canonical BIG_LOTTO scoring")
 
     return descriptors, draws
 

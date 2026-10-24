@@ -248,3 +248,16 @@ def test_invalid_canonical_prize_signature_is_a_typed_atomic_input_failure() -> 
         match="canonical prize resolver",
     ):
         analyze_historical_prefixes(build_run_import(portfolios=(portfolio,)))
+
+
+@pytest.mark.parametrize("field", ["main_hit_count", "special_hit"])
+def test_prefix_validates_all_twenty_tickets_against_canonical_scoring(field: str) -> None:
+    run_import = build_run_import()
+    portfolio = run_import.portfolios[0]
+    bad_ticket = replace(portfolio.tickets[-1], **{field: 1 if field == "main_hit_count" else True})
+    modified = replace(
+        run_import,
+        portfolios=(replace(portfolio, tickets=(*portfolio.tickets[:-1], bad_ticket)),),
+    )
+    with pytest.raises(HistoricalPrefixAnalyticsInputError, match="canonical BIG_LOTTO scoring"):
+        analyze_historical_prefixes(modified)

@@ -200,8 +200,8 @@ describe('B649MultiTicketRecordsPage', () => {
     })
     expect(wrapper.text()).toContain('legacy_strategy_a')
     expect(wrapper.text()).toContain('9 / 300')
-    expect(wrapper.text()).toContain('3.000000%')
-    expect(wrapper.text()).toContain('+1.000000 pp')
+    expect(wrapper.text()).toContain('3%')
+    expect(wrapper.text()).toContain('+1 pp')
     expect(wrapper.text()).toContain('2972')
     expect(wrapper.get('table').attributes()).toBeDefined()
     expect(wrapper.get('.records-table-scroll').attributes('tabindex')).toBe('0')
@@ -256,6 +256,270 @@ describe('B649MultiTicketRecordsPage', () => {
 
     expect(wrapper.text()).toContain('new_result')
     expect(wrapper.text()).not.toContain('stale_result')
+    wrapper.unmount()
+  })
+
+  it('uses raw execution counts and the source rates for each distinct success event', async () => {
+    const expected = {
+      ...record('nine-of-forty-eight'),
+      official_any_prize_count: 3,
+      official_any_prize_rate: '0.062500000000000000',
+      success_count: 9,
+      effective_backtest_draw_count: 16,
+      successful_execution_count: 48,
+      historical_success_rate: '0.187500000000000000',
+    }
+    const sourceRate = {
+      ...record('source-rates-are-authoritative'),
+      official_any_prize_count: 2,
+      official_any_prize_rate: '0.050000000000000000',
+      success_count: 9,
+      effective_backtest_draw_count: 16,
+      successful_execution_count: 48,
+      historical_success_rate: '0.125000000000000000',
+    }
+    fetchMock
+      .mockResolvedValueOnce(apiResponse(summary()))
+      .mockResolvedValueOnce(apiResponse(page([expected, sourceRate])))
+    const wrapper = mount(B649MultiTicketRecordsPage)
+    await flushPromises()
+    await selectRequiredConditions(wrapper)
+    await wrapper.get('form.records-query').trigger('submit')
+    await flushPromises()
+
+    const rows = wrapper.get('tbody').findAll('tr')
+    const expectedCells = rows[0]!.findAll('td').map((cell) => cell.text().trim())
+    const sourceCells = rows[1]!.findAll('td').map((cell) => cell.text().trim())
+    expect(expectedCells[5]).toBe('3 / 48')
+    expect(expectedCells[6]).toBe('6.25%')
+    expect(expectedCells[10]).toBe('9 / 48')
+    expect(expectedCells[11]).toBe('18.75%')
+    expect(expectedCells[10]).not.toBe('9 / 16')
+    expect(sourceCells[6]).toBe('5%')
+    expect(sourceCells[11]).toBe('12.5%')
+    wrapper.unmount()
+  })
+
+  it('distinguishes zero observations, observed zero success, and null metrics', async () => {
+    const zeroZero = {
+      ...record('zero-of-zero'),
+      official_any_prize_count: 0,
+      official_any_prize_rate: '0.000000000000000000',
+      success_count: 0,
+      effective_backtest_draw_count: 1,
+      successful_execution_count: 0,
+      historical_success_rate: '0.000000000000000000',
+      official_random_baseline_delta: '0.100000000000000000',
+      random_baseline_rate_difference: '0.100000000000000000',
+    }
+    const zeroObserved = {
+      ...record('zero-of-twelve'),
+      official_any_prize_count: 0,
+      official_any_prize_rate: '0.000000000000000000',
+      success_count: 0,
+      effective_backtest_draw_count: 1,
+      successful_execution_count: 12,
+      historical_success_rate: '0.000000000000000000',
+    }
+    const nullNumerator = {
+      ...record('missing-numerator'),
+      official_any_prize_count: null,
+      official_any_prize_rate: null,
+      success_count: null,
+      effective_backtest_draw_count: null,
+      successful_execution_count: 12,
+      historical_success_rate: null,
+    }
+    const nullDenominator = {
+      ...record('missing-denominator'),
+      official_any_prize_count: 3,
+      official_any_prize_rate: '0.250000000000000000',
+      success_count: 9,
+      effective_backtest_draw_count: 16,
+      successful_execution_count: null,
+      historical_success_rate: '0.500000000000000000',
+    }
+    fetchMock
+      .mockResolvedValueOnce(apiResponse(summary()))
+      .mockResolvedValueOnce(
+        apiResponse(page([zeroZero, zeroObserved, nullNumerator, nullDenominator])),
+      )
+    const wrapper = mount(B649MultiTicketRecordsPage)
+    await flushPromises()
+    await selectRequiredConditions(wrapper)
+    await wrapper.get('form.records-query').trigger('submit')
+    await flushPromises()
+
+    const rows = wrapper.get('tbody').findAll('tr')
+    const cells = rows.map((row) => row.findAll('td').map((cell) => cell.text().trim()))
+    expect(cells[0]![5]).toBe('0 / 0')
+    expect(cells[0]![6]).toBe('—')
+    expect(cells[0]![8]).toBe('—')
+    expect(cells[0]![10]).toBe('0 / 0')
+    expect(cells[0]![11]).toBe('—')
+    expect(cells[0]![13]).toBe('—')
+    expect(cells[1]![5]).toBe('0 / 12')
+    expect(cells[1]![6]).toBe('0%')
+    expect(cells[1]![10]).toBe('0 / 12')
+    expect(cells[1]![11]).toBe('0%')
+    expect(cells[2]![5]).toBe('—')
+    expect(cells[2]![10]).toBe('—')
+    expect(cells[3]![5]).toBe('—')
+    expect(cells[3]![6]).toBe('—')
+    expect(cells[3]![10]).toBe('—')
+    expect(cells[3]![11]).toBe('—')
+    wrapper.unmount()
+  })
+
+  it('preserves positive, negative, and zero deltas and all strategy identities', async () => {
+    const positive = {
+      ...record('positive-delta'),
+      official_random_baseline_delta: '0.010000000000000000',
+      random_baseline_rate_difference: '0.020000000000000000',
+    }
+    const negative = {
+      ...record('negative-delta'),
+      official_random_baseline_delta: '-0.010000000000000000',
+      random_baseline_rate_difference: '-0.020000000000000000',
+    }
+    const zero = {
+      ...record('zero-delta'),
+      official_random_baseline_delta: '0.000000000000000000',
+      random_baseline_rate_difference: '0.000000000000000000',
+    }
+    const tinyPositive = {
+      ...record('tiny-positive-delta'),
+      official_random_baseline_delta: '0.000000000000000001',
+      random_baseline_rate_difference: '0.000000000000000001',
+    }
+    const tinyNegative = {
+      ...record('tiny-negative-delta'),
+      official_random_baseline_delta: '-0.000000000000000001',
+      random_baseline_rate_difference: '-0.000000000000000001',
+    }
+    const closed = {
+      ...record('closed-unexecutable'),
+      reproduction_status: 'CLOSED_UNEXECUTABLE',
+      official_rank: null,
+      rank: null,
+      official_any_prize_count: null,
+      official_any_prize_rate: null,
+      successful_execution_count: null,
+      success_count: null,
+      effective_backtest_draw_count: null,
+      historical_success_rate: null,
+      unranked_reason: 'CLOSED_BY_OWNER',
+    }
+    const alias = {
+      ...record('duplicate-alias'),
+      reproduction_status: 'DUPLICATE_ALIAS',
+      duplicate_alias_target: 'backtested-target',
+      official_rank: null,
+      rank: null,
+      official_any_prize_count: null,
+      official_any_prize_rate: null,
+      successful_execution_count: null,
+      success_count: null,
+      effective_backtest_draw_count: null,
+      historical_success_rate: null,
+      unranked_reason: 'DUPLICATE_OF_BACKTESTED_TARGET',
+    }
+    fetchMock
+      .mockResolvedValueOnce(apiResponse(summary()))
+      .mockResolvedValueOnce(apiResponse(page([positive, negative, zero, tinyPositive, tinyNegative, closed, alias])))
+    const wrapper = mount(B649MultiTicketRecordsPage)
+    await flushPromises()
+    await selectRequiredConditions(wrapper)
+    await wrapper.get('form.records-query').trigger('submit')
+    await flushPromises()
+
+    const rows = wrapper.get('tbody').findAll('tr')
+    const cells = rows.map((row) => row.findAll('td').map((cell) => cell.text().trim()))
+    expect(cells[0]![8]).toBe('+1 pp')
+    expect(cells[0]![13]).toBe('+2 pp')
+    expect(cells[1]![8]).toBe('-1 pp')
+    expect(cells[1]![13]).toBe('-2 pp')
+    expect(cells[2]![8]).toBe('0 pp')
+    expect(cells[2]![13]).toBe('0 pp')
+    expect(cells[3]![8]).toBe('+0.0000000000000001 pp')
+    expect(cells[3]![13]).toBe('+0.0000000000000001 pp')
+    expect(cells[4]![8]).toBe('-0.0000000000000001 pp')
+    expect(cells[4]![13]).toBe('-0.0000000000000001 pp')
+    expect(rows).toHaveLength(7)
+    expect(rows[5]!.text()).toContain('CLOSED_UNEXECUTABLE')
+    expect(rows[5]!.text()).toContain('CLOSED_BY_OWNER')
+    expect(cells[5]![6]).toBe('—')
+    expect(cells[5]![11]).toBe('—')
+    expect(rows[6]!.text()).toContain('DUPLICATE_ALIAS')
+    expect(rows[6]!.text()).toContain('backtested-target')
+    expect(rows[6]!.text()).toContain('DUPLICATE_OF_BACKTESTED_TARGET')
+    expect(cells[6]![6]).toBe('—')
+    expect(cells[6]![11]).toBe('—')
+    wrapper.unmount()
+  })
+
+  it('keeps an ordinary empty result separate from an HTTP 503 unavailable response', async () => {
+    fetchMock
+      .mockResolvedValueOnce(apiResponse(summary()))
+      .mockResolvedValueOnce(apiResponse(page([], 0)))
+      .mockResolvedValueOnce(
+        apiResponse(
+          {
+            error_code: 'B649_MULTI_TICKET_RECORDS_UNAVAILABLE',
+            message: 'projection is unavailable',
+          },
+          503,
+        ),
+      )
+    const wrapper = mount(B649MultiTicketRecordsPage)
+    await flushPromises()
+    await selectRequiredConditions(wrapper)
+    await wrapper.get('form.records-query').trigger('submit')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('No matching strategies found')
+    expect(wrapper.text()).not.toContain('Aggregate historical records are currently unavailable')
+
+    await wrapper.get('form.records-query').trigger('submit')
+    await flushPromises()
+    expect(wrapper.text()).toContain('Aggregate historical records are currently unavailable')
+    expect(wrapper.text()).toContain('projection is unavailable')
+    wrapper.unmount()
+  })
+
+  it('keeps explicit K, window, and criterion selections through next and previous pages', async () => {
+    fetchMock
+      .mockResolvedValueOnce(apiResponse(summary()))
+      .mockResolvedValueOnce(apiResponse(page([record('first-page')], 26, 0)))
+      .mockResolvedValueOnce(apiResponse(page([record('second-page')], 26, 25)))
+      .mockResolvedValueOnce(apiResponse(page([record('first-page-again')], 26, 0)))
+    const wrapper = mount(B649MultiTicketRecordsPage)
+    await flushPromises()
+    await selectRequiredConditions(wrapper)
+    await wrapper.get('form.records-query').trigger('submit')
+    await flushPromises()
+
+    await wrapper.get('.records-pagination button:last-child').trigger('click')
+    await flushPromises()
+    expect(wrapper.text()).toContain('second-page')
+    const nextRequest = new URL(String(fetchMock.mock.calls[2]?.[0]), 'http://localhost')
+    expect(Object.fromEntries(nextRequest.searchParams)).toMatchObject({
+      prefix_count: '10',
+      window: 'RECENT_300',
+      criterion: 'M4_PLUS',
+      offset: '25',
+    })
+
+    await wrapper.get('.records-pagination button:first-child').trigger('click')
+    await flushPromises()
+    expect(wrapper.text()).toContain('first-page-again')
+    const previousRequest = new URL(String(fetchMock.mock.calls[3]?.[0]), 'http://localhost')
+    expect(Object.fromEntries(previousRequest.searchParams)).toMatchObject({
+      prefix_count: '10',
+      window: 'RECENT_300',
+      criterion: 'M4_PLUS',
+      offset: '0',
+    })
     wrapper.unmount()
   })
 })

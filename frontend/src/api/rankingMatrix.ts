@@ -15,11 +15,13 @@ import {
 import {
   listP638Runs,
   getP638Rankings,
+  P638HistoricalRequestError,
   type P638Ranking,
 } from './p638Historical'
 import {
   listT539Runs,
   getT539Rankings,
+  T539HistoricalRequestError,
   type T539Ranking,
 } from './t539Historical'
 import {
@@ -71,6 +73,8 @@ export interface RankingRow {
   rawRank?: number | null
   position?: number | null
   requestedDraws?: number
+  sourceWindow?: RankingWindow | null
+  sourceRun?: RankingSourceRun
   strategyId: string
   displayName: string
   strategyVersion: string
@@ -92,6 +96,16 @@ export interface RankingRow {
   warningCodes: string[]
   isAvailable: boolean
   unrankedReason: string | null
+}
+
+export interface RankingSourceRun {
+  runId: string
+  status: string
+  firstDraw: string | null
+  firstDrawDate: string | null
+  lastDraw: string | null
+  lastDrawDate: string | null
+  drawCount: number
 }
 
 export interface MatrixCell {
@@ -288,6 +302,11 @@ export const WARNING_CODE_METADATA: Record<string, { label: string; description:
     label: '預測產出已封存',
     description: '策略產出已固化，無動態產生器。',
     severity: 'info',
+  },
+  WINDOW_SOURCE_UNVERIFIED: {
+    label: '窗口來源未驗證',
+    description: '上游 Run 未提供可驗證的 FULL 或近期窗口身份；此結果只描述該 Run。',
+    severity: 'warning',
   },
 }
 
@@ -639,58 +658,75 @@ async function loadP638RankingRows(
   window: RankingWindow,
   signal?: AbortSignal,
 ): Promise<RankingRow[]> {
-  try {
-    const runsPage = await listP638Runs({ limit: 5, offset: 0 }, signal)
-    if (!runsPage.items.length) return []
-    const latestRun = runsPage.items[0]
-    if (!latestRun) return []
-
-    const rankingPage = await getP638Rankings(latestRun.run_id, signal)
-    return rankingPage.items.map((r: P638Ranking): RankingRow => {
-      const isAvailable = (ticketCount as number) === r.native_ticket_count
-      const rateNum = isAvailable ? r.winning_target_rate : null
-      const successes = isAvailable ? r.winning_target_count : null
-      const observations = isAvailable ? r.eligible_target_count : null
-
-      const comp = deriveComparabilityStatus(
-        isAvailable,
-        'BACKTESTED',
-        null,
-        observations,
-        window,
-      )
-
-      return {
-        lotteryType: 'POWER_LOTTO',
-        ticketCount,
-        window,
-        officialRank: isAvailable ? r.rank : null,
-        strategyId: r.strategy_id,
-        displayName: r.strategy_id,
-        strategyVersion: r.strategy_version,
-        methodFamily: 'p638_native',
-        lifecycleStatus: 'ONLINE',
-        successes,
-        observations,
-        officialAnyPrizeRate: rateNum,
-        officialAnyPrizeRateFormatted: formatRatePercentage(rateNum),
-        coverage: isAvailable ? 1.0 : null,
-        coverageFormatted: isAvailable ? '100.00%' : 'Unavailable',
-        baselineRate: null,
-        baselineRateFormatted: 'Unavailable',
-        baselineDelta: null,
-        baselineDeltaFormatted: 'Unavailable',
-        bestOfficialPrize: r.highest_prize_tier_achieved || '無中獎',
-        comparabilityStatus: comp.status,
-        comparabilityLabel: comp.label,
-        warningCodes: isAvailable ? [] : ['UNAVAILABLE_TICKET_COUNT'],
-        isAvailable,
-        unrankedReason: null,
-      }
-    })
-  } catch {
-    return []
+  const runsPage = await listP638Runs({ limit: 25, offset: 0 }, signal)
+  if (!runsPage.items.length) return []
+  const run = runsPage.items.find((candidate) => candidate.status === 'COMPLETE')
+  if (!run) {
+    throw new P638HistoricalRequestError(
+      'UNAVAILABLE',
+      'P638 Historical Results has no completed run available.',
+      503,
+    )
   }
+
+  const rankingPage = await getP638Rankings(run.run_id, signal)
+  if (rankingPage.run_id !== run.run_id || rankingPage.items.some((row) => row.run_id !== run.run_id)) {
+    throw new P638HistoricalRequestError(
+      'MALFORMED_RESPONSE',
+      'P638 Historical Results returned an unexpected response.',
+    )
+  }
+
+  const sourceRun: RankingSourceRun = {
+    runId: run.run_id,
+    status: run.status,
+    firstDraw: run.first_draw_number,
+    firstDrawDate: run.first_draw_date,
+    lastDraw: run.last_draw_number,
+    lastDrawDate: run.last_draw_date,
+    drawCount: run.draw_count,
+  }
+
+  return rankingPage.items.map((r: P638Ranking): RankingRow => {
+    const ticketCountMatches = ticketCount === r.native_ticket_count
+    const successes = ticketCountMatches ? r.winning_target_count : null
+    const observations = ticketCountMatches ? r.eligible_target_count : null
+    const rateNum = observations !== null && observations > 0 ? r.winning_target_rate : null
+
+    return {
+      lotteryType: 'POWER_LOTTO',
+      ticketCount,
+      window,
+      sourceWindow: null,
+      sourceRun,
+      officialRank: ticketCountMatches ? r.rank : null,
+      rawRank: r.rank,
+      strategyId: r.strategy_id,
+      displayName: r.strategy_id,
+      strategyVersion: r.strategy_version,
+      methodFamily: 'p638_native',
+      lifecycleStatus: 'ONLINE',
+      successes,
+      observations,
+      officialAnyPrizeRate: rateNum,
+      officialAnyPrizeRateFormatted: formatRatePercentage(rateNum),
+      coverage: null,
+      coverageFormatted: 'Unavailable',
+      baselineRate: null,
+      baselineRateFormatted: 'Unavailable',
+      baselineDelta: null,
+      baselineDeltaFormatted: 'Unavailable',
+      bestOfficialPrize: r.highest_prize_tier_achieved || '無中獎',
+      comparabilityStatus: 'UNAVAILABLE',
+      comparabilityLabel: '窗口來源未驗證 (Window Source Unavailable)',
+      warningCodes: [
+        ...(ticketCountMatches ? [] : ['UNAVAILABLE_TICKET_COUNT']),
+        'WINDOW_SOURCE_UNVERIFIED',
+      ],
+      isAvailable: false,
+      unrankedReason: null,
+    }
+  })
 }
 
 async function loadT539RankingRows(
@@ -698,58 +734,75 @@ async function loadT539RankingRows(
   window: RankingWindow,
   signal?: AbortSignal,
 ): Promise<RankingRow[]> {
-  try {
-    const runsPage = await listT539Runs({ limit: 5, offset: 0 }, signal)
-    if (!runsPage.items.length) return []
-    const latestRun = runsPage.items[0]
-    if (!latestRun) return []
-
-    const rankingPage = await getT539Rankings(latestRun.run_id, signal)
-    return rankingPage.items.map((r: T539Ranking): RankingRow => {
-      const isAvailable = (ticketCount as number) === r.native_ticket_count
-      const rateNum = isAvailable ? r.winning_target_rate : null
-      const successes = isAvailable ? r.winning_target_count : null
-      const observations = isAvailable ? r.eligible_target_count : null
-
-      const comp = deriveComparabilityStatus(
-        isAvailable,
-        'BACKTESTED',
-        null,
-        observations,
-        window,
-      )
-
-      return {
-        lotteryType: 'DAILY_539',
-        ticketCount,
-        window,
-        officialRank: isAvailable ? r.rank : null,
-        strategyId: r.strategy_id,
-        displayName: r.strategy_id,
-        strategyVersion: r.strategy_version,
-        methodFamily: 't539_native',
-        lifecycleStatus: 'ONLINE',
-        successes,
-        observations,
-        officialAnyPrizeRate: rateNum,
-        officialAnyPrizeRateFormatted: formatRatePercentage(rateNum),
-        coverage: isAvailable ? 1.0 : null,
-        coverageFormatted: isAvailable ? '100.00%' : 'Unavailable',
-        baselineRate: null,
-        baselineRateFormatted: 'Unavailable',
-        baselineDelta: null,
-        baselineDeltaFormatted: 'Unavailable',
-        bestOfficialPrize: r.highest_prize_tier_achieved || '無中獎',
-        comparabilityStatus: comp.status,
-        comparabilityLabel: comp.label,
-        warningCodes: isAvailable ? [] : ['UNAVAILABLE_TICKET_COUNT'],
-        isAvailable,
-        unrankedReason: null,
-      }
-    })
-  } catch {
-    return []
+  const runsPage = await listT539Runs({ limit: 25, offset: 0 }, signal)
+  if (!runsPage.items.length) return []
+  const run = runsPage.items.find((candidate) => candidate.status === 'COMPLETE')
+  if (!run) {
+    throw new T539HistoricalRequestError(
+      'UNAVAILABLE',
+      'T539 Historical Results has no completed run available.',
+      503,
+    )
   }
+
+  const rankingPage = await getT539Rankings(run.run_id, signal)
+  if (rankingPage.run_id !== run.run_id || rankingPage.items.some((row) => row.run_id !== run.run_id)) {
+    throw new T539HistoricalRequestError(
+      'MALFORMED_RESPONSE',
+      'T539 Historical Results returned an unexpected response.',
+    )
+  }
+
+  const sourceRun: RankingSourceRun = {
+    runId: run.run_id,
+    status: run.status,
+    firstDraw: run.first_draw_id,
+    firstDrawDate: run.first_draw_date,
+    lastDraw: run.last_draw_id,
+    lastDrawDate: run.last_draw_date,
+    drawCount: run.draw_count,
+  }
+
+  return rankingPage.items.map((r: T539Ranking): RankingRow => {
+    const ticketCountMatches = ticketCount === r.native_ticket_count
+    const successes = ticketCountMatches ? r.winning_target_count : null
+    const observations = ticketCountMatches ? r.eligible_target_count : null
+    const rateNum = observations !== null && observations > 0 ? r.winning_target_rate : null
+
+    return {
+      lotteryType: 'DAILY_539',
+      ticketCount,
+      window,
+      sourceWindow: null,
+      sourceRun,
+      officialRank: ticketCountMatches ? r.rank : null,
+      rawRank: r.rank,
+      strategyId: r.strategy_id,
+      displayName: r.strategy_id,
+      strategyVersion: r.strategy_version,
+      methodFamily: 't539_native',
+      lifecycleStatus: 'ONLINE',
+      successes,
+      observations,
+      officialAnyPrizeRate: rateNum,
+      officialAnyPrizeRateFormatted: formatRatePercentage(rateNum),
+      coverage: null,
+      coverageFormatted: 'Unavailable',
+      baselineRate: null,
+      baselineRateFormatted: 'Unavailable',
+      baselineDelta: null,
+      baselineDeltaFormatted: 'Unavailable',
+      bestOfficialPrize: r.highest_prize_tier_achieved || '無中獎',
+      comparabilityStatus: 'UNAVAILABLE',
+      comparabilityLabel: '窗口來源未驗證 (Window Source Unavailable)',
+      warningCodes: [
+        ...(ticketCountMatches ? [] : ['UNAVAILABLE_TICKET_COUNT']),
+        'WINDOW_SOURCE_UNVERIFIED',
+      ],
+      isAvailable: false,
+      unrankedReason: null,
+    }
+  })
 }
 
 /**

@@ -5,6 +5,7 @@ import {
   fetchB649CanonicalForecast,
   type B649CanonicalForecast,
 } from '../../api/b649CanonicalForecast'
+import FullStrategyBacktestArchive from './FullStrategyBacktestArchive.vue'
 import {
   filterStrategyResearchRows,
   fetchStrategyResearchRows,
@@ -12,6 +13,7 @@ import {
   formatResearchCount,
   formatResearchDelta,
   formatResearchRate,
+  hasValidBaselineComparison,
   isAboveRandomBaseline,
   STRATEGY_RESEARCH_K_VALUES,
   STRATEGY_RESEARCH_WINDOWS,
@@ -169,7 +171,7 @@ onBeforeUnmount(() => {
       </div>
 
       <p class="research-note">
-        高於基準只表示同一事件來源中的 delta &gt; 0，且成功率與基準均有有效來源。這是描述性比較，不是顯著性或 OOS 預測證據。
+        高於基準只表示同一事件來源中，分子與正整數分母有效、來源可比較，且實際率、隨機基準與差值有效並有 delta &gt; 0。這是描述性比較，不是顯著性或 OOS 預測證據。
       </p>
 
       <p v-if="historyState === 'loading'" class="state-message" role="status">
@@ -243,7 +245,10 @@ onBeforeUnmount(() => {
                 <span :class="['status-tag', row.isAvailable ? 'status-tag--available' : 'status-tag--unavailable']">
                   {{ row.isAvailable ? '指標可用' : '指標不可用' }}
                 </span>
-                <small>{{ row.comparabilityLabel }} · {{ row.comparabilityStatus }}</small>
+                <small>
+                  {{ hasValidBaselineComparison(row) ? row.comparabilityLabel : '未構成有效基準比較' }}
+                  · {{ row.comparabilityStatus }}
+                </small>
               </td>
               <td>
                 <ul v-if="row.warningCodes.length" class="warning-list">
@@ -283,6 +288,8 @@ onBeforeUnmount(() => {
         <p>目前沒有具備完整策略 ID 與版本關聯的專屬預測來源。共識票券不會指派給所選策略。</p>
       </section>
     </section>
+
+    <FullStrategyBacktestArchive />
 
     <section class="research-panel consensus-panel" aria-labelledby="consensus-forecast-title">
       <div class="panel-heading">

@@ -10,9 +10,12 @@ import App from '../src/App.vue'
 import B649CurrentForecastPage from '../src/features/b649-current-forecast/B649CurrentForecastPage.vue'
 import StrategyForecastResearchPage from '../src/features/strategy-forecast-research/StrategyForecastResearchPage.vue'
 import {
+  fetchStrategyResearchRows,
   formatActualRateForDisplay,
+  hasValidBaselineComparison,
   isAboveRandomBaseline,
   toStrategyResearchRows,
+  type StrategyResearchRow,
 } from '../src/features/strategy-forecast-research/model'
 
 const api = vi.hoisted(() => ({
@@ -124,6 +127,13 @@ function recordPage(
   }
 }
 
+function strategyResearchRow(overrides: Partial<StrategyResearchRow> = {}): StrategyResearchRow {
+  return {
+    ...toStrategyResearchRows([rankingRow()], 5, 'FULL')[0],
+    ...overrides,
+  }
+}
+
 function tickets(count: number) {
   return Array.from({ length: count }, (_, index) => ({
     ticket_position: index + 1,
@@ -203,6 +213,43 @@ describe('StrategyForecastResearchPage', () => {
     expect(row.text()).not.toContain('90.00%')
     expect(row.text()).not.toContain('+10.00%')
     wrapper.unmount()
+  })
+
+  it('uses successful execution count rather than the effective ratio denominator for K15 M3_PLUS', async () => {
+    api.fetchB649MultiTicketRecords.mockResolvedValue(recordPage([
+      multiRecord({
+        success_count: 9,
+        effective_backtest_draw_count: 16,
+        successful_execution_count: 48,
+        historical_success_rate: '0.187500000000000000',
+        random_baseline_success_rate: '0.170000000000000000',
+        random_baseline_rate_difference: '0.017500000000000000',
+      }),
+    ]))
+    const wrapper = mount(StrategyForecastResearchPage)
+    await flushPromises()
+    await wrapper.get('select[aria-label="票券數 K"]').setValue('15')
+    await flushPromises()
+
+    const row = wrapper.get('[data-testid="history-row-strat_m3"]')
+    expect(row.text()).toContain('9 / 48')
+    expect(row.text()).not.toContain('9 / 16')
+    expect(row.text()).toContain('18.75%')
+    expect(row.text()).toContain('17.00%')
+    expect(row.text()).toContain('+1.75%')
+    wrapper.unmount()
+  })
+
+  it('rejects K15 source metrics explicitly marked unavailable', async () => {
+    api.fetchB649MultiTicketRecords.mockResolvedValue(recordPage([
+      multiRecord({ metrics_unavailable_reason: 'METRICS_UNAVAILABLE', random_baseline_rate_difference: '0.05' }),
+    ]))
+    const [row] = await fetchStrategyResearchRows(15, 'FULL')
+
+    expect(row?.eventCriterion).toBe('M3_PLUS')
+    expect(row?.warningCodes).toContain('METRICS_UNAVAILABLE')
+    expect(row?.isAvailable).toBe(false)
+    expect(isAboveRandomBaseline(row!)).toBe(false)
   })
 
   it('loads every K15 source page and retains every matching strategy', async () => {
@@ -304,6 +351,75 @@ describe('StrategyForecastResearchPage', () => {
     wrapper.unmount()
   })
 
+  it.each([
+    ['a missing denominator', { denominator: null }],
+    ['an undefined denominator', { denominator: undefined as unknown as null }],
+    ['a zero denominator', { denominator: 0 }],
+    ['a negative denominator', { denominator: -1 }],
+    ['a fractional denominator', { denominator: 1.5 }],
+    ['a NaN denominator', { denominator: Number.NaN }],
+    ['an infinite denominator', { denominator: Number.POSITIVE_INFINITY }],
+    ['a missing numerator', { numerator: null }],
+    ['an undefined numerator', { numerator: undefined as unknown as null }],
+    ['a negative numerator', { numerator: -1 }],
+    ['a fractional numerator', { numerator: 1.5 }],
+    ['a numerator above the denominator', { numerator: 101 }],
+    ['an unavailable source', { isAvailable: false }],
+    ['a non-comparable source', { comparabilityStatus: 'NOT_HISTORICALLY_COMPARABLE' }],
+    ['an unavailable comparability status', { comparabilityStatus: 'UNAVAILABLE' }],
+    ['an insufficient window', { comparabilityStatus: 'INSUFFICIENT_WINDOW' }],
+    ['a missing actual rate', { actualRate: null }],
+    ['a non-finite actual rate', { actualRate: Number.POSITIVE_INFINITY }],
+    ['an out-of-range actual rate', { actualRate: 1.01 }],
+    ['a missing baseline rate', { baselineRate: null }],
+    ['a non-finite baseline rate', { baselineRate: Number.NaN }],
+    ['an out-of-range baseline rate', { baselineRate: -0.01 }],
+    ['a missing baseline delta', { baselineDelta: null }],
+    ['a non-finite baseline delta', { baselineDelta: Number.POSITIVE_INFINITY }],
+    ['a zero delta', { baselineDelta: 0 }],
+    ['a negative delta', { baselineDelta: -0.01 }],
+    ['a mismatched event identity', { eventCriterion: 'M3_PLUS' }],
+  ])('does not include %s as a positive baseline comparison', (_case, overrides) => {
+    expect(isAboveRandomBaseline(strategyResearchRow(overrides))).toBe(false)
+  })
+
+  it('accepts a complete positive delta while keeping K15 M3_PLUS event identity distinct', () => {
+    const completePositiveDelta = strategyResearchRow({ baselineDelta: 0.01 })
+    expect(hasValidBaselineComparison(completePositiveDelta)).toBe(true)
+    expect(isAboveRandomBaseline(completePositiveDelta)).toBe(true)
+
+    expect(isAboveRandomBaseline({
+      ...completePositiveDelta,
+      ticketCount: 15,
+      eventCriterion: 'M3_PLUS',
+    })).toBe(true)
+    expect(isAboveRandomBaseline({
+      ...completePositiveDelta,
+      ticketCount: 15,
+      eventCriterion: 'OFFICIAL_ANY_PRIZE',
+    })).toBe(false)
+    expect(isAboveRandomBaseline({
+      ...completePositiveDelta,
+      eventCriterion: 'M3_PLUS',
+    })).toBe(false)
+  })
+
+  it('keeps a missing source numerator visible and excludes it from positive-delta results', async () => {
+    api.fetchRankingData.mockResolvedValue([
+      rankingRow({ strategyId: 'missing_numerator', successes: null, baselineDelta: 0.5 }),
+    ])
+    const wrapper = mount(StrategyForecastResearchPage)
+    await flushPromises()
+    const row = wrapper.get('[data-testid="history-row-missing_numerator"]')
+    expect(row.text()).toContain('不可用 / 100')
+    expect(row.text()).toContain('未構成有效基準比較')
+
+    await wrapper.get('input[type="checkbox"]').setValue(true)
+    await flushPromises()
+    expect(wrapper.find('[data-testid="history-row-missing_numerator"]').exists()).toBe(false)
+    wrapper.unmount()
+  })
+
   it('shows a 0/0 rate as unavailable and does not treat it as above baseline', () => {
     const row = toStrategyResearchRows([
       rankingRow({ strategyId: 'zero-zero', successes: 0, observations: 0, officialAnyPrizeRate: 0.5, baselineDelta: 0.4 }),
@@ -354,13 +470,42 @@ describe('StrategyForecastResearchPage', () => {
 
   it('shows low coverage and source warnings explicitly', async () => {
     api.fetchRankingData.mockResolvedValue([
-      rankingRow({ strategyId: 'low_coverage', coverage: 0.04, warningCodes: ['HIGH_RANK_LOW_COVERAGE'] }),
+      rankingRow({
+        strategyId: 'low_coverage',
+        coverage: 0.04,
+        baselineDelta: 0.01,
+        warningCodes: ['HIGH_RANK_LOW_COVERAGE'],
+      }),
     ])
     const wrapper = mount(StrategyForecastResearchPage)
+    await flushPromises()
+    await wrapper.get('input[type="checkbox"]').setValue(true)
     await flushPromises()
     const row = wrapper.get('[data-testid="history-row-low_coverage"]')
     expect(row.text()).toContain('低覆蓋率')
     expect(row.text()).toContain('來源警示：高排名但覆蓋率低')
+    wrapper.unmount()
+  })
+
+  it('retains the low-sample warning for a valid descriptive positive delta', async () => {
+    api.fetchRankingData.mockResolvedValue([
+      rankingRow({
+        strategyId: 'low_sample_positive',
+        observations: 10,
+        successes: 2,
+        comparabilityStatus: 'LOW_SAMPLE_SIZE',
+        comparabilityLabel: '低樣本數',
+        warningCodes: ['LOW_SAMPLE_SIZE'],
+        baselineDelta: 0.01,
+      }),
+    ])
+    const wrapper = mount(StrategyForecastResearchPage)
+    await flushPromises()
+    await wrapper.get('input[type="checkbox"]').setValue(true)
+    await flushPromises()
+    const row = wrapper.get('[data-testid="history-row-low_sample_positive"]')
+    expect(row.text()).toContain('低樣本數')
+    expect(row.text()).toContain('2 / 10')
     wrapper.unmount()
   })
 

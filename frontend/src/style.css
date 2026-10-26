@@ -826,6 +826,13 @@ select:focus {
 }
 
 /* --- Tables --- */
+.b649-records .records-table-scroll {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+}
+
 .table-wrap,
 .data-table-wrapper {
   overflow-x: auto;

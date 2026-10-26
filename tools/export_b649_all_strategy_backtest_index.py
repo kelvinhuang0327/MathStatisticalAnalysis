@@ -7,17 +7,17 @@ import hashlib
 import json
 import subprocess
 from collections import Counter, defaultdict
+from collections.abc import Sequence
 from dataclasses import asdict, dataclass
 from decimal import Decimal, InvalidOperation
 from importlib.resources import files
 from pathlib import Path
-from typing import Sequence
 
 from lottolab.application.biglotto_multi_ticket_records import (
     B649_HISTORY_WINDOWS,
-    B649MultiTicketRecord,
     B649_PREFIX_COUNTS,
     B649_SUCCESS_CRITERIA,
+    B649MultiTicketRecord,
 )
 from lottolab.domain.biglotto_full_strategy_catalog import (
     CATALOG_RESOURCE_NAME,

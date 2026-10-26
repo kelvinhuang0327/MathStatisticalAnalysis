@@ -5,16 +5,6 @@ from decimal import Decimal
 from pathlib import Path
 
 import pytest
-
-from lottolab.application.biglotto_multi_ticket_records import (
-    B649_HISTORY_WINDOWS,
-    B649_PREFIX_COUNTS,
-    B649_SUCCESS_CRITERIA,
-)
-from lottolab.domain.biglotto_full_strategy_catalog import load_full_strategy_catalog
-from lottolab.infrastructure.biglotto_multi_ticket_record_reader import (
-    PackagedB649MultiTicketRecordReader,
-)
 from tools.export_b649_all_strategy_backtest_index import (
     ABOVE_RANDOM_DESCRIPTIVE,
     AT_RANDOM_DESCRIPTIVE,
@@ -23,6 +13,15 @@ from tools.export_b649_all_strategy_backtest_index import (
     NOT_COMPARABLE,
     build_b649_index,
     classify_comparison,
+)
+
+from lottolab.application.biglotto_multi_ticket_records import (
+    B649_HISTORY_WINDOWS,
+    B649_PREFIX_COUNTS,
+    B649_SUCCESS_CRITERIA,
+)
+from lottolab.infrastructure.biglotto_multi_ticket_record_reader import (
+    PackagedB649MultiTicketRecordReader,
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[2]

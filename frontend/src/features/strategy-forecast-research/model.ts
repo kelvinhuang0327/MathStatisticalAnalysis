@@ -86,8 +86,11 @@ function mapM3PlusRecord(record: B649MultiTicketRecord): StrategyResearchRow {
   const baselineDelta = finiteDecimal(record.random_baseline_rate_difference)
   const coverage = finiteDecimal(record.coverage)
   const numerator = finiteNumber(record.success_count)
-  const denominator = finiteNumber(record.effective_backtest_draw_count)
-  const isAvailable = actualRate !== null && record.reproduction_status === 'BACKTESTED'
+  const denominator = finiteNumber(record.successful_execution_count)
+  const isAvailable =
+    actualRate !== null &&
+    record.reproduction_status === 'BACKTESTED' &&
+    record.metrics_unavailable_reason === null
   const comparability = deriveComparabilityStatus(
     isAvailable,
     record.reproduction_status,
@@ -174,13 +177,36 @@ export async function fetchStrategyResearchRows(
 }
 
 export function hasValidBaselineComparison(row: StrategyResearchRow): boolean {
+  const denominator = row.denominator
+  const numerator = row.numerator
+  const hasValidEventIdentity = row.ticketCount === 15
+    ? row.eventCriterion === 'M3_PLUS'
+    : row.eventCriterion === 'OFFICIAL_ANY_PRIZE'
+  const hasComparableSourceStatus =
+    row.comparabilityStatus === 'COMPARABLE' || row.comparabilityStatus === 'LOW_SAMPLE_SIZE'
+
   return (
-    row.denominator !== 0 &&
-    row.actualRate !== null &&
+    row.isAvailable &&
+    hasComparableSourceStatus &&
+    hasValidEventIdentity &&
+    typeof denominator === 'number' &&
+    Number.isFinite(denominator) &&
+    Number.isInteger(denominator) &&
+    denominator > 0 &&
+    typeof numerator === 'number' &&
+    Number.isFinite(numerator) &&
+    Number.isInteger(numerator) &&
+    numerator >= 0 &&
+    numerator <= denominator &&
+    typeof row.actualRate === 'number' &&
     Number.isFinite(row.actualRate) &&
-    row.baselineRate !== null &&
+    row.actualRate >= 0 &&
+    row.actualRate <= 1 &&
+    typeof row.baselineRate === 'number' &&
     Number.isFinite(row.baselineRate) &&
-    row.baselineDelta !== null &&
+    row.baselineRate >= 0 &&
+    row.baselineRate <= 1 &&
+    typeof row.baselineDelta === 'number' &&
     Number.isFinite(row.baselineDelta)
   )
 }

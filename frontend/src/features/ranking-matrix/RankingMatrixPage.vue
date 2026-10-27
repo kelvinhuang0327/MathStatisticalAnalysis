@@ -21,6 +21,8 @@ import {
   type RankingWindow,
   type TicketCount,
 } from '../../api/rankingMatrix'
+import { P638HistoricalRequestError } from '../../api/p638Historical'
+import { T539HistoricalRequestError } from '../../api/t539Historical'
 import { queryStrategyMatrixStructural, type StructuralMatrixCell, type StructuralLottery } from '../../api/strategyMatrixStructural'
 import StructuralExpectedMax from './components/StructuralExpectedMax.vue'
 import CrossWindowChart from './components/CrossWindowChart.vue'
@@ -232,6 +234,37 @@ const activeWindowLabel = computed(() => {
   return WINDOW_OPTIONS.find((w) => w.key === selectedWindow.value)?.label ?? selectedWindow.value
 })
 
+const selectedHistoricalSource = computed(() => {
+  if (selectedLottery.value === 'BIG_LOTTO') return null
+  return rawRows.value.find((row) => row.sourceRun)?.sourceRun ?? null
+})
+
+function formatDrawBoundary(draw: string | null, date: string | null): string {
+  const parts = [draw, date].filter((value): value is string => Boolean(value))
+  return parts.length ? parts.join(' · ') : 'Unavailable'
+}
+
+function formatHistoricalRequestError(
+  lotteryLabel: string,
+  kind: string,
+  status: number,
+  message: string,
+): string {
+  if (kind === 'NOT_CONFIGURED') return `${lotteryLabel} 歷史資料來源未配置。`
+  if (kind === 'UNAVAILABLE' && status === 0) return `${lotteryLabel} 歷史資料網路連線失敗。`
+  return message
+}
+
+function formatRankingLoadError(error: unknown): string {
+  if (error instanceof P638HistoricalRequestError) {
+    return formatHistoricalRequestError('P638', error.kind, error.status, error.message)
+  }
+  if (error instanceof T539HistoricalRequestError) {
+    return formatHistoricalRequestError('T539', error.kind, error.status, error.message)
+  }
+  return error instanceof Error ? error.message : '載入策略排名資料失敗。'
+}
+
 async function loadData(): Promise<void> {
   fetchController?.abort()
   fetchController = new AbortController()
@@ -239,11 +272,11 @@ async function loadData(): Promise<void> {
 
   pageState.value = 'loading'
   errorMessage.value = ''
-  if (selectedLottery.value === 'BIG_LOTTO' && selectedTicketCount.value === 5) {
-    rawRows.value = []
-    crossWindowData.value = null
-    chartController?.abort()
-  }
+  rawRows.value = []
+  matrixRows.value = []
+  crossWindowData.value = null
+  chartController?.abort()
+  chartLoading.value = false
 
   try {
     const independentProducer = selectedLottery.value === 'BIG_LOTTO' && (selectedTicketCount.value === 5 || selectedTicketCount.value === 10)
@@ -280,7 +313,7 @@ async function loadData(): Promise<void> {
   } catch (err: unknown) {
     if (gen !== fetchGeneration) return
     pageState.value = 'error'
-    errorMessage.value = err instanceof Error ? err.message : '載入策略排名資料失敗。'
+    errorMessage.value = formatRankingLoadError(err)
   }
 }
 
@@ -664,6 +697,24 @@ onBeforeUnmount(() => {
 
     <!-- Content: Table or Matrix View -->
     <div v-else class="results-content-wrap">
+      <div
+        v-if="selectedHistoricalSource"
+        class="canonical-exact-native-banner"
+        data-testid="historical-run-source-banner"
+      >
+        <div class="banner-icon">ℹ</div>
+        <div class="banner-body">
+          <strong>所選窗口 {{ activeWindowLabel }} 的來源身份未驗證</strong>
+          <p>以下為具名 Run 的描述性結果，保留其 API 排名與原始資料；不代表所選窗口的正式回測或排名。</p>
+          <p>Source Run: {{ selectedHistoricalSource.runId }} · Status: {{ selectedHistoricalSource.status }}</p>
+          <p>
+            Source range: {{ formatDrawBoundary(selectedHistoricalSource.firstDraw, selectedHistoricalSource.firstDrawDate) }}
+            – {{ formatDrawBoundary(selectedHistoricalSource.lastDraw, selectedHistoricalSource.lastDrawDate) }}
+            · {{ selectedHistoricalSource.drawCount }} draws
+          </p>
+        </div>
+      </div>
+
       <!-- Table View -->
       <section v-if="activeViewMode === 'table'" class="table-section">
         <div

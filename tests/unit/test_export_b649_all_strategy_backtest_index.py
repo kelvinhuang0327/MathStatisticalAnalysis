@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import subprocess
 from collections import Counter
 from decimal import Decimal
 from pathlib import Path
@@ -11,6 +12,7 @@ from tools.export_b649_all_strategy_backtest_index import (
     BELOW_RANDOM_DESCRIPTIVE,
     METRIC_UNAVAILABLE,
     NOT_COMPARABLE,
+    B649Index,
     build_b649_index,
     classify_comparison,
 )
@@ -28,11 +30,47 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 @pytest.fixture(scope="module")
-def b649_index():
-    return build_b649_index(REPO_ROOT)
+def b649_index(tmp_path_factory: pytest.TempPathFactory) -> B649Index:
+    source_checkout = tmp_path_factory.mktemp("pinned-source") / "repo"
+    subprocess.run(
+        [
+            "git",
+            "-C",
+            str(REPO_ROOT),
+            "worktree",
+            "add",
+            "--detach",
+            str(source_checkout),
+            "e382ae5f361ea29214cf7780fc31c09bfec1981e",
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    try:
+        index = build_b649_index(source_checkout)
+        assert index.summary["source_head"] == "e382ae5f361ea29214cf7780fc31c09bfec1981e"
+        assert index.summary["source_tree"] == "b2419f540c62a576a6f9591397e1e2432a0b00f7"
+        return index
+    finally:
+        subprocess.run(
+            [
+                "git",
+                "-C",
+                str(REPO_ROOT),
+                "worktree",
+                "remove",
+                str(source_checkout),
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
 
 
-def test_index_keeps_all_strategy_states_and_all_projection_dimensions(b649_index) -> None:
+def test_index_keeps_all_strategy_states_and_all_projection_dimensions(
+    b649_index: B649Index,
+) -> None:
     status_rows = b649_index.strategy_status_records
     metric_rows = b649_index.backtest_metrics_records
 
@@ -59,7 +97,9 @@ def test_index_keeps_all_strategy_states_and_all_projection_dimensions(b649_inde
     }
 
 
-def test_metrics_availability_is_separate_from_performance_and_aliases(b649_index) -> None:
+def test_metrics_availability_is_separate_from_performance_and_aliases(
+    b649_index: B649Index,
+) -> None:
     status_rows = b649_index.strategy_status_records
     availability = Counter(row["metrics_availability"] for row in status_rows)
     assert availability == {
@@ -93,7 +133,9 @@ def test_metrics_availability_is_separate_from_performance_and_aliases(b649_inde
     )
 
 
-def test_negative_and_positive_source_deltas_are_retained_with_provenance(b649_index) -> None:
+def test_negative_and_positive_source_deltas_are_retained_with_provenance(
+    b649_index: B649Index,
+) -> None:
     rows = b649_index.backtest_metrics_records
     criterion_counts = Counter(row["descriptive_comparison_classification"] for row in rows)
     assert criterion_counts[ABOVE_RANDOM_DESCRIPTIVE] > 0
@@ -138,7 +180,9 @@ def test_negative_and_positive_source_deltas_are_retained_with_provenance(b649_i
     assert b649_index.summary["zero_delta_record_count"] == 0
 
 
-def test_official_zero_over_zero_is_unavailable_but_raw_source_value_is_kept(b649_index) -> None:
+def test_official_zero_over_zero_is_unavailable_but_raw_source_value_is_kept(
+    b649_index: B649Index,
+) -> None:
     rows = [
         row
         for row in b649_index.backtest_metrics_records
@@ -249,7 +293,9 @@ def test_denominators_keep_zero_zero_unavailable_and_zero_over_n_valid() -> None
     ) == NOT_COMPARABLE
 
 
-def test_summary_does_not_claim_recalculation_or_predictive_lift(b649_index) -> None:
+def test_summary_does_not_claim_recalculation_or_predictive_lift(
+    b649_index: B649Index,
+) -> None:
     assert b649_index.summary["ranking_recomputed"] is False
     assert b649_index.summary["historical_backtests_recomputed"] is False
     assert b649_index.summary["predictive_lift"] == "NOT ESTABLISHED"

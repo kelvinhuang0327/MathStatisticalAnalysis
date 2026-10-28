@@ -18,7 +18,7 @@ import json
 import sys
 from datetime import date
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from lottolab.research.b649_k235_window_lift_report_r1 import (
     HistoricalDrawOutcome,
@@ -34,7 +34,7 @@ INPUT_SCHEMA_VERSION = "B649_K235_WINDOW_LIFT_INPUT_R1"
 def _require_mapping(value: object, label: str) -> dict[str, Any]:
     if not isinstance(value, dict):
         raise K235WindowLiftError(f"{label} must be a JSON object")
-    return value
+    return cast(dict[str, Any], value)
 
 
 def _build_report(document: object) -> dict[str, object]:
@@ -47,7 +47,7 @@ def _build_report(document: object) -> dict[str, object]:
         raise K235WindowLiftError("draws and predictions must be JSON arrays")
 
     outcomes: list[HistoricalDrawOutcome] = []
-    for index, raw_draw in enumerate(raw_draws):
+    for index, raw_draw in enumerate(cast(list[object], raw_draws)):
         row = _require_mapping(raw_draw, f"draws[{index}]")
         try:
             outcomes.append(
@@ -62,7 +62,7 @@ def _build_report(document: object) -> dict[str, object]:
             raise K235WindowLiftError(f"invalid draws[{index}]: {exc}") from exc
 
     predictions: list[StrategyTargetReplay] = []
-    for index, raw_prediction in enumerate(raw_predictions):
+    for index, raw_prediction in enumerate(cast(list[object], raw_predictions)):
         row = _require_mapping(raw_prediction, f"predictions[{index}]")
         raw_tickets = row.get("native_tickets")
         if raw_tickets is not None and not isinstance(raw_tickets, list):
@@ -70,7 +70,10 @@ def _build_report(document: object) -> dict[str, object]:
                 f"predictions[{index}].native_tickets must be an array or null"
             )
         tickets = (
-            tuple(tuple(ticket) if isinstance(ticket, list) else ticket for ticket in raw_tickets)
+            tuple(
+                tuple(cast(list[int], ticket)) if isinstance(ticket, list) else ticket
+                for ticket in cast(list[Any], raw_tickets)
+            )
             if raw_tickets is not None
             else None
         )

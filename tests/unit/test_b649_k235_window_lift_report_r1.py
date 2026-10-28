@@ -23,6 +23,34 @@ from lottolab.research.b649_k235_window_lift_report_r1 import (
 )
 
 
+def test_batched_exact_count_matches_original_scalar_enumeration() -> None:
+    from lottolab.research import b649_k235_window_lift_report_r1 as engine
+
+    for tickets in (
+        ((1, 2, 3, 4, 5, 6), (1, 7, 8, 9, 10, 11)),
+        ((1, 2, 3, 4, 5, 6), (1, 7, 8, 9, 10, 11), (2, 7, 8, 12, 13, 14)),
+        ((1, 2, 3, 4, 5, 6),) * 5,
+        tuple(tuple(range(1 + i * 4, 7 + i * 4)) for i in range(5)),
+    ):
+        expected = engine._enumerate_portfolio_probability(tickets)  # pyright: ignore[reportPrivateUsage]
+        actual = engine._batched_portfolio_probability(tickets)  # pyright: ignore[reportPrivateUsage]
+        assert actual == expected
+        assert exact_portfolio_random_probability(tickets) == expected
+
+
+def test_native_adapter_does_not_slice_higher_cost_strategies() -> None:
+    from lottolab.research.b649_k235_window_lift_report_r1 import evaluate_native_k235_history
+
+    report = evaluate_native_k235_history(
+        (_draw(0),), (StrategyTargetReplay("c", "1", _disjoint_tickets(5)),), {"c": 5}
+    )
+    assert [(row.strategy_id, row.k) for row in report.strategy_reports] == [("c", 5)]
+    with pytest.raises(K235WindowLiftError, match="exactly K"):
+        evaluate_native_k235_history(
+            (_draw(0),), (StrategyTargetReplay("c", "1", _disjoint_tickets(5)),), {"c": 2}
+        )
+
+
 def _draw(
     index: int,
     main: tuple[int, ...] = (1, 2, 3, 4, 5, 6),

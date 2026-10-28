@@ -9,7 +9,7 @@ an official prize under :mod:`lottolab.domain.lottery_rules`.
 from __future__ import annotations
 
 from collections import Counter
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import date
 from enum import StrEnum
@@ -499,6 +499,48 @@ def compare_k235_strategies(
     )
 
 
+def evaluate_native_k235_history(
+    outcomes: Sequence[HistoricalDrawOutcome],
+    predictions: Sequence[StrategyTargetReplay],
+    native_ticket_counts: Mapping[str, int],
+) -> K235WindowLiftReport:
+    """Evaluate only each frozen strategy's native K, without taking prefixes.
+
+    The original prefix evaluator remains available. This adapter preserves
+    the C strategy pool, including identities with no evaluable predictions.
+    """
+    draw_ids = _validate_outcomes(outcomes)
+    if not native_ticket_counts or any(
+        type(k) is not int or k not in K_VALUES for k in native_ticket_counts.values()
+    ):
+        raise K235WindowLiftError("native_ticket_counts must specify K2/K3/K5 identities")
+    indexed: dict[tuple[str, str], StrategyTargetReplay] = {}
+    for replay in predictions:
+        if replay.strategy_id not in native_ticket_counts or replay.draw_id not in draw_ids:
+            raise K235WindowLiftError("prediction references an unknown native identity or target")
+        key = replay.strategy_id, replay.draw_id
+        if key in indexed:
+            raise K235WindowLiftError("duplicate native prediction")
+        if replay.status is PredictionStatus.OK and (
+            replay.native_tickets is None
+            or len(replay.native_tickets) != native_ticket_counts[replay.strategy_id]
+        ):
+            raise K235WindowLiftError("COMPLETE native portfolio must contain exactly K tickets")
+        indexed[key] = replay
+    reports: list[K235StrategyReport] = []
+    for strategy_id, k in sorted(native_ticket_counts.items()):
+        results = tuple(
+            _evaluate_target(
+                strategy_id, index, outcome, indexed.get((strategy_id, outcome.draw_id)), k
+            )
+            for index, outcome in enumerate(outcomes)
+        )
+        reports.append(
+            K235StrategyReport(strategy_id, k, results, _evaluate_windows(strategy_id, k, results))
+        )
+    return K235WindowLiftReport(len(outcomes), tuple(reports), None, ())
+
+
 def exact_portfolio_random_probability(tickets: Sequence[Sequence[int]]) -> Fraction:
     """Exact fair-draw chance that this native ticket group wins any prize.
 
@@ -799,6 +841,7 @@ def _wilson_interval(
     return max(0.0, center - radius), min(1.0, center + radius)
 
 
+@lru_cache(maxsize=8192)
 def _probability_from_incidence_profile(ticket_count: int, profile: tuple[int, ...]) -> Fraction:
     if ticket_count <= 0 or len(profile) != (1 << ticket_count) - 1:
         raise K235WindowLiftError("ticket incidence profile is malformed")
@@ -812,7 +855,64 @@ def _probability_from_incidence_profile(ticket_count: int, profile: tuple[int, .
                 if incidence_mask & (1 << position):
                     tickets[position].append(next_number)
             next_number += 1
-    return _enumerate_portfolio_probability(tuple(tuple(ticket) for ticket in tickets))
+    normalized = tuple(tuple(ticket) for ticket in tickets)
+    # Same intersection enumeration and integer weights as the scalar path.
+    # NumPy is an optional research accelerator, not a core dependency.
+    try:
+        return _batched_portfolio_probability(normalized)
+    except ImportError:
+        return _enumerate_portfolio_probability(normalized)
+
+
+def _batched_portfolio_probability(tickets: tuple[Ticket, ...]) -> Fraction:
+    import numpy as np
+
+    from lottolab.research.b649_official_any_prize_exact import all_main_draw_masks
+
+    rule = BIG_LOTTO_RULE_CONTRACT
+    if rule.main_special_overlap_allowed:
+        raise K235WindowLiftError("exact special model requires non-overlapping zones")
+    numbers = sorted({number for ticket in tickets for number in ticket})
+    positions = {number: index for index, number in enumerate(numbers)}
+    masks = [np.uint64(sum(1 << positions[number] for number in ticket)) for ticket in tickets]
+    pool_size = rule.main_number_max - rule.main_number_min + 1
+    draw_size = rule.main_number_count
+    specials = pool_size - draw_size
+    outside = pool_size - len(numbers)
+    main_prizes = np.array(
+        [
+            resolve_big_lotto_prize_tier(hits, False) is not NoPrizeResult.NO_PRIZE
+            for hits in range(draw_size + 1)
+        ]
+    )
+    special_prizes = np.array(
+        [
+            hits < draw_size
+            and resolve_big_lotto_prize_tier(hits, True) is not NoPrizeResult.NO_PRIZE
+            for hits in range(draw_size + 1)
+        ]
+    )
+    winning = 0
+    for selected_count in range(min(draw_size, len(numbers)) + 1):
+        outside_selected = draw_size - selected_count
+        if outside_selected > outside:
+            continue
+        draws = (
+            all_main_draw_masks(len(numbers), selected_count)
+            if selected_count
+            else np.array([0], dtype=np.uint64)
+        )
+        won = np.zeros(draws.size, dtype=np.bool_)
+        rescue = np.zeros(draws.size, dtype=np.uint64)
+        for mask in masks:
+            hits = np.bitwise_count(draws & mask)
+            won |= main_prizes[hits]
+            rescue |= np.where(special_prizes[hits], mask, np.uint64(0))
+        rescue &= ~draws
+        count = int(np.count_nonzero(won)) * specials
+        count += int(np.bitwise_count(rescue[~won]).sum(dtype=np.int64))
+        winning += comb(outside, outside_selected) * count
+    return Fraction(winning, comb(pool_size, draw_size) * specials)
 
 
 @lru_cache(maxsize=8192)
@@ -870,6 +970,12 @@ def _canonical_incidence_profile(tickets: tuple[Ticket, ...]) -> tuple[int, ...]
     counts = [0] * (1 << ticket_count)
     for incidence_mask in membership.values():
         counts[incidence_mask] += 1
+
+    return _canonical_profile_counts(ticket_count, tuple(counts))
+
+
+@lru_cache(maxsize=8192)
+def _canonical_profile_counts(ticket_count: int, counts: tuple[int, ...]) -> tuple[int, ...]:
 
     best: tuple[int, ...] | None = None
     for permutation in permutations(range(ticket_count)):
@@ -983,5 +1089,6 @@ __all__ = [
     "TargetStatus",
     "compare_k235_strategies",
     "evaluate_k235_history",
+    "evaluate_native_k235_history",
     "exact_portfolio_random_probability",
 ]

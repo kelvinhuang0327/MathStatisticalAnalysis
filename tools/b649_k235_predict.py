@@ -456,6 +456,71 @@ def _format_tickets_text(
     return "\n".join(lines)
 
 
+def _format_cli_tickets_text(result_document: Mapping[str, Any]) -> str:
+    """Format the already evaluated prediction document for direct CLI display."""
+    lines = [
+        "B649 K2/K3/K5 DIRECT TICKET OUTPUT",
+        f"TARGET_DRAW: {result_document['target_draw_number']}",
+        f"PREDICTION_CUTOFF_DRAW: {result_document['prediction_cutoff_draw_number']}",
+        f"RANKING_SELECTION: {result_document['ranking_selection']}",
+        f"FROZEN_RANKING_CUTOFF_DRAW: {result_document['ranking_cutoff_draw_number']}",
+        f"OVERALL_PIPELINE_STATUS: {result_document['overall_pipeline_status']}",
+        f"QUALITY_COMPONENT_VERSION: {result_document['quality_component_version']}",
+        "",
+    ]
+
+    for cat_name in ("k2", "k3", "k5"):
+        category = cast(Mapping[str, Any], result_document[cat_name])
+        accepted_entries = cast(
+            Sequence[Mapping[str, Any]], category["accepted_entries"]
+        )
+        rejected_entries = cast(
+            Sequence[Mapping[str, Any]], category["rejected_entries"]
+        )
+        candidates = [
+            (entry, "ACCEPTED") for entry in accepted_entries
+        ] + [(entry, "REJECTED") for entry in rejected_entries]
+        candidates.sort(key=lambda item: int(item[0]["rank"]))
+
+        lines.extend(
+            [
+                f"[{cat_name.upper()}]",
+                f"AVAILABILITY: {category['availability_status']}",
+                f"ACCEPTED_STRATEGIES: {category['accepted_strategy_count']}",
+                f"REJECTED_STRATEGIES: {category['rejected_strategy_count']}",
+            ]
+        )
+
+        for entry, quality_status in candidates:
+            lines.append(
+                f"Rank {entry['rank']} | STATUS: {quality_status} | "
+                f"STRATEGY: {entry['strategy_id']} | "
+                f"NAME: {entry['display_name']} | "
+                f"VERSION: {entry['strategy_version']}"
+            )
+
+            tickets = cast(Sequence[Mapping[str, Any]], entry.get("tickets", []))
+            if tickets:
+                ticket_label = "Ticket" if quality_status == "ACCEPTED" else "Raw Ticket"
+                for ticket_index, ticket in enumerate(tickets, start=1):
+                    numbers = cast(
+                        Sequence[int], ticket["emitted_main_numbers"]
+                    )
+                    numbers_text = " ".join(f"{number:02d}" for number in numbers)
+                    lines.append(f"  {ticket_label} {ticket_index}: {numbers_text}")
+            else:
+                lines.append("  Tickets: (none emitted)")
+
+            if quality_status == "REJECTED":
+                reasons = cast(Sequence[str], entry.get("rejection_reasons", []))
+                reason_text = "; ".join(reasons) if reasons else "(not provided)"
+                lines.append(f"  QUALITY_REJECTION_REASONS: {reason_text}")
+
+        lines.append("")
+
+    return "\n".join(lines)
+
+
 def run_prediction(
     *,
     db_path: Path = DEFAULT_DB_PATH,
@@ -776,6 +841,11 @@ def main() -> None:
         action="store_true",
         help="Overwrite existing output files if present",
     )
+    parser.add_argument(
+        "--print-tickets",
+        action="store_true",
+        help="Print the ranked K2/K3/K5 tickets and quality results to stdout",
+    )
 
     args, _unknown = parser.parse_known_args()
 
@@ -807,6 +877,9 @@ def main() -> None:
     out_txt = args.output_dir / f"tickets_{args.target_draw}.txt"
     print(f"PREDICTION_JSON: {out_json}")
     print(f"TICKETS_TXT: {out_txt}")
+
+    if args.print_tickets:
+        sys.stdout.write(_format_cli_tickets_text(doc))
 
     if doc["overall_pipeline_status"] == "NO_QUALIFIED_PREDICTIONS":
         print(

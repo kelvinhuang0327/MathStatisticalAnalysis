@@ -412,7 +412,9 @@ def test_ac2_causal_cutoff_and_future_data_exclusion(tmp_path: Path) -> None:
 
 
 def test_ac3_no_qualified_candidates_and_partial_availability(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     """AC3:
     - When a K category has no qualified candidates, it is marked unavailable.
@@ -525,6 +527,7 @@ def test_ac3_no_qualified_candidates_and_partial_availability(
             "b649_k235_predict.py",
             "--output-dir",
             str(tmp_path / "cli_test"),
+            "--print-tickets",
         ],
     )
     monkeypatch.setattr(
@@ -534,6 +537,161 @@ def test_ac3_no_qualified_candidates_and_partial_availability(
     with pytest.raises(SystemExit) as exc_exit:
         main()
     assert exc_exit.value.code == 2
+    cli_output = capsys.readouterr().out
+    assert cli_output.count("STATUS: REJECTED") == 3
+    assert "FROZEN_RANKING_CUTOFF_DRAW: 115000096" in cli_output
+    assert "QUALITY_REJECTION_REASONS:" in cli_output
+
+
+def test_cli_print_tickets_is_opt_in_and_matches_prediction_artifacts(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    db_path, rank_history_path = _create_portable_prediction_inputs(tmp_path)
+    output_dir = tmp_path / "cli_print_tickets"
+    raw_predictions = _portable_raw_predictions()
+    ranking = json.loads(rank_history_path.read_text(encoding="utf-8"))
+    catalog = production_catalog()
+    for cat_name in ("k2", "k3", "k5"):
+        ranked_strategies = ranking["hist"]["115000096"][cat_name[1:]]
+        for entry, (rank, strategy_id) in zip(
+            raw_predictions[cat_name]["entries"], ranked_strategies, strict=True
+        ):
+            descriptor = catalog.get(strategy_id)
+            entry["rank"] = rank
+            entry["strategy_id"] = strategy_id
+            entry["display_name"] = ranking["ids"][strategy_id][1]
+            entry["strategy_version"] = descriptor.version
+
+    run_prediction(
+        db_path=db_path,
+        rank_history_path=rank_history_path,
+        cutoff_draw="115000097",
+        target_draw="115000098",
+        output_dir=output_dir,
+        raw_predictions_override=raw_predictions,
+    )
+
+    json_path = output_dir / "predictions_115000098.json"
+    txt_path = output_dir / "tickets_115000098.txt"
+    result_document = json.loads(json_path.read_text(encoding="utf-8"))
+    ticket_text = txt_path.read_text(encoding="utf-8")
+    monkeypatch.setattr(
+        "tools.b649_k235_predict.run_prediction",
+        lambda **_kwargs: result_document,
+    )
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["b649_k235_predict.py", "--output-dir", str(output_dir)],
+    )
+    main()
+    legacy_output = capsys.readouterr().out
+    assert legacy_output == "\n".join(
+        [
+            "STATUS: COMPLETE",
+            "ALL_K_AVAILABLE: True",
+            "AVAILABLE_K: ['K2', 'K3', 'K5']",
+            "UNAVAILABLE_K: []",
+            "TARGET: 115000098, CUTOFF: 115000097",
+            "CAUSAL_HISTORY_LENGTH: 3",
+            "ACCEPTED_COUNTS: {'k2': 2, 'k3': 2, 'k5': 2}",
+            "REJECTED_COUNTS: {'k2': 1, 'k3': 1, 'k5': 1}",
+            f"PREDICTION_JSON: {json_path}",
+            f"TICKETS_TXT: {txt_path}",
+        ]
+    ) + "\n"
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "b649_k235_predict.py",
+            "--output-dir",
+            str(output_dir),
+            "--print-tickets",
+        ],
+    )
+    main()
+    printed_output = capsys.readouterr().out
+    cli_ticket_output = printed_output[len(legacy_output) :]
+    assert printed_output.startswith(legacy_output)
+    assert "TARGET_DRAW: 115000098" in cli_ticket_output
+    assert "PREDICTION_CUTOFF_DRAW: 115000097" in cli_ticket_output
+    assert "RANKING_SELECTION: FROZEN_TOP3_AS_OF_096" in cli_ticket_output
+    assert "FROZEN_RANKING_CUTOFF_DRAW: 115000096" in cli_ticket_output
+
+    expected_headings: list[str] = []
+    total_candidates = 0
+    for cat_name in ("k2", "k3", "k5"):
+        category = result_document[cat_name]
+        accepted = category["accepted_entries"]
+        rejected = category["rejected_entries"]
+        assert len(accepted) + len(rejected) == 3
+        entries = sorted(
+            [(entry, "ACCEPTED") for entry in accepted]
+            + [(entry, "REJECTED") for entry in rejected],
+            key=lambda item: item[0]["rank"],
+        )
+        ranked_strategies = ranking["hist"]["115000096"][cat_name[1:]]
+        for entry, status in entries:
+            total_candidates += 1
+            expected_strategy = ranked_strategies[entry["rank"] - 1][1]
+            expected_version = catalog.get(expected_strategy).version
+            assert entry["strategy_id"] == expected_strategy
+            assert entry["strategy_version"] == expected_version
+            heading = (
+                f"Rank {entry['rank']} | STATUS: {status} | "
+                f"STRATEGY: {entry['strategy_id']} | "
+                f"NAME: {entry['display_name']} | "
+                f"VERSION: {entry['strategy_version']}"
+            )
+            expected_headings.append(heading)
+            assert heading in cli_ticket_output
+
+            cli_start = cli_ticket_output.index(heading)
+            cli_next_candidate = cli_ticket_output.find("\nRank ", cli_start + len(heading))
+            cli_candidate_block = cli_ticket_output[
+                cli_start:
+                cli_next_candidate if cli_next_candidate >= 0 else len(cli_ticket_output)
+            ]
+
+            text_heading = (
+                f"    Rank {entry['rank']}: {entry['strategy_id']} "
+                f"({entry['display_name']}) [version: {entry['strategy_version']}]"
+            )
+            text_start = ticket_text.index(text_heading)
+            text_next_candidate = ticket_text.find(
+                "    Rank ", text_start + len(text_heading)
+            )
+            text_candidate_block = ticket_text[
+                text_start:
+                text_next_candidate if text_next_candidate >= 0 else len(ticket_text)
+            ]
+
+            if status == "REJECTED":
+                reason_text = "; ".join(entry["rejection_reasons"])
+                for reason in entry["rejection_reasons"]:
+                    assert reason in cli_ticket_output
+                assert f"QUALITY_REJECTION_REASONS: {reason_text}" in cli_candidate_block
+                assert f"Rejection Reasons: {reason_text}" in text_candidate_block
+
+            ticket_label = "Ticket" if status == "ACCEPTED" else "Raw Ticket"
+            text_ticket_label = "Ticket" if status == "ACCEPTED" else "Raw Ticket"
+            for ticket_index, ticket in enumerate(entry["tickets"], start=1):
+                numbers_text = " ".join(
+                    f"{number:02d}" for number in ticket["emitted_main_numbers"]
+                )
+                line = f"{ticket_label} {ticket_index}: {numbers_text}"
+                assert line in cli_candidate_block
+                text_line = f"      {text_ticket_label} {ticket_index}: {numbers_text}"
+                assert text_line in text_candidate_block
+
+    assert total_candidates == 9
+    positions = [cli_ticket_output.index(heading) for heading in expected_headings]
+    assert positions == sorted(positions)
 
 
 def test_local_integration_ac4_draw_098_historical_golden(tmp_path: Path) -> None:

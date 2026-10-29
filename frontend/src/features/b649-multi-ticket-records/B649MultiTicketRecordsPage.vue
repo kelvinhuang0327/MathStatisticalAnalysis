@@ -178,14 +178,39 @@ async function nextPage(): Promise<void> {
 
 function percentage(value: string | null): string {
   if (value === null) return '—'
-  return `${(Number(value) * 100).toFixed(6)}%`
+  return `${compactPercentage(Number(value) * 100)}%`
+}
+
+function observedPercentage(
+  value: string | null,
+  successfulExecutionCount: number | null,
+): string {
+  if (successfulExecutionCount === null || successfulExecutionCount <= 0) return '—'
+  return percentage(value)
 }
 
 function signedPercentage(value: string | null): string {
   if (value === null) return '—'
   const percentageValue = Number(value) * 100
   const sign = percentageValue > 0 ? '+' : ''
-  return `${sign}${percentageValue.toFixed(6)} pp`
+  return `${sign}${compactPercentage(percentageValue, 18)} pp`
+}
+
+function observedSignedPercentage(
+  value: string | null,
+  successfulExecutionCount: number | null,
+): string {
+  if (successfulExecutionCount === null || successfulExecutionCount <= 0) return '—'
+  return signedPercentage(value)
+}
+
+function compactPercentage(value: number, decimalPlaces = 6): string {
+  return value.toFixed(decimalPlaces).replace(/\.?0+$/, '')
+}
+
+function countRatio(numerator: number | null, denominator: number | null): string {
+  if (numerator === null || denominator === null) return '—'
+  return `${numerator} / ${denominator}`
 }
 
 function shortSha(value: string | null): string {
@@ -410,11 +435,12 @@ onBeforeUnmount(() => {
                 <th scope="col">Status</th>
                 <th scope="col">Parameters</th>
                 <th scope="col">Official Any-Prize Rank</th>
+                <th scope="col">Official Any-Prize Wins / Executions</th>
                 <th scope="col">Official Win Rate</th>
                 <th scope="col">Official Baseline</th>
                 <th scope="col">Official Delta</th>
                 <th scope="col">Secondary Rank / Reason</th>
-                <th scope="col">Success / Valid Draws</th>
+                <th scope="col">Criterion Success / Executions</th>
                 <th scope="col">Secondary Rate</th>
                 <th scope="col">Secondary Baseline</th>
                 <th scope="col">Secondary Delta</th>
@@ -453,19 +479,15 @@ onBeforeUnmount(() => {
                   {{ record.prefix_count }} / {{ record.window }} / {{ record.criterion }}
                 </td>
                 <td>{{ officialRankText(record) }}</td>
-                <td>{{ percentage(record.official_any_prize_rate) }}</td>
+                <td>{{ countRatio(record.official_any_prize_count, record.successful_execution_count) }}</td>
+                <td>{{ observedPercentage(record.official_any_prize_rate, record.successful_execution_count) }}</td>
                 <td>{{ percentage(record.official_random_baseline_probability) }}</td>
-                <td>{{ signedPercentage(record.official_random_baseline_delta) }}</td>
+                <td>{{ observedSignedPercentage(record.official_random_baseline_delta, record.successful_execution_count) }}</td>
                 <td>{{ rankText(record) }}</td>
-                <td>
-                  <template v-if="record.success_count !== null">
-                    {{ record.success_count }} / {{ record.effective_backtest_draw_count }}
-                  </template>
-                  <template v-else>—</template>
-                </td>
-                <td>{{ percentage(record.historical_success_rate) }}</td>
+                <td>{{ countRatio(record.success_count, record.successful_execution_count) }}</td>
+                <td>{{ observedPercentage(record.historical_success_rate, record.successful_execution_count) }}</td>
                 <td>{{ percentage(record.random_baseline_success_rate) }}</td>
-                <td>{{ signedPercentage(record.random_baseline_rate_difference) }}</td>
+                <td>{{ observedSignedPercentage(record.random_baseline_rate_difference, record.successful_execution_count) }}</td>
                 <td>{{ percentage(record.coverage) }}</td>
                 <td>{{ record.official_prize_counts?.first ?? '—' }}</td>
                 <td>{{ record.official_prize_counts?.second ?? '—' }}</td>

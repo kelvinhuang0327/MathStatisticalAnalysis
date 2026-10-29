@@ -323,6 +323,343 @@ describe('StrategyIntelligencePage Cross-Game Unified UI', () => {
     wrapper.unmount()
   })
 
+  it('dropdown switches B649 -> P638 -> T539 -> B649 with matching queries and rows', async () => {
+    const wrapper = mount(StrategyIntelligencePage)
+    await flushPromises()
+
+    const gameSelect = wrapper.get('[data-testid="game-scope-select"]')
+    const overviewRequests = () =>
+      fetchMock.mock.calls
+        .map(([input]) => String(input))
+        .filter((url) => url.includes('/api/v1/strategy-overview'))
+
+    expect((gameSelect.element as HTMLSelectElement).value).toBe('BIG_LOTTO')
+    expect(overviewRequests()).toHaveLength(1)
+
+    const transitions = [
+      {
+        lotteryType: 'POWER_LOTTO',
+        button: 'p638',
+        visibleStrategy: p638Strategy.display_name,
+        hiddenStrategies: [b649Strategy.display_name, t539Strategy.display_name],
+      },
+      {
+        lotteryType: 'DAILY_539',
+        button: 't539',
+        visibleStrategy: t539Strategy.display_name,
+        hiddenStrategies: [b649Strategy.display_name, p638Strategy.display_name],
+      },
+      {
+        lotteryType: 'BIG_LOTTO',
+        button: 'b649',
+        visibleStrategy: b649Strategy.display_name,
+        hiddenStrategies: [p638Strategy.display_name, t539Strategy.display_name],
+      },
+    ]
+
+    for (const transition of transitions) {
+      await gameSelect.setValue(transition.lotteryType)
+      await flushPromises()
+
+      expect(overviewRequests().at(-1)).toContain(`lottery_type=${transition.lotteryType}`)
+      expect((gameSelect.element as HTMLSelectElement).value).toBe(transition.lotteryType)
+      expect(
+        wrapper.get(`[data-testid="game-selector-${transition.button}"]`).attributes('aria-checked'),
+      ).toBe('true')
+      expect(wrapper.text()).toContain(transition.visibleStrategy)
+      for (const hiddenStrategy of transition.hiddenStrategies) {
+        expect(wrapper.text()).not.toContain(hiddenStrategy)
+      }
+    }
+
+    expect(overviewRequests()).toHaveLength(4)
+
+    // A change event for the already selected game is a no-op.
+    await gameSelect.trigger('change')
+    await flushPromises()
+    expect(overviewRequests()).toHaveLength(4)
+
+    // Buttons use the same transition path and keep the select in sync.
+    await wrapper.get('[data-testid="game-selector-p638"]').trigger('click')
+    await flushPromises()
+    expect((gameSelect.element as HTMLSelectElement).value).toBe('POWER_LOTTO')
+    expect(overviewRequests().at(-1)).toContain('lottery_type=POWER_LOTTO')
+
+    wrapper.unmount()
+  })
+
+  it('keeps the search and descriptor filters visible and narrows results correctly', async () => {
+    const makeItem = (overrides: Record<string, unknown> = {}) => ({
+      strategyId: 'cross_game_markov_transition',
+      displayName: 'Cross Game Markov Transition',
+      version: 'v2.0',
+      supportedLotteryTypes: ['BIG_LOTTO', 'DAILY_539'],
+      gameLabels: ['B649', 'T539'],
+      minimumHistory: 15,
+      lifecycleStatus: 'ONLINE',
+      executable: true,
+      provenance: ['fixture:cross_game'],
+      adapterAvailable: true,
+      registrationStatus: 'CANONICAL_EVIDENCE_REGISTERED',
+      definitionStatus: 'DEFINITION_AVAILABLE',
+      verificationStatus: 'EVIDENCE_VERIFIED',
+      empiricalEligibility: 'EMPIRICAL ELIGIBLE',
+      evidenceStatus: 'CANONICAL EVIDENCE REGISTERED',
+      unavailableReasonCode: null,
+      ...overrides,
+    })
+
+    const items = [
+      makeItem(),
+      makeItem({
+        strategyId: 'cross_game_missing_evidence',
+        displayName: 'Cross Game Missing Evidence',
+        registrationStatus: 'CANONICAL_EVIDENCE_MISSING',
+        evidenceStatus: 'CANONICAL EVIDENCE MISSING',
+        verificationStatus: 'EVIDENCE_MISSING',
+        empiricalEligibility: 'EMPIRICAL INELIGIBLE',
+        unavailableReasonCode: 'NO_CANONICAL_STRATEGY_EVALUATION_EVIDENCE',
+      }),
+      makeItem({
+        strategyId: 'cross_game_b649_only',
+        displayName: 'Cross Game B649 Only',
+        gameLabels: ['B649'],
+      }),
+      makeItem({
+        strategyId: 'cross_game_idea',
+        displayName: 'Cross Game Idea',
+        lifecycleStatus: 'IDEA',
+      }),
+      makeItem({
+        strategyId: 'cross_game_metadata',
+        displayName: 'Cross Game Metadata',
+        executable: false,
+      }),
+    ]
+    const wrapper = mount(StrategyIntelligenceOverview, {
+      props: {
+        items: items as any,
+        totalCount: items.length,
+        executableCount: 4,
+        metadataOnlyCount: 1,
+        lifecycleCounts: { ONLINE: 4, IDEA: 1 },
+        unavailableReasons: ['NO_CANONICAL_STRATEGY_EVALUATION_EVIDENCE'],
+        selectedLotteryType: 'BIG_LOTTO',
+      },
+    })
+
+    await wrapper.get('#strategy-search').setValue('cross_game')
+    await wrapper.get('#game-filter').setValue('T539')
+    await wrapper.get('#lifecycle-filter').setValue('ONLINE')
+    await wrapper.get('#executable-filter').setValue('true')
+    await wrapper.get('#evidence-filter').setValue('REGISTERED')
+
+    expect(wrapper.findAll('tbody tr.data-row')).toHaveLength(1)
+    expect(wrapper.text()).toContain('Cross Game Markov Transition')
+    expect(wrapper.text()).not.toContain('Cross Game Missing Evidence')
+    expect(wrapper.text()).not.toContain('Cross Game B649 Only')
+    expect(wrapper.text()).not.toContain('Cross Game Idea')
+    expect(wrapper.text()).not.toContain('Cross Game Metadata')
+    expect(wrapper.get('[data-testid="strategy-query-context"]').text()).toContain(
+      'Catalog scope: B649 · Search: cross_game · Game: T539 · Lifecycle: ONLINE · Execution: Executable · Evidence: Canonical Registered',
+    )
+    expect(wrapper.get('[data-testid="strategy-query-context"]').text()).toContain('1 of 5 strategies match')
+
+    await wrapper.get('[data-testid="strategy-details-cross_game_markov_transition"]').trigger('click')
+    const detail = wrapper.get('[data-testid="strategy-detail"]')
+    expect(detail.text()).toContain('Strategy details · B649')
+    expect(detail.text()).toContain('Evidence and availability')
+    expect(detail.text()).toContain('Minimum history')
+    expect(detail.text()).toContain('fixture:cross_game')
+    expect(detail.text()).toContain('Search: cross_game · Game: T539')
+
+    await wrapper.get('[data-testid="strategy-detail-return"]').trigger('click')
+    expect(wrapper.get('#strategy-search').element).toHaveProperty('value', 'cross_game')
+    expect((wrapper.get('#game-filter').element as HTMLSelectElement).value).toBe('T539')
+    expect(wrapper.findAll('tbody tr.data-row')).toHaveLength(1)
+
+    wrapper.unmount()
+  })
+
+  it('preserves same-page query conditions across lottery and tab changes without mixing rows', async () => {
+    const wrapper = mount(StrategyIntelligencePage)
+    await flushPromises()
+
+    await wrapper.get('#strategy-search').setValue('cross_game_markov_transition')
+    await wrapper.get('#game-filter').setValue('T539')
+    await wrapper.get('#lifecycle-filter').setValue('ONLINE')
+    await wrapper.get('#executable-filter').setValue('true')
+    await wrapper.get('#evidence-filter').setValue('MISSING')
+
+    expect(wrapper.findAll('tbody tr.data-row')).toHaveLength(1)
+    await wrapper.get('[data-testid="strategy-details-cross_game_markov_transition"]').trigger('click')
+    expect(wrapper.get('[data-testid="strategy-detail"]').text()).toContain('Strategy details · B649')
+
+    await wrapper.get('[data-testid="game-selector-t539"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.get('[data-testid="game-selector-t539"]').attributes('aria-checked')).toBe('true')
+    expect(wrapper.find('[data-testid="strategy-detail"]').exists()).toBe(false)
+    expect((wrapper.get('#strategy-search').element as HTMLInputElement).value).toBe(
+      'cross_game_markov_transition',
+    )
+    expect((wrapper.get('#game-filter').element as HTMLSelectElement).value).toBe('T539')
+    expect((wrapper.get('#lifecycle-filter').element as HTMLSelectElement).value).toBe('ONLINE')
+    expect((wrapper.get('#executable-filter').element as HTMLSelectElement).value).toBe('true')
+    expect((wrapper.get('#evidence-filter').element as HTMLSelectElement).value).toBe('MISSING')
+    expect(wrapper.get('[data-testid="strategy-query-context"]').text()).toContain('Catalog scope: T539')
+    expect(wrapper.findAll('tbody tr.data-row')).toHaveLength(1)
+    expect(wrapper.text()).toContain('Cross Game Markov Transition')
+    expect(wrapper.text()).not.toContain(t539Strategy.display_name)
+    expect(wrapper.text()).not.toContain(p638Strategy.display_name)
+
+    await wrapper.findAll('button[role="tab"]')[1].trigger('click')
+    await wrapper.findAll('button[role="tab"]')[0].trigger('click')
+    expect((wrapper.get('#strategy-search').element as HTMLInputElement).value).toBe(
+      'cross_game_markov_transition',
+    )
+    expect((wrapper.get('#game-filter').element as HTMLSelectElement).value).toBe('T539')
+    expect(wrapper.findAll('tbody tr.data-row')).toHaveLength(1)
+
+    wrapper.unmount()
+  })
+
+  it('dropdown API errors clear the previous game rows and retain the selected scope', async () => {
+    const wrapper = mount(StrategyIntelligencePage)
+    await flushPromises()
+    expect(wrapper.text()).toContain(b649Strategy.display_name)
+
+    fetchMock.mockImplementation((input) => {
+      const url = String(input)
+      if (url.includes('/api/v1/strategy-overview')) {
+        const lotteryType = new URL(url, 'http://localhost').searchParams.get('lottery_type')
+        if (lotteryType === 'POWER_LOTTO') {
+          return Promise.resolve(apiResponse({ message: 'P638 unavailable' }, 503))
+        }
+        return Promise.resolve(apiResponse(makeOverviewForGame(lotteryType ?? undefined)))
+      }
+      if (url.includes('/api/v1/strategy-evidence')) {
+        return Promise.resolve(apiResponse(makeEvidence()))
+      }
+      return Promise.resolve(apiResponse({}))
+    })
+
+    const gameSelect = wrapper.get('[data-testid="game-scope-select"]')
+    await gameSelect.setValue('POWER_LOTTO')
+    await flushPromises()
+
+    expect((gameSelect.element as HTMLSelectElement).value).toBe('POWER_LOTTO')
+    expect(wrapper.get('[data-testid="game-selector-p638"]').attributes('aria-checked')).toBe('true')
+    expect(wrapper.text()).toContain('Failed to load Strategy Intelligence workspace')
+    expect(wrapper.text()).toContain('HTTP 503')
+    expect(wrapper.text()).not.toContain(b649Strategy.display_name)
+    expect(wrapper.text()).not.toContain(p638Strategy.display_name)
+
+    wrapper.unmount()
+  })
+
+  it('dropdown preserves null evidence reasons, unavailable values, and an empty catalog', async () => {
+    fetchMock.mockImplementation((input) => {
+      const url = String(input)
+      if (url.includes('/api/v1/strategy-overview')) {
+        const lotteryType = new URL(url, 'http://localhost').searchParams.get('lottery_type')
+        if (lotteryType === 'DAILY_539') {
+          return Promise.resolve(apiResponse(makeOverviewForGame('DAILY_539', [])))
+        }
+        return Promise.resolve(apiResponse(makeOverviewForGame(lotteryType ?? undefined)))
+      }
+      if (url.includes('/api/v1/strategy-evidence')) {
+        return Promise.resolve(
+          apiResponse(
+            makeEvidence({
+              [p638Strategy.strategy_id]: {
+                registration_status: 'CANONICAL_EVIDENCE_REGISTERED',
+                verification_status: 'EVIDENCE_VERIFIED',
+              },
+            }),
+          ),
+        )
+      }
+      return Promise.resolve(apiResponse({}))
+    })
+
+    const wrapper = mount(StrategyIntelligencePage)
+    await flushPromises()
+    const gameSelect = wrapper.get('[data-testid="game-scope-select"]')
+
+    await gameSelect.setValue('POWER_LOTTO')
+    await flushPromises()
+
+    const p638Row = wrapper
+      .findAll('.data-row')
+      .find((row) => row.text().includes(p638Strategy.strategy_id))
+    expect(p638Row).toBeDefined()
+    expect(p638Row!.text()).toContain('CANONICAL EVIDENCE REGISTERED')
+    expect(p638Row!.findAll('td').at(9)?.text().trim()).toBe('—')
+    expect(p638Row!.find('code.reason-code-inline').exists()).toBe(false)
+
+    await gameSelect.setValue('DAILY_539')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Strategy Catalog is empty')
+    expect(wrapper.text()).toContain('UNAVAILABLE')
+    expect(wrapper.text()).toContain('NOT_AVAILABLE')
+    expect(wrapper.text()).not.toContain(p638Strategy.display_name)
+    expect(wrapper.text()).not.toContain(t539Strategy.display_name)
+    expect(wrapper.text()).not.toContain('0.00%')
+
+    wrapper.unmount()
+  })
+
+  it('rapid dropdown changes ignore aborted and stale API responses', async () => {
+    const delayedOverviewResponses = new Map<string, (response: Response) => void>()
+    const overviewSignals = new Map<string, AbortSignal | null>()
+
+    fetchMock.mockImplementation((input, init) => {
+      const url = String(input)
+      if (url.includes('/api/v1/strategy-overview')) {
+        const lotteryType = new URL(url, 'http://localhost').searchParams.get('lottery_type') ?? ''
+        overviewSignals.set(lotteryType, init?.signal ?? null)
+        return new Promise<Response>((resolve) => {
+          delayedOverviewResponses.set(lotteryType, resolve)
+        })
+      }
+      if (url.includes('/api/v1/strategy-evidence')) {
+        return Promise.resolve(apiResponse(makeEvidence()))
+      }
+      return Promise.resolve(apiResponse({}))
+    })
+
+    const wrapper = mount(StrategyIntelligencePage)
+    await flushPromises()
+    const gameSelect = wrapper.get('[data-testid="game-scope-select"]')
+
+    await gameSelect.setValue('POWER_LOTTO')
+    expect(wrapper.text()).not.toContain(b649Strategy.display_name)
+    await gameSelect.setValue('DAILY_539')
+
+    expect(overviewSignals.get('BIG_LOTTO')?.aborted).toBe(true)
+    expect(overviewSignals.get('POWER_LOTTO')?.aborted).toBe(true)
+    expect(overviewSignals.get('DAILY_539')?.aborted).toBe(false)
+
+    delayedOverviewResponses.get('DAILY_539')?.(apiResponse(makeOverviewForGame('DAILY_539')))
+    await flushPromises()
+    expect(wrapper.text()).toContain(t539Strategy.display_name)
+    expect(wrapper.text()).not.toContain(b649Strategy.display_name)
+    expect(wrapper.text()).not.toContain(p638Strategy.display_name)
+
+    delayedOverviewResponses.get('POWER_LOTTO')?.(apiResponse(makeOverviewForGame('POWER_LOTTO')))
+    delayedOverviewResponses.get('BIG_LOTTO')?.(apiResponse(makeOverviewForGame('BIG_LOTTO')))
+    await flushPromises()
+
+    expect((gameSelect.element as HTMLSelectElement).value).toBe('DAILY_539')
+    expect(wrapper.text()).toContain(t539Strategy.display_name)
+    expect(wrapper.text()).not.toContain(b649Strategy.display_name)
+    expect(wrapper.text()).not.toContain(p638Strategy.display_name)
+
+    wrapper.unmount()
+  })
+
   it('6. strategy rows only contain selected game', async () => {
     const wrapper = mount(StrategyIntelligencePage)
     await flushPromises()

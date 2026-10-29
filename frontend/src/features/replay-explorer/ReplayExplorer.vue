@@ -43,6 +43,7 @@ const isStrategyPickerOpen = ref(false)
 // Data & Async States
 const state = ref<LoadingState>('loading')
 const errorMessage = ref('')
+const retryTarget = ref<'initialize' | 'loadData'>('initialize')
 const strategiesList = ref<StrategyOption[]>([])
 const periodOptions = ref<PeriodOption[]>([])
 const familyOptions = ref<string[]>([])
@@ -108,6 +109,7 @@ const filteredStrategyOptions = computed(() => {
 
 // Initialize adapter data
 async function initialize(): Promise<void> {
+  retryTarget.value = 'initialize'
   state.value = 'loading'
   errorMessage.value = ''
   try {
@@ -127,6 +129,7 @@ async function initialize(): Promise<void> {
 
 // Load replay explorer items based on active query
 async function loadData(): Promise<void> {
+  retryTarget.value = 'loadData'
   fetchController?.abort()
   const controller = new AbortController()
   fetchController = controller
@@ -162,6 +165,17 @@ async function loadData(): Promise<void> {
     state.value = 'error'
     errorMessage.value = err instanceof Error ? err.message : 'Failed to load replay data.'
   }
+}
+
+function retry(): void {
+  if (state.value !== 'error') return
+
+  if (retryTarget.value === 'initialize') {
+    void initialize()
+    return
+  }
+
+  void loadData()
 }
 
 async function loadTrend(params: ReplayQueryParams, currentItems: ReplayExplorerItem[]): Promise<void> {
@@ -599,11 +613,9 @@ onBeforeUnmount(() => {
         v-else-if="state === 'error'"
         title="Failed to Load Replay Evidence"
         :message="errorMessage"
-      >
-        <button type="button" class="button button--primary" @click="loadData">
-          Retry Request
-        </button>
-      </ErrorState>
+        retry-label="Retry Request"
+        @retry="retry"
+      />
 
       <!-- Active View Modes -->
       <template v-else>

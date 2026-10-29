@@ -48,6 +48,67 @@ function apiResponse(payload: unknown, status = 200): Response {
   } as unknown as Response
 }
 
+function p638Run(runId: string, status: string) {
+  return {
+    run_id: runId,
+    status,
+    draw_count: 90,
+    first_draw_number: 'draw-1',
+    first_draw_date: '2026-01-01',
+    last_draw_number: 'draw-90',
+    last_draw_date: '2026-07-30',
+  }
+}
+
+function t539Run(runId: string, status: string) {
+  return {
+    run_id: runId,
+    status,
+    lottery_type: 'DAILY_539',
+    draw_count: 90,
+    first_draw_id: 'draw-1',
+    first_draw_date: '2026-01-01',
+    last_draw_id: 'draw-90',
+    last_draw_date: '2026-07-30',
+  }
+}
+
+function p638Ranking(runId: string) {
+  return {
+    run_id: runId,
+    rank: 2,
+    strategy_id: 'p638-source-strategy',
+    strategy_version: 'p638-v4',
+    native_ticket_count: 5,
+    eligible_target_count: 90,
+    winning_target_count: 9,
+    winning_target_rate: 0.1004,
+    total_complete_ticket_count: 180,
+    winning_ticket_count: 27,
+    ticket_winning_rate: 0.15,
+    prize_tier_counts: [],
+    highest_prize_tier_achieved: 'sixth',
+  }
+}
+
+function t539Ranking(runId: string) {
+  return {
+    run_id: runId,
+    rank: 3,
+    strategy_id: 't539-source-strategy',
+    strategy_version: 't539-v7',
+    native_ticket_count: 5,
+    eligible_target_count: 90,
+    winning_target_count: 9,
+    winning_target_rate: 0.1,
+    total_ticket_count: 270,
+    winning_ticket_count: 27,
+    ticket_winning_rate: 0.1,
+    prize_tier_counts: [],
+    highest_prize_tier_achieved: 'sixth',
+  }
+}
+
 const mockB649Summary = {
   progress: {
     total_strategy_count: 221,
@@ -1414,6 +1475,138 @@ describe('Ranking Matrix Summary Lift Truthfulness (Branch 7 R1)', () => {
     // Legacy records render without exact-native banner
     expect(wrapper.find('[data-testid="canonical-exact-native-banner"]').exists()).toBe(false)
 
+    wrapper.unmount()
+  })
+})
+
+describe('P638 and T539 Ranking Matrix source identity', () => {
+  function installHistoricalFixtures(): void {
+    const fallback = fetchMock.getMockImplementation()!
+    fetchMock.mockImplementation((input, init) => {
+      const url = new URL(String(input), 'http://localhost')
+      if (url.pathname === '/api/v1/p638-historical/runs') {
+        const runId = 'p638-complete-run'
+        return Promise.resolve(apiResponse({
+          items: [p638Run('p638-failed-run', 'FAILED'), p638Run(runId, 'COMPLETE')],
+          total_count: 2,
+          limit: 25,
+          offset: 0,
+        }))
+      }
+      if (url.pathname === '/api/v1/t539-historical/runs') {
+        const runId = 't539-complete-run'
+        return Promise.resolve(apiResponse({
+          items: [t539Run('t539-failed-run', 'FAILED'), t539Run(runId, 'COMPLETE')],
+          total_count: 2,
+          limit: 25,
+          offset: 0,
+        }))
+      }
+      if (url.pathname === '/api/v1/p638-historical/runs/p638-complete-run/rankings') {
+        return Promise.resolve(apiResponse({ run_id: 'p638-complete-run', items: [p638Ranking('p638-complete-run')] }))
+      }
+      if (url.pathname === '/api/v1/t539-historical/runs/t539-complete-run/rankings') {
+        return Promise.resolve(apiResponse({ run_id: 't539-complete-run', items: [t539Ranking('t539-complete-run')] }))
+      }
+      return fallback(input, init)
+    })
+  }
+
+  function installP638Failure(mode: 'not-configured' | 'network' | 'malformed'): void {
+    const fallback = fetchMock.getMockImplementation()!
+    fetchMock.mockImplementation((input, init) => {
+      const url = new URL(String(input), 'http://localhost')
+      if (url.pathname === '/api/v1/p638-historical/runs') {
+        if (mode === 'network') return Promise.reject(new Error('offline'))
+        if (mode === 'malformed') return Promise.resolve(apiResponse({ malformed: true }))
+        return Promise.resolve(apiResponse({
+          error_code: 'P638_HISTORICAL_NOT_CONFIGURED',
+          message: 'P638 source configuration is missing.',
+        }, 503))
+      }
+      return fallback(input, init)
+    })
+  }
+
+  it('labels the unverified source window and clears old run data across lottery, K, and window changes', async () => {
+    const wrapper = mount(RankingMatrixPage)
+    await flushPromises(); await flushPromises()
+    installHistoricalFixtures()
+
+    await wrapper.get('[data-testid="lottery-selector"]').setValue('POWER_LOTTO')
+    await flushPromises(); await flushPromises()
+
+    const p638Banner = wrapper.get('[data-testid="historical-run-source-banner"]')
+    expect(p638Banner.text()).toContain('所選窗口 300 的來源身份未驗證')
+    expect(p638Banner.text()).toContain('p638-complete-run · Status: COMPLETE')
+    expect(p638Banner.text()).toContain('draw-1 · 2026-01-01')
+    expect(wrapper.get('[data-testid="ranking-row-p638-source-strategy"]').text()).toContain('#2')
+    expect(wrapper.get('[data-testid="ranking-row-p638-source-strategy"]').text()).toContain('窗口來源未驗證')
+    expect(wrapper.text()).not.toContain('p638-failed-run')
+
+    await wrapper.get('[data-testid="window-btn-50"]').trigger('click')
+    await flushPromises(); await flushPromises()
+    expect(wrapper.get('[data-testid="historical-run-source-banner"]').text()).toContain('所選窗口 50 的來源身份未驗證')
+    expect(wrapper.findAll('.ranking-row').map((row) => row.attributes('data-testid'))).toEqual([
+      'ranking-row-p638-source-strategy',
+    ])
+
+    await wrapper.get('[data-testid="lottery-selector"]').setValue('DAILY_539')
+    await flushPromises(); await flushPromises()
+    expect(wrapper.text()).not.toContain('p638-source-strategy')
+    expect(wrapper.text()).not.toContain('p638-complete-run')
+    expect(wrapper.get('[data-testid="historical-run-source-banner"]').text()).toContain('t539-complete-run · Status: COMPLETE')
+    expect(wrapper.get('[data-testid="ranking-row-t539-source-strategy"]').text()).toContain('#3')
+
+    await wrapper.get('[data-testid="ticket-btn-2"]').trigger('click')
+    await flushPromises(); await flushPromises()
+    const mismatchedTicketRow = wrapper.get('[data-testid="ranking-row-t539-source-strategy"]')
+    expect(mismatchedTicketRow.get('.td-rate').text()).toContain('Unavailable')
+    expect(mismatchedTicketRow.get('.td-counts').text()).toContain('Unavailable')
+    expect(mismatchedTicketRow.text()).not.toContain('9 / 90')
+    expect(mismatchedTicketRow.text()).not.toContain('10.00%')
+
+    wrapper.unmount()
+  })
+
+  it.each([
+    ['POWER_LOTTO', 'P638 歷史資料來源未配置。'],
+    ['DAILY_539', 'T539 歷史資料來源未配置。'],
+  ] as const)('shows a configured historical error for %s instead of empty data', async (lottery, expectedMessage) => {
+    const wrapper = mount(RankingMatrixPage)
+    await flushPromises(); await flushPromises()
+    const fallback = fetchMock.getMockImplementation()!
+    fetchMock.mockImplementation((input, init) => {
+      const url = new URL(String(input), 'http://localhost')
+      const route = lottery === 'POWER_LOTTO' ? '/api/v1/p638-historical/runs' : '/api/v1/t539-historical/runs'
+      const errorCode = lottery === 'POWER_LOTTO' ? 'P638_HISTORICAL_NOT_CONFIGURED' : 'T539_HISTORICAL_NOT_CONFIGURED'
+      if (url.pathname === route) return Promise.resolve(apiResponse({ error_code: errorCode, message: 'Historical source is not configured.' }, 503))
+      return fallback(input, init)
+    })
+
+    await wrapper.get('[data-testid="lottery-selector"]').setValue(lottery)
+    await flushPromises(); await flushPromises()
+
+    expect(wrapper.find('[data-testid="page-error-state"]').exists()).toBe(true)
+    expect(wrapper.text()).toContain(expectedMessage)
+    expect(wrapper.find('[data-testid="empty-filter-state"]').exists()).toBe(false)
+    wrapper.unmount()
+  })
+
+  it.each([
+    ['network', 'P638 歷史資料網路連線失敗。'],
+    ['malformed', 'P638 Historical Results returned an unexpected response.'],
+  ] as const)('renders P638 %s errors without treating them as empty data', async (mode, expectedMessage) => {
+    const wrapper = mount(RankingMatrixPage)
+    await flushPromises(); await flushPromises()
+    installP638Failure(mode)
+
+    await wrapper.get('[data-testid="lottery-selector"]').setValue('POWER_LOTTO')
+    await flushPromises(); await flushPromises()
+
+    expect(wrapper.find('[data-testid="page-error-state"]').exists()).toBe(true)
+    expect(wrapper.text()).toContain(expectedMessage)
+    expect(wrapper.find('[data-testid="empty-filter-state"]').exists()).toBe(false)
     wrapper.unmount()
   })
 })

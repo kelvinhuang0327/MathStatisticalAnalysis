@@ -82,6 +82,9 @@ export interface BestReplayItem {
   strategyId: string
   strategyVersion: string | null
   legacyMethodId?: string
+  sourceRunId?: string | null
+  sourceCompletedAt?: string | null
+  sourceAsOfDate?: string | null
   methodFamily: string
   game: GameCode
   ticketCount: TicketCount

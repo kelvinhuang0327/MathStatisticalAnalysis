@@ -337,6 +337,268 @@ describe('rankingMatrix API and utilities', () => {
       vi.unstubAllGlobals()
     })
 
+    function jsonResponse(payload: unknown, status = 200): Response {
+      return new Response(JSON.stringify(payload), { status })
+    }
+
+    function p638Run(runId: string, status: string) {
+      return {
+        run_id: runId,
+        status,
+        draw_count: 90,
+        first_draw_number: 'draw-1',
+        first_draw_date: '2026-01-01',
+        last_draw_number: 'draw-90',
+        last_draw_date: '2026-07-30',
+      }
+    }
+
+    function t539Run(runId: string, status: string) {
+      return {
+        run_id: runId,
+        status,
+        lottery_type: 'DAILY_539',
+        draw_count: 90,
+        first_draw_id: 'draw-1',
+        first_draw_date: '2026-01-01',
+        last_draw_id: 'draw-90',
+        last_draw_date: '2026-07-30',
+      }
+    }
+
+    function p638Ranking(runId: string, overrides: Record<string, unknown> = {}) {
+      return {
+        run_id: runId,
+        rank: 2,
+        strategy_id: 'p638-source-strategy',
+        strategy_version: 'p638-v4',
+        native_ticket_count: 5,
+        eligible_target_count: 90,
+        winning_target_count: 9,
+        winning_target_rate: 0.1004,
+        prize_tier_counts: [],
+        highest_prize_tier_achieved: 'sixth',
+        ...overrides,
+      }
+    }
+
+    function t539Ranking(runId: string, overrides: Record<string, unknown> = {}) {
+      return {
+        run_id: runId,
+        rank: 3,
+        strategy_id: 't539-source-strategy',
+        strategy_version: 't539-v7',
+        native_ticket_count: 5,
+        eligible_target_count: 90,
+        winning_target_count: 9,
+        winning_target_rate: 0.1,
+        ticket_winning_rate: 0.1,
+        prize_tier_counts: [],
+        highest_prize_tier_achieved: 'sixth',
+        ...overrides,
+      }
+    }
+
+    function stubHistoricalRun(
+      lottery: 'POWER_LOTTO' | 'DAILY_539',
+      runs: Record<string, unknown>[],
+      runId: string,
+      rankings: Record<string, unknown>[],
+    ): void {
+      const route = lottery === 'POWER_LOTTO' ? 'p638' : 't539'
+      fetchMock.mockImplementation((input) => {
+        const url = String(input)
+        if (url.includes(`/api/v1/${route}-historical/runs?`)) {
+          return Promise.resolve(jsonResponse({ items: runs, total_count: runs.length, limit: 25, offset: 0 }))
+        }
+        if (url.includes(`/api/v1/${route}-historical/runs/${runId}/rankings`)) {
+          return Promise.resolve(jsonResponse({ run_id: runId, items: rankings }))
+        }
+        return Promise.resolve(jsonResponse({ message: 'not found' }, 404))
+      })
+    }
+
+    it.each([
+      ['POWER_LOTTO', 'P638_HISTORICAL_NOT_CONFIGURED', 'P638HistoricalRequestError'],
+      ['DAILY_539', 'T539_HISTORICAL_NOT_CONFIGURED', 'T539HistoricalRequestError'],
+    ] as const)('%s keeps a 503 NOT_CONFIGURED response as an API error', async (lottery, errorCode, errorName) => {
+      fetchMock.mockResolvedValue(jsonResponse({ error_code: errorCode, message: 'Historical source is not configured.' }, 503))
+
+      const error = await fetchRankingData(lottery, 5, 'RECENT_50').catch((value: unknown) => value)
+
+      expect(error).toMatchObject({ name: errorName, kind: 'NOT_CONFIGURED', status: 503 })
+    })
+
+    it.each([
+      ['POWER_LOTTO', 'P638HistoricalRequestError'],
+      ['DAILY_539', 'T539HistoricalRequestError'],
+    ] as const)('%s keeps other HTTP 503 responses as UNAVAILABLE errors', async (lottery, errorName) => {
+      fetchMock.mockResolvedValue(jsonResponse({ message: 'Historical service unavailable.' }, 503))
+
+      const error = await fetchRankingData(lottery, 5, 'RECENT_300').catch((value: unknown) => value)
+
+      expect(error).toMatchObject({
+        name: errorName,
+        kind: 'UNAVAILABLE',
+        status: 503,
+        message: 'Historical service unavailable.',
+      })
+    })
+
+    it.each([
+      ['POWER_LOTTO', 'P638HistoricalRequestError'],
+      ['DAILY_539', 'T539HistoricalRequestError'],
+    ] as const)('%s treats a successful empty run page as normal empty data', async (lottery) => {
+      fetchMock.mockResolvedValue(jsonResponse({ items: [], total_count: 0, limit: 25, offset: 0 }))
+
+      await expect(fetchRankingData(lottery, 5, 'FULL')).resolves.toEqual([])
+    })
+
+    it.each([
+      ['POWER_LOTTO', 'P638HistoricalRequestError'],
+      ['DAILY_539', 'T539HistoricalRequestError'],
+    ] as const)('%s preserves network and malformed-response classifications', async (lottery, errorName) => {
+      fetchMock.mockRejectedValueOnce(new Error('offline'))
+      const networkError = await fetchRankingData(lottery, 5, 'FULL').catch((value: unknown) => value)
+      expect(networkError).toMatchObject({ name: errorName, kind: 'UNAVAILABLE', status: 0 })
+
+      fetchMock.mockResolvedValueOnce(jsonResponse({ malformed: true }))
+      const malformedError = await fetchRankingData(lottery, 5, 'FULL').catch((value: unknown) => value)
+      expect(malformedError).toMatchObject({ name: errorName, kind: 'MALFORMED_RESPONSE' })
+    })
+
+    it.each(CANONICAL_WINDOWS)('does not attribute a P638 Run to the selected %s window', async (window) => {
+      const runId = 'p638-complete-run'
+      stubHistoricalRun(
+        'POWER_LOTTO',
+        [p638Run('p638-failed-run', 'FAILED'), p638Run(runId, 'COMPLETE')],
+        runId,
+        [p638Ranking(runId)],
+      )
+
+      const rows = await fetchRankingData('POWER_LOTTO', 5, window)
+
+      expect(rows).toHaveLength(1)
+      expect(rows[0]).toMatchObject({
+        window,
+        sourceWindow: null,
+        sourceRun: {
+          runId,
+          status: 'COMPLETE',
+          firstDraw: 'draw-1',
+          firstDrawDate: '2026-01-01',
+          lastDraw: 'draw-90',
+          lastDrawDate: '2026-07-30',
+          drawCount: 90,
+        },
+        officialRank: 2,
+        rawRank: 2,
+        strategyId: 'p638-source-strategy',
+        strategyVersion: 'p638-v4',
+        successes: 9,
+        observations: 90,
+        officialAnyPrizeRate: 0.1004,
+        isAvailable: false,
+        comparabilityStatus: 'UNAVAILABLE',
+      })
+      expect(rows[0]?.warningCodes).toContain('WINDOW_SOURCE_UNVERIFIED')
+      expect(fetchMock.mock.calls.some(([url]) => String(url).includes('p638-failed-run/rankings'))).toBe(false)
+    })
+
+    it.each(CANONICAL_WINDOWS)('does not attribute a T539 Run to the selected %s window', async (window) => {
+      const runId = 't539-complete-run'
+      stubHistoricalRun(
+        'DAILY_539',
+        [t539Run('t539-failed-run', 'FAILED'), t539Run(runId, 'COMPLETE')],
+        runId,
+        [t539Ranking(runId)],
+      )
+
+      const rows = await fetchRankingData('DAILY_539', 5, window)
+
+      expect(rows).toHaveLength(1)
+      expect(rows[0]).toMatchObject({
+        window,
+        sourceWindow: null,
+        sourceRun: {
+          runId,
+          status: 'COMPLETE',
+          firstDraw: 'draw-1',
+          firstDrawDate: '2026-01-01',
+          lastDraw: 'draw-90',
+          lastDrawDate: '2026-07-30',
+          drawCount: 90,
+        },
+        officialRank: 3,
+        rawRank: 3,
+        strategyId: 't539-source-strategy',
+        strategyVersion: 't539-v7',
+        successes: 9,
+        observations: 90,
+        officialAnyPrizeRate: 0.1,
+        isAvailable: false,
+        comparabilityStatus: 'UNAVAILABLE',
+      })
+      expect(rows[0]?.warningCodes).toContain('WINDOW_SOURCE_UNVERIFIED')
+      expect(fetchMock.mock.calls.some(([url]) => String(url).includes('t539-failed-run/rankings'))).toBe(false)
+    })
+
+    it.each([
+      ['POWER_LOTTO', 'P638'],
+      ['DAILY_539', 'T539'],
+    ] as const)('%s does not turn a zero eligible-target denominator into a zero rate', async (lottery, route) => {
+      const runId = `${route.toLowerCase()}-complete-run`
+      const run = route === 'P638' ? p638Run(runId, 'COMPLETE') : t539Run(runId, 'COMPLETE')
+      const ranking = route === 'P638'
+        ? p638Ranking(runId, { winning_target_count: 0, eligible_target_count: 0, winning_target_rate: 0 })
+        : t539Ranking(runId, { winning_target_count: 0, eligible_target_count: 0, winning_target_rate: 0 })
+      stubHistoricalRun(lottery, [run], runId, [ranking])
+
+      const rows = await fetchRankingData(lottery, 5, 'FULL')
+
+      expect(rows[0]).toMatchObject({
+        successes: 0,
+        observations: 0,
+        officialAnyPrizeRate: null,
+        officialAnyPrizeRateFormatted: 'Unavailable',
+      })
+      expect(rows[0]?.officialAnyPrizeRateFormatted).not.toContain('%')
+    })
+
+    it.each([
+      ['POWER_LOTTO', 'P638HistoricalRequestError'],
+      ['DAILY_539', 'T539HistoricalRequestError'],
+    ] as const)('%s does not load a FAILED Run when no completed Run exists', async (lottery, errorName) => {
+      stubHistoricalRun(
+        lottery,
+        [lottery === 'POWER_LOTTO' ? p638Run('failed-run', 'FAILED') : t539Run('failed-run', 'FAILED')],
+        'failed-run',
+        [],
+      )
+
+      const error = await fetchRankingData(lottery, 5, 'FULL').catch((value: unknown) => value)
+
+      expect(error).toMatchObject({ name: errorName, kind: 'UNAVAILABLE', status: 503 })
+      expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith('/failed-run/rankings'))).toBe(false)
+    })
+
+    it.each([
+      ['POWER_LOTTO', 'P638'],
+      ['DAILY_539', 'T539'],
+    ] as const)('%s leaves all cross-window points unavailable without source-window evidence', async (lottery, route) => {
+      const runId = `${route.toLowerCase()}-complete-run`
+      const run = route === 'P638' ? p638Run(runId, 'COMPLETE') : t539Run(runId, 'COMPLETE')
+      const ranking = route === 'P638' ? p638Ranking(runId) : t539Ranking(runId)
+      stubHistoricalRun(lottery, [run], runId, [ranking])
+
+      const data = await fetchCrossWindowData(lottery, 5, route.toLowerCase() + '-source-strategy', 'source strategy')
+
+      expect(data.points.map((point) => point.window)).toEqual(CANONICAL_WINDOWS)
+      expect(data.points.every((point) => !point.isAvailable)).toBe(true)
+      expect(data.points.every((point) => point.officialAnyPrizeRate === null)).toBe(true)
+      expect(data.points.every((point) => point.officialAnyPrizeRateFormatted === 'Unavailable')).toBe(true)
+    })
+
     it('loads all five published K5 strategies including the uncatalogued composite', async () => {
       const rows = await fetchRankingData('BIG_LOTTO', 5, 'RECENT_300')
       const published = k5Packaged.filter((r) => r.window === 'RECENT_300')

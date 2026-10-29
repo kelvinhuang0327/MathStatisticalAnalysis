@@ -125,19 +125,53 @@ class B649MultiTicketRecordView(BaseModel):
     criterion: B649SuccessCriterion
     rank: int | None
     official_rank: int | None
-    official_any_prize_count: int | None
-    official_any_prize_rate: str | None
+    official_any_prize_count: int | None = Field(
+        description=(
+            "Number of evaluated target draws where at least one ticket in the selected "
+            "prefix wins an official BIG_LOTTO prize, including special-number tiers. "
+            "Counts target draws, not winning tickets; null when metrics are unavailable."
+        )
+    )
+    official_any_prize_rate: str | None = Field(
+        description=(
+            "For N=successful_execution_count > 0, official_any_prize_count / "
+            "successful_execution_count, rendered to 18 decimal places with half-even "
+            "rounding. For N=0 the empirical rate is undefined: the existing producer "
+            "may retain 0.000000000000000000 as a placeholder, with official_rank=null "
+            "and unranked_reason=NO_SUCCESSFUL_EXECUTIONS_IN_WINDOW. This placeholder "
+            "is not an observed 0% success rate. Null means metrics are unavailable."
+        )
+    )
     official_random_baseline_probability: str | None
     official_random_baseline_delta: str | None
     unranked_reason: str | None
     success_count: int | None
-    effective_backtest_draw_count: int | None
-    successful_execution_count: int | None
+    effective_backtest_draw_count: int | None = Field(
+        description=(
+            "Legacy reduced denominator of the selected criterion's historical success "
+            "fraction; not the denominator of official_any_prize_rate or a raw sample "
+            "count. It can be 1 after reducing 0/N. Use successful_execution_count for N."
+        )
+    )
+    successful_execution_count: int | None = Field(
+        description=(
+            "Raw evaluated target-draw count N in the selected window with execution "
+            "status == OK, including no-prize outcomes and excluding non-OK or missing "
+            "executions. This is the denominator of official_any_prize_rate when N>0. "
+            "N=0 means no evaluated draws; null means metrics are unavailable."
+        )
+    )
     historical_success_rate: str | None
     random_baseline_success_rate: str | None
     random_baseline_rate_difference: str | None
     coverage: str | None
-    window_available_draws: int | None
+    window_available_draws: int | None = Field(
+        description=(
+            "Number of source target draws available in the selected window, including "
+            "targets with non-OK or missing executions. This is not the official rate "
+            "denominator; use successful_execution_count."
+        )
+    )
     window_requested_draws: int | None
     window_complete: bool | None
     official_prize_counts: B649OfficialPrizeCountsView | None

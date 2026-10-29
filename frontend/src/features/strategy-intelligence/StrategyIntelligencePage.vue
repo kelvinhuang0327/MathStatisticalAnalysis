@@ -52,7 +52,7 @@ function englishDisplayName(value: string, strategyId: string): string {
 const currentGameCode = computed(() => lotteryTypeDisplayLabel(selectedLotteryType.value))
 
 const combinedStrategies = computed<StrategyCombinedItem[]>(() => {
-  if (!overviewData.value) return []
+  if (loadState.value !== 'ready' || !overviewData.value) return []
   const evidenceItems = evidenceData.value?.items ?? []
   const evidenceMap = new Map(
     evidenceItems.map((e) => [`${e.strategy_id}::${e.strategy_version}`, e]),
@@ -81,7 +81,9 @@ const combinedStrategies = computed<StrategyCombinedItem[]>(() => {
       verificationStatus: verStatus,
       empiricalEligibility: isRegistered && isVerified ? 'EMPIRICAL ELIGIBLE' : 'EMPIRICAL INELIGIBLE',
       evidenceStatus: isRegistered ? 'CANONICAL EVIDENCE REGISTERED' : 'CANONICAL EVIDENCE MISSING',
-      unavailableReasonCode: matchedEvidence?.unavailable_reason_code ?? 'NO_CANONICAL_STRATEGY_EVALUATION_EVIDENCE',
+      unavailableReasonCode: matchedEvidence
+        ? matchedEvidence.unavailable_reason_code
+        : 'NO_CANONICAL_STRATEGY_EVALUATION_EVIDENCE',
     }
   })
 })
@@ -164,7 +166,6 @@ async function loadData(): Promise<void> {
 
   loadState.value = 'loading'
   errorMessage.value = ''
-  overviewData.value = null
 
   try {
     const [overviewResponse, evidenceResponse] = await Promise.all([
@@ -192,6 +193,11 @@ function selectGame(lotteryType: LotteryType): void {
   if (selectedLotteryType.value === lotteryType && loadState.value === 'ready') return
   selectedLotteryType.value = lotteryType
   void loadData()
+}
+
+function selectGameFromDropdown(event: Event): void {
+  const select = event.target as HTMLSelectElement
+  selectGame(select.value as LotteryType)
 }
 
 onMounted(() => {
@@ -280,10 +286,10 @@ onBeforeUnmount(() => {
           <label for="game-scope-select" class="sr-only">Select Lottery Game</label>
           <select
             id="game-scope-select"
-            v-model="selectedLotteryType"
+            :value="selectedLotteryType"
             class="select-input select-input--sm"
             data-testid="game-scope-select"
-            @change="selectGame(selectedLotteryType)"
+            @change="selectGameFromDropdown"
           >
             <option v-for="game in GAME_OPTIONS" :key="game.code" :value="game.lotteryType">
               {{ game.code }} ({{ game.fullName }})
@@ -368,16 +374,20 @@ onBeforeUnmount(() => {
 
     <!-- Loading State -->
     <SkeletonLoader
-      v-else-if="loadState === 'loading'"
+      v-if="loadState === 'loading'"
       type="table"
       :rows="8"
       height="48px"
     />
 
-    <!-- Ready Workspace Views -->
-    <div v-else-if="loadState === 'ready'" class="tab-content-wrapper">
+    <!-- Keep result views mounted while requests run so same-page query state survives. -->
+    <div
+      v-if="overviewData && evidenceData"
+      v-show="loadState === 'ready'"
+      class="tab-content-wrapper"
+    >
       <!-- Tab 1: Strategy Overview -->
-      <div v-if="activeTab === 'overview'" role="tabpanel" aria-label="Strategy Overview">
+      <div v-show="activeTab === 'overview'" role="tabpanel" aria-label="Strategy Overview">
         <StrategyIntelligenceOverview
           :items="combinedStrategies"
           :selected-lottery-type="selectedLotteryType"
@@ -392,7 +402,7 @@ onBeforeUnmount(() => {
       </div>
 
       <!-- Tab 2: Portfolio Hit Rate -->
-      <div v-else-if="activeTab === 'portfolio'" role="tabpanel" aria-label="Portfolio Hit Rate">
+      <div v-if="activeTab === 'portfolio'" role="tabpanel" aria-label="Portfolio Hit Rate">
         <StrategyIntelligencePortfolio
           :selected-lottery-type="selectedLotteryType"
           :combination-status="summary.portfolioStatus"

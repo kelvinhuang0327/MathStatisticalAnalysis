@@ -572,3 +572,43 @@ def build_v2_envelope(lottery_type: str) -> dict[str, Any]:
         "portfolios": [portfolio],
     }
     return recompute_v2_envelope_hashes(envelope)
+
+
+def build_v3_envelope(
+    main_numbers: tuple[int, ...] = (1, 2, 3, 4, 5, 6),
+) -> dict[str, Any]:
+    """Synthetic canonical six-number BIG_LOTTO input; never a formal source."""
+    envelope = build_v2_envelope("BIG_LOTTO")
+    envelope["contract_version"] = "3.0.0"
+    envelope["dataset"]["dataset_identity"] = "historical_v3_big_lotto_synthetic"
+    for ticket in envelope["portfolios"][0]["tickets"]:
+        ticket["main_numbers"] = list(main_numbers)
+        ticket["special_numbers"] = []
+        ticket["main_hit_count"] = len(set(main_numbers) & set(TARGET_MAIN_NUMBERS))
+        ticket["special_hit"] = bool(set(main_numbers) & set(TARGET_SPECIAL_NUMBERS))
+    return recompute_v2_envelope_hashes(envelope)
+
+
+def build_legacy_special_hit_envelope(
+    contract_version: str,
+    main_numbers: tuple[int, ...],
+    special_numbers: tuple[int, ...],
+) -> dict[str, Any]:
+    """Seal a synthetic legacy hit signature without changing the legacy builders."""
+    envelope = build_small_envelope()
+    tickets: list[dict[str, Any]] = []
+    for position in range(1, PORTFOLIO_TICKET_COUNT + 1):
+        ticket: dict[str, Any] = {
+            "portfolio_position": position,
+            "main_numbers": list(main_numbers),
+            "special_numbers": list(special_numbers),
+            "main_hit_count": len(set(main_numbers) & set(TARGET_MAIN_NUMBERS)),
+            "special_hit": bool(set(special_numbers) & set(TARGET_SPECIAL_NUMBERS)),
+        }
+        ticket["ticket_sha256"] = _ticket_sha256(ticket)
+        tickets.append(ticket)
+    envelope["portfolios"] = [build_portfolio(strategy_id=REAL_STRATEGY_IDS[0], tickets=tickets)]
+    if contract_version == "2.0.0":
+        envelope["contract_version"] = contract_version
+        return recompute_v2_envelope_hashes(envelope)
+    return recompute_envelope_hashes(envelope)

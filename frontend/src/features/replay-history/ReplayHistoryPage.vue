@@ -17,6 +17,17 @@ import {
   ReplayPortfolioRankingsRequestError,
   type ReplayPortfolioRankingResponse,
 } from '../../api/replayPortfolioRankings'
+import {
+  getReplayScoringOverallAggregate,
+  getReplayScoringRun,
+  listReplayScoringPredictions,
+  listReplayScoringStrategyAggregates,
+  ReplayScoringProjectionsRequestError,
+  type ReplayOverallAggregateResponse,
+  type ReplayScoredPredictionView,
+  type ReplayScoringPredictionsQuery,
+  type ReplayStrategyAggregateView,
+} from '../../api/replayScoringProjections'
 import type { LotteryType } from '../../api/strategies'
 import { lotteryTypeDisplayLabel } from '../../utils/lotteryDisplayLabel'
 import LotteryNumberBall from '../../components/LotteryNumberBall.vue'
@@ -168,12 +179,193 @@ const optimalResult = ref<ReplayPortfolioRankingResponse | null>(null)
 let optimalController: AbortController | undefined
 
 const shaInputInvalid = ref(false)
+const scoringDetailVisible = ref(false)
+const scoringDetailState = ref<LoadState>('idle')
+const scoringDetailError = ref('')
+const scoringDetailRun = ref<Awaited<ReturnType<typeof getReplayScoringRun>> | null>(null)
+const scoringStrategyAggregates = ref<ReplayStrategyAggregateView[]>([])
+const scoringOverallAggregate = ref<ReplayOverallAggregateResponse | null>(null)
+const scoringPredictions = ref<ReplayScoredPredictionView[]>([])
+const scoringPredictionsState = ref<LoadState>('idle')
+const scoringPredictionsError = ref('')
+const predictionFilters = ref({ targetDraw: '', strategyId: '', status: '', tier: '' })
+let scoringDetailController: AbortController | undefined
+let scoringPredictionsController: AbortController | undefined
+
+const aggregateCountFields = [
+  { key: 'source_snapshot_count', label: 'Source snapshots' },
+  { key: 'scored_count', label: 'Scored' },
+  { key: 'history_closed_count', label: 'History closed' },
+  { key: 'prediction_closed_count', label: 'Prediction closed' },
+  { key: 'target_outcome_not_found_count', label: 'Outcome not found' },
+  { key: 'target_identity_mismatch_count', label: 'Identity mismatch' },
+] as const
+
+const prizeCountFields = [
+  { key: 'first_prize_count', label: '1st prize' },
+  { key: 'second_prize_count', label: '2nd prize' },
+  { key: 'third_prize_count', label: '3rd prize' },
+  { key: 'fourth_prize_count', label: '4th prize' },
+  { key: 'fifth_prize_count', label: '5th prize' },
+  { key: 'sixth_prize_count', label: '6th prize' },
+  { key: 'seventh_prize_count', label: '7th prize' },
+  { key: 'general_prize_count', label: 'General prize' },
+  { key: 'no_prize_count', label: 'No prize' },
+] as const
+
+function clearScoringDetail(): void {
+  scoringDetailController?.abort()
+  scoringPredictionsController?.abort()
+  scoringDetailVisible.value = false
+  scoringDetailState.value = 'idle'
+  scoringDetailError.value = ''
+  scoringDetailRun.value = null
+  scoringStrategyAggregates.value = []
+  scoringOverallAggregate.value = null
+  scoringPredictions.value = []
+  scoringPredictionsState.value = 'idle'
+  scoringPredictionsError.value = ''
+}
+
+function resetOptimalSelection(): void {
+  optimalController?.abort()
+  optimalResult.value = null
+  optimalState.value = 'idle'
+  optimalError.value = ''
+  shaInputInvalid.value = false
+  clearScoringDetail()
+}
+
+function apiFailureLabel(status: number, errorCode: string | undefined): string {
+  if (errorCode?.toUpperCase().includes('NOT_CONFIGURED')) return 'SOURCE_NOT_CONFIGURED'
+  if (status === 0 || status === 503) return 'API_UNAVAILABLE'
+  return 'HTTP_ERROR'
+}
+
+function replayApiErrorMessage(error: unknown, label: string): string {
+  if (
+    error instanceof ReplayScoringProjectionsRequestError ||
+    error instanceof ReplayPortfolioRankingsRequestError
+  ) {
+    const statusLabel = apiFailureLabel(error.status, error.errorCode)
+    const status = error.status > 0 ? ' (HTTP ' + error.status + ')' : ''
+    return statusLabel + status + ': ' + error.message
+  }
+  const detail = error instanceof Error ? error.message : 'Unknown API error.'
+  return 'API_UNAVAILABLE: ' + label + ': ' + detail
+}
+
+function scoringErrorMessage(error: unknown): string {
+  return replayApiErrorMessage(error, 'Scoring detail request failed')
+}
+function selectedPredictionFilters(): ReplayScoringPredictionsQuery {
+  const filters = predictionFilters.value
+  return {
+    ...(filters.targetDraw ? { target_draw: filters.targetDraw.trim() } : {}),
+    ...(filters.strategyId ? { strategy_id: filters.strategyId.trim() } : {}),
+    ...(filters.status ? { status: filters.status.trim() } : {}),
+    ...(filters.tier ? { tier: filters.tier.trim() } : {}),
+  }
+}
+
+function isCurrentScoringArtifact(hash: string, signal: AbortSignal): boolean {
+  return (
+    !signal.aborted &&
+    optimalResult.value?.source_scoring_artifact_payload_sha256 === hash
+  )
+}
+
+async function loadScoringArtifactDetail(): Promise<void> {
+  const hash = optimalResult.value?.source_scoring_artifact_payload_sha256 ?? ''
+  scoringDetailVisible.value = true
+  if (!isValidScoringArtifactSha256(hash)) {
+    scoringDetailState.value = 'error'
+    scoringDetailError.value =
+      'The ranking response does not contain a valid source scoring artifact SHA-256.'
+    scoringDetailRun.value = null
+    scoringStrategyAggregates.value = []
+    scoringOverallAggregate.value = null
+    scoringPredictions.value = []
+    scoringPredictionsState.value = 'idle'
+    return
+  }
+
+  scoringDetailController?.abort()
+  scoringPredictionsController?.abort()
+  const controller = new AbortController()
+  scoringDetailController = controller
+  scoringDetailState.value = 'loading'
+  scoringDetailError.value = ''
+  scoringPredictionsState.value = 'loading'
+  scoringPredictionsError.value = ''
+  scoringDetailRun.value = null
+  scoringStrategyAggregates.value = []
+  scoringOverallAggregate.value = null
+  scoringPredictions.value = []
+  try {
+    const [run, predictions, strategyAggregates, overallAggregate] = await Promise.all([
+      getReplayScoringRun(hash, controller.signal),
+      listReplayScoringPredictions(hash, selectedPredictionFilters(), controller.signal),
+      listReplayScoringStrategyAggregates(hash, controller.signal),
+      getReplayScoringOverallAggregate(hash, controller.signal),
+    ])
+    if (!isCurrentScoringArtifact(hash, controller.signal)) return
+    if (run.scoring_artifact_payload_sha256 !== hash) {
+      throw new ReplayScoringProjectionsRequestError(
+        'The returned scoring artifact identity did not match the ranking source.',
+        502,
+      )
+    }
+    scoringDetailRun.value = run
+    scoringPredictions.value = predictions
+    scoringStrategyAggregates.value = strategyAggregates
+    scoringOverallAggregate.value = overallAggregate
+    scoringDetailState.value = 'ready'
+    scoringPredictionsState.value = predictions.length ? 'ready' : 'empty'
+  } catch (error) {
+    if (!isCurrentScoringArtifact(hash, controller.signal)) return
+    scoringDetailError.value = scoringErrorMessage(error)
+    scoringDetailState.value = 'error'
+    scoringPredictionsState.value = 'error'
+  }
+}
+
+async function loadFilteredScoringPredictions(): Promise<void> {
+  const hash = optimalResult.value?.source_scoring_artifact_payload_sha256 ?? ''
+  if (!isValidScoringArtifactSha256(hash)) {
+    scoringPredictionsState.value = 'error'
+    scoringPredictionsError.value =
+      'The ranking response does not contain a valid source scoring artifact SHA-256.'
+    return
+  }
+  scoringPredictionsController?.abort()
+  const controller = new AbortController()
+  scoringPredictionsController = controller
+  scoringPredictionsState.value = 'loading'
+  scoringPredictionsError.value = ''
+  scoringPredictions.value = []
+  try {
+    const predictions = await listReplayScoringPredictions(
+      hash,
+      selectedPredictionFilters(),
+      controller.signal,
+    )
+    if (!isCurrentScoringArtifact(hash, controller.signal)) return
+    scoringPredictions.value = predictions
+    scoringPredictionsState.value = predictions.length ? 'ready' : 'empty'
+  } catch (error) {
+    if (!isCurrentScoringArtifact(hash, controller.signal)) return
+    scoringPredictionsError.value = scoringErrorMessage(error)
+    scoringPredictionsState.value = 'error'
+  }
+}
 
 async function loadOptimalRankings(): Promise<void> {
   if (!isValidScoringArtifactSha256(scoringArtifactSha256.value)) {
     shaInputInvalid.value = true
     return
   }
+  clearScoringDetail()
   shaInputInvalid.value = false
   optimalController?.abort()
   const controller = new AbortController()
@@ -191,12 +383,7 @@ async function loadOptimalRankings(): Promise<void> {
     optimalState.value = result.groups.some((group) => group.candidates.length) ? 'ready' : 'empty'
   } catch (error) {
     if (controller.signal.aborted) return
-    optimalError.value =
-      error instanceof ReplayPortfolioRankingsRequestError
-        ? error.message
-        : error instanceof Error
-          ? error.message
-          : 'Unable to load optimal replay rankings'
+    optimalError.value = replayApiErrorMessage(error, 'Replay rankings request failed')
     optimalState.value = 'error'
   }
 }
@@ -206,7 +393,17 @@ onBeforeUnmount(() => {
   strategiesController?.abort()
   replayController?.abort()
   optimalController?.abort()
+  scoringDetailController?.abort()
+  scoringPredictionsController?.abort()
 })
+
+function nullableText(value: string | null | undefined): string {
+  return value ?? '—'
+}
+
+function predictedNumbers(value: number[] | null | undefined): string {
+  return value?.join(', ') ?? '—'
+}
 </script>
 
 <template>
@@ -415,11 +612,19 @@ onBeforeUnmount(() => {
               name="scoring_artifact_sha256"
               placeholder="64 hex characters"
               autocomplete="off"
+              @input="resetOptimalSelection"
             />
           </label>
           <label>
             <span>Top K</span>
-            <input v-model.number="topK" type="number" name="top_k" min="1" max="50" />
+            <input
+              v-model.number="topK"
+              type="number"
+              name="top_k"
+              min="1"
+              max="50"
+              @input="resetOptimalSelection"
+            />
           </label>
         </div>
         <p v-if="shaInputInvalid" class="state-panel state-panel--error">
@@ -431,17 +636,224 @@ onBeforeUnmount(() => {
       </form>
 
       <p v-if="optimalState === 'loading'" class="state-panel">Loading rankings…</p>
-      <p v-else-if="optimalState === 'empty'" class="state-panel">No candidates were found.</p>
-      <p v-else-if="optimalState === 'error'" class="state-panel state-panel--error">
+      <p v-else-if="optimalState === 'empty'" class="state-panel" data-testid="optimal-ranking-empty">
+        API query: SUCCESS_EMPTY · No candidates were returned.
+      </p>
+      <p v-else-if="optimalState === 'error'" class="state-panel state-panel--error" role="alert">
         {{ optimalError }}
       </p>
 
       <template v-if="optimalResult && optimalState === 'ready'">
+        <p class="table-note" data-testid="optimal-ranking-success">
+          API query: SUCCESS_WITH_DATA · rankings and positions below are returned by the API.
+        </p>
+        <p class="panel__note">
+          OFFICIAL_ANY_PRIZE means at least one ticket receives an official prize. Prize tiers and
+          rank order come from the API; this page does not recalculate them.
+        </p>
         <dl class="source-facts">
+          <div>
+            <dt>Source scoring artifact</dt>
+            <dd><code>{{ optimalResult.source_scoring_artifact_payload_sha256 }}</code></dd>
+          </div>
+          <div>
+            <dt>Source replay artifact</dt>
+            <dd><code>{{ optimalResult.source_replay_artifact_payload_sha256 }}</code></dd>
+          </div>
+          <div>
+            <dt>Ranking artifact SHA-256</dt>
+            <dd><code>{{ optimalResult.artifact_sha256 }}</code></dd>
+          </div>
           <div><dt>Lottery</dt><dd>{{ lotteryLabel(optimalResult.lottery_type) }}</dd></div>
+          <div><dt>Dataset</dt><dd>{{ optimalResult.dataset_id }} · {{ optimalResult.dataset_version }}</dd></div>
           <div><dt>Ranking policy</dt><dd>{{ optimalResult.ranking_policy_id }}</dd></div>
           <div><dt>Strategy count</dt><dd>{{ optimalResult.strategy_count }}</dd></div>
         </dl>
+        <div class="filter-actions">
+          <button class="button button--primary" type="button" @click="loadScoringArtifactDetail">
+            Scoring Artifact Detail
+          </button>
+        </div>
+
+        <section v-if="scoringDetailVisible" aria-labelledby="scoring-artifact-detail-title">
+          <h3 id="scoring-artifact-detail-title">Scoring Artifact Detail</h3>
+          <p v-if="scoringDetailState === 'loading'" class="state-panel">
+            Loading scoring artifact, predictions, and aggregates…
+          </p>
+          <div v-else-if="scoringDetailState === 'error'" class="state-panel state-panel--error" role="alert">
+            <p>{{ scoringDetailError }}</p>
+            <button class="button button--quiet" type="button" @click="loadScoringArtifactDetail">
+              Retry scoring detail
+            </button>
+          </div>
+
+          <template v-else-if="scoringDetailState === 'ready' && scoringDetailRun && scoringOverallAggregate">
+            <p class="table-note" data-testid="scoring-detail-query-success">
+              API query: SUCCESS_WITH_DATA · scoring artifact, aggregates, and prediction rows are read-only API results.
+            </p>
+            <dl class="source-facts">
+              <div>
+                <dt>Scoring artifact SHA-256</dt>
+                <dd><code>{{ scoringDetailRun.scoring_artifact_payload_sha256 }}</code></dd>
+              </div>
+              <div>
+                <dt>Dataset</dt>
+                <dd>{{ scoringDetailRun.dataset_id }} · {{ scoringDetailRun.dataset_version }}</dd>
+              </div>
+              <div><dt>Lottery</dt><dd>{{ lotteryLabel(scoringDetailRun.lottery_type) }}</dd></div>
+              <div><dt>Target count</dt><dd>{{ scoringDetailRun.target_count }}</dd></div>
+              <div><dt>Strategy count</dt><dd>{{ scoringDetailRun.strategy_count }}</dd></div>
+              <div><dt>Scored record count</dt><dd>{{ scoringDetailRun.scored_record_count }}</dd></div>
+              <div>
+                <dt>Source replay artifact</dt>
+                <dd><code>{{ scoringDetailRun.source_replay_artifact_payload_sha256 }}</code></dd>
+              </div>
+            </dl>
+
+            <section aria-labelledby="strategy-scoring-aggregates-title">
+              <h4 id="strategy-scoring-aggregates-title">Strategy aggregates</h4>
+              <div v-if="scoringStrategyAggregates.length" class="table-wrap">
+                <table>
+                  <caption>Raw per-strategy source, status, and prize counts</caption>
+                  <thead>
+                    <tr>
+                      <th scope="col">Strategy</th>
+                      <th scope="col">Version</th>
+                      <th v-for="field in aggregateCountFields" :key="field.key" scope="col">
+                        {{ field.label }}
+                      </th>
+                      <th v-for="field in prizeCountFields" :key="field.key" scope="col">
+                        {{ field.label }}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="aggregate in scoringStrategyAggregates" :key="aggregate.aggregate_sha256">
+                      <th scope="row">{{ aggregate.strategy_id }}</th>
+                      <td>{{ nullableText(aggregate.strategy_version) }}</td>
+                      <td v-for="field in aggregateCountFields" :key="field.key">
+                        {{ aggregate[field.key] }}
+                      </td>
+                      <td v-for="field in prizeCountFields" :key="field.key">
+                        {{ aggregate[field.key] }}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <p v-else class="state-panel">
+                Strategy aggregates API: SUCCESS_EMPTY · No strategy aggregate rows are available.
+              </p>
+            </section>
+
+            <section aria-labelledby="overall-scoring-aggregate-title">
+              <h4 id="overall-scoring-aggregate-title">Overall aggregate</h4>
+              <dl class="source-facts">
+                <div v-for="field in aggregateCountFields" :key="field.key">
+                  <dt>{{ field.label }}</dt>
+                  <dd>{{ scoringOverallAggregate[field.key] }}</dd>
+                </div>
+                <div v-for="field in prizeCountFields" :key="field.key">
+                  <dt>{{ field.label }}</dt>
+                  <dd>{{ scoringOverallAggregate[field.key] }}</dd>
+                </div>
+              </dl>
+            </section>
+
+            <section aria-labelledby="scored-predictions-title">
+              <h4 id="scored-predictions-title">Scored predictions</h4>
+              <form class="panel filter-panel" @submit.prevent="loadFilteredScoringPredictions">
+                <div class="filter-grid">
+                  <label>
+                    <span>Target draw</span>
+                    <input v-model.trim="predictionFilters.targetDraw" name="target_draw" />
+                  </label>
+                  <label>
+                    <span>Strategy ID</span>
+                    <input v-model.trim="predictionFilters.strategyId" name="strategy_id" />
+                  </label>
+                  <label>
+                    <span>Status</span>
+                    <input v-model.trim="predictionFilters.status" name="status" />
+                  </label>
+                  <label>
+                    <span>Prize tier</span>
+                    <input v-model.trim="predictionFilters.tier" name="tier" />
+                  </label>
+                </div>
+                <div class="filter-actions">
+                  <button class="button button--primary" type="submit">
+                    Apply prediction filters
+                  </button>
+                </div>
+              </form>
+
+              <p v-if="scoringPredictionsState === 'loading'" class="state-panel">
+                Loading predictions…
+              </p>
+              <div v-else-if="scoringPredictionsState === 'error'" class="state-panel state-panel--error" role="alert">
+                <p>{{ scoringPredictionsError }}</p>
+                <button class="button button--quiet" type="button" @click="loadFilteredScoringPredictions">
+                  Retry predictions
+                </button>
+              </div>
+              <p v-else-if="scoringPredictionsState === 'empty'" class="state-panel">
+                Predictions API: SUCCESS_EMPTY · No predictions match these filters.
+              </p>
+              <p v-else-if="scoringPredictionsState === 'ready'" class="table-note">
+                Predictions API: SUCCESS_WITH_DATA · {{ scoringPredictions.length }} rows returned.
+              </p>
+              <div v-if="scoringPredictionsState === 'ready'" class="table-wrap">
+                <table>
+                  <caption>Prediction status fields and scoring results are shown independently</caption>
+                  <thead>
+                    <tr>
+                      <th scope="col">Target draw</th>
+                      <th scope="col">Strategy</th>
+                      <th scope="col">History status / reason</th>
+                      <th scope="col">Prediction status / reason</th>
+                      <th scope="col">Scoring status / reason</th>
+                      <th scope="col">Predicted numbers</th>
+                      <th scope="col">Main hits</th>
+                      <th scope="col">Special hit</th>
+                      <th scope="col">Prize tier</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr
+                      v-for="prediction in scoringPredictions"
+                      :key="`${prediction.run_payload_sha256}-${prediction.ordinal}`"
+                    >
+                      <td>{{ prediction.target_draw_number }} · {{ prediction.target_draw_date }}</td>
+                      <td>{{ prediction.strategy_id }}</td>
+                      <td>
+                        {{ prediction.source_history_status }} / {{ nullableText(prediction.source_history_reason_code) }}
+                      </td>
+                      <td>
+                        {{ nullableText(prediction.source_prediction_status) }} /
+                        {{ nullableText(prediction.source_prediction_reason_code) }}
+                      </td>
+                      <td>{{ prediction.scoring_status }} / {{ nullableText(prediction.scoring_reason_code) }}</td>
+                      <td>{{ predictedNumbers(prediction.predicted_main_numbers) }}</td>
+                      <td>{{ prediction.main_number_hit_count ?? '—' }}</td>
+                      <td>
+                        {{ prediction.special_number_hit === null || prediction.special_number_hit === undefined
+                          ? '—'
+                          : prediction.special_number_hit ? 'Yes' : 'No' }}
+                      </td>
+                      <td>
+                        {{ nullableText(prediction.prize_tier_id) }}
+                        <span v-if="prediction.prize_official_label">· {{ prediction.prize_official_label }}</span>
+                        <span v-if="prediction.no_prize_result">· {{ prediction.no_prize_result }}</span>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          </template>
+        </section>
+
         <section v-for="group in optimalResult.groups" :key="group.ticket_count">
           <h3>{{ group.ticket_count }}-ticket portfolios — {{ group.status }}</h3>
           <div v-if="group.candidates.length" class="table-wrap">

@@ -1,7 +1,6 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-
 import StatusBadge from '../../components/StatusBadge.vue'
+import BestReplaySourceMeta from './BestReplaySourceMeta.vue'
 import {
   CANONICAL_HORIZONS,
   type BestReplayItem,
@@ -16,23 +15,17 @@ const props = defineProps<{
   itemsByHorizon: Partial<Record<string, BestReplayItem | null>>
 }>()
 
-const maxHitRate = computed(() => {
-  let max = 0.01
-  for (const h of CANONICAL_HORIZONS) {
-    const item = props.itemsByHorizon[h.key]
-    if (item && item.hitRate !== null && item.hitRate > max) {
-      max = item.hitRate
-    }
-  }
-  return max
-})
+const dimensionLabel = props.game === 'B649' ? 'Prefix Count' : 'Ticket Count'
+const successDefinition = props.game === 'B649'
+  ? 'official_any_prize_rate · M3_PLUS criterion'
+  : `${props.game} winning_target_rate · canonical run ranking`
 </script>
 
 <template>
   <div class="horizon-comparison-card" data-testid="horizon-comparison">
     <div class="horizon-comparison__header">
       <div class="horizon-comparison__title-group">
-        <span class="horizon-comparison__eyebrow">{{ game }} · Ticket Count {{ ticketCount }}</span>
+        <span class="horizon-comparison__eyebrow">{{ game }} · {{ dimensionLabel }} {{ ticketCount }}</span>
         <h3 class="horizon-comparison__title">{{ strategyId }}</h3>
       </div>
       <div class="horizon-comparison__meta">
@@ -41,6 +34,10 @@ const maxHitRate = computed(() => {
         </span>
       </div>
     </div>
+
+    <p class="horizon-comparison__scope-note">
+      {{ successDefinition }}. Each period is a separate source scope; rates and ranks are not compared across periods.
+    </p>
 
     <div class="horizon-cards-grid">
       <div
@@ -54,6 +51,14 @@ const maxHitRate = computed(() => {
           <div>
             <strong class="horizon-card__name">{{ h.label }}</strong>
             <small class="horizon-card__desc">{{ h.description }}</small>
+            <small class="horizon-card__source-rank">
+              Source Rank {{ itemsByHorizon[h.key]?.rank !== null && itemsByHorizon[h.key]?.rank !== undefined ? `#${itemsByHorizon[h.key]?.rank}` : 'Unavailable' }}
+              · Rate {{ itemsByHorizon[h.key]?.isAvailable && itemsByHorizon[h.key]?.hitRate !== null ? 'available' : 'Unavailable' }}
+            </small>
+            <BestReplaySourceMeta
+              v-if="itemsByHorizon[h.key]"
+              :item="itemsByHorizon[h.key]!"
+            />
           </div>
           <StatusBadge
             v-if="itemsByHorizon[h.key]"
@@ -73,16 +78,6 @@ const maxHitRate = computed(() => {
             <strong class="metric-value metric-value--highlight">
               {{ itemsByHorizon[h.key]?.hitRateFormatted }}
             </strong>
-          </div>
-
-          <!-- Mini visual progress bar -->
-          <div class="mini-bar-track" aria-hidden="true">
-            <div
-              class="mini-bar-fill"
-              :style="{
-                width: `${Math.min(100, ((itemsByHorizon[h.key]?.hitRate || 0) / maxHitRate) * 100)}%`,
-              }"
-            />
           </div>
 
           <div class="horizon-card__details-grid">
@@ -127,7 +122,7 @@ const maxHitRate = computed(() => {
           <span class="unavailable-icon" aria-hidden="true">🔒</span>
           <p class="unavailable-title">Evidence Unavailable</p>
           <p class="unavailable-desc">
-            {{ itemsByHorizon[h.key]?.notes || `No canonical backtest evidence is recorded for ticket count ${ticketCount} at horizon ${h.label}.` }}
+            {{ itemsByHorizon[h.key]?.notes || `No canonical backtest evidence is recorded for ${dimensionLabel.toLowerCase()} ${ticketCount} at horizon ${h.label}.` }}
           </p>
         </div>
       </div>
@@ -180,6 +175,12 @@ const maxHitRate = computed(() => {
   gap: 16px;
 }
 
+.horizon-comparison__scope-note {
+  margin: 14px 0 18px;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
 .horizon-card {
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
@@ -219,6 +220,13 @@ const maxHitRate = computed(() => {
   line-height: 1.3;
 }
 
+.horizon-card__source-rank {
+  display: block;
+  margin-top: 5px;
+  color: var(--text-secondary);
+  font-size: 10px;
+}
+
 .horizon-card__metric-row {
   display: flex;
   align-items: baseline;
@@ -238,22 +246,6 @@ const maxHitRate = computed(() => {
   color: var(--text-primary);
   font-family: var(--font-mono);
   font-weight: 800;
-}
-
-.mini-bar-track {
-  width: 100%;
-  height: 6px;
-  background: rgba(255, 255, 255, 0.08);
-  border-radius: var(--radius-full);
-  overflow: hidden;
-  margin-bottom: 16px;
-}
-
-.mini-bar-fill {
-  height: 100%;
-  background: var(--gradient-primary);
-  border-radius: var(--radius-full);
-  transition: width 0.4s ease;
 }
 
 .horizon-card__details-grid {

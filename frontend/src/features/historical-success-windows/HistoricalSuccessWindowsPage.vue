@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 
 import type { LotteryType } from '../../api/strategies'
 import { lotteryTypeDisplayLabel } from '../../utils/lotteryDisplayLabel'
+import PrefixAnalyticsPanel from './PrefixAnalyticsPanel.vue'
 import {
   getHistoricalSuccessFeatureCohortDiagnostics,
   getHistoricalSuccessFeatureCohorts,
@@ -1280,6 +1281,8 @@ onBeforeUnmount(() => {
         <small>Exact persisted evidence</small>
       </div>
     </header>
+
+    <PrefixAnalyticsPanel />
 
     <section class="research-panel" aria-labelledby="source-selection-title">
       <div class="panel-heading">

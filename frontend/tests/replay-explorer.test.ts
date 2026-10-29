@@ -20,6 +20,7 @@ import {
   B649_AVAILABLE_TICKET_COUNTS,
   P638_AVAILABLE_TICKET_COUNTS,
   T539_AVAILABLE_TICKET_COUNTS,
+  type ReplayExplorerAdapter,
   type ReplayExplorerItem,
 } from '../src/features/replay-explorer/types'
 import {
@@ -38,6 +39,19 @@ function apiResponse(payload: unknown, status = 200): Response {
     status,
     json: vi.fn().mockResolvedValue(payload),
   } as unknown as Response
+}
+
+function mockB649RecordPage() {
+  return {
+    items: [mockB649Record('retry_b649_strategy', 5, 'FULL')],
+    total: 1,
+    limit: 100,
+    offset: 0,
+    prefix_count: 5,
+    window: 'FULL',
+    criterion: 'M3_PLUS',
+    research_disclaimer: B649_RESEARCH_DISCLAIMER,
+  }
 }
 
 function mockB649Summary(recordsAvailable = true) {
@@ -754,3 +768,270 @@ describe('Shared Replay Explorer R2 Architecture', () => {
     expect(buttons[1]?.attributes('aria-pressed')).toBe('false')
   })
 })
+
+describe('Replay Explorer retry recovery', () => {
+  it.each([
+    {
+      game: 'B649',
+      Page: B649ReplayPage,
+      route: '/api/v1/b649-multi-ticket-records',
+      strategy: 'retry_b649_strategy',
+      retryEndpoint: (url: string) => url.includes('/b649-multi-ticket-records?'),
+    },
+    {
+      game: 'P638',
+      Page: P638ReplayPage,
+      route: '/api/v1/p638-historical/',
+      strategy: 'p638_cold_pool_splicer',
+      retryEndpoint: (url: string) => url.includes('/p638-historical/runs/p638_wave1_reproduction/strategies?'),
+    },
+    {
+      game: 'T539',
+      Page: T539ReplayPage,
+      route: '/api/v1/t539-historical/',
+      strategy: 't539_frequency_hot',
+      retryEndpoint: (url: string) => url.includes('/t539-historical/runs/t539_historical_wave1/strategies?'),
+    },
+  ])('$game reloads its own API after failure and reaches ready once Retry succeeds', async ({
+    game,
+    Page,
+    route,
+    strategy,
+    retryEndpoint,
+  }) => {
+    let retryEnabled = false
+    const requestedUrls: string[] = []
+    const pendingRetryResponses: Array<() => void> = []
+
+    fetchMock.mockImplementation((input: string | URL | Request) => {
+      const url = String(input)
+      requestedUrls.push(url)
+
+      if (retryEndpoint(url)) {
+        if (!retryEnabled) {
+          return Promise.resolve(apiResponse({ message: 'Temporary replay API failure.' }, 503))
+        }
+        return new Promise((resolve) => {
+          pendingRetryResponses.push(() => resolve(apiResponse(successPayload(game, url))))
+        })
+      }
+
+      return Promise.resolve(apiResponse(successPayload(game, url)))
+    })
+
+    const wrapper = mount(Page)
+    await flushPromises()
+
+    expect(wrapper.get('[role="alert"]').text()).toContain('Temporary replay API failure.')
+    const retryButtons = wrapper.findAll('button').filter((button) => button.text().trim() === 'Retry Request')
+    expect(retryButtons).toHaveLength(1)
+    expect(requestedUrls.every((url) => url.includes(route))).toBe(true)
+    const failedDataRequests = requestedUrls.filter(retryEndpoint).length
+    expect(failedDataRequests).toBeGreaterThan(0)
+
+    const requestsBeforeRetry = requestedUrls.length
+    retryEnabled = true
+    const retryButton = retryButtons[0]!
+    await retryButton.trigger('click')
+    await flushPromises()
+
+    expect(requestedUrls.length).toBeGreaterThan(requestsBeforeRetry)
+    expect(requestedUrls.filter(retryEndpoint)).toHaveLength(failedDataRequests + 1)
+    expect(wrapper.find('.loading-state-wrapper').exists()).toBe(true)
+
+    // Dispatch a second click on the original control while the first request is pending.
+    retryButton.element.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    await flushPromises()
+    expect(requestedUrls.filter(retryEndpoint)).toHaveLength(failedDataRequests + 1)
+    expect(pendingRetryResponses).toHaveLength(1)
+
+    pendingRetryResponses[0]!()
+    await flushPromises()
+
+    expect(wrapper.text()).toContain(strategy)
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false)
+    expect(wrapper.find('.loading-state-wrapper').exists()).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('reinitializes the adapter when initialization fails, with only one Retry control', async () => {
+    let summaryRequests = 0
+    let recordsRequests = 0
+    const requestedUrls: string[] = []
+    fetchMock.mockImplementation((input: string | URL | Request) => {
+      const url = String(input)
+      requestedUrls.push(url)
+      if (url.includes('/b649-multi-ticket-records/summary')) {
+        summaryRequests += 1
+        return Promise.resolve(
+          summaryRequests === 1
+            ? apiResponse({ message: 'Temporary initialization failure.' }, 503)
+            : apiResponse(mockB649Summary()),
+        )
+      }
+      if (url.includes('/b649-multi-ticket-records')) {
+        recordsRequests += 1
+        return Promise.resolve(apiResponse(mockB649RecordPage()))
+      }
+      return Promise.reject(new Error(`Unhandled URL: ${url}`))
+    })
+
+    const wrapper = mount(B649ReplayPage)
+    await flushPromises()
+
+    expect(wrapper.get('[role="alert"]').text()).toContain('Temporary initialization failure.')
+    expect(recordsRequests).toBe(0)
+    const retryButtons = wrapper.findAll('button').filter((button) => button.text().trim() === 'Retry Request')
+    expect(retryButtons).toHaveLength(1)
+
+    await retryButtons[0]!.trigger('click')
+    await flushPromises()
+
+    expect(summaryRequests).toBe(2)
+    expect(recordsRequests).toBeGreaterThan(0)
+    expect(wrapper.text()).toContain('retry_b649_strategy')
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false)
+    expect(requestedUrls.every((url) => url.includes('/api/v1/b649-multi-ticket-records'))).toBe(true)
+    wrapper.unmount()
+  })
+
+  it('keeps showing the error after a failed retry and allows another retry to succeed', async () => {
+    let retryEnabled = false
+    const requestedUrls: string[] = []
+    fetchMock.mockImplementation((input: string | URL | Request) => {
+      const url = String(input)
+      requestedUrls.push(url)
+      if (url.includes('/b649-multi-ticket-records/summary')) {
+        return Promise.resolve(apiResponse(mockB649Summary()))
+      }
+      if (url.includes('/b649-multi-ticket-records?')) {
+        return Promise.resolve(
+          retryEnabled
+            ? apiResponse(mockB649RecordPage())
+            : apiResponse({ message: 'Temporary replay API failure.' }, 503),
+        )
+      }
+      return Promise.reject(new Error(`Unhandled URL: ${url}`))
+    })
+
+    const wrapper = mount(B649ReplayPage)
+    await flushPromises()
+    expect(wrapper.get('[role="alert"]').text()).toContain('Temporary replay API failure.')
+    const firstRetryCount = requestedUrls.filter((url) => url.includes('/b649-multi-ticket-records?')).length
+
+    const firstRetry = wrapper.findAll('button').find((button) => button.text().trim() === 'Retry Request')
+    expect(firstRetry).toBeDefined()
+    firstRetry!.element.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    await flushPromises()
+
+    expect(wrapper.get('[role="alert"]').text()).toContain('Temporary replay API failure.')
+    expect(requestedUrls.filter((url) => url.includes('/b649-multi-ticket-records?')).length).toBeGreaterThan(firstRetryCount)
+
+    retryEnabled = true
+    const retryButton = wrapper.findAll('button').find((button) => button.text().trim() === 'Retry Request')
+    expect(retryButton).toBeDefined()
+    await retryButton!.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('retry_b649_strategy')
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('ignores an older data request that resolves after the newer result', async () => {
+    let resolveFirstRequest: ((items: ReplayExplorerItem[]) => void) | undefined
+    const requestSignals: AbortSignal[] = []
+    const adapter: ReplayExplorerAdapter = {
+      ...b649Adapter,
+      async loadInitialState() {
+        return {
+          strategies: [],
+          periods: [{ key: 'FULL', label: 'Full' }],
+          defaultPeriodKey: 'FULL',
+          defaultTicketCount: 5,
+        }
+      },
+      loadItems(params, signal) {
+        if (signal) requestSignals.push(signal)
+        if (params.searchQuery === 'older') {
+          return new Promise((resolve) => {
+            resolveFirstRequest = resolve
+          })
+        }
+        const strategyId = params.searchQuery === 'fresh'
+          ? 'fresh_replay_strategy'
+          : 'initial_replay_strategy'
+        return Promise.resolve([mockReplayItem(strategyId)])
+      },
+    }
+
+    const wrapper = mount(ReplayExplorer, { props: { adapter } })
+    await flushPromises()
+    const initialRequestCount = requestSignals.length
+    expect(initialRequestCount).toBeGreaterThanOrEqual(1)
+
+    const searchInput = wrapper.get('#strategy-search-input')
+    await searchInput.setValue('older')
+    await flushPromises()
+    expect(requestSignals).toHaveLength(initialRequestCount + 1)
+
+    await searchInput.setValue('fresh')
+    await flushPromises()
+    expect(requestSignals).toHaveLength(initialRequestCount + 2)
+    expect(requestSignals[initialRequestCount]?.aborted).toBe(true)
+    expect(wrapper.text()).toContain('fresh_replay_strategy')
+
+    resolveFirstRequest?.([mockReplayItem('stale_replay_strategy')])
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('fresh_replay_strategy')
+    expect(wrapper.text()).not.toContain('stale_replay_strategy')
+    wrapper.unmount()
+  })
+})
+
+function successPayload(game: string, url: string): unknown {
+  if (game === 'B649') {
+    if (url.includes('/b649-multi-ticket-records/summary')) return mockB649Summary()
+    return mockB649RecordPage()
+  }
+  if (game === 'P638') {
+    if (url.includes('/p638-historical/runs/') && url.includes('/strategies?')) return mockP638Strategies()
+    if (url.includes('/p638-historical/runs/') && url.includes('/rankings')) return mockP638Rankings()
+    return mockP638Runs()
+  }
+  if (url.includes('/t539-historical/runs/') && url.includes('/strategies?')) return mockT539Strategies()
+  if (url.includes('/t539-historical/runs/') && url.includes('/rankings')) return mockT539Rankings()
+  return mockT539Runs()
+}
+
+function mockReplayItem(strategyId: string): ReplayExplorerItem {
+  return {
+    id: `B649-${strategyId}-5-FULL`,
+    game: 'B649',
+    strategyId,
+    strategyVersion: 'test-v1',
+    displayLabel: strategyId,
+    methodFamily: 'frequency',
+    ticketCount: 5,
+    periodKey: 'FULL',
+    periodLabel: 'Full',
+    evaluatedTargets: 100,
+    winningTargets: 50,
+    hitRate: 0.5,
+    hitRateFormatted: '50.00%',
+    rank: 1,
+    baselineProbability: 0.25,
+    baselineDelta: 0.25,
+    baselineDeltaFormatted: '+25.00%',
+    coverage: 1,
+    bestHit: '1st Prize (1)',
+    prizeCounts: { first: 1, second: 0, third: 0, fourth: 0, fifth: 0 },
+    status: 'BACKTESTED',
+    reproductionStatus: 'BACKTESTED',
+    evidenceStatus: 'DESCRIPTIVE LEADER',
+    notes: 'Test replay item.',
+    isAvailable: true,
+    unrankedReason: null,
+  }
+}

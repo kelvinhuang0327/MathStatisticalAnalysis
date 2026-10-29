@@ -14,15 +14,27 @@ from tests.fixtures.historical.builder import (
     REAL_STRATEGY_IDS,
     build_baseline_envelope,
     build_draw_snapshot,
+    build_legacy_special_hit_envelope,
     build_small_envelope,
     build_v2_envelope,
+    build_v3_envelope,
     deep_copy,
     envelope_bytes,
     recompute_envelope_hashes,
     recompute_v2_envelope_hashes,
 )
 
+from lottolab.domain.historical_prefix_analytics import (
+    SUPPORTED_PREFIX_COUNTS,
+    HistoricalPrefixAnalyticsInputError,
+    analyze_historical_prefixes,
+)
 from lottolab.domain.historical_results import HistoricalRunImport
+from lottolab.domain.lottery_rules import (
+    NoPrizeResult,
+    resolve_big_lotto_prize_tier,
+    score_big_lotto_ticket,
+)
 from lottolab.normalization.historical_import import (
     HistoricalImportOutcome,
     HistoricalImportVerificationResult,
@@ -578,7 +590,7 @@ def test_v2_hashes_are_deterministic_and_lottery_domain_separated() -> None:
     )
 
 
-@pytest.mark.parametrize("version", ["1", "2", "2.0", "3.0.0", None])
+@pytest.mark.parametrize("version", ["1", "2", "2.0", "4.0.0", None])
 def test_unknown_or_malformed_contract_versions_fail_closed(version: object) -> None:
     envelope = build_baseline_envelope()
     envelope["contract_version"] = version
@@ -724,3 +736,173 @@ def test_ticket_special_number_invariants(
         assert result.normalized_import is not None
     else:
         assert result.normalized_import is None
+
+
+@pytest.mark.parametrize(
+    ("main_hits", "special_hit"),
+    [(hits, special) for hits in range(7) for special in (False, True) if hits + special <= 6],
+)
+def test_v3_all_legal_signatures_verify_and_produce_complete_prefix_results(
+    main_hits: int, special_hit: bool
+) -> None:
+    numbers = (*range(1, main_hits + 1), *((7,) if special_hit else ()))
+    numbers = (*numbers, *range(8, 8 + 6 - len(numbers)))
+    envelope = build_v3_envelope(numbers)
+    verification = _verify(envelope)
+    assert verification.outcome is HistoricalImportOutcome.IMPORT_PASS
+    run_import = verification.normalized_import
+    assert run_import is not None and run_import.contract_version == "3.0.0"
+    score = score_big_lotto_ticket(
+        predicted_main_numbers=numbers,
+        winning_main_numbers=(1, 2, 3, 4, 5, 6),
+        winning_special_number=7,
+    )
+    assert (score.main_hits, score.special_hit) == (main_hits, special_hit)
+    prize = resolve_big_lotto_prize_tier(score.main_hits, score.special_hit)
+    expected_tier = prize if isinstance(prize, NoPrizeResult) else prize.tier_id
+    result = analyze_historical_prefixes(run_import)
+    assert len(result.per_draw_metrics) == len(SUPPORTED_PREFIX_COUNTS)
+    assert len(result.all_strategy_summaries) == len(SUPPORTED_PREFIX_COUNTS)
+    assert len(result.ranking_groups) == 5
+    for metric, summary in zip(result.per_draw_metrics, result.all_strategy_summaries, strict=True):
+        assert metric.strongest_winning_tier == expected_tier
+        assert metric.winning_ticket_count == (
+            metric.prefix_count if prize is not NoPrizeResult.NO_PRIZE else 0
+        )
+        assert metric.portfolio_success == (main_hits >= 1)
+        assert metric.special_hit == special_hit
+        assert metric.special_hit_ticket_count == (metric.prefix_count if special_hit else 0)
+        assert summary.winning_draw_count == int(prize is not NoPrizeResult.NO_PRIZE)
+        assert summary.portfolio_success_rate.numerator == int(main_hits >= 1)
+        assert summary.portfolio_success_rate.denominator == 1
+        assert all(ticket.special_numbers == () for ticket in run_import.portfolios[0].tickets)
+    assert result.source_import_identity_sha256 == envelope["import_identity_sha256"]
+    assert result.source_manifest_sha256 == envelope["manifest_sha256"]
+    assert result.source_artifact_sha256 == envelope["source"]["source_artifact_sha256"]
+    assert result.dataset_identity == envelope["dataset"]["dataset_identity"]
+    assert result.dataset_sha256 == envelope["dataset"]["dataset_sha256"]
+
+
+@pytest.mark.parametrize("field", ["main_hit_count", "special_hit"])
+def test_v3_rejects_self_consistently_resealed_wrong_hit_declarations(field: str) -> None:
+    envelope = build_v3_envelope((1, 2, 7, 8, 9, 10))
+    for ticket in envelope["portfolios"][0]["tickets"]:
+        ticket[field] = 3 if field == "main_hit_count" else False
+    verification = _verify(recompute_v2_envelope_hashes(envelope))
+    assert verification.outcome is HistoricalImportOutcome.IMPORT_HIT_MISMATCH
+    assert verification.normalized_import is None
+
+
+@pytest.mark.parametrize(
+    "defect",
+    [
+        "ticket_special",
+        "draw_special",
+        "overlap",
+        "duplicate",
+        "range",
+        "count",
+        "daily_539",
+        "power_lotto",
+        "extra",
+        "null",
+    ],
+)
+def test_v3_rejects_invalid_wire_shape_and_other_lotteries(defect: str) -> None:
+    envelope = build_v3_envelope()
+    ticket = envelope["portfolios"][0]["tickets"][0]
+    if defect == "ticket_special":
+        ticket["special_numbers"] = [7]
+    elif defect == "draw_special":
+        envelope["draw_snapshots"][1]["special_numbers"] = []
+    elif defect == "overlap":
+        envelope["draw_snapshots"][1]["special_numbers"] = [1]
+    elif defect == "duplicate":
+        ticket["main_numbers"][1] = ticket["main_numbers"][0]
+    elif defect == "range":
+        ticket["main_numbers"][0] = 50
+    elif defect == "count":
+        ticket["main_numbers"].pop()
+    elif defect in ("daily_539", "power_lotto"):
+        envelope["dataset"]["lottery_type"] = defect.upper()
+    elif defect == "extra":
+        ticket["unrecognized"] = True
+    elif defect == "null":
+        envelope["source"]["legacy_run_id"] = None
+    verification = verify_and_normalize_historical_import(json.dumps(envelope).encode())
+    assert verification.outcome is HistoricalImportOutcome.IMPORT_INPUT_UNVERIFIED
+    assert verification.normalized_import is None
+
+
+@pytest.mark.parametrize("contract", ["1.0.0", "2.0.0"])
+@pytest.mark.parametrize(
+    ("numbers", "extra", "official_tier"),
+    [
+        ((1, 2, 8, 9, 10, 11), (7,), "NO_PRIZE"),
+        ((1, 2, 7, 8, 9, 10), (49,), "SEVENTH"),
+        ((1, 2, 3, 4, 5, 7), (49,), "SECOND"),
+        ((1, 2, 3, 4, 5, 6), (7,), "FIRST"),
+    ],
+)
+def test_legacy_special_hit_counterexamples_are_rejected_by_prefix_but_v3_is_correct(
+    contract: str, numbers: tuple[int, ...], extra: tuple[int, ...], official_tier: str
+) -> None:
+    verification = _verify(build_legacy_special_hit_envelope(contract, numbers, extra))
+    assert verification.outcome is HistoricalImportOutcome.IMPORT_PASS
+    assert verification.normalized_import is not None
+    with pytest.raises(HistoricalPrefixAnalyticsInputError):
+        analyze_historical_prefixes(verification.normalized_import)
+    corrected = _verify(build_v3_envelope(numbers))
+    assert corrected.outcome is HistoricalImportOutcome.IMPORT_PASS
+    assert corrected.normalized_import is not None
+    result = analyze_historical_prefixes(corrected.normalized_import)
+    assert all(
+        metric.strongest_winning_tier.value == official_tier for metric in result.per_draw_metrics
+    )
+
+
+@pytest.mark.parametrize("contract", ["1.0.0", "2.0.0"])
+def test_legacy_canonical_compatible_input_is_still_accepted_by_prefix(contract: str) -> None:
+    verification = _verify(build_legacy_special_hit_envelope(contract, (1, 2, 8, 9, 10, 11), (49,)))
+    assert verification.outcome is HistoricalImportOutcome.IMPORT_PASS
+    assert verification.normalized_import is not None
+    result = analyze_historical_prefixes(verification.normalized_import)
+    assert result.per_draw_metrics[0].strongest_winning_tier is NoPrizeResult.NO_PRIZE
+
+
+@pytest.mark.parametrize("field", ["import_identity_sha256", "manifest_sha256"])
+def test_v3_rejects_wrong_top_level_hash(field: str) -> None:
+    envelope = build_v3_envelope()
+    envelope[field] = "0" * 64
+    assert _verify(envelope).normalized_import is None
+
+
+def test_v3_rejects_impossible_six_main_plus_special_signature() -> None:
+    envelope = build_v3_envelope()
+    envelope["portfolios"][0]["tickets"][0]["special_hit"] = True
+    verification = _verify(recompute_v2_envelope_hashes(envelope))
+    assert verification.outcome is HistoricalImportOutcome.IMPORT_HIT_MISMATCH
+    assert verification.normalized_import is None
+
+
+@pytest.mark.parametrize("defect", ["nineteen_tickets", "reordered_positions", "cutoff"])
+def test_v3_preserves_whole_portfolio_shape_and_causality_checks(defect: str) -> None:
+    envelope = build_v3_envelope()
+    portfolio = envelope["portfolios"][0]
+    if defect == "nineteen_tickets":
+        portfolio["tickets"].pop()
+    elif defect == "reordered_positions":
+        portfolio["tickets"][0], portfolio["tickets"][1] = (
+            portfolio["tickets"][1],
+            portfolio["tickets"][0],
+        )
+    else:
+        portfolio["cutoff_draw_number"] = portfolio["target_draw_number"]
+    verification = _verify(recompute_v2_envelope_hashes(envelope))
+    expected = (
+        HistoricalImportOutcome.IMPORT_CAUSAL_VIOLATION
+        if defect == "cutoff"
+        else HistoricalImportOutcome.IMPORT_TICKET_SHAPE_VIOLATION
+    )
+    assert verification.outcome is expected
+    assert verification.normalized_import is None

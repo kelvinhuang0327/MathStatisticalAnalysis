@@ -34,10 +34,12 @@ import {
 
 let fetchMock: ReturnType<typeof vi.fn<typeof fetch>>
 let p638CompleteTargetCount: number | null
+let p638RankingEligibleTargetCount: number | null
 let p638WinningTargetCount: number | null
 let p638WinningTargetRate: number | null
 let p638StrategyVersion: string | null
 let t539EligibleTargetCount: number | null
+let t539RankingEligibleTargetCount: number | null
 let t539WinningTargetCount: number | null
 let t539WinningTargetRate: number | null
 let t539StrategyVersion: string | null
@@ -212,10 +214,11 @@ function mockP638Rankings() {
     run_id: 'p638-canonical-run-1',
     items: [
       {
+        run_id: 'p638-canonical-run-1',
         strategy_id: 'p638_zonal_entropy_leader',
         strategy_version: p638StrategyVersion,
         rank: 1,
-        eligible_target_count: 1000,
+        eligible_target_count: p638RankingEligibleTargetCount,
         winning_target_count: p638WinningTargetCount,
         winning_target_rate: p638WinningTargetRate,
         prize_tier_counts: [
@@ -227,6 +230,7 @@ function mockP638Rankings() {
         ],
       },
       {
+        run_id: 'p638-canonical-run-1',
         strategy_id: 'p638_cyclical_shift_runner_up',
         strategy_version: 'p638-cyclic-v2',
         rank: 2,
@@ -253,6 +257,7 @@ function mockT539Runs() {
         status: 'COMPLETE',
         lottery_type: 'DAILY_539',
         eligible_target_count: t539EligibleTargetCount,
+        as_of_date: '2026-08-01',
       },
     ],
     total_count: 1,
@@ -266,10 +271,11 @@ function mockT539Rankings() {
     run_id: 't539-canonical-run-1',
     items: [
       {
+        run_id: 't539-canonical-run-1',
         strategy_id: 't539_wave1_cyclic_leader',
         strategy_version: t539StrategyVersion,
         rank: 1,
-        eligible_target_count: 1000,
+        eligible_target_count: t539RankingEligibleTargetCount,
         winning_target_count: t539WinningTargetCount,
         winning_target_rate: t539WinningTargetRate,
         ticket_winning_rate: 0.215,
@@ -282,6 +288,7 @@ function mockT539Rankings() {
         ],
       },
       {
+        run_id: 't539-canonical-run-1',
         strategy_id: 't539_sidon_runner_up',
         strategy_version: 't539-sidon-v3',
         rank: 2,
@@ -303,10 +310,12 @@ function mockT539Rankings() {
 
 beforeEach(() => {
   p638CompleteTargetCount = 1000
+  p638RankingEligibleTargetCount = 1000
   p638WinningTargetCount = 180
   p638WinningTargetRate = 0.185
   p638StrategyVersion = 'p638-zonal-v2'
   t539EligibleTargetCount = 1000
+  t539RankingEligibleTargetCount = 1000
   t539WinningTargetCount = 211
   t539WinningTargetRate = 0.215
   t539StrategyVersion = 't539-wave1-v4'
@@ -357,6 +366,101 @@ describe('Best Replay source-value regressions', () => {
     expect(item?.strategyVersion).toBe('p638-zonal-v2')
   })
 
+  it('shows the ranking denominator and source run metadata on the Best Replay page', async () => {
+    p638CompleteTargetCount = 750
+    p638RankingEligibleTargetCount = 300
+    p638WinningTargetCount = 80
+    p638WinningTargetRate = 80 / 300
+
+    const wrapper = mount(BestReplayPage)
+    await flushPromises()
+    await wrapper.find('[data-testid="game-btn-p638"]').trigger('click')
+    await flushPromises()
+
+    const cells = wrapper.find('tbody tr.data-row').findAll('td')
+    expect(cells[5]?.text()).toBe('300')
+    expect(cells[6]?.text()).toBe('80')
+    expect(cells[7]?.text()).toBe('26.67%')
+    expect(wrapper.text()).toContain('Source run: p638-canonical-run-1')
+    expect(wrapper.text()).toContain('Source completed: 2026-08-01T01:00:00Z')
+
+    wrapper.unmount()
+  })
+
+  it('shows the T539 ranking denominator and sourced as-of date without inventing a timestamp', async () => {
+    t539EligibleTargetCount = 750
+    t539RankingEligibleTargetCount = 250
+    t539WinningTargetCount = 50
+    t539WinningTargetRate = 0.2
+
+    const wrapper = mount(BestReplayPage)
+    await flushPromises()
+    await wrapper.find('[data-testid="game-btn-t539"]').trigger('click')
+    await flushPromises()
+
+    const cells = wrapper.find('tbody tr.data-row').findAll('td')
+    expect(cells[5]?.text()).toBe('250')
+    expect(cells[6]?.text()).toBe('50')
+    expect(cells[7]?.text()).toBe('20.00%')
+    expect(wrapper.text()).toContain('Source run: t539-canonical-run-1')
+    expect(wrapper.text()).toContain('Source as of: 2026-08-01')
+    expect(wrapper.text()).not.toContain('Source completed:')
+
+    wrapper.unmount()
+  })
+
+  it.each(['P638', 'T539'] as const)('does not display 0% when the %s ranking denominator is zero', async (game) => {
+    if (game === 'P638') {
+      p638RankingEligibleTargetCount = 0
+      p638WinningTargetCount = 0
+      p638WinningTargetRate = 0
+    } else {
+      t539RankingEligibleTargetCount = 0
+      t539WinningTargetCount = 0
+      t539WinningTargetRate = 0
+    }
+
+    const wrapper = mount(BestReplayPage)
+    await flushPromises()
+    await wrapper.find(`[data-testid="game-btn-${game.toLowerCase()}"]`).trigger('click')
+    await flushPromises()
+
+    const rows = wrapper.findAll('tbody tr.data-row')
+    expect(rows[0]?.text()).toContain(game === 'P638' ? 'p638_zonal_entropy_leader' : 't539_wave1_cyclic_leader')
+    const cells = rows[0]!.findAll('td')
+    expect(cells[5]?.text()).toBe('0')
+    expect(cells[6]?.text()).toBe('0')
+    expect(cells[7]?.text()).toContain('Unavailable')
+    expect(wrapper.text()).not.toContain('0.00%')
+
+    wrapper.unmount()
+  })
+
+  it.each([
+    ['P638_HISTORICAL_NOT_CONFIGURED', 'API not configured'],
+    ['P638_HISTORICAL_UNAVAILABLE', 'Historical API query failed'],
+  ])('shows a P638 503 as %s instead of synthetic no-data success', async (errorCode, expectedState) => {
+    const defaultFetch = fetchMock.getMockImplementation()!
+    fetchMock.mockImplementation((input, init) => {
+      const url = new URL(String(input), 'http://localhost')
+      if (url.pathname.startsWith('/api/v1/p638-historical/')) {
+        return Promise.resolve(apiResponse({ error_code: errorCode, message: 'P638 source request failed.' }, 503))
+      }
+      return defaultFetch(input, init)
+    })
+
+    const wrapper = mount(BestReplayPage)
+    await flushPromises()
+    await wrapper.find('[data-testid="game-btn-p638"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain(expectedState)
+    expect(wrapper.text()).toContain('P638 source request failed.')
+    expect(wrapper.find('tbody tr.data-row').exists()).toBe(false)
+
+    wrapper.unmount()
+  })
+
   it('keeps a missing P638 numerator and strategy version unavailable', async () => {
     p638WinningTargetCount = null
     p638StrategyVersion = null
@@ -380,17 +484,116 @@ describe('Best Replay source-value regressions', () => {
   it('preserves a sourced B649 sample count and leaves a missing count unknown', () => {
     const sourcedRecord = {
       ...mockB649Record(5, 'RECENT_750', 'sample', { draws: 37 }),
-      effective_backtest_draw_count: 37,
+      successful_execution_count: 37,
+      effective_backtest_draw_count: 1,
       window_available_draws: 750,
     } as B649MultiTicketRecord
     const missingRecord = {
       ...sourcedRecord,
-      effective_backtest_draw_count: null,
-      window_available_draws: null,
+      successful_execution_count: null,
     }
 
     expect(transformB649Record(sourcedRecord, 'RECENT_750', 5).evaluatedTargets).toBe(37)
     expect(transformB649Record(missingRecord, 'RECENT_750', 5).evaluatedTargets).toBeNull()
+  })
+
+  it('uses the raw B649 denominator for 80/300 instead of the reduced criterion denominator', () => {
+    const record = {
+      ...mockB649Record(10, 'RECENT_300', 'denominator', {
+        rank: 15, draws: 300, hits: 80, rate: '0.266666666666666667',
+      }),
+      success_count: 56,
+      effective_backtest_draw_count: 75,
+    } as B649MultiTicketRecord
+
+    const item = transformB649Record(record, 'RECENT_300', 10)
+
+    expect(item.evaluatedTargets).toBe(300)
+    expect(item.winningTargets).toBe(80)
+    expect(item.hitRateFormatted).toBe('26.67%')
+    expect(item.rank).toBe(15)
+    expect(item.evidenceStatus).not.toBe('LIMITED SAMPLE')
+    expect(item.notes).not.toContain('Limited observation sample size')
+  })
+
+  it('preserves a genuine B649 zero success rate over a positive denominator', () => {
+    const record = {
+      ...mockB649Record(5, 'RECENT_300', 'zero-success', {
+        rank: 1, draws: 300, hits: 0, rate: '0.000000000000000000',
+      }),
+      effective_backtest_draw_count: 1,
+    } as B649MultiTicketRecord
+
+    const item = transformB649Record(record, 'RECENT_300', 5)
+
+    expect(item.evaluatedTargets).toBe(300)
+    expect(item.winningTargets).toBe(0)
+    expect(item.hitRate).toBe(0)
+    expect(item.hitRateFormatted).toBe('0.00%')
+    expect(item.isAvailable).toBe(true)
+  })
+
+  it.each([null, 1])('treats B649 N=0 as unavailable even with a zero placeholder and rank %s', (rank) => {
+    const record = {
+      ...mockB649Record(5, 'RECENT_300', 'zero-evaluations', {
+        draws: 0, hits: 0, rate: '0.000000000000000000',
+      }),
+      rank,
+      official_rank: rank,
+      effective_backtest_draw_count: 1,
+      unranked_reason: 'NO_SUCCESSFUL_EXECUTIONS_IN_WINDOW',
+    } as B649MultiTicketRecord
+
+    const item = transformB649Record(record, 'RECENT_300', 5)
+
+    expect(item.evaluatedTargets).toBe(0)
+    expect(item.winningTargets).toBeNull()
+    expect(item.hitRate).toBeNull()
+    expect(item.hitRateFormatted).toBe('Unavailable')
+    expect(item.evidenceStatus).toBe('EVIDENCE UNAVAILABLE')
+    expect(item.isAvailable).toBe(false)
+  })
+
+  it.each([
+    { name: '80/300', count: 80, evaluated: 300, effective: 75, rate: '0.266666666666666667', rank: 1, winning: '80', displayedRate: '26.67%' },
+    { name: '0/N', count: 0, evaluated: 300, effective: 1, rate: '0.000000000000000000', rank: 1, winning: '0', displayedRate: '0.00%' },
+    { name: 'N=0', count: 0, evaluated: 0, effective: 1, rate: '0.000000000000000000', rank: null, winning: 'Not provided', displayedRate: 'Unavailable' },
+  ])('renders B649 $name with the raw Evaluated count and correct rate availability', async (testCase) => {
+    // Synthetic API values only; no backtest or rate recomputation.
+    const defaultFetch = fetchMock.getMockImplementation()!
+    fetchMock.mockImplementation((input, init) => {
+      const url = new URL(String(input), 'http://localhost')
+      if (url.pathname === '/api/v1/b649-multi-ticket-records'
+        && url.searchParams.get('prefix_count') === '5'
+        && url.searchParams.get('window') === 'FULL') {
+        const page = mockB649RecordsPage(url)
+        const record = {
+          ...mockB649Record(5, 'FULL', 'denominator', {
+            draws: testCase.evaluated, hits: testCase.count, rate: testCase.rate,
+          }),
+          rank: testCase.rank,
+          official_rank: testCase.rank,
+          effective_backtest_draw_count: testCase.effective,
+          unranked_reason: testCase.rank === null ? 'NO_SUCCESSFUL_EXECUTIONS_IN_WINDOW' : null,
+        }
+        return Promise.resolve(apiResponse({ ...page, items: [record], total: 1 }))
+      }
+      return defaultFetch(input, init)
+    })
+
+    const wrapper = mount(BestReplayPage)
+    await flushPromises()
+    const cells = wrapper.find('tbody tr.data-row').findAll('td')
+
+    expect(cells[5]?.text()).toBe(String(testCase.evaluated))
+    expect(cells[6]?.text()).toBe(testCase.winning)
+    expect(cells[7]?.text()).toBe(testCase.displayedRate)
+    if (testCase.evaluated === 0) {
+      expect(wrapper.find('tbody').text()).not.toContain('0.00%')
+    } else {
+      expect(wrapper.find('[data-testid="best-replay-metrics-grid"]').text()).toContain('300 Historical Draws')
+    }
+    wrapper.unmount()
   })
 
   it('keeps missing T539 sample and numerator values unknown', async () => {
@@ -405,19 +608,22 @@ describe('Best Replay source-value regressions', () => {
   })
 
   it('renders a source P638 sample count of zero as zero in the summary', async () => {
-    p638CompleteTargetCount = 0
+    p638RankingEligibleTargetCount = 0
+    p638WinningTargetCount = 0
+    p638WinningTargetRate = 0
     const wrapper = mount(BestReplayPage)
     await flushPromises()
     await wrapper.find('[data-testid="game-btn-p638"]').trigger('click')
     await flushPromises()
 
     expect(wrapper.find('[data-testid="best-replay-metrics-grid"]').text()).toContain('0 Historical Draws')
+    expect(wrapper.text()).not.toContain('0.00%')
 
     wrapper.unmount()
   })
 
   it('renders missing P638 sample, numerator, and version sources as unavailable', async () => {
-    p638CompleteTargetCount = null
+    p638RankingEligibleTargetCount = null
     p638WinningTargetCount = null
     p638StrategyVersion = null
     const wrapper = mount(BestReplayPage)
@@ -514,6 +720,158 @@ describe('BestReplayPage Workspace & Cross-Game Features', () => {
     wrapper.unmount()
   })
 
+  it('keeps dropdown ticket, summary, inspection, and API scope aligned across B649 → P638 → T539 → B649', async () => {
+    const wrapper = mount(BestReplayPage)
+    await flushPromises()
+
+    const gameSelect = wrapper.find('#game-select')
+    const expectSelection = (game: 'B649' | 'P638' | 'T539', count: number) => {
+      expect((gameSelect.element as HTMLSelectElement).value).toBe(game)
+      for (const ticketCount of [1, 2, 3, 4, 5]) {
+        expect(wrapper.find(`[data-testid="ticket-btn-${ticketCount}"]`).attributes('aria-pressed'))
+          .toBe(String(ticketCount === count))
+      }
+      expect(wrapper.find('[data-testid="best-replay-metrics-grid"]').text()).toContain(`${count} ${game === 'B649' ? 'Prefix Count' : 'Tickets'}`)
+
+      const inspection = wrapper.findComponent(BestReplayHorizonComparison)
+      expect(inspection.exists()).toBe(true)
+      expect(inspection.props('game')).toBe(game)
+      expect(inspection.props('ticketCount')).toBe(count)
+      expect(inspection.text()).toContain(`${game} · ${game === 'B649' ? 'Prefix Count' : 'Ticket Count'} ${count}`)
+    }
+
+    expectSelection('B649', 5)
+
+    await gameSelect.setValue('P638')
+    await flushPromises()
+    expectSelection('P638', 1)
+    expect(wrapper.text()).toContain('p638_zonal_entropy_leader')
+
+    await gameSelect.setValue('T539')
+    await flushPromises()
+    expectSelection('T539', 1)
+    expect(wrapper.text()).toContain('t539_wave1_cyclic_leader')
+    expect(wrapper.text()).not.toContain('p638_zonal_entropy_leader')
+
+    await gameSelect.setValue('B649')
+    await flushPromises()
+    expectSelection('B649', 5)
+    expect(wrapper.text()).toContain('legacy_biglotto__portfolio_optimizer__fixture')
+
+    const requestedUrls = fetchMock.mock.calls.map(([input]) => new URL(String(input), 'http://localhost'))
+    expect(requestedUrls.some((url) => url.pathname.includes('/p638-historical/runs'))).toBe(true)
+    expect(requestedUrls.some((url) => url.pathname.includes('/t539-historical/runs'))).toBe(true)
+    expect(requestedUrls.some((url) =>
+      url.pathname.includes('/b649-multi-ticket-records') && url.searchParams.get('prefix_count') === '5',
+    )).toBe(true)
+
+    wrapper.unmount()
+  })
+
+  it('keeps dropdown and game-button selection behavior in parity', async () => {
+    const wrapper = mount(BestReplayPage)
+    await flushPromises()
+
+    await wrapper.find('#game-select').setValue('P638')
+    await flushPromises()
+    expect(wrapper.find('[data-testid="ticket-btn-1"]').attributes('aria-pressed')).toBe('true')
+
+    await wrapper.find('[data-testid="game-btn-t539"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('#game-select').element).toHaveProperty('value', 'T539')
+    expect(wrapper.find('[data-testid="ticket-btn-1"]').attributes('aria-pressed')).toBe('true')
+    expect(wrapper.find('[data-testid="ticket-btn-5"]').attributes('aria-pressed')).toBe('false')
+    expect(wrapper.findComponent(BestReplayHorizonComparison).props('ticketCount')).toBe(1)
+
+    await wrapper.find('[data-testid="game-btn-b649"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('#game-select').element).toHaveProperty('value', 'B649')
+    expect(wrapper.find('[data-testid="ticket-btn-5"]').attributes('aria-pressed')).toBe('true')
+    expect(wrapper.find('[data-testid="ticket-btn-1"]').attributes('aria-pressed')).toBe('false')
+    expect(wrapper.findComponent(BestReplayHorizonComparison).props('ticketCount')).toBe(5)
+
+    wrapper.unmount()
+  })
+
+  it('preserves a custom ticket selection when the dropdown reselects the same game', async () => {
+    const wrapper = mount(BestReplayPage)
+    await flushPromises()
+    await wrapper.find('[data-testid="ticket-btn-10"]').trigger('click')
+    await flushPromises()
+    const callsBeforeSameGameSelection = fetchMock.mock.calls.length
+
+    await wrapper.find('#game-select').setValue('B649')
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="ticket-btn-10"]').attributes('aria-pressed')).toBe('true')
+    expect(wrapper.find('[data-testid="ticket-btn-5"]').attributes('aria-pressed')).toBe('false')
+    expect(fetchMock.mock.calls).toHaveLength(callsBeforeSameGameSelection)
+
+    wrapper.unmount()
+  })
+
+  it('clears multi-select mode when a game change restores its single legal default', async () => {
+    const wrapper = mount(BestReplayPage)
+    await flushPromises()
+
+    const allAvailablePreset = wrapper.findAll('button').find((button) => button.text().trim() === 'All Available')
+    expect(allAvailablePreset).toBeDefined()
+    await allAvailablePreset!.trigger('click')
+    await flushPromises()
+    expect(wrapper.find('[data-testid="best-replay-metrics-grid"]').text()).toContain('Multi-ticket selection active')
+
+    await wrapper.find('#game-select').setValue('P638')
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="ticket-btn-1"]').attributes('aria-pressed')).toBe('true')
+    expect(wrapper.find('[data-testid="ticket-btn-5"]').attributes('aria-pressed')).toBe('false')
+    expect(wrapper.find('[data-testid="best-replay-metrics-grid"]').text()).toContain('Single ticket dimension')
+
+    wrapper.unmount()
+  })
+
+  it('ignores a late P638 response after a rapid dropdown switch to T539', async () => {
+    let releaseP638Runs: ((response: Response) => void) | undefined
+    let p638Signal: AbortSignal | null | undefined
+    const defaultFetch = fetchMock.getMockImplementation()
+    expect(defaultFetch).toBeDefined()
+    fetchMock.mockImplementation((input, init) => {
+      const url = new URL(String(input), 'http://localhost')
+      if (url.pathname === '/api/v1/p638-historical/runs') {
+        p638Signal = init?.signal
+        return new Promise<Response>((resolve) => {
+          releaseP638Runs = resolve
+        })
+      }
+      return defaultFetch!(input, init)
+    })
+
+    const wrapper = mount(BestReplayPage)
+    await flushPromises()
+    const gameSelect = wrapper.find('#game-select')
+
+    await gameSelect.setValue('P638')
+    expect(releaseP638Runs).toBeDefined()
+    await gameSelect.setValue('T539')
+    await flushPromises()
+
+    expect(p638Signal?.aborted).toBe(true)
+    expect((gameSelect.element as HTMLSelectElement).value).toBe('T539')
+    expect(wrapper.text()).toContain('t539_wave1_cyclic_leader')
+    expect(wrapper.text()).not.toContain('p638_zonal_entropy_leader')
+
+    releaseP638Runs?.(apiResponse(mockP638Runs()))
+    await flushPromises()
+
+    expect((gameSelect.element as HTMLSelectElement).value).toBe('T539')
+    expect(wrapper.find('[data-testid="ticket-btn-1"]').attributes('aria-pressed')).toBe('true')
+    expect(wrapper.find('[data-testid="ticket-btn-5"]').attributes('aria-pressed')).toBe('false')
+    expect(wrapper.text()).toContain('t539_wave1_cyclic_leader')
+    expect(wrapper.text()).not.toContain('p638_zonal_entropy_leader')
+
+    wrapper.unmount()
+  })
+
   it('guarantees 1, 2, 3, 4, 5 ticket buttons ALWAYS exist and are interactive across all games', async () => {
     const wrapper = mount(BestReplayPage)
     await flushPromises()
@@ -598,7 +956,7 @@ describe('BestReplayPage Workspace & Cross-Game Features', () => {
 
     expect(wrapper.text()).toContain('EVIDENCE UNAVAILABLE')
     expect(wrapper.text()).toContain('NO_CANONICAL_REPLAY_EVIDENCE')
-    expect(wrapper.text()).toContain('No canonical multi-ticket backtest evidence is recorded for ticket count 3')
+    expect(wrapper.text()).toContain('No canonical replay evidence is recorded for prefix count 3')
 
     // Confirm no 0.00% fake hit rate appears
     const monoCells = wrapper.findAll('.font-mono')
@@ -612,7 +970,7 @@ describe('BestReplayPage Workspace & Cross-Game Features', () => {
     const wrapper = mount(BestReplayPage)
     await flushPromises()
 
-    const rows = wrapper.findAll('tbody tr')
+    const rows = wrapper.findAll('tbody tr.data-row')
     expect(rows.length).toBeGreaterThan(0)
     expect(rows[0]?.text()).toContain('#1')
     expect(rows[0]?.text()).toContain('portfolio_optimizer')
@@ -623,7 +981,7 @@ describe('BestReplayPage Workspace & Cross-Game Features', () => {
     await flushPromises()
 
     // Check custom sort state
-    expect(wrapper.text()).toContain('hitRate (asc)')
+    expect(wrapper.text()).toContain('hitRate asc · within each scope')
 
     // Click Reset to Official Rank button
     const resetBtn = wrapper.find('[data-testid="reset-rank-btn"]')
@@ -632,7 +990,7 @@ describe('BestReplayPage Workspace & Cross-Game Features', () => {
     await flushPromises()
 
     expect(wrapper.text()).toContain('Official Rank')
-    const resetRows = wrapper.findAll('tbody tr')
+    const resetRows = wrapper.findAll('tbody tr.data-row')
     expect(resetRows[0]?.text()).toContain('#1')
 
     wrapper.unmount()
@@ -659,7 +1017,7 @@ describe('BestReplayPage Workspace & Cross-Game Features', () => {
     await wrapper.find('[data-testid="overview-card-1"]').trigger('click')
     await flushPromises()
 
-    expect(wrapper.text()).toContain('1 Tickets')
+    expect(wrapper.text()).toContain('1 Prefix Count')
     expect(wrapper.text()).toContain('EVIDENCE UNAVAILABLE')
 
     wrapper.unmount()
@@ -705,7 +1063,7 @@ describe('BestReplayPage Workspace & Cross-Game Features', () => {
 
       expect(wrapper.text()).toContain('EVIDENCE UNAVAILABLE')
       expect(wrapper.text()).toContain('NO_CANONICAL_REPLAY_EVIDENCE')
-      expect(wrapper.text()).toContain('No canonical multi-ticket backtest evidence is recorded for ticket count 1')
+      expect(wrapper.text()).toContain('No canonical replay evidence is recorded for prefix count 1')
       wrapper.unmount()
     })
 
@@ -735,7 +1093,7 @@ describe('BestReplayPage Workspace & Cross-Game Features', () => {
 
       expect(wrapper.text()).toContain('EVIDENCE UNAVAILABLE')
       expect(wrapper.text()).toContain('NO_CANONICAL_REPLAY_EVIDENCE')
-      expect(wrapper.text()).toContain('No canonical multi-ticket backtest evidence is recorded for ticket count 2')
+      expect(wrapper.text()).toContain('No canonical replay evidence is recorded for ticket count 2')
       wrapper.unmount()
     })
 
@@ -750,7 +1108,7 @@ describe('BestReplayPage Workspace & Cross-Game Features', () => {
 
       expect(wrapper.text()).toContain('EVIDENCE UNAVAILABLE')
       expect(wrapper.text()).toContain('NO_CANONICAL_REPLAY_EVIDENCE')
-      expect(wrapper.text()).toContain('No canonical multi-ticket backtest evidence is recorded for ticket count 5')
+      expect(wrapper.text()).toContain('No canonical replay evidence is recorded for ticket count 5')
       wrapper.unmount()
     })
 
@@ -780,7 +1138,7 @@ describe('BestReplayPage Workspace & Cross-Game Features', () => {
 
       expect(wrapper.text()).toContain('EVIDENCE UNAVAILABLE')
       expect(wrapper.text()).toContain('NO_CANONICAL_REPLAY_EVIDENCE')
-      expect(wrapper.text()).toContain('No canonical multi-ticket backtest evidence is recorded for ticket count 4')
+      expect(wrapper.text()).toContain('No canonical replay evidence is recorded for ticket count 4')
       wrapper.unmount()
     })
   })
@@ -918,7 +1276,7 @@ describe('BestReplayMatrix Component', () => {
 })
 
 describe('BestReplayHorizonComparison Component', () => {
-  it('renders four horizon cards with mini-bars and explicit unavailable states', () => {
+  it('shows each horizon source record without ranking or scaling rates across periods', () => {
     const fullItem: BestReplayItem = {
       id: 'B649-sample-5-FULL',
       rank: 1,
@@ -943,6 +1301,17 @@ describe('BestReplayHorizonComparison Component', () => {
       notes: 'Historically strongest strategy',
       isAvailable: true,
     }
+    const recentItem: BestReplayItem = {
+      ...fullItem,
+      id: 'B649-sample-5-RECENT_50',
+      rank: 2,
+      horizon: 'RECENT_50',
+      horizonLabel: 'Short · 50',
+      evaluatedTargets: 50,
+      winningTargets: 10,
+      hitRate: 0.2,
+      hitRateFormatted: '20.00%',
+    }
 
     const wrapper = mount(BestReplayHorizonComparison, {
       props: {
@@ -952,20 +1321,188 @@ describe('BestReplayHorizonComparison Component', () => {
         game: 'B649',
         itemsByHorizon: {
           FULL: fullItem,
+          RECENT_50: recentItem,
           RECENT_750: null,
           RECENT_300: null,
-          RECENT_50: null,
         },
       },
     })
 
     const fullCard = wrapper.find('[data-testid="horizon-card-full"]')
     expect(fullCard.text()).toContain('27.66%')
+    expect(fullCard.text()).toContain('Source Rank')
+    expect(fullCard.text()).toContain('#1')
     expect(fullCard.text()).toContain('+0.67%')
     expect(fullCard.text()).toContain('DESCRIPTIVE LEADER')
+    const recentCard = wrapper.find('[data-testid="horizon-card-recent-50"]')
+    expect(recentCard.text()).toContain('20.00%')
+    expect(recentCard.text()).toContain('Source Rank')
+    expect(recentCard.text()).toContain('#2')
+    expect(wrapper.text()).toContain('Each period is a separate source scope')
+    expect(wrapper.find('.mini-bar-track').exists()).toBe(false)
 
-    const shortCard = wrapper.find('[data-testid="horizon-card-recent-50"]')
-    expect(shortCard.text()).toContain('Evidence Unavailable')
+    const unavailableCard = wrapper.find('[data-testid="horizon-card-recent-300"]')
+    expect(unavailableCard.text()).toContain('Evidence Unavailable')
+
+    wrapper.unmount()
+  })
+})
+
+describe('Best Replay comparability guards', () => {
+  it('keeps ALL games as separate scopes and never creates a cross-game summary leader', async () => {
+    const wrapper = mount(BestReplayPage)
+    await flushPromises()
+
+    await wrapper.find('#game-select').setValue('ALL')
+    await flushPromises()
+    const allAvailable = wrapper.findAll('button').find((button) => button.text().trim() === 'All Available')
+    expect(allAvailable).toBeDefined()
+    await allAvailable!.trigger('click')
+    await flushPromises()
+
+    const metrics = wrapper.find('[data-testid="best-replay-metrics-grid"]')
+    expect(metrics.text()).toContain('No global leader')
+    expect(metrics.text()).toContain('See each group')
+    expect(metrics.text()).not.toContain('legacy_biglotto__portfolio_optimizer__fixture')
+    expect(wrapper.findAll('[data-testid="one-to-five-overview"]')).toHaveLength(3)
+
+    const groupHeaders = wrapper.findAll('[data-testid^="comparison-group-"]')
+    expect(groupHeaders.some((header) => header.text().includes('B649 · Prefix count 5'))).toBe(true)
+    expect(groupHeaders.some((header) => header.text().includes('M3_PLUS criterion'))).toBe(true)
+    expect(groupHeaders.some((header) => header.text().includes('P638 · Ticket count 1'))).toBe(true)
+    await wrapper.findAll('.pagination-buttons button')[1]!.trigger('click')
+    await flushPromises()
+    expect(wrapper.findAll('[data-testid^="comparison-group-"]').some((header) => header.text().includes('T539 · Ticket count 1'))).toBe(true)
+
+    wrapper.unmount()
+  })
+
+  it('keeps B649 multi-prefix results separate and preserves Rank #1 within each selected group', async () => {
+    const wrapper = mount(BestReplayPage)
+    await flushPromises()
+    await wrapper.findAll('button').find((button) => button.text().trim() === 'All Available')!.trigger('click')
+    await flushPromises()
+
+    const metrics = wrapper.find('[data-testid="best-replay-metrics-grid"]')
+    expect(metrics.text()).toContain('No global leader')
+    expect(metrics.text()).not.toContain('legacy_biglotto__portfolio_optimizer__fixture')
+    const groups = wrapper.findAll('[data-testid^="comparison-group-B649-"]')
+    expect(groups.map((group) => group.text()).join('\n')).toContain('Prefix count 5')
+    expect(groups.map((group) => group.text()).join('\n')).toContain('Prefix count 10')
+
+    await wrapper.findAll('button').find((button) => button.text().trim() === '5 Prefix')!.trigger('click')
+    await flushPromises()
+    expect(wrapper.find('[data-testid="best-replay-metrics-grid"]').text()).toContain('Source Rank #1 · B649')
+    expect(wrapper.findAll('tbody tr.data-row')[0]?.text()).toContain('#1')
+
+    wrapper.unmount()
+  })
+
+  it('keeps Table, Comparison, Matrix, and Overview on the same explicit scope semantics', async () => {
+    const wrapper = mount(BestReplayPage)
+    await flushPromises()
+    await wrapper.find('#game-select').setValue('ALL')
+    await flushPromises()
+    await wrapper.findAll('button').find((button) => button.text().trim() === 'All Available')!.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="best-replay-metrics-grid"]').text()).toContain('No global leader')
+    expect(wrapper.find('[data-testid="one-to-five-overview"]').text()).toContain('Each card is a separate scope')
+    expect(wrapper.findAll('[data-testid^="comparison-group-"]').some((group) => group.text().toLowerCase().includes('winning-target rate'))).toBe(true)
+
+    const comparisonTab = wrapper.findAll('button').find((button) => button.text().trim() === 'Horizon Comparison')
+    await comparisonTab!.trigger('click')
+    await flushPromises()
+    expect(wrapper.find('[data-testid="horizon-comparison"]').exists()).toBe(false)
+    const b649StrategyChip = wrapper.findAll('.strategy-chip').find((chip) => chip.text().includes('legacy_biglotto__portfolio_optimizer__fixture'))
+    expect(b649StrategyChip).toBeDefined()
+    await b649StrategyChip!.trigger('click')
+    await flushPromises()
+    expect(wrapper.text()).toContain('Each period is a separate source scope')
+    expect(wrapper.text()).toContain('Source Rank')
+    expect(wrapper.findAll('.comparison-scope-panel').length).toBeGreaterThan(1)
+
+    const matrixTab = wrapper.findAll('button').find((button) => button.text().trim() === '1–20 Matrix')
+    await matrixTab!.trigger('click')
+    await flushPromises()
+    const matrix = wrapper.find('[data-testid="best-replay-matrix"]')
+    expect(matrix.text()).toContain('Each game and ticket or prefix count is a separate source-defined scope')
+    expect(matrix.text()).toContain('Source #1')
+    expect(matrix.text()).not.toContain('Heatmap Intensity')
+
+    wrapper.unmount()
+  })
+
+  it('keeps grouped pagination and search labels attached to the visible records', async () => {
+    const wrapper = mount(BestReplayPage)
+    await flushPromises()
+    await wrapper.find('#game-select').setValue('ALL')
+    await flushPromises()
+    await wrapper.findAll('button').find((button) => button.text().trim() === 'All Available')!.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Page 1 of 2')
+    await wrapper.findAll('.pagination-buttons button')[1]!.trigger('click')
+    await flushPromises()
+    expect(wrapper.text()).toContain('Page 2 of 2')
+    expect(wrapper.findAll('[data-testid^="comparison-group-"]').some((group) => group.text().includes('T539 · Ticket count 1'))).toBe(true)
+
+    await wrapper.find('#search-input').setValue('p638_zonal_entropy_leader')
+    await flushPromises()
+    expect(wrapper.text()).toContain('Page 1 of 1')
+    expect(wrapper.findAll('[data-testid^="comparison-group-"]').some((group) => group.text().includes('P638 · Ticket count 1'))).toBe(true)
+    expect(wrapper.find('tbody').text()).not.toContain('t539_wave1_cyclic_leader')
+
+    wrapper.unmount()
+  })
+
+  it('keeps a missing source winning rate unavailable in summary and grouped records', async () => {
+    p638WinningTargetRate = null
+    const wrapper = mount(BestReplayPage)
+    await flushPromises()
+    await wrapper.find('[data-testid="game-btn-p638"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Failed to load best replay records')
+    expect(wrapper.text()).toContain('returned an unexpected response')
+    expect(wrapper.find('tbody tr.data-row').exists()).toBe(false)
+    expect(wrapper.text()).not.toContain('0.00%')
+
+    wrapper.unmount()
+  })
+
+  it('preserves a B649 source Rank #1 without substituting a legacy rate when the official rate is missing', async () => {
+    const defaultFetch = fetchMock.getMockImplementation()
+    expect(defaultFetch).toBeDefined()
+    fetchMock.mockImplementation((input, init) => {
+      const url = new URL(String(input), 'http://localhost')
+      if (url.pathname.includes('/b649-multi-ticket-records') && !url.pathname.endsWith('/summary')) {
+        const page = mockB649RecordsPage(url)
+        return Promise.resolve(apiResponse({
+          ...page,
+          items: page.items.map((record) => ({
+            ...record,
+            official_any_prize_rate: null,
+            historical_success_rate: '0.999999',
+          })),
+        }))
+      }
+      return defaultFetch!(input, init)
+    })
+
+    const wrapper = mount(BestReplayPage)
+    await flushPromises()
+
+    const metrics = wrapper.find('[data-testid="best-replay-metrics-grid"]')
+    const rankOneRow = wrapper.find('tbody tr.data-row')
+    const rankOneOverview = wrapper.find('[data-testid="overview-card-5"]')
+    expect(metrics.text()).toContain('Evidence Unavailable')
+    expect(metrics.text()).not.toContain('99.99%')
+    expect(rankOneRow.text()).toContain('#1')
+    expect(rankOneRow.text()).toContain('Rate unavailable')
+    expect(rankOneRow.text()).toContain('Unavailable')
+    expect(rankOneOverview.text()).toContain('Source Rank #1')
+    expect(rankOneOverview.text()).toContain('Rate unavailable')
 
     wrapper.unmount()
   })
@@ -1071,7 +1608,7 @@ describe('P638 Best Replay Horizon Authority Validation (Correction R1)', () => 
     }
 
     // Table rows must show Rank — and Hit Rate Unavailable
-    const rows = wrapper.findAll('tbody tr')
+    const rows = wrapper.findAll('tbody tr.data-row')
     expect(rows.length).toBeGreaterThan(0)
     for (const row of rows) {
       expect(row.text()).toContain('Unavailable')
@@ -1231,7 +1768,7 @@ describe('T539 Best Replay Horizon Authority Validation (Correction R1)', () => 
     }
 
     // Table rows must show Rank — and Hit Rate Unavailable
-    const rows = wrapper.findAll('tbody tr')
+    const rows = wrapper.findAll('tbody tr.data-row')
     expect(rows.length).toBeGreaterThan(0)
     for (const row of rows) {
       expect(row.text()).toContain('Unavailable')

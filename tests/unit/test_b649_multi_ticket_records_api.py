@@ -288,6 +288,65 @@ def test_openapi_exposes_read_only_get_operations_and_closed_enums() -> None:
     assert parameters["criterion"]["required"] is True
 
 
+def test_prefix_openapi_documents_the_raw_denominator_and_zero_observation_semantics() -> None:
+    properties = create_app().openapi()["components"]["schemas"][
+        "B649MultiTicketRecordView"
+    ]["properties"]
+
+    rate = properties["official_any_prize_rate"]["description"]
+    assert "official_any_prize_count / successful_execution_count" in rate
+    assert "N=0" in rate and "undefined" in rate and "placeholder" in rate
+    assert "NO_SUCCESSFUL_EXECUTIONS_IN_WINDOW" in rate
+    assert "status == OK" in properties["successful_execution_count"]["description"]
+    assert "reduced denominator" in properties["effective_backtest_draw_count"]["description"]
+    assert "not the denominator" in properties["effective_backtest_draw_count"]["description"]
+
+
+@pytest.mark.parametrize(
+    ("count", "evaluated", "effective", "rate", "rank"),
+    [
+        (80, 300, 75, "0.266666666666666667", 15),
+        (0, 300, 1, "0.000000000000000000", 1),
+        (0, 0, 1, "0.000000000000000000", None),
+    ],
+    ids=["80-over-300", "zero-over-positive-N", "zero-observations-placeholder"],
+)
+def test_prefix_api_preserves_raw_denominator_and_existing_rate_without_recomputation(
+    count: int, evaluated: int, effective: int, rate: str, rank: int | None,
+) -> None:
+    dataset = _dataset()
+    record = replace(
+        dataset.records[0],
+        official_any_prize_count=count,
+        successful_execution_count=evaluated,
+        effective_backtest_draw_count=effective,
+        official_any_prize_rate=rate,
+        official_rank=rank,
+        rank=rank,
+        unranked_reason="NO_SUCCESSFUL_EXECUTIONS_IN_WINDOW" if rank is None else None,
+    )
+    app = FastAPI()
+    app.include_router(
+        create_b649_multi_ticket_records_router(
+            load_full_strategy_catalog(),
+            lambda: _Reader(replace(dataset, records=(record,))),
+        )
+    )
+    response = TestClient(app).get(
+        PATH, params={"prefix_count": 5, "window": "FULL", "criterion": "M3_PLUS"}
+    )
+
+    assert response.status_code == 200
+    item = response.json()["items"][0]
+    assert item["official_any_prize_count"] == count
+    assert item["successful_execution_count"] == evaluated
+    assert item["effective_backtest_draw_count"] == effective
+    assert item["official_any_prize_rate"] == rate
+    assert item["official_rank"] == rank
+    if evaluated == 0:
+        assert item["unranked_reason"] == "NO_SUCCESSFUL_EXECUTIONS_IN_WINDOW"
+
+
 EXACT_NATIVE_PATH = "/api/v1/b649-exact-native-records"
 
 

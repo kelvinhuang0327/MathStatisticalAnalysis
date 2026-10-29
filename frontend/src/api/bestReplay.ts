@@ -114,8 +114,10 @@ export function transformB649Record(
 ): BestReplayItem {
   const horizonDef = CANONICAL_HORIZONS.find((h) => h.key === horizon)
   const horizonLabel = horizonDef?.label ?? horizon
+  const evaluatedTargets = record.successful_execution_count ?? null
   const isAvailable =
     record.reproduction_status === 'BACKTESTED' &&
+    evaluatedTargets !== 0 &&
     record.official_any_prize_rate !== null &&
     record.official_rank !== null
 
@@ -135,7 +137,6 @@ export function transformB649Record(
     : record.random_baseline_success_rate !== null && record.random_baseline_success_rate !== undefined
       ? Number.parseFloat(record.random_baseline_success_rate)
       : null
-  const evaluatedTargets = record.effective_backtest_draw_count ?? null
   const winningTargets = record.official_any_prize_count ?? record.success_count ?? null
   const coverage = record.coverage !== null && record.coverage !== undefined
     ? Number.parseFloat(record.coverage)

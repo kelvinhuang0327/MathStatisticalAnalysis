@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import random
 from random import Random
+from typing import cast
 
 from lottolab.research import b649_walkforward_incremental_cache_r1 as _cache
 from lottolab.research import (
@@ -14,16 +15,19 @@ from lottolab.research.b649_walkforward_cached_omission_adapter_r1 import (
     B649WalkForwardCachedOmissionAdapter,
 )
 
+HistoryDraw = tuple[int, int, int, int, int, int]
 
-def _draws(count: int) -> tuple[tuple[int, ...], ...]:
+
+def _draws(count: int) -> tuple[HistoryDraw, ...]:
     generator = Random(1028)
     return tuple(
-        tuple(sorted(generator.sample(range(1, 50), 6))) for _ in range(count)
+        cast(HistoryDraw, tuple(sorted(generator.sample(range(1, 50), 6))))
+        for _ in range(count)
     )
 
 
 def _snapshot(
-    draws: tuple[tuple[int, ...], ...],
+    draws: tuple[HistoryDraw, ...],
 ) -> _cache.B649WalkForwardHistory:
     return _cache.B649WalkForwardHistory.from_draws("adapter-test-source-v1", draws)
 
@@ -92,7 +96,10 @@ def test_changed_prefix_with_same_source_identity_causes_cache_miss() -> None:
     changed_draws = list(draws)
     changed_draw = changed_draws[749]
     replacement = next(number for number in range(1, 50) if number not in changed_draw)
-    changed_draws[749] = tuple(sorted((*changed_draw[1:], replacement)))
+    changed_draws[749] = cast(
+        HistoryDraw,
+        tuple(sorted((*changed_draw[1:], replacement))),
+    )
     changed_history = _cache.B649WalkForwardHistory.from_draws(
         "adapter-test-source-v1", changed_draws
     )
@@ -133,7 +140,10 @@ def test_target_outcome_is_excluded_and_rng_state_is_unchanged() -> None:
     alternate_draws = list(draws)
     target_draw = alternate_draws[750]
     replacement = next(number for number in range(1, 50) if number not in target_draw)
-    alternate_draws[750] = tuple(sorted((*target_draw[1:], replacement)))
+    alternate_draws[750] = cast(
+        HistoryDraw,
+        tuple(sorted((*target_draw[1:], replacement))),
+    )
     history = _snapshot(draws)
     alternate_history = _cache.B649WalkForwardHistory.from_draws(
         "adapter-test-source-v1", alternate_draws

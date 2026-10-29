@@ -15,6 +15,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 from fractions import Fraction
 from itertools import combinations
+from typing import TypeGuard, cast
 
 from lottolab.research import (
     biglotto_multiscale_omission_pressure_multi_ticket_candidate_batch_r1 as _multiscale,
@@ -25,6 +26,10 @@ type HistoryDraw = tuple[int, int, int, int, int, int]
 STATISTIC_SEMANTIC_ID = "B649_MAIN_OCCURRENCE_AND_CURRENT_GAP_V1"
 _PREFIX_DIGEST_DOMAIN = b"lottolab:b649-walkforward-prefix:v1\0"
 _NUMBER_COUNT = _multiscale.NUMBER_DOMAIN[1] - _multiscale.NUMBER_DOMAIN[0] + 1
+
+
+def _is_sequence(value: object) -> TypeGuard[Sequence[object]]:
+    return isinstance(value, Sequence)
 
 
 class B649WalkForwardCacheError(ValueError):
@@ -89,7 +94,7 @@ class B649WalkForwardHistory:
     ) -> B649WalkForwardHistory:
         """Copy a concrete sequence into a validated immutable snapshot."""
 
-        if not isinstance(draws, Sequence):
+        if not _is_sequence(draws):
             raise B649WalkForwardCacheError(
                 "draws must be a concrete sequence; lazy iterables use the safe path"
             )
@@ -393,7 +398,11 @@ def calculate_window_rankings_cached(
         or type(cache) is not B649WalkForwardIncrementalCache
         or not use_cache
     ):
-        raw_history = history.draws if type(history) is B649WalkForwardHistory else history
+        raw_history: _multiscale.HistoryInput = (
+            history.draws
+            if type(history) is B649WalkForwardHistory
+            else cast(_multiscale.HistoryInput, history)
+        )
         return _multiscale.calculate_window_rankings(raw_history, target_index)
 
     if type(target_index) is not int or target_index < 0:
@@ -444,7 +453,11 @@ def produce_source_ticket_universe_cached(
         or type(cache) is not B649WalkForwardIncrementalCache
         or not use_cache
     ):
-        raw_history = history.draws if type(history) is B649WalkForwardHistory else history
+        raw_history: _multiscale.HistoryInput = (
+            history.draws
+            if type(history) is B649WalkForwardHistory
+            else cast(_multiscale.HistoryInput, history)
+        )
         return _multiscale.produce_source_ticket_universe(raw_history, target_index)
 
     top_numbers = calculate_fused_number_ranking_cached(
@@ -464,7 +477,7 @@ def produce_source_ticket_universe_cached(
         raise RuntimeError("source universe did not produce exactly 210 tickets")
     if len(set(tickets)) != len(tickets):
         raise RuntimeError("source universe produced duplicate tickets")
-    return tickets
+    return cast(_multiscale.TicketPortfolio, tickets)
 
 
 __all__ = [

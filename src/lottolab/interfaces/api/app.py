@@ -87,19 +87,19 @@ from lottolab.interfaces.api.multiwindow_success_windows import (
     create_multiwindow_success_windows_router,
 )
 from lottolab.interfaces.api.p638_historical import create_p638_historical_router
+from lottolab.interfaces.api.replay_backfill import create_replay_backfill_router
 from lottolab.interfaces.api.replay_execution import (
     ReplayExecutor,
     create_replay_execution_router,
 )
-from lottolab.interfaces.api.replay_strategy_inventory import (
-    create_replay_strategy_inventory_router,
-)
-from lottolab.interfaces.api.replay_backfill import create_replay_backfill_router
 from lottolab.interfaces.api.replay_portfolio_rankings import (
     create_replay_portfolio_rankings_router,
 )
 from lottolab.interfaces.api.replay_scoring_projections import (
     create_replay_scoring_projections_router,
+)
+from lottolab.interfaces.api.replay_strategy_inventory import (
+    create_replay_strategy_inventory_router,
 )
 from lottolab.interfaces.api.strategy_catalog import (
     API_VERSION,

@@ -320,6 +320,7 @@ describe('App navigation', () => {
       'History',
       'Best Replay',
       'Replay Overview',
+      'Replay History',
       'Strategy Intelligence',
       'B649 Replay',
       'B649 Current Forecast',

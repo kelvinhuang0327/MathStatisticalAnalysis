@@ -623,6 +623,50 @@ def test_replay_scoring_generated_types_include_all_read_only_operations() -> No
             assert f'"application/json": {response_type}' in response_block
 
 
+def test_replay_backfill_generated_types_include_named_schemas() -> None:
+    declaration = (ROOT / "frontend/src/api/generated/openapi.d.ts").read_text(
+        encoding="utf-8"
+    )
+
+    expected_success_types = {
+        "/api/v1/replay-strategy-inventory": (
+            "components['schemas'][\"ReplayStrategyInventoryResponse\"]"
+        ),
+        "/api/v1/replay-backfill/strategies": (
+            "components['schemas'][\"ReplayBackfillStrategyPageResponse\"]"
+        ),
+        "/api/v1/replay-backfill/predictions": (
+            "components['schemas'][\"ReplayBackfillPredictionPageResponse\"]"
+        ),
+        "/api/v1/replay-backfill/coverage": (
+            "components['schemas'][\"ReplayBackfillCoverageResponse\"]"
+        ),
+    }
+
+    for path, success_type in expected_success_types.items():
+        marker = f'  "{path}": {{'
+        assert marker in declaration
+        start = declaration.index(marker)
+        next_path = declaration.find('\n  "/api/', start + len(marker))
+        paths_end = declaration.index("\n}\n\nexport interface components", start)
+        end = paths_end if next_path == -1 else min(next_path, paths_end)
+        path_block = declaration[start:end]
+
+        assert path_block.count("get: {") == 1
+        lines = path_block.splitlines()
+        response_start = next(
+            index for index, line in enumerate(lines) if line.strip() == "200: {"
+        )
+        response_lines: list[str] = []
+        for line in lines[response_start + 1 :]:
+            stripped = line.strip()
+            if stripped[:3].isdigit() and stripped[3:] == ": {":
+                break
+            response_lines.append(line)
+        response_block = "\n".join(response_lines)
+        assert f'"application/json": {success_type}' in response_block
+
+
 def test_committed_openapi_contract_is_current() -> None:
     committed = cast(
         dict[str, object],

@@ -1,132 +1,32 @@
+import type { components } from './generated/openapi'
+
 export const REPLAY_BACKFILL_LOTTERY_TYPES = [
   'BIG_LOTTO',
   'DAILY_539',
   'POWER_LOTTO',
 ] as const
 
-export type ReplayBackfillLotteryType = (typeof REPLAY_BACKFILL_LOTTERY_TYPES)[number]
+export type ReplayBackfillLotteryType = components['schemas']['LotteryType']
 export type ReplayBackfillPeriod = 50 | 300 | 750 | 'ALL'
 
 export const REPLAY_BACKFILL_PERIODS: readonly ReplayBackfillPeriod[] = [50, 300, 750, 'ALL']
 
-export type ReplayBackfillDataStatus =
-  | 'HAS_HISTORY'
-  | 'REBUILDABLE'
-  | 'NO_HISTORY'
-  | 'ARTIFACT_ONLY'
-  | 'CODE_ONLY'
-  | 'REJECTED'
+export type ReplayBackfillDataStatus = components['schemas']['ReplayDataStatus']
 
-export interface ReplayBackfillStrategyItem {
-  strategy_id: string
-  strategy_version: string | null
-  display_name: string
-  lottery_type: ReplayBackfillLotteryType
-  lifecycle_status: string
-  data_status: string
-  source_kind: string
-  executable: boolean
-  available_target_count: number
-  training_status: string
-}
+export type ReplayBackfillStrategyItem = components['schemas']['ReplayBackfillStrategyItemView']
+export type ReplayBackfillStrategyPage = components['schemas']['ReplayBackfillStrategyPageResponse']
 
-export interface ReplayBackfillStrategyPage {
-  items: ReplayBackfillStrategyItem[]
-  total_count: number
-  next_cursor: string | null
-}
+export type ReplayStrategyInventoryItem = components['schemas']['ReplayStrategyInventoryItemView']
+export type ReplayStrategyInventoryResponse = components['schemas']['ReplayStrategyInventoryResponse']
 
-export interface ReplayStrategyInventoryItem {
-  lottery_type: ReplayBackfillLotteryType
-  strategy_id: string
-  display_name: string
-  strategy_version: string | null
-  source_kind: string
-  source_locator: string
-  lifecycle_status: string
-  replay_data_status: string
-  execution_capability: string
-  reconstructable: boolean | null
-  wrapper_callable: boolean | null
-  backfill_native_binding: boolean | null
-  backfill_runnable: boolean
-  execution_block_reason: string | null
-  reconstruction_reason: string
-  historical_data_count: number
-  historical_execution_count: number
-}
-
-export interface ReplayStrategyInventoryResponse {
-  strategy_count: number
-  strategies: ReplayStrategyInventoryItem[]
-}
-
-export interface ReplayBackfillTicket {
-  ticket_position: number
-  main_numbers: number[]
-  special_numbers: number[]
-  main_hit_count: number | null
-  special_hit: boolean | null
-  prize_tier: string | null
-}
-
-export interface ReplayBackfillTraining {
-  training_status: string
-  model_version: string | null
-  training_cutoff: string | null
-  training_artifact_id: string | null
-}
-
-export interface ReplayBackfillPredictionItem {
-  lottery_type: ReplayBackfillLotteryType
-  strategy_id: string
-  strategy_version: string
-  lifecycle_status?: string
-  target_draw_number: string
-  target_draw_date: string
-  prediction_status: string
-  predicted_tickets: ReplayBackfillTicket[]
-  actual_main_numbers: number[]
-  actual_special_numbers: number[]
-  portfolio_any_prize: boolean | null
-  best_main_hits: number | null
-  source_kind: string
-  data_status: string
-  prediction_cutoff?: ReplayBackfillPredictionCutoff | null
-  training: ReplayBackfillTraining
-}
-
+export type ReplayBackfillTicket = components['schemas']['ReplayBackfillPredictedTicketView']
+export type ReplayBackfillTraining = components['schemas']['ReplayBackfillTrainingView']
 export type ReplayBackfillPredictionCutoffStatus = 'VERIFIED' | 'UNTRUSTED' | 'UNKNOWN'
+export type ReplayBackfillPredictionCutoff = components['schemas']['ReplayBackfillPredictionCutoffView']
+export type ReplayBackfillPredictionItem = components['schemas']['ReplayBackfillPredictionItemView']
+export type ReplayBackfillPredictionPage = components['schemas']['ReplayBackfillPredictionPageResponse']
 
-export interface ReplayBackfillPredictionCutoff {
-  draw_date: string | null
-  draw_number: string | null
-  history_draw_count: number | null
-  reason_code: string | null
-  source_hash: string | null
-  source_identity: string | null
-  source_locator: string | null
-  status: ReplayBackfillPredictionCutoffStatus
-}
-
-export interface ReplayBackfillPredictionPage {
-  run_id: string | null
-  total_count: number
-  items: ReplayBackfillPredictionItem[]
-  next_cursor: string | null
-}
-
-export interface ReplayBackfillCoverage {
-  expected_strategy_count: number
-  expected_target_count: number
-  expected_cell_count: number
-  completed_cell_count: number
-  failed_cell_count: number
-  closed_cell_count: number
-  complete_coverage_percent: number
-  missing_strategy_ids: string[]
-  run_id: string | null
-}
+export type ReplayBackfillCoverage = components['schemas']['ReplayBackfillCoverageResponse']
 
 export interface ReplayBackfillStrategyQuery {
   lotteryType: ReplayBackfillLotteryType

@@ -18,7 +18,7 @@ from typing import Annotated, cast
 
 from fastapi import APIRouter, FastAPI, Query
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from lottolab.application.replay_strategy_inventory import load_replay_strategy_inventory
 from lottolab.domain.draws import LotteryType
@@ -46,6 +46,225 @@ class ReplayBackfillErrorResponse(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     error_code: str
+
+
+class ReplayBackfillBindingSourceView(BaseModel):
+    """Source binding evidence for a strategy."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    source_kind: str
+    source_locator: str
+
+
+class ReplayBackfillHistoryCountsView(BaseModel):
+    """Per-status execution and cell counts for one strategy in a run."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    expected_cell_count: int = Field(ge=0)
+    persisted_cell_count: int = Field(ge=0)
+    saved_prediction_cell_count: int = Field(ge=0)
+    saved_ticket_count: int = Field(ge=0)
+    pending_cell_count: int = Field(ge=0)
+    execution_status_counts: dict[str, int]
+
+
+class ReplayBackfillStrategyItemView(BaseModel):
+    """Replay backfill strategy item with history and status metadata."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    strategy_id: str
+    strategy_version: str | None
+    display_name: str
+    lottery_type: LotteryType
+    lifecycle_status: str
+    data_status: str
+    source_kind: str
+    executable: bool
+    available_target_count: int = Field(ge=0)
+    training_status: str
+    inventory_lifecycle_status: str | None = None
+    inventory_data_status: str | None = None
+    inventory_source_kind: str | None = None
+    inventory_source_locator: str | None = None
+    strategy_source_identity: str | None = None
+    reconstructable: bool | None = None
+    wrapper_callable: bool | None = None
+    backfill_native_binding: bool | None = None
+    backfill_native_binding_sources: list[ReplayBackfillBindingSourceView] = Field(
+        default_factory=list
+    )
+    backfill_runnable: bool | None = None
+    execution_block_reason: str | None = None
+    history_status: str | None = None
+    history_statuses: list[str] = Field(default_factory=list)
+    history_run_id: str | None = None
+    history_scope: str | None = None
+    history_source_identity_status: str | None = None
+    history_counts: ReplayBackfillHistoryCountsView | None = None
+
+
+class ReplayBackfillRunSourceView(BaseModel):
+    """Source identity metadata for a run."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    identity_status: str | None = None
+    source_identity: str | None = None
+    source_kind: str | None = None
+    source_locator: str | None = None
+    source_hash: str | None = None
+    artifact_only: bool | None = None
+
+
+class ReplayBackfillRunScopeView(BaseModel):
+    """Run summary and source facts for history scope."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    run_id: str | None = None
+    created_at: str | None = None
+    dataset_identity: str | None = None
+    execution_version: str | None = None
+    source: ReplayBackfillRunSourceView | None = None
+
+
+class ReplayBackfillHistoryScopeView(BaseModel):
+    """Replay run selection rules and snapshot metadata."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    strategy_identity_source: str
+    persisted_history_source: str
+    run_selection_rule: str
+    runs: dict[str, ReplayBackfillRunScopeView]
+
+
+class ReplayBackfillStrategyPageResponse(BaseModel):
+    """Paginated strategy inventory response with run and history scope."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    items: list[ReplayBackfillStrategyItemView]
+    total_count: int = Field(ge=0)
+    history_scope: ReplayBackfillHistoryScopeView | None = None
+    next_cursor: str | None
+
+
+class ReplayBackfillTicketIdentityView(BaseModel):
+    """Identity tuple for a predicted ticket."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    lottery_type: LotteryType
+    run_id: str
+    target_draw_id: str
+    strategy_id: str
+    strategy_version: str
+    ticket_position: int
+
+
+class ReplayBackfillPredictedTicketView(BaseModel):
+    """Predicted ticket numbers, identity, and hit evaluation."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    ticket_position: int
+    main_numbers: list[int]
+    special_numbers: list[int]
+    main_hit_count: int | None
+    special_hit: bool | None
+    prize_tier: str | None
+    ticket_identity: ReplayBackfillTicketIdentityView | None = None
+
+
+class ReplayBackfillPredictionCutoffView(BaseModel):
+    """Training cutoff draw and audit evidence for prediction isolation."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    status: str
+    draw_number: str | None = None
+    draw_date: str | None = None
+    source_identity: str | None = None
+    source_locator: str | None = None
+    source_hash: str | None = None
+    history_draw_count: int | None = None
+    reason_code: str | None = None
+
+
+class ReplayBackfillTrainingView(BaseModel):
+    """Training artifact and model version metadata."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    training_status: str
+    model_version: str | None = None
+    training_cutoff: str | None = None
+    training_artifact_id: str | None = None
+
+
+class ReplayBackfillPredictionItemView(BaseModel):
+    """One draw prediction result with evaluated tickets and audit trails."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    lottery_type: LotteryType
+    strategy_id: str
+    strategy_version: str
+    target_draw_number: str
+    target_draw_date: str
+    prediction_status: str
+    predicted_tickets: list[ReplayBackfillPredictedTicketView]
+    actual_main_numbers: list[int]
+    actual_special_numbers: list[int]
+    source_kind: str
+    data_status: str
+    training: ReplayBackfillTrainingView
+    portfolio_any_prize: bool | None
+    best_main_hits: int | None
+    run_id: str | None = None
+    lifecycle_status: str | None = None
+    identity_status: str | None = None
+    evaluation_status: str | None = None
+    prediction_cutoff: ReplayBackfillPredictionCutoffView | None = None
+    source_identity: str | None = None
+    source_hash: str | None = None
+    strategy_fingerprint: str | None = None
+    dataset_identity: str | None = None
+    history_fingerprint: str | None = None
+    engine_version: str | None = None
+    execution_version: str | None = None
+
+
+class ReplayBackfillPredictionPageResponse(BaseModel):
+    """Paginated replay backfill predictions response."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    run_id: str | None
+    total_count: int = Field(ge=0)
+    items: list[ReplayBackfillPredictionItemView]
+    next_cursor: str | None
+
+
+class ReplayBackfillCoverageResponse(BaseModel):
+    """Execution progress and cell coverage summary for one lottery type backfill."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    lottery_type: LotteryType | None = None
+    expected_strategy_count: int = Field(ge=0)
+    expected_target_count: int = Field(ge=0)
+    expected_cell_count: int = Field(ge=0)
+    completed_cell_count: int = Field(ge=0)
+    failed_cell_count: int = Field(ge=0)
+    closed_cell_count: int = Field(ge=0)
+    complete_coverage_percent: float = Field(ge=0.0)
+    missing_strategy_ids: list[str]
+    run_id: str | None
 
 
 def _as_json_object(value: object) -> JsonObject | None:
@@ -222,12 +441,8 @@ def create_replay_backfill_router(store: SQLiteBackfillStore | None) -> APIRoute
 
     @router.get(
         "/strategies",
-        response_model=None,
-        responses={
-            422: {
-                "model": ApiValidationErrorResponse | ReplayBackfillErrorResponse
-            }
-        },
+        response_model=ReplayBackfillStrategyPageResponse,
+        responses={422: {"model": ApiValidationErrorResponse | ReplayBackfillErrorResponse}},
     )
     def strategies(
         lottery_type: LotteryType | None = None,
@@ -311,9 +526,10 @@ def create_replay_backfill_router(store: SQLiteBackfillStore | None) -> APIRoute
                     continue
                 if data_status is not None and item_data_status != data_status.value:
                     continue
-                if q and q.casefold() not in (
-                    item.strategy_id + " " + item.display_name
-                ).casefold():
+                if (
+                    q
+                    and q.casefold() not in (item.strategy_id + " " + item.display_name).casefold()
+                ):
                     continue
                 row: JsonObject = {
                     "strategy_id": item.strategy_id,
@@ -324,9 +540,7 @@ def create_replay_backfill_router(store: SQLiteBackfillStore | None) -> APIRoute
                     "inventory_lifecycle_status": item.lifecycle_status.value,
                     "data_status": item_data_status,
                     "inventory_data_status": item.replay_data_status.value,
-                    "source_kind": (
-                        source_row["source_kind"] if source_row else item.source_kind
-                    ),
+                    "source_kind": (source_row["source_kind"] if source_row else item.source_kind),
                     "inventory_source_kind": item.source_kind,
                     "inventory_source_locator": item.source_locator,
                     "strategy_source_identity": (
@@ -360,7 +574,9 @@ def create_replay_backfill_router(store: SQLiteBackfillStore | None) -> APIRoute
                 rows.append(row)
             rows.sort(
                 key=lambda row: (
-                    row["lottery_type"], row["strategy_id"], row["strategy_version"] or ""
+                    row["lottery_type"],
+                    row["strategy_id"],
+                    row["strategy_version"] or "",
                 )
             )
             filters: dict[str, str | None] = {
@@ -410,12 +626,8 @@ def create_replay_backfill_router(store: SQLiteBackfillStore | None) -> APIRoute
 
     @router.get(
         "/predictions",
-        response_model=None,
-        responses={
-            422: {
-                "model": ApiValidationErrorResponse | ReplayBackfillErrorResponse
-            }
-        },
+        response_model=ReplayBackfillPredictionPageResponse,
+        responses={422: {"model": ApiValidationErrorResponse | ReplayBackfillErrorResponse}},
     )
     def predictions(
         lottery_type: LotteryType,
@@ -524,12 +736,8 @@ def create_replay_backfill_router(store: SQLiteBackfillStore | None) -> APIRoute
 
     @router.get(
         "/coverage",
-        response_model=None,
-        responses={
-            422: {
-                "model": ApiValidationErrorResponse | ReplayBackfillErrorResponse
-            }
-        },
+        response_model=ReplayBackfillCoverageResponse,
+        responses={422: {"model": ApiValidationErrorResponse | ReplayBackfillErrorResponse}},
     )
     def coverage(
         lottery_type: LotteryType,
@@ -577,11 +785,7 @@ def create_replay_backfill_router(store: SQLiteBackfillStore | None) -> APIRoute
     @router.get(
         "/results",
         response_model=None,
-        responses={
-            422: {
-                "model": ApiValidationErrorResponse | ReplayBackfillErrorResponse
-            }
-        },
+        responses={422: {"model": ApiValidationErrorResponse | ReplayBackfillErrorResponse}},
     )
     def results(
         run_id: str | None = None,
@@ -616,11 +820,7 @@ def create_replay_backfill_router(store: SQLiteBackfillStore | None) -> APIRoute
     @router.get(
         "/runs",
         response_model=None,
-        responses={
-            422: {
-                "model": ApiValidationErrorResponse | ReplayBackfillErrorResponse
-            }
-        },
+        responses={422: {"model": ApiValidationErrorResponse | ReplayBackfillErrorResponse}},
     )
     def runs(
         lottery_type: LotteryType | None = None,
@@ -636,9 +836,7 @@ def create_replay_backfill_router(store: SQLiteBackfillStore | None) -> APIRoute
         except Exception:
             return _error(503, "REPLAY_BACKFILL_UNAVAILABLE")
 
-        filters: JsonObject = {
-            "lottery_type": None if lottery_type is None else lottery_type.value
-        }
+        filters: JsonObject = {"lottery_type": None if lottery_type is None else lottery_type.value}
         checksum = hashlib.sha256(canonical_json(rows).encode()).hexdigest()
         try:
             offset = _read_cursor(cursor, "runs", checksum, filters)
@@ -662,11 +860,7 @@ def create_replay_backfill_router(store: SQLiteBackfillStore | None) -> APIRoute
     @router.get(
         "/runs/{run_id}",
         response_model=None,
-        responses={
-            422: {
-                "model": ApiValidationErrorResponse | ReplayBackfillErrorResponse
-            }
-        },
+        responses={422: {"model": ApiValidationErrorResponse | ReplayBackfillErrorResponse}},
     )
     def progress(run_id: str) -> JsonObject | JSONResponse:
         if store is None:
@@ -737,9 +931,7 @@ def _prediction_item(
     if "cell_identity" in payload and payload["cell_identity"] != identity.get("cell_identity"):
         identity_matches = False
     for ticket in tickets:
-        if not _ticket_claims_identity_match(
-            ticket, identity, ticket.get("ticket_position")
-        ):
+        if not _ticket_claims_identity_match(ticket, identity, ticket.get("ticket_position")):
             identity_matches = False
     for hit in hits:
         if not _ticket_claims_identity_match(hit, identity, hit.get("ticket_position")):
@@ -983,8 +1175,12 @@ def _prediction_cutoff(
 def _contract_lifecycle(status: ReplayLifecycleStatus) -> str:
     if status is ReplayLifecycleStatus.UNREGISTERED_IDENTIFIED:
         return "UNREGISTERED"
-    if status in {ReplayLifecycleStatus.ARTIFACT_ONLY, ReplayLifecycleStatus.CODE_ONLY,
-                  ReplayLifecycleStatus.IDEA, ReplayLifecycleStatus.RETIRED}:
+    if status in {
+        ReplayLifecycleStatus.ARTIFACT_ONLY,
+        ReplayLifecycleStatus.CODE_ONLY,
+        ReplayLifecycleStatus.IDEA,
+        ReplayLifecycleStatus.RETIRED,
+    }:
         return "OFFLINE"
     return status.value
 
@@ -1013,9 +1209,7 @@ def _write_cursor(kind: str, checksum: str, filters: JsonObject, offset: int) ->
     return _encode({"kind": kind, "checksum": checksum, "filters": filters, "offset": offset})
 
 
-def _read_cursor(
-    cursor: str | None, kind: str, checksum: str, filters: JsonObject
-) -> int:
+def _read_cursor(cursor: str | None, kind: str, checksum: str, filters: JsonObject) -> int:
     if cursor is None:
         return 0
     state = _decode(cursor)

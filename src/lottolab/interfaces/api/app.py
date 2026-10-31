@@ -9,7 +9,9 @@ Run locally:
 
 from __future__ import annotations
 
+import os
 from collections.abc import Callable
+from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
@@ -52,6 +54,7 @@ from lottolab.infrastructure.persistence.draw_schema import (
     LocalDataPaths,
     resolve_local_data_paths,
 )
+from lottolab.infrastructure.persistence.replay_backfill_store import SQLiteBackfillStore
 from lottolab.infrastructure.persistence.repositories import SQLiteDrawDataRepository
 from lottolab.infrastructure.strategy_evidence_registry import (
     CommittedStrategyEvidenceRegistry,
@@ -84,6 +87,7 @@ from lottolab.interfaces.api.multiwindow_success_windows import (
     create_multiwindow_success_windows_router,
 )
 from lottolab.interfaces.api.p638_historical import create_p638_historical_router
+from lottolab.interfaces.api.replay_backfill import create_replay_backfill_router
 from lottolab.interfaces.api.replay_execution import (
     ReplayExecutor,
     create_replay_execution_router,
@@ -93,6 +97,9 @@ from lottolab.interfaces.api.replay_portfolio_rankings import (
 )
 from lottolab.interfaces.api.replay_scoring_projections import (
     create_replay_scoring_projections_router,
+)
+from lottolab.interfaces.api.replay_strategy_inventory import (
+    create_replay_strategy_inventory_router,
 )
 from lottolab.interfaces.api.strategy_catalog import (
     API_VERSION,
@@ -150,6 +157,12 @@ def create_app(
     ) = None,
 ) -> FastAPI:
     app = FastAPI(title="LottoLab API", version="0.1.0")
+    configured_replay_backfill_db = os.environ.get("LOTTOLAB_REPLAY_BACKFILL_DB")
+    resolved_replay_backfill_store = (
+        SQLiteBackfillStore(Path(configured_replay_backfill_db), read_only=True)
+        if configured_replay_backfill_db
+        else None
+    )
     resolved_catalog = catalog if catalog is not None else production_catalog()
     resolved_paths_provider = (
         data_paths_provider if data_paths_provider is not None else resolve_local_data_paths
@@ -214,6 +227,7 @@ def create_app(
 
     app.include_router(create_b649_canonical_forecast_router())
     app.include_router(create_strategy_catalog_router(resolved_catalog))
+    app.include_router(create_replay_strategy_inventory_router())
     app.include_router(
         create_b649_multi_ticket_records_router(
             load_full_strategy_catalog(),
@@ -264,6 +278,7 @@ def create_app(
         create_replay_scoring_projections_router(replay_scoring_projection_reader_factory)
     )
     app.include_router(create_replay_execution_router(replay_executor))
+    app.include_router(create_replay_backfill_router(resolved_replay_backfill_store))
     app.include_router(create_t539_historical_router(t539_historical_query_repository_factory))
     app.include_router(
         create_multiwindow_success_windows_router(

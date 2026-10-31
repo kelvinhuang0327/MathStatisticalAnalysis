@@ -320,6 +320,7 @@ describe('App navigation', () => {
       'History',
       'Best Replay',
       'Replay Overview',
+      'Replay History',
       'Strategy Intelligence',
       'B649 Replay',
       'B649 Current Forecast',
@@ -401,7 +402,8 @@ describe('App navigation', () => {
     window.dispatchEvent(new HashChangeEvent('hashchange'))
     await flushPromises()
     expect(wrapper.find('#replay-history-title').exists()).toBe(true)
-    expect(navigation.find('a[href="#/future-modules"]').attributes('aria-current')).toBe('page')
+    expect(navigation.find('a[href="#/replay-history"]').attributes('aria-current')).toBe('page')
+    expect(navigation.find('a[href="#/future-modules"]').attributes('aria-current')).toBeUndefined()
 
     window.location.hash = '#/strategies'
     window.dispatchEvent(new HashChangeEvent('hashchange'))

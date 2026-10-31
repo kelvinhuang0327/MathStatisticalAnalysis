@@ -436,8 +436,15 @@ def test_openapi_exposes_exact_local_runtime_operation_set() -> None:
             "get",
             "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/overall-aggregate",
         ),
+        ("get", "/api/v1/replay-backfill/strategies"),
+        ("get", "/api/v1/replay-backfill/predictions"),
+        ("get", "/api/v1/replay-backfill/coverage"),
+        ("get", "/api/v1/replay-backfill/results"),
+        ("get", "/api/v1/replay-backfill/runs"),
+        ("get", "/api/v1/replay-backfill/runs/{run_id}"),
+        ("get", "/api/v1/replay-strategy-inventory"),
     }
-    assert len(operations) == 71
+    assert len(operations) == 78
 
 
 def test_replay_ranking_openapi_requires_exact_persisted_scoring_sha() -> None:

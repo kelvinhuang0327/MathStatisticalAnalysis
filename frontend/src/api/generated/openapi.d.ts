@@ -67,6 +67,29 @@ export interface paths {
                 }
         }
     }
+  "/api/v1/replay-strategy-inventory": {
+      get: {
+          parameters: {
+            "query": {
+              "lottery_type"?: components['schemas']["LotteryType"] | null
+              "strategy_id"?: string | null
+              "replay_data_status"?: components['schemas']["ReplayDataStatus"] | null
+            }
+          }
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": components['schemas']["ReplayStrategyInventoryResponse"]
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["ApiValidationErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
   "/api/v1/b649-multi-ticket-records/summary": {
       get: {
           parameters: Record<string, never>
@@ -1783,6 +1806,160 @@ export interface paths {
                   503: {
                           content: {
                                     "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
+  "/api/v1/replay-backfill/strategies": {
+      get: {
+          parameters: {
+            "query": {
+              "lottery_type"?: components['schemas']["LotteryType"] | null
+              "q"?: string | null
+              "lifecycle_status"?: string | null
+              "data_status"?: components['schemas']["ReplayDataStatus"] | null
+              "limit"?: number
+              "cursor"?: string | null
+              "run_id"?: string | null
+            }
+          }
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": unknown
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["ApiValidationErrorResponse"] | components['schemas']["ReplayBackfillErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
+  "/api/v1/replay-backfill/predictions": {
+      get: {
+          parameters: {
+            "query": {
+              "lottery_type": components['schemas']["LotteryType"]
+              "run_id"?: string | null
+              "strategy_id"?: string | null
+              "from_date"?: string | null
+              "to_date"?: string | null
+              "period"?: string
+              "limit"?: number
+              "cursor"?: string | null
+            }
+          }
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": unknown
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["ApiValidationErrorResponse"] | components['schemas']["ReplayBackfillErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
+  "/api/v1/replay-backfill/coverage": {
+      get: {
+          parameters: {
+            "query": {
+              "lottery_type": components['schemas']["LotteryType"]
+              "run_id"?: string | null
+              "strategy_id"?: string | null
+              "from_date"?: string | null
+              "to_date"?: string | null
+              "period"?: string
+            }
+          }
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": unknown
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["ApiValidationErrorResponse"] | components['schemas']["ReplayBackfillErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
+  "/api/v1/replay-backfill/results": {
+      get: {
+          parameters: {
+            "query": {
+              "run_id"?: string | null
+              "lottery_type"?: components['schemas']["LotteryType"] | null
+              "strategy_id"?: string | null
+              "start_date"?: string | null
+              "end_date"?: string | null
+              "target_draw_id"?: string | null
+              "execution_status"?: components['schemas']["ReplayCellStatus"] | null
+              "limit"?: number
+              "offset"?: number
+            }
+          }
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": unknown
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["ApiValidationErrorResponse"] | components['schemas']["ReplayBackfillErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
+  "/api/v1/replay-backfill/runs": {
+      get: {
+          parameters: {
+            "query": {
+              "lottery_type"?: components['schemas']["LotteryType"] | null
+              "limit"?: number
+              "cursor"?: string | null
+            }
+          }
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": unknown
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["ApiValidationErrorResponse"] | components['schemas']["ReplayBackfillErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
+  "/api/v1/replay-backfill/runs/{run_id}": {
+      get: {
+          parameters: {
+            "path": {
+              "run_id": string
+            }
+          }
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": unknown
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["ApiValidationErrorResponse"] | components['schemas']["ReplayBackfillErrorResponse"]
                                   }
                         }
                 }
@@ -3732,6 +3909,12 @@ export interface components {
           "prize_tier_order": number | null
           "prize_amount": number | null
         }
+    "ReplayBackfillErrorResponse": {
+          "error_code": string
+        }
+    "ReplayCellStatus": "NOT_ELIGIBLE" | "COMPLETE" | "TYPED_CLOSURE" | "FAILED" | "MISSING" | "PARTIAL"
+    "ReplayDataStatus": "HAS_HISTORY" | "REBUILDABLE" | "REBUILDABLE" | "NO_HISTORY" | "ARTIFACT_ONLY" | "CODE_ONLY" | "REJECTED"
+    "ReplayExecutionCapability": "EXECUTABLE" | "UNAVAILABLE" | "ARTIFACT_ONLY"
     "ReplayExecutionRequest": {
           "lottery_type": components['schemas']["LotteryType"]
           "dataset_id": string
@@ -3772,6 +3955,7 @@ export interface components {
           "draw_number": string
           "draw_date": string
         }
+    "ReplayLifecycleStatus": "ONLINE" | "OBSERVATION" | "OFFLINE" | "REJECTED" | "ARTIFACT_ONLY" | "CODE_ONLY" | "UNREGISTERED_IDENTIFIED" | "IDEA" | "RETIRED"
     "ReplayOverallAggregateResponse": {
           "run_payload_sha256": string
           "source_snapshot_count": number
@@ -3876,6 +4060,12 @@ export interface components {
           "overall_aggregate_sha256": string
         }
     "ReplaySourceMode": "TARGET_NATIVE"
+    "ReplayStrategyAdapterMappingView": {
+          "replay_adapter": string
+          "implementation_locator": string
+          "strategy_id": string
+          "strategy_version": string
+        }
     "ReplayStrategyAggregateView": {
           "run_payload_sha256": string
           "ordinal": number
@@ -3897,6 +4087,81 @@ export interface components {
           "general_prize_count": number
           "no_prize_count": number
           "aggregate_sha256": string
+        }
+    "ReplayStrategyBindingEvidenceView": {
+          "lottery_type": components['schemas']["LotteryType"]
+          "strategy_id": string
+          "strategy_version": string
+          "source_kind": string
+          "source_locator": string
+        }
+    "ReplayStrategyExecutableIdentityView": {
+          "lottery_type": components['schemas']["LotteryType"]
+          "strategy_id": string
+          "strategy_version": string
+        }
+    "ReplayStrategyIdentityMappingView": {
+          "source_kind": string
+          "source_locator": string
+          "strategy_id": string
+          "strategy_version": string | null
+          "mapping_kind": string
+          "source_status": string | null
+        }
+    "ReplayStrategyInventoryItemView": {
+          "lottery_type": components['schemas']["LotteryType"]
+          "strategy_id": string
+          "display_name": string
+          "strategy_version": string | null
+          "source_kind": string
+          "source_locator": string
+          "lifecycle_status": components['schemas']["ReplayLifecycleStatus"]
+          "replay_data_status": components['schemas']["ReplayDataStatus"]
+          "execution_capability": components['schemas']["ReplayExecutionCapability"]
+          "reconstructable": boolean | null
+          "wrapper_callable": boolean | null
+          "backfill_native_binding": boolean | null
+          "backfill_runnable": boolean
+          "execution_block_reason": string | null
+          "reconstruction_reason": string
+          "historical_data_count": number
+          "historical_execution_count": number
+          "alias_or_identity_mapping": Array<components['schemas']["ReplayStrategyIdentityMappingView"]>
+          "adapter_mapping": components['schemas']["ReplayStrategyAdapterMappingView"] | null
+          "backfill_native_binding_sources": Array<components['schemas']["ReplayStrategyBindingEvidenceView"]>
+          "source_statuses": Array<string>
+        }
+    "ReplayStrategyInventoryResponse": {
+          "total_discovered_strategies": number
+          "total_unique_strategies": number
+          "total_executable": number
+          "total_backfill_runnable": number
+          "total_reconstructable": number
+          "total_has_history": number
+          "total_no_history": number
+          "total_artifact_only": number
+          "total_code_only": number
+          "total_rejected": number
+          "total_unregistered_identified": number
+          "unresolved_source_count": number
+          "lifecycle_status_counts": Record<string, number>
+          "source_status_counts": Record<string, number>
+          "replay_data_status_counts": Record<string, number>
+          "execution_capability_counts": Record<string, number>
+          "backfill_native_binding_counts": Record<string, number>
+          "source_counts": Array<components['schemas']["ReplayStrategySourceCountView"]>
+          "source_integrity_issues": Array<string>
+          "executable_strategy_ids": Array<components['schemas']["ReplayStrategyExecutableIdentityView"]>
+          "backfill_runnable_strategy_ids": Array<components['schemas']["ReplayStrategyExecutableIdentityView"]>
+          "applied_filters": Record<string, string | null>
+          "strategy_count": number
+          "strategies": Array<components['schemas']["ReplayStrategyInventoryItemView"]>
+        }
+    "ReplayStrategySourceCountView": {
+          "source_kind": string
+          "source_identity_count": number
+          "source_row_count": number
+          "evidence_file_count": number
         }
     "ReproductionStatus": "BACKTESTED" | "CLOSED_UNEXECUTABLE" | "DUPLICATE_ALIAS" | "OWNER_DECISION_REQUIRED"
     "RequestValidationIssueView": {

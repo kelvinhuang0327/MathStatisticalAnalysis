@@ -23,6 +23,7 @@ from lottolab.domain.replay_strategy_inventory import (
     ReplayStrategyInventoryItem,
     ReplayStrategySourceCount,
 )
+from lottolab.interfaces.api.draw_data import ApiValidationErrorResponse
 from lottolab.interfaces.api.strategy_catalog import API_PREFIX
 
 _MAX_STRATEGY_ID_LENGTH = 200
@@ -332,7 +333,11 @@ def create_replay_strategy_inventory_router(
         tags=["replay-strategy-inventory"],
     )
 
-    @router.get("", response_model=ReplayStrategyInventoryResponse)
+    @router.get(
+        "",
+        response_model=ReplayStrategyInventoryResponse,
+        responses={422: {"model": ApiValidationErrorResponse}},
+    )
     def list_replay_strategies(
         lottery_type: Annotated[LotteryType | None, Query()] = None,
         strategy_id: Annotated[

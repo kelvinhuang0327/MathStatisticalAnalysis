@@ -475,7 +475,77 @@ def authorized_openapi_paths() -> dict[str, dict[str, object]]:
         "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/predictions": {"get": {}},
         "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/strategy-aggregates": {"get": {}},
         "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/overall-aggregate": {"get": {}},
+        "/api/v1/replay-backfill/strategies": {"get": {}},
+        "/api/v1/replay-backfill/predictions": {"get": {}},
+        "/api/v1/replay-backfill/coverage": {"get": {}},
+        "/api/v1/replay-backfill/results": {"get": {}},
+        "/api/v1/replay-backfill/runs": {"get": {}},
+        "/api/v1/replay-backfill/runs/{run_id}": {"get": {}},
+        "/api/v1/replay-strategy-inventory": {"get": {}},
     }
+
+
+def test_smoke_accepts_exact_replay_backfill_and_inventory_get_operations() -> None:
+    paths = authorized_openapi_paths()
+    expected_replay_paths = {
+        "/api/v1/replay-backfill/strategies",
+        "/api/v1/replay-backfill/predictions",
+        "/api/v1/replay-backfill/coverage",
+        "/api/v1/replay-backfill/results",
+        "/api/v1/replay-backfill/runs",
+        "/api/v1/replay-backfill/runs/{run_id}",
+        "/api/v1/replay-strategy-inventory",
+    }
+
+    assert {
+        path
+        for path in paths
+        if path.startswith("/api/v1/replay-backfill/")
+        or path == "/api/v1/replay-strategy-inventory"
+    } == expected_replay_paths
+    assert all(paths[path] == {"get": {}} for path in expected_replay_paths)
+    assert len(paths) == 78
+    validate_openapi_payload({"paths": paths})
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/api/v1/replay-backfill/strategies",
+        "/api/v1/replay-backfill/predictions",
+        "/api/v1/replay-backfill/coverage",
+        "/api/v1/replay-backfill/results",
+        "/api/v1/replay-backfill/runs",
+        "/api/v1/replay-backfill/runs/{run_id}",
+        "/api/v1/replay-strategy-inventory",
+    ],
+)
+@pytest.mark.parametrize("method", ["post", "put", "patch", "delete", "options", "head", "trace"])
+def test_smoke_rejects_non_get_methods_on_new_replay_query_paths(
+    path: str, method: str
+) -> None:
+    paths = authorized_openapi_paths()
+    paths[path] = {method: {}}
+
+    with pytest.raises(LocalRuntimeSafetyError, match="unapproved method/path"):
+        validate_openapi_payload({"paths": paths})
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/api/v1/replay-backfill",
+        "/api/v1/replay-backfill/strategies/",
+        "/api/v1/replay-backfill/strategies/latest",
+        "/api/v1/replay-backfill/runs/{run_id}/execute",
+        "/api/v1/replay-strategy-inventory/",
+        "/api/v1/replay-strategy-inventory/latest",
+        "/api/v1/replay-strategy-inventory/execute",
+    ],
+)
+def test_smoke_rejects_replay_backfill_and_inventory_near_miss_paths(path: str) -> None:
+    with pytest.raises(LocalRuntimeSafetyError, match="generation or execution"):
+        validate_openapi_payload({"paths": {path: {"get": {}}}})
 
 
 @pytest.mark.parametrize(

@@ -18,6 +18,7 @@ from typing import Annotated, cast
 
 from fastapi import APIRouter, FastAPI, Query
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel, ConfigDict
 
 from lottolab.application.replay_strategy_inventory import load_replay_strategy_inventory
 from lottolab.domain.draws import LotteryType
@@ -33,9 +34,18 @@ from lottolab.infrastructure.persistence.replay_backfill_store import (
     SQLiteBackfillStore,
     canonical_json,
 )
+from lottolab.interfaces.api.draw_data import ApiValidationErrorResponse
 
 _MAX_ID_LENGTH = 200
 _PERIODS = {"50": 50, "300": 300, "750": 750, "ALL": None}
+
+
+class ReplayBackfillErrorResponse(BaseModel):
+    """Code-only response emitted for query errors handled by the route."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    error_code: str
 
 
 def _as_json_object(value: object) -> JsonObject | None:
@@ -210,7 +220,15 @@ def _strategy_history_view(
 def create_replay_backfill_router(store: SQLiteBackfillStore | None) -> APIRouter:
     router = APIRouter(prefix="/api/v1/replay-backfill", tags=["replay-backfill"])
 
-    @router.get("/strategies", response_model=None)
+    @router.get(
+        "/strategies",
+        response_model=None,
+        responses={
+            422: {
+                "model": ApiValidationErrorResponse | ReplayBackfillErrorResponse
+            }
+        },
+    )
     def strategies(
         lottery_type: LotteryType | None = None,
         q: Annotated[str | None, Query(max_length=_MAX_ID_LENGTH)] = None,
@@ -390,7 +408,15 @@ def create_replay_backfill_router(store: SQLiteBackfillStore | None) -> APIRoute
         except Exception:
             return _error(503, "REPLAY_BACKFILL_UNAVAILABLE")
 
-    @router.get("/predictions", response_model=None)
+    @router.get(
+        "/predictions",
+        response_model=None,
+        responses={
+            422: {
+                "model": ApiValidationErrorResponse | ReplayBackfillErrorResponse
+            }
+        },
+    )
     def predictions(
         lottery_type: LotteryType,
         run_id: Annotated[str | None, Query(min_length=1, max_length=_MAX_ID_LENGTH)] = None,
@@ -496,7 +522,15 @@ def create_replay_backfill_router(store: SQLiteBackfillStore | None) -> APIRoute
         except Exception:
             return _error(503, "REPLAY_BACKFILL_UNAVAILABLE")
 
-    @router.get("/coverage", response_model=None)
+    @router.get(
+        "/coverage",
+        response_model=None,
+        responses={
+            422: {
+                "model": ApiValidationErrorResponse | ReplayBackfillErrorResponse
+            }
+        },
+    )
     def coverage(
         lottery_type: LotteryType,
         run_id: Annotated[str | None, Query(min_length=1, max_length=_MAX_ID_LENGTH)] = None,
@@ -540,7 +574,15 @@ def create_replay_backfill_router(store: SQLiteBackfillStore | None) -> APIRoute
             return _error(503, "REPLAY_BACKFILL_UNAVAILABLE")
 
     # Retained for existing local consumers; all routes remain GET-only.
-    @router.get("/results", response_model=None)
+    @router.get(
+        "/results",
+        response_model=None,
+        responses={
+            422: {
+                "model": ApiValidationErrorResponse | ReplayBackfillErrorResponse
+            }
+        },
+    )
     def results(
         run_id: str | None = None,
         lottery_type: LotteryType | None = None,
@@ -571,7 +613,15 @@ def create_replay_backfill_router(store: SQLiteBackfillStore | None) -> APIRoute
         except Exception:
             return _error(503, "REPLAY_BACKFILL_UNAVAILABLE")
 
-    @router.get("/runs", response_model=None)
+    @router.get(
+        "/runs",
+        response_model=None,
+        responses={
+            422: {
+                "model": ApiValidationErrorResponse | ReplayBackfillErrorResponse
+            }
+        },
+    )
     def runs(
         lottery_type: LotteryType | None = None,
         limit: Annotated[int, Query(ge=1, le=250)] = 50,
@@ -609,7 +659,15 @@ def create_replay_backfill_router(store: SQLiteBackfillStore | None) -> APIRoute
             ),
         }
 
-    @router.get("/runs/{run_id}", response_model=None)
+    @router.get(
+        "/runs/{run_id}",
+        response_model=None,
+        responses={
+            422: {
+                "model": ApiValidationErrorResponse | ReplayBackfillErrorResponse
+            }
+        },
+    )
     def progress(run_id: str) -> JsonObject | JSONResponse:
         if store is None:
             return _error(503, "REPLAY_BACKFILL_NOT_CONFIGURED")

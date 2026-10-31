@@ -182,6 +182,89 @@
         }
       }
     },
+    "/api/v1/replay-strategy-inventory": {
+      "get": {
+        "tags": [
+          "replay-strategy-inventory"
+        ],
+        "summary": "List Replay Strategies",
+        "operationId": "list_replay_strategies_api_v1_replay_strategy_inventory_get",
+        "parameters": [
+          {
+            "name": "lottery_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/LotteryType"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Lottery Type"
+            }
+          },
+          {
+            "name": "strategy_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Strategy Id"
+            }
+          },
+          {
+            "name": "replay_data_status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/ReplayDataStatus"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Replay Data Status"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReplayStrategyInventoryResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiValidationErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      }
+    },
     "/api/v1/b649-multi-ticket-records/summary": {
       "get": {
         "tags": [
@@ -4971,6 +5054,745 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/api/v1/replay-backfill/strategies": {
+      "get": {
+        "tags": [
+          "replay-backfill"
+        ],
+        "summary": "Strategies",
+        "operationId": "strategies_api_v1_replay_backfill_strategies_get",
+        "parameters": [
+          {
+            "name": "lottery_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/LotteryType"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Lottery Type"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "name": "lifecycle_status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Lifecycle Status"
+            }
+          },
+          {
+            "name": "data_status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/ReplayDataStatus"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Data Status"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 250,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "name": "run_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiValidationErrorResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ReplayBackfillErrorResponse"
+                    }
+                  ],
+                  "title": "Response 422 Strategies Api V1 Replay Backfill Strategies Get"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      }
+    },
+    "/api/v1/replay-backfill/predictions": {
+      "get": {
+        "tags": [
+          "replay-backfill"
+        ],
+        "summary": "Predictions",
+        "operationId": "predictions_api_v1_replay_backfill_predictions_get",
+        "parameters": [
+          {
+            "name": "lottery_type",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/LotteryType"
+            }
+          },
+          {
+            "name": "run_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "strategy_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Strategy Id"
+            }
+          },
+          {
+            "name": "from_date",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "From Date"
+            }
+          },
+          {
+            "name": "to_date",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "To Date"
+            }
+          },
+          {
+            "name": "period",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^(50|300|750|ALL)$",
+              "default": "ALL",
+              "title": "Period"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 250,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiValidationErrorResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ReplayBackfillErrorResponse"
+                    }
+                  ],
+                  "title": "Response 422 Predictions Api V1 Replay Backfill Predictions Get"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      }
+    },
+    "/api/v1/replay-backfill/coverage": {
+      "get": {
+        "tags": [
+          "replay-backfill"
+        ],
+        "summary": "Coverage",
+        "operationId": "coverage_api_v1_replay_backfill_coverage_get",
+        "parameters": [
+          {
+            "name": "lottery_type",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/LotteryType"
+            }
+          },
+          {
+            "name": "run_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "strategy_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Strategy Id"
+            }
+          },
+          {
+            "name": "from_date",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "From Date"
+            }
+          },
+          {
+            "name": "to_date",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "To Date"
+            }
+          },
+          {
+            "name": "period",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^(50|300|750|ALL)$",
+              "default": "ALL",
+              "title": "Period"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiValidationErrorResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ReplayBackfillErrorResponse"
+                    }
+                  ],
+                  "title": "Response 422 Coverage Api V1 Replay Backfill Coverage Get"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      }
+    },
+    "/api/v1/replay-backfill/results": {
+      "get": {
+        "tags": [
+          "replay-backfill"
+        ],
+        "summary": "Results",
+        "operationId": "results_api_v1_replay_backfill_results_get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "lottery_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/LotteryType"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Lottery Type"
+            }
+          },
+          {
+            "name": "strategy_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Strategy Id"
+            }
+          },
+          {
+            "name": "start_date",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Start Date"
+            }
+          },
+          {
+            "name": "end_date",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "End Date"
+            }
+          },
+          {
+            "name": "target_draw_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Target Draw Id"
+            }
+          },
+          {
+            "name": "execution_status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/ReplayCellStatus"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Execution Status"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiValidationErrorResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ReplayBackfillErrorResponse"
+                    }
+                  ],
+                  "title": "Response 422 Results Api V1 Replay Backfill Results Get"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      }
+    },
+    "/api/v1/replay-backfill/runs": {
+      "get": {
+        "tags": [
+          "replay-backfill"
+        ],
+        "summary": "Runs",
+        "operationId": "runs_api_v1_replay_backfill_runs_get",
+        "parameters": [
+          {
+            "name": "lottery_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/LotteryType"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Lottery Type"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 250,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiValidationErrorResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ReplayBackfillErrorResponse"
+                    }
+                  ],
+                  "title": "Response 422 Runs Api V1 Replay Backfill Runs Get"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      }
+    },
+    "/api/v1/replay-backfill/runs/{run_id}": {
+      "get": {
+        "tags": [
+          "replay-backfill"
+        ],
+        "summary": "Progress",
+        "operationId": "progress_api_v1_replay_backfill_runs__run_id__get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiValidationErrorResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ReplayBackfillErrorResponse"
+                    }
+                  ],
+                  "title": "Response 422 Progress Api V1 Replay Backfill Runs  Run Id  Get"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
           }
         }
       }
@@ -15518,6 +16340,57 @@
         ],
         "title": "P638TicketView"
       },
+      "ReplayBackfillErrorResponse": {
+        "properties": {
+          "error_code": {
+            "type": "string",
+            "title": "Error Code"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "error_code"
+        ],
+        "title": "ReplayBackfillErrorResponse",
+        "description": "Code-only response emitted for query errors handled by the route."
+      },
+      "ReplayCellStatus": {
+        "type": "string",
+        "enum": [
+          "NOT_ELIGIBLE",
+          "COMPLETE",
+          "TYPED_CLOSURE",
+          "FAILED",
+          "MISSING",
+          "PARTIAL"
+        ],
+        "title": "ReplayCellStatus"
+      },
+      "ReplayDataStatus": {
+        "type": "string",
+        "enum": [
+          "HAS_HISTORY",
+          "REBUILDABLE",
+          "REBUILDABLE",
+          "NO_HISTORY",
+          "ARTIFACT_ONLY",
+          "CODE_ONLY",
+          "REJECTED"
+        ],
+        "title": "ReplayDataStatus",
+        "description": "Availability of replay predictions or source evidence for an identity."
+      },
+      "ReplayExecutionCapability": {
+        "type": "string",
+        "enum": [
+          "EXECUTABLE",
+          "UNAVAILABLE",
+          "ARTIFACT_ONLY"
+        ],
+        "title": "ReplayExecutionCapability",
+        "description": "Whether Replay Engine has an exact, usable strategy binding."
+      },
       "ReplayExecutionRequest": {
         "properties": {
           "lottery_type": {
@@ -15819,6 +16692,22 @@
           "draw_date"
         ],
         "title": "ReplayExecutionTargetRequest"
+      },
+      "ReplayLifecycleStatus": {
+        "type": "string",
+        "enum": [
+          "ONLINE",
+          "OBSERVATION",
+          "OFFLINE",
+          "REJECTED",
+          "ARTIFACT_ONLY",
+          "CODE_ONLY",
+          "UNREGISTERED_IDENTIFIED",
+          "IDEA",
+          "RETIRED"
+        ],
+        "title": "ReplayLifecycleStatus",
+        "description": "Observed registration lifecycle or explicit source-only classification."
       },
       "ReplayOverallAggregateResponse": {
         "properties": {
@@ -16428,6 +17317,36 @@
         "title": "ReplaySourceMode",
         "description": "Closed for this task: history and prediction both resolve against the\ntarget's own lottery type — never a cross-lottery or hypothetical replay."
       },
+      "ReplayStrategyAdapterMappingView": {
+        "properties": {
+          "replay_adapter": {
+            "type": "string",
+            "title": "Replay Adapter"
+          },
+          "implementation_locator": {
+            "type": "string",
+            "title": "Implementation Locator"
+          },
+          "strategy_id": {
+            "type": "string",
+            "title": "Strategy Id"
+          },
+          "strategy_version": {
+            "type": "string",
+            "title": "Strategy Version"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "replay_adapter",
+          "implementation_locator",
+          "strategy_id",
+          "strategy_version"
+        ],
+        "title": "ReplayStrategyAdapterMappingView",
+        "description": "Exact replay adapter and implementation identity, when executable."
+      },
       "ReplayStrategyAggregateView": {
         "properties": {
           "run_payload_sha256": {
@@ -16541,6 +17460,497 @@
           "aggregate_sha256"
         ],
         "title": "ReplayStrategyAggregateView"
+      },
+      "ReplayStrategyBindingEvidenceView": {
+        "properties": {
+          "lottery_type": {
+            "$ref": "#/components/schemas/LotteryType"
+          },
+          "strategy_id": {
+            "type": "string",
+            "title": "Strategy Id"
+          },
+          "strategy_version": {
+            "type": "string",
+            "title": "Strategy Version"
+          },
+          "source_kind": {
+            "type": "string",
+            "title": "Source Kind"
+          },
+          "source_locator": {
+            "type": "string",
+            "title": "Source Locator"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "lottery_type",
+          "strategy_id",
+          "strategy_version",
+          "source_kind",
+          "source_locator"
+        ],
+        "title": "ReplayStrategyBindingEvidenceView",
+        "description": "Exact native Backfill identity and its source locator."
+      },
+      "ReplayStrategyExecutableIdentityView": {
+        "properties": {
+          "lottery_type": {
+            "$ref": "#/components/schemas/LotteryType"
+          },
+          "strategy_id": {
+            "type": "string",
+            "title": "Strategy Id"
+          },
+          "strategy_version": {
+            "type": "string",
+            "title": "Strategy Version"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "lottery_type",
+          "strategy_id",
+          "strategy_version"
+        ],
+        "title": "ReplayStrategyExecutableIdentityView",
+        "description": "Full lottery/id/version denominator identity for replay/backfill."
+      },
+      "ReplayStrategyIdentityMappingView": {
+        "properties": {
+          "source_kind": {
+            "type": "string",
+            "title": "Source Kind"
+          },
+          "source_locator": {
+            "type": "string",
+            "title": "Source Locator"
+          },
+          "strategy_id": {
+            "type": "string",
+            "title": "Strategy Id"
+          },
+          "strategy_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Strategy Version"
+          },
+          "mapping_kind": {
+            "type": "string",
+            "title": "Mapping Kind"
+          },
+          "source_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Status"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "source_kind",
+          "source_locator",
+          "strategy_id",
+          "strategy_version",
+          "mapping_kind",
+          "source_status"
+        ],
+        "title": "ReplayStrategyIdentityMappingView",
+        "description": "One source identity retained behind an indexed strategy version."
+      },
+      "ReplayStrategyInventoryItemView": {
+        "properties": {
+          "lottery_type": {
+            "$ref": "#/components/schemas/LotteryType"
+          },
+          "strategy_id": {
+            "type": "string",
+            "title": "Strategy Id"
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          },
+          "strategy_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Strategy Version"
+          },
+          "source_kind": {
+            "type": "string",
+            "title": "Source Kind"
+          },
+          "source_locator": {
+            "type": "string",
+            "title": "Source Locator"
+          },
+          "lifecycle_status": {
+            "$ref": "#/components/schemas/ReplayLifecycleStatus"
+          },
+          "replay_data_status": {
+            "$ref": "#/components/schemas/ReplayDataStatus"
+          },
+          "execution_capability": {
+            "$ref": "#/components/schemas/ReplayExecutionCapability"
+          },
+          "reconstructable": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reconstructable"
+          },
+          "wrapper_callable": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Wrapper Callable"
+          },
+          "backfill_native_binding": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Backfill Native Binding"
+          },
+          "backfill_runnable": {
+            "type": "boolean",
+            "title": "Backfill Runnable"
+          },
+          "execution_block_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Execution Block Reason"
+          },
+          "reconstruction_reason": {
+            "type": "string",
+            "title": "Reconstruction Reason"
+          },
+          "historical_data_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Historical Data Count"
+          },
+          "historical_execution_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Historical Execution Count"
+          },
+          "alias_or_identity_mapping": {
+            "items": {
+              "$ref": "#/components/schemas/ReplayStrategyIdentityMappingView"
+            },
+            "type": "array",
+            "title": "Alias Or Identity Mapping"
+          },
+          "adapter_mapping": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReplayStrategyAdapterMappingView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "backfill_native_binding_sources": {
+            "items": {
+              "$ref": "#/components/schemas/ReplayStrategyBindingEvidenceView"
+            },
+            "type": "array",
+            "title": "Backfill Native Binding Sources"
+          },
+          "source_statuses": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Source Statuses"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "lottery_type",
+          "strategy_id",
+          "display_name",
+          "strategy_version",
+          "source_kind",
+          "source_locator",
+          "lifecycle_status",
+          "replay_data_status",
+          "execution_capability",
+          "reconstructable",
+          "wrapper_callable",
+          "backfill_native_binding",
+          "backfill_runnable",
+          "execution_block_reason",
+          "reconstruction_reason",
+          "historical_data_count",
+          "historical_execution_count",
+          "alias_or_identity_mapping",
+          "adapter_mapping",
+          "backfill_native_binding_sources",
+          "source_statuses"
+        ],
+        "title": "ReplayStrategyInventoryItemView",
+        "description": "Public strategy row with lifecycle, data and execution facts split."
+      },
+      "ReplayStrategyInventoryResponse": {
+        "properties": {
+          "total_discovered_strategies": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total Discovered Strategies"
+          },
+          "total_unique_strategies": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total Unique Strategies"
+          },
+          "total_executable": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total Executable"
+          },
+          "total_backfill_runnable": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total Backfill Runnable"
+          },
+          "total_reconstructable": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total Reconstructable"
+          },
+          "total_has_history": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total Has History"
+          },
+          "total_no_history": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total No History"
+          },
+          "total_artifact_only": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total Artifact Only"
+          },
+          "total_code_only": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total Code Only"
+          },
+          "total_rejected": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total Rejected"
+          },
+          "total_unregistered_identified": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total Unregistered Identified"
+          },
+          "unresolved_source_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Unresolved Source Count"
+          },
+          "lifecycle_status_counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Lifecycle Status Counts"
+          },
+          "source_status_counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Source Status Counts"
+          },
+          "replay_data_status_counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Replay Data Status Counts"
+          },
+          "execution_capability_counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Execution Capability Counts"
+          },
+          "backfill_native_binding_counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Backfill Native Binding Counts"
+          },
+          "source_counts": {
+            "items": {
+              "$ref": "#/components/schemas/ReplayStrategySourceCountView"
+            },
+            "type": "array",
+            "title": "Source Counts"
+          },
+          "source_integrity_issues": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Source Integrity Issues"
+          },
+          "executable_strategy_ids": {
+            "items": {
+              "$ref": "#/components/schemas/ReplayStrategyExecutableIdentityView"
+            },
+            "type": "array",
+            "title": "Executable Strategy Ids"
+          },
+          "backfill_runnable_strategy_ids": {
+            "items": {
+              "$ref": "#/components/schemas/ReplayStrategyExecutableIdentityView"
+            },
+            "type": "array",
+            "title": "Backfill Runnable Strategy Ids"
+          },
+          "applied_filters": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "object",
+            "title": "Applied Filters"
+          },
+          "strategy_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Strategy Count"
+          },
+          "strategies": {
+            "items": {
+              "$ref": "#/components/schemas/ReplayStrategyInventoryItemView"
+            },
+            "type": "array",
+            "title": "Strategies"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "total_discovered_strategies",
+          "total_unique_strategies",
+          "total_executable",
+          "total_backfill_runnable",
+          "total_reconstructable",
+          "total_has_history",
+          "total_no_history",
+          "total_artifact_only",
+          "total_code_only",
+          "total_rejected",
+          "total_unregistered_identified",
+          "unresolved_source_count",
+          "lifecycle_status_counts",
+          "source_status_counts",
+          "replay_data_status_counts",
+          "execution_capability_counts",
+          "backfill_native_binding_counts",
+          "source_counts",
+          "source_integrity_issues",
+          "executable_strategy_ids",
+          "backfill_runnable_strategy_ids",
+          "applied_filters",
+          "strategy_count",
+          "strategies"
+        ],
+        "title": "ReplayStrategyInventoryResponse",
+        "description": "Filtered strategy rows plus unfiltered inventory counts and executable IDs."
+      },
+      "ReplayStrategySourceCountView": {
+        "properties": {
+          "source_kind": {
+            "type": "string",
+            "title": "Source Kind"
+          },
+          "source_identity_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Source Identity Count"
+          },
+          "source_row_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Source Row Count"
+          },
+          "evidence_file_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Evidence File Count"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "source_kind",
+          "source_identity_count",
+          "source_row_count",
+          "evidence_file_count"
+        ],
+        "title": "ReplayStrategySourceCountView",
+        "description": "Raw and unique identity conservation for one source inventory."
       },
       "ReproductionStatus": {
         "type": "string",

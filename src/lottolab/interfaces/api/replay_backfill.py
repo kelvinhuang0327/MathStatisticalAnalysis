@@ -57,6 +57,10 @@ class ReplayBackfillBindingSourceView(BaseModel):
     source_locator: str
 
 
+def _empty_replay_backfill_binding_sources() -> list[ReplayBackfillBindingSourceView]:
+    return []
+
+
 class ReplayBackfillHistoryCountsView(BaseModel):
     """Per-status execution and cell counts for one strategy in a run."""
 
@@ -94,7 +98,7 @@ class ReplayBackfillStrategyItemView(BaseModel):
     wrapper_callable: bool | None = None
     backfill_native_binding: bool | None = None
     backfill_native_binding_sources: list[ReplayBackfillBindingSourceView] = Field(
-        default_factory=list
+        default_factory=_empty_replay_backfill_binding_sources
     )
     backfill_runnable: bool | None = None
     execution_block_reason: str | None = None

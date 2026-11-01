@@ -27,7 +27,8 @@ export const REPLAY_OVERVIEW_WINDOWS: readonly ReplayOverviewWindowOption[] = [
     label: 'Long · 750 期',
     shortLabel: '750',
     draws: 750,
-    description: 'Recent 750 historical evaluation draws (primary out-of-sample window)',
+    description:
+      'Most recent 750 historical observation draws. This window alone does not establish out-of-sample isolation; OOS claims require a verifiable training cutoff, walk-forward evaluation, or other auditable training/test isolation evidence.',
   },
   {
     key: 'RECENT_300',

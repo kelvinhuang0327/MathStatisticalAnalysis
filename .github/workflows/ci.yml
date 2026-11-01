@@ -7,7 +7,7 @@ on:
 
 jobs:
   backend:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       LOTTOLAB_B649_PAIR_RULE_FORWARD_SHADOW_READINESS_ROOT: ${{ github.workspace }}/tests/fixtures/b649_pair_rule_forward_shadow_readiness
     steps:
@@ -38,9 +38,79 @@ jobs:
             echo "::error::actions/checkout HEAD does not match the GitHub event SHA"
             exit 1
           fi
+      - name: Select GNU coreutils timeout
+        run: |
+          set -euo pipefail
+          gnu_bin=""
+          for candidate in \
+            /usr/bin/timeout \
+            /bin/timeout \
+            /usr/local/bin/timeout \
+            /usr/bin/gtimeout \
+            /usr/local/bin/gtimeout \
+            /home/linuxbrew/.linuxbrew/bin/timeout \
+            /home/linuxbrew/.linuxbrew/bin/gtimeout; do
+            if [[ -x "$candidate" ]]; then
+              version_output="$("$candidate" --version 2>&1 | head -n 1 || true)"
+              if [[ "$version_output" == *"GNU coreutils"* ]]; then
+                gnu_bin="$candidate"
+                echo "Found GNU coreutils timeout at $gnu_bin: $version_output"
+                break
+              fi
+            fi
+          done
+
+          if [[ -z "$gnu_bin" ]]; then
+            echo "::error::No genuine GNU coreutils timeout binary found on runner"
+            exit 1
+          fi
+
+          tool_dir="${RUNNER_TEMP:-/tmp}/gnu-tools"
+          mkdir -p "$tool_dir"
+          ln -sf "$gnu_bin" "$tool_dir/timeout"
+          echo "$tool_dir" >> "$GITHUB_PATH"
+          echo "Configured controlled GNU timeout in $tool_dir and added to GITHUB_PATH"
       - uses: astral-sh/setup-uv@v5
       - run: uv python install 3.13.8
       - run: uv sync --frozen --extra research --python 3.13.8
+      - name: Verify GNU timeout wrapper in uv Python environment
+        run: |
+          uv run python - <<'PYEOF'
+          import os
+          import shutil
+          import subprocess
+          import sys
+
+          timeout_path = shutil.which("timeout")
+          print(f"DEBUG: shutil.which('timeout') = {timeout_path}")
+          if not timeout_path:
+              print("::error::timeout binary not found in PATH within uv Python environment", file=sys.stderr)
+              sys.exit(1)
+
+          version_res = subprocess.run([timeout_path, "--version"], capture_output=True, text=True, check=False)
+          if version_res.returncode != 0:
+              print(f"::error::timeout --version probe failed with returncode {version_res.returncode}", file=sys.stderr)
+              sys.exit(1)
+
+          version_line = version_res.stdout.splitlines()[0] if version_res.stdout.splitlines() else ""
+          print(f"DEBUG: timeout version line = {version_line}")
+          if "GNU coreutils" not in version_line:
+              print(f"::error::unexpected external timeout wrapper: {version_line}", file=sys.stderr)
+              sys.exit(1)
+
+          probe = subprocess.run(
+              [timeout_path, "--signal=TERM", "--kill-after=1s", "0.1s", "/bin/sleep", "2"],
+              capture_output=True,
+              text=True,
+              check=False,
+          )
+          print(f"DEBUG: timeout functional probe returncode = {probe.returncode}")
+          if probe.returncode != 124:
+              print(f"::error::timeout functional probe expected returncode 124, got {probe.returncode}", file=sys.stderr)
+              sys.exit(1)
+
+          print(f"VERIFIED: GNU coreutils timeout is active at {timeout_path} ({version_line})")
+          PYEOF
       - run: uv run ruff check .
       - run: uv run pyright
       - name: Verify approved PR #364 provenance sources

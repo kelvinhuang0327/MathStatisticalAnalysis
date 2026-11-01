@@ -97,7 +97,8 @@ const activeNavSection = computed(() => {
   if (p === 'b649-replay' || p === 'b649-multi-ticket-records' || p === 'b649-owner-ranking') return 'b649-replay'
   if (p === 'p638-replay' || p === 'p638-historical-replay' || p === 'p638-strategy-analysis') return 'p638-replay'
   if (p === 't539-replay' || p === 't539-strategy-analysis') return 't539-replay'
-  if (p === 'future-modules' || p === 'historical-base-data' || p === 'live-zone-split-bets' || p === 'replay-history') return 'future-modules'
+  if (p === 'future-modules' || p === 'historical-base-data' || p === 'live-zone-split-bets') return 'future-modules'
+  if (p === 'replay-history') return 'replay-history'
   return 'data-operations'
 })
 
@@ -150,6 +151,12 @@ onBeforeUnmount(() => window.removeEventListener('hashchange', synchronizePage))
           :aria-current="activeNavSection === 'replay-overview' ? 'page' : undefined"
         >
           Replay Overview
+        </a>
+        <a
+          href="#/replay-history"
+          :aria-current="activeNavSection === 'replay-history' ? 'page' : undefined"
+        >
+          Replay History
         </a>
         <a
           href="#/strategy-intelligence"
@@ -258,6 +265,9 @@ onBeforeUnmount(() => window.removeEventListener('hashchange', synchronizePage))
         </template>
         <template v-else-if="activeNavSection === 'future-modules'">
           Future modules follow strict statistical validation and reproducibility gates before deployment.
+        </template>
+        <template v-else-if="activeNavSection === 'replay-history'">
+          Replay History provides access to stored replay records for historical review.
         </template>
         <template v-else>
           Draw history and ingestion logs are append-only historical audit records.

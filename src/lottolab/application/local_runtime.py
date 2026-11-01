@@ -156,6 +156,13 @@ _ALLOWED_OPENAPI_OPERATIONS = {
     "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/overall-aggregate": frozenset(
         {"get"}
     ),
+    "/api/v1/replay-backfill/strategies": frozenset({"get"}),
+    "/api/v1/replay-backfill/predictions": frozenset({"get"}),
+    "/api/v1/replay-backfill/coverage": frozenset({"get"}),
+    "/api/v1/replay-backfill/results": frozenset({"get"}),
+    "/api/v1/replay-backfill/runs": frozenset({"get"}),
+    "/api/v1/replay-backfill/runs/{run_id}": frozenset({"get"}),
+    "/api/v1/replay-strategy-inventory": frozenset({"get"}),
 }
 _FORBIDDEN_ROUTE_WORD_EXCEPTION_PATHS = frozenset(
     {
@@ -175,6 +182,13 @@ _FORBIDDEN_ROUTE_WORD_EXCEPTION_PATHS = frozenset(
         "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/predictions",
         "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/strategy-aggregates",
         "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/overall-aggregate",
+        "/api/v1/replay-backfill/strategies",
+        "/api/v1/replay-backfill/predictions",
+        "/api/v1/replay-backfill/coverage",
+        "/api/v1/replay-backfill/results",
+        "/api/v1/replay-backfill/runs",
+        "/api/v1/replay-backfill/runs/{run_id}",
+        "/api/v1/replay-strategy-inventory",
     }
 )
 """The narrow, approved paths exempt from the forbidden-word screen.
@@ -206,6 +220,13 @@ every other path containing a forbidden word (including
 "/api/v1/generate", "/api/v1/generation", "/api/v1/replay-rankings/execute",
 and "/api/v1/replay-rankings/optimize") is still rejected, and the
 exact-operation-set check below still fails closed on method or path drift.
+
+The exact GET-only ``/api/v1/replay-backfill`` routes query the explicitly
+configured read-only backfill store; cursor values are returned to the caller
+and are not persisted. ``/api/v1/replay-strategy-inventory`` reads the
+packaged strategy inventory. These operations do not create backfills, execute
+strategies, or write database state. Each full path remains individually
+allowlisted and exempted; other Replay or backfill paths remain rejected.
 """
 _ALLOWED_OPENAPI_OPERATION_SET = frozenset(
     (method, path) for path, methods in _ALLOWED_OPENAPI_OPERATIONS.items() for method in methods

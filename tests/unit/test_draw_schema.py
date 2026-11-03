@@ -107,7 +107,7 @@ def create_v3_schema(paths: LocalDataPaths) -> None:
         )
 
 
-def test_resolver_is_lazy_and_uses_override_or_mac_default(tmp_path: Path) -> None:
+def test_resolver_is_lazy_and_uses_override_or_project_default(tmp_path: Path) -> None:
     overridden = task_paths(tmp_path)
     assert overridden.data_directory == tmp_path / "lottolab-data"
     assert overridden.database == overridden.data_directory / "lottolab.db"
@@ -115,7 +115,7 @@ def test_resolver_is_lazy_and_uses_override_or_mac_default(tmp_path: Path) -> No
 
     fake_home = tmp_path / "fake-home"
     defaulted = resolve_local_data_paths(environ={}, home=fake_home)
-    assert defaulted.data_directory == (fake_home / "Library" / "Application Support" / "LottoLab")
+    assert defaulted.data_directory == draw_schema.project_database_directory()
     assert not fake_home.exists()
 
 
@@ -272,9 +272,12 @@ def test_existing_v1_is_verified_read_only_then_upgraded_only_by_write(
 
     assert verify_schema_read_only(paths) is True
     with sqlite3.connect(paths.database) as connection:
-        assert connection.execute(
-            "SELECT name FROM sqlite_master WHERE name = 'ingestion_run_context'"
-        ).fetchone() is None
+        assert (
+            connection.execute(
+                "SELECT name FROM sqlite_master WHERE name = 'ingestion_run_context'"
+            ).fetchone()
+            is None
+        )
         assert connection.execute("SELECT COUNT(*) FROM schema_migrations").fetchone() == (1,)
 
     initialize_schema(paths)
@@ -449,9 +452,7 @@ def test_existing_v3_upgrade_preserves_schedule_and_adds_immutable_authority_tab
             "SELECT COUNT(*) FROM draw_schedule_authority_evidence"
         ).fetchone() == (0,)
         with pytest.raises(sqlite3.IntegrityError, match="immutable"):
-            connection.execute(
-                "UPDATE draw_schedules SET draw_date = '2099-01-03' WHERE id = 1"
-            )
+            connection.execute("UPDATE draw_schedules SET draw_date = '2099-01-03' WHERE id = 1")
         with pytest.raises(sqlite3.IntegrityError, match="cannot be deleted"):
             connection.execute("DELETE FROM draw_schedules WHERE id = 1")
 

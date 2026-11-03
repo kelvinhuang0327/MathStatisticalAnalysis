@@ -88,6 +88,7 @@ from lottolab.infrastructure.persistence.draw_schema import (
 from lottolab.infrastructure.persistence.future_draw_identity_repository import (
     SQLiteOfficialScheduleSyncRepository,
 )
+from lottolab.infrastructure.persistence.project_database_paths import project_database_directory
 from lottolab.infrastructure.persistence.repositories import SQLiteDrawDataRepository
 from lottolab.infrastructure.pre_outcome_target_operational import (
     OFFICIAL_SCHEDULE_SOURCE_ID,
@@ -170,7 +171,7 @@ SCRIPT_PATH = SOURCE_WORKTREE / "tools/b649_goalc_local_scheduler.py"
 GOALC_ROOT = Path(
     "/Users/kelvin/VibeCoding-WorkSpace/.task-data/B649_OPERATIONAL_PREDICTION_LOOP_R1"
 )
-DATA_ROOT = Path("/Users/kelvin/Library/Application Support/LottoLab")
+DATA_ROOT = project_database_directory()
 DATABASE_PATH = DATA_ROOT / "lottolab.db"
 ANNOUNCEMENT_PATH = DATA_ROOT / "pre-outcome-target-announcements-v1.json"
 SCHEDULER_ROOT = GOALC_ROOT / "scheduler"
@@ -2461,9 +2462,7 @@ def _parser() -> argparse.ArgumentParser:
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = _parser().parse_args(argv)
-    config = production_config(
-        source_worktree_override=getattr(args, "source_worktree", None)
-    )
+    config = production_config(source_worktree_override=getattr(args, "source_worktree", None))
     if args.command == "write-plist":
         path = write_launchd_plist(config)
         print(_canonical_json({"status": "WRITTEN", "plist_path": str(path)}))

@@ -81,6 +81,7 @@ from lottolab.infrastructure.persistence.p638_current_ranking_schema import (
 from lottolab.infrastructure.persistence.p638_historical_repositories import (
     SQLiteP638HistoricalQueryRepository,
 )
+from lottolab.infrastructure.persistence.project_database_paths import project_database_environment
 from lottolab.infrastructure.persistence.replay_history_reader import SQLiteDrawHistoryReader
 from lottolab.infrastructure.persistence.replay_scoring_projection_repository import (
     SQLiteReplayScoringProjectionRepository,
@@ -424,6 +425,7 @@ def local_p638_current_replay_composition(
 def create_local_app() -> FastAPI:
     """Compose the normal local app without opening or modifying any database."""
 
+    environment = project_database_environment(os.environ)
     replay_catalog = production_catalog()
     replay_generate_one_bet = build_production_generate_one_bet()
     replay_executor = LocalReplayExecutor(
@@ -431,14 +433,14 @@ def create_local_app() -> FastAPI:
         generate_one_bet=replay_generate_one_bet,
         catalog=replay_catalog,
     )
-    composition = local_historical_composition(os.environ)
-    replay_scoring_composition = local_replay_scoring_composition(os.environ)
-    all10_ranking_composition = local_p638_all10_ranking_composition(os.environ)
-    all23_ranking_composition = local_p638_all23_ranking_composition(os.environ)
-    current_ranking_composition = local_p638_current_ranking_composition(os.environ)
-    current_replay_composition = local_p638_current_replay_composition(os.environ)
-    t539_historical_composition = local_t539_historical_composition(os.environ)
-    provider = local_draw_provider(os.environ)
+    composition = local_historical_composition(environment)
+    replay_scoring_composition = local_replay_scoring_composition(environment)
+    all10_ranking_composition = local_p638_all10_ranking_composition(environment)
+    all23_ranking_composition = local_p638_all23_ranking_composition(environment)
+    current_ranking_composition = local_p638_current_ranking_composition(environment)
+    current_replay_composition = local_p638_current_replay_composition(environment)
+    t539_historical_composition = local_t539_historical_composition(environment)
+    provider = local_draw_provider(environment)
     replay_scoring_projection_reader_factory = (
         replay_scoring_composition.replay_scoring_projection_reader
         if replay_scoring_composition is not None

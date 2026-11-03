@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 
+from lottolab.infrastructure.persistence.project_database_paths import project_database_directory
 from lottolab.infrastructure.persistence.research_schema import (
     APPEND_ONLY_TRIGGER_NAMES,
     CURRENT_SCHEMA_VERSION,
@@ -42,10 +43,10 @@ def test_canonical_locator_has_durable_default_and_fixed_sibling_filename(
 
     paths = resolve_research_data_paths(environ={}, home=home)
 
-    assert paths.data_directory == (home / "Library" / "Application Support" / "LottoLab")
+    assert paths.data_directory == project_database_directory()
     assert paths.database == paths.data_directory / RESEARCH_DATABASE_FILENAME
     assert paths.database.name == "lottolab_research.db"
-    assert not paths.data_directory.exists()
+    assert not home.exists()
 
 
 def test_migration_is_idempotent_and_checksum_verified(tmp_path: Path) -> None:

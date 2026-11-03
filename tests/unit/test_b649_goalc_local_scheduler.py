@@ -928,7 +928,8 @@ def test_production_config_is_the_exact_authorized_runtime() -> None:
     assert config.canonical_repository == canonical_repository
     assert config.source_worktree == Path(scheduler_module.__file__).resolve().parents[1]
     assert config.python_executable == config.source_worktree / ".venv/bin/python"
-    assert config.python_executable != canonical_repository / ".venv/bin/python"
+    assert config.data_root == scheduler_module.project_database_directory()
+    assert config.database == config.data_root / "lottolab.db"
     assert config.script_path == (config.source_worktree / "tools/b649_goalc_local_scheduler.py")
     assert config.operation_root == Path(
         "/Users/kelvin/VibeCoding-WorkSpace/.task-data/B649_OPERATIONAL_PREDICTION_LOOP_R1"
@@ -2153,9 +2154,7 @@ def test_write_plist_source_worktree_override_ignores_stale_primary_checkout(
     (intended / "tools/b649_goalc_local_scheduler.py").write_text("intended")
 
     monkeypatch.setattr(scheduler_module, "SOURCE_WORKTREE", stale_primary)
-    monkeypatch.setattr(
-        scheduler_module, "PYTHON_EXECUTABLE", stale_primary / ".venv/bin/python"
-    )
+    monkeypatch.setattr(scheduler_module, "PYTHON_EXECUTABLE", stale_primary / ".venv/bin/python")
     monkeypatch.setattr(
         scheduler_module, "SCRIPT_PATH", stale_primary / "tools/b649_goalc_local_scheduler.py"
     )

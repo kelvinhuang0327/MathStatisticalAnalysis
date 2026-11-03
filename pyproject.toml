@@ -75,3 +75,4 @@ ignore = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+markers = ["real_draw_authority_db: reads the canonical draw database read-only when available"]

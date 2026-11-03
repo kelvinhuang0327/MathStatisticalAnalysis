@@ -59,7 +59,9 @@ DEFAULT_RANK_HISTORY = Path(
     "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.task-data/"
     "BIGLOTTO_115000096_K2_K3_K5_TOP3_115000097_PREDICTION_R1/rank_history.json"
 )
-DEFAULT_OUTPUT_DIR = REPO_ROOT / ".task-data" / "B649_K235_CANONICAL_ADOPTION_CANDIDATE_R1"
+DEFAULT_OUTPUT_DIR = (
+    REPO_ROOT / ".task-data" / "B649_K235_CANONICAL_ADOPTION_CANDIDATE_R1"
+)
 
 PREDICTION_SCHEMA_VERSION = "B649_K235_DISJOINT_PREDICTION_V1"
 PREDICTION_RUN_ID = "B649_K235_CANONICAL_ADOPTION_CANDIDATE_R1"
@@ -191,7 +193,8 @@ def _resolve_seed_metadata(
                 "seed_digest": digest,
                 "seed_material": material,
                 "rng_state_rule": (
-                    "legacy NumPy RandomState(seed % 2**32) + random.Random(seed, version=2)"
+                    "legacy NumPy RandomState(seed % 2**32) + "
+                    "random.Random(seed, version=2)"
                 ),
                 "configuration": protocol,
                 "prestate_dependency": "last_causal_draw_identity_only",
@@ -223,7 +226,8 @@ def _resolve_seed_metadata(
                 "seed_digest": digest,
                 "seed_material": material,
                 "rng_state_rule": (
-                    "wave26 frozen statistical calls reseed from causal history length"
+                    "wave26 frozen statistical calls reseed from "
+                    "causal history length"
                 ),
                 "configuration": SOURCE_NATIVE_WAVE26_PROTOCOL,
                 "prestate_dependency": "last_causal_draw_identity_and_causal_history",
@@ -237,7 +241,8 @@ def _resolve_seed_metadata(
                 "behavior": "SEEDED_STOCHASTIC",
                 "seed": len(history),
                 "rng_state_rule": (
-                    "random.Random(len(causal_history)) inside frozen statistical predictor"
+                    "random.Random(len(causal_history)) inside frozen "
+                    "statistical predictor"
                 ),
                 "configuration": "UNIFIED_STATISTICAL_HISTORY_LENGTH_SEED",
                 "prestate_dependency": "causal_history_length_only",
@@ -257,7 +262,8 @@ def _resolve_seed_metadata(
                 "behavior": "SEEDED_STOCHASTIC",
                 "seed": 42,
                 "rng_state_rule": (
-                    "local random.Random(42) per adapter call; NumPy seed is output-inert"
+                    "local random.Random(42) per adapter call; "
+                    "NumPy seed is output-inert"
                 ),
                 "configuration": "DIVERSIFIED_ENSEMBLE_V6_FIXED_SEED",
                 "prestate_dependency": "causal_history_only",
@@ -393,16 +399,14 @@ def _format_tickets_text(
     ]
     if overall_pipeline_status != "COMPLETE":
         lines.append(f"Pipeline Status: {overall_pipeline_status}")
-    lines.extend(
-        [
-            f"Ranking Selection: {ranking_selection} (Cutoff 115000096)",
-            f"Causal History Draws: {history_count}",
-            "Horizon Execution Version: v0.2 (zero cross-ticket overlap)",
-            f"Quality Component: {QUALITY_COMPONENT_VERSION}",
-            "=" * 80,
-            "",
-        ]
-    )
+    lines.extend([
+        f"Ranking Selection: {ranking_selection} (Cutoff 115000096)",
+        f"Causal History Draws: {history_count}",
+        "Horizon Execution Version: v0.2 (zero cross-ticket overlap)",
+        f"Quality Component: {QUALITY_COMPONENT_VERSION}",
+        "=" * 80,
+        "",
+    ])
 
     for cat_name in ("k2", "k3", "k5"):
         cdata = categories_data[cat_name]
@@ -548,14 +552,20 @@ def run_prediction(
                 try:
                     adapter_cls = registry.load_adapter(strategy_id)
                     impl = instantiate_portfolio_adapter(strategy_id, adapter_cls)
-                    first = impl.get_bets_with_emission(causal_history, LotteryType.BIG_LOTTO)
-                    second = impl.get_bets_with_emission(causal_history, LotteryType.BIG_LOTTO)
+                    first = impl.get_bets_with_emission(
+                        causal_history, LotteryType.BIG_LOTTO
+                    )
+                    second = impl.get_bets_with_emission(
+                        causal_history, LotteryType.BIG_LOTTO
+                    )
                     if first != second:
                         raise RuntimeError(
                             "same causal history did not reproduce identical native output"
                         )
                     if type(first) is not tuple or len(first) != k_count:
-                        raise RuntimeError(f"expected {k_count} native tickets, got {len(first)}")
+                        raise RuntimeError(
+                            f"expected {k_count} native tickets, got {len(first)}"
+                        )
                     tickets = [
                         {
                             "emitted_main_numbers": list(b.emitted_main_numbers),
@@ -564,19 +574,21 @@ def run_prediction(
                         }
                         for b in first
                     ]
-                    legal_tickets: list[tuple[int, ...]] = [b.legal_main_numbers for b in first]
-                    duplicates = [
-                        idx + 1 for idx, t in enumerate(legal_tickets) if t in legal_tickets[:idx]
+                    legal_tickets: list[tuple[int, ...]] = [
+                        b.legal_main_numbers for b in first
                     ]
-                    entry.update(
-                        {
-                            "status": "OK",
-                            "tickets": tickets,
-                            "failure_type": None,
-                            "detail": None,
-                            "duplicate_ticket_positions": duplicates,
-                        }
-                    )
+                    duplicates = [
+                        idx + 1
+                        for idx, t in enumerate(legal_tickets)
+                        if t in legal_tickets[:idx]
+                    ]
+                    entry.update({
+                        "status": "OK",
+                        "tickets": tickets,
+                        "failure_type": None,
+                        "detail": None,
+                        "duplicate_ticket_positions": duplicates,
+                    })
                 except Exception as exc:
                     entry["failure_type"] = type(exc).__name__
                     entry["detail"] = str(exc)
@@ -602,7 +614,9 @@ def run_prediction(
             "category": cat_name.upper(),
             "expected_strategy_count": 3,
             "expected_ticket_count_per_strategy": k_val,
-            "generated_strategy_count": sum(e["status"] == "OK" for e in raw_entries),
+            "generated_strategy_count": sum(
+                e["status"] == "OK" for e in raw_entries
+            ),
             "accepted_strategy_count": len(accepted),
             "rejected_strategy_count": len(rejected),
             "has_qualified_candidates": is_avail,
@@ -615,7 +629,9 @@ def run_prediction(
             "all_raw_entries": raw_entries,
         }
 
-    qualified_k_count = sum(1 for c in categories_output.values() if c["is_available"])
+    qualified_k_count = sum(
+        1 for c in categories_output.values() if c["is_available"]
+    )
     all_k_available = qualified_k_count == len(categories_output)
     has_any_qualified = qualified_k_count > 0
 
@@ -672,9 +688,9 @@ def run_prediction(
         overall_pipeline_status=overall_status,
     )
 
-    new_json_bytes = (json.dumps(result_document, ensure_ascii=False, indent=2) + "\n").encode(
-        "utf-8"
-    )
+    new_json_bytes = (
+        json.dumps(result_document, ensure_ascii=False, indent=2) + "\n"
+    ).encode("utf-8")
     new_txt_bytes = ticket_text.encode("utf-8")
 
     json_exists = json_path.exists()
@@ -783,7 +799,10 @@ def main() -> None:
     print(f"ALL_K_AVAILABLE: {doc['all_k_available']}")
     print(f"AVAILABLE_K: {doc['available_k_categories']}")
     print(f"UNAVAILABLE_K: {doc['unavailable_k_categories']}")
-    print(f"TARGET: {doc['target_draw_number']}, CUTOFF: {doc['prediction_cutoff_draw_number']}")
+    print(
+        f"TARGET: {doc['target_draw_number']}, "
+        f"CUTOFF: {doc['prediction_cutoff_draw_number']}"
+    )
     print(f"CAUSAL_HISTORY_LENGTH: {doc['causal_history_length']}")
     print(f"ACCEPTED_COUNTS: {doc['accepted_counts_by_k']}")
     print(f"REJECTED_COUNTS: {doc['rejected_counts_by_k']}")

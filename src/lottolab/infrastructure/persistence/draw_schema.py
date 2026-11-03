@@ -155,7 +155,9 @@ CONTEXT_MIGRATION_STATEMENTS = (
 CONTEXT_MIGRATION_SQL = (
     ";\n".join(statement.strip() for statement in CONTEXT_MIGRATION_STATEMENTS) + ";\n"
 )
-CONTEXT_MIGRATION_CHECKSUM = hashlib.sha256(CONTEXT_MIGRATION_SQL.encode("utf-8")).hexdigest()
+CONTEXT_MIGRATION_CHECKSUM = hashlib.sha256(
+    CONTEXT_MIGRATION_SQL.encode("utf-8")
+).hexdigest()
 DRAW_SCHEDULE_MIGRATION_STATEMENTS = (
     """
     CREATE TABLE draw_schedules (
@@ -230,7 +232,8 @@ DRAW_SCHEDULE_MIGRATION_STATEMENTS = (
     """,
 )
 DRAW_SCHEDULE_MIGRATION_SQL = (
-    ";\n".join(statement.strip() for statement in DRAW_SCHEDULE_MIGRATION_STATEMENTS) + ";\n"
+    ";\n".join(statement.strip() for statement in DRAW_SCHEDULE_MIGRATION_STATEMENTS)
+    + ";\n"
 )
 DRAW_SCHEDULE_MIGRATION_CHECKSUM = hashlib.sha256(
     DRAW_SCHEDULE_MIGRATION_SQL.encode("utf-8")
@@ -339,7 +342,8 @@ SCHEDULE_AUTHORITY_MIGRATION_STATEMENTS = (
     """,
 )
 SCHEDULE_AUTHORITY_MIGRATION_SQL = (
-    ";\n".join(statement.strip() for statement in SCHEDULE_AUTHORITY_MIGRATION_STATEMENTS) + ";\n"
+    ";\n".join(statement.strip() for statement in SCHEDULE_AUTHORITY_MIGRATION_STATEMENTS)
+    + ";\n"
 )
 SCHEDULE_AUTHORITY_MIGRATION_CHECKSUM = hashlib.sha256(
     SCHEDULE_AUTHORITY_MIGRATION_SQL.encode("utf-8")
@@ -709,8 +713,12 @@ _EXPECTED_SCHEMA_SQL_V4 = {
     "draw_schedule_facts": SCHEDULE_AUTHORITY_MIGRATION_STATEMENTS[0],
     "idx_draw_schedule_facts_game": SCHEDULE_AUTHORITY_MIGRATION_STATEMENTS[1],
     "draw_schedule_authority_evidence": SCHEDULE_AUTHORITY_MIGRATION_STATEMENTS[2],
-    "idx_draw_schedule_authority_evidence_target": (SCHEDULE_AUTHORITY_MIGRATION_STATEMENTS[3]),
-    "idx_draw_schedule_authority_evidence_state": (SCHEDULE_AUTHORITY_MIGRATION_STATEMENTS[4]),
+    "idx_draw_schedule_authority_evidence_target": (
+        SCHEDULE_AUTHORITY_MIGRATION_STATEMENTS[3]
+    ),
+    "idx_draw_schedule_authority_evidence_state": (
+        SCHEDULE_AUTHORITY_MIGRATION_STATEMENTS[4]
+    ),
     "trg_draw_schedules_reject_update": SCHEDULE_AUTHORITY_MIGRATION_STATEMENTS[5],
     "trg_draw_schedules_reject_delete": SCHEDULE_AUTHORITY_MIGRATION_STATEMENTS[6],
     "trg_draw_schedule_facts_reject_update": SCHEDULE_AUTHORITY_MIGRATION_STATEMENTS[7],
@@ -731,90 +739,84 @@ _EXPECTED_SCHEMA_OBJECTS = {("table", name, name) for name in _EXPECTED_TABLE_XI
     ("index", "sqlite_autoindex_ingestion_runs_1", "ingestion_runs"),
 }
 
-_EXPECTED_SCHEMA_OBJECTS_V2 = (
-    {("table", name, name) for name in _EXPECTED_TABLE_XINFO_V2}
-    | {
-        (object_type, name, table)
-        for object_type, name, table in _EXPECTED_SCHEMA_OBJECTS
-        if object_type == "index"
-    }
-    | {
-        ("index", "idx_ingestion_run_context_trigger", "ingestion_run_context"),
-        ("index", "sqlite_autoindex_ingestion_run_context_1", "ingestion_run_context"),
-    }
-)
+_EXPECTED_SCHEMA_OBJECTS_V2 = {
+    ("table", name, name) for name in _EXPECTED_TABLE_XINFO_V2
+} | {
+    (object_type, name, table)
+    for object_type, name, table in _EXPECTED_SCHEMA_OBJECTS
+    if object_type == "index"
+} | {
+    ("index", "idx_ingestion_run_context_trigger", "ingestion_run_context"),
+    ("index", "sqlite_autoindex_ingestion_run_context_1", "ingestion_run_context"),
+}
 
-_EXPECTED_SCHEMA_OBJECTS_V3 = (
-    {("table", name, name) for name in _EXPECTED_TABLE_XINFO_V3}
-    | {
-        (object_type, name, table)
-        for object_type, name, table in _EXPECTED_SCHEMA_OBJECTS_V2
-        if object_type == "index"
-    }
-    | {
-        ("index", "idx_draw_schedules_earliest", "draw_schedules"),
-        ("index", "sqlite_autoindex_draw_schedules_1", "draw_schedules"),
-        (
-            "trigger",
-            "trg_draw_schedules_reject_existing_draw",
-            "draw_schedules",
-        ),
-        (
-            "trigger",
-            "trg_draws_reject_schedule_date_mismatch_insert",
-            "draws",
-        ),
-        (
-            "trigger",
-            "trg_draws_reject_schedule_date_mismatch_update",
-            "draws",
-        ),
-    }
-)
+_EXPECTED_SCHEMA_OBJECTS_V3 = {
+    ("table", name, name) for name in _EXPECTED_TABLE_XINFO_V3
+} | {
+    (object_type, name, table)
+    for object_type, name, table in _EXPECTED_SCHEMA_OBJECTS_V2
+    if object_type == "index"
+} | {
+    ("index", "idx_draw_schedules_earliest", "draw_schedules"),
+    ("index", "sqlite_autoindex_draw_schedules_1", "draw_schedules"),
+    (
+        "trigger",
+        "trg_draw_schedules_reject_existing_draw",
+        "draw_schedules",
+    ),
+    (
+        "trigger",
+        "trg_draws_reject_schedule_date_mismatch_insert",
+        "draws",
+    ),
+    (
+        "trigger",
+        "trg_draws_reject_schedule_date_mismatch_update",
+        "draws",
+    ),
+}
 
-_EXPECTED_SCHEMA_OBJECTS_V4 = (
-    {("table", name, name) for name in _EXPECTED_TABLE_XINFO_V4}
-    | {
-        (object_type, name, table)
-        for object_type, name, table in _EXPECTED_SCHEMA_OBJECTS_V3
-        if object_type != "table"
-    }
-    | {
-        ("index", "idx_draw_schedule_facts_game", "draw_schedule_facts"),
-        (
-            "index",
-            "idx_draw_schedule_authority_evidence_target",
-            "draw_schedule_authority_evidence",
-        ),
-        (
-            "index",
-            "idx_draw_schedule_authority_evidence_state",
-            "draw_schedule_authority_evidence",
-        ),
-        ("trigger", "trg_draw_schedules_reject_update", "draw_schedules"),
-        ("trigger", "trg_draw_schedules_reject_delete", "draw_schedules"),
-        (
-            "trigger",
-            "trg_draw_schedule_facts_reject_update",
-            "draw_schedule_facts",
-        ),
-        (
-            "trigger",
-            "trg_draw_schedule_facts_reject_delete",
-            "draw_schedule_facts",
-        ),
-        (
-            "trigger",
-            "trg_draw_schedule_authority_evidence_reject_update",
-            "draw_schedule_authority_evidence",
-        ),
-        (
-            "trigger",
-            "trg_draw_schedule_authority_evidence_reject_delete",
-            "draw_schedule_authority_evidence",
-        ),
-    }
-)
+_EXPECTED_SCHEMA_OBJECTS_V4 = {
+    ("table", name, name) for name in _EXPECTED_TABLE_XINFO_V4
+} | {
+    (object_type, name, table)
+    for object_type, name, table in _EXPECTED_SCHEMA_OBJECTS_V3
+    if object_type != "table"
+} | {
+    ("index", "idx_draw_schedule_facts_game", "draw_schedule_facts"),
+    (
+        "index",
+        "idx_draw_schedule_authority_evidence_target",
+        "draw_schedule_authority_evidence",
+    ),
+    (
+        "index",
+        "idx_draw_schedule_authority_evidence_state",
+        "draw_schedule_authority_evidence",
+    ),
+    ("trigger", "trg_draw_schedules_reject_update", "draw_schedules"),
+    ("trigger", "trg_draw_schedules_reject_delete", "draw_schedules"),
+    (
+        "trigger",
+        "trg_draw_schedule_facts_reject_update",
+        "draw_schedule_facts",
+    ),
+    (
+        "trigger",
+        "trg_draw_schedule_facts_reject_delete",
+        "draw_schedule_facts",
+    ),
+    (
+        "trigger",
+        "trg_draw_schedule_authority_evidence_reject_update",
+        "draw_schedule_authority_evidence",
+    ),
+    (
+        "trigger",
+        "trg_draw_schedule_authority_evidence_reject_delete",
+        "draw_schedule_authority_evidence",
+    ),
+}
 
 _SCHEMA_SQL_TOKEN = re.compile(
     r"'(?:''|[^'])*'|\"(?:\"\"|[^\"])*\"|`(?:``|[^`])*`|\[[^]]*\]|[(),]|[^\s(),]+"
@@ -1068,7 +1070,10 @@ def _verify_migration_state(connection: sqlite3.Connection) -> int | None:
         raise MigrationChecksumError("database migration checksum does not match")
     if len(versions) >= 2:
         _, context_name, context_checksum = rows[1]
-        if context_name != CONTEXT_MIGRATION_NAME or context_checksum != CONTEXT_MIGRATION_CHECKSUM:
+        if (
+            context_name != CONTEXT_MIGRATION_NAME
+            or context_checksum != CONTEXT_MIGRATION_CHECKSUM
+        ):
             raise MigrationChecksumError("database migration checksum does not match")
     if len(versions) >= 3:
         _, schedule_name, schedule_checksum = rows[2]

@@ -2154,7 +2154,9 @@ def test_write_plist_source_worktree_override_ignores_stale_primary_checkout(
     (intended / "tools/b649_goalc_local_scheduler.py").write_text("intended")
 
     monkeypatch.setattr(scheduler_module, "SOURCE_WORKTREE", stale_primary)
-    monkeypatch.setattr(scheduler_module, "PYTHON_EXECUTABLE", stale_primary / ".venv/bin/python")
+    monkeypatch.setattr(
+        scheduler_module, "PYTHON_EXECUTABLE", stale_primary / ".venv/bin/python"
+    )
     monkeypatch.setattr(
         scheduler_module, "SCRIPT_PATH", stale_primary / "tools/b649_goalc_local_scheduler.py"
     )

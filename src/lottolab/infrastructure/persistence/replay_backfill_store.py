@@ -56,7 +56,6 @@ def _json_default(value: object) -> str:
 def identity(value: object) -> str:
     return hashlib.sha256(canonical_json(value).encode()).hexdigest()
 
-
 SCHEMA_SQL = """
 CREATE TABLE replay_backfill_schema (
     version INTEGER PRIMARY KEY CHECK(version = 2), checksum TEXT NOT NULL
@@ -170,7 +169,9 @@ def _copy_table_columns(
     if columns != _column_names(connection, destination):
         raise ValueError(f"unsupported legacy replay backfill table: {source}")
     quoted = ",".join(f'"{column}"' for column in columns)
-    connection.execute(f'INSERT INTO "{destination}" ({quoted}) SELECT {quoted} FROM "{source}"')
+    connection.execute(
+        f'INSERT INTO "{destination}" ({quoted}) SELECT {quoted} FROM "{source}"'
+    )
 
 
 def _migrate_legacy_v1(connection: sqlite3.Connection) -> None:
@@ -220,23 +221,21 @@ def _migrate_legacy_v1(connection: sqlite3.Connection) -> None:
         "CREATE TABLE replay_backfill_cells_v2 (",
         1,
     )
-    run_cells_sql = (
-        _schema_table_sql("replay_backfill_run_cells")
-        .replace(
-            "CREATE TABLE replay_backfill_run_cells (",
-            "CREATE TABLE replay_backfill_run_cells_v2 (",
-            1,
-        )
-        .replace(
-            "REFERENCES replay_backfill_cells(cell_identity)",
-            "REFERENCES replay_backfill_cells_v2(cell_identity)",
-            1,
-        )
+    run_cells_sql = _schema_table_sql("replay_backfill_run_cells").replace(
+        "CREATE TABLE replay_backfill_run_cells (",
+        "CREATE TABLE replay_backfill_run_cells_v2 (",
+        1,
+    ).replace(
+        "REFERENCES replay_backfill_cells(cell_identity)",
+        "REFERENCES replay_backfill_cells_v2(cell_identity)",
+        1,
     )
     connection.execute(cells_sql)
     connection.execute(run_cells_sql)
     _copy_table_columns(connection, "replay_backfill_cells_v1", "replay_backfill_cells_v2")
-    _copy_table_columns(connection, "replay_backfill_run_cells_v1", "replay_backfill_run_cells_v2")
+    _copy_table_columns(
+        connection, "replay_backfill_run_cells_v1", "replay_backfill_run_cells_v2"
+    )
     connection.execute("DROP TABLE replay_backfill_run_cells_v1")
     connection.execute("DROP TABLE replay_backfill_cells_v1")
     connection.execute("ALTER TABLE replay_backfill_cells_v2 RENAME TO replay_backfill_cells")
@@ -253,7 +252,9 @@ def _migrate_legacy_v1(connection: sqlite3.Connection) -> None:
     ):
         connection.execute(_schema_table_sql(table))
 
-    connection.execute("ALTER TABLE replay_backfill_schema RENAME TO replay_backfill_schema_v1")
+    connection.execute(
+        "ALTER TABLE replay_backfill_schema RENAME TO replay_backfill_schema_v1"
+    )
     connection.execute(_schema_table_sql("replay_backfill_schema"))
     connection.execute(
         "INSERT INTO replay_backfill_schema(version,checksum) VALUES(?,?)",
@@ -674,7 +675,9 @@ class SQLiteBackfillStore:
                     result["cell_identity"],
                     position,
                     canonical_json(main_numbers),
-                    canonical_json([] if special_number is None else [special_number]),
+                    canonical_json(
+                        [] if special_number is None else [special_number]
+                    ),
                     zone1_hits,
                     stored_zone2_hit,
                     prize_tier,
@@ -694,7 +697,6 @@ class SQLiteBackfillStore:
                 training.get("training_artifact_hash"),
             ),
         )
-
     def summary(self, run_id: str) -> JsonObject:
         with self._connect() as connection:
             row = connection.execute(
@@ -823,7 +825,9 @@ class SQLiteBackfillStore:
                     ),
                     "source_kind": single_source.get(
                         "source_kind",
-                        manifest_source_kind if isinstance(manifest_source_kind, str) else None,
+                        manifest_source_kind
+                        if isinstance(manifest_source_kind, str)
+                        else None,
                     ),
                     "source_locator": single_source.get(
                         "source_locator",
@@ -833,7 +837,9 @@ class SQLiteBackfillStore:
                     ),
                     "source_hash": single_source.get(
                         "source_hash",
-                        manifest_source_hash if isinstance(manifest_source_hash, str) else None,
+                        manifest_source_hash
+                        if isinstance(manifest_source_hash, str)
+                        else None,
                     ),
                     "sources": sources,
                     "target_draw_count": target_draw_count,
@@ -881,7 +887,9 @@ class SQLiteBackfillStore:
             raw_target_ids = manifest.get("target_draw_ids")
             if type(raw_target_ids) is not list:
                 raise ValueError("run manifest target list is invalid")
-            selected_ids = {str(draw_id) for draw_id in cast(list[object], raw_target_ids)}
+            selected_ids = {
+                str(draw_id) for draw_id in cast(list[object], raw_target_ids)
+            }
             with self._connect() as connection:
                 source_targets = cast(
                     list[tuple[object, object]],
@@ -1016,7 +1024,8 @@ class SQLiteBackfillStore:
         completed = statuses.get("COMPLETE", 0)
         failed = statuses.get("FAILED", 0) + statuses.get("PARTIAL", 0)
         closed = sum(
-            statuses.get(status, 0) for status in ("NOT_ELIGIBLE", "TYPED_CLOSURE", "MISSING")
+            statuses.get(status, 0)
+            for status in ("NOT_ELIGIBLE", "TYPED_CLOSURE", "MISSING")
         )
         return {
             "lottery_type": lottery_type,
@@ -1088,7 +1097,9 @@ class SQLiteBackfillStore:
         """Return one selected-run snapshot without merging results across runs."""
 
         selection_rule = (
-            "LATEST_RUN_BY_CREATED_AT_PER_LOTTERY_TYPE" if run_id is None else "EXPLICIT_RUN_ID"
+            "LATEST_RUN_BY_CREATED_AT_PER_LOTTERY_TYPE"
+            if run_id is None
+            else "EXPLICIT_RUN_ID"
         )
         with self._connect() as connection:
             connection.execute("BEGIN")

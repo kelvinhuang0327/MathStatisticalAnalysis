@@ -1437,7 +1437,10 @@ _V5_LIVE_VERSION_SQL = (
     )
     .replace(
         "        AND consensus_provenance_json IS NULL\n",
-        ("        AND candidate_ref IS NULL\n        AND consensus_provenance_json IS NULL\n"),
+        (
+            "        AND candidate_ref IS NULL\n"
+            "        AND consensus_provenance_json IS NULL\n"
+        ),
     )
     .replace(
         "        AND original_execution_provenance_status = 'CONSENSUS_SOURCE_BOUND'\n",

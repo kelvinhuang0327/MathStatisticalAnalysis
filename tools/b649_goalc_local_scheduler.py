@@ -2462,7 +2462,9 @@ def _parser() -> argparse.ArgumentParser:
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = _parser().parse_args(argv)
-    config = production_config(source_worktree_override=getattr(args, "source_worktree", None))
+    config = production_config(
+        source_worktree_override=getattr(args, "source_worktree", None)
+    )
     if args.command == "write-plist":
         path = write_launchd_plist(config)
         print(_canonical_json({"status": "WRITTEN", "plist_path": str(path)}))

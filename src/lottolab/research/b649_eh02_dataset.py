@@ -31,13 +31,19 @@ from hashlib import sha256
 from pathlib import Path
 from typing import cast
 
-DEFAULT_T539_SQLITE_PATH = Path(
-    "/Users/kelvin/VibeCoding-WorkSpace/.runs/MathStatisticalAnalysis/"
-    "T539_WAVE1_CLEAN_REPRODUCTION_AND_PUBLICATION_R2/t539_wave1.sqlite3"
+from lottolab.infrastructure.persistence.project_database_paths import resolve_legacy_database
+
+DEFAULT_T539_SQLITE_PATH = resolve_legacy_database(
+    Path(
+        "/Users/kelvin/VibeCoding-WorkSpace/.runs/MathStatisticalAnalysis/"
+        "T539_WAVE1_CLEAN_REPRODUCTION_AND_PUBLICATION_R2/t539_wave1.sqlite3"
+    )
 )
-DEFAULT_P638_ZONE1_SQLITE_PATH = Path(
-    "/Users/kelvin/VibeCoding-WorkSpace/.runs/MathStatisticalAnalysis/"
-    "P638_WAVE1_CLEAN_REPRODUCTION_AND_PUBLICATION_R2/p638_wave1.sqlite3"
+DEFAULT_P638_ZONE1_SQLITE_PATH = resolve_legacy_database(
+    Path(
+        "/Users/kelvin/VibeCoding-WorkSpace/.runs/MathStatisticalAnalysis/"
+        "P638_WAVE1_CLEAN_REPRODUCTION_AND_PUBLICATION_R2/p638_wave1.sqlite3"
+    )
 )
 T539_LOTTERY_TYPE = "DAILY_539"
 T539_MAIN_COUNT = 5

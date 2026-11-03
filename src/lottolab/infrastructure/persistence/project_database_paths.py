@@ -37,6 +37,75 @@ def project_database_directory() -> Path:
     return canonical_project_root() / "data" / "databases"
 
 
+def resolve_legacy_database(original: Path) -> Path:
+    """Resolve an archived absolute database path through the project keeper index."""
+    original_path = Path(original).expanduser().resolve()
+    index_path = project_database_directory() / "legacy" / "INDEX.json"
+    try:
+        index = json.loads(index_path.read_text(encoding="utf-8"))
+    except FileNotFoundError as exc:
+        raise FileNotFoundError(f"legacy database index is missing: {index_path}") from exc
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        raise ValueError(f"legacy database index is unreadable or invalid: {index_path}") from exc
+
+    if not isinstance(index, dict) or not isinstance(index.get("original_path_lookup"), dict):
+        raise ValueError(f"legacy database index has an invalid format: {index_path}")
+    record = index["original_path_lookup"].get(str(original_path))
+    if record is not None:
+        if not isinstance(record, dict):
+            raise ValueError(f"legacy database index record is invalid for {original_path}")
+        keeper_raw = record.get("keeper_path")
+        keeper = Path(keeper_raw) if isinstance(keeper_raw, str) else None
+        if record.get("keeper_status") == "PASS" and keeper is not None:
+            legacy_root = (project_database_directory() / "legacy").resolve()
+            if not keeper.resolve().is_relative_to(legacy_root):
+                raise ValueError(f"legacy keeper escapes the project legacy directory: {keeper}")
+            if keeper.is_file():
+                return keeper
+        keeper_label = str(keeper) if keeper is not None else "<missing keeper_path>"
+        raise FileNotFoundError(
+            f"legacy database keeper is unavailable for {original_path}: {keeper_label}. "
+            "可依 data/databases/CLOUD_BACKUP_RESTORE.md 從雲端還原"
+        )
+    if original_path.is_file():
+        return original_path
+    raise FileNotFoundError(f"database is not registered and does not exist: {original_path}")
+
+
+def is_verified_legacy_keeper_for_source(
+    keeper_path: Path, *, original_sha256: str, keeper_sha256: str
+) -> bool:
+    """Check that INDEX verifies this keeper for a frozen original-file hash."""
+    index_path = project_database_directory() / "legacy" / "INDEX.json"
+    try:
+        index = json.loads(index_path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        raise ValueError(f"legacy database index is unreadable or invalid: {index_path}") from exc
+    lookup = index.get("original_path_lookup") if isinstance(index, dict) else None
+    groups = index.get("groups") if isinstance(index, dict) else None
+    if not isinstance(lookup, dict) or not isinstance(groups, list):
+        raise ValueError(f"legacy database index has an invalid format: {index_path}")
+    keeper_hashes = {
+        item.get("group_key"): item.get("keeper_sha256")
+        for item in groups
+        if isinstance(item, dict)
+    }
+
+    selected = keeper_path.resolve()
+    legacy_root = (project_database_directory() / "legacy").resolve()
+    if not selected.is_relative_to(legacy_root):
+        return False
+    return any(
+        isinstance(record, dict)
+        and record.get("keeper_status") == "PASS"
+        and record.get("original_sha256") == original_sha256
+        and keeper_hashes.get(record.get("group_key")) == keeper_sha256
+        and isinstance(record.get("keeper_path"), str)
+        and Path(record["keeper_path"]).resolve() == selected
+        for record in lookup.values()
+    )
+
+
 def is_project_database_boundary(path: Path, git_ancestor: Path) -> bool:
     """Permit only this source checkout's database subtree, not another checkout."""
     return (
@@ -111,7 +180,9 @@ def require_project_database_write_ready(database: Path) -> None:
 
 __all__ = [
     "is_project_database_boundary",
+    "is_verified_legacy_keeper_for_source",
     "project_database_directory",
     "project_database_environment",
     "require_project_database_write_ready",
+    "resolve_legacy_database",
 ]

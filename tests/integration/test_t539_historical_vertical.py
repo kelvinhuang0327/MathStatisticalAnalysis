@@ -22,6 +22,7 @@ from lottolab.application.t539_historical import (
     T539ReplayQuery,
     t539_strategy_set_fingerprint,
 )
+from lottolab.infrastructure.persistence.project_database_paths import resolve_legacy_database
 from lottolab.infrastructure.persistence.t539_historical_repositories import (
     SQLiteT539HistoricalQueryRepository,
 )
@@ -620,12 +621,12 @@ def _find_workspace_root(start: Path) -> Path:
 
 
 WORKSPACE = _find_workspace_root(Path(__file__).resolve())
-AUTHORITY_DB = (
+AUTHORITY_DB = resolve_legacy_database(
     WORKSPACE
     / ".runs/MathStatisticalAnalysis/T539_WAVE1_CLEAN_REPRODUCTION_AND_PUBLICATION_R2"
     / "t539_wave1.sqlite3"
 )
-EXPECTED_AUTHORITY_SHA256 = "cddfd82e39359bbff1e781f624fca42afd26849c38dab628223e7afd857b9b81"
+EXPECTED_AUTHORITY_SHA256 = "d668f7874c8a31391ca13dcf3100211833c5d14e9b97f1ddf6d1e927d88a84f9"
 
 
 def _sha256(path: Path) -> str:
@@ -674,7 +675,7 @@ def test_real_authority_database_is_read_only_and_byte_invariant() -> None:
 # itself, never hardcoded.
 # ---------------------------------------------------------------------------
 
-WAVE2_F4COLD_SINGLE_DB = (
+WAVE2_F4COLD_SINGLE_DB = resolve_legacy_database(
     WORKSPACE
     / ".runs/MathStatisticalAnalysis/T539_WAVE2_F4COLD_SINGLE_COVERAGE_CLOSURE_R1"
     / "t539_f4cold_single_wave2.sqlite3"
@@ -751,7 +752,7 @@ def test_wave2_f4cold_single_projection_nine_strategies_and_ticket_parity() -> N
 # parity with acb_single_539 are all derived from the sealed DB itself.
 # ---------------------------------------------------------------------------
 
-WAVE3_ACB1_ALIAS_DB = (
+WAVE3_ACB1_ALIAS_DB = resolve_legacy_database(
     WORKSPACE
     / ".runs/MathStatisticalAnalysis/T539_WAVE3_ACB1_ALIAS_COVERAGE_CLOSURE_R1"
     / "t539_wave3_acb1_alias.sqlite3"
@@ -814,7 +815,7 @@ def test_wave3_acb1_alias_projection_ten_strategies_and_ticket_parity() -> None:
 # ticket parity are all derived from the sealed DB itself.
 # ---------------------------------------------------------------------------
 
-WAVE4_REMAINING5_BATCH_DB = (
+WAVE4_REMAINING5_BATCH_DB = resolve_legacy_database(
     WORKSPACE
     / ".runs/MathStatisticalAnalysis/T539_WAVE4_REMAINING5_BATCH_COVERAGE_CLOSURE_R1"
     / "t539_wave4_remaining5_batch.sqlite3"

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import runpy
 import shutil
@@ -51,6 +52,150 @@ def test_project_default_ignores_cwd_and_home_without_creating_empty_db(
     with pytest.raises(FileNotFoundError, match="canonical database"):
         initialize_research_schema(research)
     assert not root.exists()
+
+
+def _write_legacy_index(project: Path, records: dict[str, object]) -> None:
+    index = project / "data/databases/legacy/INDEX.json"
+    index.parent.mkdir(parents=True, exist_ok=True)
+    index.write_text(json.dumps({"original_path_lookup": records}), encoding="utf-8")
+
+
+def test_legacy_resolver_prefers_keeper_when_original_and_keeper_exist(
+    project: Path,
+    tmp_path: Path,
+) -> None:
+    original = tmp_path / "retired" / "old.sqlite3"
+    original.parent.mkdir()
+    original.touch()
+    keeper = project / "data/databases/legacy/group/keeper.sqlite3"
+    keeper.parent.mkdir(parents=True)
+    keeper.touch()
+    _write_legacy_index(
+        project,
+        {str(original.resolve()): {"keeper_path": str(keeper), "keeper_status": "PASS"}},
+    )
+
+    assert locations.resolve_legacy_database(original) == keeper
+
+
+def test_legacy_resolver_uses_keeper_when_original_is_already_missing(
+    project: Path,
+    tmp_path: Path,
+) -> None:
+    original = tmp_path / "retired" / "old.sqlite3"
+    keeper = project / "data/databases/legacy/group/keeper.sqlite3"
+    keeper.parent.mkdir(parents=True)
+    keeper.touch()
+    _write_legacy_index(
+        project,
+        {str(original.resolve()): {"keeper_path": str(keeper), "keeper_status": "PASS"}},
+    )
+
+    assert locations.resolve_legacy_database(original) == keeper
+
+
+def test_legacy_resolver_fails_closed_when_registered_keeper_is_missing(
+    project: Path,
+    tmp_path: Path,
+) -> None:
+    original = tmp_path / "retired" / "old.sqlite3"
+    keeper = project / "data/databases/legacy/group/missing.sqlite3"
+    _write_legacy_index(
+        project,
+        {str(original.resolve()): {"keeper_path": str(keeper), "keeper_status": "PASS"}},
+    )
+
+    with pytest.raises(FileNotFoundError) as error:
+        locations.resolve_legacy_database(original)
+    assert str(original) in str(error.value)
+    assert str(keeper) in str(error.value)
+    assert "CLOUD_BACKUP_RESTORE.md" in str(error.value)
+    assert not original.exists()
+    assert not keeper.exists()
+
+
+def test_legacy_resolver_keeps_existing_unregistered_path(
+    project: Path,
+    tmp_path: Path,
+) -> None:
+    original = tmp_path / "unregistered.sqlite3"
+    original.touch()
+    _write_legacy_index(project, {})
+
+    assert locations.resolve_legacy_database(original) == original.resolve()
+
+
+def test_legacy_resolver_rejects_missing_unregistered_path(
+    project: Path,
+    tmp_path: Path,
+) -> None:
+    original = tmp_path / "unregistered.sqlite3"
+    _write_legacy_index(project, {})
+
+    with pytest.raises(FileNotFoundError, match="not registered and does not exist"):
+        locations.resolve_legacy_database(original)
+    assert not original.exists()
+
+
+def test_legacy_resolver_rejects_malformed_index(
+    project: Path,
+    tmp_path: Path,
+) -> None:
+    index = project / "data/databases/legacy/INDEX.json"
+    index.parent.mkdir(parents=True, exist_ok=True)
+    index.write_text("not-json", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="unreadable or invalid"):
+        locations.resolve_legacy_database(tmp_path / "unregistered.sqlite3")
+
+
+def test_legacy_resolver_rejects_missing_index(project: Path, tmp_path: Path) -> None:
+    with pytest.raises(FileNotFoundError, match="legacy database index is missing"):
+        locations.resolve_legacy_database(tmp_path / "unregistered.sqlite3")
+
+
+def test_legacy_resolver_rejects_wrong_index_shape(
+    project: Path,
+    tmp_path: Path,
+) -> None:
+    index = project / "data/databases/legacy/INDEX.json"
+    index.parent.mkdir(parents=True, exist_ok=True)
+    index.write_text(json.dumps({"original_path_lookup": []}), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="invalid format"):
+        locations.resolve_legacy_database(tmp_path / "unregistered.sqlite3")
+
+
+def test_legacy_keeper_preserves_original_source_identity_from_index(
+    project: Path,
+) -> None:
+    keeper = project / "data/databases/legacy/group/keeper.sqlite3"
+    keeper.parent.mkdir(parents=True)
+    keeper.write_bytes(b"keeper bytes")
+    keeper_sha256 = hashlib.sha256(keeper.read_bytes()).hexdigest()
+    original_sha256 = "a" * 64
+    _write_legacy_index(
+        project,
+        {
+            "/retired/original.sqlite3": {
+                "keeper_path": str(keeper),
+                "keeper_status": "PASS",
+                "original_sha256": original_sha256,
+                "group_key": "group-1",
+            }
+        },
+    )
+    index = project / "data/databases/legacy/INDEX.json"
+    payload = json.loads(index.read_text(encoding="utf-8"))
+    payload["groups"] = [{"group_key": "group-1", "keeper_sha256": keeper_sha256}]
+    index.write_text(json.dumps(payload), encoding="utf-8")
+
+    assert locations.is_verified_legacy_keeper_for_source(
+        keeper, original_sha256=original_sha256, keeper_sha256=keeper_sha256
+    )
+    assert not locations.is_verified_legacy_keeper_for_source(
+        keeper, original_sha256="b" * 64, keeper_sha256=keeper_sha256
+    )
 
 
 def test_only_exact_project_database_subtree_is_allowed(project: Path) -> None:

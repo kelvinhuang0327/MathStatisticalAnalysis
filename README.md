@@ -221,6 +221,10 @@ LOTTOLAB_DATA_DIR=/absolute/owner-only/path uv run --no-sync lottolab local star
 未存在 DB 的 history read 不建立目錄、DB 或 migration。正式固定路徑缺庫時，寫入也會拒絕，
 避免產生空權威庫。遷移副本由 `data/databases/database-locations.json` 明列讀取位置及可寫狀態；
 舊 writer 尚未切換時，`writable_databases` 保持空陣列，開獎、研究與 Replay 副本維持唯讀。
+`data/databases/database-locations.json` 是程式目前讀寫的資料庫位置依據，也就是根目錄那 6 個 DB。
+`data/databases/legacy/INDEX.json` 對照已退役研究 DB 的「舊路徑 → 專案內 keeper」，只供重讀歷史收據與預註冊使用。
+`legacy/` 的 keeper 另有雲端備份（批次 `MSADBBK-<YYYYMMDD>`）；keeper 不見或損毀時，依本機
+`data/databases/CLOUD_BACKUP_RESTORE.md` 還原（`data/` 不進 Git）。
 既有資料讀取使用 SQLite `mode=ro` 與 `query_only`，不因讀取而升級 schema。
 使用者 DB、SQLite sidecar、upload 與 runtime artifacts
 都不進 Git。測試與 task lifecycle 把 `LOTTOLAB_DATA_DIR` 指向明確隔離的 fixture 目錄，並在

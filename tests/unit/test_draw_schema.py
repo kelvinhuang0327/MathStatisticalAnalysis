@@ -115,9 +115,7 @@ def test_resolver_is_lazy_and_uses_override_or_project_default(tmp_path: Path) -
 
     fake_home = tmp_path / "fake-home"
     defaulted = resolve_local_data_paths(environ={}, home=fake_home)
-    assert defaulted.data_directory == (
-        Path(draw_schema.__file__).resolve().parents[4] / "data/databases"
-    )
+    assert defaulted.data_directory == draw_schema.project_database_directory()
     assert not fake_home.exists()
 
 

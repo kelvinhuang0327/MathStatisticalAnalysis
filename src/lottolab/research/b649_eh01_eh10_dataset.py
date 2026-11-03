@@ -24,12 +24,12 @@ from hashlib import sha256
 from pathlib import Path
 from typing import cast
 
-from lottolab.infrastructure.persistence.project_database_paths import resolve_legacy_database
+from lottolab.infrastructure.persistence.project_database_paths import default_legacy_database_path
 from lottolab.infrastructure.persistence.research_repository import (
     fetch_research_draw_bindings_for_dataset,
 )
 
-DEFAULT_SQLITE_PATH = resolve_legacy_database(
+DEFAULT_SQLITE_PATH = default_legacy_database_path(
     Path(
         "/Users/kelvin/VibeCoding-WorkSpace/.task-data/"
         "BIGLOTTO_CANONICAL_FULL_HISTORY_BASELINE_R4/baseline.sqlite"

@@ -31,15 +31,15 @@ from hashlib import sha256
 from pathlib import Path
 from typing import cast
 
-from lottolab.infrastructure.persistence.project_database_paths import resolve_legacy_database
+from lottolab.infrastructure.persistence.project_database_paths import default_legacy_database_path
 
-DEFAULT_T539_SQLITE_PATH = resolve_legacy_database(
+DEFAULT_T539_SQLITE_PATH = default_legacy_database_path(
     Path(
         "/Users/kelvin/VibeCoding-WorkSpace/.runs/MathStatisticalAnalysis/"
         "T539_WAVE1_CLEAN_REPRODUCTION_AND_PUBLICATION_R2/t539_wave1.sqlite3"
     )
 )
-DEFAULT_P638_ZONE1_SQLITE_PATH = resolve_legacy_database(
+DEFAULT_P638_ZONE1_SQLITE_PATH = default_legacy_database_path(
     Path(
         "/Users/kelvin/VibeCoding-WorkSpace/.runs/MathStatisticalAnalysis/"
         "P638_WAVE1_CLEAN_REPRODUCTION_AND_PUBLICATION_R2/p638_wave1.sqlite3"

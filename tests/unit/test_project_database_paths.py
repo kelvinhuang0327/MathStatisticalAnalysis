@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import runpy
 import shutil
+import subprocess
 import sys
 from pathlib import Path
 
@@ -164,6 +166,109 @@ def test_legacy_resolver_rejects_wrong_index_shape(
 
     with pytest.raises(ValueError, match="invalid format"):
         locations.resolve_legacy_database(tmp_path / "unregistered.sqlite3")
+
+
+def test_legacy_default_path_without_index_returns_original_and_creates_nothing(
+    project: Path,
+    tmp_path: Path,
+) -> None:
+    original = tmp_path / "retired" / "old.sqlite3"
+
+    assert locations.default_legacy_database_path(original) == original.resolve()
+    assert not original.exists()
+    assert not (project / "data/databases").exists()
+
+
+def test_legacy_default_path_returns_existing_keeper(project: Path, tmp_path: Path) -> None:
+    original = tmp_path / "retired" / "old.sqlite3"
+    keeper = project / "data/databases/legacy/group/keeper.sqlite3"
+    keeper.parent.mkdir(parents=True)
+    keeper.touch()
+    _write_legacy_index(
+        project,
+        {str(original.resolve()): {"keeper_path": str(keeper), "keeper_status": "PASS"}},
+    )
+
+    assert locations.default_legacy_database_path(original) == keeper
+
+
+def test_legacy_default_path_never_falls_back_to_the_retired_file(
+    project: Path,
+    tmp_path: Path,
+) -> None:
+    original = tmp_path / "retired" / "old.sqlite3"
+    original.parent.mkdir()
+    original.touch()
+    keeper = project / "data/databases/legacy/group/missing.sqlite3"
+    _write_legacy_index(
+        project,
+        {str(original.resolve()): {"keeper_path": str(keeper), "keeper_status": "PASS"}},
+    )
+
+    resolved = locations.default_legacy_database_path(original)
+
+    assert resolved == keeper
+    assert not resolved.exists()
+
+
+def test_legacy_default_path_returns_unregistered_original_even_when_missing(
+    project: Path,
+    tmp_path: Path,
+) -> None:
+    original = tmp_path / "unregistered.sqlite3"
+    _write_legacy_index(project, {})
+
+    assert locations.default_legacy_database_path(original) == original.resolve()
+    assert not original.exists()
+
+
+def test_legacy_default_path_still_fails_for_unverified_keeper_or_bad_index(
+    project: Path,
+    tmp_path: Path,
+) -> None:
+    original = tmp_path / "retired" / "old.sqlite3"
+    keeper = project / "data/databases/legacy/group/keeper.sqlite3"
+    keeper.parent.mkdir(parents=True)
+    keeper.touch()
+    _write_legacy_index(
+        project,
+        {str(original.resolve()): {"keeper_path": str(keeper), "keeper_status": "FAIL"}},
+    )
+    with pytest.raises(FileNotFoundError, match="keeper is unavailable"):
+        locations.default_legacy_database_path(original)
+
+    (project / "data/databases/legacy/INDEX.json").write_text("not-json", encoding="utf-8")
+    with pytest.raises(ValueError, match="unreadable or invalid"):
+        locations.default_legacy_database_path(original)
+
+
+@pytest.mark.parametrize(
+    "module",
+    ["lottolab.research.b649_eh01_eh10_dataset", "lottolab.research.b649_eh02_dataset"],
+)
+def test_research_dataset_modules_import_without_a_keeper_index(
+    module: str, tmp_path: Path
+) -> None:
+    source_root = Path(locations.__file__).resolve().parents[3]
+    code = (
+        "import importlib, pathlib, sys\n"
+        "import lottolab.infrastructure.persistence.project_database_paths as paths\n"
+        "root = pathlib.Path(sys.argv[1]) / 'data' / 'databases'\n"
+        "paths.project_database_directory = lambda: root\n"
+        "importlib.import_module(sys.argv[2])\n"
+    )
+    environment = {**os.environ, "PYTHONPATH": str(source_root), "PYTHONDONTWRITEBYTECODE": "1"}
+
+    result = subprocess.run(
+        [sys.executable, "-c", code, str(tmp_path), module],
+        env=environment,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert not (tmp_path / "data").exists()
 
 
 def test_legacy_keeper_preserves_original_source_identity_from_index(

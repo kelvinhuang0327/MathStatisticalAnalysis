@@ -72,6 +72,46 @@ def resolve_legacy_database(original: Path) -> Path:
     raise FileNotFoundError(f"database is not registered and does not exist: {original_path}")
 
 
+def _registered_legacy_record(original_path: Path) -> dict[str, object] | None:
+    """The INDEX record for an archived path, or None when there is no index or no record."""
+    index_path = project_database_directory() / "legacy" / "INDEX.json"
+    try:
+        index = json.loads(index_path.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return None
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        raise ValueError(f"legacy database index is unreadable or invalid: {index_path}") from exc
+    lookup = index.get("original_path_lookup") if isinstance(index, dict) else None
+    if not isinstance(lookup, dict):
+        raise ValueError(f"legacy database index has an invalid format: {index_path}")
+    record = lookup.get(str(original_path))
+    if record is not None and not isinstance(record, dict):
+        raise ValueError(f"legacy database index record is invalid for {original_path}")
+    return record
+
+
+def default_legacy_database_path(original: Path) -> Path:
+    """Import-safe default path for a retired database; a missing file never raises here.
+
+    A registered, verified keeper is returned whether or not the file exists, so a
+    missing keeper cannot fall back to the retired path. With no registered keeper
+    (no INDEX at all, as in a fresh CI checkout, or an unregistered path) the original
+    path is returned unchanged and the reader decides what a missing file means.
+    A malformed index or an unverified keeper still fails loudly.
+    """
+    original_path = Path(original).expanduser().resolve()
+    try:
+        return resolve_legacy_database(original_path)
+    except FileNotFoundError:
+        record = _registered_legacy_record(original_path)
+        if record is None:
+            return original_path
+        keeper_raw = record.get("keeper_path")
+        if record.get("keeper_status") == "PASS" and isinstance(keeper_raw, str):
+            return Path(keeper_raw)
+        raise
+
+
 def is_verified_legacy_keeper_for_source(
     keeper_path: Path, *, original_sha256: str, keeper_sha256: str
 ) -> bool:
@@ -179,6 +219,7 @@ def require_project_database_write_ready(database: Path) -> None:
 
 
 __all__ = [
+    "default_legacy_database_path",
     "is_project_database_boundary",
     "is_verified_legacy_keeper_for_source",
     "project_database_directory",

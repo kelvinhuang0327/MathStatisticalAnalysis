@@ -5,10 +5,16 @@ from __future__ import annotations
 import json
 from collections.abc import Mapping
 from pathlib import Path
+from typing import cast
 
 PROJECT_ROOT = Path(__file__).resolve().parents[4]
 DATABASE_CONFIG_ENV = "LOTTOLAB_DATABASE_CONFIG"
 DATABASE_CONFIG_FILENAME = "database-locations.json"
+
+
+def _json_object(value: object) -> dict[str, object] | None:
+    """The parsed JSON object, or None when the value is not one."""
+    return cast(dict[str, object], value) if isinstance(value, dict) else None
 
 
 def canonical_project_root() -> Path:
@@ -37,26 +43,37 @@ def project_database_directory() -> Path:
     return canonical_project_root() / "data" / "databases"
 
 
-def resolve_legacy_database(original: Path) -> Path:
-    """Resolve an archived absolute database path through the project keeper index."""
-    original_path = Path(original).expanduser().resolve()
-    index_path = project_database_directory() / "legacy" / "INDEX.json"
+def _legacy_index_path() -> Path:
+    return project_database_directory() / "legacy" / "INDEX.json"
+
+
+def _read_legacy_index(index_path: Path) -> tuple[dict[str, object], dict[str, object]]:
+    """INDEX.json and its original_path_lookup; a missing or malformed index raises."""
     try:
-        index = json.loads(index_path.read_text(encoding="utf-8"))
+        parsed: object = json.loads(index_path.read_text(encoding="utf-8"))
     except FileNotFoundError as exc:
         raise FileNotFoundError(f"legacy database index is missing: {index_path}") from exc
     except (OSError, UnicodeError, json.JSONDecodeError) as exc:
         raise ValueError(f"legacy database index is unreadable or invalid: {index_path}") from exc
-
-    if not isinstance(index, dict) or not isinstance(index.get("original_path_lookup"), dict):
+    index = _json_object(parsed)
+    lookup = _json_object(index.get("original_path_lookup")) if index is not None else None
+    if index is None or lookup is None:
         raise ValueError(f"legacy database index has an invalid format: {index_path}")
-    record = index["original_path_lookup"].get(str(original_path))
+    return index, lookup
+
+
+def resolve_legacy_database(original: Path) -> Path:
+    """Resolve an archived absolute database path through the project keeper index."""
+    original_path = Path(original).expanduser().resolve()
+    _, lookup = _read_legacy_index(_legacy_index_path())
+    record = lookup.get(str(original_path))
     if record is not None:
-        if not isinstance(record, dict):
+        record_object = _json_object(record)
+        if record_object is None:
             raise ValueError(f"legacy database index record is invalid for {original_path}")
-        keeper_raw = record.get("keeper_path")
+        keeper_raw = record_object.get("keeper_path")
         keeper = Path(keeper_raw) if isinstance(keeper_raw, str) else None
-        if record.get("keeper_status") == "PASS" and keeper is not None:
+        if record_object.get("keeper_status") == "PASS" and keeper is not None:
             legacy_root = (project_database_directory() / "legacy").resolve()
             if not keeper.resolve().is_relative_to(legacy_root):
                 raise ValueError(f"legacy keeper escapes the project legacy directory: {keeper}")
@@ -74,20 +91,17 @@ def resolve_legacy_database(original: Path) -> Path:
 
 def _registered_legacy_record(original_path: Path) -> dict[str, object] | None:
     """The INDEX record for an archived path, or None when there is no index or no record."""
-    index_path = project_database_directory() / "legacy" / "INDEX.json"
     try:
-        index = json.loads(index_path.read_text(encoding="utf-8"))
+        _, lookup = _read_legacy_index(_legacy_index_path())
     except FileNotFoundError:
         return None
-    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
-        raise ValueError(f"legacy database index is unreadable or invalid: {index_path}") from exc
-    lookup = index.get("original_path_lookup") if isinstance(index, dict) else None
-    if not isinstance(lookup, dict):
-        raise ValueError(f"legacy database index has an invalid format: {index_path}")
     record = lookup.get(str(original_path))
-    if record is not None and not isinstance(record, dict):
+    if record is None:
+        return None
+    record_object = _json_object(record)
+    if record_object is None:
         raise ValueError(f"legacy database index record is invalid for {original_path}")
-    return record
+    return record_object
 
 
 def default_legacy_database_path(original: Path) -> Path:
@@ -116,34 +130,38 @@ def is_verified_legacy_keeper_for_source(
     keeper_path: Path, *, original_sha256: str, keeper_sha256: str
 ) -> bool:
     """Check that INDEX verifies this keeper for a frozen original-file hash."""
-    index_path = project_database_directory() / "legacy" / "INDEX.json"
+    index_path = _legacy_index_path()
     try:
-        index = json.loads(index_path.read_text(encoding="utf-8"))
-    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        index, lookup = _read_legacy_index(index_path)
+    except FileNotFoundError as exc:
         raise ValueError(f"legacy database index is unreadable or invalid: {index_path}") from exc
-    lookup = index.get("original_path_lookup") if isinstance(index, dict) else None
-    groups = index.get("groups") if isinstance(index, dict) else None
-    if not isinstance(lookup, dict) or not isinstance(groups, list):
+    groups = index.get("groups")
+    if not isinstance(groups, list):
         raise ValueError(f"legacy database index has an invalid format: {index_path}")
-    keeper_hashes = {
-        item.get("group_key"): item.get("keeper_sha256")
-        for item in groups
-        if isinstance(item, dict)
-    }
+    keeper_hashes: dict[object, object] = {}
+    for item in cast(list[object], groups):
+        group = _json_object(item)
+        if group is not None:
+            keeper_hashes[group.get("group_key")] = group.get("keeper_sha256")
 
     selected = keeper_path.resolve()
     legacy_root = (project_database_directory() / "legacy").resolve()
     if not selected.is_relative_to(legacy_root):
         return False
-    return any(
-        isinstance(record, dict)
-        and record.get("keeper_status") == "PASS"
-        and record.get("original_sha256") == original_sha256
-        and keeper_hashes.get(record.get("group_key")) == keeper_sha256
-        and isinstance(record.get("keeper_path"), str)
-        and Path(record["keeper_path"]).resolve() == selected
-        for record in lookup.values()
-    )
+    for record in lookup.values():
+        record_object = _json_object(record)
+        if record_object is None:
+            continue
+        keeper_raw = record_object.get("keeper_path")
+        if (
+            record_object.get("keeper_status") == "PASS"
+            and record_object.get("original_sha256") == original_sha256
+            and keeper_hashes.get(record_object.get("group_key")) == keeper_sha256
+            and isinstance(keeper_raw, str)
+            and Path(keeper_raw).resolve() == selected
+        ):
+            return True
+    return False
 
 
 def is_project_database_boundary(path: Path, git_ancestor: Path) -> bool:
@@ -169,12 +187,13 @@ def _configuration(environment: Mapping[str, str]) -> dict[str, object]:
     if any(p.is_symlink() for p in (path, *path.parents)):
         raise ValueError("database configuration must not contain symlinks")
     try:
-        payload: object = json.loads(path.read_text(encoding="utf-8"))
+        parsed: object = json.loads(path.read_text(encoding="utf-8"))
     except FileNotFoundError:
         if configured is None:
             return {}
         raise
-    if not isinstance(payload, dict) or payload.get("version") != 1:
+    payload = _json_object(parsed)
+    if payload is None or payload.get("version") != 1:
         raise ValueError("unsupported project database configuration")
     return payload
 
@@ -182,11 +201,11 @@ def _configuration(environment: Mapping[str, str]) -> dict[str, object]:
 def project_database_environment(environment: Mapping[str, str]) -> dict[str, str]:
     """Supply verified optional API locations; explicit environment values win."""
     result = dict(environment)
-    bindings = _configuration(environment).get("read_databases", {})
-    if not isinstance(bindings, dict):
+    bindings = _json_object(_configuration(environment).get("read_databases", {}))
+    if bindings is None:
         raise ValueError("read_databases must be an object")
     for key, relative in bindings.items():
-        if not isinstance(key, str) or not key.startswith("LOTTOLAB_") or not key.endswith("_DB"):
+        if not key.startswith("LOTTOLAB_") or not key.endswith("_DB"):
             raise ValueError("unsupported database environment key")
         if not isinstance(relative, str) or not relative:
             raise ValueError("database location must be a nonempty project-relative path")

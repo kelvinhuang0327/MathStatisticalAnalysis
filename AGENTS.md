@@ -39,6 +39,15 @@
   - 正式資料庫在 `data/`，不要寫進 `_scratch`。
 - 主 checkout 不得執行 `git clean -x` 或 `git clean -X`：會刪掉被 git 忽略的 `.task-data/` 與 `data/`。
 
+## 回測結果寫入
+
+- 回測結果的正式寫入目標只有一個：`data/databases/database-locations.json` 的 `writable_databases` 裡登記給 `LOTTOLAB_REPLAY_BACKFILL_DB` 的檔案。寫入前先讀這個檔確認；Packet 寫的目標和登記不同時，停下回報。
+- 還沒有登記可寫目標時（2026-11-04 現況：`writable_databases` 是空的），新結果只寫到 `.task-data/_scratch/<名稱>/` 底下的暫存 DB，收據寫明 `MERGE_PENDING` 和 DB 的絕對路徑，等資料庫整合 Planner 合併。
+- 以下位置不得當成最終寫入目標：任務資料夾裡的 DB、`data/replay/reference/`、`data/databases/legacy/`（keeper）、`data/databases/backups/`、尚未完成的封存，以及未登記的 `data/replay/active/`。
+- 不重跑已有結果。開跑前，用 cell 的唯一鍵（`lottery_type`、`strategy_id`、`strategy_version`、`execution_version`、`dataset_identity`、`target_draw_id`）查正式 DB 與待合併的暫存 DB：已完成的跳過，只算缺的。收據寫出「已存在跳過 N、新算 M」。
+- 待合併的暫存結果用匯入合併，不重新計算。
+- 同一個 DB 同時只能有一個寫入者。寫入前後記錄列數，寫入後從 App 或 API 的讀取路徑讀回。
+
 ## JSON 輸出
 
 - 要比較或雜湊會寫成 JSON 的資料時，先做一次 `json.loads(json.dumps(x))` 往返再比較：

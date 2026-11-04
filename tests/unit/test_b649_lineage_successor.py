@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import hashlib
+import os
+import stat
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import cast
@@ -10,6 +12,7 @@ from uuid import uuid4
 
 import pytest
 from tools import b649_production_cutover as cutover
+from tools import b649_protected_cutover as protected
 
 # pyright: reportPrivateUsage=false
 
@@ -18,6 +21,16 @@ NOW = datetime.now(UTC).replace(microsecond=0)
 
 def _sha(value: str) -> str:
     return hashlib.sha256(value.encode()).hexdigest()
+
+
+def _write_sealed_json(path: Path, value: dict[str, object]) -> tuple[bytes, str, str]:
+    unsigned = dict(value)
+    record_sha256 = protected.digest(unsigned)
+    raw = (protected.canonical({**unsigned, "record_sha256": record_sha256}) + "\n").encode()
+    path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    path.write_bytes(raw)
+    path.chmod(0o600)
+    return raw, hashlib.sha256(raw).hexdigest(), record_sha256
 
 
 def _target(path: Path, head: str, tree: str) -> dict[str, str]:
@@ -81,6 +94,7 @@ def _successor_record(tmp_path: Path, *, phase: str = "PREPARED") -> dict[str, o
             "source_path": str(owner_path),
             "archive_path": str(tmp_path / "scheduler" / f"owner.{owner_sha}.archive.json"),
             "source_sha256": owner_sha,
+            "source_record_sha256": _sha("owner seal"),
             "archive_sha256": owner_sha,
             "readback_status": "VERIFIED",
             "source_state": "PRESENT",
@@ -92,6 +106,7 @@ def _successor_record(tmp_path: Path, *, phase: str = "PREPARED") -> dict[str, o
                 tmp_path / "scheduler" / f"retirement.{retirement_sha}.archive.json"
             ),
             "source_sha256": retirement_sha,
+            "source_record_sha256": _sha("retirement seal"),
             "archive_sha256": retirement_sha,
             "readback_status": "VERIFIED",
             "source_state": "PRESENT",
@@ -180,15 +195,22 @@ def _successor_record(tmp_path: Path, *, phase: str = "PREPARED") -> dict[str, o
         }
         evidence["released_owner"] = released_owner
         archives[0]["source_state"] = "CHANGED"
+        if phase in {"AUTHORIZED_PENDING", "APPLY_STARTED", "RELEASED_SUCCESS"}:
+            archives[1]["source_state"] = "ABSENT"
         archives.append(
             {
                 "kind": "released_owner",
                 "source_path": str(owner_path),
                 "archive_path": str(tmp_path / "scheduler" / "released-owner.archive.json"),
                 "source_sha256": cast(str, released_owner["bytes_sha256"]),
+                "source_record_sha256": cast(str, released_owner["record_sha256"]),
                 "archive_sha256": cast(str, released_owner["bytes_sha256"]),
                 "readback_status": "VERIFIED",
-                "source_state": "PRESENT",
+                "source_state": (
+                    "CHANGED"
+                    if phase in {"AUTHORIZED_PENDING", "APPLY_STARTED", "RELEASED_SUCCESS"}
+                    else "PRESENT"
+                ),
             }
         )
         evidence["record_sha256"] = cutover._sha256_json(
@@ -423,3 +445,239 @@ def test_production_predecessor_validator_accepts_only_the_new_sealed_variant(
     wrong_owner = {**new_owner, "target": _target(tmp_path / "wrong", "c" * 40, "d" * 40)}
     with pytest.raises(cutover.CutoverSafetyError):
         cutover._validate_predecessor_release_evidence(proof, wrong_owner)
+
+
+def test_lineage_archive_copies_exact_bytes_and_allows_only_exact_retry(tmp_path: Path) -> None:
+    scheduler_root = tmp_path / "scheduler"
+    scheduler_root.mkdir(mode=0o700)
+    source = scheduler_root / "owner.json"
+    raw, source_sha, record_sha = _write_sealed_json(
+        source, {"schema": "fixture-owner-v1", "reservation_id": str(uuid4())}
+    )
+    transition_id = str(uuid4())
+
+    first = protected.archive_lineage_successor_source(
+        scheduler_root, transition_id, "pending_owner", source, source_sha, record_sha
+    )
+    second = protected.archive_lineage_successor_source(
+        scheduler_root, transition_id, "pending_owner", source, source_sha, record_sha
+    )
+
+    assert first == second
+    assert first["source_sha256"] == first["archive_sha256"] == source_sha
+    assert first["source_record_sha256"] == record_sha
+    assert first["readback_status"] == "VERIFIED"
+    assert first["source_state"] == "PRESENT"
+    assert source.read_bytes() == raw
+    archive_path = Path(cast(str, first["archive_path"]))
+    assert archive_path.read_bytes() == raw
+    assert stat.S_IMODE(archive_path.stat().st_mode) == 0o600
+    assert stat.S_IMODE(archive_path.parent.stat().st_mode) == 0o700
+    assert stat.S_IMODE(archive_path.parent.parent.stat().st_mode) == 0o700
+
+
+def test_lineage_archive_refuses_conflicting_hash_qualified_archive(tmp_path: Path) -> None:
+    scheduler_root = tmp_path / "scheduler"
+    scheduler_root.mkdir(mode=0o700)
+    source = scheduler_root / "owner.json"
+    _, source_sha, record_sha = _write_sealed_json(source, {"schema": "fixture-owner-v1"})
+    transition_id = str(uuid4())
+    archive_parent = scheduler_root / "b649-lineage-successor-archives" / transition_id
+    archive_parent.mkdir(mode=0o700, parents=True)
+    archive_parent.parent.chmod(0o700)
+    archive_parent.chmod(0o700)
+    conflict = archive_parent / f"pending_owner.{source_sha}.{transition_id}.json"
+    conflict.write_bytes(b"conflicting bytes")
+    conflict.chmod(0o600)
+
+    with pytest.raises(protected.ProtectedError, match="conflicting bytes"):
+        protected.archive_lineage_successor_source(
+            scheduler_root, transition_id, "pending_owner", source, source_sha, record_sha
+        )
+
+
+def test_lineage_archive_refuses_source_drift_since_prepare(tmp_path: Path) -> None:
+    scheduler_root = tmp_path / "scheduler"
+    scheduler_root.mkdir(mode=0o700)
+    source = scheduler_root / "retirement.json"
+    raw, source_sha, record_sha = _write_sealed_json(
+        source, {"schema": "fixture-retirement-v1"}
+    )
+    source.write_bytes(raw + b"changed")
+    source.chmod(0o600)
+
+    with pytest.raises(protected.ProtectedError, match="source is missing or noncanonical"):
+        protected.archive_lineage_successor_source(
+            scheduler_root, str(uuid4()), "retirement", source, source_sha, record_sha
+        )
+
+
+def test_lineage_archive_refuses_path_outside_scheduler_root(tmp_path: Path) -> None:
+    scheduler_root = tmp_path / "scheduler"
+    scheduler_root.mkdir(mode=0o700)
+    source = tmp_path / "outside.json"
+    _, source_sha, record_sha = _write_sealed_json(source, {"schema": "fixture-owner-v1"})
+
+    with pytest.raises(protected.ProtectedError, match="noncanonical"):
+        protected.archive_lineage_successor_source(
+            scheduler_root, str(uuid4()), "pending_owner", source, source_sha, record_sha
+        )
+
+
+def test_lineage_archive_refuses_symlink_parent(tmp_path: Path) -> None:
+    scheduler_root = tmp_path / "scheduler"
+    scheduler_root.mkdir(mode=0o700)
+    outside = tmp_path / "outside"
+    outside.mkdir(mode=0o700)
+    source = outside / "owner.json"
+    _, source_sha, record_sha = _write_sealed_json(source, {"schema": "fixture-owner-v1"})
+    (scheduler_root / "linked").symlink_to(outside, target_is_directory=True)
+
+    with pytest.raises(protected.ProtectedError, match="noncanonical"):
+        protected.archive_lineage_successor_source(
+            scheduler_root,
+            str(uuid4()),
+            "pending_owner",
+            scheduler_root / "linked" / "owner.json",
+            source_sha,
+            record_sha,
+        )
+
+
+def test_lineage_archive_refuses_unsealed_source_and_unsafe_mode(tmp_path: Path) -> None:
+    scheduler_root = tmp_path / "scheduler"
+    scheduler_root.mkdir(mode=0o700)
+    source = scheduler_root / "owner.json"
+    raw, source_sha, record_sha = _write_sealed_json(source, {"schema": "fixture-owner-v1"})
+    corrupt = raw.replace(record_sha.encode(), b"0" * 64)
+    source.write_bytes(corrupt)
+    source.chmod(0o600)
+    with pytest.raises(protected.ProtectedError, match="record seal is invalid"):
+        protected.archive_lineage_successor_source(
+            scheduler_root,
+            str(uuid4()),
+            "pending_owner",
+            source,
+            hashlib.sha256(corrupt).hexdigest(),
+            record_sha,
+        )
+
+    source.write_bytes(raw)
+    source.chmod(0o644)
+    with pytest.raises(cutover.CutoverSafetyError):
+        protected.archive_lineage_successor_source(
+            scheduler_root, str(uuid4()), "pending_owner", source, source_sha, record_sha
+        )
+
+
+def _retirement_restore_fixture(
+    tmp_path: Path,
+) -> tuple[dict[str, object], Path, Path, bytes, str, str]:
+    evidence = _successor_record(tmp_path, phase="AUTHORIZED_PENDING")
+    retirement = cast(dict[str, object], evidence["retirement"])
+    archives = cast(list[dict[str, object]], evidence["archives"])
+    source = Path(cast(str, retirement["path"]))
+    unsigned: dict[str, object] = {
+        "schema": cutover.FAILED_TERMINAL_RETIREMENT_V2_SCHEMA,
+        "fixture": "restore",
+    }
+    raw, source_sha, record_sha = _write_sealed_json(source, unsigned)
+    archive = archives[1]
+    archive_path = Path(cast(str, archive["archive_path"]))
+    archive_path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    archive_path.write_bytes(raw)
+    archive_path.chmod(0o600)
+    source.unlink()
+    retirement["bytes_sha256"] = source_sha
+    retirement["record_sha256"] = record_sha
+    archive["source_sha256"] = source_sha
+    archive["source_record_sha256"] = record_sha
+    archive["archive_sha256"] = source_sha
+    archive["source_state"] = "ABSENT"
+    archive["archive_path"] = str(
+        archive_path.parent / f"retirement.{source_sha}.{evidence['transition_id']}.json"
+    )
+    Path(archive["archive_path"]).write_bytes(raw)
+    Path(archive["archive_path"]).chmod(0o600)
+    archive_path.unlink()
+    _reseal(evidence)
+    return evidence, source.parent, source, raw, source_sha, record_sha
+
+
+def _accept_test_signature(signer: str, digest: str, signature: str) -> bool:
+    return signer == "test-owner" and bool(digest) and signature == "test-signature"
+
+
+def test_lineage_restore_restores_only_verified_bytes_to_an_absent_path(tmp_path: Path) -> None:
+    evidence, scheduler_root, destination, raw, source_sha, record_sha = (
+        _retirement_restore_fixture(tmp_path)
+    )
+
+    result = protected.restore_lineage_successor_archive(
+        scheduler_root,
+        evidence,
+        "retirement",
+        destination,
+        expected_signer="test-owner",
+        approval_verifier=_accept_test_signature,
+        now_value=NOW,
+    )
+
+    assert result["status"] == "RESTORED"
+    assert result["sha256"] == source_sha
+    assert result["record_sha256"] == record_sha
+    assert destination.read_bytes() == raw
+    assert stat.S_IMODE(destination.stat().st_mode) == 0o600
+
+
+def test_lineage_restore_refuses_existing_destination_without_overwrite(tmp_path: Path) -> None:
+    evidence, scheduler_root, destination, raw, _, _ = _retirement_restore_fixture(tmp_path)
+    destination.write_bytes(b"preserve existing")
+    destination.chmod(0o600)
+
+    with pytest.raises(protected.ProtectedError, match="canonical-path reconciliation failed"):
+        protected.restore_lineage_successor_archive(
+            scheduler_root,
+            evidence,
+            "retirement",
+            destination,
+            expected_signer="test-owner",
+            approval_verifier=_accept_test_signature,
+            now_value=NOW,
+        )
+    assert destination.read_bytes() == b"preserve existing"
+    assert raw != destination.read_bytes()
+
+
+def test_lineage_restore_refuses_archive_tamper_and_bad_signature(tmp_path: Path) -> None:
+    evidence, scheduler_root, destination, _, _, _ = _retirement_restore_fixture(tmp_path)
+    archive = cast(dict[str, object], cast(list[object], evidence["archives"])[1])
+    archive_path = Path(cast(str, archive["archive_path"]))
+    original = archive_path.read_bytes()
+    archive_path.write_bytes(original + b"tamper")
+    archive_path.chmod(0o600)
+    with pytest.raises(protected.ProtectedError, match="archive readback"):
+        protected.restore_lineage_successor_archive(
+            scheduler_root,
+            evidence,
+            "retirement",
+            destination,
+            expected_signer="test-owner",
+            approval_verifier=_accept_test_signature,
+            now_value=NOW,
+        )
+    assert not os.path.lexists(destination)
+
+    archive_path.write_bytes(original)
+    archive_path.chmod(0o600)
+    with pytest.raises(protected.ProtectedError, match="differs from prepared"):
+        protected.restore_lineage_successor_archive(
+            scheduler_root,
+            evidence,
+            "retirement",
+            destination,
+            expected_signer="test-owner",
+            approval_verifier=lambda _signer, _digest, _signature: False,
+            now_value=NOW,
+        )
+    assert not os.path.lexists(destination)

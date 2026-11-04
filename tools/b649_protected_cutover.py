@@ -1306,6 +1306,204 @@ class ReceiptFile:
             os.close(directory)
 
 
+def _require_lineage_scheduler_child(path: Path, scheduler_root: Path) -> Path:
+    """Require a normalized path below a real scheduler directory, without symlinks."""
+    if not path.is_absolute() or os.path.normpath(str(path)) != str(path):
+        raise ProtectedError("lineage successor preparation source is missing or noncanonical")
+    try:
+        root_metadata = os.lstat(scheduler_root)
+        resolved_root = scheduler_root.resolve(strict=True)
+        relative_parent = path.parent.relative_to(scheduler_root)
+    except (OSError, ValueError) as exc:
+        raise ProtectedError(
+            "lineage successor preparation source is missing or noncanonical"
+        ) from exc
+    if (
+        stat.S_ISLNK(root_metadata.st_mode)
+        or not stat.S_ISDIR(root_metadata.st_mode)
+        or resolved_root != scheduler_root
+    ):
+        raise ProtectedError("lineage successor preparation source is missing or noncanonical")
+    current = scheduler_root
+    for component in relative_parent.parts:
+        current = current / component
+        try:
+            metadata = os.lstat(current)
+        except OSError as exc:
+            raise ProtectedError(
+                "lineage successor preparation source is missing or noncanonical"
+            ) from exc
+        if stat.S_ISLNK(metadata.st_mode) or not stat.S_ISDIR(metadata.st_mode):
+            raise ProtectedError("lineage successor preparation source is missing or noncanonical")
+    return path
+
+
+def _verified_lineage_record_seal(raw: bytes, path: Path) -> str:
+    try:
+        value = record(json.loads(raw.decode("utf-8")))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ProtectedError(f"lineage archive record is invalid: {path}") from exc
+    record_seal = text(value.get("record_sha256"))
+    unsigned = {key: item for key, item in value.items() if key != "record_sha256"}
+    if re.fullmatch(r"[0-9a-f]{64}", record_seal) is None or digest(unsigned) != record_seal:
+        raise ProtectedError(f"lineage archive record seal is invalid: {path}")
+    return record_seal
+
+
+def archive_lineage_successor_source(
+    scheduler_root: Path,
+    transition_id: str,
+    kind: str,
+    source_path: Path,
+    expected_sha256: str,
+    expected_record_sha256: str,
+) -> Record:
+    """Copy one exact owner/retirement record into an immutable private archive."""
+    if kind not in {"pending_owner", "retirement", "released_owner"}:
+        raise ProtectedError("lineage successor archive kind is unsupported")
+    try:
+        if str(UUID(transition_id)) != transition_id:
+            raise ValueError
+    except ValueError as exc:
+        raise ProtectedError(
+            "lineage successor preparation source is missing or noncanonical"
+        ) from exc
+    source = _require_lineage_scheduler_child(source_path, scheduler_root)
+    identity, source_bytes = cutover._file_identity(  # pyright: ignore[reportPrivateUsage]
+        source, missing_ok=False, require_mode=0o600
+    )
+    if identity is None or source_bytes is None or identity.sha256 != expected_sha256:
+        raise ProtectedError("lineage successor preparation source is missing or noncanonical")
+    if _verified_lineage_record_seal(source_bytes, source) != expected_record_sha256:
+        raise ProtectedError("lineage successor preparation source is missing or noncanonical")
+
+    archive_root = scheduler_root / "b649-lineage-successor-archives"
+    cutover._ensure_private_directory(archive_root)  # pyright: ignore[reportPrivateUsage]
+    transition_root = archive_root / transition_id
+    cutover._ensure_private_directory(transition_root)  # pyright: ignore[reportPrivateUsage]
+    destination = transition_root / f"{kind}.{expected_sha256}.{transition_id}.json"
+    _require_lineage_scheduler_child(destination, scheduler_root)
+    try:
+        existing_identity, existing_bytes = cutover._file_identity(  # pyright: ignore[reportPrivateUsage]
+            destination, missing_ok=True, require_mode=0o600
+        )
+    except cutover.CutoverSafetyError as exc:
+        raise ProtectedError("superseded archive exists with conflicting bytes") from exc
+    if existing_identity is None:
+        cutover._atomic_write(  # pyright: ignore[reportPrivateUsage]
+            destination, source_bytes, expected=None
+        )
+    elif existing_identity.sha256 != expected_sha256 or existing_bytes != source_bytes:
+        raise ProtectedError("superseded archive exists with conflicting bytes")
+
+    archive_identity, archive_bytes = cutover._file_identity(  # pyright: ignore[reportPrivateUsage]
+        destination, missing_ok=False, require_mode=0o600
+    )
+    source_after, source_after_bytes = cutover._file_identity(  # pyright: ignore[reportPrivateUsage]
+        source, missing_ok=False, require_mode=0o600
+    )
+    if (
+        archive_identity is None
+        or archive_bytes != source_bytes
+        or archive_identity.sha256 != expected_sha256
+        or source_after is None
+        or source_after.key() != identity.key()
+        or source_after_bytes != source_bytes
+    ):
+        raise ProtectedError("lineage successor preparation source is missing or noncanonical")
+    return {
+        "kind": kind,
+        "source_path": str(source),
+        "archive_path": str(destination),
+        "source_sha256": identity.sha256,
+        "source_record_sha256": expected_record_sha256,
+        "archive_sha256": archive_identity.sha256,
+        "readback_status": "VERIFIED",
+        "source_state": "PRESENT",
+    }
+
+
+def restore_lineage_successor_archive(
+    scheduler_root: Path,
+    evidence: Record,
+    kind: str,
+    destination_path: Path,
+    *,
+    expected_signer: str,
+    approval_verifier: Callable[[str, str, str], bool],
+    now_value: datetime | None = None,
+) -> Record:
+    """Restore one verified archived record only when its canonical path is absent."""
+    try:
+        transition = cutover._validate_lineage_successor_transition(  # pyright: ignore[reportPrivateUsage]
+            evidence,
+            now=now_value,
+            expected_signer=expected_signer,
+            approval_verifier=approval_verifier,
+            verify_signature=True,
+        )
+    except cutover.CutoverSafetyError as exc:
+        raise ProtectedError(str(exc)) from exc
+    archive_values = transition.get("archives")
+    if not isinstance(archive_values, list):
+        raise ProtectedError("retirement archive readback/canonical-path reconciliation failed")
+    archive = next(
+        (
+            record(cast(dict[str, object], item))
+            for item in cast(list[object], archive_values)
+            if isinstance(item, dict) and cast(dict[str, object], item).get("kind") == kind
+        ),
+        None,
+    )
+    if (
+        archive is None
+        or archive.get("source_state") != "ABSENT"
+        or archive.get("source_path") != str(destination_path)
+    ):
+        raise ProtectedError("retirement archive readback/canonical-path reconciliation failed")
+    source = _require_lineage_scheduler_child(
+        Path(text(archive.get("archive_path"))), scheduler_root
+    )
+    destination = _require_lineage_scheduler_child(destination_path, scheduler_root)
+    if os.path.lexists(destination):
+        raise ProtectedError("retirement archive readback/canonical-path reconciliation failed")
+    archive_identity, archive_bytes = cutover._file_identity(  # pyright: ignore[reportPrivateUsage]
+        source, missing_ok=False, require_mode=0o600
+    )
+    if (
+        archive_identity is None
+        or archive_bytes is None
+        or archive_identity.sha256 != archive.get("archive_sha256")
+        or archive_identity.sha256 != archive.get("source_sha256")
+        or _verified_lineage_record_seal(archive_bytes, source)
+        != archive.get("source_record_sha256")
+    ):
+        raise ProtectedError("retirement archive readback/canonical-path reconciliation failed")
+    cutover._atomic_write(  # pyright: ignore[reportPrivateUsage]
+        destination, archive_bytes, expected=None
+    )
+    restored_identity, restored_bytes = cutover._file_identity(  # pyright: ignore[reportPrivateUsage]
+        destination, missing_ok=False, require_mode=0o600
+    )
+    if (
+        restored_identity is None
+        or restored_bytes is None
+        or restored_identity.sha256 != archive_identity.sha256
+        or restored_bytes != archive_bytes
+        or _verified_lineage_record_seal(restored_bytes, destination)
+        != archive.get("source_record_sha256")
+    ):
+        raise ProtectedError("retirement archive readback/canonical-path reconciliation failed")
+    return {
+        "status": "RESTORED",
+        "kind": kind,
+        "source_path": str(source),
+        "restored_path": str(destination),
+        "sha256": restored_identity.sha256,
+        "record_sha256": archive.get("source_record_sha256"),
+    }
+
+
 def _lifecycle_path(config: cutover.CutoverConfig) -> Path:
     return config.scheduler_root / LIFECYCLE_RECEIPT_NAME
 

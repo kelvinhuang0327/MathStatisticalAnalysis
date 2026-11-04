@@ -2044,6 +2044,7 @@ def _validate_lineage_successor_transition(
             "source_path",
             "archive_path",
             "source_sha256",
+            "source_record_sha256",
             "archive_sha256",
             "readback_status",
             "source_state",
@@ -2057,12 +2058,39 @@ def _validate_lineage_successor_transition(
         _lineage_path(archive.get("archive_path"), "lineage archive path")
         if (
             re.fullmatch(r"[0-9a-f]{64}", str(archive.get("source_sha256"))) is None
+            or re.fullmatch(r"[0-9a-f]{64}", str(archive.get("source_record_sha256"))) is None
             or archive.get("archive_sha256") != archive.get("source_sha256")
             or archive.get("readback_status") != "VERIFIED"
             or archive.get("source_state") not in {"PRESENT", "ABSENT", "CHANGED"}
         ):
             raise CutoverSafetyError("lineage successor evidence schema or seal is invalid")
     if not {"pending_owner", "retirement"}.issubset(archive_kinds):
+        raise CutoverSafetyError("lineage successor evidence schema or seal is invalid")
+
+    archive_by_kind = {
+        cast(str, archive.get("kind")): archive
+        for archive in cast(list[Record], archives_value)
+    }
+    owner_archive = archive_by_kind["pending_owner"]
+    retirement_archive = archive_by_kind["retirement"]
+    if (
+        owner_archive.get("source_path") != pending.get("path")
+        or owner_archive.get("source_sha256") != pending.get("bytes_sha256")
+        or owner_archive.get("source_record_sha256") != pending.get("record_sha256")
+        or retirement_archive.get("source_path") != retirement.get("path")
+        or retirement_archive.get("source_sha256") != retirement.get("bytes_sha256")
+        or retirement_archive.get("source_record_sha256") != retirement.get("record_sha256")
+    ):
+        raise CutoverSafetyError("lineage successor evidence schema or seal is invalid")
+    if evidence.get("phase") == "PREPARED" and (
+        owner_archive.get("source_state") != "PRESENT"
+        or retirement_archive.get("source_state") != "PRESENT"
+    ):
+        raise CutoverSafetyError("lineage successor evidence schema or seal is invalid")
+    if evidence.get("phase") == "OLD_OWNER_RELEASED" and (
+        owner_archive.get("source_state") != "CHANGED"
+        or retirement_archive.get("source_state") != "PRESENT"
+    ):
         raise CutoverSafetyError("lineage successor evidence schema or seal is invalid")
 
     released = evidence.get("released_owner")
@@ -2100,6 +2128,28 @@ def _validate_lineage_successor_transition(
         ):
             raise CutoverSafetyError("lineage successor evidence schema or seal is invalid")
         if "released_owner" not in archive_kinds:
+            raise CutoverSafetyError("lineage successor evidence schema or seal is invalid")
+        released_archive = archive_by_kind["released_owner"]
+        if (
+            released_archive.get("source_path") != released_record.get("path")
+            or released_archive.get("source_sha256") != released_record.get("bytes_sha256")
+            or released_archive.get("source_record_sha256")
+            != released_record.get("record_sha256")
+            or (
+                evidence.get("phase") == "OLD_OWNER_RELEASED"
+                and released_archive.get("source_state") != "PRESENT"
+            )
+            or (
+                evidence.get("phase")
+                in {"AUTHORIZED_PENDING", "APPLY_STARTED", "RELEASED_SUCCESS"}
+                and released_archive.get("source_state") != "CHANGED"
+            )
+            or (
+                evidence.get("phase")
+                in {"AUTHORIZED_PENDING", "APPLY_STARTED", "RELEASED_SUCCESS"}
+                and retirement_archive.get("source_state") != "ABSENT"
+            )
+        ):
             raise CutoverSafetyError("lineage successor evidence schema or seal is invalid")
 
     approval = _record(evidence.get("owner_approval"), "lineage successor Owner approval")

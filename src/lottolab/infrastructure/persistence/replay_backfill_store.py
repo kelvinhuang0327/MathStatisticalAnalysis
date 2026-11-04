@@ -23,6 +23,7 @@ from lottolab.infrastructure.persistence.draw_schema import (
 )
 from lottolab.infrastructure.persistence.project_database_paths import (
     is_project_database_boundary,
+    is_project_scratch_database_boundary,
     require_project_database_write_ready,
 )
 
@@ -277,8 +278,11 @@ def validate_database_path(database: Path) -> Path:
     if any(p.is_symlink() for p in (database, *database.parents)):
         raise ValueError("database path must not contain symlinks")
     for parent in database.parents:
-        if (parent / ".git").exists() and not is_project_database_boundary(database, parent):
-            raise ValueError("database must be outside a Git checkout")
+        if (parent / ".git").exists() and not (
+            is_project_database_boundary(database, parent)
+            or is_project_scratch_database_boundary(database, parent)
+        ):
+            raise ValueError("database must be outside a Git checkout or inside project scratch")
     if database.exists():
         info = database.stat()
         if not stat.S_ISREG(info.st_mode) or info.st_nlink != 1 or info.st_uid != os.getuid():
@@ -360,6 +364,13 @@ class SQLiteBackfillStore:
                 yield connection
         finally:
             connection.close()
+
+    @contextmanager
+    def write_transaction(self) -> Generator[sqlite3.Connection]:
+        """Open a guarded, immediate write transaction for bulk store operations."""
+        with self._connect(write=True) as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            yield connection
 
     @staticmethod
     def _verify(connection: sqlite3.Connection) -> None:
@@ -489,6 +500,43 @@ class SQLiteBackfillStore:
                     batch,
                 ):
                     found[cell_id] = json.loads(payload)
+        return found
+
+    def lookup_many_by_unique_keys(
+        self,
+        keys: tuple[tuple[str, str, str, str, str, str], ...],
+    ) -> dict[tuple[str, str, str, str, str, str], JsonObject]:
+        """Find cells by the database's six-column natural key."""
+        if not keys:
+            return {}
+        columns = (
+            "lottery_type",
+            "strategy_id",
+            "strategy_version",
+            "execution_version",
+            "dataset_identity",
+            "target_draw_id",
+        )
+        found: dict[tuple[str, str, str, str, str, str], JsonObject] = {}
+        with self._connect() as connection:
+            for offset in range(0, len(keys), 100):
+                batch = keys[offset : offset + 100]
+                predicate = " OR ".join(
+                    "(" + " AND ".join(f'"{column}"=?' for column in columns) + ")"
+                    for _ in batch
+                )
+                parameters = tuple(value for key in batch for value in key)
+                rows = connection.execute(
+                    f"SELECT {','.join(columns)},payload_json FROM replay_backfill_cells "
+                    f"WHERE {predicate}",
+                    parameters,
+                )
+                for row in rows:
+                    key = cast(
+                        tuple[str, str, str, str, str, str],
+                        tuple(row[:6]),
+                    )
+                    found[key] = json.loads(row[6])
         return found
 
     def save(self, run_id: str, result: JsonObject, *, attempted: bool = True) -> None:

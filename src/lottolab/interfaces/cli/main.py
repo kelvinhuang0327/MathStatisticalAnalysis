@@ -216,6 +216,7 @@ from lottolab.interfaces.cli.pre_outcome_target import (
 from lottolab.interfaces.cli.replay_backed_batch import (
     materialize_exact_replay_batch_command,
 )
+from lottolab.interfaces.cli.replay_backfill import main as _replay_backfill_main
 from lottolab.interfaces.cli.replay_predictions import replay_predictions_command
 from lottolab.interfaces.cli.research_backtest_runner import (
     run_biglotto_research_backtest_command,
@@ -241,6 +242,17 @@ app.command("t539-p638-schedule-certificate")(t539_p638_schedule_certificate_com
 app.command("b649-canonical-schedule-authority-sync")(
     b649_canonical_schedule_authority_sync_command
 )
+
+
+@app.command(
+    "replay-backfill",
+    context_settings={"allow_extra_args": True, "ignore_unknown_options": True},
+)
+def replay_backfill_command(context: typer.Context) -> None:
+    """Run the offline, resumable replay backfill worker."""
+    raise typer.Exit(code=_replay_backfill_main(context.args))
+
+
 app.command("research-store")(research_store_command)
 app.command("run-biglotto-research-backtest")(run_biglotto_research_backtest_command)
 app.command("import-biglotto-legacy-reference")(import_biglotto_legacy_reference_command)

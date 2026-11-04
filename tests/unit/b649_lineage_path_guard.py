@@ -1,4 +1,4 @@
-"""Block test filesystem operations against production B649 state."""
+"""Path guards shared only by the two lineage successor test modules."""
 
 from __future__ import annotations
 
@@ -8,14 +8,19 @@ import os
 from pathlib import Path
 from typing import Any
 
-import pytest
+from tools import b649_production_cutover as cutover
 
-_FORBIDDEN_ROOTS = (
-    Path("/Users/kelvin/VibeCoding-WorkSpace/.task-data/B649_OPERATIONAL_PREDICTION_LOOP_R1/scheduler"),
-    Path("/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_PRODUCTION_56c9715ca60bb9af3afe3b5faae83b0dc0471d8f"),
-    Path("/Users/kelvin/Library/LaunchAgents"),
-    Path("/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/data/databases"),
+FORBIDDEN_ROOTS = (
+    cutover.scheduler.SCHEDULER_ROOT,
+    cutover.CONTROL_ROOT.parent / f"B649_PRODUCTION_{cutover.V5_SOURCE_HEAD}",
+    cutover.DEFAULT_PLIST_PATH.parent,
+    cutover.CONTROL_ROOT.parents[2] / "MathStatisticalAnalysis" / "data/databases",
 )
+
+
+def forbidden_path_probes() -> tuple[Path, ...]:
+    """Return one non-existent child path under each protected root."""
+    return tuple(root / "lineage-path-guard-probe" for root in FORBIDDEN_ROOTS)
 
 
 def _candidate_path(value: object) -> str | None:
@@ -32,16 +37,14 @@ def _guard_path(value: object) -> None:
     selected = _candidate_path(value)
     if selected is None:
         return
-    for root in _FORBIDDEN_ROOTS:
-        root_value = str(root)
+    for root in FORBIDDEN_ROOTS:
+        root_value = os.path.abspath(os.path.normpath(str(root)))
         if selected == root_value or selected.startswith(root_value + os.sep):
             raise RuntimeError(f"test attempted forbidden production-path access: {selected}")
 
 
-@pytest.fixture(autouse=True)
-def refuse_production_path_io(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Reject production path resolution, reads, writes, and metadata checks."""
-
+def install_path_guard(monkeypatch: Any) -> None:
+    """Guard common Python filesystem APIs in a lineage test module only."""
     original_resolve = Path.resolve
 
     def guarded_resolve(self: Path, strict: bool = False) -> Path:

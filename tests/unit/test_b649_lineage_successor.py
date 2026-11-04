@@ -17,6 +17,7 @@ from typing import cast
 from uuid import uuid4
 
 import pytest
+from b649_lineage_path_guard import forbidden_path_probes, install_path_guard
 from tools import b649_production_cutover as cutover
 from tools import b649_protected_cutover as protected
 
@@ -27,22 +28,16 @@ NOW = datetime.now(UTC).replace(microsecond=0)
 
 @pytest.mark.parametrize(
     "protected_path",
-    [
-        Path(
-            "/Users/kelvin/VibeCoding-WorkSpace/.task-data/"
-            "B649_OPERATIONAL_PREDICTION_LOOP_R1/scheduler/b649-control-owner-reservation.json"
-        ),
-        Path(
-            "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/"
-            "B649_PRODUCTION_56c9715ca60bb9af3afe3b5faae83b0dc0471d8f/tools/example.py"
-        ),
-        Path("/Users/kelvin/Library/LaunchAgents/com.lottolab.b649-goalc-r1.plist"),
-        Path("/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/data/databases/example.db"),
-    ],
+    forbidden_path_probes(),
 )
 def test_production_path_guard_rejects_resolution(protected_path: Path) -> None:
     with pytest.raises(RuntimeError, match="forbidden production-path access"):
         protected_path.resolve(strict=False)
+
+
+@pytest.fixture(autouse=True)
+def isolate_lineage_successor_test_paths(monkeypatch: pytest.MonkeyPatch) -> None:
+    install_path_guard(monkeypatch)
 
 
 def _sha(value: str) -> str:

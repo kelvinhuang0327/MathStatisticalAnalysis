@@ -2,7 +2,14 @@
 
 from __future__ import annotations
 
+import pytest
+from b649_lineage_path_guard import install_path_guard
 from tools import b649_protected_cutover as protected
+
+
+@pytest.fixture(autouse=True)
+def isolate_lineage_successor_cli_paths(monkeypatch: pytest.MonkeyPatch) -> None:
+    install_path_guard(monkeypatch)
 
 
 def _plan_args(action: str) -> list[str]:

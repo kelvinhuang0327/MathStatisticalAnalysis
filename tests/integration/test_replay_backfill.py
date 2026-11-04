@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import sqlite3
+import subprocess
 from dataclasses import replace
 from datetime import date, timedelta
 from pathlib import Path
@@ -14,6 +15,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from typer.testing import CliRunner
 
+import lottolab.infrastructure.persistence.project_database_paths as project_database_paths
 from lottolab.application.historical_replay_adapters import (
     BigLottoReplayAdapter,
     ReplayStrategyBinding,
@@ -66,6 +68,48 @@ class Producer:
         if self.fail:
             raise RuntimeError("intentional isolated strategy failure")
         return ((1, 2, 3, 4, 5, 6), (1, 2, 3, 4, 5, 7))
+
+
+@pytest.fixture(autouse=True)
+def isolate_project_database_registry(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Keep CLI registry resolution inside a disposable fake canonical project."""
+    project_root = tmp_path / "canonical-project"
+    database_directory = project_root / "data" / "databases"
+    database_directory.mkdir(parents=True)
+    (project_root / ".task-data" / "_scratch").mkdir(parents=True)
+    (project_root / ".gitignore").write_text("/.task-data/_scratch/\n", encoding="utf-8")
+    subprocess.run(
+        ["git", "init", "--quiet", str(project_root)],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    fake_database = database_directory / "replay-backfill.sqlite3"
+    _create_empty_backfill_database(fake_database)
+    (database_directory / "database-locations.json").write_text(
+        json.dumps(
+            {
+                "version": 1,
+                "read_databases": {
+                    "LOTTOLAB_REPLAY_BACKFILL_DB": "replay-backfill.sqlite3"
+                },
+                "writable_databases": [],
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(project_database_paths, "PROJECT_ROOT", project_root)
+    assert canonical_project_root() == project_root
+
+
+@pytest.fixture
+def test_only_external_database_root(tmp_path: Path) -> Path:
+    """Give CLI test injection a named root without depending on pytest's temp name."""
+    root = tmp_path / "msa-pytest.replay-backfill"
+    root.mkdir()
+    return root
 
 
 def worker(
@@ -551,7 +595,9 @@ def test_cli_default_target_respects_writable_registry(
 
 
 def test_cli_full_source_worker_storage_chain(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    tmp_path: Path,
+    test_only_external_database_root: Path,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     paths = resolve_local_data_paths(environ={"LOTTOLAB_DATA_DIR": str(tmp_path / "draw-source")})
     document = parse_draw_csv(
@@ -566,7 +612,7 @@ def test_cli_full_source_worker_storage_chain(
     assert document.is_valid
     SQLiteDrawDataRepository(paths).apply_valid_import(document)
     source_digest = hashlib.sha256(paths.database.read_bytes()).hexdigest()
-    output = tmp_path / "cli-results.sqlite3"
+    output = test_only_external_database_root / "cli-results.sqlite3"
     args = [
         "--lottery-type",
         "BIG_LOTTO",
@@ -582,11 +628,12 @@ def test_cli_full_source_worker_storage_chain(
         "2",
     ]
     assert main(
-        [*args, "--max-cells", "2"], test_only_external_database_root=tmp_path
+        [*args, "--max-cells", "2"],
+        test_only_external_database_root=test_only_external_database_root,
     ) == 2
     partial_output = capsys.readouterr()
     assert json.loads(partial_output.out)["valid_result_cells"] == 2
-    assert main(args, test_only_external_database_root=tmp_path) == 0
+    assert main(args, test_only_external_database_root=test_only_external_database_root) == 0
     completed_output = capsys.readouterr()
     completed = json.loads(completed_output.out)
     assert completed["valid_result_cells"] == 5
@@ -611,8 +658,13 @@ def test_resume_empty_initialization_and_reject_unsafe_paths(tmp_path: Path) -> 
         engine.execute(BackfillSelection(latest=2))
 
 
-def test_registry_default_and_allowed_explicit_backfill_targets(tmp_path: Path) -> None:
+def test_registry_default_and_allowed_explicit_backfill_targets(
+    test_only_external_database_root: Path,
+) -> None:
     registered = Path(project_database_environment({})["LOTTOLAB_REPLAY_BACKFILL_DB"])
+    assert registered == (
+        project_database_paths.PROJECT_ROOT / "data" / "databases" / "replay-backfill.sqlite3"
+    )
     assert replay_backfill_cli.resolve_output_database(None) == registered
     assert replay_backfill_cli.resolve_output_database(registered) == registered
     scratch = (
@@ -623,11 +675,11 @@ def test_registry_default_and_allowed_explicit_backfill_targets(tmp_path: Path) 
         / "stage.sqlite3"
     )
     assert replay_backfill_cli.resolve_output_database(scratch) == scratch
-    test_database = tmp_path / "pytest-only.sqlite3"
+    test_database = test_only_external_database_root / "pytest-only.sqlite3"
     assert (
         replay_backfill_cli.resolve_output_database(
             test_database,
-            test_only_external_database_root=tmp_path,
+            test_only_external_database_root=test_only_external_database_root,
         )
         == test_database
     )
@@ -720,17 +772,19 @@ def _replay_table_counts(database: Path) -> dict[str, int]:
 
 
 def test_import_stage_merges_read_only_and_duplicate_import_is_idempotent(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    test_only_external_database_root: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    source = tmp_path / "stage.sqlite3"
-    engine, _, _ = worker(tmp_path, store=SQLiteBackfillStore(source))
+    source = test_only_external_database_root / "stage.sqlite3"
+    engine, _, _ = worker(test_only_external_database_root, store=SQLiteBackfillStore(source))
     engine.execute(BackfillSelection(latest=3))
     source_hash = hashlib.sha256(source.read_bytes()).hexdigest()
-    target = tmp_path / "target.sqlite3"
+    target = test_only_external_database_root / "target.sqlite3"
     _create_empty_backfill_database(target)
 
     args = ["import-stage", "--source", str(source), "--database", str(target)]
-    assert main(args, test_only_external_database_root=tmp_path) == 0
+    assert main(
+        args, test_only_external_database_root=test_only_external_database_root
+    ) == 0
     first = json.loads(capsys.readouterr().out)
     assert first["schema_version"] == SCHEMA_VERSION
     assert first["added_rows"]["replay_backfill_runs"] == 1
@@ -739,7 +793,9 @@ def test_import_stage_merges_read_only_and_duplicate_import_is_idempotent(
     assert first["source_rows"] == first["target_after_rows"]
     counts_after_first = _replay_table_counts(target)
 
-    assert main(args, test_only_external_database_root=tmp_path) == 0
+    assert main(
+        args, test_only_external_database_root=test_only_external_database_root
+    ) == 0
     second = json.loads(capsys.readouterr().out)
     assert second["added_total"] == 0
     assert second["skipped_total"] > 0
@@ -749,22 +805,22 @@ def test_import_stage_merges_read_only_and_duplicate_import_is_idempotent(
 
 
 def test_import_stage_rejects_schema_version_mismatch_before_writing(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    test_only_external_database_root: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    source = tmp_path / "wrong-version.sqlite3"
+    source = test_only_external_database_root / "wrong-version.sqlite3"
     _create_empty_backfill_database(source)
     with sqlite3.connect(source) as connection:
         connection.execute("PRAGMA ignore_check_constraints=ON")
         connection.execute(
             "UPDATE replay_backfill_schema SET version=?", (SCHEMA_VERSION - 1,)
         )
-    target = tmp_path / "target.sqlite3"
+    target = test_only_external_database_root / "target.sqlite3"
     _create_empty_backfill_database(target)
 
     assert (
         main(
             ["import-stage", "--source", str(source), "--database", str(target)],
-            test_only_external_database_root=tmp_path,
+            test_only_external_database_root=test_only_external_database_root,
         )
         == 1
     )

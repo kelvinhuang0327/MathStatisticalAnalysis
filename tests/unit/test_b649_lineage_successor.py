@@ -24,11 +24,22 @@ from tools import b649_protected_cutover as protected
 NOW = datetime.now(UTC).replace(microsecond=0)
 
 
-def test_production_scheduler_path_guard_is_active() -> None:
-    protected_path = Path(
-        "/Users/kelvin/VibeCoding-WorkSpace/.task-data/"
-        "B649_OPERATIONAL_PREDICTION_LOOP_R1/scheduler/b649-control-owner-reservation.json"
-    )
+@pytest.mark.parametrize(
+    "protected_path",
+    [
+        Path(
+            "/Users/kelvin/VibeCoding-WorkSpace/.task-data/"
+            "B649_OPERATIONAL_PREDICTION_LOOP_R1/scheduler/b649-control-owner-reservation.json"
+        ),
+        Path(
+            "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/"
+            "B649_PRODUCTION_56c9715ca60bb9af3afe3b5faae83b0dc0471d8f/tools/example.py"
+        ),
+        Path("/Users/kelvin/Library/LaunchAgents/com.lottolab.b649-goalc-r1.plist"),
+        Path("/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/data/databases/example.db"),
+    ],
+)
+def test_production_path_guard_rejects_resolution(protected_path: Path) -> None:
     with pytest.raises(RuntimeError, match="forbidden production-path access"):
         protected_path.resolve(strict=False)
 

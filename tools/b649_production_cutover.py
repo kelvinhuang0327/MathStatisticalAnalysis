@@ -1383,12 +1383,18 @@ def _is_production_control_target(config: CutoverConfig) -> bool:
     if config.launch_domain == PRODUCTION_DOMAIN:
         return True
     production_paths = {
-        PRODUCTION_RECEIPT_PATH.resolve(strict=False),
-        PRODUCTION_PLIST_PATH.resolve(strict=False),
+        Path(os.path.abspath(os.path.normpath(str(PRODUCTION_RECEIPT_PATH)))),
+        Path(os.path.abspath(os.path.normpath(str(PRODUCTION_PLIST_PATH)))),
     }
+    configured_paths = (config.receipt_path, config.plist_path)
+    if any(
+        Path(os.path.abspath(os.path.normpath(str(path)))) in production_paths
+        for path in configured_paths
+    ):
+        return True
     return any(
         path.resolve(strict=False) in production_paths
-        for path in (config.receipt_path, config.plist_path)
+        for path in configured_paths
     )
 
 

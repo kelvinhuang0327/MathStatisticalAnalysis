@@ -38,17 +38,6 @@ def _guard_path(value: object) -> None:
             raise RuntimeError(f"test attempted forbidden production-path access: {selected}")
 
 
-def _guard_resolution(value: object) -> None:
-    selected = _candidate_path(value)
-    if selected in {
-        "/Users/kelvin/VibeCoding-WorkSpace/.task-data/"
-        "B649_OPERATIONAL_PREDICTION_LOOP_R1/scheduler/b649-production-cutover-receipt.json",
-        "/Users/kelvin/Library/LaunchAgents/com.lottolab.b649-goalc-r1.plist",
-    }:
-        return
-    _guard_path(value)
-
-
 @pytest.fixture(autouse=True)
 def refuse_production_path_io(monkeypatch: pytest.MonkeyPatch) -> None:
     """Reject production path resolution, reads, writes, and metadata checks."""
@@ -56,13 +45,7 @@ def refuse_production_path_io(monkeypatch: pytest.MonkeyPatch) -> None:
     original_resolve = Path.resolve
 
     def guarded_resolve(self: Path, strict: bool = False) -> Path:
-        _guard_resolution(self)
-        if _candidate_path(self) in {
-            "/Users/kelvin/VibeCoding-WorkSpace/.task-data/"
-            "B649_OPERATIONAL_PREDICTION_LOOP_R1/scheduler/b649-production-cutover-receipt.json",
-            "/Users/kelvin/Library/LaunchAgents/com.lottolab.b649-goalc-r1.plist",
-        }:
-            return Path(os.path.abspath(os.path.normpath(str(self))))
+        _guard_path(self)
         return original_resolve(self, strict=strict)
 
     monkeypatch.setattr(Path, "resolve", guarded_resolve)

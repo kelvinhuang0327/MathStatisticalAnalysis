@@ -248,7 +248,9 @@ def test_import_stage_target_is_locked_but_stage_source_is_read_only(
     fake_canonical_database: tuple[Path, Path], tmp_path: Path
 ) -> None:
     project_root, target = fake_canonical_database
-    source = tmp_path / "stage.sqlite3"
+    test_root = tmp_path / "msa-pytest.writer-lock"
+    test_root.mkdir()
+    source = test_root / "stage.sqlite3"
     _create_empty_backfill_database(source)
     store = SQLiteBackfillStore(target)
     lock_path = project_root / "data" / "databases" / "locks" / f"{target.name}.writer.lock"
@@ -256,7 +258,7 @@ def test_import_stage_target_is_locked_but_stage_source_is_read_only(
     with store.write_transaction():
         before = _fingerprint(target)
         blocked = _run_writer_subprocess(
-            project_root, "import_stage", target, tmp_path, source=source
+            project_root, "import_stage", target, test_root, source=source
         )
         assert blocked.returncode == 1
         assert str(lock_path) in blocked.stderr
@@ -266,7 +268,7 @@ def test_import_stage_target_is_locked_but_stage_source_is_read_only(
     source_lock = source.parent / f"{source.name}.writer.lock"
     with _hold_writer_lock(source_lock):
         source_locked = _run_writer_subprocess(
-            project_root, "import_stage", target, tmp_path, source=source
+            project_root, "import_stage", target, test_root, source=source
         )
         assert source_locked.returncode == 0, source_locked.stderr
 

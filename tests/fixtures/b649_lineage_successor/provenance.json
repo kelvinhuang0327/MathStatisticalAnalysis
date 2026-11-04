@@ -1,0 +1,23 @@
+{
+  "schema": "b649-lineage-successor-fixture-provenance-v1",
+  "fixtures": [
+    {
+      "path": "historical_release_92740_sanitized.json",
+      "bytes": 6911,
+      "sha256": "cc10ae1ee96415bb2345c6002e922da47421364edeef2c3650f6c1cb87d26f7b",
+      "source_artifact": "scheduler/b649-prestart-successor-release-92740b95-103b-4350-8dc0-ee2ffe6cec32.json",
+      "source_bytes": 7374,
+      "source_sha256": "c14d06b986bd0b34bce8a63468f36325ae21d5aa2753ab2f3b7b4281f0ecd363",
+      "privacy_transform": "Replaced owner home paths with /fixture/workspace and recomputed the outer record seal; no user name, email, token, or key material remains."
+    },
+    {
+      "path": "historical_gap_register.md",
+      "bytes": 4153,
+      "sha256": "52dae60bd9031283fc59b063a0bb198ad8389def31a1e327060997f9d91d1666",
+      "source_artifact": "L1_EVIDENCE_CHAIN/gap-register.md",
+      "source_bytes": 4153,
+      "source_sha256": "52dae60bd9031283fc59b063a0bb198ad8389def31a1e327060997f9d91d1666",
+      "privacy_transform": "Byte-preserving copy; scanned for home paths, email addresses, and key-material patterns."
+    }
+  ]
+}

@@ -3047,3 +3047,8 @@ def test_production_backend_materializes_portfolio_from_real_inventory_records(
     retry = backend.materialize_predraw_portfolios(target, inventory)
     assert retry["status"] == "ALREADY_PRESENT"
     assert {**retry, "status": "CREATED"} == result
+
+@pytest.fixture
+def tmp_path(outside_git_tmp_path: Path) -> Path:
+    """Use a neutral external path for tests that exercise outside-checkout behavior."""
+    return outside_git_tmp_path

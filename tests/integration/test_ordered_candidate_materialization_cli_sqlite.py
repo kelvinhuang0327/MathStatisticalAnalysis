@@ -6,6 +6,7 @@ import hashlib
 import json
 from pathlib import Path
 
+import pytest
 from typer.testing import CliRunner
 
 from lottolab.domain.draws import LotteryType
@@ -122,3 +123,8 @@ def test_cli_seals_package_returns_only_summary_and_preserves_db_bytes(
     ).hexdigest()
     for suffix in ("-wal", "-shm", "-journal"):
         assert not Path(f"{paths.database}{suffix}").exists()
+
+@pytest.fixture
+def tmp_path(outside_git_tmp_path: Path) -> Path:
+    """Use a neutral external path for tests that exercise outside-checkout behavior."""
+    return outside_git_tmp_path

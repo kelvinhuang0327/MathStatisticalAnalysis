@@ -211,3 +211,8 @@ def test_unexpected_staging_content_stops_cleanup_without_deleting_it(
 
     assert (staging / "unexpected").read_bytes() == b"foreign"
     assert not output.exists()
+
+@pytest.fixture
+def tmp_path(outside_git_tmp_path: Path) -> Path:
+    """Use a neutral external path for tests that exercise outside-checkout behavior."""
+    return outside_git_tmp_path

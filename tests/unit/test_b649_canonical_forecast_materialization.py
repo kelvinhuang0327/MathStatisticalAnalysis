@@ -380,3 +380,8 @@ def test_forecast_service_has_no_outcome_dependency(tmp_path: Path) -> None:
     assert result.payload["target_result_used"] is False
     assert not (tmp_path / "outcomes").exists()
     assert not (tmp_path / "scores").exists()
+
+@pytest.fixture
+def tmp_path(outside_git_tmp_path: Path) -> Path:
+    """Use a neutral external path for tests that exercise outside-checkout behavior."""
+    return outside_git_tmp_path

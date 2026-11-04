@@ -7,6 +7,7 @@ import json
 from datetime import UTC, datetime
 from pathlib import Path
 
+import pytest
 from tools.b649_forward_auto_cycle_adapter import B649ForwardAutoCycleAdapter
 from tools.b649_operational_prediction_loop import (
     HistorySnapshot,
@@ -386,3 +387,8 @@ def test_b649_due_target_outranks_later_future_target_and_future_only_remains_av
     assert resolved.draw_number == "209900201"
     assert future_only is not None
     assert future_only.announcement.target.draw_number == "209900202"
+
+@pytest.fixture
+def tmp_path(outside_git_tmp_path: Path) -> Path:
+    """Use a neutral external path for tests that exercise outside-checkout behavior."""
+    return outside_git_tmp_path

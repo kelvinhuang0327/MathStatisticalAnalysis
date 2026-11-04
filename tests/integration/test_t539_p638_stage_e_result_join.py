@@ -575,3 +575,9 @@ def test_stage_e_rejects_b649_composition(tmp_path: Path) -> None:
             prediction_store_root=seal_root,
             connection=connection,
         )
+
+
+@pytest.fixture
+def tmp_path(outside_git_tmp_path: Path) -> Path:
+    """Use a neutral external path for tests that exercise outside-checkout behavior."""
+    return outside_git_tmp_path

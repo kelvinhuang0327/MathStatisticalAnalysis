@@ -89,3 +89,9 @@ def test_publish_rejects_tampered_staging_location(tmp_path: Path) -> None:
     assert not destination.exists()
     assert staged.temporary.exists()
     staged.temporary.unlink()
+
+
+@pytest.fixture
+def tmp_path(outside_git_tmp_path: Path) -> Path:
+    """Use a neutral external path for tests that exercise outside-checkout behavior."""
+    return outside_git_tmp_path

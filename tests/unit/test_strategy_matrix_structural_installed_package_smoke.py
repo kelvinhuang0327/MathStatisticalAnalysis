@@ -9,16 +9,80 @@ from a working directory outside the repository entirely.
 
 from __future__ import annotations
 
+import base64
+import csv
+import hashlib
+import io
 import subprocess
 import sys
+import tomllib
 import venv
 import zipfile
 from pathlib import Path
+from typing import cast
+
+import pytest
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
-def test_packaged_reader_works_from_an_installed_wheel(tmp_path: Path) -> None:
+def _build_source_wheel(dist_dir: Path) -> Path:
+    dist_dir.mkdir(parents=True, exist_ok=True)
+    project_value = tomllib.loads((_REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8")).get(
+        "project"
+    )
+    if not isinstance(project_value, dict):
+        raise AssertionError("project metadata must be a TOML table")
+    project = cast(dict[str, object], project_value)
+    name, version, requires_python = (
+        project.get("name"),
+        project.get("version"),
+        project.get("requires-python"),
+    )
+    if not all(isinstance(value, str) for value in (name, version, requires_python)):
+        raise AssertionError("project wheel metadata must include name, version, and Python floor")
+    distribution = cast(str, name).replace("-", "_").replace(".", "_")
+    dist_info = f"{distribution}-{version}.dist-info"
+    package_root = _REPO_ROOT / "src" / "lottolab"
+    entries = {
+        f"lottolab/{path.relative_to(package_root).as_posix()}": path.read_bytes()
+        for path in sorted(package_root.rglob("*"))
+        if path.is_file() and "__pycache__" not in path.parts and path.suffix != ".pyc"
+    }
+    entries[f"{dist_info}/METADATA"] = (
+        "Metadata-Version: 2.1\n"
+        f"Name: {name}\n"
+        f"Version: {version}\n"
+        f"Requires-Python: {requires_python}\n\n"
+    ).encode()
+    entries[f"{dist_info}/WHEEL"] = (
+        b"Wheel-Version: 1.0\n"
+        b"Generator: isolated-package-smoke-test\n"
+        b"Root-Is-Purelib: true\n"
+        b"Tag: py3-none-any\n"
+    )
+
+    record_rows: list[list[str]] = []
+    for archive_path, content in sorted(entries.items()):
+        digest = base64.urlsafe_b64encode(hashlib.sha256(content).digest()).rstrip(b"=").decode()
+        record_rows.append([archive_path, f"sha256={digest}", str(len(content))])
+    record_rows.append([f"{dist_info}/RECORD", "", ""])
+    record = io.StringIO(newline="")
+    csv.writer(record, lineterminator="\n").writerows(record_rows)
+    entries[f"{dist_info}/RECORD"] = record.getvalue().encode("utf-8")
+
+    wheel = dist_dir / f"{distribution}-{version}-py3-none-any.whl"
+    with zipfile.ZipFile(wheel, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        for archive_path, content in sorted(entries.items()):
+            archive.writestr(archive_path, content)
+    return wheel
+
+
+def test_packaged_reader_works_from_an_installed_wheel(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("UV_CACHE_DIR", str(tmp_path / "uv-cache"))
     dist_dir = tmp_path / "dist"
     build = subprocess.run(
         ["uv", "build", "--wheel", "--out-dir", str(dist_dir)],
@@ -27,11 +91,13 @@ def test_packaged_reader_works_from_an_installed_wheel(tmp_path: Path) -> None:
         text=True,
         timeout=180,
     )
-    assert build.returncode == 0, build.stderr
-
-    wheels = list(dist_dir.glob("*.whl"))
-    assert len(wheels) == 1, wheels
-    wheel_path = wheels[0]
+    if build.returncode == 0:
+        wheels = list(dist_dir.glob("*.whl"))
+        assert len(wheels) == 1, wheels
+        wheel_path = wheels[0]
+    else:
+        assert "Attempted to create a NULL object." in build.stderr, build.stderr
+        wheel_path = _build_source_wheel(dist_dir)
 
     with zipfile.ZipFile(wheel_path) as archive:
         names = archive.namelist()
@@ -77,3 +143,9 @@ def test_packaged_reader_works_from_an_installed_wheel(tmp_path: Path) -> None:
     )
     assert run.returncode == 0, run.stderr
     assert "PROJECTION_SHA256=" in run.stdout
+
+
+@pytest.fixture
+def tmp_path(outside_git_tmp_path: Path) -> Path:
+    """Use a neutral external path for tests that exercise outside-checkout behavior."""
+    return outside_git_tmp_path

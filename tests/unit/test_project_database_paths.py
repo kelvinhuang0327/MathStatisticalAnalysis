@@ -525,3 +525,9 @@ def test_k235_cli_uses_shared_default_from_linked_source(
     assert loaded["REPO_ROOT"] == linked_source
     assert loaded["DEFAULT_DB_PATH"] == project / "data/databases/lottolab.db"
     assert not (linked_source / "data").exists()
+
+
+@pytest.fixture
+def tmp_path(outside_git_tmp_path: Path) -> Path:
+    """Use a neutral external path for tests that exercise outside-checkout behavior."""
+    return outside_git_tmp_path

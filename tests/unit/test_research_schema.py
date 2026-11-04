@@ -218,3 +218,9 @@ def test_schema_has_exact_table_and_append_only_trigger_inventory(
 
     assert tables == tuple(sorted(TABLE_NAMES))
     assert set(APPEND_ONLY_TRIGGER_NAMES) <= triggers
+
+
+@pytest.fixture
+def tmp_path(outside_git_tmp_path: Path) -> Path:
+    """Use a neutral external path for tests that exercise outside-checkout behavior."""
+    return outside_git_tmp_path

@@ -63,7 +63,7 @@ COMMIT_AT = datetime(2099, 1, 1, 1, tzinfo=UTC)
 
 def _paths(tmp_path: Path) -> LocalDataPaths:
     return resolve_local_data_paths(
-        environ={DATA_DIRECTORY_ENV: str(tmp_path / "b649-canonical-data")}
+        environ={DATA_DIRECTORY_ENV: str(tmp_path / "canonical-data")}
     )
 
 
@@ -517,3 +517,8 @@ def test_b649_cli_validates_current_schema_read_only_and_does_not_migrate_v3(
     assert paths.database.read_bytes() == before
     with sqlite3.connect(paths.database) as connection:
         assert connection.execute("SELECT MAX(version) FROM schema_migrations").fetchone() == (3,)
+
+@pytest.fixture
+def tmp_path(outside_git_tmp_path: Path) -> Path:
+    """Use a neutral external path for tests that exercise outside-checkout behavior."""
+    return outside_git_tmp_path

@@ -3315,3 +3315,8 @@ def test_zero_ticket_shape_for_a_lottery_without_scoring_authority_fails_closed(
     )
     assert "TICKET_SPECIAL_HIT_AUTHORITY_UNAVAILABLE" in _codes(report)
     assert not report.canonical_gate_passed
+
+@pytest.fixture
+def tmp_path(outside_git_tmp_path: Path) -> Path:
+    """Use a neutral external path for tests that exercise outside-checkout behavior."""
+    return outside_git_tmp_path

@@ -635,3 +635,8 @@ def test_lookalike_schema_semantic_changes_fail_closed(
         ).fetchone() == (MIGRATION_NAME, MIGRATION_CHECKSUM)
     with pytest.raises(SchemaMigrationError):
         verify_schema_read_only(paths)
+
+@pytest.fixture
+def tmp_path(outside_git_tmp_path: Path) -> Path:
+    """Use a neutral external path for tests that exercise outside-checkout behavior."""
+    return outside_git_tmp_path

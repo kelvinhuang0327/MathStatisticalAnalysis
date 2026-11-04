@@ -547,3 +547,8 @@ def test_repeated_inspection_returns_equal_reports(tmp_path: Path) -> None:
     second = reader.inspect(paths.database)
 
     assert first == second
+
+@pytest.fixture
+def tmp_path(outside_git_tmp_path: Path) -> Path:
+    """Use a neutral external path for tests that exercise outside-checkout behavior."""
+    return outside_git_tmp_path

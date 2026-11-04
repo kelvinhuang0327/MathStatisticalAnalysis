@@ -292,3 +292,9 @@ def test_repeated_cli_execution_is_byte_identical(tmp_path: Path) -> None:
     assert first.exit_code == second.exit_code == 0
     assert first.stdout == second.stdout
     assert first.stdout != ""
+
+
+@pytest.fixture
+def tmp_path(outside_git_tmp_path: Path) -> Path:
+    """Use a neutral external path for tests that exercise outside-checkout behavior."""
+    return outside_git_tmp_path

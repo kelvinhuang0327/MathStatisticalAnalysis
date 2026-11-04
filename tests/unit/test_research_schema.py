@@ -1,14 +1,17 @@
 from __future__ import annotations
 
 import sqlite3
+import subprocess
 from pathlib import Path
 
 import pytest
 
+from lottolab.infrastructure.persistence import project_database_paths as locations
 from lottolab.infrastructure.persistence.project_database_paths import project_database_directory
 from lottolab.infrastructure.persistence.research_schema import (
     APPEND_ONLY_TRIGGER_NAMES,
     CURRENT_SCHEMA_VERSION,
+    DATA_DIRECTORY_ENV,
     RESEARCH_DATABASE_FILENAME,
     TABLE_NAMES,
     V5_MIGRATION_CHECKSUM,
@@ -47,6 +50,29 @@ def test_canonical_locator_has_durable_default_and_fixed_sibling_filename(
     assert paths.database == paths.data_directory / RESEARCH_DATABASE_FILENAME
     assert paths.database.name == "lottolab_research.db"
     assert not home.exists()
+
+
+def test_schema_initializes_research_database_inside_ignored_project_scratch(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    project = tmp_path / "canonical-checkout"
+    project.mkdir()
+    subprocess.run(("git", "init", "--quiet", str(project)), check=True)
+    (project / ".gitignore").write_text(".task-data/\n", encoding="utf-8")
+    monkeypatch.setattr(locations, "PROJECT_ROOT", project)
+    scratch_directory = project / ".task-data" / "_scratch" / "unit_research_db_01"
+
+    paths = resolve_research_data_paths(environ={DATA_DIRECTORY_ENV: str(scratch_directory)})
+    initialize_schema(paths)
+
+    assert paths.database == scratch_directory / RESEARCH_DATABASE_FILENAME
+    assert paths.database.is_file()
+    assert verify_schema_read_only(paths) is True
+    with open_database(paths, read_only=True) as connection:
+        assert connection.execute("SELECT COUNT(*) FROM research_schema_migrations").fetchone() == (
+            4,
+        )
 
 
 def test_migration_is_idempotent_and_checksum_verified(tmp_path: Path) -> None:

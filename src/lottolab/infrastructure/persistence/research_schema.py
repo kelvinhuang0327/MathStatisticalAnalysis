@@ -49,6 +49,7 @@ from lottolab.domain.research_live_forecast import (
 )
 from lottolab.infrastructure.persistence.project_database_paths import (
     is_project_database_boundary,
+    is_project_scratch_database_boundary,
     project_database_directory,
     require_project_database_write_ready,
 )
@@ -2092,7 +2093,9 @@ def _reject_git_worktree_path(path: Path) -> None:
             continue
         except OSError as exc:
             raise ResearchDataError("cannot inspect Git-worktree boundaries safely") from exc
-        if is_project_database_boundary(path, ancestor):
+        if is_project_database_boundary(path, ancestor) or is_project_scratch_database_boundary(
+            path, ancestor
+        ):
             continue
         raise ResearchDataError("research data path must be outside Git worktrees")
 

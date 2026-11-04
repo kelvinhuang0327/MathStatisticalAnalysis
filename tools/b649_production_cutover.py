@@ -48,6 +48,50 @@ PROTECTED_PREDECESSOR_RELEASE_SCHEMA = "b649-protected-predecessor-release-v1"
 PRESTART_SUCCESSOR_PREDECESSOR_SCHEMA = "b649-protected-prestart-successor-predecessor-v1"
 LEGACY_VERSIONED_TARGET_TRANSITION_SCHEMA = "b649-v8-sealed-target-transition-v1"
 VERSIONED_TARGET_TRANSITION_SCHEMA = "b649-v8-sealed-target-transition-v2"
+LINEAGE_SUCCESSOR_SCHEMA = "b649-lineage-successor-v1"
+LINEAGE_SUCCESSOR_PHASES = frozenset(
+    {
+        "PREPARED",
+        "OLD_OWNER_RELEASED",
+        "AUTHORIZED_PENDING",
+        "APPLY_STARTED",
+        "RELEASED_SUCCESS",
+        "RECOVERY_REQUIRED",
+        "CANCELLED",
+    }
+)
+LINEAGE_SUCCESSOR_GAP_IDS = frozenset(
+    {
+        "246415cf-to-bd9143f4-edge",
+        "fb748f08-released-owner-bytes",
+        "92740b95-original-owner-file",
+    }
+)
+LINEAGE_SUCCESSOR_ANCESTOR_NODE_IDS = frozenset(
+    {
+        "v5-managed-success",
+        "v5-protected-success",
+        "v6-failed",
+        "retirement-v2",
+        "v7-intermediate-owner-92740",
+        "v7-intermediate-release-92740",
+        "v7-candidate-plan-13d1",
+        "v7-reservation-ae3e",
+        "v7-prestart-reconciliation-ae3e",
+        "v7-candidate-stranded-receipt",
+        "v8-owner-246415cf",
+        "v8-plan-ef28",
+        "v8-exit2-reconciliation-bd9143f4",
+        "v8-exit2-owner-authorization",
+        "v8-exit2-failed-receipt",
+        "current-owner-2899",
+    }
+)
+LINEAGE_SUCCESSOR_GAP_DECISIONS = frozenset(
+    {"PENDING_OWNER_DECISION", "REQUIRE_COMPLETE_CHAIN", "PRESERVE_UNRESOLVED_AND_CONTINUE"}
+)
+LINEAGE_SUCCESSOR_MAX_AUTHORIZATION_TTL_SECONDS = 300
+LINEAGE_SUCCESSOR_RETAIN_POLICY = "RETAIN_INDEFINITELY"
 FAILED_TERMINAL_RETIREMENT_SCHEMA = "b649-protected-failed-terminal-retirement-v1"
 FAILED_TERMINAL_RETIREMENT_NAME = (
     "b649-failed-terminal-retirement-27e1039be8f511114e06fcae200fcc2f.json"
@@ -1755,6 +1799,422 @@ def _validate_abandoned_lineage_link(
         raise CutoverSafetyError("abandoned lineage link changes the carried SUCCESS predecessor")
 
 
+def _lineage_successor_core(value: Record) -> Record:
+    mutable = {
+        "phase",
+        "released_owner",
+        "archives",
+        "owner_approval",
+        "transition_sha256",
+        "record_sha256",
+    }
+    return {key: item for key, item in value.items() if key not in mutable}
+
+
+def _lineage_path(value: object, label: str) -> str:
+    raw = _text(value, label)
+    path = Path(raw)
+    if not path.is_absolute() or os.path.normpath(raw) != raw:
+        raise CutoverSafetyError(f"{label} must be a normalized absolute path")
+    return raw
+
+
+def _validate_lineage_successor_transition(
+    value: object,
+    *,
+    now: datetime | None = None,
+    expected_signer: str | None = None,
+    approval_verifier: Callable[[str, str, str], bool] | None = None,
+    verify_signature: bool = False,
+) -> Record:
+    """Validate a versioned successor record without reading or changing files.
+
+    Signature verification is deliberately an injected boundary: no key or signer
+    identity is guessed by this module. Runtime callers must fail closed until an
+    Owner-approved verifier is configured.
+    """
+    evidence = _record(value, "lineage successor evidence")
+    required = {
+        "schema",
+        "transition_id",
+        "phase",
+        "control_identity",
+        "original_control_identity",
+        "source_old",
+        "predecessor_target",
+        "target",
+        "plan",
+        "claim_root",
+        "pending_owner_snapshot",
+        "released_owner",
+        "retirement",
+        "ancestor_evidence",
+        "known_gaps",
+        "archives",
+        "owner_approval",
+        "transition_sha256",
+        "record_sha256",
+    }
+    if set(evidence) != required or evidence.get("schema") != LINEAGE_SUCCESSOR_SCHEMA:
+        raise CutoverSafetyError("lineage successor evidence schema or seal is invalid")
+    if evidence.get("phase") not in LINEAGE_SUCCESSOR_PHASES:
+        raise CutoverSafetyError("lineage successor evidence schema or seal is invalid")
+    transition_id = _text(evidence.get("transition_id"), "lineage transition id")
+    try:
+        if str(UUID(transition_id)) != transition_id:
+            raise ValueError
+    except ValueError as exc:
+        raise CutoverSafetyError("lineage successor evidence schema or seal is invalid") from exc
+
+    control = _record(evidence.get("control_identity"), "successor control identity")
+    if set(control) != {"head", "tree", "worktree"}:
+        raise CutoverSafetyError("lineage successor evidence schema or seal is invalid")
+    if (
+        re.fullmatch(r"[0-9a-f]{40}", str(control.get("head"))) is None
+        or re.fullmatch(r"[0-9a-f]{40}", str(control.get("tree"))) is None
+    ):
+        raise CutoverSafetyError("lineage successor evidence schema or seal is invalid")
+    _lineage_path(control.get("worktree"), "successor control worktree")
+    original_control = _record(
+        evidence.get("original_control_identity"), "original owner control identity"
+    )
+    if set(original_control) != {"head", "tree", "worktree"}:
+        raise CutoverSafetyError("lineage successor evidence schema or seal is invalid")
+    if (
+        re.fullmatch(r"[0-9a-f]{40}", str(original_control.get("head"))) is None
+        or re.fullmatch(r"[0-9a-f]{40}", str(original_control.get("tree"))) is None
+    ):
+        raise CutoverSafetyError("lineage successor evidence schema or seal is invalid")
+    _lineage_path(original_control.get("worktree"), "original owner control worktree")
+    source_old = _record(evidence.get("source_old"), "successor source OLD")
+    predecessor_target = _record(
+        evidence.get("predecessor_target"), "released predecessor target"
+    )
+    target = _record(evidence.get("target"), "successor target")
+    plan = _record(evidence.get("plan"), "successor plan")
+    if set(source_old) != {"source_worktree", "head", "tree", "durable_ref"}:
+        raise CutoverSafetyError("lineage successor evidence schema or seal is invalid")
+    if set(target) != {"source_worktree", "head", "tree", "durable_ref"}:
+        raise CutoverSafetyError("lineage successor evidence schema or seal is invalid")
+    _normalized_owner_target(source_old)
+    normalized_predecessor_target = _normalized_owner_target(predecessor_target)
+    _normalized_owner_target(target)
+    if normalized_predecessor_target == _normalized_owner_target(target):
+        raise CutoverSafetyError(
+            "control/plan/target identity differs from the authorized successor"
+        )
+    if set(plan) != {"path", "sha256", "digest", "prestate_digest"}:
+        raise CutoverSafetyError("lineage successor evidence schema or seal is invalid")
+    _lineage_path(plan.get("path"), "successor plan path")
+    for key in ("sha256", "digest", "prestate_digest"):
+        if re.fullmatch(r"[0-9a-f]{64}", str(plan.get(key))) is None:
+            raise CutoverSafetyError("lineage successor evidence schema or seal is invalid")
+    claim_root = _lineage_path(evidence.get("claim_root"), "successor ClaimStore root")
+
+    pending = _record(evidence.get("pending_owner_snapshot"), "pending owner snapshot")
+    pending_keys = {
+        "path",
+        "bytes_sha256",
+        "record_sha256",
+        "reservation_id",
+        "operation_id",
+        "phase",
+        "action",
+        "target",
+        "control_identity",
+        "authorization_sha256",
+        "mutation_started",
+    }
+    if set(pending) != pending_keys:
+        raise CutoverSafetyError("lineage successor evidence schema or seal is invalid")
+    _lineage_path(pending.get("path"), "pending owner path")
+    for key in ("bytes_sha256", "record_sha256", "authorization_sha256"):
+        if re.fullmatch(r"[0-9a-f]{64}", str(pending.get(key))) is None:
+            raise CutoverSafetyError("lineage successor evidence schema or seal is invalid")
+    try:
+        pending_reservation = _text(pending.get("reservation_id"), "pending reservation id")
+        if str(UUID(pending_reservation)) != pending_reservation:
+            raise ValueError
+    except ValueError as exc:
+        raise CutoverSafetyError("lineage successor evidence schema or seal is invalid") from exc
+    pending_operation = _text(pending.get("operation_id"), "pending operation id")
+    if re.fullmatch(r"(?:[0-9a-f]{32}|[0-9a-f]{64})", pending_operation) is None:
+        raise CutoverSafetyError("lineage successor evidence schema or seal is invalid")
+    pending_target = _normalized_owner_target(pending.get("target"))
+    pending_control = _record(pending.get("control_identity"), "pending owner control")
+    if (
+        pending.get("phase") != "AUTHORIZED_PENDING"
+        or pending.get("action") != "apply"
+        or pending.get("mutation_started") is not False
+        or pending_target != normalized_predecessor_target
+        or pending_control != original_control
+    ):
+        raise CutoverSafetyError("lineage successor evidence schema or seal is invalid")
+
+    retirement = _record(evidence.get("retirement"), "retirement snapshot")
+    if set(retirement) != {"path", "bytes_sha256", "record_sha256", "schema"}:
+        raise CutoverSafetyError("lineage successor evidence schema or seal is invalid")
+    _lineage_path(retirement.get("path"), "retirement path")
+    if (
+        retirement.get("schema") != FAILED_TERMINAL_RETIREMENT_V2_SCHEMA
+        or any(
+            re.fullmatch(r"[0-9a-f]{64}", str(retirement.get(key))) is None
+            for key in ("bytes_sha256", "record_sha256")
+        )
+    ):
+        raise CutoverSafetyError("lineage successor evidence schema or seal is invalid")
+
+    ancestors_value = evidence.get("ancestor_evidence")
+    if not isinstance(ancestors_value, list):
+        raise CutoverSafetyError("historical evidence inventory is incomplete or changed")
+    ancestor_items = cast(list[object], ancestors_value)
+    if len(ancestor_items) != len(LINEAGE_SUCCESSOR_ANCESTOR_NODE_IDS):
+        raise CutoverSafetyError("historical evidence inventory is incomplete or changed")
+    ancestors = [_record(item, "ancestor evidence") for item in ancestor_items]
+    ancestor_ids: set[str] = set()
+    ancestor_hashes: set[str] = set()
+    verified_edges = 0
+    for ancestor in ancestors:
+        if set(ancestor) != {
+            "node_id",
+            "path",
+            "bytes_sha256",
+            "record_sha256",
+            "schema",
+            "identity",
+            "previous_evidence_sha256",
+        }:
+            raise CutoverSafetyError("historical evidence inventory is incomplete or changed")
+        node_id = _text(ancestor.get("node_id"), "ancestor node id")
+        if node_id not in LINEAGE_SUCCESSOR_ANCESTOR_NODE_IDS or node_id in ancestor_ids:
+            raise CutoverSafetyError("historical evidence inventory is incomplete or changed")
+        ancestor_ids.add(node_id)
+        _lineage_path(ancestor.get("path"), "ancestor evidence path")
+        for key in ("bytes_sha256", "record_sha256"):
+            value_hash = str(ancestor.get(key))
+            if re.fullmatch(r"[0-9a-f]{64}", value_hash) is None:
+                raise CutoverSafetyError("historical evidence inventory is incomplete or changed")
+            ancestor_hashes.add(value_hash)
+        _text(ancestor.get("schema"), "ancestor schema")
+        identity = _record(ancestor.get("identity"), "ancestor identity")
+        if set(identity) != {"reservation_id", "operation_id"}:
+            raise CutoverSafetyError("historical evidence inventory is incomplete or changed")
+        previous = ancestor.get("previous_evidence_sha256")
+        if not isinstance(previous, list):
+            raise CutoverSafetyError("historical evidence inventory is incomplete or changed")
+        for previous_hash in cast(list[object], previous):
+            if re.fullmatch(r"[0-9a-f]{64}", str(previous_hash)) is None:
+                raise CutoverSafetyError("historical evidence inventory is incomplete or changed")
+            verified_edges += 1
+    if frozenset(ancestor_ids) != LINEAGE_SUCCESSOR_ANCESTOR_NODE_IDS or verified_edges != 12:
+        raise CutoverSafetyError("historical evidence inventory is incomplete or changed")
+    for ancestor in ancestors:
+        if any(
+            previous_hash not in ancestor_hashes
+            for previous_hash in cast(list[object], ancestor.get("previous_evidence_sha256"))
+        ):
+            raise CutoverSafetyError("historical evidence inventory is incomplete or changed")
+
+    gaps_value = evidence.get("known_gaps")
+    if not isinstance(gaps_value, list):
+        raise CutoverSafetyError("known lineage gaps are malformed")
+    gaps = [_record(item, "known lineage gap") for item in cast(list[object], gaps_value)]
+    gap_ids: set[str] = set()
+    for gap in gaps:
+        if set(gap) != {"id", "status", "source_document"}:
+            raise CutoverSafetyError("known lineage gaps are malformed")
+        gap_id = _text(gap.get("id"), "known lineage gap id")
+        if gap_id in gap_ids or gap_id not in LINEAGE_SUCCESSOR_GAP_IDS:
+            raise CutoverSafetyError("known lineage gaps changed")
+        gap_ids.add(gap_id)
+        if gap.get("status") != "UNRESOLVED":
+            raise CutoverSafetyError("known lineage gaps changed")
+        _text(gap.get("source_document"), "known lineage gap source")
+    if frozenset(gap_ids) != LINEAGE_SUCCESSOR_GAP_IDS:
+        raise CutoverSafetyError("known lineage gaps changed")
+
+    archives_value = evidence.get("archives")
+    if not isinstance(archives_value, list):
+        raise CutoverSafetyError("lineage successor evidence schema or seal is invalid")
+    archive_kinds: set[str] = set()
+    for archive_value in cast(list[object], archives_value):
+        archive = _record(archive_value, "lineage archive entry")
+        if set(archive) != {
+            "kind",
+            "source_path",
+            "archive_path",
+            "source_sha256",
+            "archive_sha256",
+            "readback_status",
+            "source_state",
+        }:
+            raise CutoverSafetyError("lineage successor evidence schema or seal is invalid")
+        kind = _text(archive.get("kind"), "lineage archive kind")
+        if kind in archive_kinds or kind not in {"pending_owner", "retirement", "released_owner"}:
+            raise CutoverSafetyError("lineage successor evidence schema or seal is invalid")
+        archive_kinds.add(kind)
+        _lineage_path(archive.get("source_path"), "lineage archive source path")
+        _lineage_path(archive.get("archive_path"), "lineage archive path")
+        if (
+            re.fullmatch(r"[0-9a-f]{64}", str(archive.get("source_sha256"))) is None
+            or archive.get("archive_sha256") != archive.get("source_sha256")
+            or archive.get("readback_status") != "VERIFIED"
+            or archive.get("source_state") not in {"PRESENT", "ABSENT", "CHANGED"}
+        ):
+            raise CutoverSafetyError("lineage successor evidence schema or seal is invalid")
+    if not {"pending_owner", "retirement"}.issubset(archive_kinds):
+        raise CutoverSafetyError("lineage successor evidence schema or seal is invalid")
+
+    released = evidence.get("released_owner")
+    if released is None:
+        if evidence.get("phase") not in {"PREPARED", "CANCELLED"}:
+            raise CutoverSafetyError("lineage successor evidence schema or seal is invalid")
+    else:
+        released_record = _record(released, "released owner snapshot")
+        if set(released_record) != {
+            "path",
+            "bytes_sha256",
+            "record_sha256",
+            "reservation_id",
+            "operation_id",
+            "phase",
+            "release_kind",
+            "authorization_sha256",
+            "control_identity",
+            "mutation_started",
+        }:
+            raise CutoverSafetyError("lineage successor evidence schema or seal is invalid")
+        _lineage_path(released_record.get("path"), "released owner path")
+        if (
+            released_record.get("reservation_id") != pending_reservation
+            or released_record.get("operation_id") != pending_operation
+            or released_record.get("phase") != "RELEASED"
+            or released_record.get("release_kind") != EXPLICIT_ABANDON_RELEASE_KIND
+            or released_record.get("authorization_sha256") != pending.get("authorization_sha256")
+            or released_record.get("control_identity") != original_control
+            or released_record.get("mutation_started") is not False
+            or any(
+                re.fullmatch(r"[0-9a-f]{64}", str(released_record.get(key))) is None
+                for key in ("bytes_sha256", "record_sha256")
+            )
+        ):
+            raise CutoverSafetyError("lineage successor evidence schema or seal is invalid")
+        if "released_owner" not in archive_kinds:
+            raise CutoverSafetyError("lineage successor evidence schema or seal is invalid")
+
+    approval = _record(evidence.get("owner_approval"), "lineage successor Owner approval")
+    approval_keys = {
+        "signer_identity",
+        "signature",
+        "scope",
+        "target",
+        "reservation_id",
+        "operation_id",
+        "transition_digest",
+        "revoked_authorization_sha256",
+        "known_gaps_decision",
+        "owner_confirmed_gaps",
+        "retention_policy",
+        "issued_at",
+        "expires_at",
+        "nonce",
+        "confirmation_digest",
+    }
+    if set(approval) != approval_keys:
+        raise CutoverSafetyError("owner authorization binding is incomplete")
+    signer = _text(approval.get("signer_identity"), "Owner signer identity")
+    signature = _text(approval.get("signature"), "Owner signature")
+    if any(character.isspace() for character in signature):
+        raise CutoverSafetyError("owner authorization binding is incomplete")
+    if expected_signer is not None and signer != expected_signer:
+        raise CutoverSafetyError("owner authorization differs from prepared transition/target")
+    if (
+        approval.get("scope") != "B649_LINEAGE_SUCCESSOR_RESERVATION"
+        or approval.get("target") != target
+        or approval.get("revoked_authorization_sha256") != pending.get("authorization_sha256")
+        or approval.get("retention_policy") != LINEAGE_SUCCESSOR_RETAIN_POLICY
+        or approval.get("known_gaps_decision") not in LINEAGE_SUCCESSOR_GAP_DECISIONS
+        or not isinstance(approval.get("owner_confirmed_gaps"), list)
+        or approval.get("transition_digest")
+        != _sha256_json(_lineage_successor_core(evidence))
+        or evidence.get("transition_sha256")
+        != _sha256_json(_lineage_successor_core(evidence))
+    ):
+        raise CutoverSafetyError("owner authorization differs from prepared transition/target")
+    try:
+        approved_reservation = _text(approval.get("reservation_id"), "successor reservation id")
+        if str(UUID(approved_reservation)) != approved_reservation:
+            raise ValueError
+    except ValueError as exc:
+        raise CutoverSafetyError("owner authorization binding is incomplete") from exc
+    approved_operation = _text(approval.get("operation_id"), "successor operation id")
+    if re.fullmatch(r"(?:[0-9a-f]{32}|[0-9a-f]{64})", approved_operation) is None:
+        raise CutoverSafetyError("owner authorization binding is incomplete")
+    confirmed_gaps = approval.get("owner_confirmed_gaps")
+    if approval.get("known_gaps_decision") == "PRESERVE_UNRESOLVED_AND_CONTINUE":
+        if not all(isinstance(item, str) for item in cast(list[object], confirmed_gaps)):
+            raise CutoverSafetyError("lineage gap acceptance does not match Owner approval")
+        if frozenset(cast(list[str], confirmed_gaps)) != LINEAGE_SUCCESSOR_GAP_IDS:
+            raise CutoverSafetyError("lineage gap acceptance does not match Owner approval")
+    elif confirmed_gaps:
+        raise CutoverSafetyError("lineage gap acceptance does not match Owner approval")
+
+    try:
+        issued_at = datetime.fromisoformat(_text(approval.get("issued_at"), "approval issue time"))
+        expires_at = datetime.fromisoformat(_text(approval.get("expires_at"), "approval expiry"))
+    except ValueError as exc:
+        raise CutoverSafetyError("lineage successor evidence expired or replayed") from exc
+    current_time = datetime.now(UTC) if now is None else now
+    if (
+        issued_at.tzinfo is None
+        or expires_at.tzinfo is None
+        or issued_at.utcoffset() != UTC.utcoffset(issued_at)
+        or expires_at.utcoffset() != UTC.utcoffset(expires_at)
+        or expires_at <= issued_at
+        or (expires_at - issued_at).total_seconds()
+        > LINEAGE_SUCCESSOR_MAX_AUTHORIZATION_TTL_SECONDS
+        or issued_at > current_time
+        or expires_at <= current_time
+    ):
+        raise CutoverSafetyError("lineage successor evidence expired or replayed")
+    nonce = _text(approval.get("nonce"), "Owner authorization nonce")
+    try:
+        if str(UUID(nonce)) != nonce:
+            raise ValueError
+    except ValueError as exc:
+        raise CutoverSafetyError("lineage successor evidence expired or replayed") from exc
+    confirmation_fields = {
+        key: item
+        for key, item in approval.items()
+        if key not in {"signature", "confirmation_digest"}
+    }
+    confirmation_digest = _sha256_json(confirmation_fields)
+    if approval.get("confirmation_digest") != confirmation_digest:
+        raise CutoverSafetyError("owner authorization binding is incomplete")
+    if (
+        approval.get("reservation_id") == pending_reservation
+        or approval.get("operation_id") == pending_operation
+    ):
+        raise CutoverSafetyError("owner authorization binding is incomplete")
+    if verify_signature:
+        if approval_verifier is None:
+            raise CutoverSafetyError("owner authorization proof verifier is not configured")
+        if not approval_verifier(signer, confirmation_digest, signature):
+            raise CutoverSafetyError("owner authorization differs from prepared transition/target")
+    if evidence.get("record_sha256") != _sha256_json(
+        {key: item for key, item in evidence.items() if key != "record_sha256"}
+    ):
+        raise CutoverSafetyError("lineage successor evidence schema or seal is invalid")
+    if (
+        evidence.get("phase") not in {"PREPARED", "CANCELLED"}
+        and approval.get("known_gaps_decision") != "PRESERVE_UNRESOLVED_AND_CONTINUE"
+    ):
+        raise CutoverSafetyError("known lineage gaps have no explicit Owner decision")
+    if _lineage_path(evidence.get("claim_root"), "successor ClaimStore root") != claim_root:
+        raise CutoverSafetyError("lineage successor evidence schema or seal is invalid")
+    return evidence
+
+
 def _validate_predecessor_release_evidence(value: object, owner: Record) -> Record:
     evidence = _record(value, "protected predecessor release evidence")
     unsigned = {key: item for key, item in evidence.items() if key != "evidence_sha256"}
@@ -1773,18 +2233,21 @@ def _validate_predecessor_release_evidence(value: object, owner: Record) -> Reco
     prior_release = _record(evidence.get("prior_release_evidence"), "prior release evidence")
     prestart_link_key = "prestart_successor_predecessor_evidence"
     target_transition_key = "versioned_target_transition"
+    lineage_transition_key = "lineage_successor_transition"
     allowed = {
         frozenset(required),
         frozenset(required | {"retired_failed_terminal_evidence"}),
         frozenset(required | {prestart_link_key}),
         frozenset(required | {ABANDONED_LINEAGE_LINK_KEY}),
         frozenset(required | {ABANDONED_LINEAGE_LINK_KEY, target_transition_key}),
+        frozenset(required | {lineage_transition_key}),
     }
     prestart_link = evidence.get(prestart_link_key)
     prestart_successor_release = prior_release.get("kind") == "PRESTART_SUCCESSOR_NO_MUTATION"
     abandoned_release = prior_release.get("kind") == EXPLICIT_ABANDON_RELEASE_KIND
     abandoned_link = evidence.get(ABANDONED_LINEAGE_LINK_KEY)
     target_transition = evidence.get(target_transition_key)
+    lineage_transition = evidence.get(lineage_transition_key)
     if (
         frozenset(evidence) not in allowed
         or evidence.get("schema") != PROTECTED_PREDECESSOR_RELEASE_SCHEMA
@@ -1801,7 +2264,9 @@ def _validate_predecessor_release_evidence(value: object, owner: Record) -> Reco
         )
         or prestart_successor_release != (prestart_link is not None)
         or (prestart_link_key in evidence) != (prestart_link is not None)
-        or abandoned_release != (abandoned_link is not None)
+        or abandoned_release
+        != (abandoned_link is not None or lineage_transition is not None)
+        or (abandoned_link is not None and lineage_transition is not None)
         or (ABANDONED_LINEAGE_LINK_KEY in evidence) != (abandoned_link is not None)
         or (target_transition is not None and not abandoned_release)
     ):
@@ -1850,6 +2315,26 @@ def _validate_predecessor_release_evidence(value: object, owner: Record) -> Reco
             raise CutoverSafetyError("pre-start successor predecessor link is invalid")
         _text(link.get("predecessor_reservation_id"), "predecessor reservation id")
         _text(link.get("predecessor_operation_id"), "predecessor operation id")
+    elif abandoned_release and lineage_transition is not None:
+        transition = _validate_lineage_successor_transition(lineage_transition)
+        transition_approval = _record(
+            transition.get("owner_approval"), "lineage successor Owner approval"
+        )
+        released_owner = _record(transition.get("released_owner"), "released predecessor owner")
+        if (
+            transition.get("phase") != "OLD_OWNER_RELEASED"
+            or released_owner.get("reservation_id") != evidence.get("prior_reservation_id")
+            or released_owner.get("operation_id") != evidence.get("prior_operation_id")
+            or released_owner.get("authorization_sha256")
+            != evidence.get("prior_authorization_sha256")
+            or prior_release != {"kind": EXPLICIT_ABANDON_RELEASE_KIND, "verified": True}
+            or transition_approval.get("reservation_id") != evidence.get("new_reservation_id")
+            or transition_approval.get("operation_id") != evidence.get("new_operation_id")
+            or transition.get("target") != owner.get("target")
+            or transition_approval.get("transition_digest")
+            != transition.get("transition_sha256")
+        ):
+            raise CutoverSafetyError("lineage successor evidence schema or seal is invalid")
     elif abandoned_release:
         _validate_abandoned_lineage_link(abandoned_link, evidence, prior_release)
         link = _record(abandoned_link, "abandoned lineage link")

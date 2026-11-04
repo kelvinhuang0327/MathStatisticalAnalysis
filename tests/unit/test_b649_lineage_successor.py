@@ -10,6 +10,7 @@ import os
 import stat
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime, timedelta
+from multiprocessing import get_context
 from pathlib import Path
 from threading import Barrier
 from typing import cast
@@ -1964,6 +1965,16 @@ def _skip_lineage_ancestor_verification(
     return None
 
 
+def _crash_after_lineage_apply_start(request: protected.Request) -> None:
+    protected._verify_lineage_successor_archives = _skip_lineage_archive_verification
+    protected._begin_lineage_successor_apply(
+        request,
+        expected_signer="test-owner",
+        approval_verifier=_accept_test_signature,
+    )
+    os._exit(73)
+
+
 def test_lineage_apply_start_marker_is_durable_and_idempotent_after_restart(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -2006,6 +2017,37 @@ def test_lineage_apply_start_marker_is_durable_and_idempotent_after_restart(
     stored, stored_identity, _ = cutover.read_control_json(evidence_path)
     assert stored["phase"] == "APPLY_STARTED"
     assert stored_identity.key() == second_identity.key()
+
+
+def test_lineage_apply_start_survives_abrupt_worker_exit(tmp_path: Path) -> None:
+    scheduler_root = tmp_path / "scheduler"
+    scheduler_root.mkdir(mode=0o700)
+    evidence = _successor_record(tmp_path, phase="AUTHORIZED_PENDING")
+    evidence_path = scheduler_root / (
+        f"{protected.LINEAGE_SUCCESSOR_EVIDENCE_NAME_PREFIX}{evidence['transition_id']}.json"
+    )
+    evidence_path.write_text(protected.canonical(evidence) + "\n", encoding="utf-8")
+    evidence_path.chmod(0o600)
+    target = cast(dict[str, str], evidence["target"])
+    config = cutover.CutoverConfig(
+        source_worktree=Path(target["source_worktree"]),
+        scheduler_root=scheduler_root,
+        receipt_path=scheduler_root / "managed-receipt.json",
+        expected_head=target["head"],
+        expected_tree=target["tree"],
+        durable_ref=target["durable_ref"],
+    )
+    request = _lineage_apply_request(config, evidence, evidence_path)
+    worker = get_context("fork").Process(target=_crash_after_lineage_apply_start, args=(request,))
+
+    worker.start()
+    worker.join()
+
+    assert worker.exitcode == 73
+    stored, identity, raw = cutover.read_control_json(evidence_path)
+    assert stored["phase"] == "APPLY_STARTED"
+    assert raw.endswith(b"\n")
+    assert identity.sha256 == hashlib.sha256(raw).hexdigest()
 
 
 def test_lineage_apply_restart_accepts_started_owner_but_does_not_reissue_cas(

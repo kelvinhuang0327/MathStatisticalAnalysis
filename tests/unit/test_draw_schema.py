@@ -11,6 +11,7 @@ import pytest
 from pytest import MonkeyPatch
 
 import lottolab.infrastructure.persistence.draw_schema as draw_schema
+import lottolab.infrastructure.persistence.project_database_paths as project_paths
 from lottolab.infrastructure.persistence.draw_schema import (
     BUSY_TIMEOUT_MS,
     CONTEXT_MIGRATION_CHECKSUM,
@@ -107,16 +108,36 @@ def create_v3_schema(paths: LocalDataPaths) -> None:
         )
 
 
-def test_resolver_is_lazy_and_uses_override_or_mac_default(tmp_path: Path) -> None:
+def test_resolver_is_lazy_and_uses_override_or_project_default(
+    tmp_path: Path, monkeypatch: MonkeyPatch
+) -> None:
     overridden = task_paths(tmp_path)
     assert overridden.data_directory == tmp_path / "lottolab-data"
     assert overridden.database == overridden.data_directory / "lottolab.db"
     assert not overridden.data_directory.exists()
 
     fake_home = tmp_path / "fake-home"
+    project_databases = tmp_path / "project" / "data" / "databases"
+    monkeypatch.setattr(draw_schema, "project_database_directory", lambda: project_databases)
     defaulted = resolve_local_data_paths(environ={}, home=fake_home)
-    assert defaulted.data_directory == (fake_home / "Library" / "Application Support" / "LottoLab")
+    assert defaulted.data_directory == project_databases
     assert not fake_home.exists()
+    assert not project_databases.exists()
+
+
+def test_canonical_project_database_is_the_only_git_boundary_exception(
+    tmp_path: Path, monkeypatch: MonkeyPatch
+) -> None:
+    project_root = tmp_path / "project"
+    (project_root / ".git").mkdir(parents=True)
+    project_databases = project_root / "data" / "databases"
+    project_databases.mkdir(parents=True)
+    monkeypatch.setattr(project_paths, "canonical_project_root", lambda: project_root)
+    monkeypatch.setattr(project_paths, "project_database_directory", lambda: project_databases)
+    monkeypatch.setattr(draw_schema, "project_database_directory", lambda: project_databases)
+    draw_schema._reject_git_worktree_path(  # pyright: ignore[reportPrivateUsage]
+        project_databases / "lottolab.db"
+    )
 
 
 @pytest.mark.parametrize(

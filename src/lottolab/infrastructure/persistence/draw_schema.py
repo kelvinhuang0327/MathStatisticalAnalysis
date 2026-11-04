@@ -13,6 +13,12 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
+from lottolab.infrastructure.persistence.project_database_paths import (
+    is_project_database_boundary,
+    project_database_directory,
+    require_project_database_write_ready,
+)
+
 DATA_DIRECTORY_ENV = "LOTTOLAB_DATA_DIR"
 DATABASE_FILENAME = "lottolab.db"
 CURRENT_SCHEMA_VERSION = 4
@@ -831,8 +837,8 @@ def resolve_local_data_paths(
             raise LocalDataError(f"{DATA_DIRECTORY_ENV} must not be empty")
         data_directory = Path(configured)
     else:
-        selected_home = Path.home() if home is None else home
-        data_directory = selected_home / "Library" / "Application Support" / "LottoLab"
+        del home
+        data_directory = project_database_directory()
 
     paths = LocalDataPaths(
         data_directory=data_directory,
@@ -848,6 +854,7 @@ def initialize_schema(paths: LocalDataPaths) -> None:
 
     _validate_path_definition(paths)
     _validate_existing_paths(paths)
+    require_project_database_write_ready(paths.database)
     directory_created = False
     database_created = False
 
@@ -988,6 +995,8 @@ def open_database(
 @contextmanager
 def _raw_connection(paths: LocalDataPaths, *, read_only: bool) -> Generator[sqlite3.Connection]:
     _validate_existing_paths(paths)
+    if not read_only:
+        require_project_database_write_ready(paths.database)
     _reject_wal_sidecars(paths.database)
     mode = "ro" if read_only else "rw"
     uri = f"{paths.database.as_uri()}?mode={mode}"
@@ -1320,6 +1329,8 @@ def _reject_git_worktree_path(path: Path) -> None:
             continue
         except OSError as exc:
             raise LocalDataError("cannot inspect Git-worktree boundaries safely") from exc
+        if is_project_database_boundary(path, ancestor):
+            continue
         raise LocalDataError("local data path must be outside Git worktrees")
 
 

@@ -88,6 +88,10 @@ from lottolab.infrastructure.persistence.draw_schema import (
 from lottolab.infrastructure.persistence.future_draw_identity_repository import (
     SQLiteOfficialScheduleSyncRepository,
 )
+from lottolab.infrastructure.persistence.production_migration_v51 import (
+    ensure_migration_complete,
+)
+from lottolab.infrastructure.persistence.project_database_paths import project_database_directory
 from lottolab.infrastructure.persistence.repositories import SQLiteDrawDataRepository
 from lottolab.infrastructure.pre_outcome_target_operational import (
     OFFICIAL_SCHEDULE_SOURCE_ID,
@@ -170,7 +174,7 @@ SCRIPT_PATH = SOURCE_WORKTREE / "tools/b649_goalc_local_scheduler.py"
 GOALC_ROOT = Path(
     "/Users/kelvin/VibeCoding-WorkSpace/.task-data/B649_OPERATIONAL_PREDICTION_LOOP_R1"
 )
-DATA_ROOT = Path("/Users/kelvin/Library/Application Support/LottoLab")
+DATA_ROOT = project_database_directory()
 DATABASE_PATH = DATA_ROOT / "lottolab.db"
 ANNOUNCEMENT_PATH = DATA_ROOT / "pre-outcome-target-announcements-v1.json"
 SCHEDULER_ROOT = GOALC_ROOT / "scheduler"
@@ -530,6 +534,31 @@ class AdvisoryProcessLock:
         if descriptor is not None:
             fcntl.flock(descriptor, fcntl.LOCK_UN)
             os.close(descriptor)
+
+    def assert_held(self) -> None:
+        """Prove the held descriptor still names the private lock pathname."""
+        descriptor = self._descriptor
+        if descriptor is None:
+            raise LocalSchedulerSafetyError("scheduler migration requires the process lock")
+        try:
+            _validate_owned_regular_descriptor(descriptor, "scheduler lock", mode=0o600)
+            descriptor_info = os.fstat(descriptor)
+            path_info = os.lstat(self._path)
+            if (
+                not stat.S_ISREG(path_info.st_mode)
+                or stat.S_ISLNK(path_info.st_mode)
+                or path_info.st_uid != os.getuid()
+                or stat.S_IMODE(path_info.st_mode) != 0o600
+                or path_info.st_nlink != 1
+                or (path_info.st_dev, path_info.st_ino)
+                != (descriptor_info.st_dev, descriptor_info.st_ino)
+            ):
+                raise LocalSchedulerSafetyError("scheduler lock pathname identity changed")
+            fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError as exc:
+            raise LocalSchedulerSafetyError(
+                "scheduler process lock is no longer held safely"
+            ) from exc
 
 
 class ProductionSchedulerBackend:
@@ -1455,6 +1484,12 @@ def run_scheduler_cycle(
 
     lock_released = False
     try:
+        lock.assert_held()
+        ensure_migration_complete(
+            database_directory=config.data_root,
+            lock_validator=lock.assert_held,
+        )
+        lock.assert_held()
         started_at = _as_utc(clock())
         previous = _read_optional_json_object(config.health_path)
         source_head = source_head_resolver(SOURCE_WORKTREE)

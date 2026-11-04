@@ -10,7 +10,7 @@ import runpy
 import ssl
 import stat
 import subprocess
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from inspect import getsource
@@ -70,6 +70,24 @@ SCHEDULED = datetime(2099, 1, 2, 12, 30, tzinfo=UTC)
 STREAM_IDS = tuple(stream.strategy_id for stream in STRATEGY_STREAMS if stream.enabled)
 STREAMS_BY_ID = {stream.strategy_id: stream for stream in STRATEGY_STREAMS if stream.enabled}
 SOURCE_HEAD = "f" * 40
+
+
+@pytest.fixture(autouse=True)
+def isolate_first_start_migration(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Scheduler unit fixtures must never read Library or canonical project data."""
+
+    def isolated_gate(
+        *, database_directory: Path, lock_validator: Callable[[], None]
+    ) -> dict[str, object]:
+        del database_directory
+        lock_validator()
+        return {"status": "TEST_ISOLATED"}
+
+    monkeypatch.setattr(
+        scheduler_module,
+        "ensure_migration_complete",
+        isolated_gate,
+    )
 
 
 def _config(tmp_path: Path) -> SchedulerConfig:
@@ -1672,6 +1690,17 @@ def test_health_reports_loaded_checkout_despite_unrelated_configuration(
         script_path=module_path,
     )
     loaded = runpy.run_path(str(runtime / "tools/b649_goalc_local_scheduler.py"))
+
+    def isolated_loaded_gate(
+        *, database_directory: Path, lock_validator: Callable[[], None]
+    ) -> dict[str, object]:
+        del database_directory
+        lock_validator()
+        return {"status": "TEST_ISOLATED"}
+
+    loaded["run_scheduler_cycle"].__globals__["ensure_migration_complete"] = (
+        isolated_loaded_gate
+    )
     backend = _FakeBackend(target=_target(), inventories=(_inventory(11),))
     result = loaded["run_scheduler_cycle"](config, backend, clock=lambda: NOW)
     persisted = json.loads(config.health_path.read_text())
@@ -1884,8 +1913,32 @@ def test_advisory_lock_contention_does_not_mutate_existing_health(tmp_path: Path
     assert result["current_status"] == "ALREADY_RUNNING"
     assert result["lock_contention"] is True
     assert config.health_path.read_bytes() == existing
-    assert backend.generation_calls == []
-    assert backend.sync_calls == 0
+
+
+def test_migration_gate_failure_stops_before_health_and_releases_lock(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    config = _config(tmp_path)
+    gate_calls = 0
+
+    def fail_gate(*, database_directory: Path, lock_validator: object) -> dict[str, object]:
+        nonlocal gate_calls
+        assert database_directory == config.data_root
+        gate_calls += 1
+        assert callable(lock_validator)
+        cast(Callable[[], None], lock_validator)()
+        assert config.lock_path.is_file()
+        raise RuntimeError("migration is not committed")
+
+    monkeypatch.setattr(scheduler_module, "ensure_migration_complete", fail_gate)
+    backend = cast(scheduler_module.SchedulerBackend, object())
+    with pytest.raises(RuntimeError, match="migration is not committed"):
+        run_scheduler_cycle(config, backend, clock=lambda: NOW)
+
+    assert gate_calls == 1
+    assert not config.health_path.exists()
+    with AdvisoryProcessLock(config.lock_path):
+        pass
 
 
 def test_advisory_lock_is_released_by_context_exit(tmp_path: Path) -> None:

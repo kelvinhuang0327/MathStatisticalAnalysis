@@ -22,6 +22,9 @@ from lottolab.infrastructure.persistence.historical_schema import (
     initialize_schema,
     open_database,
 )
+from lottolab.infrastructure.persistence.project_database_paths import (
+    is_verified_legacy_keeper_for_source,
+)
 
 SOURCE_REPLAY_RUN_ID = "p638-wave1-0f2f67c21f7a1921"
 SOURCE_REPLAY_DB_SHA256 = "9a697b3384d469f032d0649e8fd05b9a9900beb46e5527b129e3b1a6624d434a"
@@ -1209,7 +1212,13 @@ def _verify_source_file(
         raise P638ForwardingError(f"{label} byte size does not match its pinned authority")
     digest = _file_sha256(path)
     if digest != expected_sha256:
-        raise P638ForwardingError(f"{label} SHA-256 does not match its pinned authority")
+        if not is_verified_legacy_keeper_for_source(
+            path, original_sha256=expected_sha256, keeper_sha256=digest
+        ):
+            raise P638ForwardingError(f"{label} SHA-256 does not match its pinned authority")
+        # Retain the archived source hash as provenance; the keeper's physical
+        # bytes differ although INDEX certifies its logical contents.
+        return expected_sha256
     return digest
 
 

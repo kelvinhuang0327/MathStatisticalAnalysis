@@ -21,6 +21,10 @@ from lottolab.infrastructure.persistence.draw_schema import (
     open_database,
     verify_schema_read_only,
 )
+from lottolab.infrastructure.persistence.project_database_paths import (
+    is_project_database_boundary,
+    require_project_database_write_ready,
+)
 
 JsonObject = dict[str, Any]
 
@@ -273,7 +277,7 @@ def validate_database_path(database: Path) -> Path:
     if any(p.is_symlink() for p in (database, *database.parents)):
         raise ValueError("database path must not contain symlinks")
     for parent in database.parents:
-        if (parent / ".git").exists():
+        if (parent / ".git").exists() and not is_project_database_boundary(database, parent):
             raise ValueError("database must be outside a Git checkout")
     if database.exists():
         info = database.stat()
@@ -340,6 +344,8 @@ class SQLiteBackfillStore:
         database = validate_database_path(self.database)
         if write and self.read_only:
             raise ValueError("read-only store")
+        if write:
+            require_project_database_write_ready(database)
         connection = sqlite3.connect(
             database.as_uri() + "?mode=rw" if write else database.as_uri() + "?mode=ro",
             uri=True,
@@ -365,6 +371,7 @@ class SQLiteBackfillStore:
         if self.read_only:
             raise ValueError("read-only store")
         path = validate_database_path(self.database)
+        require_project_database_write_ready(path)
         if not path.parent.is_dir():
             raise ValueError("output database parent must already exist")
         if not path.exists():

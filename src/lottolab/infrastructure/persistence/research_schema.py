@@ -47,6 +47,11 @@ from lottolab.domain.research_live_forecast import (
     ORIGINAL_FIELDS,
     canonical_json,
 )
+from lottolab.infrastructure.persistence.project_database_paths import (
+    is_project_database_boundary,
+    project_database_directory,
+    require_project_database_write_ready,
+)
 
 DATA_DIRECTORY_ENV = "LOTTOLAB_DATA_DIR"
 RESEARCH_DATABASE_FILENAME = "lottolab_research.db"
@@ -1683,8 +1688,7 @@ def resolve_research_data_paths(
             raise ResearchDataError(f"{DATA_DIRECTORY_ENV} must not be empty")
         data_directory = Path(configured)
     else:
-        selected_home = Path.home() if home is None else home
-        data_directory = selected_home / "Library" / "Application Support" / "LottoLab"
+        data_directory = project_database_directory()
     paths = ResearchDataPaths(
         data_directory=data_directory,
         database=data_directory / RESEARCH_DATABASE_FILENAME,
@@ -1699,6 +1703,7 @@ def initialize_schema(paths: ResearchDataPaths) -> None:
 
     _validate_path_definition(paths)
     _validate_existing_paths(paths)
+    require_project_database_write_ready(paths.database)
     directory_created = False
     database_created = False
     try:
@@ -1843,6 +1848,8 @@ def _raw_connection(
     read_only: bool,
 ) -> Generator[sqlite3.Connection]:
     _validate_existing_paths(paths)
+    if not read_only:
+        require_project_database_write_ready(paths.database)
     _reject_wal_sidecars(paths.database)
     mode = "ro" if read_only else "rw"
     uri = f"{paths.database.as_uri()}?mode={mode}"
@@ -2085,6 +2092,8 @@ def _reject_git_worktree_path(path: Path) -> None:
             continue
         except OSError as exc:
             raise ResearchDataError("cannot inspect Git-worktree boundaries safely") from exc
+        if is_project_database_boundary(path, ancestor):
+            continue
         raise ResearchDataError("research data path must be outside Git worktrees")
 
 

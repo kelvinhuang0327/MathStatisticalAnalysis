@@ -209,17 +209,25 @@ BIG_LOTTO,000001,2026-07-16,1|3|9|17|24|49,7,synthetic-reference
 - 目前 adapter boundary 不代表官方資料源已驗證，也不構成 production scheduler、traffic cutover
   或 LotteryNew retirement 證據。
 
-本機 DB 永遠在 Git worktree 外。可用絕對、owner-only 的目錄覆寫預設位置：
+正式 DB 的預設位置為主專案根目錄的 `data/databases/`；linked worktree 也解析至同一個主專案位置，
+不依賴目前工作目錄或 HOME。開獎庫為 `lottolab.db`，研究庫依既有 schema 契約另存
+`lottolab_research.db`；無法無損合表的來源放在 `legacy/`，一致性備份放在 `backups/`。
+只有這個固定子目錄可通過 Git 邊界檢查。測試仍可明確指定獨立 fixture 目錄：
 
 ```bash
 LOTTOLAB_DATA_DIR=/absolute/owner-only/path uv run --no-sync lottolab local start
 ```
 
-未存在 DB 的 history read 會回傳 deterministic empty result，不建立目錄、DB 或 migration；第一個
-明確 write 才能建立 version-2 schema。既有 version-1 DB 的 read 仍以 SQLite `mode=ro` 與
-`query_only` 驗證且不升級；下一個明確 write 才 transactionally 加入 version-2 ingestion context。
+未存在 DB 的 history read 不建立目錄、DB 或 migration。正式固定路徑缺庫時，寫入也會拒絕，
+避免產生空權威庫。遷移副本由 `data/databases/database-locations.json` 明列讀取位置及可寫狀態；
+舊 writer 尚未切換時，`writable_databases` 保持空陣列，開獎、研究與 Replay 副本維持唯讀。
+`data/databases/database-locations.json` 是程式目前讀寫的資料庫位置依據，也就是根目錄那 6 個 DB。
+`data/databases/legacy/INDEX.json` 對照已退役研究 DB 的「舊路徑 → 專案內 keeper」，只供重讀歷史收據與預註冊使用。
+`legacy/` 的 keeper 另有雲端備份（批次 `MSADBBK-<YYYYMMDD>`）；keeper 不見或損毀時，依本機
+`data/databases/CLOUD_BACKUP_RESTORE.md` 還原（`data/` 不進 Git）。
+既有資料讀取使用 SQLite `mode=ro` 與 `query_only`，不因讀取而升級 schema。
 使用者 DB、SQLite sidecar、upload 與 runtime artifacts
-都不進 Git。測試與 task lifecycle 一律把 `LOTTOLAB_DATA_DIR` 指向 repo 外的新建暫存目錄，並在
+都不進 Git。測試與 task lifecycle 把 `LOTTOLAB_DATA_DIR` 指向明確隔離的 fixture 目錄，並在
 驗證後只移除該 task 自己建立的路徑。
 
 LottoLab 是本機、非機密的研究應用。固定 path、owner、權限、symlink、hardlink、special-file、
@@ -236,8 +244,9 @@ contract 綁到本機 canonical data directory；支援 `BIG_LOTTO`、`DAILY_539
 - announcement authority：`<LOTTOLAB_DATA_DIR>/pre-outcome-target-announcements-v1.json`
 - durable registrations：`<LOTTOLAB_DATA_DIR>/pre-outcome-target-authority-v1/`
 
-未設定 `LOTTOLAB_DATA_DIR` 時仍沿用既有的
-`~/Library/Application Support/LottoLab` canonical root。Path resolution、CLI help 與 composition
+未設定 `LOTTOLAB_DATA_DIR` 時使用主專案的 `data/databases/`。已載入的舊排程可能仍固定在
+Library 與舊版本 worktree；修改目前 checkout 不代表該服務已切換，公告及 registration 依賴也需
+另外完成驗收。Path resolution、CLI help 與 composition
 都不建立上述檔案或目錄；只有成功的 canonical create-once registration 才會建立 durable authority
 root。announcement file 必須是 owner-owned、mode `0600`、single-link regular file，外層 schema 如下；
 每個 entry 都必須逐一引用 credential-free 的台灣彩券官方 HTTPS 頁面，且不得出現中獎號碼、特別號、

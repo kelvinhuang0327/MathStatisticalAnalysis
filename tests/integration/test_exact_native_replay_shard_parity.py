@@ -83,6 +83,7 @@ def test_committed_fixture_is_140_rows_of_20_targets_by_7_bindings() -> None:
     assert all(row["schema_version"] == "B649_EXACT_NATIVE_TARGET_EVIDENCE_V1" for row in rows)
 
 
+@pytest.mark.real_draw_authority_db
 @draw_authority_present
 def test_canonical_engine_reproduces_committed_fixture_rows_byte_identically() -> None:
     """Replays the fixture's own 20 targets (10 earliest + 10 latest of the
@@ -121,6 +122,7 @@ def test_canonical_engine_reproduces_committed_fixture_rows_byte_identically() -
         )
 
 
+@pytest.mark.real_draw_authority_db
 @draw_authority_present
 def test_db_before_and_after_sha256_invariant_across_a_range_call(tmp_path: Path) -> None:
     db_path = _draw_data_path()
@@ -141,6 +143,7 @@ def test_db_before_and_after_sha256_invariant_across_a_range_call(tmp_path: Path
     assert sha_after_real == sha_before_real
 
 
+@pytest.mark.real_draw_authority_db
 @draw_authority_present
 def test_canonical_engine_reproduces_full_donor_evidence_byte_identically(tmp_path: Path) -> None:
     """The one required full donor parity execution: 2165 targets x 7 bindings

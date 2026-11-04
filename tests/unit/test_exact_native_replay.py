@@ -398,6 +398,7 @@ def test_history_fingerprint_matches_fixtures_empty_history_row() -> None:
     assert history_fingerprint(()) == first_row["causal_history_fingerprint"]
 
 
+@pytest.mark.real_draw_authority_db
 @draw_authority_present
 def test_replay_cell_is_deterministic_across_repeated_calls() -> None:
     descriptors, _universe = catalog_freeze()
@@ -456,6 +457,7 @@ def test_all_seven_bindings_load_without_error() -> None:
 # --- monkeypatch unreachability ----------------------------------------------
 
 
+@pytest.mark.real_draw_authority_db
 @draw_authority_present
 def test_evolution_engine_monkeypatch_targets_unreachable_over_fixture() -> None:
     """Falsifiable sentinel trace: every symbol the donor's

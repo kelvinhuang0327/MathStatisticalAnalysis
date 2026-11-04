@@ -20,15 +20,16 @@ from lottolab.infrastructure.persistence.p638_historical_forwarder import (
 from lottolab.infrastructure.persistence.p638_historical_repositories import (
     SQLiteP638HistoricalQueryRepository,
 )
+from lottolab.infrastructure.persistence.project_database_paths import default_legacy_database_path
 from lottolab.interfaces.api.app import create_app
 
 WORKSPACE = Path(__file__).parents[5]
-SOURCE_REPLAY_DB = (
+SOURCE_REPLAY_DB = default_legacy_database_path(
     WORKSPACE
     / ".runs/MathStatisticalAnalysis/P638_WAVE1_REPLAY_R4_LEDGER_SOURCE_AUTHORITY"
     / "p638_wave1_replay_r4.sqlite3"
 )
-SOURCE_DRAW_DB = (
+SOURCE_DRAW_DB = default_legacy_database_path(
     WORKSPACE
     / ".runs/MathStatisticalAnalysis/P638_OLD_DB_DRAW_MIGRATION_R1"
     / "powerlotto_draws.sqlite3"

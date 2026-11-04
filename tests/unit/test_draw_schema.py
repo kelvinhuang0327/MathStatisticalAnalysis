@@ -5,12 +5,14 @@ from __future__ import annotations
 import os
 import sqlite3
 import stat
+import subprocess
 from pathlib import Path
 
 import pytest
 from pytest import MonkeyPatch
 
 import lottolab.infrastructure.persistence.draw_schema as draw_schema
+from lottolab.infrastructure.persistence import project_database_paths as locations
 from lottolab.infrastructure.persistence.draw_schema import (
     BUSY_TIMEOUT_MS,
     CONTEXT_MIGRATION_CHECKSUM,
@@ -117,6 +119,27 @@ def test_resolver_is_lazy_and_uses_override_or_project_default(tmp_path: Path) -
     defaulted = resolve_local_data_paths(environ={}, home=fake_home)
     assert defaulted.data_directory == draw_schema.project_database_directory()
     assert not fake_home.exists()
+
+
+def test_schema_initializes_draw_database_inside_ignored_project_scratch(
+    tmp_path: Path,
+    monkeypatch: MonkeyPatch,
+) -> None:
+    project = tmp_path / "canonical-checkout"
+    project.mkdir()
+    subprocess.run(("git", "init", "--quiet", str(project)), check=True)
+    (project / ".gitignore").write_text(".task-data/\n", encoding="utf-8")
+    monkeypatch.setattr(locations, "PROJECT_ROOT", project)
+    scratch_directory = project / ".task-data" / "_scratch" / "unit_db_01"
+
+    paths = resolve_local_data_paths(environ={DATA_DIRECTORY_ENV: str(scratch_directory)})
+    initialize_schema(paths)
+
+    assert paths.database == scratch_directory / "lottolab.db"
+    assert paths.database.is_file()
+    assert verify_schema_read_only(paths) is True
+    with open_database(paths, read_only=True) as connection:
+        assert connection.execute("SELECT COUNT(*) FROM schema_migrations").fetchone() == (4,)
 
 
 @pytest.mark.parametrize(

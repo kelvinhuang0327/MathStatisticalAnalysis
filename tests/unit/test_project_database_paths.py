@@ -39,6 +39,88 @@ def project(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     return repo
 
 
+def _git_project(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    ignored: bool = True,
+) -> Path:
+    repo = tmp_path / "scratch-checkout"
+    repo.mkdir()
+    subprocess.run(("git", "init", "--quiet", str(repo)), check=True)
+    if ignored:
+        (repo / ".gitignore").write_text(".task-data/\n", encoding="utf-8")
+    monkeypatch.setattr(locations, "PROJECT_ROOT", repo)
+    return repo
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        "other_git_worktree",
+        "parent_component",
+        "symlink_component",
+        "other_checkout_scratch",
+        "task_data_non_scratch",
+        "canonical_root_other_directory",
+        "b649_uppercase",
+        "b649_lowercase",
+        "lotterynew_uppercase_component",
+        "lotterynew_lowercase_component",
+        "unignored_scratch_root",
+    ],
+)
+def test_project_scratch_database_boundary_rejects_unsafe_paths(
+    case: str,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repo = _git_project(tmp_path, monkeypatch, ignored=case != "unignored_scratch_root")
+    scratch = repo / ".task-data" / "_scratch"
+    path = scratch / "unit_db_01" / "test.sqlite3"
+    git_ancestor = repo
+
+    if case == "other_git_worktree":
+        linked = tmp_path / "linked-worktree"
+        linked.mkdir()
+        git_directory = repo / ".git" / "worktrees" / "linked-worktree"
+        git_directory.mkdir(parents=True)
+        (git_directory / "commondir").write_text("../..\n", encoding="utf-8")
+        (linked / ".git").write_text(f"gitdir: {git_directory}\n", encoding="utf-8")
+        monkeypatch.setattr(locations, "PROJECT_ROOT", linked)
+        path = linked / ".task-data" / "_scratch" / "unit_db_01" / "test.sqlite3"
+        git_ancestor = linked
+    elif case == "parent_component":
+        path = scratch / "unit_db_01" / ".." / "test.sqlite3"
+    elif case == "symlink_component":
+        (scratch / "target").mkdir(parents=True)
+        (scratch / "linked").symlink_to(scratch / "target", target_is_directory=True)
+        path = scratch / "linked" / "test.sqlite3"
+    elif case == "other_checkout_scratch":
+        other = tmp_path / "other-checkout"
+        other.mkdir()
+        subprocess.run(("git", "init", "--quiet", str(other)), check=True)
+        (other / ".gitignore").write_text(".task-data/\n", encoding="utf-8")
+        path = other / ".task-data" / "_scratch" / "unit_db_01" / "test.sqlite3"
+        git_ancestor = other
+    elif case == "task_data_non_scratch":
+        path = repo / ".task-data" / "unit_db_01" / "test.sqlite3"
+    elif case == "canonical_root_other_directory":
+        path = repo / "var" / "unit_db_01" / "test.sqlite3"
+    elif case == "b649_uppercase":
+        path = scratch / "unit_B649_db" / "test.sqlite3"
+    elif case == "b649_lowercase":
+        path = scratch / "unit_b649_db" / "test.sqlite3"
+    elif case == "lotterynew_uppercase_component":
+        path = scratch / "LotteryNew" / "test.sqlite3"
+    elif case == "lotterynew_lowercase_component":
+        path = scratch / "lotterynew" / "test.sqlite3"
+    elif case == "unignored_scratch_root":
+        pass
+
+    assert not locations.is_project_scratch_database_boundary(path, git_ancestor)
+
+
 def test_project_default_ignores_cwd_and_home_without_creating_empty_db(
     project: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

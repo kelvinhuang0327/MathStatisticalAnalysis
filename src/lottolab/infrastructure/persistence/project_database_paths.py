@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import stat
+import subprocess
 from collections.abc import Mapping
 from pathlib import Path
 from typing import cast
@@ -173,6 +175,49 @@ def is_project_database_boundary(path: Path, git_ancestor: Path) -> bool:
     )
 
 
+def is_project_scratch_database_boundary(path: Path, git_ancestor: Path) -> bool:
+    """Permit an ignored, symlink-free test store under the canonical scratch root."""
+    if not path.is_absolute() or ".." in path.parts:
+        return False
+
+    try:
+        root = canonical_project_root()
+    except (OSError, ValueError):
+        return False
+    scratch_root = root / ".task-data" / "_scratch"
+    if git_ancestor != root or path == scratch_root or not path.is_relative_to(scratch_root):
+        return False
+
+    if "b649" in str(path).casefold() or any(
+        part.casefold() == "lotterynew" for part in path.parts
+    ):
+        return False
+
+    current = Path(path.anchor)
+    for component in path.parts[1:]:
+        current /= component
+        try:
+            metadata = current.lstat()
+        except FileNotFoundError:
+            break
+        except OSError:
+            return False
+        if stat.S_ISLNK(metadata.st_mode):
+            return False
+
+    try:
+        ignored = subprocess.run(
+            ("git", "check-ignore", "-q", "--", str(path)),
+            cwd=root,
+            check=False,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    except OSError:
+        return False
+    return ignored.returncode == 0
+
+
 def _configuration(environment: Mapping[str, str]) -> dict[str, object]:
     configured = environment.get(DATABASE_CONFIG_ENV)
     if configured == "":
@@ -240,6 +285,7 @@ def require_project_database_write_ready(database: Path) -> None:
 __all__ = [
     "default_legacy_database_path",
     "is_project_database_boundary",
+    "is_project_scratch_database_boundary",
     "is_verified_legacy_keeper_for_source",
     "project_database_directory",
     "project_database_environment",

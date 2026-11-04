@@ -48,6 +48,20 @@
 - 待合併的暫存結果用匯入合併，不重新計算。
 - 同一個 DB 同時只能有一個寫入者。寫入前後記錄列數，寫入後從 App 或 API 的讀取路徑讀回。
 
+## 共用資源的租約與變更紀錄
+
+- 共用資源指 `data/databases/database-locations.json`、`writable_databases` 登記的正式 DB，以及 `data/databases/legacy/INDEX.json`。
+- 要寫入共用資源前，先建立租約檔 `data/databases/locks/<資源檔名>.lease.json`（目錄不存在就先建立），用不可覆寫的方式建立（例如 Python 的 `open(path, "x")`）。內容寫 TASK_ID、模式 WRITE、開始時間、預計結束時間、授權句位置。
+  - 建立失敗表示別的任務正在寫：不要開始，回報 `WAITING_ON_LEASE` 並附上對方的租約內容。這不算 INCIDENT。
+  - 寫完並讀回後，刪掉自己的租約檔。
+- 只讀核對不需要租約，可以並行。開始時記下資源的 sha256，結束前再核一次；看到別人的 WRITE 租約時，等它結束再核。
+- 每次修改登記表或 INDEX.json，在同一步驟於 `data/databases/REGISTRY_CHANGELOG.jsonl` 追加一行，內容包括時間、TASK_ID、檔名、修改前與修改後的 sha256、授權句位置。
+- 核對期間發現資源的雜湊變了，先查 `REGISTRY_CHANGELOG.jsonl`：
+  - 新雜湊對得上一筆有授權的變更，就依新狀態重新核對一次，並在收據註明；
+  - 對不上，才以 BLOCKED 回報「未知寫入者」。
+- 正式 SQLite DB 的寫入入口先取得 `<DB 檔名>.writer.lock` 的獨佔檔案鎖，再用 `BEGIN IMMEDIATE`；拿不到鎖就立刻失敗，不等待。寫入入口提交進 Git 之前沒有統一入口，寫入前一律先取得上面的租約。
+- 內容雜湊對快照計算：用 SQLite backup API 複製到 `.task-data/_scratch/` 再算，不直接對使用中的檔計算。
+
 ## JSON 輸出
 
 - 要比較或雜湊會寫成 JSON 的資料時，先做一次 `json.loads(json.dumps(x))` 往返再比較：

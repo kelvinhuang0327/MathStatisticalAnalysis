@@ -23,7 +23,7 @@ from tools import b649_protected_cutover as protected
 
 # pyright: reportPrivateUsage=false
 
-NOW = datetime.now(UTC).replace(microsecond=0)
+_test_now = datetime.now(UTC).replace(microsecond=0)
 
 
 @pytest.mark.parametrize(
@@ -37,6 +37,11 @@ def test_production_path_guard_rejects_resolution(protected_path: Path) -> None:
 
 @pytest.fixture(autouse=True)
 def isolate_lineage_successor_test_paths(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Refresh the fixture clock per test, not at module import/collection time.
+    # Some tests exercise live expiry checks and may run long after collection
+    # when the complete unit suite is running.
+    global _test_now
+    _test_now = datetime.now(UTC).replace(microsecond=0)
     install_path_guard(monkeypatch)
 
 
@@ -233,8 +238,8 @@ def _successor_record(tmp_path: Path, *, phase: str = "PREPARED") -> dict[str, o
         "known_gaps_decision": "PRESERVE_UNRESOLVED_AND_CONTINUE",
         "owner_confirmed_gaps": sorted(cutover.LINEAGE_SUCCESSOR_GAP_IDS),
         "retention_policy": cutover.LINEAGE_SUCCESSOR_RETAIN_POLICY,
-        "issued_at": NOW.isoformat(),
-        "expires_at": (NOW + timedelta(minutes=2)).isoformat(),
+        "issued_at": _test_now.isoformat(),
+        "expires_at": (_test_now + timedelta(minutes=2)).isoformat(),
         "nonce": str(uuid4()),
     }
     approval["confirmation_digest"] = cutover._sha256_json(
@@ -314,7 +319,7 @@ def _reseal(evidence: dict[str, object]) -> None:
 def test_lineage_successor_record_validates_without_filesystem_access(tmp_path: Path) -> None:
     evidence = _successor_record(tmp_path)
     assert cutover._validate_lineage_successor_transition(
-        evidence, now=NOW, expected_signer="test-owner"
+        evidence, now=_test_now, expected_signer="test-owner"
     ) == evidence
 
 
@@ -323,10 +328,12 @@ def test_lineage_successor_signature_verification_requires_configured_verifier(
 ) -> None:
     evidence = _successor_record(tmp_path)
     with pytest.raises(cutover.CutoverSafetyError, match="verifier is not configured"):
-        cutover._validate_lineage_successor_transition(evidence, now=NOW, verify_signature=True)
+        cutover._validate_lineage_successor_transition(
+            evidence, now=_test_now, verify_signature=True
+        )
     assert cutover._validate_lineage_successor_transition(
         evidence,
-        now=NOW,
+        now=_test_now,
         expected_signer="test-owner",
         approval_verifier=lambda signer, digest, signature: (
             signer == "test-owner" and digest != "" and signature == "test-signature"
@@ -448,7 +455,7 @@ def test_lineage_successor_schema_rejects_each_mutated_binding(
     with pytest.raises(cutover.CutoverSafetyError):
         cutover._validate_lineage_successor_transition(
             evidence,
-            now=NOW,
+            now=_test_now,
             expected_signer="test-owner",
             approval_verifier=lambda signer, digest, signature: (
                 signer == "test-owner"
@@ -462,18 +469,18 @@ def test_lineage_successor_schema_rejects_each_mutated_binding(
 def test_lineage_successor_rejects_expired_and_overlong_authorization(tmp_path: Path) -> None:
     expired = _successor_record(tmp_path)
     approval = cast(dict[str, object], expired["owner_approval"])
-    approval["issued_at"] = (NOW - timedelta(minutes=2)).isoformat()
-    approval["expires_at"] = (NOW - timedelta(seconds=1)).isoformat()
+    approval["issued_at"] = (_test_now - timedelta(minutes=2)).isoformat()
+    approval["expires_at"] = (_test_now - timedelta(seconds=1)).isoformat()
     _reseal(expired)
     with pytest.raises(cutover.CutoverSafetyError, match="expired or replayed"):
-        cutover._validate_lineage_successor_transition(expired, now=NOW)
+        cutover._validate_lineage_successor_transition(expired, now=_test_now)
 
     overlong = _successor_record(tmp_path)
     long_approval = cast(dict[str, object], overlong["owner_approval"])
-    long_approval["expires_at"] = (NOW + timedelta(minutes=6)).isoformat()
+    long_approval["expires_at"] = (_test_now + timedelta(minutes=6)).isoformat()
     _reseal(overlong)
     with pytest.raises(cutover.CutoverSafetyError, match="expired or replayed"):
-        cutover._validate_lineage_successor_transition(overlong, now=NOW)
+        cutover._validate_lineage_successor_transition(overlong, now=_test_now)
 
 
 def test_lineage_successor_requires_explicit_gap_decision_after_owner_release(
@@ -485,7 +492,7 @@ def test_lineage_successor_requires_explicit_gap_decision_after_owner_release(
     approval["owner_confirmed_gaps"] = []
     _reseal(evidence)
     with pytest.raises(cutover.CutoverSafetyError, match="no explicit Owner decision"):
-        cutover._validate_lineage_successor_transition(evidence, now=NOW)
+        cutover._validate_lineage_successor_transition(evidence, now=_test_now)
 
 
 def test_production_predecessor_validator_accepts_only_the_new_sealed_variant(
@@ -585,8 +592,8 @@ def _lineage_owner_cas_fixture(
             "operation_id": prior_operation,
             "managed_receipt_sha256": managed_sha,
             "phase": "RELEASED",
-            "created_at": NOW.isoformat(),
-            "updated_at": NOW.isoformat(),
+            "created_at": _test_now.isoformat(),
+            "updated_at": _test_now.isoformat(),
             "authorization": authorization,
             "mutation_started": False,
             "terminal": None,
@@ -880,8 +887,8 @@ def _lineage_request_builder_fixture(
         "operation_id": cutover.LINEAGE_SUCCESSOR_REVIEWED_OWNER_OPERATION_ID,
         "managed_receipt_sha256": cutover.V5_MANAGED_RECEIPT_SHA256,
         "phase": "AUTHORIZED_PENDING",
-        "created_at": NOW.isoformat(),
-        "updated_at": NOW.isoformat(),
+        "created_at": _test_now.isoformat(),
+        "updated_at": _test_now.isoformat(),
         "authorization": None,
         "mutation_started": False,
         "terminal": None,
@@ -1357,7 +1364,7 @@ def test_lineage_successor_validator_accepts_only_phase_consistent_archive_state
 ) -> None:
     evidence = _successor_record(tmp_path, phase=phase)
     assert cutover._validate_lineage_successor_transition(
-        evidence, now=NOW, expected_signer="test-owner"
+        evidence, now=_test_now, expected_signer="test-owner"
     ) == evidence
 
 
@@ -1381,7 +1388,7 @@ def test_lineage_successor_validator_rejects_phase_archive_drift(
     archive["source_state"] = wrong_state
     _reseal(evidence)
     with pytest.raises(cutover.CutoverSafetyError):
-        cutover._validate_lineage_successor_transition(evidence, now=NOW)
+        cutover._validate_lineage_successor_transition(evidence, now=_test_now)
 
 
 def test_lineage_successor_cancellation_cannot_be_fabricated_as_a_successor_phase(
@@ -1392,7 +1399,7 @@ def test_lineage_successor_cancellation_cannot_be_fabricated_as_a_successor_phas
         cutover.CutoverSafetyError,
         match="lineage successor evidence schema or seal is invalid",
     ):
-        cutover._validate_lineage_successor_transition(evidence, now=NOW)
+        cutover._validate_lineage_successor_transition(evidence, now=_test_now)
 
 
 @pytest.mark.parametrize(
@@ -1799,7 +1806,7 @@ def test_lineage_restore_restores_only_verified_bytes_to_an_absent_path(tmp_path
         destination,
         expected_signer="test-owner",
         approval_verifier=_accept_test_signature,
-        now_value=NOW,
+        now_value=_test_now,
     )
 
     assert result["status"] == "RESTORED"
@@ -1822,7 +1829,7 @@ def test_lineage_restore_refuses_existing_destination_without_overwrite(tmp_path
             destination,
             expected_signer="test-owner",
             approval_verifier=_accept_test_signature,
-            now_value=NOW,
+            now_value=_test_now,
         )
     assert destination.read_bytes() == b"preserve existing"
     assert raw != destination.read_bytes()
@@ -1843,7 +1850,7 @@ def test_lineage_restore_refuses_archive_tamper_and_bad_signature(tmp_path: Path
             destination,
             expected_signer="test-owner",
             approval_verifier=_accept_test_signature,
-            now_value=NOW,
+            now_value=_test_now,
         )
     assert not os.path.lexists(destination)
     archive_path.write_bytes(original)
@@ -1856,7 +1863,7 @@ def test_lineage_restore_refuses_archive_tamper_and_bad_signature(tmp_path: Path
             destination,
             expected_signer="test-owner",
             approval_verifier=lambda _signer, _digest, _signature: False,
-            now_value=NOW,
+            now_value=_test_now,
         )
     assert not os.path.lexists(destination)
 
@@ -1910,7 +1917,7 @@ def test_lineage_restore_refuses_invalid_archive_contract(
             selected_destination,
             expected_signer=signer,
             approval_verifier=verifier,
-            now_value=NOW,
+            now_value=_test_now,
         )
     if defect == "existing":
         assert destination.read_bytes() == b"preserve"
@@ -2051,8 +2058,8 @@ def test_lineage_apply_restart_accepts_started_owner_but_does_not_reissue_cas(
     config, _old_owner, _old_proof, claim_root, _template = _lineage_owner_cas_fixture(tmp_path)
     evidence = _successor_record(tmp_path, phase="AUTHORIZED_PENDING")
     approval = cast(dict[str, object], evidence["owner_approval"])
-    approval["issued_at"] = (NOW - timedelta(minutes=10)).isoformat()
-    approval["expires_at"] = (NOW - timedelta(minutes=5)).isoformat()
+    approval["issued_at"] = (_test_now - timedelta(minutes=10)).isoformat()
+    approval["expires_at"] = (_test_now - timedelta(minutes=5)).isoformat()
     approval["confirmation_digest"] = cutover._sha256_json(
         {
             key: value
@@ -2156,8 +2163,8 @@ def test_lineage_successor_approval_expiry_is_phase_bounded(
 ) -> None:
     evidence = _successor_record(tmp_path, phase=phase)
     approval = cast(dict[str, object], evidence["owner_approval"])
-    approval["issued_at"] = (NOW - timedelta(minutes=10)).isoformat()
-    approval["expires_at"] = (NOW - timedelta(minutes=5)).isoformat()
+    approval["issued_at"] = (_test_now - timedelta(minutes=10)).isoformat()
+    approval["expires_at"] = (_test_now - timedelta(minutes=5)).isoformat()
     approval["confirmation_digest"] = cutover._sha256_json(
         {
             key: value
@@ -2168,11 +2175,11 @@ def test_lineage_successor_approval_expiry_is_phase_bounded(
     _reseal(evidence)
     if accepted:
         assert cutover._validate_lineage_successor_transition(
-            evidence, now=NOW, expected_signer="test-owner"
+            evidence, now=_test_now, expected_signer="test-owner"
         ) == evidence
     else:
         with pytest.raises(cutover.CutoverSafetyError, match="expired or replayed"):
-            cutover._validate_lineage_successor_transition(evidence, now=NOW)
+            cutover._validate_lineage_successor_transition(evidence, now=_test_now)
 
 
 def test_lineage_successor_apply_and_status_cli_bind_the_opt_in_evidence() -> None:

@@ -107,7 +107,13 @@ def isolate_project_database_registry(
 @pytest.fixture
 def test_only_external_database_root(tmp_path: Path) -> Path:
     """Give CLI test injection a named root without depending on pytest's temp name."""
-    root = tmp_path / "msa-pytest.replay-backfill"
+    root = (
+        tmp_path
+        / "canonical-project"
+        / ".task-data"
+        / "_scratch"
+        / "msa-pytest.replay-backfill"
+    )
     root.mkdir()
     return root
 
@@ -826,3 +832,277 @@ def test_import_stage_rejects_schema_version_mismatch_before_writing(
     )
     assert "schema version or checksum" in capsys.readouterr().err
     assert _replay_table_counts(target) == {key: 0 for key in _replay_table_counts(target)}
+
+_IMPORT_STAGE_TABLES_FOR_CONFLICT_TESTS = (
+    "replay_backfill_runs",
+    "replay_backfill_targets",
+    "replay_backfill_strategy_inventory",
+    "replay_backfill_sources",
+    "replay_backfill_cells",
+    "replay_backfill_run_cells",
+    "replay_backfill_tickets",
+    "replay_backfill_training",
+)
+
+
+def _make_test_only_stage_and_target(test_only_root: Path) -> tuple[Path, Path]:
+    source = test_only_root / "stage-test-only.sqlite3"
+    engine, _, _ = worker(test_only_root, store=SQLiteBackfillStore(source))
+    engine.execute(BackfillSelection(latest=3))
+    with sqlite3.connect(source) as connection:
+        run_row = connection.execute(
+            "SELECT run_id,manifest_json FROM replay_backfill_runs"
+        ).fetchone()
+        assert run_row is not None
+        manifest = json.loads(str(run_row[1]))
+        manifest["synthetic_scope"] = "TEST_ONLY"
+        connection.execute(
+            "UPDATE replay_backfill_runs SET manifest_json=? WHERE run_id=?",
+            (json.dumps(manifest, sort_keys=True, separators=(",", ":")), run_row[0]),
+        )
+    target = test_only_root / "target-test-only.sqlite3"
+    target.write_bytes(source.read_bytes())
+    return source, target
+
+
+def _import_stage_snapshot(database: Path) -> dict[str, tuple[tuple[Any, ...], ...]]:
+    with sqlite3.connect(database) as connection:
+        return {
+            table: tuple(
+                tuple(row)
+                for row in connection.execute(f'SELECT * FROM "{table}" ORDER BY rowid')
+            )
+            for table in _IMPORT_STAGE_TABLES_FOR_CONFLICT_TESTS
+        }
+
+
+def _give_stage_a_new_test_run_id(database: Path) -> None:
+    with sqlite3.connect(database) as connection:
+        connection.execute("PRAGMA foreign_keys=OFF")
+        run_row = connection.execute(
+            "SELECT run_id,manifest_json FROM replay_backfill_runs"
+        ).fetchone()
+        assert run_row is not None
+        old_run_id = str(run_row[0])
+        new_run_id = f"TEST_ONLY_SECOND_RUN:{old_run_id}"
+        manifest = json.loads(str(run_row[1]))
+        manifest["synthetic_run"] = "TEST_ONLY_SECOND_RUN"
+        connection.execute(
+            "UPDATE replay_backfill_runs SET run_id=?,manifest_json=? WHERE run_id=?",
+            (
+                new_run_id,
+                json.dumps(manifest, sort_keys=True, separators=(",", ":")),
+                old_run_id,
+            ),
+        )
+        for table in (
+            "replay_backfill_targets",
+            "replay_backfill_strategy_inventory",
+            "replay_backfill_sources",
+            "replay_backfill_run_cells",
+        ):
+            connection.execute(
+                f'UPDATE "{table}" SET run_id=? WHERE run_id=?',
+                (new_run_id, old_run_id),
+            )
+
+
+def _mutate_stage_cell_for_test_conflict(database: Path, field: str) -> None:
+    with sqlite3.connect(database) as connection:
+        row = connection.execute(
+            "SELECT cell_identity,result_identity,execution_status,payload_json "
+            "FROM replay_backfill_cells ORDER BY cell_identity LIMIT 1"
+        ).fetchone()
+        assert row is not None
+        cell_identity = str(row[0])
+        if field == "result_identity":
+            connection.execute(
+                "UPDATE replay_backfill_cells SET result_identity=? WHERE cell_identity=?",
+                ("TEST_ONLY_DIFFERENT_RESULT_IDENTITY", cell_identity),
+            )
+        elif field == "payload_json":
+            payload = json.loads(str(row[3]))
+            payload["synthetic_conflict"] = "TEST_ONLY_DIFFERENT_PAYLOAD"
+            connection.execute(
+                "UPDATE replay_backfill_cells SET payload_json=? WHERE cell_identity=?",
+                (json.dumps(payload, sort_keys=True, separators=(",", ":")), cell_identity),
+            )
+        elif field == "execution_status":
+            status = "FAILED" if str(row[2]) != "FAILED" else "COMPLETE"
+            connection.execute(
+                "UPDATE replay_backfill_cells SET execution_status=? WHERE cell_identity=?",
+                (status, cell_identity),
+            )
+        else:
+            raise AssertionError(f"unsupported synthetic conflict field: {field}")
+
+
+def _ensure_test_only_training_row(database: Path) -> None:
+    with sqlite3.connect(database) as connection:
+        row = connection.execute(
+            "SELECT cell_identity FROM replay_backfill_cells ORDER BY cell_identity LIMIT 1"
+        ).fetchone()
+        assert row is not None
+        cell_identity = str(row[0])
+        connection.execute(
+            "INSERT OR IGNORE INTO replay_backfill_training "
+            "(cell_identity,training_status,model_version,training_cutoff,training_artifact_id,"
+            "input_source_hash,trainer_identity,training_artifact_hash) "
+            "VALUES(?,?,?,?,?,?,?,?)",
+            (cell_identity, "TEST_ONLY", None, None, None, None, None, None),
+        )
+
+
+def test_import_stage_reuses_matching_result_with_remapped_cell_identity_and_is_idempotent(
+    test_only_external_database_root: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    source, target = _make_test_only_stage_and_target(test_only_external_database_root)
+    with sqlite3.connect(target) as connection:
+        connection.execute("PRAGMA foreign_keys=OFF")
+        row = connection.execute(
+            "SELECT cell_identity FROM replay_backfill_cells ORDER BY cell_identity LIMIT 1"
+        ).fetchone()
+        assert row is not None
+        source_identity = str(row[0])
+        target_identity = f"TEST_ONLY_TARGET_IDENTITY:{source_identity}"
+        connection.execute(
+            "UPDATE replay_backfill_cells SET cell_identity=? WHERE cell_identity=?",
+            (target_identity, source_identity),
+        )
+        for table in (
+            "replay_backfill_run_cells",
+            "replay_backfill_tickets",
+            "replay_backfill_training",
+        ):
+            connection.execute(
+                f'UPDATE "{table}" SET cell_identity=? WHERE cell_identity=?',
+                (target_identity, source_identity),
+            )
+    before = _import_stage_snapshot(target)
+    source_hash = hashlib.sha256(source.read_bytes()).hexdigest()
+    args = ["import-stage", "--source", str(source), "--database", str(target)]
+
+    assert main(
+        args,
+        test_only_external_database_root=test_only_external_database_root,
+    ) == 0
+    first = json.loads(capsys.readouterr().out)
+    assert first["added_total"] == 0
+    assert first["target_before_rows"] == first["target_after_rows"]
+    assert _import_stage_snapshot(target) == before
+    assert hashlib.sha256(source.read_bytes()).hexdigest() == source_hash
+    with sqlite3.connect(target) as connection:
+        assert connection.execute(
+            "SELECT 1 FROM replay_backfill_run_cells WHERE cell_identity=?",
+            (target_identity,),
+        ).fetchone() is not None
+        assert connection.execute(
+            "SELECT 1 FROM replay_backfill_cells WHERE cell_identity=?",
+            (source_identity,),
+        ).fetchone() is None
+
+    assert main(
+        args,
+        test_only_external_database_root=test_only_external_database_root,
+    ) == 0
+    second = json.loads(capsys.readouterr().out)
+    assert second["added_total"] == 0
+    assert second["target_before_rows"] == second["target_after_rows"]
+    assert _import_stage_snapshot(target) == before
+    assert hashlib.sha256(source.read_bytes()).hexdigest() == source_hash
+
+
+@pytest.mark.parametrize("field", ["result_identity", "payload_json", "execution_status"])
+def test_import_stage_rejects_cell_result_conflicts_and_rolls_back_new_run(
+    test_only_external_database_root: Path,
+    capsys: pytest.CaptureFixture[str],
+    field: str,
+) -> None:
+    source, target = _make_test_only_stage_and_target(test_only_external_database_root)
+    _give_stage_a_new_test_run_id(source)
+    _mutate_stage_cell_for_test_conflict(source, field)
+    before = _import_stage_snapshot(target)
+    source_hash = hashlib.sha256(source.read_bytes()).hexdigest()
+    args = ["import-stage", "--source", str(source), "--database", str(target)]
+
+    assert main(
+        args,
+        test_only_external_database_root=test_only_external_database_root,
+    ) == 1
+    assert "stage cell conflicts with an existing natural key" in capsys.readouterr().err
+    assert _import_stage_snapshot(target) == before
+    assert hashlib.sha256(source.read_bytes()).hexdigest() == source_hash
+    with sqlite3.connect(target) as connection:
+        assert connection.execute(
+            "SELECT 1 FROM replay_backfill_runs WHERE run_id LIKE 'TEST_ONLY_SECOND_RUN:%'"
+        ).fetchone() is None
+        assert connection.execute(
+            "SELECT 1 FROM replay_backfill_run_cells WHERE run_id LIKE 'TEST_ONLY_SECOND_RUN:%'"
+        ).fetchone() is None
+
+
+@pytest.mark.parametrize("table", ["replay_backfill_tickets", "replay_backfill_training"])
+def test_import_stage_rejects_conflicting_child_rows_and_rolls_back(
+    test_only_external_database_root: Path,
+    capsys: pytest.CaptureFixture[str],
+    table: str,
+) -> None:
+    source, target = _make_test_only_stage_and_target(test_only_external_database_root)
+    _give_stage_a_new_test_run_id(source)
+    if table == "replay_backfill_training":
+        _ensure_test_only_training_row(source)
+        _ensure_test_only_training_row(target)
+    with sqlite3.connect(target) as connection:
+        if table == "replay_backfill_tickets":
+            connection.execute(
+                "UPDATE replay_backfill_tickets SET prize_tier='TEST_ONLY_CHILD_CONFLICT' "
+                "WHERE rowid=(SELECT rowid FROM replay_backfill_tickets ORDER BY rowid LIMIT 1)"
+            )
+        else:
+            connection.execute(
+                "UPDATE replay_backfill_training SET training_artifact_hash=? "
+                "WHERE rowid=(SELECT rowid FROM replay_backfill_training ORDER BY rowid LIMIT 1)",
+                ("TEST_ONLY_CHILD_CONFLICT",),
+            )
+    before = _import_stage_snapshot(target)
+    source_hash = hashlib.sha256(source.read_bytes()).hexdigest()
+    args = ["import-stage", "--source", str(source), "--database", str(target)]
+
+    assert main(
+        args,
+        test_only_external_database_root=test_only_external_database_root,
+    ) == 1
+    assert f"stage row conflicts with an existing identity: {table}" in capsys.readouterr().err
+    assert _import_stage_snapshot(target) == before
+    assert hashlib.sha256(source.read_bytes()).hexdigest() == source_hash
+    with sqlite3.connect(target) as connection:
+        assert connection.execute(
+            "SELECT 1 FROM replay_backfill_runs WHERE run_id LIKE 'TEST_ONLY_SECOND_RUN:%'"
+        ).fetchone() is None
+        assert connection.execute(
+            "SELECT 1 FROM replay_backfill_run_cells WHERE run_id LIKE 'TEST_ONLY_SECOND_RUN:%'"
+        ).fetchone() is None
+
+
+def test_import_stage_rejects_conflicting_manifest_and_rolls_back(
+    test_only_external_database_root: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    source, target = _make_test_only_stage_and_target(test_only_external_database_root)
+    with sqlite3.connect(target) as connection:
+        connection.execute(
+            "UPDATE replay_backfill_runs SET manifest_json=?",
+            (json.dumps({"synthetic_scope": "TEST_ONLY_TARGET_CONFLICT"}),),
+        )
+    before = _import_stage_snapshot(target)
+    source_hash = hashlib.sha256(source.read_bytes()).hexdigest()
+    args = ["import-stage", "--source", str(source), "--database", str(target)]
+
+    assert main(
+        args,
+        test_only_external_database_root=test_only_external_database_root,
+    ) == 1
+    assert "stage run ID conflicts with an existing target manifest" in capsys.readouterr().err
+    assert _import_stage_snapshot(target) == before
+    assert hashlib.sha256(source.read_bytes()).hexdigest() == source_hash

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import fcntl
 import hashlib
 import json
 import os
@@ -24,6 +25,7 @@ from lottolab.infrastructure.persistence.draw_schema import (
 from lottolab.infrastructure.persistence.project_database_paths import (
     is_project_database_boundary,
     is_project_scratch_database_boundary,
+    project_database_directory,
     require_project_database_write_ready,
 )
 
@@ -290,6 +292,35 @@ def validate_database_path(database: Path) -> Path:
     return database
 
 
+@contextmanager
+def _acquire_writer_lock(database: Path) -> Generator[None]:
+    """Acquire the database's process-wide writer lock without waiting."""
+    canonical_directory = project_database_directory()
+    if database.is_relative_to(canonical_directory):
+        lock_directory = canonical_directory / "locks"
+        if lock_directory.is_symlink():
+            raise ValueError(f"writer lock directory must not be a symlink: {lock_directory}")
+        lock_directory.mkdir(parents=True, exist_ok=True)
+    else:
+        lock_directory = database.parent
+
+    lock_path = lock_directory / f"{database.name}.writer.lock"
+    if lock_path.is_symlink():
+        raise ValueError(f"writer lock file must not be a symlink: {lock_path}")
+    with lock_path.open("a+b") as lock_file:
+        try:
+            fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError as exc:
+            raise PermissionError(
+                f"writer lock is held: {lock_path}; finish or stop the other process "
+                "writing this database before retrying"
+            ) from exc
+        try:
+            yield
+        finally:
+            fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
+
+
 def load_draw_snapshot(database: Path, lottery_type: LotteryType) -> tuple[ReplayDraw, ...]:
     """One consistent read transaction, with canonical draw-schema verification."""
     validate_database_path(database)
@@ -350,6 +381,24 @@ class SQLiteBackfillStore:
             raise ValueError("read-only store")
         if write:
             require_project_database_write_ready(database)
+            with (
+                _acquire_writer_lock(database),
+                self._open_connection(database, write=True) as connection,
+            ):
+                yield connection
+            return
+        with self._open_connection(database, write=False) as connection:
+            yield connection
+
+    @contextmanager
+    def _open_connection(
+        self,
+        database: Path,
+        *,
+        write: bool,
+        verify_schema: bool = True,
+    ) -> Generator[sqlite3.Connection]:
+        """Open a connection; write callers must already hold the writer lock."""
         connection = sqlite3.connect(
             database.as_uri() + "?mode=rw" if write else database.as_uri() + "?mode=ro",
             uri=True,
@@ -359,8 +408,11 @@ class SQLiteBackfillStore:
             connection.execute("PRAGMA foreign_keys=ON")
             if not write:
                 connection.execute("PRAGMA query_only=ON")
-            self._verify(connection)
+            if verify_schema:
+                self._verify(connection)
             with connection:
+                if write:
+                    connection.execute("BEGIN IMMEDIATE")
                 yield connection
         finally:
             connection.close()
@@ -369,7 +421,6 @@ class SQLiteBackfillStore:
     def write_transaction(self) -> Generator[sqlite3.Connection]:
         """Open a guarded, immediate write transaction for bulk store operations."""
         with self._connect(write=True) as connection:
-            connection.execute("BEGIN IMMEDIATE")
             yield connection
 
     @staticmethod
@@ -385,98 +436,95 @@ class SQLiteBackfillStore:
         require_project_database_write_ready(path)
         if not path.parent.is_dir():
             raise ValueError("output database parent must already exist")
-        if not path.exists():
-            fd = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
-            os.close(fd)
-        # A crash before the first schema commit leaves an empty task output.
-        # Empty outputs can be initialized on resume; foreign schemas fail closed.
-        connection = sqlite3.connect(path.as_uri() + "?mode=rw", uri=True, timeout=5)
-        try:
-            connection.execute("BEGIN IMMEDIATE")
-            tables = {
-                r[0]
-                for r in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")
-            }
-            if not tables:
-                for statement in SCHEMA_SQL.split(";"):
-                    if statement.strip():
-                        connection.execute(statement)
+        with _acquire_writer_lock(path):
+            if not path.exists():
+                fd = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+                os.close(fd)
+            # A crash before the first schema commit leaves an empty task output.
+            # Empty outputs can be initialized on resume; foreign schemas fail closed.
+            with self._open_connection(path, write=True, verify_schema=False) as connection:
+                tables = {
+                    r[0]
+                    for r in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")
+                }
+                if not tables:
+                    for statement in SCHEMA_SQL.split(";"):
+                        if statement.strip():
+                            connection.execute(statement)
+                    connection.execute(
+                        "INSERT INTO replay_backfill_schema VALUES(?,?)",
+                        (SCHEMA_VERSION, SCHEMA_CHECKSUM),
+                    )
+                elif tables == _LEGACY_V1_TABLES:
+                    _migrate_legacy_v1(connection)
+                elif tables != _TABLES:
+                    raise ValueError("output must be a standalone replay backfill database")
+                self._verify(connection)
+            with self._open_connection(path, write=True) as connection:
+                tables = {
+                    r[0]
+                    for r in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")
+                }
+                if tables != _TABLES:
+                    raise ValueError("output must be a standalone replay backfill database")
+                encoded = canonical_json(manifest)
                 connection.execute(
-                    "INSERT INTO replay_backfill_schema VALUES(?,?)",
-                    (SCHEMA_VERSION, SCHEMA_CHECKSUM),
+                    "INSERT OR IGNORE INTO replay_backfill_runs"
+                    "(run_id,manifest_json,expected_cells) "
+                    "VALUES(?,?,?)",
+                    (manifest["run_id"], encoded, manifest["expected_cells"]),
                 )
-            elif tables == _LEGACY_V1_TABLES:
-                _migrate_legacy_v1(connection)
-            elif tables != _TABLES:
-                raise ValueError("output must be a standalone replay backfill database")
-            self._verify(connection)
-            connection.commit()
-        finally:
-            connection.close()
-        with self._connect(write=True) as connection:
-            tables = {
-                r[0]
-                for r in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")
-            }
-            if tables != _TABLES:
-                raise ValueError("output must be a standalone replay backfill database")
-            encoded = canonical_json(manifest)
-            connection.execute(
-                "INSERT OR IGNORE INTO replay_backfill_runs(run_id,manifest_json,expected_cells) "
-                "VALUES(?,?,?)",
-                (manifest["run_id"], encoded, manifest["expected_cells"]),
-            )
-            stored = connection.execute(
-                "SELECT manifest_json FROM replay_backfill_runs WHERE run_id=?",
-                (manifest["run_id"],),
-            ).fetchone()
-            if stored != (encoded,):
-                raise ValueError("run identity conflicts with stored manifest")
-            lottery_type = manifest["lottery_type"]
-            for target in manifest.get("source_targets", manifest.get("targets", [])):
+                stored = connection.execute(
+                    "SELECT manifest_json FROM replay_backfill_runs WHERE run_id=?",
+                    (manifest["run_id"],),
+                ).fetchone()
+                if stored != (encoded,):
+                    raise ValueError("run identity conflicts with stored manifest")
+                lottery_type = manifest["lottery_type"]
+                for target in manifest.get("source_targets", manifest.get("targets", [])):
+                    connection.execute(
+                        "INSERT OR IGNORE INTO replay_backfill_targets VALUES(?,?,?,?,?,?,?)",
+                        (
+                            manifest["run_id"],
+                            lottery_type,
+                            target["draw_number"],
+                            target["draw_date"],
+                            canonical_json(target["main_numbers"]),
+                            canonical_json(target["special_numbers"]),
+                            target["source_identity"],
+                        ),
+                    )
+                for strategy in manifest.get("strategies", []):
+                    source = manifest.get("strategy_sources", {}).get(strategy["strategy_id"], {})
+                    connection.execute(
+                        "INSERT OR IGNORE INTO replay_backfill_strategy_inventory "
+                        "VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
+                        (
+                            manifest["run_id"],
+                            lottery_type,
+                            strategy["strategy_id"],
+                            strategy["strategy_version"],
+                            strategy["strategy_name"],
+                            source.get("lifecycle_status", "ONLINE"),
+                            source.get("data_status", "REBUILDABLE"),
+                            source.get("source", source.get("source_kind", "NATIVE_REPLAY")),
+                            1,
+                            len(manifest.get("targets", [])),
+                            source.get("training_status", "NOT_TRAINABLE"),
+                            source.get("fingerprint", strategy.get("fingerprint") or ""),
+                        ),
+                    )
+                source_identity = manifest["dataset_identity"]
                 connection.execute(
-                    "INSERT OR IGNORE INTO replay_backfill_targets VALUES(?,?,?,?,?,?,?)",
+                    "INSERT OR IGNORE INTO replay_backfill_sources VALUES(?,?,?,?,?,0)",
                     (
                         manifest["run_id"],
-                        lottery_type,
-                        target["draw_number"],
-                        target["draw_date"],
-                        canonical_json(target["main_numbers"]),
-                        canonical_json(target["special_numbers"]),
-                        target["source_identity"],
+                        source_identity,
+                        "OFFICIAL_HISTORICAL",
+                        manifest.get("source_locator", ""),
+                        manifest.get("source_hash", source_identity),
                     ),
                 )
-            for strategy in manifest.get("strategies", []):
-                source = manifest.get("strategy_sources", {}).get(strategy["strategy_id"], {})
-                connection.execute(
-                    "INSERT OR IGNORE INTO replay_backfill_strategy_inventory "
-                    "VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
-                    (
-                        manifest["run_id"],
-                        lottery_type,
-                        strategy["strategy_id"],
-                        strategy["strategy_version"],
-                        strategy["strategy_name"],
-                        source.get("lifecycle_status", "ONLINE"),
-                        source.get("data_status", "REBUILDABLE"),
-                        source.get("source", source.get("source_kind", "NATIVE_REPLAY")),
-                        1,
-                        len(manifest.get("targets", [])),
-                        source.get("training_status", "NOT_TRAINABLE"),
-                        source.get("fingerprint", strategy.get("fingerprint") or ""),
-                    ),
-                )
-            source_identity = manifest["dataset_identity"]
-            connection.execute(
-                "INSERT OR IGNORE INTO replay_backfill_sources VALUES(?,?,?,?,?,0)",
-                (
-                    manifest["run_id"],
-                    source_identity,
-                    "OFFICIAL_HISTORICAL",
-                    manifest.get("source_locator", ""),
-                    manifest.get("source_hash", source_identity),
-                ),
-            )
 
     def lookup(self, cell_identity: str) -> JsonObject | None:
         with self._connect() as connection:
@@ -557,7 +605,6 @@ class SQLiteBackfillStore:
                 raise ValueError("result digest mismatch")
             encoded_results.append((result, encoded))
         with self._connect(write=True) as connection:
-            connection.execute("BEGIN IMMEDIATE")
             for result, encoded in encoded_results:
                 cell_id = result["cell_identity"]
                 old = connection.execute(

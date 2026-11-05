@@ -53,6 +53,7 @@ export async function listP638Runs(
   query: P638RunQuery,
   signal?: AbortSignal,
 ): Promise<P638RunPage> {
+  assertValidPageQuery(query)
   const parameters = new URLSearchParams({
     limit: String(query.limit),
     offset: String(query.offset),
@@ -67,6 +68,7 @@ export async function listP638Strategies(
   query: P638RunQuery,
   signal?: AbortSignal,
 ): Promise<P638StrategyPage> {
+  assertValidPageQuery(query)
   const parameters = new URLSearchParams({
     limit: String(query.limit),
     offset: String(query.offset),
@@ -84,6 +86,7 @@ export async function listP638Draws(
   query: P638RunQuery,
   signal?: AbortSignal,
 ): Promise<P638DrawPage> {
+  assertValidPageQuery(query)
   const parameters = new URLSearchParams({
     limit: String(query.limit),
     offset: String(query.offset),
@@ -101,6 +104,7 @@ export async function listP638Replay(
   query: P638ReplayQuery,
   signal?: AbortSignal,
 ): Promise<P638ReplayPage> {
+  assertValidPageQuery(query)
   const parameters = new URLSearchParams({
     limit: String(query.limit),
     offset: String(query.offset),
@@ -240,9 +244,29 @@ function isPage(value: unknown): value is PagePayload {
     isRecord(value) &&
     Array.isArray(value.items) &&
     typeof value.total_count === 'number' &&
+    Number.isSafeInteger(value.total_count) &&
+    value.total_count >= 0 &&
     typeof value.limit === 'number' &&
-    typeof value.offset === 'number'
+    Number.isSafeInteger(value.limit) &&
+    value.limit >= 0 &&
+    typeof value.offset === 'number' &&
+    Number.isSafeInteger(value.offset) &&
+    value.offset >= 0
   )
+}
+
+function assertValidPageQuery(query: { limit: number; offset: number }): void {
+  if (
+    !Number.isSafeInteger(query.limit) ||
+    query.limit <= 0 ||
+    !Number.isSafeInteger(query.offset) ||
+    query.offset < 0
+  ) {
+    throw new P638HistoricalRequestError(
+      'INVALID_REQUEST',
+      'P638 Historical Results pagination parameters are invalid.',
+    )
+  }
 }
 
 function isP638Run(value: unknown): value is P638Run {

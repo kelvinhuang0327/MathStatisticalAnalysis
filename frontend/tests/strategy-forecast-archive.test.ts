@@ -20,6 +20,7 @@ import {
   classifyFullStrategyArchivePerformance,
   fetchFullStrategyBacktestArchive,
   filterFullStrategyArchiveRecords,
+  formatFullStrategyArchiveDelta,
   getFullStrategyArchiveMetrics,
   isFullStrategyArchiveLowCoverage,
   isFullStrategyArchiveLowSample,
@@ -256,6 +257,33 @@ describe('FullStrategyBacktestArchive', () => {
     expect(classifyFullStrategyArchivePerformance(row)).toBe('ABOVE_RANDOM')
   })
 
+  it('classifies decimal delta signs exactly when Number would underflow', () => {
+    const cases = [
+      ['0.05', 'ABOVE_RANDOM'],
+      ['-0.05', 'BELOW_RANDOM'],
+      ['0', 'AT_RANDOM'],
+      ['-0.000', 'AT_RANDOM'],
+      ['0.000000000000000000000000000001', 'ABOVE_RANDOM'],
+      ['-0.000000000000000000000000000001', 'BELOW_RANDOM'],
+      ['1e-1000', 'ABOVE_RANDOM'],
+      ['-1e-1000', 'BELOW_RANDOM'],
+    ] as const
+
+    for (const [delta, expected] of cases) {
+      expect(
+        classifyFullStrategyArchivePerformance(
+          record({ random_baseline_rate_difference: delta }),
+        ),
+      ).toBe(expected)
+    }
+
+    expect(formatFullStrategyArchiveDelta('0.000000000000000000000000000001'))
+      .toBe('+<0.01%')
+    expect(formatFullStrategyArchiveDelta('-1e-1000')).toBe('-<0.01%')
+    expect(formatFullStrategyArchiveDelta('0')).toBe('0.00%')
+    expect(formatFullStrategyArchiveDelta('-0.000')).toBe('0.00%')
+  })
+
   it('treats 0/N as a real zero rate and 0/0 as unavailable', () => {
     const zeroOfTwenty = record({
       success_count: 0,
@@ -315,6 +343,49 @@ describe('FullStrategyBacktestArchive', () => {
     await wrapper.get('select[aria-label="全策略描述性表現篩選"]').setValue('BELOW_RANDOM')
     expect(wrapper.findAll('tbody tr')).toHaveLength(0)
     expect(wrapper.get('.archive-summary').text()).toContain('顯示 0 / 6')
+    wrapper.unmount()
+  })
+
+  it('keeps tiny-delta filtering, emphasis, and displayed direction in agreement', async () => {
+    const rows = [
+      record({
+        strategy_id: 'tiny-positive',
+        random_baseline_rate_difference: '1e-1000',
+      }),
+      record({
+        strategy_id: 'tiny-negative',
+        random_baseline_rate_difference: '-1e-1000',
+      }),
+      record({
+        strategy_id: 'exact-zero',
+        random_baseline_rate_difference: '-0.000',
+      }),
+    ]
+    vi.mocked(fetchB649MultiTicketSummary).mockResolvedValue(
+      summaryFor({ total: 3, backtested: 3, closed: 0, aliases: 0 }),
+    )
+    vi.mocked(fetchB649MultiTicketRecords).mockResolvedValue(page(rows, 3, 0))
+
+    const wrapper = mount(FullStrategyBacktestArchive)
+    await flushPromises()
+
+    const positiveDelta = wrapper.get('[data-testid="archive-row-tiny-positive"] td:nth-child(8)')
+    const negativeDelta = wrapper.get('[data-testid="archive-row-tiny-negative"] td:nth-child(8)')
+    const zeroDelta = wrapper.get('[data-testid="archive-row-exact-zero"] td:nth-child(8)')
+    expect(positiveDelta.classes()).toContain('archive-positive')
+    expect(positiveDelta.text()).toContain('+<0.01%')
+    expect(negativeDelta.classes()).not.toContain('archive-positive')
+    expect(negativeDelta.text()).toContain('-<0.01%')
+    expect(zeroDelta.classes()).not.toContain('archive-positive')
+    expect(zeroDelta.text()).toContain('0.00%')
+
+    const performanceFilter = wrapper.get('select[aria-label="全策略描述性表現篩選"]')
+    await performanceFilter.setValue('ABOVE_RANDOM')
+    expect(wrapper.findAll('tbody tr').map((row) => row.attributes('data-testid')))
+      .toEqual(['archive-row-tiny-positive'])
+    await performanceFilter.setValue('BELOW_RANDOM')
+    expect(wrapper.findAll('tbody tr').map((row) => row.attributes('data-testid')))
+      .toEqual(['archive-row-tiny-negative'])
     wrapper.unmount()
   })
 

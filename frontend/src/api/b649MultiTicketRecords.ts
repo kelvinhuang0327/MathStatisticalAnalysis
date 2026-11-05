@@ -111,6 +111,8 @@ export async function fetchB649MultiTicketRecords(
   query: B649MultiTicketRecordQuery,
   signal?: AbortSignal,
 ): Promise<B649MultiTicketRecordPage> {
+  assertQueryInteger(query.limit, 'limit', 1)
+  assertQueryInteger(query.offset, 'offset', 0)
   const parameters = new URLSearchParams({
     prefix_count: String(query.prefixCount),
     window: query.window,
@@ -130,6 +132,8 @@ export async function fetchB649ExactNativeRecords(
   query: B649ExactNativeRecordQuery,
   signal?: AbortSignal,
 ): Promise<B649ExactNativeRecordPage> {
+  if (query.limit !== undefined) assertQueryInteger(query.limit, 'limit', 1)
+  if (query.offset !== undefined) assertQueryInteger(query.offset, 'offset', 0)
   const parameters = new URLSearchParams({
     ticket_count: String(query.ticketCount),
     window: query.window,
@@ -318,6 +322,7 @@ function isExactNativeRecord(value: unknown): value is B649ExactNativeRecord | B
     nullableString(value.unavailable_reason) &&
     nullableString(value.metrics_unavailable_reason) &&
     nullableString(value.unranked_reason) &&
+    (value.rank === undefined || nullableInteger(value.rank)) &&
     nullableInteger(value.official_any_prize_count) &&
     nullableString(value.official_any_prize_rate) &&
     nullableString(value.official_random_baseline_probability) &&
@@ -426,7 +431,17 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function isInteger(value: unknown): value is number {
-  return Number.isInteger(value) && Number(value) >= 0
+  return Number.isSafeInteger(value) && Number(value) >= 0
+}
+
+function assertQueryInteger(value: number, name: string, minimum: number): void {
+  if (!isInteger(value) || value < minimum) {
+    throw new B649RecordsRequestError(
+      `The ${name} query parameter must be a safe integer greater than or equal to ${minimum}.`,
+      0,
+      'INVALID_REQUEST',
+    )
+  }
 }
 
 function isString(value: unknown): value is string {

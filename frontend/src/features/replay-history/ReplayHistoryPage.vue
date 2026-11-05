@@ -193,7 +193,11 @@ function trainingStatusLabel(value: string): string {
 function strategyIdentityKey(
   strategy: Pick<ReplayBackfillStrategyItem, 'lottery_type' | 'strategy_id' | 'strategy_version'>,
 ): string {
-  return `${strategy.lottery_type}\u0000${strategy.strategy_id}\u0000${strategy.strategy_version ?? ''}`
+  const encodeString = (value: string) => `${value.length}:${value}`
+  const versionKey = strategy.strategy_version === null
+    ? 'N'
+    : `S${encodeString(strategy.strategy_version)}`
+  return `${encodeString(strategy.lottery_type)}${encodeString(strategy.strategy_id)}${versionKey}`
 }
 
 function predictionIdentityKey(item: ReplayBackfillPredictionItem): string {

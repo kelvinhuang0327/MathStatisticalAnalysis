@@ -124,20 +124,14 @@ export function transformB649Record(
   const rank = record.official_rank ?? record.rank ?? null
   const hitRate = record.official_any_prize_rate !== null && record.official_any_prize_rate !== undefined
     ? Number.parseFloat(record.official_any_prize_rate)
-    : record.historical_success_rate !== null && record.historical_success_rate !== undefined
-      ? Number.parseFloat(record.historical_success_rate)
-      : null
+    : null
   const baselineDelta = record.official_random_baseline_delta !== null && record.official_random_baseline_delta !== undefined
     ? Number.parseFloat(record.official_random_baseline_delta)
-    : record.random_baseline_rate_difference !== null && record.random_baseline_rate_difference !== undefined
-      ? Number.parseFloat(record.random_baseline_rate_difference)
-      : null
+    : null
   const baselineProbability = record.official_random_baseline_probability !== null && record.official_random_baseline_probability !== undefined
     ? Number.parseFloat(record.official_random_baseline_probability)
-    : record.random_baseline_success_rate !== null && record.random_baseline_success_rate !== undefined
-      ? Number.parseFloat(record.random_baseline_success_rate)
-      : null
-  const winningTargets = record.official_any_prize_count ?? record.success_count ?? null
+    : null
+  const winningTargets = record.official_any_prize_count ?? null
   const coverage = record.coverage !== null && record.coverage !== undefined
     ? Number.parseFloat(record.coverage)
     : null
@@ -274,8 +268,13 @@ export async function loadB649BestReplayData(
         },
         signal,
       )
+      if (page.items.length === 0 && records.length < page.total) {
+        throw new Error(
+          `Incomplete page response for B649 prefix count ${prefixCount}: received ${records.length} of ${page.total} items with no progress.`,
+        )
+      }
       records.push(...page.items)
-      offset += limit
+      offset = records.length
       hasMore = records.length < page.total
     }
 

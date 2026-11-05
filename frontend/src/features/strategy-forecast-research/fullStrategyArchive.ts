@@ -37,7 +37,10 @@ export interface FullStrategyArchiveMetrics {
   actualRate: number
   randomBaselineRate: number
   delta: number
+  deltaSign: FullStrategyArchiveDeltaSign
 }
+
+export type FullStrategyArchiveDeltaSign = -1 | 0 | 1
 
 export interface FullStrategyArchiveSnapshot {
   records: B649MultiTicketRecord[]
@@ -137,8 +140,8 @@ export function classifyFullStrategyArchivePerformance(
 ): FullStrategyArchivePerformance {
   const metrics = getFullStrategyArchiveMetrics(record)
   if (!metrics) return 'METRIC_UNAVAILABLE'
-  if (metrics.delta > 0) return 'ABOVE_RANDOM'
-  if (metrics.delta < 0) return 'BELOW_RANDOM'
+  if (metrics.deltaSign > 0) return 'ABOVE_RANDOM'
+  if (metrics.deltaSign < 0) return 'BELOW_RANDOM'
   return 'AT_RANDOM'
 }
 
@@ -160,6 +163,7 @@ export function getFullStrategyArchiveMetrics(
   const actualRate = parseFiniteDecimal(record.historical_success_rate)
   const randomBaselineRate = parseFiniteDecimal(record.random_baseline_success_rate)
   const delta = parseFiniteDecimal(record.random_baseline_rate_difference)
+  const deltaSign = getFiniteDecimalSign(record.random_baseline_rate_difference)
   if (
     !isNonnegativeInteger(numerator) ||
     !isNonnegativeInteger(denominator) ||
@@ -172,6 +176,7 @@ export function getFullStrategyArchiveMetrics(
     randomBaselineRate < 0 ||
     randomBaselineRate > 1 ||
     delta === null ||
+    deltaSign === null ||
     delta < -1 ||
     delta > 1
   ) {
@@ -187,6 +192,7 @@ export function getFullStrategyArchiveMetrics(
     actualRate,
     randomBaselineRate,
     delta,
+    deltaSign,
   }
 }
 
@@ -234,7 +240,31 @@ export function formatFullStrategyArchiveRate(value: string | null): string {
 export function formatFullStrategyArchiveDelta(value: string | null): string {
   const parsed = parseFiniteDecimal(value)
   if (parsed === null) return '不可用'
-  return `${parsed > 0 ? '+' : ''}${(parsed * 100).toFixed(2)}%`
+  const sign = getFiniteDecimalSign(value)
+  if (sign === null) return '不可用'
+  if (sign === 0) return '0.00%'
+
+  const magnitude = Math.abs(parsed * 100).toFixed(2)
+  if (magnitude === '0.00') return sign > 0 ? '+<0.01%' : '-<0.01%'
+  return `${sign > 0 ? '+' : '-'}${magnitude}%`
+}
+
+function getFiniteDecimalSign(value: string | null): FullStrategyArchiveDeltaSign | null {
+  if (value === null) return null
+  const trimmed = value.trim()
+  if (trimmed === '') return null
+
+  const decimal = /^([+-]?)(?:(\d+)(?:\.(\d*))?|\.(\d+))(?:[eE][+-]?\d+)?$/.exec(trimmed)
+  if (decimal) {
+    const digits = `${decimal[2] ?? ''}${decimal[3] ?? decimal[4] ?? ''}`
+    if (!/[1-9]/.test(digits)) return 0
+    return decimal[1] === '-' ? -1 : 1
+  }
+
+  // Preserve finite Number formats that the existing parser already accepts.
+  const parsed = parseFiniteDecimal(value)
+  if (parsed === null || parsed === 0) return parsed === null ? null : 0
+  return parsed < 0 ? -1 : 1
 }
 
 export function formatFullStrategyArchiveCount(value: number | null): string {

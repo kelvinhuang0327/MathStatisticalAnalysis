@@ -401,11 +401,29 @@ function isWindow(value: unknown, index: number): boolean {
     return false
   }
   const rate = value.success_rate as Record<string, unknown>
+  if (
+    value.source_draw_count !== value.eligible_draw_count + value.excluded_draw_count ||
+    value.eligible_draw_count !== value.success_count + value.failure_count ||
+    rate.numerator !== value.success_count
+  ) {
+    return false
+  }
+  const availableRateMatches =
+    rate.available === true && rate.denominator === value.eligible_draw_count
+  const zeroEligibleRateMatches =
+    value.eligible_draw_count === 0 &&
+    rate.available === false &&
+    rate.numerator === 0 &&
+    rate.denominator === 0
+  const insufficientRateIsUnavailable =
+    value.evaluation_status === 'INSUFFICIENT_DRAWS' &&
+    rate.available === false &&
+    rate.numerator === 0 &&
+    rate.denominator === 0
   return (
-    value.source_draw_count === value.eligible_draw_count + value.excluded_draw_count &&
-    value.eligible_draw_count === value.success_count + value.failure_count &&
-    rate.numerator === value.success_count &&
-    rate.denominator === value.eligible_draw_count
+    availableRateMatches ||
+    zeroEligibleRateMatches ||
+    insufficientRateIsUnavailable
   )
 }
 

@@ -329,19 +329,14 @@ def test_query_api_filters_pagination_status_and_read_only(tmp_path: Path) -> No
 
 
 def test_predictions_api_pins_requested_run_across_newer_runs(tmp_path: Path) -> None:
-    engine, producer, store = worker(tmp_path)
+    engine, _, store = worker(tmp_path)
     selection = BackfillSelection(all_draws=True)
     original = engine.execute(selection)
-    newer = ReplayBackfill(
-        adapter=BigLottoReplayAdapter(
-            (ReplayStrategyBinding(engine.strategies[0], producer),)
-        ),
-        strategies=engine.strategies,
-        draws=engine.draws,
-        source_identity=engine.source_identity,
-        store=store,
-        execution_version="test-source-v2",
-    ).execute(selection)
+    # A newer target-window run reuses existing COMPLETE cells instead of
+    # recomputing the same logical work under a different execution identity.
+    newer = engine.execute(BackfillSelection(latest=5))
+    assert newer["existing_skipped_count"] == 5
+    assert newer["newly_calculated_count"] == 0
     assert original["run_id"] != newer["run_id"]
 
     app = FastAPI()

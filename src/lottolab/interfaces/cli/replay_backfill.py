@@ -628,6 +628,22 @@ def _table_count(connection: sqlite3.Connection, table: str) -> int:
     return int(row[0])
 
 
+def _stage_row_is_identical(
+    target: sqlite3.Connection,
+    table: str,
+    columns: tuple[str, ...],
+    values: tuple[object, ...],
+) -> bool:
+    where = " AND ".join(f'"{column}" IS ?' for column in columns)
+    return (
+        target.execute(
+            f'SELECT 1 FROM "{table}" WHERE {where}',
+            values,
+        ).fetchone()
+        is not None
+    )
+
+
 def _copy_stage_rows(
     source: sqlite3.Connection,
     target: sqlite3.Connection,
@@ -648,34 +664,30 @@ def _copy_stage_rows(
     if table == "replay_backfill_cells":
         key_indexes = tuple(columns.index(column) for column in _CELL_KEY_COLUMNS)
         cell_index = columns.index("cell_identity")
-        result_index = columns.index("result_identity")
         where = " AND ".join(f'"{column}"=?' for column in _CELL_KEY_COLUMNS)
-        lookup_sql = f'SELECT cell_identity,result_identity FROM "{table}" WHERE {where}'
+        lookup_sql = f'SELECT {quoted_columns} FROM "{table}" WHERE {where}'
         for row in source.execute(f'SELECT {quoted_columns} FROM "{table}"'):
             values = tuple(row)
             key = tuple(str(values[index]) for index in key_indexes)
             source_identity = str(values[cell_index])
             existing = target.execute(lookup_sql, key).fetchone()
             if existing is not None:
-                target_identity = str(existing[1])
-                stage_identity = str(values[result_index])
-                if target_identity != stage_identity:
-                    raise ValueError(
-                        "CONFLICT: stage result_identity differs for replay-backfill cell "
-                        f"natural key {key!r}; target={target_identity}; stage={stage_identity}"
-                    )
-                cell_identity_map[source_identity] = str(existing[0])
+                existing_values = tuple(existing)
+                if any(
+                    existing_values[index] != values[index]
+                    for index, column in enumerate(columns)
+                    if column != "cell_identity"
+                ):
+                    raise ValueError("stage cell conflicts with an existing natural key")
+                cell_identity_map[source_identity] = str(existing_values[cell_index])
                 skipped += 1
                 continue
             result = target.execute(insert_sql, values)
             stored = target.execute(lookup_sql, key).fetchone()
-            if stored is None:
-                raise ValueError("stage cell could not be mapped to the target unique key")
-            cell_identity_map[source_identity] = str(stored[0])
-            if result.rowcount == 1:
-                added += 1
-            else:
-                skipped += 1
+            if result.rowcount != 1 or stored is None:
+                raise ValueError("stage cell could not be safely inserted by its natural key")
+            cell_identity_map[source_identity] = str(stored[cell_index])
+            added += 1
         return added, skipped
 
     cell_index = columns.index("cell_identity") if "cell_identity" in columns else None
@@ -701,6 +713,8 @@ def _copy_stage_rows(
         if result.rowcount == 1:
             added += 1
         else:
+            if not _stage_row_is_identical(target, table, columns, tuple(values)):
+                raise ValueError(f"stage row conflicts with an existing identity: {table}")
             skipped += 1
     return added, skipped
 

@@ -102,13 +102,18 @@ export function transformB649Record(
   ticketCount: ReplayOverviewTicketCount,
   window: ReplayOverviewWindow,
 ): ReplayOverviewStrategyItem {
+  const officialAnyPrizeCount = record.official_any_prize_count ?? null
+  const successfulExecutionCount = record.successful_execution_count ?? null
   const isAvailable =
     record.reproduction_status === 'BACKTESTED' &&
     record.official_any_prize_rate !== null &&
-    record.official_rank !== null
+    record.official_rank !== null &&
+    officialAnyPrizeCount !== null &&
+    successfulExecutionCount !== null &&
+    successfulExecutionCount > 0
 
   const officialRank = record.official_rank ?? null
-  const rank = record.official_rank ?? record.rank ?? null
+  const rank = record.rank ?? null
   const officialAnyPrizeRate = record.official_any_prize_rate
     ? Number.parseFloat(record.official_any_prize_rate)
     : record.historical_success_rate
@@ -169,7 +174,7 @@ export function transformB649Record(
     duplicateAliasTarget: record.duplicate_alias_target,
     officialRank,
     rank,
-    officialAnyPrizeCount: record.official_any_prize_count ?? record.success_count ?? null,
+    officialAnyPrizeCount,
     officialAnyPrizeRate,
     officialAnyPrizeRateFormatted: isAvailable
       ? formatRatePercentage(officialAnyPrizeRate)
@@ -186,7 +191,7 @@ export function transformB649Record(
     successCount: record.success_count ?? null,
     effectiveBacktestDrawCount:
       record.effective_backtest_draw_count ?? record.window_available_draws ?? null,
-    successfulExecutionCount: record.successful_execution_count ?? null,
+    successfulExecutionCount,
     coverage,
     coverageFormatted: isAvailable ? formatCoverage(coverage) : 'Unavailable',
     bestHit: isAvailable ? bestHit : 'Unavailable',

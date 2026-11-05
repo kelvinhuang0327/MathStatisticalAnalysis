@@ -28,7 +28,9 @@ class CountingProducer:
         self.calls = 0
         self.fail = fail
 
-    def get_bets(self, history: tuple[object, ...], lottery_type: LotteryType):
+    def get_bets(
+        self, history: tuple[ReplayDraw, ...], lottery_type: LotteryType
+    ) -> tuple[tuple[int, ...], ...]:
         self.calls += 1
         if self.fail:
             raise RuntimeError("synthetic generator failure")
@@ -41,7 +43,12 @@ class SyntheticAdapter:
     def __init__(self, producer: CountingProducer) -> None:
         self._producer = producer
 
-    def generate(self, strategy, history, target):
+    def generate(
+        self,
+        strategy: ReplayStrategy,
+        history: tuple[ReplayDraw, ...],
+        target: ReplayDraw,
+    ) -> tuple[ReplayTicket, ...]:
         return tuple(
             ReplayTicket(position, numbers, None)
             for position, numbers in enumerate(
@@ -50,7 +57,9 @@ class SyntheticAdapter:
             )
         )
 
-    def evaluate(self, strategy, ticket, target) -> ReplayEvaluation:
+    def evaluate(
+        self, strategy: ReplayStrategy, ticket: ReplayTicket, target: ReplayDraw
+    ) -> ReplayEvaluation:
         return ReplayEvaluation(0, False, False, None)
 
 
@@ -243,7 +252,7 @@ def test_cross_dataset_complete_fails_before_prepare_or_generation(tmp_path: Pat
     requested_dataset = new_worker.dataset_identity
     original_rows = before["replay_backfill_cells"]
     assert len(original_rows) == 1
-    original_payload = json.loads(original_rows[0][-2])
+    original_payload = json.loads(str(original_rows[0][-2]))
     original_identity = original_payload["result_identity"]
 
     with pytest.raises(ValueError) as raised:
@@ -257,7 +266,7 @@ def test_cross_dataset_complete_fails_before_prepare_or_generation(tmp_path: Pat
     after = _snapshot(store)
     assert after == before
     current_rows = after["replay_backfill_cells"]
-    assert json.loads(current_rows[0][-2])["result_identity"] == original_identity
+    assert json.loads(str(current_rows[0][-2]))["result_identity"] == original_identity
     print(
         "AC04_OBS "
         + json.dumps(

@@ -608,6 +608,8 @@ class SQLiteBackfillStore:
             }
             if not tables:
                 return {}
+            if tables not in (_TABLES, _LEGACY_V1_TABLES):
+                raise ValueError("output must be a standalone replay backfill database")
             schema_rows = connection.execute(
                 "SELECT version,checksum FROM replay_backfill_schema"
             ).fetchall()

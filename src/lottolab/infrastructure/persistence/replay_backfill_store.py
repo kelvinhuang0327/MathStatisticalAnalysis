@@ -639,9 +639,9 @@ class SQLiteBackfillStore:
                 )
                 for row in rows:
                     key = cast(tuple[str, str, str, str], tuple(row[:4]))
-                    payload = json.loads(row[6])
+                    payload = _as_json_object(json.loads(row[6]))
                     if (
-                        type(payload) is not dict
+                        payload is None
                         or tuple(
                             payload.get(column)
                             for column in (

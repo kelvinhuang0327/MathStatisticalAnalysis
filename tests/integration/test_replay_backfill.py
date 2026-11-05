@@ -771,6 +771,17 @@ def _replay_table_counts(database: Path) -> dict[str, int]:
         }
 
 
+def _persisted_cell_identities(database: Path) -> tuple[tuple[str, str], ...]:
+    with sqlite3.connect(database.as_uri() + "?mode=ro", uri=True) as connection:
+        return tuple(
+            (str(cell_identity), str(result_identity))
+            for cell_identity, result_identity in connection.execute(
+                "SELECT cell_identity,result_identity FROM replay_backfill_cells "
+                "ORDER BY cell_identity"
+            )
+        )
+
+
 def test_import_stage_merges_read_only_and_duplicate_import_is_idempotent(
     test_only_external_database_root: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -792,15 +803,18 @@ def test_import_stage_merges_read_only_and_duplicate_import_is_idempotent(
     assert first["target_after_rows"]["replay_backfill_tickets"] > 0
     assert first["source_rows"] == first["target_after_rows"]
     counts_after_first = _replay_table_counts(target)
+    identities_after_first = _persisted_cell_identities(target)
 
     assert main(
         args, test_only_external_database_root=test_only_external_database_root
     ) == 0
     second = json.loads(capsys.readouterr().out)
     assert second["added_total"] == 0
+    assert second["added_rows"]["replay_backfill_cells"] == 0
     assert second["skipped_total"] > 0
     assert second["target_before_rows"] == second["target_after_rows"]
     assert _replay_table_counts(target) == counts_after_first
+    assert _persisted_cell_identities(target) == identities_after_first
     assert hashlib.sha256(source.read_bytes()).hexdigest() == source_hash
 
 
@@ -826,3 +840,129 @@ def test_import_stage_rejects_schema_version_mismatch_before_writing(
     )
     assert "schema version or checksum" in capsys.readouterr().err
     assert _replay_table_counts(target) == {key: 0 for key in _replay_table_counts(target)}
+
+
+def test_import_stage_maps_children_to_existing_identical_result_cell(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    source = tmp_path / "stage.sqlite3"
+    engine, _, _ = worker(tmp_path, store=SQLiteBackfillStore(source))
+    engine.execute(BackfillSelection(latest=3))
+    source_hash = replay_backfill_cli.source_database_hash(source)
+    target = tmp_path / "target.sqlite3"
+    _create_empty_backfill_database(target)
+
+    with sqlite3.connect(source.as_uri() + "?mode=ro", uri=True) as connection:
+        columns = tuple(
+            str(row[1]) for row in connection.execute("PRAGMA table_info(replay_backfill_cells)")
+        )
+        stage_cell = tuple(connection.execute("SELECT * FROM replay_backfill_cells").fetchone())
+        source_ticket_count = int(
+            connection.execute(
+                "SELECT COUNT(*) FROM replay_backfill_tickets WHERE cell_identity=?",
+                (stage_cell[columns.index("cell_identity")],),
+            ).fetchone()[0]
+        )
+    target_cell = list(stage_cell)
+    source_cell_identity = str(target_cell[columns.index("cell_identity")])
+    target_cell_identity = "target-cell-alias"
+    target_cell[columns.index("cell_identity")] = target_cell_identity
+    with sqlite3.connect(target) as connection:
+        quoted_columns = ",".join(f'"{column}"' for column in columns)
+        placeholders = ",".join("?" for _ in columns)
+        connection.execute(
+            f'INSERT INTO replay_backfill_cells ({quoted_columns}) VALUES ({placeholders})',
+            tuple(target_cell),
+        )
+
+    result = main(
+        ["import-stage", "--source", str(source), "--database", str(target)],
+        test_only_external_database_root=tmp_path,
+    )
+    assert result == 0
+    imported = json.loads(capsys.readouterr().out)
+    assert imported["added_rows"]["replay_backfill_cells"] == 2
+    assert imported["skipped_rows"]["replay_backfill_cells"] == 1
+    assert (target_cell_identity, str(stage_cell[columns.index("result_identity")])) in (
+        _persisted_cell_identities(target)
+    )
+    with sqlite3.connect(target.as_uri() + "?mode=ro", uri=True) as connection:
+        mapped_cell = connection.execute(
+            "SELECT cell_identity FROM replay_backfill_run_cells "
+            "WHERE run_id=(SELECT run_id FROM replay_backfill_runs LIMIT 1) "
+            "AND cell_identity=?",
+            (target_cell_identity,),
+        ).fetchone()
+        mapped_ticket_count = int(
+            connection.execute(
+                "SELECT COUNT(*) FROM replay_backfill_tickets WHERE cell_identity=?",
+                (target_cell_identity,),
+            ).fetchone()[0]
+        )
+        source_identity_still_absent = connection.execute(
+            "SELECT 1 FROM replay_backfill_cells WHERE cell_identity=?",
+            (source_cell_identity,),
+        ).fetchone()
+    assert mapped_cell == (target_cell_identity,)
+    assert mapped_ticket_count == source_ticket_count
+    assert source_identity_still_absent is None
+    assert replay_backfill_cli.source_database_hash(source) == source_hash
+
+
+def test_import_stage_rejects_result_identity_conflict_and_rolls_back(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    source = tmp_path / "stage.sqlite3"
+    engine, _, _ = worker(tmp_path, store=SQLiteBackfillStore(source))
+    engine.execute(BackfillSelection(latest=3))
+    source_hash = replay_backfill_cli.source_database_hash(source)
+    target = tmp_path / "target.sqlite3"
+    _create_empty_backfill_database(target)
+
+    with sqlite3.connect(source.as_uri() + "?mode=ro", uri=True) as connection:
+        columns = tuple(
+            str(row[1]) for row in connection.execute("PRAGMA table_info(replay_backfill_cells)")
+        )
+        stage_rows = [
+            tuple(row) for row in connection.execute("SELECT * FROM replay_backfill_cells")
+        ]
+    assert len(stage_rows) == 3
+    first_key = tuple(
+        stage_rows[0][columns.index(column)]
+        for column in replay_backfill_cli._CELL_KEY_COLUMNS
+    )
+    conflicting_row = stage_rows[1]
+    conflict_key = tuple(
+        conflicting_row[columns.index(column)]
+        for column in replay_backfill_cli._CELL_KEY_COLUMNS
+    )
+    assert first_key != conflict_key
+
+    target_identity = "target-result-identity"
+    stage_identity = str(conflicting_row[columns.index("result_identity")])
+    target_row = list(conflicting_row)
+    target_row[columns.index("result_identity")] = target_identity
+    with sqlite3.connect(target) as connection:
+        quoted_columns = ",".join(f'"{column}"' for column in columns)
+        placeholders = ",".join("?" for _ in columns)
+        connection.execute(
+            f'INSERT INTO replay_backfill_cells ({quoted_columns}) VALUES ({placeholders})',
+            tuple(target_row),
+        )
+
+    before_counts = _replay_table_counts(target)
+    before_identities = _persisted_cell_identities(target)
+    assert before_counts["replay_backfill_cells"] == 1
+    result = main(
+        ["import-stage", "--source", str(source), "--database", str(target)],
+        test_only_external_database_root=tmp_path,
+    )
+    error = capsys.readouterr().err
+
+    assert result == 1
+    assert "CONFLICT: stage result_identity differs" in error
+    assert target_identity in error
+    assert stage_identity in error
+    assert _replay_table_counts(target) == before_counts
+    assert _persisted_cell_identities(target) == before_identities
+    assert replay_backfill_cli.source_database_hash(source) == source_hash

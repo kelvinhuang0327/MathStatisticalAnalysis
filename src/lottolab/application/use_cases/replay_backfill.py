@@ -97,6 +97,10 @@ class BackfillStore(Protocol):
         self,
         keys: tuple[tuple[str, str, str, str, str, str], ...],
     ) -> dict[tuple[str, str, str, str, str, str], JsonObject]: ...
+    def lookup_complete_by_logical_keys(
+        self,
+        keys: tuple[tuple[str, str, str, str], ...],
+    ) -> dict[tuple[str, str, str, str], tuple[JsonObject, ...]]: ...
     def save(self, run_id: str, result: JsonObject, *, attempted: bool = True) -> None: ...
     def save_many(self, run_id: str, results: tuple[JsonObject, ...]) -> None: ...
     def summary(self, run_id: str) -> JsonObject: ...
@@ -236,10 +240,44 @@ class ReplayBackfill:
             raise ValueError("max_cells must be positive")
         manifest = self.manifest(selection)
         run_id = manifest["run_id"]
+        selected = selection.select(self.draws)
+        logical_keys = tuple(
+            (
+                self.lottery_type.value,
+                strategy.strategy_id,
+                strategy.strategy_version,
+                target.draw_number,
+            )
+            for target in selected
+            for strategy in self.strategies
+        )
+        complete_by_logical_key = self.store.lookup_complete_by_logical_keys(logical_keys)
+        for logical_key, previous_results in complete_by_logical_key.items():
+            for previous in previous_results:
+                previous_execution = previous["execution_version"]
+                previous_dataset = previous["dataset_identity"]
+                if (
+                    previous_execution != self.execution_version
+                    or previous_dataset != self.dataset_identity
+                ):
+                    lottery_type, strategy_id, strategy_version, target_draw_id = logical_key
+                    raise ValueError(
+                        "COMPLETE replay identity conflict for "
+                        f"lottery_type={lottery_type!r}, strategy_id={strategy_id!r}, "
+                        f"strategy_version={strategy_version!r}, "
+                        f"target_draw_id={target_draw_id!r}: "
+                        f"existing execution_version={previous_execution!r}, "
+                        f"dataset_identity={previous_dataset!r}; "
+                        f"requested execution_version={self.execution_version!r}, "
+                        f"dataset_identity={self.dataset_identity!r}; "
+                        "refusing unapproved recomputation"
+                    )
+
+        # The cross-version guard runs before prepare, because prepare writes a
+        # run manifest and target inventory even when no prediction is saved.
         self.store.prepare(manifest)
         executed = 0
         existing_skipped = 0
-        selected = selection.select(self.draws)
         draw_positions = {draw.draw_number: index for index, draw in enumerate(self.draws)}
         for batch_start in range(0, len(selected), batch_size):
             batch = selected[batch_start : batch_start + batch_size]

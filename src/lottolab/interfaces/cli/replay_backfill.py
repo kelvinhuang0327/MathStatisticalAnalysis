@@ -648,14 +648,22 @@ def _copy_stage_rows(
     if table == "replay_backfill_cells":
         key_indexes = tuple(columns.index(column) for column in _CELL_KEY_COLUMNS)
         cell_index = columns.index("cell_identity")
+        result_index = columns.index("result_identity")
         where = " AND ".join(f'"{column}"=?' for column in _CELL_KEY_COLUMNS)
-        lookup_sql = f'SELECT cell_identity FROM "{table}" WHERE {where}'
+        lookup_sql = f'SELECT cell_identity,result_identity FROM "{table}" WHERE {where}'
         for row in source.execute(f'SELECT {quoted_columns} FROM "{table}"'):
             values = tuple(row)
             key = tuple(str(values[index]) for index in key_indexes)
             source_identity = str(values[cell_index])
             existing = target.execute(lookup_sql, key).fetchone()
             if existing is not None:
+                target_identity = str(existing[1])
+                stage_identity = str(values[result_index])
+                if target_identity != stage_identity:
+                    raise ValueError(
+                        "CONFLICT: stage result_identity differs for replay-backfill cell "
+                        f"natural key {key!r}; target={target_identity}; stage={stage_identity}"
+                    )
                 cell_identity_map[source_identity] = str(existing[0])
                 skipped += 1
                 continue

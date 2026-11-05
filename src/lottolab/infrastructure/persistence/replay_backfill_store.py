@@ -587,6 +587,80 @@ class SQLiteBackfillStore:
                     found[key] = json.loads(row[6])
         return found
 
+    def lookup_complete_by_logical_keys(
+        self,
+        keys: tuple[tuple[str, str, str, str], ...],
+    ) -> dict[tuple[str, str, str, str], tuple[JsonObject, ...]]:
+        """Find completed results for the same research target across identities."""
+        if not keys:
+            return {}
+        database = validate_database_path(self.database)
+        if not database.exists() or database.stat().st_size == 0:
+            return {}
+
+        found: dict[tuple[str, str, str, str], list[JsonObject]] = {}
+        connection = sqlite3.connect(database.as_uri() + "?mode=ro", uri=True, timeout=5)
+        try:
+            connection.execute("PRAGMA query_only=ON")
+            tables = {
+                row[0]
+                for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")
+            }
+            if not tables:
+                return {}
+            schema_rows = connection.execute(
+                "SELECT version,checksum FROM replay_backfill_schema"
+            ).fetchall()
+            if schema_rows not in (
+                [(SCHEMA_VERSION, SCHEMA_CHECKSUM)],
+                [(1, LEGACY_V1_SCHEMA_CHECKSUM)],
+            ):
+                raise ValueError("unsupported replay backfill schema")
+
+            columns = (
+                "lottery_type",
+                "strategy_id",
+                "strategy_version",
+                "target_draw_id",
+            )
+            for offset in range(0, len(keys), 100):
+                batch = keys[offset : offset + 100]
+                predicate = " OR ".join(
+                    "(" + " AND ".join(f'"{column}"=?' for column in columns) + ")"
+                    for _ in batch
+                )
+                parameters = tuple(value for key in batch for value in key)
+                rows = connection.execute(
+                    "SELECT lottery_type,strategy_id,strategy_version,target_draw_id,"
+                    "execution_version,dataset_identity,payload_json "
+                    "FROM replay_backfill_cells "
+                    f"WHERE execution_status='COMPLETE' AND ({predicate})",
+                    parameters,
+                )
+                for row in rows:
+                    key = cast(tuple[str, str, str, str], tuple(row[:4]))
+                    payload = json.loads(row[6])
+                    if (
+                        type(payload) is not dict
+                        or tuple(
+                            payload.get(column)
+                            for column in (
+                                "lottery_type",
+                                "strategy_id",
+                                "strategy_version",
+                                "target_draw_id",
+                                "execution_version",
+                                "dataset_identity",
+                            )
+                        )
+                        != tuple(row[:6])
+                    ):
+                        raise ValueError("COMPLETE replay identity conflicts with stored payload")
+                    found.setdefault(key, []).append(payload)
+        finally:
+            connection.close()
+        return {key: tuple(results) for key, results in found.items()}
+
     def save(self, run_id: str, result: JsonObject, *, attempted: bool = True) -> None:
         self.save_many(run_id, (result,), retry_failed=attempted)
 

@@ -5,7 +5,6 @@
 
 from __future__ import annotations
 
-from fractions import Fraction
 from typing import cast
 
 import pytest
@@ -18,14 +17,15 @@ from tests.fixtures.historical.success_window_builder import (
 )
 
 from lottolab.application.historical_prefix_success_windows import (
+    HistoricalPrefixExactProbability,
     HistoricalPrefixSuccessWindowSource,
 )
 from lottolab.interfaces.api.app import create_app
 from lottolab.interfaces.api.historical_prefix_success_windows import (
     HistoricalPrefixExactProbabilityView,
     HistoricalPrefixFeatureCohortDiagnosticView,
-    _canonical_decimal_to_int,
-    _int_to_canonical_decimal,
+    _canonical_decimal_to_int,  # pyright: ignore[reportPrivateUsage] - white-box conversion test
+    _int_to_canonical_decimal,  # pyright: ignore[reportPrivateUsage] - white-box conversion test
 )
 
 IMPORT_IDENTITY = "a" * 64
@@ -562,7 +562,7 @@ def test_exact_probability_decimal_conversion_preserves_large_values(digits: int
     assert _canonical_decimal_to_int(expected_denominator) == denominator
 
     view = HistoricalPrefixExactProbabilityView.from_probability(
-        Fraction(numerator, denominator)
+        HistoricalPrefixExactProbability(numerator, denominator)
     )
     assert view.numerator == expected_numerator
     assert view.denominator == expected_denominator
@@ -611,7 +611,7 @@ def test_large_exact_probability_survives_historical_prefix_http_response(
     expected_numerator = f"1{'0' * (digits - 2)}1"
     expected_denominator = f"1{'0' * (digits - 2)}3"
     large_view = HistoricalPrefixExactProbabilityView.from_probability(
-        Fraction(numerator, denominator)
+        HistoricalPrefixExactProbability(numerator, denominator)
     )
     original_from_diagnostic = HistoricalPrefixFeatureCohortDiagnosticView.from_diagnostic.__func__
 

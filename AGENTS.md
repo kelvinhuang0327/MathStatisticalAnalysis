@@ -39,6 +39,16 @@
   - 正式資料庫在 `data/`，不要寫進 `_scratch`。
 - 主 checkout 不得執行 `git clean -x` 或 `git clean -X`：會刪掉被 git 忽略的 `.task-data/` 與 `data/`。
 
+## 任務資料大小與保存
+
+- 不要把資料集、資料庫、整份 checkout 或 venv 複製進任務資料夾。需要讀取時，以唯讀方式直接開原檔，在收據記下路徑與 sha256。
+- 需要可寫副本時（還原測試、測試夾具、重建驗證），放在 `.task-data/_scratch/<名稱>/`，任務結束前刪掉；收據只記副本的 sha256、大小與刪除時間。
+  - 例外：交付物本身，以及標記 `MERGE_PENDING`、等待合併的暫存 DB 要保留，並在收據寫明保留原因與可以清除的條件。
+- `result.json` 只放摘要、驗收結果與檔案位置。大量明細（逐筆紀錄、候選清單、逐格結果）另存成獨立檔案；單一文字輸出（`.jsonl`、`.json`、`.csv`、`.log`）超過 100 MB 時用 gzip 存成 `.gz`。
+- 回報前在 `result.json` 記下 `task_folder_bytes`（任務資料夾總大小）與 100 MB 以上的檔案清單；總大小超過 1 GiB 時，在回報第一段說明原因。
+- 開始與結束時各記一次磁碟剩餘空間；低於 15 GiB 時在回報第一段提醒。這是提醒，不要因此停下任務（Owner 2026-10-28 規定）。
+- 以上只適用於新任務。既有的任務資料夾不搬、不改名；要清理或壓縮舊資料時，另取 Owner 授權。
+
 ## 回測結果寫入
 
 - 回測結果的正式寫入目標只有一個：`data/databases/database-locations.json` 的 `writable_databases` 裡登記給 `LOTTOLAB_REPLAY_BACKFILL_DB` 的檔案。寫入前先讀這個檔確認；Packet 寫的目標和登記不同時，停下回報。

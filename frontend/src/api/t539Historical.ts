@@ -55,6 +55,7 @@ export async function listT539Runs(
   query: T539RunQuery,
   signal?: AbortSignal,
 ): Promise<T539RunPage> {
+  assertValidPageQuery(query)
   const parameters = new URLSearchParams({
     limit: String(query.limit),
     offset: String(query.offset),
@@ -69,6 +70,7 @@ export async function listT539Strategies(
   query: T539StrategyQuery,
   signal?: AbortSignal,
 ): Promise<T539StrategyPage> {
+  assertValidPageQuery(query)
   const parameters = new URLSearchParams({
     limit: String(query.limit),
     offset: String(query.offset),
@@ -86,6 +88,7 @@ export async function listT539Draws(
   query: T539RunQuery,
   signal?: AbortSignal,
 ): Promise<T539DrawPage> {
+  assertValidPageQuery(query)
   const parameters = new URLSearchParams({
     limit: String(query.limit),
     offset: String(query.offset),
@@ -241,9 +244,29 @@ function isPage(value: unknown): value is PagePayload {
     isRecord(value) &&
     Array.isArray(value.items) &&
     typeof value.total_count === 'number' &&
+    Number.isSafeInteger(value.total_count) &&
+    value.total_count >= 0 &&
     typeof value.limit === 'number' &&
-    typeof value.offset === 'number'
+    Number.isSafeInteger(value.limit) &&
+    value.limit >= 0 &&
+    typeof value.offset === 'number' &&
+    Number.isSafeInteger(value.offset) &&
+    value.offset >= 0
   )
+}
+
+function assertValidPageQuery(query: { limit: number; offset: number }): void {
+  if (
+    !Number.isSafeInteger(query.limit) ||
+    query.limit <= 0 ||
+    !Number.isSafeInteger(query.offset) ||
+    query.offset < 0
+  ) {
+    throw new T539HistoricalRequestError(
+      'INVALID_REQUEST',
+      'T539 Historical Results pagination parameters are invalid.',
+    )
+  }
 }
 
 function isT539Run(value: unknown): value is T539Run {

@@ -48,6 +48,9 @@ export async function listHistoricalRunReplayPortfolios(
   query: HistoricalReplayQuery,
   signal?: AbortSignal,
 ): Promise<HistoricalReplayPageResponse> {
+  if (query.offset !== undefined && (!Number.isSafeInteger(query.offset) || query.offset < 0)) {
+    throw new RangeError('Historical replay offset must be a non-negative integer')
+  }
   const parameters = new URLSearchParams({
     strategy_id: query.strategyId,
     ticket_count: String(query.ticketCount),
@@ -135,5 +138,5 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function isNonNegativeInteger(value: unknown): value is number {
-  return typeof value === 'number' && Number.isInteger(value) && value >= 0
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0
 }

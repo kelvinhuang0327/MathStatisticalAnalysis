@@ -139,6 +139,14 @@ async function requestJson<T>(
   return payload
 }
 
+function isSafeInteger(value: unknown): value is number {
+  return typeof value === 'number' && Number.isSafeInteger(value)
+}
+
+function isNonNegativeSafeInteger(value: unknown): value is number {
+  return isSafeInteger(value) && value >= 0
+}
+
 function isReplayScoringRunResponse(value: unknown): value is ReplayScoringRunResponse {
   return (
     isRecord(value) &&
@@ -161,7 +169,7 @@ function isReplayScoredPrediction(value: unknown): value is ReplayScoredPredicti
   return (
     isRecord(value) &&
     typeof value.run_payload_sha256 === 'string' &&
-    Number.isInteger(value.ordinal) &&
+    isSafeInteger(value.ordinal) &&
     typeof value.source_snapshot_result_sha256 === 'string' &&
     typeof value.scored_result_sha256 === 'string' &&
     typeof value.target_draw_number === 'string' &&
@@ -179,7 +187,7 @@ function isReplayStrategyAggregates(value: unknown): value is ReplayStrategyAggr
       (item) =>
         isRecord(item) &&
         typeof item.run_payload_sha256 === 'string' &&
-        Number.isInteger(item.ordinal) &&
+        isSafeInteger(item.ordinal) &&
         typeof item.strategy_id === 'string' &&
         hasCounts(item, AGGREGATE_COUNT_FIELDS) &&
         typeof item.aggregate_sha256 === 'string',
@@ -218,9 +226,7 @@ function hasCounts(
   value: Record<string, unknown>,
   keys: readonly string[],
 ): boolean {
-  return keys.every(
-    (key) => typeof value[key] === 'number' && Number.isInteger(value[key]) && value[key] >= 0,
-  )
+  return keys.every((key) => isNonNegativeSafeInteger(value[key]))
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

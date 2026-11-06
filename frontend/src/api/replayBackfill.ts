@@ -196,7 +196,7 @@ function isPredictionItem(value: unknown): value is ReplayBackfillPredictionItem
     isLotteryType(value.lottery_type) &&
     isString(value.strategy_id) &&
     isString(value.strategy_version) &&
-    (value.lifecycle_status === undefined || isString(value.lifecycle_status)) &&
+    (value.lifecycle_status === undefined || isNullableString(value.lifecycle_status)) &&
     isString(value.target_draw_number) &&
     isString(value.target_draw_date) &&
     isString(value.prediction_status) &&

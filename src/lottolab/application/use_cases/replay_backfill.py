@@ -373,6 +373,13 @@ class ReplayBackfill:
     def _payload(self, record: ReplayTargetRecord, cell_identity: str) -> JsonObject:
         cutoff = record.causal_history[-1] if record.causal_history else None
         source = self.sources.get(record.strategy.strategy_id, {})
+        if record.status.value == "COMPLETE":
+            hit_details = [
+                {"ticket_position": ticket.ticket_position, **asdict(evaluation)}
+                for ticket, evaluation in zip(record.tickets, record.evaluations, strict=True)
+            ]
+        else:
+            hit_details = [asdict(evaluation) for evaluation in record.evaluations]
         payload: JsonObject = {
             "cell_identity": cell_identity,
             "engine_version": ENGINE_VERSION,
@@ -402,7 +409,7 @@ class ReplayBackfill:
                 "main_numbers": record.target.main_numbers,
                 "special_number": record.target.special_number,
             },
-            "hit_details": [asdict(e) for e in record.evaluations],
+            "hit_details": hit_details,
             "prize_results": [e.prize_tier for e in record.evaluations],
             "combination_success": any(e.is_winner for e in record.evaluations)
             if record.status.value == "COMPLETE"

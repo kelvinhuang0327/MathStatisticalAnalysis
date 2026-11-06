@@ -161,8 +161,27 @@ def worker(
     )
 
 
+def _test_database_path(tmp_path: Path, filename: str) -> Path:
+    project_root = next(
+        parent for parent in Path(__file__).resolve().parents if (parent / ".git").exists()
+    )
+    project_database_paths.PROJECT_ROOT = project_root
+    scratch = (
+        project_root
+        / ".task-data"
+        / "_scratch"
+        / "replay-hit-position-producer-fix-r1"
+        / "pytest-databases"
+    )
+    scratch = scratch / tmp_path.parent.name
+    scratch.mkdir(parents=True, exist_ok=True)
+    return scratch / f"{tmp_path.name}-{filename}"
+
+
 def test_resume_after_interruption_and_idempotence(tmp_path: Path) -> None:
-    engine, producer, store = worker(tmp_path)
+    engine, producer, store = worker(
+        tmp_path, store=SQLiteBackfillStore(_test_database_path(tmp_path, "resume.sqlite3"))
+    )
     selection = BackfillSelection(latest=8)
 
     def interrupt(summary: dict[str, Any]) -> None:
@@ -173,7 +192,7 @@ def test_resume_after_interruption_and_idempotence(tmp_path: Path) -> None:
     run_id = engine.manifest(selection)["run_id"]
     assert store.summary(run_id)["valid_result_cells"] == 3
     before = store.query()["items"]
-    resumed, _, _ = worker(tmp_path, producer=producer)
+    resumed, _, _ = worker(tmp_path, producer=producer, store=store)
     result = resumed.execute(selection, batch_size=2)
     assert result["valid_result_cells"] == 8
     assert result["pending_cells"] == 0
@@ -182,11 +201,13 @@ def test_resume_after_interruption_and_idempotence(tmp_path: Path) -> None:
     assert result["failed_count"] == 0
     assert producer.calls == 8
     assert store.query(limit=3)["items"] == before
+    completed_payloads = json.loads(json.dumps(store.query()["items"]))
     repeated = resumed.execute(selection)
     assert repeated["existing_skipped_count"] == 8
     assert repeated["newly_calculated_count"] == 0
     assert producer.calls == 8
     assert store.query()["total_count"] == 8
+    assert json.loads(json.dumps(store.query()["items"])) == completed_payloads
 
 
 def test_skip_completed_cells_by_six_column_key_across_runs(tmp_path: Path) -> None:
@@ -205,27 +226,181 @@ def test_skip_completed_cells_by_six_column_key_across_runs(tmp_path: Path) -> N
 
 
 def test_batch_partition_parity_and_all_native_tickets(tmp_path: Path) -> None:
-    a, _, store_a = worker(tmp_path, store=SQLiteBackfillStore(tmp_path / "a.sqlite3"))
-    b, _, store_b = worker(tmp_path, store=SQLiteBackfillStore(tmp_path / "b.sqlite3"))
+    a, _, store_a = worker(
+        tmp_path, store=SQLiteBackfillStore(_test_database_path(tmp_path, "a.sqlite3"))
+    )
+    b, _, store_b = worker(
+        tmp_path, store=SQLiteBackfillStore(_test_database_path(tmp_path, "b.sqlite3"))
+    )
     a.execute(BackfillSelection(latest=8), batch_size=1, max_cells=4)
     a.execute(BackfillSelection(latest=8), batch_size=1)
     b.execute(BackfillSelection(latest=8), batch_size=8)
     assert store_a.query()["items"] == store_b.query()["items"]
     row = store_a.query(limit=1)["items"][0]
     assert len(row["predicted_tickets"]) == len(row["hit_details"]) == 2
+    assert [ticket["ticket_position"] for ticket in row["predicted_tickets"]] == [1, 2]
+    assert [hit["ticket_position"] for hit in row["hit_details"]] == [1, 2]
     assert [h["zone1_hits"] for h in row["hit_details"]] == [6, 5]
     assert [h["zone2_hit"] for h in row["hit_details"]] == [False, True]
     assert row["prize_results"] == ["FIRST", "SECOND"]
     assert row["combination_success"] is True
 
 
+def test_complete_hit_positions_survive_store_and_http_projection(tmp_path: Path) -> None:
+    engine, _, store = worker(
+        tmp_path, store=SQLiteBackfillStore(_test_database_path(tmp_path, "http.sqlite3"))
+    )
+    summary = engine.execute(BackfillSelection(latest=1))
+    run_id = str(summary["run_id"])
+    read_only_store = SQLiteBackfillStore(store.database, read_only=True)
+    stored_rows = read_only_store.query(run_id=run_id)["items"]
+    assert len(stored_rows) == 1
+    payload = cast(dict[str, Any], stored_rows[0])
+    payload_without_identity = {
+        key: value for key, value in payload.items() if key != "result_identity"
+    }
+    assert payload["result_identity"] == identity(payload_without_identity)
+    assert payload["execution_status"] == "COMPLETE"
+    assert [ticket["ticket_position"] for ticket in payload["predicted_tickets"]] == [1, 2]
+    assert [hit["ticket_position"] for hit in payload["hit_details"]] == [1, 2]
+    assert [
+        {
+            field: hit[field]
+            for field in ("zone1_hits", "zone2_hit", "is_winner", "prize_tier")
+        }
+        for hit in payload["hit_details"]
+    ] == [
+        {"zone1_hits": 6, "zone2_hit": False, "is_winner": True, "prize_tier": "FIRST"},
+        {"zone1_hits": 5, "zone2_hit": True, "is_winner": True, "prize_tier": "SECOND"},
+    ]
+
+    with sqlite3.connect(store.database.as_uri() + "?mode=ro", uri=True) as connection:
+        child_rows = connection.execute(
+            "SELECT ticket_position,main_numbers_json,special_numbers_json,"
+            "main_hit_count,special_hit,prize_tier "
+            "FROM replay_backfill_tickets WHERE cell_identity=? ORDER BY ticket_position",
+            (payload["cell_identity"],),
+        ).fetchall()
+    for ticket, hit, child in zip(
+        payload["predicted_tickets"], payload["hit_details"], child_rows, strict=True
+    ):
+        assert child[0] == ticket["ticket_position"] == hit["ticket_position"]
+        assert json.loads(child[1]) == ticket["main_numbers"]
+        assert json.loads(child[2]) == (
+            [] if ticket["special_number"] is None else [ticket["special_number"]]
+        )
+        assert child[3:] == (
+            hit["zone1_hits"],
+            int(hit["zone2_hit"]),
+            hit["prize_tier"],
+        )
+
+    app = FastAPI()
+    app.include_router(create_replay_backfill_router(read_only_store))
+    client = cast(httpx.Client, TestClient(app))
+    root = "/api/v1/replay-backfill"
+    results = client.get(root + "/results", params={"run_id": run_id})
+    assert results.status_code == 200
+    result_payload = results.json()["items"][0]
+    assert result_payload["cell_identity"] == payload["cell_identity"]
+    assert result_payload["result_identity"] == payload["result_identity"]
+    run = client.get(root + "/runs/" + run_id)
+    assert run.status_code == 200
+    assert run.json()["valid_result_cells"] == 1
+    predictions = client.get(
+        root + "/predictions",
+        params={
+            "lottery_type": "BIG_LOTTO",
+            "run_id": run_id,
+            "strategy_id": "two-tickets",
+            "period": "ALL",
+        },
+    )
+    assert predictions.status_code == 200
+    public_item = predictions.json()["items"][0]
+    assert public_item["identity_status"] == "VERIFIED"
+    assert public_item["evaluation_status"] == "EVALUATED"
+    public_tickets = public_item["predicted_tickets"]
+    assert [ticket["ticket_position"] for ticket in public_tickets] == [1, 2]
+    assert [ticket["main_hit_count"] for ticket in public_tickets] == [6, 5]
+    assert [ticket["special_hit"] for ticket in public_tickets] == [False, True]
+    assert [ticket["prize_tier"] for ticket in public_tickets] == ["FIRST", "SECOND"]
+    assert client.get(root + "/runs/missing").status_code == 404
+    assert client.get(root + "/results", params={"limit": 201}).status_code == 422
+
+
+@pytest.mark.parametrize("mutation", ["missing", "duplicate", "invalid"])
+def test_predictions_api_rejects_malformed_hit_positions(
+    tmp_path: Path, mutation: str
+) -> None:
+    engine, _, store = worker(
+        tmp_path, store=SQLiteBackfillStore(_test_database_path(tmp_path, "negative.sqlite3"))
+    )
+    summary = engine.execute(BackfillSelection(latest=1))
+    run_id = str(summary["run_id"])
+    payload = cast(dict[str, Any], store.query(run_id=run_id)["items"][0])
+    hits = cast(list[dict[str, Any]], payload["hit_details"])
+    if mutation == "missing":
+        hits[0].pop("ticket_position")
+    elif mutation == "duplicate":
+        hits[1]["ticket_position"] = hits[0]["ticket_position"]
+    else:
+        hits[0]["ticket_position"] = 0
+    payload_without_identity = {
+        key: value for key, value in payload.items() if key != "result_identity"
+    }
+    payload["result_identity"] = identity(payload_without_identity)
+    with sqlite3.connect(store.database) as connection:
+        connection.execute(
+            "UPDATE replay_backfill_cells SET result_identity=?,payload_json=? "
+            "WHERE cell_identity=?",
+            (
+                payload["result_identity"],
+                json.dumps(payload, sort_keys=True, separators=(",", ":")),
+                payload["cell_identity"],
+            ),
+        )
+
+    app = FastAPI()
+    app.include_router(
+        create_replay_backfill_router(SQLiteBackfillStore(store.database, read_only=True))
+    )
+    client = cast(httpx.Client, TestClient(app))
+    response = client.get(
+        "/api/v1/replay-backfill/predictions",
+        params={"lottery_type": "BIG_LOTTO", "run_id": run_id, "period": "ALL"},
+    )
+    assert response.status_code == 200
+    public_item = response.json()["items"][0]
+    assert public_item["identity_status"] == "UNTRUSTED"
+    assert public_item["evaluation_status"] == "UNTRUSTED"
+
+
 def test_failure_isolation_retry_and_warmup_are_not_success(tmp_path: Path) -> None:
-    engine, producer, store = worker(tmp_path)
+    engine, producer, store = worker(
+        tmp_path, store=SQLiteBackfillStore(_test_database_path(tmp_path, "failure.sqlite3"))
+    )
     producer.fail = True
     result = engine.execute(BackfillSelection(all_draws=True))
     assert result["failed_cells"] == 10
     assert result["missing_history_cells"] == 2
     assert result["valid_result_cells"] == 0
+    failed_app = FastAPI()
+    failed_app.include_router(
+        create_replay_backfill_router(SQLiteBackfillStore(store.database, read_only=True))
+    )
+    failed_predictions = cast(httpx.Client, TestClient(failed_app)).get(
+        "/api/v1/replay-backfill/predictions",
+        params={
+            "lottery_type": "BIG_LOTTO",
+            "run_id": result["run_id"],
+            "period": "ALL",
+        },
+    )
+    assert failed_predictions.status_code == 200
+    for item in failed_predictions.json()["items"]:
+        if item["prediction_status"] != "COMPLETE":
+            assert item["evaluation_status"] != "EVALUATED"
     producer.fail = False
     result = engine.execute(BackfillSelection(all_draws=True), retry_failed=True)
     assert result["valid_result_cells"] == 10
@@ -329,7 +504,9 @@ def test_query_api_filters_pagination_status_and_read_only(tmp_path: Path) -> No
 
 
 def test_predictions_api_pins_requested_run_across_newer_runs(tmp_path: Path) -> None:
-    engine, _, store = worker(tmp_path)
+    engine, _, store = worker(
+        tmp_path, store=SQLiteBackfillStore(_test_database_path(tmp_path, "predictions.sqlite3"))
+    )
     selection = BackfillSelection(all_draws=True)
     original = engine.execute(selection)
     # A newer target-window run reuses existing COMPLETE cells instead of

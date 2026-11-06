@@ -453,7 +453,14 @@ def _check_authorization(task_id: str, authorization_file: Path) -> Path:
             status="AUTHORIZATION_REQUIRED",
         ) from exc
     required_phrase = f"我授權 {task_id}"
-    if required_phrase not in contents:
+    # Match an authorization sentence, not a prefix of another task identifier.
+    # Whitespace and prose punctuation delimit IDs; dots/colons terminate a
+    # sentence only before whitespace/end, preserving dotted/qualified IDs.
+    authorization_pattern = (
+        rf"(?<!\w)我授權\s+{re.escape(task_id)}"
+        r"(?=$|[\s,;!?，。；：！？、()\[\]{}「」『』（）“”‘’\"'<>《》]|[.:](?=$|\s))"  # noqa: RUF001
+    )
+    if re.search(authorization_pattern, contents) is None:
         raise RegistryError(
             f"authorization-file must contain {required_phrase}",
             status="AUTHORIZATION_REQUIRED",

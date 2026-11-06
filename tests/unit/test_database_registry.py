@@ -673,3 +673,205 @@ def test_cli_verify_exit_codes(
     assert "changelog_after_sha256=" in result.stdout
     assert "task_id=" in result.stdout
     assert not (registry.database_directory(fake_project) / "locks").exists()
+
+
+def _database_snapshot(project: Path) -> dict[str, tuple[bytes, int, int]]:
+    """Observe content and metadata, including unexpected lock/temp files."""
+    return {
+        path.relative_to(project).as_posix(): (
+            path.read_bytes(),
+            path.stat().st_size,
+            path.stat().st_mtime_ns,
+        )
+        for path in project.rglob("*")
+        if path.is_file()
+    }
+
+
+@pytest.mark.parametrize("operation", ["add", "remove", "backfill"])
+@pytest.mark.parametrize(
+    "sentence",
+    [
+        "我授權 {task}",
+        "我授權 {task}\n",
+        "我授權 {task}\r\n",
+        "我授權 {task}\r",
+        "我授權\n{task}\n",
+        "我授權\r\n{task}\r\n",
+        "我授權\t{task}",
+        "我授權 {task}。允許本次操作。",
+        "我授權 {task}，限本次操作。",  # noqa: RUF001
+        "我授權 {task}；限本次操作。",  # noqa: RUF001
+        "我授權 {task}：限本次操作。",  # noqa: RUF001
+        "我授權 {task}！",  # noqa: RUF001
+        "我授權 {task}？",  # noqa: RUF001
+        "我授權 {task}、限本次操作。",
+        "我授權 {task}.\n",
+        "我授權 {task}: approved",
+        "我授權 {task}; approved",
+        "我授權 {task}, approved",
+        "「我授權 {task}」",
+        '"我授權 {task}"',
+        "（我授權 {task}）",  # noqa: RUF001
+        "我授權 {task})",
+        "我授權 {task}]",
+        "我授權 {task}!",
+    ],
+)
+def test_authorization_accepts_exact_task_with_sentence_boundaries(
+    operation: str, sentence: str, fake_project: Path, tmp_path: Path
+) -> None:
+    _write_registry(registry.registry_path(fake_project), writable=["existing.sqlite3"])
+    current = _registry_hash(fake_project)
+    _write_log(fake_project, [_row("0" * 64, current)])
+    auth = _authorization(tmp_path)
+    auth.write_text(sentence.format(task=TASK_ID), encoding="utf-8", newline="")
+    entries = tmp_path / "entries.json"
+    entry = _valid_backfill_entry(current)
+    entry["before_sha256"] = current
+    entries.write_text(json.dumps([entry]), encoding="utf-8")
+
+    if operation == "add":
+        result = registry.add_writable(
+            fake_project, "new.sqlite3", task_id=TASK_ID, authorization_file=auth
+        )
+    elif operation == "remove":
+        result = registry.remove_writable(
+            fake_project, "existing.sqlite3", task_id=TASK_ID, authorization_file=auth
+        )
+    else:
+        result = registry.backfill_changelog(
+            fake_project, entries, task_id=TASK_ID, authorization_file=auth
+        )
+    assert result.operation == operation
+    assert registry.verify_registry(fake_project).status == "OK"
+
+
+@pytest.mark.parametrize("through_cli", [False, True], ids=["persistence", "cli"])
+@pytest.mark.parametrize("operation", ["add", "remove", "backfill"])
+@pytest.mark.parametrize(
+    "sentence",
+    [
+        "我授權 {task}_OTHER",
+        "我授權 PREFIX_{task}",
+        "我授權 {task}-OTHER",
+        "我授權 {task}.OTHER",
+        "我授權 {task}/OTHER",
+        "我授權 {task}+OTHER",
+        "我授權 {task}OTHER",
+        "我授權 {task}其他",
+        "我授權 ANOTHER_TASK",
+        "我授權 {task}0",
+        "我授權 X{task}",
+        "我授權 judge_r33",
+        "不我授權 {task}",
+        "我授權 {task}:OTHER",
+    ],
+)
+def test_authorization_rejects_other_task_without_any_database_write(
+    through_cli: bool,
+    operation: str,
+    sentence: str,
+    fake_project: Path,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    task_id = "JUDGE_R33"
+    _write_registry(registry.registry_path(fake_project), writable=["existing.sqlite3"])
+    current = _registry_hash(fake_project)
+    _write_log(fake_project, [_row("0" * 64, current)])
+    auth = _authorization(tmp_path)
+    auth.write_text(sentence.format(task=task_id) + "\n", encoding="utf-8")
+    # A valid self-loop history ensures backfill would mutate the log if authorized.
+    entry = _valid_backfill_entry(current)
+    entry["before_sha256"] = current
+    entries = tmp_path / "entries.json"
+    entries.write_text(json.dumps([entry]), encoding="utf-8")
+    before = _database_snapshot(fake_project)
+    paths_before = sorted(str(p.relative_to(fake_project)) for p in fake_project.rglob("*"))
+
+    if through_cli:
+        monkeypatch.setattr(registry_cli, "canonical_project_root", lambda: fake_project)
+        args = {
+            "add": ["add-writable", "new.sqlite3"],
+            "remove": ["remove-writable", "existing.sqlite3"],
+            "backfill": ["backfill", "--entries", str(entries)],
+        }[operation]
+        result = CliRunner().invoke(
+            main_app,
+            ["db-registry", *args, "--task-id", task_id, "--authorization-file", str(auth)],
+        )
+        assert result.exit_code == 1
+        assert "AUTHORIZATION_REQUIRED" in result.output
+    else:
+        with pytest.raises(registry.RegistryError) as error:
+            if operation == "add":
+                registry.add_writable(
+                    fake_project, "new.sqlite3", task_id=task_id, authorization_file=auth
+                )
+            elif operation == "remove":
+                registry.remove_writable(
+                    fake_project, "existing.sqlite3", task_id=task_id, authorization_file=auth
+                )
+            else:
+                registry.backfill_changelog(
+                    fake_project, entries, task_id=task_id, authorization_file=auth
+                )
+        assert error.value.status == "AUTHORIZATION_REQUIRED"
+        assert error.value.exit_code == 1
+    assert _database_snapshot(fake_project) == before
+    assert sorted(str(p.relative_to(fake_project)) for p in fake_project.rglob("*")) == paths_before
+
+
+@pytest.mark.parametrize("state", ["OK", "NO_CHANGELOG", "UNRECORDED_CHANGE", "BROKEN_CHAIN"])
+def test_verify_preserves_all_file_content_and_metadata(state: str, fake_project: Path) -> None:
+    if state == "OK":
+        _write_log(fake_project, [_row("0" * 64, _registry_hash(fake_project))])
+    elif state == "UNRECORDED_CHANGE":
+        _write_log(fake_project, [_row("0" * 64, "1" * 64)])
+    elif state == "BROKEN_CHAIN":
+        registry.changelog_path(fake_project).write_text("{broken}\n", encoding="utf-8")
+    before = _database_snapshot(fake_project)
+    paths_before = sorted(str(p.relative_to(fake_project)) for p in fake_project.rglob("*"))
+    assert registry.verify_registry(fake_project).status == state
+    assert _database_snapshot(fake_project) == before
+    assert sorted(str(p.relative_to(fake_project)) for p in fake_project.rglob("*")) == paths_before
+
+
+def test_hard_exit_after_replace_is_detected_and_does_not_recover(
+    fake_project: Path, tmp_path: Path
+) -> None:
+    _write_log(fake_project, [_row("0" * 64, _registry_hash(fake_project))])
+    auth = _authorization(tmp_path)
+    before = _database_snapshot(fake_project)
+    child = """
+import os, sys
+from pathlib import Path
+from lottolab.infrastructure.persistence import database_registry as registry
+registry._append_changelog = lambda *args: os._exit(91)
+registry.add_writable(Path(sys.argv[1]), 'new.sqlite3', task_id=sys.argv[2],
+                      authorization_file=Path(sys.argv[3]))
+"""
+    result = subprocess.run(
+        (sys.executable, "-B", "-c", child, str(fake_project), TASK_ID, str(auth)),
+        capture_output=True,
+        text=True,
+        timeout=10,
+    )
+    assert result.returncode == 91
+    assert result.stdout == result.stderr == ""
+    registry_key = "data/databases/" + registry.REGISTRY_FILENAME
+    log_key = "data/databases/" + registry.CHANGELOG_FILENAME
+    after = _database_snapshot(fake_project)
+    assert after[registry_key][0] != before[registry_key][0]
+    assert after[log_key] == before[log_key]
+    assert registry.verify_registry(fake_project).status == "UNRECORDED_CHANGE"
+    lease = registry.database_directory(fake_project) / "locks" / registry.LEASE_FILENAME
+    assert lease.exists()
+    with pytest.raises(registry.RegistryError) as error:
+        registry.add_writable(
+            fake_project, "retry.sqlite3", task_id=TASK_ID, authorization_file=auth
+        )
+    assert error.value.status == "WAITING_ON_LEASE"
+    assert error.value.exit_code == 75
+    assert _database_snapshot(fake_project) == after

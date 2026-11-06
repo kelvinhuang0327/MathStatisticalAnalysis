@@ -69,7 +69,10 @@ export async function getHistoricalPrefixAnalyticsRankings(
   options: HistoricalPrefixAnalyticsRankingsOptions = {},
 ): Promise<HistoricalPrefixAnalyticsRankingsResponse> {
   const query = new URLSearchParams()
-  if (options.top_k !== undefined) query.set('top_k', String(options.top_k))
+  if (options.top_k !== undefined) {
+    requireNonNegativeSafeInteger(options.top_k, 'top_k')
+    query.set('top_k', String(options.top_k))
+  }
   const suffix = query.size > 0 ? `?${query.toString()}` : ''
   return requestJson(
     `${RANKINGS_PATH}${suffix}`,
@@ -100,6 +103,10 @@ export async function getHistoricalPrefixAnalyticsReplay(
   query: HistoricalPrefixAnalyticsReplayQuery,
   signal?: AbortSignal,
 ): Promise<HistoricalPrefixAnalyticsReplayResponse> {
+  requireNonNegativeSafeInteger(strategy.replicate, 'replicate')
+  if (query.limit !== undefined) requireNonNegativeSafeInteger(query.limit, 'limit')
+  if (query.offset !== undefined) requireNonNegativeSafeInteger(query.offset, 'offset')
+
   const path = [
     '/api/v1/historical-prefix-analytics/strategies',
     encodeURIComponent(strategy.strategy_id),
@@ -313,5 +320,14 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function isNonNegativeInteger(value: unknown): value is number {
-  return typeof value === 'number' && Number.isInteger(value) && value >= 0
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0
+}
+
+function requireNonNegativeSafeInteger(value: unknown, name: string): asserts value is number {
+  if (!isNonNegativeInteger(value)) {
+    throw new HistoricalPrefixAnalyticsRequestError(
+      `${name} must be a non-negative safe integer`,
+      400,
+    )
+  }
 }

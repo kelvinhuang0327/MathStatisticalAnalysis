@@ -787,6 +787,38 @@ class HistoricalPrefixStrategyFeatureCohortResponse(BaseModel):
         )
 
 
+_DECIMAL_INTEGER_CHUNK_BASE = 1_000_000_000
+_DECIMAL_INTEGER_CHUNK_WIDTH = 9
+
+
+def _canonical_decimal_to_int(value: str) -> int:
+    first_chunk_width = len(value) % _DECIMAL_INTEGER_CHUNK_WIDTH or _DECIMAL_INTEGER_CHUNK_WIDTH
+    result = int(value[:first_chunk_width])
+    for offset in range(first_chunk_width, len(value), _DECIMAL_INTEGER_CHUNK_WIDTH):
+        result = (
+            result * _DECIMAL_INTEGER_CHUNK_BASE
+            + int(value[offset : offset + _DECIMAL_INTEGER_CHUNK_WIDTH])
+        )
+    return result
+
+
+def _int_to_canonical_decimal(value: int) -> str:
+    negative = value < 0
+    remainder = -value if negative else value
+    if remainder == 0:
+        return "0"
+
+    chunks: list[int] = []
+    while remainder:
+        remainder, chunk = divmod(remainder, _DECIMAL_INTEGER_CHUNK_BASE)
+        chunks.append(chunk)
+
+    decimal = str(chunks[-1]) + "".join(
+        f"{chunk:0{_DECIMAL_INTEGER_CHUNK_WIDTH}d}" for chunk in reversed(chunks[:-1])
+    )
+    return f"-{decimal}" if negative else decimal
+
+
 class HistoricalPrefixExactProbabilityView(BaseModel):
     model_config = _FROZEN_RESPONSE
 
@@ -802,8 +834,8 @@ class HistoricalPrefixExactProbabilityView(BaseModel):
             or self.denominator == "0"
         ):
             raise ValueError("probability integers must be canonical decimal strings")
-        numerator = int(self.numerator)
-        denominator = int(self.denominator)
+        numerator = _canonical_decimal_to_int(self.numerator)
+        denominator = _canonical_decimal_to_int(self.denominator)
         if numerator > denominator or gcd(numerator, denominator) != 1:
             raise ValueError("probability fraction must be reduced and between zero and one")
         return self
@@ -813,8 +845,8 @@ class HistoricalPrefixExactProbabilityView(BaseModel):
         cls, probability: HistoricalPrefixExactProbability
     ) -> HistoricalPrefixExactProbabilityView:
         return cls(
-            numerator=str(probability.numerator),
-            denominator=str(probability.denominator),
+            numerator=_int_to_canonical_decimal(probability.numerator),
+            denominator=_int_to_canonical_decimal(probability.denominator),
         )
 
 

@@ -29,6 +29,10 @@ export async function getOptimalReplayPortfolioRankings(
   topK: number,
   signal?: AbortSignal,
 ): Promise<ReplayPortfolioRankingResponse> {
+  if (!Number.isSafeInteger(topK)) {
+    throw new RangeError('topK must be a safe integer')
+  }
+
   const parameters = new URLSearchParams({
     scoring_artifact_sha256: scoringArtifactSha256,
     top_k: String(topK),
@@ -90,5 +94,5 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function isNonNegativeInteger(value: unknown): value is number {
-  return typeof value === 'number' && Number.isInteger(value) && value >= 0
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0
 }

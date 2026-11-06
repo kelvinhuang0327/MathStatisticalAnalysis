@@ -9,6 +9,7 @@ from typing import cast
 
 import pytest
 from fastapi.testclient import TestClient
+from pydantic import ValidationError
 from tests.fixtures.historical.success_window_builder import (
     build_success_observations,
     build_success_source,
@@ -16,9 +17,16 @@ from tests.fixtures.historical.success_window_builder import (
 )
 
 from lottolab.application.historical_prefix_success_windows import (
+    HistoricalPrefixExactProbability,
     HistoricalPrefixSuccessWindowSource,
 )
 from lottolab.interfaces.api.app import create_app
+from lottolab.interfaces.api.historical_prefix_success_windows import (
+    HistoricalPrefixExactProbabilityView,
+    HistoricalPrefixFeatureCohortDiagnosticView,
+    _canonical_decimal_to_int,  # pyright: ignore[reportPrivateUsage] - white-box conversion test
+    _int_to_canonical_decimal,  # pyright: ignore[reportPrivateUsage] - white-box conversion test
+)
 
 IMPORT_IDENTITY = "a" * 64
 LIST_PATH = "/api/v1/historical-prefix-success-windows"
@@ -27,6 +35,7 @@ EXACT_OPENAPI_PATH = (
     "{strategy_id}/{strategy_version}/{replicate}"
 )
 MATRIX_OPENAPI_PATH = f"{EXACT_OPENAPI_PATH}/matrix"
+DIAGNOSTICS_PATH = f"{EXACT_OPENAPI_PATH}/feature-cohorts/diagnostics"
 
 
 def _strategy_path(
@@ -537,3 +546,103 @@ def test_latest_default_and_fallback_near_miss_routes_are_absent(path: str) -> N
 
     assert response.status_code in (404, 422)
     assert factory.calls == 0
+
+
+@pytest.mark.parametrize("digits", [4300, 4301, 5000, 5001])
+def test_exact_probability_decimal_conversion_preserves_large_values(digits: int) -> None:
+    power = 10 ** (digits - 1)
+    numerator = power + 1
+    denominator = power + 3
+    expected_numerator = f"1{'0' * (digits - 2)}1"
+    expected_denominator = f"1{'0' * (digits - 2)}3"
+
+    assert _int_to_canonical_decimal(numerator) == expected_numerator
+    assert _int_to_canonical_decimal(denominator) == expected_denominator
+    assert _canonical_decimal_to_int(expected_numerator) == numerator
+    assert _canonical_decimal_to_int(expected_denominator) == denominator
+
+    view = HistoricalPrefixExactProbabilityView.from_probability(
+        HistoricalPrefixExactProbability(numerator, denominator)
+    )
+    assert view.numerator == expected_numerator
+    assert view.denominator == expected_denominator
+
+
+@pytest.mark.parametrize(("numerator", "denominator"), [("0", "1"), ("1", "1")])
+def test_exact_probability_accepts_zero_and_one(
+    numerator: str, denominator: str
+) -> None:
+    view = HistoricalPrefixExactProbabilityView.model_validate(
+        {"numerator": numerator, "denominator": denominator}
+    )
+
+    assert view.numerator == numerator
+    assert view.denominator == denominator
+
+
+@pytest.mark.parametrize(
+    ("numerator", "denominator"),
+    [
+        ("2", "1"),
+        ("1", "0"),
+        ("2", "4"),
+        ("-1", "1"),
+        ("01", "1"),
+        ("1", "01"),
+        ("+1", "3"),
+    ],
+)
+def test_exact_probability_rejects_invalid_or_noncanonical_values(
+    numerator: str, denominator: str
+) -> None:
+    with pytest.raises(ValidationError):
+        HistoricalPrefixExactProbabilityView.model_validate(
+            {"numerator": numerator, "denominator": denominator}
+        )
+
+
+def test_large_exact_probability_survives_historical_prefix_http_response(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    digits = 5000
+    power = 10 ** (digits - 1)
+    numerator = power + 1
+    denominator = power + 3
+    expected_numerator = f"1{'0' * (digits - 2)}1"
+    expected_denominator = f"1{'0' * (digits - 2)}3"
+    large_view = HistoricalPrefixExactProbabilityView.from_probability(
+        HistoricalPrefixExactProbability(numerator, denominator)
+    )
+    original_from_diagnostic = HistoricalPrefixFeatureCohortDiagnosticView.from_diagnostic.__func__
+
+    def with_large_probability(cls: type, diagnostic: object) -> object:
+        view = original_from_diagnostic(cls, diagnostic)
+        if view.cohort_index != 0:
+            return view
+        return view.model_copy(
+            update={"raw_p_value": large_view, "adjusted_p_value": large_view}
+        )
+
+    monkeypatch.setattr(
+        HistoricalPrefixFeatureCohortDiagnosticView,
+        "from_diagnostic",
+        classmethod(with_large_probability),
+    )
+    client, _ = _client()
+
+    response = client.get(
+        DIAGNOSTICS_PATH.format(
+            strategy_id="z-first", strategy_version="v1", replicate=1
+        ),
+        params=_params(),
+    )
+
+    assert response.status_code == 200
+    first_probability = response.json()["diagnostics"][0]["raw_p_value"]
+    assert first_probability == {
+        "numerator": expected_numerator,
+        "denominator": expected_denominator,
+    }
+    assert isinstance(first_probability["numerator"], str)
+    assert isinstance(first_probability["denominator"], str)
+    _assert_no_float(response.json())

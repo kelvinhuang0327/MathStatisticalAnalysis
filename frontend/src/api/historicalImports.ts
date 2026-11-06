@@ -32,7 +32,7 @@ export async function listHistoricalImportRuns(
   if (!Number.isInteger(limit) || limit < 1 || limit > 200) {
     throw new RangeError('Historical imports limit must be an integer between 1 and 200')
   }
-  if (!Number.isInteger(offset) || offset < 0) {
+  if (!Number.isSafeInteger(offset) || offset < 0) {
     throw new RangeError('Historical imports offset must be a non-negative integer')
   }
   const query = new URLSearchParams({
@@ -96,5 +96,5 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function isNonNegativeInteger(value: unknown): value is number {
-  return typeof value === 'number' && Number.isInteger(value) && value >= 0
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0
 }

@@ -93,8 +93,11 @@ def test_guard_api_uses_decimal_strings_and_one_get_route() -> None:
     api = API.read_text(encoding="utf-8")
     runtime = LOCAL_RUNTIME.read_text(encoding="utf-8")
 
-    assert "numerator=str(probability.numerator)" in api
-    assert "denominator=str(probability.denominator)" in api
+    # Large exact probabilities must use digit-limit-safe decimal conversion.
+    assert "numerator=_int_to_canonical_decimal(probability.numerator)" in api
+    assert "denominator=_int_to_canonical_decimal(probability.denominator)" in api
+    assert "numerator=str(probability.numerator)" not in api
+    assert "denominator=str(probability.denominator)" not in api
     assert "canonical.fullmatch(self.numerator)" in api
     assert 'operation_id="getHistoricalPrefixStrategyFeatureCohortDiagnostics"' in api
     assert api.count("/feature-cohorts/diagnostics") == 1

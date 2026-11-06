@@ -748,4 +748,169 @@ describe('Replay Backfill API UI', () => {
     expect(wrapper.text()).not.toContain('113000999')
     wrapper.unmount()
   })
+
+  it('preserves null, empty, and named versions across catalog pagination and search', async () => {
+    const nullVersion = strategy('shared-strategy', 'HAS_HISTORY', {
+      strategy_version: null,
+      display_name: 'Null version',
+    })
+    const emptyVersion = strategy('shared-strategy', 'HAS_HISTORY', {
+      strategy_version: '',
+      display_name: 'Empty version',
+    })
+    const namedVersion = strategy('shared-strategy', 'HAS_HISTORY', {
+      strategy_version: 'v0.1',
+      display_name: 'Named version',
+    })
+    const fetchMock = installDefaultApi({
+      inventoryStatus: 503,
+      strategies: (url) => {
+        if (url.searchParams.get('q') === 'v0.1') return strategyPage([namedVersion])
+        if (url.searchParams.has('cursor')) return strategyPage([emptyVersion, namedVersion], null, 3)
+        return strategyPage([nullVersion], 'version-page-2', 3)
+      },
+    })
+    const wrapper = await openBackfillPage()
+    const rowsForStrategy = () => {
+      const table = wrapper.findAll('table').find((candidate) =>
+        candidate.find('caption').text().startsWith('Strategy identities'),
+      )
+      return table?.findAll('tbody tr') ?? []
+    }
+
+    expect(rowsForStrategy()).toHaveLength(1)
+    await wrapper.findAll('button').find((button) => button.text() === 'Load more strategies')?.trigger('click')
+    await flushPromises()
+
+    const rows = rowsForStrategy()
+    expect(rows).toHaveLength(3)
+    expect(rows.map((row) => row.text()).join(' ')).toContain('Null version')
+    expect(rows.map((row) => row.text()).join(' ')).toContain('Empty version')
+    expect(rows.map((row) => row.text()).join(' ')).toContain('Named version')
+    expect(rows.find((row) => row.text().includes('Null version'))?.text()).toContain('版本未提供')
+    expect(rows.find((row) => row.text().includes('Empty version'))?.text()).not.toContain('版本未提供')
+    expect(rows.find((row) => row.text().includes('Named version'))?.text()).toContain('v0.1')
+
+    await wrapper.get('input[name="strategy_search"]').setValue('v0.1')
+    await wrapper.findAll('button').find((button) => button.text() === 'Search strategies')?.trigger('click')
+    await flushPromises()
+
+    expect(rowsForStrategy()).toHaveLength(1)
+    expect(rowsForStrategy()[0]?.text()).toContain('Named version')
+    const strategyRequests = fetchMock.mock.calls
+      .map(([input]) => new URL(String(input), 'http://localhost'))
+      .filter((url) => url.pathname === '/api/v1/replay-backfill/strategies')
+    expect(strategyRequests.at(-1)?.searchParams.get('q')).toBe('v0.1')
+    wrapper.unmount()
+  })
+
+  it('merges only a complete matching identity and keeps source field priorities', async () => {
+    const inventoryItems = [
+      strategy('shared-strategy', 'REBUILDABLE', {
+        strategy_version: null,
+        display_name: 'Inventory null',
+        lifecycle_status: 'INVENTORY_NULL',
+        available_target_count: 12,
+      }),
+      strategy('shared-strategy', 'NO_HISTORY', {
+        strategy_version: '',
+        display_name: 'Inventory empty',
+        lifecycle_status: 'INVENTORY_EMPTY',
+        available_target_count: 13,
+      }),
+      strategy('shared-strategy', 'ARTIFACT_ONLY', {
+        strategy_version: 'v0.1',
+        display_name: 'Inventory named',
+        lifecycle_status: 'INVENTORY_NAMED',
+        available_target_count: 14,
+      }),
+    ]
+    const backfillItems = [
+      strategy('shared-strategy', 'HAS_HISTORY', {
+        strategy_version: null,
+        display_name: 'Backfill null',
+        lifecycle_status: 'BACKFILL_NULL',
+        available_target_count: 3,
+        training_status: 'BACKFILL_NULL_TRAINED',
+      }),
+      strategy('shared-strategy', 'HAS_HISTORY', {
+        strategy_version: '',
+        display_name: 'Backfill empty',
+        lifecycle_status: 'BACKFILL_EMPTY',
+        available_target_count: 4,
+        training_status: 'BACKFILL_EMPTY_TRAINED',
+      }),
+      strategy('shared-strategy', 'HAS_HISTORY', {
+        strategy_version: 'v0.1',
+        display_name: 'Backfill named',
+        lifecycle_status: 'BACKFILL_NAMED',
+        available_target_count: 5,
+        training_status: 'BACKFILL_NAMED_TRAINED',
+      }),
+    ]
+    installDefaultApi({
+      inventory: () => inventoryPage(inventoryItems),
+      strategies: () => strategyPage(backfillItems),
+    })
+    const wrapper = await openBackfillPage()
+    const table = wrapper.findAll('table').find((candidate) =>
+      candidate.find('caption').text().startsWith('Strategy identities'),
+    )
+    const rows = table?.findAll('tbody tr') ?? []
+
+    expect(rows).toHaveLength(3)
+    const nullRow = rows.find((row) => row.text().includes('Inventory null'))
+    expect(nullRow?.text()).toContain('版本未提供')
+    expect(nullRow?.text()).toContain('生命週期：INVENTORY_NULL')
+    expect(nullRow?.text()).toContain('可重建')
+    expect(nullRow?.text()).toContain('3')
+    expect(nullRow?.text()).toContain('訓練狀態：BACKFILL_NULL_TRAINED')
+
+    const emptyRow = rows.find((row) => row.text().includes('Inventory empty'))
+    expect(emptyRow?.text()).not.toContain('版本未提供')
+    expect(emptyRow?.text()).toContain('生命週期：INVENTORY_EMPTY')
+    expect(emptyRow?.text()).toContain('無歷史資料')
+    expect(emptyRow?.text()).toContain('4')
+    expect(emptyRow?.text()).toContain('訓練狀態：BACKFILL_EMPTY_TRAINED')
+
+    const namedRow = rows.find((row) => row.text().includes('Inventory named'))
+    expect(namedRow?.text()).toContain('v0.1')
+    expect(namedRow?.text()).toContain('生命週期：INVENTORY_NAMED')
+    expect(namedRow?.text()).toContain('僅有研究產物')
+    expect(namedRow?.text()).toContain('5')
+    expect(namedRow?.text()).toContain('訓練狀態：BACKFILL_NAMED_TRAINED')
+    wrapper.unmount()
+  })
+
+  it('does not let a different lottery identity overwrite the selected catalog row', async () => {
+    installDefaultApi({
+      inventory: () => inventoryPage([
+        strategy('shared-strategy', 'NO_HISTORY', {
+          lottery_type: 'DAILY_539',
+          strategy_version: null,
+          display_name: 'Daily inventory row',
+          lifecycle_status: 'DAILY_INVENTORY',
+        }),
+      ]),
+      strategies: () => strategyPage([
+        strategy('shared-strategy', 'HAS_HISTORY', {
+          lottery_type: 'BIG_LOTTO',
+          strategy_version: null,
+          display_name: 'Big Lotto backfill row',
+          lifecycle_status: 'BIG_BACKFILL',
+        }),
+      ]),
+    })
+    const wrapper = await openBackfillPage()
+    const table = wrapper.findAll('table').find((candidate) =>
+      candidate.find('caption').text().startsWith('Strategy identities'),
+    )
+    const rows = table?.findAll('tbody tr') ?? []
+
+    expect(rows).toHaveLength(1)
+    expect(rows[0]?.text()).toContain('Big Lotto backfill row')
+    expect(rows[0]?.text()).toContain('B649')
+    expect(rows[0]?.text()).not.toContain('Daily inventory row')
+    wrapper.unmount()
+  })
 })

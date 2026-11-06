@@ -12,6 +12,7 @@ import {
   formatDeltaPercentage,
   formatRatePercentage,
   isDimensionAvailable,
+  transformB649Record,
 } from '../src/api/replayOverview'
 
 const SHA256_FIXTURE = 'a'.repeat(64)
@@ -161,6 +162,153 @@ function mockFetchHandler(input: RequestInfo | URL) {
     json: () => Promise.resolve({ items: [], total: 0 }),
   } as Response)
 }
+
+describe('Replay Overview official metric source isolation', () => {
+  it('does not fall back to M3_PLUS metrics when official values are missing', async () => {
+    const record = {
+      ...makeMockRecords()[0],
+      official_any_prize_count: null,
+      official_any_prize_rate: null,
+      official_random_baseline_probability: null,
+      official_random_baseline_delta: null,
+      success_count: 25,
+      historical_success_rate: '0.25',
+      random_baseline_success_rate: '0.17',
+      random_baseline_rate_difference: '0.08',
+    }
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL) => {
+        const url = String(input)
+        if (url.includes('/summary')) {
+          return Promise.resolve({
+            ok: true,
+            status: 200,
+            json: () => Promise.resolve(makeMockSummary()),
+          } as Response)
+        }
+
+        const urlObj = new URL(url, 'http://localhost')
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () =>
+            Promise.resolve({
+              items: [record],
+              total: 1,
+              limit: 100,
+              offset: 0,
+              prefix_count: Number(urlObj.searchParams.get('prefix_count') ?? 10),
+              window: urlObj.searchParams.get('window') ?? 'FULL',
+              criterion: 'M3_PLUS',
+              research_disclaimer: RESEARCH_DISCLAIMER,
+            }),
+        } as Response)
+      }),
+    )
+
+    const data = await fetchReplayOverviewData('B649', 10, 'FULL')
+    const item = data.items[0]
+
+    expect.soft(item.officialAnyPrizeCount).toBeNull()
+    expect.soft(item.officialAnyPrizeRate).toBeNull()
+    expect.soft(item.officialRandomBaselineProbability).toBeNull()
+    expect.soft(item.officialRandomBaselineDelta).toBeNull()
+    expect(item.successCount).toBe(25)
+    expect(item.isAvailable).toBe(false)
+    expect(item.officialAnyPrizeRateFormatted).toBe('Unavailable')
+    expect(item.officialRandomBaselineProbabilityFormatted).toBe('Unavailable')
+    expect(item.officialRandomBaselineDeltaFormatted).toBe('Unavailable')
+    expect(item.evidenceStatus).toBe('EVIDENCE UNAVAILABLE')
+    expect(data.summary.topStrategy).toEqual({
+      strategyId: item.strategyId,
+      officialRank: 1,
+      hitRateFormatted: 'Unavailable',
+    })
+  })
+
+  it('uses official metrics when they differ from descriptive M3_PLUS values', () => {
+    const record = {
+      ...makeMockRecords()[0],
+      official_any_prize_count: 4,
+      official_any_prize_rate: '0.0400',
+      official_random_baseline_probability: '0.0200',
+      official_random_baseline_delta: '0.0200',
+      success_count: 25,
+      historical_success_rate: '0.25',
+      random_baseline_success_rate: '0.17',
+      random_baseline_rate_difference: '0.08',
+    }
+
+    const item = transformB649Record(record, 10, 'FULL')
+
+    expect(item.officialAnyPrizeCount).toBe(4)
+    expect(item.officialAnyPrizeRate).toBe(0.04)
+    expect(item.officialRandomBaselineProbability).toBe(0.02)
+    expect(item.officialRandomBaselineDelta).toBe(0.02)
+    expect(item.successCount).toBe(25)
+    expect(item.isAvailable).toBe(true)
+  })
+
+  it('preserves official zero values as valid metrics', () => {
+    const record = {
+      ...makeMockRecords()[0],
+      official_any_prize_count: 0,
+      official_any_prize_rate: '0.0000',
+      official_random_baseline_probability: '0.0000',
+      official_random_baseline_delta: '0.0000',
+    }
+
+    const item = transformB649Record(record, 10, 'FULL')
+
+    expect(item.officialAnyPrizeCount).toBe(0)
+    expect(item.officialAnyPrizeRate).toBe(0)
+    expect(item.officialRandomBaselineProbability).toBe(0)
+    expect(item.officialRandomBaselineDelta).toBe(0)
+    expect(item.officialAnyPrizeRateFormatted).toBe('0.00%')
+    expect(item.officialRandomBaselineDeltaFormatted).toBe('0.00%')
+    expect(item.isAvailable).toBe(true)
+  })
+
+  it('keeps unexecutable and duplicate alias states separate from missing official metrics', () => {
+    const records = makeMockRecords()
+    const closedRecord = {
+      ...records[8],
+      official_any_prize_count: null,
+      official_any_prize_rate: null,
+      official_random_baseline_probability: null,
+      official_random_baseline_delta: null,
+      success_count: 25,
+      historical_success_rate: '0.25',
+      random_baseline_success_rate: '0.17',
+      random_baseline_rate_difference: '0.08',
+    }
+    const aliasRecord = {
+      ...records[10],
+      official_any_prize_count: null,
+      official_any_prize_rate: null,
+      official_random_baseline_probability: null,
+      official_random_baseline_delta: null,
+      success_count: 25,
+      historical_success_rate: '0.25',
+      random_baseline_success_rate: '0.17',
+      random_baseline_rate_difference: '0.08',
+    }
+
+    const closedItem = transformB649Record(closedRecord, 10, 'FULL')
+    const aliasItem = transformB649Record(aliasRecord, 10, 'FULL')
+
+    expect(closedItem.reproductionStatus).toBe('CLOSED_UNEXECUTABLE')
+    expect(closedItem.notes).toContain('INSUFFICIENT_HISTORY')
+    expect(closedItem.officialAnyPrizeCount).toBeNull()
+    expect(closedItem.officialAnyPrizeRate).toBeNull()
+    expect(aliasItem.reproductionStatus).toBe('DUPLICATE_ALIAS')
+    expect(aliasItem.duplicateAliasTarget).toBe('strategy_1')
+    expect(aliasItem.officialAnyPrizeCount).toBeNull()
+    expect(aliasItem.officialAnyPrizeRate).toBeNull()
+  })
+})
 
 describe('Replay Overview UI & Data Contract', () => {
   beforeEach(() => {

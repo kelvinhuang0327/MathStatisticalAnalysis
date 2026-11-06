@@ -75,8 +75,20 @@ function isNullableBoolean(value: unknown): value is boolean | null {
   return value === null || typeof value === 'boolean'
 }
 
+function isSafeInteger(value: unknown): value is number {
+  return typeof value === 'number' && Number.isSafeInteger(value)
+}
+
+function isNonNegativeSafeInteger(value: unknown): value is number {
+  return isSafeInteger(value) && value >= 0
+}
+
+function isNullableNonNegativeSafeInteger(value: unknown): value is number | null {
+  return value === null || isNonNegativeSafeInteger(value)
+}
+
 function isNumberArray(value: unknown): value is number[] {
-  return Array.isArray(value) && value.every((entry) => Number.isInteger(entry))
+  return Array.isArray(value) && value.every(isSafeInteger)
 }
 
 function isLotteryType(value: unknown): value is ReplayBackfillLotteryType {
@@ -94,7 +106,7 @@ function isStrategyItem(value: unknown): value is ReplayBackfillStrategyItem {
     isString(value.data_status) &&
     isString(value.source_kind) &&
     typeof value.executable === 'boolean' &&
-    Number.isInteger(value.available_target_count) &&
+    isNonNegativeSafeInteger(value.available_target_count) &&
     isString(value.training_status)
   )
 }
@@ -104,7 +116,7 @@ function isStrategyPage(value: unknown): value is ReplayBackfillStrategyPage {
     isRecord(value) &&
     Array.isArray(value.items) &&
     value.items.every(isStrategyItem) &&
-    Number.isInteger(value.total_count) &&
+    isNonNegativeSafeInteger(value.total_count) &&
     (value.next_cursor === null || isString(value.next_cursor))
   )
 }
@@ -127,12 +139,8 @@ function isStrategyInventoryItem(value: unknown): value is ReplayStrategyInvento
     typeof value.backfill_runnable === 'boolean' &&
     isNullableString(value.execution_block_reason) &&
     isString(value.reconstruction_reason) &&
-    typeof value.historical_data_count === 'number' &&
-    Number.isInteger(value.historical_data_count) &&
-    value.historical_data_count >= 0 &&
-    typeof value.historical_execution_count === 'number' &&
-    Number.isInteger(value.historical_execution_count) &&
-    value.historical_execution_count >= 0
+    isNonNegativeSafeInteger(value.historical_data_count) &&
+    isNonNegativeSafeInteger(value.historical_execution_count)
   )
 }
 
@@ -141,7 +149,7 @@ function isPredictionCutoff(value: unknown): value is ReplayBackfillPredictionCu
     isRecord(value) &&
     isNullableString(value.draw_date) &&
     isNullableString(value.draw_number) &&
-    (value.history_draw_count === null || Number.isInteger(value.history_draw_count)) &&
+    isNullableNonNegativeSafeInteger(value.history_draw_count) &&
     isNullableString(value.reason_code) &&
     isNullableString(value.source_hash) &&
     isNullableString(value.source_identity) &&
@@ -153,9 +161,7 @@ function isPredictionCutoff(value: unknown): value is ReplayBackfillPredictionCu
 function isStrategyInventoryResponse(value: unknown): value is ReplayStrategyInventoryResponse {
   return (
     isRecord(value) &&
-    typeof value.strategy_count === 'number' &&
-    Number.isInteger(value.strategy_count) &&
-    value.strategy_count >= 0 &&
+    isNonNegativeSafeInteger(value.strategy_count) &&
     Array.isArray(value.strategies) &&
     value.strategies.every(isStrategyInventoryItem) &&
     value.strategy_count === value.strategies.length
@@ -165,10 +171,10 @@ function isStrategyInventoryResponse(value: unknown): value is ReplayStrategyInv
 function isTicket(value: unknown): value is ReplayBackfillTicket {
   return (
     isRecord(value) &&
-    Number.isInteger(value.ticket_position) &&
+    isSafeInteger(value.ticket_position) &&
     isNumberArray(value.main_numbers) &&
     isNumberArray(value.special_numbers) &&
-    (value.main_hit_count === null || Number.isInteger(value.main_hit_count)) &&
+    isNullableNonNegativeSafeInteger(value.main_hit_count) &&
     (value.special_hit === null || typeof value.special_hit === 'boolean') &&
     isNullableString(value.prize_tier)
   )
@@ -199,7 +205,7 @@ function isPredictionItem(value: unknown): value is ReplayBackfillPredictionItem
     isNumberArray(value.actual_main_numbers) &&
     isNumberArray(value.actual_special_numbers) &&
     (value.portfolio_any_prize === null || typeof value.portfolio_any_prize === 'boolean') &&
-    (value.best_main_hits === null || Number.isInteger(value.best_main_hits)) &&
+    isNullableNonNegativeSafeInteger(value.best_main_hits) &&
     isString(value.source_kind) &&
     isString(value.data_status) &&
     (value.prediction_cutoff === undefined ||
@@ -213,7 +219,7 @@ function isPredictionPage(value: unknown): value is ReplayBackfillPredictionPage
   return (
     isRecord(value) &&
     isNullableString(value.run_id) &&
-    Number.isInteger(value.total_count) &&
+    isNonNegativeSafeInteger(value.total_count) &&
     Array.isArray(value.items) &&
     value.items.every(isPredictionItem) &&
     (value.next_cursor === null || isString(value.next_cursor))
@@ -223,12 +229,12 @@ function isPredictionPage(value: unknown): value is ReplayBackfillPredictionPage
 function isCoverage(value: unknown): value is ReplayBackfillCoverage {
   return (
     isRecord(value) &&
-    Number.isInteger(value.expected_strategy_count) &&
-    Number.isInteger(value.expected_target_count) &&
-    Number.isInteger(value.expected_cell_count) &&
-    Number.isInteger(value.completed_cell_count) &&
-    Number.isInteger(value.failed_cell_count) &&
-    Number.isInteger(value.closed_cell_count) &&
+    isNonNegativeSafeInteger(value.expected_strategy_count) &&
+    isNonNegativeSafeInteger(value.expected_target_count) &&
+    isNonNegativeSafeInteger(value.expected_cell_count) &&
+    isNonNegativeSafeInteger(value.completed_cell_count) &&
+    isNonNegativeSafeInteger(value.failed_cell_count) &&
+    isNonNegativeSafeInteger(value.closed_cell_count) &&
     typeof value.complete_coverage_percent === 'number' &&
     Array.isArray(value.missing_strategy_ids) &&
     value.missing_strategy_ids.every(isString) &&

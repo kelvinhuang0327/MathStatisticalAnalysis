@@ -412,8 +412,9 @@ async function loadB649RankingRows(
         if ('source_order' in row) throw new Error('Unexpected K10 record for K2/K3')
         records.push(row)
       }
-      offset += limit
+      offset += page.items.length
       hasMore = records.length < page.total
+      if (hasMore && page.items.length === 0) throw new Error('Incomplete K2/K3 exact-native page')
     }
 
     return records.map((rec) => transformB649ExactNativeToRankingRow(rec, ticketCount, window, catalogMap))
@@ -445,8 +446,9 @@ async function loadB649RankingRows(
       signal,
     )
     records.push(...page.items)
-    offset += limit
+    offset += page.items.length
     hasMore = records.length < page.total
+    if (hasMore && page.items.length === 0) throw new Error('Incomplete K20 prefix page')
   }
 
   return records.map((rec) => transformB649ToRankingRow(rec, ticketCount, window, catalogMap))

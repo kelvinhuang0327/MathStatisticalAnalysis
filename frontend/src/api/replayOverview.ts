@@ -109,21 +109,18 @@ export function transformB649Record(
 
   const officialRank = record.official_rank ?? null
   const rank = record.official_rank ?? record.rank ?? null
-  const officialAnyPrizeRate = record.official_any_prize_rate
-    ? Number.parseFloat(record.official_any_prize_rate)
-    : record.historical_success_rate
-      ? Number.parseFloat(record.historical_success_rate)
-      : null
-  const officialRandomBaselineProbability = record.official_random_baseline_probability
-    ? Number.parseFloat(record.official_random_baseline_probability)
-    : record.random_baseline_success_rate
-      ? Number.parseFloat(record.random_baseline_success_rate)
-      : null
-  const officialRandomBaselineDelta = record.official_random_baseline_delta
-    ? Number.parseFloat(record.official_random_baseline_delta)
-    : record.random_baseline_rate_difference
-      ? Number.parseFloat(record.random_baseline_rate_difference)
-      : null
+  const officialAnyPrizeRate =
+    record.official_any_prize_rate == null
+      ? null
+      : Number.parseFloat(record.official_any_prize_rate)
+  const officialRandomBaselineProbability =
+    record.official_random_baseline_probability == null
+      ? null
+      : Number.parseFloat(record.official_random_baseline_probability)
+  const officialRandomBaselineDelta =
+    record.official_random_baseline_delta == null
+      ? null
+      : Number.parseFloat(record.official_random_baseline_delta)
   const coverage = record.coverage ? Number.parseFloat(record.coverage) : null
 
   const prizeCounts: ReplayOverviewPrizeCounts | null = record.official_prize_counts
@@ -169,7 +166,7 @@ export function transformB649Record(
     duplicateAliasTarget: record.duplicate_alias_target,
     officialRank,
     rank,
-    officialAnyPrizeCount: record.official_any_prize_count ?? record.success_count ?? null,
+    officialAnyPrizeCount: record.official_any_prize_count ?? null,
     officialAnyPrizeRate,
     officialAnyPrizeRateFormatted: isAvailable
       ? formatRatePercentage(officialAnyPrizeRate)
@@ -264,8 +261,15 @@ export async function fetchReplayOverviewData(
       },
       signal,
     )
+
+    if (page.items.length === 0 && rawRecords.length < page.total) {
+      throw new Error(
+        `Incomplete B649 strategy universe: received ${rawRecords.length} items but total is ${page.total}. Page returned 0 items without reaching total.`,
+      )
+    }
+
     rawRecords.push(...page.items)
-    offset += limit
+    offset += page.items.length
     hasMore = rawRecords.length < page.total
   }
 

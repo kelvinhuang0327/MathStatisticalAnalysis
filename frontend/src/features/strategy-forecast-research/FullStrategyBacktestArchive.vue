@@ -97,7 +97,7 @@ function windowStatus(record: B649MultiTicketRecord): string {
 
 function isPositiveDelta(record: B649MultiTicketRecord): boolean {
   const metrics = getFullStrategyArchiveMetrics(record)
-  return metrics !== null && metrics.delta > 0
+  return metrics !== null && metrics.deltaSign > 0
 }
 
 onMounted(() => {

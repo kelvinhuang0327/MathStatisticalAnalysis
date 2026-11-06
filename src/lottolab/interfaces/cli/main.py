@@ -29,6 +29,7 @@ from lottolab.interfaces.cli.b649_canonical_schedule_authority_sync import (
 from lottolab.interfaces.cli.biglotto_multi_ticket_backtest import (
     multi_ticket_backtest_command,
 )
+from lottolab.interfaces.cli.database_registry import app as database_registry_app
 from lottolab.interfaces.cli.draw_data_integrity import draw_data_integrity_command
 from lottolab.interfaces.cli.exact_native_replay import (
     replay_biglotto_exact_native_command,
@@ -233,6 +234,7 @@ from lottolab.strategies.catalog import production_catalog
 app = typer.Typer(no_args_is_help=True, help="LottoLab — 樂透統計分析系統 CLI")
 local_app = typer.Typer(no_args_is_help=True, help="Safely manage localhost-only services.")
 app.add_typer(local_app, name="local")
+app.add_typer(database_registry_app, name="db-registry")
 app.command("import-historical-results")(historical_import_command)
 app.command("forward-p638-historical")(forward_p638_historical_command)
 app.command("replay-predictions")(replay_predictions_command)

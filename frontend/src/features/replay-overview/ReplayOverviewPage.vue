@@ -124,8 +124,8 @@ const filteredAndSortedItems = computed(() => {
       const succB = b.officialAnyPrizeCount ?? -1
       comparison = succA - succB
     } else if (sortField.value === 'observations') {
-      const obsA = a.effectiveBacktestDrawCount ?? -1
-      const obsB = b.effectiveBacktestDrawCount ?? -1
+      const obsA = a.successfulExecutionCount ?? -1
+      const obsB = b.successfulExecutionCount ?? -1
       comparison = obsA - obsB
     } else if (sortField.value === 'coverage') {
       const covA = a.coverage ?? -1
@@ -585,6 +585,11 @@ onBeforeUnmount(() => {
         </div>
       </div>
 
+      <p class="ranking-basis-note" role="note" data-testid="ranking-basis-note">
+        Query selection: <code>M3_PLUS</code>. Official rank and rate basis:
+        <code>OFFICIAL_ANY_PRIZE</code>.
+      </p>
+
       <!-- Empty State if Filters eliminate all rows -->
       <div v-if="filteredAndSortedItems.length === 0" class="no-rows-container">
         <EmptyState
@@ -627,7 +632,7 @@ onBeforeUnmount(() => {
               style="min-width: 110px; text-align: right; cursor: pointer;"
               @click="handleSort('hitRate')"
             >
-              Historical Hit Rate
+              Official Any-Prize Rate
               <span v-if="sortField === 'hitRate'">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
             </th>
             <th
@@ -635,7 +640,7 @@ onBeforeUnmount(() => {
               style="min-width: 120px; text-align: right; cursor: pointer;"
               @click="handleSort('successes')"
             >
-              Success / Obs
+              Successes / Official N
               <span v-if="sortField === 'successes'">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
             </th>
             <th
@@ -717,7 +722,7 @@ onBeforeUnmount(() => {
             <!-- Successes / Observations Column -->
             <td class="cell--number">
               <span v-if="item.isAvailable" class="value-mono">
-                {{ item.officialAnyPrizeCount ?? item.successCount ?? '-' }} / {{ item.effectiveBacktestDrawCount ?? '-' }}
+                {{ item.officialAnyPrizeCount ?? '-' }} / {{ item.successfulExecutionCount ?? '-' }}
               </span>
               <span v-else class="text-muted">-</span>
             </td>

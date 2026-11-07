@@ -65,6 +65,13 @@
   - 建立失敗表示別的任務正在寫：不要開始，回報 `WAITING_ON_LEASE` 並附上對方的租約內容。這不算 INCIDENT。
   - 寫完並讀回後，刪掉自己的租約檔。
 - 只讀核對不需要租約，可以並行。開始時記下資源的 sha256，結束前再核一次；看到別人的 WRITE 租約時，等它結束再核。
+- 登記表 `database-locations.json` 一律用 `lottolab db-registry` 修改，不要用腳本或手動編輯；工具會自己取租約、重核雜湊、原子寫入並追加 `REGISTRY_CHANGELOG.jsonl`，不要手動建立或刪除租約檔：
+  - 唯讀檢查：`lottolab db-registry verify`。結束碼 0＝OK；2＝UNRECORDED_CHANGE（登記表與最後一筆紀錄的雜湊對不上）；3＝NO_CHANGELOG；4＝BROKEN_CHAIN。開始任何會讀或寫登記表的任務前先跑一次，把輸出的 status 寫進收據。
+  - 修改：`lottolab db-registry add-writable <DB 檔名>` 或 `remove-writable <DB 檔名>`，都要 `--task-id <TASK_ID>` 與 `--authorization-file <絕對路徑>`；該檔必須含「我授權 <TASK_ID>」，否則工具拒絕。
+  - 只有 `verify` 是 OK 時才能 add／remove。NO_CHANGELOG 或 UNRECORDED_CHANGE 時，先用 `backfill --entries <JSON 檔>`（同樣要 `--task-id` 與 `--authorization-file`，並需 Owner 授權）補上歷史紀錄，不得跳過。
+  - 租約被占用時工具回報 `WAITING_ON_LEASE`，附上對方的租約內容：不要重試覆蓋，這不算 INCIDENT。
+  - 工具在 origin/main，目前主 checkout 不含它。請從 origin/main 的乾淨 worktree 執行，並加 `PYTHONPATH=<worktree>/src`、確認 `lottolab.__file__` 位於該 worktree 內（見「Python 直譯器」）；工具會自動解析到主專案的 `data/databases`。
+  - `legacy/INDEX.json` 目前沒有對應工具，仍照下一條手動追加紀錄。
 - 每次修改登記表或 INDEX.json，在同一步驟於 `data/databases/REGISTRY_CHANGELOG.jsonl` 追加一行，內容包括時間、TASK_ID、檔名、修改前與修改後的 sha256、授權句位置。
 - 核對期間發現資源的雜湊變了，先查 `REGISTRY_CHANGELOG.jsonl`：
   - 新雜湊對得上一筆有授權的變更，就依新狀態重新核對一次，並在收據註明；

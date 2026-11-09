@@ -52,7 +52,19 @@
 ## 回測結果寫入
 
 - 回測結果的正式寫入目標只有一個：`data/databases/database-locations.json` 的 `writable_databases` 裡登記給 `LOTTOLAB_REPLAY_BACKFILL_DB` 的檔案。寫入前先讀這個檔確認；Packet 寫的目標和登記不同時，停下回報。
-- 還沒有登記可寫目標時（2026-11-04 現況：`writable_databases` 是空的），新結果只寫到 `.task-data/_scratch/<名稱>/` 底下的暫存 DB，收據寫明 `MERGE_PENDING` 和 DB 的絕對路徑，等資料庫整合 Planner 合併。
+- 每個會產生回測結果的 Packet 要宣告 `RESULT_VISIBILITY`：
+  - `UI_REPLAY`：結果要讓 Owner 在 UI 看到。
+  - `EVIDENCE_ONLY`：結果只當證據檔，不會出現在 UI；收據寫「不會出現在 UI」。
+  - Packet 沒有宣告時，收據寫 `UNDECLARED`，視同 `EVIDENCE_ONLY`，並在回報第一段提醒 Planner 補宣告。
+- `UI_REPLAY` 的結果，預設流程是「暫存＋合併卡」：
+  - Packet 不直接寫正式庫。正式庫的寫入需要 Owner 的授權句、租約與 writer.lock，多個任務各自寫會互相擋住。
+  - 暫存 DB 放 `/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.task-data/_scratch/<名稱>/`（名稱不含 `B649`），同資料夾放 `MERGE_PENDING.json`，欄位：`task_id`、`db_path`、`db_sha256`、`schema_version`、`lottery_types`、`strategies`（每項含 `strategy_id`、`strategy_version`、cells 筆數、目標期範圍、`source_history_provenance_status`、`in_code_inventory`＝是或否）、`run_ids`、各表筆數、`created_at`。收據寫 `MERGE_PENDING` 與這個 JSON 的絕對路徑。
+  - 含 `replay_backfill_cells` 表的暫存 DB 沒有 `MERGE_PENDING.json`，視為收據不合格（驗收 FAIL）。不含回測表的測試用暫存 DB 不受此限。
+  - 滿 48 小時仍未處理的 `MERGE_PENDING.json`，資料庫整合 Planner 開合併卡並通知 Owner。發現方式有兩種：資料庫整合 Planner 每次開工掃描 `.task-data/_scratch/*/`；另有只讀、只報告不寫入的定期掃描（由 C 支線排程），列出滿 48 小時的 `MERGE_PENDING.json`，以及含回測表卻沒有 `MERGE_PENDING.json` 的暫存庫，報告給 Owner。
+  - 合併用 `replay-backfill import-stage`：來源先用 `cp -c` 複製進 `_scratch` 並核對 sha256；取租約、用 SQLite backup API 備份、匯入、從 API 讀回、釋放租約。合併後原任務的收據補記 `MERGED` 與正式庫的 run_id。
+- 資料進正式庫不等於 UI 看得到：策略清單頁（`/api/v1/replay-backfill/strategies`）逐項列出程式裡 `replay_strategy_inventory` 的策略，再去正式庫補資料。`UI_REPLAY` 的 Packet 若涉及新的策略，必須同時列出「登記進 `replay_strategy_inventory`」這項程式變更與負責的支線，並在 `MERGE_PENDING.json` 記 `in_code_inventory`。
+- 每個 cell 的 payload 帶 `source_history_provenance_status`；標記為 `UNKNOWN` 或 `UNVERIFIED` 的結果，合併卡要把這個狀態寫進收據，並由 Owner 在授權句中明確同意收進正式庫。UI 目前不顯示這個欄位。
+- 例外：Owner 對某一張卡明確授權時，該 Packet 可直接寫入已登記的正式目標；仍要租約、writer.lock、寫入前備份、前後列數與 API 讀回。
 - 以下位置不得當成最終寫入目標：任務資料夾裡的 DB、`data/replay/reference/`、`data/databases/legacy/`（keeper）、`data/databases/backups/`、尚未完成的封存，以及未登記的 `data/replay/active/`。
 - 不重跑已有結果。開跑前，用 cell 的唯一鍵（`lottery_type`、`strategy_id`、`strategy_version`、`execution_version`、`dataset_identity`、`target_draw_id`）查正式 DB 與待合併的暫存 DB：已完成的跳過，只算缺的。收據寫出「已存在跳過 N、新算 M」。
 - 待合併的暫存結果用匯入合併，不重新計算。

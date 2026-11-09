@@ -91,11 +91,58 @@ try:
         )
         replay.execute(BackfillSelection(latest=1))
     elif mode == "import_stage":
-        from lottolab.interfaces.cli.replay_backfill import main
+        import subprocess
+
+        source_root = Path(test_root).parent / "synthetic-source-identity"
+        source_module_file = (
+            source_root / "src" / "lottolab" / "interfaces" / "cli" / "replay_backfill.py"
+        )
+        if not source_module_file.exists():
+            source_module_file.parent.mkdir(parents=True, exist_ok=True)
+            source_module_file.write_text("# synthetic source identity\n", encoding="utf-8")
+            subprocess.run(["git", "init", "--quiet", str(source_root)], check=True)
+            subprocess.run(
+                ["git", "-C", str(source_root), "add", "--", "src"], check=True
+            )
+            subprocess.run(
+                [
+                    "git",
+                    "-C",
+                    str(source_root),
+                    "-c",
+                    "user.name=Test Fixture",
+                    "-c",
+                    "user.email=test-fixture@example.invalid",
+                    "commit",
+                    "--quiet",
+                    "-m",
+                    "synthetic source identity",
+                ],
+                check=True,
+            )
+
+        from lottolab.interfaces.cli import replay_backfill as replay_backfill_cli
+        from lottolab.interfaces.cli.replay_backfill import (
+            _observe_source_revision,
+            main,
+        )
+
+        replay_backfill_cli.__file__ = str(source_module_file)
+        expected_revision = _observe_source_revision()
+        if expected_revision is None:
+            raise RuntimeError("could not observe source revision for test invocation")
 
         raise SystemExit(
             main(
-                ["import-stage", "--source", source, "--database", database],
+                [
+                    "import-stage",
+                    "--source",
+                    source,
+                    "--database",
+                    database,
+                    "--expected-revision",
+                    expected_revision,
+                ],
                 test_only_external_database_root=Path(test_root),
             )
         )

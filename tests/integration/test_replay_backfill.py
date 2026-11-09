@@ -70,6 +70,43 @@ class Producer:
         return ((1, 2, 3, 4, 5, 6), (1, 2, 3, 4, 5, 7))
 
 
+def _create_clean_source_identity_repo(root: Path) -> Path:
+    source_file = root / "src" / "lottolab" / "interfaces" / "cli" / "replay_backfill.py"
+    source_file.parent.mkdir(parents=True)
+    source_file.write_text("# synthetic source identity\n", encoding="utf-8")
+    subprocess.run(
+        ["git", "init", "--quiet", str(root)],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    subprocess.run(
+        ["git", "-C", str(root), "add", "--", "src"],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    subprocess.run(
+        [
+            "git",
+            "-C",
+            str(root),
+            "-c",
+            "user.name=Test Fixture",
+            "-c",
+            "user.email=test-fixture@example.invalid",
+            "commit",
+            "--quiet",
+            "-m",
+            "synthetic source identity",
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return source_file
+
+
 @pytest.fixture(autouse=True)
 def isolate_project_database_registry(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
@@ -101,6 +138,8 @@ def isolate_project_database_registry(
         encoding="utf-8",
     )
     monkeypatch.setattr(project_database_paths, "PROJECT_ROOT", project_root)
+    source_module_file = _create_clean_source_identity_repo(tmp_path / "source-identity")
+    monkeypatch.setattr(replay_backfill_cli, "__file__", str(source_module_file))
     assert canonical_project_root() == project_root
 
 
@@ -949,6 +988,259 @@ def _replay_table_counts(database: Path) -> dict[str, int]:
         }
 
 
+def _import_stage_args(source: Path, target: Path) -> list[str]:
+    expected_revision = replay_backfill_cli._observe_source_revision()
+    assert expected_revision is not None
+    return [
+        "import-stage",
+        "--source",
+        str(source),
+        "--database",
+        str(target),
+        "--expected-revision",
+        expected_revision,
+    ]
+
+
+def _forbid_import_stage_access(monkeypatch: pytest.MonkeyPatch) -> dict[str, int]:
+    calls = {
+        "target_resolution": 0,
+        "sqlite_connect": 0,
+        "store_open": 0,
+        "writer": 0,
+    }
+
+    def forbidden_target_resolution(*args: Any, **kwargs: Any) -> Path:
+        calls["target_resolution"] += 1
+        raise AssertionError("target resolution must not run before the revision guard")
+
+    def forbidden_sqlite_connect(*args: Any, **kwargs: Any) -> sqlite3.Connection:
+        calls["sqlite_connect"] += 1
+        raise AssertionError("SQLite must not be opened before the revision guard")
+
+    def forbidden_store_open(*args: Any, **kwargs: Any) -> SQLiteBackfillStore:
+        calls["store_open"] += 1
+        raise AssertionError("target store must not be opened before the revision guard")
+
+    def forbidden_writer(*args: Any, **kwargs: Any) -> dict[str, Any]:
+        calls["writer"] += 1
+        raise AssertionError("writer must not run before the revision guard")
+
+    monkeypatch.setattr(
+        replay_backfill_cli, "resolve_output_database", forbidden_target_resolution
+    )
+    monkeypatch.setattr(replay_backfill_cli.sqlite3, "connect", forbidden_sqlite_connect)
+    monkeypatch.setattr(replay_backfill_cli, "SQLiteBackfillStore", forbidden_store_open)
+    monkeypatch.setattr(replay_backfill_cli, "import_stage_database", forbidden_writer)
+    return calls
+
+
+def test_import_stage_revision_match_is_recorded_and_calls_writer(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    expected_revision = replay_backfill_cli._observe_source_revision()
+    assert expected_revision is not None
+    source = Path("/synthetic/stage.sqlite3")
+    target = Path("/synthetic/target.sqlite3")
+    writer_calls: list[tuple[Path, Path]] = []
+
+    monkeypatch.setattr(
+        replay_backfill_cli,
+        "resolve_output_database",
+        lambda database, **kwargs: target,
+    )
+    monkeypatch.setattr(
+        replay_backfill_cli, "_require_writable_target", lambda database: None
+    )
+    monkeypatch.setattr(
+        replay_backfill_cli, "_resolve_stage_source", lambda stage, **kwargs: source
+    )
+
+    def mock_writer(source_path: Path, target_path: Path) -> dict[str, Any]:
+        writer_calls.append((source_path, target_path))
+        return {"schema_version": SCHEMA_VERSION, "added_total": 1}
+
+    monkeypatch.setattr(replay_backfill_cli, "import_stage_database", mock_writer)
+    assert main(
+        [
+            "import-stage",
+            "--source",
+            str(source),
+            "--database",
+            str(target),
+            "--expected-revision",
+            expected_revision,
+        ]
+    ) == 0
+
+    result = json.loads(capsys.readouterr().out)
+    assert result["expected_revision"] == expected_revision
+    assert result["observed_revision"] == expected_revision
+    assert result["revision_status"] == "MATCH"
+    assert result["added_total"] == 1
+    assert writer_calls == [(source, target)]
+
+
+def test_import_stage_revision_mismatch_rejects_before_database_access(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    observed_revision = replay_backfill_cli._observe_source_revision()
+    assert observed_revision is not None
+    expected_revision = "f" * len(observed_revision)
+    if expected_revision == observed_revision:
+        expected_revision = "e" * len(observed_revision)
+    calls = _forbid_import_stage_access(monkeypatch)
+    monkeypatch.setattr(
+        replay_backfill_cli, "_observe_source_revision", lambda: observed_revision
+    )
+
+    assert main(
+        [
+            "import-stage",
+            "--source",
+            "/synthetic/stage.sqlite3",
+            "--database",
+            "/synthetic/target.sqlite3",
+            "--expected-revision",
+            expected_revision,
+        ]
+    ) == 1
+
+    result = json.loads(capsys.readouterr().out)
+    assert result["expected_revision"] == expected_revision
+    assert result["observed_revision"] == observed_revision
+    assert result["revision_status"] == "MISMATCH"
+    assert calls == {
+        "target_resolution": 0,
+        "sqlite_connect": 0,
+        "store_open": 0,
+        "writer": 0,
+    }
+
+
+@pytest.mark.parametrize("tree_change", ["tracked", "untracked"])
+def test_import_stage_dirty_or_untracked_source_tree_rejects_before_database_access(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    tmp_path: Path,
+    tree_change: str,
+) -> None:
+    source_module_file = _create_clean_source_identity_repo(
+        tmp_path / f"source-identity-{tree_change}"
+    )
+    monkeypatch.setattr(replay_backfill_cli, "__file__", str(source_module_file))
+    expected_revision = replay_backfill_cli._observe_source_revision()
+    assert expected_revision is not None
+    if tree_change == "tracked":
+        source_module_file.write_text("# modified synthetic source\n", encoding="utf-8")
+    else:
+        (source_module_file.parent / "untracked.py").write_text(
+            "# untracked synthetic source\n", encoding="utf-8"
+        )
+
+    calls = _forbid_import_stage_access(monkeypatch)
+    assert main(
+        [
+            "import-stage",
+            "--source",
+            "/synthetic/stage.sqlite3",
+            "--database",
+            "/synthetic/target.sqlite3",
+            "--expected-revision",
+            expected_revision,
+        ]
+    ) == 1
+
+    result = json.loads(capsys.readouterr().out)
+    assert result["expected_revision"] == expected_revision
+    assert result["observed_revision"] is None
+    assert result["revision_status"] == "OBSERVED_UNAVAILABLE"
+    assert "source tree must be clean" in result["error"]
+    assert calls == {
+        "target_resolution": 0,
+        "sqlite_connect": 0,
+        "store_open": 0,
+        "writer": 0,
+    }
+
+
+def test_import_stage_malformed_expected_revision_rejects_before_database_access(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    expected_revision = "not-a-full-git-sha"
+    observed_revision = "a" * 40
+    calls = _forbid_import_stage_access(monkeypatch)
+    monkeypatch.setattr(
+        replay_backfill_cli, "_observe_source_revision", lambda: observed_revision
+    )
+
+    assert main(
+        [
+            "import-stage",
+            "--source",
+            "/synthetic/stage.sqlite3",
+            "--database",
+            "/synthetic/target.sqlite3",
+            "--expected-revision",
+            expected_revision,
+        ]
+    ) == 1
+
+    result = json.loads(capsys.readouterr().out)
+    assert result["expected_revision"] == expected_revision
+    assert result["observed_revision"] == observed_revision
+    assert result["revision_status"] == "INVALID_EXPECTED"
+    assert result["status"] == "REJECTED"
+    assert calls == {
+        "target_resolution": 0,
+        "sqlite_connect": 0,
+        "store_open": 0,
+        "writer": 0,
+    }
+
+
+@pytest.mark.parametrize(
+    ("expected_revision", "observed_revision", "revision_status"),
+    [
+        (None, "a" * 40, "MISSING_EXPECTED"),
+        ("a" * 40, None, "OBSERVED_UNAVAILABLE"),
+    ],
+)
+def test_import_stage_missing_or_unavailable_revision_fails_closed(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    expected_revision: str | None,
+    observed_revision: str | None,
+    revision_status: str,
+) -> None:
+    calls = _forbid_import_stage_access(monkeypatch)
+    monkeypatch.setattr(
+        replay_backfill_cli, "_observe_source_revision", lambda: observed_revision
+    )
+    args = [
+        "import-stage",
+        "--source",
+        "/synthetic/stage.sqlite3",
+        "--database",
+        "/synthetic/target.sqlite3",
+    ]
+    if expected_revision is not None:
+        args.extend(["--expected-revision", expected_revision])
+
+    assert main(args) == 1
+
+    result = json.loads(capsys.readouterr().out)
+    assert result["expected_revision"] == expected_revision
+    assert result["observed_revision"] == observed_revision
+    assert result["revision_status"] == revision_status
+    assert calls == {
+        "target_resolution": 0,
+        "sqlite_connect": 0,
+        "store_open": 0,
+        "writer": 0,
+    }
+
+
 def test_import_stage_merges_read_only_and_duplicate_import_is_idempotent(
     test_only_external_database_root: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -959,7 +1251,7 @@ def test_import_stage_merges_read_only_and_duplicate_import_is_idempotent(
     target = test_only_external_database_root / "target.sqlite3"
     _create_empty_backfill_database(target)
 
-    args = ["import-stage", "--source", str(source), "--database", str(target)]
+    args = _import_stage_args(source, target)
     assert main(
         args, test_only_external_database_root=test_only_external_database_root
     ) == 0
@@ -997,7 +1289,7 @@ def test_import_stage_rejects_schema_version_mismatch_before_writing(
 
     assert (
         main(
-            ["import-stage", "--source", str(source), "--database", str(target)],
+            _import_stage_args(source, target),
             test_only_external_database_root=test_only_external_database_root,
         )
         == 1
@@ -1153,7 +1445,7 @@ def test_import_stage_reuses_matching_result_with_remapped_cell_identity_and_is_
             )
     before = _import_stage_snapshot(target)
     source_hash = hashlib.sha256(source.read_bytes()).hexdigest()
-    args = ["import-stage", "--source", str(source), "--database", str(target)]
+    args = _import_stage_args(source, target)
 
     assert main(
         args,
@@ -1196,7 +1488,7 @@ def test_import_stage_rejects_cell_result_conflicts_and_rolls_back_new_run(
     _mutate_stage_cell_for_test_conflict(source, field)
     before = _import_stage_snapshot(target)
     source_hash = hashlib.sha256(source.read_bytes()).hexdigest()
-    args = ["import-stage", "--source", str(source), "--database", str(target)]
+    args = _import_stage_args(source, target)
 
     assert main(
         args,
@@ -1239,7 +1531,7 @@ def test_import_stage_rejects_conflicting_child_rows_and_rolls_back(
             )
     before = _import_stage_snapshot(target)
     source_hash = hashlib.sha256(source.read_bytes()).hexdigest()
-    args = ["import-stage", "--source", str(source), "--database", str(target)]
+    args = _import_stage_args(source, target)
 
     assert main(
         args,
@@ -1269,12 +1561,18 @@ def test_import_stage_rejects_conflicting_manifest_and_rolls_back(
         )
     before = _import_stage_snapshot(target)
     source_hash = hashlib.sha256(source.read_bytes()).hexdigest()
-    args = ["import-stage", "--source", str(source), "--database", str(target)]
+    args = _import_stage_args(source, target)
 
     assert main(
         args,
         test_only_external_database_root=test_only_external_database_root,
     ) == 1
-    assert "stage run ID conflicts with an existing target manifest" in capsys.readouterr().err
+    captured = capsys.readouterr()
+    assert "stage run ID conflicts with an existing target manifest" in captured.err
+    result = json.loads(captured.out)
+    assert result["expected_revision"] == replay_backfill_cli._observe_source_revision()
+    assert result["observed_revision"] == result["expected_revision"]
+    assert result["revision_status"] == "MATCH"
+    assert result["status"] == "FAILED"
     assert _import_stage_snapshot(target) == before
     assert hashlib.sha256(source.read_bytes()).hexdigest() == source_hash

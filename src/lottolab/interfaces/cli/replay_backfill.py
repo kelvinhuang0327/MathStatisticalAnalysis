@@ -8,6 +8,7 @@ import hashlib
 import inspect
 import json
 import os
+import subprocess
 import sqlite3
 import sys
 import tempfile
@@ -767,6 +768,67 @@ def _print_cli_error(exc: Exception, *, command: str) -> None:
     print(f"{command} error: {message}", file=sys.stderr)
 
 
+def _is_full_git_revision(value: str | None) -> bool:
+    return value is not None and len(value) in {40, 64} and all(
+        character in "0123456789abcdefABCDEF" for character in value
+    )
+
+
+def _observe_source_revision() -> str | None:
+    """Return the Git revision containing this executing CLI module, if available."""
+    source_root = Path(__file__).resolve().parents[4]
+    try:
+        status = subprocess.run(
+            [
+                "git",
+                "-C",
+                str(source_root),
+                "status",
+                "--porcelain",
+                "--untracked-files=all",
+            ],
+            capture_output=True,
+            check=False,
+            text=True,
+            timeout=5,
+        )
+        if status.returncode != 0 or status.stdout.strip():
+            return None
+        completed = subprocess.run(
+            ["git", "-C", str(source_root), "rev-parse", "--verify", "HEAD^{commit}"],
+            capture_output=True,
+            check=False,
+            text=True,
+            timeout=5,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    revision = completed.stdout.strip()
+    if completed.returncode != 0 or not _is_full_git_revision(revision):
+        return None
+    return revision.lower()
+
+
+def _stage_revision_guard(
+    expected_revision: str | None, observed_revision: str | None
+) -> tuple[str, str | None]:
+    if expected_revision is None or expected_revision == "":
+        return "MISSING_EXPECTED", "expected source revision is required"
+    if not _is_full_git_revision(expected_revision):
+        return (
+            "INVALID_EXPECTED",
+            "expected source revision must be a full Git commit SHA",
+        )
+    if observed_revision is None:
+        return (
+            "OBSERVED_UNAVAILABLE",
+            "could not observe executing source revision; the source tree must be clean",
+        )
+    if expected_revision.lower() != observed_revision:
+        return "MISMATCH", "executing source revision does not match expected revision"
+    return "MATCH", None
+
+
 def main(
     argv: list[str] | None = None,
     *,
@@ -780,7 +842,31 @@ def main(
         )
         stage_parser.add_argument("--source", type=Path, required=True)
         stage_parser.add_argument("--database", type=Path)
+        stage_parser.add_argument("--expected-revision")
         stage_args = stage_parser.parse_args(arguments[1:])
+        try:
+            observed_revision = _observe_source_revision()
+        except Exception:
+            observed_revision = None
+        revision_status, revision_error = _stage_revision_guard(
+            stage_args.expected_revision, observed_revision
+        )
+        revision_result: JsonObject = {
+            "expected_revision": stage_args.expected_revision,
+            "observed_revision": observed_revision,
+            "revision_status": revision_status,
+        }
+        if revision_error is not None:
+            print(
+                canonical_json(
+                    {**revision_result, "status": "REJECTED", "error": revision_error}
+                )
+            )
+            print(
+                f"replay-backfill import-stage error: {revision_error}",
+                file=sys.stderr,
+            )
+            return 1
         try:
             target = resolve_output_database(
                 stage_args.database,
@@ -792,9 +878,23 @@ def main(
                 test_only_external_database_root=test_only_external_database_root,
             )
             result = import_stage_database(source, target)
+            result.update(revision_result)
             print(canonical_json(result))
             return 0
         except Exception as exc:
+            if isinstance(exc, (PermissionError, FileNotFoundError, ValueError)):
+                error_message = str(exc)
+            else:
+                error_message = f"{type(exc).__name__}; check inputs and registry"
+            print(
+                canonical_json(
+                    {
+                        **revision_result,
+                        "status": "FAILED",
+                        "error": error_message,
+                    }
+                )
+            )
             _print_cli_error(exc, command="replay-backfill import-stage")
             return 1
 

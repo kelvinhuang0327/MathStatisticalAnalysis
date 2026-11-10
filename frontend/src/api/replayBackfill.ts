@@ -248,6 +248,7 @@ async function getJson<T>(
   path: string,
   signal: AbortSignal | undefined,
   validate: (value: unknown) => value is T,
+  afterValidate?: (value: T, status: number) => void,
 ): Promise<T> {
   const response = await fetch(path, {
     method: 'GET',
@@ -270,7 +271,23 @@ async function getJson<T>(
   if (!validate(payload)) {
     throw new ReplayBackfillRequestError('Replay backfill returned an invalid response.', response.status)
   }
+  afterValidate?.(payload, response.status)
   return payload
+}
+
+function assertRequestedRunIdMatches(
+  response: { run_id: string | null },
+  requestedRunId: string | undefined,
+  status: number,
+): void {
+  const requested = requestedRunId?.trim()
+  if (requested && response.run_id !== null && response.run_id !== requested) {
+    throw new ReplayBackfillRequestError(
+      'Replay backfill returned a run ID that does not match the requested run ID.',
+      status,
+      'REPLAY_RUN_ID_MISMATCH',
+    )
+  }
 }
 
 function validateLimit(limit: number): void {
@@ -349,6 +366,7 @@ export async function listReplayBackfillPredictions(
     `/api/v1/replay-backfill/predictions?${params.toString()}`,
     signal,
     isPredictionPage,
+    (response, status) => assertRequestedRunIdMatches(response, query.runId, status),
   )
 }
 
@@ -359,5 +377,10 @@ export async function getReplayBackfillCoverage(
 ): Promise<ReplayBackfillCoverage> {
   const params = new URLSearchParams({ lottery_type: lotteryType })
   if (runId?.trim()) params.set('run_id', runId.trim())
-  return getJson(`/api/v1/replay-backfill/coverage?${params.toString()}`, signal, isCoverage)
+  return getJson(
+    `/api/v1/replay-backfill/coverage?${params.toString()}`,
+    signal,
+    isCoverage,
+    (response, status) => assertRequestedRunIdMatches(response, runId, status),
+  )
 }

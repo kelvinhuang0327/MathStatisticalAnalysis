@@ -30,6 +30,7 @@ export type ReplayBackfillCoverage = components['schemas']['ReplayBackfillCovera
 
 export interface ReplayBackfillStrategyQuery {
   lotteryType: ReplayBackfillLotteryType
+  runId?: string
   q?: string
   lifecycleStatus?: string
   dataStatus?: string
@@ -39,6 +40,7 @@ export interface ReplayBackfillStrategyQuery {
 
 export interface ReplayBackfillPredictionQuery {
   lotteryType: ReplayBackfillLotteryType
+  runId?: string
   strategyId?: string
   fromDate?: string
   toDate?: string
@@ -296,6 +298,7 @@ export async function listReplayBackfillStrategies(
   const limit = query.limit ?? 100
   validateLimit(limit)
   const params = new URLSearchParams({ lottery_type: query.lotteryType, limit: String(limit) })
+  if (query.runId?.trim()) params.set('run_id', query.runId.trim())
   const q = query.q?.trim()
   if (q) params.set('q', q)
   if (query.lifecycleStatus) params.set('lifecycle_status', query.lifecycleStatus)
@@ -337,6 +340,7 @@ export async function listReplayBackfillPredictions(
     period: String(query.period),
     limit: String(limit),
   })
+  if (query.runId?.trim()) params.set('run_id', query.runId.trim())
   if (query.strategyId) params.set('strategy_id', query.strategyId)
   if (query.fromDate) params.set('from_date', query.fromDate)
   if (query.toDate) params.set('to_date', query.toDate)
@@ -351,7 +355,9 @@ export async function listReplayBackfillPredictions(
 export async function getReplayBackfillCoverage(
   lotteryType: ReplayBackfillLotteryType,
   signal?: AbortSignal,
+  runId?: string,
 ): Promise<ReplayBackfillCoverage> {
   const params = new URLSearchParams({ lottery_type: lotteryType })
+  if (runId?.trim()) params.set('run_id', runId.trim())
   return getJson(`/api/v1/replay-backfill/coverage?${params.toString()}`, signal, isCoverage)
 }

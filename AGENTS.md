@@ -85,7 +85,7 @@
 - 要寫入共用資源前，先建立租約檔 `data/databases/locks/<資源檔名>.lease.json`（目錄不存在就先建立），用不可覆寫的方式建立（例如 Python 的 `open(path, "x")`）。內容寫 TASK_ID、模式 WRITE、開始時間、預計結束時間、授權句位置。
   - 建立失敗表示別的任務正在寫：不要開始，回報 `WAITING_ON_LEASE` 並附上對方的租約內容。這不算 INCIDENT。
   - 寫完並讀回後，刪掉自己的租約檔。
-- 只讀核對不需要租約，可以並行。開始時記下資源的 sha256，結束前再核一次；看到別人的 WRITE 租約時，等它結束再核。
+- 只讀核對不需要租約，可以並行。Packet 把某個共用資源當輸入、核對對象或寫入目標時，才需要在開始時記下它的 sha256、結束前再核一次；看到別人的 WRITE 租約時，等它結束再核。Packet 沒有提到的共用資源不需要核對，也不因它的雜湊改變而停止。
 - 登記表 `database-locations.json` 一律用 `lottolab db-registry` 修改，不要用腳本或手動編輯；工具會自己取租約、重核雜湊、原子寫入並追加 `REGISTRY_CHANGELOG.jsonl`，不要手動建立或刪除租約檔：
   - 唯讀檢查：`lottolab db-registry verify`。結束碼 0＝OK；2＝UNRECORDED_CHANGE（登記表與最後一筆紀錄的雜湊對不上）；3＝NO_CHANGELOG；4＝BROKEN_CHAIN。開始任何會讀或寫登記表的任務前先跑一次，把輸出的 status 寫進收據。
   - 修改：`lottolab db-registry add-writable <DB 檔名>` 或 `remove-writable <DB 檔名>`，都要 `--task-id <TASK_ID>` 與 `--authorization-file <絕對路徑>`；該檔必須含「我授權 <TASK_ID>」，否則工具拒絕。
@@ -94,9 +94,9 @@
   - 工具在 origin/main，目前主 checkout 不含它。請從 origin/main 的乾淨 worktree 執行，並加 `PYTHONPATH=<worktree>/src`、確認 `lottolab.__file__` 位於該 worktree 內（見「Python 直譯器」）；工具會自動解析到主專案的 `data/databases`。
   - `legacy/INDEX.json` 目前沒有對應工具，仍照下一條手動追加紀錄。
 - 每次修改登記表或 INDEX.json，在同一步驟於 `data/databases/REGISTRY_CHANGELOG.jsonl` 追加一行，內容包括時間、TASK_ID、檔名、修改前與修改後的 sha256、授權句位置。
-- 核對期間發現資源的雜湊變了，先查 `REGISTRY_CHANGELOG.jsonl`：
-  - 新雜湊對得上一筆有授權的變更，就依新狀態重新核對一次，並在收據註明；
-  - 對不上，才以 BLOCKED 回報「未知寫入者」。
+- 核對期間發現資源的雜湊變了：
+  - 變的是登記表或 `legacy/INDEX.json`：先查 `REGISTRY_CHANGELOG.jsonl`。新雜湊對得上一筆有授權的變更，就依新狀態重新核對一次，並在收據註明；對不上，才以 BLOCKED 回報「未知寫入者」。
+  - 變的是正式回放庫的內容（登記表沒變）：`REGISTRY_CHANGELOG.jsonl` 不記這種變更，不能拿它當依據。改查資料庫整合任務的合併收據：在你記下起始狀態之後、結束核對之前，`.task-data/<YYYYMMDD>/` 底下有 task_id 含 `MERGE` 的任務，其 `result.json` 的 `task_lifecycle_state` 為 COMPLETED，記有授權檔路徑與合併前備份路徑，且備份大小等於你記下的起始大小（內容雜湊以 SQLite backup API 快照計算，可能與備份檔的檔案雜湊不同，以大小與時間窗為準）。對得上，就依新狀態重新核對一次，在收據註明該合併任務的 TASK_ID，不算未知寫入者、不算 INCIDENT；對不上，才以 BLOCKED 回報「未知寫入者」。
 - 正式 SQLite DB 的寫入入口先取得 `<DB 檔名>.writer.lock` 的獨佔檔案鎖，再用 `BEGIN IMMEDIATE`；拿不到鎖就立刻失敗，不等待。寫入入口提交進 Git 之前沒有統一入口，寫入前一律先取得上面的租約。
 - 內容雜湊對快照計算：用 SQLite backup API 複製到 `.task-data/_scratch/` 再算，不直接對使用中的檔計算。
 

@@ -213,6 +213,68 @@ afterEach(() => {
 })
 
 describe('Replay Backfill API UI', () => {
+  it('queries and pages the selected run, and clears results when the run changes', async () => {
+    const fetchMock = installDefaultApi({
+      predictions: (url) => predictionPage(
+        [prediction(url.searchParams.has('cursor') ? '113000202' : '113000201')],
+        2,
+        url.searchParams.has('cursor') ? null : 'next-page',
+        url.searchParams.get('run_id') ?? 'latest-run',
+      ),
+    })
+    const wrapper = await openBackfillPage()
+    await wrapper.get('input[name="replay_run_id"]').setValue(' run-one ')
+    await flushPromises()
+    await wrapper.get('select[name="strategy_id"]').setValue('strategy-history')
+    await wrapper.get('select[name="period"]').setValue('ALL')
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+    await wrapper.findAll('button').find((button) => button.text() === 'Load more')?.trigger('click')
+    await flushPromises()
+
+    const urls = fetchMock.mock.calls.map(([input]) => new URL(String(input), 'http://localhost'))
+    const predictions = urls.filter((url) => url.pathname === '/api/v1/replay-backfill/predictions')
+    expect(predictions.map((url) => url.searchParams.get('run_id'))).toEqual(['run-one', 'run-one'])
+    expect(predictions[1]?.searchParams.get('cursor')).toBe('next-page')
+    expect(predictions[1]?.searchParams.get('period')).toBe('ALL')
+    expect(wrapper.findAll('[data-testid^="backfill-row-"]')).toHaveLength(2)
+    expect(urls.some((url) => url.pathname.endsWith('/strategies') && url.searchParams.get('run_id') === 'run-one')).toBe(true)
+    expect(urls.some((url) => url.pathname.endsWith('/coverage') && url.searchParams.get('run_id') === 'run-one')).toBe(true)
+
+    await wrapper.get('input[name="replay_run_id"]').setValue('run-two')
+    await flushPromises()
+    expect(wrapper.findAll('[data-testid^="backfill-row-"]')).toHaveLength(0)
+    expect(wrapper.text()).toContain('not queried')
+    await wrapper.get('input[name="replay_run_id"]').setValue('')
+    await flushPromises()
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+    const lastPrediction = fetchMock.mock.calls
+      .map(([input]) => new URL(String(input), 'http://localhost'))
+      .filter((url) => url.pathname === '/api/v1/replay-backfill/predictions').at(-1)
+    expect(lastPrediction?.searchParams.has('run_id')).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('opens a linked run and strategy with all periods selected', async () => {
+    const fetchMock = installDefaultApi({ predictions: () => predictionPage([prediction('113000201')], 1, null, 'run-linked') })
+    window.history.replaceState({}, '', '/?replay_run_id=run-linked&replay_strategy_id=strategy-history#/replay-history')
+    try {
+      const wrapper = mount(ReplayHistoryPage)
+      await flushPromises()
+      expect((wrapper.get('input[name="replay_run_id"]').element as HTMLInputElement).value).toBe('run-linked')
+      expect((wrapper.get('select[name="period"]').element as HTMLSelectElement).value).toBe('ALL')
+      expect(wrapper.text()).toContain('Per-draw replay predictions — 1 total')
+      const url = fetchMock.mock.calls.map(([input]) => new URL(String(input), 'http://localhost'))
+        .find((item) => item.pathname === '/api/v1/replay-backfill/predictions')
+      expect(url?.searchParams.get('run_id')).toBe('run-linked')
+      expect(url?.searchParams.get('strategy_id')).toBe('strategy-history')
+      wrapper.unmount()
+    } finally {
+      window.history.replaceState({}, '', '/')
+    }
+  })
+
   it('shows API strategies across all data statuses and keeps lifecycle separate', async () => {
     const fetchMock = installDefaultApi()
     const wrapper = await openBackfillPage()

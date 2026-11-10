@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 import { listHistoricalImportRuns, type HistoricalImportRunPage } from '../../api/historicalImports'
 import {
@@ -67,11 +67,13 @@ const activeTab = ref<Tab>('overview')
 
 const backfillInitialized = ref(false)
 const backfillLotteryType = ref<ReplayBackfillLotteryType>('BIG_LOTTO')
-const backfillStrategySearch = ref('')
-const backfillStrategyId = ref('')
+const replayLink = new URLSearchParams(window.location.search)
+const backfillRunId = ref(replayLink.get('replay_run_id')?.trim() ?? '')
+const backfillStrategySearch = ref(replayLink.get('replay_strategy_id')?.trim() ?? '')
+const backfillStrategyId = ref(replayLink.get('replay_strategy_id')?.trim() ?? '')
 const backfillFromDate = ref('')
 const backfillToDate = ref('')
-const backfillPeriod = ref<ReplayBackfillPeriod>(50)
+const backfillPeriod = ref<ReplayBackfillPeriod>(backfillRunId.value ? 'ALL' : 50)
 const backfillDateError = ref('')
 
 const strategyCatalogState = ref<LoadState>('idle')
@@ -384,11 +386,17 @@ function clearPredictionResults(): void {
 }
 
 watch(
-  [backfillLotteryType, backfillStrategyId, backfillFromDate, backfillToDate, backfillPeriod],
+  [backfillLotteryType, backfillRunId, backfillStrategyId, backfillFromDate, backfillToDate, backfillPeriod],
   () => {
     clearPredictionResults()
   },
 )
+
+watch(backfillRunId, () => {
+  if (!backfillInitialized.value) return
+  void loadStrategyCatalog(true)
+  void loadCoverage()
+})
 
 watch(backfillLotteryType, () => {
   backfillStrategyId.value = ''
@@ -427,6 +435,7 @@ async function loadStrategyCatalog(reset: boolean): Promise<void> {
     const page = await listReplayBackfillStrategies(
       {
         lotteryType: backfillLotteryType.value,
+        runId: backfillRunId.value,
         q: backfillStrategySearch.value,
         limit: 100,
         cursor: requestedCursor,
@@ -487,7 +496,7 @@ async function loadCoverage(): Promise<void> {
   coverageError.value = ''
   coverage.value = null
   try {
-    const result = await getReplayBackfillCoverage(backfillLotteryType.value, controller.signal)
+    const result = await getReplayBackfillCoverage(backfillLotteryType.value, controller.signal, backfillRunId.value)
     if (controller.signal.aborted || generation !== backfillCoverageGeneration) return
     coverage.value = result
     coverageState.value = 'ready'
@@ -506,6 +515,12 @@ function activateBackfill(): void {
   void loadStrategyCatalog(true)
   void loadCoverage()
 }
+
+onMounted(() => {
+  if (!backfillRunId.value) return
+  activateBackfill()
+  if (backfillStrategyId.value) queryBackfillPredictions()
+})
 
 function searchBackfillStrategies(): void {
   backfillStrategyId.value = ''
@@ -535,6 +550,7 @@ async function loadBackfillPredictionPage(loadMore: boolean): Promise<void> {
   if (loadMore && !requestedCursor) return
   const query = {
     lotteryType: backfillLotteryType.value,
+    runId: backfillRunId.value,
     ...(backfillStrategyId.value ? { strategyId: backfillStrategyId.value } : {}),
     ...(backfillFromDate.value ? { fromDate: backfillFromDate.value } : {}),
     ...(backfillToDate.value ? { toDate: backfillToDate.value } : {}),
@@ -1533,6 +1549,10 @@ function predictedNumbers(value: number[] | null | undefined): string {
                   {{ lotteryLabel(lotteryType) }}
                 </option>
               </select>
+            </label>
+            <label>
+              <span>Replay run ID（留空使用最新 run）</span>
+              <input v-model.lazy.trim="backfillRunId" name="replay_run_id" autocomplete="off" placeholder="Latest run" />
             </label>
             <label>
               <span>Search strategy ID or name</span>

@@ -70,7 +70,8 @@
   - 合併用 `replay-backfill import-stage`：來源先用 `cp -c` 複製進 `_scratch` 並核對 sha256；取租約，再備份、匯入、從 API 讀回、釋放租約。合併後原任務的收據補記 `MERGED` 與正式庫的 run_id。
     - 備份優先用 APFS clone（`cp -c -p`），以下條件全部成立才可用，任何一項不成立就改用 SQLite backup API：持有租約與 `<DB 檔名>.writer.lock`；沒有其他程序以寫入模式開啟該 DB；DB 不是 WAL 模式，且沒有 `-wal`、`-shm`、`-journal`；clone 前後來源的 sha256 相同，且等於 clone 的 sha256；clone 通過 `PRAGMA quick_check`。
     - 一批只做一次備份。該批讀回確認無誤後，前一批的備份才可以清除；清除備份需要 Owner 的授權句。
-    - clone 與來源共用磁碟區塊，只能當「合併失敗時還原」的依據，不能取代離線備份。正式回測庫的離線備份（雲端批次）另由 Owner 決定。
+    - 正式回放庫（`replay-backfill.sqlite3`）的合併前備份只保留最新 2 份，以合併卡收據的時間排序（不以檔案 mtime 排序，因為 clone 備份保留來源檔的 mtime）。新一批的備份建立並讀回確認無誤後，超過 2 份的舊備份先移到 `data/databases/backups/_quarantine_<YYYYMMDD>/` 隔離；隔離滿 24 小時，且沒有任務因此失敗，才可以永久刪除。隔離與刪除都需要 Owner 的授權句，由資料庫整合 Planner 擬卡；執行前再掃一次未完成任務的 Packet，確認沒有引用。這條只管 `replay-backfill.sqlite3` 的備份，其他資料庫的備份另案。
+    - clone 只能當「合併失敗時還原」的依據，不能取代離線備份。不要預期它省空間：2026-11-10 取樣核對，合併後的 clone 備份幾乎不與正式庫共用區塊，每份備份以約一個正式庫大小（約 2 GB）估算磁碟。正式回測庫的離線備份（雲端批次）另由 Owner 決定。
 - 資料進正式庫不等於 UI 看得到：策略清單頁（`/api/v1/replay-backfill/strategies`）逐項列出程式裡 `replay_strategy_inventory` 的策略，再去正式庫補資料。`UI_REPLAY` 的 Packet 若涉及新的策略，必須同時列出「登記進 `replay_strategy_inventory`」這項程式變更與負責的支線，並在 `MERGE_PENDING.json` 記 `in_code_inventory`。
 - 每個 cell 的 payload 帶 `source_history_provenance_status`；標記為 `UNKNOWN` 或 `UNVERIFIED` 的結果，合併卡要把這個狀態寫進收據，並由 Owner 在授權句中明確同意收進正式庫。UI 目前不顯示這個欄位。
 - 例外：Owner 對某一張卡明確授權時，該 Packet 可直接寫入已登記的正式目標；仍要租約、writer.lock、寫入前備份、前後列數與 API 讀回。

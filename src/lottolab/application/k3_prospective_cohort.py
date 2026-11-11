@@ -166,7 +166,7 @@ class GuardedK3CohortProducer:
             ticket_count=3,
             candidate_sizes=(6, 6, 6),
         )
-        entries = []
+        entries: list[PredictionEntryDraft] = []
         for policy in (
             K3Policy.EXHAUSTIVE,
             K3Policy.ANALYZE_CANDIDATE,

@@ -788,6 +788,52 @@ def test_inventory_maps_the_existing_quickml_successor() -> None:
     assert item.backfill_runnable
 
 
+def test_prepare_persists_inventory_when_fingerprint_is_null(
+    test_only_external_database_root: Path,
+) -> None:
+    database = test_only_external_database_root / "inventory-null-fingerprint.sqlite3"
+    strategy_id = "research_biglotto__quick_ml_corrected_successor_v1"
+    implementation_sha = "0fd23747f37c5749ca8be4b5fd96d4464c3867843f450657aee17f25091c0de2"
+    store = SQLiteBackfillStore(database)
+
+    store.prepare(
+        {
+            "run_id": "inventory-null-fingerprint-run",
+            "expected_cells": 1,
+            "lottery_type": "BIG_LOTTO",
+            "dataset_identity": "fixture-dataset",
+            "strategies": [
+                {
+                    "strategy_id": strategy_id,
+                    "strategy_version": "v1",
+                    "strategy_name": "QuickML corrected successor",
+                    "fingerprint": None,
+                }
+            ],
+            "targets": [],
+            "strategy_sources": {
+                strategy_id: {
+                    "fingerprint": None,
+                    "source_identity": implementation_sha,
+                    "source_kind": "TARGET_NATIVE_REPLAY",
+                }
+            },
+        }
+    )
+
+    with sqlite3.connect(database) as connection:
+        assert connection.execute(
+            "SELECT strategy_id,strategy_version,source_identity "
+            "FROM replay_backfill_strategy_inventory"
+        ).fetchall() == [
+            (
+                strategy_id,
+                "v1",
+                implementation_sha,
+            )
+        ]
+
+
 def test_cli_default_target_respects_writable_registry(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:

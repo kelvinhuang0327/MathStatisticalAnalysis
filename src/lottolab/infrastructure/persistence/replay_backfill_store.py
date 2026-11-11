@@ -511,7 +511,10 @@ class SQLiteBackfillStore:
                             1,
                             len(manifest.get("targets", [])),
                             source.get("training_status", "NOT_TRAINABLE"),
-                            source.get("fingerprint", strategy.get("fingerprint") or ""),
+                            source.get("source_identity")
+                            or source.get("fingerprint")
+                            or strategy.get("fingerprint")
+                            or "",
                         ),
                     )
                 source_identity = manifest["dataset_identity"]

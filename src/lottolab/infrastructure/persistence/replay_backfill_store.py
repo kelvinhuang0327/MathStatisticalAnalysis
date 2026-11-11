@@ -1758,7 +1758,10 @@ def _research_portfolio_context(
                 ticket_identities_match = False
                 break
             ticket = cast(JsonObject, raw)
-            if any(key in ticket and ticket[key] != value for key, value in ticket_identity.items()):
+            if any(
+                key in ticket and ticket[key] != value
+                for key, value in ticket_identity.items()
+            ):
                 ticket_identities_match = False
                 break
             nested: object = ticket.get("identity")

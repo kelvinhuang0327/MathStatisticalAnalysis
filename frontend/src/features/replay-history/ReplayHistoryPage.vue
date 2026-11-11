@@ -1790,7 +1790,10 @@ function predictedNumbers(value: number[] | null | undefined): string {
                 </td>
                 <td>
                   <ul v-if="item.predicted_tickets.length" class="replay-backfill-ticket-list">
-                    <li v-for="ticket in item.predicted_tickets" :key="ticket.ticket_position">
+                    <li
+                      v-for="(ticket, ticketIndex) in item.predicted_tickets"
+                      :key="ticket.ticket_position ?? ticketIndex"
+                    >
                       #{{ ticket.ticket_position }} · {{ showNumbers(ticket.main_numbers) }}<template v-if="ticket.special_numbers.length"> + {{ showNumbers(ticket.special_numbers) }}</template>
                     </li>
                   </ul>

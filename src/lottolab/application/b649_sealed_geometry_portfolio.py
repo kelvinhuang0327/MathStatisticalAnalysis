@@ -7,10 +7,12 @@ P(at least one ticket wins). K5 is pairwise disjoint. For both OFFICIAL_ANY_PRIZ
 and M3_PLUS, every pairwise-disjoint portfolio of size 1..8 attains the global
 optimum proved in ``lottolab.research.b649_k1_k8_global_optimality``; that
 optimum is not unique. K10 remains the frozen HARD_DIV pairwise-overlap
-radius2 authority from sealed-geometry v2. The v8 K20 is the exact incumbent
-from the canonical two-ticket ascent result, proven optimal within its
-validated exact two-ticket neighborhood. Global K20 optimality remains unknown.
-Neither K10 nor K20 is claimed to be a proven global optimum.
+radius2 authority from sealed-geometry v2.
+K10 OFFICIAL_ANY_PRIZE: PROVEN GLOBAL OPTIMUM by the canonical K10 proof
+certificate. K10 M3_PLUS: GLOBAL OPTIMUM UNKNOWN. The v8 K20 is the exact
+incumbent from the canonical two-ticket ascent result.
+It is proven optimal only within its validated exact local neighborhoods.
+K20: GLOBAL OPTIMUM UNKNOWN.
 There is no historical outcome tuning or predictive signal: the portfolios do
 not depend on the target draw, prediction streams, or historical outcomes.
 Their probabilities are exact counts over the full outcome space, verified by

@@ -22,6 +22,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from lottolab.application.replay_portfolio_qualification import assess_research_portfolio
 from lottolab.application.replay_strategy_inventory import load_replay_strategy_inventory
+from lottolab.application.seeded_single_replay import seeded_replay_version
 from lottolab.domain.draws import LotteryType
 from lottolab.domain.historical_replay import ReplayCellStatus
 from lottolab.domain.replay_strategy_inventory import (
@@ -36,6 +37,7 @@ from lottolab.infrastructure.persistence.replay_backfill_store import (
     canonical_json,
 )
 from lottolab.interfaces.api.draw_data import ApiValidationErrorResponse
+from lottolab.strategies.catalog import production_catalog
 
 _MAX_ID_LENGTH = 200
 _PERIODS = {"50": 50, "300": 300, "750": 750, "ALL": None}
@@ -209,6 +211,10 @@ class ReplayBackfillTrainingView(BaseModel):
     model_version: str | None = None
     training_cutoff: str | None = None
     training_artifact_id: str | None = None
+    training_cutoff_draw_id: str | None = None
+    validation_first_draw_id: str | None = None
+    validation_last_draw_id: str | None = None
+    validation_draw_count: int | None = None
 
 
 class ReplayBackfillResearchPortfolioDuplicateGroupView(BaseModel):
@@ -500,13 +506,28 @@ def create_replay_backfill_router(store: SQLiteBackfillStore | None) -> APIRoute
             )
         )
         try:
-            snapshots: dict[str, JsonObject] = {
-                selected_lottery.value: store.strategy_history_snapshot(
-                    selected_lottery.value,
-                    run_id=run_id,
-                )
-                for selected_lottery in query_lotteries
-            }
+            snapshot_reader = getattr(store, "strategy_history_snapshot", None)
+            snapshots: dict[str, JsonObject] = (
+                {
+                    selected_lottery.value: snapshot_reader(
+                        selected_lottery.value,
+                        run_id=run_id,
+                    )
+                    for selected_lottery in query_lotteries
+                }
+                if callable(snapshot_reader)
+                else {
+                    selected_lottery.value: {
+                        "run_id": run_id,
+                        "target_count": 0,
+                        "cell_status_counts": [],
+                        "strategy_inventory": [],
+                        "selected_strategies": [],
+                        "run_source": {"identity_status": "UNKNOWN"},
+                    }
+                    for selected_lottery in query_lotteries
+                }
+            )
         except KeyError:
             return _error(404, "REPLAY_BACKFILL_RUN_NOT_FOUND")
         except ValueError:
@@ -530,6 +551,27 @@ def create_replay_backfill_router(store: SQLiteBackfillStore | None) -> APIRoute
                     )
                     if all(isinstance(value, str) for value in key_values):
                         stored_by_key[cast(tuple[str, str, str], key_values)] = stored_row
+            stored_inventory_reader = getattr(store, "stored_strategy_inventory", None)
+            stored_rows: list[JsonObject] = []
+            if callable(stored_inventory_reader):
+                for selected_lottery in query_lotteries:
+                    for stored_row_value in stored_inventory_reader(selected_lottery.value):
+                        if isinstance(stored_row_value, dict):
+                            stored_row = cast(JsonObject, stored_row_value)
+                            stored_rows.append(stored_row)
+                            key_values = (
+                                stored_row.get("lottery_type"),
+                                stored_row.get("strategy_id"),
+                                stored_row.get("strategy_version"),
+                            )
+                            if all(isinstance(value, str) for value in key_values):
+                                stored_by_key[cast(tuple[str, str, str], key_values)] = stored_row
+            seeded_descriptors = {
+                descriptor.strategy_id: descriptor
+                for descriptor in production_catalog().list(lottery_type=LotteryType.BIG_LOTTO)
+                if "randomness:PROCESS_GLOBAL_UNSEEDED_MATH_RANDOM_EQUIVALENT"
+                in descriptor.provenance
+            }
             rows: list[JsonObject] = []
             for item in inventory.items:
                 if lottery_type is not None and item.lottery_type is not lottery_type:
@@ -576,6 +618,12 @@ def create_replay_backfill_router(store: SQLiteBackfillStore | None) -> APIRoute
                         item.execution_capability is ReplayExecutionCapability.EXECUTABLE
                         and (source_row is None or source_row["executable"])
                         and item_data_status not in {"CODE_ONLY", "ARTIFACT_ONLY", "REJECTED"}
+                        and not (
+                            item.lottery_type is LotteryType.BIG_LOTTO
+                            and item.strategy_id in seeded_descriptors
+                            and item.strategy_version
+                            == seeded_descriptors[item.strategy_id].version
+                        )
                     ),
                     "reconstructable": item.reconstructable,
                     "wrapper_callable": item.wrapper_callable,
@@ -598,6 +646,150 @@ def create_replay_backfill_router(store: SQLiteBackfillStore | None) -> APIRoute
                 }
                 row.update(_strategy_history_view(item, selected_snapshot, source_row))
                 rows.append(row)
+            if lottery_type in (None, LotteryType.BIG_LOTTO):
+                for descriptor in seeded_descriptors.values():
+                    version = seeded_replay_version(descriptor.version)
+                    source_row = stored_by_key.get(
+                        (LotteryType.BIG_LOTTO.value, descriptor.strategy_id, version)
+                    )
+                    seeded_status = source_row["data_status"] if source_row else "REBUILDABLE"
+                    lifecycle = descriptor.lifecycle_status.value
+                    if lifecycle_status is not None and lifecycle != lifecycle_status:
+                        continue
+                    if data_status is not None and seeded_status != data_status.value:
+                        continue
+                    if (
+                        q
+                        and q.casefold()
+                        not in (descriptor.strategy_id + " " + descriptor.strategy_name).casefold()
+                    ):
+                        continue
+                    rows.append(
+                        {
+                            "strategy_id": descriptor.strategy_id,
+                            "strategy_version": version,
+                            "display_name": descriptor.strategy_name,
+                            "lottery_type": LotteryType.BIG_LOTTO.value,
+                            "lifecycle_status": lifecycle,
+                            "inventory_lifecycle_status": lifecycle,
+                            "data_status": seeded_status,
+                            "inventory_data_status": "REBUILDABLE",
+                            "source_kind": (
+                                source_row["source_kind"] if source_row else "SEEDED_REPLAY"
+                            ),
+                            "inventory_source_kind": "SEEDED_REPLAY",
+                            "inventory_source_locator": descriptor.adapter_path,
+                            "strategy_source_identity": (
+                                source_row["source_identity"] if source_row else None
+                            ),
+                            "executable": (
+                                descriptor.executable
+                                and (source_row is None or source_row["executable"])
+                                and seeded_status not in {"CODE_ONLY", "ARTIFACT_ONLY", "REJECTED"}
+                            ),
+                            "reconstructable": True,
+                            "wrapper_callable": True,
+                            "backfill_native_binding": True,
+                            "backfill_native_binding_sources": [],
+                            "backfill_runnable": descriptor.executable,
+                            "execution_block_reason": None,
+                            "available_target_count": (
+                                source_row["available_target_count"] if source_row else 0
+                            ),
+                            "training_status": (
+                                source_row["training_status"] if source_row else "NOT_TRAINABLE"
+                            ),
+                            "history_status": "NO_HISTORY",
+                            "history_statuses": ["NO_HISTORY"],
+                            "history_run_id": run_id,
+                            "history_scope": (
+                                "EXPLICIT_RUN_ID"
+                                if run_id is not None
+                                else "LATEST_RUN_BY_CREATED_AT_PER_LOTTERY_TYPE"
+                            ),
+                            "history_source_identity_status": "UNKNOWN",
+                            "history_counts": {
+                                "expected_cell_count": 0,
+                                "persisted_cell_count": 0,
+                                "saved_prediction_cell_count": 0,
+                                "saved_ticket_count": 0,
+                                "pending_cell_count": 0,
+                                "execution_status_counts": {
+                                    status: 0
+                                    for status in (
+                                        "COMPLETE",
+                                        "FAILED",
+                                        "NOT_ELIGIBLE",
+                                        "TYPED_CLOSURE",
+                                        "MISSING",
+                                        "PARTIAL",
+                                        "ARTIFACT_ONLY",
+                                    )
+                                },
+                            },
+                        }
+                    )
+            existing_keys = {
+                (row["lottery_type"], row["strategy_id"], row["strategy_version"]) for row in rows
+            }
+            for source_row in stored_rows:
+                key = (
+                    source_row.get("lottery_type"),
+                    source_row.get("strategy_id"),
+                    source_row.get("strategy_version"),
+                )
+                if key in existing_keys or not all(isinstance(value, str) for value in key):
+                    continue
+                if (
+                    lifecycle_status is not None
+                    and source_row.get("lifecycle_status") != lifecycle_status
+                ):
+                    continue
+                if data_status is not None and source_row.get("data_status") != data_status.value:
+                    continue
+                if (
+                    q
+                    and q.casefold()
+                    not in (
+                        str(source_row.get("strategy_id", ""))
+                        + " "
+                        + str(source_row.get("display_name", ""))
+                    ).casefold()
+                ):
+                    continue
+                rows.append(
+                    {
+                        **source_row,
+                        "inventory_lifecycle_status": source_row.get("lifecycle_status"),
+                        "inventory_data_status": source_row.get("data_status"),
+                        "inventory_source_kind": source_row.get("source_kind"),
+                        "inventory_source_locator": None,
+                        "strategy_source_identity": source_row.get("source_identity"),
+                        "reconstructable": None,
+                        "wrapper_callable": None,
+                        "backfill_native_binding": None,
+                        "backfill_native_binding_sources": [],
+                        "backfill_runnable": source_row.get("executable"),
+                        "execution_block_reason": None,
+                        "history_status": "HAS_HISTORY",
+                        "history_statuses": ["HAS_HISTORY"],
+                        "history_run_id": run_id,
+                        "history_scope": (
+                            "EXPLICIT_RUN_ID"
+                            if run_id is not None
+                            else "LATEST_RUN_BY_CREATED_AT_PER_LOTTERY_TYPE"
+                        ),
+                        "history_source_identity_status": "UNKNOWN",
+                        "history_counts": {
+                            "expected_cell_count": 0,
+                            "persisted_cell_count": 0,
+                            "saved_prediction_cell_count": 0,
+                            "saved_ticket_count": 0,
+                            "pending_cell_count": 0,
+                            "execution_status_counts": {},
+                        },
+                    }
+                )
             rows.sort(
                 key=lambda row: (
                     row["lottery_type"],
@@ -944,6 +1136,12 @@ def _prediction_item(
             hits_by_position[position] = hit
     if ambiguous_hit_positions:
         identity_matches = False
+    elif (
+        tickets and len(hits) == len(tickets) and all("ticket_position" not in hit for hit in hits)
+    ):
+        # ReplayEvaluation rows are serialized in ticket order and do not carry
+        # ticket_position; bind that legacy shape only when the arrays align.
+        hits_by_position = {index: hit for index, hit in enumerate(hits, start=1)}
     identity_fields = (
         "lottery_type",
         "target_draw_id",
@@ -954,6 +1152,8 @@ def _prediction_item(
     identity_matches = identity_matches and all(
         payload.get(key) == identity.get(key) for key in identity_fields
     )
+    identity_has_run_id = isinstance(identity.get("run_id"), str)
+    identity_matches = identity_matches and identity_has_run_id
     if "run_id" in payload and payload["run_id"] != identity.get("run_id"):
         identity_matches = False
     if "cell_identity" in payload and payload["cell_identity"] != identity.get("cell_identity"):
@@ -961,8 +1161,16 @@ def _prediction_item(
     for ticket in tickets:
         if not _ticket_claims_identity_match(ticket, identity, ticket.get("ticket_position")):
             identity_matches = False
-    for hit in hits:
-        if not _ticket_claims_identity_match(hit, identity, hit.get("ticket_position")):
+    legacy_positional_hits = bool(
+        tickets
+        and len(hits) == len(tickets)
+        and all("ticket_position" not in hit for hit in hits)
+    )
+    for index, hit in enumerate(hits, start=1):
+        position = hit.get("ticket_position")
+        if type(position) is not int and legacy_positional_hits:
+            position = index
+        if not _ticket_claims_identity_match(hit, identity, position):
             identity_matches = False
     predicted: list[JsonObject] = []
     for ticket in tickets:
@@ -985,7 +1193,7 @@ def _prediction_item(
         )
         ticket_identity = {
             "lottery_type": identity["lottery_type"],
-            "run_id": identity["run_id"],
+            "run_id": identity.get("run_id"),
             "target_draw_id": identity["target_draw_id"],
             "strategy_id": identity["strategy_id"],
             "strategy_version": identity["strategy_version"],
@@ -993,8 +1201,12 @@ def _prediction_item(
         }
         predicted.append(
             {
-            "ticket_position": valid_position,
-            "ticket_identity": ticket_identity if valid_position is not None else None,
+                "ticket_position": valid_position,
+            "ticket_identity": (
+                ticket_identity
+                if valid_position is not None and identity_has_run_id
+                else None
+            ),
                 "main_numbers": main_numbers,
                 "special_numbers": (
                     [] if ticket.get("special_number") is None else [ticket["special_number"]]
@@ -1048,7 +1260,7 @@ def _prediction_item(
     )
     return {
         "lottery_type": identity["lottery_type"],
-        "run_id": identity["run_id"],
+        "run_id": identity.get("run_id"),
         "strategy_id": identity["strategy_id"],
         "strategy_version": identity["strategy_version"],
         "target_draw_number": identity["target_draw_id"],
@@ -1091,10 +1303,20 @@ def _prediction_item(
         "engine_version": payload.get("engine_version"),
         "execution_version": payload.get("execution_version"),
         "training": {
-            "training_status": training.get("training_status", "NOT_TRAINABLE"),
+            "training_status": training.get("training_status") or "UNKNOWN",
             "model_version": training.get("model_version"),
             "training_cutoff": training.get("training_cutoff"),
             "training_artifact_id": training.get("training_artifact_id"),
+            **{
+                key: training[key]
+                for key in (
+                    "training_cutoff_draw_id",
+                    "validation_first_draw_id",
+                    "validation_last_draw_id",
+                    "validation_draw_count",
+                )
+                if key in training
+            },
         },
     }
 

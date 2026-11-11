@@ -85,7 +85,12 @@ def capture_version_manifest(repo: Path) -> dict[str, object]:
     if not modules or sys.version_info[:2] != (3, 13):
         raise ValueError("complete project sources and Python 3.13 are required")
     executable = Path(sys.executable).resolve(strict=True)
-    math_module = Path(math.__file__).resolve(strict=True)
+    math_module_path = getattr(math, "__file__", None)
+    math_extension_sha256 = (
+        _hash(Path(math_module_path).resolve(strict=True).read_bytes())
+        if isinstance(math_module_path, str)
+        else None
+    )
     return {
         "schema_version": MANIFEST_SCHEMA,
         "cohort_id": COHORT_ID,
@@ -100,7 +105,7 @@ def capture_version_manifest(repo: Path) -> dict[str, object]:
             "soabi": sysconfig.get_config_var("SOABI"),
             "platform": platform.platform(),
             "executable_sha256": _hash(executable.read_bytes()),
-            "math_extension_sha256": _hash(math_module.read_bytes()),
+            "math_extension_sha256": math_extension_sha256,
             "openssl": ssl.OPENSSL_VERSION,
         },
     }

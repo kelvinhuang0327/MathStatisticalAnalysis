@@ -20,6 +20,7 @@ from lottolab.strategies.adapters.base import (
     RejectPrediction,
     UnsupportedLotteryType,
 )
+from lottolab.strategies.adapters.biglotto_evolution_any_prize import PrizeHistoryRow
 from lottolab.strategies.catalog import StrategyCatalog, UnknownStrategyError, production_catalog
 
 
@@ -52,7 +53,7 @@ class AdapterIdentityMismatchError(ValueError):
 class GenerateOneBetInput:
     strategy_id: str
     lottery_type: LotteryType
-    history: tuple[CausalDrawRow, ...]
+    history: tuple[CausalDrawRow | PrizeHistoryRow, ...]
     seed: int | None = None
 
 
@@ -176,7 +177,7 @@ class GenerateOneBet:
             self._before_execution(request.strategy_id, adapter)
         try:
             adapter_execution = adapter.get_one_bet_with_emission(
-                request.history,
+                tuple(CausalDrawRow(row.draw, row.date, row.numbers) for row in request.history),
                 request.lottery_type,
             )
         except RejectPrediction:
@@ -245,7 +246,7 @@ class HistoryParseError(ValueError):
     """CLI-supplied history JSON does not match the canonical row shape."""
 
 
-def parse_history_json(raw: str) -> tuple[CausalDrawRow, ...]:
+def parse_history_json(raw: str) -> tuple[CausalDrawRow | PrizeHistoryRow, ...]:
     """Parse causal rows, optionally including each historical special number.
 
     Only shape is checked here; rule validity (range, count, uniqueness) is
@@ -259,7 +260,7 @@ def parse_history_json(raw: str) -> tuple[CausalDrawRow, ...]:
     if not isinstance(parsed, list):
         raise HistoryParseError("history JSON must be a list of draw rows")
 
-    rows: list[CausalDrawRow] = []
+    rows: list[CausalDrawRow | PrizeHistoryRow] = []
     for index, item in enumerate(cast("list[object]", parsed)):
         if not isinstance(item, dict):
             raise HistoryParseError(f"history row {index} must be an object")
@@ -278,13 +279,15 @@ def parse_history_json(raw: str) -> tuple[CausalDrawRow, ...]:
             raise HistoryParseError(f"history row {index}: numbers must be a list of integers")
         if special_number is not None and type(special_number) is not int:
             raise HistoryParseError(f"history row {index}: special_number must be an integer")
+        common = {
+            "draw": draw,
+            "date": date,
+            "numbers": tuple(cast("list[int]", numbers)),
+        }
         rows.append(
-            CausalDrawRow(
-                draw=draw,
-                date=date,
-                numbers=tuple(cast("list[int]", numbers)),
-                special_number=special_number,
-            )
+            CausalDrawRow(**common)
+            if special_number is None
+            else PrizeHistoryRow(**common, special_number=special_number)
         )
     return tuple(rows)
 
@@ -501,8 +504,13 @@ class GeneratePortfolio:
                 adapter = adapter.with_seed(request.seed)
             if self._before_execution is not None:
                 self._before_execution(request.strategy_id, adapter)
+            history = request.history
+            if not getattr(adapter, "requires_historical_special_numbers", False):
+                history = tuple(
+                    CausalDrawRow(row.draw, row.date, row.numbers) for row in history
+                )
             executions = adapter.get_bets_with_emission(
-                request.history,
+                history,
                 request.lottery_type,
             )
         except InsufficientHistory:

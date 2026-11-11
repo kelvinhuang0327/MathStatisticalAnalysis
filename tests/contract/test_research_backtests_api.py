@@ -24,6 +24,7 @@ class JsonTestClient(Protocol):
 
     def get(self, url: str, **kwargs: object) -> httpx.Response: ...
 
+
 MANIFEST_PATH = research_backtests.DEFAULT_MANIFEST_PATH
 STRATEGIES_PATH = "/api/v1/research/backtests/strategies"
 RANKINGS_PATH = "/api/v1/research/backtests/rankings"
@@ -38,8 +39,24 @@ def _pinned_csv_hashes() -> dict[str, str]:
     }
 
 
+def _has_pinned_sources() -> bool:
+    try:
+        manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
+        source_files = manifest["source_files"]
+        return isinstance(source_files, dict) and all(
+            isinstance(item, dict)
+            and isinstance(item.get("path"), str)
+            and Path(item["path"]).is_file()
+            for item in source_files.values()
+        )
+    except (OSError, ValueError, KeyError, TypeError):
+        return False
+
+
 @pytest.fixture(scope="module", autouse=True)
 def d_source_files_remain_read_only() -> Iterator[None]:
+    if not _has_pinned_sources():
+        pytest.skip("requires owner-local checksum-pinned research backtest sources")
     before = _pinned_csv_hashes()
     yield
     assert _pinned_csv_hashes() == before
@@ -303,9 +320,7 @@ def test_configured_relative_manifest_reproduces_all_three_get_results(
     # environment change must not switch its data source mid-process.
     monkeypatch.setenv(research_backtests.MANIFEST_PATH_ENV, "/etc/passwd")
     default_strategies = client.get(STRATEGIES_PATH)
-    default_formal = client.get(
-        RANKINGS_PATH, params={"K": 5, "window": "LONG", "type": "formal"}
-    )
+    default_formal = client.get(RANKINGS_PATH, params={"K": 5, "window": "LONG", "type": "formal"})
     default_descriptive = client.get(
         RANKINGS_PATH, params={"K": 5, "window": "LONG", "type": "descriptive"}
     )
@@ -378,9 +393,10 @@ def test_configured_relative_manifest_reproduces_all_three_get_results(
         "5834c3e65569990d07927e0857adaaada450dcef376fec648ce181048f12de97"
     ] * len(alternate_payloads)
     assert alternate_strategies.json()["strategies"] == default_strategies.json()["strategies"]
-    assert alternate_strategies.json()["retention_evidence"] == default_strategies.json()[
-        "retention_evidence"
-    ]
+    assert (
+        alternate_strategies.json()["retention_evidence"]
+        == default_strategies.json()["retention_evidence"]
+    )
     assert alternate_formal.json()["rankings"] == default_formal.json()["rankings"]
     assert alternate_descriptive.json()["rankings"] == default_descriptive.json()["rankings"]
     default_scores = [row for response in default_score_pages for row in response.json()["scores"]]
@@ -405,8 +421,7 @@ def test_configured_relative_manifest_reproduces_all_three_get_results(
         _response_without_local_source_locations(response.json())
         for response in alternate_responses
     ] == [
-        _response_without_local_source_locations(response.json())
-        for response in default_responses
+        _response_without_local_source_locations(response.json()) for response in default_responses
     ]
     assert alternate_strategies.json()["source_manifest"]["path"] == str(
         alternate_manifest.resolve()

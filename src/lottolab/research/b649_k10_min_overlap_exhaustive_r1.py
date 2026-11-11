@@ -1,7 +1,7 @@
 """Exhaustive K=10 minimum pairwise-overlap portfolios for BIG_LOTTO.
 
 The overlap mass is ``sum_n C(r_n, 2)``. Scoring of a stored portfolio uses
-the resource-aware exact dispatcher and nothing else.
+``b649_official_any_prize_exact.evaluate_portfolio`` and nothing else.
 
 ``RECORD_PATH`` is the compact mass-11/mass-12 proof certificate. The full
 enumeration artifacts stay in donor commit ``1ad73707`` and are located there
@@ -19,7 +19,7 @@ from math import comb
 from pathlib import Path
 from typing import cast
 
-from lottolab.research.b649_official_any_prize_engine import evaluate_portfolio
+from lottolab.research.b649_official_any_prize_exact import evaluate_portfolio
 
 POOL_SIZE = 49
 DRAW_SIZE = 6

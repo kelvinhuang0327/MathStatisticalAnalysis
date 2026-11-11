@@ -22,6 +22,15 @@ ARCHIVE_ROOT = Path(
     "/Users/kelvin/VibeCoding-WorkSpace/.task-data/20261102/"
     "NUMBER2_C_BACKTEST_RECOVERY_BUNDLE_20261102_R1"
 )
+_HAS_OWNER_ARCHIVE = all(
+    (ARCHIVE_ROOT / filename).is_file()
+    for filename in (
+        "archive_manifest.json",
+        "backtest_bundle.zip",
+        "result.json",
+        "sha256sums.txt",
+    )
+)
 EXPECTED_COUNTS = {
     "NUMBER2_D_NATIVE_SUBSET_W50_K235_20261101_R1": 15_804,
     "NUMBER2_D_DECISION_OBJECTIVE_W50_1317_20261101_R1": 15_804,
@@ -73,6 +82,7 @@ SOURCE_FIELDS = {
 }
 
 
+@pytest.mark.skipif(not _HAS_OWNER_ARCHIVE, reason="requires owner-local formal backtest archive")
 def test_verified_archive_exposes_exact_five_source_counts_and_caches() -> None:
     reader = B649ResearchRecordArchiveReader(ARCHIVE_ROOT)
 
@@ -91,6 +101,7 @@ def test_verified_archive_exposes_exact_five_source_counts_and_caches() -> None:
     assert all(source.availability_status == "AVAILABLE" for source in dataset.sources)
 
 
+@pytest.mark.skipif(not _HAS_OWNER_ARCHIVE, reason="requires owner-local formal backtest archive")
 def test_every_normalized_record_matches_its_original_jsonl_fields() -> None:
     dataset = B649ResearchRecordArchiveReader(ARCHIVE_ROOT).read()
     manifest = json.loads((ARCHIVE_ROOT / "archive_manifest.json").read_text(encoding="utf-8"))
@@ -137,6 +148,7 @@ def test_every_normalized_record_matches_its_original_jsonl_fields() -> None:
                 assert normalized.original_source_sha256 == source.artifact_sha256
 
 
+@pytest.mark.skipif(not _HAS_OWNER_ARCHIVE, reason="requires owner-local formal backtest archive")
 def test_missing_source_invalid_K_and_missing_values_keep_explicit_meaning() -> None:
     dataset = B649ResearchRecordArchiveReader(ARCHIVE_ROOT).read()
 
@@ -160,9 +172,13 @@ def test_missing_source_invalid_K_and_missing_values_keep_explicit_meaning() -> 
     assert "any_official_prize" in special.null_reasons
 
 
+@pytest.mark.skipif(not _HAS_OWNER_ARCHIVE, reason="requires owner-local formal backtest archive")
 def test_archive_checksum_and_member_escape_are_rejected(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(reader_module, "B649_RESEARCH_RECORD_ARCHIVE_SHA256", "0" * 64)
-    with pytest.raises(B649ResearchRecordArchiveDataError, match="archive checksum"):
+    with pytest.raises(
+        B649ResearchRecordArchiveDataError,
+        match=r"archive (manifest )?checksum",
+    ):
         B649ResearchRecordArchiveReader(ARCHIVE_ROOT).read()
 
     for unsafe in ("../outside.jsonl", "/absolute/member.jsonl", "folder\\item.jsonl"):
@@ -170,6 +186,7 @@ def test_archive_checksum_and_member_escape_are_rejected(monkeypatch: pytest.Mon
             reader_module._validate_archive_member_name(unsafe)
 
 
+@pytest.mark.skipif(not _HAS_OWNER_ARCHIVE, reason="requires owner-local formal backtest archive")
 def test_source_sha256_is_the_manifest_pinned_jsonl_hash() -> None:
     manifest = json.loads((ARCHIVE_ROOT / "archive_manifest.json").read_text(encoding="utf-8"))
     files = {item["archive_relative_path"]: item for item in manifest["files"]}

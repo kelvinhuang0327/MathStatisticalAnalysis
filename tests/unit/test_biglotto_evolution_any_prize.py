@@ -38,9 +38,9 @@ class Candidate(legacy._EvoStrategy):
         return list(self.ticket[:n_select])
 
 
-def rows(n: int, special: int = 7) -> tuple[CausalDrawRow, ...]:
+def rows(n: int, special: int = 7) -> tuple[subject.PrizeHistoryRow, ...]:
     return tuple(
-        CausalDrawRow(
+        subject.PrizeHistoryRow(
             str(100000001 + i),
             (date(2020, 1, 1) + timedelta(days=i)).isoformat(),
             (1, 2, 3, 4, 5, 6),
@@ -141,6 +141,7 @@ def test_history_parser_retains_special_and_rejects_non_integer() -> None:
     parsed = parse_history_json(
         '[{"draw":"123","date":"2020-01-01","numbers":[1,2,3,4,5,6],"special_number":7}]'
     )
+    assert isinstance(parsed[0], subject.PrizeHistoryRow)
     assert parsed[0].special_number == 7
     with pytest.raises(HistoryParseError, match="special_number"):
         parse_history_json(

@@ -59,7 +59,7 @@ type Portfolio = tuple[tuple[int, ...], ...]
 type Json = dict[str, Any]
 
 TASK_ID = "NUMBER2_B_K20_FIXED_POOL_KDPP_R1"
-ROOT = Path("/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis")
+ROOT = Path(__file__).resolve().parents[3]
 EVIDENCE = Path("/Users/kelvin/VibeCoding-WorkSpace/.task-data") / TASK_ID
 PIN = "032ce592c3efd0ac4b5b82a813d157224419c794"
 POOL_SHA = "d4c4c026df15fe032599bcadf7b029f644a79f95ce96b9ff25a6d93750ae38b4"

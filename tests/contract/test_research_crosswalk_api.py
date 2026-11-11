@@ -25,6 +25,7 @@ class JsonTestClient(Protocol):
 
     def get(self, url: str, **kwargs: object) -> httpx.Response: ...
 
+
 API_PATH = "/api/v1/research/backtests/identity-crosswalk"
 SOURCE_FILES = (
     "current_ad_crosswalk.csv",
@@ -32,6 +33,15 @@ SOURCE_FILES = (
     "result.json",
     "crosswalk_summary.json",
 )
+_HAS_DEFAULT_SOURCE = all(
+    (research_crosswalk.DEFAULT_SOURCE_ROOT / filename).is_file() for filename in SOURCE_FILES
+)
+
+
+@pytest.fixture(autouse=True)
+def default_crosswalk_source_is_available() -> None:
+    if not _HAS_DEFAULT_SOURCE:
+        pytest.skip("requires owner-local checksum-pinned crosswalk evidence")
 
 
 def _copy_source_root(destination: Path) -> Path:
@@ -119,9 +129,9 @@ def test_actual_http_counts_keep_scored_status_only_and_unknown_sets_separate(
     legacy = first["legacy_d58"]
     assert legacy["total"] == legacy["returned"] == 58
     assert len({row["identity_key"] for row in legacy["identities"]}) == 58
-    assert len(
-        {(row["strategy_id"], row["strategy_version"]) for row in legacy["identities"]}
-    ) == 58
+    assert (
+        len({(row["strategy_id"], row["strategy_version"]) for row in legacy["identities"]}) == 58
+    )
     assert all(row["match_status"] == "LEGACY_UNMATCHED_RETAINED" for row in legacy["identities"])
     assert all(
         row["source_identity"]["crosswalk"]["collection"] == "legacy_d58_snapshot"
@@ -146,9 +156,7 @@ def test_exact_and_partial_versions_are_filtered_without_automatic_promotion(
     assert all(row["match_status"] == "PARTIAL_IDENTITY" for row in partial)
     assert any(row["policy_version"] or row["algorithm_version"] for row in partial)
 
-    unknown_version = _get(
-        client, **{**identity, "strategy_version": "no-such-version"}
-    )
+    unknown_version = _get(client, **{**identity, "strategy_version": "no-such-version"})
     assert unknown_version["total"] == 0
     assert unknown_version["identities"] == []
 

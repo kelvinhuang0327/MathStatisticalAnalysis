@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import date
 from itertools import pairwise
 from typing import cast
@@ -37,6 +38,13 @@ from lottolab.strategies.adapters.biglotto_evolution_strict import DevelopmentPr
 _ANY_PRIZE_BASELINE = 432824 / 13983816
 
 
+@dataclass(frozen=True, slots=True)
+class PrizeHistoryRow(CausalDrawRow):
+    """Historical outcome row for the one adapter whose target needs past specials."""
+
+    special_number: int | None = None
+
+
 def _wins_any_prize(
     ticket: list[int] | tuple[int, ...], main: tuple[int, ...] | list[int], special: int
 ) -> bool:
@@ -44,19 +52,26 @@ def _wins_any_prize(
     return hits >= 3 or (hits == 2 and special in ticket)
 
 
-def _validated_prize_history(history: object, strategy_id: str) -> tuple[CausalDrawRow, ...]:
+def _validated_prize_history(history: object, strategy_id: str) -> tuple[PrizeHistoryRow, ...]:
     """Validate every historical outcome; missing special numbers are unknown, not misses."""
-    canonical = validated_history(history, strategy_id, lottery_type=LotteryType.BIG_LOTTO)
-    assert type(history) is tuple  # enforced by validated_history
-    raw_history = cast(tuple[CausalDrawRow, ...], history)
-    result: list[CausalDrawRow] = []
-    for index, (raw, row) in enumerate(zip(raw_history, canonical, strict=True)):
+    if type(history) is not tuple:
+        raise InvalidOutput(f"{strategy_id}: history must be an immutable tuple")
+    raw_history = cast(tuple[object, ...], history)
+    if any(type(raw) is not PrizeHistoryRow for raw in raw_history):
+        raise InvalidOutput(
+            f"{strategy_id}: history row must include its historical special number"
+        )
+    prize_history = cast(tuple[PrizeHistoryRow, ...], raw_history)
+    generic_rows = tuple(CausalDrawRow(raw.draw, raw.date, raw.numbers) for raw in prize_history)
+    canonical = validated_history(generic_rows, strategy_id, lottery_type=LotteryType.BIG_LOTTO)
+    result: list[PrizeHistoryRow] = []
+    for index, (raw, row) in enumerate(zip(prize_history, canonical, strict=True)):
         special = raw.special_number
         if type(special) is not int or not 1 <= special <= 49 or special in row.numbers:
             raise InvalidOutput(
                 f"{strategy_id}: invalid or missing historical special number at {index}"
             )
-        result.append(CausalDrawRow(row.draw, row.date, row.numbers, special))
+        result.append(PrizeHistoryRow(row.draw, row.date, row.numbers, special))
     try:
         keys = tuple((date.fromisoformat(row.date), int(row.draw)) for row in result)
     except ValueError as exc:
@@ -66,6 +81,17 @@ def _validated_prize_history(history: object, strategy_id: str) -> tuple[CausalD
     if any(first >= second for first, second in pairwise(keys)):
         raise InvalidOutput(f"{strategy_id}: history must be strictly chronological")
     return tuple(result)
+
+
+def _require_prize_rows(
+    history: tuple[CausalDrawRow, ...], strategy_id: str
+) -> tuple[PrizeHistoryRow, ...]:
+    """Narrow the shared evolution interface only after checking its row types."""
+    if any(type(row) is not PrizeHistoryRow for row in history):
+        raise InvalidOutput(
+            f"{strategy_id}: history row must include its historical special number"
+        )
+    return cast(tuple[PrizeHistoryRow, ...], history)
 
 
 def _evaluate_any_prize(
@@ -152,18 +178,20 @@ class BigLottoAnyPrizeEvolutionAdapter(BigLottoBoundedEvolutionAdapter):
     """Fixed-seed, frozen-candidate any-prize selection on past complete outcomes."""
 
     strategy_version = "v0.5"
+    requires_historical_special_numbers = True
 
     def _fit_candidates(
         self, development: tuple[CausalDrawRow, ...]
     ) -> tuple[legacy._EvoStrategy, ...]:
+        prize_development = _require_prize_rows(development, self.strategy_id)
         specials: list[int] = []
-        for row in development:
+        for row in prize_development:
             special = row.special_number
             if type(special) is not int:
                 raise InvalidOutput(f"{self.strategy_id}: missing development special number")
             specials.append(special)
         engine = _AnyPrizeDevelopmentEngine(
-            [list(row.numbers) for row in development],
+            [list(row.numbers) for row in prize_development],
             tuple(specials),
             seed=42,
         )
@@ -180,23 +208,24 @@ class BigLottoAnyPrizeEvolutionAdapter(BigLottoBoundedEvolutionAdapter):
     def _validation_scores(
         self, history: tuple[CausalDrawRow, ...], candidates: tuple[legacy._EvoStrategy, ...]
     ) -> tuple[tuple[int, int, str, legacy._EvoStrategy], ...]:
-        first = len(history) - _HOLDOUT_SIZE
-        draws = [list(row.numbers) for row in history]
-        prefixes = tuple(draws[:index] for index in range(first, len(history)))
+        prize_history = _require_prize_rows(history, self.strategy_id)
+        first = len(prize_history) - _HOLDOUT_SIZE
+        draws = [list(row.numbers) for row in prize_history]
+        prefixes = tuple(draws[:index] for index in range(first, len(prize_history)))
         scores: list[tuple[int, int, str, legacy._EvoStrategy]] = []
         for candidate in candidates:
             wins = 0
-            for index in range(first, len(history)):
+            for index in range(first, len(prize_history)):
                 try:
                     prediction = candidate.predict(prefixes[index - first], 6)
                 except Exception:
                     break
                 if not _valid_ticket(prediction):
                     break
-                special = history[index].special_number
+                special = prize_history[index].special_number
                 if type(special) is not int:
                     raise InvalidOutput(f"{self.strategy_id}: missing validation special number")
-                wins += int(_wins_any_prize(prediction, history[index].numbers, special))
+                wins += int(_wins_any_prize(prediction, prize_history[index].numbers, special))
             else:
                 # Equal win counts use the deterministic full candidate identity;
                 # no old main-number hit score participates in ranking.
@@ -231,7 +260,12 @@ class BigLottoAnyPrizeEvolutionAdapter(BigLottoBoundedEvolutionAdapter):
         if any(a.sort_key >= b.sort_key for a, b in pairwise(history)):
             raise ValueError("history must be strictly chronological")
         return tuple(
-            CausalDrawRow(d.draw_number, d.draw_date.isoformat(), d.main_numbers, d.special_number)
+            PrizeHistoryRow(
+                d.draw_number,
+                d.draw_date.isoformat(),
+                d.main_numbers,
+                d.special_number,
+            )
             for d in history
         )
 

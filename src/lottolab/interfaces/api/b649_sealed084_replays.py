@@ -16,6 +16,7 @@ from typing import Literal, NotRequired, TypedDict, cast
 from fastapi import APIRouter, Query
 from fastapi.responses import JSONResponse
 
+from lottolab.interfaces.api.draw_data import ApiValidationErrorResponse
 from lottolab.interfaces.api.strategy_catalog import API_PREFIX
 
 SOURCE_CUTOFF = "115000084"
@@ -655,6 +656,7 @@ def create_b649_sealed084_replays_router(source_root: Path | None) -> APIRouter:
     @router.get(
         "/b649/sealed-084-replays",
         response_model=None,
+        responses={422: {"model": ApiValidationErrorResponse}},
         operation_id="listB649Sealed084ResearchReplays",
     )
     def list_replays(

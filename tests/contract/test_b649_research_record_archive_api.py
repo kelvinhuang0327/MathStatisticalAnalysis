@@ -22,6 +22,7 @@ class JsonTestClient(Protocol):
 
     def get(self, url: str, **kwargs: object) -> httpx.Response: ...
 
+
 ARCHIVE_ROOT = Path(
     "/Users/kelvin/VibeCoding-WorkSpace/.task-data/20261102/"
     "NUMBER2_C_BACKTEST_RECOVERY_BUNDLE_20261102_R1"
@@ -34,10 +35,21 @@ EXPECTED_COUNTS = {
     "NUMBER2_D_SPECIAL_LAG_BUCKET_W50_K235_20261102_R1": 15_804,
     "NUMBER2_D_DRAW_ORDER_POSITION_SIGNAL_V1_20261102_R1": 15_804,
 }
+_HAS_ARCHIVE = all(
+    (ARCHIVE_ROOT / filename).is_file()
+    for filename in (
+        "archive_manifest.json",
+        "backtest_bundle.zip",
+        "result.json",
+        "sha256sums.txt",
+    )
+)
 
 
 @pytest.fixture(scope="module")
 def client() -> Iterator[JsonTestClient]:
+    if not _HAS_ARCHIVE:
+        pytest.skip("requires owner-local formal backtest archive evidence")
     previous = os.environ.get(B649_RESEARCH_RECORD_ARCHIVE_ROOT_ENV)
     os.environ[B649_RESEARCH_RECORD_ARCHIVE_ROOT_ENV] = str(ARCHIVE_ROOT)
     try:
@@ -240,9 +252,7 @@ def test_missing_or_checksum_invalid_archive_returns_sanitized_error(
     (invalid_root / "sha256sums.txt").write_text("", encoding="utf-8")
     monkeypatch.setenv(B649_RESEARCH_RECORD_ARCHIVE_ROOT_ENV, str(invalid_root))
 
-    response = cast(JsonTestClient, TestClient(create_app())).get(
-        f"{BASE_PATH}/record-sources"
-    )
+    response = cast(JsonTestClient, TestClient(create_app())).get(f"{BASE_PATH}/record-sources")
 
     assert response.status_code == 503
     assert response.json()["error_code"] == "B649_RESEARCH_BACKTEST_ARCHIVE_UNAVAILABLE"
@@ -250,10 +260,8 @@ def test_missing_or_checksum_invalid_archive_returns_sanitized_error(
     assert str(invalid_root) not in response.text
 
 
-def test_openapi_documents_both_read_only_routes_and_fixed_query_contract(
-    client: JsonTestClient,
-) -> None:
-    document = client.get("/openapi.json").json()
+def test_openapi_documents_both_read_only_routes_and_fixed_query_contract() -> None:
+    document = create_app().openapi()
     paths = document["paths"]
     assert paths[f"{BASE_PATH}/record-sources"]["get"]["operationId"] == (
         "listB649ResearchBacktestRecordSources"

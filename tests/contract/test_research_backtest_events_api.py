@@ -23,6 +23,10 @@ API_PATH = events_api.API_PATH
 ANCHOR_DRAW = "103000101"
 
 
+def _has_pinned_event_sources() -> bool:
+    return all(spec.path.is_file() for spec in events_api._source_specs())
+
+
 class _TestResponse(Protocol):
     status_code: int
     text: str
@@ -31,19 +35,21 @@ class _TestResponse(Protocol):
 
 
 class _TestClient(Protocol):
-    def get(
-        self, url: str, *, params: Mapping[str, Any] | None = None
-    ) -> _TestResponse: ...
+    def get(self, url: str, *, params: Mapping[str, Any] | None = None) -> _TestResponse: ...
 
 
 @pytest.fixture(scope="module")
 def client() -> Iterator[_TestClient]:
+    if not _has_pinned_event_sources():
+        pytest.skip("requires owner-local checksum-pinned K5 event evidence")
     with TestClient(create_app()) as test_client:
         yield cast(_TestClient, test_client)
 
 
 @pytest.fixture(scope="module")
 def source_index() -> events_api.EventIndex:
+    if not _has_pinned_event_sources():
+        pytest.skip("requires owner-local checksum-pinned K5 event evidence")
     return events_api.load_event_index()
 
 
@@ -63,10 +69,13 @@ def _identity_params(policy: tuple[Any, ...], **extra: Any) -> dict[str, Any]:
     }
 
 
-def test_create_app_registers_and_serves_source_anchored_draw_events(
+def test_route_is_registered_without_owner_local_event_evidence() -> None:
+    assert API_PATH in create_app().openapi()["paths"]
+
+
+def test_create_app_serves_source_anchored_draw_events(
     client: Any, source_index: events_api.EventIndex
 ) -> None:
-    assert API_PATH in create_app().openapi()["paths"]
     for policy in events_api.POLICY_IDENTITIES:
         response = client.get(
             API_PATH,
@@ -250,6 +259,8 @@ def test_pairing_rejects_orphans_duplicates_and_conflicting_metadata(
 def test_changed_pinned_source_fails_closed_without_returning_another_version(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
+    if not _has_pinned_event_sources():
+        pytest.skip("requires owner-local checksum-pinned K5 event evidence")
     specs = list(events_api._source_specs())
     changed_path = tmp_path / specs[0].file_name
     changed_path.write_bytes(specs[0].path.read_bytes() + b" ")

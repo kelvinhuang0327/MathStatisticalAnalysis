@@ -61,7 +61,7 @@ export interface paths {
                         }
                   422: {
                           content: {
-                                    "application/json": components['schemas']["HTTPValidationError"]
+                                    "application/json": components['schemas']["ApiValidationErrorResponse"]
                                   }
                         }
                 }
@@ -3287,7 +3287,6 @@ export interface components {
           "draw": string
           "date": string
           "numbers": Array<number>
-          "special_number"?: number | null
         }
     "GenerateBetRequest": {
           "strategy_id": string
@@ -3306,9 +3305,6 @@ export interface components {
     "GenerateLiveZoneSplitBetsStatus": "OK" | "INVALID_REQUEST" | "INVALID_OUTPUT" | "EXECUTION_ERROR"
     "GenerateOneBetReason": "REJECTED_BY_STRATEGY" | "INSUFFICIENT_HISTORY" | "UNKNOWN_STRATEGY" | "ADAPTER_NOT_INJECTED" | "UNSUPPORTED_LOTTERY_TYPE" | "INVALID_OUTPUT" | "REPLAY_ERROR" | "STRATEGY_IS_PORTFOLIO"
     "GenerateOneBetStatus": "OK" | "REJECTED" | "INSUFFICIENT_HISTORY" | "STRATEGY_UNAVAILABLE" | "INVALID_OUTPUT" | "REPLAY_ERROR" | "WRONG_RESPONSE_PATH"
-    "HTTPValidationError": {
-          "detail"?: Array<components['schemas']["ValidationError"]>
-        }
     "HistoricalDrawIdentityView": {
           "draw_number": string
           "draw_date": string
@@ -4480,6 +4476,10 @@ export interface components {
           "model_version"?: string | null
           "training_cutoff"?: string | null
           "training_artifact_id"?: string | null
+          "training_cutoff_draw_id"?: string | null
+          "validation_first_draw_id"?: string | null
+          "validation_last_draw_id"?: string | null
+          "validation_draw_count"?: number | null
         }
     "ReplayCellStatus": "NOT_ELIGIBLE" | "COMPLETE" | "TYPED_CLOSURE" | "FAILED" | "MISSING" | "PARTIAL"
     "ReplayDataStatus": "HAS_HISTORY" | "REBUILDABLE" | "REBUILDABLE" | "NO_HISTORY" | "ARTIFACT_ONLY" | "CODE_ONLY" | "REJECTED"
@@ -5042,13 +5042,6 @@ export interface components {
           "tier_id": string
           "tier_order": number
           "count": number
-        }
-    "ValidationError": {
-          "loc": Array<string | number>
-          "msg": string
-          "type": string
-          "input"?: unknown
-          "ctx"?: Record<string, unknown>
         }
     "WindowDefinitionView": {
           "window_kind": string

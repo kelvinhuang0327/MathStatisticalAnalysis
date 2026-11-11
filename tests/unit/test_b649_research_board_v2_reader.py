@@ -15,8 +15,15 @@ V2_ROOT = Path(
     "/Users/kelvin/VibeCoding-WorkSpace/.task-data/20261102/"
     "NUMBER2_D_LMS_HUMAN_BOARD_V2_INTEGRATION_20261102_R1"
 )
+_HAS_V2_SOURCE = all(
+    (V2_ROOT / filename).is_file()
+    for filename in ("source_manifest.json", "result.json", "integration_summary.json")
+)
 
 
+@pytest.mark.skipif(
+    not _HAS_V2_SOURCE, reason="requires owner-local checksum-pinned V2 board evidence"
+)
 def test_reader_verifies_source_and_preserves_all_v2_rows() -> None:
     dataset = B649ResearchBoardV2Reader(V2_ROOT).read()
 
@@ -60,6 +67,9 @@ def test_reader_verifies_source_and_preserves_all_v2_rows() -> None:
     )
 
 
+@pytest.mark.skipif(
+    not _HAS_V2_SOURCE, reason="requires owner-local checksum-pinned V2 board evidence"
+)
 def test_reader_rejects_an_output_that_fails_its_manifest_checksum(tmp_path: Path) -> None:
     for filename in ("source_manifest.json", "result.json", "integration_summary.json"):
         shutil.copyfile(V2_ROOT / filename, tmp_path / filename)

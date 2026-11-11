@@ -359,10 +359,17 @@ def authorized_openapi_paths() -> dict[str, dict[str, object]]:
     return {
         "/api/health": {"get": {}},
         "/api/b649/canonical-forecast/current": {"get": {}},
+        "/api/v1/b649/sealed-084-replays/status": {"get": {}},
+        "/api/v1/b649/sealed-084-replays": {"get": {}},
         "/api/v1/strategies": {"get": {}},
         "/api/v1/strategy-overview": {"get": {}},
         "/api/v1/strategy-evidence": {"get": {}},
         "/api/v1/strategy-matrix/structural": {"get": {}},
+        "/api/v1/b649-research-backtests/record-sources": {"get": {}},
+        "/api/v1/b649-research-backtests/records": {"get": {}},
+        "/api/v1/b649-research-backtests/summary": {"get": {}},
+        "/api/v1/b649-research-backtests/methods": {"get": {}},
+        "/api/v1/b649-research-backtests/rankings": {"get": {}},
         "/api/v1/b649-multi-ticket-records": {"get": {}},
         "/api/v1/b649-multi-ticket-records/summary": {"get": {}},
         "/api/v1/b649-exact-native-records": {"get": {}},
@@ -470,6 +477,11 @@ def authorized_openapi_paths() -> dict[str, dict[str, object]]:
             "random-baseline-evidence"
         ): {"get": {}},
         "/api/v1/replay-execution": {"post": {}},
+        "/api/v1/research/backtests/draw-events": {"get": {}},
+        "/api/v1/research/backtests/strategies": {"get": {}},
+        "/api/v1/research/backtests/rankings": {"get": {}},
+        "/api/v1/research/backtests/scores": {"get": {}},
+        "/api/v1/research/backtests/identity-crosswalk": {"get": {}},
         "/api/v1/replay-rankings/optimal": {"get": {}},
         "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}": {"get": {}},
         "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/predictions": {"get": {}},
@@ -504,7 +516,7 @@ def test_smoke_accepts_exact_replay_backfill_and_inventory_get_operations() -> N
         or path == "/api/v1/replay-strategy-inventory"
     } == expected_replay_paths
     assert all(paths[path] == {"get": {}} for path in expected_replay_paths)
-    assert len(paths) == 78
+    assert len(paths) == 90
     validate_openapi_payload({"paths": paths})
 
 

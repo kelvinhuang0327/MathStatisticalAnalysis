@@ -510,7 +510,7 @@ class SQLiteBackfillStore:
                             source.get("source", source.get("source_kind", "NATIVE_REPLAY")),
                             1,
                             len(manifest.get("targets", [])),
-                            source.get("training_status", "NOT_TRAINABLE"),
+                            source.get("training_status", "UNKNOWN"),
                             source.get("fingerprint", strategy.get("fingerprint") or ""),
                         ),
                     )
@@ -859,7 +859,7 @@ class SQLiteBackfillStore:
             "INSERT OR REPLACE INTO replay_backfill_training VALUES(?,?,?,?,?,?,?,?)",
             (
                 result["cell_identity"],
-                training.get("training_status", "NOT_TRAINABLE"),
+                training.get("training_status", "UNKNOWN"),
                 training.get("model_version"),
                 training.get("training_cutoff"),
                 training.get("training_artifact_id"),

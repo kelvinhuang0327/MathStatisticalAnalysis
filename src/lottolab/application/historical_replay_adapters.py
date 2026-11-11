@@ -224,7 +224,6 @@ class PowerLottoReplayAdapter(_PrizeEvaluatingAdapter):
                 draw=row.draw,
                 date=row.date,
                 numbers=row.numbers,
-                special_number=row.second_number,
             )
             for row in p638_rows
         )

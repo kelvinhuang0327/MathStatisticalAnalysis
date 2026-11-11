@@ -152,7 +152,13 @@ def test_distinct_combinations_do_not_establish_import_qualification(tmp_path: P
 
 def test_existing_metric_display_is_unchanged_for_complete_tickets(tmp_path: Path) -> None:
     _, original, _ = _fixture(tmp_path, [A, B, A, B, C])
-    original["hit_details"] = [{"zone1_hits": 3, "zone2_hit": False, "prize_tier": "SIXTH"}]
+    original["hit_details"] = [
+        {"zone1_hits": 3, "zone2_hit": False, "prize_tier": "SIXTH"},
+        *(
+            {"zone1_hits": 0, "zone2_hit": False, "prize_tier": None}
+            for _ in range(4)
+        ),
+    ]
     result = _prediction_item(original, _identity_for(original), None)
     assert result["portfolio_any_prize"] is True
     assert result["best_main_hits"] == 3

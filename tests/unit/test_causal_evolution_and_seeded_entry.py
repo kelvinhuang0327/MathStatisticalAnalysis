@@ -239,8 +239,8 @@ def test_normal_cli_executes_seeded_strategy_without_database(
         for r in rows
     )
     monkeypatch.setattr(replay_cli, "SQLiteBackfillStore", MemoryStore)
-    def validate_database_path(_path: Path) -> None:
-        return None
+    def validate_database_path(path: Path) -> Path:
+        return path
 
     def source_database_hash(_path: Path) -> str:
         return "source-hash"
@@ -253,6 +253,7 @@ def test_normal_cli_executes_seeded_strategy_without_database(
     monkeypatch.setattr(replay_cli, "load_draw_snapshot", load_draw_snapshot)
     monkeypatch.setattr(replay_cli, "execution_source_identity", lambda: "test-source")
     strategy_id = "legacy_biglotto__frontend_ml_features__3a4324bc2aa9"
+    test_database_root = Path(replay_cli.tempfile.gettempdir()) / "msa-pytest.seeded-cli"
     rc = replay_cli.main(
         [
             "--lottery-type",
@@ -260,12 +261,13 @@ def test_normal_cli_executes_seeded_strategy_without_database(
             "--source-database",
             "/not-read/source",
             "--database",
-            "/not-written/output",
+            str(test_database_root / "replay.sqlite"),
             "--strategy-id",
             strategy_id,
             "--latest",
             "3",
-        ]
+        ],
+        test_only_external_database_root=test_database_root,
     )
     assert rc == 0 and len(stores) == 1 and len(stores[0].rows) == 3
     assert all(

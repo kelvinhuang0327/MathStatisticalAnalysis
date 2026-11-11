@@ -34,7 +34,6 @@ class GenerateBetHistoryRow(BaseModel):
     draw: str = Field(min_length=1, max_length=64)
     date: str = Field(min_length=1, max_length=64)
     numbers: list[StrictInt] = Field(max_length=20)
-    special_number: StrictInt | None = None
 
 
 class GenerateBetRequest(BaseModel):
@@ -72,7 +71,6 @@ def create_generate_bet_router(generate_one_bet: GenerateOneBet) -> APIRouter:
                 draw=row.draw,
                 date=row.date,
                 numbers=tuple(row.numbers),
-                special_number=row.special_number,
             )
             for row in request.history
         )

@@ -14,6 +14,7 @@ import {
   type FullStrategyArchivePerformanceFilter,
   type FullStrategyArchiveStatusFilter,
 } from './fullStrategyArchive'
+import V2BacktestResearchBoard from './V2BacktestResearchBoard.vue'
 import type { B649MultiTicketRecord } from '../../api/b649MultiTicketRecords'
 
 const records = ref<B649MultiTicketRecord[]>([])
@@ -22,6 +23,7 @@ const state = ref<'loading' | 'ready' | 'empty' | 'error'>('loading')
 const errorMessage = ref('')
 const statusFilter = ref<FullStrategyArchiveStatusFilter>('ALL')
 const performanceFilter = ref<FullStrategyArchivePerformanceFilter>('ALL')
+const showV2ResearchBoard = ref(false)
 
 let requestController: AbortController | null = null
 let requestGeneration = 0
@@ -292,6 +294,19 @@ onBeforeUnmount(() => {
         </table>
       </div>
     </template>
+
+    <div class="archive-v2-launcher">
+      <button
+        type="button"
+        class="archive-button"
+        aria-label="V2 回測研究看板"
+        :aria-expanded="showV2ResearchBoard"
+        @click="showV2ResearchBoard = !showV2ResearchBoard"
+      >
+        {{ showV2ResearchBoard ? '收起 V2 回測研究看板' : '開啟 V2 回測研究看板' }}
+      </button>
+    </div>
+    <V2BacktestResearchBoard v-if="showV2ResearchBoard" />
   </section>
 </template>
 
@@ -304,6 +319,7 @@ onBeforeUnmount(() => {
 .archive-note { margin: 0; color: var(--text-secondary); font-size: 13px; line-height: 1.6; }
 .archive-note code { overflow-wrap: anywhere; }
 .archive-controls { display: flex; align-items: flex-end; flex-wrap: wrap; gap: 12px; }
+.archive-v2-launcher { display: flex; justify-content: flex-start; }
 .archive-controls label { display: grid; gap: 5px; color: var(--text-secondary); font-size: 12px; }
 .archive-controls select, .archive-button, .archive-history-link { min-height: 38px; padding: 9px 11px; border: 1px solid var(--border-color); border-radius: var(--radius-md); background: var(--bg-tertiary); color: var(--text-primary); font: inherit; }
 .archive-controls select { min-width: 210px; }

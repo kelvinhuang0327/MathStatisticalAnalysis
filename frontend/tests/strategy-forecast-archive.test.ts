@@ -389,6 +389,36 @@ describe('FullStrategyBacktestArchive', () => {
     wrapper.unmount()
   })
 
+  it('loads the V2 research board only when requested', async () => {
+    vi.mocked(fetchB649MultiTicketSummary).mockResolvedValue(
+      summaryFor({ total: 0, backtested: 0, closed: 0, aliases: 0 }),
+    )
+    vi.mocked(fetchB649MultiTicketRecords).mockResolvedValue(page([], 0, 0))
+
+    const wrapper = mount(FullStrategyBacktestArchive, {
+      global: {
+        stubs: {
+          V2BacktestResearchBoard: {
+            template: '<div data-testid="v2-board-stub">V2 研究看板</div>',
+          },
+        },
+      },
+    })
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="v2-board-stub"]').exists()).toBe(false)
+    const toggle = wrapper.get('button[aria-label="V2 回測研究看板"]')
+    expect(toggle.attributes('aria-expanded')).toBe('false')
+
+    await toggle.trigger('click')
+    expect(toggle.attributes('aria-expanded')).toBe('true')
+    expect(wrapper.find('[data-testid="v2-board-stub"]').exists()).toBe(true)
+
+    await toggle.trigger('click')
+    expect(wrapper.find('[data-testid="v2-board-stub"]').exists()).toBe(false)
+    wrapper.unmount()
+  })
+
   it('renders a failed API request as an error instead of an empty result', async () => {
     vi.mocked(fetchB649MultiTicketSummary).mockRejectedValue(new Error('summary unavailable'))
     const wrapper = mount(FullStrategyBacktestArchive)

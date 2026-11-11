@@ -229,7 +229,9 @@ function isPredictionItem(value: unknown): value is ReplayBackfillPredictionItem
     isString(value.target_draw_number) &&
     isString(value.target_draw_date) &&
     isString(value.prediction_status) &&
-    isResearchPortfolioQualification(value.research_portfolio_qualification) &&
+    (value.research_portfolio_qualification === undefined ||
+      value.research_portfolio_qualification === null ||
+      isResearchPortfolioQualification(value.research_portfolio_qualification)) &&
     Array.isArray(value.predicted_tickets) &&
     value.predicted_tickets.every(isTicket) &&
     isNumberArray(value.actual_main_numbers) &&

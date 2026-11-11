@@ -18551,7 +18551,14 @@
             "title": "Prediction Status"
           },
           "research_portfolio_qualification": {
-            "$ref": "#/components/schemas/ReplayBackfillResearchPortfolioQualificationView"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReplayBackfillResearchPortfolioQualificationView"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "predicted_tickets": {
             "items": {
@@ -18748,7 +18755,6 @@
           "target_draw_number",
           "target_draw_date",
           "prediction_status",
-          "research_portfolio_qualification",
           "predicted_tickets",
           "actual_main_numbers",
           "actual_special_numbers",

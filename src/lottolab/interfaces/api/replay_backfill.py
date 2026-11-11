@@ -242,7 +242,7 @@ class ReplayBackfillPredictionItemView(BaseModel):
     target_draw_number: str
     target_draw_date: str
     prediction_status: str
-    research_portfolio_qualification: ReplayBackfillResearchPortfolioQualificationView
+    research_portfolio_qualification: ReplayBackfillResearchPortfolioQualificationView | None = None
     predicted_tickets: list[ReplayBackfillPredictedTicketView]
     actual_main_numbers: list[int]
     actual_special_numbers: list[int]

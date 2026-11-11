@@ -4379,7 +4379,7 @@ export interface components {
           "target_draw_number": string
           "target_draw_date": string
           "prediction_status": string
-          "research_portfolio_qualification": components['schemas']["ReplayBackfillResearchPortfolioQualificationView"]
+          "research_portfolio_qualification"?: components['schemas']["ReplayBackfillResearchPortfolioQualificationView"] | null
           "predicted_tickets": Array<components['schemas']["ReplayBackfillPredictedTicketView"]>
           "actual_main_numbers": Array<number>
           "actual_special_numbers": Array<number>

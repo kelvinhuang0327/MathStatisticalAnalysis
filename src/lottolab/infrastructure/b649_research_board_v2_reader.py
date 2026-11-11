@@ -12,6 +12,7 @@ from collections import Counter
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
+from typing import cast
 
 B649_RESEARCH_BOARD_V2_ROOT_ENV = "LOTTOLAB_B649_RESEARCH_BOARD_V2_ROOT"
 B649_RESEARCH_BOARD_V2_TASK_ID = "NUMBER2_D_LMS_HUMAN_BOARD_V2_INTEGRATION_20261102_R1"
@@ -213,8 +214,11 @@ class B649ResearchBoardV2Reader:
         )
         _validate_source_identity(manifest, result)
 
-        declared_outputs = manifest.get("outputs")
-        if not isinstance(declared_outputs, dict) or set(declared_outputs) != _EXPECTED_OUTPUTS:
+        raw_outputs = manifest.get("outputs")
+        if not isinstance(raw_outputs, dict):
+            raise B649ResearchBoardV2DataError("the V2 manifest output inventory is invalid")
+        declared_outputs = cast(dict[str, object], raw_outputs)
+        if set(declared_outputs) != _EXPECTED_OUTPUTS:
             raise B649ResearchBoardV2DataError("the V2 manifest output inventory is invalid")
 
         output_bytes: dict[str, bytes] = {}
@@ -276,7 +280,14 @@ class B649ResearchBoardV2Reader:
         comparison_groups = integration.get("comparison_group_count")
         comparable_groups = integration.get("comparable_group_count")
         duplicate_groups = integration.get("duplicate_output_groups")
-        if comparison_groups != 504 or comparable_groups != 224 or duplicate_groups != 48:
+        if (
+            type(comparison_groups) is not int
+            or comparison_groups != 504
+            or type(comparable_groups) is not int
+            or comparable_groups != 224
+            or type(duplicate_groups) is not int
+            or duplicate_groups != 48
+        ):
             raise B649ResearchBoardV2DataError("the V2 comparison identity counts are invalid")
         if integration.get("final_method_version_count") != method_version_count:
             raise B649ResearchBoardV2DataError("the V2 integration summary is inconsistent")
@@ -312,9 +323,9 @@ class B649ResearchBoardV2Reader:
 
 def _json_object(raw: bytes, label: str) -> dict[str, object]:
     value = json.loads(raw)
-    if not isinstance(value, dict):
+    if not isinstance(value, dict) or any(not isinstance(key, str) for key in value):
         raise B649ResearchBoardV2DataError(f"{label} must contain a JSON object")
-    return value
+    return cast(dict[str, object], value)
 
 
 def _validate_source_identity(manifest: dict[str, object], result: dict[str, object]) -> None:
@@ -336,8 +347,9 @@ def _validate_source_identity(manifest: dict[str, object], result: dict[str, obj
 def _validate_declared_output(filename: str, raw: bytes, declared: object) -> None:
     if not isinstance(declared, dict):
         raise B649ResearchBoardV2DataError(f"the V2 manifest entry for {filename} is invalid")
-    expected_bytes = declared.get("bytes")
-    expected_sha256 = declared.get("sha256")
+    declared_data = cast(dict[str, object], declared)
+    expected_bytes = declared_data.get("bytes")
+    expected_sha256 = declared_data.get("sha256")
     if type(expected_bytes) is not int or not isinstance(expected_sha256, str):
         raise B649ResearchBoardV2DataError(f"the V2 manifest entry for {filename} is incomplete")
     if not _SHA256_RE.fullmatch(expected_sha256):

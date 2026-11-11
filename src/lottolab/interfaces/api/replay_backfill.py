@@ -14,12 +14,13 @@ import json
 import os
 from datetime import date
 from pathlib import Path
-from typing import Annotated, cast
+from typing import Annotated, Literal, cast
 
 from fastapi import APIRouter, FastAPI, Query
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
 
+from lottolab.application.replay_portfolio_qualification import assess_research_portfolio
 from lottolab.application.replay_strategy_inventory import load_replay_strategy_inventory
 from lottolab.domain.draws import LotteryType
 from lottolab.domain.historical_replay import ReplayCellStatus
@@ -175,8 +176,8 @@ class ReplayBackfillPredictedTicketView(BaseModel):
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    ticket_position: int
-    main_numbers: list[int]
+    ticket_position: int | None
+    main_numbers: list[int] | None
     special_numbers: list[int]
     main_hit_count: int | None
     special_hit: bool | None
@@ -210,6 +211,26 @@ class ReplayBackfillTrainingView(BaseModel):
     training_artifact_id: str | None = None
 
 
+class ReplayBackfillResearchPortfolioDuplicateGroupView(BaseModel):
+    """Duplicate main-number combinations and their persisted ticket positions."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    main_numbers: list[int]
+    positions: list[int]
+
+
+class ReplayBackfillResearchPortfolioQualificationView(BaseModel):
+    """Evidence-based uniqueness result; import qualification remains separate."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    status: Literal["PASS", "FAIL", "UNKNOWN"]
+    reason_code: str | None
+    duplicate_groups: list[ReplayBackfillResearchPortfolioDuplicateGroupView]
+    import_qualification: Literal["NOT_QUALIFIED", "UNKNOWN"]
+
+
 class ReplayBackfillPredictionItemView(BaseModel):
     """One draw prediction result with evaluated tickets and audit trails."""
 
@@ -221,6 +242,7 @@ class ReplayBackfillPredictionItemView(BaseModel):
     target_draw_number: str
     target_draw_date: str
     prediction_status: str
+    research_portfolio_qualification: ReplayBackfillResearchPortfolioQualificationView
     predicted_tickets: list[ReplayBackfillPredictedTicketView]
     actual_main_numbers: list[int]
     actual_special_numbers: list[int]
@@ -726,6 +748,7 @@ def create_replay_backfill_router(store: SQLiteBackfillStore | None) -> APIRoute
                         row["payload"],
                         row["identity"],
                         row["cutoff_source"],
+                        row.get("portfolio_context"),
                     )
                     for row in selected
                 ],
@@ -883,6 +906,7 @@ def _prediction_item(
     payload: JsonObject,
     identity: JsonObject,
     cutoff_source: JsonObject | None,
+    portfolio_context: JsonObject | None = None,
 ) -> JsonObject:
     raw_tickets: object = payload.get("predicted_tickets", [])
     raw_hits: object = payload.get("hit_details", [])
@@ -943,6 +967,13 @@ def _prediction_item(
     predicted: list[JsonObject] = []
     for ticket in tickets:
         position = ticket.get("ticket_position")
+        raw_main_numbers: object = ticket.get("main_numbers")
+        main_numbers = (
+            raw_main_numbers
+            if type(raw_main_numbers) is list
+            and all(type(number) is int for number in cast(list[object], raw_main_numbers))
+            else None
+        )
         hit = (
             hits_by_position.get(position, {})
             if (
@@ -962,9 +993,11 @@ def _prediction_item(
         }
         predicted.append(
             {
-                "ticket_position": position,
-                "ticket_identity": ticket_identity,
-                "main_numbers": ticket["main_numbers"],
+                "ticket_position": position if type(position) is int and position > 0 else None,
+                "ticket_identity": (
+                    ticket_identity if type(position) is int and position > 0 else None
+                ),
+                "main_numbers": main_numbers,
                 "special_numbers": (
                     [] if ticket.get("special_number") is None else [ticket["special_number"]]
                 ),
@@ -985,6 +1018,16 @@ def _prediction_item(
         and "prize_tier" in ticket
     ]
     fully_evaluated = bool(predicted) and len(evaluated) == len(predicted)
+    ticket_positions = [ticket.get("ticket_position") for ticket in predicted]
+    ticket_evidence_complete = tickets_are_array and len(predicted) == len(tickets) and all(
+        type(ticket.get("ticket_position")) is int
+        and ticket.get("ticket_position") > 0
+        and type(ticket.get("main_numbers")) is list
+        and len(ticket.get("main_numbers")) > 0
+        for ticket in predicted
+    )
+    if ticket_evidence_complete:
+        ticket_evidence_complete = len(set(ticket_positions)) == len(ticket_positions)
     source = payload.get("strategy_source", {})
     source = {} if type(source) is not dict else cast(JsonObject, source)
     strategy_fingerprint = payload.get("strategy_fingerprint")
@@ -997,6 +1040,13 @@ def _prediction_item(
         cutoff_source,
         identity_matches=identity_matches,
     )
+    context = portfolio_context or {}
+    research_portfolio_qualification = assess_research_portfolio(
+        raw_tickets,
+        context.get("expected_count"),
+        source_bound=context.get("source_bound") is True and identity_matches,
+        execution_status=payload.get("execution_status"),
+    )
     return {
         "lottery_type": identity["lottery_type"],
         "run_id": identity["run_id"],
@@ -1006,6 +1056,7 @@ def _prediction_item(
         "target_draw_date": identity["target_draw_date"],
         "identity_status": "VERIFIED" if identity_matches else "UNTRUSTED",
         "prediction_status": payload["execution_status"],
+        "research_portfolio_qualification": research_portfolio_qualification,
         "predicted_tickets": predicted,
         "actual_main_numbers": winning.get("main_numbers", []),
         "actual_special_numbers": (
@@ -1018,12 +1069,12 @@ def _prediction_item(
         ),
         "portfolio_any_prize": (
             any(ticket.get("prize_tier") is not None for ticket in predicted)
-            if fully_evaluated and identity_matches
+            if fully_evaluated and ticket_evidence_complete and identity_matches
             else None
         ),
         "best_main_hits": (
             max(ticket["main_hit_count"] for ticket in predicted)
-            if fully_evaluated and identity_matches
+            if fully_evaluated and ticket_evidence_complete and identity_matches
             else None
         ),
         "source_kind": source.get("source_kind", source.get("source", "NATIVE_REPLAY")),

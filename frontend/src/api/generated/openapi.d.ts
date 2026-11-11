@@ -31,6 +31,42 @@ export interface paths {
                 }
         }
     }
+  "/api/v1/b649/sealed-084-replays/status": {
+      get: {
+          parameters: Record<string, never>
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": unknown
+                                  }
+                        }
+                }
+        }
+    }
+  "/api/v1/b649/sealed-084-replays": {
+      get: {
+          parameters: {
+            "query": {
+              "strategy_id"?: string | null
+              "strategy_version"?: string | null
+              "ticket_count"?: number | null
+              "window"?: "FULL" | "RECENT_750" | "RECENT_300" | "RECENT_50" | null
+            }
+          }
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": unknown
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["HTTPValidationError"]
+                                  }
+                        }
+                }
+        }
+    }
   "/api/v1/strategies": {
       get: {
           parameters: Record<string, never>
@@ -85,6 +121,148 @@ export interface paths {
                   422: {
                           content: {
                                     "application/json": components['schemas']["ApiValidationErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
+  "/api/v1/b649-research-backtests/record-sources": {
+      get: {
+          parameters: Record<string, never>
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": components['schemas']["B649ResearchRecordSourcesResponse"]
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["ApiValidationErrorResponse"]
+                                  }
+                        }
+                  503: {
+                          content: {
+                                    "application/json": components['schemas']["B649ResearchRecordArchiveErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
+  "/api/v1/b649-research-backtests/records": {
+      get: {
+          parameters: {
+            "query": {
+              "source_task_id": string
+              "target_draw"?: string | null
+              "arm"?: string | null
+              "K"?: number | null
+              "limit"?: number
+              "offset"?: number
+            }
+          }
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": components['schemas']["B649ResearchBacktestRecordsResponse"]
+                                  }
+                        }
+                  404: {
+                          content: {
+                                    "application/json": components['schemas']["B649ResearchRecordArchiveErrorResponse"]
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["ApiValidationErrorResponse"]
+                                  }
+                        }
+                  503: {
+                          content: {
+                                    "application/json": components['schemas']["B649ResearchRecordArchiveErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
+  "/api/v1/b649-research-backtests/summary": {
+      get: {
+          parameters: Record<string, never>
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": components['schemas']["B649ResearchBoardSummaryResponse"]
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["ApiValidationErrorResponse"]
+                                  }
+                        }
+                  503: {
+                          content: {
+                                    "application/json": components['schemas']["B649ResearchBoardApiErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
+  "/api/v1/b649-research-backtests/methods": {
+      get: {
+          parameters: {
+            "query": {
+              "limit"?: number
+              "offset"?: number
+              "method_id"?: string | null
+              "research_status"?: string | null
+            }
+          }
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": components['schemas']["B649ResearchBoardMethodsPageResponse"]
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["ApiValidationErrorResponse"]
+                                  }
+                        }
+                  503: {
+                          content: {
+                                    "application/json": components['schemas']["B649ResearchBoardApiErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
+  "/api/v1/b649-research-backtests/rankings": {
+      get: {
+          parameters: {
+            "query": {
+              "cohort": string
+              "K": number
+              "window": "FULL" | "RECENT_750" | "RECENT_300" | "RECENT_50"
+              "prize_metric": string
+              "target_draw_set_identity"?: string | null
+              "eligible_draws"?: number | null
+              "limit"?: number
+              "offset"?: number
+            }
+          }
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": components['schemas']["B649ResearchBoardRankingsPageResponse"]
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["ApiValidationErrorResponse"]
+                                  }
+                        }
+                  503: {
+                          content: {
+                                    "application/json": components['schemas']["B649ResearchBoardApiErrorResponse"]
                                   }
                         }
                 }
@@ -1789,6 +1967,66 @@ export interface paths {
                 }
         }
     }
+  "/api/v1/research/backtests/draw-events": {
+      get: {
+          parameters: Record<string, never>
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": unknown
+                                  }
+                        }
+                }
+        }
+    }
+  "/api/v1/research/backtests/strategies": {
+      get: {
+          parameters: Record<string, never>
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": unknown
+                                  }
+                        }
+                }
+        }
+    }
+  "/api/v1/research/backtests/rankings": {
+      get: {
+          parameters: Record<string, never>
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": unknown
+                                  }
+                        }
+                }
+        }
+    }
+  "/api/v1/research/backtests/scores": {
+      get: {
+          parameters: Record<string, never>
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": unknown
+                                  }
+                        }
+                }
+        }
+    }
+  "/api/v1/research/backtests/identity-crosswalk": {
+      get: {
+          parameters: Record<string, never>
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": unknown
+                                  }
+                        }
+                }
+        }
+    }
   "/api/v1/replay-execution": {
       post: {
           parameters: Record<string, never>
@@ -2680,6 +2918,161 @@ export interface components {
           "general": number
         }
     "B649PrefixCount": 5 | 10 | 15 | 20
+    "B649ResearchBacktestRecordView": {
+          "source_task_id": string
+          "source_record_identity": string
+          "target_draw": string | null
+          "arm_or_method_identity": string | null
+          "K": number | null
+          "predicted_tickets": unknown
+          "actual_main_numbers": unknown
+          "actual_special_number": unknown
+          "official_prize_result": Record<string, unknown>
+          "any_official_prize": boolean | null
+          "execution_status": string | null
+          "original_source_sha256": string
+          "null_reasons": Record<string, string>
+        }
+    "B649ResearchBacktestRecordsResponse": {
+          "source_task_id": string
+          "total": number
+          "limit": number
+          "offset": number
+          "items": Array<components['schemas']["B649ResearchBacktestRecordView"]>
+        }
+    "B649ResearchBoardApiErrorResponse": {
+          "error_code": string
+          "message": string
+        }
+    "B649ResearchBoardMethodView": {
+          "method_id": string
+          "method_version": string
+          "method_family": string
+          "source_identity": Record<string, unknown> | string
+          "task_id": string
+          "evaluation_cohort": string
+          "history_window": string
+          "K": number | null
+          "official_prize_metric": string
+          "successful_draws": number | null
+          "eligible_draws": number | null
+          "success_rate": string | null
+          "baseline_identity": string
+          "baseline_success_rate": string | null
+          "paired_difference": string | null
+          "research_status": string
+          "original_advance_decision": string
+          "artifact_locator": string
+          "artifact_sha256": string
+          "backtest_artifact_locator": string
+          "backtest_artifact_sha256": string
+          "metrics_availability": string
+          "metrics_unavailable_reason": string
+          "shared_output_identity": string
+          "method_type": string
+          "auxiliary_statistics_json": Record<string, unknown>
+          "arm_identity": string
+          "lottery_type": string
+          "window": string
+          "prize_metric": string
+          "wins": number | null
+          "baseline_rate": string | null
+          "delta_percentage_points": string | null
+          "research_class": string
+          "target_draw_set_identity": string
+          "comparison_rank": number | null
+          "comparison_group_id": string
+          "comparison_status": string
+          "original_board_metrics_availability": string
+          "original_board_metrics_unavailable_reason": string
+          "board_original_advance_decision": string
+          "source_identity_chain": Array<Record<string, unknown> | string>
+          "source_shared_output_identities": Array<string>
+          "source_lineage": Array<Record<string, string>>
+          "source_record_id": string
+          "source_inventory_json": Record<string, unknown>
+          "owner_long_rank": string
+          "owner_middle_rank": string
+          "owner_short_rank": string
+          "owner_selected": string
+          "owner_reason": string
+        }
+    "B649ResearchBoardMethodsPageResponse": {
+          "items": Array<components['schemas']["B649ResearchBoardMethodView"]>
+          "total": number
+          "limit": number
+          "offset": number
+        }
+    "B649ResearchBoardRankingView": {
+          "method_id": string
+          "method_version": string
+          "arm_identity": string
+          "method_family": string
+          "task_id": string
+          "source_identity": Record<string, unknown> | string
+          "source_identity_chain": Array<Record<string, unknown> | string>
+          "lottery_type": string
+          "evaluation_cohort": string
+          "target_draw_set_identity": string
+          "window": "FULL" | "RECENT_750" | "RECENT_300" | "RECENT_50"
+          "K": number
+          "prize_metric": string
+          "wins": number
+          "eligible_draws": number
+          "success_rate": string
+          "comparison_rank": number
+          "rank_basis_identity_count": number
+          "shared_output_identity": string
+          "source_shared_output_identities": Array<string>
+          "baseline_identity": string
+          "baseline_rate": string | null
+          "delta_percentage_points": string | null
+          "research_status": string
+          "research_class": string
+          "original_advance_decision": string
+          "original_board_metrics_availability": string
+          "original_board_metrics_unavailable_reason": string
+          "board_original_advance_decision": string
+          "comparison_status": string
+          "comparison_notes": string
+          "artifact_locator": string
+          "artifact_sha256": string
+          "source_rank": number | null
+          "source_lineage": Array<Record<string, string>>
+        }
+    "B649ResearchBoardRankingsPageResponse": {
+          "items": Array<components['schemas']["B649ResearchBoardRankingView"]>
+          "total": number
+          "limit": number
+          "offset": number
+          "cohort": string
+          "K": number
+          "window": "FULL" | "RECENT_750" | "RECENT_300" | "RECENT_50"
+          "prize_metric": string
+          "target_draw_set_identity": string | null
+          "eligible_draws": number | null
+          "comparison_group_count": number
+        }
+    "B649ResearchBoardSummaryResponse": {
+          "source_task_id": string
+          "source_authority_commit": string
+          "observed_checkout_head": string
+          "source_manifest_sha256": string
+          "method_version_count": number
+          "inventory_count": number
+          "ranking_count": number
+          "metrics_availability_counts": Record<string, number>
+          "research_status_counts": Record<string, number>
+          "unavailable_count": number
+          "not_applicable_count": number
+          "comparable_group_count": number
+          "duplicate_output_groups": number
+          "windows": Array<"FULL" | "RECENT_750" | "RECENT_300" | "RECENT_50">
+          "K_values": Array<number>
+          "prize_metrics": Array<string>
+          "cohorts": Array<string>
+          "comparison_group_count": number
+        }
     "B649ResearchProgressView": {
           "total_strategy_count": number
           "reproduced_count": number
@@ -2688,6 +3081,20 @@ export interface components {
           "duplicate_alias_count": number
           "owner_decision_required_count": number
           "uncompleted_count": number
+        }
+    "B649ResearchRecordArchiveErrorResponse": {
+          "error_code": string
+          "message": string
+        }
+    "B649ResearchRecordSourceView": {
+          "source_task_id": string
+          "record_count": number
+          "research_class": string
+          "artifact_sha256": string
+          "availability_status": string
+        }
+    "B649ResearchRecordSourcesResponse": {
+          "items": Array<components['schemas']["B649ResearchRecordSourceView"]>
         }
     "B649SuccessCriterion": "M3_PLUS" | "M4_PLUS" | "M5_PLUS" | "M6" | "M2_PLUS_SPECIAL" | "M3_PLUS_SPECIAL" | "M4_PLUS_SPECIAL" | "M5_PLUS_SPECIAL"
     "BatchImportCommitRequest": {
@@ -2880,6 +3287,7 @@ export interface components {
           "draw": string
           "date": string
           "numbers": Array<number>
+          "special_number"?: number | null
         }
     "GenerateBetRequest": {
           "strategy_id": string
@@ -2898,6 +3306,9 @@ export interface components {
     "GenerateLiveZoneSplitBetsStatus": "OK" | "INVALID_REQUEST" | "INVALID_OUTPUT" | "EXECUTION_ERROR"
     "GenerateOneBetReason": "REJECTED_BY_STRATEGY" | "INSUFFICIENT_HISTORY" | "UNKNOWN_STRATEGY" | "ADAPTER_NOT_INJECTED" | "UNSUPPORTED_LOTTERY_TYPE" | "INVALID_OUTPUT" | "REPLAY_ERROR" | "STRATEGY_IS_PORTFOLIO"
     "GenerateOneBetStatus": "OK" | "REJECTED" | "INSUFFICIENT_HISTORY" | "STRATEGY_UNAVAILABLE" | "INVALID_OUTPUT" | "REPLAY_ERROR" | "WRONG_RESPONSE_PATH"
+    "HTTPValidationError": {
+          "detail"?: Array<components['schemas']["ValidationError"]>
+        }
     "HistoricalDrawIdentityView": {
           "draw_number": string
           "draw_date": string
@@ -3943,8 +4354,8 @@ export interface components {
           "runs": Record<string, components['schemas']["ReplayBackfillRunScopeView"]>
         }
     "ReplayBackfillPredictedTicketView": {
-          "ticket_position": number
-          "main_numbers": Array<number>
+          "ticket_position": number | null
+          "main_numbers": Array<number> | null
           "special_numbers": Array<number>
           "main_hit_count": number | null
           "special_hit": boolean | null
@@ -3968,6 +4379,7 @@ export interface components {
           "target_draw_number": string
           "target_draw_date": string
           "prediction_status": string
+          "research_portfolio_qualification": components['schemas']["ReplayBackfillResearchPortfolioQualificationView"]
           "predicted_tickets": Array<components['schemas']["ReplayBackfillPredictedTicketView"]>
           "actual_main_numbers": Array<number>
           "actual_special_numbers": Array<number>
@@ -3994,6 +4406,16 @@ export interface components {
           "total_count": number
           "items": Array<components['schemas']["ReplayBackfillPredictionItemView"]>
           "next_cursor": string | null
+        }
+    "ReplayBackfillResearchPortfolioDuplicateGroupView": {
+          "main_numbers": Array<number>
+          "positions": Array<number>
+        }
+    "ReplayBackfillResearchPortfolioQualificationView": {
+          "status": "PASS" | "FAIL" | "UNKNOWN"
+          "reason_code": string | null
+          "duplicate_groups": Array<components['schemas']["ReplayBackfillResearchPortfolioDuplicateGroupView"]>
+          "import_qualification": "NOT_QUALIFIED" | "UNKNOWN"
         }
     "ReplayBackfillRunScopeView": {
           "run_id"?: string | null
@@ -4620,6 +5042,13 @@ export interface components {
           "tier_id": string
           "tier_order": number
           "count": number
+        }
+    "ValidationError": {
+          "loc": Array<string | number>
+          "msg": string
+          "type": string
+          "input"?: unknown
+          "ctx"?: Record<string, unknown>
         }
     "WindowDefinitionView": {
           "window_kind": string

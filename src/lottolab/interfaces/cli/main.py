@@ -26,6 +26,7 @@ from lottolab.infrastructure.local_runtime import LocalRuntimeSupervisor
 from lottolab.interfaces.cli.b649_canonical_schedule_authority_sync import (
     b649_canonical_schedule_authority_sync_command,
 )
+from lottolab.interfaces.cli.b649_certified_k3 import b649_certified_k3_command
 from lottolab.interfaces.cli.biglotto_multi_ticket_backtest import (
     multi_ticket_backtest_command,
 )
@@ -241,6 +242,7 @@ app.command("replay-predictions")(replay_predictions_command)
 app.command("register-pre-outcome-target")(register_pre_outcome_target_command)
 app.command("supplement-future-draw-identity")(supplement_future_draw_identity_command)
 app.command("t539-p638-schedule-certificate")(t539_p638_schedule_certificate_command)
+app.command("b649-certified-k3")(b649_certified_k3_command)
 app.command("b649-canonical-schedule-authority-sync")(
     b649_canonical_schedule_authority_sync_command
 )

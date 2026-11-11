@@ -58,6 +58,127 @@
         }
       }
     },
+    "/api/v1/b649/sealed-084-replays/status": {
+      "get": {
+        "tags": [
+          "b649-sealed-084-replays"
+        ],
+        "summary": "Status",
+        "operationId": "getB649Sealed084ReplayStatus",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/b649/sealed-084-replays": {
+      "get": {
+        "tags": [
+          "b649-sealed-084-replays"
+        ],
+        "summary": "List Replays",
+        "operationId": "listB649Sealed084ResearchReplays",
+        "parameters": [
+          {
+            "name": "strategy_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Strategy Id"
+            }
+          },
+          {
+            "name": "strategy_version",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Strategy Version"
+            }
+          },
+          {
+            "name": "ticket_count",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Ticket Count"
+            }
+          },
+          {
+            "name": "window",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "FULL",
+                    "RECENT_750",
+                    "RECENT_300",
+                    "RECENT_50"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Window"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/strategies": {
       "get": {
         "tags": [
@@ -261,6 +382,483 @@
               }
             },
             "description": "Unprocessable Content"
+          }
+        }
+      }
+    },
+    "/api/v1/b649-research-backtests/record-sources": {
+      "get": {
+        "tags": [
+          "b649-research-backtests"
+        ],
+        "summary": "Record Sources",
+        "operationId": "listB649ResearchBacktestRecordSources",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/B649ResearchRecordSourcesResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiValidationErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/B649ResearchRecordArchiveErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/b649-research-backtests/records": {
+      "get": {
+        "tags": [
+          "b649-research-backtests"
+        ],
+        "summary": "Records",
+        "operationId": "listB649ResearchBacktestRecords",
+        "parameters": [
+          {
+            "name": "source_task_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 120,
+              "title": "Source Task Id"
+            }
+          },
+          {
+            "name": "target_draw",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 9,
+                  "maxLength": 9,
+                  "pattern": "^[0-9]{9}$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Target Draw"
+            }
+          },
+          {
+            "name": "arm",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 160,
+                  "pattern": "^[A-Za-z0-9_.:@+-]+$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Arm"
+            }
+          },
+          {
+            "name": "K",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "K"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 100,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/B649ResearchBacktestRecordsResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/B649ResearchRecordArchiveErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiValidationErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/B649ResearchRecordArchiveErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/b649-research-backtests/summary": {
+      "get": {
+        "tags": [
+          "b649-research-backtests"
+        ],
+        "summary": "Summary",
+        "operationId": "getB649ResearchBacktestSummary",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/B649ResearchBoardSummaryResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiValidationErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/B649ResearchBoardApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/b649-research-backtests/methods": {
+      "get": {
+        "tags": [
+          "b649-research-backtests"
+        ],
+        "summary": "Methods",
+        "operationId": "listB649ResearchBacktestMethods",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 10000,
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          },
+          {
+            "name": "method_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Method Id"
+            }
+          },
+          {
+            "name": "research_status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 100
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Research Status"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/B649ResearchBoardMethodsPageResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiValidationErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/B649ResearchBoardApiErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/b649-research-backtests/rankings": {
+      "get": {
+        "tags": [
+          "b649-research-backtests"
+        ],
+        "summary": "Rankings",
+        "operationId": "listB649ResearchBacktestRankings",
+        "parameters": [
+          {
+            "name": "cohort",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "title": "Cohort"
+            }
+          },
+          {
+            "name": "K",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 20,
+              "minimum": 1,
+              "title": "K"
+            }
+          },
+          {
+            "name": "window",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "enum": [
+                "FULL",
+                "RECENT_750",
+                "RECENT_300",
+                "RECENT_50"
+              ],
+              "type": "string",
+              "title": "Window"
+            }
+          },
+          {
+            "name": "prize_metric",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "const": "OFFICIAL_ANY_PRIZE",
+              "type": "string",
+              "title": "Prize Metric"
+            }
+          },
+          {
+            "name": "target_draw_set_identity",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Target Draw Set Identity"
+            }
+          },
+          {
+            "name": "eligible_draws",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "maximum": 100000,
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Eligible Draws"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 10000,
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/B649ResearchBoardRankingsPageResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiValidationErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/B649ResearchBoardApiErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
           }
         }
       }
@@ -5007,6 +5605,101 @@
         }
       }
     },
+    "/api/v1/research/backtests/draw-events": {
+      "get": {
+        "tags": [
+          "research-backtests"
+        ],
+        "summary": "Draw Events",
+        "operationId": "draw_events_api_v1_research_backtests_draw_events_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/research/backtests/strategies": {
+      "get": {
+        "tags": [
+          "research-backtests"
+        ],
+        "summary": "Strategies",
+        "operationId": "strategies_api_v1_research_backtests_strategies_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/research/backtests/rankings": {
+      "get": {
+        "tags": [
+          "research-backtests"
+        ],
+        "summary": "Rankings",
+        "operationId": "rankings_api_v1_research_backtests_rankings_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/research/backtests/scores": {
+      "get": {
+        "tags": [
+          "research-backtests"
+        ],
+        "summary": "Scores",
+        "operationId": "scores_api_v1_research_backtests_scores_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/research/backtests/identity-crosswalk": {
+      "get": {
+        "tags": [
+          "research-crosswalk"
+        ],
+        "summary": "Identity Crosswalk",
+        "operationId": "identity_crosswalk_api_v1_research_backtests_identity_crosswalk_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/replay-execution": {
       "post": {
         "tags": [
@@ -9063,6 +9756,1017 @@
         ],
         "title": "B649PrefixCount"
       },
+      "B649ResearchBacktestRecordView": {
+        "properties": {
+          "source_task_id": {
+            "type": "string",
+            "title": "Source Task Id"
+          },
+          "source_record_identity": {
+            "type": "string",
+            "title": "Source Record Identity"
+          },
+          "target_draw": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Draw"
+          },
+          "arm_or_method_identity": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Arm Or Method Identity"
+          },
+          "K": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "K"
+          },
+          "predicted_tickets": {
+            "title": "Predicted Tickets"
+          },
+          "actual_main_numbers": {
+            "title": "Actual Main Numbers"
+          },
+          "actual_special_number": {
+            "title": "Actual Special Number"
+          },
+          "official_prize_result": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Official Prize Result"
+          },
+          "any_official_prize": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Any Official Prize"
+          },
+          "execution_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Execution Status"
+          },
+          "original_source_sha256": {
+            "type": "string",
+            "title": "Original Source Sha256"
+          },
+          "null_reasons": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Null Reasons"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "source_task_id",
+          "source_record_identity",
+          "target_draw",
+          "arm_or_method_identity",
+          "K",
+          "predicted_tickets",
+          "actual_main_numbers",
+          "actual_special_number",
+          "official_prize_result",
+          "any_official_prize",
+          "execution_status",
+          "original_source_sha256",
+          "null_reasons"
+        ],
+        "title": "B649ResearchBacktestRecordView"
+      },
+      "B649ResearchBacktestRecordsResponse": {
+        "properties": {
+          "source_task_id": {
+            "type": "string",
+            "title": "Source Task Id"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit"
+          },
+          "offset": {
+            "type": "integer",
+            "title": "Offset"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/B649ResearchBacktestRecordView"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "source_task_id",
+          "total",
+          "limit",
+          "offset",
+          "items"
+        ],
+        "title": "B649ResearchBacktestRecordsResponse"
+      },
+      "B649ResearchBoardApiErrorResponse": {
+        "properties": {
+          "error_code": {
+            "type": "string",
+            "title": "Error Code"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "error_code",
+          "message"
+        ],
+        "title": "B649ResearchBoardApiErrorResponse"
+      },
+      "B649ResearchBoardMethodView": {
+        "properties": {
+          "method_id": {
+            "type": "string",
+            "title": "Method Id"
+          },
+          "method_version": {
+            "type": "string",
+            "title": "Method Version"
+          },
+          "method_family": {
+            "type": "string",
+            "title": "Method Family"
+          },
+          "source_identity": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Source Identity"
+          },
+          "task_id": {
+            "type": "string",
+            "title": "Task Id"
+          },
+          "evaluation_cohort": {
+            "type": "string",
+            "title": "Evaluation Cohort"
+          },
+          "history_window": {
+            "type": "string",
+            "title": "History Window"
+          },
+          "K": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "K"
+          },
+          "official_prize_metric": {
+            "type": "string",
+            "title": "Official Prize Metric"
+          },
+          "successful_draws": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Successful Draws"
+          },
+          "eligible_draws": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Eligible Draws"
+          },
+          "success_rate": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Success Rate"
+          },
+          "baseline_identity": {
+            "type": "string",
+            "title": "Baseline Identity"
+          },
+          "baseline_success_rate": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Baseline Success Rate"
+          },
+          "paired_difference": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paired Difference"
+          },
+          "research_status": {
+            "type": "string",
+            "title": "Research Status"
+          },
+          "original_advance_decision": {
+            "type": "string",
+            "title": "Original Advance Decision"
+          },
+          "artifact_locator": {
+            "type": "string",
+            "title": "Artifact Locator"
+          },
+          "artifact_sha256": {
+            "type": "string",
+            "title": "Artifact Sha256"
+          },
+          "backtest_artifact_locator": {
+            "type": "string",
+            "title": "Backtest Artifact Locator"
+          },
+          "backtest_artifact_sha256": {
+            "type": "string",
+            "title": "Backtest Artifact Sha256"
+          },
+          "metrics_availability": {
+            "type": "string",
+            "title": "Metrics Availability"
+          },
+          "metrics_unavailable_reason": {
+            "type": "string",
+            "title": "Metrics Unavailable Reason"
+          },
+          "shared_output_identity": {
+            "type": "string",
+            "title": "Shared Output Identity"
+          },
+          "method_type": {
+            "type": "string",
+            "title": "Method Type"
+          },
+          "auxiliary_statistics_json": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Auxiliary Statistics Json"
+          },
+          "arm_identity": {
+            "type": "string",
+            "title": "Arm Identity"
+          },
+          "lottery_type": {
+            "type": "string",
+            "title": "Lottery Type"
+          },
+          "window": {
+            "type": "string",
+            "title": "Window"
+          },
+          "prize_metric": {
+            "type": "string",
+            "title": "Prize Metric"
+          },
+          "wins": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Wins"
+          },
+          "baseline_rate": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Baseline Rate"
+          },
+          "delta_percentage_points": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delta Percentage Points"
+          },
+          "research_class": {
+            "type": "string",
+            "title": "Research Class"
+          },
+          "target_draw_set_identity": {
+            "type": "string",
+            "title": "Target Draw Set Identity"
+          },
+          "comparison_rank": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comparison Rank"
+          },
+          "comparison_group_id": {
+            "type": "string",
+            "title": "Comparison Group Id"
+          },
+          "comparison_status": {
+            "type": "string",
+            "title": "Comparison Status"
+          },
+          "original_board_metrics_availability": {
+            "type": "string",
+            "title": "Original Board Metrics Availability"
+          },
+          "original_board_metrics_unavailable_reason": {
+            "type": "string",
+            "title": "Original Board Metrics Unavailable Reason"
+          },
+          "board_original_advance_decision": {
+            "type": "string",
+            "title": "Board Original Advance Decision"
+          },
+          "source_identity_chain": {
+            "items": {
+              "anyOf": [
+                {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Source Identity Chain"
+          },
+          "source_shared_output_identities": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Source Shared Output Identities"
+          },
+          "source_lineage": {
+            "items": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Source Lineage"
+          },
+          "source_record_id": {
+            "type": "string",
+            "title": "Source Record Id"
+          },
+          "source_inventory_json": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Source Inventory Json"
+          },
+          "owner_long_rank": {
+            "type": "string",
+            "title": "Owner Long Rank"
+          },
+          "owner_middle_rank": {
+            "type": "string",
+            "title": "Owner Middle Rank"
+          },
+          "owner_short_rank": {
+            "type": "string",
+            "title": "Owner Short Rank"
+          },
+          "owner_selected": {
+            "type": "string",
+            "title": "Owner Selected"
+          },
+          "owner_reason": {
+            "type": "string",
+            "title": "Owner Reason"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "method_id",
+          "method_version",
+          "method_family",
+          "source_identity",
+          "task_id",
+          "evaluation_cohort",
+          "history_window",
+          "K",
+          "official_prize_metric",
+          "successful_draws",
+          "eligible_draws",
+          "success_rate",
+          "baseline_identity",
+          "baseline_success_rate",
+          "paired_difference",
+          "research_status",
+          "original_advance_decision",
+          "artifact_locator",
+          "artifact_sha256",
+          "backtest_artifact_locator",
+          "backtest_artifact_sha256",
+          "metrics_availability",
+          "metrics_unavailable_reason",
+          "shared_output_identity",
+          "method_type",
+          "auxiliary_statistics_json",
+          "arm_identity",
+          "lottery_type",
+          "window",
+          "prize_metric",
+          "wins",
+          "baseline_rate",
+          "delta_percentage_points",
+          "research_class",
+          "target_draw_set_identity",
+          "comparison_rank",
+          "comparison_group_id",
+          "comparison_status",
+          "original_board_metrics_availability",
+          "original_board_metrics_unavailable_reason",
+          "board_original_advance_decision",
+          "source_identity_chain",
+          "source_shared_output_identities",
+          "source_lineage",
+          "source_record_id",
+          "source_inventory_json",
+          "owner_long_rank",
+          "owner_middle_rank",
+          "owner_short_rank",
+          "owner_selected",
+          "owner_reason"
+        ],
+        "title": "B649ResearchBoardMethodView"
+      },
+      "B649ResearchBoardMethodsPageResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/B649ResearchBoardMethodView"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit"
+          },
+          "offset": {
+            "type": "integer",
+            "title": "Offset"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "B649ResearchBoardMethodsPageResponse"
+      },
+      "B649ResearchBoardRankingView": {
+        "properties": {
+          "method_id": {
+            "type": "string",
+            "title": "Method Id"
+          },
+          "method_version": {
+            "type": "string",
+            "title": "Method Version"
+          },
+          "arm_identity": {
+            "type": "string",
+            "title": "Arm Identity"
+          },
+          "method_family": {
+            "type": "string",
+            "title": "Method Family"
+          },
+          "task_id": {
+            "type": "string",
+            "title": "Task Id"
+          },
+          "source_identity": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Source Identity"
+          },
+          "source_identity_chain": {
+            "items": {
+              "anyOf": [
+                {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Source Identity Chain"
+          },
+          "lottery_type": {
+            "type": "string",
+            "title": "Lottery Type"
+          },
+          "evaluation_cohort": {
+            "type": "string",
+            "title": "Evaluation Cohort"
+          },
+          "target_draw_set_identity": {
+            "type": "string",
+            "title": "Target Draw Set Identity"
+          },
+          "window": {
+            "type": "string",
+            "enum": [
+              "FULL",
+              "RECENT_750",
+              "RECENT_300",
+              "RECENT_50"
+            ],
+            "title": "Window"
+          },
+          "K": {
+            "type": "integer",
+            "title": "K"
+          },
+          "prize_metric": {
+            "type": "string",
+            "title": "Prize Metric"
+          },
+          "wins": {
+            "type": "integer",
+            "title": "Wins"
+          },
+          "eligible_draws": {
+            "type": "integer",
+            "title": "Eligible Draws"
+          },
+          "success_rate": {
+            "type": "string",
+            "title": "Success Rate"
+          },
+          "comparison_rank": {
+            "type": "integer",
+            "title": "Comparison Rank"
+          },
+          "rank_basis_identity_count": {
+            "type": "integer",
+            "title": "Rank Basis Identity Count"
+          },
+          "shared_output_identity": {
+            "type": "string",
+            "title": "Shared Output Identity"
+          },
+          "source_shared_output_identities": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Source Shared Output Identities"
+          },
+          "baseline_identity": {
+            "type": "string",
+            "title": "Baseline Identity"
+          },
+          "baseline_rate": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Baseline Rate"
+          },
+          "delta_percentage_points": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delta Percentage Points"
+          },
+          "research_status": {
+            "type": "string",
+            "title": "Research Status"
+          },
+          "research_class": {
+            "type": "string",
+            "title": "Research Class"
+          },
+          "original_advance_decision": {
+            "type": "string",
+            "title": "Original Advance Decision"
+          },
+          "original_board_metrics_availability": {
+            "type": "string",
+            "title": "Original Board Metrics Availability"
+          },
+          "original_board_metrics_unavailable_reason": {
+            "type": "string",
+            "title": "Original Board Metrics Unavailable Reason"
+          },
+          "board_original_advance_decision": {
+            "type": "string",
+            "title": "Board Original Advance Decision"
+          },
+          "comparison_status": {
+            "type": "string",
+            "title": "Comparison Status"
+          },
+          "comparison_notes": {
+            "type": "string",
+            "title": "Comparison Notes"
+          },
+          "artifact_locator": {
+            "type": "string",
+            "title": "Artifact Locator"
+          },
+          "artifact_sha256": {
+            "type": "string",
+            "title": "Artifact Sha256"
+          },
+          "source_rank": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Rank"
+          },
+          "source_lineage": {
+            "items": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Source Lineage"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "method_id",
+          "method_version",
+          "arm_identity",
+          "method_family",
+          "task_id",
+          "source_identity",
+          "source_identity_chain",
+          "lottery_type",
+          "evaluation_cohort",
+          "target_draw_set_identity",
+          "window",
+          "K",
+          "prize_metric",
+          "wins",
+          "eligible_draws",
+          "success_rate",
+          "comparison_rank",
+          "rank_basis_identity_count",
+          "shared_output_identity",
+          "source_shared_output_identities",
+          "baseline_identity",
+          "baseline_rate",
+          "delta_percentage_points",
+          "research_status",
+          "research_class",
+          "original_advance_decision",
+          "original_board_metrics_availability",
+          "original_board_metrics_unavailable_reason",
+          "board_original_advance_decision",
+          "comparison_status",
+          "comparison_notes",
+          "artifact_locator",
+          "artifact_sha256",
+          "source_rank",
+          "source_lineage"
+        ],
+        "title": "B649ResearchBoardRankingView"
+      },
+      "B649ResearchBoardRankingsPageResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/B649ResearchBoardRankingView"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit"
+          },
+          "offset": {
+            "type": "integer",
+            "title": "Offset"
+          },
+          "cohort": {
+            "type": "string",
+            "title": "Cohort"
+          },
+          "K": {
+            "type": "integer",
+            "title": "K"
+          },
+          "window": {
+            "type": "string",
+            "enum": [
+              "FULL",
+              "RECENT_750",
+              "RECENT_300",
+              "RECENT_50"
+            ],
+            "title": "Window"
+          },
+          "prize_metric": {
+            "type": "string",
+            "title": "Prize Metric"
+          },
+          "target_draw_set_identity": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Draw Set Identity"
+          },
+          "eligible_draws": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Eligible Draws"
+          },
+          "comparison_group_count": {
+            "type": "integer",
+            "title": "Comparison Group Count"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset",
+          "cohort",
+          "K",
+          "window",
+          "prize_metric",
+          "target_draw_set_identity",
+          "eligible_draws",
+          "comparison_group_count"
+        ],
+        "title": "B649ResearchBoardRankingsPageResponse"
+      },
+      "B649ResearchBoardSummaryResponse": {
+        "properties": {
+          "source_task_id": {
+            "type": "string",
+            "title": "Source Task Id"
+          },
+          "source_authority_commit": {
+            "type": "string",
+            "title": "Source Authority Commit"
+          },
+          "observed_checkout_head": {
+            "type": "string",
+            "title": "Observed Checkout Head"
+          },
+          "source_manifest_sha256": {
+            "type": "string",
+            "title": "Source Manifest Sha256"
+          },
+          "method_version_count": {
+            "type": "integer",
+            "title": "Method Version Count"
+          },
+          "inventory_count": {
+            "type": "integer",
+            "title": "Inventory Count"
+          },
+          "ranking_count": {
+            "type": "integer",
+            "title": "Ranking Count"
+          },
+          "metrics_availability_counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Metrics Availability Counts"
+          },
+          "research_status_counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Research Status Counts"
+          },
+          "unavailable_count": {
+            "type": "integer",
+            "title": "Unavailable Count"
+          },
+          "not_applicable_count": {
+            "type": "integer",
+            "title": "Not Applicable Count"
+          },
+          "comparable_group_count": {
+            "type": "integer",
+            "title": "Comparable Group Count"
+          },
+          "duplicate_output_groups": {
+            "type": "integer",
+            "title": "Duplicate Output Groups"
+          },
+          "windows": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "FULL",
+                "RECENT_750",
+                "RECENT_300",
+                "RECENT_50"
+              ]
+            },
+            "type": "array",
+            "title": "Windows"
+          },
+          "K_values": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "K Values"
+          },
+          "prize_metrics": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Prize Metrics"
+          },
+          "cohorts": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Cohorts"
+          },
+          "comparison_group_count": {
+            "type": "integer",
+            "title": "Comparison Group Count"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "source_task_id",
+          "source_authority_commit",
+          "observed_checkout_head",
+          "source_manifest_sha256",
+          "method_version_count",
+          "inventory_count",
+          "ranking_count",
+          "metrics_availability_counts",
+          "research_status_counts",
+          "unavailable_count",
+          "not_applicable_count",
+          "comparable_group_count",
+          "duplicate_output_groups",
+          "windows",
+          "K_values",
+          "prize_metrics",
+          "cohorts",
+          "comparison_group_count"
+        ],
+        "title": "B649ResearchBoardSummaryResponse"
+      },
       "B649ResearchProgressView": {
         "properties": {
           "total_strategy_count": {
@@ -9106,6 +10810,76 @@
           "uncompleted_count"
         ],
         "title": "B649ResearchProgressView"
+      },
+      "B649ResearchRecordArchiveErrorResponse": {
+        "properties": {
+          "error_code": {
+            "type": "string",
+            "title": "Error Code"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "error_code",
+          "message"
+        ],
+        "title": "B649ResearchRecordArchiveErrorResponse"
+      },
+      "B649ResearchRecordSourceView": {
+        "properties": {
+          "source_task_id": {
+            "type": "string",
+            "title": "Source Task Id"
+          },
+          "record_count": {
+            "type": "integer",
+            "title": "Record Count"
+          },
+          "research_class": {
+            "type": "string",
+            "title": "Research Class"
+          },
+          "artifact_sha256": {
+            "type": "string",
+            "title": "Artifact Sha256"
+          },
+          "availability_status": {
+            "type": "string",
+            "title": "Availability Status"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "source_task_id",
+          "record_count",
+          "research_class",
+          "artifact_sha256",
+          "availability_status"
+        ],
+        "title": "B649ResearchRecordSourceView"
+      },
+      "B649ResearchRecordSourcesResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/B649ResearchRecordSourceView"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "B649ResearchRecordSourcesResponse"
       },
       "B649SuccessCriterion": {
         "type": "string",
@@ -10248,6 +12022,17 @@
             "type": "array",
             "maxItems": 20,
             "title": "Numbers"
+          },
+          "special_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Special Number"
           }
         },
         "additionalProperties": false,
@@ -10387,6 +12172,19 @@
           "WRONG_RESPONSE_PATH"
         ],
         "title": "GenerateOneBetStatus"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
       },
       "HistoricalDrawIdentityView": {
         "properties": {
@@ -16547,14 +18345,28 @@
       "ReplayBackfillPredictedTicketView": {
         "properties": {
           "ticket_position": {
-            "type": "integer",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Ticket Position"
           },
           "main_numbers": {
-            "items": {
-              "type": "integer"
-            },
-            "type": "array",
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Main Numbers"
           },
           "special_numbers": {
@@ -16737,6 +18549,9 @@
           "prediction_status": {
             "type": "string",
             "title": "Prediction Status"
+          },
+          "research_portfolio_qualification": {
+            "$ref": "#/components/schemas/ReplayBackfillResearchPortfolioQualificationView"
           },
           "predicted_tickets": {
             "items": {
@@ -16933,6 +18748,7 @@
           "target_draw_number",
           "target_draw_date",
           "prediction_status",
+          "research_portfolio_qualification",
           "predicted_tickets",
           "actual_main_numbers",
           "actual_special_numbers",
@@ -16992,6 +18808,81 @@
         ],
         "title": "ReplayBackfillPredictionPageResponse",
         "description": "Paginated replay backfill predictions response."
+      },
+      "ReplayBackfillResearchPortfolioDuplicateGroupView": {
+        "properties": {
+          "main_numbers": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Main Numbers"
+          },
+          "positions": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Positions"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "main_numbers",
+          "positions"
+        ],
+        "title": "ReplayBackfillResearchPortfolioDuplicateGroupView",
+        "description": "Duplicate main-number combinations and their persisted ticket positions."
+      },
+      "ReplayBackfillResearchPortfolioQualificationView": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "PASS",
+              "FAIL",
+              "UNKNOWN"
+            ],
+            "title": "Status"
+          },
+          "reason_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason Code"
+          },
+          "duplicate_groups": {
+            "items": {
+              "$ref": "#/components/schemas/ReplayBackfillResearchPortfolioDuplicateGroupView"
+            },
+            "type": "array",
+            "title": "Duplicate Groups"
+          },
+          "import_qualification": {
+            "type": "string",
+            "enum": [
+              "NOT_QUALIFIED",
+              "UNKNOWN"
+            ],
+            "title": "Import Qualification"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "reason_code",
+          "duplicate_groups",
+          "import_qualification"
+        ],
+        "title": "ReplayBackfillResearchPortfolioQualificationView",
+        "description": "Evidence-based uniqueness result; import qualification remains separate."
       },
       "ReplayBackfillRunScopeView": {
         "properties": {
@@ -20938,6 +22829,46 @@
           "count"
         ],
         "title": "TierCountView"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
       },
       "WindowDefinitionView": {
         "properties": {

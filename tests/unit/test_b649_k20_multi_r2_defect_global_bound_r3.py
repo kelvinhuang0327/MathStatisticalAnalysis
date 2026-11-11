@@ -70,25 +70,28 @@ def test_every_k4_overlap_coloring_matches_exact_triple_profile_caps() -> None:
     }
 
 
-def test_mass_93_and_mass_at_least_94_certificates_leave_one_residual_family() -> None:
-    certificates = defect_bound_certificates()
+def test_corrected_certificates_leave_all_four_parent_subfamilies_open() -> None:
+    certificates = defect_bound_certificates(incumbent=313_263_888)
     assert certificates["DEFECT_GRAPH_FAMILY_COUNT"] == 3
-    assert certificates["SHARED_VERTEX_R2_BOUND"] == 311_724_888
-    assert certificates["DISJOINT_R2_BOUND"] == 311_670_736
-    assert certificates["MULTI_R2_BOUND"] == 357_794_343
-    assert certificates["FAMILY_B_BOUND"] == 357_794_343
+    assert certificates["SHARED_VERTEX_R2_BOUND"] == 319_531_968
+    assert certificates["DISJOINT_R2_BOUND"] == 319_477_816
+    assert certificates["MULTI_R2_BOUND"] == 365_601_423
+    assert certificates["FAMILY_B_BOUND"] == 365_601_423
     assert certificates["FAMILY_B_STATUS"] == "BOUNDED_OPEN_RESIDUAL"
-    assert certificates["UNRESOLVED_DEFECT_GRAPH"] == (
-        "THREE_OR_MORE_HEAVY_PAIRS_WITH_OVERLAP_MASS_AT_LEAST_94"
-    )
-    assert certificates["CLOSED_DEFECT_FAMILIES"] == [
+    assert certificates["UNRESOLVED_DEFECT_GRAPH"] == "MULTIPLE_UNRESOLVED_DEFECT_FAMILIES"
+    assert certificates["CLOSED_DEFECT_FAMILIES"] == []
+    assert certificates["UNRESOLVED_DEFECT_FAMILIES"] == [
         "TWO_SHARED_VERTEX",
         "TWO_DISJOINT",
         "THREE_OR_MORE_AT_MASS_93",
+        "THREE_OR_MORE_HEAVY_PAIRS_WITH_OVERLAP_MASS_AT_LEAST_94",
     ]
-    assert certificates["MULTI_MASS_93_WITNESS"]["upper_bound"] == 305_929_560
+    assert certificates["MULTI_MASS_93_WITNESS"]["upper_bound"] == 313_736_640
     assert certificates["S2_MINIMUMS"]["THREE_OR_MORE_MASS_AT_LEAST_94"] == 66_272_164
     assert certificates["MULTI_MASS_GE_94_WITNESS"]["heavy_pair_count"] == 3
     assert certificates["MULTI_MASS_GE_94_WITNESS"]["ordinary_edge_count"] == 88
-    assert certificates["MULTI_MASS_GE_94_WITNESS"]["upper_bound"] < 357_906_542
+    assert certificates["MULTI_MASS_GE_94_WITNESS"]["upper_bound"] < 365_713_622
+    by_count = certificates["MINIMUM_MASS_MULTI_BOUNDS_BY_HEAVY_COUNT"]
+    open_counts = [int(h) for h, row in by_count.items() if row["upper_bound"] > 313_263_888]
+    assert open_counts == [3, 4, 5, 6]
     assert certificates["CP_SAT"]["STATUS"] == "NOT_RUN"

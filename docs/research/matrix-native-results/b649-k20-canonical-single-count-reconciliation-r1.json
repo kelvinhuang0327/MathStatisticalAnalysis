@@ -1,0 +1,2625 @@
+{
+  "ANALYTICAL_CERTIFICATES": {
+    "FAMILY_A": {
+      "ANCHOR_PAIR_BOUND": {
+        "CASES": {
+          "3": {
+            "anchor_pair_intersection": 3469942,
+            "local_s3_recovery_ceiling": 28542402,
+            "maximum_net_recovery_per_third_ticket": -206115,
+            "maximum_pair_overlap": 3,
+            "maximum_triple_recovery_per_third_ticket": 1585689,
+            "net_maximizing_profile": {
+              "left_only_labels": 0,
+              "left_overlap": 0,
+              "net_recovery": -206115,
+              "outside_labels": 6,
+              "pair_cost_recovery": 215600,
+              "right_only_labels": 0,
+              "right_overlap": 0,
+              "shared_labels": 0,
+              "triple_recovery": 9485
+            },
+            "s2_floor": 65802142,
+            "s3_maximizing_profile": {
+              "left_only_labels": 0,
+              "left_overlap": 3,
+              "net_recovery": -5354195,
+              "outside_labels": 3,
+              "pair_cost_recovery": 6939884,
+              "right_only_labels": 0,
+              "right_overlap": 3,
+              "shared_labels": 3,
+              "triple_recovery": 1585689
+            },
+            "upper_bound": 365048628
+          },
+          "4": {
+            "anchor_pair_intersection": 6224512,
+            "local_s3_recovery_ceiling": 81721836,
+            "maximum_net_recovery_per_third_ticket": -189840,
+            "maximum_pair_overlap": 4,
+            "maximum_triple_recovery_per_third_ticket": 4540102,
+            "net_maximizing_profile": {
+              "left_only_labels": 0,
+              "left_overlap": 0,
+              "net_recovery": -189840,
+              "outside_labels": 6,
+              "pair_cost_recovery": 215600,
+              "right_only_labels": 0,
+              "right_overlap": 0,
+              "shared_labels": 0,
+              "triple_recovery": 25760
+            },
+            "s2_floor": 68090512,
+            "s3_maximizing_profile": {
+              "left_only_labels": 0,
+              "left_overlap": 4,
+              "net_recovery": -7908922,
+              "outside_labels": 2,
+              "pair_cost_recovery": 12449024,
+              "right_only_labels": 0,
+              "right_overlap": 4,
+              "shared_labels": 4,
+              "triple_recovery": 4540102
+            },
+            "upper_bound": 362587008
+          },
+          "5": {
+            "anchor_pair_intersection": 10776332,
+            "local_s3_recovery_ceiling": 180542376,
+            "maximum_net_recovery_per_third_ticket": -159250,
+            "maximum_pair_overlap": 5,
+            "maximum_triple_recovery_per_third_ticket": 10030132,
+            "net_maximizing_profile": {
+              "left_only_labels": 0,
+              "left_overlap": 0,
+              "net_recovery": -159250,
+              "outside_labels": 6,
+              "pair_cost_recovery": 215600,
+              "right_only_labels": 0,
+              "right_overlap": 0,
+              "shared_labels": 0,
+              "triple_recovery": 56350
+            },
+            "s2_floor": 72176132,
+            "s3_maximizing_profile": {
+              "left_only_labels": 0,
+              "left_overlap": 5,
+              "net_recovery": -11522532,
+              "outside_labels": 1,
+              "pair_cost_recovery": 21552664,
+              "right_only_labels": 0,
+              "right_overlap": 5,
+              "shared_labels": 5,
+              "triple_recovery": 10030132
+            },
+            "upper_bound": 358585808
+          },
+          "6": {
+            "anchor_pair_intersection": 18611432,
+            "local_s3_recovery_ceiling": 335005776,
+            "maximum_net_recovery_per_third_ticket": -107800,
+            "maximum_pair_overlap": 6,
+            "maximum_triple_recovery_per_third_ticket": 18611432,
+            "net_maximizing_profile": {
+              "left_only_labels": 0,
+              "left_overlap": 0,
+              "net_recovery": -107800,
+              "outside_labels": 6,
+              "pair_cost_recovery": 215600,
+              "right_only_labels": 0,
+              "right_overlap": 0,
+              "shared_labels": 0,
+              "triple_recovery": 107800
+            },
+            "s2_floor": 79545032,
+            "s3_maximizing_profile": {
+              "left_only_labels": 0,
+              "left_overlap": 6,
+              "net_recovery": -18611432,
+              "outside_labels": 0,
+              "pair_cost_recovery": 37222864,
+              "right_only_labels": 0,
+              "right_overlap": 6,
+              "shared_labels": 6,
+              "triple_recovery": 18611432
+            },
+            "upper_bound": 351676808
+          }
+        },
+        "IDENTITY": "|A union B| + sum_C |C \\ (A union B)|; |C \\ (A union B)| = N-I(a)-I(b)+J(r,a,b,c)",
+        "LOCAL_PROFILE": "c shared anchor labels, u left-only, v right-only, and 6-c-u-v outside labels; c<=r, u,v<=6-r, c+u<=r, c+v<=r",
+        "LOCAL_S3_RECOVERY_CEILING_BY_R": {
+          "3": 28542402,
+          "4": 81721836,
+          "5": 180542376,
+          "6": 335005776
+        },
+        "SHARED_LABEL_INCIDENCE_CAP_BY_R": {
+          "3": 54,
+          "4": 72,
+          "5": 90,
+          "6": 108
+        },
+        "THIRD_TICKETS": 18
+      },
+      "BASE_HEAD": "12c4e62ae377b6808eb971bd6dd906bc83987918",
+      "FAMILY_A_BOUND": 365048628,
+      "FAMILY_A_STATUS": "TIGHTENED_OPEN",
+      "IMPROVEMENT_VS_PRIOR_BOUND": 599797,
+      "INCUMBENT": 313263888,
+      "NEW_PORTFOLIO_SEARCH_STARTED": "NO",
+      "PAIR_COST_CONVEXITY_EXCESS": [
+        0,
+        0,
+        655788,
+        1963542,
+        4251912,
+        8337532,
+        15706432
+      ],
+      "PAIR_INTERSECTION_COUNTS_BY_OVERLAP": [
+        107800,
+        574000,
+        1695988,
+        3469942,
+        6224512,
+        10776332,
+        18611432
+      ],
+      "PRIOR_FAMILY_A_BOUND": 365648425,
+      "PRODUCTION_MUTATION": "NONE",
+      "R3_BOUND": 365048628,
+      "R4_BOUND": 362587008,
+      "R5_BOUND": 358585808,
+      "R6_BOUND": 351676808,
+      "REMAINING_GAP": 51784740,
+      "S2_FREQUENCY_FLOOR": {
+        "BASELINE": 63838600,
+        "BY_MAXIMUM_OVERLAP": {
+          "3": 65802142,
+          "4": 68090512,
+          "5": 72176132,
+          "6": 79545032
+        },
+        "FREQUENCY_HISTOGRAM": {
+          "2": 27,
+          "3": 22
+        },
+        "PAIR_OVERLAP_MASS_FLOOR": 93,
+        "POOL_SIZE": 49,
+        "TICKET_LABEL_INCIDENCES": 120
+      },
+      "SUCCESS_A": false,
+      "SUCCESS_B": true,
+      "TASK_BRANCH": "codex/b649-k20-heavy-pair-r3plus-global-bound-r3",
+      "TASK_ID": "B649_K20_HEAVY_PAIR_R3PLUS_GLOBAL_BOUND_R3",
+      "TASK_STATUS": "CERTIFIED_FAMILY_A_BOUND_TIGHTENED"
+    },
+    "FAMILY_B": {
+      "CLOSED_DEFECT_FAMILIES": [],
+      "CP_SAT": {
+        "REASON": "The degree and wedge certificates meet Success B without a solver run.",
+        "STATUS": "NOT_RUN"
+      },
+      "DEFECT_GRAPH_FAMILY_COUNT": 3,
+      "DISJOINT_R2_BOUND": 319477816,
+      "DISJOINT_WITNESSES": {
+        "GRAPH_RELAXATION": {
+          "degree_profile": [
+            1,
+            1,
+            1,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "heavy_normal_wedge_upper": 72,
+          "heavy_pair_count": 2,
+          "heavy_wedge_upper": 0,
+          "ordinary_edge_count": 89,
+          "ordinary_wedge_upper": 1560,
+          "s2_lower_bound": 65150176,
+          "s3_upper_bound": 12399352,
+          "triangle_counts_upper": [
+            508,
+            36,
+            0,
+            0
+          ],
+          "upper_bound": 319477816
+        },
+        "MASS_93": {
+          "degree_profile": [
+            1,
+            1,
+            1,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "heavy_normal_wedge_upper": 40,
+          "heavy_pair_count": 2,
+          "heavy_wedge_upper": 0,
+          "ordinary_edge_count": 89,
+          "ordinary_wedge_upper": 825,
+          "s2_lower_bound": 65150176,
+          "s3_upper_bound": 6638856,
+          "triangle_counts_upper": [
+            268,
+            20,
+            0,
+            0
+          ],
+          "upper_bound": 313717320
+        }
+      },
+      "FAMILY_B_BOUND": 365601423,
+      "FAMILY_B_STATUS": "BOUNDED_OPEN_RESIDUAL",
+      "INCUMBENT": 313263888,
+      "MINIMUM_MASS_MULTI_BOUNDS_BY_HEAVY_COUNT": {
+        "10": {
+          "degree_profile": [
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            2,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "heavy_normal_wedge_upper": 124,
+          "heavy_pair_count": 10,
+          "heavy_wedge_upper": 19,
+          "ordinary_edge_count": 73,
+          "ordinary_wedge_upper": 757,
+          "s2_lower_bound": 70396480,
+          "s3_upper_bound": 10729026,
+          "triangle_counts_upper": [
+            232,
+            61,
+            1,
+            6
+          ],
+          "upper_bound": 312561186
+        },
+        "11": {
+          "degree_profile": [
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "heavy_normal_wedge_upper": 136,
+          "heavy_pair_count": 11,
+          "heavy_wedge_upper": 21,
+          "ordinary_edge_count": 71,
+          "ordinary_wedge_upper": 747,
+          "s2_lower_bound": 71052268,
+          "s3_upper_bound": 11255944,
+          "triangle_counts_upper": [
+            226,
+            68,
+            0,
+            7
+          ],
+          "upper_bound": 312432316
+        },
+        "12": {
+          "degree_profile": [
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "heavy_normal_wedge_upper": 144,
+          "heavy_pair_count": 12,
+          "heavy_wedge_upper": 24,
+          "ordinary_edge_count": 69,
+          "ordinary_wedge_upper": 741,
+          "s2_lower_bound": 71708056,
+          "s3_upper_bound": 11801664,
+          "triangle_counts_upper": [
+            223,
+            72,
+            0,
+            8
+          ],
+          "upper_bound": 312322248
+        },
+        "13": {
+          "degree_profile": [
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            2,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "heavy_normal_wedge_upper": 160,
+          "heavy_pair_count": 13,
+          "heavy_wedge_upper": 25,
+          "ordinary_edge_count": 67,
+          "ordinary_wedge_upper": 727,
+          "s2_lower_bound": 72363844,
+          "s3_upper_bound": 12224926,
+          "triangle_counts_upper": [
+            216,
+            79,
+            1,
+            8
+          ],
+          "upper_bound": 312089722
+        },
+        "14": {
+          "degree_profile": [
+            4,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "heavy_normal_wedge_upper": 160,
+          "heavy_pair_count": 14,
+          "heavy_wedge_upper": 30,
+          "ordinary_edge_count": 65,
+          "ordinary_wedge_upper": 705,
+          "s2_lower_bound": 73019632,
+          "s3_upper_bound": 12719056,
+          "triangle_counts_upper": [
+            208,
+            80,
+            0,
+            10
+          ],
+          "upper_bound": 311928064
+        },
+        "15": {
+          "degree_profile": [
+            6,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "heavy_normal_wedge_upper": 144,
+          "heavy_pair_count": 15,
+          "heavy_wedge_upper": 39,
+          "ordinary_edge_count": 63,
+          "ordinary_wedge_upper": 675,
+          "s2_lower_bound": 73675420,
+          "s3_upper_bound": 13199200,
+          "triangle_counts_upper": [
+            201,
+            72,
+            0,
+            13
+          ],
+          "upper_bound": 311752420
+        },
+        "16": {
+          "degree_profile": [
+            6,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            2,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "heavy_normal_wedge_upper": 160,
+          "heavy_pair_count": 16,
+          "heavy_wedge_upper": 40,
+          "ordinary_edge_count": 61,
+          "ordinary_wedge_upper": 661,
+          "s2_lower_bound": 74331208,
+          "s3_upper_bound": 13622462,
+          "triangle_counts_upper": [
+            194,
+            79,
+            1,
+            13
+          ],
+          "upper_bound": 311519894
+        },
+        "17": {
+          "degree_profile": [
+            6,
+            4,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "heavy_normal_wedge_upper": 160,
+          "heavy_pair_count": 17,
+          "heavy_wedge_upper": 45,
+          "ordinary_edge_count": 59,
+          "ordinary_wedge_upper": 639,
+          "s2_lower_bound": 74986996,
+          "s3_upper_bound": 14116592,
+          "triangle_counts_upper": [
+            186,
+            80,
+            0,
+            15
+          ],
+          "upper_bound": 311358236
+        },
+        "18": {
+          "degree_profile": [
+            6,
+            6,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "heavy_normal_wedge_upper": 144,
+          "heavy_pair_count": 18,
+          "heavy_wedge_upper": 54,
+          "ordinary_edge_count": 57,
+          "ordinary_wedge_upper": 609,
+          "s2_lower_bound": 75642784,
+          "s3_upper_bound": 14596736,
+          "triangle_counts_upper": [
+            179,
+            72,
+            0,
+            18
+          ],
+          "upper_bound": 311182592
+        },
+        "19": {
+          "degree_profile": [
+            6,
+            6,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            2,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "heavy_normal_wedge_upper": 160,
+          "heavy_pair_count": 19,
+          "heavy_wedge_upper": 55,
+          "ordinary_edge_count": 55,
+          "ordinary_wedge_upper": 595,
+          "s2_lower_bound": 76298572,
+          "s3_upper_bound": 15019998,
+          "triangle_counts_upper": [
+            172,
+            79,
+            1,
+            18
+          ],
+          "upper_bound": 310950066
+        },
+        "20": {
+          "degree_profile": [
+            6,
+            6,
+            4,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "heavy_normal_wedge_upper": 160,
+          "heavy_pair_count": 20,
+          "heavy_wedge_upper": 60,
+          "ordinary_edge_count": 53,
+          "ordinary_wedge_upper": 573,
+          "s2_lower_bound": 76954360,
+          "s3_upper_bound": 15514128,
+          "triangle_counts_upper": [
+            164,
+            80,
+            0,
+            20
+          ],
+          "upper_bound": 310788408
+        },
+        "21": {
+          "degree_profile": [
+            6,
+            6,
+            6,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "heavy_normal_wedge_upper": 144,
+          "heavy_pair_count": 21,
+          "heavy_wedge_upper": 69,
+          "ordinary_edge_count": 51,
+          "ordinary_wedge_upper": 543,
+          "s2_lower_bound": 77610148,
+          "s3_upper_bound": 15994272,
+          "triangle_counts_upper": [
+            157,
+            72,
+            0,
+            23
+          ],
+          "upper_bound": 310612764
+        },
+        "22": {
+          "degree_profile": [
+            6,
+            6,
+            6,
+            4,
+            4,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "heavy_normal_wedge_upper": 140,
+          "heavy_pair_count": 22,
+          "heavy_wedge_upper": 75,
+          "ordinary_edge_count": 49,
+          "ordinary_wedge_upper": 505,
+          "s2_lower_bound": 78265936,
+          "s3_upper_bound": 16368100,
+          "triangle_counts_upper": [
+            145,
+            70,
+            0,
+            25
+          ],
+          "upper_bound": 310330804
+        },
+        "23": {
+          "degree_profile": [
+            6,
+            6,
+            6,
+            6,
+            4,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "heavy_normal_wedge_upper": 124,
+          "heavy_pair_count": 23,
+          "heavy_wedge_upper": 84,
+          "ordinary_edge_count": 47,
+          "ordinary_wedge_upper": 471,
+          "s2_lower_bound": 78921724,
+          "s3_upper_bound": 16813300,
+          "triangle_counts_upper": [
+            136,
+            62,
+            0,
+            28
+          ],
+          "upper_bound": 310120216
+        },
+        "24": {
+          "degree_profile": [
+            6,
+            6,
+            6,
+            6,
+            6,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "heavy_normal_wedge_upper": 108,
+          "heavy_pair_count": 24,
+          "heavy_wedge_upper": 93,
+          "ordinary_edge_count": 45,
+          "ordinary_wedge_upper": 441,
+          "s2_lower_bound": 79577512,
+          "s3_upper_bound": 17293444,
+          "triangle_counts_upper": [
+            129,
+            54,
+            0,
+            31
+          ],
+          "upper_bound": 309944572
+        },
+        "25": {
+          "degree_profile": [
+            6,
+            6,
+            6,
+            6,
+            6,
+            4,
+            4,
+            3,
+            3,
+            3,
+            3,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "heavy_normal_wedge_upper": 104,
+          "heavy_pair_count": 25,
+          "heavy_wedge_upper": 99,
+          "ordinary_edge_count": 43,
+          "ordinary_wedge_upper": 403,
+          "s2_lower_bound": 80233300,
+          "s3_upper_bound": 17667272,
+          "triangle_counts_upper": [
+            117,
+            52,
+            0,
+            33
+          ],
+          "upper_bound": 309662612
+        },
+        "26": {
+          "degree_profile": [
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            4,
+            3,
+            3,
+            3,
+            3,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "heavy_normal_wedge_upper": 88,
+          "heavy_pair_count": 26,
+          "heavy_wedge_upper": 108,
+          "ordinary_edge_count": 41,
+          "ordinary_wedge_upper": 369,
+          "s2_lower_bound": 80889088,
+          "s3_upper_bound": 18112472,
+          "triangle_counts_upper": [
+            108,
+            44,
+            0,
+            36
+          ],
+          "upper_bound": 309452024
+        },
+        "27": {
+          "degree_profile": [
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            3,
+            3,
+            3,
+            3,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "heavy_normal_wedge_upper": 72,
+          "heavy_pair_count": 27,
+          "heavy_wedge_upper": 117,
+          "ordinary_edge_count": 39,
+          "ordinary_wedge_upper": 339,
+          "s2_lower_bound": 81544876,
+          "s3_upper_bound": 18592616,
+          "triangle_counts_upper": [
+            101,
+            36,
+            0,
+            39
+          ],
+          "upper_bound": 309276380
+        },
+        "28": {
+          "degree_profile": [
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            4,
+            4,
+            3,
+            3,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "heavy_normal_wedge_upper": 68,
+          "heavy_pair_count": 28,
+          "heavy_wedge_upper": 123,
+          "ordinary_edge_count": 37,
+          "ordinary_wedge_upper": 301,
+          "s2_lower_bound": 82200664,
+          "s3_upper_bound": 18966444,
+          "triangle_counts_upper": [
+            89,
+            34,
+            0,
+            41
+          ],
+          "upper_bound": 308994420
+        },
+        "29": {
+          "degree_profile": [
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            4,
+            3,
+            3,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "heavy_normal_wedge_upper": 52,
+          "heavy_pair_count": 29,
+          "heavy_wedge_upper": 132,
+          "ordinary_edge_count": 35,
+          "ordinary_wedge_upper": 267,
+          "s2_lower_bound": 82856452,
+          "s3_upper_bound": 19411644,
+          "triangle_counts_upper": [
+            80,
+            26,
+            0,
+            44
+          ],
+          "upper_bound": 308783832
+        },
+        "3": {
+          "degree_profile": [
+            3,
+            3,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "heavy_normal_wedge_upper": 36,
+          "heavy_pair_count": 3,
+          "heavy_wedge_upper": 6,
+          "ordinary_edge_count": 87,
+          "ordinary_wedge_upper": 831,
+          "s2_lower_bound": 65805964,
+          "s3_upper_bound": 7313964,
+          "triangle_counts_upper": [
+            271,
+            18,
+            0,
+            2
+          ],
+          "upper_bound": 313736640
+        },
+        "30": {
+          "degree_profile": [
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            3,
+            3,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "heavy_normal_wedge_upper": 36,
+          "heavy_pair_count": 30,
+          "heavy_wedge_upper": 141,
+          "ordinary_edge_count": 33,
+          "ordinary_wedge_upper": 237,
+          "s2_lower_bound": 83512240,
+          "s3_upper_bound": 19891788,
+          "triangle_counts_upper": [
+            73,
+            18,
+            0,
+            47
+          ],
+          "upper_bound": 308608188
+        },
+        "31": {
+          "degree_profile": [
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            4,
+            4,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "heavy_normal_wedge_upper": 32,
+          "heavy_pair_count": 31,
+          "heavy_wedge_upper": 147,
+          "ordinary_edge_count": 31,
+          "ordinary_wedge_upper": 199,
+          "s2_lower_bound": 84168028,
+          "s3_upper_bound": 20265616,
+          "triangle_counts_upper": [
+            61,
+            16,
+            0,
+            49
+          ],
+          "upper_bound": 308326228
+        },
+        "32": {
+          "degree_profile": [
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            4,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "heavy_normal_wedge_upper": 16,
+          "heavy_pair_count": 32,
+          "heavy_wedge_upper": 156,
+          "ordinary_edge_count": 29,
+          "ordinary_wedge_upper": 165,
+          "s2_lower_bound": 84823816,
+          "s3_upper_bound": 20710816,
+          "triangle_counts_upper": [
+            52,
+            8,
+            0,
+            52
+          ],
+          "upper_bound": 308115640
+        },
+        "33": {
+          "degree_profile": [
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "heavy_normal_wedge_upper": 0,
+          "heavy_pair_count": 33,
+          "heavy_wedge_upper": 165,
+          "ordinary_edge_count": 27,
+          "ordinary_wedge_upper": 135,
+          "s2_lower_bound": 85479604,
+          "s3_upper_bound": 21190960,
+          "triangle_counts_upper": [
+            45,
+            0,
+            0,
+            55
+          ],
+          "upper_bound": 307939996
+        },
+        "34": {
+          "degree_profile": [
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            2,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "heavy_normal_wedge_upper": 4,
+          "heavy_pair_count": 34,
+          "heavy_wedge_upper": 166,
+          "ordinary_edge_count": 25,
+          "ordinary_wedge_upper": 121,
+          "s2_lower_bound": 86135392,
+          "s3_upper_bound": 21318010,
+          "triangle_counts_upper": [
+            40,
+            1,
+            1,
+            55
+          ],
+          "upper_bound": 307411258
+        },
+        "35": {
+          "degree_profile": [
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            3,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "heavy_normal_wedge_upper": 4,
+          "heavy_pair_count": 35,
+          "heavy_wedge_upper": 168,
+          "ordinary_edge_count": 23,
+          "ordinary_wedge_upper": 111,
+          "s2_lower_bound": 86791180,
+          "s3_upper_bound": 21548716,
+          "triangle_counts_upper": [
+            36,
+            2,
+            0,
+            56
+          ],
+          "upper_bound": 306986176
+        },
+        "36": {
+          "degree_profile": [
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            3,
+            3,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "heavy_normal_wedge_upper": 0,
+          "heavy_pair_count": 36,
+          "heavy_wedge_upper": 171,
+          "ordinary_edge_count": 21,
+          "ordinary_wedge_upper": 105,
+          "s2_lower_bound": 87446968,
+          "s3_upper_bound": 21798224,
+          "triangle_counts_upper": [
+            35,
+            0,
+            0,
+            57
+          ],
+          "upper_bound": 306579896
+        },
+        "37": {
+          "degree_profile": [
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            3,
+            3,
+            2,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "heavy_normal_wedge_upper": 4,
+          "heavy_pair_count": 37,
+          "heavy_wedge_upper": 172,
+          "ordinary_edge_count": 19,
+          "ordinary_wedge_upper": 91,
+          "s2_lower_bound": 88102756,
+          "s3_upper_bound": 21925274,
+          "triangle_counts_upper": [
+            30,
+            1,
+            1,
+            57
+          ],
+          "upper_bound": 306051158
+        },
+        "38": {
+          "degree_profile": [
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            3,
+            3,
+            3,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "heavy_normal_wedge_upper": 4,
+          "heavy_pair_count": 38,
+          "heavy_wedge_upper": 174,
+          "ordinary_edge_count": 17,
+          "ordinary_wedge_upper": 81,
+          "s2_lower_bound": 88758544,
+          "s3_upper_bound": 22155980,
+          "triangle_counts_upper": [
+            26,
+            2,
+            0,
+            58
+          ],
+          "upper_bound": 305626076
+        },
+        "39": {
+          "degree_profile": [
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            3,
+            3,
+            3,
+            3,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "heavy_normal_wedge_upper": 0,
+          "heavy_pair_count": 39,
+          "heavy_wedge_upper": 177,
+          "ordinary_edge_count": 15,
+          "ordinary_wedge_upper": 75,
+          "s2_lower_bound": 89414332,
+          "s3_upper_bound": 22405488,
+          "triangle_counts_upper": [
+            25,
+            0,
+            0,
+            59
+          ],
+          "upper_bound": 305219796
+        },
+        "4": {
+          "degree_profile": [
+            3,
+            3,
+            2,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "heavy_normal_wedge_upper": 52,
+          "heavy_pair_count": 4,
+          "heavy_wedge_upper": 7,
+          "ordinary_edge_count": 85,
+          "ordinary_wedge_upper": 817,
+          "s2_lower_bound": 66461752,
+          "s3_upper_bound": 7737226,
+          "triangle_counts_upper": [
+            264,
+            25,
+            1,
+            2
+          ],
+          "upper_bound": 313504114
+        },
+        "40": {
+          "degree_profile": [
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            3,
+            3,
+            3,
+            3,
+            2,
+            0,
+            0,
+            0,
+            0
+          ],
+          "heavy_normal_wedge_upper": 4,
+          "heavy_pair_count": 40,
+          "heavy_wedge_upper": 178,
+          "ordinary_edge_count": 13,
+          "ordinary_wedge_upper": 61,
+          "s2_lower_bound": 90070120,
+          "s3_upper_bound": 22532538,
+          "triangle_counts_upper": [
+            20,
+            1,
+            1,
+            59
+          ],
+          "upper_bound": 304691058
+        },
+        "41": {
+          "degree_profile": [
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            3,
+            3,
+            3,
+            3,
+            3,
+            1,
+            0,
+            0,
+            0
+          ],
+          "heavy_normal_wedge_upper": 4,
+          "heavy_pair_count": 41,
+          "heavy_wedge_upper": 180,
+          "ordinary_edge_count": 11,
+          "ordinary_wedge_upper": 51,
+          "s2_lower_bound": 90725908,
+          "s3_upper_bound": 22763244,
+          "triangle_counts_upper": [
+            16,
+            2,
+            0,
+            60
+          ],
+          "upper_bound": 304265976
+        },
+        "42": {
+          "degree_profile": [
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            0,
+            0,
+            0
+          ],
+          "heavy_normal_wedge_upper": 0,
+          "heavy_pair_count": 42,
+          "heavy_wedge_upper": 183,
+          "ordinary_edge_count": 9,
+          "ordinary_wedge_upper": 45,
+          "s2_lower_bound": 91381696,
+          "s3_upper_bound": 23012752,
+          "triangle_counts_upper": [
+            15,
+            0,
+            0,
+            61
+          ],
+          "upper_bound": 303859696
+        },
+        "43": {
+          "degree_profile": [
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            2,
+            0,
+            0
+          ],
+          "heavy_normal_wedge_upper": 4,
+          "heavy_pair_count": 43,
+          "heavy_wedge_upper": 184,
+          "ordinary_edge_count": 7,
+          "ordinary_wedge_upper": 31,
+          "s2_lower_bound": 92037484,
+          "s3_upper_bound": 23139802,
+          "triangle_counts_upper": [
+            10,
+            1,
+            1,
+            61
+          ],
+          "upper_bound": 303330958
+        },
+        "44": {
+          "degree_profile": [
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            1,
+            0
+          ],
+          "heavy_normal_wedge_upper": 4,
+          "heavy_pair_count": 44,
+          "heavy_wedge_upper": 186,
+          "ordinary_edge_count": 5,
+          "ordinary_wedge_upper": 21,
+          "s2_lower_bound": 92693272,
+          "s3_upper_bound": 23370508,
+          "triangle_counts_upper": [
+            6,
+            2,
+            0,
+            62
+          ],
+          "upper_bound": 302905876
+        },
+        "45": {
+          "degree_profile": [
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            0
+          ],
+          "heavy_normal_wedge_upper": 0,
+          "heavy_pair_count": 45,
+          "heavy_wedge_upper": 189,
+          "ordinary_edge_count": 3,
+          "ordinary_wedge_upper": 15,
+          "s2_lower_bound": 93349060,
+          "s3_upper_bound": 23620016,
+          "triangle_counts_upper": [
+            5,
+            0,
+            0,
+            63
+          ],
+          "upper_bound": 302499596
+        },
+        "46": {
+          "degree_profile": [
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            2
+          ],
+          "heavy_normal_wedge_upper": 4,
+          "heavy_pair_count": 46,
+          "heavy_wedge_upper": 190,
+          "ordinary_edge_count": 1,
+          "ordinary_wedge_upper": 1,
+          "s2_lower_bound": 94004848,
+          "s3_upper_bound": 23747066,
+          "triangle_counts_upper": [
+            0,
+            1,
+            1,
+            63
+          ],
+          "upper_bound": 301970858
+        },
+        "5": {
+          "degree_profile": [
+            3,
+            3,
+            3,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "heavy_normal_wedge_upper": 64,
+          "heavy_pair_count": 5,
+          "heavy_wedge_upper": 9,
+          "ordinary_edge_count": 83,
+          "ordinary_wedge_upper": 807,
+          "s2_lower_bound": 67117540,
+          "s3_upper_bound": 8264144,
+          "triangle_counts_upper": [
+            258,
+            32,
+            0,
+            3
+          ],
+          "upper_bound": 313375244
+        },
+        "6": {
+          "degree_profile": [
+            3,
+            3,
+            3,
+            3,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "heavy_normal_wedge_upper": 72,
+          "heavy_pair_count": 6,
+          "heavy_wedge_upper": 12,
+          "ordinary_edge_count": 81,
+          "ordinary_wedge_upper": 801,
+          "s2_lower_bound": 67773328,
+          "s3_upper_bound": 8809864,
+          "triangle_counts_upper": [
+            255,
+            36,
+            0,
+            4
+          ],
+          "upper_bound": 313265176
+        },
+        "7": {
+          "degree_profile": [
+            3,
+            3,
+            3,
+            3,
+            2,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "heavy_normal_wedge_upper": 88,
+          "heavy_pair_count": 7,
+          "heavy_wedge_upper": 13,
+          "ordinary_edge_count": 79,
+          "ordinary_wedge_upper": 787,
+          "s2_lower_bound": 68429116,
+          "s3_upper_bound": 9233126,
+          "triangle_counts_upper": [
+            248,
+            43,
+            1,
+            4
+          ],
+          "upper_bound": 313032650
+        },
+        "8": {
+          "degree_profile": [
+            3,
+            3,
+            3,
+            3,
+            3,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "heavy_normal_wedge_upper": 100,
+          "heavy_pair_count": 8,
+          "heavy_wedge_upper": 15,
+          "ordinary_edge_count": 77,
+          "ordinary_wedge_upper": 777,
+          "s2_lower_bound": 69084904,
+          "s3_upper_bound": 9760044,
+          "triangle_counts_upper": [
+            242,
+            50,
+            0,
+            5
+          ],
+          "upper_bound": 312903780
+        },
+        "9": {
+          "degree_profile": [
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "heavy_normal_wedge_upper": 108,
+          "heavy_pair_count": 9,
+          "heavy_wedge_upper": 18,
+          "ordinary_edge_count": 75,
+          "ordinary_wedge_upper": 771,
+          "s2_lower_bound": 69740692,
+          "s3_upper_bound": 10305764,
+          "triangle_counts_upper": [
+            239,
+            54,
+            0,
+            6
+          ],
+          "upper_bound": 312793712
+        }
+      },
+      "MULTI_MASS_93_WITNESS": {
+        "degree_profile": [
+          3,
+          3,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "heavy_normal_wedge_upper": 36,
+        "heavy_pair_count": 3,
+        "heavy_wedge_upper": 6,
+        "ordinary_edge_count": 87,
+        "ordinary_wedge_upper": 831,
+        "s2_lower_bound": 65805964,
+        "s3_upper_bound": 7313964,
+        "triangle_counts_upper": [
+          271,
+          18,
+          0,
+          2
+        ],
+        "upper_bound": 313736640
+      },
+      "MULTI_MASS_GE_94_WITNESS": {
+        "heavy_pair_count": 3,
+        "ordinary_edge_count": 88,
+        "s2_lower_bound": 66272164,
+        "star_intersection_lower_bound": 6627217,
+        "upper_bound": 365601423
+      },
+      "MULTI_R2_BOUND": 365601423,
+      "REMAINING_GAP": 52337535,
+      "S2_MINIMUMS": {
+        "FORMULA_FOR_HEAVY_COUNT_H": "190*I(0)+max(0,93-2h)*(I(1)-I(0))+h*(I(2)-I(0))",
+        "THREE_OR_MORE": 65805964,
+        "THREE_OR_MORE_MASS_AT_LEAST_94": 66272164,
+        "TWO_DISJOINT": 65150176,
+        "TWO_SHARED_VERTEX": 65150176
+      },
+      "SHARED_VERTEX_R2_BOUND": 319531968,
+      "SHARED_VERTEX_WITNESSES": {
+        "GRAPH_RELAXATION": {
+          "degree_profile": [
+            2,
+            1,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "heavy_normal_wedge_upper": 72,
+          "heavy_pair_count": 2,
+          "heavy_wedge_upper": 1,
+          "ordinary_edge_count": 89,
+          "ordinary_wedge_upper": 1560,
+          "s2_lower_bound": 65150176,
+          "s3_upper_bound": 12453504,
+          "triangle_counts_upper": [
+            508,
+            34,
+            1,
+            0
+          ],
+          "upper_bound": 319531968
+        },
+        "MASS_93": {
+          "degree_profile": [
+            2,
+            1,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "heavy_normal_wedge_upper": 36,
+          "heavy_pair_count": 2,
+          "heavy_wedge_upper": 1,
+          "ordinary_edge_count": 89,
+          "ordinary_wedge_upper": 829,
+          "s2_lower_bound": 65150176,
+          "s3_upper_bound": 6645786,
+          "triangle_counts_upper": [
+            270,
+            17,
+            1,
+            0
+          ],
+          "upper_bound": 313724250
+        }
+      },
+      "UNRESOLVED_DEFECT_FAMILIES": [
+        "TWO_SHARED_VERTEX",
+        "TWO_DISJOINT",
+        "THREE_OR_MORE_AT_MASS_93",
+        "THREE_OR_MORE_HEAVY_PAIRS_WITH_OVERLAP_MASS_AT_LEAST_94"
+      ],
+      "UNRESOLVED_DEFECT_GRAPH": "MULTIPLE_UNRESOLVED_DEFECT_FAMILIES"
+    },
+    "FAMILY_C_WEDGE": {
+      "common_neighbors": 18,
+      "heavy_endpoint_spokes": 36,
+      "ordinary_edge_count": 91,
+      "regular_wedge_count_upper": 1563,
+      "s2_at_maximum": 64494388,
+      "s3_upper_bound": 11571980,
+      "special_triple_recovery_upper": 1010268,
+      "upper_bound": 319306232,
+      "wedge_count_upper": 1581
+    },
+    "OUTSIDE_MIN_S2": {
+      "CLOSED_FAMILY_COUNT": 0,
+      "DEVIATION_FAMILY_COUNT": 2,
+      "HIGH_OVERLAP_FAMILY_STATUS": "OPEN",
+      "HIGH_OVERLAP_FAMILY_UPPER_BOUND": 365779201,
+      "LOW_OVERLAP_FAMILY_STATUS": "OPEN",
+      "LOW_OVERLAP_FAMILY_UPPER_BOUND": 319242373,
+      "LOW_OVERLAP_MAX_PAIRWISE_OVERLAP": 1,
+      "MAX_HIGHER_ORDER_RECOVERY": 23110080,
+      "MAX_NET_HIGHER_ORDER_RECOVERY_AFTER_S2_PENALTY": 10852333,
+      "MIN_EXTRA_S2": 466200,
+      "OUTSIDE_FAMILY_UPPER_BOUND": 365779201,
+      "OVERLAP_EDGE_COUNT_AT_MAX_NET_RECOVERY": 94,
+      "REMAINING_GAP": 52515313,
+      "UNRESOLVED_FAMILY": "pairwise overlap <=1 with overlap mass >=94; at least one ticket pair has intersection size >=2"
+    }
+  },
+  "AUTHORITY_ROLE": "Corrected OFFICIAL_ANY_PRIZE K20 analytical bounds and closure states",
+  "CANONICAL_SINGLE_OUTCOMES": 18611432,
+  "CLOSED_SCOPE_TRANSITIONS": {
+    "FAMILY_C": {
+      "corrected_upper_bound": 319306232,
+      "current_status": "OPEN",
+      "historical_upper_bound": 311499152
+    },
+    "OUTSIDE_PAIR_LE1": {
+      "corrected_upper_bound": 319242373,
+      "current_status": "OPEN",
+      "historical_upper_bound": 311435293
+    },
+    "THREE_OR_MORE_AT_MASS_93": {
+      "corrected_upper_bound": 313736640,
+      "current_status": "OPEN",
+      "historical_upper_bound": 305929560
+    },
+    "TWO_DISJOINT": {
+      "corrected_upper_bound": 319477816,
+      "current_status": "OPEN",
+      "historical_upper_bound": 311670736
+    },
+    "TWO_SHARED_VERTEX": {
+      "corrected_upper_bound": 319531968,
+      "current_status": "OPEN",
+      "historical_upper_bound": 311724888
+    }
+  },
+  "CP_SAT": "NOT_RUN",
+  "CP_SAT_EVIDENCE_POLICY": "NOT_REVALIDATED_NOT_ADMITTED; no archived solver bound translated",
+  "CROSS_INVARIANTS": {
+    "K20_S1": 372228640,
+    "closed_form": 18611432,
+    "identical_ticket_intersection": 18611432,
+    "seven_set_formula": 18611432
+  },
+  "CURRENT_IMPLEMENTATION_FILES": [
+    {
+      "bytes": 26208,
+      "path": "src/lottolab/research/b649_k20_heavy_pair_defect_global_bound_r2.py",
+      "sha256": "c553c2e2d9b85539d5e7244ceb666574513e1e4e3fa553444aeb594d608a4026"
+    },
+    {
+      "bytes": 9822,
+      "path": "src/lottolab/research/b649_k20_heavy_pair_r3plus_global_bound_r3.py",
+      "sha256": "049c3562d6b0dedf742b143c87b636bacaab93ae90ce66775e8a7d984eb108e7"
+    },
+    {
+      "bytes": 22345,
+      "path": "src/lottolab/research/b649_k20_multi_r2_defect_global_bound_r3.py",
+      "sha256": "534ab94deb74b0af4be9c2308c3588862080d4209b7cad55bedaf6cc8fdfd394"
+    },
+    {
+      "bytes": 12747,
+      "path": "src/lottolab/research/b649_k20_outside_min_s2_global_penalty_bound_r1.py",
+      "sha256": "b378d533cc4628c2af6efa95fa94d702f0a137a34832c1f3fb3f8bbf501ce66f"
+    },
+    {
+      "bytes": 10700,
+      "path": "tests/unit/test_b649_k20_heavy_pair_defect_global_bound_r2.py",
+      "sha256": "a7cb0b0d6569421b133382988b3efdc9421494b0cbb188f43870f1e60a6dd6dc"
+    },
+    {
+      "bytes": 7955,
+      "path": "tests/unit/test_b649_k20_heavy_pair_r3plus_global_bound_r3.py",
+      "sha256": "faf3a381fdf69736ed2fd44ba310ad0395e9e032db7800e3dfd6e2e73b06aada"
+    },
+    {
+      "bytes": 4001,
+      "path": "tests/unit/test_b649_k20_multi_r2_defect_global_bound_r3.py",
+      "sha256": "377c9981c4cd5d651b595f75644069eb4d25c003af8cf5bdbf3c6d73683e45c0"
+    },
+    {
+      "bytes": 6213,
+      "path": "tests/unit/test_b649_k20_outside_min_s2_global_penalty_bound_r1.py",
+      "sha256": "ab51217af065b25e95b06184624c1a6ea2240937dab39bd9404e7dd5e5509f8c"
+    },
+    {
+      "bytes": 19650,
+      "path": "src/lottolab/research/b649_k1_k8_global_optimality.py",
+      "sha256": "89f9af823e4a46bc5ee80508d70a871b6e51b6a55d090529497d162bbedfb4a0"
+    },
+    {
+      "bytes": 7721,
+      "path": "src/lottolab/research/b649_official_any_prize_exact.py",
+      "sha256": "92dcb836254cc6dbcd6c2ad907e619a5eb8cf3917197a8f6de3e5f989825cf66"
+    },
+    {
+      "bytes": 11142,
+      "path": "src/lottolab/application/b649_sealed_geometry_portfolio.py",
+      "sha256": "ffd28e1244e6a03a85f9b8221cd5f78663703365ef89f7086bc2824c4941224b"
+    },
+    {
+      "bytes": 16996,
+      "path": "src/lottolab/research/b649_k20_min_s2_higher_order_closure_r2.py",
+      "sha256": "6897c974fe9679f2ec567602522bb4c38c996275368b714c6a7fadedd66d6e45"
+    },
+    {
+      "bytes": 10432,
+      "path": "src/lottolab/research/b649_k20_canonical_single_count_reconciliation_r1.py",
+      "sha256": "2398595144e5af51c96a47f4417987552ba3bd75693d6f6ff5d3f6f29e8c6793"
+    },
+    {
+      "bytes": 4849,
+      "path": "tests/unit/test_b649_k20_canonical_single_count_reconciliation_r1.py",
+      "sha256": "b4169ec9aeaa431ca229f94daf625fe208c60080c64f6b3986073a5d9253eaee"
+    },
+    {
+      "bytes": 6001,
+      "path": "tests/unit/test_b649_branch3_k20_proof_authority_consolidation_r1.py",
+      "sha256": "bad780c7f026d7943d23eea54386854b973d97ce8de639f5f33e1eda79b4ac2b"
+    }
+  ],
+  "DENOMINATOR": 601304088,
+  "EVENT": "OFFICIAL_ANY_PRIZE",
+  "FAMILY_BOUNDS": {
+    "FAMILY_A": {
+      "gap_to_incumbent": 51784740,
+      "status": "OPEN",
+      "upper_bound": 365048628
+    },
+    "FAMILY_B": {
+      "gap_to_incumbent": 52337535,
+      "status": "OPEN",
+      "upper_bound": 365601423
+    },
+    "FAMILY_C": {
+      "gap_to_incumbent": 6042344,
+      "status": "OPEN",
+      "upper_bound": 319306232
+    },
+    "MIN_S2": {
+      "gap_to_incumbent": 652168,
+      "status": "OPEN",
+      "upper_bound": 313916056
+    },
+    "OUTSIDE_PAIR_LE1": {
+      "gap_to_incumbent": 5978485,
+      "status": "OPEN",
+      "upper_bound": 319242373
+    }
+  },
+  "FROZEN_SOURCE_COMMIT": "9b0dc98b10623dac7727f50aa4e47f14f68dcf6d",
+  "GLOBAL_K20_OPTIMUM": "UNKNOWN",
+  "HISTORICAL_COMPARISON_INCUMBENT": 313239661,
+  "HISTORICAL_POLICY": "Preserve original certificates/manifests/receipts; source revisions are explicit",
+  "INCUMBENT_EXACT_COUNT": 313263888,
+  "INCUMBENT_PORTFOLIO_SHA256": "eaed652900d101881b678a1515d2a366bff9de6723dbec2ec9c82fe0d0d7844c",
+  "INCUMBENT_SOURCE": "docs/research/matrix-native-results/b649-k20-12-8-winner-two-ticket-ascent-r1-result.json",
+  "K": 20,
+  "K20_GLOBAL_CERTIFIED_BOUND": 365601423,
+  "K20_REMAINING_GAP": 52337535,
+  "MASS_93_SUBFAMILIES_BY_HEAVY_COUNT": {
+    "10": {
+      "gap_to_incumbent": -702702,
+      "status": "CLOSED",
+      "upper_bound": 312561186
+    },
+    "11": {
+      "gap_to_incumbent": -831572,
+      "status": "CLOSED",
+      "upper_bound": 312432316
+    },
+    "12": {
+      "gap_to_incumbent": -941640,
+      "status": "CLOSED",
+      "upper_bound": 312322248
+    },
+    "13": {
+      "gap_to_incumbent": -1174166,
+      "status": "CLOSED",
+      "upper_bound": 312089722
+    },
+    "14": {
+      "gap_to_incumbent": -1335824,
+      "status": "CLOSED",
+      "upper_bound": 311928064
+    },
+    "15": {
+      "gap_to_incumbent": -1511468,
+      "status": "CLOSED",
+      "upper_bound": 311752420
+    },
+    "16": {
+      "gap_to_incumbent": -1743994,
+      "status": "CLOSED",
+      "upper_bound": 311519894
+    },
+    "17": {
+      "gap_to_incumbent": -1905652,
+      "status": "CLOSED",
+      "upper_bound": 311358236
+    },
+    "18": {
+      "gap_to_incumbent": -2081296,
+      "status": "CLOSED",
+      "upper_bound": 311182592
+    },
+    "19": {
+      "gap_to_incumbent": -2313822,
+      "status": "CLOSED",
+      "upper_bound": 310950066
+    },
+    "20": {
+      "gap_to_incumbent": -2475480,
+      "status": "CLOSED",
+      "upper_bound": 310788408
+    },
+    "21": {
+      "gap_to_incumbent": -2651124,
+      "status": "CLOSED",
+      "upper_bound": 310612764
+    },
+    "22": {
+      "gap_to_incumbent": -2933084,
+      "status": "CLOSED",
+      "upper_bound": 310330804
+    },
+    "23": {
+      "gap_to_incumbent": -3143672,
+      "status": "CLOSED",
+      "upper_bound": 310120216
+    },
+    "24": {
+      "gap_to_incumbent": -3319316,
+      "status": "CLOSED",
+      "upper_bound": 309944572
+    },
+    "25": {
+      "gap_to_incumbent": -3601276,
+      "status": "CLOSED",
+      "upper_bound": 309662612
+    },
+    "26": {
+      "gap_to_incumbent": -3811864,
+      "status": "CLOSED",
+      "upper_bound": 309452024
+    },
+    "27": {
+      "gap_to_incumbent": -3987508,
+      "status": "CLOSED",
+      "upper_bound": 309276380
+    },
+    "28": {
+      "gap_to_incumbent": -4269468,
+      "status": "CLOSED",
+      "upper_bound": 308994420
+    },
+    "29": {
+      "gap_to_incumbent": -4480056,
+      "status": "CLOSED",
+      "upper_bound": 308783832
+    },
+    "3": {
+      "gap_to_incumbent": 472752,
+      "status": "OPEN",
+      "upper_bound": 313736640
+    },
+    "30": {
+      "gap_to_incumbent": -4655700,
+      "status": "CLOSED",
+      "upper_bound": 308608188
+    },
+    "31": {
+      "gap_to_incumbent": -4937660,
+      "status": "CLOSED",
+      "upper_bound": 308326228
+    },
+    "32": {
+      "gap_to_incumbent": -5148248,
+      "status": "CLOSED",
+      "upper_bound": 308115640
+    },
+    "33": {
+      "gap_to_incumbent": -5323892,
+      "status": "CLOSED",
+      "upper_bound": 307939996
+    },
+    "34": {
+      "gap_to_incumbent": -5852630,
+      "status": "CLOSED",
+      "upper_bound": 307411258
+    },
+    "35": {
+      "gap_to_incumbent": -6277712,
+      "status": "CLOSED",
+      "upper_bound": 306986176
+    },
+    "36": {
+      "gap_to_incumbent": -6683992,
+      "status": "CLOSED",
+      "upper_bound": 306579896
+    },
+    "37": {
+      "gap_to_incumbent": -7212730,
+      "status": "CLOSED",
+      "upper_bound": 306051158
+    },
+    "38": {
+      "gap_to_incumbent": -7637812,
+      "status": "CLOSED",
+      "upper_bound": 305626076
+    },
+    "39": {
+      "gap_to_incumbent": -8044092,
+      "status": "CLOSED",
+      "upper_bound": 305219796
+    },
+    "4": {
+      "gap_to_incumbent": 240226,
+      "status": "OPEN",
+      "upper_bound": 313504114
+    },
+    "40": {
+      "gap_to_incumbent": -8572830,
+      "status": "CLOSED",
+      "upper_bound": 304691058
+    },
+    "41": {
+      "gap_to_incumbent": -8997912,
+      "status": "CLOSED",
+      "upper_bound": 304265976
+    },
+    "42": {
+      "gap_to_incumbent": -9404192,
+      "status": "CLOSED",
+      "upper_bound": 303859696
+    },
+    "43": {
+      "gap_to_incumbent": -9932930,
+      "status": "CLOSED",
+      "upper_bound": 303330958
+    },
+    "44": {
+      "gap_to_incumbent": -10358012,
+      "status": "CLOSED",
+      "upper_bound": 302905876
+    },
+    "45": {
+      "gap_to_incumbent": -10764292,
+      "status": "CLOSED",
+      "upper_bound": 302499596
+    },
+    "46": {
+      "gap_to_incumbent": -11293030,
+      "status": "CLOSED",
+      "upper_bound": 301970858
+    },
+    "5": {
+      "gap_to_incumbent": 111356,
+      "status": "OPEN",
+      "upper_bound": 313375244
+    },
+    "6": {
+      "gap_to_incumbent": 1288,
+      "status": "OPEN",
+      "upper_bound": 313265176
+    },
+    "7": {
+      "gap_to_incumbent": -231238,
+      "status": "CLOSED",
+      "upper_bound": 313032650
+    },
+    "8": {
+      "gap_to_incumbent": -360108,
+      "status": "CLOSED",
+      "upper_bound": 312903780
+    },
+    "9": {
+      "gap_to_incumbent": -470176,
+      "status": "CLOSED",
+      "upper_bound": 312793712
+    }
+  },
+  "NEW_FULL_EXACT_EVALUATIONS": 0,
+  "NEW_PORTFOLIO_SEARCH": "NOT_RUN",
+  "PAIR_INTERSECTION_TABLE": [
+    107800,
+    574000,
+    1695988,
+    3469942,
+    6224512,
+    10776332,
+    18611432
+  ],
+  "PILOT": "NOT_RUN",
+  "PRESERVED_HISTORICAL_RECORDS": [
+    {
+      "bytes": 5517,
+      "path": "docs/research/matrix-native-results/b649-branch3-k20-proof-authority-consolidation-r1.json",
+      "sha256": "9823d65e35ca6e837d1582460863a550cfaa1fc3af5b9f04f75ff3e61b104d14"
+    },
+    {
+      "bytes": 11324,
+      "path": "docs/research/matrix-native-results/b649-branch3-k20-proof-authority-consolidation-r1-sources.json",
+      "sha256": "d9ffd5c35d1557d5ea061c0ea6b1be7640cde6ace1507660e5db33fe2fa23e45"
+    },
+    {
+      "bytes": 3120,
+      "path": "docs/research/matrix-native-results/b649-k20-outside-min-s2-global-penalty-bound-r1.json",
+      "sha256": "4f5e5df60593144fb7085bea3871a1ccf7d119e786527e610c852ae1ba3dfdd1"
+    },
+    {
+      "bytes": 6055,
+      "path": "docs/research/matrix-native-results/b649-k20-heavy-pair-defect-global-bound-r2-result.json",
+      "sha256": "1c7e281d54bce5d5bfcec1c64c65b9b6a7ef9892d3464e754f4c792ed3692953"
+    },
+    {
+      "bytes": 6311,
+      "path": "docs/research/matrix-native-results/b649-k20-heavy-pair-r3plus-global-bound-r3-result.json",
+      "sha256": "0f783aaf2dc97fc53fdda2959f0900b424d876c349a14d0ee0dd1f6fedd745c8"
+    },
+    {
+      "bytes": 37520,
+      "path": "docs/research/matrix-native-results/b649-k20-multi-r2-defect-global-bound-r3-result.json",
+      "sha256": "9e77c1b06a25554e14ef7e1d5e11f32ef184c000300fb8fba0e4bb3a72c6c8a2"
+    },
+    {
+      "bytes": 61702,
+      "path": "docs/research/matrix-native-results/b649-k20-12-8-winner-two-ticket-ascent-r1-result.json",
+      "sha256": "3d5d3f8f2389b66a9b2c45b0e345b81a0d9dc59d08ca9223519be70a055e5a00"
+    }
+  ],
+  "PRODUCTION_ADOPTION": "NOT_RUN",
+  "S1_CORRECTION": {
+    "corrected": 372228640,
+    "difference": 7807080,
+    "historical": 364421560
+  },
+  "SCHEMA_VERSION": 1,
+  "SOURCE_REVISIONS": [
+    {
+      "after_bytes": 26208,
+      "after_sha256": "c553c2e2d9b85539d5e7244ceb666574513e1e4e3fa553444aeb594d608a4026",
+      "before_bytes": 25411,
+      "before_sha256": "276b4556e8b4c0a2c01d0f368bf37657136a8efcbb6f6f9fef8f03be9327fc9b",
+      "path": "src/lottolab/research/b649_k20_heavy_pair_defect_global_bound_r2.py"
+    },
+    {
+      "after_bytes": 9822,
+      "after_sha256": "049c3562d6b0dedf742b143c87b636bacaab93ae90ce66775e8a7d984eb108e7",
+      "before_bytes": 9738,
+      "before_sha256": "379f55ef87c2f7ffddc00caf7a7b5756810e1a3490ba3eb0d32327684f111139",
+      "path": "src/lottolab/research/b649_k20_heavy_pair_r3plus_global_bound_r3.py"
+    },
+    {
+      "after_bytes": 22345,
+      "after_sha256": "534ab94deb74b0af4be9c2308c3588862080d4209b7cad55bedaf6cc8fdfd394",
+      "before_bytes": 21870,
+      "before_sha256": "ea92ca0fd3c3f2ad5f63bdbd2aa2bd87128df96bfc2476b2fbc3afddb10225ad",
+      "path": "src/lottolab/research/b649_k20_multi_r2_defect_global_bound_r3.py"
+    },
+    {
+      "after_bytes": 12747,
+      "after_sha256": "b378d533cc4628c2af6efa95fa94d702f0a137a34832c1f3fb3f8bbf501ce66f",
+      "before_bytes": 11994,
+      "before_sha256": "7706e57e77df6e786e77c4824f3c72663fdae73b20aa5f6797192689f2b6ea62",
+      "path": "src/lottolab/research/b649_k20_outside_min_s2_global_penalty_bound_r1.py"
+    },
+    {
+      "after_bytes": 10700,
+      "after_sha256": "a7cb0b0d6569421b133382988b3efdc9421494b0cbb188f43870f1e60a6dd6dc",
+      "before_bytes": 9198,
+      "before_sha256": "03079813631a0cd68ad6047a11cebe13dfcc229e8fb8f93dfdd938218536772d",
+      "path": "tests/unit/test_b649_k20_heavy_pair_defect_global_bound_r2.py"
+    },
+    {
+      "after_bytes": 7955,
+      "after_sha256": "faf3a381fdf69736ed2fd44ba310ad0395e9e032db7800e3dfd6e2e73b06aada",
+      "before_bytes": 7955,
+      "before_sha256": "5c17ed428d76bd6e139612d6854e1e6907388825e396181420943cf477ba037a",
+      "path": "tests/unit/test_b649_k20_heavy_pair_r3plus_global_bound_r3.py"
+    },
+    {
+      "after_bytes": 4001,
+      "after_sha256": "377c9981c4cd5d651b595f75644069eb4d25c003af8cf5bdbf3c6d73683e45c0",
+      "before_bytes": 3690,
+      "before_sha256": "0f6f37c06df1c3b7de29f0de0e7f8e8078e461102bbd4e39dd1249335871a890",
+      "path": "tests/unit/test_b649_k20_multi_r2_defect_global_bound_r3.py"
+    },
+    {
+      "after_bytes": 6213,
+      "after_sha256": "ab51217af065b25e95b06184624c1a6ea2240937dab39bd9404e7dd5e5509f8c",
+      "before_bytes": 4837,
+      "before_sha256": "271bf39da512dcc1a028f73f27ba06a911b03a5758b58414c295e7fcab5d6ba2",
+      "path": "tests/unit/test_b649_k20_outside_min_s2_global_penalty_bound_r1.py"
+    }
+  ],
+  "SUPERSEDES_K20_COUNT_DEPENDENT_CLAIMS_IN": "docs/research/matrix-native-results/b649-branch3-k20-proof-authority-consolidation-r1.json",
+  "TASK_ID": "B649_K20_CANONICAL_SINGLE_COUNT_RECONCILIATION_R1",
+  "TASK_STATUS": "COMPLETE_ANALYTICAL_RECONCILIATION",
+  "TRIPLE_PROFILE_TABLE_SHA256": "fabbd522204dee9c8dd3790f733ef11dc717c5efb632220e2861abd755635cd8"
+}

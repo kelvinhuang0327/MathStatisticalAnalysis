@@ -378,9 +378,23 @@ def _validate_request(request: LegacyHistoryNativeRequest) -> None:
     if not request.history:
         raise LegacyHistoryNativeError("causal history must not be empty")
     seen: set[str] = set()
+    previous_numeric: int | None = None
     for draw in request.history:
-        if not draw.draw_number or draw.draw_number in seen:
+        if (
+            not draw.draw_number
+            or draw.draw_number in seen
+            or draw.draw_number == request.target_draw_number
+        ):
             raise LegacyHistoryNativeError("causal history draw identities are invalid")
+        if request.target_draw_number.isascii() and request.target_draw_number.isdecimal():
+            if not draw.draw_number.isascii() or not draw.draw_number.isdecimal():
+                raise LegacyHistoryNativeError("numeric target requires numeric history")
+            number = int(draw.draw_number)
+            if number >= int(request.target_draw_number) or (
+                previous_numeric is not None and number <= previous_numeric
+            ):
+                raise LegacyHistoryNativeError("history is not ordered strictly before target")
+            previous_numeric = number
         seen.add(draw.draw_number)
         _ticket(list(draw.numbers))
 

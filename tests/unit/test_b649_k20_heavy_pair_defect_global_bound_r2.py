@@ -8,10 +8,14 @@ from collections.abc import Iterator
 from itertools import combinations, product
 from math import comb
 
+import pytest
+
+from lottolab.research import b649_k20_heavy_pair_defect_global_bound_r2 as bound_module
 from lottolab.research.b649_k20_heavy_pair_defect_global_bound_r2 import (
     EXPECTED_HEAVY_PAIR_EXCESS,
     EXPECTED_MIN_EXTRA_S2,
     EXPECTED_PAIR_COUNTS,
+    CpSatEvidence,
     c_wedge_certificate,
     certified_integer_upper_bound,
     exact_family_s2_floors,
@@ -136,6 +140,29 @@ def _wins(ticket: tuple[int, ...], draw: tuple[int, ...], special: int, outright
     return matches >= outright or (matches == outright - 1 and special in ticket)
 
 
+@pytest.mark.parametrize("model_count", [None, 18_221_078])
+def test_archived_solver_evidence_cannot_be_reused(model_count: int | None) -> None:
+    evidence = CpSatEvidence("TEST_ONLY", None, 0, 0, 0, 1, model_count)
+    with pytest.raises(ValueError, match="canonical single-ticket model identity"):
+        bound_module.preliminary_result_record(evidence)
+    with pytest.raises(ValueError, match="canonical single-ticket model identity"):
+        bound_module.apply_ab_tightening_result({}, evidence)
+
+
+def test_current_model_record_status_does_not_inherit_old_closure() -> None:
+    # Synthetic noncompetitive solver bound exercises composition only; no
+    # solver is invoked and this fixture is never admitted to the authority.
+    evidence = CpSatEvidence("TEST_ONLY", None, 10**9, 10**9, 0, 1, 18_611_432)
+    record = bound_module.preliminary_result_record(evidence)
+    assert record["FAMILIES"]["C"]["STATUS"] == "UNRESOLVED"
+    assert record["R1_PAIR_OVERLAP_AT_MOST_ONE_FAMILY"]["UPPER_BOUND"] == 319_242_373
+    assert record["R1_PAIR_OVERLAP_AT_MOST_ONE_FAMILY"]["STATUS"] == "OPEN"
+    assert record["CLOSED_FAMILIES"] == []
+    assert record["TASK_STATUS"] == "BOUNDED_WITH_OPEN_FAMILIES"
+    with pytest.raises(ValueError, match="different single-ticket model"):
+        bound_module.apply_ab_tightening_result({"PORTFOLIO_S1": 364_421_560}, evidence)
+
+
 def test_pair_counts_are_recomputed_by_an_independent_formula() -> None:
     independent = tuple(_independent_pair_count(overlap) for overlap in range(7))
     assert independent == EXPECTED_PAIR_COUNTS
@@ -173,14 +200,14 @@ def test_exact_family_floors_and_preliminary_hunter_bounds() -> None:
         "C_EXACTLY_ONE_OVERLAP_2": 64_494_388,
     }
     bounds = preliminary_family_bounds()
-    assert bounds["A_PRELIMINARY_BOUND"] == 357_841_345
-    assert bounds["B_PRELIMINARY_BOUND"] == 357_906_542
+    assert bounds["A_PRELIMINARY_BOUND"] == 365_648_425
+    assert bounds["B_PRELIMINARY_BOUND"] == 365_713_622
     assert bounds["C_S2_FLOOR"] == 64_494_388
 
 
-def test_family_c_wedge_certificate_closes_c_below_the_incumbent() -> None:
+def test_corrected_family_c_wedge_certificate_is_above_the_incumbent() -> None:
     certificate = c_wedge_certificate()
-    assert certificate.upper_bound == 311_499_152
+    assert certificate.upper_bound == 319_306_232
     assert certificate.s2_at_maximum == 64_494_388
     assert certificate.s3_upper_bound == 11_571_980
     assert certificate.ordinary_edge_count == 91

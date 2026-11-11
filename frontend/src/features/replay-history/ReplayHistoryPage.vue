@@ -612,8 +612,8 @@ function actualSpecialLabel(lotteryType: ReplayBackfillLotteryType): string {
   return '特別號／第二區（539 不適用）'
 }
 
-function showNumbers(numbers: number[]): string {
-  return numbers.length ? numbers.join('、') : '—'
+function showNumbers(numbers: number[] | null): string {
+  return numbers?.length ? numbers.join('、') : '—'
 }
 
 function scoreTrust(item: ReplayBackfillPredictionItem): ReplayScoreTrustAssessment {
@@ -1829,6 +1829,8 @@ function predictedNumbers(value: number[] | null | undefined): string {
                       <div><dt>Training cutoff</dt><dd>{{ item.training.training_cutoff ?? 'API未提供' }}</dd></div>
                       <div><dt>Training artifact</dt><dd><code>{{ item.training.training_artifact_id ?? 'API未提供' }}</code></dd></div>
                       <div><dt>Prediction status</dt><dd>{{ item.prediction_status }}</dd></div>
+                      <div><dt>組合唯一性</dt><dd>{{ item.research_portfolio_qualification?.status ?? 'UNKNOWN' }}</dd></div>
+                      <div><dt>匯入資格</dt><dd>{{ item.research_portfolio_qualification?.import_qualification ?? 'UNKNOWN' }}</dd></div>
                       <div><dt>Prediction cutoff</dt><dd>{{ predictionCutoffLabel(item) }}</dd></div>
                       <div><dt>Cutoff draw</dt><dd>{{ item.prediction_cutoff?.draw_number ?? 'API未提供' }} / {{ item.prediction_cutoff?.draw_date ?? 'API未提供' }}</dd></div>
                       <div><dt>Cutoff history count</dt><dd>{{ item.prediction_cutoff?.history_draw_count ?? 'API未提供' }}</dd></div>

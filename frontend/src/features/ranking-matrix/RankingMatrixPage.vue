@@ -27,6 +27,7 @@ import { queryStrategyMatrixStructural, type StructuralMatrixCell, type Structur
 import StructuralExpectedMax from './components/StructuralExpectedMax.vue'
 import CrossWindowChart from './components/CrossWindowChart.vue'
 import MultiTicketMatrix from './components/MultiTicketMatrix.vue'
+import Sealed084ResearchPanel from './Sealed084ResearchPanel.vue'
 import RankingTable from './components/RankingTable.vue'
 import type {
   PageLoadState,
@@ -489,6 +490,8 @@ onBeforeUnmount(() => {
         </div>
       </div>
     </section>
+
+    <Sealed084ResearchPanel v-if="selectedLottery === 'BIG_LOTTO'" :enabled="pageState !== 'loading'" />
 
     <StructuralExpectedMax
       :cells="structuralCells"

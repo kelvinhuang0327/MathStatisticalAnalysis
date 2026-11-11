@@ -1557,7 +1557,8 @@ class SQLiteBackfillStore:
             page_where = " AND ".join(page_clauses)
             rows = connection.execute(
                 "SELECT c.payload_json,c.target_draw_date,c.target_draw_id,c.strategy_id,"
-                "c.strategy_version,c.cell_identity,c.lottery_type FROM replay_backfill_cells c "
+                "c.strategy_version,c.cell_identity,c.lottery_type,c.dataset_identity,"
+                "c.execution_version,c.result_identity FROM replay_backfill_cells c "
                 "JOIN replay_backfill_run_cells r USING(cell_identity) "
                 f"WHERE {page_where} ORDER BY c.target_draw_date,CAST(c.target_draw_id AS INTEGER),"
                 "c.strategy_id,c.strategy_version,c.cell_identity LIMIT ?",
@@ -1595,6 +1596,22 @@ class SQLiteBackfillStore:
                             "cell_identity": row[5],
                         },
                         "cutoff_source": cutoff_source,
+                        "portfolio_context": _research_portfolio_context(
+                            manifest,
+                            payload,
+                            selected_run_id,
+                            lottery_type,
+                            stored_identity={
+                                "target_draw_date": row[1],
+                                "target_draw_id": row[2],
+                                "strategy_id": row[3],
+                                "strategy_version": row[4],
+                                "cell_identity": row[5],
+                                "dataset_identity": row[7],
+                                "execution_version": row[8],
+                                "result_identity": row[9],
+                            },
+                        ),
                         "key": [row[1], int(row[2]), row[3], row[4], row[5]],
                     }
                 )
@@ -1681,3 +1698,99 @@ def _ticket_identity_matches(
         if nested.get("ticket_position") != ticket_position:
             return False
     return True
+
+
+def _research_portfolio_context(
+    manifest: JsonObject,
+    payload: JsonObject,
+    run_id: str,
+    lottery_type: str,
+    *,
+    stored_identity: JsonObject | None = None,
+) -> JsonObject:
+    """Bind uniqueness inputs to the selected run and persisted cell identity.
+
+    This checks recorded provenance and the result digest, not the source archive
+    itself. Full import qualification must independently verify that archive.
+    """
+    strategies = manifest.get("strategies")
+    matches: list[JsonObject] = []
+    if type(strategies) is list:
+        for item in cast(list[object], strategies):
+            if type(item) is not dict:
+                continue
+            candidate = cast(JsonObject, item)
+            if (
+                candidate.get("strategy_id") == payload.get("strategy_id")
+                and candidate.get("strategy_version") == payload.get("strategy_version")
+            ):
+                matches.append(candidate)
+    expected: object = matches[0].get("native_ticket_count") if len(matches) == 1 else None
+    body = {key: value for key, value in payload.items() if key != "result_identity"}
+    digest = payload.get("result_identity")
+    stored = stored_identity or {}
+    identity_fields = (
+        "target_draw_date",
+        "target_draw_id",
+        "strategy_id",
+        "strategy_version",
+        "cell_identity",
+        "dataset_identity",
+        "execution_version",
+        "result_identity",
+    )
+    stored_matches = all(
+        payload.get(key) == stored.get(key) and stored.get(key) is not None
+        for key in identity_fields
+    )
+    ticket_identity = {
+        "lottery_type": lottery_type,
+        "run_id": run_id,
+        "target_draw_id": stored.get("target_draw_id"),
+        "strategy_id": stored.get("strategy_id"),
+        "strategy_version": stored.get("strategy_version"),
+    }
+    raw_tickets: object = payload.get("predicted_tickets")
+    ticket_identities_match = type(raw_tickets) is list
+    if type(raw_tickets) is list:
+        for raw in cast(list[object], raw_tickets):
+            if type(raw) is not dict:
+                ticket_identities_match = False
+                break
+            ticket = cast(JsonObject, raw)
+            if any(key in ticket and ticket[key] != value for key, value in ticket_identity.items()):
+                ticket_identities_match = False
+                break
+            nested: object = ticket.get("identity")
+            if nested is not None:
+                if type(nested) is not dict:
+                    ticket_identities_match = False
+                    break
+                nested_data = cast(JsonObject, nested)
+                if (
+                    any(nested_data.get(key) != value for key, value in ticket_identity.items())
+                    or nested_data.get("ticket_position") != ticket.get("ticket_position")
+                ):
+                    ticket_identities_match = False
+                    break
+    source_bound = (
+        lottery_type == "BIG_LOTTO"
+        and manifest.get("lottery_type") == lottery_type
+        and payload.get("lottery_type") == lottery_type
+        and manifest.get("run_id") == run_id
+        and ("run_id" not in payload or payload.get("run_id") == run_id)
+        and type(manifest.get("dataset_identity")) is str
+        and bool(manifest.get("dataset_identity"))
+        and manifest.get("dataset_identity") == payload.get("dataset_identity")
+        and type(manifest.get("source_locator")) is str
+        and bool(manifest.get("source_locator"))
+        and type(manifest.get("source_hash")) is str
+        and bool(manifest.get("source_hash"))
+        and type(expected) is int
+        and expected == payload.get("expected_native_ticket_count")
+        and type(digest) is str
+        and identity(body) == digest
+        and stored_matches
+        and ticket_identities_match
+    )
+    return {"expected_count": expected, "source_bound": source_bound}

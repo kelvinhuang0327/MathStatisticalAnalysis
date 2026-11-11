@@ -246,7 +246,7 @@ class HistoryParseError(ValueError):
 
 
 def parse_history_json(raw: str) -> tuple[CausalDrawRow, ...]:
-    """Parse a JSON array of ``{draw, date, numbers}`` rows into causal history.
+    """Parse causal rows, optionally including each historical special number.
 
     Only shape is checked here; rule validity (range, count, uniqueness) is
     the adapter's job via :func:`lottolab.strategies.adapters.base.validated_history`.
@@ -267,6 +267,7 @@ def parse_history_json(raw: str) -> tuple[CausalDrawRow, ...]:
         draw = record.get("draw")
         date = record.get("date")
         numbers = record.get("numbers")
+        special_number = record.get("special_number")
         if not isinstance(draw, str) or not draw:
             raise HistoryParseError(f"history row {index}: draw must be a non-empty string")
         if not isinstance(date, str) or not date:
@@ -275,7 +276,16 @@ def parse_history_json(raw: str) -> tuple[CausalDrawRow, ...]:
             type(number) is int for number in cast("list[object]", numbers)
         ):
             raise HistoryParseError(f"history row {index}: numbers must be a list of integers")
-        rows.append(CausalDrawRow(draw=draw, date=date, numbers=tuple(cast("list[int]", numbers))))
+        if special_number is not None and type(special_number) is not int:
+            raise HistoryParseError(f"history row {index}: special_number must be an integer")
+        rows.append(
+            CausalDrawRow(
+                draw=draw,
+                date=date,
+                numbers=tuple(cast("list[int]", numbers)),
+                special_number=cast("int | None", special_number),
+            )
+        )
     return tuple(rows)
 
 

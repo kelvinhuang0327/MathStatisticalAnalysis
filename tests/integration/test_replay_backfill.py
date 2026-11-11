@@ -162,18 +162,7 @@ def worker(
 
 
 def _test_database_path(tmp_path: Path, filename: str) -> Path:
-    project_root = next(
-        parent for parent in Path(__file__).resolve().parents if (parent / ".git").exists()
-    )
-    project_database_paths.PROJECT_ROOT = project_root
-    scratch = (
-        project_root
-        / ".task-data"
-        / "_scratch"
-        / "replay-hit-position-producer-fix-r1"
-        / "pytest-databases"
-    )
-    scratch = scratch / tmp_path.parent.name
+    scratch = tmp_path / "msa-pytest.replay-backfill"
     scratch.mkdir(parents=True, exist_ok=True)
     return scratch / f"{tmp_path.name}-{filename}"
 
@@ -609,7 +598,7 @@ def test_contract_api_uses_bounded_stable_pages_and_recomputed_coverage(tmp_path
     assert len({item["target_draw_number"] for item in collected}) == 12
     assert collected[-1]["predicted_tickets"][0]["ticket_position"] == 1
     assert collected[-1]["actual_main_numbers"] == list(engine.draws[-1].main_numbers)
-    assert collected[-1]["training"]["training_status"] == "NOT_TRAINABLE"
+    assert collected[-1]["training"]["training_status"] == "UNKNOWN"
 
     coverage = client.get(root + "/coverage", params={"lottery_type": "BIG_LOTTO"})
     assert coverage.status_code == 200

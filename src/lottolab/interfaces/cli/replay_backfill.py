@@ -1,5 +1,7 @@
 """Offline replay worker: python -m lottolab.interfaces.cli.replay_backfill."""
 
+# pyright: reportPrivateUsage=false
+
 from __future__ import annotations
 
 import argparse
@@ -8,13 +10,15 @@ import hashlib
 import inspect
 import json
 import os
+import random
 import sqlite3
 import sys
 import tempfile
+from collections.abc import Callable
 from dataclasses import asdict
 from datetime import date
 from pathlib import Path
-from typing import cast
+from typing import Any, cast
 
 from lottolab.application.historical_replay_adapters import (
     BigLottoReplayAdapter,
@@ -158,7 +162,11 @@ def native_strategy_inventory(
                     raise ValueError("seeded replay wrapper source is unavailable")
                 wrapper_sha = hashlib.sha256(Path(wrapper_file).read_bytes()).hexdigest()
                 implementation = SeededSingleTicketReplay(
-                    sid, descriptor.strategy_name, descriptor.version, descriptor.min_history, cls
+                    sid,
+                    descriptor.strategy_name,
+                    descriptor.version,
+                    descriptor.min_history,
+                    cast(Callable[[random.Random], Any], cls),
                 )
                 behavior = ReplayBehavior.SEEDED_STOCHASTIC
                 seed_contract = SEED_CONTRACT
@@ -176,7 +184,10 @@ def native_strategy_inventory(
                     "v0.5",
                 }
             ):
-                dependencies = [_EvolutionEngine, BigLottoCausalEvolutionAdapter]
+                dependencies: list[type[object]] = [
+                    cast(type[object], _EvolutionEngine),
+                    BigLottoCausalEvolutionAdapter,
+                ]
                 if implementation.strategy_version in {"v0.4", "v0.5"}:
                     dependencies.append(BigLottoStrictEvolutionAdapter)
                 if implementation.strategy_version == "v0.5":

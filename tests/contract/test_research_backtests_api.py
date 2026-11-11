@@ -41,14 +41,21 @@ def _pinned_csv_hashes() -> dict[str, str]:
 
 def _has_pinned_sources() -> bool:
     try:
-        manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
-        source_files = manifest["source_files"]
-        return isinstance(source_files, dict) and all(
-            isinstance(item, dict)
-            and isinstance(item.get("path"), str)
-            and Path(item["path"]).is_file()
-            for item in source_files.values()
-        )
+        manifest_value = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
+        if not isinstance(manifest_value, dict):
+            return False
+        manifest = cast(dict[str, object], manifest_value)
+        source_files = manifest.get("source_files")
+        if not isinstance(source_files, dict):
+            return False
+        for item in cast(dict[str, object], source_files).values():
+            if not isinstance(item, dict):
+                return False
+            source = cast(dict[str, object], item)
+            path = source.get("path")
+            if not isinstance(path, str) or not Path(path).is_file():
+                return False
+        return True
     except (OSError, ValueError, KeyError, TypeError):
         return False
 

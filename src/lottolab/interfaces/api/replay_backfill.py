@@ -12,6 +12,7 @@ import base64
 import hashlib
 import json
 import os
+from collections.abc import Callable
 from datetime import date
 from pathlib import Path
 from typing import Annotated, Literal, cast
@@ -506,28 +507,34 @@ def create_replay_backfill_router(store: SQLiteBackfillStore | None) -> APIRoute
             )
         )
         try:
-            snapshot_reader = getattr(store, "strategy_history_snapshot", None)
-            snapshots: dict[str, JsonObject] = (
-                {
+            snapshot_reader = cast(
+                Callable[..., JsonObject] | None,
+                getattr(store, "strategy_history_snapshot", None),
+            )
+            snapshots: dict[str, JsonObject]
+            if callable(snapshot_reader):
+                snapshots = {
                     selected_lottery.value: snapshot_reader(
                         selected_lottery.value,
                         run_id=run_id,
                     )
                     for selected_lottery in query_lotteries
                 }
-                if callable(snapshot_reader)
-                else {
-                    selected_lottery.value: {
-                        "run_id": run_id,
-                        "target_count": 0,
-                        "cell_status_counts": [],
-                        "strategy_inventory": [],
-                        "selected_strategies": [],
-                        "run_source": {"identity_status": "UNKNOWN"},
-                    }
+            else:
+                snapshots = {
+                    selected_lottery.value: cast(
+                        JsonObject,
+                        {
+                            "run_id": run_id,
+                            "target_count": 0,
+                            "cell_status_counts": [],
+                            "strategy_inventory": [],
+                            "selected_strategies": [],
+                            "run_source": {"identity_status": "UNKNOWN"},
+                        },
+                    )
                     for selected_lottery in query_lotteries
                 }
-            )
         except KeyError:
             return _error(404, "REPLAY_BACKFILL_RUN_NOT_FOUND")
         except ValueError:
@@ -551,7 +558,10 @@ def create_replay_backfill_router(store: SQLiteBackfillStore | None) -> APIRoute
                     )
                     if all(isinstance(value, str) for value in key_values):
                         stored_by_key[cast(tuple[str, str, str], key_values)] = stored_row
-            stored_inventory_reader = getattr(store, "stored_strategy_inventory", None)
+            stored_inventory_reader = cast(
+                Callable[[str], list[object]] | None,
+                getattr(store, "stored_strategy_inventory", None),
+            )
             stored_rows: list[JsonObject] = []
             if callable(stored_inventory_reader):
                 for selected_lottery in query_lotteries:

@@ -279,15 +279,11 @@ def parse_history_json(raw: str) -> tuple[CausalDrawRow | PrizeHistoryRow, ...]:
             raise HistoryParseError(f"history row {index}: numbers must be a list of integers")
         if special_number is not None and type(special_number) is not int:
             raise HistoryParseError(f"history row {index}: special_number must be an integer")
-        common = {
-            "draw": draw,
-            "date": date,
-            "numbers": tuple(cast("list[int]", numbers)),
-        }
+        number_tuple = tuple(cast("list[int]", numbers))
         rows.append(
-            CausalDrawRow(**common)
+            CausalDrawRow(draw, date, number_tuple)
             if special_number is None
-            else PrizeHistoryRow(**common, special_number=special_number)
+            else PrizeHistoryRow(draw, date, number_tuple, special_number)
         )
     return tuple(rows)
 

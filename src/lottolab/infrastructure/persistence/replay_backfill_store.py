@@ -622,46 +622,54 @@ class SQLiteBackfillStore:
             ):
                 raise ValueError("unsupported replay backfill schema")
 
-            columns = (
-                "lottery_type",
-                "strategy_id",
-                "strategy_version",
-                "target_draw_id",
-            )
-            for offset in range(0, len(keys), 100):
-                batch = keys[offset : offset + 100]
-                predicate = " OR ".join(
-                    "(" + " AND ".join(f'"{column}"=?' for column in columns) + ")"
-                    for _ in batch
-                )
-                parameters = tuple(value for key in batch for value in key)
-                rows = connection.execute(
-                    "SELECT lottery_type,strategy_id,strategy_version,target_draw_id,"
-                    "execution_version,dataset_identity,payload_json "
-                    "FROM replay_backfill_cells "
-                    f"WHERE execution_status='COMPLETE' AND ({predicate})",
-                    parameters,
-                )
-                for row in rows:
-                    key = cast(tuple[str, str, str, str], tuple(row[:4]))
-                    payload = _as_json_object(json.loads(row[6]))
-                    if (
-                        payload is None
-                        or tuple(
-                            payload.get(column)
-                            for column in (
-                                "lottery_type",
-                                "strategy_id",
-                                "strategy_version",
-                                "target_draw_id",
-                                "execution_version",
-                                "dataset_identity",
+            requested = set(keys)
+            strategy_ids_by_lottery: dict[str, set[str]] = {}
+            for lottery_type, strategy_id, _, _ in requested:
+                strategy_ids_by_lottery.setdefault(lottery_type, set()).add(strategy_id)
+
+            # A historical backfill can request hundreds of thousands of logical
+            # keys. Repeating a four-column OR query for every 100 keys rescans
+            # the same COMPLETE rows thousands of times. Read candidate COMPLETE
+            # rows once per lottery/strategy-id chunk, then apply the exact
+            # requested logical-key set in memory. Chunks stay below SQLite's
+            # longstanding 999 bind-parameter limit.
+            for lottery_type, strategy_ids in strategy_ids_by_lottery.items():
+                ordered_strategy_ids = sorted(strategy_ids)
+                for offset in range(0, len(ordered_strategy_ids), 500):
+                    strategy_batch = ordered_strategy_ids[offset : offset + 500]
+                    placeholders = ",".join("?" for _ in strategy_batch)
+                    rows = connection.execute(
+                        "SELECT lottery_type,strategy_id,strategy_version,target_draw_id,"
+                        "execution_version,dataset_identity,payload_json "
+                        "FROM replay_backfill_cells "
+                        "WHERE execution_status='COMPLETE' AND lottery_type=? "
+                        f"AND strategy_id IN ({placeholders})",
+                        (lottery_type, *strategy_batch),
+                    )
+                    for row in rows:
+                        key = cast(tuple[str, str, str, str], tuple(row[:4]))
+                        if key not in requested:
+                            continue
+                        payload = _as_json_object(json.loads(row[6]))
+                        if (
+                            payload is None
+                            or tuple(
+                                payload.get(column)
+                                for column in (
+                                    "lottery_type",
+                                    "strategy_id",
+                                    "strategy_version",
+                                    "target_draw_id",
+                                    "execution_version",
+                                    "dataset_identity",
+                                )
                             )
-                        )
-                        != tuple(row[:6])
-                    ):
-                        raise ValueError("COMPLETE replay identity conflicts with stored payload")
-                    found.setdefault(key, []).append(payload)
+                            != tuple(row[:6])
+                        ):
+                            raise ValueError(
+                                "COMPLETE replay identity conflicts with stored payload"
+                            )
+                        found.setdefault(key, []).append(payload)
         finally:
             connection.close()
         return {key: tuple(results) for key, results in found.items()}

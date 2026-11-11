@@ -18,6 +18,9 @@ from lottolab.domain.historical_replay import (
     ReplayStrategy,
     ReplayTicket,
 )
+from lottolab.infrastructure.persistence import (
+    replay_backfill_store as replay_backfill_store_module,
+)
 from lottolab.infrastructure.persistence.replay_backfill_store import SQLiteBackfillStore
 
 
@@ -197,6 +200,57 @@ def test_same_six_column_identity_resumes_without_generation(tmp_path: Path) -> 
             sort_keys=True,
         )
     )
+
+
+def test_complete_logical_lookup_scans_candidate_rows_once_and_filters_keys(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    store = SQLiteBackfillStore(_database_path(tmp_path))
+    worker, _ = _seed_complete(store)
+    earlier_target = worker.execute(
+        BackfillSelection(start_date=date(2024, 1, 3), end_date=date(2024, 1, 3))
+    )
+    assert earlier_target["newly_calculated_count"] == 1
+
+    requested_key = (
+        LotteryType.BIG_LOTTO.value,
+        "cross-version-guard",
+        "strategy-v1",
+        "100000004",
+    )
+    requested = (
+        requested_key,
+        *(
+            (
+                LotteryType.BIG_LOTTO.value,
+                "cross-version-guard",
+                "strategy-v1",
+                f"unused-{index}",
+            )
+            for index in range(100)
+        ),
+    )
+    statements: list[str] = []
+    original_connect = replay_backfill_store_module.sqlite3.connect
+
+    def traced_connect(*args: object, **kwargs: object) -> sqlite3.Connection:
+        connection = original_connect(*args, **kwargs)
+        connection.set_trace_callback(statements.append)
+        return connection
+
+    monkeypatch.setattr(replay_backfill_store_module.sqlite3, "connect", traced_connect)
+    found = store.lookup_complete_by_logical_keys(requested)
+
+    candidate_queries = [
+        statement
+        for statement in statements
+        if "FROM replay_backfill_cells" in statement and "execution_status='COMPLETE'" in statement
+    ]
+    assert len(candidate_queries) == 1
+    assert set(found) == {requested_key}
+    assert len(found[requested_key]) == 1
+    assert found[requested_key][0]["target_draw_id"] == "100000004"
 
 
 def test_cross_execution_complete_fails_before_prepare_or_generation(tmp_path: Path) -> None:

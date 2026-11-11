@@ -25,29 +25,29 @@ def test_inventory_conserves_sources_and_executable_identities() -> None:
     inventory = load_replay_strategy_inventory()
     source_counts = {source.source_kind: source for source in inventory.source_counts}
 
-    assert inventory.total_discovered_strategies == 658
-    assert inventory.total_unique_strategies == 442
-    assert len(inventory.executable_items) == 209
+    assert inventory.total_discovered_strategies == 651
+    assert inventory.total_unique_strategies == 443
+    assert len(inventory.executable_items) == 211
     assert inventory.unresolved_source_count == 9
     assert source_counts["PRODUCTION_CATALOG"].source_identity_count == 137
     assert source_counts["B649_RESEARCH_CATALOG"].source_identity_count == 221
     assert source_counts["B649_REPLAY_BATCH_REGISTRY"].source_identity_count == 11
     assert source_counts["T539_REPLAY_ADAPTER"].source_identity_count == 62
-    assert source_counts["P638_REPLAY_ADAPTER"].source_identity_count == 23
-    assert source_counts["STRATEGY_ADAPTER_CODE"].source_identity_count == 98
-    assert source_counts["STRATEGY_ADAPTER_CODE"].source_row_count == 99
+    assert source_counts["P638_REPLAY_ADAPTER"].source_identity_count == 14
+    assert source_counts["STRATEGY_ADAPTER_CODE"].source_identity_count == 100
+    assert source_counts["STRATEGY_ADAPTER_CODE"].source_row_count == 101
 
     lottery_counts = Counter(item.lottery_type for item in inventory.items)
     executable_by_lottery = Counter(item.lottery_type for item in inventory.executable_items)
     assert lottery_counts == {
-        LotteryType.BIG_LOTTO: 356,
+        LotteryType.BIG_LOTTO: 357,
         LotteryType.DAILY_539: 62,
         LotteryType.POWER_LOTTO: 24,
     }
     assert executable_by_lottery == {
-        LotteryType.BIG_LOTTO: 124,
+        LotteryType.BIG_LOTTO: 125,
         LotteryType.DAILY_539: 62,
-        LotteryType.POWER_LOTTO: 23,
+        LotteryType.POWER_LOTTO: 24,
     }
 
     research_sources = [
@@ -75,10 +75,10 @@ def test_inventory_keeps_status_dimensions_and_unavailable_cases_separate() -> N
     inventory = load_replay_strategy_inventory()
     by_data_status = Counter(item.replay_data_status for item in inventory.items)
     assert by_data_status == {
-        ReplayDataStatus.REBUILDABLE: 209,
+        ReplayDataStatus.REBUILDABLE: 211,
         ReplayDataStatus.ARTIFACT_ONLY: 98,
         ReplayDataStatus.REJECTED: 74,
-        ReplayDataStatus.NO_HISTORY: 59,
+        ReplayDataStatus.NO_HISTORY: 58,
         ReplayDataStatus.CODE_ONLY: 2,
     }
 
@@ -111,11 +111,25 @@ def test_inventory_keeps_status_dimensions_and_unavailable_cases_separate() -> N
     assert {(i.strategy_id, i.strategy_version) for i in code_only_lifecycle} == {
         ("research_biglotto__quick_ml_corrected_successor_v1", "v1"),
         ("legacy_biglotto__evolution_engine__3df019c31ce4", "v0.2"),
+        ("research_biglotto__k30_geometry_exact_swap_history_v1", "v1"),
     }
-    assert all(i.replay_data_status is ReplayDataStatus.CODE_ONLY for i in code_only_lifecycle)
+    code_only_replay_data = [
+        item
+        for item in code_only_lifecycle
+        if item.replay_data_status is ReplayDataStatus.CODE_ONLY
+    ]
+    assert len(code_only_replay_data) == 2
     assert all(
-        i.execution_capability is ReplayExecutionCapability.UNAVAILABLE for i in code_only_lifecycle
+        i.execution_capability is ReplayExecutionCapability.UNAVAILABLE
+        for i in code_only_replay_data
     )
+    executable_code_only = next(
+        item
+        for item in code_only_lifecycle
+        if item.replay_data_status is ReplayDataStatus.REBUILDABLE
+    )
+    assert executable_code_only.strategy_id == "research_biglotto__quick_ml_corrected_successor_v1"
+    assert executable_code_only.execution_capability is ReplayExecutionCapability.EXECUTABLE
 
     online = [
         item for item in inventory.items if item.lifecycle_status is ReplayLifecycleStatus.ONLINE

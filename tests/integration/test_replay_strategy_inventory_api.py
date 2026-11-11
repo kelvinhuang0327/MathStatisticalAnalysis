@@ -23,21 +23,21 @@ def test_replay_strategy_inventory_api_lists_separate_states_and_full_backfill_i
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["total_discovered_strategies"] == 658
-    assert payload["total_unique_strategies"] == 442
-    assert payload["total_executable"] == 209
-    assert payload["total_reconstructable"] == 209
+    assert payload["total_discovered_strategies"] == 651
+    assert payload["total_unique_strategies"] == 443
+    assert payload["total_executable"] == 211
+    assert payload["total_reconstructable"] == 211
     assert payload["total_has_history"] == 0
     assert payload["total_artifact_only"] == 98
     assert payload["total_rejected"] == 74
     assert payload["lifecycle_status_counts"]["ONLINE"] == 137
     assert payload["lifecycle_status_counts"]["OBSERVATION"] == 0
     assert payload["lifecycle_status_counts"]["OFFLINE"] == 0
-    assert payload["lifecycle_status_counts"]["CODE_ONLY"] == 2
+    assert payload["lifecycle_status_counts"]["CODE_ONLY"] == 3
     assert payload["source_status_counts"]["OBSERVATION"] == 2
     assert payload["replay_data_status_counts"]["CODE_ONLY"] == 2
-    assert payload["execution_capability_counts"]["EXECUTABLE"] == 209
-    assert payload["execution_capability_counts"]["UNAVAILABLE"] == 233
+    assert payload["execution_capability_counts"]["EXECUTABLE"] == 211
+    assert payload["execution_capability_counts"]["UNAVAILABLE"] == 232
     assert payload["strategy_count"] == payload["total_unique_strategies"]
     assert len(payload["executable_strategy_ids"]) == payload["total_executable"]
     assert all(
@@ -75,8 +75,8 @@ def test_replay_strategy_inventory_api_filters_by_lottery_strategy_and_data_stat
     assert by_strategy.json()["strategy_count"] == 1
     successor = by_strategy.json()["strategies"][0]
     assert successor["lifecycle_status"] == "CODE_ONLY"
-    assert successor["replay_data_status"] == "CODE_ONLY"
-    assert successor["execution_capability"] == "UNAVAILABLE"
+    assert successor["replay_data_status"] == "REBUILDABLE"
+    assert successor["execution_capability"] == "EXECUTABLE"
 
     by_data_status = client.get(
         "/api/v1/replay-strategy-inventory",

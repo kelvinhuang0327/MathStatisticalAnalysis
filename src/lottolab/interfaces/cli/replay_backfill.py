@@ -637,15 +637,16 @@ def resolve_output_database(
     *,
     test_only_external_database_root: Path | None = None,
 ) -> Path:
-    registered = _registered_backfill_database()
     if database is None:
-        return registered
+        return _registered_backfill_database()
     selected = validate_database_path(_absolute_database_path(database))
     if (
-        selected == registered
-        or _is_project_scratch_target(selected)
+        _is_project_scratch_target(selected)
         or _is_under_test_only_root(selected, test_only_external_database_root)
     ):
+        return selected
+    registered = _registered_backfill_database()
+    if selected == registered:
         return selected
     raise ValueError(
         "explicit database must be the registry target or inside "

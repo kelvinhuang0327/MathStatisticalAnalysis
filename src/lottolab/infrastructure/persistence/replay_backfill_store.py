@@ -15,7 +15,11 @@ from pathlib import Path
 from typing import Any, cast
 
 from lottolab.domain.draws import LotteryType
-from lottolab.domain.historical_replay import ReplayDraw
+from lottolab.domain.historical_replay import (
+    ReplayDraw,
+    SourceHistoryProvenanceStatus,
+    parse_source_history_provenance_status,
+)
 from lottolab.domain.prize_evaluation import evaluate_lottery_prize
 from lottolab.infrastructure.persistence.draw_schema import (
     LocalDataPaths,
@@ -675,6 +679,10 @@ class SQLiteBackfillStore:
     ) -> None:
         encoded_results: list[tuple[JsonObject, str]] = []
         for result in results:
+            if "source_history_provenance_status" in result:
+                parse_source_history_provenance_status(
+                    result["source_history_provenance_status"]
+                )
             encoded = canonical_json(result)
             body = {k: v for k, v in result.items() if k != "result_identity"}
             if identity(body) != result["result_identity"]:
@@ -705,6 +713,10 @@ class SQLiteBackfillStore:
                         (result["execution_status"], result["result_identity"], encoded, cell_id),
                     )
                 elif old is None:
+                    if "source_history_provenance_status" not in result:
+                        raise ValueError(
+                            "new replay results require source_history_provenance_status"
+                        )
                     keys = (
                         "cell_identity",
                         "lottery_type",
@@ -1673,8 +1685,22 @@ class SQLiteBackfillStore:
                 "c.strategy_version,c.cell_identity LIMIT ? OFFSET ?",
                 (*params, limit, offset),
             ).fetchall()
+        items: list[JsonObject] = []
+        for row in rows:
+            payload = _as_json_object(json.loads(row[0]))
+            if payload is None:
+                raise ValueError("persisted replay result payload is invalid")
+            provenance_status = payload.get(
+                "source_history_provenance_status",
+                SourceHistoryProvenanceStatus.UNKNOWN.value,
+            )
+            # Legacy payloads get a safe read-view default without changing stored bytes.
+            payload["source_history_provenance_status"] = (
+                parse_source_history_provenance_status(provenance_status).value
+            )
+            items.append(payload)
         return {
-            "items": [json.loads(r[0]) for r in rows],
+            "items": items,
             "total_count": total,
             "limit": limit,
             "offset": offset,

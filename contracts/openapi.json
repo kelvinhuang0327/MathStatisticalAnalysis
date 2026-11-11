@@ -18526,6 +18526,15 @@
             "type": "string",
             "title": "Prediction Status"
           },
+          "source_history_provenance_status": {
+            "type": "string",
+            "enum": [
+              "VERIFIED",
+              "UNKNOWN",
+              "UNVERIFIED"
+            ],
+            "title": "Source History Provenance Status"
+          },
           "research_portfolio_qualification": {
             "anyOf": [
               {
@@ -18731,6 +18740,7 @@
           "target_draw_number",
           "target_draw_date",
           "prediction_status",
+          "source_history_provenance_status",
           "predicted_tickets",
           "actual_main_numbers",
           "actual_special_numbers",

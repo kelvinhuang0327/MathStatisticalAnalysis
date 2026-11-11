@@ -29,7 +29,7 @@ from multiprocessing.connection import Connection
 from multiprocessing.process import BaseProcess
 from multiprocessing.synchronize import Barrier
 from pathlib import Path
-from typing import cast
+from typing import BinaryIO, cast
 from uuid import uuid4
 
 import pytest
@@ -68,6 +68,8 @@ class Harness:
     after_child: Callable[[], None] | None = None
     exit_override: int | None = None
     exec_failed: bool = False
+    process_stdout: bytes = b"bootstrap output\n"
+    process_stderr: bytes = b"ModuleNotFoundError: protected child could not start\n"
     observed_started: protected.Record | None = None
     existing_plan: Path | None = None
     legacy_head: str = OLD_HEAD
@@ -200,7 +202,13 @@ class Harness:
             self.during_sleep()
 
     def popen(
-        self, argv: Sequence[str], *, pass_fds: tuple[int, ...], start_new_session: bool
+        self,
+        argv: Sequence[str],
+        *,
+        pass_fds: tuple[int, ...],
+        start_new_session: bool,
+        stdout: int | None = None,
+        stderr: int | None = None,
     ) -> FakeChild:
         self.launches += 1
         assert list(argv[:3]) == [sys.executable, "-c", claims._GATED_EXEC]
@@ -220,7 +228,23 @@ class Harness:
         assert start_new_session and pass_fds == (int(argv[3]),)
         state = claims.ClaimStore(self.request.claim_root).inspect(protected.TASK_KEY)
         assert state["owner_pid"] == self.owner and state["child_pid"] is None
-        return FakeChild(self, os.dup(pass_fds[0]))
+        stdout_reader: BinaryIO | None = None
+        stderr_reader: BinaryIO | None = None
+        stdout_writer: int | None = None
+        stderr_writer: int | None = None
+        if stdout == subprocess.PIPE and stderr == subprocess.PIPE:
+            stdout_read_fd, stdout_writer = os.pipe()
+            stderr_read_fd, stderr_writer = os.pipe()
+            stdout_reader = os.fdopen(stdout_read_fd, "rb", buffering=0)
+            stderr_reader = os.fdopen(stderr_read_fd, "rb", buffering=0)
+        return FakeChild(
+            self,
+            os.dup(pass_fds[0]),
+            stdout_reader=stdout_reader,
+            stderr_reader=stderr_reader,
+            stdout_writer=stdout_writer,
+            stderr_writer=stderr_writer,
+        )
 
     def launch(self) -> protected.Record:
         protected.ReceiptFile(self.request.receipt_path).read()
@@ -283,7 +307,7 @@ class Harness:
                 )
             elif owner.get("authorization") != authorization:
                 raise AssertionError("test harness owner authorization drift")
-        return protected.launch(self.request)
+        return protected.launch(self.request, runner=self.runner)
 
     def external(self, command: str, *, cwd: str | None = "/isolated") -> None:
         self.launchd.process_rows.append(f"900099 1 {UID} S {command}")
@@ -291,11 +315,171 @@ class Harness:
             self.launchd.file_rows.extend(["p900099", "fcwd", "n" + cwd])
 
 
+@dataclass(frozen=True)
+class StrandedIncident:
+    request: protected.Request
+    predecessor_sha256: str
+    managed_sha256: str
+    plan_sha256: str
+    old_plist_bytes: bytes
+    mutations_before: tuple[tuple[str, ...], ...]
+
+
+def _preserve_legacy_prestart_result(
+    _request: protected.Request | protected.RollbackRequest,
+    _store: protected.ReceiptClaimStore,
+    _staged: protected.Record,
+    _exit_code: int,
+    *,
+    runner: cutover.Runner,
+) -> protected.Record | None:
+    del runner
+    return None
+
+
+def _make_stranded_prestart_incident(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    preserve_legacy_parent_behavior: bool,
+) -> StrandedIncident:
+    v5 = harness.launch()
+    assert v5["status"] == "SUCCESS"
+    prior_owner = cutover.inspect_control_owner(harness.fixture.config)
+    assert prior_owner is not None and prior_owner["phase"] == "RELEASED"
+    predecessor_bytes = harness.request.receipt_path.read_bytes()
+    managed_bytes = harness.fixture.receipt_path.read_bytes()
+    predecessor_sha256 = hashlib.sha256(predecessor_bytes).hexdigest()
+    managed_sha256 = hashlib.sha256(managed_bytes).hexdigest()
+    old_plist_bytes = harness.fixture.plist_path.read_bytes()
+    mutations_before = tuple(harness.launchd.mutation_calls)
+    harness.launchd.process_rows = [f"424242 1 {UID} S /usr/bin/fixture-shell"]
+    harness.launchd.file_rows = ["p424242", "fcwd", "n/tmp"]
+
+    v6_head = "e" * 40
+    v6_tree = "d" * 40
+    v6_source = harness.fixture.worktree_parent / f"B649_PRODUCTION_{v6_head}"
+    Fixture.make_source(v6_source)
+    harness.launchd.worktree_identities[v6_source] = (v6_head, v6_tree, True)
+    v6_config = replace(
+        harness.fixture.config,
+        source_worktree=v6_source,
+        expected_head=v6_head,
+        expected_tree=v6_tree,
+        durable_ref=f"refs/heads/runtime/b649/{v6_head}",
+        strict_release_layout=False,
+    )
+    plan = cutover.build_plan(v6_config, runner=harness.launchd)
+    assert plan["status"] == "PASS", plan["failures"]
+    plan_file = harness.fixture.root / "v6-plan.json"
+    plan_file.write_text(protected.canonical(plan), encoding="utf-8")
+    plan_file.chmod(0o600)
+
+    original_control_head = "d32620eda04e3e01c1cb135d822bb21e41f0de34"
+    original_control_tree = "1f8c8878dc6d108014028d9abf588ed7b4593d50"
+    # Model the stranded operation as having been created by the packet's
+    # original control checkout, even when these tests run from a later commit.
+    monkeypatch.setattr(
+        protected,
+        "control_identity",
+        lambda: (original_control_head, original_control_tree),
+    )
+    request = protected.make_request(
+        v6_config,
+        harness.fixture.new,
+        NEW_HEAD,
+        NEW_TREE,
+        plan_file,
+        harness.request.claim_root,
+        reservation_id="fb748f08-cd90-4bec-89e1-31364d98143d",
+        operation_id="27e1039be8f511114e06fcae200fcc2f",
+        prior_execution_receipt_sha256=predecessor_sha256,
+    )
+    monkeypatch.setattr(cutover, "run_command", harness.runner)
+    predecessor_proof = protected._require_released_success_evidence(request, prior_owner)
+    owner = cutover.acquire_control_owner(
+        v6_config,
+        action="apply",
+        target=protected.request_owner_target(request),
+        owner_kind="protected",
+        reservation_id=request.reservation_id,
+        version={"head": original_control_head, "tree": original_control_tree},
+        operation_id=request.operation_id,
+        managed_receipt_sha256=request.managed_receipt_sha256,
+        predecessor_release_evidence=predecessor_proof,
+    )
+    monkeypatch.setattr(
+        cutover,
+        "control_version",
+        lambda: {"head": original_control_head, "tree": original_control_tree},
+    )
+    owner = cutover.bind_control_owner(
+        v6_config,
+        str(request.reservation_id),
+        action="apply",
+        target=protected.request_owner_target(request),
+        operation_id=request.operation_id,
+        managed_receipt_sha256=request.managed_receipt_sha256,
+        version={"head": original_control_head, "tree": original_control_tree},
+    )
+    assert owner["phase"] == "AUTHORIZATION_PENDING"
+    cutover.authorize_control_owner(
+        v6_config,
+        str(request.reservation_id),
+        protected.request_owner_authorization(request),
+    )
+    harness.fixture.config = v6_config
+    harness.request = request
+    harness.chain()
+    harness.exec_failed = True
+    if preserve_legacy_parent_behavior:
+        monkeypatch.setattr(
+            protected,
+            "_prestart_failure_evidence",
+            _preserve_legacy_prestart_result,
+        )
+    result = harness.launch()
+    assert result["exit_code"] == 127
+    return StrandedIncident(
+        request=request,
+        predecessor_sha256=predecessor_sha256,
+        managed_sha256=managed_sha256,
+        plan_sha256=hashlib.sha256(plan_file.read_bytes()).hexdigest(),
+        old_plist_bytes=old_plist_bytes,
+        mutations_before=mutations_before,
+    )
+
+
 class FakeChild:
-    def __init__(self, harness: Harness, gate: int):
+    def __init__(
+        self,
+        harness: Harness,
+        gate: int,
+        *,
+        stdout_reader: BinaryIO | None,
+        stderr_reader: BinaryIO | None,
+        stdout_writer: int | None,
+        stderr_writer: int | None,
+    ):
         self.harness = harness
         self.gate = gate
         self.pid = harness.child
+        self.stdout = stdout_reader
+        self.stderr = stderr_reader
+        self.stdout_writer = stdout_writer
+        self.stderr_writer = stderr_writer
+
+    def _write_process_streams(self, stdout: bytes, stderr: bytes) -> None:
+        for descriptor, content in (
+            (self.stdout_writer, stdout),
+            (self.stderr_writer, stderr),
+        ):
+            if descriptor is not None:
+                try:
+                    if content:
+                        os.write(descriptor, content)
+                finally:
+                    os.close(descriptor)
 
     def wait(self, *, timeout: float) -> int:
         assert timeout == claims.HEARTBEAT_SECONDS
@@ -311,8 +495,19 @@ class FakeChild:
             protected.launch(harness.request)
         harness.duplicates.append(store.run(protected.TASK_KEY, harness.request.managed_argv()))
         if harness.exec_failed:
-            return 127
-        with pytest.MonkeyPatch.context() as child_context:
+            self._write_process_streams(harness.process_stdout, harness.process_stderr)
+            if harness.after_child:
+                harness.after_child()
+            return 127 if harness.exit_override is None else harness.exit_override
+        if self.stdout_writer is None or self.stderr_writer is None:
+            raise AssertionError("captured child streams are required by the harness")
+        with (
+            os.fdopen(self.stdout_writer, "w", encoding="utf-8") as child_stdout,
+            os.fdopen(self.stderr_writer, "w", encoding="utf-8") as child_stderr,
+            redirect_stdout(child_stdout),
+            redirect_stderr(child_stderr),
+            pytest.MonkeyPatch.context() as child_context,
+        ):
             child_context.setattr(os, "getpid", lambda: harness.child)
             child_context.setattr(os, "getppid", lambda: harness.owner)
             try:
@@ -991,16 +1186,491 @@ def test_changed_execution_digest_cannot_control_ownership(harness: Harness) -> 
         proof.verify({}, UID)
 
 
-def test_exec_failure_before_child_code_leaves_durable_ambiguous_result(harness: Harness) -> None:
+def test_base_parent_behavior_strands_prestart_exec_failure(
+    harness: Harness, monkeypatch: pytest.MonkeyPatch
+) -> None:
     harness.exec_failed = True
+    monkeypatch.setattr(protected, "_prestart_failure_evidence", _preserve_legacy_prestart_result)
     result = harness.launch()
     assert result["status"] == "INCOMPLETE_OR_AMBIGUOUS" and result["exit_code"] == 127
     assert result["gated_child_pid"] == harness.child
+    owner = cutover.inspect_control_owner(harness.fixture.config)
+    assert owner is not None and owner["phase"] == "AUTHORIZED_PENDING"
+    assert owner["mutation_started"] is False
     saved = protected.ReceiptFile(harness.request.receipt_path).read()
     assert saved is not None and saved["completed_at"]
     with pytest.raises(protected.ProtectedError, match="blocks automatic rerun"):
         harness.launch()
     assert harness.launches == 1 and harness.stops == []
+
+
+@pytest.mark.parametrize("exec_failure_code", [126, 127])
+def test_candidate_terminalizes_prestart_failure_and_captures_process_output(
+    harness: Harness, exec_failure_code: int
+) -> None:
+    harness.exec_failed = True
+    harness.exit_override = exec_failure_code
+    result = harness.launch()
+    assert result["status"] == "FAILED" and result["result_status"] == "FAILED"
+    assert result["exit_code"] == exec_failure_code
+    assert "child_started_at" not in result and "child_completed_at" not in result
+    prestart_evidence = protected.record(result["prestart_failure_evidence"])
+    process_stdout = protected.record(result["process_stdout"])
+    process_stderr = protected.record(result["process_stderr"])
+    assert prestart_evidence["classification"] == "PRESTART_FAILURE_NO_MUTATION"
+    assert process_stdout["text"] == harness.process_stdout.decode()
+    assert process_stderr["text"] == harness.process_stderr.decode()
+    assert process_stdout["sha256"] == hashlib.sha256(harness.process_stdout).hexdigest()
+    assert process_stderr["sha256"] == hashlib.sha256(harness.process_stderr).hexdigest()
+    owner = cutover.inspect_control_owner(harness.fixture.config)
+    assert owner is not None and owner["phase"] == "RELEASED"
+    assert protected.record(owner["release_evidence"])["verified"] is True
+    assert harness.fixture.plist_path.read_bytes() == harness.fixture.old_plist_bytes
+    assert harness.launchd.mutation_calls == []
+
+
+def test_started_marker_blocks_prestart_terminalization(harness: Harness) -> None:
+    harness.exec_failed = True
+
+    def inject_started_marker() -> None:
+        receipt_file = protected.ReceiptFile(harness.request.receipt_path)
+        staged = receipt_file.read()
+        assert staged is not None and staged["phase"] == "GATED"
+        receipt_file.write(
+            {**staged, "child_started_at": "synthetic-start-marker"}, expected=staged
+        )
+
+    harness.after_child = inject_started_marker
+    result = harness.launch()
+    assert result["status"] == "INCOMPLETE_OR_AMBIGUOUS"
+    assert result["result_status"] == "INCOMPLETE_OR_AMBIGUOUS"
+    assert result["child_started_at"] == "synthetic-start-marker"
+    assert "prestart_failure_evidence" not in result
+    assert harness.launchd.mutation_calls == []
+
+
+@pytest.mark.parametrize("defect", ["mutation_started", "old_live_state"])
+def test_ambiguous_prestart_evidence_stays_incomplete(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    defect: str,
+) -> None:
+    harness.exec_failed = True
+    observed_mutated_owner: list[protected.Record] = []
+    original_inspect_owner = cutover.inspect_control_owner
+
+    def inject_ambiguity() -> None:
+        if defect == "mutation_started":
+
+            def report_mutation_started(config: cutover.CutoverConfig) -> protected.Record | None:
+                owner = original_inspect_owner(config)
+                if owner is None:
+                    return None
+                mutated = {**owner, "mutation_started": True}
+                observed_mutated_owner.append(mutated)
+                return mutated
+
+            monkeypatch.setattr(cutover, "inspect_control_owner", report_mutation_started)
+        else:
+            harness.fixture.plist_path.write_bytes(b"drifted OLD plist")
+
+    harness.after_child = inject_ambiguity
+    result = harness.launch()
+    assert result["status"] == "INCOMPLETE_OR_AMBIGUOUS"
+    assert result.get("result_status") == "INCOMPLETE_OR_AMBIGUOUS"
+    assert "prestart_failure_evidence" not in result
+    monkeypatch.setattr(cutover, "inspect_control_owner", original_inspect_owner)
+    owner = cutover.inspect_control_owner(harness.fixture.config)
+    assert owner is not None
+    assert owner["phase"] == "AUTHORIZED_PENDING"
+    if defect == "mutation_started":
+        assert observed_mutated_owner and observed_mutated_owner[-1]["mutation_started"] is True
+        assert owner["mutation_started"] is False
+    assert harness.launchd.mutation_calls == []
+
+
+def test_claimstore_captures_bounded_process_output(tmp_path: Path) -> None:
+    root = tmp_path / "claims"
+    root.mkdir(mode=0o700)
+    stdout, stderr = bytearray(), bytearray()
+    code = claims.ClaimStore(root).run(
+        "capture-output",
+        [
+            sys.executable,
+            "-c",
+            "import sys; sys.stdout.buffer.write(b'child-out\\n'); "
+            "sys.stderr.buffer.write(b'child-err\\n')",
+        ],
+        capture_output=lambda name, chunk: (stdout if name == "stdout" else stderr).extend(chunk),
+    )
+    assert code == 0
+    assert bytes(stdout) == b"child-out\n"
+    assert bytes(stderr) == b"child-err\n"
+
+
+def _reconcile_prestart_argv(
+    incident: StrandedIncident,
+    *,
+    recovery_head: str = "a" * 40,
+    recovery_tree: str = "b" * 40,
+) -> list[str]:
+    request = incident.request
+    return [
+        "reconcile-prestart-failure",
+        "--source-worktree",
+        str(request.config.source_worktree),
+        "--expected-head",
+        str(request.config.expected_head),
+        "--expected-tree",
+        str(request.config.expected_tree),
+        "--legacy-worktree",
+        str(request.legacy_worktree),
+        "--legacy-head",
+        request.legacy_head,
+        "--legacy-tree",
+        request.legacy_tree,
+        "--plan-file",
+        str(request.plan_file),
+        "--reservation-id",
+        str(request.reservation_id),
+        "--operation-id",
+        request.operation_id,
+        "--stranded-protected-receipt-sha256",
+        hashlib.sha256(request.receipt_path.read_bytes()).hexdigest(),
+        "--managed-receipt-sha256",
+        incident.managed_sha256,
+        "--predecessor-protected-receipt-sha256",
+        incident.predecessor_sha256,
+        "--original-control-head",
+        "d32620eda04e3e01c1cb135d822bb21e41f0de34",
+        "--original-control-tree",
+        "1f8c8878dc6d108014028d9abf588ed7b4593d50",
+        "--current-recovery-control-head",
+        recovery_head,
+        "--current-recovery-control-tree",
+        recovery_tree,
+        "--plan-sha256",
+        incident.plan_sha256,
+    ]
+
+
+def _incident_reconciliation_argv(incident: StrandedIncident) -> list[str]:
+    return _reconcile_prestart_argv(incident)
+
+
+def _write_snapshot(harness: Harness, incident: StrandedIncident) -> dict[Path, bytes | None]:
+    config = incident.request.config
+    paths = {
+        config.receipt_path,
+        incident.request.receipt_path,
+        protected._prestart_reconciliation_record_path(
+            config, str(incident.request.reservation_id)
+        ),
+        cutover._control_owner_path(config),
+        cutover._control_owner_lock_path(config),
+        config.plist_path,
+        incident.request.plan_file,
+        *config.scheduler_root.glob("*.superseded.json"),
+    }
+    claim_location = claims.ClaimStore(incident.request.claim_root).location(protected.TASK_KEY)
+    paths.add(claim_location)
+    return {path: path.read_bytes() if path.exists() else None for path in paths}
+
+
+def _configure_reconcile_cli(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    incident: StrandedIncident,
+    *,
+    recovery_head: str = "a" * 40,
+    recovery_tree: str = "b" * 40,
+) -> None:
+    def fixed_config(_args: argparse.Namespace, *, for_action: str) -> cutover.CutoverConfig:
+        del for_action
+        return incident.request.config
+
+    monkeypatch.setattr(
+        protected,
+        "build_reservation_config",
+        fixed_config,
+    )
+    monkeypatch.setattr(
+        cutover,
+        "control_version",
+        lambda: {"head": recovery_head, "tree": recovery_tree},
+    )
+    monkeypatch.setattr(cutover, "run_command", harness.runner)
+
+
+def test_historical_incident_reconciles_once_then_successor_binds_archived_v5(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    incident = _make_stranded_prestart_incident(
+        harness, monkeypatch, preserve_legacy_parent_behavior=True
+    )
+    request = incident.request
+    stranded = protected.ReceiptFile(request.receipt_path).read()
+    assert stranded is not None and stranded["status"] == "INCOMPLETE_OR_AMBIGUOUS"
+    assert "child_started_at" not in stranded
+    assert (
+        hashlib.sha256(request.config.receipt_path.read_bytes()).hexdigest()
+        == incident.managed_sha256
+    )
+    owner = cutover.inspect_control_owner(request.config)
+    assert owner is not None and owner["phase"] == "AUTHORIZED_PENDING"
+    assert owner["mutation_started"] is False
+    assert claims.ClaimStore(request.claim_root).inspect(protected.TASK_KEY)["status"] == "ABSENT"
+    assert tuple(harness.launchd.mutation_calls) == incident.mutations_before
+
+    _configure_reconcile_cli(harness, monkeypatch, incident)
+    snapshot = _write_snapshot(harness, incident)
+    argv = _incident_reconciliation_argv(incident)
+    assert protected.main(argv) == 0
+    first_result = json.loads(capsys.readouterr().out.splitlines()[-1])
+    assert first_result["status"] == "RECONCILED"
+    assert not request.receipt_path.exists()
+    failed_archive = request.receipt_path.with_name(
+        f"{request.receipt_path.stem}.{stranded['execution_id']}.superseded.json"
+    )
+    assert failed_archive.read_bytes() == protected.canonical(stranded).encode() + b"\n"
+    reconciliation_path = protected._prestart_reconciliation_record_path(
+        request.config, str(request.reservation_id)
+    )
+    reconciliation, reconciliation_identity = protected._load_prestart_reconciliation(
+        reconciliation_path
+    )
+    assert reconciliation["reason"] == "PRESTART_FAILURE_NO_MUTATION"
+    assert (
+        reconciliation["stranded_protected_receipt_sha256"]
+        == hashlib.sha256(failed_archive.read_bytes()).hexdigest()
+    )
+    assert reconciliation["predecessor_protected_receipt_sha256"] == incident.predecessor_sha256
+    assert reconciliation["unchanged_managed_receipt_sha256"] == incident.managed_sha256
+    released = cutover.inspect_control_owner(request.config)
+    assert released is not None and released["phase"] == "RELEASED"
+    release_evidence = protected.record(released["release_evidence"])
+    assert release_evidence["kind"] == "PRESTART_FAILURE_NO_MUTATION"
+    assert release_evidence["reconciliation_record_sha256"] == reconciliation_identity.sha256
+
+    after_first = _write_snapshot(harness, incident)
+    assert protected.main(argv) == 0
+    replay = json.loads(capsys.readouterr().out.splitlines()[-1])
+    assert replay["status"] == "ALREADY_RECONCILED"
+    assert _write_snapshot(harness, incident) == after_first
+    assert snapshot != after_first
+    assert tuple(harness.launchd.mutation_calls) == incident.mutations_before
+
+    recovery_head, recovery_tree = "a" * 40, "b" * 40
+    v7_head, v7_tree = "c" * 40, "9" * 40
+    v7_source = harness.fixture.worktree_parent / f"B649_PRODUCTION_{v7_head}"
+    Fixture.make_source(v7_source)
+    harness.launchd.worktree_identities[v7_source] = (v7_head, v7_tree, True)
+    harness.launchd.process_rows = [f"424242 1 {UID} S /usr/bin/fixture-shell"]
+    harness.launchd.file_rows = ["p424242", "fcwd", "n/tmp"]
+    v7_config = replace(
+        request.config,
+        source_worktree=v7_source,
+        expected_head=v7_head,
+        expected_tree=v7_tree,
+        durable_ref=f"refs/heads/runtime/b649/{v7_head}",
+    )
+    v7_plan = cutover.build_plan(v7_config, runner=harness.launchd)
+    assert v7_plan["status"] == "PASS"
+    v7_plan_file = harness.fixture.root / "v7-plan.json"
+    v7_plan_file.write_text(protected.canonical(v7_plan), encoding="utf-8")
+    v7_plan_file.chmod(0o600)
+    monkeypatch.setattr(protected, "control_identity", lambda: (recovery_head, recovery_tree))
+    successor = protected.make_request(
+        v7_config,
+        request.legacy_worktree,
+        request.legacy_head,
+        request.legacy_tree,
+        v7_plan_file,
+        request.claim_root,
+        reservation_id=str(uuid4()),
+        prior_execution_receipt_sha256=incident.predecessor_sha256,
+    )
+    successor_proof = protected._require_released_success_evidence(
+        successor, cutover.inspect_control_owner(v7_config)
+    )
+    assert successor_proof is not None
+    assert successor.prior_execution_receipt_sha256 == incident.predecessor_sha256
+    assert successor_proof["prior_protected_receipt_sha256"] == incident.predecessor_sha256
+    next_owner = cutover.acquire_control_owner(
+        v7_config,
+        action="apply",
+        target=protected.request_owner_target(successor),
+        owner_kind="protected",
+        reservation_id=successor.reservation_id,
+        version={"head": recovery_head, "tree": recovery_tree},
+        operation_id=successor.operation_id,
+        managed_receipt_sha256=successor.managed_receipt_sha256,
+        predecessor_release_evidence=successor_proof,
+    )
+    assert next_owner["phase"] == "AUTHORIZATION_PENDING"
+    next_predecessor_proof = protected.record(next_owner["predecessor_release_evidence"])
+    assert next_predecessor_proof["prior_protected_receipt_sha256"] == incident.predecessor_sha256
+    assert (
+        next_predecessor_proof["prior_protected_receipt_sha256"]
+        != hashlib.sha256(failed_archive.read_bytes()).hexdigest()
+    )
+
+
+@pytest.mark.parametrize(
+    "defect",
+    ["reservation", "operation", "stranded_sha", "managed_sha", "predecessor_sha"],
+)
+def test_historical_reconciliation_wrong_exact_identity_is_zero_write(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    defect: str,
+) -> None:
+    incident = _make_stranded_prestart_incident(
+        harness, monkeypatch, preserve_legacy_parent_behavior=True
+    )
+    _configure_reconcile_cli(harness, monkeypatch, incident)
+    argv = _incident_reconciliation_argv(incident)
+    parameter = {
+        "reservation": "11111111-1111-4111-8111-111111111111",
+        "operation": "1" * 32,
+        "stranded_sha": "2" * 64,
+        "managed_sha": "3" * 64,
+        "predecessor_sha": "4" * 64,
+    }[defect]
+    flag = {
+        "reservation": "--reservation-id",
+        "operation": "--operation-id",
+        "stranded_sha": "--stranded-protected-receipt-sha256",
+        "managed_sha": "--managed-receipt-sha256",
+        "predecessor_sha": "--predecessor-protected-receipt-sha256",
+    }[defect]
+    argv[argv.index(flag) + 1] = parameter
+    before = _write_snapshot(harness, incident)
+    assert protected.main(argv) == claims.UNVERIFIABLE
+    assert "INCOMPLETE_OR_AMBIGUOUS" in capsys.readouterr().out
+    assert _write_snapshot(harness, incident) == before
+
+
+def test_historical_reconciliation_refuses_mutating_owner_without_writes(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    incident = _make_stranded_prestart_incident(
+        harness, monkeypatch, preserve_legacy_parent_behavior=True
+    )
+    _configure_reconcile_cli(harness, monkeypatch, incident)
+    stored = cutover._read_control_owner(incident.request.config)
+    assert stored is not None
+    owner, identity = stored
+    cutover._save_control_owner(
+        incident.request.config,
+        {**owner, "phase": "MUTATION_IN_PROGRESS", "mutation_started": True},
+        expected=identity,
+    )
+    before = _write_snapshot(harness, incident)
+    assert protected.main(_incident_reconciliation_argv(incident)) == claims.UNVERIFIABLE
+    assert "INCOMPLETE_OR_AMBIGUOUS" in capsys.readouterr().out
+    assert _write_snapshot(harness, incident) == before
+
+
+def test_historical_reconciliation_refuses_archived_predecessor_sha_drift(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    incident = _make_stranded_prestart_incident(
+        harness, monkeypatch, preserve_legacy_parent_behavior=True
+    )
+    _configure_reconcile_cli(harness, monkeypatch, incident)
+    archived = protected._find_archived_prior_receipt(
+        incident.request.receipt_path,
+        lambda sha256: sha256 == incident.predecessor_sha256,
+    )
+    assert archived is not None
+    archived_path = Path(str(protected.record(archived).get("path")))
+    archived_path.write_bytes(archived_path.read_bytes() + b"\n")
+    before = _write_snapshot(harness, incident)
+    assert protected.main(_incident_reconciliation_argv(incident)) == claims.UNVERIFIABLE
+    assert "INCOMPLETE_OR_AMBIGUOUS" in capsys.readouterr().out
+    assert _write_snapshot(harness, incident) == before
+
+
+def test_historical_reconciliation_refuses_claim_and_old_live_drift_without_writes(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    incident = _make_stranded_prestart_incident(
+        harness, monkeypatch, preserve_legacy_parent_behavior=True
+    )
+    _configure_reconcile_cli(harness, monkeypatch, incident)
+    argv = _incident_reconciliation_argv(incident)
+    before_claim = _write_snapshot(harness, incident)
+    with monkeypatch.context() as claim_patch:
+
+        def active_claim(_store: claims.ClaimStore, _task_key: str) -> dict[str, object]:
+            return {"status": "ACTIVE"}
+
+        claim_patch.setattr(
+            claims.ClaimStore,
+            "inspect",
+            active_claim,
+        )
+        assert protected.main(argv) == claims.UNVERIFIABLE
+        capsys.readouterr()
+    assert _write_snapshot(harness, incident) == before_claim
+
+    incident.request.config.plist_path.write_bytes(b"drifted OLD plist")
+    before_drift = _write_snapshot(harness, incident)
+    assert protected.main(argv) == claims.UNVERIFIABLE
+    assert _write_snapshot(harness, incident) == before_drift
+    assert tuple(harness.launchd.mutation_calls) == incident.mutations_before
+
+
+def test_cross_control_version_requires_exact_explicit_reconciliation(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    incident = _make_stranded_prestart_incident(
+        harness, monkeypatch, preserve_legacy_parent_behavior=True
+    )
+    recovery = {"head": "a" * 40, "tree": "b" * 40}
+    _configure_reconcile_cli(harness, monkeypatch, incident)
+    before = _write_snapshot(harness, incident)
+    with pytest.raises(cutover.CutoverSafetyError, match="control version changed"):
+        cutover.resume_control_owner(incident.request.config, str(incident.request.reservation_id))
+    with pytest.raises(cutover.CutoverSafetyError, match="control version changed"):
+        cutover.release_control_owner(
+            incident.request.config,
+            str(incident.request.reservation_id),
+            protected_receipt_path=incident.request.receipt_path,
+        )
+    assert _write_snapshot(harness, incident) == before
+
+    argv = _incident_reconciliation_argv(incident)
+    wrong = argv.copy()
+    wrong[wrong.index("--current-recovery-control-head") + 1] = "c" * 40
+    assert protected.main(wrong) == claims.UNVERIFIABLE
+    capsys.readouterr()
+    assert _write_snapshot(harness, incident) == before
+    assert protected.main(argv) == 0
+    result = json.loads(capsys.readouterr().out.splitlines()[-1])
+    assert result["status"] == "RECONCILED"
+    record, _ = protected._load_prestart_reconciliation(
+        protected._prestart_reconciliation_record_path(
+            incident.request.config, str(incident.request.reservation_id)
+        )
+    )
+    assert record["original_control_identity"] == {
+        "head": "d32620eda04e3e01c1cb135d822bb21e41f0de34",
+        "tree": "1f8c8878dc6d108014028d9abf588ed7b4593d50",
+    }
+    assert record["recovery_control_identity"] == recovery
 
 
 def test_claimstore_acquisition_monitor_and_release_are_inherited() -> None:

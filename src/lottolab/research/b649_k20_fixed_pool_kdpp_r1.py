@@ -48,7 +48,7 @@ import numpy.typing as npt
 from lottolab.research.b649_k20_bonferroni_filtered_exhaustive_2ticket_cross_swap_r1 import (
     full_u3_components,
 )
-from lottolab.research.b649_official_any_prize_exact import (
+from lottolab.research.b649_official_any_prize_engine import (
     DrawMasks,
     all_main_draw_masks,
     evaluate_portfolio_with_diagnostics,

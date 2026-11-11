@@ -9,7 +9,7 @@ from math import comb
 
 import pytest
 
-from lottolab.research import b649_official_any_prize_exact as exact
+from lottolab.research import b649_official_any_prize_engine as exact
 from lottolab.research.b649_official_any_prize_dp import (
     CountIncomplete,
     EvaluationLimits,

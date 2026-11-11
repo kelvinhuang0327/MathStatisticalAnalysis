@@ -1,5 +1,9 @@
 """Nested sample limits, determinism and legacy-compatible legal requests."""
 
+# These tests intentionally construct private legacy strategy nodes to check
+# exact candidate identity and mutation compatibility.
+# pyright: reportPrivateUsage=false
+
 from __future__ import annotations
 
 import copy
@@ -79,11 +83,11 @@ def test_v04_holdout_predictions_only_receive_earlier_history(
         name = "test"
 
         def __init__(self) -> None:
-            self.params: dict = {}
+            self.params: dict[str, object] = {}
             self.lengths: list[int] = []
 
-        def predict(self, history: list[list[int]], n_select: int = 6) -> list[int]:
-            self.lengths.append(len(history))
+        def predict(self, draws: list[list[int]], n_select: int = 6) -> list[int]:
+            self.lengths.append(len(draws))
             return [1, 2, 3, 4, 5, 6]
 
     candidate = Candidate()

@@ -1,9 +1,10 @@
 import json
+from typing import Any
 
 from tools.readback_summary_metrics import AUDIT_SCHEMA, check_summary_rows
 
 
-def row(run, suffix, prefix, schema):
+def row(run: int, suffix: str, prefix: int | None, schema: str) -> dict[str, Any]:
     return {
         "id": f"{run}-{suffix}",
         "run_id": str(run),

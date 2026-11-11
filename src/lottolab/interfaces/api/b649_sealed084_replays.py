@@ -11,7 +11,7 @@ import json
 import math
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
-from typing import Literal
+from typing import Literal, NotRequired, TypedDict, cast
 
 from fastapi import APIRouter, Query
 from fastapi.responses import JSONResponse
@@ -32,6 +32,28 @@ class _SourceSpec:
     strategy_version: str
     ticket_counts: tuple[int, ...]
     expected_hashes: dict[str, str]
+
+
+class _NormalisedCsvRow(TypedDict):
+    game: str
+    strategy_id: str
+    strategy_version: str
+    ticket_count: int
+    window: str
+    successful_issues: int
+    evaluated_issues: int
+    success_rate: float
+    source_cutoff: str
+    source_tier: str
+    source_task_id: str
+    historical_replay_status: str
+    owner_rank: None
+    comparability_status: NotRequired[str]
+    source_artifact_identity: NotRequired[str]
+    source_validation_status: NotRequired[str]
+    draw_source_status: NotRequired[str]
+    original_draw_data_v3_status: NotRequired[str]
+    source_gaps: NotRequired[object]
 
 
 _RENEWAL_TASK = "NUMBER2_A_B649_RENEWAL_K235_SEALED084_REPLAY_20261102_R1"
@@ -148,14 +170,21 @@ def _float_value(value: object, code: str, task_id: str) -> float:
     return result
 
 
+def _object_dict(value: object) -> dict[str, object] | None:
+    if type(value) is not dict:
+        return None
+    return cast(dict[str, object], value)
+
+
 def _receipt_cells(
     result: dict[str, object], spec: _SourceSpec
 ) -> dict[tuple[str, str], tuple[int, int, float]]:
     cells: dict[tuple[str, str], tuple[int, int, float]] = {}
     raw_rows = result.get("window_results")
     if isinstance(raw_rows, list):
-        for raw_row in raw_rows:
-            if not isinstance(raw_row, dict):
+        for raw_row_value in cast(list[object], raw_rows):
+            raw_row = _object_dict(raw_row_value)
+            if raw_row is None:
                 raise _SourceUnavailable("SOURCE_FORMAT_INVALID", spec.task_id)
             strategy_id = str(raw_row.get("strategy_id", ""))
             window = str(raw_row.get("window", ""))
@@ -184,19 +213,24 @@ def _receipt_cells(
 
     raw_windows = result.get("windows")
     identity = result.get("generator_identity")
-    if not isinstance(raw_windows, dict) or not isinstance(identity, dict):
+    raw_windows_dict = _object_dict(raw_windows)
+    identity_dict = _object_dict(identity)
+    if raw_windows_dict is None or identity_dict is None:
         raise _SourceUnavailable("SOURCE_FORMAT_INVALID", spec.task_id)
-    strategy_id = str(identity.get("strategy_id", ""))
-    version = str(identity.get("version", ""))
-    native_k = _int_value(identity.get("native_k"), "SOURCE_IDENTITY_CONFLICT", spec.task_id)
+    strategy_id = str(identity_dict.get("strategy_id", ""))
+    version = str(identity_dict.get("version", ""))
+    native_k = _int_value(
+        identity_dict.get("native_k"), "SOURCE_IDENTITY_CONFLICT", spec.task_id
+    )
     if (
         strategy_id not in spec.strategy_ids
         or version != spec.strategy_version
         or native_k != spec.ticket_counts[spec.strategy_ids.index(strategy_id)]
     ):
         raise _SourceUnavailable("SOURCE_IDENTITY_CONFLICT", spec.task_id)
-    for window, raw_metrics in raw_windows.items():
-        if not isinstance(raw_metrics, dict):
+    for window, raw_metrics_value in raw_windows_dict.items():
+        raw_metrics = _object_dict(raw_metrics_value)
+        if raw_metrics is None:
             raise _SourceUnavailable("SOURCE_FORMAT_INVALID", spec.task_id)
         cells[(strategy_id, str(window))] = (
             _int_value(raw_metrics.get("success"), "SOURCE_FORMAT_INVALID", spec.task_id),
@@ -206,7 +240,7 @@ def _receipt_cells(
     return cells
 
 
-def _normalise_csv_row(row: dict[str, str], spec: _SourceSpec) -> dict[str, object]:
+def _normalise_csv_row(row: dict[str, str], spec: _SourceSpec) -> _NormalisedCsvRow:
     strategy_id = row.get("strategy_id") or (
         spec.strategy_ids[0] if len(spec.strategy_ids) == 1 else ""
     )
@@ -286,10 +320,11 @@ def _load_source(
         artifact_bytes[name] = data
 
     try:
-        result = json.loads(artifact_bytes["result.json"])
+        result_value: object = json.loads(artifact_bytes["result.json"])
     except (UnicodeDecodeError, json.JSONDecodeError) as error:
         raise _SourceUnavailable("SOURCE_FORMAT_INVALID", spec.task_id) from error
-    if not isinstance(result, dict):
+    result = _object_dict(result_value)
+    if result is None:
         raise _SourceUnavailable("SOURCE_FORMAT_INVALID", spec.task_id)
     if (
         result.get("task_id") != spec.task_id
@@ -305,11 +340,11 @@ def _load_source(
     if SOURCE_CUTOFF not in cutoff_values:
         raise _SourceUnavailable("SOURCE_IDENTITY_CONFLICT", spec.task_id)
 
-    declared_artifacts = result.get("artifacts")
-    if isinstance(declared_artifacts, dict):
+    declared_artifacts = _object_dict(result.get("artifacts"))
+    if declared_artifacts is not None:
         for name in _ARTIFACT_NAMES[1:]:
-            declaration = declared_artifacts.get(name)
-            if isinstance(declaration, dict) and declaration.get("sha256") != artifact_hashes[name]:
+            declaration = _object_dict(declared_artifacts.get(name))
+            if declaration is not None and declaration.get("sha256") != artifact_hashes[name]:
                 raise _SourceUnavailable("SOURCE_HASH_MISMATCH", spec.task_id)
 
     try:
@@ -321,7 +356,7 @@ def _load_source(
     except (UnicodeDecodeError, csv.Error) as error:
         raise _SourceUnavailable("SOURCE_FORMAT_INVALID", spec.task_id) from error
 
-    normalised = [_normalise_csv_row(row, spec) for row in raw_rows]
+    normalised: list[_NormalisedCsvRow] = [_normalise_csv_row(row, spec) for row in raw_rows]
     expected_count = len(spec.strategy_ids) * len(WINDOWS)
     keys = [
         (
@@ -390,7 +425,7 @@ def _load_source(
         ),
         "source_gaps": result.get("source_gaps"),
     }
-    return normalised, source_status
+    return cast(list[dict[str, object]], normalised), source_status
 
 
 def _load_archive_source_directories(root: Path) -> dict[str, Path] | None:
@@ -410,27 +445,34 @@ def _load_archive_source_directories(root: Path) -> dict[str, Path] | None:
         raise _SourceUnavailable("SOURCE_ARCHIVE_MANIFEST_HASH_MISMATCH")
 
     try:
-        manifest = json.loads(manifest_bytes)
+        manifest_value: object = json.loads(manifest_bytes)
     except (UnicodeDecodeError, json.JSONDecodeError) as error:
         raise _SourceUnavailable("SOURCE_ARCHIVE_MANIFEST_INVALID") from error
-    if not isinstance(manifest, dict):
+    manifest = _object_dict(manifest_value)
+    if manifest is None:
         raise _SourceUnavailable("SOURCE_ARCHIVE_MANIFEST_INVALID")
     if manifest.get("schema_version") != 1 or manifest.get("task_id") != _ARCHIVE_TASK_ID:
         raise _SourceUnavailable("SOURCE_ARCHIVE_IDENTITY_CONFLICT")
 
     expected_ids = {spec.task_id for spec in _SOURCES}
-    source_rows = manifest.get("source_tasks")
-    if not isinstance(source_rows, list) or len(source_rows) != len(expected_ids):
+    source_rows_value = manifest.get("source_tasks")
+    if not isinstance(source_rows_value, list):
+        raise _SourceUnavailable("SOURCE_ARCHIVE_MANIFEST_INVALID")
+    source_rows = cast(list[object], source_rows_value)
+    if len(source_rows) != len(expected_ids):
         raise _SourceUnavailable("SOURCE_ARCHIVE_MANIFEST_INVALID")
 
     sources: dict[str, dict[str, str]] = {}
     used_subdirectories: set[str] = set()
-    for row in source_rows:
-        if not isinstance(row, dict):
+    for row_value in source_rows:
+        row = _object_dict(row_value)
+        if row is None:
             raise _SourceUnavailable("SOURCE_ARCHIVE_MANIFEST_INVALID")
         task_id = row.get("task_id")
         source_group = row.get("source_group")
         subdirectory = row.get("archive_subdirectory")
+        if not isinstance(task_id, str):
+            raise _SourceUnavailable("SOURCE_ARCHIVE_IDENTITY_CONFLICT")
         subdirectory_path = PurePosixPath(subdirectory) if isinstance(subdirectory, str) else None
         if (
             task_id not in expected_ids
@@ -455,19 +497,25 @@ def _load_archive_source_directories(root: Path) -> dict[str, Path] | None:
     if set(sources) != expected_ids:
         raise _SourceUnavailable("SOURCE_ARCHIVE_IDENTITY_CONFLICT")
 
-    archived_files = manifest.get("archived_files")
+    archived_files_value = manifest.get("archived_files")
     expected_file_count = len(_SOURCES) * len(_ARCHIVE_FILE_NAMES)
-    if not isinstance(archived_files, list) or len(archived_files) != expected_file_count:
+    if not isinstance(archived_files_value, list):
+        raise _SourceUnavailable("SOURCE_ARCHIVE_MANIFEST_INVALID")
+    archived_files = cast(list[object], archived_files_value)
+    if len(archived_files) != expected_file_count:
         raise _SourceUnavailable("SOURCE_ARCHIVE_MANIFEST_INVALID")
 
     specs = {spec.task_id: spec for spec in _SOURCES}
     files_by_task: dict[str, set[str]] = {task_id: set() for task_id in expected_ids}
     seen_archive_paths: set[str] = set()
     root_resolved = root.resolve()
-    for row in archived_files:
-        if not isinstance(row, dict):
+    for row_value in archived_files:
+        row = _object_dict(row_value)
+        if row is None:
             raise _SourceUnavailable("SOURCE_ARCHIVE_MANIFEST_INVALID")
         task_id = row.get("source_task_id")
+        if not isinstance(task_id, str):
+            raise _SourceUnavailable("SOURCE_ARCHIVE_MANIFEST_INVALID")
         source = sources.get(task_id)
         relative_value = row.get("relative_source_path")
         archive_value = row.get("archive_relative_path")
@@ -519,7 +567,7 @@ def _load_archive_source_directories(root: Path) -> dict[str, Path] | None:
         if actual_size != byte_size or (pinned_hash is not None and expected_hash != pinned_hash):
             raise _SourceUnavailable("SOURCE_HASH_MISMATCH", task_id)
 
-    if any(names != _ARCHIVE_FILE_NAMES for names in files_by_task.values()):
+    if any(names != set(_ARCHIVE_FILE_NAMES) for names in files_by_task.values()):
         raise _SourceUnavailable("SOURCE_ARCHIVE_MANIFEST_INVALID")
 
     source_directories: dict[str, Path] = {}

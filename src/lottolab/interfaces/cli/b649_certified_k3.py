@@ -39,7 +39,7 @@ class InvalidTargetId(ValueError):
 
 def build_certified_k3(target_id: str) -> Tickets:
     """Generate the certified ticket group using the fixed SHA-256 ranking."""
-    if not isinstance(target_id, str) or re.fullmatch(r"[0-9]{9}", target_id) is None:
+    if re.fullmatch(r"[0-9]{9}", target_id) is None:
         raise InvalidTargetId("target_id must be exactly nine ASCII digits")
 
     ranked_numbers = sorted(

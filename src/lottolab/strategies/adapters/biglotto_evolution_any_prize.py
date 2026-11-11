@@ -1,9 +1,14 @@
 """Evolution v0.5: chronological training and validation on any standard prize."""
 
+# This adapter deliberately subclasses the frozen legacy engine and strategies
+# to preserve its candidate generation while changing the scoring objective.
+# pyright: reportPrivateUsage=false
+
 from __future__ import annotations
 
 from datetime import date
 from itertools import pairwise
+from typing import cast
 
 from lottolab.domain.draws import LotteryType
 from lottolab.domain.historical_replay import ReplayDraw, ReplayStrategy, ReplayTicket
@@ -43,8 +48,9 @@ def _validated_prize_history(history: object, strategy_id: str) -> tuple[CausalD
     """Validate every historical outcome; missing special numbers are unknown, not misses."""
     canonical = validated_history(history, strategy_id, lottery_type=LotteryType.BIG_LOTTO)
     assert type(history) is tuple  # enforced by validated_history
-    result = []
-    for index, (raw, row) in enumerate(zip(history, canonical, strict=True)):
+    raw_history = cast(tuple[CausalDrawRow, ...], history)
+    result: list[CausalDrawRow] = []
+    for index, (raw, row) in enumerate(zip(raw_history, canonical, strict=True)):
         special = raw.special_number
         if type(special) is not int or not 1 <= special <= 49 or special in row.numbers:
             raise InvalidOutput(
@@ -150,13 +156,16 @@ class BigLottoAnyPrizeEvolutionAdapter(BigLottoBoundedEvolutionAdapter):
     def _fit_candidates(
         self, development: tuple[CausalDrawRow, ...]
     ) -> tuple[legacy._EvoStrategy, ...]:
-        specials = tuple(row.special_number for row in development)
-        if any(type(value) is not int for value in specials):
-            raise InvalidOutput(f"{self.strategy_id}: missing development special number")
+        specials: list[int] = []
+        for row in development:
+            special = row.special_number
+            if type(special) is not int:
+                raise InvalidOutput(f"{self.strategy_id}: missing development special number")
+            specials.append(special)
         engine = _AnyPrizeDevelopmentEngine(
             [list(row.numbers) for row in development],
-            specials,
-            seed=42,  # type: ignore[arg-type]
+            tuple(specials),
+            seed=42,
         )
         engine.initialize()
         for _ in range(10):
@@ -174,7 +183,7 @@ class BigLottoAnyPrizeEvolutionAdapter(BigLottoBoundedEvolutionAdapter):
         first = len(history) - _HOLDOUT_SIZE
         draws = [list(row.numbers) for row in history]
         prefixes = tuple(draws[:index] for index in range(first, len(history)))
-        scores = []
+        scores: list[tuple[int, int, str, legacy._EvoStrategy]] = []
         for candidate in candidates:
             wins = 0
             for index in range(first, len(history)):

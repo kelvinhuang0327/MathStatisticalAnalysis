@@ -1,5 +1,8 @@
 """Read-only, checksum-pinned K5 historical prediction/result events."""
 
+# FastAPI discovers endpoint callables through route registration decorators.
+# pyright: reportUnusedFunction=false
+
 from __future__ import annotations
 
 import hashlib
@@ -9,7 +12,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from http import HTTPStatus
 from pathlib import Path, PurePosixPath
-from typing import Any
+from typing import Any, Literal, cast
 from urllib.parse import parse_qs
 
 from fastapi import APIRouter, Request
@@ -18,6 +21,7 @@ from fastapi.responses import JSONResponse
 API_VERSION = "v1"
 EVENT_SCHEMA_VERSION = "backtest-row-evidence/1.0.0"
 API_PATH = "/api/v1/research/backtests/draw-events"
+EventRecordType = Literal["PREDICTION", "OFFICIAL_RESULT"]
 
 BASE_EVENTS_PATH = Path(
     "/Users/kelvin/VibeCoding-WorkSpace/.task-data/20261103/"
@@ -190,30 +194,38 @@ def _event_identity(event: Mapping[str, Any]) -> tuple[Any, ...]:
 def _validate_event(event: Any, source_id: str) -> tuple[tuple[Any, ...], str]:
     if not isinstance(event, dict):
         raise EventSourceError("An event is not a JSON object.")
+    event = cast(dict[str, Any], event)
     if event.get("schema_version") != EVENT_SCHEMA_VERSION:
         raise EventSourceError("An event has an unsupported schema version.")
     record_type = event.get("record_type")
     if record_type not in {"PREDICTION", "OFFICIAL_RESULT"}:
         raise EventSourceError("An event has an unsupported record type.")
+    record_type = cast(EventRecordType, record_type)
     identity = _event_identity(event)
     policy_identity = identity[3:8]
     expected = EXPECTED_POLICY_BY_IDENTITY.get(policy_identity)
     if expected is None or expected["source_id"] != source_id:
         raise EventSourceError("An event does not match one of the four pinned policies.")
     if record_type == "PREDICTION":
-        tickets = event.get("ordered_tickets")
-        if (
-            not isinstance(tickets, list)
-            or len(tickets) != 5
-            or any(not isinstance(ticket, list) or len(ticket) != 6 for ticket in tickets)
-        ):
+        tickets_value = event.get("ordered_tickets")
+        if not isinstance(tickets_value, list):
             raise EventSourceError("A K5 prediction does not contain five ordered tickets.")
+        tickets = cast(list[Any], tickets_value)
+        if len(tickets) != 5:
+            raise EventSourceError("A K5 prediction does not contain five ordered tickets.")
+        for ticket_value in tickets:
+            if not isinstance(ticket_value, list) or len(cast(list[Any], ticket_value)) != 6:
+                raise EventSourceError("A K5 prediction does not contain five ordered tickets.")
     else:
         if not isinstance(event.get("candidate_any_prize"), bool):
             raise EventSourceError("An official result is missing its saved any-prize flag.")
         result = event.get("winning_result")
         tiers = event.get("ticket_prize_tiers")
-        if not isinstance(result, dict) or not isinstance(tiers, list) or len(tiers) != 5:
+        if not isinstance(result, dict) or not isinstance(tiers, list):
+            raise EventSourceError(
+                "An official result is missing its saved result or ticket tiers."
+            )
+        if len(cast(list[Any], tiers)) != 5:
             raise EventSourceError(
                 "An official result is missing its saved result or ticket tiers."
             )
@@ -288,6 +300,8 @@ def _pair_event_records(
             source_id = EXPECTED_POLICY_BY_IDENTITY[policy_identity]["source_id"]
         except KeyError as exc:
             raise EventSourceError("An event identity is not in the pinned policy set.") from exc
+        if not isinstance(source_id, str):
+            raise EventSourceError("An event identity has an invalid source identifier.")
         paired_records.append(
             DrawEvent(
                 identity=identity,
@@ -410,6 +424,7 @@ def _safe_locator(value: Any) -> str | None:
 def _public_source_identity(value: Any) -> dict[str, Any] | None:
     if not isinstance(value, Mapping):
         return None
+    value = cast(Mapping[str, Any], value)
     return {
         "locator": _safe_locator(value.get("locator")),
         "sha256": value.get("sha256"),

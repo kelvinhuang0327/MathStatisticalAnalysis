@@ -1,9 +1,15 @@
 """Temporal, variable-cardinality and normal-entry replay regression checks."""
 
+# The replay tests below intentionally exercise private replay-generation hooks.
+# pyright: reportPrivateUsage=false
+
 from __future__ import annotations
 
 from datetime import date, timedelta
+from pathlib import Path
+from typing import Protocol, cast
 
+import httpx
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -21,6 +27,10 @@ from lottolab.application.use_cases.replay_backfill import (
 )
 from lottolab.domain.draws import LotteryType
 from lottolab.domain.historical_replay import ReplayBehavior, ReplayDraw
+from lottolab.infrastructure.persistence.replay_backfill_store import (
+    JsonObject,
+    SQLiteBackfillStore,
+)
 from lottolab.interfaces.api.replay_backfill import _prediction_item, create_replay_backfill_router
 from lottolab.interfaces.cli import replay_backfill as replay_cli
 from lottolab.interfaces.cli.replay_backfill import build_adapter, native_strategy_inventory
@@ -30,6 +40,10 @@ from lottolab.strategies.adapters.biglotto_evolution_causal import (
     SEED_CONTRACT as EVOLUTION_SEED_CONTRACT,
 )
 from lottolab.strategies.adapters.biglotto_evolution_causal import BigLottoCausalEvolutionAdapter
+
+
+class JsonTestClient(Protocol):
+    def get(self, url: str, **kwargs: object) -> httpx.Response: ...
 
 
 def _history(n: int) -> tuple[CausalDrawRow, ...]:
@@ -116,19 +130,35 @@ def test_general_entry_has_versioned_seeded_bindings_and_replays() -> None:
 def test_general_backfill_worker_runs_seeded_strategy_without_database() -> None:
     class MemoryStore:
         def __init__(self) -> None:
-            self.rows: dict[str, dict] = {}
-            self.manifest: dict = {}
+            self.rows: dict[str, JsonObject] = {}
+            self.manifest: JsonObject = {}
 
-        def prepare(self, manifest: dict) -> None:
+        def prepare(self, manifest: JsonObject) -> None:
             self.manifest = manifest
 
-        def lookup_many(self, ids: tuple[str, ...]) -> dict:
+        def lookup_many(self, ids: tuple[str, ...]) -> dict[str, JsonObject]:
             return {key: self.rows[key] for key in ids if key in self.rows}
 
-        def save_many(self, _run_id: str, results: tuple[dict, ...]) -> None:
+        def lookup(self, cell_identity: str) -> JsonObject | None:
+            return self.rows.get(cell_identity)
+
+        def lookup_many_by_unique_keys(
+            self, _keys: tuple[tuple[str, str, str, str, str, str], ...]
+        ) -> dict[tuple[str, str, str, str, str, str], JsonObject]:
+            return {}
+
+        def lookup_complete_by_logical_keys(
+            self, _keys: tuple[tuple[str, str, str, str], ...]
+        ) -> dict[tuple[str, str, str, str], tuple[JsonObject, ...]]:
+            return {}
+
+        def save_many(self, _run_id: str, results: tuple[JsonObject, ...]) -> None:
             self.rows.update({row["cell_identity"]: row for row in results})
 
-        def summary(self, _run_id: str) -> dict:
+        def save(self, _run_id: str, result: JsonObject, *, attempted: bool = True) -> None:
+            self.rows[str(result["cell_identity"])] = result
+
+        def summary(self, _run_id: str) -> JsonObject:
             return {"valid_result_cells": len(self.rows), "pending_cells": 0}
 
     bindings, accounts = native_strategy_inventory(LotteryType.BIG_LOTTO)
@@ -170,19 +200,36 @@ def test_normal_cli_executes_seeded_strategy_without_database(
 ) -> None:
     class MemoryStore:
         def __init__(self, _path: object) -> None:
-            self.rows: dict[str, dict] = {}
+            self.rows: dict[str, JsonObject] = {}
+            self.manifest: JsonObject = {}
             stores.append(self)
 
-        def prepare(self, manifest: dict) -> None:
+        def prepare(self, manifest: JsonObject) -> None:
             self.manifest = manifest
 
-        def lookup_many(self, ids: tuple[str, ...]) -> dict:
+        def lookup_many(self, ids: tuple[str, ...]) -> dict[str, JsonObject]:
             return {key: self.rows[key] for key in ids if key in self.rows}
 
-        def save_many(self, _run_id: str, results: tuple[dict, ...]) -> None:
+        def lookup(self, cell_identity: str) -> JsonObject | None:
+            return self.rows.get(cell_identity)
+
+        def lookup_many_by_unique_keys(
+            self, _keys: tuple[tuple[str, str, str, str, str, str], ...]
+        ) -> dict[tuple[str, str, str, str, str, str], JsonObject]:
+            return {}
+
+        def lookup_complete_by_logical_keys(
+            self, _keys: tuple[tuple[str, str, str, str], ...]
+        ) -> dict[tuple[str, str, str, str], tuple[JsonObject, ...]]:
+            return {}
+
+        def save_many(self, _run_id: str, results: tuple[JsonObject, ...]) -> None:
             self.rows.update({row["cell_identity"]: row for row in results})
 
-        def summary(self, _run_id: str) -> dict:
+        def save(self, _run_id: str, result: JsonObject, *, attempted: bool = True) -> None:
+            self.rows[str(result["cell_identity"])] = result
+
+        def summary(self, _run_id: str) -> JsonObject:
             return {"status": "COMPLETED", "valid_result_cells": len(self.rows)}
 
     stores: list[MemoryStore] = []
@@ -192,9 +239,18 @@ def test_normal_cli_executes_seeded_strategy_without_database(
         for r in rows
     )
     monkeypatch.setattr(replay_cli, "SQLiteBackfillStore", MemoryStore)
-    monkeypatch.setattr(replay_cli, "validate_database_path", lambda _: None)
-    monkeypatch.setattr(replay_cli, "source_database_hash", lambda _: "source-hash")
-    monkeypatch.setattr(replay_cli, "load_draw_snapshot", lambda *_: draws)
+    def validate_database_path(_path: Path) -> None:
+        return None
+
+    def source_database_hash(_path: Path) -> str:
+        return "source-hash"
+
+    def load_draw_snapshot(*_args: object) -> tuple[ReplayDraw, ...]:
+        return draws
+
+    monkeypatch.setattr(replay_cli, "validate_database_path", validate_database_path)
+    monkeypatch.setattr(replay_cli, "source_database_hash", source_database_hash)
+    monkeypatch.setattr(replay_cli, "load_draw_snapshot", load_draw_snapshot)
     monkeypatch.setattr(replay_cli, "execution_source_identity", lambda: "test-source")
     strategy_id = "legacy_biglotto__frontend_ml_features__3a4324bc2aa9"
     rc = replay_cli.main(
@@ -226,7 +282,7 @@ def test_general_readonly_api_lists_seeded_and_unseeded_versions() -> None:
     app = FastAPI()
     app.include_router(create_replay_backfill_router(ReadOnlyStore()))  # type: ignore[arg-type]
     strategy_id = "legacy_biglotto__frontend_ml_features__3a4324bc2aa9"
-    response = TestClient(app).get(
+    response = cast(JsonTestClient, TestClient(app)).get(
         "/api/v1/replay-backfill/strategies",
         params={"lottery_type": "BIG_LOTTO", "q": strategy_id},
     )
@@ -237,7 +293,7 @@ def test_general_readonly_api_lists_seeded_and_unseeded_versions() -> None:
 
 
 def test_dynamic_count_is_cached_and_training_cutoff_recorded(
-    monkeypatch: pytest.MonkeyPatch,
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
 ) -> None:
     candidate = _Candidate("candidate")
     fits: list[int] = []
@@ -264,8 +320,8 @@ def test_dynamic_count_is_cached_and_training_cutoff_recorded(
         strategies=(binding.strategy,),
         draws=draws,
         source_identity="synthetic",
-        store=None,
-        execution_version="test",  # type: ignore[arg-type]
+        store=SQLiteBackfillStore(tmp_path / "replay.sqlite"),
+        execution_version="test",
         strategy_sources={
             binding.strategy.strategy_id: {
                 "training_status": "CAUSAL_FIT_PER_TARGET",
@@ -278,7 +334,7 @@ def test_dynamic_count_is_cached_and_training_cutoff_recorded(
     assert payload["training"]["validation_first_draw_id"] == draws[501].draw_number
     assert payload["training"]["validation_last_draw_id"] == draws[550].draw_number
     assert payload["training"]["validation_draw_count"] == 50
-    public_training = _prediction_item(payload)["training"]
+    public_training = _prediction_item(payload, payload, None)["training"]
     assert public_training["training_cutoff_draw_id"] == draws[500].draw_number
     assert public_training["validation_first_draw_id"] == draws[501].draw_number
     assert public_training["validation_last_draw_id"] == draws[550].draw_number

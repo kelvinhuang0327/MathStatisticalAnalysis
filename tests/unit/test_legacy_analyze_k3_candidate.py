@@ -1,11 +1,16 @@
 """Regression for the donor's tied sixth-place Fourier score."""
 
+# This regression intentionally tests the candidate's private compatibility hook.
+# pyright: reportPrivateUsage=false
+
+import pytest
+
 from lottolab.application import legacy_analyze_k3_candidate as candidate
 from lottolab.application.k3_predraw_guard import _supplement
 from lottolab.strategies.adapters.base import CausalDrawRow
 
 
-def test_historical_tie_uses_legacy_indirect_sort(monkeypatch):
+def test_historical_tie_uses_legacy_indirect_sort(monkeypatch: pytest.MonkeyPatch) -> None:
     # Frozen candidate scores for historical target 108000100, in 1..49 order.
     scores = (
         0.294,
@@ -58,8 +63,17 @@ def test_historical_tie_uses_legacy_indirect_sort(monkeypatch):
         0.14814814814814814,
         0.16161616161616163,
     )
-    monkeypatch.setattr(candidate, "_fourier_rhythm_scores", lambda _: dict(enumerate(scores, 1)))
-    monkeypatch.setattr(candidate, "_p0_hot_echo_2bets", lambda _: ((1, 2, 3, 4, 5, 6),) * 2)
+    def fixed_scores(_history: tuple[CausalDrawRow, ...]) -> dict[int, float]:
+        return dict(enumerate(scores, 1))
+
+    def fixed_two_bets(
+        _history: tuple[CausalDrawRow, ...],
+    ) -> tuple[tuple[int, ...], tuple[int, ...]]:
+        ticket = (1, 2, 3, 4, 5, 6)
+        return ticket, ticket
+
+    monkeypatch.setattr(candidate, "_fourier_rhythm_scores", fixed_scores)
+    monkeypatch.setattr(candidate, "_p0_hot_echo_2bets", fixed_two_bets)
     history = (CausalDrawRow("1", "2020-01-01", (1, 2, 3, 4, 5, 6)),) * 500
     result = candidate.analyze_native_14(history)
     assert scores[11] == scores[40]

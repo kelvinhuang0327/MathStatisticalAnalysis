@@ -1,5 +1,9 @@
 """HTTP checks for the read-only sealed-084 research replay projection."""
 
+# These tests verify archive integrity by deliberately inspecting and mutating
+# the module-private source registry and sealed manifest constants.
+# pyright: reportPrivateUsage=false
+
 from __future__ import annotations
 
 import csv
@@ -8,7 +12,9 @@ import json
 import shutil
 from dataclasses import replace
 from pathlib import Path
+from typing import Any, Protocol, cast
 
+import httpx
 import pytest
 from fastapi.testclient import TestClient
 
@@ -18,6 +24,10 @@ from lottolab.interfaces.api.local_app import (
     B649_SEALED084_REPLAY_SOURCE_ROOT_ENV,
     create_local_app,
 )
+
+
+class JsonTestClient(Protocol):
+    def get(self, url: str, **kwargs: object) -> httpx.Response: ...
 
 SOURCE_ROOT = Path("/Users/kelvin/VibeCoding-WorkSpace/.task-data/20261102")
 ARCHIVE_ROOT = Path(
@@ -42,31 +52,40 @@ STRATEGY_TICKET_COUNTS = {
 }
 
 
-def _local_client(monkeypatch: pytest.MonkeyPatch, source_root: Path | None) -> TestClient:
+def _local_client(monkeypatch: pytest.MonkeyPatch, source_root: Path | None) -> JsonTestClient:
     monkeypatch.delenv(B649_SEALED084_REPLAY_SOURCE_ROOT_ENV, raising=False)
     if source_root is not None:
         monkeypatch.setenv(B649_SEALED084_REPLAY_SOURCE_ROOT_ENV, str(source_root))
-    return TestClient(create_local_app())
+    return cast(JsonTestClient, TestClient(create_local_app()))
 
 
 def _csv_rows() -> dict[tuple[str, str, int, str], dict[str, str]]:
     expected: dict[tuple[str, str, int, str], dict[str, str]] = {}
     for task_id in TASKS:
         source_dir = SOURCE_ROOT / task_id
-        receipt = json.loads((source_dir / "result.json").read_text(encoding="utf-8"))
-        generator = receipt.get("generator_identity") or {}
+        receipt: dict[str, Any] = json.loads(
+            (source_dir / "result.json").read_text(encoding="utf-8")
+        )
+        generator: dict[str, Any] = receipt.get("generator_identity") or {}
         with (source_dir / "four_window_results.csv").open(
             encoding="utf-8-sig", newline=""
         ) as stream:
             for csv_row in csv.DictReader(stream):
-                strategy_id = csv_row.get("strategy_id") or generator["strategy_id"]
-                version = (
+                strategy_id: str = csv_row.get("strategy_id") or generator["strategy_id"]
+                version: str = (
                     csv_row.get("strategy_version")
                     or csv_row.get("version")
                     or generator["version"]
                 )
-                ticket_count = int(csv_row.get("ticket_count") or generator["native_k"])
-                key = (strategy_id, version, ticket_count, csv_row["window"])
+                ticket_count: int = int(
+                    csv_row.get("ticket_count") or generator["native_k"]
+                )
+                key: tuple[str, str, int, str] = (
+                    strategy_id,
+                    version,
+                    ticket_count,
+                    csv_row["window"],
+                )
                 expected[key] = csv_row
     return expected
 
@@ -136,13 +155,15 @@ def _reseal_archive_fixture(
         "_ARCHIVE_MANIFEST_SHA256",
         hashlib.sha256(manifest_path.read_bytes()).hexdigest(),
     )
-    updated_sources = []
-    for spec in sealed084_api._SOURCES:
-        if spec.task_id == task_id:
-            expected_hashes = dict(spec.expected_hashes)
-            expected_hashes[artifact_name] = artifact_sha256
-            spec = replace(spec, expected_hashes=expected_hashes)
-        updated_sources.append(spec)
+    updated_sources = [
+        replace(
+            spec,
+            expected_hashes={**spec.expected_hashes, artifact_name: artifact_sha256},
+        )
+        if spec.task_id == task_id
+        else spec
+        for spec in sealed084_api._SOURCES
+    ]
     monkeypatch.setattr(sealed084_api, "_SOURCES", tuple(updated_sources))
 
 
@@ -169,7 +190,7 @@ def _assert_archive_fixture_integrity(archive_root: Path) -> None:
         }
         assert artifact_hashes == spec.expected_hashes
 
-        result = json.loads(artifact_bytes["result.json"])
+        result: dict[str, Any] = json.loads(artifact_bytes["result.json"])
         assert result["task_id"] == spec.task_id
         assert result["task_lifecycle_state"] == "COMPLETED"
         assert result["source_tier"] == sealed084_api.SOURCE_TIER
@@ -180,13 +201,11 @@ def _assert_archive_fixture_integrity(archive_root: Path) -> None:
         }
         assert sealed084_api.SOURCE_CUTOFF in cutoff_values
 
-        declarations = result.get("artifacts")
-        if isinstance(declarations, dict):
-            for name in sealed084_api._ARTIFACT_NAMES[1:]:
-                declaration = declarations.get(name)
-                if isinstance(declaration, dict):
-                    assert declaration.get("sha256") == artifact_hashes[name]
-                    assert declaration.get("bytes") == len(artifact_bytes[name])
+        declarations = cast(dict[str, Any], result.get("artifacts", {}))
+        for name in sealed084_api._ARTIFACT_NAMES[1:]:
+            declaration = cast(dict[str, Any], declarations.get(name, {}))
+            assert declaration.get("sha256") == artifact_hashes[name]
+            assert declaration.get("bytes") == len(artifact_bytes[name])
 
 
 def test_local_app_reads_all_28_cells_with_exact_csv_metrics_and_source_status(
@@ -572,7 +591,10 @@ def test_invalid_identity_metrics_and_windows_fail_closed(
     monkeypatch.setattr(
         sealed084_api, "_SOURCES", (replace(spec, expected_hashes=expected_hashes),)
     )
-    client = TestClient(create_app(b649_sealed084_replay_source_root=tmp_path))
+    client = cast(
+        JsonTestClient,
+        TestClient(create_app(b649_sealed084_replay_source_root=tmp_path)),
+    )
 
     response = client.get(API_PATH)
 

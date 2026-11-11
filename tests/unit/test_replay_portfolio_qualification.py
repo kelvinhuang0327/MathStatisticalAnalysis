@@ -1,13 +1,19 @@
 """Research qualification must not rewrite the native positional record."""
 
+# pyright: reportPrivateUsage=false
+
+from collections.abc import Mapping
 from copy import deepcopy
 from pathlib import Path
+from typing import Protocol, cast
 
+import httpx
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from lottolab.infrastructure.persistence.replay_backfill_store import (
+    JsonObject,
     SQLiteBackfillStore,
     _research_portfolio_context,
     identity,
@@ -24,13 +30,19 @@ D = [19, 20, 21, 22, 23, 24]
 E = [25, 26, 27, 28, 29, 30]
 
 
+class JsonTestClient(Protocol):
+    def get(
+        self, url: str, *, params: Mapping[str, str] | None = None
+    ) -> httpx.Response: ...
+
+
 def _fixture(
     tmp_path: Path,
     combinations: list[list[int]],
     *,
     source_hash: str = "fixture-hash",
     training_present: bool = True,
-) -> tuple[TestClient, dict, SQLiteBackfillStore]:
+) -> tuple[TestClient, JsonObject, SQLiteBackfillStore]:
     target = {
         "draw_number": "123",
         "draw_date": "2026-01-02",
@@ -55,7 +67,7 @@ def _fixture(
         ],
         "targets": [target],
     }
-    result = {
+    result: JsonObject = {
         "cell_identity": "cell",
         "lottery_type": "BIG_LOTTO",
         "strategy_id": "strategy",
@@ -85,13 +97,28 @@ def _fixture(
     return TestClient(app), result, store
 
 
-def _item(client: TestClient) -> dict:
-    response = client.get(
+def _item(client: TestClient) -> JsonObject:
+    response = cast(JsonTestClient, client).get(
         "/api/v1/replay-backfill/predictions",
         params={"lottery_type": "BIG_LOTTO", "run_id": "test-run"},
     )
     assert response.status_code == 200, response.text
-    return response.json()["items"][0]
+    body = cast(JsonObject, response.json())
+    items = body.get("items")
+    assert type(items) is list and items
+    return cast(JsonObject, items[0])
+
+
+def _identity_for(payload: JsonObject) -> JsonObject:
+    return {
+        "lottery_type": payload["lottery_type"],
+        "run_id": "test-run",
+        "target_draw_id": payload["target_draw_id"],
+        "target_draw_date": payload["target_draw_date"],
+        "strategy_id": payload["strategy_id"],
+        "strategy_version": payload["strategy_version"],
+        "cell_identity": payload["cell_identity"],
+    }
 
 
 def test_duplicate_positions_are_flagged_without_changing_native_record(tmp_path: Path) -> None:
@@ -126,7 +153,7 @@ def test_distinct_combinations_do_not_establish_import_qualification(tmp_path: P
 def test_existing_metric_display_is_unchanged_for_complete_tickets(tmp_path: Path) -> None:
     _, original, _ = _fixture(tmp_path, [A, B, A, B, C])
     original["hit_details"] = [{"zone1_hits": 3, "zone2_hit": False, "prize_tier": "SIXTH"}]
-    result = _prediction_item(original)
+    result = _prediction_item(original, _identity_for(original), None)
     assert result["portfolio_any_prize"] is True
     assert result["best_main_hits"] == 3
     assert result["predicted_tickets"][0]["main_hit_count"] == 3
@@ -172,7 +199,10 @@ def test_missing_training_evidence_remains_unknown(tmp_path: Path) -> None:
 def test_incomplete_fields_are_unknown_without_mutating_input() -> None:
     from lottolab.application.replay_portfolio_qualification import assess_research_portfolio
 
-    tickets = [{"ticket_position": 1, "main_numbers": A}, {"main_numbers": B}]
+    tickets: list[JsonObject] = [
+        {"ticket_position": 1, "main_numbers": A},
+        {"main_numbers": B},
+    ]
     before = deepcopy(tickets)
     result = assess_research_portfolio(tickets, 2, source_bound=True, execution_status="COMPLETE")
     assert result["status"] == "UNKNOWN"
@@ -206,7 +236,10 @@ def test_uniqueness_contract_covers_each_supported_native_count(count: int) -> N
     from lottolab.application.replay_portfolio_qualification import assess_research_portfolio
 
     numbers = [A, B, C, D, E][:count]
-    tickets = [{"ticket_position": i, "main_numbers": value} for i, value in enumerate(numbers, 1)]
+    tickets: list[JsonObject] = [
+        {"ticket_position": i, "main_numbers": value}
+        for i, value in enumerate(numbers, 1)
+    ]
     assert (
         assess_research_portfolio(tickets, count, source_bound=True, execution_status="COMPLETE")[
             "status"
@@ -276,7 +309,12 @@ def test_prediction_consumer_exposes_missing_fields_as_unknown(tmp_path: Path) -
     for missing in ("main_numbers", "ticket_position"):
         payload = deepcopy(row["payload"])
         del payload["predicted_tickets"][0][missing]
-        result = _prediction_item(payload, row["portfolio_context"])
+        result = _prediction_item(
+            payload,
+            cast(JsonObject, row["identity"]),
+            cast(JsonObject | None, row["cutoff_source"]),
+            cast(JsonObject, row["portfolio_context"]),
+        )
         assert result["research_portfolio_qualification"]["status"] == "UNKNOWN"
         assert result["research_portfolio_qualification"]["import_qualification"] == "UNKNOWN"
         assert result["predicted_tickets"][0][missing] is None

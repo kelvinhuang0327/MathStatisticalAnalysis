@@ -968,12 +968,12 @@ def _prediction_item(
     for ticket in tickets:
         position = ticket.get("ticket_position")
         raw_main_numbers: object = ticket.get("main_numbers")
-        main_numbers = (
-            raw_main_numbers
-            if type(raw_main_numbers) is list
-            and all(type(number) is int for number in cast(list[object], raw_main_numbers))
-            else None
-        )
+        main_numbers: list[int] | None = None
+        if type(raw_main_numbers) is list and all(
+            type(number) is int for number in cast(list[object], raw_main_numbers)
+        ):
+            main_numbers = cast(list[int], raw_main_numbers)
+        valid_position = position if type(position) is int and position > 0 else None
         hit = (
             hits_by_position.get(position, {})
             if (
@@ -989,14 +989,12 @@ def _prediction_item(
             "target_draw_id": identity["target_draw_id"],
             "strategy_id": identity["strategy_id"],
             "strategy_version": identity["strategy_version"],
-            "ticket_position": position,
+            "ticket_position": valid_position,
         }
         predicted.append(
             {
-                "ticket_position": position if type(position) is int and position > 0 else None,
-                "ticket_identity": (
-                    ticket_identity if type(position) is int and position > 0 else None
-                ),
+            "ticket_position": valid_position,
+            "ticket_identity": ticket_identity if valid_position is not None else None,
                 "main_numbers": main_numbers,
                 "special_numbers": (
                     [] if ticket.get("special_number") is None else [ticket["special_number"]]
@@ -1018,16 +1016,17 @@ def _prediction_item(
         and "prize_tier" in ticket
     ]
     fully_evaluated = bool(predicted) and len(evaluated) == len(predicted)
-    ticket_positions = [ticket.get("ticket_position") for ticket in predicted]
-    ticket_evidence_complete = tickets_are_array and len(predicted) == len(tickets) and all(
-        type(ticket.get("ticket_position")) is int
-        and ticket.get("ticket_position") > 0
-        and type(ticket.get("main_numbers")) is list
-        and len(ticket.get("main_numbers")) > 0
-        for ticket in predicted
-    )
-    if ticket_evidence_complete:
-        ticket_evidence_complete = len(set(ticket_positions)) == len(ticket_positions)
+    ticket_positions: list[int] = []
+    ticket_evidence_complete = tickets_are_array and len(predicted) == len(tickets)
+    for ticket in predicted:
+        position = ticket.get("ticket_position")
+        numbers = ticket.get("main_numbers")
+        if type(position) is not int or position < 1 or type(numbers) is not list or not numbers:
+            ticket_evidence_complete = False
+            continue
+        ticket_positions.append(position)
+    if len(set(ticket_positions)) != len(ticket_positions):
+        ticket_evidence_complete = False
     source = payload.get("strategy_source", {})
     source = {} if type(source) is not dict else cast(JsonObject, source)
     strategy_fingerprint = payload.get("strategy_fingerprint")
@@ -1042,7 +1041,7 @@ def _prediction_item(
     )
     context = portfolio_context or {}
     research_portfolio_qualification = assess_research_portfolio(
-        raw_tickets,
+        cast(object, raw_tickets),
         context.get("expected_count"),
         source_bound=context.get("source_bound") is True and identity_matches,
         execution_status=payload.get("execution_status"),

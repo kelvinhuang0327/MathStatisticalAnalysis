@@ -6,7 +6,7 @@ must explicitly integrate it into a future readback. It does not open a DB.
 
 import json
 from collections.abc import Iterable, Mapping
-from typing import Any
+from typing import Any, cast
 
 AUDIT_SCHEMA = "research-store-v5-continuation-v2-audit"
 SUMMARY_FIELDS = (
@@ -32,7 +32,10 @@ def is_correction_audit(row: Mapping[str, Any]) -> bool:
         document = json.loads(row["canonical_summary_json"])
     except (KeyError, TypeError, ValueError):
         return False
-    return isinstance(document, dict) and document.get("schema") == AUDIT_SCHEMA
+    if not isinstance(document, dict):
+        return False
+    typed_document = cast(dict[str, Any], document)
+    return typed_document.get("schema") == AUDIT_SCHEMA
 
 
 def check_summary_rows(

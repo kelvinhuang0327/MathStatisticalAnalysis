@@ -1,5 +1,9 @@
 """Read formal B649 per-draw backtests from the verified recovery ZIP."""
 
+# Reader internals are shared across helpers in this module; private source
+# records remain implementation details of the verified archive boundary.
+# pyright: reportPrivateUsage=false
+
 from __future__ import annotations
 
 import hashlib
@@ -9,7 +13,7 @@ import re
 import zipfile
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
-from typing import Any
+from typing import Any, TypedDict, cast
 
 B649_RESEARCH_RECORD_ARCHIVE_ROOT_ENV = "LOTTOLAB_B649_RESEARCH_RECORD_ARCHIVE_ROOT"
 B649_RESEARCH_RECORD_ARCHIVE_TASK_ID = "NUMBER2_C_BACKTEST_RECOVERY_BUNDLE_20261102_R1"
@@ -31,9 +35,17 @@ _EXPECTED_SOURCE_COUNTS = {
 }
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 
+
+class _SourceFieldMap(TypedDict):
+    tickets: str
+    identity: tuple[str, ...]
+    prize_fields: tuple[str, ...]
+    any_prize: str | None
+    execution_status: str | None
+
 # These mappings were verified against one fixed row from every manifest-pinned
 # formal JSONL. Values copied into the common response remain source values.
-_SOURCE_FIELDS = {
+_SOURCE_FIELDS: dict[str, _SourceFieldMap] = {
     "NUMBER2_D_NATIVE_SUBSET_W50_K235_20261101_R1": {
         "tickets": "tickets",
         "identity": ("strategy_id", "strategy_version"),
@@ -150,7 +162,10 @@ class B649ResearchRecordArchiveDataset:
             and (
                 arm is None
                 or row.arm_or_method_identity == arm
-                or row.arm_or_method_identity.split("@", maxsplit=1)[0] == arm
+                or (
+                    row.arm_or_method_identity is not None
+                    and row.arm_or_method_identity.split("@", maxsplit=1)[0] == arm
+                )
             )
             and (K is None or row.K == K)
         )
@@ -306,7 +321,7 @@ def _json_object(raw: bytes, label: str) -> dict[str, Any]:
     value = json.loads(raw)
     if not isinstance(value, dict):
         raise B649ResearchRecordArchiveDataError(f"the {label} is not an object")
-    return value
+    return cast(dict[str, Any], value)
 
 
 def _validate_archive_receipts(
@@ -323,13 +338,18 @@ def _validate_archive_receipts(
     ):
         raise B649ResearchRecordArchiveDataError("the archive task identity is invalid")
 
-    coverage = manifest.get("raw_backtest_coverage")
-    result_coverage = result.get("raw_backtest_coverage")
+    coverage_value = manifest.get("raw_backtest_coverage")
+    result_coverage_value = result.get("raw_backtest_coverage")
     if (
-        not isinstance(coverage, dict)
-        or coverage.get("expected_records") != B649_RESEARCH_RECORD_TOTAL
+        not isinstance(coverage_value, dict)
+        or not isinstance(result_coverage_value, dict)
+    ):
+        raise B649ResearchRecordArchiveDataError("the formal backtest coverage receipt is invalid")
+    coverage = cast(dict[str, Any], coverage_value)
+    result_coverage = cast(dict[str, Any], result_coverage_value)
+    if (
+        coverage.get("expected_records") != B649_RESEARCH_RECORD_TOTAL
         or coverage.get("produced_records") != B649_RESEARCH_RECORD_TOTAL
-        or not isinstance(result_coverage, dict)
         or result_coverage.get("expected_records") != B649_RESEARCH_RECORD_TOTAL
         or result_coverage.get("produced_records") != B649_RESEARCH_RECORD_TOTAL
     ):
@@ -354,18 +374,23 @@ def _formal_source_specs(
     coverage = manifest.get("raw_backtest_coverage")
     if not isinstance(coverage, dict):
         raise B649ResearchRecordArchiveDataError("the formal source manifest is missing")
-    declared = coverage.get("formal_primary_sources")
-    if not isinstance(declared, list) or len(declared) != len(_EXPECTED_SOURCE_COUNTS):
+    coverage_object = cast(dict[str, Any], coverage)
+    declared_value = coverage_object.get("formal_primary_sources")
+    if not isinstance(declared_value, list):
+        raise B649ResearchRecordArchiveDataError("the formal source inventory is invalid")
+    declared = cast(list[Any], declared_value)
+    if len(declared) != len(_EXPECTED_SOURCE_COUNTS):
         raise B649ResearchRecordArchiveDataError("the formal source inventory is invalid")
 
     by_id: dict[str, dict[str, Any]] = {}
     for item in declared:
         if not isinstance(item, dict):
             raise B649ResearchRecordArchiveDataError("a formal source entry is invalid")
-        source_task_id = item.get("source_task_id")
+        item_object = cast(dict[str, Any], item)
+        source_task_id = item_object.get("source_task_id")
         if not isinstance(source_task_id, str) or source_task_id in by_id:
             raise B649ResearchRecordArchiveDataError("a formal source identity is invalid")
-        by_id[source_task_id] = item
+        by_id[source_task_id] = item_object
 
     if set(by_id) != set(_EXPECTED_SOURCE_COUNTS):
         raise B649ResearchRecordArchiveDataError("the formal source identities do not match")
@@ -389,20 +414,22 @@ def _formal_source_specs(
 
 
 def _manifest_file_specs(manifest: dict[str, Any]) -> dict[str, dict[str, Any]]:
-    entries = manifest.get("files")
-    if not isinstance(entries, list):
+    entries_value = manifest.get("files")
+    if not isinstance(entries_value, list):
         raise B649ResearchRecordArchiveDataError("the archive file manifest is invalid")
+    entries = cast(list[Any], entries_value)
     result: dict[str, dict[str, Any]] = {}
     for entry in entries:
         if not isinstance(entry, dict):
             raise B649ResearchRecordArchiveDataError("an archive file entry is invalid")
-        relative_path = entry.get("archive_relative_path")
+        entry_object = cast(dict[str, Any], entry)
+        relative_path = entry_object.get("archive_relative_path")
         if not isinstance(relative_path, str):
             raise B649ResearchRecordArchiveDataError("an archive member path is invalid")
         _validate_archive_member_name(relative_path)
         if relative_path in result:
             raise B649ResearchRecordArchiveDataError("the archive manifest has duplicate paths")
-        result[relative_path] = entry
+        result[relative_path] = entry_object
     return result
 
 
@@ -442,6 +469,7 @@ def _parse_source_rows(
             raise B649ResearchRecordArchiveDataError("a formal source record is malformed") from exc
         if not isinstance(raw_record, dict):
             raise B649ResearchRecordArchiveDataError("a formal source record is not an object")
+        raw_record = cast(dict[str, Any], raw_record)
 
         identity_fields = field_map["identity"]
         if any(name not in raw_record for name in identity_fields):
@@ -484,7 +512,9 @@ def _parse_source_rows(
         ):
             raise B649ResearchRecordArchiveDataError("a formal source record value is invalid")
 
-        prize_result = {name: raw_record[name] for name in field_map["prize_fields"]}
+        prize_result: dict[str, Any] = {
+            name: raw_record[name] for name in field_map["prize_fields"]
+        }
         null_reasons: dict[str, str] = {}
         if any_prize_field is None:
             null_reasons["any_official_prize"] = (
@@ -508,10 +538,14 @@ def _parse_source_rows(
                 actual_special_number=raw_record["actual_special_number"],
                 official_prize_result=prize_result,
                 any_official_prize=(
-                    raw_record[any_prize_field] if any_prize_field is not None else None
+                    cast(bool, raw_record[any_prize_field])
+                    if any_prize_field is not None
+                    else None
                 ),
                 execution_status=(
-                    raw_record[execution_field] if execution_field is not None else None
+                    cast(str, raw_record[execution_field])
+                    if execution_field is not None
+                    else None
                 ),
                 original_source_sha256=original_source_sha256,
                 null_reasons=null_reasons,

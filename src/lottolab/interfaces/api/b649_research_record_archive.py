@@ -1,5 +1,8 @@
 """Read-only HTTP routes for verified formal B649 per-draw backtests."""
 
+# FastAPI route functions are referenced through route registration decorators.
+# pyright: reportUnusedFunction=false
+
 from __future__ import annotations
 
 from typing import Annotated, Any

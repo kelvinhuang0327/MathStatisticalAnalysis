@@ -1,5 +1,8 @@
 """Regression checks for causal validation and reproducible RNG streams."""
 
+# These adapter tests pin private selector state and historical replay behavior.
+# pyright: reportPrivateUsage=false
+
 from __future__ import annotations
 
 import random

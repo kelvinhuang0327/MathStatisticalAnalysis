@@ -1,5 +1,8 @@
 """Regression checks for the per-target reproducible replay contract."""
 
+# These checks pin internal production binding and cell-generation boundaries.
+# pyright: reportPrivateUsage=false
+
 from __future__ import annotations
 
 import random

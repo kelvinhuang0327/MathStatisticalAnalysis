@@ -15,6 +15,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 from enum import StrEnum
+from typing import cast
 from zoneinfo import ZoneInfo
 
 from lottolab.application.legacy_analyze_k3_candidate import (
@@ -37,6 +38,7 @@ from lottolab.application.legacy_source_native_portfolios_wave21 import (
     LegacySourceNativeWave21Request,
     generate_legacy_source_native_wave21_portfolio,
 )
+from lottolab.application.strategy_preserving_20_ticket import Ticket
 from lottolab.domain.draws import LotteryType
 from lottolab.domain.pre_outcome_target import (
     OutcomePresenceAttestation,
@@ -216,7 +218,7 @@ def _guard_history(
                 "normalized_record_hash": _record_hash(row),
             }
         )
-        native.append(LegacyHistoryDraw(row.draw_number, row.main_numbers))
+        native.append(LegacyHistoryDraw(row.draw_number, cast(Ticket, row.main_numbers)))
         previous_id, previous_date, previous_drawn = number, row.draw_date, drawn_at
     ref = registration.causal_history
     digest = _sha256_json(

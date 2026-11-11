@@ -1,11 +1,16 @@
 """Contract tests for the host app's pinned K5 draw-event API."""
 
+# These tests intentionally exercise private event-pairing and source-pinning
+# helpers as direct contract boundaries.
+# pyright: reportPrivateUsage=false
+
 from __future__ import annotations
 
 import json
+from collections.abc import Iterator, Mapping
 from dataclasses import replace
 from pathlib import Path
-from typing import Any
+from typing import Any, Protocol, cast
 
 import pytest
 from fastapi import FastAPI
@@ -18,10 +23,23 @@ API_PATH = events_api.API_PATH
 ANCHOR_DRAW = "103000101"
 
 
+class _TestResponse(Protocol):
+    status_code: int
+    text: str
+
+    def json(self) -> Any: ...
+
+
+class _TestClient(Protocol):
+    def get(
+        self, url: str, *, params: Mapping[str, Any] | None = None
+    ) -> _TestResponse: ...
+
+
 @pytest.fixture(scope="module")
-def client() -> Any:
+def client() -> Iterator[_TestClient]:
     with TestClient(create_app()) as test_client:
-        yield test_client
+        yield cast(_TestClient, test_client)
 
 
 @pytest.fixture(scope="module")
@@ -193,7 +211,7 @@ def test_ambiguous_strategy_version_is_rejected_over_http(
     app = FastAPI()
     app.include_router(events_api.create_research_backtest_events_router(ambiguous_index))
     with TestClient(app) as test_client:
-        response = test_client.get(
+        response = cast(_TestClient, test_client).get(
             API_PATH,
             params={"K": 5, "strategy_id": source.prediction["strategy_id"]},
         )
@@ -243,7 +261,7 @@ def test_changed_pinned_source_fails_closed_without_returning_another_version(
     monkeypatch.setattr(events_api, "_source_specs", lambda: bad_specs)
     app = create_app()
     with TestClient(app) as test_client:
-        response = test_client.get(
+        response = cast(_TestClient, test_client).get(
             API_PATH,
             params={"K": 5, "strategy_id": events_api.POLICY_IDENTITIES[0][0]},
         )

@@ -1,5 +1,8 @@
 """Read-only API for the receipt-pinned A/D strategy identity crosswalk."""
 
+# FastAPI discovers endpoint callables through route registration decorators.
+# pyright: reportUnusedFunction=false
+
 from __future__ import annotations
 
 import csv
@@ -14,7 +17,7 @@ from dataclasses import dataclass
 from functools import lru_cache
 from http import HTTPStatus
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 from urllib.parse import parse_qs
 
 from fastapi import APIRouter, Request
@@ -200,7 +203,7 @@ def _read_json_receipt(content: bytes, label: str) -> Mapping[str, Any]:
         raise CrosswalkReadError(f"Pinned {label} is not valid JSON.") from exc
     if not isinstance(value, dict):
         raise CrosswalkReadError(f"Pinned {label} has an invalid structure.")
-    return value
+    return cast(Mapping[str, Any], value)
 
 
 def _verify_receipt_links(result: Mapping[str, Any], summary: Mapping[str, Any]) -> None:
@@ -247,15 +250,17 @@ def _source_groups(raw_evidence: str) -> frozenset[str]:
 def _walk_embedded_json(value: Any) -> list[Mapping[str, Any]]:
     records: list[Mapping[str, Any]] = []
     if isinstance(value, Mapping):
-        records.append(value)
-        for nested in value.values():
+        mapping_value = cast(Mapping[str, Any], value)
+        records.append(mapping_value)
+        for nested in mapping_value.values():
             records.extend(_walk_embedded_json(nested))
     elif isinstance(value, list):
-        for nested in value:
+        for nested in cast(list[Any], value):
             records.extend(_walk_embedded_json(nested))
     elif isinstance(value, str) and value[:1] in {"[", "{"}:
         try:
-            records.extend(_walk_embedded_json(json.loads(value)))
+            parsed = cast(object, json.loads(value))
+            records.extend(_walk_embedded_json(parsed))
         except json.JSONDecodeError:
             return records
     return records
@@ -521,7 +526,9 @@ def _legacy_hashes(row: Mapping[str, Any]) -> list[str]:
 def _strings(value: Any) -> list[str]:
     if not isinstance(value, list):
         return []
-    return sorted({item for item in value if isinstance(item, str) and item})
+    return sorted(
+        {item for item in cast(list[Any], value) if isinstance(item, str) and item}
+    )
 
 
 def _sanitize_public(value: Any) -> Any:
@@ -530,11 +537,12 @@ def _sanitize_public(value: Any) -> Any:
             lambda match: _logical_locator(match.group(0)) or "source", value
         )
     if isinstance(value, list):
-        return [_sanitize_public(item) for item in value]
+        return [_sanitize_public(item) for item in cast(list[Any], value)]
     if isinstance(value, tuple):
-        return [_sanitize_public(item) for item in value]
+        return [_sanitize_public(item) for item in cast(tuple[Any, ...], value)]
     if isinstance(value, Mapping):
-        return {key: _sanitize_public(item) for key, item in value.items()}
+        mapping_value = cast(Mapping[str, Any], value)
+        return {key: _sanitize_public(item) for key, item in mapping_value.items()}
     return value
 
 

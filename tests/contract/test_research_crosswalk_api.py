@@ -8,13 +8,22 @@ import shutil
 from collections import Counter
 from collections.abc import Iterator
 from pathlib import Path
-from typing import Any
+from typing import Any, Protocol, cast
 
+import httpx
 import pytest
 from fastapi.testclient import TestClient
 
 from lottolab.interfaces.api import research_crosswalk
 from lottolab.interfaces.api.app import create_app
+
+
+class JsonTestClient(Protocol):
+    def __enter__(self) -> JsonTestClient: ...
+
+    def __exit__(self, *args: object) -> None: ...
+
+    def get(self, url: str, **kwargs: object) -> httpx.Response: ...
 
 API_PATH = "/api/v1/research/backtests/identity-crosswalk"
 SOURCE_FILES = (
@@ -33,19 +42,19 @@ def _copy_source_root(destination: Path) -> Path:
 
 
 @pytest.fixture
-def client() -> Iterator[TestClient]:
-    with TestClient(create_app()) as test_client:
+def client() -> Iterator[JsonTestClient]:
+    with cast(JsonTestClient, TestClient(create_app())) as test_client:
         yield test_client
 
 
-def _get(client: TestClient, **params: Any) -> dict[str, Any]:
+def _get(client: JsonTestClient, **params: Any) -> dict[str, Any]:
     response = client.get(API_PATH, params=params)
     assert response.status_code == 200, response.text
     return response.json()
 
 
 def test_route_is_registered_and_existing_research_routes_remain_available(
-    client: TestClient,
+    client: JsonTestClient,
 ) -> None:
     paths = set(create_app().openapi()["paths"])
     assert API_PATH in paths
@@ -64,7 +73,7 @@ def test_route_is_registered_and_existing_research_routes_remain_available(
 
 
 def test_actual_http_counts_keep_scored_status_only_and_unknown_sets_separate(
-    client: TestClient,
+    client: JsonTestClient,
 ) -> None:
     first = _get(client, limit=500, offset=0)
     second = _get(client, limit=500, offset=500)
@@ -122,7 +131,7 @@ def test_actual_http_counts_keep_scored_status_only_and_unknown_sets_separate(
 
 
 def test_exact_and_partial_versions_are_filtered_without_automatic_promotion(
-    client: TestClient,
+    client: JsonTestClient,
 ) -> None:
     identity = {
         "strategy_id": "legacy_biglotto__advanced_methods_benchmark__87ee0d15033c",
@@ -155,7 +164,7 @@ def test_exact_and_partial_versions_are_filtered_without_automatic_promotion(
 
 
 def test_h24_seeds_and_eh27_original_clean_identities_remain_separate(
-    client: TestClient,
+    client: JsonTestClient,
 ) -> None:
     for seed in (1, 2, 3):
         payload = _get(
@@ -184,7 +193,7 @@ def test_h24_seeds_and_eh27_original_clean_identities_remain_separate(
 
 
 def test_window_contracts_keep_d_history_and_app_full_denominators_separate(
-    client: TestClient,
+    client: JsonTestClient,
 ) -> None:
     payload = _get(
         client,
@@ -218,7 +227,7 @@ def test_window_contracts_keep_d_history_and_app_full_denominators_separate(
     assert 1317 not in app_full.values()
 
 
-def test_pagination_filters_and_source_group_are_stable(client: TestClient) -> None:
+def test_pagination_filters_and_source_group_are_stable(client: JsonTestClient) -> None:
     page_one = client.get(API_PATH, params={"limit": 100, "offset": 0})
     page_one_repeat = client.get(API_PATH, params={"limit": 100, "offset": 0})
     assert page_one.status_code == page_one_repeat.status_code == 200
@@ -255,7 +264,7 @@ def test_pagination_filters_and_source_group_are_stable(client: TestClient) -> N
     assert unknown_strategy["identities"] == []
 
 
-def test_same_strategy_keeps_distinct_source_versions(client: TestClient) -> None:
+def test_same_strategy_keeps_distinct_source_versions(client: JsonTestClient) -> None:
     rows: list[dict[str, Any]] = []
     first = _get(client, limit=500, offset=0)
     rows.extend(first["identities"])
@@ -292,7 +301,7 @@ def test_configured_source_root_is_captured_and_reads_only_alternate_files(
     source_root_env = research_crosswalk.SOURCE_ROOT_ENV
     monkeypatch.delenv(source_root_env, raising=False)
     default_app = create_app()
-    with TestClient(default_app) as default_client:
+    with cast(JsonTestClient, TestClient(default_app)) as default_client:
         default_pages = [
             default_client.get(API_PATH, params={"limit": 500, "offset": offset})
             for offset in (0, 500)
@@ -306,7 +315,7 @@ def test_configured_source_root_is_captured_and_reads_only_alternate_files(
     alternate_app = create_app()
     monkeypatch.setenv(source_root_env, str(tmp_path / "must-not-be-read"))
 
-    original_reader = research_crosswalk._read_pinned_bytes
+    original_reader = research_crosswalk._read_pinned_bytes  # pyright: ignore[reportPrivateUsage]
     read_paths: list[Path] = []
 
     def recording_reader(path: Path, expected_sha256: str, label: str) -> bytes:
@@ -314,7 +323,7 @@ def test_configured_source_root_is_captured_and_reads_only_alternate_files(
         return original_reader(path, expected_sha256, label)
 
     monkeypatch.setattr(research_crosswalk, "_read_pinned_bytes", recording_reader)
-    with TestClient(alternate_app) as alternate_client:
+    with cast(JsonTestClient, TestClient(alternate_app)) as alternate_client:
         alternate_pages = [
             alternate_client.get(
                 API_PATH,
@@ -341,7 +350,7 @@ def test_blank_or_relative_source_configuration_fails_closed(
     configured_value: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setenv(research_crosswalk.SOURCE_ROOT_ENV, configured_value)
-    with TestClient(create_app()) as configured_client:
+    with cast(JsonTestClient, TestClient(create_app())) as configured_client:
         response = configured_client.get(API_PATH)
     assert response.status_code == 503
     assert response.json()["error"] == "source_unavailable"
@@ -354,7 +363,7 @@ def test_missing_configured_source_root_fails_without_default_fallback(
 ) -> None:
     missing_root = tmp_path / "missing-crosswalk"
     monkeypatch.setenv(research_crosswalk.SOURCE_ROOT_ENV, str(missing_root))
-    with TestClient(create_app()) as configured_client:
+    with cast(JsonTestClient, TestClient(create_app())) as configured_client:
         response = configured_client.get(API_PATH)
     assert response.status_code == 503
     assert response.json()["error"] == "source_unavailable"
@@ -369,7 +378,7 @@ def test_missing_file_in_configured_source_root_fails_without_default_fallback(
     missing_file = alternate_root / "crosswalk_summary.json"
     missing_file.unlink()
     monkeypatch.setenv(research_crosswalk.SOURCE_ROOT_ENV, str(alternate_root))
-    with TestClient(create_app()) as configured_client:
+    with cast(JsonTestClient, TestClient(create_app())) as configured_client:
         response = configured_client.get(API_PATH)
     assert response.status_code == 503
     assert response.json()["error"] == "source_unavailable"
@@ -385,7 +394,7 @@ def test_alternate_source_sha_mismatch_fails_without_default_fallback(
     source = alternate_root / filename
     source.write_bytes(source.read_bytes() + b"\n")
     monkeypatch.setenv(research_crosswalk.SOURCE_ROOT_ENV, str(alternate_root))
-    with TestClient(create_app()) as configured_client:
+    with cast(JsonTestClient, TestClient(create_app())) as configured_client:
         response = configured_client.get(API_PATH)
     assert response.status_code == 503
     assert response.json()["error"] == "source_unavailable"
@@ -408,7 +417,7 @@ def test_alternate_source_rejects_receipt_version_conflict(
         hashlib.sha256(result_bytes).hexdigest(),
     )
     monkeypatch.setenv(research_crosswalk.SOURCE_ROOT_ENV, str(alternate_root))
-    with TestClient(create_app()) as configured_client:
+    with cast(JsonTestClient, TestClient(create_app())) as configured_client:
         response = configured_client.get(API_PATH)
     assert response.status_code == 503
     assert "unexpected identity" in response.json()["message"]
@@ -424,7 +433,7 @@ def test_alternate_source_rejects_symlink_escape(
     (alternate_root / "unmatched_ad_identities.csv").unlink()
     (alternate_root / "unmatched_ad_identities.csv").symlink_to(outside_source)
     monkeypatch.setenv(research_crosswalk.SOURCE_ROOT_ENV, str(alternate_root))
-    with TestClient(create_app()) as configured_client:
+    with cast(JsonTestClient, TestClient(create_app())) as configured_client:
         response = configured_client.get(API_PATH)
     assert response.status_code == 503
     assert response.json()["error"] == "source_unavailable"
@@ -432,7 +441,7 @@ def test_alternate_source_rejects_symlink_escape(
     assert str(outside_source) not in response.text
 
 
-def test_invalid_and_arbitrary_path_parameters_are_rejected(client: TestClient) -> None:
+def test_invalid_and_arbitrary_path_parameters_are_rejected(client: JsonTestClient) -> None:
     for params in (
         {"match_status": "MATCHED"},
         {"source_group": "NO_SUCH_GROUP"},
@@ -446,7 +455,7 @@ def test_invalid_and_arbitrary_path_parameters_are_rejected(client: TestClient) 
         assert response.json()["error"] == "invalid_request"
 
 
-def test_response_uses_logical_source_locators_without_local_paths(client: TestClient) -> None:
+def test_response_uses_logical_source_locators_without_local_paths(client: JsonTestClient) -> None:
     payload = _get(client, limit=100)
     serialized = client.get(API_PATH, params={"limit": 100}).text
     assert "/Users/" not in serialized
@@ -465,7 +474,7 @@ def test_response_uses_logical_source_locators_without_local_paths(client: TestC
 
 
 def test_missing_or_changed_pinned_sources_return_503_without_path_disclosure(
-    client: TestClient, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    client: JsonTestClient, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     missing_receipt = tmp_path / "missing-result.json"
     monkeypatch.setattr(research_crosswalk, "CROSSWALK_RESULT_PATH", missing_receipt)

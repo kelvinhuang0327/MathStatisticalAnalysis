@@ -1,10 +1,13 @@
 """Read-only HTTP API for the checksum-verified B649 research board V2."""
 
+# FastAPI route functions are referenced through route registration decorators.
+# pyright: reportUnusedFunction=false
+
 from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Annotated, Literal
+from typing import Annotated, Literal, cast
 
 from fastapi import APIRouter, Query, Request
 from fastapi.responses import JSONResponse
@@ -360,7 +363,7 @@ def _summary_view(dataset: B649ResearchBoardV2Dataset) -> B649ResearchBoardSumma
         not_applicable_count=dataset.metrics_availability_counts["NOT_APPLICABLE"],
         comparable_group_count=dataset.comparable_group_count,
         duplicate_output_groups=dataset.duplicate_output_groups,
-        windows=list(dataset.windows),
+        windows=[_research_window(window) for window in dataset.windows],
         K_values=list(dataset.k_values),
         prize_metrics=list(dataset.prize_metrics),
         cohorts=sorted({row["evaluation_cohort"] for row in dataset.inventory_records}),
@@ -441,18 +444,26 @@ def _parse_json_cell(raw: str, field: str) -> object:
         raise B649ResearchBoardV2DataError(f"the V2 JSON field {field} is invalid") from exc
 
 
+def _research_window(value: str) -> ResearchWindow:
+    allowed: tuple[ResearchWindow, ...] = ("FULL", "RECENT_750", "RECENT_300", "RECENT_50")
+    if value not in allowed:
+        raise B649ResearchBoardV2DataError("the V2 research window is invalid")
+    return value
+
+
 def _public_json(value: object) -> object:
     if isinstance(value, dict):
-        return {str(key): _public_json(item) for key, item in value.items()}
+        typed_value = cast(dict[str, object], value)
+        return {str(key): _public_json(item) for key, item in typed_value.items()}
     if isinstance(value, list):
-        return [_public_json(item) for item in value]
+        return [_public_json(item) for item in cast(list[object], value)]
     if isinstance(value, str):
         if value.startswith("/"):
             return _public_locator(value)
         stripped = value.lstrip()
         if stripped.startswith(("{", "[")):
             try:
-                return _public_json(json.loads(value))
+                return _public_json(cast(object, json.loads(value)))
             except json.JSONDecodeError:
                 return value
     return value

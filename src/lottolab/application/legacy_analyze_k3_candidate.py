@@ -7,6 +7,9 @@ possible histories or establish that a prediction was made before a draw.
 Use the guarded entry point for prospective research.
 """
 
+# This port deliberately delegates to the frozen source's internal helpers.
+# pyright: reportPrivateUsage=false
+
 from __future__ import annotations
 
 from collections import Counter

@@ -1,12 +1,23 @@
 from __future__ import annotations
 
+from typing import Protocol, cast
+
+import httpx
 from fastapi.testclient import TestClient
 
 from lottolab.interfaces.api.app import create_app
 
 
+class JsonTestClient(Protocol):
+    def get(self, url: str, **kwargs: object) -> httpx.Response: ...
+
+
+def _client() -> JsonTestClient:
+    return cast(JsonTestClient, TestClient(create_app()))
+
+
 def test_replay_strategy_inventory_api_lists_separate_states_and_full_backfill_ids() -> None:
-    client = TestClient(create_app())
+    client = _client()
 
     response = client.get("/api/v1/replay-strategy-inventory")
 
@@ -46,7 +57,7 @@ def test_replay_strategy_inventory_api_lists_separate_states_and_full_backfill_i
 
 
 def test_replay_strategy_inventory_api_filters_by_lottery_strategy_and_data_status() -> None:
-    client = TestClient(create_app())
+    client = _client()
 
     by_lottery = client.get(
         "/api/v1/replay-strategy-inventory",
@@ -79,7 +90,7 @@ def test_replay_strategy_inventory_api_filters_by_lottery_strategy_and_data_stat
 
 
 def test_replay_strategy_inventory_api_rejects_invalid_filters() -> None:
-    client = TestClient(create_app())
+    client = _client()
 
     invalid_lottery = client.get(
         "/api/v1/replay-strategy-inventory",

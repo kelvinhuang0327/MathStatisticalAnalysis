@@ -283,7 +283,7 @@ def parse_history_json(raw: str) -> tuple[CausalDrawRow, ...]:
                 draw=draw,
                 date=date,
                 numbers=tuple(cast("list[int]", numbers)),
-                special_number=cast("int | None", special_number),
+                special_number=special_number,
             )
         )
     return tuple(rows)

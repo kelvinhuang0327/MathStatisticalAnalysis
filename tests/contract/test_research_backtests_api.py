@@ -7,13 +7,22 @@ import json
 from collections.abc import Iterator
 from pathlib import Path
 from shutil import copyfile
-from typing import Any
+from typing import Any, Protocol, cast
 
+import httpx
 import pytest
 from fastapi.testclient import TestClient
 
 from lottolab.interfaces.api import research_backtests
 from lottolab.interfaces.api.app import create_app
+
+
+class JsonTestClient(Protocol):
+    def __enter__(self) -> JsonTestClient: ...
+
+    def __exit__(self, *args: object) -> None: ...
+
+    def get(self, url: str, **kwargs: object) -> httpx.Response: ...
 
 MANIFEST_PATH = research_backtests.DEFAULT_MANIFEST_PATH
 STRATEGIES_PATH = "/api/v1/research/backtests/strategies"
@@ -37,13 +46,13 @@ def d_source_files_remain_read_only() -> Iterator[None]:
 
 
 @pytest.fixture
-def client(monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
+def client(monkeypatch: pytest.MonkeyPatch) -> Iterator[JsonTestClient]:
     monkeypatch.delenv(research_backtests.MANIFEST_PATH_ENV, raising=False)
     with TestClient(create_app()) as test_client:
-        yield test_client
+        yield cast(JsonTestClient, test_client)
 
 
-def _scores_for(client: TestClient, **params: Any) -> dict[str, Any]:
+def _scores_for(client: JsonTestClient, **params: Any) -> dict[str, Any]:
     response = client.get(SCORES_PATH, params=params)
     assert response.status_code == 200, response.text
     return response.json()
@@ -73,7 +82,7 @@ def _response_without_local_source_locations(response: dict[str, Any]) -> dict[s
 
 
 def test_d_routes_are_registered_and_existing_b649_summary_contract_remains(
-    client: TestClient,
+    client: JsonTestClient,
 ) -> None:
     paths = set(create_app().openapi()["paths"])
     assert {STRATEGIES_PATH, RANKINGS_PATH, SCORES_PATH} <= paths
@@ -89,7 +98,7 @@ def test_d_routes_are_registered_and_existing_b649_summary_contract_remains(
 
 
 def test_strategies_expose_all_receipted_states_without_changing_manual_fields(
-    client: TestClient,
+    client: JsonTestClient,
 ) -> None:
     first = client.get(STRATEGIES_PATH)
     second = client.get(STRATEGIES_PATH)
@@ -118,7 +127,7 @@ def test_strategies_expose_all_receipted_states_without_changing_manual_fields(
 
 
 def test_formal_and_descriptive_rankings_are_separate_and_paginate_stably(
-    client: TestClient,
+    client: JsonTestClient,
 ) -> None:
     formal = client.get(RANKINGS_PATH, params={"K": 5, "window": "LONG", "type": "formal"})
     descriptive = client.get(
@@ -158,7 +167,9 @@ def test_formal_and_descriptive_rankings_are_separate_and_paginate_stably(
     assert identities_one.isdisjoint(identities_two)
 
 
-def test_score_filters_keep_strategy_versions_and_k_windows_independent(client: TestClient) -> None:
+def test_score_filters_keep_strategy_versions_and_k_windows_independent(
+    client: JsonTestClient,
+) -> None:
     for k in (2, 3, 5):
         response = client.get(SCORES_PATH, params={"K": k, "window": "LONG"})
         assert response.status_code == 200
@@ -229,7 +240,7 @@ def test_score_filters_keep_strategy_versions_and_k_windows_independent(client: 
     assert absent["scores"] == []
 
 
-def test_scores_paginate_and_preserve_null_and_zero_values(client: TestClient) -> None:
+def test_scores_paginate_and_preserve_null_and_zero_values(client: JsonTestClient) -> None:
     first = client.get(SCORES_PATH, params={"offset": 0, "limit": 500})
     second = client.get(SCORES_PATH, params={"offset": 500, "limit": 500})
     assert first.status_code == second.status_code == 200
@@ -250,7 +261,9 @@ def test_scores_paginate_and_preserve_null_and_zero_values(client: TestClient) -
     assert any(row["L"] == 0 for row in all_rows)
 
 
-def test_stale_source_version_and_invalid_parameters_have_fixed_errors(client: TestClient) -> None:
+def test_stale_source_version_and_invalid_parameters_have_fixed_errors(
+    client: JsonTestClient,
+) -> None:
     current = client.get(STRATEGIES_PATH).json()["data_version"]
     stale = client.get(STRATEGIES_PATH, params={"data_version": "0" * 64})
     assert stale.status_code == 409
@@ -284,7 +297,7 @@ def test_stale_source_version_and_invalid_parameters_have_fixed_errors(client: T
 
 
 def test_configured_relative_manifest_reproduces_all_three_get_results(
-    client: TestClient, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    client: JsonTestClient, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     # The app fixture captured the default path at construction; a later
     # environment change must not switch its data source mid-process.
@@ -314,7 +327,7 @@ def test_configured_relative_manifest_reproduces_all_three_get_results(
     monkeypatch.setenv(research_backtests.MANIFEST_PATH_ENV, str(alternate_manifest))
     alternate_app = create_app()
     monkeypatch.setenv(research_backtests.MANIFEST_PATH_ENV, str(MANIFEST_PATH))
-    with TestClient(alternate_app) as alternate_client:
+    with cast(JsonTestClient, TestClient(alternate_app)) as alternate_client:
         alternate_strategies = alternate_client.get(STRATEGIES_PATH)
         alternate_formal = alternate_client.get(
             RANKINGS_PATH, params={"K": 5, "window": "LONG", "type": "formal"}
@@ -435,7 +448,7 @@ def test_alternate_manifest_rejects_untrusted_schema_identity_and_paths(
     manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
     monkeypatch.setenv(research_backtests.MANIFEST_PATH_ENV, str(manifest_path))
 
-    with TestClient(create_app()) as configured_client:
+    with cast(JsonTestClient, TestClient(create_app())) as configured_client:
         response = configured_client.get(SCORES_PATH)
 
     assert response.status_code == 503
@@ -444,11 +457,11 @@ def test_alternate_manifest_rejects_untrusted_schema_identity_and_paths(
 
 
 def test_missing_manifest_and_changed_source_sha_return_explicit_service_errors(
-    client: TestClient, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    client: JsonTestClient, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     missing_manifest = tmp_path / "missing-manifest.json"
     monkeypatch.setenv(research_backtests.MANIFEST_PATH_ENV, str(missing_manifest))
-    with TestClient(create_app()) as missing_manifest_client:
+    with cast(JsonTestClient, TestClient(create_app())) as missing_manifest_client:
         missing = missing_manifest_client.get(SCORES_PATH)
     assert missing.status_code == 503
     assert missing.json()["error"] == "source_unavailable"
@@ -460,7 +473,7 @@ def test_missing_manifest_and_changed_source_sha_return_explicit_service_errors(
     missing_csv = missing_csv_manifest.parent / missing_csv_model["source_files"]["scores"]["path"]
     missing_csv.unlink()
     monkeypatch.setenv(research_backtests.MANIFEST_PATH_ENV, str(missing_csv_manifest))
-    with TestClient(create_app()) as missing_csv_client:
+    with cast(JsonTestClient, TestClient(create_app())) as missing_csv_client:
         missing_source = missing_csv_client.get(SCORES_PATH)
     assert missing_source.status_code == 503
     assert missing_source.json()["error"] == "source_unavailable"
@@ -474,7 +487,7 @@ def test_missing_manifest_and_changed_source_sha_return_explicit_service_errors(
     altered_bytes[0] ^= 1
     scores_path.write_bytes(altered_bytes)
     monkeypatch.setenv(research_backtests.MANIFEST_PATH_ENV, str(changed_manifest))
-    with TestClient(create_app()) as changed_client:
+    with cast(JsonTestClient, TestClient(create_app())) as changed_client:
         changed = changed_client.get(SCORES_PATH)
     assert changed.status_code == 503
     assert changed.json()["error"] == "source_unavailable"
@@ -485,7 +498,7 @@ def test_blank_manifest_configuration_fails_closed(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv(research_backtests.MANIFEST_PATH_ENV, "  ")
-    with TestClient(create_app()) as configured_client:
+    with cast(JsonTestClient, TestClient(create_app())) as configured_client:
         response = configured_client.get(SCORES_PATH)
     assert response.status_code == 503
     assert response.json()["error"] == "source_unavailable"

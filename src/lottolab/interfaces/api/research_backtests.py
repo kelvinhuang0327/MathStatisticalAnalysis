@@ -4,6 +4,9 @@ The app reads only paths pinned by the fixed read_model_manifest.json. It never
 writes to those files, opens a database, or accepts a source path from a request.
 """
 
+# FastAPI route functions are referenced through route registration decorators.
+# pyright: reportUnusedFunction=false
+
 from __future__ import annotations
 
 import csv
@@ -16,7 +19,7 @@ from dataclasses import dataclass
 from http import HTTPStatus
 from pathlib import Path, PureWindowsPath
 from types import MappingProxyType
-from typing import Any
+from typing import Any, cast
 from urllib.parse import parse_qs
 
 from fastapi import APIRouter, Request
@@ -537,6 +540,7 @@ def _load_manifest(path: Path) -> tuple[Mapping[str, Any], str]:
         raise ReadModelError(f"Cannot read manifest: {path}") from exc
     if not isinstance(manifest, dict):
         raise ReadModelError("Manifest must be a JSON object")
+    manifest = cast(dict[str, Any], manifest)
 
     expected_manifest_keys = {
         "schema_version",
@@ -558,21 +562,31 @@ def _load_manifest(path: Path) -> tuple[Mapping[str, Any], str]:
         raise ReadModelError("Manifest source identity is not the accepted D source")
 
     source_receipts = manifest.get("source_receipts")
-    if not isinstance(source_receipts, dict) or set(source_receipts) != set(
-        PINNED_SOURCE_RECEIPTS
-    ):
+    if not isinstance(source_receipts, dict):
+        raise ReadModelError("Manifest receipt set is incomplete or unexpected")
+    source_receipts = cast(dict[str, Any], source_receipts)
+    if set(source_receipts) != set(PINNED_SOURCE_RECEIPTS):
         raise ReadModelError("Manifest receipt set is incomplete or unexpected")
     for name, expected in PINNED_SOURCE_RECEIPTS.items():
-        item = source_receipts[name]
-        if not isinstance(item, dict) or set(item) != {"path", "sha256"} or item != expected:
+        item_value = source_receipts[name]
+        if not isinstance(item_value, dict):
+            raise ReadModelError(f"Manifest receipt reference is not approved: {name}")
+        item = cast(dict[str, Any], item_value)
+        if set(item) != {"path", "sha256"} or item != expected:
             raise ReadModelError(f"Manifest receipt reference is not approved: {name}")
 
     source_files = manifest.get("source_files")
-    if not isinstance(source_files, dict) or set(source_files) != set(PINNED_SOURCE_FILES):
+    if not isinstance(source_files, dict):
+        raise ReadModelError("Manifest source file set is incomplete or unexpected")
+    source_files = cast(dict[str, Any], source_files)
+    if set(source_files) != set(PINNED_SOURCE_FILES):
         raise ReadModelError("Manifest source file set is incomplete or unexpected")
     for name, expected in PINNED_SOURCE_FILES.items():
-        item = source_files[name]
-        if not isinstance(item, dict) or set(item) != {"path", "sha256", "row_count"}:
+        item_value = source_files[name]
+        if not isinstance(item_value, dict):
+            raise ReadModelError(f"Manifest source schema is invalid: {name}")
+        item = cast(dict[str, Any], item_value)
+        if set(item) != {"path", "sha256", "row_count"}:
             raise ReadModelError(f"Manifest source schema is invalid: {name}")
         if (
             item.get("sha256") != expected["sha256"]
@@ -590,7 +604,7 @@ def _load_manifest(path: Path) -> tuple[Mapping[str, Any], str]:
         raise ReadModelError("Manifest ranking totals do not match the completed receipt")
     if manifest.get("reference") != PINNED_REFERENCE:
         raise ReadModelError("Manifest research reference identity is unexpected")
-    return manifest, manifest_sha256
+    return cast(Mapping[str, Any], manifest), manifest_sha256
 
 
 def _resolve_source_path(manifest_path: Path, raw_path: str, label: str) -> Path:
@@ -629,9 +643,12 @@ def _read_verified_receipt(item: Mapping[str, Any], label: str) -> Mapping[str, 
             receipt = json.load(stream)
     except (OSError, json.JSONDecodeError) as exc:
         raise ReadModelError(f"Cannot read source receipt: {path}") from exc
+    if not isinstance(receipt, dict):
+        raise ReadModelError(f"Source receipt is not an object: {path}")
+    receipt = cast(dict[str, Any], receipt)
     if receipt.get("task_id") != label or receipt.get("task_lifecycle_state") != "COMPLETED":
         raise ReadModelError(f"Source receipt identity or lifecycle mismatch: {path}")
-    return receipt
+    return cast(Mapping[str, Any], receipt)
 
 
 def _verify_receipt_links(
@@ -1041,7 +1058,7 @@ def _response_for(model: ReadModel, path: str, query_string: str) -> tuple[int, 
             if row["K"] == k and row["window"] == window and row["rank_type"] == rank_type
         )
         page = matches[offset : offset + limit]
-        result_rows = []
+        result_rows: list[dict[str, Any]] = []
         for row in page:
             item = _json_row(row)
             if rank_type == "FORMAL":
@@ -1158,7 +1175,7 @@ def create_research_backtests_router(
                 "message": "The backtest read request could not be completed.",
             }
         return JSONResponse(
-            status_code=status.value,
+            status_code=int(status),
             content=payload,
             headers={"Cache-Control": "no-store"},
         )

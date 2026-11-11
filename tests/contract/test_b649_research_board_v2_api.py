@@ -3,7 +3,9 @@ from __future__ import annotations
 import json
 import shutil
 from pathlib import Path
+from typing import Protocol, cast
 
+import httpx
 import pytest
 from fastapi.testclient import TestClient
 
@@ -11,6 +13,10 @@ from lottolab.infrastructure.b649_research_board_v2_reader import (
     B649_RESEARCH_BOARD_V2_ROOT_ENV,
 )
 from lottolab.interfaces.api.app import create_app
+
+
+class JsonTestClient(Protocol):
+    def get(self, url: str, **kwargs: object) -> httpx.Response: ...
 
 V2_ROOT = Path(
     "/Users/kelvin/VibeCoding-WorkSpace/.task-data/20261102/"
@@ -32,12 +38,12 @@ TIED_GROUP = {
 
 
 @pytest.fixture
-def client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
+def client(monkeypatch: pytest.MonkeyPatch) -> JsonTestClient:
     monkeypatch.setenv(B649_RESEARCH_BOARD_V2_ROOT_ENV, str(V2_ROOT))
-    return TestClient(create_app())
+    return cast(JsonTestClient, TestClient(create_app()))
 
 
-def test_summary_returns_verified_source_identity_and_counts(client: TestClient) -> None:
+def test_summary_returns_verified_source_identity_and_counts(client: JsonTestClient) -> None:
     response = client.get(f"{BASE_PATH}/summary")
 
     assert response.status_code == 200
@@ -61,7 +67,7 @@ def test_summary_returns_verified_source_identity_and_counts(client: TestClient)
 
 
 def test_methods_pagination_statuses_manual_fields_and_safe_source_locators(
-    client: TestClient,
+    client: JsonTestClient,
 ) -> None:
     first = client.get(f"{BASE_PATH}/methods", params={"limit": 2, "offset": 0})
     second = client.get(f"{BASE_PATH}/methods", params={"limit": 2, "offset": 2})
@@ -112,7 +118,7 @@ def test_methods_pagination_statuses_manual_fields_and_safe_source_locators(
     assert not_applicable["success_rate"] is None
 
 
-def test_rankings_require_and_isolate_all_comparison_axes(client: TestClient) -> None:
+def test_rankings_require_and_isolate_all_comparison_axes(client: JsonTestClient) -> None:
     for window in ("FULL", "RECENT_750", "RECENT_300", "RECENT_50"):
         response = client.get(f"{BASE_PATH}/rankings", params={**RANK_QUERY, "window": window})
         assert response.status_code == 200
@@ -177,7 +183,9 @@ def test_rankings_require_and_isolate_all_comparison_axes(client: TestClient) ->
     assert replay_one.content == replay_two.content
 
 
-def test_query_validation_rejects_incomplete_and_path_like_parameters(client: TestClient) -> None:
+def test_query_validation_rejects_incomplete_and_path_like_parameters(
+    client: JsonTestClient,
+) -> None:
     assert client.get(f"{BASE_PATH}/rankings").status_code == 422
     assert (
         client.get(
@@ -208,7 +216,7 @@ def test_missing_or_corrupt_source_returns_explicit_503(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     monkeypatch.delenv(B649_RESEARCH_BOARD_V2_ROOT_ENV, raising=False)
-    missing_client = TestClient(create_app())
+    missing_client = cast(JsonTestClient, TestClient(create_app()))
     missing_requests = (
         ("summary", None),
         ("methods", None),
@@ -223,7 +231,7 @@ def test_missing_or_corrupt_source_returns_explicit_503(
     missing_source_root = tmp_path / "missing-source"
     missing_source_root.mkdir()
     monkeypatch.setenv(B649_RESEARCH_BOARD_V2_ROOT_ENV, str(missing_source_root))
-    missing_source_client = TestClient(create_app())
+    missing_source_client = cast(JsonTestClient, TestClient(create_app()))
     missing_source = missing_source_client.get(f"{BASE_PATH}/summary")
     assert missing_source.status_code == 503
     assert missing_source.json()["error_code"] == "B649_RESEARCH_BOARD_V2_UNAVAILABLE"
@@ -235,14 +243,14 @@ def test_missing_or_corrupt_source_returns_explicit_503(
     with (corrupt_root / "integration_summary.json").open("ab") as stream:
         stream.write(b" ")
     monkeypatch.setenv(B649_RESEARCH_BOARD_V2_ROOT_ENV, str(corrupt_root))
-    corrupt_client = TestClient(create_app())
+    corrupt_client = cast(JsonTestClient, TestClient(create_app()))
     response = corrupt_client.get(f"{BASE_PATH}/summary")
     assert response.status_code == 503
     assert response.json()["error_code"] == "B649_RESEARCH_BOARD_V2_UNAVAILABLE"
     assert str(corrupt_root) not in response.text
 
 
-def test_existing_b649_record_endpoints_still_serve_requests(client: TestClient) -> None:
+def test_existing_b649_record_endpoints_still_serve_requests(client: JsonTestClient) -> None:
     multi_ticket = client.get(
         "/api/v1/b649-multi-ticket-records",
         params={"prefix_count": 5, "window": "FULL", "criterion": "M3_PLUS"},
@@ -258,7 +266,7 @@ def test_existing_b649_record_endpoints_still_serve_requests(client: TestClient)
     assert "items" in exact_native.json()
 
 
-def test_openapi_documents_new_routes_and_required_ranking_axes(client: TestClient) -> None:
+def test_openapi_documents_new_routes_and_required_ranking_axes(client: JsonTestClient) -> None:
     document = client.get("/openapi.json").json()
     paths = document["paths"]
     assert paths[f"{BASE_PATH}/summary"]["get"]["operationId"] == ("getB649ResearchBacktestSummary")
@@ -279,7 +287,7 @@ def test_openapi_documents_new_routes_and_required_ranking_axes(client: TestClie
     assert ranking["responses"]["503"]["content"]["application/json"]["schema"]["$ref"]
 
 
-def test_json_source_fields_are_structured_and_redacted(client: TestClient) -> None:
+def test_json_source_fields_are_structured_and_redacted(client: JsonTestClient) -> None:
     response = client.get(f"{BASE_PATH}/methods", params={"limit": 100})
 
     assert response.status_code == 200

@@ -1,5 +1,9 @@
 """Evolution v0.3: reject a development candidate on any failed prediction."""
 
+# This adapter extends the frozen v0.2 engine without changing its historical
+# implementation surface.
+# pyright: reportPrivateUsage=false
+
 from __future__ import annotations
 
 from collections import Counter

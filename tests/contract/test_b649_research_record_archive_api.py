@@ -3,7 +3,9 @@ from __future__ import annotations
 import os
 from collections.abc import Iterator
 from pathlib import Path
+from typing import Protocol, cast
 
+import httpx
 import pytest
 from fastapi.testclient import TestClient
 
@@ -11,6 +13,14 @@ from lottolab.infrastructure.b649_research_record_archive_reader import (
     B649_RESEARCH_RECORD_ARCHIVE_ROOT_ENV,
 )
 from lottolab.interfaces.api.app import create_app
+
+
+class JsonTestClient(Protocol):
+    def __enter__(self) -> JsonTestClient: ...
+
+    def __exit__(self, *args: object) -> None: ...
+
+    def get(self, url: str, **kwargs: object) -> httpx.Response: ...
 
 ARCHIVE_ROOT = Path(
     "/Users/kelvin/VibeCoding-WorkSpace/.task-data/20261102/"
@@ -27,11 +37,11 @@ EXPECTED_COUNTS = {
 
 
 @pytest.fixture(scope="module")
-def client() -> Iterator[TestClient]:
+def client() -> Iterator[JsonTestClient]:
     previous = os.environ.get(B649_RESEARCH_RECORD_ARCHIVE_ROOT_ENV)
     os.environ[B649_RESEARCH_RECORD_ARCHIVE_ROOT_ENV] = str(ARCHIVE_ROOT)
     try:
-        with TestClient(create_app()) as test_client:
+        with cast(JsonTestClient, TestClient(create_app())) as test_client:
             yield test_client
     finally:
         if previous is None:
@@ -41,7 +51,7 @@ def client() -> Iterator[TestClient]:
 
 
 def test_record_sources_returns_only_the_five_verified_formal_sources(
-    client: TestClient,
+    client: JsonTestClient,
 ) -> None:
     response = client.get(f"{BASE_PATH}/record-sources")
 
@@ -68,7 +78,7 @@ def test_record_sources_returns_only_the_five_verified_formal_sources(
 
 
 def test_records_preserve_source_fields_filter_and_return_deterministic_json(
-    client: TestClient,
+    client: JsonTestClient,
 ) -> None:
     native = "NUMBER2_D_NATIVE_SUBSET_W50_K235_20261101_R1"
     params = {
@@ -142,7 +152,7 @@ def test_records_preserve_source_fields_filter_and_return_deterministic_json(
     assert "any_official_prize" in special["null_reasons"]
 
 
-def test_filters_pagination_and_errors_are_explicit(client: TestClient) -> None:
+def test_filters_pagination_and_errors_are_explicit(client: JsonTestClient) -> None:
     source_task_id = "NUMBER2_D_DRAW_ORDER_POSITION_SIGNAL_V1_20261102_R1"
     filtered = client.get(
         f"{BASE_PATH}/records",
@@ -193,7 +203,7 @@ def test_filters_pagination_and_errors_are_explicit(client: TestClient) -> None:
 
 
 def test_full_http_pagination_has_no_missing_or_duplicate_source_rows(
-    client: TestClient,
+    client: JsonTestClient,
 ) -> None:
     for source_task_id, expected_count in EXPECTED_COUNTS.items():
         observed_identities: list[str] = []
@@ -230,7 +240,9 @@ def test_missing_or_checksum_invalid_archive_returns_sanitized_error(
     (invalid_root / "sha256sums.txt").write_text("", encoding="utf-8")
     monkeypatch.setenv(B649_RESEARCH_RECORD_ARCHIVE_ROOT_ENV, str(invalid_root))
 
-    response = TestClient(create_app()).get(f"{BASE_PATH}/record-sources")
+    response = cast(JsonTestClient, TestClient(create_app())).get(
+        f"{BASE_PATH}/record-sources"
+    )
 
     assert response.status_code == 503
     assert response.json()["error_code"] == "B649_RESEARCH_BACKTEST_ARCHIVE_UNAVAILABLE"
@@ -239,7 +251,7 @@ def test_missing_or_checksum_invalid_archive_returns_sanitized_error(
 
 
 def test_openapi_documents_both_read_only_routes_and_fixed_query_contract(
-    client: TestClient,
+    client: JsonTestClient,
 ) -> None:
     document = client.get("/openapi.json").json()
     paths = document["paths"]

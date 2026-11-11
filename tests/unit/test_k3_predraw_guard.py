@@ -5,9 +5,11 @@ from __future__ import annotations
 import hashlib
 import json
 import random
+from collections.abc import Callable
 from dataclasses import replace
 from datetime import UTC, date, datetime, timedelta, timezone
 from pathlib import Path
+from typing import TypedDict, cast
 from unittest.mock import Mock
 
 import pytest
@@ -23,6 +25,7 @@ from lottolab.application.k3_prospective_cohort import (
 from lottolab.application.prospective_observer import (
     GameContractError,
 )
+from lottolab.application.strategy_preserving_20_ticket import Ticket
 from lottolab.domain.draws import LotteryType
 from lottolab.domain.pre_outcome_target import (
     OutcomePresenceAttestation,
@@ -35,13 +38,82 @@ from lottolab.domain.prospective_observer import (
     ObservationTarget,
     OfficialOutcome,
     OutcomePresenceAtPrediction,
+    PredictionRecord,
 )
 from lottolab.infrastructure import k3_sealed_scoring
 from lottolab.infrastructure.k3_rfc3161 import TimestampProof
 from lottolab.infrastructure.prospective_observer_store import FileSystemProspectiveObservationStore
+from lottolab.strategies.adapters.base import CausalDrawRow
 
 NOW = datetime(2028, 11, 15, 12, tzinfo=UTC)
 TARGET = ObservationTarget(LotteryType.BIG_LOTTO, "117000061", date(2028, 11, 16))
+
+
+class K3Request(TypedDict):
+    policy: guard.K3Policy
+    registration: PreOutcomeTargetRegistration
+    history: tuple[guard.K3HistoryRow, ...]
+    absence: OutcomePresenceAttestation
+    clock: Callable[[], datetime]
+
+
+class ScoreArguments(TypedDict):
+    store: FileSystemProspectiveObservationStore
+    prediction: PredictionRecord
+    registration: PreOutcomeTargetRegistration
+    outcome: OfficialOutcome
+    proof: TimestampProof
+    openssl: Path
+    ca_file: Path
+    scratch_root: Path
+    clock: Callable[[], datetime]
+
+
+def _score(
+    arguments: ScoreArguments,
+    *,
+    clock: Callable[[], datetime] | None = None,
+    outcome: OfficialOutcome | None = None,
+) -> k3_sealed_scoring.ScoreSyncResult:
+    return k3_sealed_scoring.score_timestamped_prediction(
+        store=arguments["store"],
+        prediction=arguments["prediction"],
+        registration=arguments["registration"],
+        outcome=arguments["outcome"] if outcome is None else outcome,
+        proof=arguments["proof"],
+        openssl=arguments["openssl"],
+        ca_file=arguments["ca_file"],
+        scratch_root=arguments["scratch_root"],
+        clock=arguments["clock"] if clock is None else clock,
+    )
+
+
+def _generate(request: K3Request) -> guard.GuardedK3Result:
+    return guard.generate_guarded_k3(
+        policy=request["policy"],
+        registration=request["registration"],
+        history=request["history"],
+        absence=request["absence"],
+        clock=request["clock"],
+    )
+
+
+def _with_request(
+    request: K3Request,
+    *,
+    policy: guard.K3Policy | None = None,
+    registration: PreOutcomeTargetRegistration | None = None,
+    history: tuple[guard.K3HistoryRow, ...] | None = None,
+    absence: OutcomePresenceAttestation | None = None,
+    clock: Callable[[], datetime] | None = None,
+) -> K3Request:
+    return {
+        "policy": request["policy"] if policy is None else policy,
+        "registration": request["registration"] if registration is None else registration,
+        "history": request["history"] if history is None else history,
+        "absence": request["absence"] if absence is None else absence,
+        "clock": request["clock"] if clock is None else clock,
+    }
 
 
 def _digest(value: object) -> str:
@@ -56,7 +128,7 @@ def _source(observed_at: datetime) -> TargetSourceProvenance:
 
 def _history() -> tuple[guard.K3HistoryRow, ...]:
     rng = random.Random(27)
-    result = []
+    result: list[guard.K3HistoryRow] = []
     for index in range(60):
         drawn_at = datetime(2028, 9, 1, 12, tzinfo=UTC) + timedelta(days=index)
         numbers = tuple(sorted(rng.sample(range(1, 50), 6)))
@@ -79,7 +151,7 @@ def _registration(
 ) -> PreOutcomeTargetRegistration:
     # Independently build the canonical identity used by the existing
     # pre-outcome history authority, including the winning-number payload.
-    material = []
+    material: list[dict[str, object]] = []
     for row in history:
         record = {
             "draw_date": row.draw_date.isoformat(),
@@ -131,7 +203,7 @@ def _absence(
 
 
 @pytest.fixture
-def valid_request() -> dict[str, object]:
+def valid_request() -> K3Request:
     history = _history()
     return {
         "policy": guard.K3Policy.OPTIMIZED_ENSEMBLE,
@@ -150,8 +222,10 @@ def valid_request() -> dict[str, object]:
         (guard.K3Policy.EXHAUSTIVE, 3),
     ],
 )
-def test_guarded_three_portfolio_paths(valid_request, policy, native_count):
-    result = guard.generate_guarded_k3(**(valid_request | {"policy": policy}))
+def test_guarded_three_portfolio_paths(
+    valid_request: K3Request, policy: guard.K3Policy, native_count: int
+) -> None:
+    result = _generate(_with_request(valid_request, policy=policy))
     assert len(result.native_tickets) == native_count
     assert len(result.tickets) == 3
     assert result.tickets[:native_count] == result.native_tickets
@@ -163,7 +237,9 @@ def test_guarded_three_portfolio_paths(valid_request, policy, native_count):
 
 
 @pytest.mark.parametrize("case", ["target", "future", "unordered", "duplicate", "late_data"])
-def test_rejects_leakage_before_producer_is_called(valid_request, monkeypatch, case):
+def test_rejects_leakage_before_producer_is_called(
+    valid_request: K3Request, monkeypatch: pytest.MonkeyPatch, case: str
+) -> None:
     history = valid_request["history"]
     if case == "target":
         history = (*history[:-1], replace(history[-1], draw_number=TARGET.draw_number))
@@ -178,11 +254,13 @@ def test_rejects_leakage_before_producer_is_called(valid_request, monkeypatch, c
     producer = Mock(side_effect=AssertionError("producer should not be called"))
     monkeypatch.setattr(guard, "generate_legacy_history_native_portfolio", producer)
     with pytest.raises(guard.K3PreDrawError):
-        guard.generate_guarded_k3(**(valid_request | {"history": history}))
+        _generate(_with_request(valid_request, history=history))
     producer.assert_not_called()
 
 
-def test_rejects_changed_history_payload_even_when_identity_unchanged(valid_request):
+def test_rejects_changed_history_payload_even_when_identity_unchanged(
+    valid_request: K3Request,
+) -> None:
     history = valid_request["history"]
     row = history[-1]
     replacement = next(
@@ -192,16 +270,18 @@ def test_rejects_changed_history_payload_even_when_identity_unchanged(valid_requ
     )
     changed = tuple(sorted((*row.main_numbers[:-1], replacement)))
     with pytest.raises(guard.K3PreDrawError, match="registered authority"):
-        guard.generate_guarded_k3(
-            **(valid_request | {"history": (*history[:-1], replace(row, main_numbers=changed))})
+        _generate(
+            _with_request(
+                valid_request, history=(*history[:-1], replace(row, main_numbers=changed))
+            )
         )
 
 
 @pytest.mark.parametrize(
     "case", ["present", "wrong_target", "stale", "future_attestation", "naive_clock", "after_draw"]
 )
-def test_rejects_invalid_or_stale_authority(valid_request, case):
-    request = dict(valid_request)
+def test_rejects_invalid_or_stale_authority(valid_request: K3Request, case: str) -> None:
+    request: K3Request = {**valid_request}
     if case == "present":
         request["absence"] = _absence(presence=OutcomePresenceAtPrediction.PRESENT)
     elif case == "wrong_target":
@@ -217,28 +297,30 @@ def test_rejects_invalid_or_stale_authority(valid_request, case):
     else:
         request["clock"] = lambda: datetime(2028, 11, 16, 12, tzinfo=UTC)
     with pytest.raises(guard.K3PreDrawError):
-        guard.generate_guarded_k3(**request)
+        _generate(request)
 
 
-def test_production_crossing_draw_time_is_not_returned(valid_request):
+def test_production_crossing_draw_time_is_not_returned(valid_request: K3Request) -> None:
     moments = iter([NOW + timedelta(seconds=2), datetime(2028, 11, 16, 12, tzinfo=UTC)])
     with pytest.raises(guard.K3PreDrawError, match="passed the draw"):
-        guard.generate_guarded_k3(**(valid_request | {"clock": lambda: next(moments)}))
+        _generate(_with_request(valid_request, clock=lambda: next(moments)))
 
 
-def test_production_outlasting_absence_attestation_is_not_returned(valid_request):
+def test_production_outlasting_absence_attestation_is_not_returned(
+    valid_request: K3Request,
+) -> None:
     moments = iter([NOW + timedelta(seconds=2), NOW + timedelta(minutes=6)])
     with pytest.raises(guard.K3PreDrawError, match="absence became stale"):
-        guard.generate_guarded_k3(**(valid_request | {"clock": lambda: next(moments)}))
+        _generate(_with_request(valid_request, clock=lambda: next(moments)))
 
 
-def test_clock_regression_during_production_is_not_returned(valid_request):
+def test_clock_regression_during_production_is_not_returned(valid_request: K3Request) -> None:
     moments = iter([NOW + timedelta(seconds=3), NOW + timedelta(seconds=2)])
     with pytest.raises(guard.K3PreDrawError, match="clock"):
-        guard.generate_guarded_k3(**(valid_request | {"clock": lambda: next(moments)}))
+        _generate(_with_request(valid_request, clock=lambda: next(moments)))
 
 
-def test_rejects_non_utc_and_impossible_publication_time(valid_request):
+def test_rejects_non_utc_and_impossible_publication_time(valid_request: K3Request) -> None:
     history = valid_request["history"]
     row = history[-1]
     for bad in (
@@ -246,23 +328,27 @@ def test_rejects_non_utc_and_impossible_publication_time(valid_request):
         replace(row, available_at=row.drawn_at - timedelta(seconds=1)),
     ):
         with pytest.raises(guard.K3PreDrawError):
-            guard.generate_guarded_k3(**(valid_request | {"history": (*history[:-1], bad)}))
+            _generate(_with_request(valid_request, history=(*history[:-1], bad)))
 
 
-def test_duplicate_native_and_unsupported_policy_fail_closed(valid_request, monkeypatch):
+def test_duplicate_native_and_unsupported_policy_fail_closed(
+    valid_request: K3Request, monkeypatch: pytest.MonkeyPatch
+) -> None:
     generated = Mock(tickets=((1, 2, 3, 4, 5, 6), (6, 5, 4, 3, 2, 1)))
     monkeypatch.setattr(
         guard, "generate_legacy_history_native_portfolio", Mock(return_value=generated)
     )
     with pytest.raises(guard.K3PreDrawError, match="distinct"):
-        guard.generate_guarded_k3(**valid_request)
+        _generate(valid_request)
     with pytest.raises(guard.K3PreDrawError, match="unsupported"):
-        guard.generate_guarded_k3(**(valid_request | {"policy": "ANALYZE"}))
+        _generate(cast(K3Request, valid_request | {"policy": "ANALYZE"}))
 
 
-def test_analyze_candidate_can_generate_for_an_unseen_target(valid_request, monkeypatch):
+def test_analyze_candidate_can_generate_for_an_unseen_target(
+    valid_request: K3Request, monkeypatch: pytest.MonkeyPatch
+) -> None:
     rng = random.Random(414)
-    rows = []
+    rows: list[guard.K3HistoryRow] = []
     for index in range(500):
         drawn = datetime(2026, 1, 1, 12, tzinfo=UTC) + timedelta(days=index)
         numbers = tuple(sorted(rng.sample(range(1, 50), 6)))
@@ -271,12 +357,13 @@ def test_analyze_candidate_can_generate_for_an_unseen_target(valid_request, monk
             guard.K3HistoryRow(f"116{index + 1:06d}", drawn.date(), numbers, special, drawn, drawn)
         )
     history = tuple(rows)
-    request = valid_request | {
-        "policy": guard.K3Policy.ANALYZE_CANDIDATE,
-        "history": history,
-        "registration": _registration(history),
-    }
-    result = guard.generate_guarded_k3(**request)
+    request = _with_request(
+        valid_request,
+        policy=guard.K3Policy.ANALYZE_CANDIDATE,
+        history=history,
+        registration=_registration(history),
+    )
+    result = _generate(request)
     assert result.target_draw == TARGET.draw_number
     assert len(result.tickets) == len(set(result.tickets)) == 3
     assert result.producer_protocol == "legacy-analyze-14-prefix3-dedup-greedy-v2"
@@ -286,23 +373,22 @@ def test_analyze_candidate_can_generate_for_an_unseen_target(valid_request, monk
     assert result.source_native_tickets[2:5] == result.source_native_tickets[9:12]
     assert result.source_native_tickets[8] == result.source_native_tickets[12]
     assert result.native_positions == (1, 2, 3)
-    monkeypatch.setattr(
-        guard,
-        "analyze_native_14",
-        lambda _: ((1, 2, 3, 4, 5, 6),) * 14,
-    )
-    deduped = guard.generate_guarded_k3(**request)
+    def duplicate_native_rows(_rows: tuple[CausalDrawRow, ...]) -> tuple[tuple[int, ...], ...]:
+        return ((1, 2, 3, 4, 5, 6),) * 14
+
+    monkeypatch.setattr(guard, "analyze_native_14", duplicate_native_rows)
+    deduped = _generate(request)
     assert deduped.native_positions == (1,)
     assert deduped.tickets == guard.GREEDY_K3
     assert deduped.supplement_indices == (1, 2)
     leaked = (*history[:-1], replace(history[-1], draw_number=TARGET.draw_number))
     with pytest.raises(guard.K3PreDrawError, match="strictly prior"):
-        guard.generate_guarded_k3(**(request | {"history": leaked}))
+        _generate(_with_request(request, history=leaked))
 
 
-def test_analyze_candidate_rejects_short_history(valid_request):
+def test_analyze_candidate_rejects_short_history(valid_request: K3Request) -> None:
     with pytest.raises(guard.K3PreDrawError, match="500 historical draws"):
-        guard.generate_guarded_k3(**(valid_request | {"policy": guard.K3Policy.ANALYZE_CANDIDATE}))
+        _generate(_with_request(valid_request, policy=guard.K3Policy.ANALYZE_CANDIDATE))
 
 
 @pytest.mark.parametrize("kind", ["same", "future", "unordered", "nonnumeric"])
@@ -314,9 +400,13 @@ def test_analyze_candidate_rejects_short_history(valid_request):
         guard.K3Policy.OPTIMIZED_ENSEMBLE,
     ],
 )
-def test_low_level_ports_reject_invalid_numeric_history(valid_request, policy, kind):
+def test_low_level_ports_reject_invalid_numeric_history(
+    valid_request: K3Request, policy: guard.K3Policy, kind: str
+) -> None:
     rows = valid_request["history"]
-    native = tuple(guard.LegacyHistoryDraw(row.draw_number, row.main_numbers) for row in rows)
+    native = tuple(
+        guard.LegacyHistoryDraw(row.draw_number, cast(Ticket, row.main_numbers)) for row in rows
+    )
     if kind == "same":
         native = (*native[:-1], replace(native[-1], draw_number=TARGET.draw_number))
     elif kind == "future":
@@ -343,9 +433,11 @@ def test_low_level_ports_reject_invalid_numeric_history(valid_request, policy, k
             )
 
 
-def test_synthetic_five_policy_local_prediction_and_scoring(valid_request, tmp_path, monkeypatch):
+def test_synthetic_five_policy_local_prediction_and_scoring(
+    valid_request: K3Request, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     rng = random.Random(414)
-    rows = []
+    rows: list[guard.K3HistoryRow] = []
     for index in range(500):
         drawn = datetime(2026, 1, 1, 12, tzinfo=UTC) + timedelta(days=index)
         numbers = tuple(sorted(rng.sample(range(1, 50), 6)))
@@ -379,37 +471,36 @@ def test_synthetic_five_policy_local_prediction_and_scoring(valid_request, tmp_p
         source_id="synthetic-test-only",
         source_sha256="a" * 64,
     )
-    monkeypatch.setattr(
-        k3_sealed_scoring, "verify_timestamp", lambda *args, **kwargs: NOW + timedelta(seconds=3)
-    )
+    def timestamp_after_prediction(*args: object, **kwargs: object) -> datetime:
+        return NOW + timedelta(seconds=3)
+
+    monkeypatch.setattr(k3_sealed_scoring, "verify_timestamp", timestamp_after_prediction)
     proof = TimestampProof(b"synthetic-query", b"synthetic-response", NOW + timedelta(seconds=3))
-    arguments = dict(
-        store=store,
-        prediction=prediction,
-        registration=producer.registration,
-        outcome=outcome,
-        proof=proof,
-        openssl=Path("/synthetic/openssl"),
-        ca_file=Path("/synthetic/root"),
-        scratch_root=tmp_path,
-        clock=lambda: datetime(2028, 11, 17, tzinfo=UTC),
-    )
-    scored = k3_sealed_scoring.score_timestamped_prediction(**arguments)
+    arguments: ScoreArguments = {
+        "store": store,
+        "prediction": prediction,
+        "registration": producer.registration,
+        "outcome": outcome,
+        "proof": proof,
+        "openssl": Path("/synthetic/openssl"),
+        "ca_file": Path("/synthetic/root"),
+        "scratch_root": tmp_path,
+        "clock": lambda: datetime(2028, 11, 17, tzinfo=UTC),
+    }
+    scored = _score(arguments)
     assert scored.score is not None
     assert len(scored.score.entries) == 5
     assert scored.score.prediction_hash == prediction.prediction_hash
     with pytest.raises(ValueError, match="required side"):
-        k3_sealed_scoring.score_timestamped_prediction(**(arguments | {"clock": lambda: NOW}))
-    monkeypatch.setattr(
-        k3_sealed_scoring,
-        "verify_timestamp",
-        lambda *args, **kwargs: producer.registration.announcement.scheduled_at,
-    )
+        _score(arguments, clock=lambda: NOW)
+
+    def timestamp_at_draw(*args: object, **kwargs: object) -> datetime:
+        return producer.registration.announcement.scheduled_at
+
+    monkeypatch.setattr(k3_sealed_scoring, "verify_timestamp", timestamp_at_draw)
     with pytest.raises(ValueError, match="required side"):
-        k3_sealed_scoring.score_timestamped_prediction(**arguments)
-    monkeypatch.setattr(
-        k3_sealed_scoring, "verify_timestamp", lambda *args, **kwargs: NOW + timedelta(seconds=3)
-    )
+        _score(arguments)
+    monkeypatch.setattr(k3_sealed_scoring, "verify_timestamp", timestamp_after_prediction)
     wrong = OfficialOutcome.create(
         lottery_type=LotteryType.BIG_LOTTO,
         draw_number="117000062",
@@ -420,10 +511,12 @@ def test_synthetic_five_policy_local_prediction_and_scoring(valid_request, tmp_p
         source_sha256="a" * 64,
     )
     with pytest.raises(GameContractError):
-        k3_sealed_scoring.score_timestamped_prediction(**(arguments | {"outcome": wrong}))
+        _score(arguments, outcome=wrong)
 
 
-def test_frozen_manifest_drift_rejected_before_prediction(valid_request, tmp_path):
+def test_frozen_manifest_drift_rejected_before_prediction(
+    valid_request: K3Request, tmp_path: Path
+) -> None:
     repo = Path(__file__).resolve().parents[2]
     manifest = capture_version_manifest(repo)
     manifest["policy"] = "tampered"

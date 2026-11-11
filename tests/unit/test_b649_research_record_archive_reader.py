@@ -1,3 +1,6 @@
+# These archive contract tests inspect private parser boundaries and cached rows.
+# pyright: reportPrivateUsage=false
+
 from __future__ import annotations
 
 import hashlib

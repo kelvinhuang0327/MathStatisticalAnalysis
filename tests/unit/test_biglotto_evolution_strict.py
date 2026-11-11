@@ -1,5 +1,8 @@
 """Training failures are excluded, while valid development scores are unchanged."""
 
+# These adapter tests pin the frozen legacy engine's internal selection contract.
+# pyright: reportPrivateUsage=false
+
 from __future__ import annotations
 
 import pytest

@@ -1,5 +1,8 @@
 """Any-prize selection, complete outcomes, chronology, and replay boundaries."""
 
+# These adapter tests pin the frozen legacy engine's internal selection contract.
+# pyright: reportPrivateUsage=false
+
 from __future__ import annotations
 
 from dataclasses import replace
@@ -106,7 +109,10 @@ def test_validation_ranks_any_prize_and_never_passes_outcome(
     assert [score[1] for score in scores] == [0, 0]
     assert [len(x) for x in a.seen] == list(range(501, 551))
     assert all(all(len(draw) == 6 and 7 not in draw for draw in prefix) for prefix in a.seen)
-    monkeypatch.setattr(adapter, "_fit_candidates", lambda _: (a, b))
+    def fixed_candidates(_development: tuple[CausalDrawRow, ...]) -> tuple[Candidate, ...]:
+        return a, b
+
+    monkeypatch.setattr(adapter, "_fit_candidates", fixed_candidates)
     assert adapter.get_bets(rows(551), LotteryType.BIG_LOTTO) == (a.ticket, b.ticket)
 
 
@@ -122,7 +128,10 @@ def test_cache_key_includes_special_history(monkeypatch: pytest.MonkeyPatch) -> 
     a = Candidate("a", (1, 2, 7, 20, 21, 22))
     b = Candidate("b", (1, 2, 8, 20, 21, 22))
     adapter = subject.BigLottoAnyPrizeEvolutionAdapter()
-    monkeypatch.setattr(adapter, "_fit_candidates", lambda _: (a, b))
+    def fixed_candidates(_development: tuple[CausalDrawRow, ...]) -> tuple[Candidate, ...]:
+        return a, b
+
+    monkeypatch.setattr(adapter, "_fit_candidates", fixed_candidates)
     first = adapter.get_bets(rows(551, 7), LotteryType.BIG_LOTTO)
     second = adapter.get_bets(rows(551, 8), LotteryType.BIG_LOTTO)
     assert first[0] == a.ticket and second[0] == b.ticket
@@ -149,7 +158,10 @@ def test_out_of_order_direct_history_is_rejected() -> None:
 def test_replay_uses_past_specials_and_redacts_target(monkeypatch: pytest.MonkeyPatch) -> None:
     candidate = Candidate("winner", (1, 2, 7, 20, 21, 22))
     adapter = subject.BigLottoAnyPrizeEvolutionAdapter()
-    monkeypatch.setattr(adapter, "_fit_candidates", lambda _: (candidate,))
+    def fixed_candidates(_development: tuple[CausalDrawRow, ...]) -> tuple[Candidate, ...]:
+        return (candidate,)
+
+    monkeypatch.setattr(adapter, "_fit_candidates", fixed_candidates)
     binding = binding_from_implementation(adapter)
     replay = _OutcomeBlindAdapter(BigLottoReplayAdapter((binding,)))
     history = tuple(

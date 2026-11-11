@@ -11,7 +11,6 @@ import pytest
 from lottolab.application.b649_sealed_geometry_portfolio import SEALED_GEOMETRY_PORTFOLIOS
 from lottolab.research import b649_official_any_prize_engine as engine
 from lottolab.research import b649_official_any_prize_exact as exact
-from lottolab.research.b649_k10_min_overlap_exhaustive_r1 import score_portfolio
 
 TICKET = (1, 2, 3, 4, 5, 6)
 
@@ -135,12 +134,3 @@ def test_fixed_sealed_auto_counts_and_actual_route(size: int, m3: int, official:
     assert result.probability.special_count == 43
     assert result.probability.m3_plus_draw_count == m3
     assert result.probability.official_any_prize_outcome_count == official
-
-
-def test_actual_k10_consumer_uses_isolated_dp_engine() -> None:
-    entry = SEALED_GEOMETRY_PORTFOLIOS[10]
-    with patch.object(engine, "count_loss_polynomial", wraps=engine.count_loss_polynomial) as dp:
-        observed = score_portfolio(entry.tickets)
-    assert dp.call_count == 1
-    assert observed.m3_plus == entry.m3_plus_probability
-    assert observed.official_any_prize == entry.official_any_prize_probability

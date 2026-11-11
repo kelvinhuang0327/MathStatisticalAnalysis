@@ -13,6 +13,7 @@ from collections.abc import Callable, Iterator
 from dataclasses import asdict, dataclass, replace
 from datetime import date
 from itertools import pairwise
+from time import perf_counter
 from typing import Any, Protocol
 
 from lottolab.application.use_cases.historical_replay_controller import (
@@ -115,14 +116,44 @@ class _OutcomeBlindAdapter:
     still receive the target's public ID/date.
     """
 
-    def __init__(self, adapter: HistoricalReplayAdapter) -> None:
+    def __init__(
+        self,
+        adapter: HistoricalReplayAdapter,
+        strategy_timing_observer: Callable[[JsonObject], None] | None = None,
+    ) -> None:
         self._adapter = adapter
+        self._strategy_timing_observer = strategy_timing_observer
         self.lottery_type = adapter.lottery_type
 
     def generate(
         self, strategy: ReplayStrategy, history: tuple[ReplayDraw, ...], target: ReplayDraw
     ) -> tuple[ReplayTicket, ...]:
-        return self._adapter.generate(strategy, history, self._redact(target))
+        observer = self._strategy_timing_observer
+        if observer is None:
+            return self._adapter.generate(strategy, history, self._redact(target))
+
+        _notify_strategy_timing(
+            observer,
+            strategy=strategy,
+            target=target,
+            phase="STARTED",
+        )
+        started_at = perf_counter()
+        outcome = "RETURNED"
+        try:
+            return self._adapter.generate(strategy, history, self._redact(target))
+        except BaseException:
+            outcome = "RAISED"
+            raise
+        finally:
+            _notify_strategy_timing(
+                observer,
+                strategy=strategy,
+                target=target,
+                phase="FINISHED",
+                elapsed_seconds=round(perf_counter() - started_at, 6),
+                outcome=outcome,
+            )
 
     def expected_native_ticket_count(
         self, strategy: ReplayStrategy, history: tuple[ReplayDraw, ...], target: ReplayDraw
@@ -145,6 +176,34 @@ class _OutcomeBlindAdapter:
         return replace(target, main_numbers=(0,), special_number=None)
 
 
+def _notify_strategy_timing(
+    observer: Callable[[JsonObject], None],
+    *,
+    strategy: ReplayStrategy,
+    target: ReplayDraw,
+    phase: str,
+    elapsed_seconds: float | None = None,
+    outcome: str | None = None,
+) -> None:
+    """Send optional timing telemetry without changing replay outcomes."""
+    event: JsonObject = {
+        "event": "STRATEGY_TIMING",
+        "phase": phase,
+        "strategy_id": strategy.strategy_id,
+        "strategy_version": strategy.strategy_version,
+        "target_draw_id": target.draw_number,
+    }
+    if elapsed_seconds is not None:
+        event["elapsed_seconds"] = elapsed_seconds
+    if outcome is not None:
+        event["outcome"] = outcome
+    try:
+        observer(event)
+    except Exception:
+        # A telemetry sink must not turn a valid prediction into a replay failure.
+        return
+
+
 class ReplayBackfill:
     def __init__(
         self,
@@ -158,6 +217,7 @@ class ReplayBackfill:
         source_hash: str | None = None,
         strategy_sources: JsonObject | None = None,
         source_history_provenance_status: str = "UNKNOWN",
+        strategy_timing_observer: Callable[[JsonObject], None] | None = None,
     ) -> None:
         if not draws or not strategies or not source_identity or not execution_version:
             raise ValueError("draws, strategies, source and execution identity are required")
@@ -191,7 +251,9 @@ class ReplayBackfill:
         self.sources = strategy_sources or {}
         self.source_history_provenance_status = source_history_provenance_status
         self.store = store
-        self.controller = HistoricalReplayController(_OutcomeBlindAdapter(adapter))
+        self.controller = HistoricalReplayController(
+            _OutcomeBlindAdapter(adapter, strategy_timing_observer)
+        )
 
     def manifest(self, selection: BackfillSelection) -> JsonObject:
         targets = selection.select(self.draws)

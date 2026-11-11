@@ -125,6 +125,7 @@ def worker(
     draws: tuple[ReplayDraw, ...] | None = None,
     store: SQLiteBackfillStore | None = None,
     source_history_provenance_status: str = "UNKNOWN",
+    strategy_timing_observer: Any | None = None,
 ) -> tuple[ReplayBackfill, Producer, SQLiteBackfillStore]:
     producer = producer or Producer()
     strategy = ReplayStrategy(
@@ -157,6 +158,7 @@ def worker(
             store=store,
             execution_version="test-source-v1",
             source_history_provenance_status=source_history_provenance_status,
+            strategy_timing_observer=strategy_timing_observer,
         ),
         producer,
         store,
@@ -210,6 +212,59 @@ def test_resume_after_interruption_and_idempotence(tmp_path: Path) -> None:
     assert producer.calls == 8
     assert store.query()["total_count"] == 8
     assert json.loads(json.dumps(store.query()["items"])) == completed_payloads
+
+
+def test_opt_in_strategy_timing_preserves_replay_results(tmp_path: Path) -> None:
+    selection = BackfillSelection(latest=4)
+    untimed, _, untimed_store = worker(
+        tmp_path,
+        store=SQLiteBackfillStore(tmp_path / "untimed-replay.sqlite3"),
+    )
+    untimed_result = untimed.execute(selection, batch_size=1)
+
+    timing_events: list[dict[str, Any]] = []
+    timed, _, timed_store = worker(
+        tmp_path,
+        store=SQLiteBackfillStore(tmp_path / "timed-replay.sqlite3"),
+        strategy_timing_observer=timing_events.append,
+    )
+    timed_result = timed.execute(selection, batch_size=1)
+
+    assert json.loads(json.dumps(timed_result)) == json.loads(json.dumps(untimed_result))
+    assert [item["result_identity"] for item in timed_store.query()["items"]] == [
+        item["result_identity"] for item in untimed_store.query()["items"]
+    ]
+    assert len(timing_events) == 8
+    assert [event["phase"] for event in timing_events] == [
+        "STARTED",
+        "FINISHED",
+        "STARTED",
+        "FINISHED",
+        "STARTED",
+        "FINISHED",
+        "STARTED",
+        "FINISHED",
+    ]
+    finished = [event for event in timing_events if event["phase"] == "FINISHED"]
+    assert all(event["strategy_id"] == "two-tickets" for event in finished)
+    assert all(event["strategy_version"] == "v1" for event in finished)
+    assert all(event["outcome"] == "RETURNED" for event in finished)
+    assert all(event["elapsed_seconds"] >= 0 for event in finished)
+
+    def broken_timing_sink(_event: dict[str, Any]) -> None:
+        raise RuntimeError("telemetry sink unavailable")
+
+    resilient, _, resilient_store = worker(
+        tmp_path,
+        store=SQLiteBackfillStore(tmp_path / "resilient-replay.sqlite3"),
+        strategy_timing_observer=broken_timing_sink,
+    )
+    resilient_result = resilient.execute(selection, batch_size=1)
+    assert resilient_result["valid_result_cells"] == 4
+    assert resilient_result["failed_count"] == 0
+    assert [item["result_identity"] for item in resilient_store.query()["items"]] == [
+        item["result_identity"] for item in untimed_store.query()["items"]
+    ]
 
 
 def test_skip_completed_cells_by_six_column_key_across_runs(tmp_path: Path) -> None:
@@ -881,6 +936,7 @@ def test_cli_full_source_worker_storage_chain(
         "5",
         "--batch-size",
         "2",
+        "--strategy-timing",
     ]
     assert main(
         [*args, "--max-cells", "2"],
@@ -894,6 +950,34 @@ def test_cli_full_source_worker_storage_chain(
     assert completed["valid_result_cells"] == 5
     assert completed["newly_calculated_count"] == 3
     assert "已存在跳過 2、新算 3、失敗 0" in completed_output.err
+    timing_events = []
+    for line in completed_output.err.splitlines():
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if event.get("event") == "STRATEGY_TIMING":
+            timing_events.append(event)
+    assert len(timing_events) == 6
+    assert [event["phase"] for event in timing_events] == [
+        "STARTED",
+        "FINISHED",
+        "STARTED",
+        "FINISHED",
+        "STARTED",
+        "FINISHED",
+    ]
+    assert all(
+        event["strategy_id"] == "biglotto_social_wisdom_anti_popularity"
+        for event in timing_events
+    )
+    assert all(event["strategy_version"] == "v0.1" for event in timing_events)
+    assert all(event["target_draw_id"] for event in timing_events)
+    assert all(
+        event["elapsed_seconds"] >= 0
+        for event in timing_events
+        if event["phase"] == "FINISHED"
+    )
     assert SQLiteBackfillStore(output, read_only=True).query()["total_count"] == 5
     assert hashlib.sha256(paths.database.read_bytes()).hexdigest() == source_digest
 

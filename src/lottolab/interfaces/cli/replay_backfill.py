@@ -777,6 +777,10 @@ def _print_cli_error(exc: Exception, *, command: str) -> None:
     print(f"{command} error: {message}", file=sys.stderr)
 
 
+def _print_strategy_timing(value: JsonObject) -> None:
+    print(canonical_json(value), file=sys.stderr, flush=True)
+
+
 def main(
     argv: list[str] | None = None,
     *,
@@ -827,6 +831,11 @@ def main(
     parser.add_argument("--batch-size", type=int, default=25)
     parser.add_argument("--max-cells", type=int)
     parser.add_argument("--retry-failed", action="store_true")
+    parser.add_argument(
+        "--strategy-timing",
+        action="store_true",
+        help="Emit per-strategy generation timing events to stderr",
+    )
     parser.add_argument("--import-known-artifacts", action="store_true")
     args = parser.parse_args(arguments)
     if args.schema:
@@ -910,6 +919,7 @@ def main(
             strategy_sources=accounts
             if args.all_strategies
             else {b.strategy.strategy_id: accounts[b.strategy.strategy_id] for b in selected},
+            strategy_timing_observer=_print_strategy_timing if args.strategy_timing else None,
         )
         summary = worker.execute(
             selection,

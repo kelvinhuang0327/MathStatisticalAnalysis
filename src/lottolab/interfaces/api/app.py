@@ -44,6 +44,12 @@ from lottolab.application.use_cases.generate_live_zone_split_bets import (
     build_production_generate_live_zone_split_bets,
 )
 from lottolab.domain.biglotto_full_strategy_catalog import load_full_strategy_catalog
+from lottolab.infrastructure.b649_research_board_v2_reader import (
+    B649ResearchBoardV2Reader,
+)
+from lottolab.infrastructure.b649_research_record_archive_reader import (
+    B649ResearchRecordArchiveReader,
+)
 from lottolab.infrastructure.biglotto_multi_ticket_record_reader import (
     PackagedB649ExactNativeRecordReader,
     PackagedB649K5RecordReader,
@@ -67,6 +73,15 @@ from lottolab.interfaces.api.b649_canonical_forecast import (
 )
 from lottolab.interfaces.api.b649_multi_ticket_records import (
     create_b649_multi_ticket_records_router,
+)
+from lottolab.interfaces.api.b649_research_board_v2 import (
+    create_b649_research_board_v2_router,
+)
+from lottolab.interfaces.api.b649_research_record_archive import (
+    create_b649_research_record_archive_router,
+)
+from lottolab.interfaces.api.b649_sealed084_replays import (
+    create_b649_sealed084_replays_router,
 )
 from lottolab.interfaces.api.draw_data import (
     ApiValidationErrorResponse,
@@ -101,6 +116,11 @@ from lottolab.interfaces.api.replay_scoring_projections import (
 from lottolab.interfaces.api.replay_strategy_inventory import (
     create_replay_strategy_inventory_router,
 )
+from lottolab.interfaces.api.research_backtest_events import (
+    create_research_backtest_events_router,
+)
+from lottolab.interfaces.api.research_backtests import create_research_backtests_router
+from lottolab.interfaces.api.research_crosswalk import create_research_crosswalk_router
 from lottolab.interfaces.api.strategy_catalog import (
     API_VERSION,
     create_strategy_catalog_router,
@@ -155,14 +175,18 @@ def create_app(
     p638_multiwindow_success_source_reader_factory: (
         MultiWindowSuccessSourceReaderFactory | None
     ) = None,
+    replay_backfill_store: SQLiteBackfillStore | None = None,
+    b649_sealed084_replay_source_root: Path | None = None,
 ) -> FastAPI:
     app = FastAPI(title="LottoLab API", version="0.1.0")
-    configured_replay_backfill_db = os.environ.get("LOTTOLAB_REPLAY_BACKFILL_DB")
-    resolved_replay_backfill_store = (
-        SQLiteBackfillStore(Path(configured_replay_backfill_db), read_only=True)
-        if configured_replay_backfill_db
-        else None
-    )
+    resolved_replay_backfill_store = replay_backfill_store
+    if resolved_replay_backfill_store is None:
+        configured_replay_backfill_db = os.environ.get("LOTTOLAB_REPLAY_BACKFILL_DB")
+        resolved_replay_backfill_store = (
+            SQLiteBackfillStore(Path(configured_replay_backfill_db), read_only=True)
+            if configured_replay_backfill_db
+            else None
+        )
     resolved_catalog = catalog if catalog is not None else production_catalog()
     resolved_paths_provider = (
         data_paths_provider if data_paths_provider is not None else resolve_local_data_paths
@@ -226,8 +250,17 @@ def create_app(
         return {"status": "ok", "api_version": API_VERSION}
 
     app.include_router(create_b649_canonical_forecast_router())
+    app.include_router(create_b649_sealed084_replays_router(b649_sealed084_replay_source_root))
     app.include_router(create_strategy_catalog_router(resolved_catalog))
     app.include_router(create_replay_strategy_inventory_router())
+    app.include_router(
+        create_b649_research_record_archive_router(
+            B649ResearchRecordArchiveReader.from_environment()
+        )
+    )
+    app.include_router(
+        create_b649_research_board_v2_router(B649ResearchBoardV2Reader.from_environment())
+    )
     app.include_router(
         create_b649_multi_ticket_records_router(
             load_full_strategy_catalog(),
@@ -277,6 +310,9 @@ def create_app(
     app.include_router(
         create_replay_scoring_projections_router(replay_scoring_projection_reader_factory)
     )
+    app.include_router(create_research_backtest_events_router())
+    app.include_router(create_research_backtests_router())
+    app.include_router(create_research_crosswalk_router())
     app.include_router(create_replay_execution_router(replay_executor))
     app.include_router(create_replay_backfill_router(resolved_replay_backfill_store))
     app.include_router(create_t539_historical_router(t539_historical_query_repository_factory))

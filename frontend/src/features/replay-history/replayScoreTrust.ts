@@ -7,7 +7,7 @@ export type ReplayScoreTrustStatus =
 export interface ReplayScoreTrustInput {
   actual_main_numbers: readonly number[]
   predicted_tickets: ReadonlyArray<{
-    main_numbers: readonly number[]
+    main_numbers: readonly number[] | null
     main_hit_count: number | null
   }>
   best_main_hits: number | null

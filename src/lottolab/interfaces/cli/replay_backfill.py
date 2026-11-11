@@ -1,5 +1,7 @@
 """Offline replay worker: python -m lottolab.interfaces.cli.replay_backfill."""
 
+# pyright: reportPrivateUsage=false
+
 from __future__ import annotations
 
 import argparse
@@ -8,13 +10,15 @@ import hashlib
 import inspect
 import json
 import os
+import random
 import sqlite3
 import sys
 import tempfile
+from collections.abc import Callable
 from dataclasses import asdict
 from datetime import date
 from pathlib import Path
-from typing import cast
+from typing import Any, cast
 
 from lottolab.application.historical_replay_adapters import (
     BigLottoReplayAdapter,
@@ -24,6 +28,7 @@ from lottolab.application.historical_replay_adapters import (
     binding_from_p638_spec,
     t539_replay_bindings,
 )
+from lottolab.application.seeded_single_replay import SEED_CONTRACT, SeededSingleTicketReplay
 from lottolab.application.use_cases.generate_bet import (
     instantiate_adapter,
     instantiate_portfolio_adapter,
@@ -54,6 +59,11 @@ from lottolab.infrastructure.persistence.replay_backfill_store import (
     load_draw_snapshot,
     validate_database_path,
 )
+from lottolab.strategies.adapters.base import CausalDrawRow
+from lottolab.strategies.adapters.biglotto_batch16 import _EvolutionEngine
+from lottolab.strategies.adapters.biglotto_evolution_bounded import BigLottoBoundedEvolutionAdapter
+from lottolab.strategies.adapters.biglotto_evolution_causal import BigLottoCausalEvolutionAdapter
+from lottolab.strategies.adapters.biglotto_evolution_strict import BigLottoStrictEvolutionAdapter
 from lottolab.strategies.adapters.powerlotto_wave1 import WAVE1_STRATEGIES
 from lottolab.strategies.adapters.powerlotto_wave2 import WAVE2_STRATEGIES
 from lottolab.strategies.catalog import production_catalog
@@ -138,14 +148,71 @@ def native_strategy_inventory(
             if source_file is None:
                 raise ValueError("adapter source is unavailable")
             source_sha = hashlib.sha256(Path(source_file).read_bytes()).hexdigest()
+            unseeded_live_rng = (
+                lottery_type is LotteryType.BIG_LOTTO
+                and descriptor.response_shape is ResponseShape.SINGLE_TICKET
+                and "randomness:PROCESS_GLOBAL_UNSEEDED_MATH_RANDOM_EQUIVALENT" in provenance
+            )
+            behavior = getattr(implementation, "replay_behavior", ReplayBehavior.DETERMINISTIC)
+            seed_contract = getattr(implementation, "replay_seed_contract", None)
+            wrapper_sha: str | None = None
+            if unseeded_live_rng:
+                wrapper_file = inspect.getsourcefile(SeededSingleTicketReplay)
+                if wrapper_file is None:
+                    raise ValueError("seeded replay wrapper source is unavailable")
+                wrapper_sha = hashlib.sha256(Path(wrapper_file).read_bytes()).hexdigest()
+                implementation = SeededSingleTicketReplay(
+                    sid,
+                    descriptor.strategy_name,
+                    descriptor.version,
+                    descriptor.min_history,
+                    cast(Callable[[random.Random], Any], cls),
+                )
+                behavior = ReplayBehavior.SEEDED_STOCHASTIC
+                seed_contract = SEED_CONTRACT
+            fingerprint_payload: dict[str, object] = {
+                "descriptor": asdict(descriptor),
+                "source": source_sha,
+            }
+            dependency_sha: dict[str, str] = {}
+            if (
+                sid == "legacy_biglotto__evolution_engine__3df019c31ce4"
+                and implementation.strategy_version
+                in {
+                    "v0.3",
+                    "v0.4",
+                    "v0.5",
+                }
+            ):
+                dependencies: list[type[object]] = [
+                    cast(type[object], _EvolutionEngine),
+                    BigLottoCausalEvolutionAdapter,
+                ]
+                if implementation.strategy_version in {"v0.4", "v0.5"}:
+                    dependencies.append(BigLottoStrictEvolutionAdapter)
+                if implementation.strategy_version == "v0.5":
+                    dependencies.extend([BigLottoBoundedEvolutionAdapter, CausalDrawRow])
+                for dependency in dependencies:
+                    dependency_file = inspect.getsourcefile(dependency)
+                    if dependency_file is None:
+                        raise ValueError("evolution dependency source is unavailable")
+                    dependency_sha[dependency.__module__] = hashlib.sha256(
+                        Path(dependency_file).read_bytes()
+                    ).hexdigest()
+                fingerprint_payload["dependency_sha256"] = dependency_sha
+            if seed_contract is not None:
+                fingerprint_payload.update(
+                    {"seed_contract": seed_contract, "seed_wrapper_sha256": wrapper_sha}
+                )
             strategy = ReplayStrategy(
                 sid,
                 descriptor.strategy_name,
-                descriptor.version,
-                ReplayBehavior.DETERMINISTIC,
+                implementation.strategy_version,
+                behavior,
                 descriptor.native_ticket_count,
                 max(descriptor.min_history, implementation.min_history),
-                fingerprint=identity({"descriptor": asdict(descriptor), "source": source_sha}),
+                fingerprint=identity(fingerprint_payload),
+                seed_contract=seed_contract,
             )
             bindings[sid] = ReplayStrategyBinding(strategy, implementation)
             accounts[sid] = {
@@ -153,6 +220,10 @@ def native_strategy_inventory(
                 "strategy_version": descriptor.version,
                 "source": descriptor.adapter_path,
                 "source_sha256": source_sha,
+                "dependency_sha256": dependency_sha,
+                "seed_wrapper_sha256": wrapper_sha,
+                "seed_contract": seed_contract,
+                "behavior": behavior.value,
                 "catalog_provenance": provenance,
                 "model_version_or_null": None,
             }
@@ -208,6 +279,7 @@ def execution_source_identity() -> str:
 
 def source_database_hash(database: Path) -> str:
     """Hash the exact source bytes, including an existing SQLite WAL sidecar."""
+
     def file_hash(path: Path) -> str:
         digest = hashlib.sha256()
         with path.open("rb") as stream:
@@ -338,9 +410,13 @@ def import_known_research_artifacts(database: Path, source_database: Path) -> Js
     draw_by_id = {draw.draw_number: draw for draw in draws}
     task_root = Path("/Users/kelvin/VibeCoding-WorkSpace/.task-data")
     imported_by_task: dict[str, int] = {}
-    for task_id, method_id, ticket_column, expected_hash, expected_rows in (
-        _KNOWN_RESEARCH_ARTIFACTS
-    ):
+    for (
+        task_id,
+        method_id,
+        ticket_column,
+        expected_hash,
+        expected_rows,
+    ) in _KNOWN_RESEARCH_ARTIFACTS:
         artifact_root = task_root / task_id
         receipt_path = artifact_root / "result.json"
         csv_path = artifact_root / "backtest_rows.csv"
@@ -552,9 +628,7 @@ def _is_under_test_only_root(database: Path, test_only_root: Path | None) -> boo
 def _registered_backfill_database() -> Path:
     registered = project_database_environment({}).get(_BACKFILL_DATABASE_ENV)
     if not isinstance(registered, str) or not registered:
-        raise ValueError(
-            "database registry has no LOTTOLAB_REPLAY_BACKFILL_DB read location"
-        )
+        raise ValueError("database registry has no LOTTOLAB_REPLAY_BACKFILL_DB read location")
     return validate_database_path(_absolute_database_path(Path(registered)))
 
 
@@ -563,15 +637,16 @@ def resolve_output_database(
     *,
     test_only_external_database_root: Path | None = None,
 ) -> Path:
-    registered = _registered_backfill_database()
     if database is None:
-        return registered
+        return _registered_backfill_database()
     selected = validate_database_path(_absolute_database_path(database))
     if (
-        selected == registered
-        or _is_project_scratch_target(selected)
+        _is_project_scratch_target(selected)
         or _is_under_test_only_root(selected, test_only_external_database_root)
     ):
+        return selected
+    registered = _registered_backfill_database()
+    if selected == registered:
         return selected
     raise ValueError(
         "explicit database must be the registry target or inside "
@@ -655,9 +730,7 @@ def _copy_stage_rows(
         raise ValueError(f"stage table columns do not match: {table}")
     quoted_columns = ",".join(f'"{column}"' for column in columns)
     placeholders = ",".join("?" for _ in columns)
-    insert_sql = (
-        f'INSERT OR IGNORE INTO "{table}" ({quoted_columns}) VALUES ({placeholders})'
-    )
+    insert_sql = f'INSERT OR IGNORE INTO "{table}" ({quoted_columns}) VALUES ({placeholders})'
     added = 0
     skipped = 0
 

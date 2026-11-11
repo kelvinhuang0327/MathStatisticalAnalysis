@@ -307,9 +307,17 @@ def _production_binding(
         )
         if not any(callable(getattr(implementation, name, None)) for name in supported_methods):
             raise TypeError("adapter has no ticket method accepted by its Replay adapter")
+        unseeded_live_rng = any(
+            item == "randomness:PROCESS_GLOBAL_UNSEEDED_MATH_RANDOM_EQUIVALENT"
+            for item in descriptor.provenance
+        )
         binding = binding_from_implementation(
             cast(ReplayStrategyImplementation, implementation),
-            behavior=ReplayBehavior.DETERMINISTIC,
+            behavior=(
+                ReplayBehavior.LEGACY_NONDETERMINISTIC
+                if unseeded_live_rng
+                else ReplayBehavior.DETERMINISTIC
+            ),
             fingerprint=_descriptor_fingerprint(descriptor),
         )
         if lottery_type is LotteryType.BIG_LOTTO:

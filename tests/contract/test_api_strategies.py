@@ -295,10 +295,17 @@ def test_openapi_exposes_exact_local_runtime_operation_set() -> None:
     assert operations == {
         ("get", "/api/health"),
         ("get", "/api/b649/canonical-forecast/current"),
+        ("get", "/api/v1/b649/sealed-084-replays/status"),
+        ("get", "/api/v1/b649/sealed-084-replays"),
         ("get", "/api/v1/strategies"),
             ("get", "/api/v1/strategy-overview"),
             ("get", "/api/v1/strategy-evidence"),
             ("get", "/api/v1/strategy-matrix/structural"),
+        ("get", "/api/v1/b649-research-backtests/record-sources"),
+        ("get", "/api/v1/b649-research-backtests/records"),
+        ("get", "/api/v1/b649-research-backtests/summary"),
+        ("get", "/api/v1/b649-research-backtests/methods"),
+        ("get", "/api/v1/b649-research-backtests/rankings"),
             ("get", "/api/v1/b649-multi-ticket-records"),
             ("get", "/api/v1/b649-multi-ticket-records/summary"),
             ("get", "/api/v1/b649-exact-native-records"),
@@ -442,9 +449,14 @@ def test_openapi_exposes_exact_local_runtime_operation_set() -> None:
         ("get", "/api/v1/replay-backfill/results"),
         ("get", "/api/v1/replay-backfill/runs"),
         ("get", "/api/v1/replay-backfill/runs/{run_id}"),
+        ("get", "/api/v1/research/backtests/draw-events"),
+        ("get", "/api/v1/research/backtests/strategies"),
+        ("get", "/api/v1/research/backtests/rankings"),
+        ("get", "/api/v1/research/backtests/scores"),
+        ("get", "/api/v1/research/backtests/identity-crosswalk"),
         ("get", "/api/v1/replay-strategy-inventory"),
     }
-    assert len(operations) == 78
+    assert len(operations) == 90
 
 
 def test_replay_ranking_openapi_requires_exact_persisted_scoring_sha() -> None:

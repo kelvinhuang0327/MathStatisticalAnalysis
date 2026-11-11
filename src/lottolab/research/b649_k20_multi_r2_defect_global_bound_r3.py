@@ -38,7 +38,7 @@ EXPECTED_PAIR_COUNTS = (
 )
 MINIMUM_OVERLAP_MASS = 93
 MAX_MINIMUM_MASS_HEAVY_GRAPH_DEGREE = 6
-PARENT_BOUND = 357_906_542
+PARENT_BOUND = PORTFOLIO_S1 - (2 * 65_150_176 + TICKET_COUNT - 1) // TICKET_COUNT
 TWO_SHARED_HEAVY_DEGREES = (2, 1, 1) + (0,) * (TICKET_COUNT - 3)
 TWO_DISJOINT_HEAVY_DEGREES = (1, 1, 1, 1) + (0,) * (TICKET_COUNT - 4)
 
@@ -456,7 +456,7 @@ def _minimum_mass_topology_witness(
 
 
 @cache
-def defect_bound_certificates() -> dict[str, Any]:
+def defect_bound_certificates(*, incumbent: int = INCUMBENT) -> dict[str, Any]:
     """Build all three graph-family certificates and the unique residual family."""
 
     counts = pair_costs()
@@ -465,7 +465,7 @@ def defect_bound_certificates() -> dict[str, Any]:
     mass, frequencies = minimum_pair_overlap_mass()
     if mass != MINIMUM_OVERLAP_MASS or frequencies != (2,) * 27 + (3,) * 22:
         raise AssertionError("the exact minimum overlap-mass profile changed")
-    if PORTFOLIO_S1 != 364_421_560:
+    if TICKET_COUNT * counts[6] != PORTFOLIO_S1:
         raise AssertionError("the exact single-ticket total changed")
 
     shared_minimum_mass = _minimum_mass_topology_witness(2, TWO_SHARED_HEAVY_DEGREES)
@@ -490,21 +490,22 @@ def defect_bound_certificates() -> dict[str, Any]:
         multi_overflow_witness["upper_bound"],
     )
     family_bound = max(shared_bound, disjoint_bound, multi_bound)
-    unresolved = (
-        "THREE_OR_MORE_HEAVY_PAIRS_WITH_OVERLAP_MASS_AT_LEAST_94"
-        if multi_overflow_witness["upper_bound"] > INCUMBENT
-        else None
+    subfamilies = (
+        ("TWO_SHARED_VERTEX", shared_bound),
+        ("TWO_DISJOINT", disjoint_bound),
+        ("THREE_OR_MORE_AT_MASS_93", multi_minimum_witness.upper_bound),
+        ("THREE_OR_MORE_HEAVY_PAIRS_WITH_OVERLAP_MASS_AT_LEAST_94",
+         multi_overflow_witness["upper_bound"]),
     )
+    unresolved_families = [name for name, bound in subfamilies if bound > incumbent]
+    unresolved = (unresolved_families[0] if len(unresolved_families) == 1 else
+                  "MULTIPLE_UNRESOLVED_DEFECT_FAMILIES" if unresolved_families else None)
     closed = [
         name
-        for name, bound in (
-            ("TWO_SHARED_VERTEX", shared_bound),
-            ("TWO_DISJOINT", disjoint_bound),
-            ("THREE_OR_MORE_AT_MASS_93", multi_minimum_witness.upper_bound),
-        )
-        if bound <= INCUMBENT
+        for name, bound in subfamilies
+        if bound <= incumbent
     ]
-    status = "CLOSED" if family_bound <= INCUMBENT else "BOUNDED_OPEN_RESIDUAL"
+    status = "CLOSED" if family_bound <= incumbent else "BOUNDED_OPEN_RESIDUAL"
     return {
         "DEFECT_GRAPH_FAMILY_COUNT": 3,
         "SHARED_VERTEX_R2_BOUND": shared_bound,
@@ -513,6 +514,7 @@ def defect_bound_certificates() -> dict[str, Any]:
         "FAMILY_B_BOUND": family_bound,
         "FAMILY_B_STATUS": status,
         "UNRESOLVED_DEFECT_GRAPH": unresolved,
+        "UNRESOLVED_DEFECT_FAMILIES": unresolved_families,
         "CLOSED_DEFECT_FAMILIES": closed,
         "S2_MINIMUMS": {
             "TWO_SHARED_VERTEX": shared_minimum_mass.s2_lower_bound,
@@ -537,8 +539,8 @@ def defect_bound_certificates() -> dict[str, Any]:
         },
         "MULTI_MASS_93_WITNESS": asdict(multi_minimum_witness),
         "MULTI_MASS_GE_94_WITNESS": multi_overflow_witness,
-        "INCUMBENT": INCUMBENT,
-        "REMAINING_GAP": family_bound - INCUMBENT,
+        "INCUMBENT": incumbent,
+        "REMAINING_GAP": family_bound - incumbent,
         "CP_SAT": {
             "STATUS": "NOT_RUN",
             "REASON": "The degree and wedge certificates meet Success B without a solver run.",
@@ -546,17 +548,18 @@ def defect_bound_certificates() -> dict[str, Any]:
     }
 
 
-def result_record() -> dict[str, Any]:
+def result_record(*, incumbent: int = INCUMBENT) -> dict[str, Any]:
     """Return the durable, JSON-serializable task result."""
 
-    certificates = defect_bound_certificates()
+    certificates = defect_bound_certificates(incumbent=incumbent)
     parent_gap = PARENT_BOUND - int(certificates["FAMILY_B_BOUND"])
     return {
         "TASK_ID": "B649_K20_MULTI_R2_DEFECT_GLOBAL_BOUND_R3",
-        "TASK_STATUS": "BOUNDED_WITH_UNIQUE_MULTI_R2_OVERFLOW_RESIDUAL",
+        "TASK_STATUS": "CLOSED" if certificates["FAMILY_B_STATUS"] == "CLOSED"
+        else "BOUNDED_WITH_OPEN_DEFECT_FAMILIES",
         "BASE_HEAD": BASE_HEAD,
         "TASK_BRANCH": TASK_BRANCH,
-        "INCUMBENT": INCUMBENT,
+        "INCUMBENT": incumbent,
         "CURRENT_PARENT_BOUND": PARENT_BOUND,
         "PORTFOLIO_S1": PORTFOLIO_S1,
         "TICKET_PAIR_COUNT": PAIR_COUNT,
@@ -583,7 +586,7 @@ def result_record() -> dict[str, Any]:
         },
         "CERTIFICATES": certificates,
         "PARENT_BOUND_IMPROVEMENT": parent_gap,
-        "SUCCESS_A": certificates["FAMILY_B_BOUND"] <= INCUMBENT,
+        "SUCCESS_A": certificates["FAMILY_B_BOUND"] <= incumbent,
         "SUCCESS_B": certificates["FAMILY_B_BOUND"] < PARENT_BOUND
         and certificates["UNRESOLVED_DEFECT_GRAPH"] is not None,
         "NEW_PORTFOLIO_SEARCH_STARTED": "NO",

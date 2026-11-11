@@ -175,7 +175,7 @@ class Daily539ReplayAdapter(_PrizeEvaluatingAdapter):
 
 
 class PowerLottoReplayAdapter(_PrizeEvaluatingAdapter):
-    """Target-native adapter for the existing P638 Wave 1 strategy specs."""
+    """Target-native adapter for P638 specs and pinned production adapters."""
 
     lottery_type = LotteryType.POWER_LOTTO
 
@@ -206,18 +206,67 @@ class PowerLottoReplayAdapter(_PrizeEvaluatingAdapter):
     ) -> tuple[ReplayTicket, ...]:
         binding = self._binding(strategy)
         implementation = binding.implementation
-        if not isinstance(implementation, P638StrategySpec):
-            raise TypeError("POWER_LOTTO replay bindings require P638StrategySpec values")
-        causal_rows = tuple(_p638_row(draw) for draw in history)
-        tickets = implementation.get_bets(causal_rows, LotteryType.POWER_LOTTO)
-        return tuple(
-            ReplayTicket(
-                ticket_position=index,
-                main_numbers=first_zone,
-                special_number=second_zone,
+        p638_rows = tuple(_p638_row(draw) for draw in history)
+        if isinstance(implementation, P638StrategySpec):
+            tickets = implementation.get_bets(p638_rows, LotteryType.POWER_LOTTO)
+            return tuple(
+                ReplayTicket(
+                    ticket_position=index,
+                    main_numbers=first_zone,
+                    special_number=second_zone,
+                )
+                for index, (first_zone, second_zone) in enumerate(tickets, start=1)
             )
-            for index, (first_zone, second_zone) in enumerate(tickets, start=1)
+
+        # Shared non-Wave1 adapters require CausalDrawRow, not P638HistoryRow.
+        causal_rows = tuple(
+            CausalDrawRow(
+                draw=row.draw,
+                date=row.date,
+                numbers=row.numbers,
+            )
+            for row in p638_rows
         )
+        get_with_emission = cast(
+            Callable[[tuple[CausalDrawRow, ...], LotteryType], tuple[BetAdapterExecution, ...]]
+            | None,
+            getattr(implementation, "get_bets_with_emission", None),
+        )
+        if callable(get_with_emission):
+            executions = get_with_emission(causal_rows, LotteryType.POWER_LOTTO)
+            return tuple(
+                ReplayTicket(
+                    ticket_position=index,
+                    main_numbers=execution.legal_main_numbers,
+                    special_number=execution.special_number,
+                )
+                for index, execution in enumerate(executions, start=1)
+            )
+
+        get_one_with_emission = cast(
+            Callable[[tuple[CausalDrawRow, ...], LotteryType], BetAdapterExecution] | None,
+            getattr(implementation, "get_one_bet_with_emission", None),
+        )
+        if callable(get_one_with_emission):
+            execution = get_one_with_emission(causal_rows, LotteryType.POWER_LOTTO)
+            return (
+                ReplayTicket(
+                    ticket_position=1,
+                    main_numbers=execution.legal_main_numbers,
+                    special_number=execution.special_number,
+                ),
+            )
+
+        get_one_bet = cast(
+            Callable[[tuple[CausalDrawRow, ...], LotteryType], tuple[tuple[int, ...], int | None]]
+            | None,
+            getattr(implementation, "get_one_bet", None),
+        )
+        if callable(get_one_bet):
+            numbers, second_zone = get_one_bet(causal_rows, LotteryType.POWER_LOTTO)
+            return (ReplayTicket(1, tuple(numbers), second_zone),)
+
+        raise TypeError(f"{strategy.strategy_id}: implementation has no ticket method")
 
     def _binding(self, strategy: ReplayStrategy) -> ReplayStrategyBinding:
         try:

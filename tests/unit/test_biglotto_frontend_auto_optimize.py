@@ -32,6 +32,9 @@ from lottolab.strategies.adapters.biglotto_frontend_auto_optimize import (
     _CandidateScore,
     _compare_scores,
 )
+from lottolab.strategies.adapters.biglotto_frontend_auto_optimize_causal import (
+    BigLottoFrontendAutoOptimizeCausalAdapter,
+)
 from lottolab.strategies.catalog import production_catalog
 from lottolab.strategies.executable_registry import ExecutableRegistry
 
@@ -296,7 +299,7 @@ def test_catalog_identity_and_registry_are_exactly_one_live_descriptor() -> None
     assert [item.strategy_id for item in catalog].count(STRATEGY_ID) == 1
     assert descriptor.strategy_id == BigLottoFrontendAutoOptimizeAdapter.strategy_id
     assert descriptor.strategy_name == BigLottoFrontendAutoOptimizeAdapter.strategy_name
-    assert descriptor.version == BigLottoFrontendAutoOptimizeAdapter.strategy_version
+    assert descriptor.version == BigLottoFrontendAutoOptimizeCausalAdapter.strategy_version
     assert descriptor.lottery_types == (LotteryType.BIG_LOTTO,)
     assert descriptor.lifecycle_status is LifecycleStatus.ONLINE
     assert descriptor.executable is True
@@ -304,14 +307,14 @@ def test_catalog_identity_and_registry_are_exactly_one_live_descriptor() -> None
     assert descriptor.native_ticket_count == 1
     assert descriptor.min_history == 30
     assert descriptor.adapter_path == (
-        "lottolab.strategies.adapters.biglotto_frontend_auto_optimize:"
-        "BigLottoFrontendAutoOptimizeAdapter"
+        "lottolab.strategies.adapters.biglotto_frontend_auto_optimize_causal:"
+        "BigLottoFrontendAutoOptimizeCausalAdapter"
     )
     assert f"legacy_source_sha256:{SOURCE_SHA256}" in descriptor.provenance
     assert "legacy_symbol:AutoOptimizeStrategy.predict" in descriptor.provenance
     assert "legacy_runtime:PredictionEngine.strategies.auto_optimize" in descriptor.provenance
     assert ExecutableRegistry(catalog).load_adapter(STRATEGY_ID) is (
-        BigLottoFrontendAutoOptimizeAdapter
+        BigLottoFrontendAutoOptimizeCausalAdapter
     )
 
 

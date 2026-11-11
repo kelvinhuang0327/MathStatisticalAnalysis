@@ -7,6 +7,12 @@ import json
 from pathlib import Path
 from typing import Any
 
+from lottolab.research.b649_k20_canonical_single_count_reconciliation_r1 import (
+    RECORD as CORRECTED_RECORD,
+)
+from lottolab.research.b649_k20_canonical_single_count_reconciliation_r1 import (
+    REVISED_FROZEN_PATHS,
+)
 from lottolab.research.b649_k20_min_s2_higher_order_closure_r2 import (
     K20_INCUMBENT,
     K20_S1,
@@ -26,18 +32,29 @@ def _read(path: Path) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def test_native_files_match_all_verified_source_and_baseline_hashes() -> None:
+def test_frozen_hashes_and_explicit_current_source_revisions() -> None:
     manifest = _read(MANIFEST)
     copied = manifest["COPIED_FILES"]
     reused = manifest["REUSED_BASE_FILES"]
     assert len(copied) == 20
     assert {entry["source"] for entry in copied} == {"A", "B", "C", "D"}
     entries = copied + reused
+    revisions = {
+        entry["path"]: entry for entry in _read(ROOT / CORRECTED_RECORD)["SOURCE_REVISIONS"]
+    }
+    assert revisions.keys() == REVISED_FROZEN_PATHS
     assert len({entry["path"] for entry in entries}) == len(entries)
     for entry in entries:
         content = (ROOT / entry["path"]).read_bytes()
-        assert len(content) == entry["bytes"], entry["path"]
-        assert hashlib.sha256(content).hexdigest() == entry["sha256"], entry["path"]
+        if entry["path"] in revisions:
+            revision = revisions[entry["path"]]
+            assert revision["before_sha256"] == entry["sha256"]
+            assert revision["before_bytes"] == entry["bytes"]
+            assert len(content) == revision["after_bytes"], entry["path"]
+            assert hashlib.sha256(content).hexdigest() == revision["after_sha256"], entry["path"]
+        else:
+            assert len(content) == entry["bytes"], entry["path"]
+            assert hashlib.sha256(content).hexdigest() == entry["sha256"], entry["path"]
     known_paths = {entry["path"] for entry in entries}
     for module, dependencies in manifest["PYTHON_IMPORT_EDGES"].items():
         assert module in known_paths

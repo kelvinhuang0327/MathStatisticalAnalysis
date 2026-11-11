@@ -67,7 +67,11 @@ def create_generate_bet_router(generate_one_bet: GenerateOneBet) -> APIRouter:
     )
     def generate_bet(request: GenerateBetRequest) -> GenerateBetResponse:
         history = tuple(
-            CausalDrawRow(draw=row.draw, date=row.date, numbers=tuple(row.numbers))
+            CausalDrawRow(
+                draw=row.draw,
+                date=row.date,
+                numbers=tuple(row.numbers),
+            )
             for row in request.history
         )
         result = generate_one_bet.execute(

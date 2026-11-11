@@ -24,12 +24,13 @@ from lottolab.research.b649_k20_outside_min_s2_global_penalty_bound_r1 import (
     TICKET_COUNT,
     TRIPLE_COUNT,
     minimum_pair_overlap_mass,
+    outside_min_s2_bounds,
     pair_intersection_table,
     triple_intersection_count,
 )
 
 BASE_HEAD = "909697cbb1fc53b9f9653f6d4a17c875297787b9"
-R1_LOW_OVERLAP_BOUND = 311_435_293
+R1_LOW_OVERLAP_BOUND = PORTFOLIO_S1 - 63_838_600 + 10_852_333
 EXPECTED_PAIR_COUNTS = (107_800, 574_000, 1_695_988, 3_469_942, 6_224_512, 10_776_332, 18_611_432)
 EXPECTED_MIN_EXTRA_S2 = 466_200
 EXPECTED_HEAVY_PAIR_EXCESS = 655_788
@@ -55,6 +56,8 @@ class CpSatEvidence:
     upper_bound: int
     time_limit_seconds: float
     workers: int
+    # Old receipts lack this model identity and cannot certify repaired code.
+    single_ticket_outcomes: int | None = None
 
 
 @dataclass(frozen=True)
@@ -277,6 +280,7 @@ def _finish_solver_run(solver: Any, status_code: int, constant: int) -> CpSatEvi
         upper_bound=constant + objective_bound,
         time_limit_seconds=CP_SAT_TIME_LIMIT_SECONDS,
         workers=CP_SAT_WORKERS,
+        single_ticket_outcomes=SINGLE_TICKET_OUTCOMES,
     )
 
 
@@ -424,6 +428,7 @@ def solve_ab_tightening_attempt() -> CpSatEvidence:
 def preliminary_result_record(c_run: CpSatEvidence) -> dict[str, Any]:
     """Build the durable preliminary record before the A/B tightening attempt."""
 
+    _require_current_solver_evidence(c_run)
     costs = exact_pair_costs()
     excess = pair_cost_convexity_excess(costs)
     bounds = preliminary_family_bounds(costs)
@@ -433,12 +438,14 @@ def preliminary_result_record(c_run: CpSatEvidence) -> dict[str, Any]:
     b_bound = bounds["B_PRELIMINARY_BOUND"]
     heavy_bound = max(a_bound, b_bound, c_bound)
     outside_bound = max(R1_LOW_OVERLAP_BOUND, heavy_bound)
-    success_a = all(bound <= INCUMBENT for bound in (a_bound, b_bound, c_bound))
-    success_b = c_bound <= INCUMBENT and heavy_bound < 357_972_121
+    success_a = outside_bound <= INCUMBENT
+    success_b = c_bound <= INCUMBENT and heavy_bound < int(
+        outside_min_s2_bounds()["OUTSIDE_FAMILY_UPPER_BOUND"]
+    )
     triple_table = exact_triple_profile_table()
     return {
         "TASK_ID": "B649_K20_HEAVY_PAIR_DEFECT_GLOBAL_BOUND_R2",
-        "TASK_STATUS": "PRELIMINARY_BOUNDS_REPRODUCED_WITH_STRONGER_C_CERTIFICATE",
+        "TASK_STATUS": "CLOSED" if success_a else "BOUNDED_WITH_OPEN_FAMILIES",
         "BASE_HEAD": BASE_HEAD,
         "INCUMBENT": INCUMBENT,
         "PORTFOLIO_S1": PORTFOLIO_S1,
@@ -512,7 +519,7 @@ def preliminary_result_record(c_run: CpSatEvidence) -> dict[str, Any]:
         },
         "R1_PAIR_OVERLAP_AT_MOST_ONE_FAMILY": {
             "UPPER_BOUND": R1_LOW_OVERLAP_BOUND,
-            "STATUS": "CLOSED",
+            "STATUS": "CLOSED" if R1_LOW_OVERLAP_BOUND <= INCUMBENT else "OPEN",
             "RECOMPUTED": False,
         },
         "PRELIMINARY_HEAVY_FAMILY_UPPER_BOUND": heavy_bound,
@@ -550,6 +557,9 @@ def apply_ab_tightening_result(
 ) -> dict[str, Any]:
     """Apply the joint A/B certified bound without using its feasible objective."""
 
+    _require_current_solver_evidence(evidence)
+    if preliminary.get("PORTFOLIO_S1") != PORTFOLIO_S1:
+        raise ValueError("preliminary record uses a different single-ticket model")
     result = dict(preliminary)
     families = dict(result["FAMILIES"])
     joint_bound = evidence.upper_bound
@@ -568,14 +578,16 @@ def apply_ab_tightening_result(
     c_bound = int(families["C"]["UPPER_BOUND"])
     heavy_bound = max(a_bound, b_bound, c_bound)
     outside_bound = max(R1_LOW_OVERLAP_BOUND, heavy_bound)
-    success_a = all(bound <= INCUMBENT for bound in (a_bound, b_bound, c_bound))
-    success_b = c_bound <= INCUMBENT and heavy_bound < 357_972_121
+    success_a = outside_bound <= INCUMBENT
+    success_b = c_bound <= INCUMBENT and heavy_bound < int(
+        outside_min_s2_bounds()["OUTSIDE_FAMILY_UPPER_BOUND"]
+    )
     result.update(
         {
             "TASK_STATUS": (
                 "ALL_OUTSIDE_MIN_S2_FAMILIES_CLOSED"
                 if success_a
-                else "BOUNDED_WITH_OPEN_A_OR_B"
+                else "BOUNDED_WITH_OPEN_FAMILIES"
             ),
             "FAMILIES": families,
             "AB_TIGHTENING_ATTEMPT": {
@@ -610,6 +622,11 @@ def apply_ab_tightening_result(
         }
     )
     return result
+
+
+def _require_current_solver_evidence(evidence: CpSatEvidence) -> None:
+    if evidence.single_ticket_outcomes != SINGLE_TICKET_OUTCOMES:
+        raise ValueError("CP-SAT evidence lacks the current canonical single-ticket model identity")
 
 
 __all__ = [

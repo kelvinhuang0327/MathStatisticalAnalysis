@@ -32,6 +32,72 @@ import {
 export type LotteryType = 'BIG_LOTTO' | 'POWER_LOTTO' | 'DAILY_539'
 export type TicketCount = 2 | 3 | 5 | 10 | 20
 export type RankingWindow = 'FULL' | 'RECENT_750' | 'RECENT_300' | 'RECENT_50'
+export type B649Sealed084Window = 'FULL' | 'RECENT_750' | 'RECENT_300' | 'RECENT_50'
+
+export interface B649Sealed084Source {
+  source_task_id: string
+  source_artifact_identity: string
+  source_validation_status: string
+  draw_source_status: string
+  original_draw_data_v3_status: string
+  source_gaps: string | null
+}
+
+export interface B649Sealed084ReplayStatus {
+  status: string
+  game: string
+  source_cutoff: string
+  source_tier: string
+  strategy_count: number
+  returned_window_rows: number
+  sources: B649Sealed084Source[]
+}
+
+export interface B649Sealed084ReplayResult {
+  game: string
+  strategy_id: string
+  strategy_version: string
+  ticket_count: number
+  window: B649Sealed084Window
+  successful_issues: number
+  evaluated_issues: number
+  success_rate: number
+  source_cutoff: string
+  source_tier: string
+  source_task_id: string
+  source_artifact_identity: string
+  comparability_status: string
+  historical_replay_status: string
+  owner_rank: number | null
+  source_validation_status: string
+  draw_source_status: string
+  original_draw_data_v3_status: string
+  source_gaps: string | null
+}
+
+export interface B649Sealed084ReplayResponse extends B649Sealed084ReplayStatus {
+  results: B649Sealed084ReplayResult[]
+}
+
+export type B649Sealed084RequestErrorKind =
+  | 'SOURCE_UNAVAILABLE'
+  | 'NETWORK'
+  | 'MALFORMED_RESPONSE'
+  | 'HTTP_ERROR'
+
+export class B649Sealed084RequestError extends Error {
+  readonly status: number
+  readonly kind: B649Sealed084RequestErrorKind
+  readonly errorCode: string | null
+
+  constructor(message: string, status: number, kind: B649Sealed084RequestErrorKind, errorCode: string | null = null) {
+    super(message)
+    this.name = 'B649Sealed084RequestError'
+    this.status = status
+    this.kind = kind
+    this.errorCode = errorCode
+  }
+}
 
 export const CANONICAL_TICKET_COUNTS = [2, 3, 5, 10, 20] as const satisfies readonly TicketCount[]
 export const CANONICAL_WINDOWS = [
@@ -82,6 +148,7 @@ export interface RankingRow {
   lifecycleStatus: string
   successes: number | null
   observations: number | null
+  rawOfficialAnyPrizeRate?: number | null
   officialAnyPrizeRate: number | null
   officialAnyPrizeRateFormatted: string
   coverage: number | null
@@ -322,6 +389,139 @@ export function getWarningMeta(code: string): { label: string; description: stri
  * Loads ranking rows for a specific lottery, ticket count, and window.
  * Strictly respects upstream ranking authority; does NOT recompute ranks.
  */
+const B649_SEALED_084_REPLAYS_ENDPOINT = '/api/v1/b649/sealed-084-replays'
+const B649_SEALED_084_STATUS_ENDPOINT = '/api/v1/b649/sealed-084-replays/status'
+
+export async function fetchB649Sealed084ReplayStatus(
+  signal?: AbortSignal,
+): Promise<B649Sealed084ReplayStatus> {
+  return requestB649Sealed084Json(
+    B649_SEALED_084_STATUS_ENDPOINT,
+    isB649Sealed084ReplayStatus,
+    signal,
+  )
+}
+
+export async function fetchB649Sealed084Replays(
+  signal?: AbortSignal,
+): Promise<B649Sealed084ReplayResponse> {
+  return requestB649Sealed084Json(
+    B649_SEALED_084_REPLAYS_ENDPOINT,
+    isB649Sealed084ReplayResponse,
+    signal,
+  )
+}
+
+async function requestB649Sealed084Json<T>(
+  url: string,
+  validate: (value: unknown) => value is T,
+  signal?: AbortSignal,
+): Promise<T> {
+  let response: Response
+  try {
+    response = await fetch(url, { signal })
+  } catch (error) {
+    if (signal?.aborted || (error instanceof Error && error.name === 'AbortError')) throw error
+    throw new B649Sealed084RequestError('084 研究來源連線失敗。', 0, 'NETWORK')
+  }
+
+  let payload: unknown
+  try {
+    payload = await response.json()
+  } catch {
+    if (!response.ok && response.status === 503) {
+      throw new B649Sealed084RequestError('084 研究來源目前不可用。', 503, 'SOURCE_UNAVAILABLE')
+    }
+    throw new B649Sealed084RequestError(
+      '084 研究來源回傳的內容不是有效 JSON。',
+      response.status,
+      'MALFORMED_RESPONSE',
+    )
+  }
+
+  if (!response.ok) {
+    const errorCode = isB649Sealed084Record(payload) && typeof payload.error_code === 'string'
+      ? payload.error_code
+      : null
+    const message = isB649Sealed084Record(payload) && typeof payload.message === 'string'
+      ? payload.message
+      : `HTTP ${response.status}`
+    const kind = response.status === 503 || errorCode === 'SOURCE_UNAVAILABLE'
+      ? 'SOURCE_UNAVAILABLE'
+      : 'HTTP_ERROR'
+    throw new B649Sealed084RequestError(
+      `084 研究來源不可用：${message}`,
+      response.status,
+      kind,
+      errorCode,
+    )
+  }
+
+  if (!validate(payload)) {
+    throw new B649Sealed084RequestError(
+      '084 研究來源回應不符合已確認的 API 契約。',
+      response.status,
+      'MALFORMED_RESPONSE',
+    )
+  }
+  return payload
+}
+
+function isB649Sealed084ReplayStatus(value: unknown): value is B649Sealed084ReplayStatus {
+  return isB649Sealed084Record(value) &&
+    typeof value.status === 'string' &&
+    typeof value.game === 'string' &&
+    typeof value.source_cutoff === 'string' &&
+    typeof value.source_tier === 'string' &&
+    Number.isInteger(value.strategy_count) &&
+    Number.isInteger(value.returned_window_rows) &&
+    Array.isArray(value.sources) &&
+    value.sources.every(isB649Sealed084Source)
+}
+
+function isB649Sealed084ReplayResponse(value: unknown): value is B649Sealed084ReplayResponse {
+  if (!isB649Sealed084ReplayStatus(value) || !('results' in value)) return false
+  return Array.isArray(value.results) && value.results.every(isB649Sealed084ReplayResult)
+}
+
+function isB649Sealed084Source(value: unknown): value is B649Sealed084Source {
+  return isB649Sealed084Record(value) &&
+    typeof value.source_task_id === 'string' &&
+    typeof value.source_artifact_identity === 'string' &&
+    typeof value.source_validation_status === 'string' &&
+    typeof value.draw_source_status === 'string' &&
+    typeof value.original_draw_data_v3_status === 'string' &&
+    (value.source_gaps === null || typeof value.source_gaps === 'string')
+}
+
+function isB649Sealed084ReplayResult(value: unknown): value is B649Sealed084ReplayResult {
+  return isB649Sealed084Record(value) &&
+    typeof value.game === 'string' &&
+    typeof value.strategy_id === 'string' &&
+    typeof value.strategy_version === 'string' &&
+    Number.isInteger(value.ticket_count) &&
+    (value.window === 'FULL' || value.window === 'RECENT_750' || value.window === 'RECENT_300' || value.window === 'RECENT_50') &&
+    Number.isInteger(value.successful_issues) &&
+    Number.isInteger(value.evaluated_issues) &&
+    typeof value.success_rate === 'number' &&
+    Number.isFinite(value.success_rate) &&
+    typeof value.source_cutoff === 'string' &&
+    typeof value.source_tier === 'string' &&
+    typeof value.source_task_id === 'string' &&
+    typeof value.source_artifact_identity === 'string' &&
+    typeof value.comparability_status === 'string' &&
+    typeof value.historical_replay_status === 'string' &&
+    (value.owner_rank === null || typeof value.owner_rank === 'number') &&
+    typeof value.source_validation_status === 'string' &&
+    typeof value.draw_source_status === 'string' &&
+    typeof value.original_draw_data_v3_status === 'string' &&
+    (value.source_gaps === null || typeof value.source_gaps === 'string')
+}
+
+function isB649Sealed084Record(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
 export async function fetchRankingData(
   lotteryType: LotteryType,
   ticketCount: TicketCount,
@@ -593,7 +793,13 @@ function transformB649ToRankingRow(
   window: RankingWindow,
   catalogMap: Map<string, StrategyView>,
 ): RankingRow {
-  const rateNum = parseNumberString(record.official_any_prize_rate)
+  const rawRateNum = parseNumberString(record.official_any_prize_rate)
+  const successfulExecutions = record.successful_execution_count
+  const hasLegalScoringDenominator =
+    typeof successfulExecutions === 'number' &&
+    Number.isInteger(successfulExecutions) &&
+    successfulExecutions > 0
+  const rateNum = hasLegalScoringDenominator ? rawRateNum : null
   const baselineRateNum = parseNumberString(record.official_random_baseline_probability)
   const deltaNum = parseNumberString(record.official_random_baseline_delta)
   const coverageNum = parseNumberString(record.coverage)
@@ -638,6 +844,7 @@ function transformB649ToRankingRow(
     lifecycleStatus,
     successes,
     observations,
+    rawOfficialAnyPrizeRate: rawRateNum,
     officialAnyPrizeRate: rateNum,
     officialAnyPrizeRateFormatted: formatRatePercentage(rateNum),
     coverage: coverageNum,

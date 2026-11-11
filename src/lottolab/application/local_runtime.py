@@ -37,10 +37,17 @@ _FORBIDDEN_ROUTE_WORDS = (
 _ALLOWED_OPENAPI_OPERATIONS = {
     "/api/health": frozenset({"get"}),
     "/api/b649/canonical-forecast/current": frozenset({"get"}),
+    "/api/v1/b649/sealed-084-replays/status": frozenset({"get"}),
+    "/api/v1/b649/sealed-084-replays": frozenset({"get"}),
     "/api/v1/strategies": frozenset({"get"}),
     "/api/v1/strategy-overview": frozenset({"get"}),
     "/api/v1/strategy-evidence": frozenset({"get"}),
     "/api/v1/strategy-matrix/structural": frozenset({"get"}),
+    "/api/v1/b649-research-backtests/record-sources": frozenset({"get"}),
+    "/api/v1/b649-research-backtests/records": frozenset({"get"}),
+    "/api/v1/b649-research-backtests/summary": frozenset({"get"}),
+    "/api/v1/b649-research-backtests/methods": frozenset({"get"}),
+    "/api/v1/b649-research-backtests/rankings": frozenset({"get"}),
     "/api/v1/b649-multi-ticket-records/summary": frozenset({"get"}),
     "/api/v1/b649-multi-ticket-records": frozenset({"get"}),
     "/api/v1/b649-exact-native-records": frozenset({"get"}),
@@ -147,6 +154,11 @@ _ALLOWED_OPENAPI_OPERATIONS = {
         "random-baseline-evidence"
     ): frozenset({"get"}),
     "/api/v1/replay-execution": frozenset({"post"}),
+    "/api/v1/research/backtests/draw-events": frozenset({"get"}),
+    "/api/v1/research/backtests/strategies": frozenset({"get"}),
+    "/api/v1/research/backtests/rankings": frozenset({"get"}),
+    "/api/v1/research/backtests/scores": frozenset({"get"}),
+    "/api/v1/research/backtests/identity-crosswalk": frozenset({"get"}),
     "/api/v1/replay-rankings/optimal": frozenset({"get"}),
     "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}": frozenset({"get"}),
     "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/predictions": frozenset({"get"}),
@@ -167,6 +179,8 @@ _ALLOWED_OPENAPI_OPERATIONS = {
 _FORBIDDEN_ROUTE_WORD_EXCEPTION_PATHS = frozenset(
     {
         "/api/v1/generate-bet",
+        "/api/v1/b649/sealed-084-replays",
+        "/api/v1/b649/sealed-084-replays/status",
         "/api/v1/draw-sync/backfill",
         "/api/v1/historical-results/runs/{run_id}/replay",
         "/api/v1/p638-historical/runs/{run_id}/replay",
@@ -225,7 +239,10 @@ The exact GET-only ``/api/v1/replay-backfill`` routes query the explicitly
 configured read-only backfill store; cursor values are returned to the caller
 and are not persisted. ``/api/v1/replay-strategy-inventory`` reads the
 packaged strategy inventory. These operations do not create backfills, execute
-strategies, or write database state. Each full path remains individually
+strategies, or write database state. The exact B649 sealed-084 replay paths
+are GET-only reads over pinned source evidence; they execute no strategy and
+rerun no replay. The research backtest routes query persisted or packaged
+evidence and perform no mutation. Each full path remains individually
 allowlisted and exempted; other Replay or backfill paths remain rejected.
 """
 _ALLOWED_OPENAPI_OPERATION_SET = frozenset(

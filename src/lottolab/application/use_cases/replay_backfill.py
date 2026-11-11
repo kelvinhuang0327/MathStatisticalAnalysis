@@ -355,7 +355,8 @@ class ReplayBackfill:
         summary = self.store.summary(run_id)
         summary["existing_skipped_count"] = existing_skipped
         summary["newly_calculated_count"] = executed
-        summary["failed_count"] = summary["failed_cells"]
+        failed_cells = summary.get("failed_cells", summary.get("failed_count", 0))
+        summary["failed_count"] = failed_cells if type(failed_cells) is int else 0
         if progress is not None:
             progress(summary)
         return summary
@@ -395,7 +396,7 @@ class ReplayBackfill:
             "cutoff_draw_id": cutoff.draw_number if cutoff else None,
             "cutoff_draw_date": cutoff.draw_date.isoformat() if cutoff else None,
             "training": {
-                "training_status": source.get("training_status", "NOT_TRAINABLE"),
+                "training_status": source.get("training_status", "UNKNOWN"),
                 "model_version": source.get("verified_model_version"),
                 "training_cutoff": source.get("verified_training_cutoff"),
                 "training_artifact_id": source.get("training_artifact_id"),
@@ -417,6 +418,26 @@ class ReplayBackfill:
             "execution_status": record.status.value,
             "error_reason": record.reason,
         }
+        holdout_size = source.get("training_holdout_size")
+        if (
+            holdout_size == 50
+            and source.get("training_status") == "CAUSAL_FIT_PER_TARGET"
+            and record.status.value == "COMPLETE"
+        ):
+            if len(record.causal_history) <= holdout_size:
+                raise ValueError("causal training requires a pre-holdout development prefix")
+            training_end = record.causal_history[-holdout_size - 1]
+            validation_start = record.causal_history[-holdout_size]
+            validation_end = record.causal_history[-1]
+            payload["training"].update(
+                {
+                    "training_cutoff": training_end.draw_date.isoformat(),
+                    "training_cutoff_draw_id": training_end.draw_number,
+                    "validation_first_draw_id": validation_start.draw_number,
+                    "validation_last_draw_id": validation_end.draw_number,
+                    "validation_draw_count": holdout_size,
+                }
+            )
         payload["result_identity"] = identity(payload)
         return json.loads(canonical_json(payload))
 

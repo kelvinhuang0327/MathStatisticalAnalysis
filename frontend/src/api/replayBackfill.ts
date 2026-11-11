@@ -23,6 +23,8 @@ export type ReplayBackfillTicket = components['schemas']['ReplayBackfillPredicte
 export type ReplayBackfillTraining = components['schemas']['ReplayBackfillTrainingView']
 export type ReplayBackfillPredictionCutoffStatus = 'VERIFIED' | 'UNTRUSTED' | 'UNKNOWN'
 export type ReplayBackfillPredictionCutoff = components['schemas']['ReplayBackfillPredictionCutoffView']
+export type ReplayBackfillResearchPortfolioQualification =
+  components['schemas']['ReplayBackfillResearchPortfolioQualificationView']
 export type ReplayBackfillPredictionItem = components['schemas']['ReplayBackfillPredictionItemView']
 export type ReplayBackfillPredictionPage = components['schemas']['ReplayBackfillPredictionPageResponse']
 
@@ -79,6 +81,10 @@ function isNullableBoolean(value: unknown): value is boolean | null {
 
 function isSafeInteger(value: unknown): value is number {
   return typeof value === 'number' && Number.isSafeInteger(value)
+}
+
+function isNullableSafeInteger(value: unknown): value is number | null {
+  return value === null || isSafeInteger(value)
 }
 
 function isNonNegativeSafeInteger(value: unknown): value is number {
@@ -173,12 +179,33 @@ function isStrategyInventoryResponse(value: unknown): value is ReplayStrategyInv
 function isTicket(value: unknown): value is ReplayBackfillTicket {
   return (
     isRecord(value) &&
-    isSafeInteger(value.ticket_position) &&
-    isNumberArray(value.main_numbers) &&
+    isNullableSafeInteger(value.ticket_position) &&
+    (value.main_numbers === null || isNumberArray(value.main_numbers)) &&
     isNumberArray(value.special_numbers) &&
     isNullableNonNegativeSafeInteger(value.main_hit_count) &&
     (value.special_hit === null || typeof value.special_hit === 'boolean') &&
     isNullableString(value.prize_tier)
+  )
+}
+
+function isResearchPortfolioQualification(
+  value: unknown,
+): value is ReplayBackfillResearchPortfolioQualification {
+  if (!isRecord(value)) return false
+  const status = value.status
+  return (
+    (status === 'PASS' || status === 'FAIL' || status === 'UNKNOWN') &&
+    (status === 'FAIL'
+      ? value.import_qualification === 'NOT_QUALIFIED'
+      : value.import_qualification === 'UNKNOWN') &&
+    isNullableString(value.reason_code) &&
+    Array.isArray(value.duplicate_groups) &&
+    value.duplicate_groups.every(
+      (group: unknown) =>
+        isRecord(group) &&
+        isNumberArray(group.main_numbers) &&
+        isNumberArray(group.positions),
+    )
   )
 }
 
@@ -202,6 +229,9 @@ function isPredictionItem(value: unknown): value is ReplayBackfillPredictionItem
     isString(value.target_draw_number) &&
     isString(value.target_draw_date) &&
     isString(value.prediction_status) &&
+    (value.research_portfolio_qualification === undefined ||
+      value.research_portfolio_qualification === null ||
+      isResearchPortfolioQualification(value.research_portfolio_qualification)) &&
     Array.isArray(value.predicted_tickets) &&
     value.predicted_tickets.every(isTicket) &&
     isNumberArray(value.actual_main_numbers) &&

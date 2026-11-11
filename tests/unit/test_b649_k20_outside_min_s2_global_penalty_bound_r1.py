@@ -3,10 +3,16 @@
 from __future__ import annotations
 
 from itertools import combinations, pairwise
+from math import comb
 
+from lottolab.research.b649_k1_k8_global_optimality import (
+    OFFICIAL_ANY_PRIZE_DENOMINATOR,
+    OFFICIAL_ANY_PRIZE_SINGLE_OUTCOMES,
+)
 from lottolab.research.b649_k20_outside_min_s2_global_penalty_bound_r1 import (
     INCUMBENT,
     PORTFOLIO_S1,
+    SINGLE_TICKET_OUTCOMES,
     TRIPLE_COUNT,
     maximum_triple_intersection,
     minimum_pair_overlap_mass,
@@ -15,11 +21,21 @@ from lottolab.research.b649_k20_outside_min_s2_global_penalty_bound_r1 import (
     pair_intersection_table,
     triple_intersection_count,
 )
+from lottolab.research.b649_official_any_prize_exact import evaluate_single_ticket_closed_form
 
 
 def _wins(ticket: tuple[int, ...], draw: tuple[int, ...], special: int, outright: int) -> bool:
     hits = len(set(ticket) & set(draw))
     return hits >= outright or (hits == outright - 1 and special in ticket)
+
+
+def test_single_ticket_cross_invariants() -> None:
+    seven_set_count = 7 * sum(comb(6, hits) * comb(43, 7 - hits) for hits in range(3, 7))
+    canonical_count = evaluate_single_ticket_closed_form() * OFFICIAL_ANY_PRIZE_DENOMINATOR
+    assert SINGLE_TICKET_OUTCOMES == canonical_count == seven_set_count
+    assert pair_intersection_count(6) == SINGLE_TICKET_OUTCOMES
+    assert SINGLE_TICKET_OUTCOMES == OFFICIAL_ANY_PRIZE_SINGLE_OUTCOMES == 18_611_432
+    assert PORTFOLIO_S1 == 20 * SINGLE_TICKET_OUTCOMES == 372_228_640
 
 
 def test_exact_official_pair_intersections_and_minimum_s2() -> None:
@@ -45,7 +61,7 @@ def test_exact_official_pair_intersections_and_minimum_s2() -> None:
     assert mass == 93
     assert frequencies == (2,) * 27 + (3,) * 22
     assert 97 * pair_intersection_count(0) + 93 * pair_intersection_count(1) == 63_838_600
-    assert PORTFOLIO_S1 == 364_421_560
+    assert PORTFOLIO_S1 == 372_228_640
 
 
 def test_pairwise_overlap_at_most_one_has_exact_triple_cap() -> None:
@@ -115,20 +131,33 @@ def test_reported_bound_and_remaining_gap_are_exact() -> None:
     result = outside_min_s2_bounds()
     assert result == {
         "DEVIATION_FAMILY_COUNT": 2,
-        "CLOSED_FAMILY_COUNT": 1,
+        "CLOSED_FAMILY_COUNT": 0,
         "MIN_EXTRA_S2": 466_200,
         "MAX_HIGHER_ORDER_RECOVERY": 23_110_080,
         "MAX_NET_HIGHER_ORDER_RECOVERY_AFTER_S2_PENALTY": 10_852_333,
         "OVERLAP_EDGE_COUNT_AT_MAX_NET_RECOVERY": 94,
         "LOW_OVERLAP_MAX_PAIRWISE_OVERLAP": 1,
-        "LOW_OVERLAP_FAMILY_UPPER_BOUND": 311_435_293,
-        "HIGH_OVERLAP_FAMILY_UPPER_BOUND": 357_972_121,
-        "OUTSIDE_FAMILY_UPPER_BOUND": 357_972_121,
-        "UNRESOLVED_FAMILY": "at least one ticket pair has intersection size >= 2",
-        "REMAINING_GAP": 44_732_460,
+        "LOW_OVERLAP_FAMILY_UPPER_BOUND": 319_242_373,
+        "LOW_OVERLAP_FAMILY_STATUS": "OPEN",
+        "HIGH_OVERLAP_FAMILY_UPPER_BOUND": 365_779_201,
+        "HIGH_OVERLAP_FAMILY_STATUS": "OPEN",
+        "OUTSIDE_FAMILY_UPPER_BOUND": 365_779_201,
+        "UNRESOLVED_FAMILY": (
+            "pairwise overlap <=1 with overlap mass >=94; "
+            "at least one ticket pair has intersection size >=2"
+        ),
+        "REMAINING_GAP": 52_539_540,
     }
     outside_bound = result["OUTSIDE_FAMILY_UPPER_BOUND"]
     remaining_gap = result["REMAINING_GAP"]
     assert isinstance(outside_bound, int)
     assert isinstance(remaining_gap, int)
     assert outside_bound - INCUMBENT == remaining_gap
+
+
+def test_closure_status_is_computed_at_the_supplied_incumbent() -> None:
+    result = outside_min_s2_bounds(incumbent=319_242_373)
+    assert result["LOW_OVERLAP_FAMILY_STATUS"] == "CLOSED"
+    assert result["HIGH_OVERLAP_FAMILY_STATUS"] == "OPEN"
+    assert result["CLOSED_FAMILY_COUNT"] == 1
+    assert result["UNRESOLVED_FAMILY"] == "at least one ticket pair has intersection size >=2"

@@ -206,9 +206,9 @@ class PowerLottoReplayAdapter(_PrizeEvaluatingAdapter):
     ) -> tuple[ReplayTicket, ...]:
         binding = self._binding(strategy)
         implementation = binding.implementation
-        causal_rows = tuple(_p638_row(draw) for draw in history)
+        p638_rows = tuple(_p638_row(draw) for draw in history)
         if isinstance(implementation, P638StrategySpec):
-            tickets = implementation.get_bets(causal_rows, LotteryType.POWER_LOTTO)
+            tickets = implementation.get_bets(p638_rows, LotteryType.POWER_LOTTO)
             return tuple(
                 ReplayTicket(
                     ticket_position=index,
@@ -218,6 +218,16 @@ class PowerLottoReplayAdapter(_PrizeEvaluatingAdapter):
                 for index, (first_zone, second_zone) in enumerate(tickets, start=1)
             )
 
+        # Shared non-Wave1 adapters require CausalDrawRow, not P638HistoryRow.
+        causal_rows = tuple(
+            CausalDrawRow(
+                draw=row.draw,
+                date=row.date,
+                numbers=row.numbers,
+                special_number=row.second_number,
+            )
+            for row in p638_rows
+        )
         get_with_emission = cast(
             Callable[[tuple[CausalDrawRow, ...], LotteryType], tuple[BetAdapterExecution, ...]]
             | None,

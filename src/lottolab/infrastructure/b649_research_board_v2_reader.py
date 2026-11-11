@@ -323,9 +323,12 @@ class B649ResearchBoardV2Reader:
 
 def _json_object(raw: bytes, label: str) -> dict[str, object]:
     value = json.loads(raw)
-    if not isinstance(value, dict) or any(not isinstance(key, str) for key in value):
+    if not isinstance(value, dict):
         raise B649ResearchBoardV2DataError(f"{label} must contain a JSON object")
-    return cast(dict[str, object], value)
+    raw_data = cast(dict[object, object], value)
+    if any(not isinstance(key, str) for key in raw_data):
+        raise B649ResearchBoardV2DataError(f"{label} must contain a JSON object")
+    return cast(dict[str, object], raw_data)
 
 
 def _validate_source_identity(manifest: dict[str, object], result: dict[str, object]) -> None:

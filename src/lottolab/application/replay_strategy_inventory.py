@@ -993,8 +993,9 @@ def _direct_code_binding(
 def _add_code_sources(
     items: dict[tuple[LotteryType, str, str | None], _MutableItem],
     code_identities: tuple[_CodeIdentity, ...],
-) -> int:
+) -> tuple[int, tuple[ReplayStrategyBindingEvidence, ...]]:
     unresolved = 0
+    direct_binding_evidence: list[ReplayStrategyBindingEvidence] = []
     for identity in code_identities:
         lottery_type = _code_identity_lottery(identity, items)
         if lottery_type is None:
@@ -1010,6 +1011,15 @@ def _add_code_sources(
             _DIRECT_CODE_BINDING_IDENTITIES
         ):
             direct_binding, binding_error = _direct_code_binding(identity)
+        if direct_binding is not None:
+            direct_binding_evidence.append(
+                _binding_evidence(
+                    direct_binding,
+                    lottery_type=lottery_type,
+                    source_kind="DIRECT_STRATEGY_CODE_BINDING",
+                    source_locator=locator,
+                )
+            )
         implementation_locator = (
             f"{identity.source_path.removesuffix('.py').replace('/', '.')}.{identity.class_name}"
         )
@@ -1082,14 +1092,14 @@ def _add_code_sources(
             adapter_mapping=mapping,
             source_statuses=(status,),
         )
-    return unresolved
+    return unresolved, tuple(direct_binding_evidence)
 
 
 def _direct_binding_reason(identity: _CodeIdentity) -> str:
     if identity.strategy_id == "research_biglotto__quick_ml_corrected_successor_v1":
         return (
-            "A deterministic Replay adapter wraps the checked-in successor implementation. "
-            "The Backfill Engine still has no registered native binding for this identity."
+            "A deterministic Replay adapter wraps the checked-in successor implementation "
+            "through its exact direct-code identity."
         )
     if identity.strategy_id == "power_graph_synergy_seed42_2bet":
         return (
@@ -1523,7 +1533,7 @@ def load_replay_strategy_inventory(
         # scanner cannot recover them from class attributes.
         code_identities = (*code_identities, _POWER_GRAPH_CODE_IDENTITY)
         code_class_row_count += 1
-    unresolved_code_sources = _add_code_sources(items, code_identities)
+    unresolved_code_sources, direct_binding_evidence = _add_code_sources(items, code_identities)
     first_batch_count, unresolved_batch_count = _add_first_batch_registry(items, full_catalog)
     exact_native_identity_count, exact_native_row_count = _add_exact_native_artifact(
         items,
@@ -1532,7 +1542,7 @@ def load_replay_strategy_inventory(
     _add_legacy_snapshot_only_rows(items, legacy_statuses)
 
     resolved_native_binding_evidence = (
-        current_native_binding_evidence
+        (*current_native_binding_evidence, *direct_binding_evidence)
         if native_binding_evidence is None
         else native_binding_evidence
     )

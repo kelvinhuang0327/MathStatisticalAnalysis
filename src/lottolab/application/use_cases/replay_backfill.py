@@ -157,9 +157,20 @@ class ReplayBackfill:
         execution_version: str,
         source_hash: str | None = None,
         strategy_sources: JsonObject | None = None,
+        source_history_provenance_status: str = "UNKNOWN",
     ) -> None:
         if not draws or not strategies or not source_identity or not execution_version:
             raise ValueError("draws, strategies, source and execution identity are required")
+        if type(
+            source_history_provenance_status
+        ) is not str or source_history_provenance_status not in {
+            "VERIFIED",
+            "UNVERIFIED",
+            "UNKNOWN",
+        }:
+            raise ValueError(
+                "source_history_provenance_status must be VERIFIED, UNVERIFIED, or UNKNOWN"
+            )
         self.draws = tuple(sorted(draws, key=lambda d: d.sort_key))
         if len({int(d.draw_number) for d in draws}) != len(draws):
             raise ValueError("duplicate numeric draw identity")
@@ -178,6 +189,7 @@ class ReplayBackfill:
         self.execution_version = execution_version
         self.source_hash = source_hash or identity({"source_locator": source_identity})
         self.sources = strategy_sources or {}
+        self.source_history_provenance_status = source_history_provenance_status
         self.store = store
         self.controller = HistoricalReplayController(_OutcomeBlindAdapter(adapter))
 
@@ -190,6 +202,7 @@ class ReplayBackfill:
             "dataset_identity": self.dataset_identity,
             "source_locator": self.source_identity,
             "source_hash": self.source_hash,
+            "source_history_provenance_status": self.source_history_provenance_status,
             "strategies": [asdict(s) for s in self.strategies],
             "strategy_sources": self.sources,
             "target_draw_ids": [d.draw_number for d in targets],
@@ -401,6 +414,7 @@ class ReplayBackfill:
                 "training_artifact_id": source.get("training_artifact_id"),
             },
             "dataset_identity": self.dataset_identity,
+            "source_history_provenance_status": self.source_history_provenance_status,
             "history_fingerprint": record.history_fingerprint,
             "history_count": len(record.causal_history),
             "expected_native_ticket_count": record.expected_native_ticket_count,

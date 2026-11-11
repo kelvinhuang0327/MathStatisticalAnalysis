@@ -124,6 +124,7 @@ def worker(
     producer: Producer | None = None,
     draws: tuple[ReplayDraw, ...] | None = None,
     store: SQLiteBackfillStore | None = None,
+    source_history_provenance_status: str = "UNKNOWN",
 ) -> tuple[ReplayBackfill, Producer, SQLiteBackfillStore]:
     producer = producer or Producer()
     strategy = ReplayStrategy(
@@ -155,6 +156,7 @@ def worker(
             source_identity="synthetic-fixture-v1",
             store=store,
             execution_version="test-source-v1",
+            source_history_provenance_status=source_history_provenance_status,
         ),
         producer,
         store,
@@ -327,6 +329,18 @@ def test_complete_hit_positions_survive_store_and_http_projection(tmp_path: Path
     assert [ticket["prize_tier"] for ticket in public_tickets] == ["FIRST", "SECOND"]
     assert client.get(root + "/runs/missing").status_code == 404
     assert client.get(root + "/results", params={"limit": 201}).status_code == 422
+
+
+def test_source_history_provenance_status_is_stored(tmp_path: Path) -> None:
+    engine, _, store = worker(tmp_path, source_history_provenance_status="VERIFIED")
+    selection = BackfillSelection(latest=1)
+    summary = engine.execute(selection)
+
+    read_only_store = SQLiteBackfillStore(store.database, read_only=True)
+    rows = read_only_store.query(run_id=str(summary["run_id"]))["items"]
+    assert len(rows) == 1
+    assert rows[0]["source_history_provenance_status"] == "VERIFIED"
+    assert engine.manifest(selection)["source_history_provenance_status"] == "VERIFIED"
 
 
 @pytest.mark.parametrize("mutation", ["missing", "duplicate", "invalid"])
@@ -755,6 +769,23 @@ def test_inventory_accounts_for_native_and_current_catalog(lottery: LotteryType)
     }
     for binding in bindings:
         assert binding.strategy.native_ticket_count > 0
+
+
+def test_inventory_maps_the_existing_quickml_successor() -> None:
+    bindings, accounts = native_strategy_inventory(LotteryType.BIG_LOTTO)
+    quickml_id = "research_biglotto__quick_ml_corrected_successor_v1"
+    binding = next(binding for binding in bindings if binding.strategy.strategy_id == quickml_id)
+    assert binding.strategy.strategy_version == "v1"
+    assert accounts[quickml_id]["status"] == "EXECUTABLE"
+
+    from lottolab.application.replay_strategy_inventory import load_replay_strategy_inventory
+
+    item = next(
+        item
+        for item in load_replay_strategy_inventory().items
+        if item.lottery_type is LotteryType.BIG_LOTTO and item.strategy_id == quickml_id
+    )
+    assert item.backfill_runnable
 
 
 def test_cli_default_target_respects_writable_registry(

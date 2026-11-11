@@ -21,6 +21,7 @@ from lottolab.application.historical_replay_adapters import (
     Daily539ReplayAdapter,
     PowerLottoReplayAdapter,
     ReplayStrategyBinding,
+    binding_from_implementation,
     binding_from_p638_spec,
     t539_replay_bindings,
 )
@@ -54,6 +55,9 @@ from lottolab.infrastructure.persistence.replay_backfill_store import (
     load_draw_snapshot,
     validate_database_path,
 )
+from lottolab.strategies.adapters.biglotto_quickml_corrected_successor import (
+    BigLottoQuickMlCorrectedSuccessorAdapter,
+)
 from lottolab.strategies.adapters.powerlotto_wave1 import WAVE1_STRATEGIES
 from lottolab.strategies.adapters.powerlotto_wave2 import WAVE2_STRATEGIES
 from lottolab.strategies.catalog import production_catalog
@@ -80,6 +84,12 @@ def native_strategy_inventory(
         for spec in (*WAVE1_STRATEGIES, *WAVE2_STRATEGIES):
             binding = binding_from_p638_spec(spec)
             bindings[binding.strategy.strategy_id] = binding
+    elif lottery_type is LotteryType.BIG_LOTTO:
+        binding = binding_from_implementation(
+            BigLottoQuickMlCorrectedSuccessorAdapter(),
+            behavior=ReplayBehavior.DETERMINISTIC,
+        )
+        bindings[binding.strategy.strategy_id] = binding
     for key, binding in bindings.items():
         implementation = binding.implementation
         source_file = inspect.getsourcefile(type(implementation))
@@ -883,6 +893,11 @@ def main(
         after_source_hash = source_database_hash(source)
         if before_source_hash != after_source_hash:
             raise ValueError("source database changed while the immutable snapshot was read")
+        source_history_provenance_status = (
+            "VERIFIED"
+            if source.resolve() == resolve_local_data_paths().database.resolve()
+            else "UNVERIFIED"
+        )
         worker = ReplayBackfill(
             adapter=build_adapter(lottery_type, selected),
             strategies=tuple(b.strategy for b in selected),
@@ -891,6 +906,7 @@ def main(
             store=SQLiteBackfillStore(target),
             execution_version=execution_source_identity(),
             source_hash=before_source_hash,
+            source_history_provenance_status=source_history_provenance_status,
             strategy_sources=accounts
             if args.all_strategies
             else {b.strategy.strategy_id: accounts[b.strategy.strategy_id] for b in selected},

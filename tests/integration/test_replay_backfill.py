@@ -922,6 +922,152 @@ def test_cli_full_source_worker_storage_chain(
     assert hashlib.sha256(paths.database.read_bytes()).hexdigest() == source_digest
 
 
+def _source_database_for_provenance(tmp_path: Path) -> Path:
+    paths = resolve_local_data_paths(
+        environ={"LOTTOLAB_DATA_DIR": str(tmp_path / "provenance-source")}
+    )
+    document = parse_draw_csv(
+        "lottery_type,draw_number,draw_date,main_numbers,special_numbers,source\n"
+        + "\n".join(
+            f"BIG_LOTTO,{100000001 + n},2020-01-{n + 1:02d},1|2|3|4|5|6,7,synthetic"
+            for n in range(12)
+        )
+        + "\n",
+        filename="synthetic.csv",
+    )
+    assert document.is_valid
+    SQLiteDrawDataRepository(paths).apply_valid_import(document)
+    return paths.database
+
+
+def _run_provenance_cli(
+    source_database: Path,
+    output_database: Path,
+    test_only_external_database_root: Path,
+) -> int:
+    return main(
+        [
+            "--lottery-type",
+            "BIG_LOTTO",
+            "--source-database",
+            str(source_database),
+            "--database",
+            str(output_database),
+            "--strategy-id",
+            "biglotto_social_wisdom_anti_popularity",
+            "--latest",
+            "1",
+        ],
+        test_only_external_database_root=test_only_external_database_root,
+    )
+
+
+def test_cli_verified_source_history_provenance_is_saved_and_read_back(
+    tmp_path: Path,
+    test_only_external_database_root: Path,
+) -> None:
+    source_database = _source_database_for_provenance(tmp_path)
+    source_database_sha256 = hashlib.sha256(source_database.read_bytes()).hexdigest()
+    output_database = test_only_external_database_root / "verified-provenance.sqlite3"
+    assert (
+        _run_provenance_cli(source_database, output_database, test_only_external_database_root) == 0
+    )
+
+    store = SQLiteBackfillStore(output_database, read_only=True)
+    run_id = store.latest_run_id(LotteryType.BIG_LOTTO.value)
+    assert run_id is not None
+    manifest = store.run_manifest(run_id)
+    provenance = manifest["strategy_sources"]["biglotto_social_wisdom_anti_popularity"][
+        "source_history_provenance"
+    ]
+    assert provenance["rule_name"] == "RULE_B_RECORD_HASH_V1"
+    assert provenance["status"] == "VERIFIED"
+    assert provenance["checked_record_count"] == 12
+    assert provenance["hash_mismatch_count"] == 0
+    assert provenance["missing_field_record_count"] == 0
+    assert provenance["source_database_sha256"] == source_database_sha256
+    result = store.query(run_id=run_id)["items"][0]
+    assert result["source_history_provenance_status"] == "VERIFIED"
+
+    app = FastAPI()
+    app.include_router(create_replay_backfill_router(store))
+    with TestClient(app) as client:
+        results = client.get("/api/v1/replay-backfill/results", params={"run_id": run_id})
+        predictions = client.get(
+            "/api/v1/replay-backfill/predictions",
+            params={
+                "lottery_type": LotteryType.BIG_LOTTO.value,
+                "run_id": run_id,
+                "strategy_id": "biglotto_social_wisdom_anti_popularity",
+                "period": "ALL",
+            },
+        )
+    assert results.status_code == 200
+    assert results.json()["items"][0]["source_history_provenance_status"] == "VERIFIED"
+    assert predictions.status_code == 200
+    assert predictions.json()["items"][0]["source_history_provenance_status"] == "VERIFIED"
+
+
+def test_cli_hash_mismatch_marks_source_history_unverified(
+    tmp_path: Path,
+    test_only_external_database_root: Path,
+) -> None:
+    source_database = _source_database_for_provenance(tmp_path)
+    with sqlite3.connect(source_database) as connection:
+        connection.execute(
+            "UPDATE draws SET main_numbers_json=? WHERE lottery_type=? AND draw_number=?",
+            ("[1,2,3,4,5,8]", LotteryType.BIG_LOTTO.value, "100000001"),
+        )
+    output_database = test_only_external_database_root / "mismatched-provenance.sqlite3"
+    assert (
+        _run_provenance_cli(source_database, output_database, test_only_external_database_root) == 0
+    )
+
+    store = SQLiteBackfillStore(output_database, read_only=True)
+    run_id = store.latest_run_id(LotteryType.BIG_LOTTO.value)
+    assert run_id is not None
+    manifest = store.run_manifest(run_id)
+    provenance = manifest["strategy_sources"]["biglotto_social_wisdom_anti_popularity"][
+        "source_history_provenance"
+    ]
+    assert provenance["status"] == "UNVERIFIED"
+    assert provenance["checked_record_count"] == 12
+    assert provenance["hash_mismatch_count"] == 1
+    assert provenance["missing_field_record_count"] == 0
+    assert store.query(run_id=run_id)["items"][0]["source_history_provenance_status"] == (
+        "UNVERIFIED"
+    )
+
+
+def test_cli_missing_source_reference_makes_history_unknown(
+    tmp_path: Path,
+    test_only_external_database_root: Path,
+) -> None:
+    source_database = _source_database_for_provenance(tmp_path)
+    with sqlite3.connect(source_database) as connection:
+        connection.execute(
+            "UPDATE draws SET source_reference=NULL WHERE lottery_type=? AND draw_number=?",
+            (LotteryType.BIG_LOTTO.value, "100000001"),
+        )
+    output_database = test_only_external_database_root / "missing-reference-provenance.sqlite3"
+    assert (
+        _run_provenance_cli(source_database, output_database, test_only_external_database_root) == 0
+    )
+
+    store = SQLiteBackfillStore(output_database, read_only=True)
+    run_id = store.latest_run_id(LotteryType.BIG_LOTTO.value)
+    assert run_id is not None
+    manifest = store.run_manifest(run_id)
+    provenance = manifest["strategy_sources"]["biglotto_social_wisdom_anti_popularity"][
+        "source_history_provenance"
+    ]
+    assert provenance["status"] == "UNKNOWN"
+    assert provenance["checked_record_count"] == 12
+    assert provenance["hash_mismatch_count"] == 0
+    assert provenance["missing_field_record_count"] == 1
+    assert store.query(run_id=run_id)["items"][0]["source_history_provenance_status"] == ("UNKNOWN")
+
+
 def test_resume_empty_initialization_and_reject_unsafe_paths(tmp_path: Path) -> None:
     empty = tmp_path / "empty.sqlite3"
     empty.touch(mode=0o600)

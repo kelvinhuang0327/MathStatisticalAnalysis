@@ -43,6 +43,26 @@ class ReplayCellStatus(StrEnum):
     PARTIAL = "PARTIAL"
 
 
+class SourceHistoryProvenanceStatus(StrEnum):
+    VERIFIED = "VERIFIED"
+    UNKNOWN = "UNKNOWN"
+    UNVERIFIED = "UNVERIFIED"
+
+
+def parse_source_history_provenance_status(value: object) -> SourceHistoryProvenanceStatus:
+    """Accept only an explicit supported history-provenance status."""
+    if type(value) is SourceHistoryProvenanceStatus:
+        return value
+    if type(value) is str:
+        try:
+            return SourceHistoryProvenanceStatus(value)
+        except ValueError:
+            pass
+    raise ValueError(
+        "source_history_provenance_status must be VERIFIED, UNKNOWN, or UNVERIFIED"
+    )
+
+
 @dataclass(frozen=True, slots=True)
 class ReplayDraw:
     """One official draw used as a target or as causal history."""

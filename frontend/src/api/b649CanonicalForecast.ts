@@ -59,7 +59,8 @@ export async function fetchB649CanonicalForecast(
   let payload: unknown
   try {
     payload = await response.json()
-  } catch {
+  } catch (error) {
+    if (isAbortError(error)) throw error
     throw new B649CanonicalForecastRequestError(
       'The server returned invalid JSON.',
       response.status,

@@ -168,6 +168,18 @@ export function getFullStrategyArchiveMetrics(
     record.historical_success_rate,
     record.random_baseline_success_rate,
   )
+  const actualRateLowerBound = compareFiniteDecimalStrings(record.historical_success_rate, '0')
+  const actualRateUpperBound = compareFiniteDecimalStrings(record.historical_success_rate, '1')
+  const randomBaselineLowerBound = compareFiniteDecimalStrings(
+    record.random_baseline_success_rate,
+    '0',
+  )
+  const randomBaselineUpperBound = compareFiniteDecimalStrings(
+    record.random_baseline_success_rate,
+    '1',
+  )
+  const deltaLowerBound = compareFiniteDecimalStrings(record.random_baseline_rate_difference, '-1')
+  const deltaUpperBound = compareFiniteDecimalStrings(record.random_baseline_rate_difference, '1')
   const effectiveBacktestDrawCount = record.effective_backtest_draw_count
   if (
     !isNonnegativeInteger(numerator) ||
@@ -176,15 +188,21 @@ export function getFullStrategyArchiveMetrics(
     numerator > denominator ||
     (effectiveBacktestDrawCount !== null && !isNonnegativeInteger(effectiveBacktestDrawCount)) ||
     actualRate === null ||
-    actualRate < 0 ||
-    actualRate > 1 ||
+    actualRateLowerBound === null ||
+    actualRateLowerBound < 0 ||
+    actualRateUpperBound === null ||
+    actualRateUpperBound > 0 ||
     randomBaselineRate === null ||
-    randomBaselineRate < 0 ||
-    randomBaselineRate > 1 ||
+    randomBaselineLowerBound === null ||
+    randomBaselineLowerBound < 0 ||
+    randomBaselineUpperBound === null ||
+    randomBaselineUpperBound > 0 ||
     delta === null ||
     deltaSign === null ||
-    delta < -1 ||
-    delta > 1 ||
+    deltaLowerBound === null ||
+    deltaLowerBound < 0 ||
+    deltaUpperBound === null ||
+    deltaUpperBound > 0 ||
     rateComparison === null ||
     !isRateDirectionConsistent(deltaSign, rateComparison)
   ) {

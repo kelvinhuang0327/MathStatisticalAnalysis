@@ -991,12 +991,12 @@ def test_cli_verified_source_history_provenance_is_saved_and_read_back(
 
     app = FastAPI()
     app.include_router(create_replay_backfill_router(store))
-    with TestClient(app) as client:
+    with cast(httpx.Client, TestClient(app)) as client:
         results = client.get("/api/v1/replay-backfill/results", params={"run_id": run_id})
         predictions = client.get(
             "/api/v1/replay-backfill/predictions",
             params={
-                "lottery_type": LotteryType.BIG_LOTTO.value,
+                "lottery_type": cast(str, LotteryType.BIG_LOTTO.value),
                 "run_id": run_id,
                 "strategy_id": "biglotto_social_wisdom_anti_popularity",
                 "period": "ALL",

@@ -388,20 +388,30 @@ def source_history_provenance(
                     continue
                 try:
                     draw_date_value = date.fromisoformat(draw_date_text)
-                    raw_main = json.loads(main_json)
-                    raw_special = json.loads(special_json)
-                    if (
-                        not isinstance(raw_main, list)
-                        or not isinstance(raw_special, list)
-                        or any(type(number) is not int for number in (*raw_main, *raw_special))
+                    raw_main_value: object = json.loads(main_json)
+                    raw_special_value: object = json.loads(special_json)
+                    if not isinstance(raw_main_value, list) or not isinstance(
+                        raw_special_value, list
                     ):
                         raise ValueError("stored draw numbers are not integer arrays")
+                    raw_main = cast(list[object], raw_main_value)
+                    raw_special = cast(list[object], raw_special_value)
+                    main_numbers: list[int] = []
+                    special_numbers: list[int] = []
+                    for number in raw_main:
+                        if type(number) is not int:
+                            raise ValueError("stored draw numbers are not integer arrays")
+                        main_numbers.append(number)
+                    for number in raw_special:
+                        if type(number) is not int:
+                            raise ValueError("stored draw numbers are not integer arrays")
+                        special_numbers.append(number)
                     expected_hash = normalized_draw_record_hash(
                         lottery_type=lottery_type,
                         draw_number=draw_number,
                         draw_date_value=draw_date_value,
-                        main_numbers=tuple(sorted(raw_main)),
-                        special_numbers=tuple(sorted(raw_special)),
+                        main_numbers=tuple(sorted(main_numbers)),
+                        special_numbers=tuple(sorted(special_numbers)),
                     )
                 except (TypeError, ValueError, json.JSONDecodeError):
                     unreadable_records += 1

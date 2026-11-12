@@ -1132,16 +1132,25 @@ def _evo_fourier_phase(
             cos_table[k][t] = math.cos(angle)
             sin_table[k][t] = math.sin(angle)
 
+    # Each binary series contains only the draws where this number appeared.
+    # Keep those indices in ascending draw order so the floating-point sums
+    # below add exactly the same non-zero terms as the dense formulation.
+    present_indices = [
+        [t for t, row in enumerate(bmat) if row[j]] for j in range(_MAX_NUM)
+    ]
+
     for j in range(_MAX_NUM):
-        series = [float(bmat[t][j]) for t in range(n)]
+        series_indices = present_indices[j]
         bin_real = [0.0] * (max_bin + 1)
         bin_imag = [0.0] * (max_bin + 1)
         bin_mag = [0.0] * (max_bin + 1)
         for k in range(1, max_bin + 1):
             cos_row = cos_table[k]
             sin_row = sin_table[k]
-            real = sum(series[t] * cos_row[t] for t in range(n))
-            imag = -sum(series[t] * sin_row[t] for t in range(n))
+            # A float start preserves the dense sum's signed-zero result when
+            # this number has no occurrences in the training window.
+            real = sum((cos_row[t] for t in series_indices), 0.0)
+            imag = -sum((sin_row[t] for t in series_indices), 0.0)
             bin_real[k] = real
             bin_imag[k] = imag
             bin_mag[k] = math.hypot(real, imag)

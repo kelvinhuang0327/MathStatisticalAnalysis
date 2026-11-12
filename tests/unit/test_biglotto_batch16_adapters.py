@@ -34,6 +34,7 @@ from lottolab.strategies.adapters.base import (
 from lottolab.strategies.adapters.biglotto_batch16 import (
     BigLottoEvolutionEngineAdapter,
     BigLottoTs3Markov4betAdapter,
+    _evo_fourier_phase,
 )
 from lottolab.strategies.catalog import production_catalog
 
@@ -274,6 +275,25 @@ def test_generate_portfolio_returns_complete_native_ticket_set() -> None:
 
 def test_evolution_engine_declares_variable_native_bounds() -> None:
     assert BigLottoEvolutionEngineAdapter.native_ticket_count_bounds() == (1, 10)
+
+
+@pytest.mark.parametrize("draw_count", (2, 3, 4))
+def test_evolution_fourier_empty_series_preserves_negative_zero_phase(draw_count: int) -> None:
+    draws = [
+        [((index * 11 + offset * 7) % 49) + 1 for offset in range(6)]
+        for index in range(draw_count)
+    ]
+    phases, magnitudes = _evo_fourier_phase(draws, top_k=3)
+    present_numbers = {number for draw in draws for number in draw}
+    absent_indices = [index for index in range(49) if index + 1 not in present_numbers]
+    assert absent_indices
+
+    active_ranks = min(3, draw_count // 2)
+    for number_index in absent_indices:
+        assert [value.hex() for value in phases[number_index][:active_ranks]] == [
+            "-0x0.0p+0"
+        ] * active_ranks
+        assert magnitudes[number_index][:active_ranks] == [0.0] * active_ranks
 
 
 def test_evolution_engine_accepts_legal_short_portfolio(

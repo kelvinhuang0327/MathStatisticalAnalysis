@@ -60,6 +60,9 @@ class CausalDrawRow:
     draw: str
     date: str
     numbers: tuple[int, ...]
+    # Optional historical outcome, consumed only by adapters that explicitly
+    # require it.  Existing generic validation deliberately strips this field.
+    special_number: int | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -159,9 +162,9 @@ def validated_history(
     ``lottery_type`` selects the native rule contract used to validate each
     row's main numbers. It defaults to ``BIG_LOTTO`` so every existing
     two-argument call site keeps its exact prior behavior. ``CausalDrawRow``
-    carries only primary numbers by design (see
-    ``lottolab.domain.replay_history.ReplayCausalDrawRow`` for the separate,
-    dataset-specific type that carries second-zone history).
+    is projected to primary numbers by this generic validator. Adapters that
+    explicitly need historical special numbers must validate and consume them
+    separately; they are never supplied for the draw being predicted.
     """
 
     rule = _resolved_rule(lottery_type, strategy_id)

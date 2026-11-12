@@ -10,14 +10,19 @@ from functools import cache
 from itertools import combinations_with_replacement
 from math import comb
 
+from lottolab.research.b649_k1_k8_global_optimality import (
+    OFFICIAL_ANY_PRIZE_SINGLE_OUTCOMES,
+)
+
 POOL_SIZE = 49
 DRAW_SIZE = 6
 OUTRIGHT_MATCHES = 3
 TICKET_COUNT = 20
 PAIR_COUNT = comb(TICKET_COUNT, 2)
 TRIPLE_COUNT = comb(TICKET_COUNT, 3)
+# Historical default comparator; new authority passes the sealed incumbent explicitly.
 INCUMBENT = 313_239_661
-SINGLE_TICKET_OUTCOMES = 18_221_078
+SINGLE_TICKET_OUTCOMES = OFFICIAL_ANY_PRIZE_SINGLE_OUTCOMES
 PORTFOLIO_S1 = TICKET_COUNT * SINGLE_TICKET_OUTCOMES
 TWO_EDGE_TRIPLE_CAP = 2_800
 THREE_EDGE_TRIPLE_CAP = 20_272
@@ -207,7 +212,7 @@ def minimum_pair_overlap_mass(
     return mass, tuple(frequency for frequency in frequencies if frequency)
 
 
-def outside_min_s2_bounds() -> dict[str, int | str]:
+def outside_min_s2_bounds(*, incumbent: int = INCUMBENT) -> dict[str, int | str]:
     """Compute the two-family outside-S2 bound and its unresolved gap."""
 
     pair_counts = pair_intersection_table()
@@ -219,7 +224,7 @@ def outside_min_s2_bounds() -> dict[str, int | str]:
     s2_minimum = 97 * c0 + 93 * c1
     if s2_minimum != 63_838_600:
         raise AssertionError("K20 minimum-S2 input does not match the exact pair table")
-    if PORTFOLIO_S1 != 364_421_560:
+    if TICKET_COUNT * pair_counts[DRAW_SIZE] != PORTFOLIO_S1:
         raise AssertionError("K20 single-ticket total changed")
 
     min_s2_penalty = c1 - c0
@@ -255,17 +260,26 @@ def outside_min_s2_bounds() -> dict[str, int | str]:
     overall_ub = max(low_overlap_ub, high_overlap_ub)
     return {
         "DEVIATION_FAMILY_COUNT": 2,
-        "CLOSED_FAMILY_COUNT": 1,
+        "CLOSED_FAMILY_COUNT": sum(
+            bound <= incumbent for bound in (low_overlap_ub, high_overlap_ub)
+        ),
         "MIN_EXTRA_S2": min_s2_penalty,
         "MAX_HIGHER_ORDER_RECOVERY": max_recovery,
         "MAX_NET_HIGHER_ORDER_RECOVERY_AFTER_S2_PENALTY": max_net_recovery,
         "OVERLAP_EDGE_COUNT_AT_MAX_NET_RECOVERY": max_net_edge_count,
         "LOW_OVERLAP_MAX_PAIRWISE_OVERLAP": 1,
         "LOW_OVERLAP_FAMILY_UPPER_BOUND": low_overlap_ub,
+        "LOW_OVERLAP_FAMILY_STATUS": "CLOSED" if low_overlap_ub <= incumbent else "OPEN",
         "HIGH_OVERLAP_FAMILY_UPPER_BOUND": high_overlap_ub,
+        "HIGH_OVERLAP_FAMILY_STATUS": "CLOSED" if high_overlap_ub <= incumbent else "OPEN",
         "OUTSIDE_FAMILY_UPPER_BOUND": overall_ub,
-        "UNRESOLVED_FAMILY": "at least one ticket pair has intersection size >= 2",
-        "REMAINING_GAP": overall_ub - INCUMBENT,
+        "UNRESOLVED_FAMILY": "; ".join(
+            name for name, bound in (
+                ("pairwise overlap <=1 with overlap mass >=94", low_overlap_ub),
+                ("at least one ticket pair has intersection size >=2", high_overlap_ub),
+            ) if bound > incumbent
+        ),
+        "REMAINING_GAP": overall_ub - incumbent,
     }
 
 

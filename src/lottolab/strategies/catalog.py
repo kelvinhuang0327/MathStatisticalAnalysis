@@ -1852,14 +1852,14 @@ _PRODUCTION_DESCRIPTORS = (
     StrategyDescriptor(
         strategy_id="legacy_biglotto__evolution_engine__3df019c31ce4",
         strategy_name="大樂透 策略族群演化系統",
-        version="v0.1",
+        version="v0.5",
         lottery_types=(LotteryType.BIG_LOTTO,),
         lifecycle_status=LifecycleStatus.ONLINE,
         executable=True,
         adapter_path=(
-            "lottolab.strategies.adapters.biglotto_batch16:BigLottoEvolutionEngineAdapter"
+            "lottolab.strategies.adapters.biglotto_evolution_any_prize:BigLottoAnyPrizeEvolutionAdapter"
         ),
-        min_history=501,
+        min_history=551,
         provenance=(
             "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
             "legacy_source:tools/evolving_strategy_engine/evolution_engine.py",
@@ -1868,6 +1868,12 @@ _PRODUCTION_DESCRIPTORS = (
             "legacy_source:tools/evolving_strategy_engine/evaluator.py",
             "legacy_source_sha256:3df019c31ce48e38efc7fd8b52d3e6eb5fd6ab1927bc789785e6d1e85c794f54",
             "legacy_symbol:EvolutionEngine.run",
+            "validation:50_CHRONOLOGICAL_HOLDOUT_AFTER_FROZEN_DEVELOPMENT",
+            "training:LEGACY_EVOLUTION_80_POPULATION_10_GENERATIONS_SEED_42",
+            "validation_failure:EXCLUDE_CANDIDATE_NOT_ZERO_HIT",
+            "development_failure:EXCLUDE_CANDIDATE_NOT_ZERO_HIT",
+            "nested_sampling:EXPAND_POOL_AND_BOUND_TO_49",
+            "selection_metric:STANDARD_ANY_PRIZE_INCLUDING_TWO_PLUS_SPECIAL",
             "full_strategy_catalog_id:legacy_biglotto__evolution_engine__3df019c31ce4",
             "migration_task:BIGLOTTO_BATCH16_R1_BASE_METHOD_BATCH02_INTAKE",
             "selection_task:B_BASE_METHOD_UNIVERSE_LIVE_GAP_AND_BATCH02_RESELECTION_R1",
@@ -3569,13 +3575,13 @@ _PRODUCTION_DESCRIPTORS = (
     StrategyDescriptor(
         strategy_id="legacy_biglotto__frontend_auto_optimize_strategy__a121d28125c6",
         strategy_name="大樂透 Frontend Auto Optimize Strategy",
-        version="v0.1",
+        version="v0.2",
         lottery_types=(LotteryType.BIG_LOTTO,),
         lifecycle_status=LifecycleStatus.ONLINE,
         executable=True,
         adapter_path=(
-            "lottolab.strategies.adapters.biglotto_frontend_auto_optimize:"
-            "BigLottoFrontendAutoOptimizeAdapter"
+            "lottolab.strategies.adapters.biglotto_frontend_auto_optimize_causal:"
+            "BigLottoFrontendAutoOptimizeCausalAdapter"
         ),
         min_history=30,
         provenance=(
@@ -3587,25 +3593,23 @@ _PRODUCTION_DESCRIPTORS = (
             "candidate_order:FREQUENCY_TREND_BAYESIAN_MONTECARLO_MARKOV_DEVIATION_"
             "ENSEMBLE_WEIGHTED_ENSEMBLE_BOOSTING_ENSEMBLE_FEATURES_ML_FOREST_"
             "COLLABORATIVE_HYBRID_HOT_COLD_SUM_RANGE_STATISTICAL",
-            "candidate_instances:CREATED_ONCE_REUSED_THROUGH_VALIDATION_AND_FINAL",
+            "candidate_instances:ISOLATED_PER_CANDIDATE_AND_CAUSAL_PREFIX",
             "legacy_history_window:NEWEST_FIRST_MAX500",
             "target_history_order:OLDEST_FIRST_REVERSED_AT_ADAPTER_BOUNDARY",
-            "validation:test_size_MIN10_FLOOR20_PERCENT_SINGLE_SPLIT_FOR_LIVE_INPUT",
-            "kfold:ENABLED_3_FOLD_MIN5_UNREACHABLE_WITH_MAX10_TEST_SPLIT",
-            "training_prefix:TRAIN_DATA_PLUS_PRIOR_TEST_ROWS_BY_SOURCE_INDEX",
+            "validation:OLDEST_FIRST_ROLLING_PREFIX_MIN10_FLOOR20_PERCENT",
+            "training_prefix:STRICTLY_BEFORE_EACH_INNER_TARGET",
             "success_rule:CEIL_PICK_COUNT_HALF_HITS",
             "scoring:SUCCESS_RATE_TOLERANCE_0.01_THEN_AVG_HITS",
             "winner_ties:STABLE_CANDIDATE_ORDER",
-            "rng_sharing:ONE_GLOBAL_UNSEEDED_STREAM_ACROSS_ALL_CANDIDATES_AND_FINAL",
-            "rng_schedule:PROMISE_ALLSETTLED_COOPERATIVE_AWAIT_ORDER_PRESERVED",
-            "seed_semantics:GENERATE_REQUEST_SEED_NOT_THREADED",
+            "rng_sharing:ISOLATED_PER_CANDIDATE_AND_PREFIX",
+            "seed_semantics:SHA256_CANONICAL_CANDIDATE_AND_CAUSAL_HISTORY_V1",
             "legacy_response_shape:NUMBERS_PROBABILITIES_CONFIDENCE_METHOD_REPORT",
             "native_response_shape:EXACTLY_1_SINGLE_TICKET_NUMBERS_ONLY",
             "number_range:1_TO_49",
             "pick_count:6",
             "portfolio_cardinality:EXACTLY_1_SINGLE_TICKET",
             "minimum_history:TARGET_AND_PREDICTION_ENGINE_BOUNDARY_30",
-            "candidate_error_behavior:LOG_AND_SKIP_FAILED_PERIOD",
+            "candidate_error_behavior:EXCLUDE_CANDIDATE_IF_ANY_PERIOD_FAILS",
             "donor_execution:REVIVED_DIRECT_NODE_WITH_SYNCHRONOUS_STATISTICS_AND_FIXED_RANDOM_SEQUENCE",
             "runtime_boundary:CALLER_SUPPLIED_CAUSAL_HISTORY_NO_DB",
             "live_db_required:NO",

@@ -299,7 +299,7 @@ def test_production_catalog_batch16_descriptors_declare_expected_shapes() -> Non
     assert evolution.response_shape is ResponseShape.PORTFOLIO
     assert evolution.native_ticket_count == 10
     assert evolution.executable is True
-    assert evolution.min_history == 501
+    assert evolution.min_history == 551
 
 
 def test_pre_batch16_descriptors_are_unaffected_by_batch16() -> None:

@@ -107,7 +107,7 @@ def create_v3_schema(paths: LocalDataPaths) -> None:
         )
 
 
-def test_resolver_is_lazy_and_uses_override_or_mac_default(tmp_path: Path) -> None:
+def test_resolver_is_lazy_and_uses_override_or_project_default(tmp_path: Path) -> None:
     overridden = task_paths(tmp_path)
     assert overridden.data_directory == tmp_path / "lottolab-data"
     assert overridden.database == overridden.data_directory / "lottolab.db"
@@ -115,7 +115,9 @@ def test_resolver_is_lazy_and_uses_override_or_mac_default(tmp_path: Path) -> No
 
     fake_home = tmp_path / "fake-home"
     defaulted = resolve_local_data_paths(environ={}, home=fake_home)
-    assert defaulted.data_directory == (fake_home / "Library" / "Application Support" / "LottoLab")
+    assert defaulted.data_directory == (
+        Path(draw_schema.__file__).resolve().parents[4] / "data/databases"
+    )
     assert not fake_home.exists()
 
 

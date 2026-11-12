@@ -81,6 +81,7 @@ from lottolab.infrastructure.persistence.p638_current_ranking_schema import (
 from lottolab.infrastructure.persistence.p638_historical_repositories import (
     SQLiteP638HistoricalQueryRepository,
 )
+from lottolab.infrastructure.persistence.replay_backfill_store import SQLiteBackfillStore
 from lottolab.infrastructure.persistence.replay_history_reader import SQLiteDrawHistoryReader
 from lottolab.infrastructure.persistence.replay_scoring_projection_repository import (
     SQLiteReplayScoringProjectionRepository,
@@ -109,6 +110,8 @@ DRAW_PROVIDER_URL_ENV = "LOTTOLAB_DRAW_PROVIDER_URL"
 DRAW_PROVIDER_SOURCE_ENV = "LOTTOLAB_DRAW_PROVIDER_SOURCE"
 OFFICIAL_TAIWAN_LOTTERY_SOURCE = "OFFICIAL_TAIWAN_LOTTERY"
 REPLAY_SCORING_DB_ENV = "LOTTOLAB_REPLAY_SCORING_DB"
+REPLAY_BACKFILL_DB_ENV = "LOTTOLAB_REPLAY_BACKFILL_DB"
+B649_SEALED084_REPLAY_SOURCE_ROOT_ENV = "LOTTOLAB_B649_SEALED084_SOURCE_ROOT"
 
 LocalDataPathsProvider = Callable[[], LocalDataPaths]
 
@@ -433,6 +436,16 @@ def create_local_app() -> FastAPI:
     )
     composition = local_historical_composition(os.environ)
     replay_scoring_composition = local_replay_scoring_composition(os.environ)
+    replay_backfill_path = os.environ.get(REPLAY_BACKFILL_DB_ENV)
+    replay_backfill_store = (
+        SQLiteBackfillStore(Path(replay_backfill_path), read_only=True)
+        if replay_backfill_path
+        else None
+    )
+    sealed084_replay_source_root_value = os.environ.get(B649_SEALED084_REPLAY_SOURCE_ROOT_ENV)
+    sealed084_replay_source_root = (
+        Path(sealed084_replay_source_root_value) if sealed084_replay_source_root_value else None
+    )
     all10_ranking_composition = local_p638_all10_ranking_composition(os.environ)
     all23_ranking_composition = local_p638_all23_ranking_composition(os.environ)
     current_ranking_composition = local_p638_current_ranking_composition(os.environ)
@@ -488,6 +501,8 @@ def create_local_app() -> FastAPI:
             replay_executor=replay_executor,
             draw_data_provider_factory=lambda: provider,
             replay_scoring_projection_reader_factory=replay_scoring_projection_reader_factory,
+            replay_backfill_store=replay_backfill_store,
+            b649_sealed084_replay_source_root=sealed084_replay_source_root,
             p638_historical_query_repository_factory=p638_historical_query_repository_factory,
             p638_all10_ranking_query_repository_factory=all10_ranking_factory,
             p638_all23_ranking_query_repository_factory=all23_ranking_factory,
@@ -507,6 +522,8 @@ def create_local_app() -> FastAPI:
             composition.historical_prefix_success_window_source_reader
         ),
         replay_scoring_projection_reader_factory=replay_scoring_projection_reader_factory,
+        replay_backfill_store=replay_backfill_store,
+        b649_sealed084_replay_source_root=sealed084_replay_source_root,
         p638_all10_ranking_query_repository_factory=all10_ranking_factory,
         p638_all23_ranking_query_repository_factory=all23_ranking_factory,
         p638_current_ranking_query_repository_factory=current_ranking_factory,

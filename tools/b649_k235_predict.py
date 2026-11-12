@@ -42,6 +42,9 @@ from lottolab.application.use_cases.generate_bet import (  # noqa: E402
     instantiate_portfolio_adapter,
 )
 from lottolab.domain.draws import LotteryType  # noqa: E402
+from lottolab.infrastructure.persistence.project_database_paths import (  # noqa: E402
+    project_database_directory,
+)
 from lottolab.research.b649_k235_output_quality import (  # noqa: E402
     FAIR_DRAW_EXACT_COVERAGE_FRACTIONS,
     QUALITY_COMPONENT_VERSION,
@@ -51,7 +54,7 @@ from lottolab.strategies.adapters.base import CausalDrawRow  # noqa: E402
 from lottolab.strategies.catalog import production_catalog  # noqa: E402
 from lottolab.strategies.executable_registry import ExecutableRegistry  # noqa: E402
 
-DEFAULT_DB_PATH = Path("/Users/kelvin/Library/Application Support/LottoLab/lottolab.db")
+DEFAULT_DB_PATH = project_database_directory() / "lottolab.db"
 DEFAULT_RANK_HISTORY = Path(
     "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.task-data/"
     "BIGLOTTO_115000096_K2_K3_K5_TOP3_115000097_PREDICTION_R1/rank_history.json"

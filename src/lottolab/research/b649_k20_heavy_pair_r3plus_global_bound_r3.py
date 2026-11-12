@@ -25,7 +25,7 @@ from lottolab.research.b649_k20_outside_min_s2_global_penalty_bound_r1 import (
 
 BASE_HEAD = "12c4e62ae377b6808eb971bd6dd906bc83987918"
 TASK_BRANCH = "codex/b649-k20-heavy-pair-r3plus-global-bound-r3"
-PRIOR_FAMILY_A_BOUND = 357_841_345
+PRIOR_FAMILY_A_BOUND = PORTFOLIO_S1 - (2 * 65_802_142 + TICKET_COUNT - 1) // TICKET_COUNT
 EXPECTED_PAIR_COUNTS = (
     107_800,
     574_000,
@@ -177,7 +177,7 @@ def heavy_pair_case(maximum_overlap: int) -> HeavyPairCase:
     )
 
 
-def family_a_result_record() -> dict[str, Any]:
+def family_a_result_record(*, incumbent: int = INCUMBENT) -> dict[str, Any]:
     """Build the auditable R3 Family A certificate and exact case bounds."""
 
     pair_costs = exact_pair_counts()
@@ -191,7 +191,7 @@ def family_a_result_record() -> dict[str, Any]:
         "TASK_STATUS": "CERTIFIED_FAMILY_A_BOUND_TIGHTENED",
         "BASE_HEAD": BASE_HEAD,
         "TASK_BRANCH": TASK_BRANCH,
-        "INCUMBENT": INCUMBENT,
+        "INCUMBENT": incumbent,
         "PRIOR_FAMILY_A_BOUND": PRIOR_FAMILY_A_BOUND,
         "PAIR_INTERSECTION_COUNTS_BY_OVERLAP": list(pair_costs),
         "PAIR_COST_CONVEXITY_EXCESS": list(pair_cost_convexity_excess(pair_costs)),
@@ -228,10 +228,10 @@ def family_a_result_record() -> dict[str, Any]:
         },
         "FAMILY_A_BOUND": family_bound,
         **case_bounds,
-        "FAMILY_A_STATUS": "CLOSED" if family_bound <= INCUMBENT else "TIGHTENED_OPEN",
+        "FAMILY_A_STATUS": "CLOSED" if family_bound <= incumbent else "TIGHTENED_OPEN",
         "IMPROVEMENT_VS_PRIOR_BOUND": PRIOR_FAMILY_A_BOUND - family_bound,
-        "REMAINING_GAP": family_bound - INCUMBENT,
-        "SUCCESS_A": family_bound <= INCUMBENT,
+        "REMAINING_GAP": family_bound - incumbent,
+        "SUCCESS_A": family_bound <= incumbent,
         "SUCCESS_B": family_bound < PRIOR_FAMILY_A_BOUND,
         "NEW_PORTFOLIO_SEARCH_STARTED": "NO",
         "PRODUCTION_MUTATION": "NONE",

@@ -98,10 +98,10 @@ def test_exact_s2_floors_condition_on_each_maximum_overlap() -> None:
 
 def test_local_s3_caps_and_anchor_net_maxima_are_exact() -> None:
     expected = {
-        3: (1_585_689, 28_542_402, -206_115, 357_241_548),
-        4: (4_540_102, 81_721_836, -189_840, 354_779_928),
-        5: (10_030_132, 180_542_376, -159_250, 350_778_728),
-        6: (18_611_432, 335_005_776, -107_800, 343_869_728),
+        3: (1_585_689, 28_542_402, -206_115, 365_048_628),
+        4: (4_540_102, 81_721_836, -189_840, 362_587_008),
+        5: (10_030_132, 180_542_376, -159_250, 358_585_808),
+        6: (18_611_432, 335_005_776, -107_800, 351_676_808),
     }
     for overlap, values in expected.items():
         case = heavy_pair_case(overlap)
@@ -199,13 +199,13 @@ def test_small_exhaustive_toy_portfolios_satisfy_anchor_inclusion_exclusion() ->
 
 def test_result_record_reports_a_certified_strict_family_a_improvement() -> None:
     record = family_a_result_record()
-    assert record["R3_BOUND"] == 357_241_548
-    assert record["R4_BOUND"] == 354_779_928
-    assert record["R5_BOUND"] == 350_778_728
-    assert record["R6_BOUND"] == 343_869_728
-    assert record["FAMILY_A_BOUND"] == 357_241_548
+    assert record["R3_BOUND"] == 365_048_628
+    assert record["R4_BOUND"] == 362_587_008
+    assert record["R5_BOUND"] == 358_585_808
+    assert record["R6_BOUND"] == 351_676_808
+    assert record["FAMILY_A_BOUND"] == 365_048_628
     assert record["FAMILY_A_STATUS"] == "TIGHTENED_OPEN"
     assert record["SUCCESS_A"] is False
     assert record["SUCCESS_B"] is True
     assert record["IMPROVEMENT_VS_PRIOR_BOUND"] == 599_797
-    assert record["REMAINING_GAP"] == 44_001_887
+    assert record["REMAINING_GAP"] == 51_808_967

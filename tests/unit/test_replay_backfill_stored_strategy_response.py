@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
+from typing import Protocol, cast
 
+import httpx
 import pytest
 from fastapi import FastAPI
 from fastapi.exceptions import ResponseValidationError
@@ -14,6 +16,11 @@ from lottolab.domain.replay_strategy_inventory import (
     ReplayLifecycleStatus,
 )
 from lottolab.interfaces.api import replay_backfill as api
+
+
+class JsonTestClient(Protocol):
+    def get(self, url: str, **kwargs: object) -> httpx.Response: ...
+
 
 TARGET_STRATEGY_ID = "biglotto_social_wisdom_anti_popularity"
 TARGET_STRATEGY_VERSION = "v0.1"
@@ -129,7 +136,7 @@ def _client(
     monkeypatch: pytest.MonkeyPatch,
     rows: list[dict[str, object]],
     inventory: list[SimpleNamespace] | None = None,
-) -> TestClient:
+) -> JsonTestClient:
     monkeypatch.setattr(
         api,
         "load_replay_strategy_inventory",
@@ -137,7 +144,7 @@ def _client(
     )
     app = FastAPI()
     app.include_router(api.create_replay_backfill_router(_SyntheticStore(rows)))  # type: ignore[arg-type]
-    return TestClient(app)
+    return cast(JsonTestClient, TestClient(app))
 
 
 def _combined_rows() -> list[dict[str, object]]:

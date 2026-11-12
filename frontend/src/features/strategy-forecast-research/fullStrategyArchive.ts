@@ -164,11 +164,17 @@ export function getFullStrategyArchiveMetrics(
   const randomBaselineRate = parseFiniteDecimal(record.random_baseline_success_rate)
   const delta = parseFiniteDecimal(record.random_baseline_rate_difference)
   const deltaSign = getFiniteDecimalSign(record.random_baseline_rate_difference)
+  const rateComparison = compareFiniteDecimalStrings(
+    record.historical_success_rate,
+    record.random_baseline_success_rate,
+  )
+  const effectiveBacktestDrawCount = record.effective_backtest_draw_count
   if (
     !isNonnegativeInteger(numerator) ||
     !isNonnegativeInteger(denominator) ||
     denominator === 0 ||
     numerator > denominator ||
+    (effectiveBacktestDrawCount !== null && !isNonnegativeInteger(effectiveBacktestDrawCount)) ||
     actualRate === null ||
     actualRate < 0 ||
     actualRate > 1 ||
@@ -178,7 +184,9 @@ export function getFullStrategyArchiveMetrics(
     delta === null ||
     deltaSign === null ||
     delta < -1 ||
-    delta > 1
+    delta > 1 ||
+    rateComparison === null ||
+    !isRateDirectionConsistent(deltaSign, rateComparison)
   ) {
     return null
   }
@@ -186,9 +194,7 @@ export function getFullStrategyArchiveMetrics(
   return {
     numerator,
     denominator,
-    effectiveBacktestDrawCount: isNonnegativeInteger(record.effective_backtest_draw_count)
-      ? record.effective_backtest_draw_count
-      : null,
+    effectiveBacktestDrawCount,
     actualRate,
     randomBaselineRate,
     delta,
@@ -267,6 +273,76 @@ function getFiniteDecimalSign(value: string | null): FullStrategyArchiveDeltaSig
   return parsed < 0 ? -1 : 1
 }
 
+function compareFiniteDecimalStrings(
+  left: string | null,
+  right: string | null,
+): -1 | 0 | 1 | null {
+  const leftParts = parseFiniteDecimalParts(left)
+  const rightParts = parseFiniteDecimalParts(right)
+  if (leftParts === null || rightParts === null) return null
+  if (leftParts.sign !== rightParts.sign) {
+    return leftParts.sign < rightParts.sign ? -1 : 1
+  }
+  if (leftParts.sign === 0) return 0
+
+  let magnitudeComparison: -1 | 0 | 1 = 0
+  if (leftParts.order !== rightParts.order) {
+    magnitudeComparison = leftParts.order < rightParts.order ? -1 : 1
+  } else {
+    const width = Math.max(leftParts.digits.length, rightParts.digits.length)
+    for (let index = 0; index < width; index += 1) {
+      const leftDigit = leftParts.digits.charCodeAt(index) || 48
+      const rightDigit = rightParts.digits.charCodeAt(index) || 48
+      if (leftDigit !== rightDigit) {
+        magnitudeComparison = leftDigit < rightDigit ? -1 : 1
+        break
+      }
+    }
+  }
+
+  return leftParts.sign < 0
+    ? magnitudeComparison === 0
+      ? 0
+      : magnitudeComparison === 1 ? -1 : 1
+    : magnitudeComparison
+}
+
+function parseFiniteDecimalParts(
+  value: string | null,
+): { sign: FullStrategyArchiveDeltaSign; order: bigint; digits: string } | null {
+  if (value === null) return null
+  const trimmed = value.trim()
+  if (trimmed === '') return null
+
+  const decimal = /^([+-]?)(?:(\d+)(?:\.(\d*))?|\.(\d+))(?:[eE]([+-]?\d+))?$/.exec(trimmed)
+  if (!decimal) return null
+
+  const integerDigits = decimal[2] ?? ''
+  const fractionDigits = decimal[3] ?? decimal[4] ?? ''
+  const coefficient = `${integerDigits}${fractionDigits}`
+  const firstNonzero = coefficient.search(/[1-9]/)
+  if (firstNonzero === -1) {
+    return { sign: 0, order: 0n, digits: '' }
+  }
+
+  const exponent = BigInt(decimal[5] ?? '0')
+  const order = BigInt(coefficient.length - firstNonzero - 1 - fractionDigits.length) + exponent
+  return {
+    sign: decimal[1] === '-' ? -1 : 1,
+    order,
+    digits: coefficient.slice(firstNonzero).replace(/0+$/, ''),
+  }
+}
+
+function isRateDirectionConsistent(
+  deltaSign: FullStrategyArchiveDeltaSign,
+  rateComparison: -1 | 0 | 1,
+): boolean {
+  if (deltaSign > 0) return rateComparison > 0
+  if (deltaSign < 0) return rateComparison < 0
+  return rateComparison === 0
+}
+
 export function formatFullStrategyArchiveCount(value: number | null): string {
   return isNonnegativeInteger(value) ? String(value) : '不可用'
 }
@@ -288,5 +364,5 @@ export function countArchiveStatuses(
 }
 
 function isNonnegativeInteger(value: number | null): value is number {
-  return value !== null && Number.isInteger(value) && value >= 0
+  return value !== null && Number.isSafeInteger(value) && value >= 0
 }

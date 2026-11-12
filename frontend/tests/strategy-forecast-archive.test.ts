@@ -257,6 +257,123 @@ describe('FullStrategyBacktestArchive', () => {
     expect(classifyFullStrategyArchivePerformance(row)).toBe('ABOVE_RANDOM')
   })
 
+  it('rejects rate and delta direction contradictions while retaining source rows', () => {
+    const contradictoryRows = [
+      record({
+        strategy_id: 'positive-delta-lower-rate',
+        historical_success_rate: '0.09',
+        random_baseline_success_rate: '0.10',
+        random_baseline_rate_difference: '0.02',
+      }),
+      record({
+        strategy_id: 'positive-delta-equal-rate',
+        historical_success_rate: '0.10',
+        random_baseline_success_rate: '0.10',
+        random_baseline_rate_difference: '0.02',
+      }),
+      record({
+        strategy_id: 'negative-delta-higher-rate',
+        historical_success_rate: '0.11',
+        random_baseline_success_rate: '0.10',
+        random_baseline_rate_difference: '-0.02',
+      }),
+      record({
+        strategy_id: 'negative-delta-equal-rate',
+        historical_success_rate: '0.10',
+        random_baseline_success_rate: '0.10',
+        random_baseline_rate_difference: '-0.02',
+      }),
+      record({
+        strategy_id: 'zero-delta-unequal-rate',
+        historical_success_rate: '0.11',
+        random_baseline_success_rate: '0.10',
+        random_baseline_rate_difference: '0',
+      }),
+    ]
+
+    expect(filterFullStrategyArchiveRecords(contradictoryRows, 'ALL', 'ALL'))
+      .toHaveLength(contradictoryRows.length)
+    expect(filterFullStrategyArchiveRecords(contradictoryRows, 'ALL', 'ABOVE_RANDOM'))
+      .toHaveLength(0)
+    expect(filterFullStrategyArchiveRecords(contradictoryRows, 'ALL', 'METRIC_UNAVAILABLE'))
+      .toHaveLength(contradictoryRows.length)
+    for (const row of contradictoryRows) {
+      expect(getFullStrategyArchiveMetrics(row)).toBeNull()
+      expect(classifyFullStrategyArchivePerformance(row)).toBe('METRIC_UNAVAILABLE')
+    }
+  })
+
+  it('requires safe nonnegative counts and preserves the safe-integer boundary', () => {
+    const unsafe = Number.MAX_SAFE_INTEGER + 1
+    const invalidRows = [
+      record({
+        success_count: unsafe,
+        successful_execution_count: unsafe,
+        historical_success_rate: '1',
+        random_baseline_success_rate: '1',
+        random_baseline_rate_difference: '0',
+      }),
+      record({
+        success_count: 1,
+        successful_execution_count: unsafe,
+      }),
+      record({
+        effective_backtest_draw_count: unsafe,
+      }),
+      record({
+        success_count: 11,
+        successful_execution_count: 10,
+      }),
+      record({
+        success_count: 1,
+        successful_execution_count: null,
+      }),
+    ]
+    for (const row of invalidRows) {
+      expect(getFullStrategyArchiveMetrics(row)).toBeNull()
+    }
+
+    const largestSafeCounts = record({
+      success_count: Number.MAX_SAFE_INTEGER,
+      successful_execution_count: Number.MAX_SAFE_INTEGER,
+      effective_backtest_draw_count: Number.MAX_SAFE_INTEGER,
+      historical_success_rate: '1',
+      random_baseline_success_rate: '1',
+      random_baseline_rate_difference: '0',
+    })
+    expect(getFullStrategyArchiveMetrics(largestSafeCounts)).toMatchObject({
+      numerator: Number.MAX_SAFE_INTEGER,
+      denominator: Number.MAX_SAFE_INTEGER,
+      effectiveBacktestDrawCount: Number.MAX_SAFE_INTEGER,
+    })
+
+    const nullableEffectiveCount = record({ effective_backtest_draw_count: null })
+    expect(getFullStrategyArchiveMetrics(nullableEffectiveCount)?.effectiveBacktestDrawCount)
+      .toBeNull()
+  })
+
+  it('compares decimal source rates exactly even when Number rounds them equal', () => {
+    const positiveDifference = record({
+      historical_success_rate: '0.2000000000000000000000000001',
+      random_baseline_success_rate: '0.2000000000000000000000000000',
+      random_baseline_rate_difference: '1e-1000',
+    })
+    const negativeDifference = record({
+      historical_success_rate: '0.2000000000000000000000000000',
+      random_baseline_success_rate: '0.2000000000000000000000000001',
+      random_baseline_rate_difference: '-1e-1000',
+    })
+    const exactEquality = record({
+      historical_success_rate: '0.20',
+      random_baseline_success_rate: '2e-1',
+      random_baseline_rate_difference: '1e-1000',
+    })
+
+    expect(classifyFullStrategyArchivePerformance(positiveDifference)).toBe('ABOVE_RANDOM')
+    expect(classifyFullStrategyArchivePerformance(negativeDifference)).toBe('BELOW_RANDOM')
+    expect(classifyFullStrategyArchivePerformance(exactEquality)).toBe('METRIC_UNAVAILABLE')
+  })
+
   it('classifies decimal delta signs exactly when Number would underflow', () => {
     const cases = [
       ['0.05', 'ABOVE_RANDOM'],
@@ -272,7 +389,15 @@ describe('FullStrategyBacktestArchive', () => {
     for (const [delta, expected] of cases) {
       expect(
         classifyFullStrategyArchivePerformance(
-          record({ random_baseline_rate_difference: delta }),
+          record({
+            historical_success_rate: expected === 'BELOW_RANDOM'
+              ? '0.10'
+              : expected === 'AT_RANDOM'
+                ? '0.15'
+                : '0.20',
+            random_baseline_success_rate: '0.15',
+            random_baseline_rate_difference: delta,
+          }),
         ),
       ).toBe(expected)
     }
@@ -354,10 +479,14 @@ describe('FullStrategyBacktestArchive', () => {
       }),
       record({
         strategy_id: 'tiny-negative',
+        historical_success_rate: '0.10',
+        random_baseline_success_rate: '0.15',
         random_baseline_rate_difference: '-1e-1000',
       }),
       record({
         strategy_id: 'exact-zero',
+        historical_success_rate: '0.15',
+        random_baseline_success_rate: '0.15',
         random_baseline_rate_difference: '-0.000',
       }),
     ]

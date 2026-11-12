@@ -769,7 +769,11 @@ def create_replay_backfill_router(store: SQLiteBackfillStore | None) -> APIRoute
                     continue
                 rows.append(
                     {
-                        **source_row,
+                        **{
+                            key: value
+                            for key, value in source_row.items()
+                            if key != "source_identity"
+                        },
                         "inventory_lifecycle_status": source_row.get("lifecycle_status"),
                         "inventory_data_status": source_row.get("data_status"),
                         "inventory_source_kind": source_row.get("source_kind"),

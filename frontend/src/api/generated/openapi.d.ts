@@ -4375,6 +4375,7 @@ export interface components {
           "target_draw_number": string
           "target_draw_date": string
           "prediction_status": string
+          "source_history_provenance_status": "VERIFIED" | "UNKNOWN" | "UNVERIFIED"
           "research_portfolio_qualification"?: components['schemas']["ReplayBackfillResearchPortfolioQualificationView"] | null
           "predicted_tickets": Array<components['schemas']["ReplayBackfillPredictedTicketView"]>
           "actual_main_numbers": Array<number>

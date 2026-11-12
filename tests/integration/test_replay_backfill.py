@@ -124,6 +124,7 @@ def worker(
     producer: Producer | None = None,
     draws: tuple[ReplayDraw, ...] | None = None,
     store: SQLiteBackfillStore | None = None,
+    source_history_provenance_status: str | None = None,
 ) -> tuple[ReplayBackfill, Producer, SQLiteBackfillStore]:
     producer = producer or Producer()
     strategy = ReplayStrategy(
@@ -155,6 +156,7 @@ def worker(
             source_identity="synthetic-fixture-v1",
             store=store,
             execution_version="test-source-v1",
+            source_history_provenance_status=source_history_provenance_status,
         ),
         producer,
         store,
@@ -316,6 +318,116 @@ def test_complete_hit_positions_survive_store_and_http_projection(tmp_path: Path
     assert [ticket["prize_tier"] for ticket in public_tickets] == ["FIRST", "SECOND"]
     assert client.get(root + "/runs/missing").status_code == 404
     assert client.get(root + "/results", params={"limit": 201}).status_code == 422
+
+
+@pytest.mark.parametrize(
+    ("status", "expected"),
+    [
+        ("VERIFIED", "VERIFIED"),
+        ("UNKNOWN", "UNKNOWN"),
+        ("UNVERIFIED", "UNVERIFIED"),
+        (None, "UNKNOWN"),
+    ],
+)
+def test_source_history_provenance_status_round_trips_to_official_readback(
+    tmp_path: Path, status: str | None, expected: str
+) -> None:
+    database = _test_database_path(tmp_path, "provenance.sqlite3")
+    engine, _, _store = worker(
+        tmp_path,
+        store=SQLiteBackfillStore(database),
+        source_history_provenance_status=status,
+    )
+    summary = engine.execute(BackfillSelection(latest=1))
+    run_id = str(summary["run_id"])
+
+    read_only_store = SQLiteBackfillStore(database, read_only=True)
+    persisted = cast(dict[str, Any], read_only_store.query(run_id=run_id)["items"][0])
+    assert persisted["source_history_provenance_status"] == expected
+    payload_without_identity = {
+        key: value for key, value in persisted.items() if key != "result_identity"
+    }
+    assert persisted["result_identity"] == identity(payload_without_identity)
+
+    app = FastAPI()
+    app.include_router(create_replay_backfill_router(read_only_store))
+    client = cast(httpx.Client, TestClient(app))
+    results = client.get("/api/v1/replay-backfill/results", params={"run_id": run_id})
+    assert results.status_code == 200
+    assert results.json()["items"][0]["source_history_provenance_status"] == expected
+    predictions = client.get(
+        "/api/v1/replay-backfill/predictions",
+        params={
+            "lottery_type": "BIG_LOTTO",
+            "run_id": run_id,
+            "strategy_id": "two-tickets",
+            "period": "ALL",
+        },
+    )
+    assert predictions.status_code == 200
+    assert predictions.json()["items"][0]["source_history_provenance_status"] == expected
+
+
+def test_invalid_source_history_provenance_status_is_rejected(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="source_history_provenance_status"):
+        worker(tmp_path, source_history_provenance_status="verified")
+
+
+def test_legacy_result_reads_unknown_without_rewriting_or_migrating(tmp_path: Path) -> None:
+    database = _test_database_path(tmp_path, "legacy-provenance.sqlite3")
+    engine, _, _store = worker(tmp_path, store=SQLiteBackfillStore(database))
+    run_id = str(engine.execute(BackfillSelection(latest=1))["run_id"])
+    with sqlite3.connect(database) as connection:
+        cell_identity, raw_payload = connection.execute(
+            "SELECT cell_identity,payload_json FROM replay_backfill_cells"
+        ).fetchone()
+        payload = cast(dict[str, Any], json.loads(raw_payload))
+        payload.pop("source_history_provenance_status")
+        payload["result_identity"] = identity(
+            {key: value for key, value in payload.items() if key != "result_identity"}
+        )
+        connection.execute(
+            "UPDATE replay_backfill_cells SET result_identity=?,payload_json=? "
+            "WHERE cell_identity=?",
+            (
+                payload["result_identity"],
+                json.dumps(payload, sort_keys=True, separators=(",", ":")),
+                cell_identity,
+            ),
+        )
+        schema_version = connection.execute("PRAGMA schema_version").fetchone()[0]
+
+    read_only_store = SQLiteBackfillStore(database, read_only=True)
+    result = cast(dict[str, Any], read_only_store.query(run_id=run_id)["items"][0])
+    assert result["source_history_provenance_status"] == "UNKNOWN"
+
+    app = FastAPI()
+    app.include_router(create_replay_backfill_router(read_only_store))
+    client = cast(httpx.Client, TestClient(app))
+    results = client.get("/api/v1/replay-backfill/results", params={"run_id": run_id})
+    assert results.status_code == 200
+    assert results.json()["items"][0]["source_history_provenance_status"] == "UNKNOWN"
+    predictions = client.get(
+        "/api/v1/replay-backfill/predictions",
+        params={
+            "lottery_type": "BIG_LOTTO",
+            "run_id": run_id,
+            "strategy_id": "two-tickets",
+            "period": "ALL",
+        },
+    )
+    assert predictions.status_code == 200
+    assert predictions.json()["items"][0]["source_history_provenance_status"] == "UNKNOWN"
+
+    with sqlite3.connect(database.as_uri() + "?mode=ro", uri=True) as connection:
+        persisted_payload = json.loads(
+            connection.execute(
+                "SELECT payload_json FROM replay_backfill_cells WHERE cell_identity=?",
+                (cell_identity,),
+            ).fetchone()[0]
+        )
+        assert "source_history_provenance_status" not in persisted_payload
+        assert connection.execute("PRAGMA schema_version").fetchone()[0] == schema_version
 
 
 @pytest.mark.parametrize("mutation", ["missing", "duplicate", "invalid"])
@@ -808,6 +920,152 @@ def test_cli_full_source_worker_storage_chain(
     assert "已存在跳過 2、新算 3、失敗 0" in completed_output.err
     assert SQLiteBackfillStore(output, read_only=True).query()["total_count"] == 5
     assert hashlib.sha256(paths.database.read_bytes()).hexdigest() == source_digest
+
+
+def _source_database_for_provenance(tmp_path: Path) -> Path:
+    paths = resolve_local_data_paths(
+        environ={"LOTTOLAB_DATA_DIR": str(tmp_path / "provenance-source")}
+    )
+    document = parse_draw_csv(
+        "lottery_type,draw_number,draw_date,main_numbers,special_numbers,source\n"
+        + "\n".join(
+            f"BIG_LOTTO,{100000001 + n},2020-01-{n + 1:02d},1|2|3|4|5|6,7,synthetic"
+            for n in range(12)
+        )
+        + "\n",
+        filename="synthetic.csv",
+    )
+    assert document.is_valid
+    SQLiteDrawDataRepository(paths).apply_valid_import(document)
+    return paths.database
+
+
+def _run_provenance_cli(
+    source_database: Path,
+    output_database: Path,
+    test_only_external_database_root: Path,
+) -> int:
+    return main(
+        [
+            "--lottery-type",
+            "BIG_LOTTO",
+            "--source-database",
+            str(source_database),
+            "--database",
+            str(output_database),
+            "--strategy-id",
+            "biglotto_social_wisdom_anti_popularity",
+            "--latest",
+            "1",
+        ],
+        test_only_external_database_root=test_only_external_database_root,
+    )
+
+
+def test_cli_verified_source_history_provenance_is_saved_and_read_back(
+    tmp_path: Path,
+    test_only_external_database_root: Path,
+) -> None:
+    source_database = _source_database_for_provenance(tmp_path)
+    source_database_sha256 = hashlib.sha256(source_database.read_bytes()).hexdigest()
+    output_database = test_only_external_database_root / "verified-provenance.sqlite3"
+    assert (
+        _run_provenance_cli(source_database, output_database, test_only_external_database_root) == 0
+    )
+
+    store = SQLiteBackfillStore(output_database, read_only=True)
+    run_id = store.latest_run_id(LotteryType.BIG_LOTTO.value)
+    assert run_id is not None
+    manifest = store.run_manifest(run_id)
+    provenance = manifest["strategy_sources"]["biglotto_social_wisdom_anti_popularity"][
+        "source_history_provenance"
+    ]
+    assert provenance["rule_name"] == "RULE_B_RECORD_HASH_V1"
+    assert provenance["status"] == "VERIFIED"
+    assert provenance["checked_record_count"] == 12
+    assert provenance["hash_mismatch_count"] == 0
+    assert provenance["missing_field_record_count"] == 0
+    assert provenance["source_database_sha256"] == source_database_sha256
+    result = store.query(run_id=run_id)["items"][0]
+    assert result["source_history_provenance_status"] == "VERIFIED"
+
+    app = FastAPI()
+    app.include_router(create_replay_backfill_router(store))
+    with cast(httpx.Client, TestClient(app)) as client:
+        results = client.get("/api/v1/replay-backfill/results", params={"run_id": run_id})
+        predictions = client.get(
+            "/api/v1/replay-backfill/predictions",
+            params={
+                "lottery_type": cast(str, LotteryType.BIG_LOTTO.value),
+                "run_id": run_id,
+                "strategy_id": "biglotto_social_wisdom_anti_popularity",
+                "period": "ALL",
+            },
+        )
+    assert results.status_code == 200
+    assert results.json()["items"][0]["source_history_provenance_status"] == "VERIFIED"
+    assert predictions.status_code == 200
+    assert predictions.json()["items"][0]["source_history_provenance_status"] == "VERIFIED"
+
+
+def test_cli_hash_mismatch_marks_source_history_unverified(
+    tmp_path: Path,
+    test_only_external_database_root: Path,
+) -> None:
+    source_database = _source_database_for_provenance(tmp_path)
+    with sqlite3.connect(source_database) as connection:
+        connection.execute(
+            "UPDATE draws SET main_numbers_json=? WHERE lottery_type=? AND draw_number=?",
+            ("[1,2,3,4,5,8]", LotteryType.BIG_LOTTO.value, "100000001"),
+        )
+    output_database = test_only_external_database_root / "mismatched-provenance.sqlite3"
+    assert (
+        _run_provenance_cli(source_database, output_database, test_only_external_database_root) == 0
+    )
+
+    store = SQLiteBackfillStore(output_database, read_only=True)
+    run_id = store.latest_run_id(LotteryType.BIG_LOTTO.value)
+    assert run_id is not None
+    manifest = store.run_manifest(run_id)
+    provenance = manifest["strategy_sources"]["biglotto_social_wisdom_anti_popularity"][
+        "source_history_provenance"
+    ]
+    assert provenance["status"] == "UNVERIFIED"
+    assert provenance["checked_record_count"] == 12
+    assert provenance["hash_mismatch_count"] == 1
+    assert provenance["missing_field_record_count"] == 0
+    assert store.query(run_id=run_id)["items"][0]["source_history_provenance_status"] == (
+        "UNVERIFIED"
+    )
+
+
+def test_cli_missing_source_reference_makes_history_unknown(
+    tmp_path: Path,
+    test_only_external_database_root: Path,
+) -> None:
+    source_database = _source_database_for_provenance(tmp_path)
+    with sqlite3.connect(source_database) as connection:
+        connection.execute(
+            "UPDATE draws SET source_reference=NULL WHERE lottery_type=? AND draw_number=?",
+            (LotteryType.BIG_LOTTO.value, "100000001"),
+        )
+    output_database = test_only_external_database_root / "missing-reference-provenance.sqlite3"
+    assert (
+        _run_provenance_cli(source_database, output_database, test_only_external_database_root) == 0
+    )
+
+    store = SQLiteBackfillStore(output_database, read_only=True)
+    run_id = store.latest_run_id(LotteryType.BIG_LOTTO.value)
+    assert run_id is not None
+    manifest = store.run_manifest(run_id)
+    provenance = manifest["strategy_sources"]["biglotto_social_wisdom_anti_popularity"][
+        "source_history_provenance"
+    ]
+    assert provenance["status"] == "UNKNOWN"
+    assert provenance["checked_record_count"] == 12
+    assert provenance["hash_mismatch_count"] == 0
+    assert provenance["missing_field_record_count"] == 1
+    assert store.query(run_id=run_id)["items"][0]["source_history_provenance_status"] == ("UNKNOWN")
 
 
 def test_resume_empty_initialization_and_reject_unsafe_paths(tmp_path: Path) -> None:

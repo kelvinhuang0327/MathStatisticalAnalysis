@@ -296,7 +296,7 @@ def _validate_and_canonicalize_numbers(
     raise AssertionError("resolved contracts must use a supported canonical number order")
 
 
-def _record_hash(
+def normalized_draw_record_hash(
     *,
     lottery_type: LotteryType,
     draw_number: str,
@@ -618,7 +618,7 @@ def parse_draw_csv(
         ):
             source_value = values.get("source", "")
             source = unicodedata.normalize("NFC", source_value) or None
-            normalized_record_hash = _record_hash(
+            normalized_record_hash = normalized_draw_record_hash(
                 lottery_type=lottery_type,
                 draw_number=draw_number,
                 draw_date_value=draw_date_value,

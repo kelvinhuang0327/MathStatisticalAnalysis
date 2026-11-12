@@ -45,7 +45,12 @@ from lottolab.domain.draws import LotteryType
 from lottolab.domain.historical_replay import ReplayBehavior, ReplayStrategy
 from lottolab.domain.prize_evaluation import evaluate_lottery_prize
 from lottolab.domain.strategies import ResponseShape
-from lottolab.infrastructure.persistence.draw_schema import resolve_local_data_paths
+from lottolab.infrastructure.imports.csv_draws import normalized_draw_record_hash
+from lottolab.infrastructure.persistence.draw_schema import (
+    LocalDataPaths,
+    open_database,
+    resolve_local_data_paths,
+)
 from lottolab.infrastructure.persistence.project_database_paths import (
     canonical_project_root,
     project_database_environment,
@@ -295,6 +300,136 @@ def source_database_hash(database: Path) -> str:
     digest.update(b"main\x00" + main_hash.encode() + b"\x00wal\x00")
     digest.update(file_hash(wal).encode())
     return digest.hexdigest()
+
+
+def source_history_provenance(
+    database: Path,
+    lottery_type: LotteryType,
+    source_database_sha256: str,
+) -> JsonObject:
+    """Check every stored draw against the CSV import hash and source fields."""
+    evidence: JsonObject = {
+        "rule_name": "RULE_B_RECORD_HASH_V1",
+        "status": "UNKNOWN",
+        "checked_record_count": 0,
+        "hash_mismatch_count": 0,
+        "missing_field_record_count": 0,
+        "unreadable_record_count": 0,
+        "source_database_sha256": source_database_sha256,
+        "table_found": False,
+        "missing_columns": [],
+    }
+    required_columns = (
+        "lottery_type",
+        "draw_number",
+        "draw_date",
+        "main_numbers_json",
+        "special_numbers_json",
+        "normalized_record_hash",
+        "source_name",
+        "source_reference",
+    )
+    resolved_database = database.resolve()
+    try:
+        paths = LocalDataPaths(resolved_database.parent, resolved_database)
+        with open_database(paths, read_only=True) as connection:
+            connection.execute("BEGIN")
+            table = connection.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name='draws'"
+            ).fetchone()
+            if table is None:
+                evidence["missing_columns"] = ["draws"]
+                return evidence
+            evidence["table_found"] = True
+            columns = {str(row[1]) for row in connection.execute('PRAGMA table_info("draws")')}
+            missing_columns = [column for column in required_columns if column not in columns]
+            evidence["missing_columns"] = missing_columns
+            if missing_columns:
+                if "lottery_type" in columns:
+                    row = connection.execute(
+                        "SELECT COUNT(*) FROM draws WHERE lottery_type=?",
+                        (lottery_type.value,),
+                    ).fetchone()
+                    count = int(row[0]) if row is not None else 0
+                    evidence["checked_record_count"] = count
+                    evidence["missing_field_record_count"] = count
+                return evidence
+
+            rows = connection.execute(
+                "SELECT draw_number,draw_date,main_numbers_json,special_numbers_json,"
+                "normalized_record_hash,source_name,source_reference FROM draws "
+                "WHERE lottery_type=? ORDER BY draw_date,CAST(draw_number AS INTEGER)",
+                (lottery_type.value,),
+            ).fetchall()
+            evidence["checked_record_count"] = len(rows)
+            hash_mismatches = 0
+            missing_fields = 0
+            unreadable_records = 0
+            for (
+                draw_number,
+                draw_date_text,
+                main_json,
+                special_json,
+                stored_hash,
+                source_name,
+                source_ref,
+            ) in rows:
+                text_fields = (
+                    draw_number,
+                    draw_date_text,
+                    main_json,
+                    special_json,
+                    stored_hash,
+                    source_name,
+                    source_ref,
+                )
+                if any(not isinstance(value, str) or not value.strip() for value in text_fields):
+                    missing_fields += 1
+                    continue
+                try:
+                    draw_date_value = date.fromisoformat(draw_date_text)
+                    raw_main_value: object = json.loads(main_json)
+                    raw_special_value: object = json.loads(special_json)
+                    if not isinstance(raw_main_value, list) or not isinstance(
+                        raw_special_value, list
+                    ):
+                        raise ValueError("stored draw numbers are not integer arrays")
+                    raw_main = cast(list[object], raw_main_value)
+                    raw_special = cast(list[object], raw_special_value)
+                    main_numbers: list[int] = []
+                    special_numbers: list[int] = []
+                    for number in raw_main:
+                        if type(number) is not int:
+                            raise ValueError("stored draw numbers are not integer arrays")
+                        main_numbers.append(number)
+                    for number in raw_special:
+                        if type(number) is not int:
+                            raise ValueError("stored draw numbers are not integer arrays")
+                        special_numbers.append(number)
+                    expected_hash = normalized_draw_record_hash(
+                        lottery_type=lottery_type,
+                        draw_number=draw_number,
+                        draw_date_value=draw_date_value,
+                        main_numbers=tuple(sorted(main_numbers)),
+                        special_numbers=tuple(sorted(special_numbers)),
+                    )
+                except (TypeError, ValueError, json.JSONDecodeError):
+                    unreadable_records += 1
+                    continue
+                if expected_hash != stored_hash:
+                    hash_mismatches += 1
+            evidence["hash_mismatch_count"] = hash_mismatches
+            evidence["missing_field_record_count"] = missing_fields
+            evidence["unreadable_record_count"] = unreadable_records
+            if hash_mismatches:
+                evidence["status"] = "UNVERIFIED"
+            elif missing_fields or unreadable_records or not rows:
+                evidence["status"] = "UNKNOWN"
+            else:
+                evidence["status"] = "VERIFIED"
+    except Exception as exc:
+        evidence["read_error_type"] = type(exc).__name__
+    return evidence
 
 
 def _sha256_file(path: Path) -> str:
@@ -953,9 +1088,21 @@ def main(
         selection = BackfillSelection(args.start_date, args.end_date, args.latest, args.all_draws)
         before_source_hash = source_database_hash(source)
         draws = load_draw_snapshot(source, lottery_type)
+        provenance_evidence = source_history_provenance(source, lottery_type, before_source_hash)
         after_source_hash = source_database_hash(source)
         if before_source_hash != after_source_hash:
             raise ValueError("source database changed while the immutable snapshot was read")
+        selected_sources = {
+            binding.strategy.strategy_id: accounts[binding.strategy.strategy_id]
+            for binding in selected
+        }
+        strategy_sources = {
+            strategy_id: {
+                **source,
+                "source_history_provenance": provenance_evidence,
+            }
+            for strategy_id, source in selected_sources.items()
+        }
         worker = ReplayBackfill(
             adapter=build_adapter(lottery_type, selected),
             strategies=tuple(b.strategy for b in selected),
@@ -964,9 +1111,8 @@ def main(
             store=SQLiteBackfillStore(target),
             execution_version=execution_source_identity(),
             source_hash=before_source_hash,
-            strategy_sources=accounts
-            if args.all_strategies
-            else {b.strategy.strategy_id: accounts[b.strategy.strategy_id] for b in selected},
+            strategy_sources=strategy_sources,
+            source_history_provenance_status=str(provenance_evidence["status"]),
         )
         summary = worker.execute(
             selection,

@@ -72,6 +72,7 @@ const chartLoading = ref(false)
 let fetchController: AbortController | undefined
 let chartController: AbortController | undefined
 let fetchGeneration = 0
+let chartGeneration = 0
 
 const structuralCells = ref<StructuralMatrixCell[]>([])
 const structuralState = ref<PageLoadState>('loading')
@@ -276,7 +277,9 @@ async function loadData(): Promise<void> {
   rawRows.value = []
   matrixRows.value = []
   crossWindowData.value = null
+  ++chartGeneration
   chartController?.abort()
+  chartController = undefined
   chartLoading.value = false
 
   try {
@@ -322,8 +325,11 @@ async function selectStrategy(strategyId: string, displayName: string): Promise<
   selectedStrategyId.value = strategyId
   selectedStrategyDisplayName.value = displayName
 
+  const generation = ++chartGeneration
   chartController?.abort()
-  chartController = new AbortController()
+  const controller = new AbortController()
+  chartController = controller
+  crossWindowData.value = null
   chartLoading.value = true
 
   try {
@@ -332,13 +338,15 @@ async function selectStrategy(strategyId: string, displayName: string): Promise<
       selectedTicketCount.value,
       strategyId,
       displayName,
-      chartController.signal,
+      controller.signal,
     )
-    if (!chartController.signal.aborted && result.lotteryType === selectedLottery.value && result.ticketCount === selectedTicketCount.value && result.strategyId === selectedStrategyId.value) crossWindowData.value = result
+    if (generation !== chartGeneration || controller.signal.aborted) return
+    if (result.lotteryType === selectedLottery.value && result.ticketCount === selectedTicketCount.value && result.strategyId === selectedStrategyId.value) crossWindowData.value = result
   } catch {
+    if (generation !== chartGeneration || controller.signal.aborted) return
     // chart failure does not break the table
   } finally {
-    chartLoading.value = false
+    if (generation === chartGeneration && !controller.signal.aborted) chartLoading.value = false
   }
 }
 
@@ -393,6 +401,7 @@ onBeforeUnmount(() => {
   ++structuralGeneration
   structuralController?.abort()
   fetchController?.abort()
+  ++chartGeneration
   chartController?.abort()
 })
 </script>

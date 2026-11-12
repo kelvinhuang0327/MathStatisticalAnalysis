@@ -4,6 +4,10 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import App from '../src/App.vue'
+import {
+  B649CanonicalForecastRequestError,
+  fetchB649CanonicalForecast,
+} from '../src/api/b649CanonicalForecast'
 import B649CurrentForecastPage from '../src/features/b649-current-forecast/B649CurrentForecastPage.vue'
 
 function apiResponse(payload: unknown, status = 200): Response {
@@ -18,9 +22,15 @@ function ticket(ticket_position: number, predicted_numbers: number[]) {
   return { ticket_position, predicted_numbers }
 }
 
-function ticketsInApiOrder(positions: number[]) {
-  return positions.map((position, index) =>
-    ticket(position, [index + 1, index + 11, index + 21]),
+function ticketNumbers(index: number) {
+  if (index === 0) return [49, 1, 11, 21, 31, 41]
+  if (index === 1) return [21, 2, 12, 22, 32, 42]
+  return [20, 0, 40, 10, 30, 5].map((offset) => ((index + offset) % 49) + 1)
+}
+
+function ticketsInApiOrder(count: number) {
+  return Array.from({ length: count }, (_, index) =>
+    ticket(index + 1, ticketNumbers(index)),
   )
 }
 
@@ -33,20 +43,134 @@ function currentForecast() {
       draw_date: '2026-10-03',
       scheduled_at: '2026-10-03T20:30:00+08:00',
     },
-    consensus_numbers: [4, 12, 23, 26, 29],
+    consensus_numbers: [49, 1, 11, 21, 31, 41],
     source_stream_count: 11,
-    k5_tickets: ticketsInApiOrder([9, 2, 5, 1, 4]),
-    k10_tickets: ticketsInApiOrder([7, 3, 10, 1, 6, 9, 4, 2, 8, 5]),
-    k20_tickets: ticketsInApiOrder([
-      6, 1, 19, 2, 18, 3, 17, 4, 16, 5, 15, 7, 14, 8, 13, 9, 12, 10, 11, 20,
-    ]),
+    k5_tickets: ticketsInApiOrder(5),
+    k10_tickets: ticketsInApiOrder(10),
+    k20_tickets: ticketsInApiOrder(20),
     forecast_actual_sha256: 'a'.repeat(64),
     forecast_method_id: 'B649_11_STREAM_EQUAL_WEIGHT_NUMBER_CONSENSUS',
     forecast_method_version: '1.0.0',
     portfolio_actual_sha256: 'b'.repeat(64),
     portfolio_method_id: 'B649_SEALED_GEOMETRY_PORTFOLIO',
-    portfolio_method_version: '1.0.0',
+    portfolio_method_version: '8.0.0',
   }
+}
+
+type ForecastFixture = ReturnType<typeof currentForecast>
+type ForecastMutation = (payload: ForecastFixture) => void
+
+const malformedNumberCases = [
+  ['zero', [0, 2, 3, 4, 5, 6]],
+  ['above the official range', [50, 2, 3, 4, 5, 6]],
+  ['negative', [-1, 2, 3, 4, 5, 6]],
+  ['fractional', [1.5, 2, 3, 4, 5, 6]],
+  ['unsafe integer', [Number.MAX_SAFE_INTEGER + 1, 2, 3, 4, 5, 6]],
+  ['duplicate number', [1, 1, 3, 4, 5, 6]],
+] as const
+
+const numberTargets = [
+  {
+    name: 'ticket',
+    set(payload: ForecastFixture, numbers: number[]) {
+      payload.k5_tickets[0].predicted_numbers = numbers
+    },
+  },
+  {
+    name: 'consensus',
+    set(payload: ForecastFixture, numbers: number[]) {
+      payload.consensus_numbers = numbers
+    },
+  },
+] as const
+
+const invalidNumberMutations = numberTargets.flatMap((target) =>
+  malformedNumberCases.map(([reason, numbers]) => ({
+    name: `${target.name}: ${reason}`,
+    mutate: (payload: ForecastFixture) => target.set(payload, [...numbers]),
+  })),
+)
+
+const malformedContractMutations: Array<{ name: string; mutate: ForecastMutation }> = [
+  ...[3, 5, 7].map((length) => ({
+    name: `ticket with ${length} numbers`,
+    mutate: (payload: ForecastFixture) => {
+      payload.k5_tickets[0].predicted_numbers = Array.from(
+        { length },
+        (_, index) => index + 1,
+      )
+    },
+  })),
+  {
+    name: 'duplicate ticket position',
+    mutate: (payload) => {
+      payload.k5_tickets[1].ticket_position = 1
+    },
+  },
+  {
+    name: 'skipped ticket position',
+    mutate: (payload) => {
+      payload.k5_tickets[1].ticket_position = 3
+    },
+  },
+  {
+    name: 'out-of-order ticket positions',
+    mutate: (payload) => {
+      payload.k5_tickets[0].ticket_position = 2
+      payload.k5_tickets[1].ticket_position = 1
+    },
+  },
+  ...[5, 7].map((length) => ({
+    name: `consensus with ${length} numbers`,
+    mutate: (payload: ForecastFixture) => {
+      payload.consensus_numbers = Array.from({ length }, (_, index) => index + 1)
+    },
+  })),
+  {
+    name: 'wrong source stream count',
+    mutate: (payload) => {
+      payload.source_stream_count = 10
+    },
+  },
+  {
+    name: 'too many source streams',
+    mutate: (payload) => {
+      payload.source_stream_count = 12
+    },
+  },
+  {
+    name: 'wrong forecast method id',
+    mutate: (payload) => {
+      payload.forecast_method_id = 'OTHER_METHOD'
+    },
+  },
+  {
+    name: 'wrong forecast method version',
+    mutate: (payload) => {
+      payload.forecast_method_version = '2.0.0'
+    },
+  },
+  {
+    name: 'wrong portfolio method id',
+    mutate: (payload) => {
+      payload.portfolio_method_id = 'OTHER_PORTFOLIO'
+    },
+  },
+  {
+    name: 'wrong portfolio method version',
+    mutate: (payload) => {
+      payload.portfolio_method_version = '7.0.0'
+    },
+  },
+]
+
+async function expectMalformedResponse(payload: unknown) {
+  fetchMock.mockResolvedValueOnce(apiResponse(payload))
+  await expect(fetchB649CanonicalForecast()).rejects.toMatchObject({
+    name: 'B649CanonicalForecastRequestError',
+    kind: 'MALFORMED_RESPONSE',
+    status: 200,
+  } satisfies Partial<B649CanonicalForecastRequestError>)
 }
 
 let fetchMock: ReturnType<typeof vi.fn<typeof fetch>>
@@ -104,10 +228,52 @@ describe('B649 current forecast', () => {
     expect(wrapper.text()).toContain('B649_11_STREAM_EQUAL_WEIGHT_NUMBER_CONSENSUS')
     expect(wrapper.text()).toContain('B649_SEALED_GEOMETRY_PORTFOLIO')
     expect(wrapper.text()).toContain('版本 1.0.0')
+    expect(wrapper.text()).toContain('版本 8.0.0')
     expect(wrapper.text()).toContain('這些票券組合來自目前排程器權威')
     expect(wrapper.text()).toContain('已驗證的預測樣本外（OOS）提升')
     expect(wrapper.text()).not.toMatch(/較會中|最佳|高信心/)
     expect(wrapper.text()).not.toMatch(/\bK[23]\b/)
+  })
+
+  it.each(invalidNumberMutations)(
+    'rejects invalid $name numbers in an HTTP 200 response',
+    async ({ mutate }) => {
+      const payload = currentForecast()
+      mutate(payload)
+      await expectMalformedResponse(payload)
+    },
+  )
+
+  it.each(malformedContractMutations)(
+    'rejects a response with $name',
+    async ({ mutate }) => {
+      const payload = currentForecast()
+      mutate(payload)
+      await expectMalformedResponse(payload)
+    },
+  )
+
+  it('accepts an exact legal contract without changing number or ticket order', async () => {
+    const payload = currentForecast()
+    fetchMock.mockResolvedValueOnce(apiResponse(payload))
+
+    await expect(fetchB649CanonicalForecast()).resolves.toEqual(payload)
+    expect(payload.k5_tickets.map((item) => item.ticket_position)).toEqual([1, 2, 3, 4, 5])
+    expect(payload.k10_tickets.map((item) => item.ticket_position)).toEqual(
+      Array.from({ length: 10 }, (_, index) => index + 1),
+    )
+    expect(payload.k20_tickets.map((item) => item.ticket_position)).toEqual(
+      Array.from({ length: 20 }, (_, index) => index + 1),
+    )
+    expect(payload.k5_tickets[0].predicted_numbers).toEqual([49, 1, 11, 21, 31, 41])
+    expect(payload.k5_tickets[1].predicted_numbers).toContain(21)
+  })
+
+  it('propagates AbortError without translating it to a network error', async () => {
+    const abortError = new DOMException('Aborted', 'AbortError')
+    fetchMock.mockRejectedValueOnce(abortError)
+
+    await expect(fetchB649CanonicalForecast()).rejects.toBe(abortError)
   })
 
   it('clears the previous tickets when the canonical endpoint returns 503', async () => {

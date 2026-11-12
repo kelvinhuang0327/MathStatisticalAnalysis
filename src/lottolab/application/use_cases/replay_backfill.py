@@ -29,6 +29,8 @@ from lottolab.domain.historical_replay import (
     ReplayStrategy,
     ReplayTargetRecord,
     ReplayTicket,
+    SourceHistoryProvenanceStatus,
+    parse_source_history_provenance_status,
 )
 
 ENGINE_VERSION = "replay-backfill-v1"
@@ -157,6 +159,7 @@ class ReplayBackfill:
         execution_version: str,
         source_hash: str | None = None,
         strategy_sources: JsonObject | None = None,
+        source_history_provenance_status: str | None = None,
     ) -> None:
         if not draws or not strategies or not source_identity or not execution_version:
             raise ValueError("draws, strategies, source and execution identity are required")
@@ -178,6 +181,11 @@ class ReplayBackfill:
         self.execution_version = execution_version
         self.source_hash = source_hash or identity({"source_locator": source_identity})
         self.sources = strategy_sources or {}
+        self.source_history_provenance_status = (
+            SourceHistoryProvenanceStatus.UNKNOWN
+            if source_history_provenance_status is None
+            else parse_source_history_provenance_status(source_history_provenance_status)
+        )
         self.store = store
         self.controller = HistoricalReplayController(_OutcomeBlindAdapter(adapter))
 
@@ -385,6 +393,7 @@ class ReplayBackfill:
             "cell_identity": cell_identity,
             "engine_version": ENGINE_VERSION,
             "execution_version": self.execution_version,
+            "source_history_provenance_status": self.source_history_provenance_status.value,
             "lottery_type": self.lottery_type.value,
             "strategy_id": record.strategy.strategy_id,
             "strategy_version": record.strategy.strategy_version,

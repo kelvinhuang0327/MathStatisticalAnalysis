@@ -25,7 +25,11 @@ from lottolab.application.replay_portfolio_qualification import assess_research_
 from lottolab.application.replay_strategy_inventory import load_replay_strategy_inventory
 from lottolab.application.seeded_single_replay import seeded_replay_version
 from lottolab.domain.draws import LotteryType
-from lottolab.domain.historical_replay import ReplayCellStatus
+from lottolab.domain.historical_replay import (
+    ReplayCellStatus,
+    SourceHistoryProvenanceStatus,
+    parse_source_history_provenance_status,
+)
 from lottolab.domain.replay_strategy_inventory import (
     ReplayDataStatus,
     ReplayExecutionCapability,
@@ -249,6 +253,7 @@ class ReplayBackfillPredictionItemView(BaseModel):
     target_draw_number: str
     target_draw_date: str
     prediction_status: str
+    source_history_provenance_status: Literal["VERIFIED", "UNKNOWN", "UNVERIFIED"]
     research_portfolio_qualification: ReplayBackfillResearchPortfolioQualificationView | None = None
     predicted_tickets: list[ReplayBackfillPredictedTicketView]
     actual_main_numbers: list[int]
@@ -1281,6 +1286,12 @@ def _prediction_item(
         "target_draw_date": identity["target_draw_date"],
         "identity_status": "VERIFIED" if identity_matches else "UNTRUSTED",
         "prediction_status": payload["execution_status"],
+        "source_history_provenance_status": parse_source_history_provenance_status(
+            payload.get(
+                "source_history_provenance_status",
+                SourceHistoryProvenanceStatus.UNKNOWN.value,
+            )
+        ).value,
         "research_portfolio_qualification": research_portfolio_qualification,
         "predicted_tickets": predicted,
         "actual_main_numbers": winning.get("main_numbers", []),

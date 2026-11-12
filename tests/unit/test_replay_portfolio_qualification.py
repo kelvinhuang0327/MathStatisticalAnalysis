@@ -77,6 +77,7 @@ def _fixture(
         "target_draw_id": "123",
         "target_draw_date": "2026-01-02",
         "execution_status": "COMPLETE",
+        "source_history_provenance_status": "UNKNOWN",
         "expected_native_ticket_count": 5,
         "predicted_tickets": [
             {"ticket_position": i, "main_numbers": numbers}

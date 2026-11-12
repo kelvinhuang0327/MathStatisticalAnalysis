@@ -374,6 +374,81 @@ describe('FullStrategyBacktestArchive', () => {
     expect(classifyFullStrategyArchivePerformance(exactEquality)).toBe('METRIC_UNAVAILABLE')
   })
 
+  it('rejects exact out-of-range rates and deltas while preserving valid boundary signs', () => {
+    const invalidRows = [
+      record({
+        strategy_id: 'historical-rate-above-one',
+        historical_success_rate: '1.0000000000000000000000000001',
+        random_baseline_success_rate: '1',
+        random_baseline_rate_difference: '1e-28',
+      }),
+      record({
+        strategy_id: 'historical-rate-below-zero',
+        historical_success_rate: '-1e-1000',
+        random_baseline_success_rate: '0',
+        random_baseline_rate_difference: '-1e-1000',
+      }),
+      record({
+        strategy_id: 'baseline-rate-above-one',
+        historical_success_rate: '1',
+        random_baseline_success_rate: '1.0000000000000000000000000001',
+        random_baseline_rate_difference: '-1e-28',
+      }),
+      record({
+        strategy_id: 'delta-above-one',
+        historical_success_rate: '1',
+        random_baseline_success_rate: '0',
+        random_baseline_rate_difference: '1.0000000000000000000000000001',
+      }),
+      record({
+        strategy_id: 'delta-below-minus-one',
+        historical_success_rate: '0',
+        random_baseline_success_rate: '1',
+        random_baseline_rate_difference: '-1.0000000000000000000000000001',
+      }),
+    ]
+
+    expect(filterFullStrategyArchiveRecords(invalidRows, 'ALL', 'ALL')).toEqual(invalidRows)
+    expect(filterFullStrategyArchiveRecords(invalidRows, 'ALL', 'ABOVE_RANDOM')).toHaveLength(0)
+    expect(filterFullStrategyArchiveRecords(invalidRows, 'ALL', 'METRIC_UNAVAILABLE'))
+      .toEqual(invalidRows)
+    for (const row of invalidRows) {
+      expect(getFullStrategyArchiveMetrics(row)).toBeNull()
+      expect(classifyFullStrategyArchivePerformance(row)).toBe('METRIC_UNAVAILABLE')
+    }
+
+    const boundaryRows = [
+      record({
+        strategy_id: 'delta-minus-one',
+        success_count: 0,
+        historical_success_rate: '0',
+        random_baseline_success_rate: '1',
+        random_baseline_rate_difference: '-1',
+      }),
+      record({
+        strategy_id: 'equivalent-rate-strings',
+        historical_success_rate: '0.20',
+        random_baseline_success_rate: '2e-1',
+        random_baseline_rate_difference: '0',
+      }),
+      record({
+        strategy_id: 'delta-plus-one',
+        success_count: 10,
+        historical_success_rate: '1',
+        random_baseline_success_rate: '0',
+        random_baseline_rate_difference: '1',
+      }),
+    ]
+    expect(boundaryRows.map(classifyFullStrategyArchivePerformance)).toEqual([
+      'BELOW_RANDOM',
+      'AT_RANDOM',
+      'ABOVE_RANDOM',
+    ])
+    for (const row of boundaryRows) {
+      expect(getFullStrategyArchiveMetrics(row)).not.toBeNull()
+    }
+  })
+
   it('classifies decimal delta signs exactly when Number would underflow', () => {
     const cases = [
       ['0.05', 'ABOVE_RANDOM'],

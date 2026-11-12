@@ -257,7 +257,7 @@ describe('B649 current forecast', () => {
     const payload = currentForecast()
     fetchMock.mockResolvedValueOnce(apiResponse(payload))
 
-    await expect(fetchB649CanonicalForecast()).resolves.toEqual(payload)
+    await expect(fetchB649CanonicalForecast()).resolves.toBe(payload)
     expect(payload.k5_tickets.map((item) => item.ticket_position)).toEqual([1, 2, 3, 4, 5])
     expect(payload.k10_tickets.map((item) => item.ticket_position)).toEqual(
       Array.from({ length: 10 }, (_, index) => index + 1),
@@ -274,6 +274,47 @@ describe('B649 current forecast', () => {
     fetchMock.mockRejectedValueOnce(abortError)
 
     await expect(fetchB649CanonicalForecast()).rejects.toBe(abortError)
+  })
+
+  it('propagates body-consumption AbortError without reclassifying it', async () => {
+    const abortError = new DOMException('Aborted', 'AbortError')
+    const response = apiResponse(currentForecast())
+    response.json = vi.fn().mockRejectedValueOnce(abortError)
+    fetchMock.mockResolvedValueOnce(response)
+
+    await expect(fetchB649CanonicalForecast()).rejects.toBe(abortError)
+  })
+
+  it('classifies a JSON syntax error during body consumption as malformed response', async () => {
+    const response = apiResponse(currentForecast())
+    response.json = vi.fn().mockRejectedValueOnce(new SyntaxError('Invalid JSON'))
+    fetchMock.mockResolvedValueOnce(response)
+
+    await expect(fetchB649CanonicalForecast()).rejects.toMatchObject({
+      name: 'B649CanonicalForecastRequestError',
+      kind: 'MALFORMED_RESPONSE',
+      status: 200,
+    } satisfies Partial<B649CanonicalForecastRequestError>)
+  })
+
+  it('classifies a non-abort fetch rejection as a network error', async () => {
+    fetchMock.mockRejectedValueOnce(new TypeError('offline'))
+
+    await expect(fetchB649CanonicalForecast()).rejects.toMatchObject({
+      name: 'B649CanonicalForecastRequestError',
+      kind: 'NETWORK',
+      status: 0,
+    } satisfies Partial<B649CanonicalForecastRequestError>)
+  })
+
+  it('classifies a non-200 response as an HTTP error', async () => {
+    fetchMock.mockResolvedValueOnce(apiResponse({ error_code: 'AUTHORITY_UNAVAILABLE' }, 503))
+
+    await expect(fetchB649CanonicalForecast()).rejects.toMatchObject({
+      name: 'B649CanonicalForecastRequestError',
+      kind: 'HTTP',
+      status: 503,
+    } satisfies Partial<B649CanonicalForecastRequestError>)
   })
 
   it('clears the previous tickets when the canonical endpoint returns 503', async () => {

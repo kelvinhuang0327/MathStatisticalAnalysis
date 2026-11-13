@@ -65,7 +65,7 @@ def identity(value: object) -> str:
 
 SCHEMA_SQL = """
 CREATE TABLE replay_backfill_schema (
-    version INTEGER PRIMARY KEY CHECK(version = 2), checksum TEXT NOT NULL
+    version INTEGER PRIMARY KEY CHECK(version = 3), checksum TEXT NOT NULL
 );
 CREATE TABLE replay_backfill_runs (
     run_id TEXT PRIMARY KEY, manifest_json TEXT NOT NULL,
@@ -92,12 +92,17 @@ CREATE TABLE replay_backfill_cells (
     cell_identity TEXT PRIMARY KEY,
     lottery_type TEXT NOT NULL, strategy_id TEXT NOT NULL, strategy_version TEXT NOT NULL,
     execution_version TEXT NOT NULL, dataset_identity TEXT NOT NULL,
+    catalog_source_version TEXT NOT NULL, catalog_source_commit TEXT NOT NULL,
+    catalog_source_blob_id TEXT NOT NULL, catalog_source_sha256 TEXT NOT NULL,
+    catalog_mapping_status TEXT NOT NULL, execution_adapter_identity TEXT NOT NULL,
     target_draw_id TEXT NOT NULL, target_draw_date TEXT NOT NULL,
     execution_status TEXT NOT NULL CHECK(execution_status IN
         ('COMPLETE','FAILED','NOT_ELIGIBLE','TYPED_CLOSURE','MISSING','PARTIAL','ARTIFACT_ONLY')),
     result_identity TEXT NOT NULL, payload_json TEXT NOT NULL,
     attempts INTEGER NOT NULL DEFAULT 1 CHECK(attempts > 0),
-    UNIQUE(lottery_type,strategy_id,strategy_version,execution_version,dataset_identity,target_draw_id)
+    UNIQUE(lottery_type,strategy_id,strategy_version,execution_version,dataset_identity,
+        target_draw_id,catalog_source_version,catalog_source_commit,catalog_source_blob_id,
+        catalog_source_sha256,catalog_mapping_status,execution_adapter_identity)
 );
 CREATE TABLE replay_backfill_run_cells (
     run_id TEXT NOT NULL REFERENCES replay_backfill_runs(run_id),
@@ -133,7 +138,8 @@ CREATE INDEX replay_backfill_tickets_position ON replay_backfill_tickets
     (ticket_position,cell_identity);
 """
 SCHEMA_CHECKSUM = identity(SCHEMA_SQL)
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
+LEGACY_V2_SCHEMA_CHECKSUM = "77b3089dbe2bfb13c4250c65057571d08e5c77577457c2443392e6900d1f4d48"
 LEGACY_V1_SCHEMA_CHECKSUM = "87659eafeb6be707bf711e0951cf9695bfce30748ddc218213c5cb799f33f16c"
 _LEGACY_V1_TABLES = {
     "replay_backfill_schema",
@@ -152,6 +158,50 @@ _TABLES = {
     "replay_backfill_training",
     "replay_backfill_sources",
 }
+_CATALOG_SOURCE_FIELDS = (
+    "catalog_source_version", "catalog_source_commit", "catalog_source_blob_id",
+    "catalog_source_sha256", "catalog_mapping_status", "execution_adapter_identity",
+)
+
+
+def _is_git_object_id(value: object) -> bool:
+    return (
+        type(value) is str and len(value) in {40, 64}
+        and all(char in "0123456789abcdef" for char in value)
+    )
+
+
+def catalog_source_rankability(source: JsonObject) -> JsonObject:
+    status = source.get("catalog_mapping_status")
+    commit = source.get("catalog_source_commit")
+    blob = source.get("catalog_source_blob_id")
+    sha256 = source.get("catalog_source_sha256")
+    present = (
+        type(source.get("catalog_source_version")) is str
+        and bool(source["catalog_source_version"])
+        and _is_git_object_id(commit)
+        and _is_git_object_id(blob)
+        and type(sha256) is str
+        and len(sha256) == 64
+        and all(char in "0123456789abcdef" for char in sha256)
+        and type(source.get("execution_adapter_identity")) is str
+        and bool(source["execution_adapter_identity"])
+    )
+    eligible = present and status == "EXACT_SOURCE_SYMBOL_MATCH"
+    return {
+        "ranking_eligible": eligible,
+        "ranking_exclusion_reason": (
+            None if eligible else "CATALOG_SOURCE_MAPPING_UNVERIFIED_OR_INCOMPLETE"
+        ),
+    }
+
+
+def _catalog_source_projection(payload: JsonObject, row: tuple[Any, ...]) -> JsonObject:
+    projected = dict(payload)
+    for field, value in zip(_CATALOG_SOURCE_FIELDS, row, strict=True):
+        projected[field] = value
+    projected.update(catalog_source_rankability(projected))
+    return projected
 
 
 def _schema_table_sql(table: str) -> str:
@@ -179,6 +229,21 @@ def _copy_table_columns(
     connection.execute(
         f'INSERT INTO "{destination}" ({quoted}) SELECT {quoted} FROM "{source}"'
     )
+
+
+def _create_schema_indexes(connection: sqlite3.Connection) -> None:
+    existing = {
+        row[0]
+        for row in connection.execute(
+            "SELECT name FROM sqlite_master WHERE type='index' AND sql IS NOT NULL"
+        )
+    }
+    for statement in SCHEMA_SQL.split(";"):
+        index_sql = statement.strip()
+        if index_sql.startswith("CREATE INDEX "):
+            name = index_sql.split()[2]
+            if name not in existing:
+                connection.execute(index_sql)
 
 
 def _migrate_legacy_v1(connection: sqlite3.Connection) -> None:
@@ -225,29 +290,45 @@ def _migrate_legacy_v1(connection: sqlite3.Connection) -> None:
     )
     cells_sql = _schema_table_sql("replay_backfill_cells").replace(
         "CREATE TABLE replay_backfill_cells (",
-        "CREATE TABLE replay_backfill_cells_v2 (",
+        "CREATE TABLE replay_backfill_cells_v3 (",
         1,
     )
     run_cells_sql = _schema_table_sql("replay_backfill_run_cells").replace(
         "CREATE TABLE replay_backfill_run_cells (",
-        "CREATE TABLE replay_backfill_run_cells_v2 (",
+        "CREATE TABLE replay_backfill_run_cells_v3 (",
         1,
     ).replace(
         "REFERENCES replay_backfill_cells(cell_identity)",
-        "REFERENCES replay_backfill_cells_v2(cell_identity)",
+        "REFERENCES replay_backfill_cells_v3(cell_identity)",
         1,
     )
     connection.execute(cells_sql)
     connection.execute(run_cells_sql)
-    _copy_table_columns(connection, "replay_backfill_cells_v1", "replay_backfill_cells_v2")
+    legacy_columns = _column_names(connection, "replay_backfill_cells_v1")
+    destination_columns = _column_names(connection, "replay_backfill_cells_v3")
+    identity_columns = (
+        "catalog_source_version", "catalog_source_commit", "catalog_source_blob_id",
+        "catalog_source_sha256", "catalog_mapping_status", "execution_adapter_identity",
+    )
+    expected_destination = (*legacy_columns[:6], *identity_columns, *legacy_columns[6:])
+    if destination_columns != expected_destination:
+        raise ValueError("unsupported legacy replay backfill cells table")
+    insert_columns = ",".join(f'"{column}"' for column in destination_columns)
+    select_columns = ",".join(f'"{column}"' for column in legacy_columns[:6])
+    select_columns += ",'','','','','LEGACY_UNRANKABLE','',"
+    select_columns += ",".join(f'"{column}"' for column in legacy_columns[6:])
+    connection.execute(
+        f"INSERT INTO replay_backfill_cells_v3 ({insert_columns}) "
+        f"SELECT {select_columns} FROM replay_backfill_cells_v1"
+    )
     _copy_table_columns(
-        connection, "replay_backfill_run_cells_v1", "replay_backfill_run_cells_v2"
+        connection, "replay_backfill_run_cells_v1", "replay_backfill_run_cells_v3"
     )
     connection.execute("DROP TABLE replay_backfill_run_cells_v1")
     connection.execute("DROP TABLE replay_backfill_cells_v1")
-    connection.execute("ALTER TABLE replay_backfill_cells_v2 RENAME TO replay_backfill_cells")
+    connection.execute("ALTER TABLE replay_backfill_cells_v3 RENAME TO replay_backfill_cells")
     connection.execute(
-        "ALTER TABLE replay_backfill_run_cells_v2 RENAME TO replay_backfill_run_cells"
+        "ALTER TABLE replay_backfill_run_cells_v3 RENAME TO replay_backfill_run_cells"
     )
 
     for table in (
@@ -268,12 +349,70 @@ def _migrate_legacy_v1(connection: sqlite3.Connection) -> None:
         (SCHEMA_VERSION, SCHEMA_CHECKSUM),
     )
     connection.execute("DROP TABLE replay_backfill_schema_v1")
-    for statement in SCHEMA_SQL.split(";"):
-        index_sql = statement.strip()
-        if index_sql.startswith("CREATE INDEX "):
-            connection.execute(index_sql)
+    _create_schema_indexes(connection)
     if connection.execute("PRAGMA foreign_key_check").fetchall():
         raise ValueError("legacy replay backfill migration failed foreign key check")
+
+
+def _migrate_legacy_v2(connection: sqlite3.Connection) -> None:
+    schema_row = connection.execute(
+        "SELECT version,checksum FROM replay_backfill_schema"
+    ).fetchall()
+    if schema_row != [(2, LEGACY_V2_SCHEMA_CHECKSUM)]:
+        raise ValueError("unsupported replay backfill schema")
+    expected_columns = (
+        "cell_identity", "lottery_type", "strategy_id", "strategy_version",
+        "execution_version", "dataset_identity", "target_draw_id", "target_draw_date",
+        "execution_status", "result_identity", "payload_json", "attempts",
+    )
+    if _column_names(connection, "replay_backfill_cells") != expected_columns:
+        raise ValueError("unsupported legacy replay backfill cells table")
+    if connection.execute("PRAGMA foreign_keys").fetchone() != (1,):
+        raise ValueError("replay backfill v2 migration requires foreign keys enabled")
+
+    # Rename the old parent first; SQLite retargets the old child FKs to it.
+    # New v3 children are then created against the new canonical parent.
+    for table in (
+        "replay_backfill_cells", "replay_backfill_run_cells",
+        "replay_backfill_tickets", "replay_backfill_training",
+    ):
+        connection.execute(f'ALTER TABLE "{table}" RENAME TO "{table}_v2"')
+    for table in (
+        "replay_backfill_cells", "replay_backfill_run_cells",
+        "replay_backfill_tickets", "replay_backfill_training",
+    ):
+        connection.execute(_schema_table_sql(table))
+
+    old_columns = ",".join(f'"{column}"' for column in expected_columns)
+    insert_columns = old_columns + "," + ",".join(
+        f'"{column}"' for column in _CATALOG_SOURCE_FIELDS
+    )
+    connection.execute(
+        f"INSERT INTO replay_backfill_cells ({insert_columns}) "
+        f"SELECT {old_columns},'','','','','LEGACY_UNRANKABLE','' "
+        "FROM replay_backfill_cells_v2"
+    )
+    for table in (
+        "replay_backfill_run_cells", "replay_backfill_tickets", "replay_backfill_training",
+    ):
+        _copy_table_columns(connection, f"{table}_v2", table)
+
+    for table in (
+        "replay_backfill_run_cells_v2", "replay_backfill_tickets_v2",
+        "replay_backfill_training_v2", "replay_backfill_cells_v2",
+    ):
+        connection.execute(f'DROP TABLE "{table}"')
+
+    connection.execute("ALTER TABLE replay_backfill_schema RENAME TO replay_backfill_schema_v2")
+    connection.execute(_schema_table_sql("replay_backfill_schema"))
+    connection.execute(
+        "INSERT INTO replay_backfill_schema(version,checksum) VALUES(?,?)",
+        (SCHEMA_VERSION, SCHEMA_CHECKSUM),
+    )
+    connection.execute("DROP TABLE replay_backfill_schema_v2")
+    _create_schema_indexes(connection)
+    if connection.execute("PRAGMA foreign_key_check").fetchall():
+        raise ValueError("legacy replay backfill v2 migration failed foreign key check")
 
 
 def validate_database_path(database: Path) -> Path:
@@ -461,7 +600,15 @@ class SQLiteBackfillStore:
                     )
                 elif tables == _LEGACY_V1_TABLES:
                     _migrate_legacy_v1(connection)
-                elif tables != _TABLES:
+                elif tables == _TABLES:
+                    row = connection.execute(
+                        "SELECT version,checksum FROM replay_backfill_schema"
+                    ).fetchall()
+                    if row == [(2, LEGACY_V2_SCHEMA_CHECKSUM)]:
+                        _migrate_legacy_v2(connection)
+                    elif row != [(SCHEMA_VERSION, SCHEMA_CHECKSUM)]:
+                        raise ValueError("unsupported replay backfill schema")
+                else:
                     raise ValueError("output must be a standalone replay backfill database")
                 self._verify(connection)
             with self._open_connection(path, write=True) as connection:
@@ -556,9 +703,9 @@ class SQLiteBackfillStore:
 
     def lookup_many_by_unique_keys(
         self,
-        keys: tuple[tuple[str, str, str, str, str, str], ...],
-    ) -> dict[tuple[str, str, str, str, str, str], JsonObject]:
-        """Find cells by the database's six-column natural key."""
+        keys: tuple[tuple[str, ...], ...],
+    ) -> dict[tuple[str, ...], JsonObject]:
+        """Find cells by the full execution and catalog-source identity."""
         if not keys:
             return {}
         columns = (
@@ -568,11 +715,12 @@ class SQLiteBackfillStore:
             "execution_version",
             "dataset_identity",
             "target_draw_id",
+            *_CATALOG_SOURCE_FIELDS,
         )
-        found: dict[tuple[str, str, str, str, str, str], JsonObject] = {}
+        found: dict[tuple[str, ...], JsonObject] = {}
         with self._connect() as connection:
-            for offset in range(0, len(keys), 100):
-                batch = keys[offset : offset + 100]
+            for offset in range(0, len(keys), 50):
+                batch = keys[offset : offset + 50]
                 predicate = " OR ".join(
                     "(" + " AND ".join(f'"{column}"=?' for column in columns) + ")"
                     for _ in batch
@@ -584,11 +732,8 @@ class SQLiteBackfillStore:
                     parameters,
                 )
                 for row in rows:
-                    key = cast(
-                        tuple[str, str, str, str, str, str],
-                        tuple(row[:6]),
-                    )
-                    found[key] = json.loads(row[6])
+                    key = cast(tuple[str, ...], tuple(row[:-1]))
+                    found[key] = json.loads(row[-1])
         return found
 
     def lookup_complete_by_logical_keys(
@@ -619,6 +764,7 @@ class SQLiteBackfillStore:
             ).fetchall()
             if schema_rows not in (
                 [(SCHEMA_VERSION, SCHEMA_CHECKSUM)],
+                [(2, LEGACY_V2_SCHEMA_CHECKSUM)],
                 [(1, LEGACY_V1_SCHEMA_CHECKSUM)],
             ):
                 raise ValueError("unsupported replay backfill schema")
@@ -709,8 +855,13 @@ class SQLiteBackfillStore:
                     )
                     connection.execute(
                         "UPDATE replay_backfill_cells SET execution_status=?,result_identity=?,"
-                        "payload_json=?,attempts=attempts+1 WHERE cell_identity=?",
-                        (result["execution_status"], result["result_identity"], encoded, cell_id),
+                        "payload_json=?,catalog_source_version=?,catalog_source_commit=?,"
+                        "catalog_source_blob_id=?,catalog_source_sha256=?,catalog_mapping_status=?,"
+                        "execution_adapter_identity=?,attempts=attempts+1 WHERE cell_identity=?",
+                        (
+                            result["execution_status"], result["result_identity"], encoded,
+                            *(result[field] for field in _CATALOG_SOURCE_FIELDS), cell_id,
+                        ),
                     )
                 elif old is None:
                     if "source_history_provenance_status" not in result:
@@ -724,13 +875,17 @@ class SQLiteBackfillStore:
                         "strategy_version",
                         "execution_version",
                         "dataset_identity",
+                        *_CATALOG_SOURCE_FIELDS,
                         "target_draw_id",
                         "target_draw_date",
                         "execution_status",
                         "result_identity",
                     )
+                    columns = ",".join(f'"{key}"' for key in (*keys, "payload_json", "attempts"))
+                    placeholders = ",".join("?" for _ in keys)
                     connection.execute(
-                        "INSERT INTO replay_backfill_cells VALUES(?,?,?,?,?,?,?,?,?,?,?,1)",
+                        f"INSERT INTO replay_backfill_cells ({columns}) "
+                        f"VALUES({placeholders},?,1)",
                         (*(result[k] for k in keys), encoded),
                     )
                 connection.execute(
@@ -1570,7 +1725,10 @@ class SQLiteBackfillStore:
             rows = connection.execute(
                 "SELECT c.payload_json,c.target_draw_date,c.target_draw_id,c.strategy_id,"
                 "c.strategy_version,c.cell_identity,c.lottery_type,c.dataset_identity,"
-                "c.execution_version,c.result_identity FROM replay_backfill_cells c "
+                "c.execution_version,c.result_identity,c.catalog_source_version,"
+                "c.catalog_source_commit,c.catalog_source_blob_id,c.catalog_source_sha256,"
+                "c.catalog_mapping_status,c.execution_adapter_identity "
+                "FROM replay_backfill_cells c "
                 "JOIN replay_backfill_run_cells r USING(cell_identity) "
                 f"WHERE {page_where} ORDER BY c.target_draw_date,CAST(c.target_draw_id AS INTEGER),"
                 "c.strategy_id,c.strategy_version,c.cell_identity LIMIT ?",
@@ -1606,6 +1764,7 @@ class SQLiteBackfillStore:
                             "strategy_id": row[3],
                             "strategy_version": row[4],
                             "cell_identity": row[5],
+                            **dict(zip(_CATALOG_SOURCE_FIELDS, row[10:16], strict=True)),
                         },
                         "cutoff_source": cutoff_source,
                         "portfolio_context": _research_portfolio_context(
@@ -1622,6 +1781,7 @@ class SQLiteBackfillStore:
                                 "dataset_identity": row[7],
                                 "execution_version": row[8],
                                 "result_identity": row[9],
+                                **dict(zip(_CATALOG_SOURCE_FIELDS, row[10:16], strict=True)),
                             },
                         ),
                         "key": [row[1], int(row[2]), row[3], row[4], row[5]],
@@ -1680,16 +1840,19 @@ class SQLiteBackfillStore:
                 f"SELECT COUNT(*) FROM replay_backfill_cells c WHERE {where}", params
             ).fetchone()[0]
             rows = connection.execute(
-                f"SELECT c.payload_json FROM replay_backfill_cells c WHERE {where} "
+                f"SELECT c.payload_json,c.catalog_source_version,c.catalog_source_commit,"
+                "c.catalog_source_blob_id,c.catalog_source_sha256,c.catalog_mapping_status,"
+                f"c.execution_adapter_identity FROM replay_backfill_cells c WHERE {where} "
                 "ORDER BY c.target_draw_date,CAST(c.target_draw_id AS INTEGER),c.strategy_id,"
                 "c.strategy_version,c.cell_identity LIMIT ? OFFSET ?",
                 (*params, limit, offset),
             ).fetchall()
         items: list[JsonObject] = []
         for row in rows:
-            payload = _as_json_object(json.loads(row[0]))
-            if payload is None:
+            raw_payload = _as_json_object(json.loads(row[0]))
+            if raw_payload is None:
                 raise ValueError("persisted replay result payload is invalid")
+            payload = _catalog_source_projection(raw_payload, tuple(row[1:7]))
             provenance_status = payload.get(
                 "source_history_provenance_status",
                 SourceHistoryProvenanceStatus.UNKNOWN.value,
@@ -1764,6 +1927,7 @@ def _research_portfolio_context(
         "dataset_identity",
         "execution_version",
         "result_identity",
+        *_CATALOG_SOURCE_FIELDS,
     )
     stored_matches = all(
         payload.get(key) == stored.get(key) and stored.get(key) is not None

@@ -39,6 +39,7 @@ from lottolab.domain.replay_strategy_inventory import (
 from lottolab.infrastructure.persistence.replay_backfill_store import (
     JsonObject,
     SQLiteBackfillStore,
+    catalog_source_rankability,
     canonical_json,
 )
 from lottolab.interfaces.api.draw_data import ApiValidationErrorResponse
@@ -271,6 +272,14 @@ class ReplayBackfillPredictionItemView(BaseModel):
     source_identity: str | None = None
     source_hash: str | None = None
     strategy_fingerprint: str | None = None
+    catalog_source_version: str | None = None
+    catalog_source_commit: str | None = None
+    catalog_source_blob_id: str | None = None
+    catalog_source_sha256: str | None = None
+    catalog_mapping_status: str | None = None
+    execution_adapter_identity: str | None = None
+    historical_ranking_eligible: bool = False
+    historical_ranking_exclusion_reason: str | None = None
     dataset_identity: str | None = None
     history_fingerprint: str | None = None
     engine_version: str | None = None
@@ -1277,6 +1286,18 @@ def _prediction_item(
         source_bound=context.get("source_bound") is True and identity_matches,
         execution_status=payload.get("execution_status"),
     )
+    catalog_identity = {
+        key: identity.get(key, "")
+        for key in (
+            "catalog_source_version", "catalog_source_commit", "catalog_source_blob_id",
+            "catalog_source_sha256", "catalog_mapping_status", "execution_adapter_identity",
+        )
+    }
+    rankability = catalog_source_rankability(catalog_identity)
+    catalog_identity_matches = all(
+        payload.get(key) == identity.get(key)
+        for key in catalog_identity
+    )
     return {
         "lottery_type": identity["lottery_type"],
         "run_id": identity.get("run_id"),
@@ -1286,6 +1307,16 @@ def _prediction_item(
         "target_draw_date": identity["target_draw_date"],
         "identity_status": "VERIFIED" if identity_matches else "UNTRUSTED",
         "prediction_status": payload["execution_status"],
+        **catalog_identity,
+        "historical_ranking_eligible": (
+            rankability["ranking_eligible"] is True and catalog_identity_matches
+        ),
+        "historical_ranking_exclusion_reason": (
+            None
+            if rankability["ranking_eligible"] is True and catalog_identity_matches
+            else rankability["ranking_exclusion_reason"]
+            or "CATALOG_SOURCE_IDENTITY_MISMATCH"
+        ),
         "source_history_provenance_status": parse_source_history_provenance_status(
             payload.get(
                 "source_history_provenance_status",

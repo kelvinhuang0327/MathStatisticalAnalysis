@@ -242,6 +242,10 @@ def native_strategy_inventory(
     for strategy_id, binding in bindings.items():
         descriptor = descriptors.get(strategy_id)
         account = accounts[strategy_id]
+        implementation_type = type(binding.implementation)
+        account["execution_adapter_identity"] = (
+            f"{implementation_type.__module__}.{implementation_type.__qualname__}"
+        )
         account["lifecycle_status"] = (
             descriptor.lifecycle_status.value if descriptor is not None else "UNREGISTERED"
         )

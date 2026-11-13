@@ -97,8 +97,8 @@ class BackfillStore(Protocol):
     def lookup_many(self, cell_identities: tuple[str, ...]) -> dict[str, JsonObject]: ...
     def lookup_many_by_unique_keys(
         self,
-        keys: tuple[tuple[str, str, str, str, str, str], ...],
-    ) -> dict[tuple[str, str, str, str, str, str], JsonObject]: ...
+        keys: tuple[tuple[str, ...], ...],
+    ) -> dict[tuple[str, ...], JsonObject]: ...
     def lookup_complete_by_logical_keys(
         self,
         keys: tuple[tuple[str, str, str, str], ...],
@@ -179,6 +179,9 @@ class ReplayBackfill:
             {"source": source_identity, "draws": [asdict(d) for d in self.draws]}
         )
         self.execution_version = execution_version
+        self.default_adapter_identity = (
+            f"{type(adapter).__module__}.{type(adapter).__qualname__}"
+        )
         self.source_hash = source_hash or identity({"source_locator": source_identity})
         self.sources = strategy_sources or {}
         self.source_history_provenance_status = (
@@ -298,6 +301,7 @@ class ReplayBackfill:
                     self.execution_version,
                     self.dataset_identity,
                     target.draw_number,
+                    *self._catalog_source_identity_values(strategy.strategy_id),
                 )
                 for target in batch
                 for strategy in self.strategies
@@ -315,6 +319,7 @@ class ReplayBackfill:
                         self.execution_version,
                         self.dataset_identity,
                         target.draw_number,
+                        *self._catalog_source_identity_values(strategy.strategy_id),
                     )
                     cell_identity = identity(
                         {
@@ -323,6 +328,7 @@ class ReplayBackfill:
                             "lottery_type": self.lottery_type.value,
                             "strategy": asdict(strategy),
                             "target_draw_id": target.draw_number,
+                            **self._catalog_source_identity(strategy.strategy_id),
                         }
                     )
                     previous = prior_results.get(unique_key)
@@ -397,6 +403,7 @@ class ReplayBackfill:
             "lottery_type": self.lottery_type.value,
             "strategy_id": record.strategy.strategy_id,
             "strategy_version": record.strategy.strategy_version,
+            **self._catalog_source_identity(record.strategy.strategy_id),
             "strategy_fingerprint": record.strategy.fingerprint,
             "strategy_source": source,
             "model_version_or_null": source.get("model_version_or_null"),
@@ -449,6 +456,30 @@ class ReplayBackfill:
             )
         payload["result_identity"] = identity(payload)
         return json.loads(canonical_json(payload))
+
+    def _catalog_source_identity(self, strategy_id: str) -> JsonObject:
+        source = self.sources.get(strategy_id, {})
+        fields = {
+            "catalog_source_version": source.get("catalog_source_version"),
+            "catalog_source_commit": source.get("catalog_source_commit"),
+            "catalog_source_blob_id": source.get("catalog_source_blob_id"),
+            "catalog_source_sha256": source.get("catalog_source_sha256"),
+            "catalog_mapping_status": source.get("catalog_mapping_status"),
+            "execution_adapter_identity": source.get("execution_adapter_identity"),
+        }
+        result: JsonObject = {}
+        for key, value in fields.items():
+            if key == "catalog_mapping_status":
+                result[key] = value if type(value) is str and value else "UNVERIFIED"
+            elif key == "execution_adapter_identity" and not value:
+                result[key] = self.default_adapter_identity
+            else:
+                result[key] = value if type(value) is str else ""
+        return result
+
+    def _catalog_source_identity_values(self, strategy_id: str) -> tuple[str, ...]:
+        identity_value = self._catalog_source_identity(strategy_id)
+        return tuple(identity_value.values())
 
 
 def _missing_ids(targets: tuple[ReplayDraw, ...]) -> list[str]:

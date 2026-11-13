@@ -39,6 +39,7 @@ from lottolab.infrastructure.persistence.project_database_paths import (
     project_database_environment,
 )
 from lottolab.infrastructure.persistence.replay_backfill_store import (
+    LEGACY_V2_SCHEMA_CHECKSUM,
     SCHEMA_CHECKSUM,
     SCHEMA_SQL,
     SCHEMA_VERSION,
@@ -124,6 +125,7 @@ def worker(
     producer: Producer | None = None,
     draws: tuple[ReplayDraw, ...] | None = None,
     store: SQLiteBackfillStore | None = None,
+    strategy_sources: dict[str, Any] | None = None,
     source_history_provenance_status: str | None = None,
 ) -> tuple[ReplayBackfill, Producer, SQLiteBackfillStore]:
     producer = producer or Producer()
@@ -156,6 +158,7 @@ def worker(
             source_identity="synthetic-fixture-v1",
             store=store,
             execution_version="test-source-v1",
+            strategy_sources=strategy_sources,
             source_history_provenance_status=source_history_provenance_status,
         ),
         producer,
@@ -837,13 +840,190 @@ def test_legacy_backfill_schema_migrates_without_losing_cells(tmp_path: Path) ->
             "SELECT version,checksum FROM replay_backfill_schema"
         ).fetchone() == (SCHEMA_VERSION, SCHEMA_CHECKSUM)
         assert connection.execute(
-            "SELECT cell_identity,strategy_id,strategy_version,target_draw_id,attempts "
+            "SELECT cell_identity,strategy_id,strategy_version,target_draw_id,attempts,"
+            "catalog_source_version,catalog_mapping_status "
             "FROM replay_backfill_cells"
-        ).fetchall() == [("old-cell", "approved-strategy", "v1", "100000001", 1)]
+        ).fetchall() == [
+            ("old-cell", "approved-strategy", "v1", "100000001", 1, "", "LEGACY_UNRANKABLE")
+        ]
         assert connection.execute(
             "SELECT run_id,cell_identity FROM replay_backfill_run_cells"
         ).fetchall() == [("old-run", "old-cell")]
         assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
+
+
+def _v2_schema_sql() -> str:
+    schema = SCHEMA_SQL.replace("CHECK(version = 3)", "CHECK(version = 2)")
+    schema = schema.replace(
+        "    catalog_source_version TEXT NOT NULL, catalog_source_commit TEXT NOT NULL,\n"
+        "    catalog_source_blob_id TEXT NOT NULL, catalog_source_sha256 TEXT NOT NULL,\n"
+        "    catalog_mapping_status TEXT NOT NULL, execution_adapter_identity TEXT NOT NULL,\n",
+        "",
+    )
+    schema = schema.replace(
+        "    UNIQUE(lottery_type,strategy_id,strategy_version,execution_version,dataset_identity,\n"
+        "        target_draw_id,catalog_source_version,catalog_source_commit,catalog_source_blob_id,\n"
+        "        catalog_source_sha256,catalog_mapping_status,execution_adapter_identity)",
+        "    UNIQUE(lottery_type,strategy_id,strategy_version,execution_version,dataset_identity,target_draw_id)",
+    )
+    return schema
+
+
+def test_v2_migration_keeps_rows_readable_and_unrankable(tmp_path: Path) -> None:
+    database = _test_database_path(tmp_path, "legacy-v2.sqlite3")
+    with sqlite3.connect(database) as connection:
+        connection.executescript(_v2_schema_sql())
+        connection.execute(
+            "INSERT INTO replay_backfill_schema(version,checksum) VALUES(2,?)",
+            (LEGACY_V2_SCHEMA_CHECKSUM,),
+        )
+        connection.execute(
+            "INSERT INTO replay_backfill_runs(run_id,manifest_json,expected_cells) VALUES(?,?,?)",
+            ("legacy-run", "{}", 1),
+        )
+        old_payload = {
+            "cell_identity": "legacy-cell", "lottery_type": "BIG_LOTTO",
+            "strategy_id": "two-tickets", "strategy_version": "v1",
+            "execution_version": "test-source-v1", "dataset_identity": "old-dataset",
+            "target_draw_id": "100000001", "target_draw_date": "2020-01-01",
+            "execution_status": "COMPLETE", "result_identity": "legacy-result",
+        }
+        connection.execute(
+            "INSERT INTO replay_backfill_cells VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
+            (
+                "legacy-cell", "BIG_LOTTO", "two-tickets", "v1", "test-source-v1",
+                "old-dataset", "100000001", "2020-01-01", "COMPLETE", "legacy-result",
+                json.dumps(old_payload), 1,
+            ),
+        )
+        connection.execute(
+            "INSERT INTO replay_backfill_run_cells VALUES(?,?)", ("legacy-run", "legacy-cell")
+        )
+        connection.execute(
+            "INSERT INTO replay_backfill_tickets VALUES(?,?,?,?,?,?,?)",
+            ("legacy-cell", 1, "[1,2,3,4,5,6]", "[7]", 6, 1, "FIRST"),
+        )
+        connection.execute(
+            "INSERT INTO replay_backfill_training VALUES(?,?,?,?,?,?,?,?)",
+            ("legacy-cell", "UNKNOWN", None, None, None, None, None, None),
+        )
+
+    store = SQLiteBackfillStore(database)
+    store.prepare(
+        {
+            "run_id": "new-run", "expected_cells": 1, "lottery_type": "BIG_LOTTO",
+            "dataset_identity": "new-dataset", "strategies": [], "targets": [],
+        }
+    )
+    row = store.query(run_id="legacy-run")["items"][0]
+    assert row["cell_identity"] == "legacy-cell"
+    assert row["strategy_version"] == "v1"
+    assert row["catalog_source_version"] == ""
+    assert row["catalog_source_commit"] == ""
+    assert row["catalog_source_blob_id"] == ""
+    assert row["catalog_source_sha256"] == ""
+    assert row["catalog_mapping_status"] == "LEGACY_UNRANKABLE"
+    assert row["ranking_eligible"] is False
+    with sqlite3.connect(database) as connection:
+        assert connection.execute("SELECT version,checksum FROM replay_backfill_schema").fetchone() == (
+            SCHEMA_VERSION, SCHEMA_CHECKSUM
+        )
+        assert connection.execute(
+            "SELECT COUNT(*) FROM replay_backfill_tickets WHERE cell_identity='legacy-cell'"
+        ).fetchone() == (1,)
+        assert connection.execute(
+            "SELECT COUNT(*) FROM replay_backfill_training WHERE cell_identity='legacy-cell'"
+        ).fetchone() == (1,)
+        assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
+
+    app = FastAPI()
+    app.include_router(create_replay_backfill_router(SQLiteBackfillStore(database, read_only=True)))
+    response = cast(httpx.Client, TestClient(app)).get(
+        "/api/v1/replay-backfill/results", params={"run_id": "legacy-run"}
+    )
+    assert response.status_code == 200
+    assert response.json()["items"][0]["catalog_mapping_status"] == "LEGACY_UNRANKABLE"
+    assert response.json()["items"][0]["ranking_eligible"] is False
+
+
+def test_catalog_source_identity_round_trips_and_separates_cell_versions(tmp_path: Path) -> None:
+    store = SQLiteBackfillStore(_test_database_path(tmp_path, "catalog-source.sqlite3"))
+    expected_sources = []
+    for suffix in ("a", "b"):
+        source = {
+            "catalog_source_version": f"research-{suffix}",
+            "catalog_source_commit": suffix * 40,
+            "catalog_source_blob_id": ("c" if suffix == "a" else "d") * 40,
+            "catalog_source_sha256": suffix * 64,
+            "catalog_mapping_status": "EXACT_SOURCE_SYMBOL_MATCH",
+            "execution_adapter_identity": "fixture.Adapter",
+        }
+        engine, _, _ = worker(
+            tmp_path, store=store, strategy_sources={"two-tickets": source}
+        )
+        engine.execute(BackfillSelection(latest=1))
+        expected_sources.append(source)
+
+    rows = store.query(limit=10)["items"]
+    assert len(rows) == 2
+    assert {row["strategy_version"] for row in rows} == {"v1"}
+    assert {row["execution_version"] for row in rows} == {"test-source-v1"}
+    assert {row["catalog_source_version"] for row in rows} == {"research-a", "research-b"}
+    for row in rows:
+        source = next(
+            item for item in expected_sources
+            if item["catalog_source_version"] == row["catalog_source_version"]
+        )
+        assert {key: row[key] for key in source} == source
+        assert row["ranking_eligible"] is True
+    with sqlite3.connect(store.database) as connection:
+        persisted = connection.execute(
+            "SELECT catalog_source_version,catalog_source_commit,catalog_source_blob_id,"
+            "catalog_source_sha256,catalog_mapping_status,execution_adapter_identity "
+            "FROM replay_backfill_cells ORDER BY catalog_source_version"
+        ).fetchall()
+    assert persisted == [
+        ("research-a", "a" * 40, "c" * 40, "a" * 64, "EXACT_SOURCE_SYMBOL_MATCH", "fixture.Adapter"),
+        ("research-b", "b" * 40, "d" * 40, "b" * 64, "EXACT_SOURCE_SYMBOL_MATCH", "fixture.Adapter"),
+    ]
+
+    app = FastAPI()
+    app.include_router(create_replay_backfill_router(SQLiteBackfillStore(store.database, read_only=True)))
+    response = cast(httpx.Client, TestClient(app)).get(
+        "/api/v1/replay-backfill/results", params={"limit": 10}
+    )
+    assert response.status_code == 200
+    api_rows = response.json()["items"]
+    assert len(api_rows) == 2
+    assert {row["catalog_source_version"] for row in api_rows} == {"research-a", "research-b"}
+    assert all(row["catalog_mapping_status"] == "EXACT_SOURCE_SYMBOL_MATCH" for row in api_rows)
+
+
+def test_unverified_catalog_mapping_is_visible_but_not_rankable(tmp_path: Path) -> None:
+    engine, _, store = worker(
+        tmp_path, store=SQLiteBackfillStore(_test_database_path(tmp_path, "unverified-source.sqlite3"))
+    )
+    summary = engine.execute(BackfillSelection(latest=1))
+    row = store.query(run_id=summary["run_id"], limit=1)["items"][0]
+    assert row["strategy_version"] == "v1"
+    assert row["catalog_source_version"] == ""
+    assert row["catalog_mapping_status"] == "UNVERIFIED"
+    assert row["ranking_eligible"] is False
+    assert row["ranking_exclusion_reason"] == "CATALOG_SOURCE_MAPPING_UNVERIFIED_OR_INCOMPLETE"
+
+    app = FastAPI()
+    app.include_router(create_replay_backfill_router(SQLiteBackfillStore(store.database, read_only=True)))
+    response = cast(httpx.Client, TestClient(app)).get(
+        "/api/v1/replay-backfill/predictions",
+        params={"lottery_type": "BIG_LOTTO", "run_id": summary["run_id"], "period": "ALL"},
+    )
+    assert response.status_code == 200
+    projected = response.json()["items"][0]
+    assert projected["catalog_mapping_status"] == "UNVERIFIED"
+    assert projected["historical_ranking_eligible"] is False
+    assert projected["historical_ranking_exclusion_reason"] == (
+        "CATALOG_SOURCE_MAPPING_UNVERIFIED_OR_INCOMPLETE"
+    )
 
 
 @pytest.mark.parametrize("lottery", list(LotteryType))

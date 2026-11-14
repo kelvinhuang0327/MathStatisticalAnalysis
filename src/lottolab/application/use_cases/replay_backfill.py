@@ -160,6 +160,7 @@ class ReplayBackfill:
         source_hash: str | None = None,
         strategy_sources: JsonObject | None = None,
         source_history_provenance_status: str | None = None,
+        application_revision: str | None = None,
     ) -> None:
         if not draws or not strategies or not source_identity or not execution_version:
             raise ValueError("draws, strategies, source and execution identity are required")
@@ -179,6 +180,7 @@ class ReplayBackfill:
             {"source": source_identity, "draws": [asdict(d) for d in self.draws]}
         )
         self.execution_version = execution_version
+        self.application_revision = application_revision
         self.source_hash = source_hash or identity({"source_locator": source_identity})
         self.sources = strategy_sources or {}
         self.source_history_provenance_status = (
@@ -191,9 +193,47 @@ class ReplayBackfill:
 
     def manifest(self, selection: BackfillSelection) -> JsonObject:
         targets = selection.select(self.draws)
+        implementation_strategies: list[JsonObject] = []
+        for strategy in self.strategies:
+            raw_source = self.sources.get(strategy.strategy_id, {})
+            source = raw_source if type(raw_source) is dict else {}
+            source_module = source.get("source_module")
+            source_path = source.get("source_path")
+            source_sha256 = source.get("source_sha256")
+            implementation_strategies.append(
+                {
+                    "strategy_id": strategy.strategy_id,
+                    "strategy_version": strategy.strategy_version,
+                    "source_status": (
+                        "AVAILABLE"
+                        if all(
+                            isinstance(value, str) and value
+                            for value in (source_module, source_path, source_sha256)
+                        )
+                        else "UNKNOWN"
+                    ),
+                    "source_module": source_module,
+                    "source_path": source_path,
+                    "file_sha256": source_sha256,
+                }
+            )
         manifest: JsonObject = {
             "engine_version": ENGINE_VERSION,
             "execution_version": self.execution_version,
+            "implementation_provenance": {
+                "application_revision": {
+                    "status": "AVAILABLE" if self.application_revision else "UNKNOWN",
+                    "commit": self.application_revision,
+                    "provider": "git-rev-parse",
+                    **(
+                        {}
+                        if self.application_revision
+                        else {"reason": "revision_unavailable"}
+                    ),
+                },
+                "execution_version": self.execution_version,
+                "strategies": implementation_strategies,
+            },
             "lottery_type": self.lottery_type.value,
             "dataset_identity": self.dataset_identity,
             "source_locator": self.source_identity,

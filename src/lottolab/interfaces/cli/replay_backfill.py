@@ -12,6 +12,7 @@ import json
 import os
 import random
 import sqlite3
+import subprocess
 import sys
 import tempfile
 from collections.abc import Callable
@@ -28,6 +29,7 @@ from lottolab.application.historical_replay_adapters import (
     binding_from_p638_spec,
     t539_replay_bindings,
 )
+from lottolab.application.local_runtime import LocalRuntimeError
 from lottolab.application.seeded_single_replay import SEED_CONTRACT, SeededSingleTicketReplay
 from lottolab.application.use_cases.generate_bet import (
     instantiate_adapter,
@@ -46,6 +48,7 @@ from lottolab.domain.historical_replay import ReplayBehavior, ReplayStrategy
 from lottolab.domain.prize_evaluation import evaluate_lottery_prize
 from lottolab.domain.strategies import ResponseShape
 from lottolab.infrastructure.imports.csv_draws import normalized_draw_record_hash
+from lottolab.infrastructure.local_runtime import _read_git_revision
 from lottolab.infrastructure.persistence.draw_schema import (
     LocalDataPaths,
     open_database,
@@ -73,6 +76,16 @@ from lottolab.strategies.adapters.powerlotto_wave1 import WAVE1_STRATEGIES
 from lottolab.strategies.adapters.powerlotto_wave2 import WAVE2_STRATEGIES
 from lottolab.strategies.catalog import production_catalog
 from lottolab.strategies.executable_registry import ExecutableRegistry
+
+
+def _strategy_source_path(source_file: str) -> str:
+    """Return a portable source-tree path, falling back to absolute for external code."""
+    resolved = Path(source_file).resolve()
+    source_root = Path(__file__).resolve().parents[3]
+    try:
+        return resolved.relative_to(source_root).as_posix()
+    except ValueError:
+        return resolved.as_posix()
 
 
 def native_strategy_inventory(
@@ -103,6 +116,7 @@ def native_strategy_inventory(
             "strategy_version": binding.strategy.strategy_version,
             "source": "EXISTING_TARGET_NATIVE_REPLAY_BINDING",
             "source_module": type(implementation).__module__,
+            "source_path": _strategy_source_path(source_file) if source_file else None,
             "source_sha256": hashlib.sha256(Path(source_file).read_bytes()).hexdigest()
             if source_file
             else None,
@@ -152,6 +166,7 @@ def native_strategy_inventory(
             source_file = inspect.getsourcefile(type(implementation))
             if source_file is None:
                 raise ValueError("adapter source is unavailable")
+            source_module = type(implementation).__module__
             source_sha = hashlib.sha256(Path(source_file).read_bytes()).hexdigest()
             unseeded_live_rng = (
                 lottery_type is LotteryType.BIG_LOTTO
@@ -224,6 +239,8 @@ def native_strategy_inventory(
                 "status": "EXECUTABLE",
                 "strategy_version": strategy.strategy_version,
                 "source": descriptor.adapter_path,
+                "source_module": source_module,
+                "source_path": _strategy_source_path(source_file),
                 "source_sha256": source_sha,
                 "dependency_sha256": dependency_sha,
                 "seed_wrapper_sha256": wrapper_sha,
@@ -280,6 +297,18 @@ def execution_source_identity() -> str:
     for file in sorted(set(files)):
         digest.update(str(file.relative_to(package)).encode() + b"\x00" + file.read_bytes())
     return digest.hexdigest()
+
+
+def application_revision() -> str | None:
+    """Return the loaded replay worker checkout revision when Git metadata exists."""
+    module_path = Path(__file__).resolve()
+    repository = module_path.parents[4]
+    if not module_path.is_relative_to(repository / "src") or not (repository / ".git").exists():
+        return None
+    try:
+        return _read_git_revision(repository)
+    except (LocalRuntimeError, OSError, subprocess.SubprocessError, ValueError):
+        return None
 
 
 def source_database_hash(database: Path) -> str:
@@ -1113,6 +1142,7 @@ def main(
             source_hash=before_source_hash,
             strategy_sources=strategy_sources,
             source_history_provenance_status=str(provenance_evidence["status"]),
+            application_revision=application_revision(),
         )
         summary = worker.execute(
             selection,

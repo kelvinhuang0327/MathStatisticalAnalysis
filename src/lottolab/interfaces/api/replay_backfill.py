@@ -705,7 +705,19 @@ def create_replay_backfill_router(store: SQLiteBackfillStore | None) -> APIRoute
                             "reconstructable": True,
                             "wrapper_callable": True,
                             "backfill_native_binding": True,
-                            "backfill_native_binding_sources": [],
+                            "backfill_native_binding_sources": [
+                                {
+                                    "source_kind": "PRODUCTION_CATALOG_ADAPTER",
+                                    "source_locator": descriptor.adapter_path,
+                                },
+                                {
+                                    "source_kind": "SEEDED_SINGLE_TICKET_REPLAY",
+                                    "source_locator": (
+                                        "src/lottolab/application/seeded_single_replay.py"
+                                        "#SeededSingleTicketReplay"
+                                    ),
+                                },
+                            ],
                             "backfill_runnable": descriptor.executable,
                             "execution_block_reason": None,
                             "available_target_count": (
@@ -786,10 +798,13 @@ def create_replay_backfill_router(store: SQLiteBackfillStore | None) -> APIRoute
                         "strategy_source_identity": source_row.get("source_identity"),
                         "reconstructable": None,
                         "wrapper_callable": None,
-                        "backfill_native_binding": None,
+                        "backfill_native_binding": False,
                         "backfill_native_binding_sources": [],
-                        "backfill_runnable": source_row.get("executable"),
-                        "execution_block_reason": None,
+                        # Stored rows describe a prior run. Without an exact
+                        # current inventory binding they cannot promise a new
+                        # native Backfill execution.
+                        "backfill_runnable": False,
+                        "execution_block_reason": "NO_CURRENT_NATIVE_BINDING",
                         "history_status": "HAS_HISTORY",
                         "history_statuses": ["HAS_HISTORY"],
                         "history_run_id": run_id,

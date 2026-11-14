@@ -9,6 +9,11 @@ from fastapi import FastAPI
 from fastapi.exceptions import ResponseValidationError
 from fastapi.testclient import TestClient
 
+from lottolab.application.seeded_single_replay import (
+    SEED_CONTRACT,
+    SeededSingleTicketReplay,
+    seeded_replay_version,
+)
 from lottolab.domain.draws import LotteryType
 from lottolab.domain.replay_strategy_inventory import (
     ReplayDataStatus,
@@ -16,6 +21,8 @@ from lottolab.domain.replay_strategy_inventory import (
     ReplayLifecycleStatus,
 )
 from lottolab.interfaces.api import replay_backfill as api
+from lottolab.interfaces.cli.replay_backfill import native_strategy_inventory
+from lottolab.strategies.catalog import production_catalog
 
 
 class JsonTestClient(Protocol):
@@ -26,6 +33,20 @@ TARGET_STRATEGY_ID = "biglotto_social_wisdom_anti_popularity"
 TARGET_STRATEGY_VERSION = "v0.1"
 TARGET_RUN_ID = "synthetic-run-for-api-contract-test"
 _MISSING = object()
+_SEEDED_REPLAY_PARITY_IDS = (
+    "legacy_biglotto__frontend_collaborative_hybrid__97d79db161ba",
+    "legacy_biglotto__frontend_ml_features__3a4324bc2aa9",
+    "legacy_biglotto__frontend_ml_forest__3a4324bc2aa9",
+    "legacy_biglotto__frontend_ml_genetic__3a4324bc2aa9",
+    "legacy_biglotto__frontend_monte_carlo_strategy__9d8fe030546e",
+    "legacy_biglotto__frontend_number_pairs_strategy__72ebb17b5a96",
+    "legacy_biglotto__frontend_statistical_analysis_strategy__a9364825de2a",
+    "legacy_biglotto__frontend_unified_ensemble_advanced__8f1183a9d8a7",
+    "legacy_biglotto__frontend_unified_ensemble_weighted__8f1183a9d8a7",
+    "legacy_biglotto__frontend_wheeling_strategy__ce978baff05b",
+)
+_STORED_ONLY_STRATEGY_ID = "research_biglotto__k30_geometry_qchamp_historical_v1"
+_STORED_ONLY_STRATEGY_VERSION = "v1"
 
 
 def _inventory_item(
@@ -259,6 +280,83 @@ def test_distinct_stored_strategy_versions_keep_their_own_source_identity(
         ("legacy-v0.9", "source-v0.9"),
     ]
     assert all(item["executable"] is False for item in items)
+
+
+def test_backfill_runnable_matches_exact_native_versions_for_r152_identities() -> None:
+    assert len(_SEEDED_REPLAY_PARITY_IDS) + 1 == 11
+    store = _SyntheticStore(
+        [
+            _stored_row(
+                _STORED_ONLY_STRATEGY_ID,
+                _STORED_ONLY_STRATEGY_VERSION,
+                executable=True,
+            )
+        ]
+    )
+    app = FastAPI()
+    app.include_router(api.create_replay_backfill_router(store))  # type: ignore[arg-type]
+    client = cast(JsonTestClient, TestClient(app))
+
+    bindings, accounts = native_strategy_inventory(LotteryType.BIG_LOTTO)
+    binding_by_id = {binding.strategy.strategy_id: binding for binding in bindings}
+    catalog = production_catalog()
+
+    for strategy_id in _SEEDED_REPLAY_PARITY_IDS:
+        descriptor = catalog.get(strategy_id)
+        seeded_version = seeded_replay_version(descriptor.version)
+        binding = binding_by_id[strategy_id]
+        account = accounts[strategy_id]
+        assert isinstance(binding.implementation, SeededSingleTicketReplay)
+        assert binding.strategy.strategy_version == seeded_version
+        assert account["status"] == "EXECUTABLE"
+        assert account["strategy_version"] == seeded_version
+        assert account["source"] == descriptor.adapter_path
+        assert account["seed_contract"] == SEED_CONTRACT
+        assert account["seed_wrapper_sha256"]
+
+        response = client.get(
+            "/api/v1/replay-backfill/strategies",
+            params={"lottery_type": "BIG_LOTTO", "q": strategy_id, "limit": 250},
+        )
+        assert response.status_code == 200
+        rows = {item["strategy_version"]: item for item in response.json()["items"]}
+        assert rows[descriptor.version]["backfill_runnable"] is False
+        assert rows[descriptor.version]["execution_block_reason"] == "NO_CURRENT_NATIVE_BINDING"
+        seeded = rows[seeded_version]
+        assert seeded["backfill_runnable"] is True
+        assert seeded["execution_block_reason"] is None
+        assert seeded["backfill_native_binding_sources"] == [
+            {
+                "source_kind": "PRODUCTION_CATALOG_ADAPTER",
+                "source_locator": descriptor.adapter_path,
+            },
+            {
+                "source_kind": "SEEDED_SINGLE_TICKET_REPLAY",
+                "source_locator": (
+                    "src/lottolab/application/seeded_single_replay.py#SeededSingleTicketReplay"
+                ),
+            },
+        ]
+
+    orphan_response = client.get(
+        "/api/v1/replay-backfill/strategies",
+        params={"lottery_type": "BIG_LOTTO", "q": _STORED_ONLY_STRATEGY_ID},
+    )
+    assert orphan_response.status_code == 200
+    orphan = next(
+        item
+        for item in orphan_response.json()["items"]
+        if item["strategy_id"] == _STORED_ONLY_STRATEGY_ID
+    )
+    assert orphan["executable"] is True
+    assert orphan["backfill_runnable"] is False
+    assert orphan["backfill_native_binding"] is False
+    assert orphan["execution_block_reason"] == "NO_CURRENT_NATIVE_BINDING"
+    assert (_STORED_ONLY_STRATEGY_ID, _STORED_ONLY_STRATEGY_VERSION) not in {
+        (strategy_id, account["strategy_version"])
+        for strategy_id, account in accounts.items()
+        if account["status"] == "EXECUTABLE"
+    }
 
 
 def test_registered_executable_strategy_is_not_duplicated(

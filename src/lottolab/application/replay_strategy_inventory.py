@@ -709,6 +709,12 @@ def _add_production_items(
         locator = f"{_PRODUCTION_CATALOG_LOCATOR}#strategy_id={descriptor.strategy_id}"
         for lottery_type in descriptor.lottery_types:
             binding, blocker = _production_binding(descriptor, registry, lottery_type)
+            seeded_single_ticket = (
+                lottery_type is LotteryType.BIG_LOTTO
+                and descriptor.response_shape is ResponseShape.SINGLE_TICKET
+                and "randomness:PROCESS_GLOBAL_UNSEEDED_MATH_RANDOM_EQUIVALENT"
+                in descriptor.provenance
+            )
             if binding is None:
                 capability = ReplayExecutionCapability.UNAVAILABLE
                 data_status = ReplayDataStatus.NO_HISTORY
@@ -717,17 +723,18 @@ def _add_production_items(
             else:
                 capability = ReplayExecutionCapability.EXECUTABLE
                 data_status = ReplayDataStatus.REBUILDABLE
-                native_binding_evidence.append(
-                    _binding_evidence(
-                        binding,
-                        lottery_type=lottery_type,
-                        source_kind="PRODUCTION_EXECUTABLE_REGISTRY",
-                        source_locator=(
-                            f"{_PRODUCTION_CATALOG_LOCATOR}#strategy_id={descriptor.strategy_id};"
-                            f"version={descriptor.version};adapter={descriptor.adapter_path}"
-                        ),
+                if not seeded_single_ticket:
+                    native_binding_evidence.append(
+                        _binding_evidence(
+                            binding,
+                            lottery_type=lottery_type,
+                            source_kind="PRODUCTION_EXECUTABLE_REGISTRY",
+                            source_locator=(
+                                f"{_PRODUCTION_CATALOG_LOCATOR}#strategy_id={descriptor.strategy_id};"
+                                f"version={descriptor.version};adapter={descriptor.adapter_path}"
+                            ),
+                        )
                     )
-                )
                 adapter_mapping = _primary_adapter_mapping(
                     binding,
                     lottery_type,

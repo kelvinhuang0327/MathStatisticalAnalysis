@@ -222,7 +222,7 @@ def native_strategy_inventory(
             bindings[sid] = ReplayStrategyBinding(strategy, implementation)
             accounts[sid] = {
                 "status": "EXECUTABLE",
-                "strategy_version": descriptor.version,
+                "strategy_version": strategy.strategy_version,
                 "source": descriptor.adapter_path,
                 "source_sha256": source_sha,
                 "dependency_sha256": dependency_sha,

@@ -22,6 +22,10 @@ from lottolab.application.historical_replay_adapters import (
     binding_from_p638_spec,
     t539_replay_bindings,
 )
+from lottolab.application.biglotto_versioned_replay_bindings import (
+    VERSIONED_REPLAY_SOURCES,
+    versioned_biglotto_replay_bindings,
+)
 from lottolab.application.use_cases.generate_bet import (
     instantiate_adapter,
     instantiate_portfolio_adapter,
@@ -928,6 +932,65 @@ def _add_full_catalog_items(
             )
 
 
+def _add_versioned_biglotto_replay_items(
+    items: dict[tuple[LotteryType, str, str | None], _MutableItem],
+    native_binding_evidence: list[ReplayStrategyBindingEvidence],
+) -> None:
+    """Attach only exact-source, independently parity-proven historical bindings."""
+
+    bindings = versioned_biglotto_replay_bindings()
+    BigLottoReplayAdapter(bindings)
+    sources_by_identity = {
+        (source.strategy_id, source.strategy_version): source
+        for source in VERSIONED_REPLAY_SOURCES
+    }
+    for binding in bindings:
+        strategy = binding.strategy
+        source = sources_by_identity[(strategy.strategy_id, strategy.strategy_version)]
+        identity = (LotteryType.BIG_LOTTO, strategy.strategy_id, strategy.strategy_version)
+        item = items.get(identity)
+        if item is None:
+            raise ValueError(f"versioned Replay identity is absent from inventory: {identity!r}")
+        implementation_locator = source.adapter_path
+        item.adapter_mapping = _primary_adapter_mapping(
+            binding,
+            LotteryType.BIG_LOTTO,
+            implementation_locator,
+        )
+        item.execution_capability = ReplayExecutionCapability.EXECUTABLE
+        item.replay_data_status = ReplayDataStatus.REBUILDABLE
+        item.reconstruction_reason = (
+            "Exact frozen source identity is bound in the replay-only version registry; "
+            f"{source.parity_evidence} is pinned by {source.parity_test}."
+        )
+        registry_locator = (
+            "src/lottolab/application/biglotto_versioned_replay_bindings.py#"
+            f"strategy_id={source.strategy_id};version={source.strategy_version}"
+        )
+        item.add_source(
+            _source_mapping(
+                kind="VERSIONED_REPLAY_SOURCE_REGISTRY",
+                locator=f"{registry_locator};{source.locator}",
+                strategy_id=source.strategy_id,
+                version=source.strategy_version,
+                mapping=(
+                    f"EXACT_SOURCE_SHA256:{source.source_sha256};"
+                    f"IMPLEMENTATION_SHA256:{source.implementation_sha256};"
+                    f"PARITY_TEST:{source.parity_test}"
+                ),
+                status=source.parity_evidence,
+            )
+        )
+        native_binding_evidence.append(
+            _binding_evidence(
+                binding,
+                lottery_type=LotteryType.BIG_LOTTO,
+                source_kind="VERSIONED_REPLAY_SOURCE_REGISTRY",
+                source_locator=f"{registry_locator};{source.locator}",
+            )
+        )
+
+
 def _add_replay_binding_item(
     items: dict[tuple[LotteryType, str, str | None], _MutableItem],
     *,
@@ -1470,6 +1533,7 @@ def load_replay_strategy_inventory(
         exact_native_evidence,
         production_lineages,
     )
+    _add_versioned_biglotto_replay_items(items, current_native_binding_evidence)
 
     t539_bindings = t539_replay_bindings()
     Daily539ReplayAdapter(t539_bindings)

@@ -9,6 +9,10 @@ from lottolab.application.historical_replay_adapters import (
     PowerLottoReplayAdapter,
     binding_from_implementation,
 )
+from lottolab.application.biglotto_versioned_replay_bindings import (
+    VERSIONED_REPLAY_SOURCES,
+    versioned_biglotto_replay_bindings,
+)
 from lottolab.application.replay_strategy_inventory import load_replay_strategy_inventory
 from lottolab.domain.draws import LotteryType
 from lottolab.domain.historical_replay import ReplayBehavior, ReplayDraw
@@ -19,23 +23,24 @@ from lottolab.domain.replay_strategy_inventory import (
     ReplayStrategyIdentityMapping,
     ReplayStrategyInventoryItem,
 )
+from lottolab.strategies.catalog import production_catalog
 
 
 def test_inventory_conserves_sources_and_executable_identities() -> None:
     inventory = load_replay_strategy_inventory()
     source_counts = {source.source_kind: source for source in inventory.source_counts}
 
-    assert inventory.total_discovered_strategies == 651
+    assert inventory.total_discovered_strategies == 653
     assert inventory.total_unique_strategies == 443
-    assert len(inventory.executable_items) == 211
+    assert len(inventory.executable_items) == 215
     assert inventory.unresolved_source_count == 9
-    assert source_counts["PRODUCTION_CATALOG"].source_identity_count == 137
+    assert source_counts["PRODUCTION_CATALOG"].source_identity_count == 138
     assert source_counts["B649_RESEARCH_CATALOG"].source_identity_count == 221
     assert source_counts["B649_REPLAY_BATCH_REGISTRY"].source_identity_count == 11
     assert source_counts["T539_REPLAY_ADAPTER"].source_identity_count == 62
     assert source_counts["P638_REPLAY_ADAPTER"].source_identity_count == 14
-    assert source_counts["STRATEGY_ADAPTER_CODE"].source_identity_count == 100
-    assert source_counts["STRATEGY_ADAPTER_CODE"].source_row_count == 101
+    assert source_counts["STRATEGY_ADAPTER_CODE"].source_identity_count == 101
+    assert source_counts["STRATEGY_ADAPTER_CODE"].source_row_count == 102
 
     lottery_counts = Counter(item.lottery_type for item in inventory.items)
     executable_by_lottery = Counter(item.lottery_type for item in inventory.executable_items)
@@ -45,7 +50,7 @@ def test_inventory_conserves_sources_and_executable_identities() -> None:
         LotteryType.POWER_LOTTO: 24,
     }
     assert executable_by_lottery == {
-        LotteryType.BIG_LOTTO: 125,
+        LotteryType.BIG_LOTTO: 129,
         LotteryType.DAILY_539: 62,
         LotteryType.POWER_LOTTO: 24,
     }
@@ -75,10 +80,10 @@ def test_inventory_keeps_status_dimensions_and_unavailable_cases_separate() -> N
     inventory = load_replay_strategy_inventory()
     by_data_status = Counter(item.replay_data_status for item in inventory.items)
     assert by_data_status == {
-        ReplayDataStatus.REBUILDABLE: 211,
-        ReplayDataStatus.ARTIFACT_ONLY: 98,
+        ReplayDataStatus.REBUILDABLE: 215,
+        ReplayDataStatus.ARTIFACT_ONLY: 95,
         ReplayDataStatus.REJECTED: 74,
-        ReplayDataStatus.NO_HISTORY: 58,
+        ReplayDataStatus.NO_HISTORY: 57,
         ReplayDataStatus.CODE_ONLY: 2,
     }
 
@@ -97,7 +102,7 @@ def test_inventory_keeps_status_dimensions_and_unavailable_cases_separate() -> N
         for item in inventory.items
         if item.replay_data_status is ReplayDataStatus.ARTIFACT_ONLY
     ]
-    assert len(artifact_only) == 98
+    assert len(artifact_only) == 95
     assert all(item.historical_data_count == 0 for item in artifact_only)
     assert all(
         item.execution_capability is not ReplayExecutionCapability.EXECUTABLE
@@ -205,6 +210,67 @@ def test_online_lifecycle_can_coexist_with_no_history() -> None:
     assert item.lifecycle_status is ReplayLifecycleStatus.ONLINE
     assert item.replay_data_status is ReplayDataStatus.NO_HISTORY
     assert item.execution_capability is ReplayExecutionCapability.UNAVAILABLE
+
+
+def test_exact_source_mismatches_have_replay_only_versioned_bindings() -> None:
+    inventory = load_replay_strategy_inventory()
+    bindings = versioned_biglotto_replay_bindings()
+    by_identity = {
+        (binding.strategy.strategy_id, binding.strategy.strategy_version): binding
+        for binding in bindings
+    }
+    assert len(bindings) == 3
+    assert set(by_identity) == {
+        (source.strategy_id, source.strategy_version)
+        for source in VERSIONED_REPLAY_SOURCES
+    }
+
+    for source in VERSIONED_REPLAY_SOURCES:
+        binding = by_identity[(source.strategy_id, source.strategy_version)]
+        item = next(
+            item
+            for item in inventory.items
+            if item.lottery_type is LotteryType.BIG_LOTTO
+            and item.strategy_id == source.strategy_id
+            and item.strategy_version == source.strategy_version
+        )
+        assert binding.strategy.strategy_version == source.strategy_version
+        assert binding.strategy.fingerprint is not None
+        assert binding.implementation.strategy_version == source.current_version
+        assert item.backfill_runnable is True
+        assert item.execution_capability is ReplayExecutionCapability.EXECUTABLE
+        assert item.replay_data_status is ReplayDataStatus.REBUILDABLE
+        assert item.adapter_mapping is not None
+        assert item.adapter_mapping.strategy_version == source.strategy_version
+        assert any(
+            evidence.source_kind == "VERSIONED_REPLAY_SOURCE_REGISTRY"
+            and source.locator in evidence.source_locator
+            for evidence in item.backfill_native_binding_sources
+        )
+        assert any(
+            mapping.source_kind == "VERSIONED_REPLAY_SOURCE_REGISTRY"
+            and f"EXACT_SOURCE_SHA256:{source.source_sha256}" in mapping.mapping_kind
+            and f"IMPLEMENTATION_SHA256:{source.implementation_sha256}" in mapping.mapping_kind
+            for mapping in item.alias_or_identity_mapping
+        )
+
+    # Historical identities remain separate from live production versions.
+    catalog = production_catalog()
+    assert all(
+        catalog.get(source.strategy_id).version == source.current_version
+        for source in VERSIONED_REPLAY_SOURCES
+    )
+    blocked = next(
+        item
+        for item in inventory.items
+        if item.lottery_type is LotteryType.BIG_LOTTO
+        and item.strategy_id == "legacy_biglotto__anti_consensus_strategy__a454ddd26cef"
+        and item.strategy_version == "legacy-source-49a25effa62f-a454ddd26cef"
+    )
+    assert blocked.backfill_runnable is False
+    assert blocked.execution_block_reason == (
+        "NATIVE_BINDING_VERSION_MISMATCH: current evidence has another strategy_version"
+    )
 
 
 def test_code_only_and_has_history_contracts_require_explicit_evidence() -> None:

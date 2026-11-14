@@ -25,6 +25,7 @@ from lottolab.strategies.adapters import (
 )
 from lottolab.strategies.adapters.biglotto_orthogonal_5bet import (
     BigLottoOrthogonal5BetAdapter,
+    BigLottoOrthogonal5BetLegacySourceAdapter,
 )
 from lottolab.strategies.adapters.biglotto_batch16 import BigLottoEvolutionEngineAdapter
 from lottolab.strategies.adapters.biglotto_horizon_minimax import (
@@ -442,7 +443,16 @@ def test_orthogonal_5bet_source_identity_preserves_v01_adapter_selection() -> No
     assert source_descriptor.lifecycle_status is LifecycleStatus.RETIRED
     assert source_descriptor.executable is False
     assert source_descriptor.adapter_path is None
+    assert source_descriptor.response_shape is ResponseShape.PORTFOLIO
+    assert source_descriptor.native_ticket_count_bounds == (5, 5)
+    assert source_descriptor.min_history == 500
+    assert (
+        "legacy_source_sha256:c4dff46c5a5eff0621cdfba64a623c0a36ad365a4912355b90d3a9ad1c8a0df0"
+        in source_descriptor.provenance
+    )
     assert registry.load_adapter(strategy_id, "v0.1") is BigLottoOrthogonal5BetAdapter
+    with pytest.raises(NotExecutableError, match="only executable strategies"):
+        registry.load_adapter(strategy_id, source_version)
     adapter_binding, adapter_blocker = _production_binding(
         adapter_descriptor, registry, LotteryType.BIG_LOTTO
     )
@@ -452,10 +462,24 @@ def test_orthogonal_5bet_source_identity_preserves_v01_adapter_selection() -> No
     source_binding, source_blocker = _production_binding(
         source_descriptor, registry, LotteryType.BIG_LOTTO
     )
-    assert source_binding is None
-    assert source_blocker is not None and "not executable" in source_blocker
-    with pytest.raises(NotExecutableError, match="only executable strategies"):
-        registry.load_adapter(strategy_id, source_version)
+    assert source_blocker is None
+    assert source_binding is not None
+    assert source_binding.strategy.strategy_version == source_version
+    assert type(source_binding.implementation) is BigLottoOrthogonal5BetLegacySourceAdapter
+
+    inventory_items = {}
+    _add_production_items(
+        inventory_items,
+        (adapter_descriptor, source_descriptor),
+        registry,
+        {},
+        [],
+    )
+    source_item = inventory_items[(LotteryType.BIG_LOTTO, strategy_id, source_version)]
+    assert source_item.lifecycle_status.value == "RETIRED"
+    assert source_item.execution_capability.value == "EXECUTABLE"
+    assert source_item.adapter_mapping is not None
+    assert source_item.adapter_mapping.strategy_version == source_version
     with pytest.raises(AmbiguousStrategyError, match="multiple versions"):
         registry.load_adapter(strategy_id)
 

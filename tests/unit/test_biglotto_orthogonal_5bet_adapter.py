@@ -46,11 +46,12 @@ from lottolab.strategies.adapters.biglotto_orthogonal_5bet import (
     BigLottoOrthogonal5BetAdapter,
 )
 from lottolab.strategies.catalog import production_catalog
-from lottolab.strategies.executable_registry import ExecutableRegistry
+from lottolab.strategies.executable_registry import ExecutableRegistry, NotExecutableError
 
 STRATEGY_ID = "legacy_biglotto__backtest_big_lotto_orthogonal_5bet__c4dff46c5a5e"
 SOURCE_SHA256 = "c4dff46c5a5eff0621cdfba64a623c0a36ad365a4912355b90d3a9ad1c8a0df0"
 SOURCE_BLOB = "5721de1742a46add8c3103ea297510dac3ace451"
+SOURCE_COMMIT = "49a25effa62fc24f40789c16be6f11bdfb41a4a9"
 WINDOW = 500
 
 DONOR_GOLDENS = {
@@ -117,7 +118,7 @@ def test_authoritative_identity_is_unique_cataloged_five_ticket_portfolio() -> N
         if record.strategy_id == STRATEGY_ID
     )
     assert retained.legacy_method_id == ORTHOGONAL_5BET_METHOD_ID
-    assert retained.source_commit == "49a25effa62fc24f40789c16be6f11bdfb41a4a9"
+    assert retained.source_commit == SOURCE_COMMIT
     assert retained.source_blob_id == SOURCE_BLOB
     assert retained.source_sha256 == SOURCE_SHA256
     assert retained.native_ticket_semantics == (
@@ -127,11 +128,11 @@ def test_authoritative_identity_is_unique_cataloged_five_ticket_portfolio() -> N
     assert NATIVE_TICKET_COUNT_BY_SOURCE_NATIVE_WAVE46_METHOD[ORTHOGONAL_5BET_METHOD_ID] == 5
 
     catalog = production_catalog()
-    descriptor = catalog.get(STRATEGY_ID)
+    descriptor = catalog.get(STRATEGY_ID, "v0.1")
     strategy_ids = tuple(item.strategy_id for item in catalog)
     assert strategy_ids[-28:-16] == (
-        "legacy_biglotto__backtest_radical_strategy__e54cc0812bc6",
         "legacy_biglotto__power_fourier_rhythm__cb75e72e4c94",
+        STRATEGY_ID,
         STRATEGY_ID,
         "legacy_biglotto__predict_biglotto_quad_strike__e202e664208f",
         "legacy_biglotto__frontend_markov_strategy__2fc1cafea55c",
@@ -151,7 +152,7 @@ def test_authoritative_identity_is_unique_cataloged_five_ticket_portfolio() -> N
     assert strategy_ids[-11] == (
         "legacy_biglotto__frontend_statistical_analysis_strategy__a9364825de2a"
     )
-    assert strategy_ids[:-26].count(STRATEGY_ID) == 0
+    assert strategy_ids[:-26].count(STRATEGY_ID) == 1
     assert descriptor.lifecycle_status is LifecycleStatus.ONLINE
     assert descriptor.executable is True
     assert descriptor.response_shape is ResponseShape.PORTFOLIO
@@ -161,7 +162,10 @@ def test_authoritative_identity_is_unique_cataloged_five_ticket_portfolio() -> N
     assert "donor_parity:MECHANISM_COMPONENT_PARITY" in descriptor.provenance
     assert "orthogonality:PAIRWISE_DISJOINT_FIVE_TICKETS_NO_NUMBER_REUSE" in (descriptor.provenance)
     assert "randomness:NONE_DETERMINISTIC" in descriptor.provenance
-    assert ExecutableRegistry(catalog).load_adapter(STRATEGY_ID) is (BigLottoOrthogonal5BetAdapter)
+    registry = ExecutableRegistry(catalog)
+    assert registry.load_adapter(STRATEGY_ID, "v0.1") is BigLottoOrthogonal5BetAdapter
+    with pytest.raises(NotExecutableError, match="only executable strategies"):
+        registry.load_adapter(STRATEGY_ID, "legacy-source-49a25effa62f-c4dff46c5a5e")
 
 
 def test_retained_donor_ledger_proves_five_positions_and_zero_number_reuse() -> None:
@@ -267,7 +271,7 @@ def test_frozen_numpy_quicksort_tie_order_is_preserved() -> None:
 
 
 @pytest.mark.parametrize(("count", "seed"), tuple(DONOR_GOLDENS))
-def test_complete_portfolio_matches_frozen_donor_golden(count: int, seed: int) -> None:
+def test_complete_portfolio_matches_pinned_source_golden(count: int, seed: int) -> None:
     actual = BigLottoOrthogonal5BetAdapter().get_bets(
         _lcg_history(count, seed),
         LotteryType.BIG_LOTTO,
@@ -275,6 +279,43 @@ def test_complete_portfolio_matches_frozen_donor_golden(count: int, seed: int) -
 
     assert actual == DONOR_GOLDENS[(count, seed)]
     assert len({number for ticket in actual for number in ticket}) == 30
+
+
+def test_scored_draw_is_excluded_at_multiple_replay_cutoffs() -> None:
+    rows = _lcg_history(WINDOW + 138, 211)
+    observed: list[tuple[str, ...]] = []
+
+    class ObservedAdapter(BigLottoOrthogonal5BetAdapter):
+        def _predict_all(
+            self,
+            history: tuple[CausalDrawRow, ...],
+            lottery_type: LotteryType,
+        ) -> tuple[tuple[int, ...], ...]:
+            observed.append(tuple(row.draw for row in history))
+            return super()._predict_all(history, lottery_type)
+
+    adapter = ObservedAdapter()
+    for cutoff in (WINDOW, WINDOW + 137):
+        scored_draw = rows[cutoff]
+        changed_numbers = tuple(sorted(((number + 6 - 1) % 49) + 1 for number in scored_draw.numbers))
+        changed_target = CausalDrawRow(
+            draw=scored_draw.draw,
+            date=scored_draw.date,
+            numbers=changed_numbers,
+        )
+        altered_rows = rows[:cutoff] + (changed_target,) + rows[cutoff + 1 :]
+        original_history = rows[:cutoff]
+        altered_history = altered_rows[:cutoff]
+
+        assert original_history == altered_history
+        original_bets = adapter.get_bets(original_history, LotteryType.BIG_LOTTO)
+        altered_bets = adapter.get_bets(altered_history, LotteryType.BIG_LOTTO)
+
+        expected_history = original_history[-WINDOW:]
+        expected_draws = tuple(row.draw for row in expected_history)
+        assert tuple(observed[-2:]) == (expected_draws, expected_draws)
+        assert scored_draw.draw not in observed[-1]
+        assert original_bets == altered_bets
 
 
 def test_each_ticket_position_preserves_rank_echo_cold_and_hot_semantics() -> None:
@@ -354,12 +395,14 @@ def test_invalid_insufficient_and_unsupported_inputs_fail_closed() -> None:
 def test_production_dispatch_returns_all_five_positions_and_ignores_seed() -> None:
     history = _lcg_history(WINDOW, 17)
     use_case = build_production_generate_portfolio()
-    first = use_case.execute(
+    first_execution = use_case.execute_with_emission(
         GenerateOneBetInput(STRATEGY_ID, LotteryType.BIG_LOTTO, history, seed=1)
     )
-    second = use_case.execute(
+    second_execution = use_case.execute_with_emission(
         GenerateOneBetInput(STRATEGY_ID, LotteryType.BIG_LOTTO, history, seed=999)
     )
+    first = first_execution.legal_bets
+    second = second_execution.legal_bets
     wrong_path = build_production_generate_one_bet().execute(
         GenerateOneBetInput(STRATEGY_ID, LotteryType.BIG_LOTTO, history)
     )
@@ -367,6 +410,8 @@ def test_production_dispatch_returns_all_five_positions_and_ignores_seed() -> No
     assert first.status is GeneratePortfolioStatus.OK
     assert first.numbers == DONOR_GOLDENS[(500, 17)]
     assert second == first
+    assert first_execution.strategy_version == "v0.1"
+    assert second_execution.strategy_version == "v0.1"
     assert wrong_path.status is GenerateOneBetStatus.WRONG_RESPONSE_PATH
     assert wrong_path.reason_code is GenerateOneBetReason.STRATEGY_IS_PORTFOLIO
 

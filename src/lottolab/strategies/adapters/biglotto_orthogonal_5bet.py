@@ -32,6 +32,7 @@ from lottolab.strategies.adapters.base import (
 from lottolab.strategies.adapters.powerlotto_wave1 import bluestein_dft
 
 _STRATEGY_ID = "legacy_biglotto__backtest_big_lotto_orthogonal_5bet__c4dff46c5a5e"
+_SOURCE_VERSION = "legacy-source-49a25effa62f-c4dff46c5a5e"
 _MIN_NUMBER = 1
 _MAX_NUMBER = 49
 _PICK_COUNT = 6
@@ -278,4 +279,18 @@ class BigLottoOrthogonal5BetAdapter(PortfolioBetAdapter):
         return _validated_orthogonal_portfolio(_orthogonal_5bet_tickets(history))
 
 
-__all__ = ["BigLottoOrthogonal5BetAdapter"]
+class BigLottoOrthogonal5BetLegacySourceAdapter(BigLottoOrthogonal5BetAdapter):
+    """The same frozen mechanism bound to its exact legacy source identity."""
+
+    strategy_id = "legacy_biglotto__backtest_big_lotto_orthogonal_5bet__c4dff46c5a5e"
+    strategy_name = "大樂透 Orthogonal 5-Bet 正交 5注"
+    strategy_version = "legacy-source-49a25effa62f-c4dff46c5a5e"
+    supported_lottery_types = (LotteryType.BIG_LOTTO,)
+    min_history = _FOURIER_WINDOW
+    native_ticket_count = _NATIVE_TICKET_COUNT
+
+
+__all__ = [
+    "BigLottoOrthogonal5BetAdapter",
+    "BigLottoOrthogonal5BetLegacySourceAdapter",
+]

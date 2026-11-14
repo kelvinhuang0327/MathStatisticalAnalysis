@@ -10,7 +10,7 @@ from types import MappingProxyType
 from typing import Protocol, cast, runtime_checkable
 
 from lottolab.domain.draws import LotteryType
-from lottolab.domain.strategies import ResponseShape
+from lottolab.domain.strategies import LifecycleStatus, ResponseShape, StrategyDescriptor
 from lottolab.strategies.adapters.base import (
     BetAdapter,
     CausalDrawRow,
@@ -21,7 +21,12 @@ from lottolab.strategies.adapters.base import (
     UnsupportedLotteryType,
 )
 from lottolab.strategies.adapters.biglotto_evolution_any_prize import PrizeHistoryRow
-from lottolab.strategies.catalog import StrategyCatalog, UnknownStrategyError, production_catalog
+from lottolab.strategies.catalog import (
+    AmbiguousStrategyError,
+    StrategyCatalog,
+    UnknownStrategyError,
+    production_catalog,
+)
 
 
 class GenerateOneBetStatus(StrEnum):
@@ -47,6 +52,30 @@ class GenerateOneBetReason(StrEnum):
 
 class AdapterIdentityMismatchError(ValueError):
     """An injected adapter does not match its canonical catalog descriptor."""
+
+
+def _live_strategy_descriptor(
+    catalog: StrategyCatalog,
+    strategy_id: str,
+) -> StrategyDescriptor:
+    """Resolve the single version selected for live generation by its lifecycle."""
+
+    live_matches = tuple(
+        descriptor
+        for descriptor in catalog
+        if descriptor.strategy_id == strategy_id
+        and descriptor.lifecycle_status is LifecycleStatus.ONLINE
+        and descriptor.executable
+    )
+    if not live_matches:
+        return catalog.get(strategy_id)
+    if len(live_matches) == 1:
+        return live_matches[0]
+    versions = ", ".join(descriptor.version for descriptor in live_matches)
+    raise AmbiguousStrategyError(
+        f"strategy_id {strategy_id!r} has multiple live versions ({versions}); "
+        "the live generation API requires one selected version"
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -113,7 +142,7 @@ class GenerateOneBet:
             adapter = candidate_adapter
             adapter_snapshot[strategy_id] = adapter
             try:
-                descriptor = catalog.get(strategy_id)
+                descriptor = _live_strategy_descriptor(catalog, strategy_id)
             except UnknownStrategyError as exc:
                 raise AdapterIdentityMismatchError(
                     f"{strategy_id}: adapter has no catalog descriptor"
@@ -146,7 +175,7 @@ class GenerateOneBet:
         """Return one adapter execution with its pre-canonical emitted order."""
 
         try:
-            descriptor = self._catalog.get(request.strategy_id)
+            descriptor = _live_strategy_descriptor(self._catalog, request.strategy_id)
         except UnknownStrategyError:
             return self._failure_execution(
                 GenerateOneBetStatus.STRATEGY_UNAVAILABLE,
@@ -335,11 +364,12 @@ def build_production_generate_one_bet() -> GenerateOneBet:
 
     catalog = production_catalog()
     registry = ExecutableRegistry(catalog)
-    adapters: dict[str, BetAdapter] = {
-        strategy_id: _instantiated_adapter(strategy_id, registry.load_adapter(strategy_id))
-        for strategy_id in registry.executable_ids()
-        if catalog.get(strategy_id).response_shape is ResponseShape.SINGLE_TICKET
-    }
+    adapters: dict[str, BetAdapter] = {}
+    for strategy_id in registry.executable_ids():
+        descriptor = _live_strategy_descriptor(catalog, strategy_id)
+        if descriptor.response_shape is ResponseShape.SINGLE_TICKET:
+            adapter_class = registry.load_adapter(strategy_id, descriptor.version)
+            adapters[strategy_id] = _instantiated_adapter(strategy_id, adapter_class)
     return GenerateOneBet(catalog, adapters)
 
 
@@ -427,7 +457,7 @@ class GeneratePortfolio:
             adapter = candidate_adapter
             adapter_snapshot[strategy_id] = adapter
             try:
-                descriptor = catalog.get(strategy_id)
+                descriptor = _live_strategy_descriptor(catalog, strategy_id)
             except UnknownStrategyError as exc:
                 raise AdapterIdentityMismatchError(
                     f"{strategy_id}: adapter has no catalog descriptor"
@@ -464,7 +494,7 @@ class GeneratePortfolio:
         """Return one adapter execution with its pre-canonical emitted order."""
 
         try:
-            descriptor = self._catalog.get(request.strategy_id)
+            descriptor = _live_strategy_descriptor(self._catalog, request.strategy_id)
         except UnknownStrategyError:
             return self._failure_execution(
                 GeneratePortfolioStatus.STRATEGY_UNAVAILABLE,
@@ -629,13 +659,15 @@ def build_production_generate_portfolio() -> GeneratePortfolio:
 
     catalog = production_catalog()
     registry = ExecutableRegistry(catalog)
-    adapters: dict[str, PortfolioBetAdapter] = {
-        strategy_id: _instantiated_portfolio_adapter(
-            strategy_id, registry.load_adapter(strategy_id)
-        )
-        for strategy_id in registry.executable_ids()
-        if catalog.get(strategy_id).response_shape is ResponseShape.PORTFOLIO
-    }
+    adapters: dict[str, PortfolioBetAdapter] = {}
+    for strategy_id in registry.executable_ids():
+        descriptor = _live_strategy_descriptor(catalog, strategy_id)
+        if descriptor.response_shape is ResponseShape.PORTFOLIO:
+            adapter_class = registry.load_adapter(strategy_id, descriptor.version)
+            adapters[strategy_id] = _instantiated_portfolio_adapter(
+                strategy_id,
+                adapter_class,
+            )
     return GeneratePortfolio(catalog, adapters)
 
 

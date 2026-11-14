@@ -47,7 +47,7 @@ from lottolab.domain.replay_strategy_inventory import (
 from lottolab.domain.strategies import ResponseShape, StrategyDescriptor
 from lottolab.strategies.adapters.powerlotto_wave1 import WAVE1_STRATEGIES
 from lottolab.strategies.adapters.powerlotto_wave2 import WAVE2_STRATEGIES
-from lottolab.strategies.catalog import production_catalog
+from lottolab.strategies.catalog import StrategyCatalog, production_catalog
 from lottolab.strategies.executable_registry import ExecutableRegistry
 
 _PRODUCTION_CATALOG_LOCATOR = "src/lottolab/strategies/catalog.py"
@@ -61,6 +61,15 @@ _LEGACY_SNAPSHOT_LOCATOR = "tests/fixtures/legacy/p600b/strategy_catalog.json"
 _ADAPTER_ROOT = Path(__file__).resolve().parents[1] / "strategies" / "adapters"
 _DATA_ROOT = Path(__file__).resolve().parents[1] / "strategies" / "data"
 _REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
+_REPLAY_ONLY_ADAPTER_PATHS = {
+    (
+        "legacy_biglotto__backtest_big_lotto_orthogonal_5bet__c4dff46c5a5e",
+        "legacy-source-49a25effa62f-c4dff46c5a5e",
+    ): (
+        "lottolab.strategies.adapters.biglotto_orthogonal_5bet:"
+        "BigLottoOrthogonal5BetLegacySourceAdapter"
+    ),
+}
 
 
 @dataclass(slots=True)
@@ -268,15 +277,28 @@ def _production_binding(
     """Resolve and type-check the catalog adapter through a Replay wrapper."""
 
     try:
+        replay_only_adapter_path = _REPLAY_ONLY_ADAPTER_PATHS.get(
+            (descriptor.strategy_id, descriptor.version)
+        )
         if lottery_type not in descriptor.lottery_types:
             raise ValueError(f"strategy does not support {lottery_type.value}")
-        if not descriptor.executable:
+        if not descriptor.executable and replay_only_adapter_path is None:
             raise ValueError("catalog marks strategy as not executable")
         if lottery_type is LotteryType.POWER_LOTTO and descriptor.strategy_id not in {
             spec.strategy_id for spec in (*WAVE1_STRATEGIES, *WAVE2_STRATEGIES)
         }:
             raise ValueError("no complete native second-zone replay source")
-        adapter_class = registry.load_adapter(descriptor.strategy_id, descriptor.version)
+        if replay_only_adapter_path is None:
+            adapter_class = registry.load_adapter(descriptor.strategy_id, descriptor.version)
+        else:
+            replay_registry = ExecutableRegistry(
+                StrategyCatalog((descriptor,)),
+                replay_only_adapter_paths=_REPLAY_ONLY_ADAPTER_PATHS,
+            )
+            adapter_class = replay_registry.load_replay_adapter(
+                descriptor.strategy_id,
+                descriptor.version,
+            )
         implementation = (
             instantiate_adapter(descriptor.strategy_id, adapter_class)
             if descriptor.response_shape is ResponseShape.SINGLE_TICKET
@@ -707,6 +729,9 @@ def _add_production_items(
     for descriptor in descriptors:
         source_status = descriptor.lifecycle_status.value
         locator = f"{_PRODUCTION_CATALOG_LOCATOR}#strategy_id={descriptor.strategy_id}"
+        replay_adapter_path = _REPLAY_ONLY_ADAPTER_PATHS.get(
+            (descriptor.strategy_id, descriptor.version)
+        )
         for lottery_type in descriptor.lottery_types:
             binding, blocker = _production_binding(descriptor, registry, lottery_type)
             if binding is None:
@@ -721,20 +746,28 @@ def _add_production_items(
                     _binding_evidence(
                         binding,
                         lottery_type=lottery_type,
-                        source_kind="PRODUCTION_EXECUTABLE_REGISTRY",
+                        source_kind=(
+                            "VERSIONED_REPLAY_SOURCE_REGISTRY"
+                            if replay_adapter_path is not None
+                            else "PRODUCTION_EXECUTABLE_REGISTRY"
+                        ),
                         source_locator=(
                             f"{_PRODUCTION_CATALOG_LOCATOR}#strategy_id={descriptor.strategy_id};"
-                            f"version={descriptor.version};adapter={descriptor.adapter_path}"
+                            f"version={descriptor.version};adapter="
+                            f"{descriptor.adapter_path or replay_adapter_path}"
                         ),
                     )
                 )
                 adapter_mapping = _primary_adapter_mapping(
                     binding,
                     lottery_type,
-                    descriptor.adapter_path or "missing adapter_path",
+                    descriptor.adapter_path or replay_adapter_path or "missing adapter_path",
                 )
                 reason = (
-                    "The catalog adapter resolved to an identity-matched ReplayStrategyBinding; "
+                    "The exact retired source version resolved through its replay-only adapter; "
+                    "no retained per-draw prediction rows were found in the packaged sources."
+                    if replay_adapter_path is not None
+                    else "The catalog adapter resolved to an identity-matched ReplayStrategyBinding; "
                     "no retained per-draw prediction rows were found in the packaged sources."
                 )
             item = _add_item(

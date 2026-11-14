@@ -77,6 +77,7 @@
 - 例外：Owner 對某一張卡明確授權時，該 Packet 可直接寫入已登記的正式目標；仍要租約、writer.lock、寫入前備份、前後列數與 API 讀回。
 - 以下位置不得當成最終寫入目標：任務資料夾裡的 DB、`data/replay/reference/`、`data/databases/legacy/`（keeper）、`data/databases/backups/`、尚未完成的封存，以及未登記的 `data/replay/active/`。
 - 不重跑已有結果。開跑前，用 cell 的唯一鍵（`lottery_type`、`strategy_id`、`strategy_version`、`execution_version`、`dataset_identity`、`target_draw_id`）查正式 DB 與待合併的暫存 DB：已完成的跳過，只算缺的。收據寫出「已存在跳過 N、新算 M」。
+- 回放摘要可在 `summary.status == FINISHED_WITH_GAPS` 時有效完成：若 `processed_cells == expected_cells`、`failed_cells == pending_cells == 0`，且各列結果皆為有效終態（如 `COMPLETE`、`NOT_ELIGIBLE`），驗收不可只要求 `COMPLETED`。
 - 待合併的暫存結果用匯入合併，不重新計算。
 - 同一個 DB 同時只能有一個寫入者。寫入前後記錄列數，寫入後從 App 或 API 的讀取路徑讀回。
 

@@ -18,8 +18,12 @@ class ExecutableRegistry:
     def executable_ids(self) -> frozenset[str]:
         return frozenset(d.strategy_id for d in self._catalog if d.executable)
 
-    def load_adapter(self, strategy_id: str) -> object:
-        descriptor = self._catalog.get(strategy_id)
+    def load_adapter(
+        self,
+        strategy_id: str,
+        strategy_version: str | None = None,
+    ) -> object:
+        descriptor = self._catalog.get(strategy_id, strategy_version)
         if not descriptor.executable or descriptor.adapter_path is None:
             raise NotExecutableError(
                 f"{strategy_id} is {descriptor.lifecycle_status}; "

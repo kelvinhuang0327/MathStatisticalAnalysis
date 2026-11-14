@@ -5,6 +5,11 @@ Adding a strategy must NEVER require editing these tests.
 
 import pytest
 
+from lottolab.application.replay_strategy_inventory import (
+    _add_production_items,
+    _production_binding,
+)
+from lottolab.application.use_cases.list_strategies import ListStrategies
 from lottolab.domain.draws import LotteryType
 from lottolab.domain.strategies import (
     LifecycleStatus,
@@ -17,6 +22,9 @@ from lottolab.strategies.adapters import (
     BigLottoP02BetBet2Adapter,
     BigLottoZoneSplit3BetBet2Adapter,
     BigLottoZoneSplit3BetBet3Adapter,
+)
+from lottolab.strategies.adapters.biglotto_orthogonal_5bet import (
+    BigLottoOrthogonal5BetAdapter,
 )
 from lottolab.strategies.adapters.biglotto_batch16 import BigLottoEvolutionEngineAdapter
 from lottolab.strategies.adapters.biglotto_horizon_minimax import (
@@ -35,6 +43,8 @@ from lottolab.strategies.adapters.biglotto_wave2_intake import (
     BigLottoWave2SumRangeAdStructuralSumRegressionAdapter,
 )
 from lottolab.strategies.catalog import (
+    AmbiguousStrategyError,
+    DuplicateStrategyIdentityError,
     DuplicateStrategyIdError,
     StrategyCatalog,
     UnknownStrategyError,
@@ -50,11 +60,12 @@ def make_descriptor(
     executable: bool,
     adapter_path: str | None = None,
     min_history: int = 1,
+    version: str = "v0.1",
 ) -> StrategyDescriptor:
     return StrategyDescriptor(
         strategy_id=strategy_id,
         strategy_name=strategy_id,
-        version="v0.1",
+        version=version,
         lottery_types=(LotteryType.DAILY_539,),
         lifecycle_status=status,
         executable=executable,
@@ -63,10 +74,78 @@ def make_descriptor(
     )
 
 
-def test_duplicate_ids_rejected() -> None:
+def test_duplicate_strategy_identity_rejected() -> None:
+    first = make_descriptor("dup", status=LifecycleStatus.OBSERVATION, executable=False)
+    with pytest.raises(DuplicateStrategyIdentityError, match="dup@v0.1"):
+        StrategyCatalog([first, first])
+
+
+def test_legacy_duplicate_id_error_name_remains_compatible() -> None:
     first = make_descriptor("dup", status=LifecycleStatus.OBSERVATION, executable=False)
     with pytest.raises(DuplicateStrategyIdError):
         StrategyCatalog([first, first])
+
+
+def test_catalog_selects_exact_version_and_rejects_ambiguous_legacy_id() -> None:
+    strategy_id = "synthetic_versioned_strategy"
+    first = make_descriptor(
+        strategy_id,
+        status=LifecycleStatus.RETIRED,
+        executable=False,
+        version="v0.1",
+    )
+    second = make_descriptor(
+        strategy_id,
+        status=LifecycleStatus.OBSERVATION,
+        executable=False,
+        version="legacy-source-test",
+    )
+    catalog = StrategyCatalog((first, second))
+
+    assert len(catalog) == 2
+    assert catalog.get(strategy_id, "v0.1") is first
+    assert catalog.get(strategy_id, "legacy-source-test") is second
+    with pytest.raises(AmbiguousStrategyError, match="multiple versions"):
+        catalog.get(strategy_id)
+
+
+def test_legacy_id_selection_remains_available_for_one_version() -> None:
+    descriptor = make_descriptor(
+        "single_version_strategy",
+        status=LifecycleStatus.RETIRED,
+        executable=False,
+    )
+    assert StrategyCatalog((descriptor,)).get("single_version_strategy") is descriptor
+
+
+def test_inventory_and_strategy_list_preserve_synthetic_versions() -> None:
+    strategy_id = "synthetic_inventory_strategy"
+    first = make_descriptor(
+        strategy_id,
+        status=LifecycleStatus.RETIRED,
+        executable=False,
+        version="v0.1",
+    )
+    second = make_descriptor(
+        strategy_id,
+        status=LifecycleStatus.RETIRED,
+        executable=False,
+        version="legacy-source-test",
+    )
+    catalog = StrategyCatalog((first, second))
+    inventory_items = {}
+
+    _add_production_items(inventory_items, (first, second), ExecutableRegistry(catalog), {}, [])
+    listed = ListStrategies(catalog).execute()
+
+    assert set(inventory_items) == {
+        (LotteryType.DAILY_539, strategy_id, "v0.1"),
+        (LotteryType.DAILY_539, strategy_id, "legacy-source-test"),
+    }
+    assert [(item.strategy_id, item.version) for item in listed] == [
+        (strategy_id, "v0.1"),
+        (strategy_id, "legacy-source-test"),
+    ]
 
 
 def test_only_online_may_be_executable() -> None:
@@ -180,9 +259,10 @@ def test_production_catalog_invariants() -> None:
 def test_catalog_preserves_approved_strategy_append_order() -> None:
     catalog = production_catalog()
     ids = [descriptor.strategy_id for descriptor in catalog]
-    assert len(catalog) == 137
-    assert len(ids) == 137
-    assert len(set(ids)) == 137
+    identities = [(descriptor.strategy_id, descriptor.version) for descriptor in catalog]
+    assert len(catalog) == 138
+    assert len(ids) == 138
+    assert len(set(identities)) == 138
     assert ids == [
         "biglotto_social_wisdom_anti_popularity",
         "biglotto_zone_split_3bet_bet1",
@@ -296,6 +376,7 @@ def test_catalog_preserves_approved_strategy_append_order() -> None:
         "legacy_biglotto__backtest_radical_strategy__e54cc0812bc6",
         "legacy_biglotto__power_fourier_rhythm__cb75e72e4c94",
         "legacy_biglotto__backtest_big_lotto_orthogonal_5bet__c4dff46c5a5e",
+        "legacy_biglotto__backtest_big_lotto_orthogonal_5bet__c4dff46c5a5e",
         "legacy_biglotto__predict_biglotto_quad_strike__e202e664208f",
         "legacy_biglotto__frontend_markov_strategy__2fc1cafea55c",
         "legacy_biglotto__orthogonal_2bet_optimizer__aa51b0e5e4a4",
@@ -329,6 +410,54 @@ def test_catalog_preserves_approved_strategy_append_order() -> None:
     }
     assert online_ids == set(ids)
     assert ExecutableRegistry(catalog).executable_ids() == frozenset(ids)
+
+
+def test_orthogonal_5bet_source_identity_preserves_v01_adapter_selection() -> None:
+    strategy_id = "legacy_biglotto__backtest_big_lotto_orthogonal_5bet__c4dff46c5a5e"
+    source_version = "legacy-source-49a25effa62f-c4dff46c5a5e"
+    catalog = production_catalog()
+    registry = ExecutableRegistry(catalog)
+
+    adapter_descriptor = catalog.get(strategy_id, "v0.1")
+    source_descriptor = catalog.get(strategy_id, source_version)
+
+    assert (
+        adapter_descriptor.strategy_name,
+        adapter_descriptor.version,
+        adapter_descriptor.lifecycle_status,
+        adapter_descriptor.executable,
+        adapter_descriptor.adapter_path,
+        adapter_descriptor.min_history,
+    ) == (
+        BigLottoOrthogonal5BetAdapter.strategy_name,
+        "v0.1",
+        LifecycleStatus.ONLINE,
+        True,
+        "lottolab.strategies.adapters.biglotto_orthogonal_5bet:"
+        "BigLottoOrthogonal5BetAdapter",
+        BigLottoOrthogonal5BetAdapter.min_history,
+    )
+    assert source_descriptor.strategy_name == adapter_descriptor.strategy_name
+    assert source_descriptor.version == source_version
+    assert source_descriptor.lifecycle_status is LifecycleStatus.RETIRED
+    assert source_descriptor.executable is False
+    assert source_descriptor.adapter_path is None
+    assert registry.load_adapter(strategy_id, "v0.1") is BigLottoOrthogonal5BetAdapter
+    adapter_binding, adapter_blocker = _production_binding(
+        adapter_descriptor, registry, LotteryType.BIG_LOTTO
+    )
+    assert adapter_blocker is None
+    assert adapter_binding is not None
+    assert adapter_binding.strategy.strategy_version == "v0.1"
+    source_binding, source_blocker = _production_binding(
+        source_descriptor, registry, LotteryType.BIG_LOTTO
+    )
+    assert source_binding is None
+    assert source_blocker is not None and "not executable" in source_blocker
+    with pytest.raises(NotExecutableError, match="only executable strategies"):
+        registry.load_adapter(strategy_id, source_version)
+    with pytest.raises(AmbiguousStrategyError, match="multiple versions"):
+        registry.load_adapter(strategy_id)
 
 
 def test_horizon_minimax_descriptor_and_adapter_identity_match_exactly() -> None:

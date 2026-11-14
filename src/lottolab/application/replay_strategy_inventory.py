@@ -276,7 +276,7 @@ def _production_binding(
             spec.strategy_id for spec in (*WAVE1_STRATEGIES, *WAVE2_STRATEGIES)
         }:
             raise ValueError("no complete native second-zone replay source")
-        adapter_class = registry.load_adapter(descriptor.strategy_id)
+        adapter_class = registry.load_adapter(descriptor.strategy_id, descriptor.version)
         implementation = (
             instantiate_adapter(descriptor.strategy_id, adapter_class)
             if descriptor.response_shape is ResponseShape.SINGLE_TICKET

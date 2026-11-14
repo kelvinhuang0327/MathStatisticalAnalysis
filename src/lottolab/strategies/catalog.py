@@ -8,33 +8,64 @@ from lottolab.domain.draws import LotteryType
 from lottolab.domain.strategies import LifecycleStatus, ResponseShape, StrategyDescriptor
 
 
-class DuplicateStrategyIdError(ValueError):
+class DuplicateStrategyIdentityError(ValueError):
     pass
+
+
+DuplicateStrategyIdError = DuplicateStrategyIdentityError
 
 
 class UnknownStrategyError(KeyError):
     pass
 
 
+class AmbiguousStrategyError(ValueError):
+    pass
+
+
 class StrategyCatalog:
     def __init__(self, descriptors: Iterable[StrategyDescriptor]) -> None:
-        self._by_id: dict[str, StrategyDescriptor] = {}
+        self._by_identity: dict[tuple[str, str], StrategyDescriptor] = {}
+        self._by_id: dict[str, list[StrategyDescriptor]] = {}
         for descriptor in descriptors:
-            if descriptor.strategy_id in self._by_id:
-                raise DuplicateStrategyIdError(descriptor.strategy_id)
-            self._by_id[descriptor.strategy_id] = descriptor
+            identity = (descriptor.strategy_id, descriptor.version)
+            if identity in self._by_identity:
+                raise DuplicateStrategyIdentityError(
+                    f"duplicate strategy identity: {descriptor.strategy_id}@{descriptor.version}"
+                )
+            self._by_identity[identity] = descriptor
+            self._by_id.setdefault(descriptor.strategy_id, []).append(descriptor)
 
     def __iter__(self) -> Iterator[StrategyDescriptor]:
         return iter(self.list())
 
     def __len__(self) -> int:
-        return len(self._by_id)
+        return len(self._by_identity)
 
-    def get(self, strategy_id: str) -> StrategyDescriptor:
-        try:
-            return self._by_id[strategy_id]
-        except KeyError as exc:
-            raise UnknownStrategyError(strategy_id) from exc
+    def get(
+        self,
+        strategy_id: str,
+        strategy_version: str | None = None,
+    ) -> StrategyDescriptor:
+        if strategy_version is not None:
+            identity = (strategy_id, strategy_version)
+            try:
+                return self._by_identity[identity]
+            except KeyError as exc:
+                raise UnknownStrategyError(
+                    f"{strategy_id}@{strategy_version}"
+                ) from exc
+
+        matches = self._by_id.get(strategy_id, [])
+        if not matches:
+            raise UnknownStrategyError(strategy_id)
+        if len(matches) > 1:
+            versions = ", ".join(descriptor.version for descriptor in matches)
+            raise AmbiguousStrategyError(
+                f"strategy_id {strategy_id!r} has multiple versions ({versions}); "
+                "specify strategy_version"
+            )
+        return matches[0]
 
     def list(
         self,
@@ -45,7 +76,7 @@ class StrategyCatalog:
         """Return matches in the descriptor declaration order pinned by provenance."""
         return tuple(
             descriptor
-            for descriptor in self._by_id.values()
+            for descriptor in self._by_identity.values()
             if (lottery_type is None or lottery_type in descriptor.lottery_types)
             and (lifecycle_status is None or descriptor.lifecycle_status is lifecycle_status)
         )
@@ -2577,6 +2608,24 @@ _PRODUCTION_DESCRIPTORS = (
         ),
         response_shape=ResponseShape.PORTFOLIO,
         native_ticket_count=5,
+    ),
+    StrategyDescriptor(
+        strategy_id="legacy_biglotto__backtest_big_lotto_orthogonal_5bet__c4dff46c5a5e",
+        strategy_name="大樂透 Orthogonal 5-Bet 正交 5注",
+        version="legacy-source-49a25effa62f-c4dff46c5a5e",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.RETIRED,
+        executable=False,
+        adapter_path=None,
+        min_history=500,
+        provenance=(
+            "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
+            "legacy_source:tools/backtest_big_lotto_orthogonal_5bet.py",
+            "legacy_source_blob:5721de1742a46add8c3103ea297510dac3ace451",
+            "legacy_source_sha256:c4dff46c5a5eff0621cdfba64a623c0a36ad365a4912355b90d3a9ad1c8a0df0",
+            "source_identity:legacy-source-49a25effa62f-c4dff46c5a5e",
+            "execution_status:UNAVAILABLE",
+        ),
     ),
     StrategyDescriptor(
         strategy_id="legacy_biglotto__predict_biglotto_quad_strike__e202e664208f",

@@ -24,12 +24,12 @@ def _validated_source_tickets(
 ) -> tuple[tuple[int, ...], tuple[int, ...], tuple[int, ...]]:
     """Require exactly three legal BIG_LOTTO tickets before transforming them."""
 
-    if type(tickets) is not tuple or len(tickets) != _TICKET_COUNT:
+    if type(tickets) is not tuple or len(cast(tuple[object, ...], tickets)) != _TICKET_COUNT:
         raise ValueError("K3_NONOVERLAP_REQUIRES_EXACTLY_THREE_SOURCE_TICKETS")
 
     validated: list[tuple[int, ...]] = []
     for ticket in cast(tuple[object, ...], tickets):
-        if type(ticket) is not tuple or len(ticket) != _TICKET_SIZE:
+        if type(ticket) is not tuple or len(cast(tuple[object, ...], ticket)) != _TICKET_SIZE:
             raise ValueError("K3_NONOVERLAP_SOURCE_TICKET_MUST_HAVE_SIX_NUMBERS")
         numbers = cast(tuple[object, ...], ticket)
         if any(type(number) is not int for number in numbers):
@@ -86,7 +86,7 @@ class _K3NonoverlapCandidateAdapter(PortfolioBetAdapter):
     strategy_name = "K3 nonoverlap research candidate"
     strategy_version = "v1.0.0"
     min_history = 1
-    supported_lottery_types = (LotteryType.BIG_LOTTO,)
+    supported_lottery_types = (cast(LotteryType, LotteryType.BIG_LOTTO),)
     native_ticket_count = _TICKET_COUNT
     donor_adapter_type: ClassVar[type[PortfolioBetAdapter]]
 

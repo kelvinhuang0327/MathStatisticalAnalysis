@@ -38,13 +38,13 @@ def _legal_k3(tickets: tuple[tuple[int, ...], ...]) -> bool:
             for left in range(3)
             for right in range(left + 1, 3)
         )
-        and len(set().union(*tickets)) == 18
+        and len({number for ticket in tickets for number in ticket}) == 18
     )
 
 
 def _history(count: int = 64) -> tuple[CausalDrawRow, ...]:
     start = date(2025, 1, 1)
-    rows = []
+    rows: list[CausalDrawRow] = []
     for index in range(count):
         numbers = tuple(sorted(((index * 11 + offset * 7) % 49) + 1 for offset in range(6)))
         rows.append(
@@ -66,7 +66,7 @@ def _fair_probability(tickets: tuple[set[int], ...], *, include_two_plus_special
     """
 
     membership_sizes: dict[int, int] = {}
-    union = set().union(*tickets)
+    union = {number for ticket in tickets for number in ticket}
     for number in union:
         membership = sum(1 << index for index, ticket in enumerate(tickets) if number in ticket)
         membership_sizes[membership] = membership_sizes.get(membership, 0) + 1
@@ -120,7 +120,7 @@ def _venn_geometry_tickets(
 
 
 def _all_three_ticket_geometries() -> tuple[tuple[set[int], set[int], set[int]], ...]:
-    geometries = []
+    geometries: list[tuple[set[int], set[int], set[int]]] = []
     for all_3 in range(7):
         for only_12 in range(7 - all_3):
             for only_13 in range(7 - all_3):
@@ -199,7 +199,10 @@ def test_legal_sources_with_fourteen_to_seventeen_unique_numbers_are_filled() ->
         ),
     )
     expected_unique_counts = (14, 15, 16, 17)
-    assert tuple(len(set().union(*source)) for source in sources) == expected_unique_counts
+    actual_unique_counts = tuple(
+        len({number for ticket in source for number in ticket}) for source in sources
+    )
+    assert actual_unique_counts == expected_unique_counts
     for source in sources:
         converted = make_k3_nonoverlap(source)
         assert converted[0] == source[0]

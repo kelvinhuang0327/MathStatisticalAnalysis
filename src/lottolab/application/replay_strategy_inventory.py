@@ -162,6 +162,16 @@ _POWER_GRAPH_CODE_IDENTITY = _CodeIdentity(
 _DIRECT_CODE_BINDING_IDENTITIES = frozenset(
     {
         (LotteryType.BIG_LOTTO, "research_biglotto__quick_ml_corrected_successor_v1", "v1"),
+        (
+            LotteryType.BIG_LOTTO,
+            "research_biglotto__k3_nonoverlap_optimizer_candidate_20261116",
+            "v1.0.0",
+        ),
+        (
+            LotteryType.BIG_LOTTO,
+            "research_biglotto__k3_nonoverlap_ecp_candidate_20261116",
+            "v1.0.0",
+        ),
         (LotteryType.POWER_LOTTO, "power_graph_synergy_seed42_2bet", "v0.1-seed42"),
     }
 )

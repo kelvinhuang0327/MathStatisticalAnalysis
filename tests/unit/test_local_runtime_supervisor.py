@@ -1555,6 +1555,7 @@ def test_smoke_verifies_health_proxy_catalog_openapi_and_local_listeners(
                             "get": {}
                         },
                         "/api/v1/replay-backfill/strategies": {"get": {}},
+                        "/api/v1/replay-backfill/k3-comparison": {"get": {}},
                         "/api/v1/replay-backfill/predictions": {"get": {}},
                         "/api/v1/replay-backfill/coverage": {"get": {}},
                         "/api/v1/replay-backfill/results": {"get": {}},

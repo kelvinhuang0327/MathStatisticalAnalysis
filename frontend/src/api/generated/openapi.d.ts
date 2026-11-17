@@ -2076,6 +2076,31 @@ export interface paths {
                 }
         }
     }
+  "/api/v1/replay-backfill/uniform-eight-reference": {
+      get: {
+          parameters: {
+            "query": {
+              "strategy_id": string
+              "run_id"?: string | null
+              "from_date"?: string | null
+              "to_date"?: string | null
+              "period"?: string
+            }
+          }
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": components['schemas']["ReplayUniformEightSummaryView"]
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["HTTPValidationError"]
+                                  }
+                        }
+                }
+        }
+    }
   "/api/v1/replay-backfill/predictions": {
       get: {
           parameters: {
@@ -3305,6 +3330,9 @@ export interface components {
     "GenerateLiveZoneSplitBetsStatus": "OK" | "INVALID_REQUEST" | "INVALID_OUTPUT" | "EXECUTION_ERROR"
     "GenerateOneBetReason": "REJECTED_BY_STRATEGY" | "INSUFFICIENT_HISTORY" | "UNKNOWN_STRATEGY" | "ADAPTER_NOT_INJECTED" | "UNSUPPORTED_LOTTERY_TYPE" | "INVALID_OUTPUT" | "REPLAY_ERROR" | "STRATEGY_IS_PORTFOLIO"
     "GenerateOneBetStatus": "OK" | "REJECTED" | "INSUFFICIENT_HISTORY" | "STRATEGY_UNAVAILABLE" | "INVALID_OUTPUT" | "REPLAY_ERROR" | "WRONG_RESPONSE_PATH"
+    "HTTPValidationError": {
+          "detail"?: Array<components['schemas']["ValidationError"]>
+        }
     "HistoricalDrawIdentityView": {
           "draw_number": string
           "draw_date": string
@@ -4384,6 +4412,7 @@ export interface components {
           "data_status": string
           "training": components['schemas']["ReplayBackfillTrainingView"]
           "portfolio_any_prize": boolean | null
+          "uniform_eight_reference"?: components['schemas']["ReplayUniformEightReferenceView"] | null
           "best_main_hits": number | null
           "run_id"?: string | null
           "lifecycle_status"?: string | null
@@ -4733,6 +4762,29 @@ export interface components {
           "source_row_count": number
           "evidence_file_count": number
         }
+    "ReplayUniformEightAggregateView": {
+          "strategy_version": string
+          "ticket_count": number | null
+          "scorable_draws": number
+          "unknown_draws": number
+          "successes": number
+          "success_rate_percent": number | null
+          "unknown_provenance_draws": number
+          "baseline_kind": "UNIFORM_RANDOM_DISJOINT_K3" | "UNKNOWN"
+          "baseline_success_rate_percent": number | null
+          "difference_from_baseline_pp": number | null
+        }
+    "ReplayUniformEightReferenceView": {
+          "status": "SCORABLE" | "UNKNOWN"
+          "ticket_count": number | null
+          "any_prize": boolean | null
+        }
+    "ReplayUniformEightSummaryView": {
+          "run_id": string | null
+          "strategy_id": string
+          "metric_id": string
+          "groups": Array<components['schemas']["ReplayUniformEightAggregateView"]>
+        }
     "ReproductionStatus": "BACKTESTED" | "CLOSED_UNEXECUTABLE" | "DUPLICATE_ALIAS" | "OWNER_DECISION_REQUIRED"
     "RequestValidationIssueView": {
           "location": string
@@ -5043,6 +5095,13 @@ export interface components {
           "tier_id": string
           "tier_order": number
           "count": number
+        }
+    "ValidationError": {
+          "loc": Array<string | number>
+          "msg": string
+          "type": string
+          "input"?: unknown
+          "ctx"?: Record<string, unknown>
         }
     "WindowDefinitionView": {
           "window_kind": string

@@ -166,6 +166,7 @@ function installDefaultApi(overrides: {
   coverage?: (url: URL) => unknown
   predictions?: (url: URL) => unknown
   predictionStatus?: number
+  uniformReference?: (url: URL) => unknown
 } = {}) {
   const fetchMock = vi.fn<typeof fetch>().mockImplementation((input) => {
     const url = new URL(String(input), 'http://localhost')
@@ -194,6 +195,12 @@ function installDefaultApi(overrides: {
     if (url.pathname === '/api/v1/replay-backfill/predictions') {
       return Promise.resolve(apiResponse(overrides.predictions?.(url) ?? predictionPage([]), overrides.predictionStatus))
     }
+    if (url.pathname === '/api/v1/replay-backfill/uniform-eight-reference') {
+      return Promise.resolve(apiResponse(overrides.uniformReference?.(url) ?? {
+        run_id: url.searchParams.get('run_id'), strategy_id: url.searchParams.get('strategy_id'),
+        metric_id: 'REFERENCE_FIXED_EIGHT_TIER_ANY_PRIZE', groups: [],
+      }))
+    }
     throw new Error(`Unexpected fetch: ${url}`)
   })
   vi.stubGlobal('fetch', fetchMock)
@@ -213,6 +220,35 @@ afterEach(() => {
 })
 
 describe('Replay Backfill API UI', () => {
+  it('shows the uniform research reference separately from historical official prizes', async () => {
+    installDefaultApi({
+      predictions: () => predictionPage([prediction('103000080', {
+        portfolio_any_prize: false,
+        uniform_eight_reference: { status: 'SCORABLE', ticket_count: 3, any_prize: true },
+      })], 1, null, 'run-linked'),
+      uniformReference: () => ({
+        run_id: 'run-linked', strategy_id: 'strategy-history',
+        metric_id: 'REFERENCE_FIXED_EIGHT_TIER_ANY_PRIZE',
+        groups: [{ strategy_version: 'v1', ticket_count: 3, scorable_draws: 2037,
+          unknown_draws: 0, successes: 198, success_rate_percent: 9.7201767,
+          unknown_provenance_draws: 2037, baseline_kind: 'UNIFORM_RANDOM_DISJOINT_K3',
+          baseline_success_rate_percent: 9.23175, difference_from_baseline_pp: 0.4884 }],
+      }),
+    })
+    window.history.replaceState({}, '', '?replay_run_id=run-linked&replay_strategy_id=strategy-history')
+    const wrapper = await openBackfillPage()
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+    expect(wrapper.get('[data-testid="uniform-eight-summary"]').text()).toContain('198／2037')
+    expect(wrapper.get('[data-testid="uniform-eight-summary"]').text()).toContain('9.72%')
+    expect(wrapper.get('[data-testid="uniform-eight-summary"]').text()).toContain('來源未驗證 2037')
+    expect(wrapper.get('[data-testid="uniform-eight-summary"]').text()).toContain('9.23%')
+    expect(wrapper.get('[data-testid="uniform-eight-summary"]').text()).toContain('+0.49')
+    expect(wrapper.text()).toContain('既有歷史規則結果（來源待核）')
+    expect(wrapper.text()).toContain('統一八獎級研究參考')
+    wrapper.unmount()
+    window.history.replaceState({}, '', '/')
+  })
   it('queries and pages the selected run, and clears results when the run changes', async () => {
     const fetchMock = installDefaultApi({
       predictions: (url) => predictionPage(

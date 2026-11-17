@@ -23,6 +23,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from lottolab.application.replay_portfolio_qualification import assess_research_portfolio
 from lottolab.application.replay_strategy_inventory import load_replay_strategy_inventory
+from lottolab.application.replay_uniform_reference import uniform_eight_reference
 from lottolab.application.seeded_single_replay import seeded_replay_version
 from lottolab.domain.draws import LotteryType
 from lottolab.domain.historical_replay import (
@@ -242,6 +243,16 @@ class ReplayBackfillResearchPortfolioQualificationView(BaseModel):
     import_qualification: Literal["NOT_QUALIFIED", "UNKNOWN"]
 
 
+class ReplayUniformEightReferenceView(BaseModel):
+    """A retrospective research metric, separate from historical official prizes."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    status: Literal["SCORABLE", "UNKNOWN"]
+    ticket_count: int | None
+    any_prize: bool | None
+
+
 class ReplayBackfillPredictionItemView(BaseModel):
     """One draw prediction result with evaluated tickets and audit trails."""
 
@@ -262,6 +273,7 @@ class ReplayBackfillPredictionItemView(BaseModel):
     data_status: str
     training: ReplayBackfillTrainingView
     portfolio_any_prize: bool | None
+    uniform_eight_reference: ReplayUniformEightReferenceView | None = None
     best_main_hits: int | None
     run_id: str | None = None
     lifecycle_status: str | None = None
@@ -286,6 +298,30 @@ class ReplayBackfillPredictionPageResponse(BaseModel):
     total_count: int = Field(ge=0)
     items: list[ReplayBackfillPredictionItemView]
     next_cursor: str | None
+
+
+class ReplayUniformEightAggregateView(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    strategy_version: str
+    ticket_count: int | None
+    scorable_draws: int
+    unknown_draws: int
+    successes: int
+    success_rate_percent: float | None
+    unknown_provenance_draws: int
+    baseline_kind: Literal["UNIFORM_RANDOM_DISJOINT_K3", "UNKNOWN"]
+    baseline_success_rate_percent: float | None
+    difference_from_baseline_pp: float | None
+
+
+class ReplayUniformEightSummaryView(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    run_id: str | None
+    strategy_id: str
+    metric_id: Literal["REFERENCE_FIXED_EIGHT_TIER_ANY_PRIZE"]
+    groups: list[ReplayUniformEightAggregateView]
 
 
 class ReplayBackfillCoverageResponse(BaseModel):
@@ -861,6 +897,135 @@ def create_replay_backfill_router(store: SQLiteBackfillStore | None) -> APIRoute
         except Exception:
             return _error(503, "REPLAY_BACKFILL_UNAVAILABLE")
 
+    @router.get("/uniform-eight-reference", response_model=ReplayUniformEightSummaryView)
+    def uniform_eight_summary(
+        strategy_id: Annotated[str, Query(min_length=1, max_length=_MAX_ID_LENGTH)],
+        run_id: Annotated[str | None, Query(min_length=1, max_length=_MAX_ID_LENGTH)] = None,
+        from_date: date | None = None,
+        to_date: date | None = None,
+        period: Annotated[str, Query(pattern="^(50|300|750|ALL)$")] = "ALL",
+    ) -> JsonObject | JSONResponse:
+        """Summarize saved simulations, never historical official-prize claims."""
+        if store is None:
+            return _error(503, "REPLAY_BACKFILL_NOT_CONFIGURED")
+        if from_date and to_date and from_date > to_date:
+            return _error(422, "INVALID_DATE_RANGE")
+        groups: dict[tuple[str, int | None], JsonObject] = {}
+        seen: set[str] = set()
+        after: tuple[str, int, str, str, str] | None = None
+        expected_total: int | None = None
+        selected_run = run_id
+        persisted_outcomes: JsonObject | None = None
+        try:
+            while True:
+                page = store.prediction_page(
+                    lottery_type=LotteryType.BIG_LOTTO.value,
+                    run_id=selected_run,
+                    strategy_id=strategy_id,
+                    from_date=None if from_date is None else from_date.isoformat(),
+                    to_date=None if to_date is None else to_date.isoformat(),
+                    period=_PERIODS[period],
+                    limit=250,
+                    after=after,
+                )
+                if expected_total is None:
+                    raw_total: object = page["total_count"]
+                    if type(raw_total) is not int:
+                        return _error(409, "REFERENCE_SCOPE_CHANGED")
+                    expected_total = raw_total
+                    selected_run = page["run_id"]
+                    if expected_total > 100_000:
+                        return _error(422, "REFERENCE_SCOPE_TOO_LARGE")
+                    manifest_reader = cast(
+                        Callable[[str], JsonObject] | None, getattr(store, "run_manifest", None)
+                    )
+                    if selected_run is not None and callable(manifest_reader):
+                        manifest = manifest_reader(selected_run)
+                        raw_projection: object = manifest.get("reference_projection")
+                        if raw_projection is not None:
+                            projection = _as_json_object(raw_projection)
+                            if (
+                                projection is None
+                                or projection.get("metric_id")
+                                != "REFERENCE_FIXED_EIGHT_TIER_ANY_PRIZE"
+                                or type(projection.get("outcomes_by_cell")) is not dict
+                            ):
+                                return _error(409, "REFERENCE_EVIDENCE_INVALID")
+                            persisted_outcomes = cast(JsonObject, projection["outcomes_by_cell"])
+                elif page["run_id"] != selected_run or page["total_count"] != expected_total:
+                    return _error(409, "REFERENCE_SCOPE_CHANGED")
+                rows = page.get("rows", [])
+                selected = rows[:250]
+                for row in selected:
+                    identity = row["identity"]
+                    cell = identity["cell_identity"]
+                    if cell in seen:
+                        return _error(409, "REFERENCE_SCOPE_CHANGED")
+                    seen.add(cell)
+                    payload = row["payload"]
+                    reference = uniform_eight_reference(payload, identity)
+                    if persisted_outcomes is not None and (
+                        cell not in persisted_outcomes
+                        or persisted_outcomes[cell] is not reference["any_prize"]
+                    ):
+                        return _error(409, "REFERENCE_EVIDENCE_MISMATCH")
+                    key = (identity["strategy_version"], reference["ticket_count"])
+                    group = groups.setdefault(key, {
+                        "strategy_version": key[0], "ticket_count": key[1],
+                        "scorable_draws": 0, "unknown_draws": 0, "successes": 0,
+                        "success_rate_percent": None, "unknown_provenance_draws": 0,
+                        "_disjoint_k3": True,
+                    })
+                    if payload.get("source_history_provenance_status") != "VERIFIED":
+                        group["unknown_provenance_draws"] += 1
+                    if reference["status"] == "SCORABLE":
+                        group["scorable_draws"] += 1
+                        group["successes"] += int(reference["any_prize"] is True)
+                        ticket_values = cast(list[JsonObject], payload["predicted_tickets"])
+                        numbers = [
+                            cast(list[int], ticket["main_numbers"]) for ticket in ticket_values
+                        ]
+                        if reference["ticket_count"] != 3 or len(set[int]().union(*numbers)) != 18:
+                            group["_disjoint_k3"] = False
+                    else:
+                        group["unknown_draws"] += 1
+                if len(rows) <= 250:
+                    break
+                if not selected:
+                    return _error(409, "REFERENCE_SCOPE_CHANGED")
+                after = tuple(selected[-1]["key"])
+            if len(seen) != expected_total:
+                return _error(409, "REFERENCE_SCOPE_CHANGED")
+            for group in groups.values():
+                disjoint_k3 = group.pop("_disjoint_k3")
+                if group["scorable_draws"]:
+                    group["success_rate_percent"] = (
+                        100 * group["successes"] / group["scorable_draws"]
+                    )
+                # Exact fair-draw probability for three disjoint six-number tickets:
+                # 330422/3579191. It is a theoretical benchmark, not a replay.
+                baseline = (
+                    100 * 330422 / 3579191 if disjoint_k3 and group["scorable_draws"] else None
+                )
+                group["baseline_kind"] = (
+                    "UNIFORM_RANDOM_DISJOINT_K3" if baseline is not None else "UNKNOWN"
+                )
+                group["baseline_success_rate_percent"] = baseline
+                group["difference_from_baseline_pp"] = (
+                    group["success_rate_percent"] - baseline if baseline is not None else None
+                )
+            return {
+                "run_id": selected_run, "strategy_id": strategy_id,
+                "metric_id": "REFERENCE_FIXED_EIGHT_TIER_ANY_PRIZE",
+                "groups": list(groups.values()),
+            }
+        except KeyError:
+            return _error(404, "REPLAY_BACKFILL_RUN_NOT_FOUND")
+        except ValueError:
+            return _error(422, "INVALID_QUERY")
+        except Exception:
+            return _error(503, "REPLAY_BACKFILL_UNAVAILABLE")
+
     @router.get(
         "/predictions",
         response_model=ReplayBackfillPredictionPageResponse,
@@ -1325,6 +1490,11 @@ def _prediction_item(
         "portfolio_any_prize": (
             any(ticket.get("prize_tier") is not None for ticket in predicted)
             if fully_evaluated and ticket_evidence_complete and identity_matches
+            else None
+        ),
+        "uniform_eight_reference": (
+            uniform_eight_reference(payload, identity)
+            if identity.get("lottery_type") == LotteryType.BIG_LOTTO.value
             else None
         ),
         "best_main_hits": (

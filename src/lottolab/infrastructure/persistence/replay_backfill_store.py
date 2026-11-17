@@ -1040,7 +1040,11 @@ class SQLiteBackfillStore:
                 "ORDER BY created_at DESC,run_id"
             ).fetchall()
         for run_id, manifest_json in rows:
-            if json.loads(manifest_json).get("lottery_type") == lottery_type:
+            manifest = json.loads(manifest_json)
+            if (
+                manifest.get("lottery_type") == lottery_type
+                and "reference_projection" not in manifest
+            ):
                 return str(run_id)
         return None
 
@@ -1300,6 +1304,8 @@ class SQLiteBackfillStore:
                     if not isinstance(manifest_value, dict):
                         continue
                     manifest = cast(JsonObject, manifest_value)
+                    if "reference_projection" in manifest:
+                        continue
                     if manifest.get("lottery_type") == lottery_type:
                         selected = (candidate_run_id, manifest, created_at)
                         break

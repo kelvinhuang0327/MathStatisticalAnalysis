@@ -5901,6 +5901,114 @@
         }
       }
     },
+    "/api/v1/replay-backfill/uniform-eight-reference": {
+      "get": {
+        "tags": [
+          "replay-backfill"
+        ],
+        "summary": "Uniform Eight Summary",
+        "description": "Summarize saved simulations, never historical official-prize claims.",
+        "operationId": "uniform_eight_summary_api_v1_replay_backfill_uniform_eight_reference_get",
+        "parameters": [
+          {
+            "name": "strategy_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "title": "Strategy Id"
+            }
+          },
+          {
+            "name": "run_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "from_date",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "From Date"
+            }
+          },
+          {
+            "name": "to_date",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "To Date"
+            }
+          },
+          {
+            "name": "period",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^(50|300|750|ALL)$",
+              "default": "ALL",
+              "title": "Period"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReplayUniformEightSummaryView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/replay-backfill/predictions": {
       "get": {
         "tags": [
@@ -12161,6 +12269,19 @@
           "WRONG_RESPONSE_PATH"
         ],
         "title": "GenerateOneBetStatus"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
       },
       "HistoricalDrawIdentityView": {
         "properties": {
@@ -18588,6 +18709,16 @@
             ],
             "title": "Portfolio Any Prize"
           },
+          "uniform_eight_reference": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReplayUniformEightReferenceView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "best_main_hits": {
             "anyOf": [
               {
@@ -21031,6 +21162,180 @@
         "title": "ReplayStrategySourceCountView",
         "description": "Raw and unique identity conservation for one source inventory."
       },
+      "ReplayUniformEightAggregateView": {
+        "properties": {
+          "strategy_version": {
+            "type": "string",
+            "title": "Strategy Version"
+          },
+          "ticket_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ticket Count"
+          },
+          "scorable_draws": {
+            "type": "integer",
+            "title": "Scorable Draws"
+          },
+          "unknown_draws": {
+            "type": "integer",
+            "title": "Unknown Draws"
+          },
+          "successes": {
+            "type": "integer",
+            "title": "Successes"
+          },
+          "success_rate_percent": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Success Rate Percent"
+          },
+          "unknown_provenance_draws": {
+            "type": "integer",
+            "title": "Unknown Provenance Draws"
+          },
+          "baseline_kind": {
+            "type": "string",
+            "enum": [
+              "UNIFORM_RANDOM_DISJOINT_K3",
+              "UNKNOWN"
+            ],
+            "title": "Baseline Kind"
+          },
+          "baseline_success_rate_percent": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Baseline Success Rate Percent"
+          },
+          "difference_from_baseline_pp": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Difference From Baseline Pp"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "strategy_version",
+          "ticket_count",
+          "scorable_draws",
+          "unknown_draws",
+          "successes",
+          "success_rate_percent",
+          "unknown_provenance_draws",
+          "baseline_kind",
+          "baseline_success_rate_percent",
+          "difference_from_baseline_pp"
+        ],
+        "title": "ReplayUniformEightAggregateView"
+      },
+      "ReplayUniformEightReferenceView": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "SCORABLE",
+              "UNKNOWN"
+            ],
+            "title": "Status"
+          },
+          "ticket_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ticket Count"
+          },
+          "any_prize": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Any Prize"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "ticket_count",
+          "any_prize"
+        ],
+        "title": "ReplayUniformEightReferenceView",
+        "description": "A retrospective research metric, separate from historical official prizes."
+      },
+      "ReplayUniformEightSummaryView": {
+        "properties": {
+          "run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Id"
+          },
+          "strategy_id": {
+            "type": "string",
+            "title": "Strategy Id"
+          },
+          "metric_id": {
+            "type": "string",
+            "const": "REFERENCE_FIXED_EIGHT_TIER_ANY_PRIZE",
+            "title": "Metric Id"
+          },
+          "groups": {
+            "items": {
+              "$ref": "#/components/schemas/ReplayUniformEightAggregateView"
+            },
+            "type": "array",
+            "title": "Groups"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "run_id",
+          "strategy_id",
+          "metric_id",
+          "groups"
+        ],
+        "title": "ReplayUniformEightSummaryView"
+      },
       "ReproductionStatus": {
         "type": "string",
         "enum": [
@@ -22865,6 +23170,46 @@
           "count"
         ],
         "title": "TierCountView"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
       },
       "WindowDefinitionView": {
         "properties": {

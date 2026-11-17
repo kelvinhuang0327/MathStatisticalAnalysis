@@ -25,6 +25,8 @@ export type ReplayBackfillPredictionCutoffStatus = 'VERIFIED' | 'UNTRUSTED' | 'U
 export type ReplayBackfillPredictionCutoff = components['schemas']['ReplayBackfillPredictionCutoffView']
 export type ReplayBackfillResearchPortfolioQualification =
   components['schemas']['ReplayBackfillResearchPortfolioQualificationView']
+export type UniformEightReference = components['schemas']['ReplayUniformEightReferenceView']
+export type UniformEightSummary = components['schemas']['ReplayUniformEightSummaryView']
 export type ReplayBackfillPredictionItem = components['schemas']['ReplayBackfillPredictionItemView']
 export type ReplayBackfillPredictionPage = components['schemas']['ReplayBackfillPredictionPageResponse']
 
@@ -237,6 +239,8 @@ function isPredictionItem(value: unknown): value is ReplayBackfillPredictionItem
     isNumberArray(value.actual_main_numbers) &&
     isNumberArray(value.actual_special_numbers) &&
     (value.portfolio_any_prize === null || typeof value.portfolio_any_prize === 'boolean') &&
+    (value.uniform_eight_reference === undefined || value.uniform_eight_reference === null ||
+      isUniformEightReference(value.uniform_eight_reference)) &&
     isNullableNonNegativeSafeInteger(value.best_main_hits) &&
     isString(value.source_kind) &&
     isString(value.data_status) &&
@@ -245,6 +249,30 @@ function isPredictionItem(value: unknown): value is ReplayBackfillPredictionItem
       isPredictionCutoff(value.prediction_cutoff)) &&
     isTraining(value.training)
   )
+}
+
+function isUniformEightReference(value: unknown): value is UniformEightReference {
+  return isRecord(value) && (value.status === 'SCORABLE' || value.status === 'UNKNOWN') &&
+    isNullableNonNegativeSafeInteger(value.ticket_count) && isNullableBoolean(value.any_prize) &&
+    ((value.status === 'UNKNOWN' && value.any_prize === null) ||
+      (value.status === 'SCORABLE' && typeof value.any_prize === 'boolean'))
+}
+
+function isUniformEightSummary(value: unknown): value is UniformEightSummary {
+  return isRecord(value) && isNullableString(value.run_id) && isString(value.strategy_id) &&
+    value.metric_id === 'REFERENCE_FIXED_EIGHT_TIER_ANY_PRIZE' && Array.isArray(value.groups) &&
+    value.groups.every((group: unknown) => isRecord(group) && isString(group.strategy_version) &&
+      isNullableNonNegativeSafeInteger(group.ticket_count) &&
+      isNonNegativeSafeInteger(group.scorable_draws) && isNonNegativeSafeInteger(group.unknown_draws) &&
+      isNonNegativeSafeInteger(group.successes) && group.successes <= group.scorable_draws &&
+      (group.success_rate_percent === null || (typeof group.success_rate_percent === 'number' &&
+        Number.isFinite(group.success_rate_percent) && group.success_rate_percent >= 0 && group.success_rate_percent <= 100)) &&
+      isNonNegativeSafeInteger(group.unknown_provenance_draws) &&
+      (group.baseline_kind === 'UNKNOWN' || group.baseline_kind === 'UNIFORM_RANDOM_DISJOINT_K3') &&
+      (group.baseline_kind === 'UNKNOWN'
+        ? group.baseline_success_rate_percent === null && group.difference_from_baseline_pp === null
+        : typeof group.baseline_success_rate_percent === 'number' && Number.isFinite(group.baseline_success_rate_percent) &&
+          typeof group.difference_from_baseline_pp === 'number' && Number.isFinite(group.difference_from_baseline_pp)))
 }
 
 function isPredictionPage(value: unknown): value is ReplayBackfillPredictionPage {
@@ -398,6 +426,19 @@ export async function listReplayBackfillPredictions(
     isPredictionPage,
     (response, status) => assertRequestedRunIdMatches(response, query.runId, status),
   )
+}
+
+export async function getUniformEightSummary(
+  query: ReplayBackfillPredictionQuery & { strategyId: string },
+  signal?: AbortSignal,
+): Promise<UniformEightSummary> {
+  const params = new URLSearchParams({ strategy_id: query.strategyId, period: String(query.period) })
+  if (query.runId?.trim()) params.set('run_id', query.runId.trim())
+  if (query.fromDate) params.set('from_date', query.fromDate)
+  if (query.toDate) params.set('to_date', query.toDate)
+  return getJson(`/api/v1/replay-backfill/uniform-eight-reference?${params.toString()}`,
+    signal, isUniformEightSummary,
+    (response, status) => assertRequestedRunIdMatches(response, query.runId, status))
 }
 
 export async function getReplayBackfillCoverage(

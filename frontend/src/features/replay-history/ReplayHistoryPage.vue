@@ -848,7 +848,13 @@ async function loadBackfillPredictionPage(loadMore: boolean): Promise<void> {
     backfillPredictionTotal.value = page.total_count
     backfillPredictionCursor.value = page.next_cursor
     backfillPredictionsState.value = backfillPredictions.value.length ? 'ready' : 'empty'
-    if (!loadMore && query.lotteryType === 'BIG_LOTTO' && query.strategyId && page.run_id) {
+    if (
+      !loadMore &&
+      page.items.length > 0 &&
+      query.lotteryType === 'BIG_LOTTO' &&
+      query.strategyId &&
+      page.run_id
+    ) {
       void loadUniformReference({ ...query, strategyId: query.strategyId, runId: page.run_id })
     }
   } catch (error) {
@@ -2269,7 +2275,7 @@ function predictedNumbers(value: number[] | null | undefined): string {
           {{ backfillPredictionsError }}
         </div>
         <div v-else-if="backfillPredictionsState === 'empty'" class="state-panel" data-testid="backfill-predictions-empty">
-          {{ coverage?.completed_cell_count === 0 ? '尚無可查詢的正式Replay資料。' : '' }}目前Run／篩選條件沒有符合結果（No replay records match the selected filters）。本次僅查詢目前指定的 Run 範圍（{{ backfillPredictionRunId ? ('Run: ' + backfillPredictionRunId) : '最新 Run' }}），尚未查詢其他Run，不代表其他Run沒有資料。
+          {{ coverage?.completed_cell_count === 0 ? '尚無可查詢的正式Replay資料。' : '' }}目前Run／篩選條件沒有符合結果（No replay records match the selected filters.）。本次僅查詢目前指定的 Run 範圍（{{ backfillPredictionRunId ? ('Run: ' + backfillPredictionRunId) : '最新 Run' }}），尚未查詢其他Run，不代表其他Run沒有資料。
         </div>
         <div v-if="backfillPredictions.length" class="table-wrap">
           <table>

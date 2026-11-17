@@ -225,6 +225,22 @@ function installSyntheticFetch(
         run_id: null,
       })
     }
+    if (url.pathname === '/api/v1/replay-backfill/k3-comparison') {
+      return jsonResponse({
+        run_id: 'synthetic-k3-run',
+        strategy: url.searchParams.get('strategy'),
+        target_count: 0,
+        paired_count: 0,
+        unmatched_count: 0,
+        old_wins: 0,
+        new_wins: 0,
+        old_only: 0,
+        new_only: 0,
+        fair_delta: null,
+        observed_minus_fair: null,
+        rows: [],
+      })
+    }
     if (url.pathname === '/api/v1/replay-backfill/strategies') {
       const requestedLottery = url.searchParams.get('lottery_type')
       const isSecondPage = url.searchParams.has('cursor')

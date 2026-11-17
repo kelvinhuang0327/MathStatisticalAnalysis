@@ -25,7 +25,8 @@ def test_inventory_conserves_sources_and_executable_identities() -> None:
     inventory = load_replay_strategy_inventory()
     source_counts = {source.source_kind: source for source in inventory.source_counts}
 
-    # New-main K3 adapters add two executable identities; the Replay result source adds three non-executable identities.
+    # New-main K3 adapters add two executable identities; the Replay result source adds three
+    # non-executable identities.
     assert inventory.total_discovered_strategies == 656
     assert inventory.total_unique_strategies == 448
     assert len(inventory.executable_items) == 213

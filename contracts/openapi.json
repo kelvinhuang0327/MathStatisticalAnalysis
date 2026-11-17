@@ -5901,6 +5901,80 @@
         }
       }
     },
+    "/api/v1/replay-backfill/k3-comparison": {
+      "get": {
+        "tags": [
+          "replay-backfill"
+        ],
+        "summary": "K3 Comparison",
+        "operationId": "k3_comparison_api_v1_replay_backfill_k3_comparison_get",
+        "parameters": [
+          {
+            "name": "strategy",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "enum": [
+                "optimizer",
+                "ecp"
+              ],
+              "type": "string",
+              "title": "Strategy"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/K3ComparisonResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReplayBackfillErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReplayBackfillErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiValidationErrorResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ReplayBackfillErrorResponse"
+                    }
+                  ],
+                  "title": "Response 422 K3 Comparison Api V1 Replay Backfill K3 Comparison Get"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      }
+    },
     "/api/v1/replay-backfill/predictions": {
       "get": {
         "tags": [
@@ -16299,6 +16373,167 @@
           "error_summary"
         ],
         "title": "IngestionRunView"
+      },
+      "K3ComparisonResponse": {
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "strategy": {
+            "type": "string",
+            "title": "Strategy"
+          },
+          "target_count": {
+            "type": "integer",
+            "title": "Target Count"
+          },
+          "paired_count": {
+            "type": "integer",
+            "title": "Paired Count"
+          },
+          "unmatched_count": {
+            "type": "integer",
+            "title": "Unmatched Count"
+          },
+          "old_wins": {
+            "type": "integer",
+            "title": "Old Wins"
+          },
+          "new_wins": {
+            "type": "integer",
+            "title": "New Wins"
+          },
+          "old_only": {
+            "type": "integer",
+            "title": "Old Only"
+          },
+          "new_only": {
+            "type": "integer",
+            "title": "New Only"
+          },
+          "fair_delta": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fair Delta"
+          },
+          "observed_minus_fair": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observed Minus Fair"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/K3ComparisonRowView"
+            },
+            "type": "array",
+            "title": "Rows"
+          }
+        },
+        "type": "object",
+        "required": [
+          "run_id",
+          "strategy",
+          "target_count",
+          "paired_count",
+          "unmatched_count",
+          "old_wins",
+          "new_wins",
+          "old_only",
+          "new_only",
+          "fair_delta",
+          "observed_minus_fair",
+          "rows"
+        ],
+        "title": "K3ComparisonResponse",
+        "description": "Exploratory comparison of the fixed saved K3 historical cohort."
+      },
+      "K3ComparisonRowView": {
+        "properties": {
+          "target_draw_number": {
+            "type": "string",
+            "title": "Target Draw Number"
+          },
+          "target_draw_date": {
+            "type": "string",
+            "title": "Target Draw Date"
+          },
+          "match_status": {
+            "type": "string",
+            "title": "Match Status"
+          },
+          "source_segment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Segment"
+          },
+          "original_source_run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Original Source Run Id"
+          },
+          "old_cell_identity": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Old Cell Identity"
+          },
+          "old": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReplayBackfillPredictionItemView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "new": {
+            "$ref": "#/components/schemas/ReplayBackfillPredictionItemView"
+          }
+        },
+        "type": "object",
+        "required": [
+          "target_draw_number",
+          "target_draw_date",
+          "match_status",
+          "source_segment",
+          "original_source_run_id",
+          "old_cell_identity",
+          "old",
+          "new"
+        ],
+        "title": "K3ComparisonRowView",
+        "description": "One candidate draw paired to its saved original, or an explicit gap."
       },
       "LifecycleStatus": {
         "type": "string",

@@ -1479,6 +1479,52 @@ class SQLiteBackfillStore:
             ],
         }
 
+    def k3_comparison_payloads(
+        self, run_id: str, new_strategy_id: str, old_strategy_id: str
+    ) -> tuple[list[JsonObject], list[JsonObject]]:
+        """Read one saved candidate run and its possible original cells consistently."""
+        columns = (
+            "c.cell_identity,c.lottery_type,c.strategy_id,c.strategy_version,"
+            "c.target_draw_id,c.target_draw_date,c.dataset_identity,c.execution_version,"
+            "c.result_identity,c.payload_json"
+        )
+        with self._connect() as connection:
+            connection.execute("BEGIN")
+            new_rows = connection.execute(
+                f"SELECT {columns} FROM replay_backfill_run_cells r "
+                "JOIN replay_backfill_cells c USING(cell_identity) "
+                "WHERE r.run_id=? AND c.lottery_type=? AND c.strategy_id=? "
+                "ORDER BY c.target_draw_date,CAST(c.target_draw_id AS INTEGER)",
+                (run_id, "BIG_LOTTO", new_strategy_id),
+            ).fetchall()
+            old_rows = connection.execute(
+                f"SELECT {columns} FROM replay_backfill_cells c "
+                "WHERE c.lottery_type=? AND c.strategy_id=?",
+                ("BIG_LOTTO", old_strategy_id),
+            ).fetchall()
+            old_ids = {row[0] for row in old_rows}
+            old_run_ids: dict[str, list[str]] = {}
+            for cell_id, old_run_id in connection.execute(
+                "SELECT cell_identity,run_id FROM replay_backfill_run_cells"
+            ):
+                if cell_id in old_ids:
+                    old_run_ids.setdefault(cell_id, []).append(old_run_id)
+
+        def unpack(row: tuple[Any, ...]) -> JsonObject:
+            return {
+                "identity": dict(zip(
+                    ("cell_identity", "lottery_type", "strategy_id", "strategy_version",
+                     "target_draw_id", "target_draw_date", "dataset_identity",
+                     "execution_version", "result_identity"), row[:9], strict=True
+                )),
+                "payload": json.loads(row[9]),
+            }
+
+        return [unpack(row) for row in new_rows], [
+            {**unpack(row), "run_ids": sorted(old_run_ids.get(row[0], []))}
+            for row in old_rows
+        ]
+
     def prediction_page(
         self,
         *,

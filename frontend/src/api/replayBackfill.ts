@@ -30,6 +30,32 @@ export type ReplayBackfillPredictionPage = components['schemas']['ReplayBackfill
 
 export type ReplayBackfillCoverage = components['schemas']['ReplayBackfillCoverageResponse']
 
+export type K3ComparisonStrategy = 'optimizer' | 'ecp'
+export interface K3ComparisonRow {
+  target_draw_number: string
+  target_draw_date: string
+  match_status: string
+  source_segment: string | null
+  original_source_run_id: string | null
+  old_cell_identity: string | null
+  old: ReplayBackfillPredictionItem | null
+  new: ReplayBackfillPredictionItem
+}
+export interface K3Comparison {
+  run_id: string
+  strategy: K3ComparisonStrategy
+  target_count: number
+  paired_count: number
+  unmatched_count: number
+  old_wins: number
+  new_wins: number
+  old_only: number
+  new_only: number
+  fair_delta: number | null
+  observed_minus_fair: number | null
+  rows: K3ComparisonRow[]
+}
+
 export interface ReplayBackfillStrategyQuery {
   lotteryType: ReplayBackfillLotteryType
   runId?: string
@@ -255,6 +281,48 @@ function isPredictionPage(value: unknown): value is ReplayBackfillPredictionPage
     Array.isArray(value.items) &&
     value.items.every(isPredictionItem) &&
     (value.next_cursor === null || isString(value.next_cursor))
+  )
+}
+
+function isK3Comparison(value: unknown): value is K3Comparison {
+  if (!isRecord(value) || !isString(value.run_id) ||
+      (value.strategy !== 'optimizer' && value.strategy !== 'ecp') ||
+      !isNonNegativeSafeInteger(value.target_count) ||
+      !isNonNegativeSafeInteger(value.paired_count) ||
+      !isNonNegativeSafeInteger(value.unmatched_count) ||
+      !isNonNegativeSafeInteger(value.old_wins) || !isNonNegativeSafeInteger(value.new_wins) ||
+      !isNonNegativeSafeInteger(value.old_only) || !isNonNegativeSafeInteger(value.new_only) ||
+      !(value.fair_delta === null || (typeof value.fair_delta === 'number' && Number.isFinite(value.fair_delta))) ||
+      !(value.observed_minus_fair === null || (typeof value.observed_minus_fair === 'number' && Number.isFinite(value.observed_minus_fair))) ||
+      !Array.isArray(value.rows) || value.rows.length !== value.target_count ||
+      value.paired_count + value.unmatched_count !== value.target_count ||
+      value.old_wins > value.paired_count || value.new_wins > value.paired_count) return false
+  const seen = new Set<string>()
+  return value.rows.every((row: unknown) => {
+    if (!isRecord(row) || !isString(row.target_draw_number) || seen.has(row.target_draw_number) ||
+        !isString(row.target_draw_date) || !isString(row.match_status) ||
+        !isNullableString(row.source_segment) || !isNullableString(row.original_source_run_id) ||
+        !isNullableString(row.old_cell_identity) || !isPredictionItem(row.new) ||
+        !(row.old === null || isPredictionItem(row.old))) return false
+    seen.add(row.target_draw_number)
+    return row.new.target_draw_number === row.target_draw_number &&
+      (row.old === null || row.old.target_draw_number === row.target_draw_number)
+  })
+}
+
+export async function getK3Comparison(
+  strategy: K3ComparisonStrategy,
+  signal?: AbortSignal,
+): Promise<K3Comparison> {
+  return getJson(
+    `/api/v1/replay-backfill/k3-comparison?strategy=${strategy}`,
+    signal,
+    isK3Comparison,
+    (response, status) => {
+      if (response.strategy !== strategy) {
+        throw new ReplayBackfillRequestError('Comparison strategy does not match the request.', status)
+      }
+    },
   )
 }
 

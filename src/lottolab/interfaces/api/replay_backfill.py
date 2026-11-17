@@ -1113,6 +1113,25 @@ def create_replay_backfill_router(store: SQLiteBackfillStore | None) -> APIRoute
     return router
 
 
+def _historical_prize_tier(identity: JsonObject, hit: JsonObject) -> object:
+    """Correct the old Big Lotto 2+special projection without rewriting stored results."""
+    tier = hit.get("prize_tier")
+    draw = identity.get("target_draw_id")
+    if (
+        identity.get("lottery_type") == LotteryType.BIG_LOTTO.value
+        and type(draw) is str
+        and draw.isascii()
+        and draw.isdecimal()
+        and int(draw) < 103000081
+        and type(hit.get("zone1_hits")) is int
+        and hit.get("zone1_hits") == 2
+        and hit.get("zone2_hit") is True
+        and tier == "SEVENTH"
+    ):
+        return None
+    return tier
+
+
 def _prediction_item(
     payload: JsonObject,
     identity: JsonObject,
@@ -1232,7 +1251,7 @@ def _prediction_item(
                 ),
                 "main_hit_count": hit.get("zone1_hits"),
                 "special_hit": hit.get("zone2_hit"),
-                "prize_tier": hit.get("prize_tier"),
+                "prize_tier": _historical_prize_tier(identity, hit),
             }
         )
     winning = payload.get("winning_numbers", {})

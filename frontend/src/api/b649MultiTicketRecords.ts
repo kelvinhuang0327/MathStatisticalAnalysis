@@ -269,7 +269,7 @@ function isRecordPage(
     isInteger(value.total) &&
     isInteger(value.offset) &&
     value.offset === query.offset &&
-    items.length === Math.min(query.limit, Math.max(value.total - value.offset, 0))
+    items.length <= Math.min(query.limit, Math.max(value.total - value.offset, 0))
   return (
     validItemIdentity &&
     items.length <= query.limit &&

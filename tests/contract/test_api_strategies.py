@@ -451,6 +451,7 @@ def test_openapi_exposes_exact_local_runtime_operation_set() -> None:
         ("get", "/api/v1/replay-backfill/uniform-eight-reference"),
         ("get", "/api/v1/replay-backfill/runs"),
         ("get", "/api/v1/replay-backfill/runs/{run_id}"),
+        ("get", "/api/v1/replay-backfill/strategy-runs"),
         ("get", "/api/v1/research/backtests/draw-events"),
         ("get", "/api/v1/research/backtests/strategies"),
         ("get", "/api/v1/research/backtests/rankings"),
@@ -458,7 +459,7 @@ def test_openapi_exposes_exact_local_runtime_operation_set() -> None:
         ("get", "/api/v1/research/backtests/identity-crosswalk"),
         ("get", "/api/v1/replay-strategy-inventory"),
     }
-    assert len(operations) == 92
+    assert len(operations) == 93
 
 
 def test_replay_ranking_openapi_requires_exact_persisted_scoring_sha() -> None:

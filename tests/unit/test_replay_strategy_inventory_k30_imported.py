@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Protocol, cast
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -12,12 +12,27 @@ from lottolab.domain.replay_strategy_inventory import (
     ReplayExecutionCapability,
     ReplayLifecycleStatus,
 )
+from lottolab.infrastructure.persistence.replay_backfill_store import SQLiteBackfillStore
 from lottolab.interfaces.api.replay_backfill import create_replay_backfill_router
 
 K30_GEOMETRY_ID = "evolution_h12_k30_geometry_completion"
 K30_RANDOM_ID = "evolution_h12_k30_matched_random_completion"
 K30_EXACT_SWAP_ID = "research_biglotto__k30_geometry_exact_swap_history_v1"
 K30_VERSION = "v0.1"
+
+
+class _JsonResponse(Protocol):
+    status_code: int
+
+    def json(self) -> dict[str, Any]: ...
+
+
+class _JsonTestClient(Protocol):
+    def get(self, url: str, *, params: Any = None) -> _JsonResponse: ...
+
+
+def _json_client(app: Any) -> _JsonTestClient:
+    return cast(_JsonTestClient, TestClient(app))
 
 
 def _snapshot(
@@ -55,10 +70,12 @@ class SyntheticReplayStore:
         return self.snapshots[lottery_type]
 
 
-def _client(snapshots: dict[str, dict[str, Any]]) -> TestClient:
+def _client(snapshots: dict[str, dict[str, Any]]) -> _JsonTestClient:
     app = FastAPI()
-    app.include_router(create_replay_backfill_router(SyntheticReplayStore(snapshots)))
-    return TestClient(app)
+    # The inventory endpoint exercised here only uses strategy_history_snapshot.
+    store = cast(SQLiteBackfillStore, SyntheticReplayStore(snapshots))
+    app.include_router(create_replay_backfill_router(store))
+    return _json_client(app)
 
 
 def _inventory_row(

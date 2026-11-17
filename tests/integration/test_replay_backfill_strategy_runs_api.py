@@ -5,7 +5,7 @@ import json
 import os
 import sqlite3
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, Protocol, cast
 
 import pytest
 from fastapi.testclient import TestClient
@@ -22,6 +22,20 @@ from lottolab.interfaces.api.app import create_app
 ROOT = Path(__file__).resolve().parents[2]
 API_PATH = "/api/v1/replay-backfill/strategy-runs"
 TASK_ROOT_ENV = "NUMBER2_STRATEGY_RUNS_TASK_ROOT"
+
+
+class _JsonResponse(Protocol):
+    status_code: int
+
+    def json(self) -> dict[str, Any]: ...
+
+
+class _JsonTestClient(Protocol):
+    def get(self, url: str, *, params: Any = None) -> _JsonResponse: ...
+
+
+def _json_client(app: Any) -> _JsonTestClient:
+    return cast(_JsonTestClient, TestClient(app))
 
 
 def _insert_run(connection: sqlite3.Connection, run_id: str, created_at: str) -> None:
@@ -186,8 +200,8 @@ def readonly_store(synthetic_database: Path) -> SQLiteBackfillStore:
 
 
 @pytest.fixture(scope="session")
-def client(readonly_store: SQLiteBackfillStore) -> TestClient:
-    return TestClient(create_app(replay_backfill_store=readonly_store))
+def client(readonly_store: SQLiteBackfillStore) -> _JsonTestClient:
+    return _json_client(create_app(replay_backfill_store=readonly_store))
 
 
 def _sha256(path: Path) -> str:
@@ -203,7 +217,7 @@ def _params(**overrides: Any) -> dict[str, Any]:
 
 
 def test_strategy_runs_preserves_identity_inventory_and_execution_counts(
-    client: TestClient,
+    client: _JsonTestClient,
 ) -> None:
     response = client.get(API_PATH, params=_params())
 
@@ -254,7 +268,7 @@ def test_strategy_runs_preserves_identity_inventory_and_execution_counts(
     assert shared_cell_run["unique_target_draw_count"] == 1
 
 
-def test_strategy_version_filter_empty_result_and_pagination(client: TestClient) -> None:
+def test_strategy_version_filter_empty_result_and_pagination(client: _JsonTestClient) -> None:
     version_response = client.get(API_PATH, params=_params(strategy_version="v1"))
     assert version_response.status_code == 200
     assert version_response.json()["total_run_version_matches"] == 3
@@ -285,7 +299,7 @@ def test_strategy_version_filter_empty_result_and_pagination(client: TestClient)
 
 
 def test_strategy_id_is_bound_and_database_access_is_read_only(
-    client: TestClient, synthetic_database: Path
+    client: _JsonTestClient, synthetic_database: Path
 ) -> None:
     before = _sha256(synthetic_database)
     response = client.get(API_PATH, params=_params(strategy_id="strategy-alpha' OR 1=1 --"))
@@ -297,7 +311,7 @@ def test_strategy_id_is_bound_and_database_access_is_read_only(
     assert after == before
 
 
-def test_query_validation_errors_are_422(client: TestClient) -> None:
+def test_query_validation_errors_are_422(client: _JsonTestClient) -> None:
     invalid_queries: list[dict[str, Any]] = [
         {"strategy_id": "strategy-alpha"},
         {"lottery_type": LotteryType.BIG_LOTTO.value},
@@ -322,7 +336,7 @@ def test_unconfigured_store_and_store_failures_are_503(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.delenv("LOTTOLAB_REPLAY_BACKFILL_DB", raising=False)
-    unconfigured = TestClient(create_app(replay_backfill_store=None)).get(
+    unconfigured = _json_client(create_app(replay_backfill_store=None)).get(
         API_PATH, params=_params()
     )
     assert unconfigured.status_code == 503
@@ -333,13 +347,13 @@ def test_unconfigured_store_and_store_failures_are_503(
             raise RuntimeError("synthetic query failure")
 
     broken_app = create_app(replay_backfill_store=cast(SQLiteBackfillStore, BrokenStore()))
-    failed = TestClient(broken_app).get(API_PATH, params=_params())
+    failed = _json_client(broken_app).get(API_PATH, params=_params())
     assert failed.status_code == 503
     assert failed.json() == {"error_code": "REPLAY_BACKFILL_UNAVAILABLE"}
 
 
 def test_openapi_declares_one_get_with_strict_response_models(
-    client: TestClient, readonly_store: SQLiteBackfillStore
+    client: _JsonTestClient, readonly_store: SQLiteBackfillStore
 ) -> None:
     response = client.get("/openapi.json")
     assert response.status_code == 200

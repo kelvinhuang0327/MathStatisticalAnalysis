@@ -12,7 +12,7 @@ from collections.abc import Generator
 from contextlib import contextmanager
 from datetime import date
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, TypeGuard, cast
 
 from lottolab.domain.draws import LotteryType
 from lottolab.domain.historical_replay import (
@@ -34,6 +34,14 @@ from lottolab.infrastructure.persistence.project_database_paths import (
 )
 
 JsonObject = dict[str, Any]
+
+
+def _is_non_bool_integer(value: object) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool)
+
+
+def _is_string(value: object) -> TypeGuard[str]:
+    return isinstance(value, str)
 
 
 def _as_json_object(value: object) -> JsonObject | None:
@@ -1778,7 +1786,7 @@ class SQLiteBackfillStore:
         """Discover all runs where a strategy version appears in inventory or cells."""
         if isinstance(lottery_type, LotteryType):
             lottery_type_str = lottery_type.value
-        elif isinstance(lottery_type, str):
+        elif _is_string(lottery_type):
             lottery_type_str = lottery_type.strip()
             if not lottery_type_str:
                 raise ValueError("lottery_type must not be empty")
@@ -1787,7 +1795,7 @@ class SQLiteBackfillStore:
                 f"lottery_type must be a string or LotteryType, got {type(lottery_type).__name__}"
             )
 
-        if not isinstance(strategy_id, str):
+        if not _is_string(strategy_id):
             raise ValueError(
                 f"strategy_id must be a string, got {type(strategy_id).__name__}"
             )
@@ -1796,7 +1804,7 @@ class SQLiteBackfillStore:
             raise ValueError("strategy_id must not be empty")
 
         if strategy_version is not None:
-            if not isinstance(strategy_version, str):
+            if not _is_string(strategy_version):
                 raise ValueError(
                     "strategy_version must be None or a string, "
                     f"got {type(strategy_version).__name__}"
@@ -1805,12 +1813,12 @@ class SQLiteBackfillStore:
             if not strategy_version:
                 raise ValueError("strategy_version must not be empty")
 
-        if isinstance(limit, bool) or not isinstance(limit, int):
+        if not _is_non_bool_integer(limit):
             raise ValueError(f"limit must be an integer, got {type(limit).__name__}")
         if limit <= 0 or limit > 250:
             raise ValueError(f"limit must be between 1 and 250, got {limit}")
 
-        if isinstance(offset, bool) or not isinstance(offset, int):
+        if not _is_non_bool_integer(offset):
             raise ValueError(f"offset must be an integer, got {type(offset).__name__}")
         if offset < 0:
             raise ValueError(f"offset must be non-negative, got {offset}")

@@ -101,6 +101,22 @@ describe('Replay Backfill prediction strategy-version identity', () => {
     expect(result.items.map((item) => item.strategy_version)).toEqual(['v1', 'v2'])
   })
 
+  it('preserves a legal UNKNOWN source provenance status', async () => {
+    const fetchMock = installResponse(predictionPage([
+      prediction({ source_history_provenance_status: 'UNKNOWN' }),
+    ]))
+    const result = await listReplayBackfillPredictions({
+      lotteryType: 'BIG_LOTTO',
+      runId: 'R1',
+      strategyId: 'strategy-1',
+      strategyVersion: 'v1',
+      period: 'ALL',
+    })
+
+    expect(result.items[0].source_history_provenance_status).toBe('UNKNOWN')
+    expect(fetchMock).toHaveBeenCalledOnce()
+  })
+
   it('rejects version without a strategy ID before fetching', async () => {
     const fetchMock = installResponse(predictionPage([]))
     await expect(listReplayBackfillPredictions({

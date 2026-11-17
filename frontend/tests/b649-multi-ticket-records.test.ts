@@ -643,7 +643,7 @@ describe('fetchB649MultiTicketRecords response identity', () => {
     })
   })
 
-  it('rejects a page that is shorter than its dense slice', async () => {
+  it('accepts a legal short page within the requested range', async () => {
     const query = recordQuery({ limit: 100 })
     const payload = recordPageForQuery(query, {
       items: [record()],
@@ -651,10 +651,11 @@ describe('fetchB649MultiTicketRecords response identity', () => {
     })
     fetchMock.mockResolvedValueOnce(apiResponse(payload))
 
-    await expect(fetchB649MultiTicketRecords(query)).rejects.toMatchObject({
-      name: 'B649RecordsRequestError',
-      status: 200,
-      kind: 'MALFORMED_RESPONSE',
+    await expect(fetchB649MultiTicketRecords(query)).resolves.toMatchObject({
+      items: [expect.objectContaining({ strategy_id: 'legacy_strategy_a' })],
+      total: 135,
+      limit: 100,
+      offset: 0,
     })
   })
 

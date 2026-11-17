@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+import base64
 import hashlib
 import json
 import os
 import sqlite3
 from datetime import date, timedelta
 from pathlib import Path
-from typing import Any
+from typing import Any, Protocol, cast
 
 import pytest
 from fastapi.testclient import TestClient
@@ -20,12 +21,30 @@ from lottolab.infrastructure.persistence.replay_backfill_store import (
     canonical_json,
 )
 from lottolab.interfaces.api.app import create_app
-from lottolab.interfaces.api.replay_backfill import _encode
 
 PREDICTIONS_PATH = "/api/v1/replay-backfill/predictions"
 TASK_ROOT_ENV = "NUMBER2_REPLAY_PREDICTION_VERSION_TASK_ROOT"
 LOTTERY_TYPE = LotteryType.BIG_LOTTO.value
 STRATEGY_ID = "S"
+
+
+class _JsonResponse(Protocol):
+    status_code: int
+
+    def json(self) -> dict[str, Any]: ...
+
+
+class _JsonTestClient(Protocol):
+    def get(self, url: str, *, params: Any = None) -> _JsonResponse: ...
+
+
+def _json_client(app: Any) -> _JsonTestClient:
+    return cast(_JsonTestClient, TestClient(app))
+
+
+def _legacy_cursor_token(value: dict[str, Any]) -> str:
+    encoded = base64.urlsafe_b64encode(canonical_json(value).encode()).decode()
+    return encoded.rstrip("=")
 
 
 def _insert_run(
@@ -224,17 +243,17 @@ def _build_synthetic_database(path: Path) -> None:
 
 
 @pytest.fixture
-def prediction_client(request: pytest.FixtureRequest, tmp_path: Path) -> tuple[TestClient, Path]:
+def prediction_client(tmp_path: Path) -> tuple[_JsonTestClient, Path]:
     task_root = os.environ.get(TASK_ROOT_ENV)
     artifact_dir = (
         Path(task_root) / "candidate" / "test-artifacts"
         if task_root
         else tmp_path
     )
-    database = artifact_dir / f"{request.node.name}.sqlite3"
+    database = artifact_dir / f"{tmp_path.name}.sqlite3"
     _build_synthetic_database(database)
     store = SQLiteBackfillStore(database, read_only=True)
-    return TestClient(create_app(replay_backfill_store=store)), database
+    return _json_client(create_app(replay_backfill_store=store)), database
 
 
 def _params(**overrides: Any) -> dict[str, Any]:
@@ -251,7 +270,7 @@ def _sha256(path: Path) -> str:
 
 
 def test_predictions_filter_exact_strategy_version_and_preserve_all_versions(
-    prediction_client: tuple[TestClient, Path],
+    prediction_client: tuple[_JsonTestClient, Path],
 ) -> None:
     client, _ = prediction_client
     v1 = client.get(PREDICTIONS_PATH, params=_params(strategy_version="v1"))
@@ -294,7 +313,7 @@ def test_predictions_filter_exact_strategy_version_and_preserve_all_versions(
 
 
 def test_version_pagination_keeps_cursor_identity_and_execution_cells(
-    prediction_client: tuple[TestClient, Path],
+    prediction_client: tuple[_JsonTestClient, Path],
 ) -> None:
     client, database = prediction_client
     database_hash_before = _sha256(database)
@@ -349,7 +368,7 @@ def test_version_pagination_keeps_cursor_identity_and_execution_cells(
 
 
 def test_unversioned_cursor_keeps_legacy_filter_identity(
-    prediction_client: tuple[TestClient, Path],
+    prediction_client: tuple[_JsonTestClient, Path],
 ) -> None:
     client, _ = prediction_client
     legacy_filters = {
@@ -361,7 +380,7 @@ def test_unversioned_cursor_keeps_legacy_filter_identity(
         "period": "ALL",
     }
     query_hash = hashlib.sha256(canonical_json(legacy_filters).encode()).hexdigest()
-    legacy_cursor = _encode(
+    legacy_cursor = _legacy_cursor_token(
         {
             "kind": "predictions",
             "query": query_hash,
@@ -380,7 +399,7 @@ def test_unversioned_cursor_keeps_legacy_filter_identity(
 
 
 def test_version_query_validation_and_sql_parameter_binding(
-    prediction_client: tuple[TestClient, Path],
+    prediction_client: tuple[_JsonTestClient, Path],
 ) -> None:
     client, database = prediction_client
     invalid_queries = [
@@ -411,7 +430,7 @@ def test_version_query_validation_and_sql_parameter_binding(
 
 
 def test_openapi_adds_optional_version_to_the_existing_predictions_operation(
-    prediction_client: tuple[TestClient, Path],
+    prediction_client: tuple[_JsonTestClient, Path],
 ) -> None:
     client, _ = prediction_client
     response = client.get("/openapi.json")

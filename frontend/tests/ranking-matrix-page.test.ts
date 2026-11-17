@@ -32,6 +32,33 @@ function k10Page(window: string, records = k10Packaged) {
   return { items, total: items.length, limit: 100, offset: 0, ticket_count: 10, window, criterion: 'OFFICIAL_ANY_PRIZE', research_disclaimer: '歷史成功率、排名與隨機基準差異僅供描述性研究，不構成未來預測、推薦、上線決策或中獎保證。' }
 }
 
+function multiTicketPageForQuery(
+  url: URL,
+  items: Record<string, unknown>[],
+  total: number,
+) {
+  const prefixCount = Number(url.searchParams.get('prefix_count') ?? 20)
+  const window = url.searchParams.get('window') ?? 'RECENT_300'
+  const criterion = url.searchParams.get('criterion') ?? 'M3_PLUS'
+  const limit = Number(url.searchParams.get('limit') ?? 100)
+  const offset = Number(url.searchParams.get('offset') ?? 0)
+  return {
+    total,
+    limit,
+    offset,
+    prefix_count: prefixCount,
+    window,
+    criterion,
+    research_disclaimer: B649_RESEARCH_DISCLAIMER,
+    items: items.slice(offset, offset + limit).map((item) => ({
+      ...item,
+      prefix_count: prefixCount,
+      window,
+      criterion,
+    })),
+  }
+}
+
 import { flushPromises, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -526,7 +553,12 @@ beforeEach(() => {
       if (url.includes('prefix_count=20') && url.includes('window=RECENT_50')) {
         return Promise.resolve(apiResponse(mockB649Records20_50))
       }
-      return Promise.resolve(apiResponse(mockB649Records5_300))
+      const parsedUrl = new URL(url, 'http://localhost')
+      return Promise.resolve(apiResponse(multiTicketPageForQuery(
+        parsedUrl,
+        mockB649Records5_300.items,
+        mockB649Records5_300.total,
+      )))
     }
     return Promise.resolve(apiResponse({ items: [], total: 0 }))
   })
@@ -580,9 +612,9 @@ describe('Structural and historical evidence separation', () => {
   it('keeps typed null states distinct from a valid measured zero and does not broaden local optimum claims', async () => {
     const base = structuralProjection.cells.find((c) => c.lottery === 'BIG_LOTTO' && c.ticket_count === 5)!
     const cells: StructuralMatrixCell[] = [
-      { ...base, row_id: 'zero', measurement_status: 'MEASURED', source_status: 'MEASURED', unavailable_reason: null, value: { numerator: '0', denominator: '3495954' }, local_optimum_status: null },
-      { ...base, row_id: 'na', method_id: 'GREEDY_MIN_OVERLAP_V1', measurement_status: 'NOT_APPLICABLE', source_status: 'NOT_APPLICABLE', value: null, unavailable_reason: 'UNSUPPORTED_LOTTERY_OR_K', local_optimum_status: null },
-      { ...base, row_id: 'deferred', method_id: 'CANDIDATE_LOW_OVERLAP_V1', measurement_status: 'UNAVAILABLE', source_status: 'NOT_RUN', value: null, unavailable_reason: 'DEFERRED', local_optimum_status: null },
+      { ...base, row_id: 'zero', measurement_status: 'MEASURED', source_status: 'MEASURED', unavailable_reason: null, portfolio_sha256: 'a'.repeat(64), value: { numerator: '0', denominator: '3495954' }, local_optimum_status: null },
+      { ...base, row_id: 'not-applicable-row', method_id: 'GREEDY_MIN_OVERLAP_V1', measurement_status: 'NOT_APPLICABLE', source_status: 'NOT_APPLICABLE', value: null, portfolio_sha256: null, unavailable_reason: 'UNSUPPORTED_LOTTERY_OR_K', local_optimum_status: null },
+      { ...base, row_id: 'deferred', method_id: 'CANDIDATE_LOW_OVERLAP_V1', measurement_status: 'UNAVAILABLE', source_status: 'NOT_RUN', value: null, portfolio_sha256: null, unavailable_reason: 'DEFERRED', local_optimum_status: null },
     ]
     interceptStructural(async () => apiResponse({ ...structuralProjection, cells }))
     const wrapper = mount(RankingMatrixPage)
@@ -1041,18 +1073,18 @@ describe('Ranking Matrix Summary Lift Truthfulness (Branch 7 R1)', () => {
       }
       if (url.includes('/api/v1/b649-multi-ticket-records')) {
         if (url.includes('prefix_count=20') && url.includes('window=RECENT_300')) {
-          return Promise.resolve(apiResponse({
-            total: records.length,
-            limit: 100,
-            offset: 0,
-            prefix_count: 20,
-            window: 'RECENT_300',
-            criterion: 'M3_PLUS',
-            research_disclaimer: B649_RESEARCH_DISCLAIMER,
-            items: records,
-          }))
+          return Promise.resolve(apiResponse(multiTicketPageForQuery(
+            new URL(url, 'http://localhost'),
+            records as Record<string, unknown>[],
+            records.length,
+          )))
         }
-        return Promise.resolve(apiResponse(mockB649Records5_300))
+        const parsedUrl = new URL(url, 'http://localhost')
+        return Promise.resolve(apiResponse(multiTicketPageForQuery(
+          parsedUrl,
+          mockB649Records5_300.items,
+          mockB649Records5_300.total,
+        )))
       }
       return Promise.resolve(apiResponse({ items: [], total: 0 }))
     })

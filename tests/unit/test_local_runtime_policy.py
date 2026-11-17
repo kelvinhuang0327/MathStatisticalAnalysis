@@ -488,6 +488,7 @@ def authorized_openapi_paths() -> dict[str, dict[str, object]]:
         "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/strategy-aggregates": {"get": {}},
         "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/overall-aggregate": {"get": {}},
         "/api/v1/replay-backfill/strategies": {"get": {}},
+        "/api/v1/replay-backfill/k3-comparison": {"get": {}},
         "/api/v1/replay-backfill/predictions": {"get": {}},
         "/api/v1/replay-backfill/coverage": {"get": {}},
         "/api/v1/replay-backfill/results": {"get": {}},
@@ -501,6 +502,7 @@ def test_smoke_accepts_exact_replay_backfill_and_inventory_get_operations() -> N
     paths = authorized_openapi_paths()
     expected_replay_paths = {
         "/api/v1/replay-backfill/strategies",
+        "/api/v1/replay-backfill/k3-comparison",
         "/api/v1/replay-backfill/predictions",
         "/api/v1/replay-backfill/coverage",
         "/api/v1/replay-backfill/results",
@@ -516,14 +518,21 @@ def test_smoke_accepts_exact_replay_backfill_and_inventory_get_operations() -> N
         or path == "/api/v1/replay-strategy-inventory"
     } == expected_replay_paths
     assert all(paths[path] == {"get": {}} for path in expected_replay_paths)
-    assert len(paths) == 90
+    assert len(paths) == 91
     validate_openapi_payload({"paths": paths})
+
+
+def test_live_application_openapi_is_accepted_by_runtime_policy() -> None:
+    from lottolab.interfaces.api.app import create_app
+
+    validate_openapi_payload(create_app().openapi())
 
 
 @pytest.mark.parametrize(
     "path",
     [
         "/api/v1/replay-backfill/strategies",
+        "/api/v1/replay-backfill/k3-comparison",
         "/api/v1/replay-backfill/predictions",
         "/api/v1/replay-backfill/coverage",
         "/api/v1/replay-backfill/results",
@@ -549,6 +558,8 @@ def test_smoke_rejects_non_get_methods_on_new_replay_query_paths(
         "/api/v1/replay-backfill",
         "/api/v1/replay-backfill/strategies/",
         "/api/v1/replay-backfill/strategies/latest",
+        "/api/v1/replay-backfill/k3-comparison/",
+        "/api/v1/replay-backfill/k3-comparison/execute",
         "/api/v1/replay-backfill/runs/{run_id}/execute",
         "/api/v1/replay-strategy-inventory/",
         "/api/v1/replay-strategy-inventory/latest",

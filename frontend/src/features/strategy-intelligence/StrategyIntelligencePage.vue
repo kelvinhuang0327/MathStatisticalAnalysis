@@ -259,6 +259,101 @@ onBeforeUnmount(() => {
       </template>
     </SectionHeader>
 
+    <!-- Task & Exploration Entry Guide -->
+    <nav class="strategy-entry-guide" aria-label="Strategy Navigation Guide" data-testid="strategy-entry-guide">
+      <div class="guide-header">
+        <h2 class="guide-title">Strategy Exploration Guide</h2>
+        <p class="guide-scope-note">
+          Scope Notice: Strategy Intelligence provides an overview of current in-code strategy descriptors and canonical evidence status. It is not a complete union of the formal database and all research workspaces. Strategy counts represent cataloged in-code descriptors, not project-wide totals.
+        </p>
+      </div>
+      <div class="guide-grid" role="list">
+        <!-- Entry 1: Strategy Catalog -->
+        <a
+          href="#/strategies"
+          class="guide-card"
+          role="listitem"
+          data-testid="guide-link-strategies"
+        >
+          <div class="guide-card__head">
+            <span class="guide-card__badge">Catalog</span>
+            <span class="guide-card__arrow" aria-hidden="true">&rarr;</span>
+          </div>
+          <strong class="guide-card__title">Strategy Catalog</strong>
+          <span class="guide-card__route">#/strategies</span>
+          <p class="guide-card__purpose">
+            Inspect in-code strategy registry, descriptor definitions, and supported lottery games.
+          </p>
+          <p class="guide-card__boundary">
+            Capability: Catalog availability does not imply execution capability. Displays in-code descriptors, not all external research databases.
+          </p>
+        </a>
+
+        <!-- Entry 2: Replay History -->
+        <a
+          href="#/replay-history"
+          class="guide-card"
+          role="listitem"
+          data-testid="guide-link-replay-history"
+        >
+          <div class="guide-card__head">
+            <span class="guide-card__badge">Replay</span>
+            <span class="guide-card__arrow" aria-hidden="true">&rarr;</span>
+          </div>
+          <strong class="guide-card__title">Replay History</strong>
+          <span class="guide-card__route">#/replay-history</span>
+          <p class="guide-card__purpose">
+            Query historical backfill outcomes and replay performance for selected runs.
+          </p>
+          <p class="guide-card__boundary">
+            Scope: Requires selecting a specific Run and target draw range; does not automatically search or aggregate all Runs. Historical replay does not imply live execution.
+          </p>
+        </a>
+
+        <!-- Entry 3: B649 Forecast Research -->
+        <a
+          href="#/strategy-forecast-research"
+          class="guide-card"
+          role="listitem"
+          data-testid="guide-link-strategy-forecast-research"
+        >
+          <div class="guide-card__head">
+            <span class="guide-card__badge">Research</span>
+            <span class="guide-card__arrow" aria-hidden="true">&rarr;</span>
+          </div>
+          <strong class="guide-card__title">B649 Forecast Research</strong>
+          <span class="guide-card__route">#/strategy-forecast-research</span>
+          <p class="guide-card__purpose">
+            Explore historical model comparison benchmarks specifically evaluated on B649 (Big Lotto 6/49).
+          </p>
+          <p class="guide-card__boundary">
+            Scope: Dedicated to B649 research comparisons only; not a cross-game leaderboard across all three lottery types. Retrospective comparisons do not represent live predictions or betting recommendations.
+          </p>
+        </a>
+
+        <!-- Entry 4: Strategy Evidence -->
+        <a
+          href="#/strategy-evidence"
+          class="guide-card"
+          role="listitem"
+          data-testid="guide-link-strategy-evidence"
+        >
+          <div class="guide-card__head">
+            <span class="guide-card__badge">Evidence</span>
+            <span class="guide-card__arrow" aria-hidden="true">&rarr;</span>
+          </div>
+          <strong class="guide-card__title">Strategy Evidence</strong>
+          <span class="guide-card__route">#/strategy-evidence</span>
+          <p class="guide-card__purpose">
+            Audit canonical evidence artifacts, registration status, and provenance records.
+          </p>
+          <p class="guide-card__boundary">
+            Capability: Evidence registration tracks registered artifacts but does not certify all underlying sources as verified or trustworthy. Does not guarantee prediction accuracy.
+          </p>
+        </a>
+      </div>
+    </nav>
+
     <!-- Game Scope Selector -->
     <div class="game-selector-container" role="region" aria-label="Game Scope Selection">
       <div class="game-selector-bar">
@@ -532,5 +627,124 @@ onBeforeUnmount(() => {
 
 .tab-content-wrapper {
   margin-top: 8px;
+}
+
+.strategy-entry-guide {
+  margin-top: 16px;
+  margin-bottom: 20px;
+  padding: 16px 20px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
+  backdrop-filter: blur(12px);
+}
+
+.guide-header {
+  margin-bottom: 14px;
+}
+
+.guide-title {
+  margin: 0 0 6px 0;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--text-primary);
+  text-transform: uppercase;
+}
+
+.guide-scope-note {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.45;
+}
+
+.guide-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.guide-card {
+  display: flex;
+  flex-direction: column;
+  padding: 14px 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  background: rgba(255, 255, 255, 0.03);
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.15s ease, background-color 0.15s ease, transform 0.15s ease;
+}
+
+.guide-card:hover {
+  border-color: rgba(139, 92, 246, 0.5);
+  background: rgba(139, 92, 246, 0.06);
+}
+
+.guide-card:focus-visible {
+  outline: 2px solid #8b5cf6;
+  outline-offset: 2px;
+}
+
+.guide-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.guide-card__badge {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm, 4px);
+  background: rgba(139, 92, 246, 0.2);
+  color: #c4b5fd;
+}
+
+.guide-card__arrow {
+  font-size: 14px;
+  color: var(--text-secondary);
+  transition: transform 0.15s ease;
+}
+
+.guide-card:hover .guide-card__arrow {
+  transform: translateX(3px);
+  color: var(--text-primary);
+}
+
+.guide-card__title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 2px;
+}
+
+.guide-card__route {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: #93c5fd;
+  margin-bottom: 8px;
+}
+
+.guide-card__purpose {
+  margin: 0 0 8px 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+  flex-grow: 1;
+}
+
+.guide-card__boundary {
+  margin: 0;
+  font-size: 11px;
+  color: var(--text-secondary);
+  opacity: 0.85;
+  line-height: 1.35;
+  padding-top: 8px;
+  border-top: 1px dashed rgba(255, 255, 255, 0.1);
 }
 </style>

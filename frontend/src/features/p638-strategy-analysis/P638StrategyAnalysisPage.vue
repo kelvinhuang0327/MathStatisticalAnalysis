@@ -17,6 +17,7 @@ import {
 } from '../../api/p638Historical'
 
 type State = 'loading' | 'ready' | 'empty' | 'not-configured' | 'unavailable' | 'error'
+type MetricState = State | 'idle'
 const PAGE_SIZE = 10
 const LATEST_RANKING_RUN = 'latest'
 
@@ -29,8 +30,10 @@ const strategiesState = ref<State>('loading')
 const strategiesMessage = ref('')
 const metrics = ref<P638Metrics | null>(null)
 const selectedMetrics = ref<P638Metrics | null>(null)
-const metricsState = ref<State>('loading')
-const metricsMessage = ref('')
+const aggregateMetricsState = ref<State>('loading')
+const aggregateMetricsMessage = ref('')
+const selectedMetricsState = ref<MetricState>('idle')
+const selectedMetricsMessage = ref('')
 const strategyOffset = ref(0)
 const selectedStrategyId = ref('')
 const rankingsState = ref<State>('loading')
@@ -40,11 +43,13 @@ const rankingsMessage = ref('')
 let mounted = false
 let runsController: AbortController | undefined
 let strategyController: AbortController | undefined
-let metricsController: AbortController | undefined
+let aggregateMetricsController: AbortController | undefined
+let selectedMetricsController: AbortController | undefined
 let rankingsController: AbortController | undefined
 let runsGeneration = 0
 let strategyGeneration = 0
-let metricsGeneration = 0
+let aggregateMetricsGeneration = 0
+let selectedMetricsGeneration = 0
 let rankingsGeneration = 0
 
 const selectedRun = computed<P638Run | null>(
@@ -89,8 +94,8 @@ async function loadSelectedRun(runId: string): Promise<void> {
   strategyOffset.value = 0
   selectedStrategyId.value = ''
   metrics.value = null
-  selectedMetrics.value = null
-  await Promise.all([loadStrategies(runId, 0), loadMetrics(runId, undefined)])
+  clearSelectedMetrics()
+  await Promise.all([loadStrategies(runId, 0), loadAggregateMetrics(runId)])
 }
 
 async function loadStrategies(runId: string, offset: number): Promise<void> {
@@ -114,23 +119,76 @@ async function loadStrategies(runId: string, offset: number): Promise<void> {
   }
 }
 
-async function loadMetrics(runId: string, strategyId: string | undefined): Promise<void> {
-  metricsController?.abort()
+async function loadAggregateMetrics(runId: string): Promise<void> {
+  if (!runId) return
+  aggregateMetricsController?.abort()
   const controller = new AbortController()
-  metricsController = controller
-  const generation = ++metricsGeneration
-  metricsState.value = 'loading'
-  metricsMessage.value = ''
+  aggregateMetricsController = controller
+  const generation = ++aggregateMetricsGeneration
+  aggregateMetricsState.value = 'loading'
+  aggregateMetricsMessage.value = ''
+  try {
+    const result = await getP638Metrics(runId, undefined, controller.signal)
+    if (!mounted || generation !== aggregateMetricsGeneration || runId !== selectedRunId.value) return
+    metrics.value = result
+    aggregateMetricsState.value = 'ready'
+  } catch (error: unknown) {
+    if (
+      !mounted ||
+      generation !== aggregateMetricsGeneration ||
+      runId !== selectedRunId.value ||
+      isAbort(error)
+    ) {
+      return
+    }
+    metrics.value = null
+    aggregateMetricsState.value = mapState(error)
+    aggregateMetricsMessage.value = errorMessage(error)
+  }
+}
+
+function clearSelectedMetrics(): void {
+  selectedMetricsController?.abort()
+  selectedMetricsController = undefined
+  selectedMetricsGeneration += 1
+  selectedMetrics.value = null
+  selectedMetricsState.value = 'idle'
+  selectedMetricsMessage.value = ''
+}
+
+async function loadSelectedMetrics(runId: string, strategyId: string): Promise<void> {
+  if (!runId || !strategyId) return
+  selectedMetricsController?.abort()
+  const controller = new AbortController()
+  selectedMetricsController = controller
+  const generation = ++selectedMetricsGeneration
+  selectedMetricsState.value = 'loading'
+  selectedMetricsMessage.value = ''
   try {
     const result = await getP638Metrics(runId, strategyId, controller.signal)
-    if (!mounted || generation !== metricsGeneration) return
-    if (strategyId) selectedMetrics.value = result
-    else metrics.value = result
-    metricsState.value = 'ready'
+    if (
+      !mounted ||
+      generation !== selectedMetricsGeneration ||
+      runId !== selectedRunId.value ||
+      strategyId !== selectedStrategyId.value
+    ) {
+      return
+    }
+    selectedMetrics.value = result
+    selectedMetricsState.value = 'ready'
   } catch (error: unknown) {
-    if (!mounted || generation !== metricsGeneration || isAbort(error)) return
-    metricsState.value = mapState(error)
-    metricsMessage.value = errorMessage(error)
+    if (
+      !mounted ||
+      generation !== selectedMetricsGeneration ||
+      runId !== selectedRunId.value ||
+      strategyId !== selectedStrategyId.value ||
+      isAbort(error)
+    ) {
+      return
+    }
+    selectedMetrics.value = null
+    selectedMetricsState.value = mapState(error)
+    selectedMetricsMessage.value = errorMessage(error)
   }
 }
 
@@ -202,8 +260,8 @@ function formatTierCounts(items: Array<{ prize_tier: string; count: number }>): 
 
 function selectStrategy(strategyId: string): void {
   selectedStrategyId.value = strategyId
-  selectedMetrics.value = null
-  if (selectedRunId.value && strategyId) void loadMetrics(selectedRunId.value, strategyId)
+  clearSelectedMetrics()
+  if (selectedRunId.value && strategyId) void loadSelectedMetrics(selectedRunId.value, strategyId)
 }
 
 function changeStrategyPage(delta: number): void {
@@ -247,7 +305,10 @@ onBeforeUnmount(() => {
   mounted = false
   runsController?.abort()
   strategyController?.abort()
-  metricsController?.abort()
+  aggregateMetricsController?.abort()
+  selectedMetricsController?.abort()
+  aggregateMetricsGeneration += 1
+  selectedMetricsGeneration += 1
   rankingsController?.abort()
 })
 </script>
@@ -369,8 +430,9 @@ onBeforeUnmount(() => {
 
       <MultiWindowSuccessWindowsPanel lottery="P638" :run-id="selectedRunId" />
 
-      <div v-if="metricsState === 'loading'" class="state-panel">Loading aggregate P638 statistics…</div>
-      <div v-else-if="metricsState === 'unavailable' || metricsState === 'error'" class="state-panel state-panel--error"><p>{{ metricsMessage }}</p><button class="button button--quiet" type="button" @click="loadSelectedRun(selectedRunId)">Retry</button></div>
+      <div v-if="aggregateMetricsState === 'loading'" class="state-panel">Loading aggregate P638 statistics…</div>
+      <div v-else-if="aggregateMetricsState === 'not-configured'" class="state-panel state-panel--warning"><p>Aggregate P638 metrics are not configured for this local runtime.</p></div>
+      <div v-else-if="aggregateMetricsState === 'unavailable' || aggregateMetricsState === 'error'" class="state-panel state-panel--error"><p>{{ aggregateMetricsMessage }}</p><button class="button button--quiet" type="button" @click="loadAggregateMetrics(selectedRunId)">Retry</button></div>
       <template v-else-if="metrics">
         <div class="section-heading p638-section-heading"><div><p class="step-label">Run aggregate</p><h2>Descriptive coverage</h2></div><span class="table-note">P638 only · no predictive interpretation</span></div>
         <div class="metric-grid metric-grid--p638"><div><span>Targets</span><strong>{{ formatCount(metrics.target_count) }}</strong></div><div><span>Complete</span><strong>{{ formatCount(metrics.complete_target_count) }}</strong></div><div><span>Excluded</span><strong>{{ formatCount(metrics.excluded_target_count) }}</strong></div><div><span>Failed</span><strong>{{ formatCount(metrics.failed_target_count) }}</strong></div><div><span>Tickets</span><strong>{{ formatCount(metrics.ticket_count) }}</strong></div><div><span>4+ + zone 2</span><strong>{{ formatCount(metrics.combined_zone1_4plus_zone2_hit_count) }}</strong></div></div>
@@ -392,7 +454,10 @@ onBeforeUnmount(() => {
         <div class="panel__heading"><div><p class="step-label">Selected identity</p><h2>{{ selectedStrategy.strategy_id }}</h2></div><span class="status-pill status-pill--complete">{{ selectedStrategy.replay_status }}</span></div>
         <p class="panel__note">{{ selectedStrategy.display_label }} · {{ selectedStrategy.strategy_version }} · {{ selectedStrategy.zone1_contract }} + {{ selectedStrategy.zone2_contract }}. Metrics describe stored replay rows only.</p>
         <div v-if="selectedMetrics" class="metric-grid metric-grid--p638"><div><span>Targets</span><strong>{{ formatCount(selectedMetrics.target_count) }}</strong></div><div><span>Complete</span><strong>{{ formatCount(selectedMetrics.complete_target_count) }}</strong></div><div><span>Excluded</span><strong>{{ formatCount(selectedMetrics.excluded_target_count) }}</strong></div><div><span>Tickets</span><strong>{{ formatCount(selectedMetrics.ticket_count) }}</strong></div><div><span>4+ + zone 2</span><strong>{{ formatCount(selectedMetrics.combined_zone1_4plus_zone2_hit_count) }}</strong></div><div><span>Draw range</span><strong>{{ selectedMetrics.first_draw_number ?? '—' }} → {{ selectedMetrics.last_draw_number ?? '—' }}</strong></div></div>
-        <p v-else-if="metricsState === 'loading'" class="state-panel">Loading identity metrics…</p><p v-else class="state-panel state-panel--error">{{ metricsMessage || 'Identity metrics are unavailable.' }}</p>
+        <p v-if="selectedMetricsState === 'loading'" class="state-panel">Loading identity metrics…</p>
+        <div v-else-if="selectedMetricsState === 'not-configured'" class="state-panel state-panel--warning"><p>Identity metrics are not configured for this local runtime.</p></div>
+        <div v-else-if="selectedMetricsState === 'unavailable' || selectedMetricsState === 'error'" class="state-panel state-panel--error"><p>{{ selectedMetricsMessage || 'Identity metrics are unavailable.' }}</p><button class="button button--quiet" type="button" @click="loadSelectedMetrics(selectedRunId, selectedStrategyId)">Retry</button></div>
+        <p v-else-if="!selectedMetrics" class="state-panel state-panel--error">Identity metrics are unavailable.</p>
       </div>
     </template>
   </section>

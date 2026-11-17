@@ -6,6 +6,7 @@ import {
   fetchB649MultiTicketSummary,
   type B649HistoryWindow,
   type B649MultiTicketRecord,
+  type B649MultiTicketRecordPage,
   type B649MultiTicketSummary,
   type B649PrefixCount,
 } from './b649MultiTicketRecords'
@@ -258,25 +259,27 @@ async function fetchAllRows(
   window: B649HistoryWindow,
   signal?: AbortSignal,
 ): Promise<B649MultiTicketRecord[]> {
+  const firstOffset = 0
   const firstPage = await fetchB649MultiTicketRecords(
     {
       prefixCount,
       window,
       criterion: B649_OWNER_RANKING_CRITERION,
       limit: OWNER_PAGE_SIZE,
-      offset: 0,
+      offset: firstOffset,
     },
     signal,
   )
-  if (firstPage.items.length >= firstPage.total) return firstPage.items
+  assertCompleteOwnerRankingPage(firstPage, prefixCount, window, firstOffset)
+  if (firstPage.total <= OWNER_PAGE_SIZE) return firstPage.items
 
-  const offsets = []
-  for (let offset = firstPage.items.length; offset < firstPage.total; offset += OWNER_PAGE_SIZE) {
+  const offsets: number[] = []
+  for (let offset = OWNER_PAGE_SIZE; offset < firstPage.total; offset += OWNER_PAGE_SIZE) {
     offsets.push(offset)
   }
   const remaining = await Promise.all(
-    offsets.map((offset) =>
-      fetchB649MultiTicketRecords(
+    offsets.map(async (offset) => {
+      const page = await fetchB649MultiTicketRecords(
         {
           prefixCount,
           window,
@@ -285,8 +288,50 @@ async function fetchAllRows(
           offset,
         },
         signal,
-      ),
-    ),
+      )
+      assertCompleteOwnerRankingPage(page, prefixCount, window, offset, firstPage.total)
+      return page
+    }),
   )
   return [firstPage, ...remaining].flatMap((page) => page.items)
+}
+
+function assertCompleteOwnerRankingPage(
+  page: B649MultiTicketRecordPage,
+  prefixCount: B649PrefixCount,
+  window: B649HistoryWindow,
+  offset: number,
+  expectedTotal?: number,
+): void {
+  if (page.prefix_count !== prefixCount || page.window !== window) {
+    throw malformedOwnerRankingPage('slice identity mismatch')
+  }
+  if (page.criterion !== B649_OWNER_RANKING_CRITERION) {
+    throw malformedOwnerRankingPage('criterion identity mismatch')
+  }
+  if (page.limit !== OWNER_PAGE_SIZE) {
+    throw malformedOwnerRankingPage('limit mismatch')
+  }
+  if (page.offset !== offset) {
+    throw malformedOwnerRankingPage('offset mismatch')
+  }
+  if (!Number.isSafeInteger(page.total) || page.total < 0) {
+    throw malformedOwnerRankingPage('invalid total')
+  }
+  if (expectedTotal !== undefined && page.total !== expectedTotal) {
+    throw malformedOwnerRankingPage('total changed between pages')
+  }
+
+  const expectedItemCount = Math.min(OWNER_PAGE_SIZE, page.total - offset)
+  if (expectedItemCount < 0 || page.items.length !== expectedItemCount) {
+    throw malformedOwnerRankingPage('item count does not match the dense page slice')
+  }
+}
+
+function malformedOwnerRankingPage(reason: string): B649RecordsRequestError {
+  return new B649RecordsRequestError(
+    `The B649 ranking records response was incomplete or inconsistent (${reason}).`,
+    200,
+    'MALFORMED_RESPONSE',
+  )
 }

@@ -212,7 +212,11 @@ export function hasValidBaselineComparison(row: StrategyResearchRow): boolean {
 }
 
 export function isAboveRandomBaseline(row: StrategyResearchRow): boolean {
-  return hasValidBaselineComparison(row) && (row.baselineDelta as number) > 0
+  return (
+    hasValidBaselineComparison(row) &&
+    (row.baselineDelta as number) > 0 &&
+    (row.actualRate as number) > (row.baselineRate as number)
+  )
 }
 
 export function filterStrategyResearchRows(

@@ -1,4 +1,39 @@
 import type { paths } from './generated/openapi'
+import d3Definition from '../../../contracts/evidence/metric_definitions/d3.json'
+
+const LIFECYCLE_STATUSES = ['IDEA', 'OBSERVATION', 'ONLINE', 'REJECTED', 'RETIRED'] as const
+const LOTTERY_TYPES = ['DAILY_539', 'BIG_LOTTO', 'POWER_LOTTO'] as const
+const REGISTRATION_STATUSES = [
+  'CANONICAL_EVIDENCE_REGISTERED',
+  'CANONICAL_EVIDENCE_MISSING',
+] as const
+const DEFINITION_STATUSES = ['DEFINITION_AVAILABLE', 'DEFINITION_UNAVAILABLE'] as const
+const VERIFICATION_STATUSES = [
+  'EVIDENCE_VERIFIED',
+  'EVIDENCE_DECLARED_NOT_RECOMPUTED',
+  'EVIDENCE_STALE',
+  'EVIDENCE_INCOMPATIBLE',
+  'EVIDENCE_MISSING',
+] as const
+const IDENTITY_PLACEHOLDERS = new Set([
+  '-',
+  'na',
+  'n/a',
+  'none',
+  'null',
+  'undefined',
+  'unknown',
+  'unavailable',
+  'not available',
+  'tbd',
+  'todo',
+  'placeholder',
+  '未填',
+  '待填',
+  '未設定',
+  '待補',
+])
+const D3_AUTHORITY_PATH = 'contracts/evidence/metric_definitions/d3.json'
 
 export type StrategyEvidenceResponse =
   paths['/api/v1/strategy-evidence']['get']['responses'][200]['content']['application/json']
@@ -51,7 +86,7 @@ function isStrategyEvidenceResponse(value: unknown): value is StrategyEvidenceRe
     value.strategy_combination_hit_rate.value === 'NOT_AVAILABLE' &&
     value.strategy_combination_hit_rate.owner === 'ACTIVE_MULTITICKET_AGENT' &&
     isRecord(value.d3) &&
-    typeof value.d3.status === 'string' &&
+    value.d3.status === 'RESERVED_UNAVAILABLE' &&
     value.d3.value === 'NOT_AVAILABLE' &&
     isD3Definition(value.d3.definition)
   )
@@ -60,54 +95,54 @@ function isStrategyEvidenceResponse(value: unknown): value is StrategyEvidenceRe
 function isD3Definition(
   value: unknown,
 ): value is StrategyEvidenceResponse['d3']['definition'] {
+  if (!isRecord(value) || !Number.isSafeInteger(value.decimal_scale)) return false
+  if (typeof value.decimal_scale !== 'number' || value.decimal_scale < 0) return false
+
   return (
-    isRecord(value) &&
-    typeof value.metric_id === 'string' &&
-    typeof value.metric_version === 'string' &&
-    typeof value.schema_id === 'string' &&
-    typeof value.schema_version === 'string' &&
-    typeof value.formula_status === 'string' &&
-    typeof value.direction === 'string' &&
-    typeof value.aggregation === 'string' &&
-    typeof value.sample_unit === 'string' &&
-    typeof value.decimal_scale === 'number' &&
-    typeof value.rounding_mode === 'string' &&
-    typeof value.unit === 'string' &&
-    typeof value.definition_prose === 'string' &&
-    typeof value.authority_path === 'string'
+    Object.entries(d3Definition).every(([key, expected]) => value[key] === expected) &&
+    value.authority_path === D3_AUTHORITY_PATH
   )
 }
 
 function isEvidenceItem(value: unknown): boolean {
   return (
     isRecord(value) &&
-    typeof value.strategy_id === 'string' &&
-    typeof value.strategy_version === 'string' &&
+    isIdentityString(value.strategy_id) &&
+    isIdentityString(value.strategy_version) &&
     (value.replicate === 'NOT_APPLICABLE' ||
-      (typeof value.replicate === 'number' && Number.isInteger(value.replicate))) &&
-    typeof value.display_name === 'string' &&
-    typeof value.lifecycle_status === 'string' &&
+      (typeof value.replicate === 'number' &&
+        Number.isSafeInteger(value.replicate) &&
+        value.replicate >= 0)) &&
+    isIdentityString(value.display_name) &&
+    isOneOf(value.lifecycle_status, LIFECYCLE_STATUSES) &&
     typeof value.executable === 'boolean' &&
     Array.isArray(value.supported_lottery_types) &&
+    value.supported_lottery_types.every((lotteryType) => isOneOf(lotteryType, LOTTERY_TYPES)) &&
     typeof value.minimum_history === 'number' &&
+    Number.isSafeInteger(value.minimum_history) &&
+    value.minimum_history > 0 &&
     Array.isArray(value.provenance) &&
+    value.provenance.every((entry) => typeof entry === 'string') &&
     typeof value.adapter_available === 'boolean' &&
-    ['CANONICAL_EVIDENCE_REGISTERED', 'CANONICAL_EVIDENCE_MISSING'].includes(
-      String(value.registration_status),
-    ) &&
-    ['DEFINITION_AVAILABLE', 'DEFINITION_UNAVAILABLE'].includes(
-      String(value.definition_status),
-    ) &&
-    [
-      'EVIDENCE_VERIFIED',
-      'EVIDENCE_DECLARED_NOT_RECOMPUTED',
-      'EVIDENCE_STALE',
-      'EVIDENCE_INCOMPATIBLE',
-      'EVIDENCE_MISSING',
-    ].includes(String(value.verification_status)) &&
+    isOneOf(value.registration_status, REGISTRATION_STATUSES) &&
+    isOneOf(value.definition_status, DEFINITION_STATUSES) &&
+    isOneOf(value.verification_status, VERIFICATION_STATUSES) &&
     (value.unavailable_reason_code === null ||
       typeof value.unavailable_reason_code === 'string')
   )
+}
+
+function isIdentityString(value: unknown): value is string {
+  if (typeof value !== 'string') return false
+  const normalized = value.trim().toLocaleLowerCase()
+  return normalized.length > 0 && !IDENTITY_PLACEHOLDERS.has(normalized)
+}
+
+function isOneOf<const Values extends readonly string[]>(
+  value: unknown,
+  values: Values,
+): value is Values[number] {
+  return typeof value === 'string' && values.includes(value)
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

@@ -71,9 +71,7 @@ class Producer:
 
 
 @pytest.fixture(autouse=True)
-def isolate_project_database_registry(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
+def isolate_project_database_registry(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     """Keep CLI registry resolution inside a disposable fake canonical project."""
     project_root = tmp_path / "canonical-project"
     database_directory = project_root / "data" / "databases"
@@ -92,9 +90,7 @@ def isolate_project_database_registry(
         json.dumps(
             {
                 "version": 1,
-                "read_databases": {
-                    "LOTTOLAB_REPLAY_BACKFILL_DB": "replay-backfill.sqlite3"
-                },
+                "read_databases": {"LOTTOLAB_REPLAY_BACKFILL_DB": "replay-backfill.sqlite3"},
                 "writable_databases": [],
             }
         ),
@@ -107,13 +103,7 @@ def isolate_project_database_registry(
 @pytest.fixture
 def test_only_external_database_root(tmp_path: Path) -> Path:
     """Give CLI test injection a named root without depending on pytest's temp name."""
-    root = (
-        tmp_path
-        / "canonical-project"
-        / ".task-data"
-        / "_scratch"
-        / "msa-pytest.replay-backfill"
-    )
+    root = tmp_path / "canonical-project" / ".task-data" / "_scratch" / "msa-pytest.replay-backfill"
     root.mkdir()
     return root
 
@@ -255,10 +245,7 @@ def test_complete_hit_positions_survive_store_and_http_projection(tmp_path: Path
     assert [ticket["ticket_position"] for ticket in payload["predicted_tickets"]] == [1, 2]
     assert [hit["ticket_position"] for hit in payload["hit_details"]] == [1, 2]
     assert [
-        {
-            field: hit[field]
-            for field in ("zone1_hits", "zone2_hit", "is_winner", "prize_tier")
-        }
+        {field: hit[field] for field in ("zone1_hits", "zone2_hit", "is_winner", "prize_tier")}
         for hit in payload["hit_details"]
     ] == [
         {"zone1_hits": 6, "zone2_hit": False, "is_winner": True, "prize_tier": "FIRST"},
@@ -431,9 +418,7 @@ def test_legacy_result_reads_unknown_without_rewriting_or_migrating(tmp_path: Pa
 
 
 @pytest.mark.parametrize("mutation", ["missing", "duplicate", "invalid"])
-def test_predictions_api_rejects_malformed_hit_positions(
-    tmp_path: Path, mutation: str
-) -> None:
+def test_predictions_api_rejects_malformed_hit_positions(tmp_path: Path, mutation: str) -> None:
     engine, _, store = worker(
         tmp_path, store=SQLiteBackfillStore(_test_database_path(tmp_path, "negative.sqlite3"))
     )
@@ -641,9 +626,10 @@ def test_predictions_api_pins_requested_run_across_newer_runs(tmp_path: Path) ->
     second = client.get(root, params={**params, "cursor": first.json()["next_cursor"]})
     assert second.status_code == 200
     assert second.json()["run_id"] == original["run_id"]
-    assert second.json()["items"][0]["target_draw_number"] != first.json()["items"][-1][
-        "target_draw_number"
-    ]
+    assert (
+        second.json()["items"][0]["target_draw_number"]
+        != first.json()["items"][-1]["target_draw_number"]
+    )
 
     latest = client.get(
         root,
@@ -906,10 +892,13 @@ def test_cli_full_source_worker_storage_chain(
         "--batch-size",
         "2",
     ]
-    assert main(
-        [*args, "--max-cells", "2"],
-        test_only_external_database_root=test_only_external_database_root,
-    ) == 2
+    assert (
+        main(
+            [*args, "--max-cells", "2"],
+            test_only_external_database_root=test_only_external_database_root,
+        )
+        == 2
+    )
     partial_output = capsys.readouterr()
     assert json.loads(partial_output.out)["valid_result_cells"] == 2
     assert main(args, test_only_external_database_root=test_only_external_database_root) == 0
@@ -1207,9 +1196,7 @@ def test_import_stage_merges_read_only_and_duplicate_import_is_idempotent(
     _create_empty_backfill_database(target)
 
     args = ["import-stage", "--source", str(source), "--database", str(target)]
-    assert main(
-        args, test_only_external_database_root=test_only_external_database_root
-    ) == 0
+    assert main(args, test_only_external_database_root=test_only_external_database_root) == 0
     first = json.loads(capsys.readouterr().out)
     assert first["schema_version"] == SCHEMA_VERSION
     assert first["added_rows"]["replay_backfill_runs"] == 1
@@ -1218,9 +1205,7 @@ def test_import_stage_merges_read_only_and_duplicate_import_is_idempotent(
     assert first["source_rows"] == first["target_after_rows"]
     counts_after_first = _replay_table_counts(target)
 
-    assert main(
-        args, test_only_external_database_root=test_only_external_database_root
-    ) == 0
+    assert main(args, test_only_external_database_root=test_only_external_database_root) == 0
     second = json.loads(capsys.readouterr().out)
     assert second["added_total"] == 0
     assert second["skipped_total"] > 0
@@ -1236,9 +1221,7 @@ def test_import_stage_rejects_schema_version_mismatch_before_writing(
     _create_empty_backfill_database(source)
     with sqlite3.connect(source) as connection:
         connection.execute("PRAGMA ignore_check_constraints=ON")
-        connection.execute(
-            "UPDATE replay_backfill_schema SET version=?", (SCHEMA_VERSION - 1,)
-        )
+        connection.execute("UPDATE replay_backfill_schema SET version=?", (SCHEMA_VERSION - 1,))
     target = test_only_external_database_root / "target.sqlite3"
     _create_empty_backfill_database(target)
 
@@ -1251,6 +1234,7 @@ def test_import_stage_rejects_schema_version_mismatch_before_writing(
     )
     assert "schema version or checksum" in capsys.readouterr().err
     assert _replay_table_counts(target) == {key: 0 for key in _replay_table_counts(target)}
+
 
 _IMPORT_STAGE_TABLES_FOR_CONFLICT_TESTS = (
     "replay_backfill_runs",
@@ -1288,8 +1272,7 @@ def _import_stage_snapshot(database: Path) -> dict[str, tuple[tuple[Any, ...], .
     with sqlite3.connect(database) as connection:
         return {
             table: tuple(
-                tuple(row)
-                for row in connection.execute(f'SELECT * FROM "{table}" ORDER BY rowid')
+                tuple(row) for row in connection.execute(f'SELECT * FROM "{table}" ORDER BY rowid')
             )
             for table in _IMPORT_STAGE_TABLES_FOR_CONFLICT_TESTS
         }
@@ -1402,29 +1385,41 @@ def test_import_stage_reuses_matching_result_with_remapped_cell_identity_and_is_
     source_hash = hashlib.sha256(source.read_bytes()).hexdigest()
     args = ["import-stage", "--source", str(source), "--database", str(target)]
 
-    assert main(
-        args,
-        test_only_external_database_root=test_only_external_database_root,
-    ) == 0
+    assert (
+        main(
+            args,
+            test_only_external_database_root=test_only_external_database_root,
+        )
+        == 0
+    )
     first = json.loads(capsys.readouterr().out)
     assert first["added_total"] == 0
     assert first["target_before_rows"] == first["target_after_rows"]
     assert _import_stage_snapshot(target) == before
     assert hashlib.sha256(source.read_bytes()).hexdigest() == source_hash
     with sqlite3.connect(target) as connection:
-        assert connection.execute(
-            "SELECT 1 FROM replay_backfill_run_cells WHERE cell_identity=?",
-            (target_identity,),
-        ).fetchone() is not None
-        assert connection.execute(
-            "SELECT 1 FROM replay_backfill_cells WHERE cell_identity=?",
-            (source_identity,),
-        ).fetchone() is None
+        assert (
+            connection.execute(
+                "SELECT 1 FROM replay_backfill_run_cells WHERE cell_identity=?",
+                (target_identity,),
+            ).fetchone()
+            is not None
+        )
+        assert (
+            connection.execute(
+                "SELECT 1 FROM replay_backfill_cells WHERE cell_identity=?",
+                (source_identity,),
+            ).fetchone()
+            is None
+        )
 
-    assert main(
-        args,
-        test_only_external_database_root=test_only_external_database_root,
-    ) == 0
+    assert (
+        main(
+            args,
+            test_only_external_database_root=test_only_external_database_root,
+        )
+        == 0
+    )
     second = json.loads(capsys.readouterr().out)
     assert second["added_total"] == 0
     assert second["target_before_rows"] == second["target_after_rows"]
@@ -1445,20 +1440,29 @@ def test_import_stage_rejects_cell_result_conflicts_and_rolls_back_new_run(
     source_hash = hashlib.sha256(source.read_bytes()).hexdigest()
     args = ["import-stage", "--source", str(source), "--database", str(target)]
 
-    assert main(
-        args,
-        test_only_external_database_root=test_only_external_database_root,
-    ) == 1
+    assert (
+        main(
+            args,
+            test_only_external_database_root=test_only_external_database_root,
+        )
+        == 1
+    )
     assert "stage cell conflicts with an existing natural key" in capsys.readouterr().err
     assert _import_stage_snapshot(target) == before
     assert hashlib.sha256(source.read_bytes()).hexdigest() == source_hash
     with sqlite3.connect(target) as connection:
-        assert connection.execute(
-            "SELECT 1 FROM replay_backfill_runs WHERE run_id LIKE 'TEST_ONLY_SECOND_RUN:%'"
-        ).fetchone() is None
-        assert connection.execute(
-            "SELECT 1 FROM replay_backfill_run_cells WHERE run_id LIKE 'TEST_ONLY_SECOND_RUN:%'"
-        ).fetchone() is None
+        assert (
+            connection.execute(
+                "SELECT 1 FROM replay_backfill_runs WHERE run_id LIKE 'TEST_ONLY_SECOND_RUN:%'"
+            ).fetchone()
+            is None
+        )
+        assert (
+            connection.execute(
+                "SELECT 1 FROM replay_backfill_run_cells WHERE run_id LIKE 'TEST_ONLY_SECOND_RUN:%'"
+            ).fetchone()
+            is None
+        )
 
 
 @pytest.mark.parametrize("table", ["replay_backfill_tickets", "replay_backfill_training"])
@@ -1488,20 +1492,29 @@ def test_import_stage_rejects_conflicting_child_rows_and_rolls_back(
     source_hash = hashlib.sha256(source.read_bytes()).hexdigest()
     args = ["import-stage", "--source", str(source), "--database", str(target)]
 
-    assert main(
-        args,
-        test_only_external_database_root=test_only_external_database_root,
-    ) == 1
+    assert (
+        main(
+            args,
+            test_only_external_database_root=test_only_external_database_root,
+        )
+        == 1
+    )
     assert f"stage row conflicts with an existing identity: {table}" in capsys.readouterr().err
     assert _import_stage_snapshot(target) == before
     assert hashlib.sha256(source.read_bytes()).hexdigest() == source_hash
     with sqlite3.connect(target) as connection:
-        assert connection.execute(
-            "SELECT 1 FROM replay_backfill_runs WHERE run_id LIKE 'TEST_ONLY_SECOND_RUN:%'"
-        ).fetchone() is None
-        assert connection.execute(
-            "SELECT 1 FROM replay_backfill_run_cells WHERE run_id LIKE 'TEST_ONLY_SECOND_RUN:%'"
-        ).fetchone() is None
+        assert (
+            connection.execute(
+                "SELECT 1 FROM replay_backfill_runs WHERE run_id LIKE 'TEST_ONLY_SECOND_RUN:%'"
+            ).fetchone()
+            is None
+        )
+        assert (
+            connection.execute(
+                "SELECT 1 FROM replay_backfill_run_cells WHERE run_id LIKE 'TEST_ONLY_SECOND_RUN:%'"
+            ).fetchone()
+            is None
+        )
 
 
 def test_import_stage_rejects_conflicting_manifest_and_rolls_back(
@@ -1518,10 +1531,260 @@ def test_import_stage_rejects_conflicting_manifest_and_rolls_back(
     source_hash = hashlib.sha256(source.read_bytes()).hexdigest()
     args = ["import-stage", "--source", str(source), "--database", str(target)]
 
-    assert main(
-        args,
-        test_only_external_database_root=test_only_external_database_root,
-    ) == 1
+    assert (
+        main(
+            args,
+            test_only_external_database_root=test_only_external_database_root,
+        )
+        == 1
+    )
     assert "stage run ID conflicts with an existing target manifest" in capsys.readouterr().err
     assert _import_stage_snapshot(target) == before
     assert hashlib.sha256(source.read_bytes()).hexdigest() == source_hash
+
+
+def test_replay_backfill_strategies_api_includes_k30_geometry_and_random(
+    tmp_path: Path,
+) -> None:
+    engine, _, store = worker(
+        tmp_path,
+        store=SQLiteBackfillStore(_test_database_path(tmp_path, "k30-zone-strategies.sqlite3")),
+    )
+    engine.execute(BackfillSelection(all_draws=True))
+    app = FastAPI()
+    app.include_router(
+        create_replay_backfill_router(SQLiteBackfillStore(store.database, read_only=True))
+    )
+    client = cast(httpx.Client, TestClient(app))
+
+    expected_static_rows = (
+        (
+            "research_biglotto__zone_momentum_complete_v1",
+            "v1",
+            "Zone Momentum Complete",
+        ),
+        (
+            "evolution_h12_k30_geometry_completion",
+            "v0.1",
+            "K30 Geometry (歷史研究策略)",
+        ),
+        (
+            "evolution_h12_k30_matched_random_completion",
+            "v0.1",
+            "K30 Matched Random (隨機補票對照組)",
+        ),
+    )
+    for strategy_id, strategy_version, display_name in expected_static_rows:
+        resp = client.get(
+            "/api/v1/replay-backfill/strategies",
+            params={"lottery_type": "BIG_LOTTO", "q": strategy_id},
+        )
+        assert resp.status_code == 200
+        items = resp.json()["items"]
+        assert len(items) == 1
+        item = items[0]
+        assert item["strategy_id"] == strategy_id
+        assert item["strategy_version"] == strategy_version
+        assert item["display_name"] == display_name
+        assert item["data_status"] == "NO_HISTORY"
+        assert item["inventory_data_status"] == "NO_HISTORY"
+        assert item["executable"] is False
+        assert item["backfill_native_binding"] is False
+        assert item["backfill_runnable"] is False
+
+    # Synthetic SQLite overlay for Zone + Geometry only (Matched Random only has mismatched v0.2)
+    # and POWER_LOTTO rows; provenance remains UNKNOWN.
+    overlay_db = _test_database_path(tmp_path, "k30-zone-overlay.sqlite3")
+    _create_empty_backfill_database(overlay_db)
+    run_id = "synthetic-three-identity-overlay-run"
+    manifest = {
+        "run_id": run_id,
+        "lottery_type": "BIG_LOTTO",
+        "dataset_identity": "synthetic-overlay-dataset",
+        "execution_version": "synthetic-v1",
+        "targets": ["100000001"],
+        "strategies": [
+            {
+                "strategy_id": "research_biglotto__zone_momentum_complete_v1",
+                "strategy_version": "v1",
+            },
+            {
+                "strategy_id": "evolution_h12_k30_geometry_completion",
+                "strategy_version": "v0.1",
+            },
+        ],
+    }
+    with sqlite3.connect(overlay_db) as connection:
+        connection.execute(
+            "INSERT INTO replay_backfill_runs(run_id,manifest_json,expected_cells,created_at) "
+            "VALUES (?,?,?,?)",
+            (run_id, json.dumps(manifest), 2, "2026-11-13T00:00:00Z"),
+        )
+        connection.execute(
+            "INSERT INTO replay_backfill_targets("
+            "run_id,lottery_type,target_draw_id,target_draw_date,"
+            "actual_main_numbers_json,actual_special_numbers_json,source_identity"
+            ") VALUES (?,?,?,?,?,?,?)",
+            (run_id, "BIG_LOTTO", "100000001", "2020-01-01", "[1,2,3,4,5,6]", "[7]", "syn"),
+        )
+        inventory_inserts = [
+            (
+                run_id,
+                "BIG_LOTTO",
+                "research_biglotto__zone_momentum_complete_v1",
+                "v1",
+                "Zone Momentum Complete",
+                "UNREGISTERED_IDENTIFIED",
+                "HAS_HISTORY",
+                "REPLAY_BACKFILL_IMPORTED_RESULT",
+                0,
+                1,
+                "NOT_REQUIRED",
+                "synthetic-zone",
+            ),
+            (
+                run_id,
+                "BIG_LOTTO",
+                "evolution_h12_k30_geometry_completion",
+                "v0.1",
+                "K30 Geometry (歷史研究策略)",
+                "UNREGISTERED_IDENTIFIED",
+                "HAS_HISTORY",
+                "REPLAY_BACKFILL_IMPORTED_RESULT",
+                0,
+                1,
+                "NOT_TRAINABLE",
+                "synthetic-k30-geo",
+            ),
+            (
+                run_id,
+                "BIG_LOTTO",
+                "evolution_h12_k30_matched_random_completion",
+                "v0.2",
+                "K30 Matched Random v0.2",
+                "UNREGISTERED_IDENTIFIED",
+                "HAS_HISTORY",
+                "REPLAY_BACKFILL_IMPORTED_RESULT",
+                0,
+                1,
+                "NOT_TRAINABLE",
+                "synthetic-k30-rand-mismatch",
+            ),
+            (
+                run_id,
+                "POWER_LOTTO",
+                "evolution_h12_k30_matched_random_completion",
+                "v0.1",
+                "K30 Matched Random POWER_LOTTO",
+                "UNREGISTERED_IDENTIFIED",
+                "HAS_HISTORY",
+                "REPLAY_BACKFILL_IMPORTED_RESULT",
+                0,
+                1,
+                "NOT_TRAINABLE",
+                "synthetic-k30-rand-power",
+            ),
+        ]
+        connection.executemany(
+            "INSERT INTO replay_backfill_strategy_inventory("
+            "run_id,lottery_type,strategy_id,strategy_version,display_name,"
+            "lifecycle_status,data_status,source_kind,executable,available_target_count,"
+            "training_status,source_identity) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+            inventory_inserts,
+        )
+        for index, sid, ver in (
+            ("zone", "research_biglotto__zone_momentum_complete_v1", "v1"),
+            ("geo", "evolution_h12_k30_geometry_completion", "v0.1"),
+        ):
+            cell_id = f"synthetic-cell-{index}"
+            payload = {
+                "lottery_type": "BIG_LOTTO",
+                "strategy_id": sid,
+                "strategy_version": ver,
+                "target_draw_id": "100000001",
+                "source_history_provenance_status": "UNKNOWN",
+            }
+            payload["result_identity"] = identity(payload)
+            connection.execute(
+                "INSERT INTO replay_backfill_cells("
+                "cell_identity,lottery_type,strategy_id,strategy_version,execution_version,"
+                "dataset_identity,target_draw_id,target_draw_date,execution_status,"
+                "result_identity,payload_json,attempts) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+                (
+                    cell_id,
+                    "BIG_LOTTO",
+                    sid,
+                    ver,
+                    "synthetic-v1",
+                    "synthetic-overlay-dataset",
+                    "100000001",
+                    "2020-01-01",
+                    "COMPLETE",
+                    payload["result_identity"],
+                    json.dumps(payload, sort_keys=True, separators=(",", ":")),
+                    1,
+                ),
+            )
+            connection.execute(
+                "INSERT INTO replay_backfill_run_cells(run_id,cell_identity) VALUES (?,?)",
+                (run_id, cell_id),
+            )
+            connection.execute(
+                "INSERT INTO replay_backfill_tickets("
+                "cell_identity,ticket_position,main_numbers_json,special_numbers_json,"
+                "main_hit_count,special_hit,prize_tier) VALUES (?,?,?,?,?,?,?)",
+                (cell_id, 1, "[1,2,3,4,5,6]", "[7]", 6, 1, "JACKPOT"),
+            )
+
+    overlay_app = FastAPI()
+    overlay_app.include_router(
+        create_replay_backfill_router(SQLiteBackfillStore(overlay_db, read_only=True))
+    )
+    overlay_client = cast(httpx.Client, TestClient(overlay_app))
+
+    for sid, ver in (
+        ("research_biglotto__zone_momentum_complete_v1", "v1"),
+        ("evolution_h12_k30_geometry_completion", "v0.1"),
+    ):
+        resp = overlay_client.get(
+            "/api/v1/replay-backfill/strategies",
+            params={"lottery_type": "BIG_LOTTO", "q": sid},
+        )
+        assert resp.status_code == 200
+        item = resp.json()["items"][0]
+        assert item["strategy_version"] == ver
+        assert item["data_status"] == "HAS_HISTORY"
+        assert item["inventory_data_status"] == "NO_HISTORY"
+        assert item["history_status"] == "HAS_HISTORY"
+        assert item["history_source_identity_status"] == "UNKNOWN"
+        assert item["available_target_count"] == 1
+        assert item["executable"] is False
+        assert item["backfill_native_binding"] is False
+        assert item["backfill_runnable"] is False
+
+    mismatch_resp = overlay_client.get(
+        "/api/v1/replay-backfill/strategies",
+        params={
+            "lottery_type": "BIG_LOTTO",
+            "q": "evolution_h12_k30_matched_random_completion",
+        },
+    )
+    assert mismatch_resp.status_code == 200
+    mismatch_item = mismatch_resp.json()["items"][0]
+    assert mismatch_item["strategy_version"] == "v0.1"
+    assert mismatch_item["data_status"] == "NO_HISTORY"
+    assert mismatch_item["inventory_data_status"] == "NO_HISTORY"
+    assert mismatch_item["history_status"] == "NOT_SELECTED_IN_RUN"
+    assert mismatch_item["available_target_count"] == 0
+    assert mismatch_item["executable"] is False
+    assert mismatch_item["backfill_native_binding"] is False
+    assert mismatch_item["backfill_runnable"] is False
+
+    results_resp = overlay_client.get(
+        "/api/v1/replay-backfill/results",
+        params={"run_id": run_id},
+    )
+    assert results_resp.status_code == 200
+    assert all(
+        row["source_history_provenance_status"] == "UNKNOWN" for row in results_resp.json()["items"]
+    )

@@ -320,6 +320,7 @@ describe('B649OwnerRankingPage', () => {
             delta: '0.050000000000000000',
           }),
         )
+        base.total = base.items.length
       }
       return Promise.resolve(apiResponse(base))
     })
@@ -354,6 +355,7 @@ describe('B649OwnerRankingPage', () => {
             delta: '0.120000000000000000',
           }),
         )
+        base.total = base.items.length
       }
       return Promise.resolve(apiResponse(base))
     })

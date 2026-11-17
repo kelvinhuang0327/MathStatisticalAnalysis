@@ -261,11 +261,9 @@ describe('Historical Prefix Analytics safe integer contract', () => {
   it('accepts zero and Number.MAX_SAFE_INTEGER without coercing exact ratio fields', async () => {
     const maxPayload = rankings()
     for (const path of [
-      ['top_k'],
-      ['groups', 0, 'total_candidate_count'],
-      ['groups', 0, 'requested_top_k'],
       ['groups', 0, 'candidates', 0, 'rank'],
       ['groups', 0, 'candidates', 0, 'identity', 'replicate'],
+      ['groups', 0, 'candidates', 0, 'summary', 'identity', 'replicate'],
       ['groups', 0, 'candidates', 0, 'summary', 'distinct_draw_count'],
       ['groups', 0, 'candidates', 0, 'summary', 'replay_ticket_count'],
       ['groups', 0, 'candidates', 0, 'summary', 'portfolio_success_count'],
@@ -275,19 +273,34 @@ describe('Historical Prefix Analytics safe integer contract', () => {
     fetchMock.mockResolvedValue(jsonResponse(maxPayload))
 
     const accepted = await getHistoricalPrefixAnalyticsRankings()
-    expect(accepted.top_k).toBe(SAFE_MAX)
+    expect(accepted.top_k).toBe(20)
     expect(accepted.groups[0]?.candidates[0]?.summary.portfolio_success_rate).toEqual({
       numerator: SAFE_MAX,
       denominator: SAFE_MAX,
       is_available: true,
     })
 
+    const maxTopKPayload = rankings()
+    maxTopKPayload.top_k = SAFE_MAX
+    maxTopKPayload.groups[0]!.requested_top_k = SAFE_MAX
+    fetchMock.mockResolvedValue(jsonResponse(maxTopKPayload))
+    expect((await getHistoricalPrefixAnalyticsRankings()).top_k).toBe(SAFE_MAX)
+
+    const maxTotalCountPayload = rankings()
+    maxTotalCountPayload.top_k = 1
+    maxTotalCountPayload.groups[0]!.requested_top_k = 1
+    maxTotalCountPayload.groups[0]!.total_candidate_count = SAFE_MAX
+    fetchMock.mockResolvedValue(jsonResponse(maxTotalCountPayload))
+    expect((await getHistoricalPrefixAnalyticsRankings()).groups[0]?.total_candidate_count).toBe(
+      SAFE_MAX,
+    )
+
     const zeroPayload = overview()
     setAtPath(zeroPayload, ['total_count'], 0)
     setAtPath(zeroPayload, ['summaries', 0, 'portfolio_success_rate'], {
       numerator: 0,
       denominator: 0,
-      is_available: true,
+      is_available: false,
     })
     fetchMock.mockResolvedValue(jsonResponse(zeroPayload))
     const zeroAccepted = await getHistoricalPrefixAnalyticsStrategies(10)
@@ -295,7 +308,83 @@ describe('Historical Prefix Analytics safe integer contract', () => {
     expect(zeroAccepted.summaries[0]?.portfolio_success_rate).toEqual({
       numerator: 0,
       denominator: 0,
+      is_available: false,
+    })
+  })
+
+  it.each([
+    { name: 'successes exceed trials', numerator: 2, denominator: 1 },
+    { name: 'available ratio has zero denominator', numerator: 1, denominator: 0 },
+  ])('rejects impossible available exact ratios: $name', async ({ numerator, denominator }) => {
+    const payload = rankings()
+    setAtPath(payload, ['groups', 0, 'candidates', 0, 'summary', 'portfolio_success_rate'], {
+      numerator,
+      denominator,
       is_available: true,
+    })
+    fetchMock.mockResolvedValue(jsonResponse(payload))
+
+    await expect(getHistoricalPrefixAnalyticsRankings()).rejects.toMatchObject({
+      name: 'HistoricalPrefixAnalyticsRequestError',
+      status: 502,
+    })
+  })
+
+  it('rejects a ranking when summary identity differs from candidate identity', async () => {
+    const payload = rankings()
+    setAtPath(payload, ['groups', 0, 'candidates', 0, 'summary', 'identity', 'strategy_id'], 'other')
+    fetchMock.mockResolvedValue(jsonResponse(payload))
+
+    await expect(getHistoricalPrefixAnalyticsRankings()).rejects.toMatchObject({
+      name: 'HistoricalPrefixAnalyticsRequestError',
+      status: 502,
+    })
+  })
+
+  it.each([
+    {
+      name: 'summary prefix differs from its group',
+      path: ['groups', 0, 'candidates', 0, 'summary', 'prefix_count'],
+      value: 2,
+    },
+    {
+      name: 'candidate list is shorter than its declared total',
+      path: ['groups', 0, 'total_candidate_count'],
+      value: 2,
+    },
+    {
+      name: 'group top_k differs from response top_k',
+      path: ['groups', 0, 'requested_top_k'],
+      value: 19,
+    },
+    {
+      name: 'ranked candidate is not eligible',
+      path: ['groups', 0, 'candidates', 0, 'summary', 'ranking_eligible'],
+      value: false,
+    },
+    {
+      name: 'eligible candidate has an exclusion reason',
+      path: ['groups', 0, 'candidates', 0, 'summary', 'ranking_exclusion_reason'],
+      value: 'SOURCE_NOT_RANKABLE',
+    },
+    {
+      name: 'strategy identity is unknown',
+      path: ['groups', 0, 'candidates', 0, 'identity', 'strategy_id'],
+      value: 'UNKNOWN',
+    },
+    {
+      name: 'dataset identity is unknown',
+      path: ['metadata', 'dataset_identity'],
+      value: 'UNKNOWN',
+    },
+  ])('rejects malformed ranking qualification: $name', async ({ path, value }) => {
+    const payload = rankings()
+    setAtPath(payload, path, value)
+    fetchMock.mockResolvedValue(jsonResponse(payload))
+
+    await expect(getHistoricalPrefixAnalyticsRankings()).rejects.toMatchObject({
+      name: 'HistoricalPrefixAnalyticsRequestError',
+      status: 502,
     })
   })
 

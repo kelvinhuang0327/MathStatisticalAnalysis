@@ -42,8 +42,8 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
-function isNonNegativeInteger(value: unknown): value is number {
-  return typeof value === 'number' && Number.isInteger(value) && value >= 0
+function isNonNegativeSafeInteger(value: unknown): value is number {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0
 }
 
 function isStrategyView(value: unknown): value is StrategyView {
@@ -58,8 +58,7 @@ function isStrategyView(value: unknown): value is StrategyView {
     record.supported_lottery_types.every(
       (lotteryType) => typeof lotteryType === 'string' && LOTTERY_TYPE_SET.has(lotteryType),
     ) &&
-    typeof record.minimum_history === 'number' &&
-    Number.isInteger(record.minimum_history) &&
+    isNonNegativeSafeInteger(record.minimum_history) &&
     record.minimum_history >= 1 &&
     typeof record.lifecycle_status === 'string' &&
     LIFECYCLE_STATUS_SET.has(record.lifecycle_status) &&
@@ -72,7 +71,7 @@ function isCountRecord(value: unknown, expectedKeys: readonly string[]): boolean
   const actualKeys = Object.keys(value)
   return (
     actualKeys.length === expectedKeys.length &&
-    expectedKeys.every((key) => isNonNegativeInteger(value[key]))
+    expectedKeys.every((key) => isNonNegativeSafeInteger(value[key]))
   )
 }
 
@@ -92,9 +91,9 @@ function hasValidSummary(
 ): boolean {
   if (!isRecord(value)) return false
   if (
-    !isNonNegativeInteger(value.total) ||
-    !isNonNegativeInteger(value.executable_count) ||
-    !isNonNegativeInteger(value.metadata_only_count) ||
+    !isNonNegativeSafeInteger(value.total) ||
+    !isNonNegativeSafeInteger(value.executable_count) ||
+    !isNonNegativeSafeInteger(value.metadata_only_count) ||
     !isCountRecord(value.lifecycle_counts, LIFECYCLE_STATUSES) ||
     !isCountRecord(value.lottery_type_counts, LOTTERY_TYPES)
   ) {

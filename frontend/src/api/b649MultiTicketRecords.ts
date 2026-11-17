@@ -54,6 +54,31 @@ const SUMMARY_ENDPOINT = '/api/v1/b649-multi-ticket-records/summary'
 const RECORDS_ENDPOINT = '/api/v1/b649-multi-ticket-records'
 const EXACT_NATIVE_RECORDS_ENDPOINT = '/api/v1/b649-exact-native-records'
 const SHA256_PATTERN = /^[0-9a-f]{64}$/
+const REQUIRED_STRING_PLACEHOLDERS = new Set([
+  'UNKNOWN',
+  'UNDEFINED',
+  'NULL',
+  'N/A',
+  'NA',
+  'TBD',
+  'TBC',
+  'TODO',
+  'UNSET',
+  'NOT SET',
+  'NOT PROVIDED',
+  'PLACEHOLDER',
+  '-',
+  '--',
+  '—',
+  '<UNKNOWN>',
+  '<UNSET>',
+  '<PLACEHOLDER>',
+  '未填',
+  '待填',
+  '未提供',
+  '未知',
+  '占位',
+])
 
 export interface B649MultiTicketRecordQuery {
   prefixCount: B649PrefixCount
@@ -111,7 +136,7 @@ export async function fetchB649MultiTicketRecords(
   query: B649MultiTicketRecordQuery,
   signal?: AbortSignal,
 ): Promise<B649MultiTicketRecordPage> {
-  assertQueryInteger(query.limit, 'limit', 1)
+  assertQueryInteger(query.limit, 'limit', 1, 100)
   assertQueryInteger(query.offset, 'offset', 0)
   const parameters = new URLSearchParams({
     prefix_count: String(query.prefixCount),
@@ -125,7 +150,11 @@ export async function fetchB649MultiTicketRecords(
   if (query.reproductionStatus) {
     parameters.set('reproduction_status', query.reproductionStatus)
   }
-  return requestJson(`${RECORDS_ENDPOINT}?${parameters}`, isRecordPage, signal)
+  return requestJson(
+    `${RECORDS_ENDPOINT}?${parameters}`,
+    (value): value is B649MultiTicketRecordPage => isRecordPage(value, query),
+    signal,
+  )
 }
 
 export async function fetchB649ExactNativeRecords(
@@ -223,17 +252,37 @@ function isSummary(value: unknown): value is B649MultiTicketSummary {
   )
 }
 
-function isRecordPage(value: unknown): value is B649MultiTicketRecordPage {
-  return (
-    isRecord(value) &&
-    Array.isArray(value.items) &&
-    value.items.every(isMultiTicketRecord) &&
+function isRecordPage(
+  value: unknown,
+  query: B649MultiTicketRecordQuery,
+): value is B649MultiTicketRecordPage {
+  if (!isRecord(value) || !Array.isArray(value.items)) return false
+  const items = value.items
+  const validItemIdentity = items.every(
+    (item) =>
+      isMultiTicketRecord(item) &&
+      item.prefix_count === query.prefixCount &&
+      item.window === query.window &&
+      item.criterion === query.criterion,
+  )
+  const validPageRange =
     isInteger(value.total) &&
-    isInteger(value.limit) &&
     isInteger(value.offset) &&
+    value.offset === query.offset &&
+    items.length === Math.min(query.limit, Math.max(value.total - value.offset, 0))
+  return (
+    validItemIdentity &&
+    items.length <= query.limit &&
+    isInteger(value.total) &&
+    value.limit === query.limit &&
+    value.offset === query.offset &&
     B649_PREFIX_COUNTS.includes(value.prefix_count as B649PrefixCount) &&
     B649_HISTORY_WINDOWS.includes(value.window as B649HistoryWindow) &&
     B649_SUCCESS_CRITERIA.includes(value.criterion as B649SuccessCriterion) &&
+    value.prefix_count === query.prefixCount &&
+    value.window === query.window &&
+    value.criterion === query.criterion &&
+    validPageRange &&
     value.research_disclaimer === B649_RESEARCH_DISCLAIMER
   )
 }
@@ -434,10 +483,21 @@ function isInteger(value: unknown): value is number {
   return Number.isSafeInteger(value) && Number(value) >= 0
 }
 
-function assertQueryInteger(value: number, name: string, minimum: number): void {
-  if (!isInteger(value) || value < minimum) {
+function assertQueryInteger(
+  value: number,
+  name: string,
+  minimum: number,
+  maximum?: number,
+): void {
+  if (
+    !isInteger(value) ||
+    value < minimum ||
+    (maximum !== undefined && value > maximum)
+  ) {
     throw new B649RecordsRequestError(
-      `The ${name} query parameter must be a safe integer greater than or equal to ${minimum}.`,
+      maximum === undefined
+        ? `The ${name} query parameter must be a safe integer greater than or equal to ${minimum}.`
+        : `The ${name} query parameter must be a safe integer between ${minimum} and ${maximum}.`,
       0,
       'INVALID_REQUEST',
     )
@@ -445,7 +505,9 @@ function assertQueryInteger(value: number, name: string, minimum: number): void 
 }
 
 function isString(value: unknown): value is string {
-  return typeof value === 'string'
+  if (typeof value !== 'string') return false
+  const normalized = value.trim().toUpperCase()
+  return normalized.length > 0 && !REQUIRED_STRING_PLACEHOLDERS.has(normalized)
 }
 
 function isSha256(value: unknown): value is string {

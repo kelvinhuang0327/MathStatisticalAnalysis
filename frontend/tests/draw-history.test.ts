@@ -35,6 +35,31 @@ const populatedPage = {
   total_pages: 2,
 } satisfies DrawHistoryResponse
 
+function pageFor(
+  drawNumber: string,
+  totalCount: number,
+  page: number,
+  totalPages: number,
+): DrawHistoryResponse {
+  return {
+    ...populatedPage,
+    records: [{ ...draw, draw_number: drawNumber }],
+    page,
+    total_count: totalCount,
+    total_pages: totalPages,
+  }
+}
+
+function deferred<T>() {
+  let resolve!: (value: T) => void
+  let reject!: (reason?: unknown) => void
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise
+    reject = rejectPromise
+  })
+  return { promise, resolve, reject }
+}
+
 let fetchMock: ReturnType<typeof vi.fn<typeof fetch>>
 
 function apiResponse(payload: unknown, status = 200): Response {
@@ -95,6 +120,9 @@ describe('DrawHistoryPage', () => {
     await flushPromises()
 
     await wrapper.get('input[name="draw-number"]').setValue('000')
+    await wrapper.get('input[name="date-from"]').setValue('2026-02-30')
+    expect(wrapper.get('input[name="date-from"]').attributes('aria-invalid')).toBe('true')
+    expect(wrapper.get('button[type="submit"]').attributes('disabled')).toBeDefined()
     await wrapper.get('input[name="date-from"]').setValue('2026-07-01')
     await wrapper.get('input[name="date-to"]').setValue('2026-07-16')
     await wrapper.get('form').trigger('submit')
@@ -113,16 +141,18 @@ describe('DrawHistoryPage', () => {
     await flushPromises()
     expect(String(fetchMock.mock.calls[2]?.[0])).toContain('page=2')
 
-    await wrapper.get('select[name="page-size"]').setValue('100')
-    await flushPromises()
-    const sizeUrl = String(fetchMock.mock.calls[3]?.[0])
-    expect(sizeUrl).toContain('page_size=100')
-    expect(sizeUrl).toContain('page=1')
+    for (const [index, pageSize] of [10, 25, 50, 100].entries()) {
+      await wrapper.get('select[name="page-size"]').setValue(String(pageSize))
+      await flushPromises()
+      const sizeUrl = String(fetchMock.mock.calls[index + 3]?.[0])
+      expect(sizeUrl).toContain(`page_size=${pageSize}`)
+      expect(sizeUrl).toContain('page=1')
+    }
 
     const reset = wrapper.findAll('button').find((button) => button.text() === 'Reset query')
     await reset?.trigger('click')
     await flushPromises()
-    const resetUrl = String(fetchMock.mock.calls[4]?.[0])
+    const resetUrl = String(fetchMock.mock.calls[7]?.[0])
     expect(resetUrl).not.toContain('draw_number')
     expect(resetUrl).not.toContain('date_from')
     expect(resetUrl).toContain('page_size=25')
@@ -140,8 +170,98 @@ describe('DrawHistoryPage', () => {
     await flushPromises()
 
     expect(wrapper.text()).toContain('Local draw data is unavailable.')
-    expect(wrapper.findAll('button').some((button) => button.text() === 'Retry')).toBe(true)
+    const retry = wrapper.findAll('button').find((button) => button.text() === 'Retry')
+    expect(retry).toBeDefined()
+    await retry?.trigger('click')
+    await flushPromises()
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(wrapper.text()).toContain('Local draw data is unavailable.')
     expect(wrapper.find('table').exists()).toBe(false)
     wrapper.unmount()
+  })
+
+  it('keeps the newest successful query when an aborted request resolves later', async () => {
+    const earlier = deferred<Response>()
+    const latest = deferred<Response>()
+    fetchMock.mockReturnValueOnce(earlier.promise).mockReturnValueOnce(latest.promise)
+    const wrapper = mount(DrawHistoryPage)
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    await wrapper.get('input[name="draw-number"]').setValue('0003')
+    await wrapper.get('form').trigger('submit')
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(fetchMock.mock.calls[0]?.[1]?.signal?.aborted).toBe(true)
+
+    latest.resolve(apiResponse(pageFor('0003', 3, 1, 4)))
+    await flushPromises()
+    expect(wrapper.get('.scope-card strong').text()).toBe('3')
+    expect(wrapper.get('code.draw-identity').text()).toBe('0003')
+    expect(wrapper.get('.pagination').text()).toContain('Page 1 of 4')
+    expect(wrapper.find('.state-panel').exists()).toBe(false)
+
+    earlier.resolve(apiResponse(pageFor('0001', 99, 8, 9)))
+    await flushPromises()
+    expect(wrapper.get('.scope-card strong').text()).toBe('3')
+    expect(wrapper.get('code.draw-identity').text()).toBe('0003')
+    expect(wrapper.get('.pagination').text()).toContain('Page 1 of 4')
+    expect(wrapper.find('.state-panel').exists()).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('ignores an earlier query failure after the latest query succeeds', async () => {
+    const earlier = deferred<Response>()
+    const latest = deferred<Response>()
+    fetchMock.mockReturnValueOnce(earlier.promise).mockReturnValueOnce(latest.promise)
+    const wrapper = mount(DrawHistoryPage)
+
+    await wrapper.get('input[name="draw-number"]').setValue('0003')
+    await wrapper.get('form').trigger('submit')
+    latest.resolve(apiResponse(pageFor('0003', 3, 1, 4)))
+    await flushPromises()
+    earlier.reject(new Error('stale A failure'))
+    await flushPromises()
+
+    expect(wrapper.get('.scope-card strong').text()).toBe('3')
+    expect(wrapper.get('code.draw-identity').text()).toBe('0003')
+    expect(wrapper.get('.pagination').text()).toContain('Page 1 of 4')
+    expect(wrapper.text()).not.toContain('stale A failure')
+    expect(wrapper.find('.state-panel--error').exists()).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('shows the latest query error and retry action', async () => {
+    const earlier = deferred<Response>()
+    const latest = deferred<Response>()
+    fetchMock.mockReturnValueOnce(earlier.promise).mockReturnValueOnce(latest.promise)
+    const wrapper = mount(DrawHistoryPage)
+
+    await wrapper.get('input[name="draw-number"]').setValue('0003')
+    await wrapper.get('form').trigger('submit')
+    latest.reject(new Error('latest query failed'))
+    await flushPromises()
+    expect(wrapper.find('.state-panel--error').text()).toContain('latest query failed')
+    expect(wrapper.findAll('button').some((button) => button.text() === 'Retry')).toBe(true)
+
+    earlier.resolve(apiResponse(pageFor('0001', 99, 8, 9)))
+    await flushPromises()
+    expect(wrapper.find('.state-panel--error').text()).toContain('latest query failed')
+    expect(wrapper.get('.scope-card strong').text()).toBe('—')
+    expect(wrapper.find('table').exists()).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('aborts the previous query and the current query on unmount', async () => {
+    fetchMock.mockReturnValue(new Promise<Response>(() => undefined))
+    const wrapper = mount(DrawHistoryPage)
+    const earlierSignal = fetchMock.mock.calls[0]?.[1]?.signal
+
+    await wrapper.get('input[name="draw-number"]').setValue('0003')
+    await wrapper.get('form').trigger('submit')
+    const latestSignal = fetchMock.mock.calls[1]?.[1]?.signal
+    expect(earlierSignal?.aborted).toBe(true)
+    expect(latestSignal?.aborted).toBe(false)
+
+    wrapper.unmount()
+    expect(latestSignal?.aborted).toBe(true)
   })
 })

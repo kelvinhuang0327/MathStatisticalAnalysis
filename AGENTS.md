@@ -62,12 +62,13 @@ Owner 2026-11-17：所有研究策略都要用歷史資料回測出的成功率�
 
 ## 回測結果寫入
 
+- Owner 2026-11-17 更新：後續回測結果直接寫入下方已登記的正式回測庫，不再為了前後內容雜湊額外建立資料庫快照。本指示取代新回測預設「暫存＋合併卡」及正式回放庫內容雜湊必須透過快照的要求；未執行的快照及雜湊在收據明列，不得視為已驗證。寫入前仍依規則確認登記目標、取得租約與 writer.lock、保留可供還原的寫前備份；記錄寫入前後列數，寫後透過 App 或 API 讀回。此處「不要快照」是取消額外的雜湊快照，並不取消寫前回復備份。已完成的結果不重跑，既有待合併暫存庫仍以匯入方式處理。
 - 回測結果的正式寫入目標只有一個：`data/databases/database-locations.json` 的 `writable_databases` 裡登記給 `LOTTOLAB_REPLAY_BACKFILL_DB` 的檔案。寫入前先讀這個檔確認；Packet 寫的目標和登記不同時，停下回報。
 - 每個會產生回測結果的 Packet 要宣告 `RESULT_VISIBILITY`：
   - `UI_REPLAY`：結果要讓 Owner 在 UI 看到。
   - `EVIDENCE_ONLY`：結果只當證據檔，不會出現在 UI；收據寫「不會出現在 UI」。
   - Packet 沒有宣告時，收據寫 `UNDECLARED`，視同 `EVIDENCE_ONLY`，並在回報第一段提醒 Planner 補宣告。
-- `UI_REPLAY` 的結果，預設流程是「暫存＋合併卡」：
+- 以下「暫存＋合併卡」流程適用於上述更新前已產生、仍待合併的 `UI_REPLAY` 暫存結果：
   - Packet 不直接寫正式庫。正式庫的寫入需要 Owner 的授權句、租約與 writer.lock，多個任務各自寫會互相擋住。
   - 暫存 DB 放 `/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.task-data/_scratch/<名稱>/`（名稱不含 `B649`），同資料夾放 `MERGE_PENDING.json`，欄位：`task_id`、`db_path`、`db_sha256`、`schema_version`、`lottery_types`、`strategies`（每項含 `strategy_id`、`strategy_version`、cells 筆數、目標期範圍、`source_history_provenance_status`、`in_code_inventory`＝是或否）、`run_ids`、各表筆數、`created_at`。收據寫 `MERGE_PENDING` 與這個 JSON 的絕對路徑。
   - 含 `replay_backfill_cells` 表的暫存 DB 沒有 `MERGE_PENDING.json`，視為收據不合格（驗收 FAIL）。不含回測表的測試用暫存 DB 不受此限。

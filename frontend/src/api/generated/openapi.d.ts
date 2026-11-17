@@ -2101,6 +2101,37 @@ export interface paths {
                 }
         }
     }
+  "/api/v1/replay-backfill/k3-comparison": {
+      get: {
+          parameters: {
+            "query": {
+              "strategy": "optimizer" | "ecp"
+            }
+          }
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": components['schemas']["K3ComparisonResponse"]
+                                  }
+                        }
+                  404: {
+                          content: {
+                                    "application/json": components['schemas']["ReplayBackfillErrorResponse"]
+                                  }
+                        }
+                  409: {
+                          content: {
+                                    "application/json": components['schemas']["ReplayBackfillErrorResponse"]
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["ApiValidationErrorResponse"] | components['schemas']["ReplayBackfillErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
   "/api/v1/replay-backfill/predictions": {
       get: {
           parameters: {
@@ -4058,6 +4089,30 @@ export interface components {
           "started_at": string
           "completed_at": string | null
           "error_summary": string | null
+        }
+    "K3ComparisonResponse": {
+          "run_id": string
+          "strategy": string
+          "target_count": number
+          "paired_count": number
+          "unmatched_count": number
+          "old_wins": number
+          "new_wins": number
+          "old_only": number
+          "new_only": number
+          "fair_delta": number | null
+          "observed_minus_fair": number | null
+          "rows": Array<components['schemas']["K3ComparisonRowView"]>
+        }
+    "K3ComparisonRowView": {
+          "target_draw_number": string
+          "target_draw_date": string
+          "match_status": string
+          "source_segment": string | null
+          "original_source_run_id": string | null
+          "old_cell_identity": string | null
+          "old": components['schemas']["ReplayBackfillPredictionItemView"] | null
+          "new": components['schemas']["ReplayBackfillPredictionItemView"]
         }
     "LifecycleStatus": "IDEA" | "OBSERVATION" | "ONLINE" | "REJECTED" | "RETIRED"
     "LiveZoneSplitRequest": {

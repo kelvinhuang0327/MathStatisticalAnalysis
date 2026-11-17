@@ -169,6 +169,7 @@ _ALLOWED_OPENAPI_OPERATIONS = {
         {"get"}
     ),
     "/api/v1/replay-backfill/strategies": frozenset({"get"}),
+    "/api/v1/replay-backfill/k3-comparison": frozenset({"get"}),
     "/api/v1/replay-backfill/predictions": frozenset({"get"}),
     "/api/v1/replay-backfill/coverage": frozenset({"get"}),
     "/api/v1/replay-backfill/results": frozenset({"get"}),
@@ -198,6 +199,7 @@ _FORBIDDEN_ROUTE_WORD_EXCEPTION_PATHS = frozenset(
         "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/strategy-aggregates",
         "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/overall-aggregate",
         "/api/v1/replay-backfill/strategies",
+        "/api/v1/replay-backfill/k3-comparison",
         "/api/v1/replay-backfill/predictions",
         "/api/v1/replay-backfill/coverage",
         "/api/v1/replay-backfill/results",

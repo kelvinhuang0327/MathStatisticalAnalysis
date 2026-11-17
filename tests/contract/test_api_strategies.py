@@ -444,6 +444,7 @@ def test_openapi_exposes_exact_local_runtime_operation_set() -> None:
             "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/overall-aggregate",
         ),
         ("get", "/api/v1/replay-backfill/strategies"),
+        ("get", "/api/v1/replay-backfill/k3-comparison"),
         ("get", "/api/v1/replay-backfill/predictions"),
         ("get", "/api/v1/replay-backfill/coverage"),
         ("get", "/api/v1/replay-backfill/results"),
@@ -457,7 +458,7 @@ def test_openapi_exposes_exact_local_runtime_operation_set() -> None:
         ("get", "/api/v1/research/backtests/identity-crosswalk"),
         ("get", "/api/v1/replay-strategy-inventory"),
     }
-    assert len(operations) == 91
+    assert len(operations) == 92
 
 
 def test_replay_ranking_openapi_requires_exact_persisted_scoring_sha() -> None:
@@ -647,6 +648,9 @@ def test_replay_backfill_generated_types_include_named_schemas() -> None:
         ),
         "/api/v1/replay-backfill/strategies": (
             "components['schemas'][\"ReplayBackfillStrategyPageResponse\"]"
+        ),
+        "/api/v1/replay-backfill/k3-comparison": (
+            "components['schemas'][\"K3ComparisonResponse\"]"
         ),
         "/api/v1/replay-backfill/predictions": (
             "components['schemas'][\"ReplayBackfillPredictionPageResponse\"]"

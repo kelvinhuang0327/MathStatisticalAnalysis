@@ -62,13 +62,14 @@ Owner 2026-11-17：所有研究策略都要用歷史資料回測出的成功率�
 
 ## 回測結果寫入
 
-- Owner 2026-11-17 更新：後續回測結果直接寫入下方已登記的正式回測庫，不再為了前後內容雜湊額外建立資料庫快照。本指示取代新回測預設「暫存＋合併卡」及正式回放庫內容雜湊必須透過快照的要求；未執行的快照及雜湊在收據明列，不得視為已驗證。寫入前仍依規則確認登記目標、取得租約與 writer.lock、保留可供還原的寫前備份；記錄寫入前後列數，寫後透過 App 或 API 讀回。此處「不要快照」是取消額外的雜湊快照，並不取消寫前回復備份。已完成的結果不重跑，既有待合併暫存庫仍以匯入方式處理。
 - 回測結果的正式寫入目標只有一個：`data/databases/database-locations.json` 的 `writable_databases` 裡登記給 `LOTTOLAB_REPLAY_BACKFILL_DB` 的檔案。寫入前先讀這個檔確認；Packet 寫的目標和登記不同時，停下回報。
 - 每個會產生回測結果的 Packet 要宣告 `RESULT_VISIBILITY`：
-  - `UI_REPLAY`：結果要讓 Owner 在 UI 看到。
-  - `EVIDENCE_ONLY`：結果只當證據檔，不會出現在 UI；收據寫「不會出現在 UI」。
-  - Packet 沒有宣告時，收據寫 `UNDECLARED`，視同 `EVIDENCE_ONLY`，並在回報第一段提醒 Planner 補宣告。
-- 以下「暫存＋合併卡」流程適用於上述更新前已產生、仍待合併的 `UI_REPLAY` 暫存結果：
+  - `UI_REPLAY`：結果寫回正式庫，讓 Owner 在 UI 看到。
+  - `EVIDENCE_ONLY`：結果只當證據檔，不會出現在 UI；收據寫「不會出現在 UI」。只適用於非標準回測的探索、診斷或測試資料。
+  - 標準歷史回測（逐期回放，產生以下面 6 欄唯一鍵識別的 cell）的結果一律寫回正式庫，不論表現好壞，沒有例外（Owner 2026-11-17）：表現差、沒有增益或決定淘汰的策略也要寫回；不能看完結果再改用途。寫回方式照下一條：研究線交暫存庫與 `MERGE_PENDING.json`，由支線 7 檢查、依授權合併並讀回。
+  - Packet 沒有宣告時：標準歷史回測視同 `UI_REPLAY`，其他結果視同 `EVIDENCE_ONLY`；收據寫 `UNDECLARED` 與採用的處理方式。
+- 歷史資料從 Packet 指定的正式歷史 DB 唯讀查詢；策略的逐期回測結果最後保存到上面登記的正式回測 DB。報告中的成功率必須能從正式回測 DB 的逐期紀錄重算。
+- `UI_REPLAY` 的結果，預設流程是「暫存＋合併卡」：
   - Packet 不直接寫正式庫。正式庫的寫入需要 Owner 的授權句、租約與 writer.lock，多個任務各自寫會互相擋住。
   - 暫存 DB 放 `/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.task-data/_scratch/<名稱>/`（名稱不含 `B649`），同資料夾放 `MERGE_PENDING.json`，欄位：`task_id`、`db_path`、`db_sha256`、`schema_version`、`lottery_types`、`strategies`（每項含 `strategy_id`、`strategy_version`、cells 筆數、目標期範圍、`source_history_provenance_status`、`in_code_inventory`＝是或否）、`run_ids`、各表筆數、`created_at`。收據寫 `MERGE_PENDING` 與這個 JSON 的絕對路徑。
   - 含 `replay_backfill_cells` 表的暫存 DB 沒有 `MERGE_PENDING.json`，視為收據不合格（驗收 FAIL）。不含回測表的測試用暫存 DB 不受此限。
@@ -109,9 +110,16 @@ Owner 2026-11-17：所有研究策略都要用歷史資料回測出的成功率�
 - 每次修改登記表或 INDEX.json，在同一步驟於 `data/databases/REGISTRY_CHANGELOG.jsonl` 追加一行，內容包括時間、TASK_ID、檔名、修改前與修改後的 sha256、授權句位置。
 - 核對期間發現資源的雜湊變了：
   - 變的是登記表或 `legacy/INDEX.json`：先查 `REGISTRY_CHANGELOG.jsonl`。新雜湊對得上一筆有授權的變更，就依新狀態重新核對一次，並在收據註明；對不上，才以 BLOCKED 回報「未知寫入者」。
-  - 變的是正式回放庫的內容（登記表沒變）：`REGISTRY_CHANGELOG.jsonl` 不記這種變更，不能拿它當依據。改查資料庫整合任務的合併收據：在你記下起始狀態之後、結束核對之前，`.task-data/<YYYYMMDD>/` 底下有 task_id 含 `MERGE` 的任務，其 `result.json` 的 `task_lifecycle_state` 為 COMPLETED，記有授權檔路徑與合併前備份路徑，且備份大小等於你記下的起始大小（內容雜湊以 SQLite backup API 快照計算，可能與備份檔的檔案雜湊不同，以大小與時間窗為準）。對得上，就依新狀態重新核對一次，在收據註明該合併任務的 TASK_ID，不算未知寫入者、不算 INCIDENT；對不上，才以 BLOCKED 回報「未知寫入者」。
+  - 變的是正式回放庫的內容（登記表沒變）：`REGISTRY_CHANGELOG.jsonl` 不記這種變更，不能拿它當依據。改查資料庫整合任務的合併收據：在你記下起始狀態之後、結束核對之前，`.task-data/<YYYYMMDD>/` 底下有 task_id 含 `MERGE` 的任務，其 `result.json` 的 `task_lifecycle_state` 為 COMPLETED，記有授權檔路徑與合併前備份路徑，且備份大小等於你記下的起始大小（以大小與時間窗為準）。對得上，就依新狀態重新核對一次，在收據註明該合併任務的 TASK_ID，不算未知寫入者、不算 INCIDENT；對不上，才以 BLOCKED 回報「未知寫入者」。
 - 正式 SQLite DB 的寫入入口先取得 `<DB 檔名>.writer.lock` 的獨佔檔案鎖，再用 `BEGIN IMMEDIATE`；拿不到鎖就立刻失敗，不等待。寫入入口提交進 Git 之前沒有統一入口，寫入前一律先取得上面的租約。
-- 內容雜湊對快照計算：用 SQLite backup API 複製到 `.task-data/_scratch/` 再算，不直接對使用中的檔計算。
+- 一般研究讀取、策略比較與例行核對，直接用唯讀連線（`file:<路徑>?mode=ro`）查詢，不複製整個資料庫；WAL 模式也一樣。需要一致性時把查詢放在同一個讀取交易內，讀完立刻結束交易。rollback journal 模式（`PRAGMA journal_mode` 回 `delete`；正式回放庫就是）在交易期間寫入者無法提交，所以看到別人的 WRITE 租約時先等它結束。
+- 只有需要檔案層級的雜湊驗證或備份時，才另外處理：
+  - rollback journal 模式：在唯讀讀取交易內直接算檔案 SHA-256（正式回放庫整檔約 5–15 秒），用這條指令：
+
+        /Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/python -B -c 'import sqlite3,hashlib,sys;p=sys.argv[1];c=sqlite3.connect(f"file:{p}?mode=ro",uri=True,isolation_level=None);c.execute("BEGIN");c.execute("SELECT count(*) FROM sqlite_master").fetchone();h=hashlib.sha256();f=open(p,"rb");[h.update(b) for b in iter(lambda:f.read(1<<20),b"")];print(h.hexdigest());c.execute("COMMIT")' <DB 路徑>
+
+  - WAL 模式：用 SQLite backup API 複製到 `.task-data/_scratch/` 再算，算完刪掉副本。
+- 正式匯入前必要的復原備份，由支線 7 依上面「回測結果寫入」的既定備份規則處理。
 
 ## JSON 輸出
 

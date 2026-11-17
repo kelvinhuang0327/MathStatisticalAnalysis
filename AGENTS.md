@@ -53,9 +53,10 @@
 
 - 回測結果的正式寫入目標只有一個：`data/databases/database-locations.json` 的 `writable_databases` 裡登記給 `LOTTOLAB_REPLAY_BACKFILL_DB` 的檔案。寫入前先讀這個檔確認；Packet 寫的目標和登記不同時，停下回報。
 - 每個會產生回測結果的 Packet 要宣告 `RESULT_VISIBILITY`：
-  - `UI_REPLAY`：結果要讓 Owner 在 UI 看到。
+  - `UI_REPLAY`：結果寫回正式庫，讓 Owner 在 UI 看到。
   - `EVIDENCE_ONLY`：結果只當證據檔，不會出現在 UI；收據寫「不會出現在 UI」。
-  - Packet 沒有宣告時，收據寫 `UNDECLARED`，視同 `EVIDENCE_ONLY`，並在回報第一段提醒 Planner 補宣告。
+  - 標準歷史回測（逐期回放，產生以下面 6 欄唯一鍵識別的 cell）的結果一律寫回正式庫，不論表現好壞（Owner 2026-11-17）：預設 `UI_REPLAY`；表現差、沒有增益或決定淘汰的策略也要寫回。只有 Packet 寫明 `EVIDENCE_ONLY` 與理由時，才只當證據。
+  - Packet 沒有宣告時：標準歷史回測視同 `UI_REPLAY`，其他結果視同 `EVIDENCE_ONLY`；收據寫 `UNDECLARED` 與採用的處理方式。
 - `UI_REPLAY` 的結果，預設流程是「暫存＋合併卡」：
   - Packet 不直接寫正式庫。正式庫的寫入需要 Owner 的授權句、租約與 writer.lock，多個任務各自寫會互相擋住。
   - 暫存 DB 放 `/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.task-data/_scratch/<名稱>/`（名稱不含 `B649`），同資料夾放 `MERGE_PENDING.json`，欄位：`task_id`、`db_path`、`db_sha256`、`schema_version`、`lottery_types`、`strategies`（每項含 `strategy_id`、`strategy_version`、cells 筆數、目標期範圍、`source_history_provenance_status`、`in_code_inventory`＝是或否）、`run_ids`、各表筆數、`created_at`。收據寫 `MERGE_PENDING` 與這個 JSON 的絕對路徑。
@@ -69,9 +70,9 @@
     - 發現方式有兩種：資料庫整合 Planner 每次開工與每個批次截止時掃描 `.task-data/_scratch/*/`；另有只讀、只報告不寫入的定期掃描（由 C 支線排程），列出滿 24 小時的 `MERGE_PENDING.json`，以及含回測表卻沒有 `MERGE_PENDING.json` 的暫存庫，報告給 Owner。
   - 合併用 `replay-backfill import-stage`：來源先用 `cp -c` 複製進 `_scratch` 並核對 sha256；取租約，再備份、匯入、從 API 讀回、釋放租約。合併後原任務的收據補記 `MERGED` 與正式庫的 run_id。
     - 備份優先用 APFS clone（`cp -c -p`），以下條件全部成立才可用，任何一項不成立就改用 SQLite backup API：持有租約與 `<DB 檔名>.writer.lock`；沒有其他程序以寫入模式開啟該 DB；DB 不是 WAL 模式，且沒有 `-wal`、`-shm`、`-journal`；clone 前後來源的 sha256 相同，且等於 clone 的 sha256；clone 通過 `PRAGMA quick_check`。
-    - 一批只做一次備份。該批讀回確認無誤後，前一批的備份才可以清除；清除備份需要 Owner 的授權句。
-    - 正式回放庫（`replay-backfill.sqlite3`）的合併前備份只保留最新 2 份，以合併卡收據的時間排序（不以檔案 mtime 排序，因為 clone 備份保留來源檔的 mtime）。新一批的備份建立並讀回確認無誤後，超過 2 份的舊備份先移到 `data/databases/backups/_quarantine_<YYYYMMDD>/` 隔離；隔離滿 24 小時，且沒有任務因此失敗，才可以永久刪除。隔離與刪除都需要 Owner 的授權句，由資料庫整合 Planner 擬卡；執行前再掃一次未完成任務的 Packet，確認沒有引用。這條只管 `replay-backfill.sqlite3` 的備份，其他資料庫的備份另案。
-    - clone 只能當「合併失敗時還原」的依據，不能取代離線備份。不要預期它省空間：2026-11-10 取樣核對，合併後的 clone 備份幾乎不與正式庫共用區塊，每份備份以約一個正式庫大小（約 2 GB）估算磁碟。正式回測庫的離線備份（雲端批次）另由 Owner 決定。
+    - 一批只做一次備份。該批讀回確認無誤後，前一批的備份才可以清除；正式回放庫照下一條，其他資料庫清除備份需要 Owner 的授權句。
+    - 正式回放庫（`replay-backfill.sqlite3`）的合併前備份只保留最新 1 份（Owner 2026-11-17）：新一批的備份建立、該批匯入並讀回確認無誤後，執行這批合併卡的任務直接刪除前一份備份，不必另取授權；收據記下被刪備份的路徑、大小、SHA-256 與刪除時間。新舊以合併卡收據的時間判斷，不以檔案 mtime（clone 保留來源檔的 mtime）。
+    - clone 只能當「合併失敗時還原」的依據，不能取代離線備份。不要預期它省空間：2026-11-10 取樣核對，合併後的 clone 備份幾乎不與正式庫共用區塊，每份備份以約一個正式庫大小估算磁碟（2026-11-17 約 4.4 GiB）。正式回測庫的離線備份（雲端批次）另由 Owner 決定。
 - 資料進正式庫不等於 UI 看得到：策略清單頁（`/api/v1/replay-backfill/strategies`）逐項列出程式裡 `replay_strategy_inventory` 的策略，再去正式庫補資料。`UI_REPLAY` 的 Packet 若涉及新的策略，必須同時列出「登記進 `replay_strategy_inventory`」這項程式變更與負責的支線，並在 `MERGE_PENDING.json` 記 `in_code_inventory`。
 - 每個 cell 的 payload 帶 `source_history_provenance_status`；標記為 `UNKNOWN` 或 `UNVERIFIED` 的結果，合併卡要把這個狀態寫進收據，並由 Owner 在授權句中明確同意收進正式庫。UI 目前不顯示這個欄位。
 - 例外：Owner 對某一張卡明確授權時，該 Packet 可直接寫入已登記的正式目標；仍要租約、writer.lock、寫入前備份、前後列數與 API 讀回。
@@ -97,9 +98,14 @@
 - 每次修改登記表或 INDEX.json，在同一步驟於 `data/databases/REGISTRY_CHANGELOG.jsonl` 追加一行，內容包括時間、TASK_ID、檔名、修改前與修改後的 sha256、授權句位置。
 - 核對期間發現資源的雜湊變了：
   - 變的是登記表或 `legacy/INDEX.json`：先查 `REGISTRY_CHANGELOG.jsonl`。新雜湊對得上一筆有授權的變更，就依新狀態重新核對一次，並在收據註明；對不上，才以 BLOCKED 回報「未知寫入者」。
-  - 變的是正式回放庫的內容（登記表沒變）：`REGISTRY_CHANGELOG.jsonl` 不記這種變更，不能拿它當依據。改查資料庫整合任務的合併收據：在你記下起始狀態之後、結束核對之前，`.task-data/<YYYYMMDD>/` 底下有 task_id 含 `MERGE` 的任務，其 `result.json` 的 `task_lifecycle_state` 為 COMPLETED，記有授權檔路徑與合併前備份路徑，且備份大小等於你記下的起始大小（內容雜湊以 SQLite backup API 快照計算，可能與備份檔的檔案雜湊不同，以大小與時間窗為準）。對得上，就依新狀態重新核對一次，在收據註明該合併任務的 TASK_ID，不算未知寫入者、不算 INCIDENT；對不上，才以 BLOCKED 回報「未知寫入者」。
+  - 變的是正式回放庫的內容（登記表沒變）：`REGISTRY_CHANGELOG.jsonl` 不記這種變更，不能拿它當依據。改查資料庫整合任務的合併收據：在你記下起始狀態之後、結束核對之前，`.task-data/<YYYYMMDD>/` 底下有 task_id 含 `MERGE` 的任務，其 `result.json` 的 `task_lifecycle_state` 為 COMPLETED，記有授權檔路徑與合併前備份路徑，且備份大小等於你記下的起始大小（以大小與時間窗為準）。對得上，就依新狀態重新核對一次，在收據註明該合併任務的 TASK_ID，不算未知寫入者、不算 INCIDENT；對不上，才以 BLOCKED 回報「未知寫入者」。
 - 正式 SQLite DB 的寫入入口先取得 `<DB 檔名>.writer.lock` 的獨佔檔案鎖，再用 `BEGIN IMMEDIATE`；拿不到鎖就立刻失敗，不等待。寫入入口提交進 Git 之前沒有統一入口，寫入前一律先取得上面的租約。
-- 內容雜湊對快照計算：用 SQLite backup API 複製到 `.task-data/_scratch/` 再算，不直接對使用中的檔計算。
+- 讀取或計算使用中 SQLite 的內容雜湊時，不要複製整個資料庫：
+  - rollback journal 模式（`PRAGMA journal_mode` 回 `delete`；正式回放庫就是）：用唯讀連線（`file:<路徑>?mode=ro`）開一個讀取交易，在交易內讀資料或算檔案 SHA-256，算完立刻結束交易。交易期間寫入者無法提交，所以看到別人的 WRITE 租約時先等它結束，也不要讓交易拖長（正式回放庫整檔算一次約 5–15 秒）。算檔案 SHA-256 用這條指令：
+
+        /Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/python -B -c 'import sqlite3,hashlib,sys;p=sys.argv[1];c=sqlite3.connect(f"file:{p}?mode=ro",uri=True,isolation_level=None);c.execute("BEGIN");c.execute("SELECT count(*) FROM sqlite_master").fetchone();h=hashlib.sha256();f=open(p,"rb");[h.update(b) for b in iter(lambda:f.read(1<<20),b"")];print(h.hexdigest());c.execute("COMMIT")' <DB 路徑>
+
+  - WAL 模式：照舊用 SQLite backup API 複製到 `.task-data/_scratch/` 再算，算完刪掉副本。
 
 ## JSON 輸出
 

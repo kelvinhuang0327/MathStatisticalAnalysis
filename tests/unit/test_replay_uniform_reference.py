@@ -1,7 +1,10 @@
+# pyright: reportPrivateUsage=false
 from copy import deepcopy
 from math import comb
 from pathlib import Path
+from typing import Any, Protocol, cast
 
+import httpx
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -11,8 +14,12 @@ from lottolab.infrastructure.persistence.replay_backfill_store import SQLiteBack
 from lottolab.interfaces.api.replay_backfill import _prediction_item, create_replay_backfill_router
 
 
-def _example(k: int = 3) -> tuple[dict, dict]:
-    identity = {
+class JsonTestClient(Protocol):
+    def get(self, url: str, **kwargs: object) -> httpx.Response: ...
+
+
+def _example(k: int = 3) -> tuple[dict[str, Any], dict[str, Any]]:
+    identity: dict[str, Any] = {
         "lottery_type": "BIG_LOTTO",
         "strategy_id": "candidate",
         "strategy_version": "v1",
@@ -21,14 +28,18 @@ def _example(k: int = 3) -> tuple[dict, dict]:
         "cell_identity": "cell",
         "run_id": "run",
     }
-    tickets = [{"ticket_position": 1, "main_numbers": [1, 2, 3, 4, 5, 6], "special_number": None}]
-    hits = [{"ticket_position": 1, "zone1_hits": 2, "zone2_hit": True, "prize_tier": "SEVENTH"}]
+    tickets: list[dict[str, Any]] = [
+        {"ticket_position": 1, "main_numbers": [1, 2, 3, 4, 5, 6], "special_number": None}
+    ]
+    hits: list[dict[str, Any]] = [
+        {"ticket_position": 1, "zone1_hits": 2, "zone2_hit": True, "prize_tier": "SEVENTH"}
+    ]
     for n in range(2, k + 1):
         tickets.append(
             {"ticket_position": n, "main_numbers": [20, 21, 22, 23, 24, 25], "special_number": None}
         )
         hits.append({"ticket_position": n, "zone1_hits": 0, "zone2_hit": False, "prize_tier": None})
-    payload = {key: value for key, value in identity.items() if key != "run_id"}
+    payload: dict[str, Any] = {key: value for key, value in identity.items() if key != "run_id"}
     payload.update(
         {
             "execution_status": "COMPLETE",
@@ -77,7 +88,7 @@ def test_incomplete_or_inconsistent_evidence_is_unknown(defect: str) -> None:
 
 def test_summary_paginates_and_excludes_unknown_without_losing_provenance() -> None:
     template, base = _example()
-    rows = []
+    rows: list[dict[str, Any]] = []
     for n in range(251):
         payload, identity = deepcopy(template), deepcopy(base)
         identity.update({"target_draw_id": str(100000000 + n), "cell_identity": f"cell-{n}"})
@@ -104,14 +115,14 @@ def test_summary_paginates_and_excludes_unknown_without_losing_provenance() -> N
         )
 
     class Store:
-        def prediction_page(self, **kwargs: object) -> dict:
+        def prediction_page(self, **kwargs: Any) -> dict[str, Any]:
             after = kwargs["after"]
             start = 0 if after is None else int(after[1]) - 100000000 + 1
             return {"run_id": "run", "total_count": 251, "rows": rows[start : start + 251]}
 
     app = FastAPI()
     app.include_router(create_replay_backfill_router(Store()))  # type: ignore[arg-type]
-    response = TestClient(app).get(
+    response = cast(JsonTestClient, TestClient(app)).get(
         "/api/v1/replay-backfill/uniform-eight-reference",
         params={"strategy_id": "candidate", "run_id": "run"},
     )
@@ -153,14 +164,14 @@ def test_persisted_reference_conflict_fails_closed() -> None:
     payload, identity = _example()
 
     class Store:
-        def prediction_page(self, **kwargs: object) -> dict:
+        def prediction_page(self, **kwargs: Any) -> dict[str, Any]:
             return {
                 "run_id": "run",
                 "total_count": 1,
                 "rows": [{"payload": payload, "identity": identity}],
             }
 
-        def run_manifest(self, run_id: str) -> dict:
+        def run_manifest(self, run_id: str) -> dict[str, Any]:
             return {
                 "reference_projection": {
                     "metric_id": "REFERENCE_FIXED_EIGHT_TIER_ANY_PRIZE",
@@ -170,7 +181,7 @@ def test_persisted_reference_conflict_fails_closed() -> None:
 
     app = FastAPI()
     app.include_router(create_replay_backfill_router(Store()))  # type: ignore[arg-type]
-    response = TestClient(app).get(
+    response = cast(JsonTestClient, TestClient(app)).get(
         "/api/v1/replay-backfill/uniform-eight-reference",
         params={"strategy_id": "candidate", "run_id": "run"},
     )
@@ -183,7 +194,7 @@ def test_disjoint_k3_baseline_is_an_explicit_theoretical_comparison() -> None:
     payload["predicted_tickets"][2]["main_numbers"] = [30, 31, 32, 33, 34, 35]
 
     class Store:
-        def prediction_page(self, **kwargs: object) -> dict:
+        def prediction_page(self, **kwargs: Any) -> dict[str, Any]:
             return {
                 "run_id": "run",
                 "total_count": 1,
@@ -197,7 +208,7 @@ def test_disjoint_k3_baseline_is_an_explicit_theoretical_comparison() -> None:
 
     app = FastAPI()
     app.include_router(create_replay_backfill_router(Store()))  # type: ignore[arg-type]
-    result = TestClient(app).get(
+    result = cast(JsonTestClient, TestClient(app)).get(
         "/api/v1/replay-backfill/uniform-eight-reference",
         params={"strategy_id": "candidate", "run_id": "run"},
     )

@@ -897,7 +897,11 @@ def create_replay_backfill_router(store: SQLiteBackfillStore | None) -> APIRoute
         except Exception:
             return _error(503, "REPLAY_BACKFILL_UNAVAILABLE")
 
-    @router.get("/uniform-eight-reference", response_model=ReplayUniformEightSummaryView)
+    @router.get(
+        "/uniform-eight-reference",
+        response_model=ReplayUniformEightSummaryView,
+        responses={422: {"model": ApiValidationErrorResponse}},
+    )
     def uniform_eight_summary(
         strategy_id: Annotated[str, Query(min_length=1, max_length=_MAX_ID_LENGTH)],
         run_id: Annotated[str | None, Query(min_length=1, max_length=_MAX_ID_LENGTH)] = None,

@@ -173,6 +173,7 @@ _ALLOWED_OPENAPI_OPERATIONS = {
     "/api/v1/replay-backfill/predictions": frozenset({"get"}),
     "/api/v1/replay-backfill/coverage": frozenset({"get"}),
     "/api/v1/replay-backfill/results": frozenset({"get"}),
+    "/api/v1/replay-backfill/uniform-eight-reference": frozenset({"get"}),
     "/api/v1/replay-backfill/runs": frozenset({"get"}),
     "/api/v1/replay-backfill/runs/{run_id}": frozenset({"get"}),
     "/api/v1/replay-strategy-inventory": frozenset({"get"}),
@@ -202,6 +203,7 @@ _FORBIDDEN_ROUTE_WORD_EXCEPTION_PATHS = frozenset(
         "/api/v1/replay-backfill/predictions",
         "/api/v1/replay-backfill/coverage",
         "/api/v1/replay-backfill/results",
+        "/api/v1/replay-backfill/uniform-eight-reference",
         "/api/v1/replay-backfill/runs",
         "/api/v1/replay-backfill/runs/{run_id}",
         "/api/v1/replay-strategy-inventory",
@@ -239,7 +241,9 @@ exact-operation-set check below still fails closed on method or path drift.
 
 The exact GET-only ``/api/v1/replay-backfill`` routes query the explicitly
 configured read-only backfill store; cursor values are returned to the caller
-and are not persisted. ``/api/v1/replay-strategy-inventory`` reads the
+and are not persisted. The uniform-eight reference route reads saved tickets
+and adds a read-only research projection without altering official prize
+results. ``/api/v1/replay-strategy-inventory`` reads the
 packaged strategy inventory. These operations do not create backfills, execute
 strategies, or write database state. The exact B649 sealed-084 replay paths
 are GET-only reads over pinned source evidence; they execute no strategy and

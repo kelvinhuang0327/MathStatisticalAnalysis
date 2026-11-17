@@ -31,6 +31,7 @@ import {
 import type { LotteryType } from '../../api/strategies'
 import {
   getReplayBackfillCoverage,
+  getUniformEightSummary,
   isValidReplayDateRange,
   listReplayBackfillPredictions,
   listReplayBackfillStrategies,
@@ -45,6 +46,7 @@ import {
   type ReplayBackfillPredictionItem,
   type ReplayBackfillStrategyItem,
   type ReplayStrategyInventoryItem,
+  type UniformEightSummary,
 } from '../../api/replayBackfill'
 import { lotteryTypeDisplayLabel } from '../../utils/lotteryDisplayLabel'
 import LotteryNumberBall from '../../components/LotteryNumberBall.vue'
@@ -98,6 +100,9 @@ const backfillPredictionRunId = ref('')
 const backfillPredictionTotal = ref(0)
 const backfillPredictionCursor = ref<string | null>(null)
 const backfillPredictionHasQueried = ref(false)
+const uniformReferenceState = ref<LoadState>('idle')
+const uniformReferenceError = ref('')
+const uniformReference = ref<UniformEightSummary | null>(null)
 
 const isPartialCoverage = computed(() => {
   if (!coverage.value) return false
@@ -112,10 +117,12 @@ let backfillStrategyController: AbortController | undefined
 let strategyInventoryController: AbortController | undefined
 let backfillCoverageController: AbortController | undefined
 let backfillPredictionsController: AbortController | undefined
+let uniformReferenceController: AbortController | undefined
 let backfillStrategyGeneration = 0
 let strategyInventoryGeneration = 0
 let backfillCoverageGeneration = 0
 let backfillPredictionsGeneration = 0
+let uniformReferenceGeneration = 0
 
 interface ReplayStrategyCatalogRow {
   strategy_id: string
@@ -375,6 +382,11 @@ function predictionCutoffLabel(item: ReplayBackfillPredictionItem): string {
 }
 
 function clearPredictionResults(): void {
+  uniformReferenceController?.abort()
+  uniformReferenceGeneration += 1
+  uniformReferenceState.value = 'idle'
+  uniformReferenceError.value = ''
+  uniformReference.value = null
   backfillPredictionsController?.abort()
   backfillPredictionsGeneration += 1
   backfillPredictionsState.value = 'idle'
@@ -591,10 +603,33 @@ async function loadBackfillPredictionPage(loadMore: boolean): Promise<void> {
     backfillPredictionTotal.value = page.total_count
     backfillPredictionCursor.value = page.next_cursor
     backfillPredictionsState.value = backfillPredictions.value.length ? 'ready' : 'empty'
+    if (!loadMore && query.lotteryType === 'BIG_LOTTO' && query.strategyId && page.run_id) {
+      void loadUniformReference({ ...query, strategyId: query.strategyId, runId: page.run_id })
+    }
   } catch (error) {
     if (controller.signal.aborted || generation !== backfillPredictionsGeneration) return
     backfillPredictionsError.value = requestErrorMessage(error, '無法查詢正式 Replay 資料')
     backfillPredictionsState.value = 'error'
+  }
+}
+
+async function loadUniformReference(
+  query: Parameters<typeof getUniformEightSummary>[0],
+): Promise<void> {
+  uniformReferenceController?.abort()
+  const controller = new AbortController()
+  uniformReferenceController = controller
+  const generation = ++uniformReferenceGeneration
+  uniformReferenceState.value = 'loading'
+  try {
+    const summary = await getUniformEightSummary(query, controller.signal)
+    if (controller.signal.aborted || generation !== uniformReferenceGeneration) return
+    uniformReference.value = summary
+    uniformReferenceState.value = summary.groups.length ? 'ready' : 'empty'
+  } catch (error) {
+    if (controller.signal.aborted || generation !== uniformReferenceGeneration) return
+    uniformReferenceError.value = requestErrorMessage(error, '無法查詢研究參考成功率')
+    uniformReferenceState.value = 'error'
   }
 }
 
@@ -1043,6 +1078,7 @@ onBeforeUnmount(() => {
   strategyInventoryController?.abort()
   backfillCoverageController?.abort()
   backfillPredictionsController?.abort()
+  uniformReferenceController?.abort()
 })
 function nullableText(value: string | null | undefined): string {
   return value ?? '—'
@@ -1754,6 +1790,25 @@ function predictedNumbers(value: number[] | null | undefined): string {
 
       <section class="panel replay-backfill-section" aria-labelledby="backfill-results-title">
         <h3 id="backfill-results-title">3. Historical prediction list</h3>
+        <div v-if="uniformReferenceState === 'loading'" class="state-panel">正在計算統一八獎級研究參考…</div>
+        <div v-else-if="uniformReferenceState === 'error'" class="state-panel state-panel--error" role="alert">{{ uniformReferenceError }}</div>
+        <section v-else-if="uniformReferenceState === 'ready' && uniformReference" aria-label="統一八獎級研究參考" data-testid="uniform-eight-summary">
+          <h4>統一八獎級研究參考</h4>
+          <p>以同一八獎級回看模擬票，與既有歷史規則結果分開；歷史規則來源仍須核實，不代表實際中獎、收益或未來表現。</p>
+          <ul>
+            <li v-for="group in uniformReference.groups" :key="`${group.strategy_version}-${group.ticket_count}`">
+              版本 {{ group.strategy_version }} · K={{ group.ticket_count ?? 'UNKNOWN' }}：
+              {{ group.successes }}／{{ group.scorable_draws }} 期 ·
+              {{ group.success_rate_percent === null ? 'UNKNOWN' : `${group.success_rate_percent.toFixed(2)}%` }}；
+              無法評分 {{ group.unknown_draws }} 期；來源未驗證 {{ group.unknown_provenance_draws }} 期。
+              <template v-if="group.baseline_success_rate_percent !== null && group.difference_from_baseline_pp !== null">
+                公平隨機開獎理論基準 {{ group.baseline_success_rate_percent.toFixed(2) }}%；
+                差 {{ group.difference_from_baseline_pp >= 0 ? '+' : '' }}{{ group.difference_from_baseline_pp.toFixed(2) }} 個百分點。
+              </template>
+              <template v-else>理論基準 UNKNOWN。</template>
+            </li>
+          </ul>
+        </section>
         <p v-if="backfillPredictionsState === 'loading'" class="state-panel" data-testid="backfill-predictions-loading">
           Loading replay results…
         </p>
@@ -1776,7 +1831,8 @@ function predictedNumbers(value: number[] | null | undefined): string {
                 <th scope="col">Official main numbers</th>
                 <th scope="col">{{ actualSpecialLabel(backfillLotteryType) }}</th>
                 <th scope="col">Ticket hits</th>
-                <th scope="col">Portfolio any prize</th>
+                <th scope="col">既有歷史規則結果（來源待核）</th>
+                <th v-if="backfillLotteryType === 'BIG_LOTTO'" scope="col">統一八獎級研究參考</th>
                 <th scope="col">Strategy data status</th>
               </tr>
             </thead>
@@ -1846,6 +1902,7 @@ function predictedNumbers(value: number[] | null | undefined): string {
                   </details>
                 </td>
                 <td>{{ portfolioAnyPrizeLabel(item.portfolio_any_prize, item) }}</td>
+                <td v-if="backfillLotteryType === 'BIG_LOTTO'">{{ item.uniform_eight_reference?.status === 'SCORABLE' ? (item.uniform_eight_reference.any_prize ? '符合' : '未符合') : 'UNKNOWN' }}</td>
                 <td>
                   <strong>{{ dataStatusLabel(item.data_status) }}</strong>
                   <p class="replay-backfill-reason">{{ dataStatusReason(item.data_status) }}</p>

@@ -48,6 +48,7 @@ import {
 } from '../../api/replayBackfill'
 import { lotteryTypeDisplayLabel } from '../../utils/lotteryDisplayLabel'
 import LotteryNumberBall from '../../components/LotteryNumberBall.vue'
+import K3ComparisonPanel from './K3ComparisonPanel.vue'
 import {
   assessReplayScoreTrust,
   type ReplayScoreTrustAssessment,
@@ -1534,6 +1535,8 @@ function predictedNumbers(value: number[] | null | undefined): string {
         Read-only, per-draw historical results returned by the Replay Backfill API. This view does
         not run strategies, rebuild data, or retrain models.
       </p>
+
+      <K3ComparisonPanel v-if="backfillLotteryType === 'BIG_LOTTO'" />
 
       <section class="panel replay-backfill-section" aria-labelledby="backfill-query-title">
         <h3 id="backfill-query-title">1. Query conditions</h3>

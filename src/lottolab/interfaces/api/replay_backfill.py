@@ -14,6 +14,7 @@ import json
 import os
 from collections.abc import Callable
 from datetime import date
+from fractions import Fraction
 from pathlib import Path
 from typing import Annotated, Literal, cast
 
@@ -286,6 +287,36 @@ class ReplayBackfillPredictionPageResponse(BaseModel):
     total_count: int = Field(ge=0)
     items: list[ReplayBackfillPredictionItemView]
     next_cursor: str | None
+
+
+class K3ComparisonRowView(BaseModel):
+    """One candidate draw paired to its saved original, or an explicit gap."""
+
+    target_draw_number: str
+    target_draw_date: str
+    match_status: str
+    source_segment: str | None
+    original_source_run_id: str | None
+    old_cell_identity: str | None
+    old: ReplayBackfillPredictionItemView | None
+    new: ReplayBackfillPredictionItemView
+
+
+class K3ComparisonResponse(BaseModel):
+    """Exploratory comparison of the fixed saved K3 historical cohort."""
+
+    run_id: str
+    strategy: str
+    target_count: int
+    paired_count: int
+    unmatched_count: int
+    old_wins: int
+    new_wins: int
+    old_only: int
+    new_only: int
+    fair_delta: float | None
+    observed_minus_fair: float | None
+    rows: list[K3ComparisonRowView]
 
 
 class ReplayBackfillCoverageResponse(BaseModel):
@@ -862,6 +893,27 @@ def create_replay_backfill_router(store: SQLiteBackfillStore | None) -> APIRoute
             return _error(503, "REPLAY_BACKFILL_UNAVAILABLE")
 
     @router.get(
+        "/k3-comparison",
+        response_model=K3ComparisonResponse,
+        responses={
+            404: {"model": ReplayBackfillErrorResponse},
+            409: {"model": ReplayBackfillErrorResponse},
+            422: {"model": ApiValidationErrorResponse | ReplayBackfillErrorResponse},
+        },
+    )
+    def k3_comparison(strategy: Literal["optimizer", "ecp"]) -> JsonObject | JSONResponse:
+        if store is None:
+            return _error(503, "REPLAY_BACKFILL_NOT_CONFIGURED")
+        try:
+            return _build_k3_comparison(store, strategy)
+        except KeyError:
+            return _error(404, "K3_COMPARISON_NOT_AVAILABLE")
+        except ValueError:
+            return _error(409, "K3_COMPARISON_AMBIGUOUS")
+        except Exception:
+            return _error(503, "REPLAY_BACKFILL_UNAVAILABLE")
+
+    @router.get(
         "/predictions",
         response_model=ReplayBackfillPredictionPageResponse,
         responses={422: {"model": ApiValidationErrorResponse | ReplayBackfillErrorResponse}},
@@ -1111,6 +1163,143 @@ def create_replay_backfill_router(store: SQLiteBackfillStore | None) -> APIRoute
             return _error(503, "REPLAY_BACKFILL_UNAVAILABLE")
 
     return router
+
+
+_K3_COMPARISON_RUN = "779b5522cc2c7400fb03256199726f07d1c23c396f0e6ad9abd536e5485e9f2e"
+_K3_COMPARISON_STRATEGIES = {
+    "optimizer": (
+        "research_biglotto__k3_nonoverlap_optimizer_candidate_20261116",
+        "legacy_biglotto__biglotto_3bet_optimizer__2835d6cb20c5",
+    ),
+    "ecp": (
+        "research_biglotto__k3_nonoverlap_ecp_candidate_20261116",
+        "legacy_biglotto__test_ecp__c9d5ac6decdd",
+    ),
+}
+
+
+def _build_k3_comparison(store: SQLiteBackfillStore, strategy: str) -> JsonObject:
+    """Pair the fixed cohort by saved source identity; never pick an arbitrary run."""
+    new_id, old_id = _K3_COMPARISON_STRATEGIES[strategy]
+    candidates, originals = store.k3_comparison_payloads(_K3_COMPARISON_RUN, new_id, old_id)
+    if not candidates:
+        raise KeyError("candidate run not available")
+    by_cell: dict[str, JsonObject] = {}
+    by_target: dict[str, list[JsonObject]] = {}
+    for record in originals:
+        identity = cast(JsonObject, record["identity"])
+        by_cell[cast(str, identity["cell_identity"])] = record
+        by_target.setdefault(cast(str, identity["target_draw_id"]), []).append(record)
+
+    rows: list[JsonObject] = []
+    seen: set[str] = set()
+    old_wins = new_wins = old_only = new_only = paired = 0
+    fair = Fraction()
+    complete_fair = True
+    for record in candidates:
+        identity = cast(JsonObject, record["identity"])
+        payload = cast(JsonObject, record["payload"])
+        target = cast(str, identity["target_draw_id"])
+        if target in seen:
+            raise ValueError("duplicate candidate target")
+        seen.add(target)
+        source = _as_json_object(payload.get("strategy_source")) or {}
+        original_source = _as_json_object(source.get("original_source_identity")) or {}
+        original_cell = original_source.get("cell_identity")
+        chosen: JsonObject | None = None
+        status = "MISSING_OR_AMBIGUOUS"
+        if isinstance(original_cell, str) and original_cell:
+            chosen = by_cell.get(original_cell)
+            if chosen is not None:
+                status = "ORIGINAL_CELL"
+        elif source.get("source_locator") and original_source:
+            matches: list[JsonObject] = []
+            for possible in by_target.get(target, []):
+                old_payload = cast(JsonObject, possible["payload"])
+                old_source = _as_json_object(old_payload.get("strategy_source")) or {}
+                if (
+                    old_source.get("source_locator") == source.get("source_locator")
+                    and old_source.get("original_source_identity") == original_source
+                    and old_payload.get("winning_numbers") == payload.get("winning_numbers")
+                ):
+                    matches.append(possible)
+            if len(matches) == 1:
+                chosen = matches[0]
+                status = "SOURCE_EVIDENCE"
+        new_view = _prediction_item(payload, {**identity, "run_id": _K3_COMPARISON_RUN}, None)
+        old_view: JsonObject | None = None
+        old_cell_id: str | None = None
+        if chosen is not None:
+            old_identity = cast(JsonObject, chosen["identity"])
+            old_payload = cast(JsonObject, chosen["payload"])
+            if (
+                old_identity.get("target_draw_id") != target
+                or old_identity.get("target_draw_date") != identity.get("target_draw_date")
+                or old_identity.get("strategy_id") != old_id
+                or source.get("original_strategy_id") != old_id
+                or source.get("original_strategy_version") != old_identity.get("strategy_version")
+                or old_payload.get("winning_numbers") != payload.get("winning_numbers")
+                or any(
+                    key in original_source and original_source[key] != old_identity.get(key)
+                    for key in ("dataset_identity", "execution_version", "result_identity")
+                )
+            ):
+                status = "SOURCE_MISMATCH"
+            else:
+                old_cell_id = cast(str, old_identity["cell_identity"])
+                run_ids = cast(list[str], chosen.get("run_ids", []))
+                recorded_run = old_payload.get("run_id")
+                selected_run = (
+                    recorded_run if isinstance(recorded_run, str) and recorded_run in run_ids
+                    else (run_ids[0] if run_ids else None)
+                )
+                old_view = _prediction_item(
+                    old_payload, {**old_identity, "run_id": selected_run}, None
+                )
+                old_win = old_view.get("portfolio_any_prize")
+                new_win = new_view.get("portfolio_any_prize")
+                if type(old_win) is bool and type(new_win) is bool:
+                    paired += 1
+                    old_wins += int(old_win)
+                    new_wins += int(new_win)
+                    old_only += int(old_win and not new_win)
+                    new_only += int(new_win and not old_win)
+                    try:
+                        old_q = cast(JsonObject, payload["fair_old_q"])
+                        new_q = cast(JsonObject, payload["fair_new_q"])
+                        fair += Fraction(int(new_q["numerator"]), int(new_q["denominator"]))
+                        fair -= Fraction(int(old_q["numerator"]), int(old_q["denominator"]))
+                    except (KeyError, TypeError, ValueError, ZeroDivisionError):
+                        complete_fair = False
+                else:
+                    status = "UNSCORED"
+        rows.append({
+            "target_draw_number": target,
+            "target_draw_date": identity["target_draw_date"],
+            "match_status": status,
+            "source_segment": source.get("source_segment"),
+            "original_source_run_id": source.get("original_source_run_id"),
+ "old_cell_identity": old_cell_id,
+            "old": old_view,
+            "new": new_view,
+        })
+    fair_value = float(fair) if complete_fair and paired else None
+    return {
+        "run_id": _K3_COMPARISON_RUN,
+        "strategy": strategy,
+        "target_count": len(rows),
+        "paired_count": paired,
+        "unmatched_count": len(rows) - paired,
+        "old_wins": old_wins,
+        "new_wins": new_wins,
+        "old_only": old_only,
+        "new_only": new_only,
+        "fair_delta": fair_value,
+        "observed_minus_fair": (
+            new_wins - old_wins - fair_value if fair_value is not None else None
+        ),
+        "rows": rows,
+    }
 
 
 def _historical_prize_tier(identity: JsonObject, hit: JsonObject) -> object:

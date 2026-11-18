@@ -1415,6 +1415,12 @@ class _ImportedReplayIdentitySpec:
     source_status: str | None = None
 
 
+_IMPORTED_HISTORY_ONLY_REASON = (
+    "Historical coverage comes from the imported Replay Backfill run. "
+    "No current native executable binding is registered."
+)
+
+
 _IMPORTED_REPLAY_IDENTITIES: tuple[_ImportedReplayIdentitySpec, ...] = (
     _ImportedReplayIdentitySpec(
         lottery_type=LotteryType.BIG_LOTTO,
@@ -1460,6 +1466,63 @@ _IMPORTED_REPLAY_IDENTITIES: tuple[_ImportedReplayIdentitySpec, ...] = (
             "strictly from Replay Backfill DB overlay with no current native executable binding."
         ),
         source_status="CONTROL_BASELINE",
+    ),
+    *(
+        _ImportedReplayIdentitySpec(
+            lottery_type=LotteryType.BIG_LOTTO,
+            strategy_id=f"research_biglotto__submodular_sqrt_native_k{ticket_count}",
+            display_name=f"K{ticket_count} Submodular Sqrt Native (歷史研究策略)",
+            strategy_version="feature-sqrt-native-v1",
+            source_locator=(
+                "replay-backfill:988f6cc979a77e6f5227c0b0f7879fae98ab846de831b97b1e89947df9aa06bb"
+            ),
+            reconstruction_reason=_IMPORTED_HISTORY_ONLY_REASON,
+            source_status="RESEARCH_STRATEGY",
+        )
+        for ticket_count in (6, 7, 8, 10, 11, 12, 25, 54)
+    ),
+    _ImportedReplayIdentitySpec(
+        lottery_type=LotteryType.BIG_LOTTO,
+        strategy_id="research_biglotto__k5_cross_repaired_frozen_20261117_r1",
+        display_name="K5 修正版 (現行補號)",
+        strategy_version="v1.0.0",
+        source_locator="replay-backfill:NUMBER2_A_K5_MATCHED_RANDOM_20261117_R1",
+        reconstruction_reason=_IMPORTED_HISTORY_ONLY_REASON,
+        source_status="RESEARCH_STRATEGY",
+    ),
+    _ImportedReplayIdentitySpec(
+        lottery_type=LotteryType.BIG_LOTTO,
+        strategy_id="research_biglotto__k5_matched_random_frozen_20261117_r1",
+        display_name="K5 修正版 (固定種子隨機基準)",
+        strategy_version="v1.0.0",
+        source_locator="replay-backfill:NUMBER2_A_K5_MATCHED_RANDOM_20261117_R1",
+        reconstruction_reason=_IMPORTED_HISTORY_ONLY_REASON,
+        source_status="CONTROL_BASELINE",
+    ),
+    _ImportedReplayIdentitySpec(
+        lottery_type=LotteryType.BIG_LOTTO,
+        strategy_id="research_biglotto__k3_hedge_official_reference_20261117",
+        display_name="K3 Hedge (歷史研究策略)",
+        strategy_version="v1.0.0",
+        source_locator=(
+            "replay-backfill:4d9a74edeefa2d0953d47c9924b40c2d0a9f2d2f954ea9a48e17c60fb6c94fff"
+        ),
+        reconstruction_reason=_IMPORTED_HISTORY_ONLY_REASON,
+        source_status="RESEARCH_STRATEGY",
+    ),
+    *(
+        _ImportedReplayIdentitySpec(
+            lottery_type=LotteryType.BIG_LOTTO,
+            strategy_id=f"research_biglotto__k30_fixed_{pair_id}",
+            display_name=f"K30 固定配對 {pair_id}",
+            strategy_version="v1",
+            source_locator=(
+                "replay-backfill:3cdaab9ab5339e0b7433a68b6abf3103e268bd46fc089093e8a85dbee14c2c62"
+            ),
+            reconstruction_reason=_IMPORTED_HISTORY_ONLY_REASON,
+            source_status="RESEARCH_STRATEGY",
+        )
+        for pair_id in ("414665013", "414671103")
     ),
 )
 

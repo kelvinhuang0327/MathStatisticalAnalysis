@@ -2,6 +2,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { B649RecordsRequestError } from '../src/api/b649MultiTicketRecords'
 import {
   fetchReplayOverviewData,
   fetchReplayOverviewMatrixData,
@@ -104,10 +105,11 @@ describe('Replay Overview pagination progress & integrity (AC02-AC07)', () => {
     vi.restoreAllMocks()
   })
 
-  it('AC02: partial page advances offset by actual received item count and does not skip items', async () => {
-    const totalRecords = 12
+  it('AC02: dense multi-page progression advances offset cleanly across pages without skipping or duplicating items', async () => {
+    const totalRecords = 102
     const allRecords = Array.from({ length: totalRecords }, (_, idx) => makeMockRecord(idx + 1))
     const requestedOffsets: number[] = []
+    const requestedLimits: number[] = []
 
     vi.stubGlobal('fetch', vi.fn((input: RequestInfo | URL) => {
       const url = String(input)
@@ -121,16 +123,12 @@ describe('Replay Overview pagination progress & integrity (AC02-AC07)', () => {
 
       const urlObj = new URL(url, 'http://localhost')
       const offset = Number(urlObj.searchParams.get('offset') ?? 0)
+      const limit = Number(urlObj.searchParams.get('limit') ?? 100)
       requestedOffsets.push(offset)
+      requestedLimits.push(limit)
 
-      // Page 1 returns 5 items (even though client sent limit=100)
-      // Page 2 should be requested with offset=5, returning remaining 7 items
-      let slice: typeof allRecords
-      if (offset === 0) {
-        slice = allRecords.slice(0, 5)
-      } else {
-        slice = allRecords.slice(offset, offset + 100)
-      }
+      // Dense contract: Page 1 (offset=0, limit=100) returns 100 items; Page 2 (offset=100) returns remaining 2 items
+      const slice = allRecords.slice(offset, offset + limit)
 
       return Promise.resolve({
         ok: true,
@@ -139,7 +137,7 @@ describe('Replay Overview pagination progress & integrity (AC02-AC07)', () => {
           Promise.resolve({
             items: slice,
             total: totalRecords,
-            limit: 100,
+            limit,
             offset,
             prefix_count: 10,
             window: 'FULL',
@@ -151,16 +149,76 @@ describe('Replay Overview pagination progress & integrity (AC02-AC07)', () => {
 
     const result = await fetchReplayOverviewData('B649', 10, 'FULL')
 
-    // Verified: offset advanced by 5 (actual items in page 1), NOT by limit (100)
-    expect(requestedOffsets).toEqual([0, 5])
-    expect(result.items.length).toBe(12)
-    expect(result.items.map((it) => it.strategyId)).toEqual(allRecords.map((r) => r.strategy_id))
-    expect(result.summary.totalStrategies).toBe(12)
+    expect(requestedOffsets).toEqual([0, 100])
+    expect(requestedLimits).toEqual([100, 100])
+    expect(result.items).toHaveLength(102)
+    const receivedIds = result.items.map((it) => it.strategyId)
+    expect(new Set(receivedIds).size).toBe(102)
+    expect(receivedIds).toEqual(allRecords.map((r) => r.strategy_id))
+    expect(result.summary.totalStrategies).toBe(102)
     expect(result.summary.fullUniverseStatus).toBe('COMPLETE')
   })
 
-  it('AC03: empty page with unsatisfied total fails explicitly within finite requests (initial empty page)', async () => {
+  it('AC02 fail-closed: non-final short page is rejected immediately as MALFORMED_RESPONSE', async () => {
+    const totalRecords = 12
+    const allRecords = Array.from({ length: totalRecords }, (_, idx) => makeMockRecord(idx + 1))
     let fetchCalls = 0
+    const requestedOffsets: number[] = []
+
+    vi.stubGlobal('fetch', vi.fn((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url.includes('/summary')) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () => Promise.resolve(makeMockSummary(true, totalRecords)),
+        } as Response)
+      }
+
+      fetchCalls++
+      const urlObj = new URL(url, 'http://localhost')
+      const offset = Number(urlObj.searchParams.get('offset') ?? 0)
+      requestedOffsets.push(offset)
+
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: () =>
+          Promise.resolve({
+            items: allRecords.slice(0, 5),
+            total: totalRecords,
+            limit: 100,
+            offset,
+            prefix_count: 10,
+            window: 'FULL',
+            criterion: 'M3_PLUS',
+            research_disclaimer: RESEARCH_DISCLAIMER,
+          }),
+      } as Response)
+    }))
+
+    let resolvedResult: unknown = null
+    let caughtError: unknown = null
+    try {
+      resolvedResult = await fetchReplayOverviewData('B649', 10, 'FULL')
+    } catch (error) {
+      caughtError = error
+    }
+
+    expect(resolvedResult).toBeNull()
+    expect(caughtError).toBeInstanceOf(B649RecordsRequestError)
+    expect(caughtError).toMatchObject({
+      kind: 'MALFORMED_RESPONSE',
+      status: 200,
+      message: 'The server response did not match the pinned B649 contract.',
+    })
+    expect(fetchCalls).toBe(1)
+    expect(requestedOffsets).toEqual([0])
+  })
+
+  it('AC03: empty page with unsatisfied total fails explicitly as MALFORMED_RESPONSE on first records request (initial empty page)', async () => {
+    let fetchCalls = 0
+    const requestedOffsets: number[] = []
 
     vi.stubGlobal('fetch', vi.fn((input: RequestInfo | URL) => {
       const url = String(input)
@@ -173,6 +231,9 @@ describe('Replay Overview pagination progress & integrity (AC02-AC07)', () => {
       }
 
       fetchCalls++
+      const urlObj = new URL(url, 'http://localhost')
+      requestedOffsets.push(Number(urlObj.searchParams.get('offset') ?? 0))
+
       return Promise.resolve({
         ok: true,
         status: 200,
@@ -190,15 +251,30 @@ describe('Replay Overview pagination progress & integrity (AC02-AC07)', () => {
       } as Response)
     }))
 
-    await expect(fetchReplayOverviewData('B649', 10, 'FULL')).rejects.toThrow(
-      /Incomplete B649 strategy universe: received 0 items but total is 10/,
-    )
+    let resolvedResult: unknown = null
+    let caughtError: unknown = null
+    try {
+      resolvedResult = await fetchReplayOverviewData('B649', 10, 'FULL')
+    } catch (error) {
+      caughtError = error
+    }
 
-    // Terminated immediately on the 1st records page request without looping
+    expect(resolvedResult).toBeNull()
+    expect(caughtError).toBeInstanceOf(B649RecordsRequestError)
+    expect(caughtError).toMatchObject({
+      kind: 'MALFORMED_RESPONSE',
+      status: 200,
+      message: 'The server response did not match the pinned B649 contract.',
+    })
+
+    // Terminated immediately on the 1st records page request without looping or treating missing data as valid empty
     expect(fetchCalls).toBe(1)
+    expect(requestedOffsets).toEqual([0])
   })
 
-  it('AC03 & AC05: empty page with unsatisfied total fails mid-stream and does not claim COMPLETE or fabricate data', async () => {
+  it('AC03 & AC05: empty page with unsatisfied total fails mid-stream as MALFORMED_RESPONSE and does not claim COMPLETE or fabricate data', async () => {
+    const totalRecords = 103
+    const firstPageItems = Array.from({ length: 100 }, (_, idx) => makeMockRecord(idx + 1))
     let fetchCalls = 0
     const requestedOffsets: number[] = []
 
@@ -208,7 +284,7 @@ describe('Replay Overview pagination progress & integrity (AC02-AC07)', () => {
         return Promise.resolve({
           ok: true,
           status: 200,
-          json: () => Promise.resolve(makeMockSummary(true, 10)),
+          json: () => Promise.resolve(makeMockSummary(true, totalRecords)),
         } as Response)
       }
 
@@ -223,8 +299,8 @@ describe('Replay Overview pagination progress & integrity (AC02-AC07)', () => {
           status: 200,
           json: () =>
             Promise.resolve({
-              items: [makeMockRecord(1), makeMockRecord(2), makeMockRecord(3)],
-              total: 10,
+              items: firstPageItems,
+              total: totalRecords,
               limit: 100,
               offset: 0,
               prefix_count: 10,
@@ -235,16 +311,16 @@ describe('Replay Overview pagination progress & integrity (AC02-AC07)', () => {
         } as Response)
       }
 
-      // Next request at offset 3 returns empty items but total is still 10
+      // Next request at offset 100 returns empty items even though 3 records remain
       return Promise.resolve({
         ok: true,
         status: 200,
         json: () =>
           Promise.resolve({
             items: [],
-            total: 10,
+            total: totalRecords,
             limit: 100,
-            offset: 3,
+            offset: 100,
             prefix_count: 10,
             window: 'FULL',
             criterion: 'M3_PLUS',
@@ -253,13 +329,25 @@ describe('Replay Overview pagination progress & integrity (AC02-AC07)', () => {
       } as Response)
     }))
 
-    await expect(fetchReplayOverviewData('B649', 10, 'FULL')).rejects.toThrow(
-      /Incomplete B649 strategy universe: received 3 items but total is 10/,
-    )
+    let resolvedResult: unknown = null
+    let caughtError: unknown = null
+    try {
+      resolvedResult = await fetchReplayOverviewData('B649', 10, 'FULL')
+    } catch (error) {
+      caughtError = error
+    }
 
-    // Bounded: terminated cleanly in exactly 2 requests
+    expect(resolvedResult).toBeNull()
+    expect(caughtError).toBeInstanceOf(B649RecordsRequestError)
+    expect(caughtError).toMatchObject({
+      kind: 'MALFORMED_RESPONSE',
+      status: 200,
+      message: 'The server response did not match the pinned B649 contract.',
+    })
+
+    // Bounded: terminated cleanly on the 2nd records request with no 3rd request
     expect(fetchCalls).toBe(2)
-    expect(requestedOffsets).toEqual([0, 3])
+    expect(requestedOffsets).toEqual([0, 100])
   })
 
   it('AC04: legal empty catalog preserves valid empty results with fullUniverseStatus COMPLETE', async () => {

@@ -2222,6 +2222,10 @@ function predictedNumbers(value: number[] | null | undefined): string {
                 <td>{{ lotteryLabel(strategy.lottery_type) }}</td>
                 <td>{{ lifecycleLabel(strategy.lifecycle_status) }}</td>
                 <td v-if="strategy.replay_history">
+                  <template v-if="strategy.from_inventory && strategy.strategy_id !== HEDGE_K3_STRATEGY_ID && !(strategy.data_status === 'NO_HISTORY' && strategy.replay_history.status === 'HAS_HISTORY')">
+                    <strong>{{ dataStatusLabel(strategy.data_status) }}</strong>
+                    <p class="replay-backfill-reason">Inventory · {{ dataStatusReason(strategy.data_status) }}</p>
+                  </template>
                   <strong>{{ replayHistoryLabel(strategy.replay_history.status) }}</strong>
                   <p class="replay-backfill-reason">Replay API · 目前 Run 與版本</p>
                 </td>

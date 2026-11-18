@@ -260,6 +260,7 @@ describe('Replay history scope display and empty results (AC1 - AC7)', () => {
 
     expect(wrapper.get('[data-testid="backfill-catalog-scope"]').text()).toContain('latest-run')
     expect(catalogCells(0)[3]).toContain('有歷史資料')
+    expect(catalogCells(0)[3]).not.toContain('無歷史資料')
     expect(catalogCells(0)[5]).toBe('已保存預測 7 筆')
     expect(catalogCells(1)[3]).toBe('本 Run 的歷史狀態待確認')
     expect(catalogCells(1)[5]).toBe('API未提供')

@@ -86,6 +86,7 @@ Owner 2026-11-17：所有研究策略都要用歷史資料回測出的成功率�
     - 一批只做一次備份。該批讀回確認無誤後，前一批的備份才可以清除；清除備份需要 Owner 的授權句。
     - 正式回放庫（`replay-backfill.sqlite3`）的合併前備份只保留最新 2 份，以合併卡收據的時間排序（不以檔案 mtime 排序，因為 clone 備份保留來源檔的 mtime）。新一批的備份建立並讀回確認無誤後，超過 2 份的舊備份先移到 `data/databases/backups/_quarantine_<YYYYMMDD>/` 隔離；隔離滿 24 小時，且沒有任務因此失敗，才可以永久刪除。隔離與刪除都需要 Owner 的授權句，由資料庫整合 Planner 擬卡；執行前再掃一次未完成任務的 Packet，確認沒有引用。這條只管 `replay-backfill.sqlite3` 的備份，其他資料庫的備份另案。
     - clone 只能當「合併失敗時還原」的依據，不能取代離線備份。不要預期它省空間：2026-11-10 取樣核對，合併後的 clone 備份幾乎不與正式庫共用區塊，每份備份以約一個正式庫大小（約 2 GB）估算磁碟。正式回測庫的離線備份（雲端批次）另由 Owner 決定。
+    - 暫存庫的清理（Owner 2026-11-18）：支線 7 把一個暫存庫合併並從 API 讀回確認無誤後，直接刪除這個暫存庫（`.task-data/_scratch/<名稱>/` 裡的 DB 與其 `MERGE_PENDING.json`），不必另取 Owner 的授權句；每個暫存庫各自讀回、各自刪除。原任務收據補記刪除的路徑、大小、SHA-256 與刪除時間，合併收據寫明對應的正式庫 run_id。尚未合併、讀回未確認、或合併失敗的暫存庫一律保留。不是支線 7 合併的舊暫存檔由支線 6 清理：先確認該暫存庫已被合併並讀回、原研究線沒有執行中的任務還在用，再依 Owner 的授權清理。
 - 資料進正式庫不等於 UI 看得到：策略清單頁（`/api/v1/replay-backfill/strategies`）逐項列出程式裡 `replay_strategy_inventory` 的策略，再去正式庫補資料。`UI_REPLAY` 的 Packet 若涉及新的策略，必須同時列出「登記進 `replay_strategy_inventory`」這項程式變更與負責的支線，並在 `MERGE_PENDING.json` 記 `in_code_inventory`。
 - 每個 cell 的 payload 帶 `source_history_provenance_status`；標記為 `UNKNOWN` 或 `UNVERIFIED` 的結果，合併卡要把這個狀態寫進收據，並由 Owner 在授權句中明確同意收進正式庫。UI 目前不顯示這個欄位。
 - 例外：Owner 對某一張卡明確授權時，該 Packet 可直接寫入已登記的正式目標；仍要租約、writer.lock、寫入前備份、前後列數與 API 讀回。

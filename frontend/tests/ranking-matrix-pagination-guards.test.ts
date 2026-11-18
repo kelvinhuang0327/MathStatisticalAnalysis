@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
+import { B649RecordsRequestError } from '../src/api/b649MultiTicketRecords'
 import { fetchRankingData, type RankingRow } from '../src/api/rankingMatrix'
 
 const DISCLAIMER = '歷史成功率、排名與隨機基準差異僅供描述性研究，不構成未來預測、推薦、上線決策或中獎保證。'
@@ -110,8 +111,8 @@ function prefixRecord(index: number): Record<string, unknown> {
     official_random_baseline_delta: '0.040000000000000000',
     unranked_reason: null,
     success_count: index,
-    effective_backtest_draw_count: 100,
-    successful_execution_count: 100,
+    effective_backtest_draw_count: 200,
+    successful_execution_count: 200,
     historical_success_rate: '0.100000000000000000',
     random_baseline_success_rate: '0.060000000000000000',
     random_baseline_rate_difference: '0.040000000000000000',
@@ -120,17 +121,19 @@ function prefixRecord(index: number): Record<string, unknown> {
     window_requested_draws: 300,
     window_complete: true,
     official_prize_counts: { first: 0, second: 0, third: 0, fourth: 0, fifth: 0, sixth: 0, seventh: 0, general: 0 },
-    no_prize_count: 100 - index,
+    no_prize_count: 200 - index,
     report_sha256: 'b'.repeat(64),
     report_file_sha256: 'c'.repeat(64),
     catalog_sha256: HASH,
   }
 }
 
-function recordsFor(ticketCount: PaginatedTicketCount): Record<string, unknown>[] {
-  return ticketCount === 20
-    ? [prefixRecord(1), prefixRecord(2), prefixRecord(3)]
-    : [exactNativeRecord(ticketCount, 1), exactNativeRecord(ticketCount, 2), exactNativeRecord(ticketCount, 3)]
+function recordsFor(ticketCount: PaginatedTicketCount, count = 3): Record<string, unknown>[] {
+  return Array.from({ length: count }, (_, idx) =>
+    ticketCount === 20
+      ? prefixRecord(idx + 1)
+      : exactNativeRecord(ticketCount, idx + 1),
+  )
 }
 
 function installPageMock(ticketCount: PaginatedTicketCount, respond: PageResponder): number[] {
@@ -191,7 +194,7 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
-describe.each([2, 3, 20] as const)('B649 K%s pagination guard', (ticketCount) => {
+describe.each([2, 3] as const)('B649 K%s pagination guard', (ticketCount) => {
   it('advances by received items and preserves strategy order across partial pages', async () => {
     const records = recordsFor(ticketCount)
     const offsets = installPageMock(ticketCount, (offset) => {
@@ -207,7 +210,7 @@ describe.each([2, 3, 20] as const)('B649 K%s pagination guard', (ticketCount) =>
     if (rows === null) return
     expect(rows).toHaveLength(3)
     expect(strategyIds(rows)).toEqual(records.map((record) => String(record.strategy_id)))
-    expect(rows.map((row) => row.officialRank)).toEqual(ticketCount === 20 ? [1, 2, 3] : [null, null, null])
+    expect(rows.map((row) => row.officialRank)).toEqual([null, null, null])
   })
 
   it('fails closed when a page is empty before total is complete', async () => {
@@ -220,7 +223,7 @@ describe.each([2, 3, 20] as const)('B649 K%s pagination guard', (ticketCount) =>
 
     expect(offsets).toEqual([0, 1])
     expect(error).toBeInstanceOf(Error)
-    expect((error as Error).message).toBe(ticketCount === 20 ? 'Incomplete K20 prefix page' : 'Incomplete K2/K3 exact-native page')
+    expect((error as Error).message).toBe('Incomplete K2/K3 exact-native page')
   })
 
   it('preserves one-page and genuinely empty results', async () => {
@@ -236,6 +239,116 @@ describe.each([2, 3, 20] as const)('B649 K%s pagination guard', (ticketCount) =>
     const emptyPageOffsets = installPageMock(ticketCount, () => ({ items: [], total: 0 }))
 
     await expect(fetchRankingData('BIG_LOTTO', ticketCount, 'RECENT_300')).resolves.toEqual([])
+    expect(emptyPageOffsets).toEqual([0])
+  })
+})
+
+describe('B649 K20 dense pagination guard', () => {
+  it('completes a valid single dense page in one request and preserves strategy order', async () => {
+    const records = recordsFor(20, 3)
+    const offsets = installPageMock(20, (offset) => (
+      offset === 0 ? { items: records, total: 3 } : { items: [], total: 3 }
+    ))
+
+    const rows = await fetchRankingData('BIG_LOTTO', 20, 'RECENT_300')
+
+    expect(offsets).toEqual([0])
+    expect(rows).toHaveLength(3)
+    expect(strategyIds(rows)).toEqual(records.map((record) => String(record.strategy_id)))
+    expect(rows.map((row) => row.officialRank)).toEqual([1, 2, 3])
+  })
+
+  it('advances across full dense pages without skipping or duplicating strategies', async () => {
+    const records = recordsFor(20, 102)
+    const offsets = installPageMock(20, (offset) => ({
+      items: records.slice(offset, offset + 100),
+      total: 102,
+    }))
+
+    const rows = await fetchRankingData('BIG_LOTTO', 20, 'RECENT_300')
+
+    expect(offsets).toEqual([0, 100])
+    expect(rows).toHaveLength(102)
+    const ids = strategyIds(rows)
+    expect(new Set(ids).size).toBe(102)
+    expect(ids).toEqual(records.map((record) => String(record.strategy_id)))
+    expect(rows.map((row) => row.officialRank)).toEqual(records.map((_, idx) => idx + 1))
+  })
+
+  it.each([1, 2] as const)('rejects an invalid short page immediately as MALFORMED_RESPONSE (items=%s, total=3)', async (shortCount) => {
+    const records = recordsFor(20, 3)
+    const offsets = installPageMock(20, () => ({
+      items: records.slice(0, shortCount),
+      total: 3,
+    }))
+
+    let resolvedRows: RankingRow[] | null = null
+    let caughtError: unknown = null
+    try {
+      resolvedRows = await fetchRankingData('BIG_LOTTO', 20, 'RECENT_300')
+    } catch (error) {
+      caughtError = error
+    }
+
+    expect(resolvedRows).toBeNull()
+    expect(offsets).toEqual([0])
+    expect(caughtError).toBeInstanceOf(B649RecordsRequestError)
+    expect(caughtError).toMatchObject({
+      kind: 'MALFORMED_RESPONSE',
+      status: 200,
+      message: 'The server response did not match the pinned B649 contract.',
+    })
+  })
+
+  it('rejects an invalid empty page before total is complete without requesting a second page', async () => {
+    const offsets = installPageMock(20, () => ({ items: [], total: 3 }))
+
+    let resolvedRows: RankingRow[] | null = null
+    let caughtError: unknown = null
+    try {
+      resolvedRows = await fetchRankingData('BIG_LOTTO', 20, 'RECENT_300')
+    } catch (error) {
+      caughtError = error
+    }
+
+    expect(resolvedRows).toBeNull()
+    expect(offsets).toEqual([0])
+    expect(caughtError).toBeInstanceOf(B649RecordsRequestError)
+    expect(caughtError).toMatchObject({
+      kind: 'MALFORMED_RESPONSE',
+      status: 200,
+      message: 'The server response did not match the pinned B649 contract.',
+    })
+  })
+
+  it('rejects a mid-stream empty page after a valid dense first page without requesting a third page', async () => {
+    const records = recordsFor(20, 103)
+    const offsets = installPageMock(20, (offset) => (
+      offset === 0 ? { items: records.slice(0, 100), total: 103 } : { items: [], total: 103 }
+    ))
+
+    let resolvedRows: RankingRow[] | null = null
+    let caughtError: unknown = null
+    try {
+      resolvedRows = await fetchRankingData('BIG_LOTTO', 20, 'RECENT_300')
+    } catch (error) {
+      caughtError = error
+    }
+
+    expect(resolvedRows).toBeNull()
+    expect(offsets).toEqual([0, 100])
+    expect(caughtError).toBeInstanceOf(B649RecordsRequestError)
+    expect(caughtError).toMatchObject({
+      kind: 'MALFORMED_RESPONSE',
+      status: 200,
+      message: 'The server response did not match the pinned B649 contract.',
+    })
+  })
+
+  it('preserves genuinely empty results for K20', async () => {
+    const emptyPageOffsets = installPageMock(20, () => ({ items: [], total: 0 }))
+
+    await expect(fetchRankingData('BIG_LOTTO', 20, 'RECENT_300')).resolves.toEqual([])
     expect(emptyPageOffsets).toEqual([0])
   })
 })

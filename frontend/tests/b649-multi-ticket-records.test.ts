@@ -643,20 +643,59 @@ describe('fetchB649MultiTicketRecords response identity', () => {
     })
   })
 
-  it('accepts a legal short page within the requested range', async () => {
-    const query = recordQuery({ limit: 100 })
-    const payload = recordPageForQuery(query, {
+  it.each([
+    {
+      name: 'CASE A: one item on a nonterminal page',
+      query: recordQuery({ limit: 100 }),
       items: [record()],
       total: 135,
-    })
+    },
+    {
+      name: 'CASE B: empty nonterminal page',
+      query: recordQuery({ limit: 100 }),
+      items: [],
+      total: 135,
+    },
+    {
+      name: 'CASE C: incomplete terminal page',
+      query: recordQuery({ limit: 100, offset: 100 }),
+      items: [record()],
+      total: 135,
+    },
+  ])('rejects $name', async ({ query, items, total }) => {
+    const payload = recordPageForQuery(query, { items, total })
     fetchMock.mockResolvedValueOnce(apiResponse(payload))
 
-    await expect(fetchB649MultiTicketRecords(query)).resolves.toMatchObject({
-      items: [expect.objectContaining({ strategy_id: 'legacy_strategy_a' })],
-      total: 135,
-      limit: 100,
-      offset: 0,
+    await expect(fetchB649MultiTicketRecords(query)).rejects.toMatchObject({
+      status: 200,
+      kind: 'MALFORMED_RESPONSE',
     })
+  })
+
+  it.each([
+    {
+      name: 'CASE D: a full first page',
+      query: recordQuery({ limit: 100 }),
+      items: densePageRecords('full-first-page', 100),
+      total: 135,
+    },
+    {
+      name: 'CASE E: a legal short terminal page',
+      query: recordQuery({ limit: 100, offset: 100 }),
+      items: densePageRecords('short-terminal-page', 35),
+      total: 135,
+    },
+    {
+      name: 'CASE F: an empty page beyond total',
+      query: recordQuery({ limit: 100, offset: 150 }),
+      items: [],
+      total: 135,
+    },
+  ])('accepts $name', async ({ query, items, total }) => {
+    const payload = recordPageForQuery(query, { items, total })
+    fetchMock.mockResolvedValueOnce(apiResponse(payload))
+
+    await expect(fetchB649MultiTicketRecords(query)).resolves.toBe(payload)
   })
 
   it.each(['total', 'limit', 'offset'])(
@@ -858,10 +897,10 @@ describe('fetchB649MultiTicketRecords response identity', () => {
     fetchMock.mockResolvedValueOnce(apiResponse(emptyFirstPage))
     await expect(fetchB649MultiTicketRecords(emptyFirstPageQuery)).resolves.toBe(emptyFirstPage)
 
-    const beyondTotalQuery = recordQuery({ offset: 100 })
+    const beyondTotalQuery = recordQuery({ limit: 100, offset: 150 })
     const emptyBeyondTotal = recordPageForQuery(beyondTotalQuery, {
       items: [],
-      total: 10,
+      total: 135,
     })
     fetchMock.mockResolvedValueOnce(apiResponse(emptyBeyondTotal))
     await expect(fetchB649MultiTicketRecords(beyondTotalQuery)).resolves.toBe(emptyBeyondTotal)

@@ -5751,6 +5751,117 @@
         }
       }
     },
+    "/api/v1/replay-backfill/strategy-runs": {
+      "get": {
+        "tags": [
+          "replay-backfill"
+        ],
+        "summary": "Strategy Runs",
+        "operationId": "discoverReplayBackfillStrategyRuns",
+        "parameters": [
+          {
+            "name": "lottery_type",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/LotteryType"
+            }
+          },
+          {
+            "name": "strategy_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "title": "Strategy Id"
+            }
+          },
+          {
+            "name": "strategy_version",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Strategy Version"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 250,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReplayBackfillStrategyRunsPageResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiValidationErrorResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ReplayBackfillErrorResponse"
+                    }
+                  ],
+                  "title": "Response 422 Discoverreplaybackfillstrategyruns"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReplayBackfillErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
     "/api/v1/replay-backfill/strategies": {
       "get": {
         "tags": [
@@ -6133,6 +6244,24 @@
                 }
               ],
               "title": "Strategy Id"
+            }
+          },
+          {
+            "name": "strategy_version",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Strategy Version"
             }
           },
           {
@@ -19655,6 +19784,139 @@
         ],
         "title": "ReplayBackfillStrategyPageResponse",
         "description": "Paginated strategy inventory response with run and history scope."
+      },
+      "ReplayBackfillStrategyRunItemResponse": {
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "lottery_type": {
+            "$ref": "#/components/schemas/LotteryType"
+          },
+          "strategy_id": {
+            "type": "string",
+            "title": "Strategy Id"
+          },
+          "strategy_version": {
+            "type": "string",
+            "title": "Strategy Version"
+          },
+          "run_created_at": {
+            "type": "string",
+            "title": "Run Created At"
+          },
+          "inventory_present": {
+            "type": "boolean",
+            "title": "Inventory Present"
+          },
+          "associated_cell_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Associated Cell Count"
+          },
+          "unique_target_draw_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Unique Target Draw Count"
+          },
+          "execution_identity_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Execution Identity Count"
+          },
+          "execution_status_counts": {
+            "additionalProperties": {
+              "type": "integer",
+              "minimum": 0.0
+            },
+            "type": "object",
+            "title": "Execution Status Counts"
+          },
+          "earliest_target_draw_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Earliest Target Draw Date"
+          },
+          "latest_target_draw_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Target Draw Date"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "run_id",
+          "lottery_type",
+          "strategy_id",
+          "strategy_version",
+          "run_created_at",
+          "inventory_present",
+          "associated_cell_count",
+          "unique_target_draw_count",
+          "execution_identity_count",
+          "execution_status_counts",
+          "earliest_target_draw_date",
+          "latest_target_draw_date"
+        ],
+        "title": "ReplayBackfillStrategyRunItemResponse",
+        "description": "Discovery facts for one exact strategy version in one replay run."
+      },
+      "ReplayBackfillStrategyRunsPageResponse": {
+        "properties": {
+          "total_run_version_matches": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total Run Version Matches"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ReplayBackfillStrategyRunItemResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "has_more": {
+            "type": "boolean",
+            "title": "Has More"
+          },
+          "limit": {
+            "type": "integer",
+            "maximum": 250.0,
+            "minimum": 1.0,
+            "title": "Limit"
+          },
+          "offset": {
+            "type": "integer",
+            "maximum": 9007199254740991.0,
+            "minimum": 0.0,
+            "title": "Offset"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "total_run_version_matches",
+          "items",
+          "has_more",
+          "limit",
+          "offset"
+        ],
+        "title": "ReplayBackfillStrategyRunsPageResponse",
+        "description": "Paginated strategy-run discovery facts, without cross-run aggregates."
       },
       "ReplayBackfillTicketIdentityView": {
         "properties": {

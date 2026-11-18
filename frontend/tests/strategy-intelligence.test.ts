@@ -107,7 +107,7 @@ const CANONICAL_D3_DEFINITION = {
   decimal_scale: 4,
   rounding_mode: 'ROUND_HALF_EVEN',
   unit: 'UNITLESS',
-  definition_prose: 'D3 is reserved for a future Owner-approved primary ranking metric.',
+  definition_prose: 'D3 is reserved for a future Owner-approved primary ranking metric. No formula, threshold, or ranking direction is committed by this task. Any result declaring VALUE_PRESENT against this definition is a METRIC_DEFINITION_FAILURE.',
   authority_path: 'contracts/evidence/metric_definitions/d3.json',
 } satisfies StrategyEvidenceResponse['d3']['definition']
 
@@ -1154,7 +1154,39 @@ describe('StrategyIntelligencePage Cross-Game Unified UI', () => {
     wrapper.unmount()
   })
 
-  it('15b. D3 definition renders from the API response, not a pinned frontend constant', async () => {
+  it('15b. D3 definition renders canonical SSOT contract and rejects malformed D3 definitions', async () => {
+    // Positive case: Valid canonical D3 response renders full SSOT contract properly
+    const validEvidence = makeEvidence()
+    fetchMock.mockImplementation((input) => {
+      const url = String(input)
+      if (url.includes('/api/v1/strategy-overview')) {
+        return Promise.resolve(apiResponse(makeOverviewForGame('BIG_LOTTO')))
+      }
+      if (url.includes('/api/v1/strategy-evidence')) {
+        return Promise.resolve(apiResponse(validEvidence))
+      }
+      return Promise.resolve(apiResponse({}))
+    })
+
+    let wrapper = mount(StrategyIntelligencePage)
+    await flushPromises()
+
+    await wrapper.findAll('button[role="tab"]')[2].trigger('click')
+    await flushPromises()
+
+    let text = wrapper.text()
+    expect(text).toContain('D3 Strategy Status & SSOT Definition')
+    expect(text).toContain('RESERVED_UNAVAILABLE')
+    expect(text).toContain('DESCRIPTIVE_ONLY')
+    expect(text).toContain('Aggregation: NONE · Unit: UNITLESS')
+    expect(text).toContain('contracts/evidence/metric_definitions/d3.json')
+    expect(text).toContain(CANONICAL_D3_DEFINITION.definition_prose)
+    expect(text).toContain('NOT_AVAILABLE')
+    expect(text).not.toContain('EMPIRICAL ELIGIBLE')
+    wrapper.unmount()
+
+    // Negative case: Non-canonical mocked direction/aggregation/unit/authority_path
+    // must fail the strict D3 client guard and trigger error state without rendering pseudo-evidence
     fetchMock.mockImplementation((input) => {
       const url = String(input)
       if (url.includes('/api/v1/strategy-overview')) {
@@ -1176,20 +1208,16 @@ describe('StrategyIntelligencePage Cross-Game Unified UI', () => {
       return Promise.resolve(apiResponse({}))
     })
 
-    const wrapper = mount(StrategyIntelligencePage)
+    wrapper = mount(StrategyIntelligencePage)
     await flushPromises()
 
-    await wrapper.findAll('button[role="tab"]')[2].trigger('click')
-    await flushPromises()
-
-    const text = wrapper.text()
-    expect(text).toContain('MOCKED_DIRECTION_CUSTOM')
-    expect(text).toContain('MOCKED_AGGREGATION_CUSTOM')
-    expect(text).toContain('MOCKED_UNIT_CUSTOM')
-    expect(text).toContain('Mocked prose unique to this test case.')
-    expect(text).toContain('mocked/authority/path/d3.json')
-    expect(text).not.toContain('DESCRIPTIVE_ONLY')
-    expect(text).not.toContain('contracts/evidence/metric_definitions/d3.json')
+    expect(wrapper.text()).toContain('Strategy Evidence returned an invalid response contract')
+    text = wrapper.text()
+    expect(text).not.toContain('MOCKED_DIRECTION_CUSTOM')
+    expect(text).not.toContain('MOCKED_AGGREGATION_CUSTOM')
+    expect(text).not.toContain('MOCKED_UNIT_CUSTOM')
+    expect(text).not.toContain('Mocked prose unique to this test case.')
+    expect(text).not.toContain('mocked/authority/path/d3.json')
 
     wrapper.unmount()
   })

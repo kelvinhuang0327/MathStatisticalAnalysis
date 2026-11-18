@@ -111,6 +111,95 @@ afterEach(() => {
 })
 
 describe('multi-window success windows API and UI', () => {
+  it.each([
+    [
+      'a decimal that disagrees with its fraction',
+      response('bad-decimal', 'POWER_LOTTO', [
+        multiWindowRow('bad-decimal', 'POWER_LOTTO', {
+          observed_winning_target_rate: exact('1', '8', '0.126000000000000000'),
+        }),
+      ]),
+    ],
+    [
+      'a probability above one',
+      response('bad-probability', 'POWER_LOTTO', [
+        multiWindowRow('bad-probability', 'POWER_LOTTO', {
+          null_portfolio_probability: exact('2', '1', '2.000000000000000000'),
+        }),
+      ]),
+    ],
+    [
+      'a winning count above the observed count',
+      response('bad-count', 'POWER_LOTTO', [
+        multiWindowRow('bad-count', 'POWER_LOTTO', { observed_winning_ticket_count: 17 }),
+      ]),
+    ],
+    [
+      'a null contract for a different lottery',
+      {
+        ...response('bad-null-contract', 'POWER_LOTTO'),
+        null_contract: {
+          ...response('bad-null-contract', 'POWER_LOTTO').null_contract,
+          lottery_type: 'DAILY_539',
+        },
+      },
+    ],
+    [
+      'zero observations represented as a zero rate',
+      response('bad-zero-rate', 'POWER_LOTTO', [
+        multiWindowRow('bad-zero-rate', 'POWER_LOTTO', {
+          actual_target_count: 0,
+          observed_winning_target_count: 0,
+          observed_winning_target_rate: exact('0', '1', '0.000000000000000000'),
+          observed_ticket_count: 0,
+          observed_winning_ticket_count: 0,
+          observed_ticket_winning_rate: exact('0', '1', '0.000000000000000000'),
+        }),
+      ]),
+    ],
+  ])('rejects HTTP 200 payloads with %s', async (_description, payload) => {
+    vi.stubGlobal('fetch', vi.fn<typeof fetch>().mockResolvedValueOnce(apiResponse(payload)))
+
+    await expect(getP638MultiWindowSuccessWindows(payload.run_id)).rejects.toMatchObject({
+      name: 'MultiWindowSuccessWindowsRequestError',
+      kind: 'MALFORMED_RESPONSE',
+    })
+  })
+
+  it.each([
+    ['zero denominator', exact('1', '0', '0.000000000000000000')],
+    ['negative denominator', exact('1', '-3', '-0.333333333333333333')],
+    ['nonnumeric numerator', exact('NaN', '1', '0.000000000000000000')],
+    ['fractional numerator', exact('1.5', '1', '1.500000000000000000')],
+    ['null numerator', exact(null as unknown as string, '1', '0.000000000000000000')],
+  ])('rejects an ExactRational with %s', async (_description, rational) => {
+    const payload = response('bad-rational-text', 'POWER_LOTTO', [
+      multiWindowRow('bad-rational-text', 'POWER_LOTTO', {
+        null_single_ticket_probability: rational,
+      }),
+    ])
+    vi.stubGlobal('fetch', vi.fn<typeof fetch>().mockResolvedValueOnce(apiResponse(payload)))
+
+    await expect(getP638MultiWindowSuccessWindows('bad-rational-text')).rejects.toMatchObject({
+      name: 'MultiWindowSuccessWindowsRequestError',
+      kind: 'MALFORMED_RESPONSE',
+    })
+  })
+
+  it('keeps signed differences, lifts above one, and decimal rounding exact', async () => {
+    const payload = response('exact-edges', 'POWER_LOTTO', [
+      multiWindowRow('exact-edges', 'POWER_LOTTO', {
+        observed_minus_null_rate: exact('-1', '8', '-0.125000000000000000'),
+        lift_vs_null: exact('9007199254740993', '9007199254740992', '1.000000000000000111'),
+        raw_p_value: exact('1', '6', '0.166666666666666667'),
+        by_adjusted_p_value: exact('1', '2000000000000000000', '0.000000000000000000'),
+      }),
+    ])
+    vi.stubGlobal('fetch', vi.fn<typeof fetch>().mockResolvedValueOnce(apiResponse(payload)))
+
+    await expect(getP638MultiWindowSuccessWindows('exact-edges')).resolves.toEqual(payload)
+  })
+
   it('uses each generated-contract GET endpoint and retains its exact rational strings', async () => {
     const fetchMock = vi
       .fn<typeof fetch>()

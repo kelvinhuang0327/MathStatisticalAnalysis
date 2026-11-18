@@ -233,6 +233,61 @@ describe('Historical Prefix Analytics panel', () => {
     wrapper.unmount()
   })
 
+  it('shows malformed successful rankings as an error without rendering a ranking table', async () => {
+    const payload = makeRankings()
+    const candidate = payload.groups[0]?.candidates[0]
+    if (!candidate) throw new Error('Expected a ranking candidate fixture')
+    candidate.summary.identity = makeIdentity('different-strategy')
+    fetchMock.mockImplementation((input) => {
+      const url = new URL(String(input), 'http://localhost')
+      if (url.pathname === RANKINGS_URL) return Promise.resolve(apiResponse(payload))
+      if (url.pathname === STRATEGIES_URL) return Promise.resolve(apiResponse(makeOverview()))
+      return Promise.resolve(responseFor(input))
+    })
+    const wrapper = mount(PrefixAnalyticsPanel)
+    await flushPromises()
+    await wrapper.get('.prefix-analytics__toggle').trigger('click')
+    await flushPromises()
+
+    const error = wrapper.get('[role="alert"]')
+    expect(error.text()).toContain('HTTP_ERROR (HTTP 502)')
+    expect(error.text()).toContain('does not match the OpenAPI contract')
+    expect(wrapper.find('[data-testid="prefix-rankings-query-success"]').exists()).toBe(false)
+    expect(wrapper.findAll('.prefix-analytics__group')).toHaveLength(0)
+    wrapper.unmount()
+  })
+
+  it('shows unavailable zero-denominator ratios as unavailable, never as zero percent', async () => {
+    fetchMock.mockImplementation((input) => {
+      const url = new URL(String(input), 'http://localhost')
+      if (url.pathname === RANKINGS_URL) return Promise.resolve(apiResponse(makeRankings()))
+      if (url.pathname === STRATEGIES_URL) {
+        return Promise.resolve(
+          apiResponse(
+            makeOverview(10, [makeIdentity('strategy/a')], {
+              numerator: 0,
+              denominator: 0,
+              is_available: false,
+            }),
+          ),
+        )
+      }
+      return Promise.resolve(responseFor(input))
+    })
+    const wrapper = mount(PrefixAnalyticsPanel)
+    await flushPromises()
+    await wrapper.get('.prefix-analytics__toggle').trigger('click')
+    await flushPromises()
+
+    const overviewRow = wrapper.get(
+      '.prefix-analytics__section[aria-labelledby="prefix-overview-title"] tbody tr',
+    )
+    expect(overviewRow.text()).toContain('Unavailable')
+    expect(overviewRow.text()).not.toContain('0 / 0')
+    expect(overviewRow.text()).not.toContain('%')
+    wrapper.unmount()
+  })
+
   it('limits overview prefixes to 10, 15, and 20 and shows the exact ratio without converting it', async () => {
     fetchMock.mockImplementation((input) => Promise.resolve(responseFor(input)))
     const wrapper = await mountOpenPanel()
@@ -266,7 +321,7 @@ describe('Historical Prefix Analytics panel', () => {
         return Promise.resolve(apiResponse(makeOverview(10, [makeIdentity('unavailable')], {
           numerator: 0,
           denominator: 0,
-          is_available: true,
+          is_available: false,
         })))
       }
       return Promise.resolve(responseFor(input))

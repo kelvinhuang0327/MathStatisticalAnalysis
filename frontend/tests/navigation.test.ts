@@ -208,7 +208,8 @@ beforeEach(() => {
               decimal_scale: 4,
               rounding_mode: 'ROUND_HALF_EVEN',
               unit: 'UNITLESS',
-              definition_prose: 'fixture prose',
+              definition_prose:
+                'D3 is reserved for a future Owner-approved primary ranking metric. No formula, threshold, or ranking direction is committed by this task. Any result declaring VALUE_PRESENT against this definition is a METRIC_DEFINITION_FAILURE.',
               authority_path: 'contracts/evidence/metric_definitions/d3.json',
             },
           },

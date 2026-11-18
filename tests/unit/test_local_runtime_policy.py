@@ -495,6 +495,7 @@ def authorized_openapi_paths() -> dict[str, dict[str, object]]:
         "/api/v1/replay-backfill/uniform-eight-reference": {"get": {}},
         "/api/v1/replay-backfill/runs": {"get": {}},
         "/api/v1/replay-backfill/runs/{run_id}": {"get": {}},
+        "/api/v1/replay-backfill/strategy-runs": {"get": {}},
         "/api/v1/replay-strategy-inventory": {"get": {}},
     }
 
@@ -510,6 +511,7 @@ def test_smoke_accepts_exact_replay_backfill_and_inventory_get_operations() -> N
         "/api/v1/replay-backfill/uniform-eight-reference",
         "/api/v1/replay-backfill/runs",
         "/api/v1/replay-backfill/runs/{run_id}",
+        "/api/v1/replay-backfill/strategy-runs",
         "/api/v1/replay-strategy-inventory",
     }
 
@@ -520,7 +522,7 @@ def test_smoke_accepts_exact_replay_backfill_and_inventory_get_operations() -> N
         or path == "/api/v1/replay-strategy-inventory"
     } == expected_replay_paths
     assert all(paths[path] == {"get": {}} for path in expected_replay_paths)
-    assert len(paths) == 92
+    assert len(paths) == 93
     validate_openapi_payload({"paths": paths})
 
 

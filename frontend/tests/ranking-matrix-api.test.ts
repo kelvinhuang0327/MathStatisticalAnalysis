@@ -182,6 +182,10 @@ describe('rankingMatrix API and utilities', () => {
           } as Response)
         }
         if (url.includes('/api/v1/b649-multi-ticket-records')) {
+          const urlObj = new URL(url, 'http://localhost')
+          const prefixCount = Number(urlObj.searchParams.get('prefix_count') ?? 5)
+          const window = urlObj.searchParams.get('window') ?? 'RECENT_300'
+          const criterion = urlObj.searchParams.get('criterion') ?? 'M3_PLUS'
           return Promise.resolve({
             ok: true,
             status: 200,
@@ -189,9 +193,9 @@ describe('rankingMatrix API and utilities', () => {
               total: 1,
               limit: 100,
               offset: 0,
-              prefix_count: 5,
-              window: 'RECENT_300',
-              criterion: 'M3_PLUS',
+              prefix_count: prefixCount,
+              window,
+              criterion,
               research_disclaimer: '歷史成功率、排名與隨機基準差異僅供描述性研究，不構成未來預測、推薦、上線決策或中獎保證。',
               items: [
                 {
@@ -202,9 +206,9 @@ describe('rankingMatrix API and utilities', () => {
                   method_family: 'coldpool',
                   reproduction_status: 'BACKTESTED',
                   duplicate_alias_target: null,
-                  prefix_count: 5,
-                  window: 'RECENT_300',
-                  criterion: 'M3_PLUS',
+                  prefix_count: prefixCount,
+                  window,
+                  criterion,
                   rank: 1,
                   official_rank: 1,
                   official_any_prize_count: 30,

@@ -111,12 +111,16 @@ function stubOverviewFetch(records: ReturnType<typeof makeRecord>[]) {
         const urlObject = new URL(url, 'http://localhost')
         const prefixCount = Number(urlObject.searchParams.get('prefix_count') ?? 10)
         const window = urlObject.searchParams.get('window') ?? 'FULL'
+        const limit = Number(urlObject.searchParams.get('limit') ?? 100)
+        const offset = Number(urlObject.searchParams.get('offset') ?? 0)
         return Promise.resolve(
           response({
-            items: records.map((record) => ({ ...record, prefix_count: prefixCount, window })),
+            items: records
+              .slice(offset, offset + limit)
+              .map((record) => ({ ...record, prefix_count: prefixCount, window })),
             total: records.length,
-            limit: 50,
-            offset: 0,
+            limit,
+            offset,
             prefix_count: prefixCount,
             window,
             criterion: 'M3_PLUS',

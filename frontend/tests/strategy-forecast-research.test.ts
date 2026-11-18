@@ -240,6 +240,40 @@ describe('StrategyForecastResearchPage', () => {
     wrapper.unmount()
   })
 
+  it('excludes contradictory K15 M3_PLUS rates from the above-random filter', async () => {
+    api.fetchB649MultiTicketRecords.mockResolvedValue(recordPage([
+      multiRecord({
+        strategy_id: 'm3_below_baseline',
+        success_count: 1,
+        successful_execution_count: 10,
+        historical_success_rate: '0.100000000000000000',
+        random_baseline_success_rate: '0.200000000000000000',
+        random_baseline_rate_difference: '0.050000000000000000',
+      }),
+      multiRecord({
+        strategy_id: 'm3_above_baseline',
+        success_count: 3,
+        successful_execution_count: 12,
+        historical_success_rate: '0.250000000000000000',
+        random_baseline_success_rate: '0.200000000000000000',
+        random_baseline_rate_difference: '0.050000000000000000',
+      }),
+    ]))
+    const wrapper = mount(StrategyForecastResearchPage)
+    await flushPromises()
+    await wrapper.get('select[aria-label="票券數 K"]').setValue('15')
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="history-row-m3_below_baseline"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="history-row-m3_above_baseline"]').exists()).toBe(true)
+    await wrapper.get('input[type="checkbox"]').setValue(true)
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="history-row-m3_below_baseline"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="history-row-m3_above_baseline"]').exists()).toBe(true)
+    wrapper.unmount()
+  })
+
   it('rejects K15 source metrics explicitly marked unavailable', async () => {
     api.fetchB649MultiTicketRecords.mockResolvedValue(recordPage([
       multiRecord({ metrics_unavailable_reason: 'METRICS_UNAVAILABLE', random_baseline_rate_difference: '0.05' }),
@@ -351,6 +385,38 @@ describe('StrategyForecastResearchPage', () => {
     wrapper.unmount()
   })
 
+  it('excludes contradictory OFFICIAL_ANY_PRIZE rates from the above-random filter', async () => {
+    api.fetchRankingData.mockResolvedValue([
+      rankingRow({
+        strategyId: 'official_below_baseline',
+        successes: 10,
+        observations: 100,
+        officialAnyPrizeRate: 0.10,
+        baselineRate: 0.20,
+        baselineDelta: 0.05,
+      }),
+      rankingRow({
+        strategyId: 'official_above_baseline',
+        successes: 25,
+        observations: 100,
+        officialAnyPrizeRate: 0.25,
+        baselineRate: 0.20,
+        baselineDelta: 0.05,
+      }),
+    ])
+    const wrapper = mount(StrategyForecastResearchPage)
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="history-row-official_below_baseline"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="history-row-official_above_baseline"]').exists()).toBe(true)
+    await wrapper.get('input[type="checkbox"]').setValue(true)
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="history-row-official_below_baseline"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="history-row-official_above_baseline"]').exists()).toBe(true)
+    wrapper.unmount()
+  })
+
   it.each([
     ['a missing denominator', { denominator: null }],
     ['an undefined denominator', { denominator: undefined as unknown as null }],
@@ -402,6 +468,37 @@ describe('StrategyForecastResearchPage', () => {
       ...completePositiveDelta,
       eventCriterion: 'M3_PLUS',
     })).toBe(false)
+  })
+
+  it.each([
+    {
+      name: 'Case A: positive delta with actual rate below baseline',
+      row: strategyResearchRow({ actualRate: 0.10, baselineRate: 0.20, baselineDelta: 0.05 }),
+    },
+    {
+      name: 'Case B: negative delta despite actual rate above baseline',
+      row: strategyResearchRow({ actualRate: 0.20, baselineRate: 0.10, baselineDelta: -0.02 }),
+    },
+    {
+      name: 'Case C: positive delta with equal actual and baseline rates',
+      row: strategyResearchRow({ actualRate: 0.20, baselineRate: 0.20, baselineDelta: 0.01 }),
+    },
+  ])('$name is not a positive baseline comparison', ({ row }) => {
+    expect(hasValidBaselineComparison(row)).toBe(true)
+    expect(isAboveRandomBaseline(row)).toBe(false)
+  })
+
+  it('accepts a positive delta only when the actual rate is strictly above baseline', () => {
+    const row = strategyResearchRow({
+      numerator: 25,
+      denominator: 100,
+      actualRate: 0.25,
+      baselineRate: 0.20,
+      baselineDelta: 0.05,
+    })
+
+    expect(hasValidBaselineComparison(row)).toBe(true)
+    expect(isAboveRandomBaseline(row)).toBe(true)
   })
 
   it('keeps a missing source numerator visible and excludes it from positive-delta results', async () => {
@@ -515,6 +612,19 @@ describe('StrategyForecastResearchPage', () => {
     expect(wrapper.get('[data-testid="history-row-strat_alpha"]').text())
       .toContain('此歷史來源未提供；不宣稱預測優勢')
     expect(wrapper.text()).toContain('不代表統計顯著、未來增益或策略適用性')
+    wrapper.unmount()
+  })
+
+  it('aligns research note with candidate baseline predicate requiring both delta > 0 and actualRate > baselineRate', async () => {
+    const wrapper = mount(StrategyForecastResearchPage)
+    await flushPromises()
+    const note = wrapper.get('.research-note')
+    expect(note.text()).toContain('分子與正整數分母有效')
+    expect(note.text()).toContain('來源可比較')
+    expect(note.text()).toContain('實際率、隨機基準與差值有效')
+    expect(note.text()).toContain('delta > 0')
+    expect(note.text()).toContain('actualRate > baselineRate')
+    expect(note.text()).toContain('不是顯著性或 OOS 預測證據')
     wrapper.unmount()
   })
 

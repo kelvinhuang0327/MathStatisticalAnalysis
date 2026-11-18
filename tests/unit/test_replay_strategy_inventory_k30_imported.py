@@ -1,0 +1,357 @@
+from __future__ import annotations
+
+from typing import Any, Protocol, cast
+
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+
+from lottolab.application.replay_strategy_inventory import load_replay_strategy_inventory
+from lottolab.domain.draws import LotteryType
+from lottolab.domain.replay_strategy_inventory import (
+    ReplayDataStatus,
+    ReplayExecutionCapability,
+    ReplayLifecycleStatus,
+)
+from lottolab.infrastructure.persistence.replay_backfill_store import SQLiteBackfillStore
+from lottolab.interfaces.api.replay_backfill import create_replay_backfill_router
+
+K30_GEOMETRY_ID = "evolution_h12_k30_geometry_completion"
+K30_RANDOM_ID = "evolution_h12_k30_matched_random_completion"
+K30_EXACT_SWAP_ID = "research_biglotto__k30_geometry_exact_swap_history_v1"
+K30_VERSION = "v0.1"
+
+
+class _JsonResponse(Protocol):
+    status_code: int
+
+    def json(self) -> dict[str, Any]: ...
+
+
+class _JsonTestClient(Protocol):
+    def get(self, url: str, *, params: Any = None) -> _JsonResponse: ...
+
+
+def _json_client(app: Any) -> _JsonTestClient:
+    return cast(_JsonTestClient, TestClient(app))
+
+
+def _snapshot(
+    *,
+    run_id: str | None = "synthetic-k30-overlay",
+    rows: tuple[dict[str, Any], ...] = (),
+    cells: tuple[dict[str, Any], ...] = (),
+) -> dict[str, Any]:
+    return {
+        "run_id": run_id,
+        "created_at": "2026-11-10T00:00:00+00:00",
+        "dataset_identity": "synthetic-k30-overlay-dataset",
+        "execution_version": "synthetic-v1",
+        "selection_rule": "LATEST_RUN_BY_CREATED_AT_PER_LOTTERY_TYPE",
+        "run_source": {
+            "identity_status": "UNKNOWN",
+            "source_identity": "k30_stage_synthetic",
+            "source_kind": "REPLAY_BACKFILL_IMPORTED_RESULT",
+            "source_locator": "k30_stage_synthetic",
+            "source_hash": None,
+            "artifact_only": False,
+        },
+        "strategy_inventory": list(rows),
+        "cell_status_counts": list(cells),
+    }
+
+
+class SyntheticReplayStore:
+    def __init__(self, snapshots: dict[str, dict[str, Any]]) -> None:
+        self.snapshots = snapshots
+
+    def strategy_history_snapshot(
+        self, lottery_type: str, *, run_id: str | None = None
+    ) -> dict[str, Any]:
+        return self.snapshots[lottery_type]
+
+
+def _client(snapshots: dict[str, dict[str, Any]]) -> _JsonTestClient:
+    app = FastAPI()
+    # The inventory endpoint exercised here only uses strategy_history_snapshot.
+    store = cast(SQLiteBackfillStore, SyntheticReplayStore(snapshots))
+    app.include_router(create_replay_backfill_router(store))
+    return _json_client(app)
+
+
+def _inventory_row(
+    *,
+    lottery_type: str,
+    strategy_id: str,
+    version: str,
+    target_count: int = 730,
+) -> dict[str, Any]:
+    return {
+        "lottery_type": lottery_type,
+        "strategy_id": strategy_id,
+        "strategy_version": version,
+        "data_status": "HAS_HISTORY",
+        "source_kind": "REPLAY_BACKFILL_IMPORTED_RESULT",
+        "source_identity": f"synthetic-{strategy_id}",
+        "executable": False,
+        "available_target_count": target_count,
+        "training_status": "NOT_TRAINABLE",
+    }
+
+
+def _complete_cells(
+    *,
+    lottery_type: str,
+    strategy_id: str,
+    version: str,
+    cell_count: int = 730,
+    ticket_count: int = 21900,
+) -> dict[str, Any]:
+    return {
+        "lottery_type": lottery_type,
+        "strategy_id": strategy_id,
+        "strategy_version": version,
+        "execution_status": "COMPLETE",
+        "cell_count": cell_count,
+        "ticket_count": ticket_count,
+        "saved_prediction_cell_count": cell_count,
+    }
+
+
+def test_static_inventory_registers_both_k30_identities() -> None:
+    inv = load_replay_strategy_inventory()
+    items = {
+        (item.lottery_type, item.strategy_id, item.strategy_version): item for item in inv.items
+    }
+
+    geo_key = (LotteryType.BIG_LOTTO, K30_GEOMETRY_ID, K30_VERSION)
+    rand_key = (LotteryType.BIG_LOTTO, K30_RANDOM_ID, K30_VERSION)
+    exact_swap_key = (LotteryType.BIG_LOTTO, K30_EXACT_SWAP_ID, "v1")
+
+    assert geo_key in items, "Geometry identity missing from inventory"
+    assert rand_key in items, "Matched random control identity missing from inventory"
+    assert exact_swap_key in items, "Existing exact-swap identity must remain preserved"
+
+    geo = items[geo_key]
+    rand = items[rand_key]
+    exact_swap = items[exact_swap_key]
+
+    # AC5: exact swap research identity remains separate from K30 Geometry Completion
+    assert exact_swap.strategy_id != geo.strategy_id
+    assert exact_swap.strategy_version == "v1"
+    assert exact_swap.lifecycle_status is ReplayLifecycleStatus.CODE_ONLY
+
+    # Check Geometry role and execution attributes
+    assert geo.display_name == "K30 Geometry (歷史研究策略)"
+    assert geo.lifecycle_status is ReplayLifecycleStatus.UNREGISTERED_IDENTIFIED
+    assert geo.replay_data_status is ReplayDataStatus.NO_HISTORY
+    assert geo.execution_capability is ReplayExecutionCapability.UNAVAILABLE
+    assert geo.adapter_mapping is None
+    assert geo.backfill_native_binding is False
+    assert geo.backfill_runnable is False
+    assert geo.reconstructable is False
+    assert geo.wrapper_callable is False
+    assert geo.source_statuses == ("RESEARCH_STRATEGY",)
+
+    # Check Matched Random control role and execution attributes
+    assert rand.display_name == "K30 Matched Random (隨機補票對照組)"
+    assert rand.lifecycle_status is ReplayLifecycleStatus.UNREGISTERED_IDENTIFIED
+    assert rand.replay_data_status is ReplayDataStatus.NO_HISTORY
+    assert rand.execution_capability is ReplayExecutionCapability.UNAVAILABLE
+    assert rand.adapter_mapping is None
+    assert rand.backfill_native_binding is False
+    assert rand.backfill_runnable is False
+    assert rand.reconstructable is False
+    assert rand.wrapper_callable is False
+    assert rand.source_statuses == ("CONTROL_BASELINE",)
+
+
+def test_api_overlays_has_history_when_store_has_exact_k30_rows() -> None:
+    big_lotto = _snapshot(
+        rows=(
+            _inventory_row(
+                lottery_type="BIG_LOTTO",
+                strategy_id=K30_GEOMETRY_ID,
+                version=K30_VERSION,
+                target_count=730,
+            ),
+            _inventory_row(
+                lottery_type="BIG_LOTTO",
+                strategy_id=K30_RANDOM_ID,
+                version=K30_VERSION,
+                target_count=730,
+            ),
+        ),
+        cells=(
+            _complete_cells(
+                lottery_type="BIG_LOTTO",
+                strategy_id=K30_GEOMETRY_ID,
+                version=K30_VERSION,
+                cell_count=730,
+                ticket_count=21900,
+            ),
+            _complete_cells(
+                lottery_type="BIG_LOTTO",
+                strategy_id=K30_RANDOM_ID,
+                version=K30_VERSION,
+                cell_count=730,
+                ticket_count=21900,
+            ),
+        ),
+    )
+
+    client = _client(
+        {
+            "BIG_LOTTO": big_lotto,
+            "DAILY_539": _snapshot(),
+            "POWER_LOTTO": _snapshot(),
+        }
+    )
+
+    # Query Geometry
+    resp_geo = client.get(
+        "/api/v1/replay-backfill/strategies",
+        params={"lottery_type": "BIG_LOTTO", "q": K30_GEOMETRY_ID},
+    )
+    assert resp_geo.status_code == 200
+    payload_geo = resp_geo.json()
+    assert payload_geo["total_count"] == 1
+    item_geo = payload_geo["items"][0]
+    assert item_geo["lottery_type"] == "BIG_LOTTO"
+    assert item_geo["strategy_id"] == K30_GEOMETRY_ID
+    assert item_geo["strategy_version"] == K30_VERSION
+    assert item_geo["display_name"] == "K30 Geometry (歷史研究策略)"
+    assert item_geo["data_status"] == "HAS_HISTORY"
+    assert item_geo["inventory_data_status"] == "NO_HISTORY"
+    assert item_geo["history_status"] == "HAS_HISTORY"
+    assert item_geo["history_source_identity_status"] == "UNKNOWN"
+    assert "SOURCE_IDENTITY_UNKNOWN" in item_geo["history_statuses"]
+    assert item_geo["available_target_count"] == 730
+    assert item_geo["executable"] is False
+    assert item_geo["backfill_native_binding"] is False
+    assert item_geo["backfill_runnable"] is False
+
+    # Query Matched Random
+    resp_rand = client.get(
+        "/api/v1/replay-backfill/strategies",
+        params={"lottery_type": "BIG_LOTTO", "q": K30_RANDOM_ID},
+    )
+    assert resp_rand.status_code == 200
+    payload_rand = resp_rand.json()
+    assert payload_rand["total_count"] == 1
+    item_rand = payload_rand["items"][0]
+    assert item_rand["lottery_type"] == "BIG_LOTTO"
+    assert item_rand["strategy_id"] == K30_RANDOM_ID
+    assert item_rand["strategy_version"] == K30_VERSION
+    assert item_rand["display_name"] == "K30 Matched Random (隨機補票對照組)"
+    assert item_rand["data_status"] == "HAS_HISTORY"
+    assert item_rand["inventory_data_status"] == "NO_HISTORY"
+    assert item_rand["history_status"] == "HAS_HISTORY"
+    assert item_rand["history_source_identity_status"] == "UNKNOWN"
+    assert "SOURCE_IDENTITY_UNKNOWN" in item_rand["history_statuses"]
+    assert item_rand["available_target_count"] == 730
+    assert item_rand["executable"] is False
+    assert item_rand["backfill_native_binding"] is False
+    assert item_rand["backfill_runnable"] is False
+
+
+def test_api_does_not_invent_history_when_store_lacks_exact_rows() -> None:
+    # Snapshot contains unrelated strategies and different versions
+    big_lotto = _snapshot(
+        run_id=None,
+        rows=(
+            _inventory_row(
+                lottery_type="BIG_LOTTO",
+                strategy_id=K30_GEOMETRY_ID,
+                version="v0.2",
+            ),
+            _inventory_row(
+                lottery_type="BIG_LOTTO",
+                strategy_id="other_strategy",
+                version=K30_VERSION,
+            ),
+        ),
+    )
+
+    client = _client(
+        {
+            "BIG_LOTTO": big_lotto,
+            "DAILY_539": _snapshot(run_id=None),
+            "POWER_LOTTO": _snapshot(run_id=None),
+        }
+    )
+
+    resp_geo = client.get(
+        "/api/v1/replay-backfill/strategies",
+        params={"lottery_type": "BIG_LOTTO", "q": K30_GEOMETRY_ID},
+    )
+    assert resp_geo.status_code == 200
+    payload_geo = resp_geo.json()
+    assert payload_geo["total_count"] == 1
+    item_geo = payload_geo["items"][0]
+    assert item_geo["data_status"] == "NO_HISTORY"
+    assert item_geo["inventory_data_status"] == "NO_HISTORY"
+    assert item_geo["available_target_count"] == 0
+    assert item_geo["executable"] is False
+    assert item_geo["backfill_native_binding"] is False
+    assert item_geo["backfill_runnable"] is False
+
+    resp_rand = client.get(
+        "/api/v1/replay-backfill/strategies",
+        params={"lottery_type": "BIG_LOTTO", "q": K30_RANDOM_ID},
+    )
+    assert resp_rand.status_code == 200
+    payload_rand = resp_rand.json()
+    assert payload_rand["total_count"] == 1
+    item_rand = payload_rand["items"][0]
+    assert item_rand["data_status"] == "NO_HISTORY"
+    assert item_rand["inventory_data_status"] == "NO_HISTORY"
+    assert item_rand["available_target_count"] == 0
+    assert item_rand["executable"] is False
+    assert item_rand["backfill_native_binding"] is False
+    assert item_rand["backfill_runnable"] is False
+
+
+def test_api_does_not_mix_lottery_types_for_k30() -> None:
+    # Historical data exists only under POWER_LOTTO, not BIG_LOTTO
+    power_lotto = _snapshot(
+        rows=(
+            _inventory_row(
+                lottery_type="POWER_LOTTO",
+                strategy_id=K30_GEOMETRY_ID,
+                version=K30_VERSION,
+                target_count=730,
+            ),
+            _inventory_row(
+                lottery_type="POWER_LOTTO",
+                strategy_id=K30_RANDOM_ID,
+                version=K30_VERSION,
+                target_count=730,
+            ),
+        ),
+    )
+
+    client = _client(
+        {
+            "BIG_LOTTO": _snapshot(run_id=None),
+            "DAILY_539": _snapshot(run_id=None),
+            "POWER_LOTTO": power_lotto,
+        }
+    )
+
+    resp_geo = client.get(
+        "/api/v1/replay-backfill/strategies",
+        params={"lottery_type": "BIG_LOTTO", "q": K30_GEOMETRY_ID},
+    )
+    assert resp_geo.status_code == 200
+    item_geo = resp_geo.json()["items"][0]
+    assert item_geo["lottery_type"] == "BIG_LOTTO"
+    assert item_geo["data_status"] == "NO_HISTORY"
+
+    resp_rand = client.get(
+        "/api/v1/replay-backfill/strategies",
+        params={"lottery_type": "BIG_LOTTO", "q": K30_RANDOM_ID},
+    )
+    assert resp_rand.status_code == 200
+    item_rand = resp_rand.json()["items"][0]
+    assert item_rand["lottery_type"] == "BIG_LOTTO"
+    assert item_rand["data_status"] == "NO_HISTORY"

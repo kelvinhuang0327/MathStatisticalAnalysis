@@ -1562,6 +1562,7 @@ def test_smoke_verifies_health_proxy_catalog_openapi_and_local_listeners(
                         "/api/v1/replay-backfill/uniform-eight-reference": {"get": {}},
                         "/api/v1/replay-backfill/runs": {"get": {}},
                         "/api/v1/replay-backfill/runs/{run_id}": {"get": {}},
+                        "/api/v1/replay-backfill/strategy-runs": {"get": {}},
                         "/api/v1/replay-strategy-inventory": {"get": {}},
                     }
                 }

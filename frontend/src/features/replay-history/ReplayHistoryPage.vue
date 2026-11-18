@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, toRaw, watch } from 'vue'
 
 import { listHistoricalImportRuns, type HistoricalImportRunPage } from '../../api/historicalImports'
 import {
@@ -33,6 +33,7 @@ import {
   getReplayBackfillCoverage,
   getUniformEightSummary,
   isValidReplayDateRange,
+  listReplayStrategyRuns,
   listReplayBackfillPredictions,
   listReplayBackfillStrategies,
   listReplayStrategyInventory,
@@ -45,6 +46,7 @@ import {
   type ReplayBackfillPeriod,
   type ReplayBackfillPredictionItem,
   type ReplayBackfillStrategyItem,
+  type ReplayBackfillStrategyRunItem,
   type ReplayStrategyInventoryItem,
   type UniformEightSummary,
 } from '../../api/replayBackfill'
@@ -62,6 +64,12 @@ function lotteryLabel(value: string): string {
 
 type Tab = 'overview' | 'optimal' | 'backfill'
 type LoadState = 'idle' | 'loading' | 'ready' | 'empty' | 'error'
+interface AppliedStrategyRunIdentity {
+  lotteryType: ReplayBackfillLotteryType
+  runId: string
+  strategyId: string
+  strategyVersion: string
+}
 const TICKET_COUNTS: readonly TicketCountFilter[] = [10, 15, 20]
 
 const activeTab = ref<Tab>('overview')
@@ -84,10 +92,57 @@ const strategyCatalogError = ref('')
 const strategyCatalog = ref<ReplayBackfillStrategyItem[]>([])
 const strategyCatalogCursor = ref<string | null>(null)
 const strategyCatalogVisibleCount = ref(100)
+const strategyCatalogTotal = ref<number | null>(null)
+
+const queryScopeLottery = computed(() => lotteryLabel(backfillLotteryType.value))
+const requestedRunId = computed(() => backfillRunId.value.trim())
+const queryScopeRunLabel = computed(() =>
+  requestedRunId.value ? requestedRunId.value : '由API選取最新Run',
+)
+
+const confirmedPredictionRun = computed(() => {
+  if (backfillPredictionsState.value === 'loading') return '載入中…'
+  if (backfillPredictionsState.value === 'error') return '查詢失敗（未取得確認Run）'
+  if (!backfillPredictionHasQueried.value || backfillPredictionsState.value === 'idle') {
+    return '尚未查詢（未取得確認Run）'
+  }
+  return backfillPredictionRunId.value || 'API未回傳run_id'
+})
+
+const confirmedCoverageRun = computed(() => {
+  if (coverageState.value === 'loading') return '載入中…'
+  if (coverageState.value === 'error') return '載入失敗'
+  if (!coverage.value) return '未載入'
+  return coverage.value.run_id ?? '尚無回放或未提供'
+})
+
+const isRunMismatch = computed(() => {
+  return Boolean(
+    backfillPredictionRunId.value &&
+    coverage.value?.run_id &&
+    backfillPredictionRunId.value !== coverage.value.run_id,
+  )
+})
+
+const catalogIsFullyLoaded = computed(() => {
+  if (strategyCatalogTotal.value === null) return null
+  return !strategyCatalogCursor.value && strategyCatalog.value.length >= strategyCatalogTotal.value
+})
 
 const strategyInventoryState = ref<LoadState>('idle')
 const strategyInventoryError = ref('')
 const strategyInventory = ref<ReplayStrategyInventoryItem[]>([])
+
+const strategyRunDiscoveryStrategyId = ref('')
+const strategyRunDiscoveryVersion = ref('')
+const strategyRunDiscoveryState = ref<LoadState>('idle')
+const strategyRunDiscoveryError = ref('')
+const strategyRunDiscoveryItems = ref<ReplayBackfillStrategyRunItem[]>([])
+const strategyRunDiscoveryTotal = ref(0)
+const strategyRunDiscoveryOffset = ref(0)
+const strategyRunDiscoveryHasMore = ref(false)
+const selectedStrategyRunIdentity = ref<AppliedStrategyRunIdentity | null>(null)
+const STRATEGY_RUN_DISCOVERY_LIMIT = 50
 
 const coverageState = ref<LoadState>('idle')
 const coverageError = ref('')
@@ -100,6 +155,43 @@ const backfillPredictionRunId = ref('')
 const backfillPredictionTotal = ref(0)
 const backfillPredictionCursor = ref<string | null>(null)
 const backfillPredictionHasQueried = ref(false)
+let applyingStrategyRun = false
+
+const backfillStrategyVersion = computed(() => {
+  const selected = selectedStrategyRunIdentity.value
+  if (
+    !selected ||
+    selected.lotteryType !== backfillLotteryType.value ||
+    selected.runId !== backfillRunId.value.trim() ||
+    selected.strategyId !== backfillStrategyId.value.trim()
+  ) {
+    return undefined
+  }
+  return selected.strategyVersion
+})
+
+const backfillVersionSelectionLabel = computed(() => {
+  const selected = selectedStrategyRunIdentity.value
+  if (!selected) {
+    return `未選定版本；指定 Strategy ID 時會查詢該策略的全部版本。查詢狀態：${backfillPredictionStateLabel()}。`
+  }
+  if (!backfillStrategyVersion.value) {
+    return `已選版本 ${selected.strategyVersion}（Run ${selected.runId} / ${selected.strategyId}），但目前查詢條件不一致；版本未套用。`
+  }
+  const queryState = backfillPredictionStateLabel()
+  return `已選定 Run×版本：${selected.runId} / ${selected.strategyId} / ${selected.strategyVersion}。查詢狀態：${queryState}。`
+})
+
+function backfillPredictionStateLabel(): string {
+  if (!backfillPredictionHasQueried.value) return '尚未查詢'
+  if (backfillPredictionsState.value === 'loading') return '查詢中'
+  if (backfillPredictionsState.value === 'error') return '查詢失敗'
+  if (backfillPredictionsState.value === 'ready' || backfillPredictionsState.value === 'empty') {
+    return '查詢完成'
+  }
+  return '尚未查詢'
+}
+
 const uniformReferenceState = ref<LoadState>('idle')
 const uniformReferenceError = ref('')
 const uniformReference = ref<UniformEightSummary | null>(null)
@@ -117,11 +209,13 @@ let backfillStrategyController: AbortController | undefined
 let strategyInventoryController: AbortController | undefined
 let backfillCoverageController: AbortController | undefined
 let backfillPredictionsController: AbortController | undefined
+let strategyRunDiscoveryController: AbortController | undefined
 let uniformReferenceController: AbortController | undefined
 let backfillStrategyGeneration = 0
 let strategyInventoryGeneration = 0
 let backfillCoverageGeneration = 0
 let backfillPredictionsGeneration = 0
+let strategyRunDiscoveryGeneration = 0
 let uniformReferenceGeneration = 0
 
 interface ReplayStrategyCatalogRow {
@@ -210,14 +304,33 @@ function strategyIdentityKey(
   return `${encodeString(strategy.lottery_type)}${encodeString(strategy.strategy_id)}${versionKey}`
 }
 
-function predictionIdentityKey(item: ReplayBackfillPredictionItem): string {
-  return [
+function predictionIdentityKey(item: ReplayBackfillPredictionItem): string | null {
+  const executionVersion = item.execution_version?.trim()
+  const datasetIdentity = item.dataset_identity?.trim()
+  if (!executionVersion || !datasetIdentity) return null
+  return JSON.stringify([
     item.lottery_type,
     item.strategy_id,
     item.strategy_version,
+    executionVersion,
+    datasetIdentity,
     item.target_draw_number,
     item.target_draw_date,
-  ].join('\u0000')
+  ])
+}
+
+function predictionRowTestId(item: ReplayBackfillPredictionItem, itemIndex: number): string {
+  const base = `backfill-row-${item.target_draw_number}-${item.strategy_id}`
+  const hasSibling = backfillPredictions.value.some((other, otherIndex) =>
+    otherIndex !== itemIndex &&
+    other.target_draw_number === item.target_draw_number &&
+    other.target_draw_date === item.target_draw_date &&
+    other.strategy_id === item.strategy_id,
+  )
+  if (!hasSibling) return base
+  const execution = item.execution_version?.trim() || `unidentified-execution-${itemIndex}`
+  const dataset = item.dataset_identity?.trim() || `unidentified-dataset-${itemIndex}`
+  return `${base}-${item.strategy_version}-${execution}-${dataset}`
 }
 
 function inventoryStrategyRow(strategy: ReplayStrategyInventoryItem): ReplayStrategyCatalogRow {
@@ -313,6 +426,13 @@ const backfillStrategyQueryOptions = computed(() => {
   }))
 })
 
+const backfillStrategyOptionMissing = computed(() =>
+  Boolean(
+    backfillStrategyId.value &&
+    !backfillStrategyQueryOptions.value.some((option) => option.strategy_id === backfillStrategyId.value),
+  ),
+)
+
 const visibleStrategyRows = computed(() =>
   filteredStrategyRows.value.slice(0, strategyCatalogVisibleCount.value),
 )
@@ -398,11 +518,32 @@ function clearPredictionResults(): void {
   backfillPredictionHasQueried.value = false
 }
 
+function clearStrategyRunDiscovery(): void {
+  strategyRunDiscoveryController?.abort()
+  strategyRunDiscoveryGeneration += 1
+  strategyRunDiscoveryState.value = 'idle'
+  strategyRunDiscoveryError.value = ''
+  strategyRunDiscoveryItems.value = []
+  strategyRunDiscoveryTotal.value = 0
+  strategyRunDiscoveryOffset.value = 0
+  strategyRunDiscoveryHasMore.value = false
+}
+
 watch(
-  [backfillLotteryType, backfillRunId, backfillStrategyId, backfillFromDate, backfillToDate, backfillPeriod],
+  [
+    backfillLotteryType,
+    backfillRunId,
+    backfillStrategyId,
+    backfillFromDate,
+    backfillToDate,
+    backfillPeriod,
+    backfillStrategyVersion,
+  ],
   () => {
     clearPredictionResults()
+    if (!applyingStrategyRun) selectedStrategyRunIdentity.value = null
   },
+  { flush: 'sync' },
 )
 
 watch(backfillRunId, () => {
@@ -410,6 +551,12 @@ watch(backfillRunId, () => {
   void loadStrategyCatalog(true)
   void loadCoverage()
 })
+
+watch(
+  [backfillLotteryType, strategyRunDiscoveryStrategyId, strategyRunDiscoveryVersion],
+  clearStrategyRunDiscovery,
+  { flush: 'sync' },
+)
 
 watch(backfillLotteryType, () => {
   backfillStrategyId.value = ''
@@ -429,12 +576,102 @@ function requestErrorMessage(error: unknown, fallback: string): string {
   return error instanceof Error ? error.message : fallback
 }
 
+async function loadStrategyRunDiscovery(reset: boolean): Promise<void> {
+  const strategyId = strategyRunDiscoveryStrategyId.value.trim()
+  if (!strategyId) {
+    clearStrategyRunDiscovery()
+    return
+  }
+
+  const strategyVersion = strategyRunDiscoveryVersion.value.trim() || undefined
+  if (reset) {
+    strategyRunDiscoveryItems.value = []
+    strategyRunDiscoveryTotal.value = 0
+    strategyRunDiscoveryOffset.value = 0
+    strategyRunDiscoveryHasMore.value = false
+  } else if (!strategyRunDiscoveryHasMore.value || strategyRunDiscoveryState.value === 'loading') {
+    return
+  }
+
+  const requestedOffset = reset ? 0 : strategyRunDiscoveryOffset.value
+  strategyRunDiscoveryController?.abort()
+  const controller = new AbortController()
+  strategyRunDiscoveryController = controller
+  const generation = ++strategyRunDiscoveryGeneration
+  strategyRunDiscoveryState.value = 'loading'
+  strategyRunDiscoveryError.value = ''
+  try {
+    const page = await listReplayStrategyRuns(
+      {
+        lotteryType: backfillLotteryType.value,
+        strategyId,
+        ...(strategyVersion ? { strategyVersion } : {}),
+        limit: STRATEGY_RUN_DISCOVERY_LIMIT,
+        offset: requestedOffset,
+      },
+      controller.signal,
+    )
+    if (controller.signal.aborted || generation !== strategyRunDiscoveryGeneration) return
+    const current = reset ? [] : strategyRunDiscoveryItems.value
+    const known = new Set(current.map((item) => `${item.run_id}\u0000${item.strategy_version}`))
+    if (page.items.some((item) => known.has(`${item.run_id}\u0000${item.strategy_version}`))) {
+      throw new Error('Run×版本分頁回傳重複身份，已停止合併頁面。')
+    }
+    strategyRunDiscoveryItems.value = [...current, ...page.items]
+    strategyRunDiscoveryTotal.value = page.total_run_version_matches
+    strategyRunDiscoveryOffset.value = page.offset + page.items.length
+    strategyRunDiscoveryHasMore.value = page.has_more
+    strategyRunDiscoveryState.value = strategyRunDiscoveryItems.value.length ? 'ready' : 'empty'
+  } catch (error) {
+    if (controller.signal.aborted || generation !== strategyRunDiscoveryGeneration) return
+    strategyRunDiscoveryError.value = requestErrorMessage(error, '無法查詢策略 Run 紀錄')
+    strategyRunDiscoveryState.value = 'error'
+  }
+}
+
+function findStrategyRuns(): void {
+  void loadStrategyRunDiscovery(true)
+}
+
+function loadMoreStrategyRuns(): void {
+  void loadStrategyRunDiscovery(false)
+}
+
+function applyStrategyRun(item: ReplayBackfillStrategyRunItem): void {
+  const runIsUnchanged =
+    backfillLotteryType.value === item.lottery_type && backfillRunId.value.trim() === item.run_id
+  clearPredictionResults()
+  coverage.value = null
+  coverageState.value = 'idle'
+  coverageError.value = ''
+  applyingStrategyRun = true
+  try {
+    selectedStrategyRunIdentity.value = {
+      lotteryType: item.lottery_type,
+      runId: item.run_id,
+      strategyId: item.strategy_id,
+      strategyVersion: item.strategy_version,
+    }
+    backfillLotteryType.value = item.lottery_type
+    backfillRunId.value = item.run_id
+    backfillStrategyId.value = item.strategy_id
+  } finally {
+    applyingStrategyRun = false
+  }
+  if (runIsUnchanged && backfillInitialized.value) void loadCoverage()
+}
+
+function discoveryDateLabel(value: string | null): string {
+  return value ?? '未提供'
+}
+
 async function loadStrategyCatalog(reset: boolean): Promise<void> {
   if (reset) {
     backfillStrategyController?.abort()
     strategyCatalog.value = []
     strategyCatalogCursor.value = null
     strategyCatalogVisibleCount.value = 100
+    strategyCatalogTotal.value = null
   }
   const requestedCursor = reset ? null : strategyCatalogCursor.value
   if (!reset && !requestedCursor) return
@@ -468,6 +705,7 @@ async function loadStrategyCatalog(reset: boolean): Promise<void> {
       return true
     })
     strategyCatalog.value = [...current, ...newItems]
+    strategyCatalogTotal.value = page.total_count
     if (requestedCursor && page.next_cursor === requestedCursor) {
       throw new Error('策略清單分頁游標沒有前進，已停止載入以避免重複資料。')
     }
@@ -564,7 +802,8 @@ async function loadBackfillPredictionPage(loadMore: boolean): Promise<void> {
   const query = {
     lotteryType: backfillLotteryType.value,
     runId: backfillRunId.value,
-    ...(backfillStrategyId.value ? { strategyId: backfillStrategyId.value } : {}),
+    ...(backfillStrategyId.value.trim() ? { strategyId: backfillStrategyId.value.trim() } : {}),
+    ...(backfillStrategyVersion.value ? { strategyVersion: backfillStrategyVersion.value } : {}),
     ...(backfillFromDate.value ? { fromDate: backfillFromDate.value } : {}),
     ...(backfillToDate.value ? { toDate: backfillToDate.value } : {}),
     period: backfillPeriod.value,
@@ -591,11 +830,17 @@ async function loadBackfillPredictionPage(loadMore: boolean): Promise<void> {
       throw new Error('Replay API returned an empty page while reporting results; query again to avoid skipping data.')
     }
     const current = loadMore ? backfillPredictions.value : []
-    const known = new Set(current.map(predictionIdentityKey))
+    const known = new Set(
+      current.map(predictionIdentityKey).filter((key): key is string => key !== null),
+    )
+    const knownObjectReferences = new Set(current.map((item) => toRaw(item)))
     const newItems = page.items.filter((item) => {
+      const rawItem = toRaw(item)
+      if (knownObjectReferences.has(rawItem)) return false
       const key = predictionIdentityKey(item)
-      if (known.has(key)) return false
-      known.add(key)
+      if (key !== null && known.has(key)) return false
+      knownObjectReferences.add(rawItem)
+      if (key !== null) known.add(key)
       return true
     })
     backfillPredictions.value = [...current, ...newItems]
@@ -603,11 +848,23 @@ async function loadBackfillPredictionPage(loadMore: boolean): Promise<void> {
     backfillPredictionTotal.value = page.total_count
     backfillPredictionCursor.value = page.next_cursor
     backfillPredictionsState.value = backfillPredictions.value.length ? 'ready' : 'empty'
-    if (!loadMore && query.lotteryType === 'BIG_LOTTO' && query.strategyId && page.run_id) {
+    if (
+      !loadMore &&
+      page.items.length > 0 &&
+      query.lotteryType === 'BIG_LOTTO' &&
+      query.strategyId &&
+      page.run_id
+    ) {
       void loadUniformReference({ ...query, strategyId: query.strategyId, runId: page.run_id })
     }
   } catch (error) {
     if (controller.signal.aborted || generation !== backfillPredictionsGeneration) return
+    if (loadMore) {
+      backfillPredictions.value = []
+      backfillPredictionRunId.value = ''
+      backfillPredictionTotal.value = 0
+      backfillPredictionCursor.value = null
+    }
     backfillPredictionsError.value = requestErrorMessage(error, '無法查詢正式 Replay 資料')
     backfillPredictionsState.value = 'error'
   }
@@ -1078,6 +1335,7 @@ onBeforeUnmount(() => {
   strategyInventoryController?.abort()
   backfillCoverageController?.abort()
   backfillPredictionsController?.abort()
+  strategyRunDiscoveryController?.abort()
   uniformReferenceController?.abort()
 })
 function nullableText(value: string | null | undefined): string {
@@ -1572,6 +1830,185 @@ function predictedNumbers(value: number[] | null | undefined): string {
         not run strategies, rebuild data, or retrain models.
       </p>
 
+      <section class="panel replay-backfill-section replay-backfill-scope-banner" data-testid="backfill-run-scope">
+        <h3>目前查詢範圍與回應身份</h3>
+        <dl class="source-facts replay-backfill-coverage-facts">
+          <div>
+            <dt>查詢彩種</dt>
+            <dd>{{ queryScopeLottery }}</dd>
+          </div>
+          <div>
+            <dt>查詢 Run 條件</dt>
+            <dd>{{ queryScopeRunLabel }}</dd>
+          </div>
+          <div>
+            <dt>預測確認回傳 Run</dt>
+            <dd><span data-testid="backfill-confirmed-prediction-run">{{ confirmedPredictionRun }}</span></dd>
+          </div>
+          <div>
+            <dt>覆蓋確認回傳 Run</dt>
+            <dd><span data-testid="backfill-coverage-run">{{ confirmedCoverageRun }}</span></dd>
+          </div>
+          <div>
+            <dt>正式 Inventory 身份數</dt>
+            <dd><span data-testid="backfill-inventory-count">{{ strategyInventory.length }}</span></dd>
+          </div>
+          <div>
+            <dt>策略清單載入 / 回報總數</dt>
+            <dd>
+              <span data-testid="backfill-catalog-count">
+                已載入 {{ strategyCatalog.length }} 筆 / 總數 {{ strategyCatalogTotal !== null ? strategyCatalogTotal : 'API未提供' }}
+                <template v-if="catalogIsFullyLoaded === false">（清單尚未載完，不可視為完整名冊）</template>
+              </span>
+            </dd>
+          </div>
+          <div v-if="backfillPredictionHasQueried">
+            <dt>預測查詢結果列數</dt>
+            <dd>
+              <span data-testid="backfill-prediction-count">
+                {{ backfillPredictions.length }} 列（API 回報總數：{{ backfillPredictionTotal }}）
+              </span>
+            </dd>
+          </div>
+        </dl>
+        <div v-if="isRunMismatch" class="state-panel state-panel--warning" role="alert" data-testid="backfill-run-mismatch">
+          <strong>來源尚未對齊（Run 不一致）：</strong>
+          預測查詢回傳 Run「{{ backfillPredictionRunId }}」，但覆蓋統計回傳 Run「{{ coverage?.run_id }}」。兩者來源 Run 不一致，尚未對齊，不可視為同一份統計。
+        </div>
+      </section>
+
+      <section
+        class="panel replay-backfill-section"
+        aria-labelledby="strategy-run-discovery-title"
+        data-testid="strategy-run-discovery"
+      >
+        <h3 id="strategy-run-discovery-title">Discover strategy runs</h3>
+        <p class="panel__note">
+          查詢彩種沿用下方 Query conditions；請輸入完整 strategy ID，可選擇精確版本。每列代表一個 Run×版本匹配。
+        </p>
+        <div class="filter-panel" role="group" aria-labelledby="strategy-run-discovery-title">
+          <div class="filter-grid replay-backfill-filters">
+            <label>
+              <span>完整 Strategy ID</span>
+              <input
+                v-model.trim="strategyRunDiscoveryStrategyId"
+                name="discovery_strategy_id"
+                autocomplete="off"
+                data-testid="strategy-run-discovery-id"
+                @keydown.enter.prevent="findStrategyRuns"
+              />
+            </label>
+            <label>
+              <span>Strategy version（選填，精確比對）</span>
+              <input
+                v-model.trim="strategyRunDiscoveryVersion"
+                name="discovery_strategy_version"
+                autocomplete="off"
+                data-testid="strategy-run-discovery-version"
+                @keydown.enter.prevent="findStrategyRuns"
+              />
+            </label>
+          </div>
+          <div class="filter-actions">
+            <button
+              class="button button--primary"
+              type="button"
+              data-testid="strategy-run-discovery-submit"
+              :disabled="!strategyRunDiscoveryStrategyId.trim() || strategyRunDiscoveryState === 'loading'"
+              @click="findStrategyRuns"
+            >
+              查詢策略在哪些 Run 留有紀錄
+            </button>
+          </div>
+        </div>
+        <p class="panel__note" data-testid="strategy-run-discovery-version-limit">
+          逐期 API 已支援正式 strategy_version 篩選；舊版「尚無正式 strategy_version 篩選」提示已更新。套用 Run×版本會更新下方單 Run、Strategy ID 與版本條件，但不會自動查詢或計算跨 Run 統計。
+        </p>
+        <p v-if="strategyRunDiscoveryState === 'idle'" class="state-panel" data-testid="strategy-run-discovery-idle">
+          輸入完整 Strategy ID 後主動查詢；本區不會在頁面載入時遍歷 Run。
+        </p>
+        <p v-else-if="strategyRunDiscoveryState === 'loading'" class="state-panel" data-testid="strategy-run-discovery-loading">
+          正在查詢策略的 Run×版本紀錄…
+        </p>
+        <div
+          v-else-if="strategyRunDiscoveryState === 'error'"
+          class="state-panel state-panel--error"
+          role="alert"
+          data-testid="strategy-run-discovery-error"
+        >
+          {{ strategyRunDiscoveryError }}
+        </div>
+        <p v-else-if="strategyRunDiscoveryState === 'empty'" class="state-panel" data-testid="strategy-run-discovery-empty">
+          查詢成功，沒有符合的 Run×版本紀錄。
+        </p>
+        <template v-else-if="strategyRunDiscoveryState === 'ready'">
+          <p class="table-note" data-testid="strategy-run-discovery-count">
+            {{ strategyRunDiscoveryTotal }} 個 Run×版本匹配（不是唯一 Run 數）；目前顯示 {{ strategyRunDiscoveryItems.length }} 列。
+          </p>
+          <div class="table-wrap">
+            <table data-testid="strategy-run-discovery-table">
+              <caption>每列是一個 Run×版本身分；下列為原始關聯數量，不是成功次數或命中率分母。</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Run</th>
+                  <th scope="col">Strategy ID</th>
+                  <th scope="col">Version</th>
+                  <th scope="col">Run 建立時間</th>
+                  <th scope="col">Inventory 登記</th>
+                  <th scope="col">Cell 關聯數</th>
+                  <th scope="col">唯一目標期數</th>
+                  <th scope="col">Execution 身份數</th>
+                  <th scope="col">目標日期範圍</th>
+                  <th scope="col">操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="item in strategyRunDiscoveryItems"
+                  :key="`${item.run_id}-${item.strategy_version}`"
+                  :data-testid="`strategy-run-discovery-row-${item.run_id}-${item.strategy_version}`"
+                >
+                  <th scope="row"><code>{{ item.run_id }}</code></th>
+                  <td><code>{{ item.strategy_id }}</code></td>
+                  <td>{{ item.strategy_version }}</td>
+                  <td>{{ item.run_created_at || '未提供' }}</td>
+                  <td>
+                    <template v-if="item.inventory_present && item.associated_cell_count === 0">
+                      已登記於該Run，沒有對應Cell
+                    </template>
+                    <template v-else-if="item.inventory_present">已登記於該Run</template>
+                    <template v-else>API 未回報該 Run 有 Inventory 登記</template>
+                  </td>
+                  <td>{{ item.associated_cell_count }}</td>
+                  <td>{{ item.unique_target_draw_count }}</td>
+                  <td>{{ item.execution_identity_count }}</td>
+                  <td>{{ discoveryDateLabel(item.earliest_target_draw_date) }} – {{ discoveryDateLabel(item.latest_target_draw_date) }}</td>
+                  <td>
+                    <button
+                      class="button button--quiet"
+                      type="button"
+                      :data-testid="`strategy-run-discovery-apply-${item.run_id}-${item.strategy_version}`"
+                      @click="applyStrategyRun(item)"
+                    >
+                      套用 Run×版本
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div v-if="strategyRunDiscoveryHasMore" class="filter-actions">
+            <button
+              class="button"
+              type="button"
+              data-testid="strategy-run-discovery-load-more"
+              @click="loadMoreStrategyRuns"
+            >
+              載入更多 Run×版本匹配
+            </button>
+          </div>
+        </template>
+      </section>
       <K3ComparisonPanel v-if="backfillLotteryType === 'BIG_LOTTO'" />
 
       <section class="panel replay-backfill-section" aria-labelledby="backfill-query-title">
@@ -1603,9 +2040,12 @@ function predictedNumbers(value: number[] | null | undefined): string {
               />
             </label>
             <label>
-              <span>Strategy ID (all versions)</span>
+              <span>Strategy ID</span>
               <select v-model="backfillStrategyId" name="strategy_id">
                 <option value="">All strategies</option>
+                <option v-if="backfillStrategyOptionMissing" :value="backfillStrategyId">
+                  {{ backfillStrategyId }} · 由 Run×版本發現選取
+                </option>
                 <option
                   v-for="option in backfillStrategyQueryOptions"
                   :key="option.strategy_id"
@@ -1648,6 +2088,9 @@ function predictedNumbers(value: number[] | null | undefined): string {
               Query history
             </button>
           </div>
+          <p class="panel__note" data-testid="backfill-version-selection">
+            {{ backfillVersionSelectionLabel }}
+          </p>
         </form>
 
         <p v-if="strategyInventoryState === 'error' && strategyCatalog.length" class="state-panel" data-testid="backfill-inventory-fallback">
@@ -1678,6 +2121,9 @@ function predictedNumbers(value: number[] | null | undefined): string {
             data-testid="backfill-strategies-pagination-error"
           >
             策略清單分頁或補充資料載入失敗：{{ strategyCatalogError }}
+          </p>
+          <p class="replay-backfill-reason" data-testid="backfill-catalog-scope">
+            策略清單請求範圍：{{ queryScopeRunLabel }}（策略清單 API未提供已確認Run欄位，僅標示請求範圍，不杜撰已確認 Run）
           </p>
           <table>
             <caption>Strategy identities ({{ visibleStrategyRows.length }} shown / {{ filteredStrategyRows.length }} matching)</caption>
@@ -1764,19 +2210,29 @@ function predictedNumbers(value: number[] | null | undefined): string {
             Partial coverage: some expected cells are missing, failed, or closed. Counts below come
             from the coverage API.
           </p>
-          <dl class="source-facts replay-backfill-coverage-facts">
+          <dl class="source-facts replay-backfill-coverage-facts" data-testid="backfill-coverage-counts">
             <div>
               <dt title="Expected strategy count minus the strategy IDs returned by the coverage API as missing">Completed strategies</dt>
               <dd>{{ Math.max(0, coverage.expected_strategy_count - coverage.missing_strategy_ids.length) }} / {{ coverage.expected_strategy_count }}</dd>
             </div>
-            <div><dt>Completed replay cells (strategy × draw)</dt><dd>{{ coverage.completed_cell_count }} / {{ coverage.expected_cell_count }}</dd></div>
-            <div><dt>Expected draw periods</dt><dd>{{ coverage.expected_target_count }}</dd></div>
+            <div>
+              <dt>Completed replay cells（已完成 cell 數）</dt>
+              <dd>{{ coverage.completed_cell_count }} / {{ coverage.expected_cell_count }} <span class="replay-backfill-reason">（cell 計數為策略 × 期數組合）</span></dd>
+            </div>
+            <div>
+              <dt>Expected draw periods（預期期數）</dt>
+              <dd>{{ coverage.expected_target_count }} <span class="replay-backfill-reason">（預期期數，非實際已有資料期數）</span></dd>
+            </div>
+            <div><dt>預期 cell 總數</dt><dd>{{ coverage.expected_cell_count }}</dd></div>
             <div><dt>Missing cells</dt><dd>{{ Math.max(0, coverage.expected_cell_count - coverage.completed_cell_count - coverage.failed_cell_count - coverage.closed_cell_count) }}</dd></div>
             <div><dt>Failed cells</dt><dd>{{ coverage.failed_cell_count }}</dd></div>
             <div><dt>Closed cells</dt><dd>{{ coverage.closed_cell_count }}</dd></div>
             <div><dt>Complete coverage</dt><dd>{{ coverage.complete_coverage_percent.toFixed(1) }}%</dd></div>
             <div><dt>Coverage run</dt><dd><code>{{ coverage.run_id ?? '尚無回放' }}</code></dd></div>
           </dl>
+          <p class="replay-backfill-reason" data-testid="backfill-coverage-version-scope">
+            Coverage 是目前 Run 範圍的統計，不會因 Strategy version 篩選而變成版本專屬 coverage。
+          </p>
           <p v-if="coverage.missing_strategy_ids.length" class="replay-backfill-reason">
             Missing strategy IDs: {{ coverage.missing_strategy_ids.join(', ') }}
           </p>
@@ -1809,15 +2265,18 @@ function predictedNumbers(value: number[] | null | undefined): string {
             </li>
           </ul>
         </section>
-        <p v-if="backfillPredictionsState === 'loading'" class="state-panel" data-testid="backfill-predictions-loading">
+        <p v-if="backfillPredictionsState === 'idle' && !backfillPredictionHasQueried" class="state-panel" data-testid="backfill-predictions-not-queried">
+          尚未執行預測查詢。請設定條件後點擊「Query history」。
+        </p>
+        <p v-else-if="backfillPredictionsState === 'loading'" class="state-panel" data-testid="backfill-predictions-loading">
           Loading replay results…
         </p>
         <div v-else-if="backfillPredictionsState === 'error'" class="state-panel state-panel--error" role="alert" data-testid="backfill-predictions-error">
           {{ backfillPredictionsError }}
         </div>
-        <p v-else-if="backfillPredictionsState === 'empty'" class="state-panel" data-testid="backfill-predictions-empty">
-          {{ coverage?.completed_cell_count === 0 ? '尚無可查詢的正式Replay資料。' : 'No replay records match the selected filters.' }}
-        </p>
+        <div v-else-if="backfillPredictionsState === 'empty'" class="state-panel" data-testid="backfill-predictions-empty">
+          {{ coverage?.completed_cell_count === 0 ? '尚無可查詢的正式Replay資料。' : '' }}目前Run／篩選條件沒有符合結果（No replay records match the selected filters.）。本次僅查詢目前指定的 Run 範圍（{{ backfillPredictionRunId ? ('Run: ' + backfillPredictionRunId) : '最新 Run' }}），尚未查詢其他Run，不代表其他Run沒有資料。
+        </div>
         <div v-if="backfillPredictions.length" class="table-wrap">
           <table>
             <caption>Per-draw replay predictions — {{ backfillPredictionTotal }} total</caption>
@@ -1837,7 +2296,11 @@ function predictedNumbers(value: number[] | null | undefined): string {
               </tr>
             </thead>
             <tbody>
-              <tr v-for="item in backfillPredictions" :key="predictionIdentityKey(item)" :data-testid="`backfill-row-${item.target_draw_number}-${item.strategy_id}`">
+              <tr
+                v-for="(item, itemIndex) in backfillPredictions"
+                :key="predictionIdentityKey(item) ?? `unidentified-${itemIndex}`"
+                :data-testid="predictionRowTestId(item, itemIndex)"
+              >
                 <td>{{ lotteryLabel(item.lottery_type) }}</td>
                 <td>{{ item.target_draw_number }}</td>
                 <td>{{ item.target_draw_date }}</td>
@@ -1845,6 +2308,9 @@ function predictedNumbers(value: number[] | null | undefined): string {
                   <strong>{{ strategyDisplayName(item) }}</strong><br />
                   <code>{{ item.strategy_id }}</code><br />
                   <span>{{ item.strategy_version }}</span><br />
+                    <span data-testid="prediction-execution-identity">
+                    Execution <code>{{ item.execution_version ?? '未提供' }}</code> · Dataset <code>{{ item.dataset_identity ?? '未提供' }}</code>
+                  </span><br />
                   <span>生命週期：{{ item.lifecycle_status ?? 'API未提供' }}</span>
                 </td>
                 <td>
@@ -1891,6 +2357,7 @@ function predictedNumbers(value: number[] | null | undefined): string {
                       <div><dt>Training cutoff</dt><dd>{{ item.training.training_cutoff ?? 'API未提供' }}</dd></div>
                       <div><dt>Training artifact</dt><dd><code>{{ item.training.training_artifact_id ?? 'API未提供' }}</code></dd></div>
                       <div><dt>Prediction status</dt><dd>{{ item.prediction_status }}</dd></div>
+                      <div><dt>Source history provenance</dt><dd>{{ item.source_history_provenance_status ?? 'API未提供' }}</dd></div>
                       <div><dt>組合唯一性</dt><dd>{{ item.research_portfolio_qualification?.status ?? 'UNKNOWN' }}</dd></div>
                       <div><dt>匯入資格</dt><dd>{{ item.research_portfolio_qualification?.import_qualification ?? 'UNKNOWN' }}</dd></div>
                       <div><dt>Prediction cutoff</dt><dd>{{ predictionCutoffLabel(item) }}</dd></div>

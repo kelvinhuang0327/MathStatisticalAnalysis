@@ -170,29 +170,54 @@ async function requestJson<T>(
 }
 
 function isRankingsResponse(value: unknown): value is HistoricalPrefixAnalyticsRankingsResponse {
+  if (
+    !isRecord(value) ||
+    !isMetadata(value.metadata) ||
+    !isNonNegativeInteger(value.top_k) ||
+    !Array.isArray(value.groups)
+  ) {
+    return false
+  }
+
+  const topK = value.top_k
+  return value.groups.every((group) => isRankingsGroup(group, topK))
+}
+
+function isRankingsGroup(value: unknown, topK: number): value is HistoricalPrefixAnalyticsRankingGroup {
+  if (
+    !isRecord(value) ||
+    !isReplayPrefixCount(value.prefix_count) ||
+    !isNonEmptyString(value.status) ||
+    !isNonNegativeInteger(value.total_candidate_count) ||
+    !isNonNegativeInteger(value.requested_top_k) ||
+    value.requested_top_k !== topK ||
+    !Array.isArray(value.candidates)
+  ) {
+    return false
+  }
+
+  const prefixCount = value.prefix_count
+  return (
+    value.candidates.length === Math.min(value.total_candidate_count, value.requested_top_k) &&
+    value.candidates.every((candidate) => isRankingsCandidate(candidate, prefixCount))
+  )
+}
+
+function isRankingsCandidate(
+  value: unknown,
+  groupPrefixCount: number,
+): value is HistoricalPrefixAnalyticsRankingCandidate {
   return (
     isRecord(value) &&
-    isMetadata(value.metadata) &&
-    isNonNegativeInteger(value.top_k) &&
-    Array.isArray(value.groups) &&
-    value.groups.every(
-      (group) =>
-        isRecord(group) &&
-        isNonNegativeInteger(group.prefix_count) &&
-        typeof group.status === 'string' &&
-        isNonNegativeInteger(group.total_candidate_count) &&
-        isNonNegativeInteger(group.requested_top_k) &&
-        Array.isArray(group.candidates) &&
-        group.candidates.every(
-          (candidate) =>
-            isRecord(candidate) &&
-            isNonNegativeInteger(candidate.rank) &&
-            isStrategyIdentity(candidate.identity) &&
-            isStrategySummary(candidate.summary) &&
-            Array.isArray(candidate.tie_break_provenance) &&
-            candidate.tie_break_provenance.every((item) => typeof item === 'string'),
-        ),
-    )
+    isPositiveSafeInteger(value.rank) &&
+    isStrategyIdentity(value.identity) &&
+    isStrategySummary(value.summary) &&
+    value.summary.prefix_count === groupPrefixCount &&
+    value.summary.ranking_eligible &&
+    value.summary.ranking_exclusion_reason === null &&
+    sameStrategyIdentity(value.identity, value.summary.identity) &&
+    Array.isArray(value.tie_break_provenance) &&
+    value.tie_break_provenance.every((item) => typeof item === 'string')
   )
 }
 
@@ -226,14 +251,14 @@ function isStrategySummary(value: unknown): value is HistoricalPrefixAnalyticsSt
     isRecord(value) &&
     isStrategyIdentity(value.identity) &&
     isNonNegativeInteger(value.prefix_count) &&
-    typeof value.status === 'string' &&
+    isNonEmptyString(value.status) &&
     isNonNegativeInteger(value.distinct_draw_count) &&
     isNonNegativeInteger(value.replay_ticket_count) &&
     isNonNegativeInteger(value.portfolio_success_count) &&
     isExactRatio(value.portfolio_success_rate) &&
     typeof value.ranking_eligible === 'boolean' &&
     (value.ranking_exclusion_reason === null ||
-      typeof value.ranking_exclusion_reason === 'string')
+      isNonEmptyString(value.ranking_exclusion_reason))
   )
 }
 
@@ -262,39 +287,63 @@ function isReplayItem(value: unknown): value is HistoricalPrefixAnalyticsReplayI
 function isMetadata(value: unknown): value is HistoricalPrefixAnalyticsMetadata {
   return (
     isRecord(value) &&
-    typeof value.result_schema_version === 'string' &&
-    typeof value.source_import_identity_sha256 === 'string' &&
-    typeof value.source_manifest_sha256 === 'string' &&
-    typeof value.source_artifact_sha256 === 'string' &&
-    typeof value.dataset_identity === 'string' &&
-    typeof value.dataset_sha256 === 'string' &&
-    typeof value.lottery_type === 'string' &&
-    typeof value.ranking_policy_id === 'string' &&
-    typeof value.historical_only_disclaimer_id === 'string'
+    isNamedIdentity(value.result_schema_version) &&
+    isNamedIdentity(value.source_import_identity_sha256) &&
+    isNamedIdentity(value.source_manifest_sha256) &&
+    isNamedIdentity(value.source_artifact_sha256) &&
+    isNamedIdentity(value.dataset_identity) &&
+    isNamedIdentity(value.dataset_sha256) &&
+    isNamedIdentity(value.lottery_type) &&
+    isNamedIdentity(value.ranking_policy_id) &&
+    isNamedIdentity(value.historical_only_disclaimer_id)
   )
 }
 
 function isStrategyIdentity(value: unknown): value is HistoricalPrefixAnalyticsStrategyIdentity {
   return (
     isRecord(value) &&
-    typeof value.strategy_id === 'string' &&
-    typeof value.effective_strategy_id === 'string' &&
-    typeof value.strategy_version === 'string' &&
+    isNamedIdentity(value.strategy_id) &&
+    isNamedIdentity(value.effective_strategy_id) &&
+    isNamedIdentity(value.strategy_version) &&
     isNonNegativeInteger(value.replicate) &&
-    typeof value.identity_kind === 'string' &&
-    typeof value.governance_status === 'string' &&
-    (value.alias_of_strategy_id === null || typeof value.alias_of_strategy_id === 'string') &&
-    (value.equivalence_group === null || typeof value.equivalence_group === 'string') &&
+    isNonEmptyString(value.identity_kind) &&
+    isNonEmptyString(value.governance_status) &&
+    (value.alias_of_strategy_id === null || isNamedIdentity(value.alias_of_strategy_id)) &&
+    (value.equivalence_group === null || isNamedIdentity(value.equivalence_group)) &&
     typeof value.nested_prefix_supported === 'boolean'
   )
 }
 
 function isExactRatio(value: unknown): value is HistoricalPrefixAnalyticsExactRatio {
+  if (
+    !isRecord(value) ||
+    !isNonNegativeInteger(value.numerator) ||
+    !isNonNegativeInteger(value.denominator) ||
+    typeof value.is_available !== 'boolean'
+  ) {
+    return false
+  }
+
   return (
-    isRecord(value) &&
-    isNonNegativeInteger(value.numerator) &&
-    isNonNegativeInteger(value.denominator) &&
-    typeof value.is_available === 'boolean'
+    !value.is_available ||
+    (value.denominator > 0 && value.numerator <= value.denominator)
+  )
+}
+
+function sameStrategyIdentity(
+  left: HistoricalPrefixAnalyticsStrategyIdentity,
+  right: HistoricalPrefixAnalyticsStrategyIdentity,
+): boolean {
+  return (
+    left.strategy_id === right.strategy_id &&
+    left.effective_strategy_id === right.effective_strategy_id &&
+    left.strategy_version === right.strategy_version &&
+    left.replicate === right.replicate &&
+    left.identity_kind === right.identity_kind &&
+    left.governance_status === right.governance_status &&
+    left.alias_of_strategy_id === right.alias_of_strategy_id &&
+    left.equivalence_group === right.equivalence_group &&
+    left.nested_prefix_supported === right.nested_prefix_supported
   )
 }
 
@@ -319,8 +368,24 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
+function isNamedIdentity(value: unknown): value is string {
+  return (
+    typeof value === 'string' &&
+    value.trim().length > 0 &&
+    value.trim().toUpperCase() !== 'UNKNOWN'
+  )
+}
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === 'string' && value.trim().length > 0
+}
+
 function isNonNegativeInteger(value: unknown): value is number {
   return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0
+}
+
+function isPositiveSafeInteger(value: unknown): value is number {
+  return isNonNegativeInteger(value) && value > 0
 }
 
 function requireNonNegativeSafeInteger(value: unknown, name: string): asserts value is number {

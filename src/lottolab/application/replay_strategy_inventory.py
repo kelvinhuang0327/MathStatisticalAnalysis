@@ -1404,6 +1404,102 @@ def _apply_execution_capabilities(
             item.execution_block_reason = None
 
 
+@dataclass(frozen=True, slots=True)
+class _ImportedReplayIdentitySpec:
+    lottery_type: LotteryType
+    strategy_id: str
+    display_name: str
+    strategy_version: str
+    source_locator: str
+    reconstruction_reason: str
+    source_status: str | None = None
+
+
+_IMPORTED_REPLAY_IDENTITIES: tuple[_ImportedReplayIdentitySpec, ...] = (
+    _ImportedReplayIdentitySpec(
+        lottery_type=LotteryType.BIG_LOTTO,
+        strategy_id="research_biglotto__zone_momentum_complete_v1",
+        display_name="Zone Momentum Complete",
+        strategy_version="v1",
+        source_locator=(
+            "zone_successor_stage_642fb680b1a86e13c2594a6585b5c8f3776392936ff0681ac2b43f1846f73b5d"
+        ),
+        reconstruction_reason=(
+            "Identified from imported Replay Backfill stage metadata; historical coverage "
+            "comes strictly from Replay Backfill DB overlay with no current native executable "
+            "binding."
+        ),
+    ),
+    _ImportedReplayIdentitySpec(
+        lottery_type=LotteryType.BIG_LOTTO,
+        strategy_id="evolution_h12_k30_geometry_completion",
+        display_name="K30 Geometry (歷史研究策略)",
+        strategy_version="v0.1",
+        source_locator=(
+            "src/lottolab/application/replay_strategy_inventory.py"
+            "#evolution_h12_k30_geometry_completion"
+        ),
+        reconstruction_reason=(
+            "Static K30 geometry research strategy identity; historical coverage comes strictly "
+            "from Replay Backfill DB overlay with no current native executable binding."
+        ),
+        source_status="RESEARCH_STRATEGY",
+    ),
+    _ImportedReplayIdentitySpec(
+        lottery_type=LotteryType.BIG_LOTTO,
+        strategy_id="evolution_h12_k30_matched_random_completion",
+        display_name="K30 Matched Random (隨機補票對照組)",
+        strategy_version="v0.1",
+        source_locator=(
+            "src/lottolab/application/replay_strategy_inventory.py"
+            "#evolution_h12_k30_matched_random_completion"
+        ),
+        reconstruction_reason=(
+            "Static K30 matched-random control baseline identity (non-production comparison "
+            "reference only, not a future recommendation candidate); historical coverage comes "
+            "strictly from Replay Backfill DB overlay with no current native executable binding."
+        ),
+        source_status="CONTROL_BASELINE",
+    ),
+)
+
+_IMPORTED_REPLAY_SOURCE_KIND = "REPLAY_BACKFILL_IMPORTED_RESULT"
+
+
+def _add_imported_replay_identities(
+    items: dict[tuple[LotteryType, str, str | None], _MutableItem],
+) -> tuple[int, int]:
+    """Register static imported replay-only strategy identities without fabrication."""
+
+    for spec in _IMPORTED_REPLAY_IDENTITIES:
+        source_statuses = (spec.source_status,) if spec.source_status is not None else ()
+        _add_item(
+            items,
+            lottery_type=spec.lottery_type,
+            strategy_id=spec.strategy_id,
+            display_name=spec.display_name,
+            strategy_version=spec.strategy_version,
+            source_kind=_IMPORTED_REPLAY_SOURCE_KIND,
+            source_locator=spec.source_locator,
+            lifecycle_status=ReplayLifecycleStatus.UNREGISTERED_IDENTIFIED,
+            replay_data_status=ReplayDataStatus.NO_HISTORY,
+            execution_capability=ReplayExecutionCapability.UNAVAILABLE,
+            reconstruction_reason=spec.reconstruction_reason,
+            source=_source_mapping(
+                kind=_IMPORTED_REPLAY_SOURCE_KIND,
+                locator=spec.source_locator,
+                strategy_id=spec.strategy_id,
+                version=spec.strategy_version,
+                mapping="exact_imported_replay_identity",
+                status=spec.source_status,
+            ),
+            adapter_mapping=None,
+            source_statuses=source_statuses,
+        )
+    count = len(_IMPORTED_REPLAY_IDENTITIES)
+    return count, count
+
+
 @lru_cache(maxsize=1)
 def load_replay_strategy_inventory(
     *,
@@ -1548,6 +1644,7 @@ def load_replay_strategy_inventory(
         exact_native_payload,
     )
     _add_legacy_snapshot_only_rows(items, legacy_statuses)
+    imported_identity_count, imported_row_count = _add_imported_replay_identities(items)
 
     resolved_native_binding_evidence = (
         current_native_binding_evidence
@@ -1614,6 +1711,11 @@ def load_replay_strategy_inventory(
             "EXACT_NATIVE_RANKING_ARTIFACT",
             exact_native_identity_count,
             exact_native_row_count,
+        ),
+        ReplayStrategySourceCount(
+            _IMPORTED_REPLAY_SOURCE_KIND,
+            imported_identity_count,
+            imported_row_count,
         ),
     )
     ordered_items = tuple(

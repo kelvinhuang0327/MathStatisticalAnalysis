@@ -516,10 +516,10 @@ describe('B649 safe integer response contract', () => {
     expect(zeroSummary.progress.total_strategy_count).toBe(0)
     expect(zeroSummary.source_report_count).toBeNull()
 
-    setFetchPayload(multiTicketPage({ items: [], total: SAFE_MAX, limit: SAFE_MAX, offset: SAFE_MAX }))
-    const safeMaxPage = await fetchB649MultiTicketRecords(multiQuery())
+    setFetchPayload(multiTicketPage({ items: [], total: SAFE_MAX, offset: SAFE_MAX }))
+    const safeMaxPage = await fetchB649MultiTicketRecords(multiQuery({ offset: SAFE_MAX }))
     expect(safeMaxPage.total).toBe(SAFE_MAX)
-    expect(safeMaxPage.limit).toBe(SAFE_MAX)
+    expect(safeMaxPage.limit).toBe(25)
     expect(safeMaxPage.offset).toBe(SAFE_MAX)
 
     setFetchPayload(multiTicketPage({ items: [], total: 0, offset: 0 }))
@@ -577,7 +577,7 @@ describe('B649 safe integer response contract', () => {
   })
 
   it('keeps legal query URLs and GET fetch behavior unchanged', async () => {
-    const multiFetch = setFetchPayload(multiTicketPage())
+    const multiFetch = setFetchPayload(multiTicketPage({ limit: 100 }))
     await fetchB649MultiTicketRecords(multiQuery({ limit: 100, offset: 0 }))
     expect(multiFetch).toHaveBeenCalledOnce()
     expect(multiFetch.mock.calls[0][0]).toBe(

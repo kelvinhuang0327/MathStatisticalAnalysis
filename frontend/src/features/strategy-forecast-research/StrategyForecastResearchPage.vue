@@ -171,7 +171,7 @@ onBeforeUnmount(() => {
       </div>
 
       <p class="research-note">
-        高於基準只表示同一事件來源中，分子與正整數分母有效、來源可比較，且實際率、隨機基準與差值有效並有 delta &gt; 0。這是描述性比較，不是顯著性或 OOS 預測證據。
+        高於基準只表示同一事件來源中，分子與正整數分母有效、來源可比較，且實際率、隨機基準與差值有效，並同時滿足 delta &gt; 0 與實際率大於隨機基準（actualRate &gt; baselineRate）。這是描述性比較，不是顯著性或 OOS 預測證據。
       </p>
 
       <p v-if="historyState === 'loading'" class="state-message" role="status">

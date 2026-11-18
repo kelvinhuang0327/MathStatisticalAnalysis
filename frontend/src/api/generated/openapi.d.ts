@@ -2049,6 +2049,36 @@ export interface paths {
                 }
         }
     }
+  "/api/v1/replay-backfill/strategy-runs": {
+      get: {
+          parameters: {
+            "query": {
+              "lottery_type": components['schemas']["LotteryType"]
+              "strategy_id": string
+              "strategy_version"?: string | null
+              "limit"?: number
+              "offset"?: number
+            }
+          }
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": components['schemas']["ReplayBackfillStrategyRunsPageResponse"]
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["ApiValidationErrorResponse"] | components['schemas']["ReplayBackfillErrorResponse"]
+                                  }
+                        }
+                  503: {
+                          content: {
+                                    "application/json": components['schemas']["ReplayBackfillErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
   "/api/v1/replay-backfill/strategies": {
       get: {
           parameters: {
@@ -2139,6 +2169,7 @@ export interface paths {
               "lottery_type": components['schemas']["LotteryType"]
               "run_id"?: string | null
               "strategy_id"?: string | null
+              "strategy_version"?: string | null
               "from_date"?: string | null
               "to_date"?: string | null
               "period"?: string
@@ -4544,6 +4575,27 @@ export interface components {
           "total_count": number
           "history_scope"?: components['schemas']["ReplayBackfillHistoryScopeView"] | null
           "next_cursor": string | null
+        }
+    "ReplayBackfillStrategyRunItemResponse": {
+          "run_id": string
+          "lottery_type": components['schemas']["LotteryType"]
+          "strategy_id": string
+          "strategy_version": string
+          "run_created_at": string
+          "inventory_present": boolean
+          "associated_cell_count": number
+          "unique_target_draw_count": number
+          "execution_identity_count": number
+          "execution_status_counts": Record<string, number>
+          "earliest_target_draw_date": string | null
+          "latest_target_draw_date": string | null
+        }
+    "ReplayBackfillStrategyRunsPageResponse": {
+          "total_run_version_matches": number
+          "items": Array<components['schemas']["ReplayBackfillStrategyRunItemResponse"]>
+          "has_more": boolean
+          "limit": number
+          "offset": number
         }
     "ReplayBackfillTicketIdentityView": {
           "lottery_type": components['schemas']["LotteryType"]

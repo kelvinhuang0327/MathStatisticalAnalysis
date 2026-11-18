@@ -39,19 +39,23 @@ const dateToError = computed(() =>
     : '',
 )
 let requestController: AbortController | undefined
+let activeRequestId = 0
 
 async function loadHistory(): Promise<void> {
   if (!dateFiltersValid.value) return
   requestController?.abort()
-  requestController = new AbortController()
+  const controller = new AbortController()
+  requestController = controller
+  const requestId = ++activeRequestId
   loadState.value = 'loading'
   errorMessage.value = ''
   try {
-    const page = await listDraws({ ...query }, requestController.signal)
+    const page = await listDraws({ ...query }, controller.signal)
+    if (requestId !== activeRequestId) return
     result.value = page
     loadState.value = page.records.length === 0 ? 'empty' : 'ready'
   } catch (error: unknown) {
-    if (isAbort(error)) return
+    if (requestId !== activeRequestId || isAbort(error)) return
     result.value = null
     loadState.value = 'error'
     errorMessage.value = error instanceof Error ? error.message : 'Draw History could not load.'
@@ -100,7 +104,10 @@ function isAbort(error: unknown): boolean {
 }
 
 onMounted(loadHistory)
-onBeforeUnmount(() => requestController?.abort())
+onBeforeUnmount(() => {
+  activeRequestId += 1
+  requestController?.abort()
+})
 </script>
 
 <template>

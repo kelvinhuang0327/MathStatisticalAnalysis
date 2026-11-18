@@ -3,9 +3,13 @@
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import type {
-  StrategyOverviewItem,
-  StrategyOverviewResponse,
+import {
+  listStrategies,
+  queryStrategyOverview,
+  StrategyCatalogRequestError,
+  StrategyOverviewRequestError,
+  type StrategyOverviewItem,
+  type StrategyOverviewResponse,
 } from '../src/api/strategies'
 import StrategyCatalogPage from '../src/features/strategy-catalog/StrategyCatalogPage.vue'
 
@@ -292,5 +296,81 @@ describe('StrategyCatalogPage', () => {
     expect(wrapper.findAll('canvas')).toHaveLength(0)
     expect(wrapper.findAll('svg')).toHaveLength(0)
     wrapper.unmount()
+  })
+
+  it('rejects an unsafe minimum_history from HTTP 200 catalog and overview responses', async () => {
+    const unsafeStrategy = {
+      ...observationStrategy,
+      minimum_history: Number.MAX_SAFE_INTEGER + 1,
+    }
+
+    fetchMock.mockResolvedValueOnce(apiResponse([unsafeStrategy]))
+    await expect(listStrategies()).rejects.toBeInstanceOf(StrategyCatalogRequestError)
+
+    fetchMock.mockResolvedValueOnce(apiResponse(makeOverview([unsafeStrategy])))
+    await expect(queryStrategyOverview()).rejects.toBeInstanceOf(StrategyOverviewRequestError)
+  })
+
+  it('does not render unsafe Strategy Overview data as a valid card', async () => {
+    const unsafeStrategy = {
+      ...observationStrategy,
+      minimum_history: Number.MAX_SAFE_INTEGER + 1,
+    }
+    const wrapper = await mountLoaded(makeOverview([unsafeStrategy]))
+
+    expect(wrapper.findAll('.strategy-card')).toHaveLength(0)
+    expect(wrapper.text()).not.toContain(unsafeStrategy.display_name)
+    wrapper.unmount()
+  })
+
+  it('accepts only the positive safe integer range for minimum_history', async () => {
+    for (const minimumHistory of [1, 100, Number.MAX_SAFE_INTEGER]) {
+      fetchMock.mockResolvedValueOnce(
+        apiResponse([{ ...observationStrategy, minimum_history: minimumHistory }]),
+      )
+      await expect(listStrategies()).resolves.toHaveLength(1)
+    }
+
+    for (const minimumHistory of [
+      0,
+      -1,
+      1.5,
+      Number.NaN,
+      Number.POSITIVE_INFINITY,
+      Number.MAX_SAFE_INTEGER + 1,
+    ]) {
+      fetchMock.mockResolvedValueOnce(
+        apiResponse([{ ...observationStrategy, minimum_history: minimumHistory }]),
+      )
+      await expect(listStrategies()).rejects.toBeInstanceOf(StrategyCatalogRequestError)
+    }
+  })
+
+  it('rejects unsafe overview totals and classification counts', async () => {
+    const unsafeCount = Number.MAX_SAFE_INTEGER + 1
+    const corruptions: Array<(response: StrategyOverviewResponse) => void> = [
+      (response) => {
+        response.summary.total = unsafeCount
+      },
+      (response) => {
+        response.summary.executable_count = unsafeCount
+      },
+      (response) => {
+        response.summary.metadata_only_count = unsafeCount
+      },
+      (response) => {
+        response.summary.lifecycle_counts.IDEA = unsafeCount
+      },
+      (response) => {
+        response.summary.lottery_type_counts.DAILY_539 = unsafeCount
+      },
+    ]
+
+    for (const corrupt of corruptions) {
+      const response = makeOverview()
+      corrupt(response)
+      fetchMock.mockResolvedValueOnce(apiResponse(response))
+      await expect(queryStrategyOverview()).rejects.toBeInstanceOf(StrategyOverviewRequestError)
+    }
   })
 })

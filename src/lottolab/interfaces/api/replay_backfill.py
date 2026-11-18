@@ -167,6 +167,37 @@ class ReplayBackfillStrategyPageResponse(BaseModel):
     next_cursor: str | None
 
 
+class ReplayBackfillStrategyRunItemResponse(BaseModel):
+    """Discovery facts for one exact strategy version in one replay run."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    run_id: str
+    lottery_type: LotteryType
+    strategy_id: str
+    strategy_version: str
+    run_created_at: str
+    inventory_present: bool
+    associated_cell_count: int = Field(ge=0)
+    unique_target_draw_count: int = Field(ge=0)
+    execution_identity_count: int = Field(ge=0)
+    execution_status_counts: dict[str, Annotated[int, Field(ge=0)]]
+    earliest_target_draw_date: str | None
+    latest_target_draw_date: str | None
+
+
+class ReplayBackfillStrategyRunsPageResponse(BaseModel):
+    """Paginated strategy-run discovery facts, without cross-run aggregates."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    total_run_version_matches: int = Field(ge=0)
+    items: list[ReplayBackfillStrategyRunItemResponse]
+    has_more: bool
+    limit: int = Field(ge=1, le=250)
+    offset: int = Field(ge=0, le=9_007_199_254_740_991)
+
+
 class ReplayBackfillTicketIdentityView(BaseModel):
     """Identity tuple for a predicted ticket."""
 
@@ -543,6 +574,41 @@ def _strategy_history_view(
 
 def create_replay_backfill_router(store: SQLiteBackfillStore | None) -> APIRouter:
     router = APIRouter(prefix="/api/v1/replay-backfill", tags=["replay-backfill"])
+
+    @router.get(
+        "/strategy-runs",
+        response_model=ReplayBackfillStrategyRunsPageResponse,
+        operation_id="discoverReplayBackfillStrategyRuns",
+        responses={
+            422: {"model": ApiValidationErrorResponse | ReplayBackfillErrorResponse},
+            503: {"model": ReplayBackfillErrorResponse},
+        },
+    )
+    def strategy_runs(
+        lottery_type: LotteryType,
+        strategy_id: Annotated[str, Query(min_length=1, max_length=_MAX_ID_LENGTH)],
+        strategy_version: Annotated[str | None, Query(min_length=1)] = None,
+        limit: Annotated[int, Query(ge=1, le=250)] = 50,
+        offset: Annotated[int, Query(ge=0, le=9_007_199_254_740_991)] = 0,
+    ) -> JsonObject | JSONResponse:
+        if store is None:
+            return _error(503, "REPLAY_BACKFILL_NOT_CONFIGURED")
+        if not strategy_id.strip() or (
+            strategy_version is not None and not strategy_version.strip()
+        ):
+            return _error(422, "INVALID_QUERY")
+        try:
+            return store.discover_strategy_runs(
+                lottery_type,
+                strategy_id,
+                strategy_version,
+                limit=limit,
+                offset=offset,
+            )
+        except ValueError:
+            return _error(422, "INVALID_QUERY")
+        except Exception:
+            return _error(503, "REPLAY_BACKFILL_UNAVAILABLE")
 
     @router.get(
         "/strategies",
@@ -1091,6 +1157,9 @@ def create_replay_backfill_router(store: SQLiteBackfillStore | None) -> APIRoute
         lottery_type: LotteryType,
         run_id: Annotated[str | None, Query(min_length=1, max_length=_MAX_ID_LENGTH)] = None,
         strategy_id: Annotated[str | None, Query(min_length=1, max_length=_MAX_ID_LENGTH)] = None,
+        strategy_version: Annotated[
+            str | None, Query(min_length=1, max_length=_MAX_ID_LENGTH)
+        ] = None,
         from_date: date | None = None,
         to_date: date | None = None,
         period: Annotated[str, Query(pattern="^(50|300|750|ALL)$")] = "ALL",
@@ -1099,6 +1168,15 @@ def create_replay_backfill_router(store: SQLiteBackfillStore | None) -> APIRoute
     ) -> JsonObject | JSONResponse:
         if store is None:
             return _error(503, "REPLAY_BACKFILL_NOT_CONFIGURED")
+        if run_id is not None and (
+            not run_id or run_id != run_id.strip() or len(run_id) > _MAX_ID_LENGTH
+        ):
+            return _error(422, "INVALID_RUN_ID")
+        if strategy_version is not None:
+            if strategy_version != strategy_version.strip():
+                return _error(422, "INVALID_STRATEGY_VERSION")
+            if strategy_id is None:
+                return _error(422, "STRATEGY_VERSION_REQUIRES_STRATEGY_ID")
         if from_date and to_date and from_date > to_date:
             return _error(422, "INVALID_DATE_RANGE")
         filters = {
@@ -1109,6 +1187,8 @@ def create_replay_backfill_router(store: SQLiteBackfillStore | None) -> APIRoute
             "to_date": None if to_date is None else to_date.isoformat(),
             "period": period,
         }
+        if strategy_version is not None:
+            filters["strategy_version"] = strategy_version
         filter_hash = hashlib.sha256(canonical_json(filters).encode()).hexdigest()
         after: tuple[str, int, str, str, str] | None = None
         expected_run_id: str | None = None
@@ -1123,12 +1203,18 @@ def create_replay_backfill_router(store: SQLiteBackfillStore | None) -> APIRoute
                 after_values = cast(list[object], raw_after)
                 if len(after_values) != 5:
                     return _error(422, "INVALID_CURSOR_OR_FILTER")
-                draw_date, draw_id, cursor_strategy_id, strategy_version, cell_id = after_values
+                (
+                    draw_date,
+                    draw_id,
+                    cursor_strategy_id,
+                    cursor_strategy_version,
+                    cell_id,
+                ) = after_values
                 if (
                     type(draw_date) is not str
                     or type(draw_id) is not int
                     or type(cursor_strategy_id) is not str
-                    or type(strategy_version) is not str
+                    or type(cursor_strategy_version) is not str
                     or type(cell_id) is not str
                 ):
                     return _error(422, "INVALID_CURSOR_OR_FILTER")
@@ -1136,7 +1222,7 @@ def create_replay_backfill_router(store: SQLiteBackfillStore | None) -> APIRoute
                     draw_date,
                     draw_id,
                     cursor_strategy_id,
-                    strategy_version,
+                    cursor_strategy_version,
                     cell_id,
                 )
                 raw_cursor_run_id: object = state.get("run_id")
@@ -1150,6 +1236,7 @@ def create_replay_backfill_router(store: SQLiteBackfillStore | None) -> APIRoute
                 lottery_type=lottery_type.value,
                 run_id=run_id,
                 strategy_id=strategy_id,
+                strategy_version=strategy_version,
                 from_date=None if from_date is None else from_date.isoformat(),
                 to_date=None if to_date is None else to_date.isoformat(),
                 period=_PERIODS[period],

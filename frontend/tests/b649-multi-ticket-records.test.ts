@@ -3,6 +3,11 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import {
+  B649RecordsRequestError,
+  fetchB649MultiTicketRecords,
+  type B649MultiTicketRecordQuery,
+} from '../src/api/b649MultiTicketRecords'
 import B649MultiTicketRecordsPage from '../src/features/b649-multi-ticket-records/B649MultiTicketRecordsPage.vue'
 
 let fetchMock: ReturnType<typeof vi.fn<typeof fetch>>
@@ -115,12 +120,56 @@ function page(items = [record()], total = items.length, offset = 0) {
   }
 }
 
+function densePageRecords(label: string, count: number) {
+  return Array.from({ length: count }, (_, index) =>
+    record(index === 0 ? label : `${label}-${index + 1}`),
+  )
+}
+
 async function selectRequiredConditions(
   wrapper: ReturnType<typeof mount>,
 ): Promise<void> {
   await wrapper.get('select[name="prefix-count"]').setValue('10')
   await wrapper.get('select[name="history-window"]').setValue('RECENT_300')
   await wrapper.get('select[name="success-criterion"]').setValue('M4_PLUS')
+}
+
+function recordQuery(
+  overrides: Partial<B649MultiTicketRecordQuery> = {},
+): B649MultiTicketRecordQuery {
+  return {
+    prefixCount: 10,
+    window: 'RECENT_300',
+    criterion: 'M4_PLUS',
+    limit: 25,
+    offset: 0,
+    ...overrides,
+  }
+}
+
+function recordPageForQuery(
+  query: B649MultiTicketRecordQuery,
+  overrides: Record<string, unknown> = {},
+) {
+  const items = (overrides.items as unknown[] | undefined) ?? [
+    {
+      ...record(),
+      prefix_count: query.prefixCount,
+      window: query.window,
+      criterion: query.criterion,
+    },
+  ]
+  return {
+    items,
+    total: query.offset + items.length,
+    limit: query.limit,
+    offset: query.offset,
+    prefix_count: query.prefixCount,
+    window: query.window,
+    criterion: query.criterion,
+    research_disclaimer: DISCLAIMER,
+    ...overrides,
+  }
 }
 
 beforeEach(() => {
@@ -490,9 +539,9 @@ describe('B649MultiTicketRecordsPage', () => {
   it('keeps explicit K, window, and criterion selections through next and previous pages', async () => {
     fetchMock
       .mockResolvedValueOnce(apiResponse(summary()))
-      .mockResolvedValueOnce(apiResponse(page([record('first-page')], 26, 0)))
+      .mockResolvedValueOnce(apiResponse(page(densePageRecords('first-page', 25), 26, 0)))
       .mockResolvedValueOnce(apiResponse(page([record('second-page')], 26, 25)))
-      .mockResolvedValueOnce(apiResponse(page([record('first-page-again')], 26, 0)))
+      .mockResolvedValueOnce(apiResponse(page(densePageRecords('first-page-again', 25), 26, 0)))
     const wrapper = mount(B649MultiTicketRecordsPage)
     await flushPromises()
     await selectRequiredConditions(wrapper)
@@ -521,5 +570,300 @@ describe('B649MultiTicketRecordsPage', () => {
       offset: '0',
     })
     wrapper.unmount()
+  })
+})
+
+describe('fetchB649MultiTicketRecords response identity', () => {
+  it.each([
+    { field: 'prefix_count', value: 20 },
+    { field: 'window', value: 'FULL' },
+    { field: 'criterion', value: 'M3_PLUS' },
+  ])('rejects a page whose $field does not match the request', async ({ field, value }) => {
+    const query = recordQuery()
+    const payload = recordPageForQuery(query, { [field]: value })
+    fetchMock.mockResolvedValueOnce(apiResponse(payload))
+
+    await expect(fetchB649MultiTicketRecords(query)).rejects.toMatchObject({
+      status: 200,
+      kind: 'MALFORMED_RESPONSE',
+    })
+  })
+
+  it.each([
+    { field: 'limit', query: recordQuery(), value: 100 },
+    { field: 'offset', query: recordQuery({ offset: 25 }), value: 0 },
+  ])('rejects a page whose $field does not match the request', async ({ field, query, value }) => {
+    const payload = recordPageForQuery(query, { [field]: value })
+    fetchMock.mockResolvedValueOnce(apiResponse(payload))
+
+    await expect(fetchB649MultiTicketRecords(query)).rejects.toMatchObject({
+      status: 200,
+      kind: 'MALFORMED_RESPONSE',
+    })
+  })
+
+  it.each([
+    { field: 'prefix_count', value: 20 },
+    { field: 'window', value: 'FULL' },
+    { field: 'criterion', value: 'M3_PLUS' },
+  ])('rejects an item whose $field differs from the page identity', async ({ field, value }) => {
+    const query = recordQuery()
+    const mismatchedItem = { ...record(), [field]: value }
+    const payload = recordPageForQuery(query, { items: [mismatchedItem] })
+    fetchMock.mockResolvedValueOnce(apiResponse(payload))
+
+    await expect(fetchB649MultiTicketRecords(query)).rejects.toMatchObject({
+      status: 200,
+      kind: 'MALFORMED_RESPONSE',
+    })
+  })
+
+  it('rejects a page with more items than its requested limit', async () => {
+    const query = recordQuery({ limit: 1 })
+    const payload = recordPageForQuery(query, {
+      items: [record('first'), record('second')],
+      total: 2,
+    })
+    fetchMock.mockResolvedValueOnce(apiResponse(payload))
+
+    await expect(fetchB649MultiTicketRecords(query)).rejects.toMatchObject({
+      status: 200,
+      kind: 'MALFORMED_RESPONSE',
+    })
+  })
+
+  it('rejects items whose range extends beyond total', async () => {
+    const query = recordQuery({ offset: 25 })
+    const payload = recordPageForQuery(query, { total: 25 })
+    fetchMock.mockResolvedValueOnce(apiResponse(payload))
+
+    await expect(fetchB649MultiTicketRecords(query)).rejects.toMatchObject({
+      status: 200,
+      kind: 'MALFORMED_RESPONSE',
+    })
+  })
+
+  it('accepts a legal short page within the requested range', async () => {
+    const query = recordQuery({ limit: 100 })
+    const payload = recordPageForQuery(query, {
+      items: [record()],
+      total: 135,
+    })
+    fetchMock.mockResolvedValueOnce(apiResponse(payload))
+
+    await expect(fetchB649MultiTicketRecords(query)).resolves.toMatchObject({
+      items: [expect.objectContaining({ strategy_id: 'legacy_strategy_a' })],
+      total: 135,
+      limit: 100,
+      offset: 0,
+    })
+  })
+
+  it.each(['total', 'limit', 'offset'])(
+    'rejects null, empty, and placeholder response numbers for %s',
+    async (field) => {
+      const query = recordQuery()
+      for (const value of [null, '', 'UNKNOWN', 'TBD', '未填']) {
+        fetchMock.mockResolvedValueOnce(
+          apiResponse(recordPageForQuery(query, { [field]: value })),
+        )
+        await expect(fetchB649MultiTicketRecords(query)).rejects.toMatchObject({
+          name: 'B649RecordsRequestError',
+          status: 200,
+          kind: 'MALFORMED_RESPONSE',
+        })
+      }
+    },
+  )
+
+  it.each(
+    ['strategy_id', 'strategy_version', 'legacy_method_id', 'source_path', 'method_family']
+      .flatMap((field) =>
+        [null, '', '  ', 'UNKNOWN', 'TBD', '未填'].map((value) => ({ field, value })),
+      ),
+  )('rejects placeholder required identity $field=$value', async ({ field, value }) => {
+    const query = recordQuery()
+    const payload = recordPageForQuery(query, {
+      items: [{ ...record(), [field]: value }],
+    })
+    fetchMock.mockResolvedValueOnce(apiResponse(payload))
+
+    await expect(fetchB649MultiTicketRecords(query)).rejects.toMatchObject({
+      name: 'B649RecordsRequestError',
+      status: 200,
+      kind: 'MALFORMED_RESPONSE',
+    })
+  })
+
+  it('preserves legitimate nullable business fields as null', async () => {
+    const query = recordQuery()
+    const nullableRecord = {
+      ...record(),
+      duplicate_alias_target: null,
+      rank: null,
+      official_rank: null,
+      official_any_prize_count: null,
+      unranked_reason: null,
+    }
+    const payload = recordPageForQuery(query, { items: [nullableRecord] })
+    fetchMock.mockResolvedValueOnce(apiResponse(payload))
+
+    await expect(fetchB649MultiTicketRecords(query)).resolves.toBe(payload)
+    expect(payload.items[0]).toMatchObject({
+      duplicate_alias_target: null,
+      rank: null,
+      official_rank: null,
+      official_any_prize_count: null,
+      unranked_reason: null,
+    })
+  })
+
+  it.each([
+    0,
+    -1,
+    101,
+    Number.MAX_SAFE_INTEGER + 1,
+    Number.NaN,
+    Number.POSITIVE_INFINITY,
+    null,
+    '',
+    'UNKNOWN',
+  ])(
+    'rejects request limit %s before issuing a fetch',
+    async (limit) => {
+      fetchMock.mockResolvedValueOnce(
+        apiResponse(recordPageForQuery(recordQuery({ limit: limit as number }))),
+      )
+      await expect(
+        fetchB649MultiTicketRecords(recordQuery({ limit: limit as number })),
+      ).rejects.toMatchObject({
+        status: 0,
+        kind: 'INVALID_REQUEST',
+      } satisfies Partial<B649RecordsRequestError>)
+      expect(fetchMock).not.toHaveBeenCalled()
+    },
+  )
+
+  it.each([
+    -1,
+    Number.MAX_SAFE_INTEGER + 1,
+    Number.NaN,
+    Number.POSITIVE_INFINITY,
+    null,
+    '',
+    'UNKNOWN',
+  ])('rejects request offset %s before issuing a fetch', async (offset) => {
+    await expect(
+      fetchB649MultiTicketRecords(recordQuery({ offset: offset as number })),
+    ).rejects.toMatchObject({
+      name: 'B649RecordsRequestError',
+      status: 0,
+      kind: 'INVALID_REQUEST',
+    })
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    { status: 422, kind: 'INVALID_REQUEST' },
+    { status: 503, kind: 'UNAVAILABLE' },
+  ] as const)('preserves HTTP $status error semantics', async ({ status, kind }) => {
+    fetchMock.mockResolvedValueOnce(
+      apiResponse(
+        { error_code: 'B649_REQUEST_ERROR', message: 'The query failed.' },
+        status,
+      ),
+    )
+    const request = fetchB649MultiTicketRecords(recordQuery())
+
+    await expect(request).rejects.toMatchObject({
+      status,
+      kind,
+      errorCode: 'B649_REQUEST_ERROR',
+      message: 'The query failed.',
+    })
+  })
+
+  it('preserves network and AbortError semantics', async () => {
+    fetchMock.mockRejectedValueOnce(new TypeError('offline'))
+    const networkRequest = fetchB649MultiTicketRecords(recordQuery())
+    await expect(networkRequest).rejects.toBeInstanceOf(B649RecordsRequestError)
+    await expect(networkRequest).rejects.toMatchObject({
+      status: 0,
+      kind: 'NETWORK',
+    })
+
+    const abortError = new DOMException('Request aborted.', 'AbortError')
+    fetchMock.mockRejectedValueOnce(abortError)
+    await expect(fetchB649MultiTicketRecords(recordQuery())).rejects.toBe(abortError)
+  })
+
+  it.each([5, 10, 15, 20])('accepts matching K=%s pages and preserves their rows', async (prefixCount) => {
+    const query = recordQuery({ prefixCount: prefixCount as B649MultiTicketRecordQuery['prefixCount'] })
+    const payload = recordPageForQuery(query)
+    fetchMock.mockResolvedValueOnce(apiResponse(payload))
+
+    await expect(fetchB649MultiTicketRecords(query)).resolves.toBe(payload)
+  })
+
+  it.each(['FULL', 'RECENT_750', 'RECENT_300', 'RECENT_50'] as const)(
+    'accepts matching window=%s pages',
+    async (window) => {
+      const query = recordQuery({ window })
+      const payload = recordPageForQuery(query)
+      fetchMock.mockResolvedValueOnce(apiResponse(payload))
+
+      await expect(fetchB649MultiTicketRecords(query)).resolves.toBe(payload)
+    },
+  )
+
+  it.each([
+    'M3_PLUS',
+    'M4_PLUS',
+    'M5_PLUS',
+    'M6',
+    'M2_PLUS_SPECIAL',
+    'M3_PLUS_SPECIAL',
+    'M4_PLUS_SPECIAL',
+    'M5_PLUS_SPECIAL',
+  ] as const)('accepts matching criterion=%s pages', async (criterion) => {
+    const query = recordQuery({ criterion })
+    const payload = recordPageForQuery(query)
+    fetchMock.mockResolvedValueOnce(apiResponse(payload))
+
+    await expect(fetchB649MultiTicketRecords(query)).resolves.toBe(payload)
+  })
+
+  it.each([1, 25, 100])('accepts the supported limit=%s', async (limit) => {
+    const query = recordQuery({ limit })
+    const payload = recordPageForQuery(query)
+    fetchMock.mockResolvedValueOnce(apiResponse(payload))
+
+    await expect(fetchB649MultiTicketRecords(query)).resolves.toBe(payload)
+  })
+
+  it.each([0, 25, 100])('accepts matching offset=%s', async (offset) => {
+    const query = recordQuery({ offset })
+    const payload = recordPageForQuery(query)
+    fetchMock.mockResolvedValueOnce(apiResponse(payload))
+
+    await expect(fetchB649MultiTicketRecords(query)).resolves.toBe(payload)
+  })
+
+  it('accepts total=0 and an empty page whose offset is beyond total', async () => {
+    const emptyFirstPageQuery = recordQuery()
+    const emptyFirstPage = recordPageForQuery(emptyFirstPageQuery, {
+      items: [],
+      total: 0,
+    })
+    fetchMock.mockResolvedValueOnce(apiResponse(emptyFirstPage))
+    await expect(fetchB649MultiTicketRecords(emptyFirstPageQuery)).resolves.toBe(emptyFirstPage)
+
+    const beyondTotalQuery = recordQuery({ offset: 100 })
+    const emptyBeyondTotal = recordPageForQuery(beyondTotalQuery, {
+      items: [],
+      total: 10,
+    })
+    fetchMock.mockResolvedValueOnce(apiResponse(emptyBeyondTotal))
+    await expect(fetchB649MultiTicketRecords(beyondTotalQuery)).resolves.toBe(emptyBeyondTotal)
   })
 })

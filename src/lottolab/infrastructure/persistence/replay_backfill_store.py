@@ -12,7 +12,7 @@ from collections.abc import Generator
 from contextlib import contextmanager
 from datetime import date
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, TypeGuard, cast
 
 from lottolab.domain.draws import LotteryType
 from lottolab.domain.historical_replay import (
@@ -34,6 +34,14 @@ from lottolab.infrastructure.persistence.project_database_paths import (
 )
 
 JsonObject = dict[str, Any]
+
+
+def _is_non_bool_integer(value: object) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool)
+
+
+def _is_string(value: object) -> TypeGuard[str]:
+    return isinstance(value, str)
 
 
 def _as_json_object(value: object) -> JsonObject | None:
@@ -1537,6 +1545,7 @@ class SQLiteBackfillStore:
         lottery_type: str,
         run_id: str | None = None,
         strategy_id: str | None,
+        strategy_version: str | None = None,
         from_date: str | None,
         to_date: str | None,
         period: int | None,
@@ -1547,6 +1556,11 @@ class SQLiteBackfillStore:
             raise ValueError("limit must be between 1 and 250")
         if period not in {None, 50, 300, 750}:
             raise ValueError("period must be 50, 300, 750, or ALL")
+        if strategy_version is not None:
+            if strategy_id is None:
+                raise ValueError("strategy_version requires strategy_id")
+            if not strategy_version or strategy_version != strategy_version.strip():
+                raise ValueError("strategy_version must be a non-blank exact value")
         if from_date is not None:
             date.fromisoformat(from_date)
         if to_date is not None:
@@ -1579,6 +1593,9 @@ class SQLiteBackfillStore:
         if strategy_id is not None:
             clauses.append("c.strategy_id=?")
             params.append(strategy_id)
+        if strategy_version is not None:
+            clauses.append("c.strategy_version=?")
+            params.append(strategy_version)
         where = " AND ".join(clauses)
         with self._connect() as connection:
             total = connection.execute(
@@ -1754,6 +1771,182 @@ class SQLiteBackfillStore:
         return {
             "items": items,
             "total_count": total,
+            "limit": limit,
+            "offset": offset,
+        }
+
+    def discover_strategy_runs(
+        self,
+        lottery_type: str | LotteryType,
+        strategy_id: str,
+        strategy_version: str | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> JsonObject:
+        """Discover all runs where a strategy version appears in inventory or cells."""
+        if isinstance(lottery_type, LotteryType):
+            lottery_type_str = lottery_type.value
+        elif _is_string(lottery_type):
+            lottery_type_str = lottery_type.strip()
+            if not lottery_type_str:
+                raise ValueError("lottery_type must not be empty")
+        else:
+            raise ValueError(
+                f"lottery_type must be a string or LotteryType, got {type(lottery_type).__name__}"
+            )
+
+        if not _is_string(strategy_id):
+            raise ValueError(
+                f"strategy_id must be a string, got {type(strategy_id).__name__}"
+            )
+        strategy_id = strategy_id.strip()
+        if not strategy_id:
+            raise ValueError("strategy_id must not be empty")
+
+        if strategy_version is not None:
+            if not _is_string(strategy_version):
+                raise ValueError(
+                    "strategy_version must be None or a string, "
+                    f"got {type(strategy_version).__name__}"
+                )
+            strategy_version = strategy_version.strip()
+            if not strategy_version:
+                raise ValueError("strategy_version must not be empty")
+
+        if not _is_non_bool_integer(limit):
+            raise ValueError(f"limit must be an integer, got {type(limit).__name__}")
+        if limit <= 0 or limit > 250:
+            raise ValueError(f"limit must be between 1 and 250, got {limit}")
+
+        if not _is_non_bool_integer(offset):
+            raise ValueError(f"offset must be an integer, got {type(offset).__name__}")
+        if offset < 0:
+            raise ValueError(f"offset must be non-negative, got {offset}")
+        if offset > 9_007_199_254_740_991:
+            raise ValueError(f"offset exceeds safe integer range: {offset}")
+
+        with self._connect() as connection:
+            all_matches = connection.execute(
+                """
+                WITH candidate_matches AS (
+                    SELECT run_id, strategy_version
+                    FROM replay_backfill_strategy_inventory
+                    WHERE lottery_type = :lottery_type AND strategy_id = :strategy_id
+                      AND (:strategy_version IS NULL OR strategy_version = :strategy_version)
+                    UNION
+                    SELECT rc.run_id, c.strategy_version
+                    FROM replay_backfill_run_cells rc
+                    JOIN replay_backfill_cells c ON c.cell_identity = rc.cell_identity
+                    WHERE c.lottery_type = :lottery_type AND c.strategy_id = :strategy_id
+                      AND (:strategy_version IS NULL OR c.strategy_version = :strategy_version)
+                )
+                SELECT cm.run_id, cm.strategy_version, r.created_at
+                FROM candidate_matches cm
+                JOIN replay_backfill_runs r ON r.run_id = cm.run_id
+                ORDER BY r.created_at DESC, r.run_id ASC, cm.strategy_version ASC
+                """,
+                {
+                    "lottery_type": lottery_type_str,
+                    "strategy_id": strategy_id,
+                    "strategy_version": strategy_version,
+                },
+            ).fetchall()
+
+            total = len(all_matches)
+            paged = all_matches[offset : offset + limit]
+            has_more = (offset + limit) < total
+
+            items: list[JsonObject] = []
+            for run_id, item_version, run_created_at in paged:
+                inventory_present = bool(
+                    connection.execute(
+                        """
+                        SELECT 1 FROM replay_backfill_strategy_inventory
+                        WHERE run_id = ? AND lottery_type = ? AND strategy_id = ?
+                          AND strategy_version = ?
+                        """,
+                        (run_id, lottery_type_str, strategy_id, item_version),
+                    ).fetchone()
+                )
+
+                cell_stats = connection.execute(
+                    """
+                    SELECT
+                        COUNT(rc.cell_identity),
+                        COUNT(DISTINCT c.target_draw_id),
+                        MIN(c.target_draw_date),
+                        MAX(c.target_draw_date)
+                    FROM replay_backfill_run_cells rc
+                    JOIN replay_backfill_cells c ON c.cell_identity = rc.cell_identity
+                    WHERE rc.run_id = ? AND c.lottery_type = ? AND c.strategy_id = ?
+                      AND c.strategy_version = ?
+                    """,
+                    (run_id, lottery_type_str, strategy_id, item_version),
+                ).fetchone()
+
+                associated_cell_count = int(cell_stats[0]) if cell_stats else 0
+                if associated_cell_count > 0:
+                    unique_target_draw_count = int(cell_stats[1])
+                    earliest_date = cell_stats[2]
+                    latest_date = cell_stats[3]
+
+                    exec_identity_count = connection.execute(
+                        """
+                        SELECT COUNT(*) FROM (
+                            SELECT DISTINCT c.execution_version, c.dataset_identity
+                            FROM replay_backfill_run_cells rc
+                            JOIN replay_backfill_cells c ON c.cell_identity = rc.cell_identity
+                            WHERE rc.run_id = ? AND c.lottery_type = ? AND c.strategy_id = ?
+                              AND c.strategy_version = ?
+                        )
+                        """,
+                        (run_id, lottery_type_str, strategy_id, item_version),
+                    ).fetchone()
+                    execution_identity_count = (
+                        int(exec_identity_count[0]) if exec_identity_count else 0
+                    )
+
+                    status_rows = connection.execute(
+                        """
+                        SELECT c.execution_status, COUNT(*)
+                        FROM replay_backfill_run_cells rc
+                        JOIN replay_backfill_cells c ON c.cell_identity = rc.cell_identity
+                        WHERE rc.run_id = ? AND c.lottery_type = ? AND c.strategy_id = ?
+                          AND c.strategy_version = ?
+                        GROUP BY c.execution_status
+                        ORDER BY c.execution_status
+                        """,
+                        (run_id, lottery_type_str, strategy_id, item_version),
+                    ).fetchall()
+                    execution_status_counts = {str(r[0]): int(r[1]) for r in status_rows}
+                else:
+                    unique_target_draw_count = 0
+                    earliest_date = None
+                    latest_date = None
+                    execution_identity_count = 0
+                    execution_status_counts = {}
+
+                items.append(
+                    {
+                        "run_id": run_id,
+                        "lottery_type": lottery_type_str,
+                        "strategy_id": strategy_id,
+                        "strategy_version": item_version,
+                        "run_created_at": run_created_at,
+                        "inventory_present": inventory_present,
+                        "associated_cell_count": associated_cell_count,
+                        "unique_target_draw_count": unique_target_draw_count,
+                        "execution_identity_count": execution_identity_count,
+                        "execution_status_counts": execution_status_counts,
+                        "earliest_target_draw_date": earliest_date,
+                        "latest_target_draw_date": latest_date,
+                    }
+                )
+
+        return {
+            "total_run_version_matches": total,
+            "items": items,
+            "has_more": has_more,
             "limit": limit,
             "offset": offset,
         }

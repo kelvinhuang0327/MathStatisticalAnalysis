@@ -323,3 +323,85 @@ describe('Replay Backfill API client safe integer validation', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 })
+
+describe('Replay Backfill API boundary validation', () => {
+  it.each([0, 57.1, 100])('accepts coverage percentage %s within the finite range', async (percent) => {
+    const payload = coverage({ complete_coverage_percent: percent })
+    stubApiResponse(payload)
+
+    await expect(getReplayBackfillCoverage('BIG_LOTTO')).resolves.toEqual(payload)
+  })
+
+  it.each([
+    ['below zero', -1],
+    ['above one hundred', 100.0001],
+    ['NaN', Number.NaN],
+    ['positive infinity', Number.POSITIVE_INFINITY],
+    ['negative infinity', Number.NEGATIVE_INFINITY],
+    ['null', null],
+    ['string', '57.1'],
+  ] as const)('rejects coverage percentage %s as malformed data', async (_label, percent) => {
+    stubApiResponse(coverage({ complete_coverage_percent: percent }))
+
+    await expect(getReplayBackfillCoverage('BIG_LOTTO')).rejects.toMatchObject({
+      name: 'ReplayBackfillRequestError',
+      status: 502,
+    })
+  })
+
+  it('rejects a missing coverage percentage as malformed data', async () => {
+    const payload = coverage()
+    delete (payload as Record<string, unknown>).complete_coverage_percent
+    stubApiResponse(payload)
+
+    await expect(getReplayBackfillCoverage('BIG_LOTTO')).rejects.toMatchObject({
+      name: 'ReplayBackfillRequestError',
+      status: 502,
+    })
+  })
+
+  const invalidLimits: Array<[string, number]> = [
+    ['zero', 0],
+    ['negative', -1],
+    ['fractional', 1.5],
+    ['NaN', Number.NaN],
+    ['infinity', Number.POSITIVE_INFINITY],
+    ['above Number.MAX_SAFE_INTEGER', Number.MAX_SAFE_INTEGER + 1],
+  ]
+
+  it.each(invalidLimits)('rejects %s strategy list limit before fetching', async (_label, limit) => {
+    const fetchMock = stubApiResponse(strategyPage())
+
+    await expect(listReplayBackfillStrategies({ lotteryType: 'BIG_LOTTO', limit })).rejects.toBeInstanceOf(RangeError)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it.each(invalidLimits)('rejects %s prediction list limit before fetching', async (_label, limit) => {
+    const fetchMock = stubApiResponse(predictionPage())
+
+    await expect(listReplayBackfillPredictions({ lotteryType: 'BIG_LOTTO', period: 50, limit })).rejects.toBeInstanceOf(RangeError)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it.each([1, Number.MAX_SAFE_INTEGER])('accepts positive safe integer limit %s for both list queries', async (limit) => {
+    let fetchMock = stubApiResponse(strategyPage())
+    const strategies = await listReplayBackfillStrategies({ lotteryType: 'BIG_LOTTO', limit })
+    expect(strategies).toEqual(strategyPage())
+    expect(new URL(String(fetchMock.mock.calls[0]?.[0]), 'http://localhost').searchParams.get('limit')).toBe(String(limit))
+
+    fetchMock = stubApiResponse(predictionPage())
+    const predictions = await listReplayBackfillPredictions({ lotteryType: 'BIG_LOTTO', period: 50, limit })
+    expect(predictions).toEqual(predictionPage())
+    expect(new URL(String(fetchMock.mock.calls[0]?.[0]), 'http://localhost').searchParams.get('limit')).toBe(String(limit))
+  })
+
+  it('classifies malformed HTTP 200 payloads as gateway errors', async () => {
+    const fetchMock = stubApiResponse({ items: 'not-an-array', total_count: 0, next_cursor: null })
+
+    await expect(listReplayBackfillStrategies({ lotteryType: 'BIG_LOTTO' })).rejects.toMatchObject({
+      name: 'ReplayBackfillRequestError',
+      status: 502,
+    })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+})

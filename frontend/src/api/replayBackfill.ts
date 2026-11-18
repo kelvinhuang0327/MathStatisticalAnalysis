@@ -30,6 +30,11 @@ export type UniformEightSummary = components['schemas']['ReplayUniformEightSumma
 export type ReplayBackfillPredictionItem = components['schemas']['ReplayBackfillPredictionItemView']
 export type ReplayBackfillPredictionPage = components['schemas']['ReplayBackfillPredictionPageResponse']
 
+export type ReplayBackfillStrategyRunItem =
+  components['schemas']['ReplayBackfillStrategyRunItemResponse']
+export type ReplayBackfillStrategyRunsPage =
+  components['schemas']['ReplayBackfillStrategyRunsPageResponse']
+
 export type ReplayBackfillCoverage = components['schemas']['ReplayBackfillCoverageResponse']
 
 export type K3ComparisonStrategy = 'optimizer' | 'ecp'
@@ -72,11 +77,20 @@ export interface ReplayBackfillPredictionQuery {
   lotteryType: ReplayBackfillLotteryType
   runId?: string
   strategyId?: string
+  strategyVersion?: string
   fromDate?: string
   toDate?: string
   period: ReplayBackfillPeriod
   limit?: number
   cursor?: string | null
+}
+
+export interface ReplayStrategyRunsQuery {
+  lotteryType: ReplayBackfillLotteryType
+  strategyId: string
+  strategyVersion?: string
+  limit?: number
+  offset?: number
 }
 
 export class ReplayBackfillRequestError extends Error {
@@ -93,6 +107,11 @@ export class ReplayBackfillRequestError extends Error {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function hasExactKeys(value: Record<string, unknown>, expected: readonly string[]): boolean {
+  const actual = Object.keys(value)
+  return actual.length === expected.length && expected.every((key) => Object.hasOwn(value, key))
 }
 
 function isString(value: unknown): value is string {
@@ -253,6 +272,10 @@ function isPredictionItem(value: unknown): value is ReplayBackfillPredictionItem
     isLotteryType(value.lottery_type) &&
     isString(value.strategy_id) &&
     isString(value.strategy_version) &&
+    (value.source_history_provenance_status === undefined ||
+      ['VERIFIED', 'UNKNOWN', 'UNVERIFIED'].includes(String(value.source_history_provenance_status))) &&
+    (value.dataset_identity === undefined || isNullableString(value.dataset_identity)) &&
+    (value.execution_version === undefined || isNullableString(value.execution_version)) &&
     (value.lifecycle_status === undefined || isString(value.lifecycle_status)) &&
     isString(value.target_draw_number) &&
     isString(value.target_draw_date) &&
@@ -301,13 +324,25 @@ function isUniformEightSummary(value: unknown): value is UniformEightSummary {
           typeof group.difference_from_baseline_pp === 'number' && Number.isFinite(group.difference_from_baseline_pp)))
 }
 
-function isPredictionPage(value: unknown): value is ReplayBackfillPredictionPage {
+function isPredictionPage(
+  value: unknown,
+  query: {
+    lotteryType: ReplayBackfillLotteryType
+    strategyId?: string
+    strategyVersion?: string
+  },
+): value is ReplayBackfillPredictionPage {
   return (
     isRecord(value) &&
     isNullableString(value.run_id) &&
     isNonNegativeSafeInteger(value.total_count) &&
     Array.isArray(value.items) &&
-    value.items.every(isPredictionItem) &&
+    value.items.every((item) =>
+      isPredictionItem(item) &&
+      item.lottery_type === query.lotteryType &&
+      (!query.strategyId || item.strategy_id === query.strategyId) &&
+      (!query.strategyVersion || item.strategy_version === query.strategyVersion),
+    ) &&
     (value.next_cursor === null || isString(value.next_cursor))
   )
 }
@@ -364,9 +399,95 @@ function isCoverage(value: unknown): value is ReplayBackfillCoverage {
     isNonNegativeSafeInteger(value.failed_cell_count) &&
     isNonNegativeSafeInteger(value.closed_cell_count) &&
     typeof value.complete_coverage_percent === 'number' &&
+    Number.isFinite(value.complete_coverage_percent) &&
+    value.complete_coverage_percent >= 0 &&
+    value.complete_coverage_percent <= 100 &&
     Array.isArray(value.missing_strategy_ids) &&
     value.missing_strategy_ids.every(isString) &&
     isNullableString(value.run_id)
+  )
+}
+
+const STRATEGY_RUN_ITEM_KEYS = [
+  'run_id',
+  'lottery_type',
+  'strategy_id',
+  'strategy_version',
+  'run_created_at',
+  'inventory_present',
+  'associated_cell_count',
+  'unique_target_draw_count',
+  'execution_identity_count',
+  'execution_status_counts',
+  'earliest_target_draw_date',
+  'latest_target_draw_date',
+] as const
+
+const STRATEGY_RUNS_PAGE_KEYS = [
+  'total_run_version_matches',
+  'items',
+  'has_more',
+  'limit',
+  'offset',
+] as const
+
+function isNonEmptyString(value: unknown): value is string {
+  return isString(value) && value.trim().length > 0
+}
+
+function isExecutionStatusCounts(value: unknown): value is Record<string, number> {
+  return isRecord(value) && Object.values(value).every(isNonNegativeSafeInteger)
+}
+
+function isStrategyRunItem(
+  value: unknown,
+  query: { lotteryType: ReplayBackfillLotteryType; strategyId: string; strategyVersion?: string },
+): value is ReplayBackfillStrategyRunItem {
+  if (!isRecord(value) || !hasExactKeys(value, STRATEGY_RUN_ITEM_KEYS)) return false
+  return (
+    isNonEmptyString(value.run_id) &&
+    value.lottery_type === query.lotteryType &&
+    value.strategy_id === query.strategyId &&
+    isNonEmptyString(value.strategy_version) &&
+    (!query.strategyVersion || value.strategy_version === query.strategyVersion) &&
+    isString(value.run_created_at) &&
+    typeof value.inventory_present === 'boolean' &&
+    isNonNegativeSafeInteger(value.associated_cell_count) &&
+    isNonNegativeSafeInteger(value.unique_target_draw_count) &&
+    isNonNegativeSafeInteger(value.execution_identity_count) &&
+    isExecutionStatusCounts(value.execution_status_counts) &&
+    isNullableString(value.earliest_target_draw_date) &&
+    isNullableString(value.latest_target_draw_date)
+  )
+}
+
+function isStrategyRunsPage(
+  value: unknown,
+  query: {
+    lotteryType: ReplayBackfillLotteryType
+    strategyId: string
+    strategyVersion?: string
+    limit: number
+    offset: number
+  },
+): value is ReplayBackfillStrategyRunsPage {
+  if (!isRecord(value) || !hasExactKeys(value, STRATEGY_RUNS_PAGE_KEYS)) return false
+  if (
+    !isNonNegativeSafeInteger(value.total_run_version_matches) ||
+    typeof value.has_more !== 'boolean' ||
+    value.limit !== query.limit ||
+    value.offset !== query.offset ||
+    !Array.isArray(value.items) ||
+    value.items.length > query.limit ||
+    !value.items.every((item) => isStrategyRunItem(item, query))
+  ) {
+    return false
+  }
+  const nextOffset = query.offset + value.items.length
+  if (!Number.isSafeInteger(nextOffset)) return false
+  return (
+    (value.has_more ? value.items.length > 0 && nextOffset < value.total_run_version_matches
+      : nextOffset >= value.total_run_version_matches)
   )
 }
 
@@ -382,8 +503,10 @@ async function getJson<T>(
     signal,
   })
   let payload: unknown
+  let payloadParsed = false
   try {
     payload = await response.json()
+    payloadParsed = true
   } catch {
     payload = null
   }
@@ -395,7 +518,10 @@ async function getJson<T>(
     throw new ReplayBackfillRequestError(message, response.status, isString(error.error_code) ? error.error_code : undefined)
   }
   if (!validate(payload)) {
-    throw new ReplayBackfillRequestError('Replay backfill returned an invalid response.', response.status)
+    throw new ReplayBackfillRequestError(
+      'Replay backfill returned an invalid response.',
+      payloadParsed ? 502 : response.status,
+    )
   }
   afterValidate?.(payload, response.status)
   return payload
@@ -417,8 +543,20 @@ function assertRequestedRunIdMatches(
 }
 
 function validateLimit(limit: number): void {
-  if (!Number.isInteger(limit) || limit < 1) {
-    throw new RangeError('Replay backfill limit must be a positive integer')
+  if (!Number.isSafeInteger(limit) || limit < 1) {
+    throw new RangeError('Replay backfill limit must be a positive safe integer')
+  }
+}
+
+function validateStrategyRunsLimit(limit: number): void {
+  if (!Number.isSafeInteger(limit) || limit < 1 || limit > 250) {
+    throw new RangeError('Strategy-run discovery limit must be an integer from 1 to 250')
+  }
+}
+
+function validateStrategyRunsOffset(offset: number): void {
+  if (!isNonNegativeSafeInteger(offset)) {
+    throw new RangeError('Strategy-run discovery offset must be a non-negative safe integer')
   }
 }
 
@@ -466,10 +604,47 @@ export async function listReplayStrategyInventory(
   )
 }
 
+export async function listReplayStrategyRuns(
+  query: ReplayStrategyRunsQuery,
+  signal?: AbortSignal,
+): Promise<ReplayBackfillStrategyRunsPage> {
+  const strategyId = query.strategyId.trim()
+  if (!strategyId) throw new RangeError('A complete strategy ID is required for run discovery')
+  const strategyVersion = query.strategyVersion?.trim() || undefined
+  const limit = query.limit ?? 50
+  const offset = query.offset ?? 0
+  validateStrategyRunsLimit(limit)
+  validateStrategyRunsOffset(offset)
+  const params = new URLSearchParams({
+    lottery_type: query.lotteryType,
+    strategy_id: strategyId,
+    limit: String(limit),
+    offset: String(offset),
+  })
+  if (strategyVersion) params.set('strategy_version', strategyVersion)
+  const expected = {
+    lotteryType: query.lotteryType,
+    strategyId,
+    ...(strategyVersion ? { strategyVersion } : {}),
+    limit,
+    offset,
+  }
+  return getJson(
+    `/api/v1/replay-backfill/strategy-runs?${params.toString()}`,
+    signal,
+    (value): value is ReplayBackfillStrategyRunsPage => isStrategyRunsPage(value, expected),
+  )
+}
+
 export async function listReplayBackfillPredictions(
   query: ReplayBackfillPredictionQuery,
   signal?: AbortSignal,
 ): Promise<ReplayBackfillPredictionPage> {
+  const strategyId = query.strategyId?.trim() || undefined
+  const strategyVersion = query.strategyVersion?.trim() || undefined
+  if (strategyVersion && !strategyId) {
+    throw new RangeError('A strategy version requires a complete strategy ID')
+  }
   const limit = query.limit ?? 50
   validateLimit(limit)
   if (!REPLAY_BACKFILL_PERIODS.includes(query.period)) {
@@ -484,14 +659,20 @@ export async function listReplayBackfillPredictions(
     limit: String(limit),
   })
   if (query.runId?.trim()) params.set('run_id', query.runId.trim())
-  if (query.strategyId) params.set('strategy_id', query.strategyId)
+  if (strategyId) params.set('strategy_id', strategyId)
+  if (strategyVersion) params.set('strategy_version', strategyVersion)
   if (query.fromDate) params.set('from_date', query.fromDate)
   if (query.toDate) params.set('to_date', query.toDate)
   if (query.cursor) params.set('cursor', query.cursor)
   return getJson(
     `/api/v1/replay-backfill/predictions?${params.toString()}`,
     signal,
-    isPredictionPage,
+    (value): value is ReplayBackfillPredictionPage =>
+      isPredictionPage(value, {
+        lotteryType: query.lotteryType,
+        ...(strategyId ? { strategyId } : {}),
+        ...(strategyVersion ? { strategyVersion } : {}),
+      }),
     (response, status) => assertRequestedRunIdMatches(response, query.runId, status),
   )
 }

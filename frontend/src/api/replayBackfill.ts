@@ -27,6 +27,7 @@ export type ReplayBackfillResearchPortfolioQualification =
   components['schemas']['ReplayBackfillResearchPortfolioQualificationView']
 export type UniformEightReference = components['schemas']['ReplayUniformEightReferenceView']
 export type UniformEightSummary = components['schemas']['ReplayUniformEightSummaryView']
+export const HEDGE_K3_STRATEGY_ID = 'research_biglotto__k3_hedge_official_reference_20261117'
 export type ReplayBackfillPredictionItem = components['schemas']['ReplayBackfillPredictionItemView']
 export type ReplayBackfillPredictionPage = components['schemas']['ReplayBackfillPredictionPageResponse']
 
@@ -688,6 +689,68 @@ export async function getUniformEightSummary(
   return getJson(`/api/v1/replay-backfill/uniform-eight-reference?${params.toString()}`,
     signal, isUniformEightSummary,
     (response, status) => assertRequestedRunIdMatches(response, query.runId, status))
+}
+
+interface HedgeK3StoredResult {
+  target_draw_id: string
+  strategy_id: string
+  strategy_version: string
+  execution_status: string
+  hedge_phase?: unknown
+  reference_any_prize?: unknown
+  combination_success?: unknown
+}
+
+interface HedgeK3ResultsPage {
+  items: HedgeK3StoredResult[]
+  total_count: number
+  limit: number
+  offset: number
+}
+
+function isHedgeK3ResultsPage(value: unknown): value is HedgeK3ResultsPage {
+  return isRecord(value) &&
+    isNonNegativeSafeInteger(value.total_count) &&
+    isNonNegativeSafeInteger(value.limit) &&
+    isNonNegativeSafeInteger(value.offset) &&
+    Array.isArray(value.items) &&
+    value.items.every((item: unknown) => isRecord(item) &&
+      isString(item.target_draw_id) && isString(item.strategy_id) &&
+      isString(item.strategy_version) && isString(item.execution_status))
+}
+
+export async function getHedgeK3StoredResults(
+  runId: string,
+  strategyVersion: string,
+  signal: AbortSignal,
+): Promise<HedgeK3StoredResult[]> {
+  const limit = 200
+  const rows = new Map<string, HedgeK3StoredResult>()
+  let total: number | undefined
+  for (let offset = 0; total === undefined || offset < total; offset += limit) {
+    const params = new URLSearchParams({ run_id: runId, limit: String(limit), offset: String(offset) })
+    const page = await getJson(
+      `/api/v1/replay-backfill/results?${params.toString()}`,
+      signal,
+      isHedgeK3ResultsPage,
+    )
+    total ??= page.total_count
+    if (
+      page.total_count !== total || page.offset !== offset || page.limit !== limit ||
+      page.items.length !== Math.min(limit, total - offset)
+    ) {
+      throw new Error('Replay API 的 Run 分頁不完整，請重新查詢。')
+    }
+    for (const row of page.items) {
+      if (row.strategy_id !== HEDGE_K3_STRATEGY_ID || row.strategy_version !== strategyVersion) continue
+      if (rows.has(row.target_draw_id) || row.execution_status !== 'COMPLETE') {
+        throw new Error('K3 Hedge 有重複期號或未完成紀錄，無法確認成功期數。')
+      }
+      rows.set(row.target_draw_id, row)
+    }
+  }
+  if (!rows.size) throw new Error('Replay API 未提供這個 Run 與版本的 K3 Hedge 紀錄。')
+  return [...rows.values()]
 }
 
 export async function getReplayBackfillCoverage(

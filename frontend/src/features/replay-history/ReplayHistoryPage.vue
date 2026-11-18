@@ -32,6 +32,7 @@ import type { LotteryType } from '../../api/strategies'
 import {
   getReplayBackfillCoverage,
   getUniformEightSummary,
+  HEDGE_K3_STRATEGY_ID,
   isValidReplayDateRange,
   listReplayStrategyRuns,
   listReplayBackfillPredictions,
@@ -53,6 +54,7 @@ import {
 import { lotteryTypeDisplayLabel } from '../../utils/lotteryDisplayLabel'
 import LotteryNumberBall from '../../components/LotteryNumberBall.vue'
 import K3ComparisonPanel from './K3ComparisonPanel.vue'
+import HedgeK3Summary from './HedgeK3Summary.vue'
 import {
   assessReplayScoreTrust,
   type ReplayScoreTrustAssessment,
@@ -93,12 +95,22 @@ const strategyCatalog = ref<ReplayBackfillStrategyItem[]>([])
 const strategyCatalogCursor = ref<string | null>(null)
 const strategyCatalogVisibleCount = ref(100)
 const strategyCatalogTotal = ref<number | null>(null)
+const strategyCatalogScope = ref<{
+  lotteryType: ReplayBackfillLotteryType
+  requestedRunId: string
+  runId: string | null
+} | null>(null)
 
 const queryScopeLottery = computed(() => lotteryLabel(backfillLotteryType.value))
 const requestedRunId = computed(() => backfillRunId.value.trim())
 const queryScopeRunLabel = computed(() =>
   requestedRunId.value ? requestedRunId.value : '由API選取最新Run',
 )
+const confirmedStrategyCatalogRun = computed(() => {
+  const scope = strategyCatalogScope.value
+  return scope?.lotteryType === backfillLotteryType.value &&
+    scope.requestedRunId === requestedRunId.value ? scope.runId : null
+})
 
 const confirmedPredictionRun = computed(() => {
   if (backfillPredictionsState.value === 'loading') return '載入中…'
@@ -155,6 +167,12 @@ const backfillPredictionRunId = ref('')
 const backfillPredictionTotal = ref(0)
 const backfillPredictionCursor = ref<string | null>(null)
 const backfillPredictionHasQueried = ref(false)
+const hedgeK3Version = computed(() => {
+  if (backfillPredictionsState.value !== 'ready' || backfillLotteryType.value !== 'BIG_LOTTO' ||
+      backfillStrategyId.value.trim() !== HEDGE_K3_STRATEGY_ID) return undefined
+  const versions = new Set(backfillPredictions.value.map((item) => item.strategy_version))
+  return backfillStrategyVersion.value ?? (versions.size === 1 ? backfillPredictions.value[0]?.strategy_version : undefined)
+})
 let applyingStrategyRun = false
 
 const backfillStrategyVersion = computed(() => {
@@ -237,6 +255,7 @@ interface ReplayStrategyCatalogRow {
   execution_capability: string
   historical_data_count: number | null
   historical_execution_count: number | null
+  replay_history: { status: string; savedPredictionCount: number | null } | null
   reconstruction_reason: string
   from_inventory: boolean
 }
@@ -273,6 +292,28 @@ function dataStatusReason(value: string): string {
     default:
       return 'API 回報了未註冊或未辨識的資料狀態；保留原始代碼供辨識。'
   }
+}
+
+const replayHistoryLabels: Record<string, string> = {
+  HAS_HISTORY: '有歷史資料',
+  NO_HISTORY: '本 Run 無歷史資料',
+  NOT_SELECTED_IN_RUN: '本 Run 未納入此版本',
+  SOURCE_IDENTITY_UNKNOWN: '來源身份待確認',
+  FAILED: '執行失敗',
+  INSUFFICIENT_HISTORY: '歷史資料不足',
+  PENDING: '待補資料',
+  MISSING: '缺少紀錄',
+  PARTIAL: '部分紀錄',
+  TYPED_CLOSURE: '已關閉',
+  ARTIFACT_ONLY: '僅有研究產物',
+}
+
+function replayHistoryLabel(status: string): string {
+  return Object.hasOwn(replayHistoryLabels, status) ? (replayHistoryLabels[status] ?? status) : status
+}
+
+function needsRunHistory(strategy: ReplayStrategyCatalogRow): boolean {
+  return Boolean(requestedRunId.value) || strategy.strategy_id === HEDGE_K3_STRATEGY_ID
 }
 
 function lifecycleLabel(value: string): string {
@@ -353,12 +394,20 @@ function inventoryStrategyRow(strategy: ReplayStrategyInventoryItem): ReplayStra
     execution_capability: strategy.execution_capability,
     historical_data_count: strategy.historical_data_count,
     historical_execution_count: strategy.historical_execution_count,
+    replay_history: null,
     reconstruction_reason: strategy.reconstruction_reason,
     from_inventory: true,
   }
 }
 
 function backfillStrategyRow(strategy: ReplayBackfillStrategyItem): ReplayStrategyCatalogRow {
+  const status = strategy.history_status
+  const count = strategy.history_counts?.saved_prediction_cell_count
+  const scopedHistory = confirmedStrategyCatalogRun.value !== null &&
+    strategy.history_run_id === confirmedStrategyCatalogRun.value &&
+    strategy.lottery_type === backfillLotteryType.value &&
+    typeof strategy.strategy_version === 'string' && Boolean(strategy.strategy_version.trim()) &&
+    typeof status === 'string' && Boolean(status.trim())
   return {
     ...strategy,
     execution_capability: strategy.executable ? 'EXECUTABLE' : 'UNAVAILABLE',
@@ -369,6 +418,11 @@ function backfillStrategyRow(strategy: ReplayBackfillStrategyItem): ReplayStrate
     execution_block_reason: null,
     historical_data_count: null,
     historical_execution_count: null,
+    replay_history: scopedHistory ? {
+      status,
+      savedPredictionCount: typeof count === 'number' && Number.isSafeInteger(count) && count >= 0
+        ? count : null,
+    } : null,
     reconstruction_reason: '',
     from_inventory: false,
   }
@@ -393,6 +447,7 @@ const strategyRows = computed<ReplayStrategyCatalogRow[]>(() => {
       ...inventoryRow,
       available_target_count: strategy.available_target_count,
       training_status: strategy.training_status,
+      replay_history: row.replay_history,
     })
   }
   return [...rows.values()]
@@ -672,6 +727,7 @@ async function loadStrategyCatalog(reset: boolean): Promise<void> {
     strategyCatalogCursor.value = null
     strategyCatalogVisibleCount.value = 100
     strategyCatalogTotal.value = null
+    strategyCatalogScope.value = null
   }
   const requestedCursor = reset ? null : strategyCatalogCursor.value
   if (!reset && !requestedCursor) return
@@ -681,11 +737,13 @@ async function loadStrategyCatalog(reset: boolean): Promise<void> {
   const generation = ++backfillStrategyGeneration
   strategyCatalogState.value = 'loading'
   strategyCatalogError.value = ''
+  const lotteryType = backfillLotteryType.value
+  const requestedRun = requestedRunId.value
   try {
     const page = await listReplayBackfillStrategies(
       {
-        lotteryType: backfillLotteryType.value,
-        runId: backfillRunId.value,
+        lotteryType,
+        runId: requestedRun,
         q: backfillStrategySearch.value,
         limit: 100,
         cursor: requestedCursor,
@@ -693,6 +751,12 @@ async function loadStrategyCatalog(reset: boolean): Promise<void> {
       controller.signal,
     )
     if (controller.signal.aborted || generation !== backfillStrategyGeneration) return
+    const run = page.history_scope?.runs?.[lotteryType]?.run_id
+    const confirmedRun = typeof run === 'string' && run.trim() && (!requestedRun || run === requestedRun)
+      ? run : null
+    if (!reset && confirmedRun !== confirmedStrategyCatalogRun.value) {
+      throw new Error('策略清單的 Run 已變更，請重新查詢。')
+    }
     if (!page.items.length && page.total_count > 0) {
       throw new Error('策略清單回傳空頁，但 API 仍回報有資料；清單狀態無法確認。')
     }
@@ -705,6 +769,7 @@ async function loadStrategyCatalog(reset: boolean): Promise<void> {
       return true
     })
     strategyCatalog.value = [...current, ...newItems]
+    strategyCatalogScope.value = { lotteryType, requestedRunId: requestedRun, runId: confirmedRun }
     strategyCatalogTotal.value = page.total_count
     if (requestedCursor && page.next_cursor === requestedCursor) {
       throw new Error('策略清單分頁游標沒有前進，已停止載入以避免重複資料。')
@@ -853,6 +918,7 @@ async function loadBackfillPredictionPage(loadMore: boolean): Promise<void> {
       page.items.length > 0 &&
       query.lotteryType === 'BIG_LOTTO' &&
       query.strategyId &&
+      query.strategyId !== HEDGE_K3_STRATEGY_ID &&
       page.run_id
     ) {
       void loadUniformReference({ ...query, strategyId: query.strategyId, runId: page.run_id })
@@ -2123,7 +2189,9 @@ function predictedNumbers(value: number[] | null | undefined): string {
             策略清單分頁或補充資料載入失敗：{{ strategyCatalogError }}
           </p>
           <p class="replay-backfill-reason" data-testid="backfill-catalog-scope">
-            策略清單請求範圍：{{ queryScopeRunLabel }}（策略清單 API未提供已確認Run欄位，僅標示請求範圍，不杜撰已確認 Run）
+            策略清單請求範圍：{{ queryScopeRunLabel }}。
+            <template v-if="confirmedStrategyCatalogRun">歷史欄位的 API 確認 Run：<code>{{ confirmedStrategyCatalogRun }}</code></template>
+            <template v-else>策略清單 API未提供已確認Run欄位。</template>
           </p>
           <table>
             <caption>Strategy identities ({{ visibleStrategyRows.length }} shown / {{ filteredStrategyRows.length }} matching)</caption>
@@ -2134,7 +2202,7 @@ function predictedNumbers(value: number[] | null | undefined): string {
                 <th scope="col">Lifecycle</th>
                 <th scope="col">Data status</th>
                 <th scope="col">Available periods</th>
-                <th scope="col">Historical data / executions</th>
+                <th scope="col">Historical records</th>
                 <th scope="col">Execution capability</th>
                 <th scope="col">Wrapper callable</th>
                 <th scope="col">Native Backfill</th>
@@ -2153,12 +2221,22 @@ function predictedNumbers(value: number[] | null | undefined): string {
                 </td>
                 <td>{{ lotteryLabel(strategy.lottery_type) }}</td>
                 <td>{{ lifecycleLabel(strategy.lifecycle_status) }}</td>
-                <td>
+                <td v-if="strategy.replay_history">
+                  <strong>{{ replayHistoryLabel(strategy.replay_history.status) }}</strong>
+                  <p class="replay-backfill-reason">Replay API · 目前 Run 與版本</p>
+                </td>
+                <td v-else-if="needsRunHistory(strategy)">本 Run 的歷史狀態待確認</td>
+                <td v-else>
                   <strong>{{ dataStatusLabel(strategy.data_status) }}</strong>
                   <p class="replay-backfill-reason">{{ dataStatusReason(strategy.data_status) }}</p>
                 </td>
-                <td>{{ strategy.available_target_count === null ? 'API未提供' : strategy.available_target_count }}</td>
-                <td>
+                <td>{{ (strategy.replay_history || !needsRunHistory(strategy)) && strategy.available_target_count !== null ? strategy.available_target_count : 'API未提供' }}</td>
+                <td v-if="strategy.replay_history">
+                  {{ strategy.replay_history.savedPredictionCount === null
+                    ? 'API未提供' : `已保存預測 ${strategy.replay_history.savedPredictionCount.toLocaleString('zh-TW')} 筆` }}
+                </td>
+                <td v-else-if="needsRunHistory(strategy)">API未提供</td>
+                <td v-else>
                   {{ strategy.historical_data_count === null ? 'API未提供' : strategy.historical_data_count }} /
                   {{ strategy.historical_execution_count === null ? 'API未提供' : strategy.historical_execution_count }}
                 </td>
@@ -2246,6 +2324,17 @@ function predictedNumbers(value: number[] | null | undefined): string {
 
       <section class="panel replay-backfill-section" aria-labelledby="backfill-results-title">
         <h3 id="backfill-results-title">3. Historical prediction list</h3>
+        <HedgeK3Summary
+          v-if="hedgeK3Version && backfillPredictionRunId"
+          :run-id="backfillPredictionRunId"
+          :strategy-version="hedgeK3Version"
+        />
+        <p
+          v-else-if="backfillPredictionsState === 'ready' && backfillStrategyId.trim() === HEDGE_K3_STRATEGY_ID"
+          class="state-panel"
+        >
+          請套用單一 Run×版本，以查看 K3 Hedge 成功旗標。
+        </p>
         <div v-if="uniformReferenceState === 'loading'" class="state-panel">正在計算統一八獎級研究參考…</div>
         <div v-else-if="uniformReferenceState === 'error'" class="state-panel state-panel--error" role="alert">{{ uniformReferenceError }}</div>
         <section v-else-if="uniformReferenceState === 'ready' && uniformReference" aria-label="統一八獎級研究參考" data-testid="uniform-eight-summary">

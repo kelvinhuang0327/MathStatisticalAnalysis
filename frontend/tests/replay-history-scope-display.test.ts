@@ -4,6 +4,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import ReplayHistoryPage from '../src/features/replay-history/ReplayHistoryPage.vue'
+import { HEDGE_K3_STRATEGY_ID } from '../src/api/replayBackfill'
 
 function apiResponse(payload: unknown, status = 200): Response {
   return {
@@ -230,6 +231,44 @@ describe('Replay history scope display and empty results (AC1 - AC7)', () => {
     const catalogScope = wrapper.get('[data-testid="backfill-catalog-scope"]')
     expect(catalogScope.text()).toContain('請求範圍')
     expect(catalogScope.text()).toContain('API未提供已確認Run欄位')
+    wrapper.unmount()
+  })
+
+  it('shows saved records for the confirmed Run and exact version ahead of inventory counts', async () => {
+    installDefaultApi({
+      inventory: () => inventoryPage([
+        strategy(HEDGE_K3_STRATEGY_ID, 'NO_HISTORY'),
+        strategy(HEDGE_K3_STRATEGY_ID, 'NO_HISTORY', { strategy_version: 'v2' }),
+      ]),
+      strategies: (url) => {
+        const runId = url.searchParams.get('run_id') || 'latest-run'
+        return {
+          ...strategyPage([strategy(HEDGE_K3_STRATEGY_ID, 'NO_HISTORY', {
+            history_run_id: runId === 'wrong-run' ? 'other-run' : runId,
+            history_status: 'HAS_HISTORY',
+            history_counts: { saved_prediction_cell_count: 7, persisted_cell_count: 9 },
+          })]),
+          history_scope: { runs: { BIG_LOTTO: { run_id: runId } } },
+        }
+      },
+    })
+    const wrapper = await openBackfillPage()
+    const catalogRows = () => wrapper.get('[data-testid="backfill-catalog-scope"]').element
+      .parentElement?.querySelectorAll('tbody tr')
+    const catalogCells = (index: number) => Array.from(catalogRows()?.[index]?.cells ?? [])
+      .map((cell) => cell.textContent?.trim())
+
+    expect(wrapper.get('[data-testid="backfill-catalog-scope"]').text()).toContain('latest-run')
+    expect(catalogCells(0)[3]).toContain('有歷史資料')
+    expect(catalogCells(0)[3]).not.toContain('無歷史資料')
+    expect(catalogCells(0)[5]).toBe('已保存預測 7 筆')
+    expect(catalogCells(1)[3]).toBe('本 Run 的歷史狀態待確認')
+    expect(catalogCells(1)[5]).toBe('API未提供')
+
+    await wrapper.get('input[name="replay_run_id"]').setValue('wrong-run')
+    await flushPromises()
+    expect(catalogCells(0)[3]).toBe('本 Run 的歷史狀態待確認')
+    expect(catalogCells(0)[5]).toBe('API未提供')
     wrapper.unmount()
   })
 

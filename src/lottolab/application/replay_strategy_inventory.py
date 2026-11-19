@@ -529,6 +529,15 @@ def _as_json_object(value: object) -> dict[str, object] | None:
     return cast(dict[str, object], value)
 
 
+def _unique_json_object(pairs: list[tuple[str, object]]) -> dict[str, object]:
+    result: dict[str, object] = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(f"duplicate JSON key: {key}")
+        result[key] = value
+    return result
+
+
 def _historical_evidence(
     full_catalog: FullStrategyCatalog,
 ) -> tuple[
@@ -554,6 +563,24 @@ def _historical_evidence(
             continue
         payload_bytes = artifact_path.read_bytes()
         actual_sha256 = hashlib.sha256(payload_bytes).hexdigest()
+        # Some catalog artifacts declare the digest of the canonical JSON
+        # without its self-referential evidence_sha256 field.  This is the
+        # same contract used by the multi-ticket projection builder.
+        if actual_sha256 != expected_sha256:
+            try:
+                evidence = _as_json_object(
+                    json.loads(payload_bytes, object_pairs_hook=_unique_json_object)
+                )
+            except (UnicodeDecodeError, ValueError):
+                evidence = None
+            if evidence is not None and evidence.get("evidence_sha256") == expected_sha256:
+                canonical = json.dumps(
+                    {key: value for key, value in evidence.items() if key != "evidence_sha256"},
+                    ensure_ascii=False,
+                    separators=(",", ":"),
+                    sort_keys=True,
+                ).encode("utf-8")
+                actual_sha256 = hashlib.sha256(canonical).hexdigest()
         if actual_sha256 != expected_sha256:
             integrity_issues.append(f"SHA256_MISMATCH:{filename}")
             continue
@@ -1548,6 +1575,46 @@ _IMPORTED_REPLAY_IDENTITIES: tuple[_ImportedReplayIdentitySpec, ...] = (
             "from Replay Backfill DB overlay. No current native executable binding is registered."
         ),
         source_status="CONTROL_BASELINE",
+    ),
+    _ImportedReplayIdentitySpec(
+        lottery_type=LotteryType.BIG_LOTTO,
+        strategy_id="legacy_biglotto__test_ecp__c9d5ac6decdd",
+        display_name="B04 ECP 13 號短池 (歷史研究)",
+        strategy_version="v0.2",
+        source_locator=(
+            "replay-backfill:c48cfa9ae59ce7c31ab3d5bb01391121cdec52d68661b129f6927bc7a5ac52b4"
+        ),
+        reconstruction_reason=(
+            "Exact staged historical identity; saved history is shown only after a matching "
+            "Replay Backfill run is available. No native executable binding is registered."
+        ),
+        source_status="RESEARCH_STRATEGY",
+    ),
+    _ImportedReplayIdentitySpec(
+        lottery_type=LotteryType.BIG_LOTTO,
+        strategy_id="research_biglotto__radical_gap_complete_v2",
+        display_name="K2 Radical Gap Complete v2 (歷史研究)",
+        strategy_version="v2",
+        source_locator="replay-backfill:k2_v2_83_b09e62744ea77afa3b485ec5",
+        reconstruction_reason=(
+            "Exact staged historical identity; saved history is shown only after a matching "
+            "Replay Backfill run is available. No native executable binding is registered."
+        ),
+        source_status="RESEARCH_STRATEGY",
+    ),
+    _ImportedReplayIdentitySpec(
+        lottery_type=LotteryType.BIG_LOTTO,
+        strategy_id="legacy_biglotto__biglotto_3bet_optimizer__2835d6cb20c5",
+        display_name="B05 3-Bet Optimizer 13 號短池 (歷史研究)",
+        strategy_version="v0.2",
+        source_locator=(
+            "replay-backfill:f2375d0d5a823338d65c2f64d904702a2121de3017625ddf3794aa0062b14350"
+        ),
+        reconstruction_reason=(
+            "Exact staged historical identity; saved history is shown only after a matching "
+            "Replay Backfill run is available. No native executable binding is registered."
+        ),
+        source_status="RESEARCH_STRATEGY",
     ),
     _ImportedReplayIdentitySpec(
         lottery_type=LotteryType.BIG_LOTTO,

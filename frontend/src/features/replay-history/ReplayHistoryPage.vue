@@ -94,6 +94,8 @@ const strategyCatalogError = ref('')
 const strategyCatalog = ref<ReplayBackfillStrategyItem[]>([])
 const strategyCatalogCursor = ref<string | null>(null)
 const strategyCatalogVisibleCount = ref(100)
+const strategyLookup = ref<ReplayBackfillStrategyItem[]>([])
+const strategyLookupRun = ref<string | null>(null)
 const strategyCatalogTotal = ref<number | null>(null)
 const strategyCatalogScope = ref<{
   lotteryType: ReplayBackfillLotteryType
@@ -224,6 +226,9 @@ const isPartialCoverage = computed(() => {
 })
 
 let backfillStrategyController: AbortController | undefined
+let strategyLookupController: AbortController | undefined
+let strategyLookupTimer: ReturnType<typeof setTimeout> | undefined
+let strategyLookupGeneration = 0
 let strategyInventoryController: AbortController | undefined
 let backfillCoverageController: AbortController | undefined
 let backfillPredictionsController: AbortController | undefined
@@ -270,6 +275,8 @@ const statusLabels: Record<ReplayBackfillDataStatus, string> = {
 }
 
 function dataStatusLabel(value: string): string {
+  if (value === 'HISTORY_UNCONFIRMED') return '歷史狀態待確認'
+  if (value === 'REPLAY_PERIODS_AVAILABLE') return '已提供可用回放期數'
   return Object.prototype.hasOwnProperty.call(statusLabels, value)
     ? statusLabels[value as ReplayBackfillDataStatus]
     : `未註冊或未辨識（${value}）`
@@ -277,16 +284,20 @@ function dataStatusLabel(value: string): string {
 
 function dataStatusReason(value: string): string {
   switch (value) {
+    case 'REPLAY_PERIODS_AVAILABLE':
+      return 'API 回報可用回放期數；逐期紀錄請以查詢結果為準。'
+    case 'HISTORY_UNCONFIRMED':
+      return '策略清冊未確認回測資料；請查詢或選取策略以取得回放狀態。'
     case 'HAS_HISTORY':
       return 'API 回報此策略有歷史資料。'
     case 'REBUILDABLE':
       return 'API 回報此策略可重建；可用回放期數另列，未提供數值不代表 0。'
     case 'NO_HISTORY':
-      return 'API 回報此策略沒有歷史資料。'
+      return 'API 回報此批次沒有歷史資料；其他批次的狀態未確認。'
     case 'ARTIFACT_ONLY':
       return '目前僅回報研究產物，未表示已部署或可即時預測。'
     case 'CODE_ONLY':
-      return '目前僅回報程式資料，沒有可用歷史回放期數。'
+      return 'API 回報僅有程式資料；其他回測批次的狀態未確認。'
     case 'REJECTED':
       return 'API 回報此策略資料狀態為已拒絕。'
     default:
@@ -381,7 +392,8 @@ function inventoryStrategyRow(strategy: ReplayStrategyInventoryItem): ReplayStra
     display_name: strategy.display_name,
     lottery_type: strategy.lottery_type,
     lifecycle_status: strategy.lifecycle_status,
-    data_status: strategy.replay_data_status,
+    data_status: strategy.strategy_version?.trim() && ['CODE_ONLY', 'NO_HISTORY'].includes(strategy.replay_data_status)
+      ? 'HISTORY_UNCONFIRMED' : strategy.replay_data_status,
     source_kind: strategy.source_kind,
     executable: strategy.execution_capability === 'EXECUTABLE',
     reconstructable: strategy.reconstructable,
@@ -400,11 +412,11 @@ function inventoryStrategyRow(strategy: ReplayStrategyInventoryItem): ReplayStra
   }
 }
 
-function backfillStrategyRow(strategy: ReplayBackfillStrategyItem): ReplayStrategyCatalogRow {
+function backfillStrategyRow(strategy: ReplayBackfillStrategyItem, runId: string | null): ReplayStrategyCatalogRow {
   const status = strategy.history_status
   const count = strategy.history_counts?.saved_prediction_cell_count
-  const scopedHistory = confirmedStrategyCatalogRun.value !== null &&
-    strategy.history_run_id === confirmedStrategyCatalogRun.value &&
+  const scopedHistory = runId !== null &&
+    strategy.history_run_id === runId &&
     strategy.lottery_type === backfillLotteryType.value &&
     typeof strategy.strategy_version === 'string' && Boolean(strategy.strategy_version.trim()) &&
     typeof status === 'string' && Boolean(status.trim())
@@ -434,8 +446,14 @@ const strategyRows = computed<ReplayStrategyCatalogRow[]>(() => {
     const row = inventoryStrategyRow(strategy)
     rows.set(strategyIdentityKey(row), row)
   }
-  for (const strategy of strategyCatalog.value) {
-    const row = backfillStrategyRow(strategy)
+  const replayRows = [
+    ...strategyCatalog.value.map((item) => ({ item, runId: confirmedStrategyCatalogRun.value })),
+    ...(confirmedStrategyCatalogRun.value && strategyLookupRun.value &&
+      confirmedStrategyCatalogRun.value !== strategyLookupRun.value ? [] : strategyLookup.value)
+      .map((item) => ({ item, runId: strategyLookupRun.value })),
+  ]
+  for (const { item: strategy, runId } of replayRows) {
+    const row = backfillStrategyRow(strategy, runId)
     const key = strategyIdentityKey(row)
     const inventoryRow = rows.get(key)
     if (!inventoryRow) {
@@ -445,6 +463,11 @@ const strategyRows = computed<ReplayStrategyCatalogRow[]>(() => {
     rows.set(key, {
       ...row,
       ...inventoryRow,
+      data_status: inventoryRow.data_status === 'HISTORY_UNCONFIRMED' && strategy.strategy_version?.trim()
+        ? (!row.replay_history && strategy.available_target_count > 0 &&
+          ['CODE_ONLY', 'NO_HISTORY'].includes(strategy.data_status)
+            ? 'REPLAY_PERIODS_AVAILABLE' : strategy.data_status)
+        : inventoryRow.data_status,
       available_target_count: strategy.available_target_count,
       training_status: strategy.training_status,
       replay_history: row.replay_history,
@@ -600,6 +623,53 @@ watch(
   },
   { flush: 'sync' },
 )
+
+// Inventory is complete but the replay catalog is paginated. Resolve a search or
+// selection separately, retaining the response's run scope for every history row.
+watch([backfillInitialized, backfillLotteryType, backfillRunId, backfillStrategySearch, backfillStrategyId], () => {
+  strategyLookupController?.abort()
+  if (strategyLookupTimer !== undefined) clearTimeout(strategyLookupTimer)
+  const generation = ++strategyLookupGeneration
+  strategyLookup.value = []
+  strategyLookupRun.value = null
+  const lotteryType = backfillLotteryType.value
+  const requestedRun = backfillRunId.value.trim()
+  const selectedId = backfillStrategyId.value.trim()
+  const query = selectedId || backfillStrategySearch.value.trim()
+  if (!backfillInitialized.value || !query) return
+  strategyLookupTimer = setTimeout(() => {
+    void (async () => {
+      const controller = new AbortController()
+      strategyLookupController = controller
+      const items: ReplayBackfillStrategyItem[] = []
+      const seenCursors = new Set<string>()
+      let cursor: string | null = null
+      let confirmedRun: string | null | undefined
+      try {
+        do {
+          const page = await listReplayBackfillStrategies(
+            { lotteryType, runId: requestedRun, q: query, limit: 100, cursor }, controller.signal,
+          )
+          if (controller.signal.aborted || generation !== strategyLookupGeneration) return
+          const run = page.history_scope?.runs?.[lotteryType]?.run_id
+          const pageRun = typeof run === 'string' && run.trim() && (!requestedRun || run === requestedRun)
+            ? run : null
+          if (requestedRun && pageRun !== requestedRun) throw new Error('策略查詢的 Run 未確認')
+          if (confirmedRun !== undefined && pageRun !== confirmedRun) throw new Error('策略查詢的 Run 已變更')
+          confirmedRun = pageRun
+          items.push(...page.items.filter((item) => !selectedId || item.strategy_id === selectedId))
+          cursor = selectedId ? page.next_cursor : null
+          if (cursor && seenCursors.has(cursor)) throw new Error('策略查詢游標沒有前進')
+          if (cursor) seenCursors.add(cursor)
+        } while (cursor)
+        strategyLookupRun.value = confirmedRun ?? null
+        strategyLookup.value = items
+      } catch {
+        // Inventory-only identities remain explicitly unconfirmed on lookup failure.
+      }
+    })()
+  }, selectedId ? 0 : 250)
+}, { immediate: true })
 
 watch(backfillRunId, () => {
   if (!backfillInitialized.value) return
@@ -1398,6 +1468,8 @@ onBeforeUnmount(() => {
   scoringDetailController?.abort()
   scoringPredictionsController?.abort()
   backfillStrategyController?.abort()
+  strategyLookupController?.abort()
+  if (strategyLookupTimer !== undefined) clearTimeout(strategyLookupTimer)
   strategyInventoryController?.abort()
   backfillCoverageController?.abort()
   backfillPredictionsController?.abort()
@@ -2222,7 +2294,7 @@ function predictedNumbers(value: number[] | null | undefined): string {
                 <td>{{ lotteryLabel(strategy.lottery_type) }}</td>
                 <td>{{ lifecycleLabel(strategy.lifecycle_status) }}</td>
                 <td v-if="strategy.replay_history">
-                  <template v-if="strategy.from_inventory && strategy.strategy_id !== HEDGE_K3_STRATEGY_ID && !(strategy.data_status === 'NO_HISTORY' && strategy.replay_history.status === 'HAS_HISTORY')">
+                  <template v-if="strategy.from_inventory && strategy.strategy_id !== HEDGE_K3_STRATEGY_ID && !(['NO_HISTORY', 'CODE_ONLY'].includes(strategy.data_status) && strategy.replay_history.status === 'HAS_HISTORY')">
                     <strong>{{ dataStatusLabel(strategy.data_status) }}</strong>
                     <p class="replay-backfill-reason">Inventory · {{ dataStatusReason(strategy.data_status) }}</p>
                   </template>

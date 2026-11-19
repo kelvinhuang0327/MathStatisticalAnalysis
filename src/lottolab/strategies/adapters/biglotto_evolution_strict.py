@@ -1,5 +1,8 @@
 """Evolution v0.3: reject a development candidate on any failed prediction."""
 
+# This adapter intentionally uses private functions from the frozen source.
+# pyright: reportPrivateUsage=false
+
 from __future__ import annotations
 
 from collections import Counter

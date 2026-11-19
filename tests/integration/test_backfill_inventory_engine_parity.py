@@ -80,3 +80,18 @@ def test_execution_identity_covers_native_binding_source(
     before = worker.execution_source_identity()
     (package / "application/native_replay_inventory.py").write_text("changed\n")
     assert worker.execution_source_identity() != before
+
+
+def test_evolution_ticket_validator_keeps_exact_builtin_container_rules() -> None:
+    from lottolab.strategies.adapters.biglotto_evolution_causal import (
+        _valid_ticket,  # pyright: ignore[reportPrivateUsage]
+    )
+
+    class ListSubclass(list[int]):
+        pass
+
+    assert _valid_ticket([1, 2, 3, 4, 5, 6])
+    assert _valid_ticket((1, 2, 3, 4, 5, 6))
+    assert not _valid_ticket(ListSubclass([1, 2, 3, 4, 5, 6]))
+    assert not _valid_ticket([True, 2, 3, 4, 5, 6])
+    assert not _valid_ticket([1, 2, 3, 4, 5, 5])

@@ -295,6 +295,7 @@ def test_openapi_exposes_exact_local_runtime_operation_set() -> None:
     assert operations == {
         ("get", "/api/health"),
         ("get", "/api/b649/canonical-forecast/current"),
+        ("get", "/api/b649/native-forecast/current"),
         ("get", "/api/v1/b649/sealed-084-replays/status"),
         ("get", "/api/v1/b649/sealed-084-replays"),
         ("get", "/api/v1/strategies"),
@@ -447,6 +448,7 @@ def test_openapi_exposes_exact_local_runtime_operation_set() -> None:
         ("get", "/api/v1/replay-backfill/k3-comparison"),
         ("get", "/api/v1/replay-backfill/predictions"),
         ("get", "/api/v1/replay-backfill/coverage"),
+        ("get", "/api/v1/replay-backfill/coverage/scan"),
         ("get", "/api/v1/replay-backfill/results"),
         ("get", "/api/v1/replay-backfill/uniform-eight-reference"),
         ("get", "/api/v1/replay-backfill/research-main-three-summary"),
@@ -460,7 +462,7 @@ def test_openapi_exposes_exact_local_runtime_operation_set() -> None:
         ("get", "/api/v1/research/backtests/identity-crosswalk"),
         ("get", "/api/v1/replay-strategy-inventory"),
     }
-    assert len(operations) == 94
+    assert len(operations) == 96
 
 
 def test_replay_ranking_openapi_requires_exact_persisted_scoring_sha() -> None:

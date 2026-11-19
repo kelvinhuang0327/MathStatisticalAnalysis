@@ -58,6 +58,97 @@
         }
       }
     },
+    "/api/b649/native-forecast/current": {
+      "get": {
+        "tags": [
+          "b649-native-forecast"
+        ],
+        "summary": "Current",
+        "operationId": "getB649NativeForecastCurrent",
+        "parameters": [
+          {
+            "name": "target_draw_number",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]{9}$",
+              "title": "Target Draw Number"
+            }
+          },
+          {
+            "name": "target_draw_date",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+              "title": "Target Draw Date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/B649NativeForecastCurrentResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/B649NativeForecastApiErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/B649NativeForecastApiErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/B649NativeForecastApiErrorResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApiValidationErrorResponse"
+                    }
+                  ],
+                  "title": "Response 422 Getb649Nativeforecastcurrent"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/B649NativeForecastApiErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
     "/api/v1/b649/sealed-084-replays/status": {
       "get": {
         "tags": [
@@ -6619,6 +6710,120 @@
         }
       }
     },
+    "/api/v1/replay-backfill/coverage/scan": {
+      "get": {
+        "tags": [
+          "replay-backfill"
+        ],
+        "summary": "Scan Window Coverage",
+        "operationId": "scan_window_coverage_api_v1_replay_backfill_coverage_scan_get",
+        "parameters": [
+          {
+            "name": "lottery_type",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/LotteryType"
+            }
+          },
+          {
+            "name": "start_date",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "title": "Start Date"
+            }
+          },
+          {
+            "name": "end_date",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "title": "End Date"
+            }
+          },
+          {
+            "name": "strategy_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "title": "Strategy Id"
+            }
+          },
+          {
+            "name": "strategy_version",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "title": "Strategy Version"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 250,
+              "minimum": 1,
+              "default": 100,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiValidationErrorResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ReplayBackfillErrorResponse"
+                    }
+                  ],
+                  "title": "Response 422 Scan Window Coverage Api V1 Replay Backfill Coverage Scan Get"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      }
+    },
     "/api/v1/replay-backfill/results": {
       "get": {
         "tags": [
@@ -10126,6 +10331,138 @@
           "research_disclaimer"
         ],
         "title": "B649MultiTicketSummaryResponse"
+      },
+      "B649NativeForecastApiErrorResponse": {
+        "properties": {
+          "error_code": {
+            "type": "string",
+            "title": "Error Code"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "error_code",
+          "message"
+        ],
+        "title": "B649NativeForecastApiErrorResponse",
+        "description": "Sanitized error response without storage or exception details."
+      },
+      "B649NativeForecastCurrentResponse": {
+        "properties": {
+          "scope": {
+            "$ref": "#/components/schemas/B649NativeForecastScope"
+          },
+          "request_identity": {
+            "$ref": "#/components/schemas/B649NativeForecastRequestIdentity"
+          },
+          "payload": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Payload"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "scope",
+          "request_identity",
+          "payload"
+        ],
+        "title": "B649NativeForecastCurrentResponse",
+        "description": "The Native current scope, request identity, and original JSON payload."
+      },
+      "B649NativeForecastRequestIdentity": {
+        "properties": {
+          "request_id": {
+            "type": "string",
+            "title": "Request Id"
+          },
+          "request_sha256": {
+            "type": "string",
+            "title": "Request Sha256"
+          },
+          "version": {
+            "type": "integer",
+            "title": "Version"
+          },
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "payload_sha256": {
+            "type": "string",
+            "title": "Payload Sha256"
+          },
+          "generation_started_at": {
+            "type": "string",
+            "title": "Generation Started At"
+          },
+          "generation_finished_at": {
+            "type": "string",
+            "title": "Generation Finished At"
+          },
+          "committed_at": {
+            "type": "string",
+            "title": "Committed At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "request_id",
+          "request_sha256",
+          "version",
+          "run_id",
+          "payload_sha256",
+          "generation_started_at",
+          "generation_finished_at",
+          "committed_at"
+        ],
+        "title": "B649NativeForecastRequestIdentity",
+        "description": "Stored request and current-version identity returned by the Reader."
+      },
+      "B649NativeForecastScope": {
+        "properties": {
+          "lottery_type": {
+            "type": "string",
+            "const": "BIG_LOTTO",
+            "title": "Lottery Type"
+          },
+          "target_draw_number": {
+            "type": "string",
+            "title": "Target Draw Number"
+          },
+          "target_draw_date": {
+            "type": "string",
+            "title": "Target Draw Date"
+          },
+          "forecast_stream_id": {
+            "type": "string",
+            "const": "B649_NEXT_UNDRAWN_FORECAST",
+            "title": "Forecast Stream Id"
+          },
+          "forecast_stream_version": {
+            "type": "string",
+            "const": "B649_FULL_OFFICIAL_ANY_PRIZE_R1",
+            "title": "Forecast Stream Version"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "lottery_type",
+          "target_draw_number",
+          "target_draw_date",
+          "forecast_stream_id",
+          "forecast_stream_version"
+        ],
+        "title": "B649NativeForecastScope",
+        "description": "The immutable scope selected by the request and Native contract."
       },
       "B649OfficialPrizeCountsView": {
         "properties": {

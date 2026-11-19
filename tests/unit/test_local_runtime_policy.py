@@ -359,6 +359,7 @@ def authorized_openapi_paths() -> dict[str, dict[str, object]]:
     return {
         "/api/health": {"get": {}},
         "/api/b649/canonical-forecast/current": {"get": {}},
+        "/api/b649/native-forecast/current": {"get": {}},
         "/api/v1/b649/sealed-084-replays/status": {"get": {}},
         "/api/v1/b649/sealed-084-replays": {"get": {}},
         "/api/v1/strategies": {"get": {}},
@@ -491,8 +492,10 @@ def authorized_openapi_paths() -> dict[str, dict[str, object]]:
         "/api/v1/replay-backfill/k3-comparison": {"get": {}},
         "/api/v1/replay-backfill/predictions": {"get": {}},
         "/api/v1/replay-backfill/coverage": {"get": {}},
+        "/api/v1/replay-backfill/coverage/scan": {"get": {}},
         "/api/v1/replay-backfill/results": {"get": {}},
         "/api/v1/replay-backfill/uniform-eight-reference": {"get": {}},
+        "/api/v1/replay-backfill/research-main-three-summary": {"get": {}},
         "/api/v1/replay-backfill/runs": {"get": {}},
         "/api/v1/replay-backfill/runs/{run_id}": {"get": {}},
         "/api/v1/replay-backfill/strategy-runs": {"get": {}},
@@ -507,8 +510,10 @@ def test_smoke_accepts_exact_replay_backfill_and_inventory_get_operations() -> N
         "/api/v1/replay-backfill/k3-comparison",
         "/api/v1/replay-backfill/predictions",
         "/api/v1/replay-backfill/coverage",
+        "/api/v1/replay-backfill/coverage/scan",
         "/api/v1/replay-backfill/results",
         "/api/v1/replay-backfill/uniform-eight-reference",
+        "/api/v1/replay-backfill/research-main-three-summary",
         "/api/v1/replay-backfill/runs",
         "/api/v1/replay-backfill/runs/{run_id}",
         "/api/v1/replay-backfill/strategy-runs",
@@ -522,7 +527,7 @@ def test_smoke_accepts_exact_replay_backfill_and_inventory_get_operations() -> N
         or path == "/api/v1/replay-strategy-inventory"
     } == expected_replay_paths
     assert all(paths[path] == {"get": {}} for path in expected_replay_paths)
-    assert len(paths) == 93
+    assert len(paths) == 96
     validate_openapi_payload({"paths": paths})
 
 
@@ -539,8 +544,11 @@ def test_live_application_openapi_is_accepted_by_runtime_policy() -> None:
         "/api/v1/replay-backfill/k3-comparison",
         "/api/v1/replay-backfill/predictions",
         "/api/v1/replay-backfill/coverage",
+        "/api/v1/replay-backfill/coverage/scan",
+        "/api/b649/native-forecast/current",
         "/api/v1/replay-backfill/results",
         "/api/v1/replay-backfill/uniform-eight-reference",
+        "/api/v1/replay-backfill/research-main-three-summary",
         "/api/v1/replay-backfill/runs",
         "/api/v1/replay-backfill/runs/{run_id}",
         "/api/v1/replay-strategy-inventory",
@@ -565,6 +573,7 @@ def test_smoke_rejects_non_get_methods_on_new_replay_query_paths(
         "/api/v1/replay-backfill/strategies/latest",
         "/api/v1/replay-backfill/k3-comparison/",
         "/api/v1/replay-backfill/k3-comparison/execute",
+        "/api/v1/replay-backfill/research-main-three-summary/execute",
         "/api/v1/replay-backfill/runs/{run_id}/execute",
         "/api/v1/replay-strategy-inventory/",
         "/api/v1/replay-strategy-inventory/latest",

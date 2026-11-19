@@ -37,6 +37,7 @@ _FORBIDDEN_ROUTE_WORDS = (
 _ALLOWED_OPENAPI_OPERATIONS = {
     "/api/health": frozenset({"get"}),
     "/api/b649/canonical-forecast/current": frozenset({"get"}),
+    "/api/b649/native-forecast/current": frozenset({"get"}),
     "/api/v1/b649/sealed-084-replays/status": frozenset({"get"}),
     "/api/v1/b649/sealed-084-replays": frozenset({"get"}),
     "/api/v1/strategies": frozenset({"get"}),
@@ -172,8 +173,10 @@ _ALLOWED_OPENAPI_OPERATIONS = {
     "/api/v1/replay-backfill/k3-comparison": frozenset({"get"}),
     "/api/v1/replay-backfill/predictions": frozenset({"get"}),
     "/api/v1/replay-backfill/coverage": frozenset({"get"}),
+    "/api/v1/replay-backfill/coverage/scan": frozenset({"get"}),
     "/api/v1/replay-backfill/results": frozenset({"get"}),
     "/api/v1/replay-backfill/uniform-eight-reference": frozenset({"get"}),
+    "/api/v1/replay-backfill/research-main-three-summary": frozenset({"get"}),
     "/api/v1/replay-backfill/runs": frozenset({"get"}),
     "/api/v1/replay-backfill/runs/{run_id}": frozenset({"get"}),
     "/api/v1/replay-backfill/strategy-runs": frozenset({"get"}),
@@ -203,8 +206,10 @@ _FORBIDDEN_ROUTE_WORD_EXCEPTION_PATHS = frozenset(
         "/api/v1/replay-backfill/k3-comparison",
         "/api/v1/replay-backfill/predictions",
         "/api/v1/replay-backfill/coverage",
+        "/api/v1/replay-backfill/coverage/scan",
         "/api/v1/replay-backfill/results",
         "/api/v1/replay-backfill/uniform-eight-reference",
+        "/api/v1/replay-backfill/research-main-three-summary",
         "/api/v1/replay-backfill/runs",
         "/api/v1/replay-backfill/runs/{run_id}",
         "/api/v1/replay-backfill/strategy-runs",
@@ -246,13 +251,16 @@ configured read-only backfill store; cursor values are returned to the caller
 and are not persisted. Strategy-run discovery filters that history by exact
 lottery and strategy identity. The uniform-eight reference route reads saved
 tickets and adds a read-only research projection without altering official
-prize results. ``/api/v1/replay-strategy-inventory`` reads the
+prize results. The main-three research summary likewise reads saved results
+without running strategies or persisting data. ``/api/v1/replay-strategy-inventory`` reads the
 packaged strategy inventory. These operations do not create backfills, execute
 strategies, or write database state. The exact B649 sealed-084 replay paths
 are GET-only reads over pinned source evidence; they execute no strategy and
 rerun no replay. The research backtest routes query persisted or packaged
 evidence and perform no mutation. Each full path remains individually
 allowlisted and exempted; other Replay or backfill paths remain rejected.
+The coverage scan and the current native-forecast projection are separately
+bounded GET-only readers; neither writes to a database or executes a strategy.
 """
 _ALLOWED_OPENAPI_OPERATION_SET = frozenset(
     (method, path) for path, methods in _ALLOWED_OPENAPI_OPERATIONS.items() for method in methods

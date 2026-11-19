@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Protocol, cast
 
+import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -262,6 +263,53 @@ def test_fixed_random_control_is_history_only_and_overlay_requires_exact_version
     )
     assert exact["data_status"] == "NO_HISTORY"
     assert exact["available_target_count"] == 0
+
+
+@pytest.mark.parametrize(
+    ("strategy_id", "version", "count"),
+    [
+        ("legacy_biglotto__test_ecp__c9d5ac6decdd", "v0.2", 1),
+        ("legacy_biglotto__biglotto_3bet_optimizer__2835d6cb20c5", "v0.2", 1),
+        ("research_biglotto__radical_gap_complete_v2", "v2", 83),
+    ],
+)
+def test_saved_research_history_does_not_claim_unavailable_rebuild(
+    strategy_id: str, version: str, count: int
+) -> None:
+    row = _inventory_row(
+        lottery_type="BIG_LOTTO", strategy_id=strategy_id, version=version, target_count=count
+    )
+    row["data_status"] = "REBUILDABLE"
+    snapshot = _snapshot(
+        rows=(row,),
+        cells=(
+            _complete_cells(
+                lottery_type="BIG_LOTTO", strategy_id=strategy_id, version=version, cell_count=count
+            ),
+        ),
+    )
+    client = _client({"BIG_LOTTO": snapshot, "DAILY_539": _snapshot(), "POWER_LOTTO": _snapshot()})
+    response = client.get(
+        "/api/v1/replay-backfill/strategies",
+        params={"lottery_type": "BIG_LOTTO", "q": strategy_id, "data_status": "HAS_HISTORY"},
+    )
+    assert response.status_code == 200
+    row_result = next(row for row in response.json()["items"] if row["strategy_version"] == version)
+    assert row_result["history_status"] == "HAS_HISTORY"
+    assert row_result["available_target_count"] == count
+    assert row_result["executable"] is False
+    assert row_result["backfill_runnable"] is False
+
+    snapshot["cell_status_counts"] = []
+    missing = client.get(
+        "/api/v1/replay-backfill/strategies",
+        params={"lottery_type": "BIG_LOTTO", "q": strategy_id},
+    )
+    same_version = next(
+        row for row in missing.json()["items"] if row["strategy_version"] == version
+    )
+    assert same_version["data_status"] == "REBUILDABLE"
+    assert same_version["history_status"] != "HAS_HISTORY"
 
 
 def test_static_inventory_registers_both_k30_identities() -> None:

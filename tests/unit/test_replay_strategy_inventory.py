@@ -25,8 +25,8 @@ def test_inventory_conserves_sources_and_executable_identities() -> None:
     inventory = load_replay_strategy_inventory()
     source_counts = {source.source_kind: source for source in inventory.source_counts}
 
-    assert inventory.total_discovered_strategies == 746
-    assert inventory.total_unique_strategies == 491
+    assert inventory.total_discovered_strategies == 749
+    assert inventory.total_unique_strategies == 494
     assert len(inventory.executable_items) == 223
     assert inventory.unresolved_source_count == 9
     assert source_counts["PRODUCTION_CATALOG"].source_identity_count == 138
@@ -36,13 +36,13 @@ def test_inventory_conserves_sources_and_executable_identities() -> None:
     assert source_counts["P638_REPLAY_ADAPTER"].source_identity_count == 23
     assert source_counts["STRATEGY_ADAPTER_CODE"].source_identity_count == 105
     assert source_counts["STRATEGY_ADAPTER_CODE"].source_row_count == 106
-    assert source_counts["REPLAY_BACKFILL_IMPORTED_RESULT"].source_identity_count == 32
-    assert source_counts["REPLAY_BACKFILL_IMPORTED_RESULT"].source_row_count == 32
+    assert source_counts["REPLAY_BACKFILL_IMPORTED_RESULT"].source_identity_count == 35
+    assert source_counts["REPLAY_BACKFILL_IMPORTED_RESULT"].source_row_count == 35
 
     lottery_counts = Counter(item.lottery_type for item in inventory.items)
     executable_by_lottery = Counter(item.lottery_type for item in inventory.executable_items)
     assert lottery_counts == {
-        LotteryType.BIG_LOTTO: 395,
+        LotteryType.BIG_LOTTO: 398,
         LotteryType.DAILY_539: 62,
         LotteryType.POWER_LOTTO: 34,
     }
@@ -80,7 +80,7 @@ def test_inventory_keeps_status_dimensions_and_unavailable_cases_separate() -> N
         ReplayDataStatus.REBUILDABLE: 223,
         ReplayDataStatus.ARTIFACT_ONLY: 135,
         ReplayDataStatus.REJECTED: 74,
-        ReplayDataStatus.NO_HISTORY: 54,
+        ReplayDataStatus.NO_HISTORY: 57,
         ReplayDataStatus.CODE_ONLY: 5,
     }
 
@@ -191,6 +191,30 @@ def test_inventory_keeps_status_dimensions_and_unavailable_cases_separate() -> N
         for item in inventory.items
     )
     assert inventory.source_integrity_issues == ()
+
+
+@pytest.mark.parametrize(
+    ("strategy_id", "version"),
+    [
+        ("legacy_biglotto__test_ecp__c9d5ac6decdd", "v0.2"),
+        ("legacy_biglotto__biglotto_3bet_optimizer__2835d6cb20c5", "v0.2"),
+        ("research_biglotto__radical_gap_complete_v2", "v2"),
+    ],
+)
+def test_staged_research_identity_is_not_executable_or_claimed_imported(
+    strategy_id: str, version: str
+) -> None:
+    matches = [
+        item
+        for item in load_replay_strategy_inventory().items
+        if item.lottery_type is LotteryType.BIG_LOTTO
+        and item.strategy_id == strategy_id
+        and item.strategy_version == version
+    ]
+    assert len(matches) == 1
+    assert matches[0].replay_data_status is ReplayDataStatus.NO_HISTORY
+    assert matches[0].execution_capability is ReplayExecutionCapability.UNAVAILABLE
+    assert matches[0].adapter_mapping is None
 
 
 def test_online_lifecycle_can_coexist_with_no_history() -> None:

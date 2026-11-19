@@ -799,11 +799,14 @@ def create_replay_backfill_router(
                 if (
                     item_data_status == "REBUILDABLE"
                     and item.execution_capability is ReplayExecutionCapability.UNAVAILABLE
-                    and "CONTROL_BASELINE" in item.source_statuses
+                    and (
+                        "CONTROL_BASELINE" in item.source_statuses
+                        or item.source_kind == "REPLAY_BACKFILL_IMPORTED_RESULT"
+                    )
                     and history_view["history_status"] == "HAS_HISTORY"
                 ):
-                    # A stored replay can report its original producer as rebuildable even
-                    # when this inventory has no runnable binding for the control strategy.
+                    # A stored producer may say rebuildable while the current imported
+                    # history identity has no runnable binding in this inventory.
                     item_data_status = "HAS_HISTORY"
                 if data_status is not None and item_data_status != data_status.value:
                     continue

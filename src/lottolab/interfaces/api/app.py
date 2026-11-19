@@ -11,12 +11,14 @@ from __future__ import annotations
 
 import os
 from collections.abc import Callable
+from datetime import date
 from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
+from lottolab.application.draw_data import DrawHistoryQuery
 from lottolab.application.ports import (
     B649ExactNativeRecordReaderFactory,
     B649K5RecordReaderFactory,
@@ -44,6 +46,7 @@ from lottolab.application.use_cases.generate_live_zone_split_bets import (
     build_production_generate_live_zone_split_bets,
 )
 from lottolab.domain.biglotto_full_strategy_catalog import load_full_strategy_catalog
+from lottolab.domain.draws import LotteryType
 from lottolab.infrastructure.b649_research_board_v2_reader import (
     B649ResearchBoardV2Reader,
 )
@@ -59,6 +62,7 @@ from lottolab.infrastructure.biglotto_multi_ticket_record_reader import (
 from lottolab.infrastructure.persistence.draw_schema import (
     LocalDataPaths,
     resolve_local_data_paths,
+    verify_schema_read_only,
 )
 from lottolab.infrastructure.persistence.replay_backfill_store import SQLiteBackfillStore
 from lottolab.infrastructure.persistence.repositories import SQLiteDrawDataRepository
@@ -74,6 +78,7 @@ from lottolab.interfaces.api.b649_canonical_forecast import (
 from lottolab.interfaces.api.b649_multi_ticket_records import (
     create_b649_multi_ticket_records_router,
 )
+from lottolab.interfaces.api.b649_native_forecast import create_b649_native_forecast_router
 from lottolab.interfaces.api.b649_research_board_v2 import (
     create_b649_research_board_v2_router,
 )
@@ -223,6 +228,26 @@ def create_app(
     def repository_factory() -> SQLiteDrawDataRepository:
         return SQLiteDrawDataRepository(resolved_paths_provider())
 
+    def replay_window_draw_reader(
+        lottery_type: LotteryType, start_date: date, end_date: date
+    ) -> tuple[tuple[str, str], ...]:
+        paths = resolved_paths_provider()
+        if not verify_schema_read_only(paths):
+            raise RuntimeError("canonical draw database is unavailable")
+        repository = SQLiteDrawDataRepository(paths)
+        query = DrawHistoryQuery(
+            lottery_type=lottery_type,
+            date_from=start_date,
+            date_to=end_date,
+            page=1,
+            page_size=2501,
+        )
+        records = sorted(
+            repository.list_draws(query).records,
+            key=lambda record: (record.draw_date, record.draw_number),
+        )
+        return tuple((record.draw_number, record.draw_date.isoformat()) for record in records)
+
     @app.exception_handler(RequestValidationError)
     async def sanitized_validation_error(
         request: Request, error: RequestValidationError
@@ -250,6 +275,7 @@ def create_app(
         return {"status": "ok", "api_version": API_VERSION}
 
     app.include_router(create_b649_canonical_forecast_router())
+    app.include_router(create_b649_native_forecast_router())
     app.include_router(create_b649_sealed084_replays_router(b649_sealed084_replay_source_root))
     app.include_router(create_strategy_catalog_router(resolved_catalog))
     app.include_router(create_replay_strategy_inventory_router())
@@ -314,7 +340,11 @@ def create_app(
     app.include_router(create_research_backtests_router())
     app.include_router(create_research_crosswalk_router())
     app.include_router(create_replay_execution_router(replay_executor))
-    app.include_router(create_replay_backfill_router(resolved_replay_backfill_store))
+    app.include_router(
+        create_replay_backfill_router(
+            resolved_replay_backfill_store, window_draw_reader=replay_window_draw_reader
+        )
+    )
     app.include_router(create_t539_historical_router(t539_historical_query_repository_factory))
     app.include_router(
         create_multiwindow_success_windows_router(

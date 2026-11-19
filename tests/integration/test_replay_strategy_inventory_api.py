@@ -5,6 +5,7 @@ from typing import Protocol, cast
 import httpx
 from fastapi.testclient import TestClient
 
+from lottolab.infrastructure.persistence.replay_backfill_store import SQLiteBackfillStore
 from lottolab.interfaces.api.app import create_app
 
 
@@ -23,8 +24,8 @@ def test_replay_strategy_inventory_api_lists_separate_states_and_full_backfill_i
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["total_discovered_strategies"] == 715
-    assert payload["total_unique_strategies"] == 469
+    assert payload["total_discovered_strategies"] == 725
+    assert payload["total_unique_strategies"] == 479
     assert payload["total_executable"] == 213
     assert payload["total_reconstructable"] == 213
     assert payload["total_has_history"] == 0
@@ -37,7 +38,7 @@ def test_replay_strategy_inventory_api_lists_separate_states_and_full_backfill_i
     assert payload["source_status_counts"]["OBSERVATION"] == 2
     assert payload["replay_data_status_counts"]["CODE_ONLY"] == 2
     assert payload["execution_capability_counts"]["EXECUTABLE"] == 213
-    assert payload["execution_capability_counts"]["UNAVAILABLE"] == 256
+    assert payload["execution_capability_counts"]["UNAVAILABLE"] == 266
     assert payload["strategy_count"] == payload["total_unique_strategies"]
     assert len(payload["executable_strategy_ids"]) == payload["total_executable"]
     assert all(
@@ -67,6 +68,42 @@ def test_replay_strategy_inventory_api_lists_separate_states_and_full_backfill_i
     online_rows = [row for row in payload["strategies"] if row["lifecycle_status"] == "ONLINE"]
     assert len(online_rows) == 137
     assert all(row["historical_data_count"] == 0 for row in online_rows)
+
+
+def test_power_lotto_fixed_random_controls_are_listed_without_claiming_history() -> None:
+    class EmptyHistory:
+        def strategy_history_snapshot(self, lottery_type: str, *, run_id: str | None = None):
+            return {"run_id": None}
+
+    store = cast(SQLiteBackfillStore, EmptyHistory())
+    client = cast(JsonTestClient, TestClient(create_app(replay_backfill_store=store)))
+    response = client.get(
+        "/api/v1/replay-backfill/strategies",
+        params={
+            "lottery_type": "POWER_LOTTO",
+            "q": "research_powerlotto__historical_random_k",
+        },
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    expected = {
+        (
+            f"research_powerlotto__historical_random_k{k}_20261119_r1",
+            "v1.0.0",
+            f"威力彩 K{k} 固定隨機控制",
+        )
+        for k in (1, 2, 3, 4, 5, 7, 10, 11, 12, 25)
+    }
+    rows = payload["items"]
+    assert payload["total_count"] == len(rows) == len(expected)
+    assert {
+        (row["strategy_id"], row["strategy_version"], row["display_name"]) for row in rows
+    } == expected
+    for row in rows:
+        assert row["lottery_type"] == "POWER_LOTTO"
+        assert row["data_status"] == row["history_status"] == "NO_HISTORY"
+        assert row["available_target_count"] == 0
+        assert row["backfill_runnable"] is False
 
 
 def test_replay_strategy_inventory_api_filters_by_lottery_strategy_and_data_status() -> None:

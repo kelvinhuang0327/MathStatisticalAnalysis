@@ -19,6 +19,8 @@ K30_GEOMETRY_ID = "evolution_h12_k30_geometry_completion"
 K30_RANDOM_ID = "evolution_h12_k30_matched_random_completion"
 K30_EXACT_SWAP_ID = "research_biglotto__k30_geometry_exact_swap_history_v1"
 K30_VERSION = "v0.1"
+K9_ID = "research_biglotto__k9_optimal_coverage_candidate"
+K9_VERSION = "v0.1-research"
 
 
 class _JsonResponse(Protocol):
@@ -115,6 +117,51 @@ def _complete_cells(
         "ticket_count": ticket_count,
         "saved_prediction_cell_count": cell_count,
     }
+
+
+def test_k9_inventory_identity_and_history_overlay() -> None:
+    matches = [
+        item
+        for item in load_replay_strategy_inventory().items
+        if item.lottery_type is LotteryType.BIG_LOTTO
+        and item.strategy_id == K9_ID
+        and item.strategy_version == K9_VERSION
+    ]
+    assert len(matches) == 1
+    item = matches[0]
+    assert item.execution_capability is ReplayExecutionCapability.UNAVAILABLE
+    assert item.adapter_mapping is None
+    assert item.backfill_runnable is False
+    assert item.source_statuses == ("RESEARCH_STRATEGY",)
+
+    snapshot = _snapshot(
+        rows=(
+            _inventory_row(
+                lottery_type="BIG_LOTTO", strategy_id=K9_ID, version=K9_VERSION, target_count=2183
+            ),
+        ),
+        cells=(
+            _complete_cells(
+                lottery_type="BIG_LOTTO",
+                strategy_id=K9_ID,
+                version=K9_VERSION,
+                cell_count=2183,
+                ticket_count=19647,
+            ),
+        ),
+    )
+    client = _client({"BIG_LOTTO": snapshot, "DAILY_539": _snapshot(), "POWER_LOTTO": _snapshot()})
+    response = client.get(
+        "/api/v1/replay-backfill/strategies", params={"lottery_type": "BIG_LOTTO", "q": K9_ID}
+    )
+    assert response.status_code == 200
+    assert response.json()["total_count"] == 1
+    result = response.json()["items"][0]
+    assert result["strategy_version"] == K9_VERSION
+    assert result["data_status"] == "HAS_HISTORY"
+    assert result["available_target_count"] == 2183
+    assert result["executable"] is False
+    assert result["backfill_runnable"] is False
 
 
 def test_static_inventory_registers_both_k30_identities() -> None:

@@ -232,6 +232,27 @@ const unsafeCases: Array<{ name: string, payload: unknown, request: () => Promis
 ]
 
 describe('Replay Backfill API client safe integer validation', () => {
+  it('accepts legacy inventory without capability fields and preserves unknown values', async () => {
+    const legacy = inventoryItem()
+    for (const key of ['reconstructable', 'wrapper_callable', 'backfill_native_binding',
+      'backfill_runnable', 'execution_block_reason']) {
+      delete (legacy as Record<string, unknown>)[key]
+    }
+    stubApiResponse({ strategy_count: 1, strategies: [legacy] })
+    const result = await listReplayStrategyInventory('BIG_LOTTO')
+    expect(result.strategies[0]).toMatchObject({
+      reconstructable: null, wrapper_callable: null, backfill_native_binding: null,
+      backfill_runnable: null, execution_block_reason: null,
+    })
+  })
+
+  it.each(['reconstructable', 'wrapper_callable', 'backfill_native_binding',
+    'backfill_runnable', 'execution_block_reason'])(
+    'rejects a malformed supplied capability field %s', async (field) => {
+      stubApiResponse({ strategy_count: 1, strategies: [inventoryItem({ [field]: 42 })] })
+      await expect(listReplayStrategyInventory('BIG_LOTTO')).rejects.toBeInstanceOf(ReplayBackfillRequestError)
+    },
+  )
   it.each(unsafeCases)('rejects unsafe $name from the fetch response', async ({ payload, request }) => {
     const fetchMock = stubApiResponse(payload)
 

@@ -16,8 +16,19 @@ export type ReplayBackfillDataStatus = components['schemas']['ReplayDataStatus']
 export type ReplayBackfillStrategyItem = components['schemas']['ReplayBackfillStrategyItemView']
 export type ReplayBackfillStrategyPage = components['schemas']['ReplayBackfillStrategyPageResponse']
 
-export type ReplayStrategyInventoryItem = components['schemas']['ReplayStrategyInventoryItemView']
-export type ReplayStrategyInventoryResponse = components['schemas']['ReplayStrategyInventoryResponse']
+type InventoryItemView = components['schemas']['ReplayStrategyInventoryItemView']
+type CapabilityKey = 'reconstructable' | 'wrapper_callable' | 'backfill_native_binding' |
+  'backfill_runnable' | 'execution_block_reason'
+type InventoryWireItem = Omit<InventoryItemView, CapabilityKey> & Partial<Pick<InventoryItemView, CapabilityKey>>
+type InventoryWireResponse = Omit<components['schemas']['ReplayStrategyInventoryResponse'], 'strategies'> & {
+  strategies: InventoryWireItem[]
+}
+export type ReplayStrategyInventoryItem = Omit<InventoryItemView, 'backfill_runnable'> & {
+  backfill_runnable: boolean | null
+}
+export type ReplayStrategyInventoryResponse = Omit<InventoryWireResponse, 'strategies'> & {
+  strategies: ReplayStrategyInventoryItem[]
+}
 
 export type ReplayBackfillTicket = components['schemas']['ReplayBackfillPredictedTicketView']
 export type ReplayBackfillTraining = components['schemas']['ReplayBackfillTrainingView']
@@ -177,7 +188,7 @@ function isStrategyPage(value: unknown): value is ReplayBackfillStrategyPage {
   )
 }
 
-function isStrategyInventoryItem(value: unknown): value is ReplayStrategyInventoryItem {
+function isStrategyInventoryItem(value: unknown): value is InventoryWireItem {
   return (
     isRecord(value) &&
     isLotteryType(value.lottery_type) &&
@@ -189,11 +200,11 @@ function isStrategyInventoryItem(value: unknown): value is ReplayStrategyInvento
     isString(value.lifecycle_status) &&
     isString(value.replay_data_status) &&
     isString(value.execution_capability) &&
-    isNullableBoolean(value.reconstructable) &&
-    isNullableBoolean(value.wrapper_callable) &&
-    isNullableBoolean(value.backfill_native_binding) &&
-    typeof value.backfill_runnable === 'boolean' &&
-    isNullableString(value.execution_block_reason) &&
+    (value.reconstructable === undefined || isNullableBoolean(value.reconstructable)) &&
+    (value.wrapper_callable === undefined || isNullableBoolean(value.wrapper_callable)) &&
+    (value.backfill_native_binding === undefined || isNullableBoolean(value.backfill_native_binding)) &&
+    (value.backfill_runnable === undefined || typeof value.backfill_runnable === 'boolean') &&
+    (value.execution_block_reason === undefined || isNullableString(value.execution_block_reason)) &&
     isString(value.reconstruction_reason) &&
     isNonNegativeSafeInteger(value.historical_data_count) &&
     isNonNegativeSafeInteger(value.historical_execution_count)
@@ -214,7 +225,7 @@ function isPredictionCutoff(value: unknown): value is ReplayBackfillPredictionCu
   )
 }
 
-function isStrategyInventoryResponse(value: unknown): value is ReplayStrategyInventoryResponse {
+function isStrategyInventoryResponse(value: unknown): value is InventoryWireResponse {
   return (
     isRecord(value) &&
     isNonNegativeSafeInteger(value.strategy_count) &&
@@ -598,11 +609,22 @@ export async function listReplayStrategyInventory(
   signal?: AbortSignal,
 ): Promise<ReplayStrategyInventoryResponse> {
   const params = new URLSearchParams({ lottery_type: lotteryType })
-  return getJson(
+  const response = await getJson(
     `/api/v1/replay-strategy-inventory?${params.toString()}`,
     signal,
     isStrategyInventoryResponse,
   )
+  return {
+    ...response,
+    strategies: response.strategies.map((item) => ({
+      ...item,
+      reconstructable: item.reconstructable ?? null,
+      wrapper_callable: item.wrapper_callable ?? null,
+      backfill_native_binding: item.backfill_native_binding ?? null,
+      backfill_runnable: item.backfill_runnable ?? null,
+      execution_block_reason: item.execution_block_reason ?? null,
+    })),
+  }
 }
 
 export async function listReplayStrategyRuns(

@@ -1424,6 +1424,17 @@ _IMPORTED_HISTORY_ONLY_REASON = (
 _IMPORTED_REPLAY_IDENTITIES: tuple[_ImportedReplayIdentitySpec, ...] = (
     _ImportedReplayIdentitySpec(
         lottery_type=LotteryType.BIG_LOTTO,
+        strategy_id="research_biglotto__k9_optimal_coverage_candidate",
+        display_name="大樂透 K9 最佳公平覆蓋候選研究策略",
+        strategy_version="v0.1-research",
+        source_locator=(
+            "replay-backfill:d528aaecc35c4dae5e70a4330cfcd839d61345589f42fc6ac6fe06d9afb9c4a9"
+        ),
+        reconstruction_reason=_IMPORTED_HISTORY_ONLY_REASON,
+        source_status="RESEARCH_STRATEGY",
+    ),
+    _ImportedReplayIdentitySpec(
+        lottery_type=LotteryType.BIG_LOTTO,
         strategy_id="research_biglotto__zone_momentum_complete_v1",
         display_name="Zone Momentum Complete",
         strategy_version="v1",

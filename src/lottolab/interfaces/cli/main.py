@@ -206,6 +206,7 @@ from lottolab.interfaces.cli.legacy_source_native_batch_wave41 import (
 from lottolab.interfaces.cli.legacy_xgboost_native_batch_wave64 import (
     materialize_legacy_xgboost_native_wave64_batch_command,
 )
+from lottolab.interfaces.cli.optional_backup import optional_backup_command
 from lottolab.interfaces.cli.ordered_candidate_materialization import (
     materialize_ordered_candidate_emissions_command,
 )
@@ -236,6 +237,7 @@ app = typer.Typer(no_args_is_help=True, help="LottoLab — 樂透統計分析系
 local_app = typer.Typer(no_args_is_help=True, help="Safely manage localhost-only services.")
 app.add_typer(local_app, name="local")
 app.add_typer(database_registry_app, name="db-registry")
+app.command("optional-backup")(optional_backup_command)
 app.command("import-historical-results")(historical_import_command)
 app.command("forward-p638-historical")(forward_p638_historical_command)
 app.command("replay-predictions")(replay_predictions_command)

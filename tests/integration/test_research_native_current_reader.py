@@ -4,6 +4,7 @@ import hashlib
 import sqlite3
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 import pytest
 from tests.integration import test_b649_consensus_promotion as consensus_helpers
@@ -111,7 +112,7 @@ def _native_forecast(request_id: str) -> LiveForecastInput:
         }
     ]
     evidence_sha256 = digest(observations)
-    buckets = []
+    buckets: list[dict[str, Any]] = []
     for native_k in (1, 2, 3, 5, 10, 20):
         status = (
             "UNAVAILABLE_NO_CANONICAL_NATIVE_K20_STRATEGY"
@@ -389,22 +390,22 @@ def test_consensus_rows_cannot_be_read_as_native_or_change_consensus_reader(
     monkeypatch.setattr(
         consensus_helpers.promotion_module,
         "EXPECTED_OPERATION_ROOT",
-        consensus_helpers._HERMETIC_OPERATION_ROOT,
+        consensus_helpers._HERMETIC_OPERATION_ROOT,  # pyright: ignore[reportPrivateUsage]
     )
     monkeypatch.setattr(
         consensus_helpers.promotion_module,
         "EXPECTED_CANDIDATE_LOCATOR",
-        consensus_helpers._HERMETIC_CANDIDATE_LOCATOR,
+        consensus_helpers._HERMETIC_CANDIDATE_LOCATOR,  # pyright: ignore[reportPrivateUsage]
     )
     repository, _paths = _repository(tmp_path)
-    candidate = consensus_helpers._candidate()
-    request = consensus_helpers._request("native-reader-consensus-separation")
+    candidate = consensus_helpers._candidate()  # pyright: ignore[reportPrivateUsage]
+    request = consensus_helpers._request("native-reader-consensus-separation")  # pyright: ignore[reportPrivateUsage]
     forecast = candidate.build_forecast(request)
     committed = repository.commit_consensus_promotion(
         forecast,
         expected_current_version=0,
         current_eligible=lambda: True,
-        clock=lambda: consensus_helpers._CLOCK,
+        clock=lambda: consensus_helpers._CLOCK,  # pyright: ignore[reportPrivateUsage]
     )
     current = repository.read_current_consensus(scope=forecast.scope)
     assert current is not None

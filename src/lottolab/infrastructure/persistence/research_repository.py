@@ -365,9 +365,7 @@ class SQLiteResearchRepository:
     ) -> LiveForecastCurrentResult | None:
         """Read only the Native v6 version selected by its complete current pointer."""
 
-        if len(scope) != 5 or any(
-            not isinstance(value, str) or not value.strip() for value in scope
-        ):
+        if len(scope) != 5 or any(not value.strip() for value in scope):
             raise ResearchRepositoryError("live forecast scope must contain five non-empty fields")
         if (
             scope[0] != "BIG_LOTTO"

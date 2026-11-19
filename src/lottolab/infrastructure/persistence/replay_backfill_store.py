@@ -12,7 +12,7 @@ from collections.abc import Generator
 from contextlib import contextmanager
 from datetime import date
 from pathlib import Path
-from typing import Any, TypeGuard, cast
+from typing import Any, TypedDict, TypeGuard, cast
 
 from lottolab.domain.draws import LotteryType
 from lottolab.domain.historical_replay import (
@@ -72,6 +72,7 @@ def _json_default(value: object) -> str:
 
 def identity(value: object) -> str:
     return hashlib.sha256(canonical_json(value).encode()).hexdigest()
+
 
 SCHEMA_SQL = """
 CREATE TABLE replay_backfill_schema (
@@ -165,12 +166,18 @@ _TABLES = {
 _FIXED_K7_TICKET_COUNT = 7
 
 
+class _TicketGroupDetails(TypedDict):
+    ticket_count: int
+    ticket_positions: list[int]
+    valid: bool
+
+
 def _saved_ticket_group_details(
     payload: JsonObject,
     saved_rows: list[tuple[object, ...]],
     *,
     lottery_type: str,
-) -> dict[str, object]:
+) -> _TicketGroupDetails:
     """Validate saved native positions and ticket groups without deduplicating tickets."""
     rule = LOTTERY_RULE_CONTRACTS[LotteryType(lottery_type)]
     raw_tickets: object = payload.get("predicted_tickets")
@@ -228,7 +235,9 @@ def _saved_ticket_group_details(
             valid = False
 
     ticket_positions = sorted(saved_by_position)
-    payload_ticket_count = len(cast(list[object], raw_tickets)) if type(raw_tickets) is list else 0
+    payload_ticket_count = (
+        len(cast(list[object], raw_tickets)) if isinstance(raw_tickets, list) else 0
+    )
     if (
         ticket_positions != list(range(1, len(ticket_positions) + 1))
         or payload_by_position != saved_by_position
@@ -293,9 +302,7 @@ def _copy_table_columns(
     if columns != _column_names(connection, destination):
         raise ValueError(f"unsupported legacy replay backfill table: {source}")
     quoted = ",".join(f'"{column}"' for column in columns)
-    connection.execute(
-        f'INSERT INTO "{destination}" ({quoted}) SELECT {quoted} FROM "{source}"'
-    )
+    connection.execute(f'INSERT INTO "{destination}" ({quoted}) SELECT {quoted} FROM "{source}"')
 
 
 def _migrate_legacy_v1(connection: sqlite3.Connection) -> None:
@@ -345,21 +352,23 @@ def _migrate_legacy_v1(connection: sqlite3.Connection) -> None:
         "CREATE TABLE replay_backfill_cells_v2 (",
         1,
     )
-    run_cells_sql = _schema_table_sql("replay_backfill_run_cells").replace(
-        "CREATE TABLE replay_backfill_run_cells (",
-        "CREATE TABLE replay_backfill_run_cells_v2 (",
-        1,
-    ).replace(
-        "REFERENCES replay_backfill_cells(cell_identity)",
-        "REFERENCES replay_backfill_cells_v2(cell_identity)",
-        1,
+    run_cells_sql = (
+        _schema_table_sql("replay_backfill_run_cells")
+        .replace(
+            "CREATE TABLE replay_backfill_run_cells (",
+            "CREATE TABLE replay_backfill_run_cells_v2 (",
+            1,
+        )
+        .replace(
+            "REFERENCES replay_backfill_cells(cell_identity)",
+            "REFERENCES replay_backfill_cells_v2(cell_identity)",
+            1,
+        )
     )
     connection.execute(cells_sql)
     connection.execute(run_cells_sql)
     _copy_table_columns(connection, "replay_backfill_cells_v1", "replay_backfill_cells_v2")
-    _copy_table_columns(
-        connection, "replay_backfill_run_cells_v1", "replay_backfill_run_cells_v2"
-    )
+    _copy_table_columns(connection, "replay_backfill_run_cells_v1", "replay_backfill_run_cells_v2")
     connection.execute("DROP TABLE replay_backfill_run_cells_v1")
     connection.execute("DROP TABLE replay_backfill_cells_v1")
     connection.execute("ALTER TABLE replay_backfill_cells_v2 RENAME TO replay_backfill_cells")
@@ -376,9 +385,7 @@ def _migrate_legacy_v1(connection: sqlite3.Connection) -> None:
     ):
         connection.execute(_schema_table_sql(table))
 
-    connection.execute(
-        "ALTER TABLE replay_backfill_schema RENAME TO replay_backfill_schema_v1"
-    )
+    connection.execute("ALTER TABLE replay_backfill_schema RENAME TO replay_backfill_schema_v1")
     connection.execute(_schema_table_sql("replay_backfill_schema"))
     connection.execute(
         "INSERT INTO replay_backfill_schema(version,checksum) VALUES(?,?)",
@@ -691,8 +698,7 @@ class SQLiteBackfillStore:
             for offset in range(0, len(keys), 100):
                 batch = keys[offset : offset + 100]
                 predicate = " OR ".join(
-                    "(" + " AND ".join(f'"{column}"=?' for column in columns) + ")"
-                    for _ in batch
+                    "(" + " AND ".join(f'"{column}"=?' for column in columns) + ")" for _ in batch
                 )
                 parameters = tuple(value for key in batch for value in key)
                 rows = connection.execute(
@@ -749,8 +755,7 @@ class SQLiteBackfillStore:
             for offset in range(0, len(keys), 100):
                 batch = keys[offset : offset + 100]
                 predicate = " OR ".join(
-                    "(" + " AND ".join(f'"{column}"=?' for column in columns) + ")"
-                    for _ in batch
+                    "(" + " AND ".join(f'"{column}"=?' for column in columns) + ")" for _ in batch
                 )
                 parameters = tuple(value for key in batch for value in key)
                 rows = connection.execute(
@@ -763,21 +768,17 @@ class SQLiteBackfillStore:
                 for row in rows:
                     key = cast(tuple[str, str, str, str], tuple(row[:4]))
                     payload = _as_json_object(json.loads(row[6]))
-                    if (
-                        payload is None
-                        or tuple(
-                            payload.get(column)
-                            for column in (
-                                "lottery_type",
-                                "strategy_id",
-                                "strategy_version",
-                                "target_draw_id",
-                                "execution_version",
-                                "dataset_identity",
-                            )
+                    if payload is None or tuple(
+                        payload.get(column)
+                        for column in (
+                            "lottery_type",
+                            "strategy_id",
+                            "strategy_version",
+                            "target_draw_id",
+                            "execution_version",
+                            "dataset_identity",
                         )
-                        != tuple(row[:6])
-                    ):
+                    ) != tuple(row[:6]):
                         raise ValueError("COMPLETE replay identity conflicts with stored payload")
                     found.setdefault(key, []).append(payload)
         finally:
@@ -797,9 +798,7 @@ class SQLiteBackfillStore:
         encoded_results: list[tuple[JsonObject, str]] = []
         for result in results:
             if "source_history_provenance_status" in result:
-                parse_source_history_provenance_status(
-                    result["source_history_provenance_status"]
-                )
+                parse_source_history_provenance_status(result["source_history_provenance_status"])
             encoded = canonical_json(result)
             body = {k: v for k, v in result.items() if k != "result_identity"}
             if identity(body) != result["result_identity"]:
@@ -975,9 +974,7 @@ class SQLiteBackfillStore:
                     result["cell_identity"],
                     position,
                     canonical_json(main_numbers),
-                    canonical_json(
-                        [] if special_number is None else [special_number]
-                    ),
+                    canonical_json([] if special_number is None else [special_number]),
                     zone1_hits,
                     stored_zone2_hit,
                     prize_tier,
@@ -997,6 +994,7 @@ class SQLiteBackfillStore:
                 training.get("training_artifact_hash"),
             ),
         )
+
     def summary(self, run_id: str) -> JsonObject:
         with self._connect() as connection:
             row = connection.execute(
@@ -1125,9 +1123,7 @@ class SQLiteBackfillStore:
                     ),
                     "source_kind": single_source.get(
                         "source_kind",
-                        manifest_source_kind
-                        if isinstance(manifest_source_kind, str)
-                        else None,
+                        manifest_source_kind if isinstance(manifest_source_kind, str) else None,
                     ),
                     "source_locator": single_source.get(
                         "source_locator",
@@ -1137,9 +1133,7 @@ class SQLiteBackfillStore:
                     ),
                     "source_hash": single_source.get(
                         "source_hash",
-                        manifest_source_hash
-                        if isinstance(manifest_source_hash, str)
-                        else None,
+                        manifest_source_hash if isinstance(manifest_source_hash, str) else None,
                     ),
                     "sources": sources,
                     "target_draw_count": target_draw_count,
@@ -1191,9 +1185,7 @@ class SQLiteBackfillStore:
             raw_target_ids = manifest.get("target_draw_ids")
             if type(raw_target_ids) is not list:
                 raise ValueError("run manifest target list is invalid")
-            selected_ids = {
-                str(draw_id) for draw_id in cast(list[object], raw_target_ids)
-            }
+            selected_ids = {str(draw_id) for draw_id in cast(list[object], raw_target_ids)}
             with self._connect() as connection:
                 source_targets = cast(
                     list[tuple[object, object]],
@@ -1328,8 +1320,7 @@ class SQLiteBackfillStore:
         completed = statuses.get("COMPLETE", 0)
         failed = statuses.get("FAILED", 0) + statuses.get("PARTIAL", 0)
         closed = sum(
-            statuses.get(status, 0)
-            for status in ("NOT_ELIGIBLE", "TYPED_CLOSURE", "MISSING")
+            statuses.get(status, 0) for status in ("NOT_ELIGIBLE", "TYPED_CLOSURE", "MISSING")
         )
         return {
             "lottery_type": lottery_type,
@@ -1420,10 +1411,7 @@ class SQLiteBackfillStore:
         for row in rows:
             strategy_id, strategy_version, draw_id, draw_date = row[:4]
             pair = (str(strategy_id), str(strategy_version))
-            if (
-                str(draw_id) not in target_by_id
-                or target_by_id[str(draw_id)] != str(draw_date)
-            ):
+            if str(draw_id) not in target_by_id or target_by_id[str(draw_id)] != str(draw_date):
                 orphan_count += 1
                 continue
             payload = json.loads(row[7])
@@ -1470,7 +1458,7 @@ class SQLiteBackfillStore:
 
         scan_rows: list[JsonObject] = []
         status_counts: dict[str, int] = {}
-        identity_variants = {
+        identity_variants: dict[str, dict[str, set[str]]] = {
             f"{strategy_id}@{strategy_version}": {
                 "execution_versions": set(),
                 "dataset_identities": set(),
@@ -1528,9 +1516,7 @@ class SQLiteBackfillStore:
                         identity_variants[key]["execution_versions"].add(
                             record["execution_version"]
                         )
-                        identity_variants[key]["dataset_identities"].add(
-                            record["dataset_identity"]
-                        )
+                        identity_variants[key]["dataset_identities"].add(record["dataset_identity"])
                 complete = status == "COMPLETE"
                 strategy_counts[key]["complete" if complete else "incomplete"] += 1
                 status_counts[status] = status_counts.get(status, 0) + 1
@@ -1625,9 +1611,7 @@ class SQLiteBackfillStore:
         """Return one selected-run snapshot without merging results across runs."""
 
         selection_rule = (
-            "LATEST_RUN_BY_CREATED_AT_PER_LOTTERY_TYPE"
-            if run_id is None
-            else "EXPLICIT_RUN_ID"
+            "LATEST_RUN_BY_CREATED_AT_PER_LOTTERY_TYPE" if run_id is None else "EXPLICIT_RUN_ID"
         )
         with self._connect() as connection:
             connection.execute("BEGIN")
@@ -1859,17 +1843,28 @@ class SQLiteBackfillStore:
 
         def unpack(row: tuple[Any, ...]) -> JsonObject:
             return {
-                "identity": dict(zip(
-                    ("cell_identity", "lottery_type", "strategy_id", "strategy_version",
-                     "target_draw_id", "target_draw_date", "dataset_identity",
-                     "execution_version", "result_identity"), row[:9], strict=True
-                )),
+                "identity": dict(
+                    zip(
+                        (
+                            "cell_identity",
+                            "lottery_type",
+                            "strategy_id",
+                            "strategy_version",
+                            "target_draw_id",
+                            "target_draw_date",
+                            "dataset_identity",
+                            "execution_version",
+                            "result_identity",
+                        ),
+                        row[:9],
+                        strict=True,
+                    )
+                ),
                 "payload": json.loads(row[9]),
             }
 
         return [unpack(row) for row in new_rows], [
-            {**unpack(row), "run_ids": sorted(old_run_ids.get(row[0], []))}
-            for row in old_rows
+            {**unpack(row), "run_ids": sorted(old_run_ids.get(row[0], []))} for row in old_rows
         ]
 
     def prediction_page(
@@ -2097,9 +2092,9 @@ class SQLiteBackfillStore:
                 SourceHistoryProvenanceStatus.UNKNOWN.value,
             )
             # Legacy payloads get a safe read-view default without changing stored bytes.
-            payload["source_history_provenance_status"] = (
-                parse_source_history_provenance_status(provenance_status).value
-            )
+            payload["source_history_provenance_status"] = parse_source_history_provenance_status(
+                provenance_status
+            ).value
             items.append(payload)
         return {
             "items": items,
@@ -2129,9 +2124,7 @@ class SQLiteBackfillStore:
             )
 
         if not _is_string(strategy_id):
-            raise ValueError(
-                f"strategy_id must be a string, got {type(strategy_id).__name__}"
-            )
+            raise ValueError(f"strategy_id must be a string, got {type(strategy_id).__name__}")
         strategy_id = strategy_id.strip()
         if not strategy_id:
             raise ValueError("strategy_id must not be empty")
@@ -2324,10 +2317,9 @@ def _research_portfolio_context(
             if type(item) is not dict:
                 continue
             candidate = cast(JsonObject, item)
-            if (
-                candidate.get("strategy_id") == payload.get("strategy_id")
-                and candidate.get("strategy_version") == payload.get("strategy_version")
-            ):
+            if candidate.get("strategy_id") == payload.get("strategy_id") and candidate.get(
+                "strategy_version"
+            ) == payload.get("strategy_version"):
                 matches.append(candidate)
     expected: object = matches[0].get("native_ticket_count") if len(matches) == 1 else None
     body = {key: value for key, value in payload.items() if key != "result_identity"}
@@ -2363,8 +2355,7 @@ def _research_portfolio_context(
                 break
             ticket = cast(JsonObject, raw)
             if any(
-                key in ticket and ticket[key] != value
-                for key, value in ticket_identity.items()
+                key in ticket and ticket[key] != value for key, value in ticket_identity.items()
             ):
                 ticket_identities_match = False
                 break
@@ -2374,10 +2365,9 @@ def _research_portfolio_context(
                     ticket_identities_match = False
                     break
                 nested_data = cast(JsonObject, nested)
-                if (
-                    any(nested_data.get(key) != value for key, value in ticket_identity.items())
-                    or nested_data.get("ticket_position") != ticket.get("ticket_position")
-                ):
+                if any(
+                    nested_data.get(key) != value for key, value in ticket_identity.items()
+                ) or nested_data.get("ticket_position") != ticket.get("ticket_position"):
                     ticket_identities_match = False
                     break
     source_bound = (

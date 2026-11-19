@@ -1,5 +1,8 @@
 """Focused contract and SQLite v6 runtime tests for the Native B649 current forecast API."""
 
+# pyright: reportUnknownVariableType=false, reportUnknownMemberType=false
+# Starlette TestClient is partially untyped under the httpx compatibility shim.
+
 from __future__ import annotations
 
 import hashlib

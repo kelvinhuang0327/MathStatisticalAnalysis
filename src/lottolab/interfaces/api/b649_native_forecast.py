@@ -1,5 +1,7 @@
 """Read-only HTTP projection of the fixed Native B649 current pointer."""
 
+# pyright: reportUnusedFunction=false
+
 from __future__ import annotations
 
 import json
@@ -155,7 +157,7 @@ def create_b649_native_forecast_router(
                 "B649_NATIVE_CURRENT_INTEGRITY_CONFLICT",
                 "The Native current forecast failed integrity validation.",
             )
-        if not isinstance(payload_value, dict):
+        if not isinstance(payload_value, dict) or result.committed_at is None:
             return _error_response(
                 409,
                 "B649_NATIVE_CURRENT_INTEGRITY_CONFLICT",

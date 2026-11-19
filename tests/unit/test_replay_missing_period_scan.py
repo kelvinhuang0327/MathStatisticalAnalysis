@@ -1,5 +1,8 @@
 """Focused acceptance tests for the read-only replay missing-period scan."""
 
+# pyright: reportUnknownVariableType=false, reportUnknownMemberType=false
+# Starlette TestClient is partially untyped under the httpx compatibility shim.
+
 from __future__ import annotations
 
 import hashlib
@@ -84,7 +87,7 @@ def scan_harness(tmp_path: Path, request: pytest.FixtureRequest) -> Iterator[_Ha
         yield _Harness(client, replay_database, draw_database, work_directory)
     finally:
         client.close()
-        cleanup_records = []
+        cleanup_records: list[dict[str, Any]] = []
         if _EVIDENCE_ENV in os.environ:
             for database in (replay_database, draw_database):
                 if database.exists():

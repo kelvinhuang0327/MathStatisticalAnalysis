@@ -2106,6 +2106,32 @@ export interface paths {
                 }
         }
     }
+  "/api/v1/replay-backfill/research-main-three-summary": {
+      get: {
+          parameters: {
+            "query": {
+              "run_id": string
+              "strategy_id": string
+              "strategy_version"?: string | null
+              "from_date"?: string | null
+              "to_date"?: string | null
+              "period"?: string
+            }
+          }
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": components['schemas']["ReplayMainThreeSummaryView"]
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["ApiValidationErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
   "/api/v1/replay-backfill/uniform-eight-reference": {
       get: {
           parameters: {
@@ -4496,6 +4522,7 @@ export interface components {
           "training": components['schemas']["ReplayBackfillTrainingView"]
           "portfolio_any_prize": boolean | null
           "uniform_eight_reference"?: components['schemas']["ReplayUniformEightReferenceView"] | null
+          "research_main_three"?: components['schemas']["ReplayMainThreeReferenceView"] | null
           "best_main_hits": number | null
           "run_id"?: string | null
           "lifecycle_status"?: string | null
@@ -4659,6 +4686,32 @@ export interface components {
           "draw_date": string
         }
     "ReplayLifecycleStatus": "ONLINE" | "OBSERVATION" | "OFFLINE" | "REJECTED" | "ARTIFACT_ONLY" | "CODE_ONLY" | "UNREGISTERED_IDENTIFIED" | "IDEA" | "RETIRED"
+    "ReplayMainThreeAggregateView": {
+          "strategy_version": string
+          "dataset_identity": string
+          "execution_version": string
+          "scorer_version": string | null
+          "eligible_draws": number
+          "unknown_draws": number
+          "successes": number
+          "success_rate_percent": number | null
+          "unknown_provenance_draws": number
+          "baseline_success_rate_percent": number | null
+          "difference_from_baseline_pp": number | null
+        }
+    "ReplayMainThreeReferenceView": {
+          "metric_id": string
+          "status": "SCORABLE" | "UNKNOWN"
+          "success": boolean | null
+          "scorer_version": string | null
+        }
+    "ReplayMainThreeSummaryView": {
+          "run_id": string
+          "strategy_id": string
+          "metric_id": string
+          "unrelated_cells": number
+          "groups": Array<components['schemas']["ReplayMainThreeAggregateView"]>
+        }
     "ReplayOverallAggregateResponse": {
           "run_payload_sha256": string
           "source_snapshot_count": number

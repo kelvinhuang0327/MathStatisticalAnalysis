@@ -449,6 +449,7 @@ def test_openapi_exposes_exact_local_runtime_operation_set() -> None:
         ("get", "/api/v1/replay-backfill/coverage"),
         ("get", "/api/v1/replay-backfill/results"),
         ("get", "/api/v1/replay-backfill/uniform-eight-reference"),
+        ("get", "/api/v1/replay-backfill/research-main-three-summary"),
         ("get", "/api/v1/replay-backfill/runs"),
         ("get", "/api/v1/replay-backfill/runs/{run_id}"),
         ("get", "/api/v1/replay-backfill/strategy-runs"),
@@ -459,7 +460,7 @@ def test_openapi_exposes_exact_local_runtime_operation_set() -> None:
         ("get", "/api/v1/research/backtests/identity-crosswalk"),
         ("get", "/api/v1/replay-strategy-inventory"),
     }
-    assert len(operations) == 93
+    assert len(operations) == 94
 
 
 def test_replay_ranking_openapi_requires_exact_persisted_scoring_sha() -> None:
@@ -661,6 +662,9 @@ def test_replay_backfill_generated_types_include_named_schemas() -> None:
         ),
         "/api/v1/replay-backfill/uniform-eight-reference": (
             "components['schemas'][\"ReplayUniformEightSummaryView\"]"
+        ),
+        "/api/v1/replay-backfill/research-main-three-summary": (
+            "components['schemas'][\"ReplayMainThreeSummaryView\"]"
         ),
     }
 

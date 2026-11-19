@@ -22,6 +22,11 @@ from fastapi import APIRouter, FastAPI, Query
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
 
+from lottolab.application.replay_main_three_reference import (
+    MAIN_THREE_EVENT,
+    main_three_baseline,
+    main_three_reference,
+)
 from lottolab.application.replay_portfolio_qualification import assess_research_portfolio
 from lottolab.application.replay_strategy_inventory import load_replay_strategy_inventory
 from lottolab.application.replay_uniform_reference import uniform_eight_reference
@@ -285,6 +290,17 @@ class ReplayUniformEightReferenceView(BaseModel):
     any_prize: bool | None
 
 
+class ReplayMainThreeReferenceView(BaseModel):
+    """The explicitly saved K3 research event, separate from official prizes."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    metric_id: Literal["MAIN_HITS_GE_3_ANY_OF_THREE"]
+    status: Literal["SCORABLE", "UNKNOWN"]
+    success: bool | None
+    scorer_version: str | None
+
+
 class ReplayBackfillPredictionItemView(BaseModel):
     """One draw prediction result with evaluated tickets and audit trails."""
 
@@ -306,6 +322,7 @@ class ReplayBackfillPredictionItemView(BaseModel):
     training: ReplayBackfillTrainingView
     portfolio_any_prize: bool | None
     uniform_eight_reference: ReplayUniformEightReferenceView | None = None
+    research_main_three: ReplayMainThreeReferenceView | None = None
     best_main_hits: int | None
     run_id: str | None = None
     lifecycle_status: str | None = None
@@ -354,6 +371,32 @@ class ReplayUniformEightSummaryView(BaseModel):
     strategy_id: str
     metric_id: Literal["REFERENCE_FIXED_EIGHT_TIER_ANY_PRIZE"]
     groups: list[ReplayUniformEightAggregateView]
+
+
+class ReplayMainThreeAggregateView(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    strategy_version: str
+    dataset_identity: str
+    execution_version: str
+    scorer_version: str | None
+    eligible_draws: int = Field(ge=0)
+    unknown_draws: int = Field(ge=0)
+    successes: int = Field(ge=0)
+    success_rate_percent: float | None
+    unknown_provenance_draws: int = Field(ge=0)
+    baseline_success_rate_percent: float | None
+    difference_from_baseline_pp: float | None
+
+
+class ReplayMainThreeSummaryView(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    run_id: str
+    strategy_id: str
+    metric_id: Literal["MAIN_HITS_GE_3_ANY_OF_THREE"]
+    unrelated_cells: int = Field(ge=0)
+    groups: list[ReplayMainThreeAggregateView]
 
 
 class K3ComparisonRowView(BaseModel):
@@ -1001,6 +1044,117 @@ def create_replay_backfill_router(store: SQLiteBackfillStore | None) -> APIRoute
             }
         except ValueError:
             return _error(422, "INVALID_CURSOR_OR_FILTER")
+        except Exception:
+            return _error(503, "REPLAY_BACKFILL_UNAVAILABLE")
+
+    @router.get(
+        "/research-main-three-summary",
+        response_model=ReplayMainThreeSummaryView,
+        responses={422: {"model": ApiValidationErrorResponse}},
+    )
+    def research_main_three_summary(
+        run_id: Annotated[str, Query(min_length=1, max_length=_MAX_ID_LENGTH)],
+        strategy_id: Annotated[str, Query(min_length=1, max_length=_MAX_ID_LENGTH)],
+        strategy_version: Annotated[
+            str | None, Query(min_length=1, max_length=_MAX_ID_LENGTH)
+        ] = None,
+        from_date: date | None = None,
+        to_date: date | None = None,
+        period: Annotated[str, Query(pattern="^(50|300|750|ALL)$")] = "ALL",
+    ) -> JsonObject | JSONResponse:
+        """Summarize only the explicit research event within a single selected run."""
+        if store is None:
+            return _error(503, "REPLAY_BACKFILL_NOT_CONFIGURED")
+        if from_date and to_date and from_date > to_date:
+            return _error(422, "INVALID_DATE_RANGE")
+        groups: dict[tuple[str, str, str, str | None], JsonObject] = {}
+        seen: set[str] = set()
+        after: tuple[str, int, str, str, str] | None = None
+        expected_total: int | None = None
+        unrelated = 0
+        try:
+            while True:
+                page = store.prediction_page(
+                    lottery_type=LotteryType.BIG_LOTTO.value,
+                    run_id=run_id,
+                    strategy_id=strategy_id,
+                    strategy_version=strategy_version,
+                    from_date=None if from_date is None else from_date.isoformat(),
+                    to_date=None if to_date is None else to_date.isoformat(),
+                    period=_PERIODS[period],
+                    limit=250,
+                    after=after,
+                )
+                raw_total: object = page["total_count"]
+                if type(raw_total) is not int or page["run_id"] != run_id:
+                    return _error(409, "RESEARCH_SCOPE_CHANGED")
+                if expected_total is None:
+                    expected_total = raw_total
+                    if expected_total > 100_000:
+                        return _error(422, "RESEARCH_SCOPE_TOO_LARGE")
+                elif raw_total != expected_total:
+                    return _error(409, "RESEARCH_SCOPE_CHANGED")
+                rows = page.get("rows", [])
+                selected = rows[:250]
+                for row in selected:
+                    row_identity = row["identity"]
+                    cell = row_identity["cell_identity"]
+                    if cell in seen:
+                        return _error(409, "RESEARCH_SCOPE_CHANGED")
+                    seen.add(cell)
+                    payload = row["payload"]
+                    reference = main_three_reference(payload, row_identity)
+                    if reference is None:
+                        unrelated += 1
+                        continue
+                    key = (
+                        row_identity["strategy_version"],
+                        row_identity["dataset_identity"],
+                        row_identity["execution_version"],
+                        reference["scorer_version"],
+                    )
+                    group = groups.setdefault(key, {
+                        "strategy_version": key[0], "dataset_identity": key[1],
+                        "execution_version": key[2], "scorer_version": key[3],
+                        "eligible_draws": 0, "unknown_draws": 0, "successes": 0,
+                        "unknown_provenance_draws": 0, "_baseline_sum": Fraction(),
+                    })
+                    if payload.get("source_history_provenance_status") != "VERIFIED":
+                        group["unknown_provenance_draws"] += 1
+                    if reference["status"] == "SCORABLE":
+                        group["eligible_draws"] += 1
+                        group["successes"] += int(reference["success"] is True)
+                        group["_baseline_sum"] += main_three_baseline(payload)
+                    else:
+                        group["unknown_draws"] += 1
+                if len(rows) <= 250:
+                    break
+                if not selected:
+                    return _error(409, "RESEARCH_SCOPE_CHANGED")
+                after = tuple(selected[-1]["key"])
+            if len(seen) != expected_total:
+                return _error(409, "RESEARCH_SCOPE_CHANGED")
+            for group in groups.values():
+                total_baseline = group.pop("_baseline_sum")
+                count = group["eligible_draws"]
+                rate = 100 * group["successes"] / count if count else None
+                baseline = float(100 * total_baseline / count) if count else None
+                group["success_rate_percent"] = rate
+                group["baseline_success_rate_percent"] = baseline
+                group["difference_from_baseline_pp"] = (
+                    rate - baseline if rate is not None and baseline is not None else None
+                )
+            ordered = sorted(groups.values(), key=lambda g: (
+                g["strategy_version"], g["dataset_identity"],
+                g["execution_version"], g["scorer_version"] or "",
+            ))
+            return {"run_id": run_id, "strategy_id": strategy_id,
+                    "metric_id": MAIN_THREE_EVENT, "unrelated_cells": unrelated,
+                    "groups": ordered}
+        except KeyError:
+            return _error(404, "REPLAY_BACKFILL_RUN_NOT_FOUND")
+        except ValueError:
+            return _error(422, "INVALID_QUERY")
         except Exception:
             return _error(503, "REPLAY_BACKFILL_UNAVAILABLE")
 
@@ -1787,6 +1941,7 @@ def _prediction_item(
             if identity.get("lottery_type") == LotteryType.BIG_LOTTO.value
             else None
         ),
+        "research_main_three": main_three_reference(payload, identity),
         "best_main_hits": (
             max(ticket["main_hit_count"] for ticket in predicted)
             if fully_evaluated and ticket_evidence_complete and identity_matches

@@ -38,6 +38,8 @@ export type ReplayBackfillResearchPortfolioQualification =
   components['schemas']['ReplayBackfillResearchPortfolioQualificationView']
 export type UniformEightReference = components['schemas']['ReplayUniformEightReferenceView']
 export type UniformEightSummary = components['schemas']['ReplayUniformEightSummaryView']
+export type MainThreeReference = components['schemas']['ReplayMainThreeReferenceView']
+export type MainThreeSummary = components['schemas']['ReplayMainThreeSummaryView']
 export const HEDGE_K3_STRATEGY_ID = 'research_biglotto__k3_hedge_official_reference_20261117'
 export type ReplayBackfillPredictionItem = components['schemas']['ReplayBackfillPredictionItemView']
 export type ReplayBackfillPredictionPage = components['schemas']['ReplayBackfillPredictionPageResponse']
@@ -302,6 +304,8 @@ function isPredictionItem(value: unknown): value is ReplayBackfillPredictionItem
     (value.portfolio_any_prize === null || typeof value.portfolio_any_prize === 'boolean') &&
     (value.uniform_eight_reference === undefined || value.uniform_eight_reference === null ||
       isUniformEightReference(value.uniform_eight_reference)) &&
+    (value.research_main_three === undefined || value.research_main_three === null ||
+      isMainThreeReference(value.research_main_three)) &&
     isNullableNonNegativeSafeInteger(value.best_main_hits) &&
     isString(value.source_kind) &&
     isString(value.data_status) &&
@@ -310,6 +314,38 @@ function isPredictionItem(value: unknown): value is ReplayBackfillPredictionItem
       isPredictionCutoff(value.prediction_cutoff)) &&
     isTraining(value.training)
   )
+}
+
+function isMainThreeReference(value: unknown): value is MainThreeReference {
+  return isRecord(value) && value.metric_id === 'MAIN_HITS_GE_3_ANY_OF_THREE' &&
+    isNullableString(value.scorer_version) &&
+    ((value.status === 'UNKNOWN' && value.success === null) ||
+      (value.status === 'SCORABLE' && typeof value.success === 'boolean'))
+}
+
+function isMainThreeSummary(value: unknown): value is MainThreeSummary {
+  return isRecord(value) && isString(value.run_id) && isString(value.strategy_id) &&
+    value.metric_id === 'MAIN_HITS_GE_3_ANY_OF_THREE' &&
+    isNonNegativeSafeInteger(value.unrelated_cells) && Array.isArray(value.groups) &&
+    value.groups.every((group: unknown) => {
+      if (!isRecord(group) || !isString(group.strategy_version) ||
+          !isString(group.dataset_identity) || !isString(group.execution_version) ||
+          !isNullableString(group.scorer_version) || !isNonNegativeSafeInteger(group.eligible_draws) ||
+          !isNonNegativeSafeInteger(group.unknown_draws) || !isNonNegativeSafeInteger(group.successes) ||
+          !isNonNegativeSafeInteger(group.unknown_provenance_draws) ||
+          group.successes > group.eligible_draws ||
+          group.unknown_provenance_draws > group.eligible_draws + group.unknown_draws) return false
+      if (group.eligible_draws === 0) return group.success_rate_percent === null &&
+        group.baseline_success_rate_percent === null && group.difference_from_baseline_pp === null
+      return typeof group.scorer_version === 'string' && group.scorer_version.length > 0 &&
+        typeof group.success_rate_percent === 'number' && Number.isFinite(group.success_rate_percent) &&
+        typeof group.baseline_success_rate_percent === 'number' && Number.isFinite(group.baseline_success_rate_percent) &&
+        group.baseline_success_rate_percent >= 0 && group.baseline_success_rate_percent <= 100 &&
+        typeof group.difference_from_baseline_pp === 'number' && Number.isFinite(group.difference_from_baseline_pp) &&
+        Math.abs(group.success_rate_percent - 100 * group.successes / group.eligible_draws) < 1e-8 &&
+        Math.abs(group.difference_from_baseline_pp -
+          (group.success_rate_percent - group.baseline_success_rate_percent)) < 1e-8
+    })
 }
 
 function isUniformEightReference(value: unknown): value is UniformEightReference {
@@ -711,6 +747,30 @@ export async function getUniformEightSummary(
   return getJson(`/api/v1/replay-backfill/uniform-eight-reference?${params.toString()}`,
     signal, isUniformEightSummary,
     (response, status) => assertRequestedRunIdMatches(response, query.runId, status))
+}
+
+export async function getMainThreeSummary(
+  query: ReplayBackfillPredictionQuery & { strategyId: string; runId: string },
+  signal?: AbortSignal,
+): Promise<MainThreeSummary> {
+  const params = new URLSearchParams({
+    strategy_id: query.strategyId, run_id: query.runId, period: String(query.period),
+  })
+  if (query.strategyVersion) params.set('strategy_version', query.strategyVersion)
+  if (query.fromDate) params.set('from_date', query.fromDate)
+  if (query.toDate) params.set('to_date', query.toDate)
+  return getJson(`/api/v1/replay-backfill/research-main-three-summary?${params.toString()}`,
+    signal, isMainThreeSummary, (response, status) => {
+      assertRequestedRunIdMatches(response, query.runId, status)
+      if (response.strategy_id !== query.strategyId) {
+        throw new ReplayBackfillRequestError('Research summary strategy changed.', status)
+      }
+      if (query.strategyVersion && response.groups.some(
+        (group) => group.strategy_version !== query.strategyVersion,
+      )) {
+        throw new ReplayBackfillRequestError('Research summary version changed.', status)
+      }
+    })
 }
 
 interface HedgeK3StoredResult {

@@ -1675,6 +1675,9 @@ class SQLiteBackfillStore:
                             "strategy_id": row[3],
                             "strategy_version": row[4],
                             "cell_identity": row[5],
+                            "dataset_identity": row[7],
+                            "execution_version": row[8],
+                            "result_identity": row[9],
                         },
                         "cutoff_source": cutoff_source,
                         "portfolio_context": _research_portfolio_context(

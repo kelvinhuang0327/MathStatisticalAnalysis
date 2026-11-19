@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from collections import Counter
 from collections.abc import Iterator, Mapping
 from enum import StrEnum
 from pathlib import Path
@@ -10,6 +11,7 @@ from typing import Annotated, NoReturn
 
 import typer
 
+from lottolab.application.biglotto_packaged_replay import packaged_panel, packaged_replay_sources
 from lottolab.application.draw_data import (
     DrawDataApplicationError,
     DrawHistoryQuery,
@@ -206,9 +208,72 @@ def iter_b649_record_payloads(
                 }
 
 
+def _emit_packaged_version(
+    strategy_id: str | None, version: str, cutoff: str | None, mode: B649ReplayOutputMode
+) -> None:
+    if not strategy_id:
+        raise B649ReplayCliError("--strategy-version requires an exact --strategy-id")
+    source = packaged_replay_sources().get((strategy_id, version))
+    if source is None:
+        raise B649ReplayCliError("unknown packaged BIG_LOTTO strategy ID/version")
+
+    panel = packaged_panel()
+    if cutoff is not None and cutoff not in {draw.draw_number for draw in panel}:
+        raise B649ReplayCliError("cutoff is outside the frozen panel")
+    common = {
+        "lottery_type": LotteryType.BIG_LOTTO.value,
+        "strategy_id": strategy_id,
+        "strategy_version": version,
+        "replay_scope": "FROZEN_PANEL_ONLY",
+    }
+    counts: Counter[str] = Counter()
+    positions = 0
+    for index, target in enumerate(panel):
+        result = source.replay_target(panel[:index], target)
+        counts[result.status] += 1
+        positions += len(result.tickets)
+        if mode is B649ReplayOutputMode.RECORDS_JSONL:
+            typer.echo(
+                _canonical_json(
+                    {
+                        **common,
+                        "target_draw_number": target.draw_number,
+                        "status": result.status,
+                        "reason": result.reason,
+                        "tickets": [
+                            {"ticket_position": t.ticket_position, "main_numbers": t.main_numbers}
+                            for t in result.tickets
+                        ],
+                    }
+                )
+            )
+        if target.draw_number == cutoff:
+            break
+    if mode is B649ReplayOutputMode.SUMMARY:
+        typer.echo(
+            _canonical_json(
+                {
+                    **common,
+                    "target_count": sum(counts.values()),
+                    "status_counts": dict(counts),
+                    "native_ticket_positions": positions,
+                    "donor_commit": source.record.source_commit,
+                    "donor_path": source.record.source_path,
+                    "donor_blob": source.record.source_blob_id,
+                    "donor_sha256": source.record.source_sha256,
+                    "ledger": source.ledger,
+                    "ledger_sha256": source.ledger_sha256,
+                    "ledger_body_sha256": source.ledger_body_sha256,
+                    "evidence": source.evidence,
+                    "evidence_sha256": source.evidence_sha256,
+                }
+            )
+        )
+
+
 def historical_replay_biglotto_command(
     raw_history_root: Annotated[
-        Path,
+        Path | None,
         typer.Option(
             "--raw-history-root",
             exists=True,
@@ -216,7 +281,7 @@ def historical_replay_biglotto_command(
             dir_okay=True,
             help="Explicit read-only B649 raw-history foundation root.",
         ),
-    ],
+    ] = None,
     strategy_id: Annotated[
         str | None,
         typer.Option("--strategy-id", help="One canonical B649 identity; omit for all."),
@@ -232,11 +297,22 @@ def historical_replay_biglotto_command(
             help="SUMMARY (default) or RECORDS_JSONL for explicit streaming details.",
         ),
     ] = B649ReplayOutputMode.SUMMARY.value,
+    strategy_version: Annotated[
+        str | None,
+        typer.Option("--strategy-version", help="Select a packaged version on its frozen panel."),
+    ] = None,
 ) -> None:
     """Run the read-only BIG_LOTTO historical replay operator entry point."""
 
     try:
         selected_mode = _parse_output_mode(output_mode)
+        if strategy_version is not None:
+            if raw_history_root is not None:
+                raise B649ReplayCliError("packaged versions supply their own pinned history")
+            _emit_packaged_version(strategy_id, strategy_version, cutoff_draw_number, selected_mode)
+            return
+        if raw_history_root is None:
+            raise B649ReplayCliError("--raw-history-root is required for the raw-history replay")
         result = build_b649_historical_replay_result(
             raw_history_root=raw_history_root,
             strategy_id=strategy_id,

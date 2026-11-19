@@ -1,0 +1,102 @@
+{
+  "44": {
+    "ledger": "biglotto_ai_checkpoint_wave44_ticket_ledger_v1.json",
+    "evidence": "biglotto_legacy_checkpoint_native_wave44_evidence_v1.json",
+    "evidence_sha256": "9377511351325c55cd25563bc99b8290c945475add25991619b6f8d109d50224"
+  },
+  "45": {
+    "ledger": "biglotto_fft_wave45_ticket_ledger_v1.json",
+    "evidence": "biglotto_legacy_fft_native_wave45_evidence_v1.json",
+    "evidence_sha256": "8aa8bae620c4afbee5f42d3dce055856087231c8f8005372beba6726cb3aa91a"
+  },
+  "46": {
+    "ledger": "biglotto_source_grid_wave46_ticket_ledger_v1.json",
+    "evidence": "biglotto_legacy_source_grid_native_wave46_evidence_v1.json",
+    "evidence_sha256": "2b5704b3ef48b9c88cdd85bb6915e0caa4b7b635181d5d7afda5dacfe16f5a45"
+  },
+  "47": {
+    "ledger": "biglotto_source_grid_wave47_ticket_ledger_v1.json",
+    "evidence": "biglotto_legacy_source_grid_native_wave47_evidence_v1.json",
+    "evidence_sha256": "226ef87bd7e97e9a74dc9bac5194ccc2be5b869528fb191c7c0ea16f0d0fa7fb"
+  },
+  "48": {
+    "ledger": "biglotto_source_grid_wave48_ticket_ledger_v1.json",
+    "evidence": "biglotto_legacy_source_grid_native_wave48_evidence_v1.json",
+    "evidence_sha256": "c24bd6976d5311066fc0c5a8ccf3f58b41b6897c6cdb9ff8adc3c868dcfd2d02"
+  },
+  "49": {
+    "ledger": "biglotto_source_grid_wave49_ticket_ledger_v1.json",
+    "evidence": "biglotto_legacy_source_grid_native_wave49_evidence_v1.json",
+    "evidence_sha256": "0bed024360fdc04f0a36ba8ddef7dadc46b9640230d495314009631385f36a0e"
+  },
+  "50": {
+    "ledger": "biglotto_source_grid_wave50_ticket_ledger_v1.json",
+    "evidence": "biglotto_legacy_source_grid_native_wave50_evidence_v1.json",
+    "evidence_sha256": "2d0a142046b9fff65446daa8d2d2144fd959d7c3c00120eac18f2a03dbabf425"
+  },
+  "51": {
+    "ledger": "biglotto_source_grid_wave51_ticket_ledger_v1.json",
+    "evidence": "biglotto_legacy_source_grid_native_wave51_evidence_v1.json",
+    "evidence_sha256": "292dee4f94a057b7ba44a92bcdce67ee11662f2f2f2e6fdc436bad7e965bb802"
+  },
+  "52": {
+    "ledger": "biglotto_source_grid_wave52_ticket_ledger_v1.json",
+    "evidence": "biglotto_legacy_source_grid_native_wave52_evidence_v1.json",
+    "evidence_sha256": "0f1520033e06172acb152c6e1c6f382ae07c620bc437bbc4017f1be216f2e452"
+  },
+  "53": {
+    "ledger": "biglotto_source_grid_wave53_ticket_ledger_v1.json",
+    "evidence": "biglotto_legacy_source_grid_native_wave53_evidence_v1.json",
+    "evidence_sha256": "b1d56a07a67afe563bd412465fc624ba875e77f6821a5898a5a04b41039304c7"
+  },
+  "54": {
+    "ledger": "biglotto_source_grid_wave54_ticket_ledger_v1.json",
+    "evidence": "biglotto_legacy_source_grid_native_wave54_evidence_v1.json",
+    "evidence_sha256": "b8f41fec1687b7798d3b9d01ca73c586df8fc17a1f39021dd948368382a6721a"
+  },
+  "55": {
+    "ledger": "biglotto_ai_checkpoint_wave55_ticket_ledger_v1.json",
+    "evidence": "biglotto_legacy_checkpoint_native_wave55_evidence_v1.json",
+    "evidence_sha256": "080e64dc16e80941b1700c1425e6a7527537eca51235e2957aacc01e32e4f4ca"
+  },
+  "57": {
+    "ledger": "biglotto_hpsb_wave57_ticket_ledger_v1.json",
+    "evidence": "biglotto_legacy_hpsb_native_wave57_evidence_v1.json",
+    "evidence_sha256": "235947a7035aa43396125ba3340d48872dd81a60a3f367a1908da98dbf4b0512"
+  },
+  "58": {
+    "ledger": "biglotto_dual_seeded_wave58_ticket_ledger_v1.json",
+    "evidence": "biglotto_legacy_dual_seeded_wave58_evidence_v1.json",
+    "evidence_sha256": "7db702bf9754c1a2d037130b9a11ce7b52e14121097e048d6c09cf505832ad35"
+  },
+  "60": {
+    "ledger": "biglotto_seeded_benchmarks_wave60_ticket_ledger_v1.json",
+    "evidence": "biglotto_legacy_seeded_benchmarks_wave60_evidence_v1.json",
+    "evidence_sha256": "e93a8759d40dbacc674546e2fca284ac14c728e31e74a91d6a9a1e974329033e"
+  },
+  "61": {
+    "ledger": "biglotto_five_bet_wave61_ticket_ledger_v1.json",
+    "evidence": "biglotto_legacy_five_bet_wave61_evidence_v1.json",
+    "evidence_sha256": "75df66d094c926c4e58f2872599fcaca780508ed0061452d957d20e6c2b53560"
+  },
+  "62": {
+    "ledger": "biglotto_diversified_wave62_ticket_ledger_v1.json",
+    "evidence": "biglotto_legacy_diversified_wave62_evidence_v1.json",
+    "evidence_sha256": "7441a0e0007e8d4e53f9e2e05ccc350d20518411b847b6c36ffd07ec4cbbfd3d"
+  },
+  "63": {
+    "ledger": "biglotto_advanced_methods_wave63_ticket_ledger_v1.json",
+    "evidence": "biglotto_legacy_advanced_methods_wave63_evidence_v1.json",
+    "evidence_sha256": "c9d0a3ae6e5678f1aca771dc88b1cc03b11756ce66c129a5198713bf594e0057"
+  },
+  "64": {
+    "ledger": "biglotto_xgboost_wave64_ticket_ledger_v1.json",
+    "evidence": "biglotto_legacy_xgboost_wave64_evidence_v1.json",
+    "evidence_sha256": "2173aa5a4c354c8d8d11c0459e3017dcc4baaca770dc6fc623df683c0b191741"
+  },
+  "65": {
+    "ledger": "biglotto_evolution_wave65_ticket_ledger_v1.json",
+    "evidence": "biglotto_legacy_evolution_wave65_evidence_v1.json",
+    "evidence_sha256": "d99600e08f1160f3e750e1ea3656030a3cd77dfbef821de102ec666c5d2c3541"
+  }
+}

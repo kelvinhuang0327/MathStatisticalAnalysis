@@ -69,6 +69,7 @@ class BetAdapterExecution:
     emitted_main_numbers: tuple[int, ...]
     legal_main_numbers: tuple[int, ...]
     special_number: int | None
+    rng_evidence: dict[str, object] | None = None
 
 
 def _resolved_rule(lottery_type: LotteryType, strategy_id: str) -> LotteryRuleContract:
@@ -234,6 +235,7 @@ class BetAdapter(ABC):
                 f"{self.strategy_id}: needs {self.min_history} draws, got {len(canonical_history)}"
             )
 
+        rng_evidence = self._rng_evidence(canonical_history)
         predicted = self._predict(canonical_history, lottery_type)
         validated = _validated_lottery_numbers(predicted, self.strategy_id, rule)
         predicted_special = self._predict_special_number(canonical_history, lottery_type, validated)
@@ -247,7 +249,17 @@ class BetAdapter(ABC):
             emitted_main_numbers=predicted,
             legal_main_numbers=validated,
             special_number=validated_special,
+            rng_evidence=rng_evidence,
         )
+
+    def _rng_evidence(self, history: tuple[CausalDrawRow, ...]) -> dict[str, object]:
+        """Default to unknown unless this exact producer supplies evidence."""
+        return {
+            "schema_version": "1",
+            "status": "UNKNOWN",
+            "source": "unobserved",
+            "replay_verified": False,
+        }
 
     def _history_window(self, history: tuple[object, ...]) -> tuple[object, ...]:
         """Select rows that are causally visible to this adapter before row validation."""

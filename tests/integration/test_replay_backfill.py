@@ -159,6 +159,94 @@ def _test_database_path(tmp_path: Path, filename: str) -> Path:
     return scratch / f"{tmp_path.name}-{filename}"
 
 
+def test_main_three_research_api_uses_saved_event_and_keeps_failed_unknown(tmp_path: Path) -> None:
+    """Main-three and eight-tier outcomes have different denominators and semantics."""
+    database = _test_database_path(tmp_path, "main-three.sqlite3")
+    store = SQLiteBackfillStore(database)
+    run_id, sid, version = "saved-research-run", "cluster", "v0.2"
+    targets = [
+        {"draw_number": str(100000000 + i), "draw_date": f"2020-01-0{i}",
+         "main_numbers": [1, 2, 3, 4, 5, 6], "special_numbers": [7],
+         "source_identity": "fixture-data"}
+        for i in (1, 2, 3)
+    ]
+    store.prepare({
+        "run_id": run_id, "lottery_type": "BIG_LOTTO", "dataset_identity": "fixture-data",
+        "expected_cells": 3, "targets": targets,
+        "strategies": [
+            {"strategy_id": sid, "strategy_name": "cluster", "strategy_version": version}
+        ],
+    })
+    cells: list[dict[str, Any]] = []
+    for i, target in enumerate(targets, 1):
+        first = [1, 2, 7, 8, 9, 10] if i == 1 else [1, 2, 3, 7, 8, 9]
+        numbers = [first, [11, 12, 13, 14, 15, 16], [17, 18, 19, 20, 21, 22]]
+        failed = i == 3
+        result = {
+            "cell_identity": f"cell-{i}", "lottery_type": "BIG_LOTTO",
+            "strategy_id": sid, "strategy_version": version, "execution_version": "saved-v1",
+            "dataset_identity": "fixture-data", "target_draw_id": target["draw_number"],
+            "target_draw_date": target["draw_date"],
+            "execution_status": "FAILED" if failed else "COMPLETE",
+            "source_history_provenance_status": "UNVERIFIED", "expected_native_ticket_count": 3,
+            "winning_numbers": {"main_numbers": [1, 2, 3, 4, 5, 6], "special_number": 7},
+            "predicted_tickets": ([] if failed else [
+                {"ticket_position": pos, "main_numbers": values, "special_number": None}
+                for pos, values in enumerate(numbers, 1)
+            ]),
+            "hit_details": ([] if failed else [
+                {"ticket_position": pos, "zone1_hits": len(set(values) & {1, 2, 3, 4, 5, 6}),
+                 "zone2_hit": 7 in values, "is_winner": pos == 1, "prize_tier": None}
+                for pos, values in enumerate(numbers, 1)
+            ]),
+            "combination_success": None if failed else True,
+            "research_success_event": "MAIN_HITS_GE_3_ANY_OF_THREE",
+            "research_scorer_version": "fixture-scorer",
+            "research_success": None if failed else i == 2,
+        }
+        result["result_identity"] = identity(result)
+        cells.append(result)
+    store.save_many(run_id, tuple(cells))
+    api = FastAPI()
+    api.include_router(create_replay_backfill_router(SQLiteBackfillStore(database, read_only=True)))
+    client = cast(httpx.Client, TestClient(api))
+    params = {"run_id": run_id, "strategy_id": sid, "strategy_version": version, "period": "ALL"}
+    summary = client.get("/api/v1/replay-backfill/research-main-three-summary", params=params)
+    assert summary.status_code == 200
+    group = summary.json()["groups"][0]
+    assert (group["eligible_draws"], group["unknown_draws"], group["successes"]) == (2, 1, 1)
+    assert group["success_rate_percent"] == 50
+    assert group["unknown_provenance_draws"] == 3
+    assert group["baseline_success_rate_percent"] == pytest.approx(100 * 32528 / 582659)
+    page = client.get(
+        "/api/v1/replay-backfill/predictions", params={**params, "lottery_type": "BIG_LOTTO"}
+    )
+    assert page.status_code == 200
+    items = page.json()["items"]
+    assert [item["research_main_three"]["success"] for item in items] == [False, True, None]
+    assert [item["research_main_three"]["status"] for item in items] == [
+        "SCORABLE", "SCORABLE", "UNKNOWN"
+    ]
+    assert items[0]["uniform_eight_reference"]["any_prize"] is True
+    # A run may link results with different six-key identities. Never mix their denominators.
+    other = json.loads(json.dumps(cells[0]))
+    other["cell_identity"] = "cell-other-source"
+    other["dataset_identity"] = "other-source"
+    other.pop("result_identity")
+    other["result_identity"] = identity(other)
+    store.save_many(run_id, (other,))
+    regrouped = client.get("/api/v1/replay-backfill/research-main-three-summary", params=params)
+    assert regrouped.status_code == 200
+    groups = {entry["dataset_identity"]: entry for entry in regrouped.json()["groups"]}
+    assert set(groups) == {"fixture-data", "other-source"}
+    assert (groups["fixture-data"]["eligible_draws"], groups["fixture-data"]["unknown_draws"]) == (
+        2, 1
+    )
+    assert (groups["other-source"]["eligible_draws"], groups["other-source"]["unknown_draws"]) == (
+        1, 0
+    )
+
+
 def test_resume_after_interruption_and_idempotence(tmp_path: Path) -> None:
     engine, producer, store = worker(
         tmp_path, store=SQLiteBackfillStore(_test_database_path(tmp_path, "resume.sqlite3"))

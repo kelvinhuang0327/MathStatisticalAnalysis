@@ -31,6 +31,7 @@ import {
 import type { LotteryType } from '../../api/strategies'
 import {
   getReplayBackfillCoverage,
+  getMainThreeSummary,
   getUniformEightSummary,
   HEDGE_K3_STRATEGY_ID,
   isValidReplayDateRange,
@@ -50,6 +51,7 @@ import {
   type ReplayBackfillStrategyRunItem,
   type ReplayStrategyInventoryItem,
   type UniformEightSummary,
+  type MainThreeSummary,
 } from '../../api/replayBackfill'
 import { lotteryTypeDisplayLabel } from '../../utils/lotteryDisplayLabel'
 import LotteryNumberBall from '../../components/LotteryNumberBall.vue'
@@ -215,6 +217,9 @@ function backfillPredictionStateLabel(): string {
 const uniformReferenceState = ref<LoadState>('idle')
 const uniformReferenceError = ref('')
 const uniformReference = ref<UniformEightSummary | null>(null)
+const mainThreeState = ref<LoadState>('idle')
+const mainThreeError = ref('')
+const mainThreeSummary = ref<MainThreeSummary | null>(null)
 
 const isPartialCoverage = computed(() => {
   if (!coverage.value) return false
@@ -234,12 +239,14 @@ let backfillCoverageController: AbortController | undefined
 let backfillPredictionsController: AbortController | undefined
 let strategyRunDiscoveryController: AbortController | undefined
 let uniformReferenceController: AbortController | undefined
+let mainThreeController: AbortController | undefined
 let backfillStrategyGeneration = 0
 let strategyInventoryGeneration = 0
 let backfillCoverageGeneration = 0
 let backfillPredictionsGeneration = 0
 let strategyRunDiscoveryGeneration = 0
 let uniformReferenceGeneration = 0
+let mainThreeGeneration = 0
 
 interface ReplayStrategyCatalogRow {
   strategy_id: string
@@ -580,6 +587,11 @@ function predictionCutoffLabel(item: ReplayBackfillPredictionItem): string {
 }
 
 function clearPredictionResults(): void {
+  mainThreeController?.abort()
+  mainThreeGeneration += 1
+  mainThreeState.value = 'idle'
+  mainThreeError.value = ''
+  mainThreeSummary.value = null
   uniformReferenceController?.abort()
   uniformReferenceGeneration += 1
   uniformReferenceState.value = 'idle'
@@ -983,6 +995,10 @@ async function loadBackfillPredictionPage(loadMore: boolean): Promise<void> {
     backfillPredictionTotal.value = page.total_count
     backfillPredictionCursor.value = page.next_cursor
     backfillPredictionsState.value = backfillPredictions.value.length ? 'ready' : 'empty'
+    if (mainThreeState.value === 'idle' && query.lotteryType === 'BIG_LOTTO' && query.strategyId && page.run_id &&
+        page.items.some((item) => item.research_main_three != null)) {
+      void loadMainThreeSummary({ ...query, strategyId: query.strategyId, runId: page.run_id })
+    }
     if (
       !loadMore &&
       page.items.length > 0 &&
@@ -996,6 +1012,10 @@ async function loadBackfillPredictionPage(loadMore: boolean): Promise<void> {
   } catch (error) {
     if (controller.signal.aborted || generation !== backfillPredictionsGeneration) return
     if (loadMore) {
+      mainThreeController?.abort()
+      mainThreeGeneration += 1
+      mainThreeState.value = 'idle'
+      mainThreeSummary.value = null
       backfillPredictions.value = []
       backfillPredictionRunId.value = ''
       backfillPredictionTotal.value = 0
@@ -1003,6 +1023,26 @@ async function loadBackfillPredictionPage(loadMore: boolean): Promise<void> {
     }
     backfillPredictionsError.value = requestErrorMessage(error, '無法查詢正式 Replay 資料')
     backfillPredictionsState.value = 'error'
+  }
+}
+
+async function loadMainThreeSummary(
+  query: Parameters<typeof getMainThreeSummary>[0],
+): Promise<void> {
+  mainThreeController?.abort()
+  const controller = new AbortController()
+  mainThreeController = controller
+  const generation = ++mainThreeGeneration
+  mainThreeState.value = 'loading'
+  try {
+    const summary = await getMainThreeSummary(query, controller.signal)
+    if (controller.signal.aborted || generation !== mainThreeGeneration) return
+    mainThreeSummary.value = summary
+    mainThreeState.value = summary.groups.length ? 'ready' : 'empty'
+  } catch (error) {
+    if (controller.signal.aborted || generation !== mainThreeGeneration) return
+    mainThreeError.value = requestErrorMessage(error, '無法查詢主號三中研究成功率')
+    mainThreeState.value = 'error'
   }
 }
 
@@ -1036,8 +1076,8 @@ function loadMoreBackfillPredictions(): void {
 }
 
 function actualSpecialLabel(lotteryType: ReplayBackfillLotteryType): string {
-  if (lotteryType === 'BIG_LOTTO') return '官方特別號'
-  if (lotteryType === 'POWER_LOTTO') return '官方第二區'
+  if (lotteryType === 'BIG_LOTTO') return '開獎特別號（來源見明細）'
+  if (lotteryType === 'POWER_LOTTO') return '開獎第二區（來源見明細）'
   return '特別號／第二區（539 不適用）'
 }
 
@@ -1475,6 +1515,7 @@ onBeforeUnmount(() => {
   backfillPredictionsController?.abort()
   strategyRunDiscoveryController?.abort()
   uniformReferenceController?.abort()
+  mainThreeController?.abort()
 })
 function nullableText(value: string | null | undefined): string {
   return value ?? '—'
@@ -2430,6 +2471,25 @@ function predictedNumbers(value: number[] | null | undefined): string {
             </li>
           </ul>
         </section>
+        <div v-if="mainThreeState === 'loading'" class="state-panel">正在計算主號三中研究結果…</div>
+        <div v-else-if="mainThreeState === 'error'" class="state-panel state-panel--error" role="alert">{{ mainThreeError }}</div>
+        <section v-else-if="mainThreeState === 'ready' && mainThreeSummary" aria-label="主號三中研究結果" data-testid="main-three-summary">
+          <h4>主號三中研究結果</h4>
+          <p>同一期三張票至少一張主號命中三個；與八獎級結果分開計算。</p>
+          <ul>
+            <li v-for="group in mainThreeSummary.groups" :key="`${group.strategy_version}-${group.dataset_identity}-${group.execution_version}-${group.scorer_version}`">
+              版本 {{ group.strategy_version }} · 執行 <code>{{ group.execution_version }}</code> · 來源 <code>{{ group.dataset_identity }}</code> ·
+              計分 {{ group.scorer_version ?? 'UNKNOWN' }}：{{ group.successes }}／{{ group.eligible_draws }} 期 ·
+              {{ group.success_rate_percent === null ? 'UNKNOWN' : `${group.success_rate_percent.toFixed(2)}%` }}；
+              無法評分 {{ group.unknown_draws }} 期；來源未驗證 {{ group.unknown_provenance_draws }} 期。
+              <template v-if="group.baseline_success_rate_percent !== null && group.difference_from_baseline_pp !== null">
+                固定票組公平隨機基準 {{ group.baseline_success_rate_percent.toFixed(2) }}%；
+                差 {{ group.difference_from_baseline_pp >= 0 ? '+' : '' }}{{ group.difference_from_baseline_pp.toFixed(2) }} 個百分點。
+              </template>
+              <template v-else>基準 UNKNOWN。</template>
+            </li>
+          </ul>
+        </section>
         <p v-if="backfillPredictionsState === 'idle' && !backfillPredictionHasQueried" class="state-panel" data-testid="backfill-predictions-not-queried">
           尚未執行預測查詢。請設定條件後點擊「Query history」。
         </p>
@@ -2452,11 +2512,12 @@ function predictedNumbers(value: number[] | null | undefined): string {
                 <th scope="col">Date</th>
                 <th scope="col">Strategy</th>
                 <th scope="col">Original predictions</th>
-                <th scope="col">Official main numbers</th>
+                <th scope="col">開獎主號（來源見明細）</th>
                 <th scope="col">{{ actualSpecialLabel(backfillLotteryType) }}</th>
                 <th scope="col">Ticket hits</th>
                 <th scope="col">既有歷史規則結果（來源待核）</th>
                 <th v-if="backfillLotteryType === 'BIG_LOTTO'" scope="col">統一八獎級研究參考</th>
+                <th v-if="backfillLotteryType === 'BIG_LOTTO'" scope="col">主號三中研究事件</th>
                 <th scope="col">Strategy data status</th>
               </tr>
             </thead>
@@ -2535,6 +2596,7 @@ function predictedNumbers(value: number[] | null | undefined): string {
                 </td>
                 <td>{{ portfolioAnyPrizeLabel(item.portfolio_any_prize, item) }}</td>
                 <td v-if="backfillLotteryType === 'BIG_LOTTO'">{{ item.uniform_eight_reference?.status === 'SCORABLE' ? (item.uniform_eight_reference.any_prize ? '符合' : '未符合') : 'UNKNOWN' }}</td>
+                <td v-if="backfillLotteryType === 'BIG_LOTTO'" data-testid="main-three-outcome">{{ item.research_main_three?.status === 'SCORABLE' ? (item.research_main_three.success ? '符合' : '未符合') : 'UNKNOWN' }}</td>
                 <td>
                   <strong>{{ dataStatusLabel(item.data_status) }}</strong>
                   <p class="replay-backfill-reason">{{ dataStatusReason(item.data_status) }}</p>

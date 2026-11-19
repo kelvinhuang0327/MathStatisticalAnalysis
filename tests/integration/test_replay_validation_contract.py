@@ -1,13 +1,20 @@
 """Replay validation errors must match the documented sanitized response."""
 
+from typing import Protocol, cast
+
+import httpx
 from fastapi.testclient import TestClient
 
 from lottolab.interfaces.api.app import create_app
 from lottolab.interfaces.api.draw_data import ApiValidationErrorResponse
 
 
+class JsonTestClient(Protocol):
+    def get(self, url: str, **kwargs: object) -> httpx.Response: ...
+
+
 def test_replay_query_validation_matches_openapi() -> None:
-    client = TestClient(create_app())
+    client = cast(JsonTestClient, TestClient(create_app()))
     document = client.get("/openapi.json").json()
     paths = document["paths"]
     routes = (

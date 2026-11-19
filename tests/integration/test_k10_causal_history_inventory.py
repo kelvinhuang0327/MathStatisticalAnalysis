@@ -1,5 +1,8 @@
 """Historical K10 versions appear without claiming a live replay adapter."""
 
+from typing import Any, Protocol, cast
+
+import httpx
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -9,6 +12,7 @@ from lottolab.domain.replay_strategy_inventory import (
     ReplayDataStatus,
     ReplayExecutionCapability,
 )
+from lottolab.infrastructure.persistence.replay_backfill_store import SQLiteBackfillStore
 from lottolab.interfaces.api.replay_backfill import create_replay_backfill_router
 
 IDENTITIES = (
@@ -16,6 +20,10 @@ IDENTITIES = (
     ("tasklocal_evolution_h1_duplicate_completion_20261105", "h1-prefix-isolated-r1"),
     ("tasklocal_evolution_h2_uniform_cover_20261105", "h2-prefix-isolated-r1"),
 )
+
+
+class JsonTestClient(Protocol):
+    def get(self, url: str, **kwargs: object) -> httpx.Response: ...
 
 
 def test_exact_k10_versions_are_separate_and_not_executable() -> None:
@@ -40,7 +48,7 @@ def test_exact_k10_versions_are_separate_and_not_executable() -> None:
 
 def test_replay_strategy_api_lists_each_exact_version_without_an_adapter() -> None:
     class EmptyReplayStore:
-        def strategy_history_snapshot(self, lottery_type: str, **kwargs: object) -> dict:
+        def strategy_history_snapshot(self, lottery_type: str, **kwargs: object) -> dict[str, Any]:
             return {
                 "run_id": None,
                 "target_count": 0,
@@ -50,12 +58,13 @@ def test_replay_strategy_api_lists_each_exact_version_without_an_adapter() -> No
                 "run_source": {"identity_status": "UNKNOWN"},
             }
 
-        def stored_strategy_inventory(self, lottery_type: str) -> list:
+        def stored_strategy_inventory(self, lottery_type: str) -> list[dict[str, Any]]:
             return []
 
     app = FastAPI()
-    app.include_router(create_replay_backfill_router(EmptyReplayStore()))
-    with TestClient(app) as client:
+    app.include_router(create_replay_backfill_router(cast(SQLiteBackfillStore, EmptyReplayStore())))
+    with TestClient(app) as raw_client:
+        client = cast(JsonTestClient, raw_client)
         for strategy_id, version in IDENTITIES:
             response = client.get(
                 "/api/v1/replay-backfill/strategies",

@@ -1,7 +1,6 @@
 """Evolution v0.4 with bounded nested sampling and causal development."""
 
-# This adapter upgrades private legacy strategy nodes in place to preserve the
-# frozen scoring engine while bounding its nested sample requests.
+# This adapter intentionally uses private functions from the frozen source.
 # pyright: reportPrivateUsage=false
 
 from __future__ import annotations

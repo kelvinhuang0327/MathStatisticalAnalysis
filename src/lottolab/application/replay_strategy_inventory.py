@@ -22,6 +22,7 @@ from lottolab.application.historical_replay_adapters import (
     binding_from_p638_spec,
     t539_replay_bindings,
 )
+from lottolab.application.native_replay_inventory import native_strategy_inventory
 from lottolab.application.use_cases.generate_bet import (
     instantiate_adapter,
     instantiate_portfolio_adapter,
@@ -173,7 +174,6 @@ _DIRECT_CODE_BINDING_IDENTITIES = frozenset(
             "research_biglotto__k3_nonoverlap_ecp_candidate_20261116",
             "v1.0.0",
         ),
-        (LotteryType.POWER_LOTTO, "power_graph_synergy_seed42_2bet", "v0.1-seed42"),
     }
 )
 
@@ -357,24 +357,6 @@ def _binding_mapping(
         implementation_locator=locator,
         strategy_id=binding.strategy.strategy_id,
         strategy_version=binding.strategy.strategy_version,
-    )
-
-
-def _binding_evidence(
-    binding: ReplayStrategyBinding,
-    *,
-    lottery_type: LotteryType,
-    source_kind: str,
-    source_locator: str,
-) -> ReplayStrategyBindingEvidence:
-    """Retain the binding's full runtime identity and the source that supplied it."""
-
-    return ReplayStrategyBindingEvidence(
-        lottery_type=lottery_type,
-        strategy_id=binding.strategy.strategy_id,
-        strategy_version=binding.strategy.strategy_version,
-        source_kind=source_kind,
-        source_locator=source_locator,
     )
 
 
@@ -564,9 +546,9 @@ def _historical_evidence(
             continue
         payload_bytes = artifact_path.read_bytes()
         actual_sha256 = hashlib.sha256(payload_bytes).hexdigest()
-        # Some catalog artifacts declare the digest of the canonical JSON
-        # without its self-referential evidence_sha256 field.  This is the
-        # same contract used by the multi-ticket projection builder.
+        # Some catalog entries pin the canonical evidence content hash rather
+        # than the physical JSON file hash. Verify both the declared value and
+        # the canonical content; a copied embedded digest alone proves nothing.
         if actual_sha256 != expected_sha256:
             try:
                 evidence = _as_json_object(
@@ -739,7 +721,6 @@ def _add_production_items(
     descriptors: tuple[StrategyDescriptor, ...],
     registry: ExecutableRegistry,
     legacy_statuses: dict[tuple[str, str], str],
-    native_binding_evidence: list[ReplayStrategyBindingEvidence],
 ) -> dict[str, tuple[LotteryType, str]]:
     lineages: dict[str, tuple[LotteryType, str]] = {}
     for descriptor in descriptors:
@@ -755,17 +736,6 @@ def _add_production_items(
             else:
                 capability = ReplayExecutionCapability.EXECUTABLE
                 data_status = ReplayDataStatus.REBUILDABLE
-                native_binding_evidence.append(
-                    _binding_evidence(
-                        binding,
-                        lottery_type=lottery_type,
-                        source_kind="PRODUCTION_EXECUTABLE_REGISTRY",
-                        source_locator=(
-                            f"{_PRODUCTION_CATALOG_LOCATOR}#strategy_id={descriptor.strategy_id};"
-                            f"version={descriptor.version};adapter={descriptor.adapter_path}"
-                        ),
-                    )
-                )
                 adapter_mapping = _primary_adapter_mapping(
                     binding,
                     lottery_type,
@@ -1723,6 +1693,44 @@ def _add_imported_replay_identities(
     return count, count
 
 
+def _native_engine_evidence(
+    items: dict[tuple[LotteryType, str, str | None], _MutableItem],
+) -> tuple[ReplayStrategyBindingEvidence, ...]:
+    """Use the same exact bindings the Backfill worker actually accepts."""
+    evidence: list[ReplayStrategyBindingEvidence] = []
+    for lottery_type in LotteryType:
+        bindings, _accounts = native_strategy_inventory(lottery_type)
+        for binding in bindings:
+            strategy = binding.strategy
+            key = _identity_key(lottery_type, strategy.strategy_id, strategy.strategy_version)
+            if key not in items:
+                implementation = binding.implementation
+                _add_replay_binding_item(
+                    items,
+                    lottery_type=lottery_type,
+                    binding=binding,
+                    source_kind="NATIVE_BACKFILL_ENGINE",
+                    source_locator="src/lottolab/application/native_replay_inventory.py",
+                    implementation_locator=(
+                        f"{type(implementation).__module__}.{type(implementation).__qualname__}"
+                    ),
+                )
+            evidence.append(
+                ReplayStrategyBindingEvidence(
+                    lottery_type=lottery_type,
+                    strategy_id=strategy.strategy_id,
+                    strategy_version=strategy.strategy_version,
+                    source_kind="NATIVE_BACKFILL_ENGINE",
+                    source_locator=(
+                        "src/lottolab/application/native_replay_inventory.py"
+                        f"#strategy_id={strategy.strategy_id};version={strategy.strategy_version};"
+                        f"fingerprint={strategy.fingerprint}"
+                    ),
+                )
+            )
+    return tuple(evidence)
+
+
 @lru_cache(maxsize=1)
 def load_replay_strategy_inventory(
     *,
@@ -1739,7 +1747,6 @@ def load_replay_strategy_inventory(
     registry = ExecutableRegistry(production)
     full_catalog = load_full_strategy_catalog()
     legacy_statuses, legacy_row_count = _load_legacy_snapshot()
-    current_native_binding_evidence: list[ReplayStrategyBindingEvidence] = []
     (
         method_evidence,
         exact_batch_evidence,
@@ -1756,7 +1763,6 @@ def load_replay_strategy_inventory(
         descriptors,
         registry,
         legacy_statuses,
-        current_native_binding_evidence,
     )
     _add_full_catalog_items(
         items,
@@ -1773,14 +1779,6 @@ def load_replay_strategy_inventory(
         implementation = binding.implementation
         implementation_locator = (
             f"{type(implementation).__module__}.{type(implementation).__qualname__}"
-        )
-        current_native_binding_evidence.append(
-            _binding_evidence(
-                binding,
-                lottery_type=LotteryType.DAILY_539,
-                source_kind="T539_REPLAY_ADAPTER",
-                source_locator="src/lottolab/application/historical_replay_adapters.py#t539_replay_bindings",
-            )
         )
         _add_replay_binding_item(
             items,
@@ -1808,14 +1806,6 @@ def load_replay_strategy_inventory(
         implementation_locator = (
             f"{type(implementation).__module__}.{type(implementation).__qualname__}"
         )
-        current_native_binding_evidence.append(
-            _binding_evidence(
-                binding,
-                lottery_type=LotteryType.POWER_LOTTO,
-                source_kind="P638_REPLAY_ADAPTER",
-                source_locator="src/lottolab/application/historical_replay_adapters.py#PowerLottoReplayAdapter",
-            )
-        )
         _add_replay_binding_item(
             items,
             lottery_type=LotteryType.POWER_LOTTO,
@@ -1825,17 +1815,7 @@ def load_replay_strategy_inventory(
             implementation_locator=implementation_locator,
         )
 
-    p638_wave2_strategy_ids = {
-        "lag_reversion_2bet",
-        "power_apriori_ext_4bet",
-        "power_fourier_gap_rebound_2bet",
-        "power_momentum_2bet",
-    }
-    p638_wave2_bindings = tuple(
-        binding_from_p638_spec(spec)
-        for spec in WAVE2_STRATEGIES
-        if spec.strategy_id in p638_wave2_strategy_ids
-    )
+    p638_wave2_bindings = tuple(binding_from_p638_spec(spec) for spec in WAVE2_STRATEGIES)
     for binding in p638_wave2_bindings:
         implementation = binding.implementation
         implementation_locator = (
@@ -1869,10 +1849,9 @@ def load_replay_strategy_inventory(
     _add_legacy_snapshot_only_rows(items, legacy_statuses)
     imported_identity_count, imported_row_count = _add_imported_replay_identities(items)
 
+    engine_evidence = _native_engine_evidence(items)
     resolved_native_binding_evidence = (
-        current_native_binding_evidence
-        if native_binding_evidence is None
-        else native_binding_evidence
+        engine_evidence if native_binding_evidence is None else native_binding_evidence
     )
     if not all(
         type(evidence) is ReplayStrategyBindingEvidence
@@ -1939,6 +1918,15 @@ def load_replay_strategy_inventory(
             _IMPORTED_REPLAY_SOURCE_KIND,
             imported_identity_count,
             imported_row_count,
+        ),
+    )
+    engine_identity_count = sum(
+        any(source.source_kind == "NATIVE_BACKFILL_ENGINE" for source in item.sources.values())
+        for item in items.values()
+    )
+    source_counts += (
+        ReplayStrategySourceCount(
+            "NATIVE_BACKFILL_ENGINE", engine_identity_count, engine_identity_count
         ),
     )
     ordered_items = tuple(

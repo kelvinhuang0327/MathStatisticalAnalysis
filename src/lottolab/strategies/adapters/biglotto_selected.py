@@ -92,6 +92,17 @@ def _zone_split_bets(history: object) -> tuple[tuple[int, ...], ...]:
     )
 
 
+def _zone_rng_evidence(history: tuple[CausalDrawRow, ...]) -> dict[str, object]:
+    return {
+        "schema_version": "1",
+        "status": "CAPTURED_SEED",
+        "source": "zone_split_history_sha256",
+        "algorithm": "python.random.Random",
+        "seed_hex": _zone_seed_digest(history),
+        "replay_verified": False,
+    }
+
+
 def _unpopular_scores() -> tuple[float, ...]:
     """Port the donor anti-popularity weights without NumPy."""
 
@@ -170,6 +181,16 @@ class BigLottoSocialWisdomAntiPopularityAdapter(BetAdapter):
     min_history = 1
     supported_lottery_types = (LotteryType.BIG_LOTTO,)
 
+    def _rng_evidence(self, history: tuple[CausalDrawRow, ...]) -> dict[str, object]:
+        if type(self) is not BigLottoSocialWisdomAntiPopularityAdapter:
+            return super()._rng_evidence(history)
+        return {
+            "schema_version": "1",
+            "status": "NO_RNG",
+            "source": "social_wisdom_v0.1",
+            "replay_verified": False,
+        }
+
     def _history_window(self, history: tuple[object, ...]) -> tuple[object, ...]:
         return history[-_SOCIAL_HISTORY_WINDOW:]
 
@@ -191,6 +212,11 @@ class BigLottoZoneSplit3BetBet1Adapter(BetAdapter):
     min_history = 1
     supported_lottery_types = (LotteryType.BIG_LOTTO,)
 
+    def _rng_evidence(self, history: tuple[CausalDrawRow, ...]) -> dict[str, object]:
+        if type(self) is not BigLottoZoneSplit3BetBet1Adapter:
+            return super()._rng_evidence(history)
+        return _zone_rng_evidence(history)
+
     def _predict(
         self,
         history: tuple[CausalDrawRow, ...],
@@ -208,6 +234,11 @@ class BigLottoZoneSplit3BetBet2Adapter(BetAdapter):
     min_history = 1
     supported_lottery_types = (LotteryType.BIG_LOTTO,)
 
+    def _rng_evidence(self, history: tuple[CausalDrawRow, ...]) -> dict[str, object]:
+        if type(self) is not BigLottoZoneSplit3BetBet2Adapter:
+            return super()._rng_evidence(history)
+        return _zone_rng_evidence(history)
+
     def _predict(
         self,
         history: tuple[CausalDrawRow, ...],
@@ -224,6 +255,11 @@ class BigLottoZoneSplit3BetBet3Adapter(BetAdapter):
     strategy_version = "v0.1"
     min_history = 1
     supported_lottery_types = (LotteryType.BIG_LOTTO,)
+
+    def _rng_evidence(self, history: tuple[CausalDrawRow, ...]) -> dict[str, object]:
+        if type(self) is not BigLottoZoneSplit3BetBet3Adapter:
+            return super()._rng_evidence(history)
+        return _zone_rng_evidence(history)
 
     def _predict(
         self,
@@ -375,19 +411,11 @@ def _p0_hot_echo_2bets(
                 scores[number] += echo_boost
 
     hot = sorted(
-        (
-            (number, score)
-            for number, score in scores.items()
-            if score > _P0_HOT_THRESHOLD
-        ),
+        ((number, score) for number, score in scores.items() if score > _P0_HOT_THRESHOLD),
         key=lambda candidate: (-candidate[1], candidate[0]),
     )
     cold = sorted(
-        (
-            (number, score)
-            for number, score in scores.items()
-            if score < _P0_COLD_THRESHOLD
-        ),
+        ((number, score) for number, score in scores.items() if score < _P0_COLD_THRESHOLD),
         key=lambda candidate: (candidate[1], candidate[0]),
     )
     bet1 = [number for number, _ in hot[: rule.main_number_count]]

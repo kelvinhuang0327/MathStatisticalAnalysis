@@ -23,6 +23,7 @@ from lottolab.domain.draws import LotteryType
 from lottolab.interfaces.api.draw_data import ApiValidationErrorResponse
 from lottolab.interfaces.api.strategy_catalog import API_PREFIX
 from lottolab.strategies.adapters.base import CausalDrawRow
+from lottolab.strategies.adapters.biglotto_evolution_any_prize import PrizeHistoryRow
 
 _STRICT_BODY = ConfigDict(extra="forbid", str_strip_whitespace=True)
 _FROZEN_RESPONSE = ConfigDict(frozen=True)
@@ -34,6 +35,7 @@ class GenerateBetHistoryRow(BaseModel):
     draw: str = Field(min_length=1, max_length=64)
     date: str = Field(min_length=1, max_length=64)
     numbers: list[StrictInt] = Field(max_length=20)
+    special_number: StrictInt | None = None
 
 
 class GenerateBetRequest(BaseModel):
@@ -67,11 +69,9 @@ def create_generate_bet_router(generate_one_bet: GenerateOneBet) -> APIRouter:
     )
     def generate_bet(request: GenerateBetRequest) -> GenerateBetResponse:
         history = tuple(
-            CausalDrawRow(
-                draw=row.draw,
-                date=row.date,
-                numbers=tuple(row.numbers),
-            )
+            CausalDrawRow(row.draw, row.date, tuple(row.numbers))
+            if row.special_number is None
+            else PrizeHistoryRow(row.draw, row.date, tuple(row.numbers), row.special_number)
             for row in request.history
         )
         result = generate_one_bet.execute(

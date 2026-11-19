@@ -3490,6 +3490,7 @@ export interface components {
           "draw": string
           "date": string
           "numbers": Array<number>
+          "special_number"?: number | null
         }
     "GenerateBetRequest": {
           "strategy_id": string

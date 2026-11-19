@@ -78,6 +78,65 @@ def _historical_portfolio(
     )
 
 
+_GRID_MODULE_SHA256 = {
+    "biglotto_apriori": "d9fa2b6087384719fc7fb65fc415e9c8c0475fbb6df4c81513939cb11563ab2e",
+    "biglotto_batch16": "ff5e01b17e95091f8cd2aa5b88ee13776fb0e15f89757e1d4bbeb400674a8a88",
+    "biglotto_composite_quick_predict_5bet": "34d1fd27515b76db443c0e410ab02864fdb6e0705120bff8634368fe9741eb87",
+    "biglotto_constraint_filter": "25a2368088d32bc003b358b3977f5a2c3fd5b724a5cc9fdce4f2276b9532da35",
+    "biglotto_frozen_enhancements": "6ed1127055d76e85f09c59ba5ac9ec2d1aba4842515233c78685fbf7e729011e",
+    "biglotto_frozen_feature_discovery": "59c50177856c265ef1d3e3828abcf677e327067ead45af762a214bc47df7259d",
+    "biglotto_frozen_recipes": "7de8a567e88f9e0e6dfec6dfde7a3297b635f396d1edb158591aafdc9575827a",
+    "biglotto_frozen_signals": "25618d99c8dd46233317ffa88b7e0e6d70c92436292bab1b99d9726335f0d26f",
+    "biglotto_frozen_sweep": "6c48c283e1c84a975f310ae41c5f2cbd1872884b9904322f8eb3e5e8de3aecaf",
+    "biglotto_quad_strike": "702a325778a1f5abadd1f4fa9d2e114d4751ab5ff7a6298a43a1b734095dc7d6",
+    "biglotto_selected": "fbe1eca1ef7d00f77cf3204e7fed9a66bd7c8bc96bd0e560a9679554a8650c34",
+    "biglotto_wave12": "4182139f9e2a7bb917fe294bca017772a9cbd81b2d4c12a3cca15d92bdcb5023",
+    "biglotto_wave3": "4662857f668751a187933c966860373fc6e57fa47a7f80b6a8dcfea9ad64e528",
+}
+
+_GRID_DEPENDENCIES = {
+    "biglotto_frozen_signals": ("biglotto_quad_strike", "biglotto_constraint_filter"),
+    "biglotto_frozen_enhancements": (
+        "biglotto_quad_strike",
+        "biglotto_composite_quick_predict_5bet",
+        "biglotto_constraint_filter",
+    ),
+    "biglotto_frozen_recipes": (
+        "biglotto_batch16",
+        "biglotto_constraint_filter",
+        "biglotto_quad_strike",
+        "biglotto_selected",
+        "biglotto_wave3",
+        "biglotto_wave12",
+    ),
+    "biglotto_frozen_sweep": ("biglotto_quad_strike", "biglotto_apriori", "biglotto_batch16"),
+    "biglotto_frozen_feature_discovery": ("biglotto_constraint_filter", "biglotto_wave12"),
+}
+
+
+def _historical_grid(
+    source_path: str, source_blob: str, source_sha256: str, module: str, adapter: str
+) -> VersionedReplaySource:
+    digest = source_sha256[:12]
+    package = "lottolab.strategies.adapters."
+    return VersionedReplaySource(
+        strategy_id=f"legacy_biglotto__{Path(source_path).stem}__{digest}",
+        strategy_version=f"legacy-source-49a25effa62f-{digest}",
+        source_path=source_path,
+        source_commit="49a25effa62fc24f40789c16be6f11bdfb41a4a9",
+        source_blob_id=source_blob,
+        source_sha256=source_sha256,
+        current_version=None,
+        adapter_path=f"{package}{module}:{adapter}",
+        implementation_sha256=_GRID_MODULE_SHA256[module],
+        parity_test="tests/unit/test_biglotto_frozen_grid.py::test_ordered_portfolio",
+        parity_evidence="EXACT_ORDERED_PORTFOLIO_EXECUTION_PARITY",
+        shared_modules=tuple(
+            (package + name, _GRID_MODULE_SHA256[name]) for name in _GRID_DEPENDENCIES[module]
+        ),
+    )
+
+
 VERSIONED_REPLAY_SOURCES = (
     VersionedReplaySource(
         strategy_id="legacy_biglotto__predict_biglotto_apriori__cda690ae84c2",
@@ -243,6 +302,104 @@ VERSIONED_REPLAY_SOURCES = (
         "de78e590d5baaeb1da57731a86a407208e47ca36",
         "2fc42ff67ab1e07c6a57adf9e9837ca5989163eff92c107c89f2b58d0081be0f",
         "StructuralGroup",
+    ),
+    _historical_grid(
+        "feature_discovery_and_retrospective.py",
+        "4ff25949d8472161fd26530181b7c840862cf331",
+        "e2ea8b18945dd164818134738faa41bb9af1a44a24bc2925b172f202aa5e54ad",
+        "biglotto_frozen_feature_discovery",
+        "FeatureDiscovery",
+    ),
+    _historical_grid(
+        "tools/backtest_biglotto_enhancements.py",
+        "9f293c05a9e50a21bdbf8cafeb372931ee789f21",
+        "b0bf78ef7e32ef1e07825251af45846076dbd331f6a1f2f8c89a08a1f301696e",
+        "biglotto_frozen_enhancements",
+        "Enhancements",
+    ),
+    _historical_grid(
+        "tools/edge_splicer.py",
+        "face53f9d700c609feb59d9d0742edc24d7fd4e8",
+        "04d9e8bbfe76f16be95e0a1f4e016913fb29c69add18313eeaca9a378d51c58c",
+        "biglotto_frozen_signals",
+        "EdgeSplicer",
+    ),
+    _historical_grid(
+        "tools/edge_splicer_5bet.py",
+        "1e69a431c229543e8b3f5cc0730e0e1f4247023f",
+        "da1d1eed4d966323a9570a75ea334983e912bf90ace978f6ad112db53951d479",
+        "biglotto_frozen_signals",
+        "EdgeSplicerFive",
+    ),
+    _historical_grid(
+        "tools/edge_splicer_v2.py",
+        "9d9b33a1675ef7057bca23e8d0860bf770448289",
+        "6b6e9d64da1253762c5fa22eb8a4f815bf4c3e058b952c2a05a2a9654782bf00",
+        "biglotto_frozen_signals",
+        "EdgeSplicerV2",
+    ),
+    _historical_grid(
+        "tools/evaluate_combinations.py",
+        "c84bf2f61f45557b4e41caa5ca5fb8a5349ba95d",
+        "d49d0787d0c6fb9407024111d339cf76c4b165dc90d0713a0ac589929f9371a0",
+        "biglotto_frozen_signals",
+        "EvaluateCombinations",
+    ),
+    _historical_grid(
+        "tools/evaluate_concentrator.py",
+        "848ae8fca098de72a71dfe44405d3d8f553d2a89",
+        "d732e4dd594c9f19aff5dea2292711d33a4bb6e7c3acd0a4ecd9fc5aba302970",
+        "biglotto_frozen_signals",
+        "EvaluateConcentrator",
+    ),
+    _historical_grid(
+        "tools/exhaustive_feature_sweep_v2.py",
+        "f24c03c755e3e1e6910a8d5120e19bfbb59bccdc",
+        "ff4096a9e7e59a4bf441d6c0ab4afa45a6471d71f532d26200fb810f5c5cb7bb",
+        "biglotto_frozen_sweep",
+        "ExhaustiveFeatureSweep",
+    ),
+    _historical_grid(
+        "tools/generate_2_3_bets.py",
+        "1d121da12c270495d032eff914103c3416b78633",
+        "f8853b95f3c53bd25e0af0a6ddd5060046ac457faeba523d8ff68eff25af1000",
+        "biglotto_frozen_signals",
+        "GenerateTwoThree",
+    ),
+    _historical_grid(
+        "tools/historical_audit_rigorous.py",
+        "8dbfec14d5685a5270385a5ca7955fb0b0e37691",
+        "bfb679104f6052a7bd397dba0a2bcc04f63fd74f8e2e303a9f867b7737075a97",
+        "biglotto_frozen_recipes",
+        "HistoricalAudit",
+    ),
+    _historical_grid(
+        "tools/optimize_biglotto_cluster.py",
+        "1a529b69dded93a978f8182c8282c16344cc8786",
+        "b2a833918f9558a577c18a297e920d1eb9f50bb926795821bb65baa83d8ea675",
+        "biglotto_frozen_recipes",
+        "OptimizeCluster",
+    ),
+    _historical_grid(
+        "tools/optimize_deviation_extreme_generic.py",
+        "2273a2837b97c4040e50be24166e45b3e1ee79b6",
+        "87e19bb3514af177077869bd8f5ca8ea0aed273584b4af8e577fa7fac11cdc31",
+        "biglotto_frozen_recipes",
+        "OptimizeDeviation",
+    ),
+    _historical_grid(
+        "tools/predict_consensus_ensemble.py",
+        "18457329b7993e1f9b28078b92b1296c5f06a61d",
+        "3ceb975a355c1912bab79134cd6a921140aaf50d97d83cf10639bf4d48a72be2",
+        "biglotto_frozen_recipes",
+        "ConsensusEnsemble",
+    ),
+    _historical_grid(
+        "tools/standard_ts3_5bet.py",
+        "ac1c1283aa56ef0df4217b801d736b235d6ed39d",
+        "527fed00a7c4d47bbd286dfce905ca278c471cacaadf4e8e93ab3f693425db74",
+        "biglotto_frozen_signals",
+        "StandardFive",
     ),
 )
 

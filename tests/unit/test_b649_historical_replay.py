@@ -118,8 +118,8 @@ def test_b649_identity_accounting_covers_all_221_identities(tmp_path: Path) -> N
     assert len(use_case.identity_accounts) == 221
     assert counts == Counter(
         {
-            B649IdentityStatus.CURRENTLY_REPLAYABLE: 84,
-            B649IdentityStatus.HISTORICAL_RAW_ONLY: 49,
+            B649IdentityStatus.CURRENTLY_REPLAYABLE: 98,
+            B649IdentityStatus.HISTORICAL_RAW_ONLY: 35,
             B649IdentityStatus.TERMINAL_UNAVAILABLE: 76,
             B649IdentityStatus.RESOLVED_ALIAS: 9,
             B649IdentityStatus.KEEP_UNRESOLVED_ALIAS: 3,

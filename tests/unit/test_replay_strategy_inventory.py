@@ -30,17 +30,17 @@ def test_inventory_conserves_sources_and_executable_identities() -> None:
     inventory = load_replay_strategy_inventory()
     source_counts = {source.source_kind: source for source in inventory.source_counts}
 
-    assert inventory.total_discovered_strategies == 669
+    assert inventory.total_discovered_strategies == 683
     assert inventory.total_unique_strategies == 443
-    assert len(inventory.executable_items) == 231
+    assert len(inventory.executable_items) == 245
     assert inventory.unresolved_source_count == 9
     assert source_counts["PRODUCTION_CATALOG"].source_identity_count == 138
     assert source_counts["B649_RESEARCH_CATALOG"].source_identity_count == 221
     assert source_counts["B649_REPLAY_BATCH_REGISTRY"].source_identity_count == 11
     assert source_counts["T539_REPLAY_ADAPTER"].source_identity_count == 62
     assert source_counts["P638_REPLAY_ADAPTER"].source_identity_count == 14
-    assert source_counts["STRATEGY_ADAPTER_CODE"].source_identity_count == 117
-    assert source_counts["STRATEGY_ADAPTER_CODE"].source_row_count == 118
+    assert source_counts["STRATEGY_ADAPTER_CODE"].source_identity_count == 131
+    assert source_counts["STRATEGY_ADAPTER_CODE"].source_row_count == 132
 
     lottery_counts = Counter(item.lottery_type for item in inventory.items)
     executable_by_lottery = Counter(item.lottery_type for item in inventory.executable_items)
@@ -50,7 +50,7 @@ def test_inventory_conserves_sources_and_executable_identities() -> None:
         LotteryType.POWER_LOTTO: 24,
     }
     assert executable_by_lottery == {
-        LotteryType.BIG_LOTTO: 145,
+        LotteryType.BIG_LOTTO: 159,
         LotteryType.DAILY_539: 62,
         LotteryType.POWER_LOTTO: 24,
     }
@@ -80,10 +80,10 @@ def test_inventory_keeps_status_dimensions_and_unavailable_cases_separate() -> N
     inventory = load_replay_strategy_inventory()
     by_data_status = Counter(item.replay_data_status for item in inventory.items)
     assert by_data_status == {
-        ReplayDataStatus.REBUILDABLE: 231,
+        ReplayDataStatus.REBUILDABLE: 245,
         ReplayDataStatus.ARTIFACT_ONLY: 95,
         ReplayDataStatus.REJECTED: 74,
-        ReplayDataStatus.NO_HISTORY: 41,
+        ReplayDataStatus.NO_HISTORY: 27,
         ReplayDataStatus.CODE_ONLY: 2,
     }
 
@@ -219,7 +219,7 @@ def test_exact_source_mismatches_have_replay_only_versioned_bindings() -> None:
         (binding.strategy.strategy_id, binding.strategy.strategy_version): binding
         for binding in bindings
     }
-    assert len(bindings) == 19
+    assert len(bindings) == 33
     assert set(by_identity) == {
         (source.strategy_id, source.strategy_version)
         for source in VERSIONED_REPLAY_SOURCES

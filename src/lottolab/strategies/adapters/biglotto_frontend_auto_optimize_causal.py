@@ -5,9 +5,6 @@ This version validates each candidate on strictly earlier prefixes and gives
 each candidate/validation target its own deterministic, history-only stream.
 """
 
-# This adapter preserves behavior from the frozen v0.1 donor implementation.
-# pyright: reportPrivateUsage=false
-
 from __future__ import annotations
 
 import hashlib

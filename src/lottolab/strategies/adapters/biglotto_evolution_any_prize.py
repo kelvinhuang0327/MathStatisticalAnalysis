@@ -57,11 +57,11 @@ def _validated_prize_history(history: object, strategy_id: str) -> tuple[PrizeHi
     if type(history) is not tuple:
         raise InvalidOutput(f"{strategy_id}: history must be an immutable tuple")
     raw_history = cast(tuple[object, ...], history)
-    if any(type(raw) is not PrizeHistoryRow for raw in raw_history):
+    if any(type(raw) not in (CausalDrawRow, PrizeHistoryRow) for raw in raw_history):
         raise InvalidOutput(
             f"{strategy_id}: history row must include its historical special number"
         )
-    prize_history = cast(tuple[PrizeHistoryRow, ...], raw_history)
+    prize_history = cast(tuple[CausalDrawRow, ...], raw_history)
     generic_rows = tuple(CausalDrawRow(raw.draw, raw.date, raw.numbers) for raw in prize_history)
     canonical = validated_history(generic_rows, strategy_id, lottery_type=LotteryType.BIG_LOTTO)
     result: list[PrizeHistoryRow] = []
@@ -87,11 +87,14 @@ def _require_prize_rows(
     history: tuple[CausalDrawRow, ...], strategy_id: str
 ) -> tuple[PrizeHistoryRow, ...]:
     """Narrow the shared evolution interface only after checking its row types."""
-    if any(type(row) is not PrizeHistoryRow for row in history):
+    if any(type(row) not in (CausalDrawRow, PrizeHistoryRow) for row in history):
         raise InvalidOutput(
             f"{strategy_id}: history row must include its historical special number"
         )
-    return cast(tuple[PrizeHistoryRow, ...], history)
+    return tuple(
+        PrizeHistoryRow(row.draw, row.date, row.numbers, row.special_number)
+        for row in history
+    )
 
 
 def _evaluate_any_prize(

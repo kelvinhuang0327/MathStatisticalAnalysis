@@ -6,15 +6,10 @@ prediction uses a strictly earlier prefix; only after validation are candidates
 ranked for the next outer target. The legacy v0.1 adapter is unchanged.
 """
 
-# This adapter extends the frozen v0.2 engine without changing its historical
-# implementation surface.
-# pyright: reportPrivateUsage=false
-
 from __future__ import annotations
 
 import json
-from collections.abc import Sequence
-from typing import Any, cast
+from typing import Any
 
 from lottolab.domain.draws import LotteryType
 from lottolab.domain.historical_replay import ReplayBehavior, ReplayDraw, ReplayStrategy
@@ -47,13 +42,11 @@ def _candidate_identity(strategy: _EvoStrategy) -> str:
 
 
 def _valid_ticket(ticket: object) -> bool:
-    if not isinstance(ticket, (list, tuple)):
-        return False
-    values = cast(Sequence[object], ticket)
     return (
-        len(values) == 6
-        and all(type(number) is int and 1 <= number <= 49 for number in values)
-        and len(set(values)) == 6
+        type(ticket) in (list, tuple)
+        and len(ticket) == 6
+        and all(type(n) is int and 1 <= n <= 49 for n in ticket)
+        and len(set(ticket)) == 6
     )
 
 

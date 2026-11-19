@@ -1185,7 +1185,11 @@ def _combination(
         )
     return {
         "coverage": coverage["decimal_18"],
-        "effective_backtest_draw_count": observed_rate["denominator"],
+        # Fraction denominators are reduced; the sample size must remain paired
+        # with the unreduced observed_success_count, including the empty case.
+        "effective_backtest_draw_count": _integer(
+            metric.get("successful_execution_count"), "successful_execution_count"
+        ),
         "historical_success_rate": observed_rate["decimal_18"],
         "no_prize_count": _integer(prize.get("no_prize_count"), "no_prize_count"),
         "official_prize_counts": {

@@ -90,10 +90,8 @@ def classify_comparison(
 ) -> str:
     """Classify source values without rebuilding a historical rate.
 
-    Some criteria count more than one successful event per effective draw, so
-    their source count need not be bounded by ``effective_backtest_draw_count``.
-    Official any-prize uses successful executions as its denominator and opts
-    into the numerator bound explicitly.
+    Callers with an unreduced draw count use the numerator bound. Legacy
+    callers without a raw draw count may omit it for descriptive diagnostics.
     """
 
     if metrics_availability == "UNAVAILABLE":
@@ -317,6 +315,7 @@ def build_b649_index(repo_root: Path) -> B649Index:
             observed_rate=row.historical_success_rate,
             random_baseline_rate=row.random_baseline_success_rate,
             source_delta=row.random_baseline_rate_difference,
+            require_numerator_le_denominator=True,
         )
         metric_row["official_any_prize_descriptive_classification"] = classify_comparison(
             availability,
@@ -346,8 +345,18 @@ def build_b649_index(repo_root: Path) -> B649Index:
         "source_report_count": dataset.source_report_count,
         "strategy_count": len(strategy_status_records),
         "status_counts": dict(status_counts),
-        "metrics_available_strategy_count": dataset.metrics_available_strategy_count,
-        "metrics_unavailable_strategy_count": dataset.metrics_unavailable_strategy_count,
+        "metrics_available_strategy_count": sum(
+            value == "AVAILABLE" for value in availability_by_strategy.values()
+        ),
+        "metrics_unavailable_strategy_count": sum(
+            value == "UNAVAILABLE" for value in availability_by_strategy.values()
+        ),
+        "source_projection_metrics_available_strategy_count": (
+            dataset.metrics_available_strategy_count
+        ),
+        "source_projection_metrics_unavailable_strategy_count": (
+            dataset.metrics_unavailable_strategy_count
+        ),
         "metrics_not_applicable_strategy_count": sum(
             value == "NOT_APPLICABLE" for value in availability_by_strategy.values()
         ),

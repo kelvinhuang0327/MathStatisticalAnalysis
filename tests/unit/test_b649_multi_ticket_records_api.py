@@ -295,11 +295,28 @@ def test_prefix_openapi_documents_the_raw_denominator_and_zero_observation_seman
 
     rate = properties["official_any_prize_rate"]["description"]
     assert "official_any_prize_count / successful_execution_count" in rate
-    assert "N=0" in rate and "undefined" in rate and "placeholder" in rate
+    assert "N=0" in rate and "undefined" in rate and "null" in rate
     assert "NO_SUCCESSFUL_EXECUTIONS_IN_WINDOW" in rate
     assert "status == OK" in properties["successful_execution_count"]["description"]
-    assert "reduced denominator" in properties["effective_backtest_draw_count"]["description"]
-    assert "not the denominator" in properties["effective_backtest_draw_count"]["description"]
+    assert "Raw count" in properties["effective_backtest_draw_count"]["description"]
+    assert "normalizes" in properties["effective_backtest_draw_count"]["description"]
+
+
+def test_packaged_summary_excludes_quarantined_outcome_informed_strategy() -> None:
+    from lottolab.infrastructure.biglotto_multi_ticket_record_reader import (
+        PackagedB649MultiTicketRecordReader,
+    )
+
+    app = FastAPI()
+    app.include_router(
+        create_b649_multi_ticket_records_router(
+            load_full_strategy_catalog(), PackagedB649MultiTicketRecordReader
+        )
+    )
+    result = TestClient(app).get(SUMMARY_PATH)
+    assert result.status_code == 200
+    assert result.json()["metrics_available_strategy_count"] == 132
+    assert result.json()["metrics_unavailable_strategy_count"] == 3
 
 
 @pytest.mark.parametrize(

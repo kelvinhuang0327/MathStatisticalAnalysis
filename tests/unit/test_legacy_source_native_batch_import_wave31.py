@@ -48,34 +48,20 @@ def test_wave31_batch_preserves_causal_and_native_semantics(
 
     executions = cast(list[dict[str, Any]], document["executions"])
     assert len(executions) == 80
-    successful = [
-        row for row in executions if row["status"] == "OK"
-    ]
-    assert len(successful) == 39
-    assert all(
-        row["candidate_k"] is None
-        and row["combination_count"] == 3
-        and row["native_ticket_count"] == 1
-        and len(cast(list[object], row["ordered_portfolio"])) == 20
-        for row in successful
-    )
-    assert {
-        cast(dict[str, Any], row["native_generation"])[
-            "legacy_method_id"
-        ]
-        for row in successful
-    } == {RADICAL_PREDICT_METHOD_ID}
+    rejected = [row for row in executions if row["status"] == "CLOSED_REJECTED"]
+    assert len(rejected) == 40
+    assert all(row["reason_code"] == "OUTCOME_INFORMED_DESIGN_NOT_YET_RECORDED" for row in rejected)
+    assert not any(row["status"] == "OK" for row in executions)
     provenance = cast(dict[str, Any], document["source_provenance"])
     assert provenance["database_sha256_before"] == database_sha256
     assert provenance["database_sha256_after"] == database_sha256
     assert provenance["execution_status_counts"] == {
-        "CLOSED_INSUFFICIENT_HISTORY": 41,
-        "OK": 39,
+        "CLOSED_INSUFFICIENT_HISTORY": 40,
+        "CLOSED_REJECTED": 40,
     }
     assert provenance["execution_status_counts_by_method"] == {
         RADICAL_PREDICT_METHOD_ID: {
-            "CLOSED_INSUFFICIENT_HISTORY": 1,
-            "OK": 39,
+            "CLOSED_REJECTED": 40,
         },
         RADICAL_BACKTEST_METHOD_ID: {
             "CLOSED_INSUFFICIENT_HISTORY": 40,
@@ -93,9 +79,7 @@ def test_wave31_batch_passes_complete_universe_evaluator(
         expected_database_sha256=database_sha256,
     )
 
-    report = evaluate_biglotto_multi_ticket_backtest(
-        _canonical_bytes(document)
-    )
+    report = evaluate_biglotto_multi_ticket_backtest(_canonical_bytes(document))
 
     assert cast(dict[str, int], report["progress"]) == {
         "backtested_count": 135,
@@ -132,11 +116,9 @@ def test_wave31_cli_is_registered_and_refuses_overwrite(
     assert summary["execution_count"] == 80
     assert summary["target_draw_count"] == 40
     assert summary["execution_status_counts"] == {
-        "CLOSED_INSUFFICIENT_HISTORY": 41,
-        "OK": 39,
+        "CLOSED_INSUFFICIENT_HISTORY": 40,
+        "CLOSED_REJECTED": 40,
     }
-    assert summary["input_sha256"] == hashlib.sha256(
-        output.read_bytes()
-    ).hexdigest()
+    assert summary["input_sha256"] == hashlib.sha256(output.read_bytes()).hexdigest()
     assert second.exit_code == 1
     assert "refusing to overwrite" in second.stderr

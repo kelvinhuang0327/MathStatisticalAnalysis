@@ -136,10 +136,9 @@ class B649MultiTicketRecordView(BaseModel):
         description=(
             "For N=successful_execution_count > 0, official_any_prize_count / "
             "successful_execution_count, rendered to 18 decimal places with half-even "
-            "rounding. For N=0 the empirical rate is undefined: the existing producer "
-            "may retain 0.000000000000000000 as a placeholder, with official_rank=null "
-            "and unranked_reason=NO_SUCCESSFUL_EXECUTIONS_IN_WINDOW. This placeholder "
-            "is not an observed 0% success rate. Null means metrics are unavailable."
+            "rounding. For N=0 the empirical rate is undefined and returned as null, "
+            "with reason NO_SUCCESSFUL_EXECUTIONS_IN_WINDOW; null can also mean "
+            "metrics are unavailable."
         )
     )
     official_random_baseline_probability: str | None
@@ -148,9 +147,10 @@ class B649MultiTicketRecordView(BaseModel):
     success_count: int | None
     effective_backtest_draw_count: int | None = Field(
         description=(
-            "Legacy reduced denominator of the selected criterion's historical success "
-            "fraction; not the denominator of official_any_prize_rate or a raw sample "
-            "count. It can be 1 after reducing 0/N. Use successful_execution_count for N."
+            "Raw count of successfully evaluated target draws, matching "
+            "successful_execution_count. Older frozen projections stored a reduced "
+            "fraction denominator; the reader normalizes those values. Zero means "
+            "the empirical historical rate is undefined."
         )
     )
     successful_execution_count: int | None = Field(
@@ -333,8 +333,17 @@ def create_b649_multi_ticket_records_router(
                 records_available = True
                 projection_sha256 = dataset.projection_sha256
                 source_report_count = dataset.source_report_count
-                metrics_available_strategy_count = dataset.metrics_available_strategy_count
-                metrics_unavailable_strategy_count = dataset.metrics_unavailable_strategy_count
+                quarantined = {
+                    row.strategy_id
+                    for row in dataset.records
+                    if row.metrics_unavailable_reason == "OUTCOME_INFORMED_DESIGN_CHRONOLOGY_UNSAFE"
+                }
+                metrics_available_strategy_count = (
+                    dataset.metrics_available_strategy_count - len(quarantined)
+                )
+                metrics_unavailable_strategy_count = (
+                    dataset.metrics_unavailable_strategy_count + len(quarantined)
+                )
         progress = catalog.progress
         return B649MultiTicketSummaryResponse(
             progress=B649ResearchProgressView(**progress.canonical_dict()),

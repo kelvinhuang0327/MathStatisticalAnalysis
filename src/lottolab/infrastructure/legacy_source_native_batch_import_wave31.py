@@ -15,6 +15,7 @@ from lottolab.application.legacy_source_native_portfolios_wave31 import (
     MINIMUM_HISTORY_BY_SOURCE_NATIVE_WAVE31_METHOD,
     NATIVE_TICKET_COUNT_BY_SOURCE_NATIVE_WAVE31_METHOD,
     NATIVE_TICKET_SEMANTICS_BY_SOURCE_NATIVE_WAVE31_METHOD,
+    RADICAL_PREDICT_METHOD_ID,
     SOURCE_COMBINATION_COUNT_BY_SOURCE_NATIVE_WAVE31_METHOD,
     SOURCE_COMBINATION_MEMBERS_BY_SOURCE_NATIVE_WAVE31_METHOD,
     SOURCE_HISTORY_ORDER_BY_SOURCE_NATIVE_WAVE31_METHOD,
@@ -118,6 +119,21 @@ def materialize_legacy_source_native_wave31_batch(
         prior_history = causal_history[:target_index]
         for record in records:
             method_id = record.legacy_method_id
+            # This frozen rule explicitly uses the outcome of draw 115000007.
+            # Its earliest recorded source is 2026-02-24: do not materialize
+            # it for targets before or on that date as an eligible replay.
+            if method_id == RADICAL_PREDICT_METHOD_ID and str(target.draw_date) <= "2026-02-24":
+                row = {
+                    "reason_code": "OUTCOME_INFORMED_DESIGN_NOT_YET_RECORDED",
+                    "status": "CLOSED_REJECTED",
+                    "strategy_id": record.strategy_id,
+                    "strategy_version": record.strategy_version,
+                    "target_draw_number": target.draw_number,
+                }
+                executions.append(row)
+                status_counts["CLOSED_REJECTED"] += 1
+                status_counts_by_method[method_id]["CLOSED_REJECTED"] += 1
+                continue
             minimum = MINIMUM_HISTORY_BY_SOURCE_NATIVE_WAVE31_METHOD[
                 method_id
             ]

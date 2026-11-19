@@ -53,6 +53,26 @@ class StrategyCatalog:
 
 _PRODUCTION_DESCRIPTORS = (
     StrategyDescriptor(
+        strategy_id="research_biglotto__radical_recorded_causal_successor_v1",
+        strategy_name="大樂透 Radical 已記錄日期後單注",
+        version="v1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_radical_recorded_successor:"
+            "BigLottoRecordedRadicalSuccessor"
+        ),
+        min_history=1,
+        provenance=(
+            "parent:legacy_biglotto__predict_biglotto_radical__1f1c6e060b19",
+            "recorded_design_commit:e56ce9f196342e9d50edc9fd19c42f72c1fa2047",
+            "eligible_targets:AFTER_2026-02-24",
+            "design_timestamp_status:GIT_RECORDED_NOT_INDEPENDENTLY_AUTHENTICATED",
+            "predictive_advantage_claimed:NO",
+        ),
+    ),
+    StrategyDescriptor(
         strategy_id="biglotto_social_wisdom_anti_popularity",
         strategy_name="大樂透 Social Wisdom Anti-Popularity",
         version="v0.1",

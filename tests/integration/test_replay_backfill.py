@@ -177,7 +177,7 @@ def test_main_three_research_api_uses_saved_event_and_keeps_failed_unknown(tmp_p
             {"strategy_id": sid, "strategy_name": "cluster", "strategy_version": version}
         ],
     })
-    cells = []
+    cells: list[dict[str, Any]] = []
     for i, target in enumerate(targets, 1):
         first = [1, 2, 7, 8, 9, 10] if i == 1 else [1, 2, 3, 7, 8, 9]
         numbers = [first, [11, 12, 13, 14, 15, 16], [17, 18, 19, 20, 21, 22]]
@@ -209,7 +209,7 @@ def test_main_three_research_api_uses_saved_event_and_keeps_failed_unknown(tmp_p
     store.save_many(run_id, tuple(cells))
     api = FastAPI()
     api.include_router(create_replay_backfill_router(SQLiteBackfillStore(database, read_only=True)))
-    client = TestClient(api)
+    client = cast(httpx.Client, TestClient(api))
     params = {"run_id": run_id, "strategy_id": sid, "strategy_version": version, "period": "ALL"}
     summary = client.get("/api/v1/replay-backfill/research-main-three-summary", params=params)
     assert summary.status_code == 200

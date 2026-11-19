@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 from fractions import Fraction
+from typing import Any
 
 from lottolab.application.replay_main_three_reference import (
     MAIN_THREE_EVENT,
@@ -15,9 +16,9 @@ from lottolab.domain.replay_strategy_inventory import ReplayExecutionCapability
 from lottolab.infrastructure.persistence.replay_backfill_store import identity
 
 
-def saved_cell() -> tuple[dict, dict]:
+def saved_cell() -> tuple[dict[str, Any], dict[str, Any]]:
     tickets = [[1, 2, 7, 8, 9, 10], [11, 12, 13, 14, 15, 16], [17, 18, 19, 20, 21, 22]]
-    payload = {
+    payload: dict[str, Any] = {
         "cell_identity": "cell-1",
         "lottery_type": "BIG_LOTTO",
         "strategy_id": "cluster",
@@ -45,7 +46,7 @@ def saved_cell() -> tuple[dict, dict]:
     return seal(payload)
 
 
-def seal(payload: dict) -> tuple[dict, dict]:
+def seal(payload: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
     payload.pop("result_identity", None)
     payload["result_identity"] = identity(payload)
     stored = {
@@ -66,9 +67,21 @@ def seal(payload: dict) -> tuple[dict, dict]:
     return payload, stored
 
 
+def checked_main_three(payload: dict[str, Any], stored: dict[str, Any]) -> dict[str, Any]:
+    result = main_three_reference(payload, stored)
+    assert result is not None
+    return result
+
+
+def checked_uniform_eight(payload: dict[str, Any], stored: dict[str, Any]) -> dict[str, Any]:
+    result = uniform_eight_reference(payload, stored)
+    assert result is not None
+    return result
+
+
 def test_research_event_is_distinct_from_eight_tier_and_has_exact_baseline() -> None:
     payload, stored = saved_cell()
-    assert uniform_eight_reference(payload, stored)["any_prize"] is True
+    assert checked_uniform_eight(payload, stored)["any_prize"] is True
     assert main_three_reference(payload, stored) == {
         "metric_id": MAIN_THREE_EVENT,
         "status": "SCORABLE",
@@ -86,16 +99,16 @@ def test_research_event_requires_explicit_declaration_and_consistent_saved_evide
     wrong_success = deepcopy(payload)
     wrong_success["research_success"] = True
     wrong_success, wrong_stored = seal(wrong_success)
-    assert main_three_reference(wrong_success, wrong_stored)["status"] == "UNKNOWN"
+    assert checked_main_three(wrong_success, wrong_stored)["status"] == "UNKNOWN"
     wrong_hits = deepcopy(payload)
     wrong_hits["hit_details"][0]["zone1_hits"] = 3
     wrong_hits, wrong_stored = seal(wrong_hits)
-    assert main_three_reference(wrong_hits, wrong_stored)["status"] == "UNKNOWN"
+    assert checked_main_three(wrong_hits, wrong_stored)["status"] == "UNKNOWN"
     wrong_identity = {**stored, "dataset_identity": "another-source"}
-    assert main_three_reference(payload, wrong_identity)["status"] == "UNKNOWN"
+    assert checked_main_three(payload, wrong_identity)["status"] == "UNKNOWN"
     wrong_digest = deepcopy(payload)
     wrong_digest["research_success"] = True
-    assert main_three_reference(wrong_digest, stored)["status"] == "UNKNOWN"
+    assert checked_main_three(wrong_digest, stored)["status"] == "UNKNOWN"
 
 
 def test_main_three_does_not_depend_on_special_number_or_prize_evidence() -> None:
@@ -104,9 +117,9 @@ def test_main_three_does_not_depend_on_special_number_or_prize_evidence() -> Non
     for hit in payload["hit_details"]:
         hit.pop("zone2_hit")
     payload, stored = seal(payload)
-    assert uniform_eight_reference(payload, stored)["status"] == "UNKNOWN"
-    assert main_three_reference(payload, stored)["status"] == "SCORABLE"
-    assert main_three_reference(payload, stored)["success"] is False
+    assert checked_uniform_eight(payload, stored)["status"] == "UNKNOWN"
+    assert checked_main_three(payload, stored)["status"] == "SCORABLE"
+    assert checked_main_three(payload, stored)["success"] is False
 
 
 def test_failure_and_duplicate_positions_remain_unknown_not_losses() -> None:
@@ -116,11 +129,11 @@ def test_failure_and_duplicate_positions_remain_unknown_not_losses() -> None:
     payload["predicted_tickets"] = []
     payload["hit_details"] = []
     payload, stored = seal(payload)
-    assert main_three_reference(payload, stored)["status"] == "UNKNOWN"
+    assert checked_main_three(payload, stored)["status"] == "UNKNOWN"
     payload, _ = saved_cell()
     payload["predicted_tickets"][1]["ticket_position"] = 1
     payload, stored = seal(payload)
-    assert main_three_reference(payload, stored)["status"] == "UNKNOWN"
+    assert checked_main_three(payload, stored)["status"] == "UNKNOWN"
 
 
 def test_cluster_research_version_is_visible_without_claiming_executable() -> None:

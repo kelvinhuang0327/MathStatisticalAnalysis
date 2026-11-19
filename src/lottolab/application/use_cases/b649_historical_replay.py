@@ -25,6 +25,9 @@ from hashlib import sha256
 from pathlib import Path
 from typing import IO, cast
 
+from lottolab.application.biglotto_versioned_replay_bindings import (
+    versioned_biglotto_replay_bindings,
+)
 from lottolab.application.historical_replay_adapters import (
     BigLottoReplayAdapter,
     ReplayStrategyBinding,
@@ -590,6 +593,10 @@ class B649HistoricalReplayUseCase:
         self._full_by_id = {
             record.strategy_id: record for record in self._full_catalog.records
         }
+        self._frozen_bindings = {
+            (b.strategy.strategy_id, b.strategy.strategy_version): b
+            for b in versioned_biglotto_replay_bindings()
+        }
         self._current_by_id = self._resolve_current_catalog()
         self._identities = self._build_identity_accounts()
 
@@ -708,13 +715,18 @@ class B649HistoricalReplayUseCase:
                 )
                 continue
 
-            if record.strategy_id in self._current_by_id:
+            exact_binding = (record.strategy_id, record.strategy_version) in self._frozen_bindings
+            if exact_binding or record.strategy_id in self._current_by_id:
                 accounts.append(
                     B649IdentityAccount(
                         strategy_id=record.strategy_id,
                         status=B649IdentityStatus.CURRENTLY_REPLAYABLE,
                         strategy_version=record.strategy_version,
-                        reason="CURRENT_PRODUCTION_ADAPTER",
+                        reason=(
+                            "EXACT_FROZEN_REPLAY_ADAPTER"
+                            if exact_binding
+                            else "CURRENT_PRODUCTION_ADAPTER"
+                        ),
                     )
                 )
                 continue
@@ -746,6 +758,9 @@ class B649HistoricalReplayUseCase:
 
     def _binding_for(self, identity: B649IdentityAccount) -> ReplayStrategyBinding:
         record = self._full_by_id[identity.strategy_id]
+        frozen = self._frozen_bindings.get((identity.strategy_id, identity.strategy_version))
+        if frozen is not None:
+            return frozen
         if identity.status is B649IdentityStatus.HISTORICAL_RAW_ONLY:
             implementation = self._raw_source.implementation(
                 identity.strategy_id,

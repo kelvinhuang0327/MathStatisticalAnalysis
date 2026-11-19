@@ -20,6 +20,10 @@ from datetime import date
 from pathlib import Path
 from typing import Any, cast
 
+from lottolab.application.biglotto_versioned_replay_bindings import (
+    VERSIONED_REPLAY_SOURCES,
+    versioned_biglotto_replay_bindings,
+)
 from lottolab.application.historical_replay_adapters import (
     BigLottoReplayAdapter,
     Daily539ReplayAdapter,
@@ -252,6 +256,41 @@ def native_strategy_inventory(
         account["training_status"] = "NOT_TRAINABLE"
         account["source_identity"] = account.get("source_sha256") or binding.strategy.fingerprint
     return tuple(bindings[k] for k in sorted(bindings)), accounts
+
+
+def _exact_strategy_inventory(
+    lottery_type: LotteryType, strategy_id: str, version: str
+) -> tuple[tuple[ReplayStrategyBinding, ...], JsonObject]:
+    if lottery_type is LotteryType.BIG_LOTTO:
+        for source, binding in zip(
+            VERSIONED_REPLAY_SOURCES, versioned_biglotto_replay_bindings(), strict=True
+        ):
+            if (source.strategy_id, source.strategy_version) != (strategy_id, version):
+                continue
+            return (binding,), {
+                strategy_id: {
+                    "status": "EXECUTABLE",
+                    "strategy_version": version,
+                    "source": source.locator,
+                    "source_kind": "VERSIONED_REPLAY_SOURCE_REGISTRY",
+                    "source_sha256": source.source_sha256,
+                    "source_identity": source.locator,
+                    "implementation": source.adapter_path,
+                    "implementation_sha256": source.implementation_sha256,
+                    "fingerprint": binding.strategy.fingerprint,
+                    "behavior": binding.strategy.behavior.value,
+                    "lifecycle_status": "UNREGISTERED",
+                    "data_status": "REBUILDABLE",
+                    "training_status": "NOT_TRAINABLE",
+                }
+            }
+
+    bindings, accounts = native_strategy_inventory(lottery_type)
+    for binding in bindings:
+        identity = binding.strategy.strategy_id, binding.strategy.strategy_version
+        if identity == (strategy_id, version):
+            return (binding,), {strategy_id: accounts[strategy_id]}
+    raise ValueError(f"no executable binding for {lottery_type.value}/{strategy_id}@{version}")
 
 
 def build_adapter(
@@ -1015,6 +1054,7 @@ def main(
         help="Output database (defaults to the registry's LOTTOLAB_REPLAY_BACKFILL_DB)",
     )
     parser.add_argument("--strategy-id", action="append", default=[])
+    parser.add_argument("--strategy-version", help="Require an exact version of one --strategy-id")
     parser.add_argument("--all-strategies", action="store_true")
     parser.add_argument("--inventory", action="store_true")
     parser.add_argument("--schema", action="store_true")
@@ -1034,6 +1074,10 @@ def main(
         parser.error("--lottery-type is required")
     lottery_type = LotteryType(args.lottery_type)
     try:
+        if args.strategy_version is not None and (
+            len(args.strategy_id) != 1 or args.all_strategies or args.import_known_artifacts
+        ):
+            raise ValueError("--strategy-version requires exactly one --strategy-id")
         if args.import_known_artifacts:
             if (
                 not args.database
@@ -1053,7 +1097,11 @@ def main(
             result = import_known_research_artifacts(target, source)
             print(canonical_json(result))
             return 0
-        bindings, accounts = native_strategy_inventory(lottery_type)
+        bindings, accounts = (
+            _exact_strategy_inventory(lottery_type, args.strategy_id[0], args.strategy_version)
+            if args.strategy_version is not None
+            else native_strategy_inventory(lottery_type)
+        )
         if args.inventory:
             print(
                 canonical_json(

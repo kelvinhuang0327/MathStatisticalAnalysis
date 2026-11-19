@@ -424,6 +424,12 @@ def test_combined_zone_and_k30_inventory_uses_exact_overlay_and_paginates() -> N
     assert all(item["backfill_runnable"] is False for item in overlay_items)
     other_items = [item for item in page_items if item not in overlay_items]
     by_id = {item["strategy_id"]: item for item in other_items}
+    assert by_id["tasklocal_evolution_h1_duplicate_completion_20261105"]["data_status"] == (
+        "CODE_ONLY"
+    )
+    assert (
+        by_id["tasklocal_evolution_h1_duplicate_completion_20261105"]["available_target_count"] == 0
+    )
     assert {"cold_complement_biglotto", "research_biglotto__radical_gap_complete_v2"} <= set(by_id)
     for strategy_id in ("cold_complement_biglotto", "research_biglotto__radical_gap_complete_v2"):
         assert by_id[strategy_id]["data_status"] == "NO_HISTORY"

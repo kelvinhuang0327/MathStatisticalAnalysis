@@ -9,6 +9,7 @@ the full design lineage; this successor does not claim a predictive advantage.
 from __future__ import annotations
 
 from datetime import date
+from typing import cast
 
 from lottolab.application.legacy_history_native_portfolios import LegacyHistoryDraw
 from lottolab.application.legacy_source_native_portfolios_wave31 import (
@@ -16,6 +17,7 @@ from lottolab.application.legacy_source_native_portfolios_wave31 import (
     LegacySourceNativeWave31Request,
     generate_legacy_source_native_wave31_portfolio,
 )
+from lottolab.application.strategy_preserving_20_ticket import Ticket
 from lottolab.domain.draws import LotteryType
 from lottolab.domain.historical_replay import ReplayDraw, ReplayTicket
 from lottolab.strategies.adapters.base import BetAdapter, CausalDrawRow, RejectPrediction
@@ -36,7 +38,9 @@ class BigLottoRecordedRadicalSuccessor(BetAdapter):
         request = LegacySourceNativeWave31Request(
             legacy_method_id=RADICAL_PREDICT_METHOD_ID,
             target_draw_number=target_number,
-            history=tuple(LegacyHistoryDraw(row.draw, row.numbers) for row in history),
+            history=tuple(
+                LegacyHistoryDraw(row.draw, cast(Ticket, row.numbers)) for row in history
+            ),
         )
         return generate_legacy_source_native_wave31_portfolio(request).tickets[0]
 

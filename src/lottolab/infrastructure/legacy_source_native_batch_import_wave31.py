@@ -123,7 +123,7 @@ def materialize_legacy_source_native_wave31_batch(
             # Its earliest recorded source is 2026-02-24: do not materialize
             # it for targets before or on that date as an eligible replay.
             if method_id == RADICAL_PREDICT_METHOD_ID and str(target.draw_date) <= "2026-02-24":
-                row = {
+                row: dict[str, object] = {
                     "reason_code": "OUTCOME_INFORMED_DESIGN_NOT_YET_RECORDED",
                     "status": "CLOSED_REJECTED",
                     "strategy_id": record.strategy_id,

@@ -130,6 +130,53 @@ def _wave27_cases():
     return cases
 
 
+def test_wave60_hybrid_ordered_portfolios() -> None:
+    source = _source("hybrid_integration_benchmark")
+    raw = (
+        ROOT / "src/lottolab/strategies/data/biglotto_seeded_benchmarks_wave60_ticket_ledger_v1.json"
+    ).read_bytes()
+    assert hashlib.sha256(raw).hexdigest() == (
+        "0834d1b9e1acb622a142fbf29b35ef2a4aa5d269583b67a0fecd6862ca9ccc4b"
+    )
+    ledger = json.loads(raw)
+    assert ledger["frozen_source_commit"] == source.source_commit
+    assert ledger["source_sha256_by_method"][source.source_path] == source.source_sha256
+    expected = ledger["tickets_by_method"][source.source_path]
+    assert hashlib.sha256(json.dumps(expected, separators=(",", ":")).encode()).hexdigest() == (
+        "77f90ad4439da7ec1801362b8a9cff9294e92f940bfec5f0c305633520198746"
+    )
+    bindings, accounts = cli._exact_strategy_inventory(
+        BIG, source.strategy_id, source.strategy_version
+    )
+    assert accounts[source.strategy_id]["source"] == source.locator
+    strategy = bindings[0].strategy
+    adapter = cli.build_adapter(BIG, bindings)
+    assert (strategy.min_history, strategy.native_ticket_count) == (1, 12)
+    assert ledger["closed_reason_by_method"][source.source_path] == [
+        "NO_PRIOR_DRAW_FOR_CAUSAL_CUTOFF", *([None] * 2148)
+    ]
+    draws = _draws()[:2149]
+    assert len(draws) == len(expected) == 2149
+    assert [row.draw_number for row in draws] == ledger["targets"]
+    assert expected[0] is None
+    with pytest.raises(InsufficientHistory):
+        adapter.generate(strategy, (), draws[0])
+
+    # Append to the compact JSON prefix incrementally, checking the exact
+    # history used by the source without re-serializing every earlier draw.
+    prefix = hashlib.sha256(b"[")
+    for cutoff, target in enumerate(draws):
+        context = prefix.copy()
+        context.update(b"]")
+        assert context.hexdigest() == ledger["context_sha256"][cutoff], target.draw_number
+        if cutoff:
+            tickets = adapter.generate(strategy, draws[:cutoff], target)
+            assert [t.ticket_position for t in tickets] == list(range(1, 13))
+            assert [list(t.main_numbers) for t in tickets] == expected[cutoff], target.draw_number
+            prefix.update(b",")
+        prefix.update(json.dumps(target.main_numbers, separators=(",", ":")).encode())
+
+
 def test_frozen_two_bet_optimizer() -> None:
     _assert_wave27_optimizer_parity("biglotto_2bet_optimizer")
 

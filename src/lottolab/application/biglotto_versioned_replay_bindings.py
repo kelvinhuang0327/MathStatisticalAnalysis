@@ -158,6 +158,21 @@ _WAVE27_MODULES = (
 
 VERSIONED_REPLAY_SOURCES = (
     VersionedReplaySource(
+        strategy_id="legacy_biglotto__hybrid_integration_benchmark__5789ca885422",
+        strategy_version="legacy-source-49a25effa62f-5789ca885422",
+        source_path="tools/hybrid_integration_benchmark.py",
+        source_commit="49a25effa62fc24f40789c16be6f11bdfb41a4a9",
+        source_blob_id="76b4632ac1adb6efe17539cb995dbdc0397230d2",
+        source_sha256="5789ca8854224383a3c84e62871bc891c0661699309ae32aeff65ca403b3a64b",
+        current_version=None,
+        adapter_path=(
+            "lottolab.application.biglotto_frozen_hybrid_integration:FrozenHybridIntegrationBenchmark"
+        ),
+        implementation_sha256="45667b3deff6f1af5d10be0797c982e0bcb54fa8d7f7820ce51d5764f842dd19",
+        parity_test="tests/unit/test_biglotto_frozen_grid.py::test_wave60_hybrid_ordered_portfolios",
+        parity_evidence="EXACT_ORDERED_PORTFOLIO_EXECUTION_PARITY",
+    ),
+    VersionedReplaySource(
         strategy_id="legacy_biglotto__biglotto_2bet_optimizer__898ac9e38876",
         strategy_version="legacy-source-49a25effa62f-898ac9e38876",
         source_path="lottery_api/models/biglotto_2bet_optimizer.py",

@@ -359,6 +359,7 @@ def authorized_openapi_paths() -> dict[str, dict[str, object]]:
     return {
         "/api/health": {"get": {}},
         "/api/b649/canonical-forecast/current": {"get": {}},
+        "/api/b649/native-forecast/current": {"get": {}},
         "/api/v1/b649/sealed-084-replays/status": {"get": {}},
         "/api/v1/b649/sealed-084-replays": {"get": {}},
         "/api/v1/strategies": {"get": {}},
@@ -491,6 +492,7 @@ def authorized_openapi_paths() -> dict[str, dict[str, object]]:
         "/api/v1/replay-backfill/k3-comparison": {"get": {}},
         "/api/v1/replay-backfill/predictions": {"get": {}},
         "/api/v1/replay-backfill/coverage": {"get": {}},
+        "/api/v1/replay-backfill/coverage/scan": {"get": {}},
         "/api/v1/replay-backfill/results": {"get": {}},
         "/api/v1/replay-backfill/uniform-eight-reference": {"get": {}},
         "/api/v1/replay-backfill/runs": {"get": {}},
@@ -507,6 +509,7 @@ def test_smoke_accepts_exact_replay_backfill_and_inventory_get_operations() -> N
         "/api/v1/replay-backfill/k3-comparison",
         "/api/v1/replay-backfill/predictions",
         "/api/v1/replay-backfill/coverage",
+        "/api/v1/replay-backfill/coverage/scan",
         "/api/v1/replay-backfill/results",
         "/api/v1/replay-backfill/uniform-eight-reference",
         "/api/v1/replay-backfill/runs",
@@ -522,7 +525,7 @@ def test_smoke_accepts_exact_replay_backfill_and_inventory_get_operations() -> N
         or path == "/api/v1/replay-strategy-inventory"
     } == expected_replay_paths
     assert all(paths[path] == {"get": {}} for path in expected_replay_paths)
-    assert len(paths) == 93
+    assert len(paths) == 95
     validate_openapi_payload({"paths": paths})
 
 
@@ -539,6 +542,8 @@ def test_live_application_openapi_is_accepted_by_runtime_policy() -> None:
         "/api/v1/replay-backfill/k3-comparison",
         "/api/v1/replay-backfill/predictions",
         "/api/v1/replay-backfill/coverage",
+        "/api/v1/replay-backfill/coverage/scan",
+        "/api/b649/native-forecast/current",
         "/api/v1/replay-backfill/results",
         "/api/v1/replay-backfill/uniform-eight-reference",
         "/api/v1/replay-backfill/runs",

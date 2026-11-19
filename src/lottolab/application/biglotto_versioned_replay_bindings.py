@@ -142,6 +142,33 @@ def _historical_grid(
 
 VERSIONED_REPLAY_SOURCES = (
     VersionedReplaySource(
+        strategy_id="legacy_biglotto__biglotto_2bet_optimizer__898ac9e38876",
+        strategy_version="legacy-source-49a25effa62f-898ac9e38876",
+        source_path="lottery_api/models/biglotto_2bet_optimizer.py",
+        source_commit="49a25effa62fc24f40789c16be6f11bdfb41a4a9",
+        source_blob_id="f181c9860520e96455748be7a35b23a5481083a7",
+        source_sha256="898ac9e38876841fb000796a3e9627dc339a19ad89babb23d7a2869da5db8e9c",
+        current_version=None,
+        adapter_path="lottolab.application.biglotto_frozen_two_bet_optimizer:FrozenTwoBetOptimizer",
+        implementation_sha256="df4045c459e61d6036b51809a0f1b576e39a9d68eca844ee56a1071568ec46d4",
+        parity_test="tests/unit/test_biglotto_frozen_grid.py::test_frozen_two_bet_optimizer",
+        parity_evidence="EXACT_ORDERED_PORTFOLIO_EXECUTION_PARITY",
+        shared_modules=(
+            (
+                "lottolab.application.legacy_source_native_portfolios_wave27",
+                "bdc3acf0c791c9e0a530e0f0032df983348720e4e026ded379119993a89664c6",
+            ),
+            (
+                "lottolab.application.legacy_frozen_unified_core",
+                "f401daede4d0a14bf148ceb00157c18279fde201bbc3251ef633540c61f61e8f",
+            ),
+            (
+                "lottolab.application.legacy_history_native_portfolios",
+                "e1512870990e207384a7b6faa9c683c730d7866d3c5b94307a5f30aaba0bd710",
+            ),
+        ),
+    ),
+    VersionedReplaySource(
         strategy_id="legacy_biglotto__predict_biglotto_apriori__cda690ae84c2",
         strategy_version="legacy-source-49a25effa62f-cda690ae84c2",
         source_path="tools/predict_biglotto_apriori.py",
@@ -435,7 +462,7 @@ def _verify_source(source: VersionedReplaySource) -> None:
         raise ValueError(f"versioned Replay source provenance changed: {source.strategy_id}")
 
     if source.current_version is None:
-        return  # Dedicated historical adapter with no production descriptor.
+        return  # The historical version uses its own implementation.
 
     descriptor = production_catalog().get(source.strategy_id)
     provenance = set(descriptor.provenance)

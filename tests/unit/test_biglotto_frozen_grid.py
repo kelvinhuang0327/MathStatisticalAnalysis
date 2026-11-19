@@ -15,7 +15,9 @@ from unittest.mock import Mock
 
 import pytest
 
+from lottolab.application import legacy_source_native_portfolios_wave27 as wave27
 from lottolab.application.biglotto_versioned_replay_bindings import VERSIONED_REPLAY_SOURCES
+from lottolab.application.legacy_history_native_portfolios import LegacyHistoryDraw
 from lottolab.application.use_cases.replay_backfill import (
     BackfillSelection,
     BackfillStore,
@@ -103,6 +105,98 @@ def _draws():
 
 def _source(name):
     return next(s for s in VERSIONED_REPLAY_SOURCES if Path(s.source_path).stem == name)
+
+
+@cache
+def _wave27_cases():
+    raw = (FIXTURES / "biglotto_wave27_parity.json").read_bytes()
+    evidence = json.loads(
+        (
+            ROOT
+            / "src/lottolab/strategies/data/biglotto_legacy_source_native_wave27_evidence_v1.json"
+        ).read_bytes()
+    )
+    assert hashlib.sha256(raw).hexdigest() == evidence["parity"]["parity_sha256"]
+    parity = json.loads(raw)
+    ledger = _ledger(47)
+    assert parity["database_sha256"] == ledger["dataset_sha256"]
+    cases = parity["cases"]
+    assert len(cases) == parity["case_count"] == 292
+    draws = _draws()
+    for cutoff in {case["history_draw_count"] for case in cases}:
+        history = [draw.main_numbers for draw in draws[:cutoff]]
+        digest = hashlib.sha256(json.dumps(history, separators=(",", ":")).encode()).hexdigest()
+        assert digest == ledger["context_numbers_sha256_by_target"][cutoff - 1]
+    return cases
+
+
+def test_frozen_two_bet_optimizer() -> None:
+    source = _source("biglotto_2bet_optimizer")
+    bindings, accounts = cli._exact_strategy_inventory(
+        BIG, source.strategy_id, source.strategy_version
+    )
+    assert accounts[source.strategy_id]["source"] == source.locator
+    strategy = bindings[0].strategy
+    adapter = cli.build_adapter(BIG, bindings)
+    draws = _draws()
+    assert strategy.native_ticket_count == 2 and strategy.min_history == 1
+    with pytest.raises(InsufficientHistory):
+        adapter.generate(strategy, (), draws[0])
+
+    cases = [case for case in _wave27_cases() if case["legacy_method_id"] == source.source_path]
+    assert len(cases) == 73
+    for case in cases:
+        cutoff = case["history_draw_count"]
+        assert case["status"] == "PASS" and case["native_ticket_count"] == 2
+        tickets = adapter.generate(strategy, draws[:cutoff], draws[cutoff])
+        assert [ticket.ticket_position for ticket in tickets] == [1, 2]
+        assert [list(ticket.main_numbers) for ticket in tickets] == case["tickets"], cutoff
+    target = replace(draws[1], main_numbers=(1, 2, 3, 4, 5, 6), special_number=49)
+    assert adapter.generate(strategy, draws[:1], target) == adapter.generate(
+        strategy, draws[:1], draws[1]
+    )
+
+
+@pytest.mark.parametrize(
+    "method",
+    (
+        wave27.MODEL_V2_METHOD_ID,
+        wave27.GEMINI_2BET_METHOD_ID,
+        wave27.GEMINI_3BET_METHOD_ID,
+    ),
+)
+def test_wave27_control_cases(method: str) -> None:
+    cases = [case for case in _wave27_cases() if case["legacy_method_id"] == method]
+    assert len(cases) == 73
+    rows = tuple(LegacyHistoryDraw(draw.draw_number, draw.main_numbers) for draw in _draws())
+    for case in cases:
+        cutoff = case["history_draw_count"]
+        request = wave27.LegacySourceNativeWave27Request(
+            method, rows[cutoff].draw_number, rows[:cutoff]
+        )
+        if case["status"] == "CLOSED_PARITY":
+            with pytest.raises(wave27.LegacySourceNativeWave27SourceError) as exc:
+                wave27.generate_legacy_source_native_wave27_portfolio(request)
+            assert exc.value.reason_code == case["reason_code"]
+        else:
+            result = wave27.generate_legacy_source_native_wave27_portfolio(request)
+            assert [list(ticket) for ticket in result.tickets] == case["tickets"], cutoff
+
+
+def test_two_bet_optimizer_versions_remain_separately_addressable() -> None:
+    source = _source("biglotto_2bet_optimizer")
+    frozen, _ = cli._exact_strategy_inventory(BIG, source.strategy_id, source.strategy_version)
+    current, accounts = cli._exact_strategy_inventory(BIG, source.strategy_id, "v0.1")
+    live = current[0].strategy
+    assert live.strategy_id == frozen[0].strategy.strategy_id
+    assert live.strategy_version == "v0.1"
+    assert frozen[0].strategy.strategy_version == "legacy-source-49a25effa62f-898ac9e38876"
+    assert live.fingerprint != frozen[0].strategy.fingerprint
+    assert accounts[source.strategy_id]["source"] == (
+        "lottolab.strategies.adapters.biglotto_wave3:BigLottoTwoBetOptimizerAdapter"
+    )
+    with pytest.raises(ValueError, match="identity is not pinned"):
+        cli.build_adapter(BIG, frozen).generate(live, (), _draws()[0])
 
 
 def _oracle(source, cutoff):

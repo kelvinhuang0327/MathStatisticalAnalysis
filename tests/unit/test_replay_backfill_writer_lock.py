@@ -273,6 +273,35 @@ def test_import_stage_target_is_locked_but_stage_source_is_read_only(
         assert source_locked.returncode == 0, source_locked.stderr
 
 
+def test_empty_import_stage_does_not_use_optional_backup_space_guard(
+    fake_canonical_database: tuple[Path, Path],
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    import shutil
+    from types import SimpleNamespace
+
+    _, target = fake_canonical_database
+    test_root = tmp_path / "msa-pytest.import-stage"
+    test_root.mkdir()
+    source = test_root / "stage.sqlite3"
+    _create_empty_backfill_database(source)
+
+    def disk_usage(_: Path) -> SimpleNamespace:
+        return SimpleNamespace(free=1)
+
+    monkeypatch.setattr(shutil, "disk_usage", disk_usage)
+    assert (
+        replay_backfill_main(
+            ["import-stage", "--source", str(source), "--database", str(target)],
+            test_only_external_database_root=test_root,
+        )
+        == 0
+    )
+    assert json.loads(capsys.readouterr().out)["added_total"] == 0
+
+
 def test_read_only_query_and_schema_ignore_writer_lock(
     fake_canonical_database: tuple[Path, Path],
     capsys: pytest.CaptureFixture[str],

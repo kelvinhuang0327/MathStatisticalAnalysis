@@ -6,6 +6,8 @@ import csv
 import hashlib
 import json
 import random
+import sqlite3
+from collections import Counter
 from dataclasses import replace
 from datetime import date
 from functools import cache
@@ -107,6 +109,87 @@ def _draws():
 
 def _source(name):
     return next(s for s in VERSIONED_REPLAY_SOURCES if Path(s.source_path).stem == name)
+
+
+def test_wave63_advanced_ordered_portfolios(monkeypatch: pytest.MonkeyPatch) -> None:
+    reject_sqlite = Mock(side_effect=AssertionError("Wave 63 replay must not open SQLite"))
+    monkeypatch.setattr(sqlite3, "connect", reject_sqlite)
+    monkeypatch.setattr(sqlite3.dbapi2, "connect", reject_sqlite)
+    source = _source("advanced_methods_benchmark")
+    resources = ROOT / "src/lottolab/strategies/data"
+    raw = (resources / "biglotto_legacy_advanced_methods_wave63_evidence_v1.json").read_bytes()
+    assert hashlib.sha256(raw).hexdigest() == (
+        "c9d0a3ae6e5678f1aca771dc88b1cc03b11756ce66c129a5198713bf594e0057"
+    )
+    evidence = json.loads(raw)
+    raw = (resources / "biglotto_advanced_methods_wave63_ticket_ledger_v1.json").read_bytes()
+    assert hashlib.sha256(raw).hexdigest() == evidence["ledger_file_sha256"] == (
+        "f98ad62752c35bcf47fe00338f8e8b4ddd1f39caa73a80405409c963a8651d04"
+    )
+    ledger = json.loads(raw)
+    assert ledger["legacy_method_id"] == source.source_path
+    assert ledger["frozen_source_commit"] == source.source_commit
+    assert ledger["source_sha256"] == source.source_sha256
+    [record] = evidence["strategies"]
+    assert ledger["closed_reason"] == ["NO_PRIOR_DRAW_FOR_CAUSAL_CUTOFF", *([None] * 2148)]
+    assert record["ok_execution_count"] == 2148 and ledger["tickets"][0] is None
+
+    bindings, accounts = cli._exact_strategy_inventory(
+        BIG, source.strategy_id, source.strategy_version
+    )
+    assert accounts[source.strategy_id]["source"] == source.locator
+    strategy = bindings[0].strategy
+    assert (strategy.strategy_version, strategy.min_history, strategy.native_ticket_count) == (
+        source.strategy_version, 1, 25
+    )
+    adapter = cli.build_adapter(BIG, bindings)
+    draws = _draws()[:2149]
+    assert len(draws) == len(ledger["tickets"]) == 2149
+    assert [row.draw_number for row in draws] == ledger["target_draw_numbers"]
+    store = Mock(spec=BackfillStore)
+    store.lookup_complete_by_logical_keys.return_value = {}
+    store.lookup_many_by_unique_keys.return_value = {}
+    store.summary.return_value = {}
+    ReplayBackfill(
+        adapter=adapter,
+        strategies=(strategy,),
+        draws=draws[:1],
+        source_identity="wave63-historical-fixture",
+        store=store,
+        execution_version="wave63-test",
+        strategy_sources=accounts,
+    ).execute(BackfillSelection(all_draws=True))
+    [closed] = store.save_many.call_args.args[1]
+    assert closed["target_draw_id"] == "96000001" and closed["history_count"] == 0
+    assert closed["execution_status"] == "NOT_ELIGIBLE" and closed["predicted_tickets"] == []
+
+    prefix, outputs = hashlib.sha256(b"["), hashlib.sha256(b"[")
+    duplicates: Counter[int] = Counter()
+    positions = 0
+    for cutoff, target in enumerate(draws[1:], 1):
+        if cutoff > 1:
+            prefix.update(b",")
+            outputs.update(b",")
+        prefix.update(json.dumps(draws[cutoff - 1].main_numbers, separators=(",", ":")).encode())
+        context = prefix.copy()
+        context.update(b"]")
+        assert context.hexdigest() == ledger["context_numbers_sha256_by_target"][cutoff]
+        tickets = adapter.generate(strategy, draws[:cutoff], target)
+        assert [ticket.ticket_position for ticket in tickets] == list(range(1, 26))
+        assert all(ticket.special_number is None for ticket in tickets)
+        portfolio = [ticket.main_numbers for ticket in tickets]
+        actual = [list(numbers) for numbers in portfolio]
+        assert actual == ledger["tickets"][cutoff], target.draw_number
+        duplicates[len(portfolio) - len(set(portfolio))] += 1
+        positions += len(portfolio)
+        outputs.update(json.dumps(portfolio, separators=(",", ":")).encode())
+    outputs.update(b"]")
+    assert positions == 53_700
+    assert {str(n): count for n, count in duplicates.items()} == record[
+        "native_duplicate_ticket_count_distribution"
+    ]
+    assert outputs.hexdigest() == "9562b26912310b56610b3c3aa1da426beb06dd7493123caf0a42d6dc479020a2"
+    reject_sqlite.assert_not_called()
 
 
 @cache

@@ -188,6 +188,24 @@ VERSIONED_REPLAY_SOURCES = (
         shared_modules=_WAVE27_MODULES,
     ),
     VersionedReplaySource(
+        strategy_id="legacy_biglotto__orthogonal_diversification_benchmark__ce068c676ca5",
+        strategy_version="legacy-source-49a25effa62f-ce068c676ca5",
+        source_path="tools/orthogonal_diversification_benchmark.py",
+        source_commit="49a25effa62fc24f40789c16be6f11bdfb41a4a9",
+        source_blob_id="80c59b2270a0d61ae95dc1d4a8045be323b3cc7c",
+        source_sha256="ce068c676ca5b16e48d95499a8b9c4cc8ba105962b02c71ad9b076f68659ca71",
+        current_version=None,
+        adapter_path=(
+            "lottolab.application.biglotto_frozen_orthogonal_diversification:"
+            "FrozenOrthogonalDiversification"
+        ),
+        implementation_sha256="f7da1f2e67f41a9a1fe96caa4c4643adc604a94cb581f4758ce8889c5a74017d",
+        parity_test=(
+            "tests/unit/test_biglotto_frozen_grid.py::test_frozen_orthogonal_diversification"
+        ),
+        parity_evidence="EXACT_ORDERED_PORTFOLIO_EXECUTION_PARITY",
+    ),
+    VersionedReplaySource(
         strategy_id="legacy_biglotto__predict_biglotto_apriori__cda690ae84c2",
         strategy_version="legacy-source-49a25effa62f-cda690ae84c2",
         source_path="tools/predict_biglotto_apriori.py",

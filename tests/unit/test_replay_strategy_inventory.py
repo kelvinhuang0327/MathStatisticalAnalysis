@@ -219,7 +219,7 @@ def test_exact_source_mismatches_have_replay_only_versioned_bindings() -> None:
         (binding.strategy.strategy_id, binding.strategy.strategy_version): binding
         for binding in bindings
     }
-    assert len(bindings) == 35
+    assert len(bindings) == 36
     assert set(by_identity) == {
         (source.strategy_id, source.strategy_version)
         for source in VERSIONED_REPLAY_SOURCES

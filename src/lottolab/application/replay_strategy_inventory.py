@@ -963,6 +963,8 @@ def _add_versioned_biglotto_replay_items(
             "Exact frozen source identity is bound in the replay-only version registry; "
             f"{source.parity_evidence} is pinned by {source.parity_test}."
         )
+        if scope := getattr(binding.implementation, "replay_scope", None):
+            item.reconstruction_reason += f" {scope}"
         registry_locator = (
             "src/lottolab/application/biglotto_versioned_replay_bindings.py#"
             f"strategy_id={source.strategy_id};version={source.strategy_version}"

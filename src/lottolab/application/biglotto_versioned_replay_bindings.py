@@ -11,6 +11,7 @@ import importlib
 from dataclasses import dataclass, replace
 from pathlib import Path
 
+from lottolab.application.biglotto_frozen_xgboost import FrozenXGBoostWave64Replay
 from lottolab.application.historical_replay_adapters import (
     ReplayStrategyBinding,
     binding_from_implementation,
@@ -161,6 +162,29 @@ _WAVE27_MODULES = (
 
 
 VERSIONED_REPLAY_SOURCES = (
+    VersionedReplaySource(
+        strategy_id="legacy_biglotto__xgboost_model__38c72a70c627",
+        strategy_version="legacy-source-49a25effa62f-38c72a70c627",
+        source_path="lottery_api/models/xgboost_model.py",
+        source_commit="49a25effa62fc24f40789c16be6f11bdfb41a4a9",
+        source_blob_id="331b97562b593c061937ad9afac79fc5b8d88152",
+        source_sha256="38c72a70c627285dab2b55163b387b3ed8ab6bd9820c10d7daed0dce777f1c01",
+        current_version=None,
+        adapter_path="lottolab.application.biglotto_frozen_xgboost:FrozenXGBoostWave64Replay",
+        implementation_sha256="e171e91bfbf12720d8fff10038602c7c00a86a706a2483f9edbec16d56fccfae",
+        parity_test="tests/unit/test_biglotto_frozen_grid.py::test_wave64_xgboost_ordered_playback",
+        parity_evidence="CHECKSUMMED_FROZEN_SOURCE_RUNTIME_LEDGER_PLAYBACK",
+        shared_modules=(
+            (
+                "lottolab.application.legacy_xgboost_native_portfolios_wave64",
+                "438d85dffe738aed0bd0cf867b25bcae639e27c88c80ab32f952984f2436a78d",
+            ),
+            (
+                "lottolab.application.legacy_history_native_portfolios",
+                "e1512870990e207384a7b6faa9c683c730d7866d3c5b94307a5f30aaba0bd710",
+            ),
+        ),
+    ),
     VersionedReplaySource(
         strategy_id="legacy_biglotto__biglotto_diversified_ensemble_v6__8caaac8fcb5d",
         strategy_version="legacy-source-49a25effa62f-8caaac8fcb5d",
@@ -649,7 +673,11 @@ def versioned_biglotto_replay_bindings() -> tuple[ReplayStrategyBinding, ...]:
                 raise ValueError(
                     f"versioned Replay implementation changed: {source.strategy_id}: {name}"
                 )
-        implementation = instantiate_portfolio_adapter(source.strategy_id, adapter_class)
+        implementation = (
+            FrozenXGBoostWave64Replay()
+            if adapter_class is FrozenXGBoostWave64Replay
+            else instantiate_portfolio_adapter(source.strategy_id, adapter_class)
+        )
         implementation_version = source.current_version or source.strategy_version
         if (implementation.strategy_id, implementation.strategy_version) != (
             source.strategy_id,

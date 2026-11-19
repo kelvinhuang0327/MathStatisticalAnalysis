@@ -20,8 +20,12 @@ import pytest
 from lottolab.application import biglotto_frozen_diversified_ensemble_v6 as v6
 from lottolab.application import biglotto_frozen_hpsb as hpsb
 from lottolab.application import legacy_source_native_portfolios_wave27 as wave27
-from lottolab.application.biglotto_versioned_replay_bindings import VERSIONED_REPLAY_SOURCES
+from lottolab.application.biglotto_versioned_replay_bindings import (
+    VERSIONED_REPLAY_SOURCES,
+    versioned_biglotto_replay_bindings,
+)
 from lottolab.application.legacy_history_native_portfolios import LegacyHistoryDraw
+from lottolab.application.use_cases.historical_replay_controller import ReplayTypedClosure
 from lottolab.application.use_cases.replay_backfill import (
     BackfillSelection,
     BackfillStore,
@@ -109,6 +113,168 @@ def _draws():
 
 def _source(name):
     return next(s for s in VERSIONED_REPLAY_SOURCES if Path(s.source_path).stem == name)
+
+
+def test_wave64_xgboost_ordered_playback(monkeypatch: pytest.MonkeyPatch) -> None:
+    deny_sqlite = Mock(side_effect=AssertionError("Wave 64 must use packaged data only"))
+    monkeypatch.setattr(sqlite3, "connect", deny_sqlite)
+    monkeypatch.setattr(sqlite3.dbapi2, "connect", deny_sqlite)
+    resources = ROOT / "src/lottolab/strategies/data"
+    evidence_raw = (resources / "biglotto_legacy_xgboost_wave64_evidence_v1.json").read_bytes()
+    assert hashlib.sha256(evidence_raw).hexdigest() == (
+        "2173aa5a4c354c8d8d11c0459e3017dcc4baaca770dc6fc623df683c0b191741"
+    )
+    evidence = json.loads(evidence_raw)
+    raw = (resources / "biglotto_xgboost_wave64_ticket_ledger_v1.json").read_bytes()
+    assert (
+        hashlib.sha256(raw).hexdigest()
+        == evidence["ledger_file_sha256"]
+        == ("0e2946ccf9a803488afd5475e833bd557a40bf93e5d1cb26e912a29926b1a9ba")
+    )
+    ledger = json.loads(raw)
+    source = _source("xgboost_model")
+    [record] = evidence["strategies"]
+    parity = evidence["parity"]
+    runtime = "CPYTHON_3_9_6_NUMPY_1_26_2_PANDAS_2_1_3_SKLEARN_1_3_2_XGBOOST_2_0_2"
+    assert ledger["source_reference_runtime"] == parity["source_reference_runtime"] == runtime
+    assert record["source_reference_runtime"] == runtime and parity["status"] == "PASS"
+    assert ledger["legacy_method_id"] == source.source_path == record["legacy_method_id"]
+    assert ledger["frozen_source_commit"] == source.source_commit == parity["frozen_source_commit"]
+    assert (
+        ledger["source_sha256"]
+        == source.source_sha256
+        == parity["source_artifact"]["source_sha256"]
+    )
+    assert source.source_blob_id == parity["source_artifact"]["source_blob_id"]
+    assert parity["thread_count_parity"]["status"] == "PASS"
+    assert parity["thread_count_parity"]["omp_thread_counts"] == [1, 8]
+    bindings, accounts = cli._exact_strategy_inventory(
+        BIG, source.strategy_id, source.strategy_version
+    )
+    strategy = bindings[0].strategy
+    adapter = cli.build_adapter(BIG, bindings)
+    assert accounts[source.strategy_id]["source"] == source.locator
+    assert runtime in accounts[source.strategy_id]["replay_scope"]
+    assert (strategy.min_history, strategy.native_ticket_count) == (15, 1)
+    draws = _draws()[:2149]
+    assert len(draws) == len(ledger["tickets"]) == evidence["target_draw_count"] == 2149
+    assert [d.draw_number for d in draws] == ledger["target_draw_numbers"]
+    assert draws[15].draw_number == "96000016" and draws[-1].draw_number == "115000073"
+    assert ledger["history_input_draw_count"] == [min(i, 1000) for i in range(2149)]
+
+    reason = "TRAINING_DATA_INSUFFICIENT_LT_15_HISTORY_DRAWS"
+    assert ledger["closed_reason"] == [reason] * 15 + [None] * 2134
+    prefix = hashlib.sha256(b"[")
+    actual = []
+    for cutoff, target in enumerate(draws):
+        context = prefix.copy()
+        context.update(b"]")
+        assert context.hexdigest() == ledger["context_numbers_sha256_by_target"][cutoff]
+        if cutoff < 15:
+            with pytest.raises(InsufficientHistory) as closure:
+                adapter.generate(strategy, draws[:cutoff], target)
+            assert str(closure.value) == reason
+            actual.append(None)
+        else:
+            [ticket] = adapter.generate(strategy, draws[:cutoff], target)
+            assert ticket.ticket_position == 1 and ticket.special_number is None
+            actual.append([list(ticket.main_numbers)])
+        assert actual[-1] == ledger["tickets"][cutoff], target.draw_number
+        if cutoff:
+            prefix.update(b",")
+        prefix.update(json.dumps(target.main_numbers, separators=(",", ":")).encode())
+    assert (
+        sum(len(row) for row in actual if row is not None) == record["ok_execution_count"] == 2134
+    )
+    digest = hashlib.sha256(json.dumps(actual, separators=(",", ":")).encode()).hexdigest()
+    assert (
+        digest
+        == parity["ticket_sequence_sha256"]
+        == record["ticket_sequence_sha256"]
+        == ("1d9752141cdc71301c7410b015bbbf6ca6dd522a687d6171da3def2b139a36df")
+    )
+    deny_sqlite.assert_not_called()
+
+
+def test_wave64_xgboost_scope_and_recorded_backfill_closures() -> None:
+    source = _source("xgboost_model")
+    bindings, accounts = cli._exact_strategy_inventory(
+        BIG, source.strategy_id, source.strategy_version
+    )
+    strategy = bindings[0].strategy
+    adapter = cli.build_adapter(BIG, bindings)
+    draws = _draws()
+    target = draws[15]
+    assert adapter.generate(strategy, draws[:15], target) == adapter.generate(
+        strategy, draws[:15], replace(target, main_numbers=(1, 2, 3, 4, 5, 6), special_number=49)
+    )
+    with pytest.raises(ReplayTypedClosure, match="TARGET_OUTSIDE_FROZEN_WAVE64_TICKET_LEDGER"):
+        adapter.generate(strategy, draws[:2149], draws[2149])
+    for cutoff in (3, 15, 1001):
+        for altered in (
+            replace(draws[0], main_numbers=(1, 2, 3, 4, 5, 6)),
+            replace(draws[0], draw_number="96000000"),
+        ):
+            with pytest.raises(ValueError, match="FROZEN_WAVE64_FULL_PREFIX_CONTEXT_MISMATCH"):
+                adapter.generate(strategy, (altered, *draws[1:cutoff]), draws[cutoff])
+    with pytest.raises(ValueError, match="strictly precede"):
+        future = replace(draws[0], draw_date=target.draw_date)
+        adapter.generate(strategy, (future, *draws[1:15]), target)
+
+    store = Mock(spec=BackfillStore)
+    store.lookup_complete_by_logical_keys.return_value = {}
+    store.lookup_many_by_unique_keys.return_value = {}
+    store.summary.return_value = {}
+    ReplayBackfill(
+        adapter=adapter,
+        strategies=(strategy,),
+        draws=draws[:16],
+        source_identity="wave64-fixture",
+        store=store,
+        execution_version="wave64-test",
+        strategy_sources=accounts,
+    ).execute(BackfillSelection(all_draws=True))
+    *closed, first = store.save_many.call_args.args[1]
+    assert [row["target_draw_id"] for row in closed] == [draw.draw_number for draw in draws[:15]]
+    assert all(
+        row["execution_status"] == "NOT_ELIGIBLE"
+        and row["predicted_tickets"] == []
+        and row["error_reason"] == "TRAINING_DATA_INSUFFICIENT_LT_15_HISTORY_DRAWS"
+        for row in closed
+    )
+    assert first["target_draw_id"] == "96000016" and first["execution_status"] == "COMPLETE"
+    assert first["predicted_tickets"] == [
+        {"ticket_position": 1, "main_numbers": [6, 18, 26, 44, 45, 48], "special_number": None}
+    ]
+    assert first["training"]["training_status"] == "NOT_TRAINABLE"
+
+
+def test_wave64_keeps_default_minimum_history_closures_for_r184_bindings() -> None:
+    bindings = versioned_biglotto_replay_bindings()
+    adapter = cli.build_adapter(BIG, bindings)
+    source = _source("xgboost_model")
+    prior = tuple(b.strategy for b in bindings if b.strategy.strategy_id != source.strategy_id)
+    assert len(prior) == 41
+    store = Mock(spec=BackfillStore)
+    store.lookup_complete_by_logical_keys.return_value = {}
+    store.lookup_many_by_unique_keys.return_value = {}
+    store.summary.return_value = {}
+    ReplayBackfill(
+        adapter=adapter,
+        strategies=prior,
+        draws=_draws()[:1],
+        source_identity="r184-fixture",
+        store=store,
+        execution_version="r184-default-closure-test",
+    ).execute(BackfillSelection(all_draws=True))
+    rows = [row for call in store.save_many.call_args_list for row in call.args[1]]
+    assert len(rows) == len(prior)
+    assert all(
+        row["execution_status"] == "NOT_ELIGIBLE" and not row["predicted_tickets"] for row in rows
+    )
+    assert {row["strategy_id"]: row["error_reason"] for row in rows} == {
+        s.strategy_id: f"INSUFFICIENT_CAUSAL_HISTORY_REQUIRED_{s.min_history}_GOT_0" for s in prior
+    }
 
 
 def test_wave63_advanced_ordered_portfolios(monkeypatch: pytest.MonkeyPatch) -> None:

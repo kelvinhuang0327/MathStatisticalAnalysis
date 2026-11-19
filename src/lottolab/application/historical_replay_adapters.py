@@ -295,6 +295,10 @@ class BigLottoReplayAdapter(_PrizeEvaluatingAdapter):
     def strategies(self) -> tuple[ReplayStrategy, ...]:
         return tuple(binding.strategy for binding in self._bindings)
 
+    def replays_recorded_closures(self, strategy: ReplayStrategy) -> bool:
+        implementation = self._binding(strategy).implementation
+        return getattr(implementation, "replays_recorded_closures", False) is True
+
     def expected_native_ticket_count(
         self,
         strategy: ReplayStrategy,

@@ -66,6 +66,10 @@ class ReplayTypedClosure(Exception):
     """A strategy declared a legitimate native portfolio closure."""
 
 
+class RecordedInsufficientHistory(InsufficientHistory):
+    """The frozen output for this exact target and prefix records a training closure."""
+
+
 class HistoricalReplayContractError(ValueError):
     """The source snapshot violates the shared controller contract."""
 
@@ -393,7 +397,10 @@ class HistoricalReplayController:
                 "CAUSAL_CUTOFF_VIOLATION",
                 history_fingerprint,
             )
-        if len(history) < strategy.min_history:
+        recorded_closures = getattr(self._adapter, "replays_recorded_closures", None)
+        if len(history) < strategy.min_history and not (
+            callable(recorded_closures) and recorded_closures(strategy) is True
+        ):
             return _empty_record(
                 target,
                 strategy,
@@ -441,7 +448,9 @@ class HistoricalReplayController:
                 strategy,
                 ReplayCellStatus.NOT_ELIGIBLE,
                 history,
-                f"{type(exc).__name__}: {_short_message(exc)}",
+                _short_message(exc)
+                if isinstance(exc, RecordedInsufficientHistory)
+                else f"{type(exc).__name__}: {_short_message(exc)}",
                 history_fingerprint,
             )
         except Exception as exc:  # Adapter failures are recorded, never hidden.
@@ -952,5 +961,6 @@ __all__ = [
     "HistoricalReplayAdapter",
     "HistoricalReplayContractError",
     "HistoricalReplayController",
+    "RecordedInsufficientHistory",
     "ReplayTypedClosure",
 ]

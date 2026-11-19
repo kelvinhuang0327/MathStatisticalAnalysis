@@ -267,6 +267,7 @@ def _exact_strategy_inventory(
         ):
             if (source.strategy_id, source.strategy_version) != (strategy_id, version):
                 continue
+            scope = getattr(binding.implementation, "replay_scope", None)
             return (binding,), {
                 strategy_id: {
                     "status": "EXECUTABLE",
@@ -282,6 +283,7 @@ def _exact_strategy_inventory(
                     "lifecycle_status": "UNREGISTERED",
                     "data_status": "REBUILDABLE",
                     "training_status": "NOT_TRAINABLE",
+                    **({"replay_scope": scope} if scope else {}),
                 }
             }
 

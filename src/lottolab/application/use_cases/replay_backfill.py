@@ -126,6 +126,10 @@ class _OutcomeBlindAdapter:
     ) -> tuple[ReplayTicket, ...]:
         return self._adapter.generate(strategy, history, self._redact(target))
 
+    def replays_recorded_closures(self, strategy: ReplayStrategy) -> bool:
+        resolver = getattr(self._adapter, "replays_recorded_closures", None)
+        return callable(resolver) and resolver(strategy) is True
+
     def expected_native_ticket_count(
         self, strategy: ReplayStrategy, history: tuple[ReplayDraw, ...], target: ReplayDraw
     ) -> int:

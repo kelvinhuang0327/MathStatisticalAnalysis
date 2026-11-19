@@ -33,6 +33,8 @@ PINNED_DATASET_SHA256 = (
     "2f3d711cb97cddabfc6d351b5a639614da60dc3473cc23368711f605e3fe2d6b"
 )
 LEDGER_RESOURCE_NAME = "biglotto_xgboost_wave64_ticket_ledger_v1.json"
+EVIDENCE_RESOURCE_NAME = "biglotto_legacy_xgboost_wave64_evidence_v1.json"
+EVIDENCE_FILE_SHA256 = "2173aa5a4c354c8d8d11c0459e3017dcc4baaca770dc6fc623df683c0b191741"
 LEDGER_SCHEMA_VERSION = "BIG_LOTTO_XGBOOST_WAVE64_TICKET_LEDGER_V1"
 LEDGER_FILE_SHA256 = (
     "0e2946ccf9a803488afd5475e833bd557a40bf93e5d1cb26e912a29926b1a9ba"
@@ -192,11 +194,11 @@ def _ticket(value: object) -> Ticket:
 
 @lru_cache(maxsize=1)
 def _load_ledger() -> _Ledger:
-    raw = (
-        files("lottolab.strategies.data")
-        .joinpath(LEDGER_RESOURCE_NAME)
-        .read_bytes()
-    )
+    resources = files("lottolab.strategies.data")
+    evidence = resources.joinpath(EVIDENCE_RESOURCE_NAME).read_bytes()
+    if hashlib.sha256(evidence).hexdigest() != EVIDENCE_FILE_SHA256:
+        raise LegacyXGBoostNativeWave64Error("packaged wave-64 source evidence SHA changed")
+    raw = resources.joinpath(LEDGER_RESOURCE_NAME).read_bytes()
     if hashlib.sha256(raw).hexdigest() != LEDGER_FILE_SHA256:
         raise LegacyXGBoostNativeWave64Error(
             "packaged wave-64 ledger file SHA changed"
@@ -226,6 +228,7 @@ def _load_ledger() -> _Ledger:
         or document.get("frozen_source_commit") != FROZEN_SOURCE_COMMIT
         or document.get("legacy_method_id") != METHOD_ID
         or document.get("source_sha256") != SOURCE_SHA256
+        or document.get("source_reference_runtime") != SOURCE_REFERENCE_RUNTIME
         or document.get("causal_protocol") != CAUSAL_PROTOCOL
         or document.get("causal_eligibility_rule")
         != CAUSAL_ELIGIBILITY_RULE
@@ -411,7 +414,10 @@ def generate_legacy_xgboost_native_wave64_portfolio(
             "TARGET_OUTSIDE_FROZEN_WAVE64_TICKET_LEDGER"
         )
     context_sha256 = _context_sha256(request.history)
-    if context_sha256 != ledger.context_sha256[target_index]:
+    if (
+        context_sha256 != ledger.context_sha256[target_index]
+        or tuple(draw.draw_number for draw in request.history) != ledger.targets[:target_index]
+    ):
         raise LegacyXGBoostNativeWave64SourceError(
             "FROZEN_WAVE64_FULL_PREFIX_CONTEXT_MISMATCH"
         )

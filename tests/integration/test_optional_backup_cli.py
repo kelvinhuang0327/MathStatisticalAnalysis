@@ -12,6 +12,13 @@ from lottolab.interfaces.cli import optional_backup
 from lottolab.interfaces.cli.main import app
 
 
+def _mock_free_space(monkeypatch: pytest.MonkeyPatch, free: int) -> None:
+    def disk_usage(_: Path) -> SimpleNamespace:
+        return SimpleNamespace(free=free)
+
+    monkeypatch.setattr(shutil, "disk_usage", disk_usage)
+
+
 @pytest.fixture
 def source(tmp_path: Path) -> Path:
     database = tmp_path / "source.sqlite3"
@@ -31,7 +38,7 @@ def test_backup_accepts_threshold_and_checks_resolved_destination_volume(
     target_dir.mkdir()
     link = tmp_path / "destination-link"
     link.symlink_to(target_dir, target_is_directory=True)
-    checked = []
+    checked: list[Path] = []
 
     def disk_usage(path: Path) -> SimpleNamespace:
         checked.append(path)
@@ -49,9 +56,7 @@ def test_backup_accepts_threshold_and_checks_resolved_destination_volume(
 def test_low_space_refuses_without_creating_destination_and_normal_read_still_works(
     source: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr(
-        shutil, "disk_usage", lambda _: SimpleNamespace(free=optional_backup.MIN_FREE_BYTES - 1)
-    )
+    _mock_free_space(monkeypatch, optional_backup.MIN_FREE_BYTES - 1)
     destination = tmp_path / "backup.sqlite3"
     result = CliRunner().invoke(app, ["optional-backup", str(source), str(destination)])
     assert result.exit_code == 1
@@ -68,9 +73,7 @@ def test_low_space_refuses_without_creating_destination_and_normal_read_still_wo
 def test_existing_destination_is_never_replaced(
     source: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, symlink: bool
 ) -> None:
-    monkeypatch.setattr(
-        shutil, "disk_usage", lambda _: SimpleNamespace(free=optional_backup.MIN_FREE_BYTES)
-    )
+    _mock_free_space(monkeypatch, optional_backup.MIN_FREE_BYTES)
     existing = tmp_path / "existing"
     existing.write_bytes(b"keep")
     destination = tmp_path / "backup"
@@ -86,17 +89,15 @@ def test_existing_destination_is_never_replaced(
 def test_backup_failure_closes_connections_and_removes_partial_file(
     source: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr(
-        shutil, "disk_usage", lambda _: SimpleNamespace(free=optional_backup.MIN_FREE_BYTES)
-    )
+    _mock_free_space(monkeypatch, optional_backup.MIN_FREE_BYTES)
     original_connect = sqlite3.connect
-    closed = []
+    source_closed = False
 
     class FailingSource:
         def __init__(self, connection: sqlite3.Connection) -> None:
             self.connection = connection
 
-        def execute(self, sql: str):
+        def execute(self, sql: str) -> sqlite3.Cursor:
             return self.connection.execute(sql)
 
         def backup(self, destination: sqlite3.Connection) -> None:
@@ -104,18 +105,19 @@ def test_backup_failure_closes_connections_and_removes_partial_file(
             raise sqlite3.OperationalError("simulated backup failure")
 
         def close(self) -> None:
+            nonlocal source_closed
             self.connection.close()
-            closed.append(True)
+            source_closed = True
 
-    def connect(*args, **kwargs):
-        connection = original_connect(*args, **kwargs)
-        return FailingSource(connection) if kwargs.get("uri") else connection
+    def connect(database: str | Path, *, uri: bool = False) -> sqlite3.Connection | FailingSource:
+        connection = original_connect(database, uri=uri)
+        return FailingSource(connection) if uri else connection
 
     monkeypatch.setattr(optional_backup.sqlite3, "connect", connect)
     destination = tmp_path / "backup.sqlite3"
     result = CliRunner().invoke(app, ["optional-backup", str(source), str(destination)])
     assert result.exit_code == 1
     assert "simulated backup failure" in result.output
-    assert closed == [True]
+    assert source_closed
     assert not destination.exists()
     assert not list(tmp_path.glob(".optional-backup-*"))

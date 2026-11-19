@@ -287,7 +287,11 @@ def test_empty_import_stage_does_not_use_optional_backup_space_guard(
     test_root.mkdir()
     source = test_root / "stage.sqlite3"
     _create_empty_backfill_database(source)
-    monkeypatch.setattr(shutil, "disk_usage", lambda _: SimpleNamespace(free=1))
+
+    def disk_usage(_: Path) -> SimpleNamespace:
+        return SimpleNamespace(free=1)
+
+    monkeypatch.setattr(shutil, "disk_usage", disk_usage)
     assert (
         replay_backfill_main(
             ["import-stage", "--source", str(source), "--database", str(target)],

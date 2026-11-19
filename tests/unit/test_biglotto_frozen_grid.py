@@ -34,7 +34,7 @@ from lottolab.application.use_cases.replay_backfill import (
 from lottolab.domain.draws import LotteryType
 from lottolab.domain.historical_replay import ReplayDraw
 from lottolab.interfaces.cli import replay_backfill as cli
-from lottolab.strategies.adapters.base import CausalDrawRow, InsufficientHistory
+from lottolab.strategies.adapters.base import CausalDrawRow, InsufficientHistory, InvalidOutput
 
 ROOT = Path(__file__).resolve().parents[2]
 FIXTURES = ROOT / "tests/fixtures/replay"
@@ -249,32 +249,189 @@ def test_wave64_xgboost_scope_and_recorded_backfill_closures() -> None:
     assert first["training"]["training_status"] == "NOT_TRAINABLE"
 
 
-def test_wave64_keeps_default_minimum_history_closures_for_r184_bindings() -> None:
-    bindings = versioned_biglotto_replay_bindings()
-    adapter = cli.build_adapter(BIG, bindings)
-    source = _source("xgboost_model")
-    prior = tuple(b.strategy for b in bindings if b.strategy.strategy_id != source.strategy_id)
-    assert len(prior) == 41
+def test_wave62_diversified_portfolios(monkeypatch: pytest.MonkeyPatch) -> None:
+    reject_sqlite = Mock(side_effect=AssertionError("Wave 62 replay must not open SQLite"))
+    monkeypatch.setattr(sqlite3, "connect", reject_sqlite)
+    monkeypatch.setattr(sqlite3.dbapi2, "connect", reject_sqlite)
+    source = _source("biglotto_diversified_ensemble")
+    resources = ROOT / "src/lottolab/strategies/data"
+    raw = (resources / "biglotto_legacy_diversified_wave62_evidence_v1.json").read_bytes()
+    assert hashlib.sha256(raw).hexdigest() == (
+        "7441a0e0007e8d4e53f9e2e05ccc350d20518411b847b6c36ffd07ec4cbbfd3d"
+    )
+    evidence = json.loads(raw)
+    record = next(r for r in evidence["strategies"] if r["legacy_method_id"] == source.source_path)
+    raw = (resources / "biglotto_diversified_wave62_ticket_ledger_v1.json").read_bytes()
+    assert (
+        hashlib.sha256(raw).hexdigest()
+        == evidence["ledger_file_sha256"]
+        == ("223b593f391d3f9f9aafc1c494b7693e4e25a194c68c620a83c8ee822b1182e9")
+    )
+    ledger = json.loads(raw)
+    assert ledger["frozen_source_commit"] == source.source_commit
+    assert ledger["source_sha256_by_method"][source.source_path] == source.source_sha256
+    assert {
+        "path": source.source_path,
+        "sha256": source.source_sha256,
+        "source_blob_id": source.source_blob_id,
+    } in evidence["parity"]["source_artifacts"]
+    bindings, accounts = cli._exact_strategy_inventory(
+        BIG, source.strategy_id, source.strategy_version
+    )
+    assert accounts[source.strategy_id]["source"] == source.locator
+    [binding] = bindings
+    strategy, adapter = binding.strategy, cli.build_adapter(BIG, bindings)
+    assert (strategy.min_history, strategy.native_ticket_count) == (50, 3)
+    draws = _draws()[:2149]
+    expected = ledger["tickets_by_method"][source.source_path]
+    reasons = ledger["closed_reason_by_method"][source.source_path]
+    closure = "AVAILABLE_HISTORY_BELOW_FROZEN_SOURCE_MINIMUM"
+    assert reasons == [closure] * 50 + [None] * 2099
+    assert ledger["configuration_count_by_method"][source.source_path] == [None] * 50 + [1] * 2099
+    assert len(expected) == len(draws) == len(ledger["context_numbers_sha256_by_target"]) == 2149
+    assert [draw.draw_number for draw in draws] == ledger["target_draw_numbers"]
+    assert draws[50].draw_number == "96000051"
+
+    prefix = hashlib.sha256(b"[")
+    actual = []
+    for cutoff, target in enumerate(draws):
+        context = prefix.copy()
+        context.update(b"]")
+        assert context.hexdigest() == ledger["context_numbers_sha256_by_target"][cutoff]
+        if cutoff < 50:
+            with pytest.raises(InsufficientHistory) as exc:
+                adapter.generate(strategy, draws[:cutoff], target)
+            assert str(exc.value) == reasons[cutoff]
+            portfolio = None
+        else:
+            tickets = adapter.generate(strategy, draws[:cutoff], target)
+            assert [t.ticket_position for t in tickets] == [1, 2, 3]
+            assert all(t.special_number is None for t in tickets)
+            portfolio = [list(t.main_numbers) for t in tickets]
+        assert portfolio == expected[cutoff], (cutoff, target.draw_number)
+        actual.append(portfolio)
+        if cutoff:
+            prefix.update(b",")
+        prefix.update(json.dumps(target.main_numbers, separators=(",", ":")).encode())
+
+    eligible = [p for p in actual if p is not None]
+    assert actual.count(None) == record["closed_execution_count"] == 50
+    assert len(eligible) == record["ok_execution_count"] == 2099
+    assert sum(map(len, eligible)) == 6297
+    assert (
+        hashlib.sha256(json.dumps(eligible, separators=(",", ":")).encode()).hexdigest()
+        == record["ticket_sequence_sha256"]
+        == "06fd6f9bc0cdac34c20859d0cd27e9c1b5f8e60c3f031e86c1bdb93b3ae2ccf5"
+    )
+    assert hashlib.sha256(json.dumps(actual, separators=(",", ":")).encode()).hexdigest() == (
+        "e24e53c0688b27e6c2d6b632912a46d79ca5366dce3b7ace393b5fe4870c75c6"
+    )
+    reject_sqlite.assert_not_called()
+
+
+def test_wave62_diversified_seed_and_special_history(monkeypatch: pytest.MonkeyPatch) -> None:
+    source = _source("biglotto_diversified_ensemble")
+    bindings, _ = cli._exact_strategy_inventory(BIG, source.strategy_id, source.strategy_version)
+    strategy, adapter = bindings[0].strategy, cli.build_adapter(BIG, bindings)
+    draws = _draws()
+    history, target = draws[:55], draws[55]
+    changed_special = (*history[:-1], replace(history[-1], special_number=3))
+    random_factory = Mock(wraps=random.Random)
+    state = random.getstate()
+    monkeypatch.setattr(random, "Random", random_factory)
+    original = adapter.generate(strategy, history, target)
+    changed = adapter.generate(strategy, changed_special, target)
+    # The previous special determines the second pool. Its rejection draws can
+    # shift the same RNG stream that supplies the third (entropy outlier) bet.
+    assert original[0] == changed[0] and original[1] != changed[1] and original[2] != changed[2]
+    secret = replace(target, main_numbers=(1, 2, 3, 4, 5, 6), special_number=7)
+    assert adapter.generate(strategy, history, secret) == original
+    assert [c.args for c in random_factory.call_args_list] == [(42,)] * 3
+    assert random.getstate() == state
+    with pytest.raises(InvalidOutput, match="strictly earlier"):
+        adapter.generate(strategy, (*history, target), target)
+    with pytest.raises(InvalidOutput, match="chronological"):
+        adapter.generate(strategy, history[::-1], target)
+    with pytest.raises(InvalidOutput, match="missing historical special"):
+        adapter.generate(
+            strategy, (*history[:-1], replace(history[-1], special_number=None)), target
+        )
+
+
+def test_wave62_diversified_backfill_minimum() -> None:
+    source = _source("biglotto_diversified_ensemble")
+    bindings, accounts = cli._exact_strategy_inventory(
+        BIG, source.strategy_id, source.strategy_version
+    )
+    strategy = bindings[0].strategy
+    draws = _draws()[:51]
     store = Mock(spec=BackfillStore)
     store.lookup_complete_by_logical_keys.return_value = {}
     store.lookup_many_by_unique_keys.return_value = {}
     store.summary.return_value = {}
     ReplayBackfill(
-        adapter=adapter,
-        strategies=prior,
-        draws=_draws()[:1],
-        source_identity="r184-fixture",
+        adapter=cli.build_adapter(BIG, bindings),
+        strategies=(strategy,),
+        draws=draws,
+        source_identity="wave62-fixture",
         store=store,
-        execution_version="r184-default-closure-test",
+        execution_version="wave62-test",
+        strategy_sources=accounts,
     ).execute(BackfillSelection(all_draws=True))
-    rows = [row for call in store.save_many.call_args_list for row in call.args[1]]
-    assert len(rows) == len(prior)
-    assert all(
-        row["execution_status"] == "NOT_ELIGIBLE" and not row["predicted_tickets"] for row in rows
-    )
-    assert {row["strategy_id"]: row["error_reason"] for row in rows} == {
-        s.strategy_id: f"INSUFFICIENT_CAUSAL_HISTORY_REQUIRED_{s.min_history}_GOT_0" for s in prior
+    *closed, eligible = [row for batch in store.save_many.call_args_list for row in batch.args[1]]
+    assert len(closed) == 50
+    for i, row in enumerate(closed):
+        assert (row["target_draw_id"], row["history_count"]) == (draws[i].draw_number, i)
+        assert row["execution_status"] == "NOT_ELIGIBLE" and row["predicted_tickets"] == []
+        assert row["error_reason"] == "AVAILABLE_HISTORY_BELOW_FROZEN_SOURCE_MINIMUM"
+    assert eligible["target_draw_id"] == "96000051" and eligible["execution_status"] == "COMPLETE"
+    assert eligible["strategy_version"] == source.strategy_version
+    assert len(eligible["predicted_tickets"]) == 3
+
+
+def test_r184_bindings_keep_fingerprints_and_default_minimum_closures() -> None:
+    new_ids = {
+        _source("xgboost_model").strategy_id,
+        _source("biglotto_diversified_ensemble").strategy_id,
     }
+    bindings = versioned_biglotto_replay_bindings()
+    previous = tuple(b for b in bindings if b.strategy.strategy_id not in new_ids)
+    strategies = {b.strategy.strategy_id: b.strategy for b in previous}
+    assert len(previous) == len(strategies) == 41
+    store = Mock(spec=BackfillStore)
+    store.lookup_complete_by_logical_keys.return_value = {}
+    store.lookup_many_by_unique_keys.return_value = {}
+    store.summary.return_value = {}
+    ReplayBackfill(
+        adapter=cli.build_adapter(BIG, bindings),
+        strategies=tuple(b.strategy for b in previous),
+        draws=_draws()[:1],
+        source_identity="r184-closures",
+        store=store,
+        execution_version="r186-test",
+    ).execute(BackfillSelection(all_draws=True))
+    rows = [row for batch in store.save_many.call_args_list for row in batch.args[1]]
+    assert len(rows) == 41 and {r["strategy_id"] for r in rows} == set(strategies)
+    snapshot = []
+    for row in rows:
+        strategy = strategies[row["strategy_id"]]
+        assert row["execution_status"] == "NOT_ELIGIBLE" and row["predicted_tickets"] == []
+        minimum = strategy.min_history
+        assert row["error_reason"] == f"INSUFFICIENT_CAUSAL_HISTORY_REQUIRED_{minimum}_GOT_0"
+        snapshot.append(
+            (
+                *strategy.identity,
+                minimum,
+                strategy.native_ticket_count,
+                strategy.behavior.value,
+                strategy.seed_contract,
+                row["execution_status"],
+                row["error_reason"],
+            )
+        )
+    # Collected through ReplayBackfill at the R184 integration commit c59752b7.
+    digest = hashlib.sha256(json.dumps(sorted(snapshot), separators=(",", ":")).encode())
+    assert digest.hexdigest() == "9042e66a9145928343f15f9590da027d9c6890d1e37ce73384384117f00a64a7"
 
 
 def test_wave63_advanced_ordered_portfolios(monkeypatch: pytest.MonkeyPatch) -> None:

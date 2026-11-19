@@ -32,7 +32,7 @@ def test_inventory_conserves_sources_and_executable_identities() -> None:
 
     assert inventory.total_discovered_strategies == 683
     assert inventory.total_unique_strategies == 443
-    assert len(inventory.executable_items) == 254
+    assert len(inventory.executable_items) == 255
     assert inventory.unresolved_source_count == 9
     assert source_counts["PRODUCTION_CATALOG"].source_identity_count == 138
     assert source_counts["B649_RESEARCH_CATALOG"].source_identity_count == 221
@@ -50,7 +50,7 @@ def test_inventory_conserves_sources_and_executable_identities() -> None:
         LotteryType.POWER_LOTTO: 24,
     }
     assert executable_by_lottery == {
-        LotteryType.BIG_LOTTO: 168,
+        LotteryType.BIG_LOTTO: 169,
         LotteryType.DAILY_539: 62,
         LotteryType.POWER_LOTTO: 24,
     }
@@ -80,8 +80,8 @@ def test_inventory_keeps_status_dimensions_and_unavailable_cases_separate() -> N
     inventory = load_replay_strategy_inventory()
     by_data_status = Counter(item.replay_data_status for item in inventory.items)
     assert by_data_status == {
-        ReplayDataStatus.REBUILDABLE: 254,
-        ReplayDataStatus.ARTIFACT_ONLY: 86,
+        ReplayDataStatus.REBUILDABLE: 255,
+        ReplayDataStatus.ARTIFACT_ONLY: 85,
         ReplayDataStatus.REJECTED: 74,
         ReplayDataStatus.NO_HISTORY: 27,
         ReplayDataStatus.CODE_ONLY: 2,
@@ -102,7 +102,7 @@ def test_inventory_keeps_status_dimensions_and_unavailable_cases_separate() -> N
         for item in inventory.items
         if item.replay_data_status is ReplayDataStatus.ARTIFACT_ONLY
     ]
-    assert len(artifact_only) == 86
+    assert len(artifact_only) == 85
     assert all(item.historical_data_count == 0 for item in artifact_only)
     assert all(
         item.execution_capability is not ReplayExecutionCapability.EXECUTABLE
@@ -219,7 +219,7 @@ def test_exact_source_mismatches_have_replay_only_versioned_bindings() -> None:
         (binding.strategy.strategy_id, binding.strategy.strategy_version): binding
         for binding in bindings
     }
-    assert len(bindings) == len(by_identity) == 42
+    assert len(bindings) == len(by_identity) == 43
     assert set(by_identity) == {
         (source.strategy_id, source.strategy_version)
         for source in VERSIONED_REPLAY_SOURCES

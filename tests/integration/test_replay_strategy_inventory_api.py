@@ -25,10 +25,10 @@ def test_replay_strategy_inventory_api_lists_separate_states_and_full_backfill_i
     payload = response.json()
     assert payload["total_discovered_strategies"] == 683
     assert payload["total_unique_strategies"] == 443
-    assert payload["total_executable"] == 254
-    assert payload["total_reconstructable"] == 254
+    assert payload["total_executable"] == 255
+    assert payload["total_reconstructable"] == 255
     assert payload["total_has_history"] == 0
-    assert payload["total_artifact_only"] == 86
+    assert payload["total_artifact_only"] == 85
     assert payload["total_rejected"] == 74
     assert payload["lifecycle_status_counts"]["ONLINE"] == 137
     assert payload["lifecycle_status_counts"]["OBSERVATION"] == 0
@@ -36,8 +36,14 @@ def test_replay_strategy_inventory_api_lists_separate_states_and_full_backfill_i
     assert payload["lifecycle_status_counts"]["CODE_ONLY"] == 3
     assert payload["source_status_counts"]["OBSERVATION"] == 2
     assert payload["replay_data_status_counts"]["CODE_ONLY"] == 2
-    assert payload["execution_capability_counts"]["EXECUTABLE"] == 254
-    assert payload["execution_capability_counts"]["UNAVAILABLE"] == 189
+    assert payload["execution_capability_counts"]["EXECUTABLE"] == 255
+    assert payload["execution_capability_counts"]["UNAVAILABLE"] == 188
+    [original] = [
+        row for row in payload["strategies"]
+        if row["strategy_id"] == "legacy_biglotto__biglotto_diversified_ensemble__36dbfc14b360"
+    ]
+    assert original["strategy_version"] == "legacy-source-49a25effa62f-36dbfc14b360"
+    assert original["backfill_runnable"] is True
     [advanced] = [
         row for row in payload["strategies"]
         if row["strategy_id"] == "legacy_biglotto__advanced_methods_benchmark__87ee0d15033c"

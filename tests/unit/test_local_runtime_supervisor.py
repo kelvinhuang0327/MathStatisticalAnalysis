@@ -1398,6 +1398,7 @@ def test_smoke_verifies_health_proxy_catalog_openapi_and_local_listeners(
                     "paths": {
                             "/api/health": {"get": {}},
                             "/api/b649/canonical-forecast/current": {"get": {}},
+                            "/api/b649/native-forecast/current": {"get": {}},
                             "/api/v1/strategies": {"get": {}},
                                 "/api/v1/strategy-overview": {"get": {}},
                                 "/api/v1/strategy-evidence": {"get": {}},
@@ -1558,6 +1559,7 @@ def test_smoke_verifies_health_proxy_catalog_openapi_and_local_listeners(
                         "/api/v1/replay-backfill/k3-comparison": {"get": {}},
                         "/api/v1/replay-backfill/predictions": {"get": {}},
                         "/api/v1/replay-backfill/coverage": {"get": {}},
+                        "/api/v1/replay-backfill/coverage/scan": {"get": {}},
                         "/api/v1/replay-backfill/results": {"get": {}},
                         "/api/v1/replay-backfill/uniform-eight-reference": {"get": {}},
                         "/api/v1/replay-backfill/runs": {"get": {}},

@@ -167,6 +167,7 @@ function installDefaultApi(overrides: {
   predictions?: (url: URL) => unknown
   predictionStatus?: number
   uniformReference?: (url: URL) => unknown
+  mainThreeSummary?: (url: URL) => unknown
 } = {}) {
   const fetchMock = vi.fn<typeof fetch>().mockImplementation((input) => {
     const url = new URL(String(input), 'http://localhost')
@@ -201,6 +202,12 @@ function installDefaultApi(overrides: {
         metric_id: 'REFERENCE_FIXED_EIGHT_TIER_ANY_PRIZE', groups: [],
       }))
     }
+    if (url.pathname === '/api/v1/replay-backfill/research-main-three-summary') {
+      return Promise.resolve(apiResponse(overrides.mainThreeSummary?.(url) ?? {
+        run_id: url.searchParams.get('run_id'), strategy_id: url.searchParams.get('strategy_id'),
+        metric_id: 'MAIN_HITS_GE_3_ANY_OF_THREE', unrelated_cells: 0, groups: [],
+      }))
+    }
     throw new Error(`Unexpected fetch: ${url}`)
   })
   vi.stubGlobal('fetch', fetchMock)
@@ -220,6 +227,66 @@ afterEach(() => {
 })
 
 describe('Replay Backfill API UI', () => {
+  it('rejects a research summary whose reported rate contradicts its counts', async () => {
+    installDefaultApi({
+      predictions: () => predictionPage([prediction('103000080', {
+        research_main_three: { metric_id: 'MAIN_HITS_GE_3_ANY_OF_THREE',
+          status: 'SCORABLE', success: false, scorer_version: 'scorer-v1' },
+      })], 1, null, 'run-linked'),
+      mainThreeSummary: () => ({
+        run_id: 'run-linked', strategy_id: 'strategy-history',
+        metric_id: 'MAIN_HITS_GE_3_ANY_OF_THREE', unrelated_cells: 0,
+        groups: [{ strategy_version: 'v1', dataset_identity: 'dataset-1',
+          execution_version: 'saved-v1', scorer_version: 'scorer-v1', eligible_draws: 535,
+          unknown_draws: 0, successes: 35, success_rate_percent: 99,
+          unknown_provenance_draws: 535, baseline_success_rate_percent: 5.51,
+          difference_from_baseline_pp: 93.49 }],
+      }),
+    })
+    window.history.replaceState({}, '', '?replay_run_id=run-linked&replay_strategy_id=strategy-history')
+    const wrapper = await openBackfillPage()
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+    expect(wrapper.find('[data-testid="main-three-summary"]').exists()).toBe(false)
+    expect(wrapper.text()).toContain('invalid response')
+    wrapper.unmount()
+    window.history.replaceState({}, '', '/')
+  })
+  it('shows the saved main-three event separately from eight-tier prizes and scopes its summary', async () => {
+    const fetchMock = installDefaultApi({
+      predictions: () => predictionPage([prediction('103000080', {
+        portfolio_any_prize: true,
+        research_main_three: { metric_id: 'MAIN_HITS_GE_3_ANY_OF_THREE',
+          status: 'SCORABLE', success: false, scorer_version: 'scorer-v1' },
+      })], 1, null, 'run-linked'),
+      mainThreeSummary: () => ({
+        run_id: 'run-linked', strategy_id: 'strategy-history',
+        metric_id: 'MAIN_HITS_GE_3_ANY_OF_THREE', unrelated_cells: 0,
+        groups: [{ strategy_version: 'v1', dataset_identity: 'dataset-1',
+          execution_version: 'saved-v1', scorer_version: 'scorer-v1', eligible_draws: 535,
+          unknown_draws: 0, successes: 35, success_rate_percent: 6.542056074766355,
+          unknown_provenance_draws: 535, baseline_success_rate_percent: 5.510055070925007,
+          difference_from_baseline_pp: 1.0320010038413487 }],
+      }),
+    })
+    window.history.replaceState({}, '', '?replay_run_id=run-linked&replay_strategy_id=strategy-history')
+    const wrapper = await openBackfillPage()
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+    const summary = wrapper.get('[data-testid="main-three-summary"]').text()
+    expect(summary).toContain('35／535')
+    expect(summary).toContain('5.51%')
+    expect(summary).toContain('+1.03')
+    expect(summary).toContain('來源未驗證 535')
+    expect(wrapper.get('[data-testid="main-three-outcome"]').text()).toBe('未符合')
+    expect(wrapper.text()).toContain('既有歷史規則結果（來源待核）')
+    const request = fetchMock.mock.calls.map(([value]) => String(value))
+      .find((value) => value.includes('/research-main-three-summary?'))
+    expect(request).toContain('run_id=run-linked')
+    expect(request).toContain('strategy_id=strategy-history')
+    wrapper.unmount()
+    window.history.replaceState({}, '', '/')
+  })
   it('shows the uniform research reference separately from historical official prizes', async () => {
     installDefaultApi({
       predictions: () => predictionPage([prediction('103000080', {
@@ -478,7 +545,7 @@ describe('Replay Backfill API UI', () => {
     expect(wrapper.text()).toContain('2')
     expect(wrapper.text()).toContain('artifact-training-4')
     expect(wrapper.text()).toContain('Training cutoff')
-    expect(wrapper.text()).toContain('官方特別號')
+    expect(wrapper.text()).toContain('開獎特別號（來源見明細）')
     wrapper.unmount()
   })
 
@@ -600,7 +667,7 @@ describe('Replay Backfill API UI', () => {
     expect(wrapper.text()).toContain('strategy-POWER_LOTTO')
     await wrapper.get('form').trigger('submit')
     await flushPromises()
-    expect(wrapper.text()).toContain('官方第二區')
+    expect(wrapper.text()).toContain('開獎第二區（來源見明細）')
     expect(wrapper.text()).toContain('p638-target-1')
     expect(wrapper.text()).toContain('3')
     wrapper.unmount()

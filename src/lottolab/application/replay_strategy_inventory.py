@@ -1452,6 +1452,22 @@ _IMPORTED_HISTORY_ONLY_REASON = (
 _IMPORTED_REPLAY_IDENTITIES: tuple[_ImportedReplayIdentitySpec, ...] = (
     _ImportedReplayIdentitySpec(
         lottery_type=LotteryType.BIG_LOTTO,
+        strategy_id="legacy_biglotto__test_cluster_cover__5b43959e7c55",
+        display_name="Cluster Cover v0.2 (歷史研究結果)",
+        strategy_version="v0.2-research-frequency100",
+        source_locator=(
+            "research-store-saved-k3-projection-v1:"
+            "cluster-cover-v0.2-research-frequency100"
+        ),
+        reconstruction_reason=(
+            "Saved research-only variant; replay history is available only when an exact "
+            "version is present in the selected Replay Backfill database. No current native "
+            "executable binding is asserted."
+        ),
+        source_status="RESEARCH_STRATEGY",
+    ),
+    _ImportedReplayIdentitySpec(
+        lottery_type=LotteryType.BIG_LOTTO,
         strategy_id="research_biglotto__k9_optimal_coverage_candidate",
         display_name="大樂透 K9 最佳公平覆蓋候選研究策略",
         strategy_version="v0.1-research",

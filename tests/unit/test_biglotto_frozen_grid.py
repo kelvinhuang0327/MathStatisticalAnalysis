@@ -15,6 +15,7 @@ from unittest.mock import Mock
 
 import pytest
 
+from lottolab.application import biglotto_frozen_diversified_ensemble_v6 as v6
 from lottolab.application import biglotto_frozen_hpsb as hpsb
 from lottolab.application import legacy_source_native_portfolios_wave27 as wave27
 from lottolab.application.biglotto_versioned_replay_bindings import VERSIONED_REPLAY_SOURCES
@@ -27,7 +28,7 @@ from lottolab.application.use_cases.replay_backfill import (
 from lottolab.domain.draws import LotteryType
 from lottolab.domain.historical_replay import ReplayDraw
 from lottolab.interfaces.cli import replay_backfill as cli
-from lottolab.strategies.adapters.base import InsufficientHistory
+from lottolab.strategies.adapters.base import CausalDrawRow, InsufficientHistory
 
 ROOT = Path(__file__).resolve().parents[2]
 FIXTURES = ROOT / "tests/fixtures/replay"
@@ -129,6 +130,143 @@ def _wave27_cases():
         digest = hashlib.sha256(json.dumps(history, separators=(",", ":")).encode()).hexdigest()
         assert digest == ledger["context_numbers_sha256_by_target"][cutoff - 1]
     return cases
+
+
+def test_wave58_v6_ordered_portfolios() -> None:
+    source = _source("biglotto_diversified_ensemble_v6")
+    resources = ROOT / "src/lottolab/strategies/data"
+    raw = (resources / "biglotto_legacy_dual_seeded_wave58_evidence_v1.json").read_bytes()
+    assert hashlib.sha256(raw).hexdigest() == (
+        "7db702bf9754c1a2d037130b9a11ce7b52e14121097e048d6c09cf505832ad35"
+    )
+    evidence = json.loads(raw)
+    record = next(r for r in evidence["strategies"] if r["legacy_method_id"] == source.source_path)
+    raw = (resources / "biglotto_dual_seeded_wave58_ticket_ledger_v1.json").read_bytes()
+    assert hashlib.sha256(raw).hexdigest() == evidence["ledger_file_sha256"] == (
+        "3070f69175c806674547111c54b8109d94ec57c8b34a78b1082f4e34adbabe01"
+    )
+    ledger = json.loads(raw)
+    assert ledger["frozen_source_commit"] == source.source_commit
+    assert ledger["source_sha256_by_method"][source.source_path] == source.source_sha256
+    bindings, accounts = cli._exact_strategy_inventory(
+        BIG, source.strategy_id, source.strategy_version
+    )
+    assert accounts[source.strategy_id]["source"] == source.locator
+    strategy, adapter = bindings[0].strategy, cli.build_adapter(BIG, bindings)
+    assert (strategy.min_history, strategy.native_ticket_count) == (1, 3)
+    expected = ledger["tickets_by_method"][source.source_path]
+    draws = _draws()[:2149]
+    assert len(expected) == len(draws) == 2149
+    assert [d.draw_number for d in draws] == ledger["target_draw_numbers"]
+    assert draws[0].draw_number == "96000001" and expected[0] is None
+    assert ledger["closed_reason_by_method"][source.source_path] == [
+        "AVAILABLE_HISTORY_BELOW_FROZEN_SOURCE_MINIMUM", *([None] * 2148)
+    ]
+    with pytest.raises(InsufficientHistory):
+        adapter.generate(strategy, (), draws[0])
+
+    prefix = hashlib.sha256(b"[")
+    actual = []
+    for cutoff, target in enumerate(draws):
+        context = prefix.copy()
+        context.update(b"]")
+        assert context.hexdigest() == ledger["context_numbers_sha256_by_target"][cutoff]
+        if cutoff:
+            tickets = adapter.generate(strategy, draws[:cutoff], target)
+            assert [t.ticket_position for t in tickets] == [1, 2, 3]
+            assert all(t.special_number is None for t in tickets)
+            portfolio = [list(t.main_numbers) for t in tickets]
+            assert portfolio == expected[cutoff], (cutoff, target.draw_number)
+            actual.append(portfolio)
+            prefix.update(b",")
+        prefix.update(json.dumps(target.main_numbers, separators=(",", ":")).encode())
+
+    assert len(actual) == record["ok_execution_count"] == 2148
+    assert sum(map(len, actual)) == 6444
+    digest = hashlib.sha256(json.dumps(actual, separators=(",", ":")).encode()).hexdigest()
+    assert digest == record["ticket_sequence_sha256"] == (
+        "e78dd91dd381562789ac0903fa030ac53082d7c39c063cdc3cd8b23f1ecc395e"
+    )
+
+
+def test_wave58_v6_backfill_closure_and_version() -> None:
+    source = _source("biglotto_diversified_ensemble_v6")
+    bindings, accounts = cli._exact_strategy_inventory(
+        BIG, source.strategy_id, source.strategy_version
+    )
+    live, _ = cli._exact_strategy_inventory(BIG, source.strategy_id, "v0.1")
+    strategy = bindings[0].strategy
+    assert live[0].strategy.strategy_version == "v0.1"
+    assert strategy.fingerprint != live[0].strategy.fingerprint
+    adapter = cli.build_adapter(BIG, bindings)
+    draws = _draws()
+    history, target = draws[:1001], draws[1001]
+    full = adapter.generate(strategy, history, target)
+    assert full != adapter.generate(strategy, history[-1000:], target)
+    limited = cli.build_adapter(BIG, live)
+    assert limited.generate(live[0].strategy, history, target) == limited.generate(
+        live[0].strategy, history[-1000:], target
+    )
+    assert full != limited.generate(live[0].strategy, history, target)
+
+    store = Mock(spec=BackfillStore)
+    store.lookup_complete_by_logical_keys.return_value = {}
+    store.lookup_many_by_unique_keys.return_value = {}
+    store.summary.return_value = {}
+    worker = ReplayBackfill(
+        adapter=adapter,
+        strategies=(strategy,),
+        draws=draws[:2],
+        source_identity="wave58-fixture",
+        store=store,
+        execution_version="wave58-test",
+        strategy_sources=accounts,
+    )
+    worker.execute(BackfillSelection(all_draws=True))
+    closed, eligible = store.save_many.call_args.args[1]
+    assert closed["target_draw_id"] == "96000001" and closed["history_count"] == 0
+    assert closed["execution_status"] == "NOT_ELIGIBLE" and closed["predicted_tickets"] == []
+    assert eligible["execution_status"] == "COMPLETE" and len(eligible["predicted_tickets"]) == 3
+    assert eligible["strategy_version"] == source.strategy_version
+
+
+def test_wave58_v6_graph_window_ties_and_seed_reset(monkeypatch: pytest.MonkeyPatch) -> None:
+    # A six-node clique gives equal nonzero centrality to its members and
+    # equal zero centrality to the remaining nodes. The newer clique is disjoint.
+    history = tuple(
+        CausalDrawRow(str(i), str(i), (21, 22, 23, 24, 25, 26) if i < 500 else (1, 2, 3, 4, 5, 6))
+        for i in range(1001)
+    )
+    graph = Mock(wraps=v6._graph_adjacency)
+    monkeypatch.setattr(v6, "_graph_adjacency", graph)
+    adapter = v6.FrozenDiversifiedEnsembleV6()
+    global_state = random.getstate()
+    try:
+        random.seed(7)
+        before = random.getstate()
+        first = adapter.get_bets(history, BIG)
+        assert random.getstate() == before
+        graph.assert_called_once_with(history[:500][::-1], lookback=500)
+        assert v6._graph_pool(history[:500]) == (*range(21, 27), *range(1, 15))
+        random.seed(54321)
+        before = random.getstate()
+        adapter.get_bets(history[:2], BIG)
+        assert adapter.get_bets(history, BIG) == first
+        assert random.getstate() == before
+    finally:
+        random.setstate(global_state)
+
+
+def test_wave58_v6_tail_pool_prefers_latest_ties_and_odds_first() -> None:
+    newest = CausalDrawRow("2", "2007-01-02", (5, 6, 7, 8, 9, 10))
+    oldest = CausalDrawRow("1", "2007-01-01", (1, 2, 3, 4, 9, 10))
+    # Tails 9 and 0 occur twice. The next three slots go to tails 5, 6, 7.
+    assert v6._tail_pool((newest, oldest)) == (
+        5, 7, 9, 15, 17, 19, 25, 27, 29, 35, 37, 39, 45, 47, 49,
+        6, 10, 16, 20, 26, 30, 36, 40, 46,
+    )
+    sparse = CausalDrawRow("1", "2007-01-01", (1, 2, 11, 12, 21, 22))
+    assert v6._tail_pool((sparse,)) == tuple(range(1, 50))
 
 
 def test_wave57_hpsb_ordered_portfolios() -> None:

@@ -25,10 +25,10 @@ def test_replay_strategy_inventory_api_lists_separate_states_and_full_backfill_i
     payload = response.json()
     assert payload["total_discovered_strategies"] == 683
     assert payload["total_unique_strategies"] == 443
-    assert payload["total_executable"] == 251
-    assert payload["total_reconstructable"] == 251
+    assert payload["total_executable"] == 252
+    assert payload["total_reconstructable"] == 252
     assert payload["total_has_history"] == 0
-    assert payload["total_artifact_only"] == 89
+    assert payload["total_artifact_only"] == 88
     assert payload["total_rejected"] == 74
     assert payload["lifecycle_status_counts"]["ONLINE"] == 137
     assert payload["lifecycle_status_counts"]["OBSERVATION"] == 0
@@ -36,13 +36,19 @@ def test_replay_strategy_inventory_api_lists_separate_states_and_full_backfill_i
     assert payload["lifecycle_status_counts"]["CODE_ONLY"] == 3
     assert payload["source_status_counts"]["OBSERVATION"] == 2
     assert payload["replay_data_status_counts"]["CODE_ONLY"] == 2
-    assert payload["execution_capability_counts"]["EXECUTABLE"] == 251
-    assert payload["execution_capability_counts"]["UNAVAILABLE"] == 192
+    assert payload["execution_capability_counts"]["EXECUTABLE"] == 252
+    assert payload["execution_capability_counts"]["UNAVAILABLE"] == 191
     assert {
         row["strategy_version"] for row in payload["strategies"]
         if row["strategy_id"] == "legacy_biglotto__hpsb_optimizer__cf5cd7d971e8"
         and row["backfill_runnable"]
     } == {"v0.1", "legacy-source-49a25effa62f-cf5cd7d971e8"}
+    assert {
+        row["strategy_version"]
+        for row in payload["strategies"]
+        if row["strategy_id"] == "legacy_biglotto__biglotto_diversified_ensemble_v6__8caaac8fcb5d"
+        and row["backfill_runnable"]
+    } == {"v0.1", "legacy-source-49a25effa62f-8caaac8fcb5d"}
     assert payload["strategy_count"] == payload["total_unique_strategies"]
     assert len(payload["executable_strategy_ids"]) == payload["total_executable"]
     assert all(

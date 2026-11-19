@@ -25,14 +25,22 @@ from lottolab.application.biglotto_versioned_replay_bindings import (
     versioned_biglotto_replay_bindings,
 )
 from lottolab.application.legacy_history_native_portfolios import LegacyHistoryDraw
-from lottolab.application.use_cases.historical_replay_controller import ReplayTypedClosure
+from lottolab.application.use_cases.historical_replay_controller import (
+    HistoricalReplayController,
+    ReplayTypedClosure,
+)
 from lottolab.application.use_cases.replay_backfill import (
     BackfillSelection,
     BackfillStore,
     ReplayBackfill,
 )
 from lottolab.domain.draws import LotteryType
-from lottolab.domain.historical_replay import ReplayDraw
+from lottolab.domain.historical_replay import (
+    HistoricalReplayMode,
+    HistoricalReplayRequest,
+    ReplayDraw,
+    ReplaySourceSnapshot,
+)
 from lottolab.interfaces.cli import replay_backfill as cli
 from lottolab.strategies.adapters.base import CausalDrawRow, InsufficientHistory, InvalidOutput
 
@@ -389,35 +397,55 @@ def test_wave62_diversified_backfill_minimum() -> None:
     assert len(eligible["predicted_tickets"]) == 3
 
 
-def test_r184_bindings_keep_fingerprints_and_default_minimum_closures() -> None:
-    new_ids = {
-        _source("xgboost_model").strategy_id,
-        _source("biglotto_diversified_ensemble").strategy_id,
+def test_shared_closure_reasons_and_r184_fingerprints() -> None:
+    new_reasons = {
+        _source("xgboost_model").strategy_id: "TRAINING_DATA_INSUFFICIENT_LT_15_HISTORY_DRAWS",
+        _source("biglotto_diversified_ensemble").strategy_id: (
+            "AVAILABLE_HISTORY_BELOW_FROZEN_SOURCE_MINIMUM"
+        ),
+        _source("enhanced_dual_bet_predictor").strategy_id: (
+            "INSUFFICIENT_CAUSAL_HISTORY_REQUIRED_100_GOT_0"
+        ),
     }
     bindings = versioned_biglotto_replay_bindings()
-    previous = tuple(b for b in bindings if b.strategy.strategy_id not in new_ids)
-    strategies = {b.strategy.strategy_id: b.strategy for b in previous}
-    assert len(previous) == len(strategies) == 41
+    strategies = {b.strategy.strategy_id: b.strategy for b in bindings}
+    assert len(bindings) == len(strategies) == 44 and new_reasons.keys() <= strategies.keys()
+    adapter = cli.build_adapter(BIG, bindings)
+    draws = _draws()[:1]
+    historical = HistoricalReplayController(adapter).execute(
+        HistoricalReplayRequest(
+            lottery_type=BIG,
+            mode=HistoricalReplayMode.INCREMENTAL_REFRESH,
+            source=ReplaySourceSnapshot(BIG, (), draws),
+            strategies=tuple(strategies.values()),
+        )
+    )
+    assert len(historical.records) == 44
+    direct_reasons = {r.strategy.strategy_id: r.reason for r in historical.records}
     store = Mock(spec=BackfillStore)
     store.lookup_complete_by_logical_keys.return_value = {}
     store.lookup_many_by_unique_keys.return_value = {}
     store.summary.return_value = {}
     ReplayBackfill(
-        adapter=cli.build_adapter(BIG, bindings),
-        strategies=tuple(b.strategy for b in previous),
-        draws=_draws()[:1],
+        adapter=adapter,
+        strategies=tuple(strategies.values()),
+        draws=draws,
         source_identity="r184-closures",
         store=store,
-        execution_version="r186-test",
+        execution_version="r187-test",
     ).execute(BackfillSelection(all_draws=True))
     rows = [row for batch in store.save_many.call_args_list for row in batch.args[1]]
-    assert len(rows) == 41 and {r["strategy_id"] for r in rows} == set(strategies)
+    assert len(rows) == 44 and {r["strategy_id"] for r in rows} == set(strategies)
     snapshot = []
     for row in rows:
         strategy = strategies[row["strategy_id"]]
         assert row["execution_status"] == "NOT_ELIGIBLE" and row["predicted_tickets"] == []
         minimum = strategy.min_history
-        assert row["error_reason"] == f"INSUFFICIENT_CAUSAL_HISTORY_REQUIRED_{minimum}_GOT_0"
+        default = f"INSUFFICIENT_CAUSAL_HISTORY_REQUIRED_{minimum}_GOT_0"
+        expected = new_reasons.get(strategy.strategy_id, default)
+        assert direct_reasons[strategy.strategy_id] == row["error_reason"] == expected
+        if strategy.strategy_id in new_reasons:
+            continue
         snapshot.append(
             (
                 *strategy.identity,
@@ -429,6 +457,7 @@ def test_r184_bindings_keep_fingerprints_and_default_minimum_closures() -> None:
                 row["error_reason"],
             )
         )
+    assert len(snapshot) == 41
     # Collected through ReplayBackfill at the R184 integration commit c59752b7.
     digest = hashlib.sha256(json.dumps(sorted(snapshot), separators=(",", ":")).encode())
     assert digest.hexdigest() == "9042e66a9145928343f15f9590da027d9c6890d1e37ce73384384117f00a64a7"

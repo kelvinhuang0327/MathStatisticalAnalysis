@@ -25,10 +25,10 @@ def test_replay_strategy_inventory_api_lists_separate_states_and_full_backfill_i
     payload = response.json()
     assert payload["total_discovered_strategies"] == 683
     assert payload["total_unique_strategies"] == 443
-    assert payload["total_executable"] == 255
-    assert payload["total_reconstructable"] == 255
+    assert payload["total_executable"] == 256
+    assert payload["total_reconstructable"] == 256
     assert payload["total_has_history"] == 0
-    assert payload["total_artifact_only"] == 85
+    assert payload["total_artifact_only"] == 84
     assert payload["total_rejected"] == 74
     assert payload["lifecycle_status_counts"]["ONLINE"] == 137
     assert payload["lifecycle_status_counts"]["OBSERVATION"] == 0
@@ -36,8 +36,8 @@ def test_replay_strategy_inventory_api_lists_separate_states_and_full_backfill_i
     assert payload["lifecycle_status_counts"]["CODE_ONLY"] == 3
     assert payload["source_status_counts"]["OBSERVATION"] == 2
     assert payload["replay_data_status_counts"]["CODE_ONLY"] == 2
-    assert payload["execution_capability_counts"]["EXECUTABLE"] == 255
-    assert payload["execution_capability_counts"]["UNAVAILABLE"] == 188
+    assert payload["execution_capability_counts"]["EXECUTABLE"] == 256
+    assert payload["execution_capability_counts"]["UNAVAILABLE"] == 187
     [original] = [
         row for row in payload["strategies"]
         if row["strategy_id"] == "legacy_biglotto__biglotto_diversified_ensemble__36dbfc14b360"
@@ -61,6 +61,12 @@ def test_replay_strategy_inventory_api_lists_separate_states_and_full_backfill_i
         if row["strategy_id"] == "legacy_biglotto__biglotto_diversified_ensemble_v6__8caaac8fcb5d"
         and row["backfill_runnable"]
     } == {"v0.1", "legacy-source-49a25effa62f-8caaac8fcb5d"}
+    assert {
+        row["strategy_version"]
+        for row in payload["strategies"]
+        if row["strategy_id"] == "legacy_biglotto__enhanced_dual_bet_predictor__d5b3de348d01"
+        and row["backfill_runnable"]
+    } == {"v0.1", "legacy-source-49a25effa62f-d5b3de348d01"}
     assert payload["strategy_count"] == payload["total_unique_strategies"]
     assert len(payload["executable_strategy_ids"]) == payload["total_executable"]
     assert all(

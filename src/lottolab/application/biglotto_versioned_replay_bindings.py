@@ -82,14 +82,24 @@ def _historical_portfolio(
 _GRID_MODULE_SHA256 = {
     "biglotto_apriori": "d9fa2b6087384719fc7fb65fc415e9c8c0475fbb6df4c81513939cb11563ab2e",
     "biglotto_batch16": "ff5e01b17e95091f8cd2aa5b88ee13776fb0e15f89757e1d4bbeb400674a8a88",
-    "biglotto_composite_quick_predict_5bet": "34d1fd27515b76db443c0e410ab02864fdb6e0705120bff8634368fe9741eb87",
-    "biglotto_constraint_filter": "25a2368088d32bc003b358b3977f5a2c3fd5b724a5cc9fdce4f2276b9532da35",
-    "biglotto_frozen_enhancements": "6ed1127055d76e85f09c59ba5ac9ec2d1aba4842515233c78685fbf7e729011e",
-    "biglotto_frozen_feature_discovery": "59c50177856c265ef1d3e3828abcf677e327067ead45af762a214bc47df7259d",
+    "biglotto_composite_quick_predict_5bet": (
+        "34d1fd27515b76db443c0e410ab02864fdb6e0705120bff8634368fe9741eb87"
+    ),
+    "biglotto_constraint_filter": (
+        "25a2368088d32bc003b358b3977f5a2c3fd5b724a5cc9fdce4f2276b9532da35"
+    ),
+    "biglotto_frozen_enhancements": (
+        "6ed1127055d76e85f09c59ba5ac9ec2d1aba4842515233c78685fbf7e729011e"
+    ),
+    "biglotto_frozen_feature_discovery": (
+        "59c50177856c265ef1d3e3828abcf677e327067ead45af762a214bc47df7259d"
+    ),
     "biglotto_frozen_recipes": "7de8a567e88f9e0e6dfec6dfde7a3297b635f396d1edb158591aafdc9575827a",
     "biglotto_frozen_signals": "cb05d2248b6ab87be038a2502ce87a567db6909a90f4380b647f88917d182d0a",
     "biglotto_frozen_sweep": "6c48c283e1c84a975f310ae41c5f2cbd1872884b9904322f8eb3e5e8de3aecaf",
-    "biglotto_numpy126_twiddles": "90b4a58de8eef8fdf6ded336f2babd730aba058bffd58a4bca29279a34e85e27",
+    "biglotto_numpy126_twiddles": (
+        "90b4a58de8eef8fdf6ded336f2babd730aba058bffd58a4bca29279a34e85e27"
+    ),
     "biglotto_quad_strike": _QUAD_MODULE_SHA256,
     "biglotto_selected": "fbe1eca1ef7d00f77cf3204e7fed9a66bd7c8bc96bd0e560a9679554a8650c34",
     "biglotto_wave12": "4182139f9e2a7bb917fe294bca017772a9cbd81b2d4c12a3cca15d92bdcb5023",
@@ -160,6 +170,11 @@ _WAVE27_MODULES = (
     *_FROZEN_UNIFIED_MODULES,
 )
 
+_WAVE10_MODULE = (
+    "lottolab.strategies.adapters.biglotto_wave10",
+    "f2b629387ce2546219dd69d12471b8b09a04bf6c40b94a32711703999a1015a8",
+)
+
 
 VERSIONED_REPLAY_SOURCES = (
     VersionedReplaySource(
@@ -209,10 +224,7 @@ VERSIONED_REPLAY_SOURCES = (
                 "b805827e359830a545784caf50b6a105b203bae673672801642cf34d758ede29",
             ),
             ("lottolab.strategies.adapters.biglotto_wave3", _GRID_MODULE_SHA256["biglotto_wave3"]),
-            (
-                "lottolab.strategies.adapters.biglotto_wave10",
-                "f2b629387ce2546219dd69d12471b8b09a04bf6c40b94a32711703999a1015a8",
-            ),
+            _WAVE10_MODULE,
         ),
     ),
     VersionedReplaySource(
@@ -231,15 +243,28 @@ VERSIONED_REPLAY_SOURCES = (
         parity_test="tests/unit/test_biglotto_frozen_grid.py::test_wave58_v6_ordered_portfolios",
         parity_evidence="EXACT_ORDERED_PORTFOLIO_EXECUTION_PARITY",
         shared_modules=(
-            (
-                "lottolab.strategies.adapters.biglotto_wave10",
-                "f2b629387ce2546219dd69d12471b8b09a04bf6c40b94a32711703999a1015a8",
-            ),
+            _WAVE10_MODULE,
             (
                 "lottolab.strategies.adapters.biglotto_constraint_filter",
                 _GRID_MODULE_SHA256["biglotto_constraint_filter"],
             ),
         ),
+    ),
+    VersionedReplaySource(
+        strategy_id="legacy_biglotto__enhanced_dual_bet_predictor__d5b3de348d01",
+        strategy_version="legacy-source-49a25effa62f-d5b3de348d01",
+        source_path="lottery_api/models/enhanced_dual_bet_predictor.py",
+        source_commit="49a25effa62fc24f40789c16be6f11bdfb41a4a9",
+        source_blob_id="7164233fff5a8206e9084277435ecab0888b6e81",
+        source_sha256="d5b3de348d01164c2e0079ec207c1a590c44b935217f81dfc9d704a825e50957",
+        current_version=None,
+        adapter_path=(
+            "lottolab.application.biglotto_frozen_enhanced_dual_bet:FrozenEnhancedDualBetPredictor"
+        ),
+        implementation_sha256="6f13a95a68da5d39c5cb7b1dbc2be066f7fb52d0f12844f72dd2ef0daa28538e",
+        parity_test="tests/unit/test_biglotto_frozen_enhanced_dual_bet.py::test_ordered_portfolios",
+        parity_evidence="EXACT_ORDERED_PORTFOLIO_EXECUTION_PARITY",
+        shared_modules=(_WAVE10_MODULE,),
     ),
     VersionedReplaySource(
         strategy_id="legacy_biglotto__advanced_methods_benchmark__87ee0d15033c",

@@ -138,7 +138,9 @@ def test_ordered_portfolio(name: str) -> None:
     # Use the common signal-grid window for seven related sources so that a
     # tie/order error can be located against the same historical draws.
     first = 649 if WAVES[name] in (47, 48, 49) else minimum
-    for cutoff in dict.fromkeys((minimum, *range(first, first + 30))):
+    # Short histories have tied spectral magnitudes that change the snake draft.
+    early = range(1, 57) if name == "generate_2_3_bets" else ()
+    for cutoff in dict.fromkeys((minimum, *early, *range(first, first + 30))):
         history, target = draws[:cutoff], draws[cutoff]
         expected_id, context_sha, expected = _oracle(source, cutoff)
         assert target.draw_number == expected_id and history[-1].draw_date < target.draw_date

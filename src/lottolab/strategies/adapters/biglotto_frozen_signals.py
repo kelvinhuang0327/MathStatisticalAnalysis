@@ -12,6 +12,7 @@ from lottolab.domain.draws import LotteryType
 from lottolab.strategies.adapters import biglotto_quad_strike as quad
 from lottolab.strategies.adapters.base import CausalDrawRow, PortfolioBetAdapter
 from lottolab.strategies.adapters.biglotto_constraint_filter import _numpy_pairwise_sum
+from lottolab.strategies.adapters.biglotto_numpy126_twiddles import numpy_126_twiddles
 
 type History = tuple[CausalDrawRow, ...]
 type Vector = tuple[float, ...]
@@ -37,12 +38,12 @@ def _frequency(history: History, window: int) -> Vector:
     return tuple(counts[n] / len(rows) for n in NUMBERS)
 
 
-def _fourier(bits: tuple[float, ...]) -> float:
-    packed = quad._pocketfft_real_packed(bits)
+def _fourier(bits: Vector, table: tuple[tuple[float, float], ...] | None = None) -> float:
+    packed = quad._pocketfft_real_packed(bits, table=table)
     bins = [
         (packed[i], packed[i + 1] if i + 1 < len(packed) else 0.0) for i in range(1, len(packed), 2)
     ]
-    mags = tuple(quad._legacy_complex_magnitude(x, y) for x, y in bins)
+    mags = tuple(quad._legacy_complex_magnitude(x, y, fused=table is not None) for x, y in bins)
     top = quad._legacy_numpy_argsort(mags)[-3:][::-1]
     total = 0.0
     for i in top:
@@ -89,7 +90,7 @@ class _Signals:
 
 
 @lru_cache(maxsize=32)
-def _signals(history: History) -> _Signals:
+def _signals(history: History, *, numpy_rfft: bool = False) -> _Signals:
     """Compute the shared frozen features once for portfolios at the same cutoff."""
     zones = Counter((n - 1) // 10 for row in history for n in row.numbers)
     recent = history[-10:]
@@ -100,10 +101,11 @@ def _signals(history: History) -> _Signals:
             for n in NUMBERS
         )
     )
+    table = numpy_126_twiddles(len(history)) if numpy_rfft else None
     fourier, lags, markov, momentum = [], [], [], []
     for n in NUMBERS:
         bits = tuple(float(n in row.numbers) for row in history)
-        fourier.append(_fourier(bits))
+        fourier.append(_fourier(bits, table))
         lags.append(_lag_two(bits))
         transitions = [b for a, b in pairwise(bits[-30:]) if a == bits[-1]]
         markov.append(sum(transitions) / len(transitions) if transitions else 0.0)
@@ -213,7 +215,7 @@ class GenerateTwoThree(_SignalPortfolio):
     min_history = 1
 
     def _predict_all(self, history: History, lottery_type: LotteryType) -> Portfolio:
-        s = _signals(history)
+        s = _signals(history, numpy_rfft=True)
         rank = _rank(
             tuple(
                 h + 1.5 * m + l + 1.2 * f - 0.8 * d

@@ -45,7 +45,7 @@ class VersionedReplaySource:
         )
 
 
-_QUAD_MODULE_SHA256 = "702a325778a1f5abadd1f4fa9d2e114d4751ab5ff7a6298a43a1b734095dc7d6"
+_QUAD_MODULE_SHA256 = "36419dbff87fec29a4f31e4d24e7d508260454ad1e3fe092901d0c91ea1c3787"
 
 
 def _historical_portfolio(
@@ -86,16 +86,19 @@ _GRID_MODULE_SHA256 = {
     "biglotto_frozen_enhancements": "6ed1127055d76e85f09c59ba5ac9ec2d1aba4842515233c78685fbf7e729011e",
     "biglotto_frozen_feature_discovery": "59c50177856c265ef1d3e3828abcf677e327067ead45af762a214bc47df7259d",
     "biglotto_frozen_recipes": "7de8a567e88f9e0e6dfec6dfde7a3297b635f396d1edb158591aafdc9575827a",
-    "biglotto_frozen_signals": "25618d99c8dd46233317ffa88b7e0e6d70c92436292bab1b99d9726335f0d26f",
+    "biglotto_frozen_signals": "cb05d2248b6ab87be038a2502ce87a567db6909a90f4380b647f88917d182d0a",
     "biglotto_frozen_sweep": "6c48c283e1c84a975f310ae41c5f2cbd1872884b9904322f8eb3e5e8de3aecaf",
-    "biglotto_quad_strike": "702a325778a1f5abadd1f4fa9d2e114d4751ab5ff7a6298a43a1b734095dc7d6",
+    "biglotto_numpy126_twiddles": "90b4a58de8eef8fdf6ded336f2babd730aba058bffd58a4bca29279a34e85e27",
+    "biglotto_quad_strike": _QUAD_MODULE_SHA256,
     "biglotto_selected": "fbe1eca1ef7d00f77cf3204e7fed9a66bd7c8bc96bd0e560a9679554a8650c34",
     "biglotto_wave12": "4182139f9e2a7bb917fe294bca017772a9cbd81b2d4c12a3cca15d92bdcb5023",
     "biglotto_wave3": "4662857f668751a187933c966860373fc6e57fa47a7f80b6a8dcfea9ad64e528",
 }
 
 _GRID_DEPENDENCIES = {
-    "biglotto_frozen_signals": ("biglotto_quad_strike", "biglotto_constraint_filter"),
+    "biglotto_frozen_signals": (
+        "biglotto_quad_strike", "biglotto_constraint_filter", "biglotto_numpy126_twiddles"
+    ),
     "biglotto_frozen_enhancements": (
         "biglotto_quad_strike",
         "biglotto_composite_quick_predict_5bet",

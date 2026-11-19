@@ -312,10 +312,10 @@ def _pocketfft_factorize(length: int) -> tuple[int, ...]:
 def _pocketfft_real_twiddles(
     length: int,
     factors: tuple[int, ...],
+    table: tuple[tuple[float, float], ...],
 ) -> tuple[tuple[list[float], list[float]], ...]:
     """Compile the real FFTPACK stages' twiddle storage layout."""
 
-    table = _pocketfft_sincos_table(length)
     compiled: list[tuple[list[float], list[float]]] = []
     l1 = 1
     for factor_index, factor in enumerate(factors):
@@ -911,14 +911,18 @@ def _pocketfft_radfg(
                 )
 
 
-def _pocketfft_real_packed(signal: tuple[float, ...]) -> tuple[float, ...]:
+def _pocketfft_real_packed(
+    signal: tuple[float, ...], *, table: tuple[tuple[float, float], ...] | None = None
+) -> tuple[float, ...]:
     """Return pocketfft's packed real FFT output for one causal bitstream."""
 
     length = len(signal)
     if length <= 1:
         return signal
     factors = _pocketfft_factorize(length)
-    compiled = _pocketfft_real_twiddles(length, factors)
+    compiled = _pocketfft_real_twiddles(
+        length, factors, table if table is not None else _pocketfft_sincos_table(length)
+    )
     first = list(signal)
     second = [0.0] * length
     group_length = length
@@ -951,7 +955,7 @@ def _pocketfft_real_packed(signal: tuple[float, ...]) -> tuple[float, ...]:
     return tuple(first)
 
 
-def _legacy_complex_magnitude(real: float, imaginary: float) -> float:
+def _legacy_complex_magnitude(real: float, imaginary: float, *, fused: bool = False) -> float:
     """Match the donor runtime's two-term complex-magnitude arithmetic."""
 
     larger = abs(real)
@@ -961,7 +965,8 @@ def _legacy_complex_magnitude(real: float, imaginary: float) -> float:
     if larger == 0.0:
         return 0.0
     ratio = smaller / larger
-    return larger * math.sqrt(1.0 + ratio * ratio)
+    square_sum = math.fma(ratio, ratio, 1.0) if fused else 1.0 + ratio * ratio
+    return larger * math.sqrt(square_sum)
 
 
 def _fourier_rhythm_score(

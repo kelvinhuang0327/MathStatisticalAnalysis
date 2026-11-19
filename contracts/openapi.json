@@ -12789,6 +12789,17 @@
             "type": "array",
             "maxItems": 20,
             "title": "Numbers"
+          },
+          "special_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Special Number"
           }
         },
         "additionalProperties": false,

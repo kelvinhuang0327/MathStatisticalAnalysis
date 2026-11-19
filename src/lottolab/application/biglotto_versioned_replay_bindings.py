@@ -188,6 +188,27 @@ VERSIONED_REPLAY_SOURCES = (
         shared_modules=_WAVE27_MODULES,
     ),
     VersionedReplaySource(
+        strategy_id="legacy_biglotto__zone_split_optimizer__0bf85e3e1517",
+        strategy_version="legacy-source-49a25effa62f-0bf85e3e1517",
+        source_path="tools/zone_split_optimizer.py",
+        source_commit="49a25effa62fc24f40789c16be6f11bdfb41a4a9",
+        source_blob_id="a5751a20008227828f80db0fbf0bc15a1dcb5067",
+        source_sha256="0bf85e3e151766d3bdc174f5395200e730d0c45233afad0d1d91d43200149fe3",
+        current_version=None,
+        adapter_path=(
+            "lottolab.application.biglotto_frozen_zone_split_optimizer:FrozenZoneSplitOptimizer"
+        ),
+        implementation_sha256="fd5f2a93966e6e7b038aedb9a4edb00b3318b6f8dc903f69c3463f05fb8ed648",
+        parity_test="tests/unit/test_biglotto_frozen_grid.py::test_frozen_zone_split_optimizer",
+        parity_evidence="EXACT_ORDERED_PORTFOLIO_EXECUTION_PARITY",
+        shared_modules=(
+            (
+                "lottolab.strategies.adapters.biglotto_constraint_filter",
+                _GRID_MODULE_SHA256["biglotto_constraint_filter"],
+            ),
+        ),
+    ),
+    VersionedReplaySource(
         strategy_id="legacy_biglotto__predict_biglotto_apriori__cda690ae84c2",
         strategy_version="legacy-source-49a25effa62f-cda690ae84c2",
         source_path="tools/predict_biglotto_apriori.py",

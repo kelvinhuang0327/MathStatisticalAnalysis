@@ -1535,6 +1535,20 @@ _IMPORTED_REPLAY_IDENTITIES: tuple[_ImportedReplayIdentitySpec, ...] = (
         )
         for pair_id in ("414665013", "414671103")
     ),
+    _ImportedReplayIdentitySpec(
+        lottery_type=LotteryType.BIG_LOTTO,
+        strategy_id="research_biglotto__k30_fixed_random_control_20261119_r1",
+        display_name="K30 固定種子隨機控制組 (歷史對照)",
+        strategy_version="v1.0.0",
+        source_locator=(
+            "replay-backfill:befd9d8ec70c7cfe7d606511c42c9a7312deee1063800743488ad92cdcbb5543"
+        ),
+        reconstruction_reason=(
+            "One fixed-seed portfolio used as a historical control; historical coverage comes "
+            "from Replay Backfill DB overlay. No current native executable binding is registered."
+        ),
+        source_status="CONTROL_BASELINE",
+    ),
 )
 
 _IMPORTED_REPLAY_SOURCE_KIND = "REPLAY_BACKFILL_IMPORTED_RESULT"

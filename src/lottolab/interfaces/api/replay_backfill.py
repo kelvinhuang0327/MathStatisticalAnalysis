@@ -740,12 +740,22 @@ def create_replay_backfill_router(store: SQLiteBackfillStore | None) -> APIRoute
                 )
                 if lifecycle_status is not None and lifecycle != lifecycle_status:
                     continue
-                if data_status is not None and item_data_status != data_status.value:
-                    continue
                 if (
                     q
                     and q.casefold() not in (item.strategy_id + " " + item.display_name).casefold()
                 ):
+                    continue
+                history_view = _strategy_history_view(item, selected_snapshot, source_row)
+                if (
+                    item_data_status == "REBUILDABLE"
+                    and item.execution_capability is ReplayExecutionCapability.UNAVAILABLE
+                    and "CONTROL_BASELINE" in item.source_statuses
+                    and history_view["history_status"] == "HAS_HISTORY"
+                ):
+                    # A stored replay can report its original producer as rebuildable even
+                    # when this inventory has no runnable binding for the control strategy.
+                    item_data_status = "HAS_HISTORY"
+                if data_status is not None and item_data_status != data_status.value:
                     continue
                 row: JsonObject = {
                     "strategy_id": item.strategy_id,
@@ -792,7 +802,7 @@ def create_replay_backfill_router(store: SQLiteBackfillStore | None) -> APIRoute
                         source_row["training_status"] if source_row else _training_status(item)
                     ),
                 }
-                row.update(_strategy_history_view(item, selected_snapshot, source_row))
+                row.update(history_view)
                 rows.append(row)
             if lottery_type in (None, LotteryType.BIG_LOTTO):
                 for descriptor in seeded_descriptors.values():

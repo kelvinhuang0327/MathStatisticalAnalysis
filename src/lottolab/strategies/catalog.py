@@ -3661,7 +3661,7 @@ _PRODUCTION_DESCRIPTORS = (
         lifecycle_status=LifecycleStatus.ONLINE,
         executable=True,
         adapter_path=(
-            "lottolab.strategies.adapters.biglotto_radical_recorded_successor:"
+            "lottolab.application.biglotto_radical_recorded_successor:"
             "BigLottoRecordedRadicalSuccessor"
         ),
         min_history=1,

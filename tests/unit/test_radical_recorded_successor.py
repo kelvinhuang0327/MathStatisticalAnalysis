@@ -2,12 +2,12 @@ from datetime import date
 
 import pytest
 
+from lottolab.application.biglotto_radical_recorded_successor import (
+    BigLottoRecordedRadicalSuccessor,
+)
 from lottolab.domain.draws import LotteryType
 from lottolab.domain.historical_replay import ReplayDraw
 from lottolab.strategies.adapters.base import RejectPrediction
-from lottolab.strategies.adapters.biglotto_radical_recorded_successor import (
-    BigLottoRecordedRadicalSuccessor,
-)
 
 
 def test_successor_rejects_known_outcome_and_pre_recorded_design() -> None:

@@ -25,7 +25,7 @@ def test_inventory_conserves_sources_and_executable_identities() -> None:
     inventory = load_replay_strategy_inventory()
     source_counts = {source.source_kind: source for source in inventory.source_counts}
 
-    assert inventory.total_discovered_strategies == 676
+    assert inventory.total_discovered_strategies == 675
     assert inventory.total_unique_strategies == 467
     assert len(inventory.executable_items) == 214
     assert inventory.unresolved_source_count == 9
@@ -34,8 +34,8 @@ def test_inventory_conserves_sources_and_executable_identities() -> None:
     assert source_counts["B649_REPLAY_BATCH_REGISTRY"].source_identity_count == 11
     assert source_counts["T539_REPLAY_ADAPTER"].source_identity_count == 62
     assert source_counts["P638_REPLAY_ADAPTER"].source_identity_count == 14
-    assert source_counts["STRATEGY_ADAPTER_CODE"].source_identity_count == 103
-    assert source_counts["STRATEGY_ADAPTER_CODE"].source_row_count == 104
+    assert source_counts["STRATEGY_ADAPTER_CODE"].source_identity_count == 102
+    assert source_counts["STRATEGY_ADAPTER_CODE"].source_row_count == 103
     assert source_counts["REPLAY_BACKFILL_IMPORTED_RESULT"].source_identity_count == 21
     assert source_counts["REPLAY_BACKFILL_IMPORTED_RESULT"].source_row_count == 21
 

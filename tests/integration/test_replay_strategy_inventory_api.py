@@ -23,7 +23,7 @@ def test_replay_strategy_inventory_api_lists_separate_states_and_full_backfill_i
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["total_discovered_strategies"] == 676
+    assert payload["total_discovered_strategies"] == 675
     assert payload["total_unique_strategies"] == 467
     assert payload["total_executable"] == 214
     assert payload["total_reconstructable"] == 214

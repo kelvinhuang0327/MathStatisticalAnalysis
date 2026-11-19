@@ -24,12 +24,12 @@ def test_replay_strategy_inventory_api_lists_separate_states_and_full_backfill_i
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["total_discovered_strategies"] == 689
-    assert payload["total_unique_strategies"] == 481
-    assert payload["total_executable"] == 214
-    assert payload["total_reconstructable"] == 214
+    assert payload["total_discovered_strategies"] == 746
+    assert payload["total_unique_strategies"] == 491
+    assert payload["total_executable"] == 223
+    assert payload["total_reconstructable"] == 223
     assert payload["total_has_history"] == 0
-    assert payload["total_artifact_only"] == 98
+    assert payload["total_artifact_only"] == 135
     assert payload["total_rejected"] == 74
     assert payload["lifecycle_status_counts"]["ONLINE"] == 138
     assert payload["lifecycle_status_counts"]["OBSERVATION"] == 0
@@ -37,8 +37,8 @@ def test_replay_strategy_inventory_api_lists_separate_states_and_full_backfill_i
     assert payload["lifecycle_status_counts"]["CODE_ONLY"] == 8
     assert payload["source_status_counts"]["OBSERVATION"] == 2
     assert payload["replay_data_status_counts"]["CODE_ONLY"] == 5
-    assert payload["execution_capability_counts"]["EXECUTABLE"] == 214
-    assert payload["execution_capability_counts"]["UNAVAILABLE"] == 267
+    assert payload["execution_capability_counts"]["EXECUTABLE"] == 223
+    assert payload["execution_capability_counts"]["UNAVAILABLE"] == 268
     assert payload["strategy_count"] == payload["total_unique_strategies"]
     assert len(payload["executable_strategy_ids"]) == payload["total_executable"]
     assert all(

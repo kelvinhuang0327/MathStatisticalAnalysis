@@ -60,6 +60,18 @@ class BigLottoFrontendMonteCarloAdapter(BetAdapter):
     min_history = 1
     supported_lottery_types = (LotteryType.BIG_LOTTO,)
 
+    def _rng_evidence(self, history: tuple[CausalDrawRow, ...]) -> dict[str, object]:
+        if type(self) is not BigLottoFrontendMonteCarloAdapter:
+            return super()._rng_evidence(history)
+        source = "python.random.global" if self._rng is random else "injected_rng"
+        return {
+            "schema_version": "1",
+            "status": "UNKNOWN",
+            "source": source,
+            "reason": "state_not_captured_due_to_shared_or_unverified_rng",
+            "replay_verified": False,
+        }
+
     def __init__(self, rng: _RandomSource | None = None) -> None:
         # The source uses process-global, unseeded Math.random.  The module
         # default preserves that behavior; the narrow seam makes exact donor
@@ -75,9 +87,7 @@ class BigLottoFrontendMonteCarloAdapter(BetAdapter):
 
         del lottery_type
         pool = _frequency_pool(history)
-        simulation_results = {
-            number: 0 for number in range(_MIN_NUMBER, _MAX_NUMBER + 1)
-        }
+        simulation_results = {number: 0 for number in range(_MIN_NUMBER, _MAX_NUMBER + 1)}
 
         for _ in range(_SIMULATION_COUNT):
             simulated_draw: set[int] = set()
@@ -88,8 +98,7 @@ class BigLottoFrontendMonteCarloAdapter(BetAdapter):
                 simulation_results[number] += 1
 
         probabilities = {
-            number: count / _SIMULATION_COUNT
-            for number, count in simulation_results.items()
+            number: count / _SIMULATION_COUNT for number, count in simulation_results.items()
         }
         ranked = sorted(
             probabilities,

@@ -30,11 +30,12 @@ class VersionedReplaySource:
     source_commit: str
     source_blob_id: str
     source_sha256: str
-    current_version: str
+    current_version: str | None
     adapter_path: str
     implementation_sha256: str
     parity_test: str
     parity_evidence: str
+    shared_modules: tuple[tuple[str, str], ...] = ()
 
     @property
     def locator(self) -> str:
@@ -43,6 +44,8 @@ class VersionedReplaySource:
             f";sha256={self.source_sha256}"
         )
 
+
+_QUAD_MODULE_SHA256 = "702a325778a1f5abadd1f4fa9d2e114d4751ab5ff7a6298a43a1b734095dc7d6"
 
 VERSIONED_REPLAY_SOURCES = (
     VersionedReplaySource(
@@ -95,17 +98,39 @@ VERSIONED_REPLAY_SOURCES = (
             "lottolab.strategies.adapters.biglotto_quad_strike:"
             "BigLottoQuadStrikeAdapter"
         ),
-        implementation_sha256="702a325778a1f5abadd1f4fa9d2e114d4751ab5ff7a6298a43a1b734095dc7d6",
+        implementation_sha256=_QUAD_MODULE_SHA256,
         parity_test=(
             "tests/unit/test_biglotto_quad_strike_adapter.py::"
             "test_complete_portfolio_matches_frozen_donor_golden"
         ),
         parity_evidence="EXACT_ORDERED_PORTFOLIO_EXECUTION_PARITY",
     ),
+    VersionedReplaySource(
+        strategy_id="legacy_biglotto__backtest_biglotto_triple_strike_original__4a8297a758b9",
+        strategy_version="legacy-source-49a25effa62f-4a8297a758b9",
+        source_path="tools/backtest_biglotto_triple_strike_original.py",
+        source_commit="49a25effa62fc24f40789c16be6f11bdfb41a4a9",
+        source_blob_id="91ee32fb9121b6771aacc5306d388e982151e998",
+        source_sha256="4a8297a758b90b0a8697a889d2c9f1e9321ca2e1a5cac5322eb4e51d943e7977",
+        current_version=None,
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_triple_strike_original:"
+            "BigLottoTripleStrikeOriginalReplayAdapter"
+        ),
+        implementation_sha256="6c431dfafb36f57e7f20551403a9414353bb1ef3ddfcf51df7d4c30d6a14414b",
+        parity_test=(
+            "tests/unit/test_biglotto_triple_strike_original.py::"
+            "test_replay_matches_pinned_source"
+        ),
+        parity_evidence="EXACT_ORDERED_PORTFOLIO_EXECUTION_PARITY",
+        shared_modules=(
+            ("lottolab.strategies.adapters.biglotto_quad_strike", _QUAD_MODULE_SHA256),
+        ),
+    ),
 )
 
 
-def _source_descriptor(source: VersionedReplaySource) -> tuple[object, object]:
+def _verify_source(source: VersionedReplaySource) -> None:
     record = next(
         (
             item
@@ -132,6 +157,9 @@ def _source_descriptor(source: VersionedReplaySource) -> tuple[object, object]:
     if actual_source != expected_source:
         raise ValueError(f"versioned Replay source provenance changed: {source.strategy_id}")
 
+    if source.current_version is None:
+        return  # Dedicated historical adapter with no production descriptor.
+
     descriptor = production_catalog().get(source.strategy_id)
     provenance = set(descriptor.provenance)
     if (
@@ -148,7 +176,6 @@ def _source_descriptor(source: VersionedReplaySource) -> tuple[object, object]:
         required_parity not in provenance
     ):
         raise ValueError(f"descriptor parity evidence changed: {source.strategy_id}")
-    return record, descriptor
 
 
 def versioned_biglotto_replay_bindings() -> tuple[ReplayStrategyBinding, ...]:
@@ -156,17 +183,26 @@ def versioned_biglotto_replay_bindings() -> tuple[ReplayStrategyBinding, ...]:
 
     bindings: list[ReplayStrategyBinding] = []
     for source in VERSIONED_REPLAY_SOURCES:
-        _record, descriptor = _source_descriptor(source)
+        _verify_source(source)
         module_path, _, class_name = source.adapter_path.partition(":")
         module = importlib.import_module(module_path)
         adapter_class = getattr(module, class_name)
-        implementation_file = Path(module.__file__).resolve()
-        implementation_sha256 = hashlib.sha256(implementation_file.read_bytes()).hexdigest()
-        if implementation_sha256 != source.implementation_sha256:
-            raise ValueError(f"versioned Replay implementation changed: {source.strategy_id}")
+        for name, digest in ((module_path, source.implementation_sha256), *source.shared_modules):
+            module_file = importlib.import_module(name).__file__
+            if (
+                module_file is None
+                or hashlib.sha256(Path(module_file).read_bytes()).hexdigest() != digest
+            ):
+                raise ValueError(
+                    f"versioned Replay implementation changed: {source.strategy_id}: {name}"
+                )
         implementation = instantiate_portfolio_adapter(source.strategy_id, adapter_class)
-        if implementation.strategy_version != source.current_version:
-            raise ValueError(f"current adapter version changed: {source.strategy_id}")
+        implementation_version = source.current_version or source.strategy_version
+        if (implementation.strategy_id, implementation.strategy_version) != (
+            source.strategy_id,
+            implementation_version,
+        ):
+            raise ValueError(f"Replay adapter identity changed: {source.strategy_id}")
 
         fingerprint_payload = "|".join(
             (
@@ -174,11 +210,12 @@ def versioned_biglotto_replay_bindings() -> tuple[ReplayStrategyBinding, ...]:
                 source.strategy_version,
                 source.locator,
                 source.adapter_path,
-                source.current_version,
+                implementation_version,
                 source.implementation_sha256,
                 source.parity_test,
                 source.parity_evidence,
-                descriptor.version,
+                implementation_version,
+                *(f"{name}:{digest}" for name, digest in source.shared_modules),
             )
         )
         fingerprint = hashlib.sha256(fingerprint_payload.encode("utf-8")).hexdigest()

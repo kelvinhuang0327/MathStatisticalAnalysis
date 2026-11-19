@@ -60,9 +60,6 @@ class CausalDrawRow:
     draw: str
     date: str
     numbers: tuple[int, ...]
-    # Optional historical outcome, consumed only by adapters that explicitly
-    # require it.  Existing generic validation deliberately strips this field.
-    special_number: int | None = None
 
 
 @dataclass(frozen=True, slots=True)

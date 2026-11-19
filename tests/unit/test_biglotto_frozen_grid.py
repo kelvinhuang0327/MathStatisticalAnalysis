@@ -130,12 +130,186 @@ def _wave27_cases():
     return cases
 
 
+def test_wave60_hybrid_ordered_portfolios() -> None:
+    source = _source("hybrid_integration_benchmark")
+    raw = (
+        ROOT / "src/lottolab/strategies/data/biglotto_seeded_benchmarks_wave60_ticket_ledger_v1.json"
+    ).read_bytes()
+    assert hashlib.sha256(raw).hexdigest() == (
+        "0834d1b9e1acb622a142fbf29b35ef2a4aa5d269583b67a0fecd6862ca9ccc4b"
+    )
+    ledger = json.loads(raw)
+    assert ledger["frozen_source_commit"] == source.source_commit
+    assert ledger["source_sha256_by_method"][source.source_path] == source.source_sha256
+    expected = ledger["tickets_by_method"][source.source_path]
+    assert hashlib.sha256(json.dumps(expected, separators=(",", ":")).encode()).hexdigest() == (
+        "77f90ad4439da7ec1801362b8a9cff9294e92f940bfec5f0c305633520198746"
+    )
+    bindings, accounts = cli._exact_strategy_inventory(
+        BIG, source.strategy_id, source.strategy_version
+    )
+    assert accounts[source.strategy_id]["source"] == source.locator
+    strategy = bindings[0].strategy
+    adapter = cli.build_adapter(BIG, bindings)
+    assert (strategy.min_history, strategy.native_ticket_count) == (1, 12)
+    assert ledger["closed_reason_by_method"][source.source_path] == [
+        "NO_PRIOR_DRAW_FOR_CAUSAL_CUTOFF", *([None] * 2148)
+    ]
+    draws = _draws()[:2149]
+    assert len(draws) == len(expected) == 2149
+    assert [row.draw_number for row in draws] == ledger["targets"]
+    assert expected[0] is None
+    with pytest.raises(InsufficientHistory):
+        adapter.generate(strategy, (), draws[0])
+
+    # Append to the compact JSON prefix incrementally, checking the exact
+    # history used by the source without re-serializing every earlier draw.
+    prefix = hashlib.sha256(b"[")
+    for cutoff, target in enumerate(draws):
+        context = prefix.copy()
+        context.update(b"]")
+        assert context.hexdigest() == ledger["context_sha256"][cutoff], target.draw_number
+        if cutoff:
+            tickets = adapter.generate(strategy, draws[:cutoff], target)
+            assert [t.ticket_position for t in tickets] == list(range(1, 13))
+            assert [list(t.main_numbers) for t in tickets] == expected[cutoff], target.draw_number
+            prefix.update(b",")
+        prefix.update(json.dumps(target.main_numbers, separators=(",", ":")).encode())
+
+
 def test_frozen_two_bet_optimizer() -> None:
     _assert_wave27_optimizer_parity("biglotto_2bet_optimizer")
 
 
 def test_frozen_two_bet_optimizer_v2() -> None:
     _assert_wave27_optimizer_parity("biglotto_2bet_optimizer_v2")
+
+
+def test_frozen_orthogonal_diversification() -> None:
+    source = _source("orthogonal_diversification_benchmark")
+    bindings, accounts = cli._exact_strategy_inventory(
+        BIG, source.strategy_id, source.strategy_version
+    )
+    assert accounts[source.strategy_id]["source"] == source.locator
+    with pytest.raises(ValueError, match="no executable binding"):
+        cli._exact_strategy_inventory(BIG, source.strategy_id, "v0.1")
+
+    strategy = bindings[0].strategy
+    adapter = cli.build_adapter(BIG, bindings)
+    assert (strategy.min_history, strategy.native_ticket_count) == (1, 35)
+    resources = ROOT / "src/lottolab/strategies/data"
+    ledger_path = resources / "biglotto_seeded_benchmarks_wave60_ticket_ledger_v1.json"
+    raw = ledger_path.read_bytes()
+    assert hashlib.sha256(raw).hexdigest() == (
+        "0834d1b9e1acb622a142fbf29b35ef2a4aa5d269583b67a0fecd6862ca9ccc4b"
+    )
+    ledger = json.loads(raw)
+    expected = ledger["tickets_by_method"][source.source_path]
+    reasons = ledger["closed_reason_by_method"][source.source_path]
+    targets = ledger["targets"]
+    draws = _draws()[: len(targets)]
+    assert len(expected) == len(targets) == 2149
+    assert [draw.draw_number for draw in draws] == targets
+    assert ledger["source_sha256_by_method"][source.source_path] == source.source_sha256
+    assert ledger["frozen_source_commit"] == source.source_commit
+    digest = hashlib.sha256(json.dumps(expected, separators=(",", ":")).encode()).hexdigest()
+    assert digest == "fa144bf3a470cf52d599042c75ca3a4a3017aa27a83eb59a6c84fd33438131ba"
+    assert expected[0] is None and reasons[0] == "NO_PRIOR_DRAW_FOR_CAUSAL_CUTOFF"
+    assert reasons[1:] == [None] * 2148
+    with pytest.raises(InsufficientHistory):
+        adapter.generate(strategy, (), draws[0])
+
+    # Confirm each prefix belongs to this target while hashing each history row only once.
+    prefix = hashlib.sha256(b"[")
+    positions = list(range(1, 36))
+    for cutoff in range(1, len(targets)):
+        if cutoff > 1:
+            prefix.update(b",")
+        prefix.update(json.dumps(draws[cutoff - 1].main_numbers, separators=(",", ":")).encode())
+        closed = prefix.copy()
+        closed.update(b"]")
+        assert closed.hexdigest() == ledger["context_sha256"][cutoff], targets[cutoff]
+
+        tickets = adapter.generate(strategy, draws[:cutoff], draws[cutoff])
+        assert [ticket.ticket_position for ticket in tickets] == positions
+        assert [list(ticket.main_numbers) for ticket in tickets] == expected[cutoff], targets[
+            cutoff
+        ]
+
+
+def test_frozen_zone_split_optimizer() -> None:
+    source = _source("zone_split_optimizer")
+    bindings, accounts = cli._exact_strategy_inventory(
+        BIG, source.strategy_id, source.strategy_version
+    )
+    assert accounts[source.strategy_id]["source"] == source.locator
+    adapter, strategy = cli.build_adapter(BIG, bindings), bindings[0].strategy
+    assert strategy.min_history == 1 and strategy.native_ticket_count == 18
+    with pytest.raises(ValueError, match="no executable binding"):
+        cli._exact_strategy_inventory(BIG, source.strategy_id, "v0.1")
+
+    raw = (
+        ROOT
+        / "src/lottolab/strategies/data/biglotto_seeded_benchmarks_wave60_ticket_ledger_v1.json"
+    ).read_bytes()
+    assert (
+        hashlib.sha256(raw).hexdigest()
+        == "0834d1b9e1acb622a142fbf29b35ef2a4aa5d269583b67a0fecd6862ca9ccc4b"
+    )
+    ledger = json.loads(raw)
+    assert ledger["frozen_source_commit"] == source.source_commit
+    assert ledger["source_sha256_by_method"][source.source_path] == source.source_sha256
+    assert ledger["local_configuration_count_by_method"][source.source_path] == 6
+    expected = ledger["tickets_by_method"][source.source_path]
+    digest = hashlib.sha256(json.dumps(expected, separators=(",", ":")).encode()).hexdigest()
+    assert digest == "8a2fb7ceb1fb545a18b06e8ccdf9325993f6ca4de46ee7eeee8680b33e19a509"
+    draws = _draws()[:2149]
+    assert [draw.draw_number for draw in draws] == ledger["targets"]
+    assert len(expected) == len(draws) == 2149 and expected[0] is None
+    assert ledger["closed_reason_by_method"][source.source_path] == [
+        "NO_PRIOR_DRAW_FOR_CAUSAL_CUTOFF",
+        *([None] * 2148),
+    ]
+    with pytest.raises(InsufficientHistory):
+        adapter.generate(strategy, (), draws[0])
+
+    prefix = hashlib.sha256(b"[")
+    for cutoff, portfolio in enumerate(expected[1:], start=1):
+        if cutoff > 1:
+            prefix.update(b",")
+        prefix.update(json.dumps(draws[cutoff - 1].main_numbers, separators=(",", ":")).encode())
+        context = prefix.copy()
+        context.update(b"]")
+        assert context.hexdigest() == ledger["context_sha256"][cutoff]
+        target = draws[cutoff]
+        tickets = adapter.generate(strategy, draws[:cutoff], target)
+        assert [ticket.ticket_position for ticket in tickets] == list(range(1, 19))
+        assert [list(ticket.main_numbers) for ticket in tickets] == portfolio, target.draw_number
+
+
+def test_frozen_zone_split_numpy_boundary_off_ledger() -> None:
+    source = _source("zone_split_optimizer")
+    bindings, _ = cli._exact_strategy_inventory(BIG, source.strategy_id, source.strategy_version)
+    strategy, adapter = bindings[0].strategy, cli.build_adapter(BIG, bindings)
+    # For this newest-first floating-point reduction, mean - std is
+    # 13.999999999999998. Exact rational arithmetic would choose center 14.
+    history = tuple(
+        replace(draw, main_numbers=row, special_number=49)
+        for draw, row in zip(
+            _draws()[:3],
+            [(7, 10, 12, 17, 36, 42), (18, 19, 22, 27, 34, 35), (6, 29, 32, 35, 36, 39)],
+            strict=True,
+        )
+    )
+    target = _draws()[-1]  # After the last Wave 60 target.
+    tickets = adapter.generate(strategy, history, target)
+    assert [ticket.main_numbers for ticket in tickets[15:]] == [
+        (10, 11, 13, 16, 17, 18),
+        (21, 22, 23, 27, 29, 30),
+        (33, 34, 35, 36, 37, 39),
+    ]
+    poisoned = replace(target, main_numbers=(1, 2, 3, 4, 5, 6), special_number=49)
+    assert adapter.generate(strategy, history, poisoned) == tickets
 
 
 def _assert_wave27_optimizer_parity(name: str) -> None:

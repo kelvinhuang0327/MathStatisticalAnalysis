@@ -184,6 +184,8 @@ def test_catalog_registry_and_production_portfolio_path_match_donor() -> None:
 def test_production_catalog_preserves_concentrated_pool_append_position() -> None:
     catalog = production_catalog()
     all_ids = tuple(descriptor.strategy_id for descriptor in catalog)
+    assert all_ids[-1] == "research_biglotto__radical_recorded_causal_successor_v1"
+    all_ids = all_ids[:-1]
     assert all_ids[-34] == STRATEGY_ID
     assert all_ids[:-34].count(STRATEGY_ID) == 0
     assert all_ids[-45] == "acb_single_539"

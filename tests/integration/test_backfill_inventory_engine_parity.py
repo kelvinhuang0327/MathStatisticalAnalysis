@@ -23,7 +23,7 @@ def test_inventory_capabilities_match_real_worker_bindings() -> None:
         )
     exposed = {key for key, row in rows.items() if row.backfill_runnable}
     assert exposed == set(engine)
-    assert len(exposed) == 209
+    assert len(exposed) == 210
     for identity, binding in engine.items():
         row = rows[identity]
         assert row.backfill_native_binding is True

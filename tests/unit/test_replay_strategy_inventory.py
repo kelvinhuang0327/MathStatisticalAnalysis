@@ -25,11 +25,11 @@ def test_inventory_conserves_sources_and_executable_identities() -> None:
     inventory = load_replay_strategy_inventory()
     source_counts = {source.source_kind: source for source in inventory.source_counts}
 
-    assert inventory.total_discovered_strategies == 741
-    assert inventory.total_unique_strategies == 486
-    assert len(inventory.executable_items) == 222
+    assert inventory.total_discovered_strategies == 742
+    assert inventory.total_unique_strategies == 487
+    assert len(inventory.executable_items) == 223
     assert inventory.unresolved_source_count == 9
-    assert source_counts["PRODUCTION_CATALOG"].source_identity_count == 137
+    assert source_counts["PRODUCTION_CATALOG"].source_identity_count == 138
     assert source_counts["B649_RESEARCH_CATALOG"].source_identity_count == 221
     assert source_counts["B649_REPLAY_BATCH_REGISTRY"].source_identity_count == 11
     assert source_counts["T539_REPLAY_ADAPTER"].source_identity_count == 62
@@ -42,12 +42,12 @@ def test_inventory_conserves_sources_and_executable_identities() -> None:
     lottery_counts = Counter(item.lottery_type for item in inventory.items)
     executable_by_lottery = Counter(item.lottery_type for item in inventory.executable_items)
     assert lottery_counts == {
-        LotteryType.BIG_LOTTO: 390,
+        LotteryType.BIG_LOTTO: 391,
         LotteryType.DAILY_539: 62,
         LotteryType.POWER_LOTTO: 34,
     }
     assert executable_by_lottery == {
-        LotteryType.BIG_LOTTO: 137,
+        LotteryType.BIG_LOTTO: 138,
         LotteryType.DAILY_539: 62,
         LotteryType.POWER_LOTTO: 23,
     }
@@ -77,7 +77,7 @@ def test_inventory_keeps_status_dimensions_and_unavailable_cases_separate() -> N
     inventory = load_replay_strategy_inventory()
     by_data_status = Counter(item.replay_data_status for item in inventory.items)
     assert by_data_status == {
-        ReplayDataStatus.REBUILDABLE: 222,
+        ReplayDataStatus.REBUILDABLE: 223,
         ReplayDataStatus.ARTIFACT_ONLY: 135,
         ReplayDataStatus.REJECTED: 74,
         ReplayDataStatus.NO_HISTORY: 53,
@@ -145,7 +145,7 @@ def test_inventory_keeps_status_dimensions_and_unavailable_cases_separate() -> N
     online = [
         item for item in inventory.items if item.lifecycle_status is ReplayLifecycleStatus.ONLINE
     ]
-    assert len(online) == 137
+    assert len(online) == 138
     assert all(item.historical_data_count == 0 for item in online)
     assert all(item.replay_data_status is not ReplayDataStatus.HAS_HISTORY for item in online)
 

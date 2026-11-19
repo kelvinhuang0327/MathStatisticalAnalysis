@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
-from dataclasses import fields
+from dataclasses import fields, replace
 from functools import lru_cache
 from importlib.resources import files
 from typing import cast
@@ -186,9 +186,7 @@ def _parse_projection(raw: bytes) -> B649MultiTicketRecordDataset:
     report_by_strategy = _parse_source_reports(document["source_reports"])
     records_value = document["records"]
     if not isinstance(records_value, list):
-        raise B649MultiTicketRecordProjectionError(
-            "projection records must be a list"
-        )
+        raise B649MultiTicketRecordProjectionError("projection records must be a list")
     records_raw = cast(list[object], records_value)
     if len(records_raw) != len(catalog.records):
         raise B649MultiTicketRecordProjectionError(
@@ -248,8 +246,7 @@ def _parse_projection(raw: bytes) -> B649MultiTicketRecordDataset:
     }
     if set(report_by_strategy) != backtested_ids - METRICS_UNAVAILABLE_STRATEGY_IDS:
         raise B649MultiTicketRecordProjectionError(
-            "source reports do not cover exactly all metrics-eligible "
-            "BACKTESTED strategies"
+            "source reports do not cover exactly all metrics-eligible BACKTESTED strategies"
         )
     metrics_available_strategy_count = _nonnegative_integer(
         document["metrics_available_strategy_count"],
@@ -259,16 +256,11 @@ def _parse_projection(raw: bytes) -> B649MultiTicketRecordDataset:
         document["metrics_unavailable_strategy_count"],
         "metrics_unavailable_strategy_count",
     )
-    if (
-        metrics_available_strategy_count + metrics_unavailable_strategy_count
-        != len(backtested_ids)
-    ):
+    if metrics_available_strategy_count + metrics_unavailable_strategy_count != len(backtested_ids):
         raise B649MultiTicketRecordProjectionError(
             "metrics completeness counts do not sum to the BACKTESTED total"
         )
-    if metrics_unavailable_strategy_count != len(
-        METRICS_UNAVAILABLE_STRATEGY_IDS & backtested_ids
-    ):
+    if metrics_unavailable_strategy_count != len(METRICS_UNAVAILABLE_STRATEGY_IDS & backtested_ids):
         raise B649MultiTicketRecordProjectionError(
             "metrics_unavailable_strategy_count does not match the pinned exception set"
         )
@@ -276,9 +268,7 @@ def _parse_projection(raw: bytes) -> B649MultiTicketRecordDataset:
         records=tuple(projected),
         catalog_sha256=catalog.catalog_sha256,
         projection_sha256=projection_sha256,
-        source_report_count=len(
-            {pair for pair, _mode in report_by_strategy.values()}
-        ),
+        source_report_count=len({pair for pair, _mode in report_by_strategy.values()}),
         metrics_available_strategy_count=metrics_available_strategy_count,
         metrics_unavailable_strategy_count=metrics_unavailable_strategy_count,
     )
@@ -288,9 +278,7 @@ def _parse_source_reports(
     value: object,
 ) -> dict[str, tuple[tuple[str, str], str]]:
     if not isinstance(value, list):
-        raise B649MultiTicketRecordProjectionError(
-            "projection source_reports must be a list"
-        )
+        raise B649MultiTicketRecordProjectionError("projection source_reports must be a list")
     source_reports = cast(list[object], value)
     report_by_strategy: dict[str, tuple[tuple[str, str], str]] = {}
     report_pairs: set[tuple[str, str]] = set()
@@ -418,9 +406,7 @@ def _expand_record(
                 f"{catalog_record.strategy_id} is metrics-unavailable and may not "
                 "carry aggregate combinations"
             )
-        report_file_sha256 = _sha256(
-            record["report_file_sha256"], "report_file_sha256"
-        )
+        report_file_sha256 = _sha256(record["report_file_sha256"], "report_file_sha256")
         report_sha256 = _sha256(record["report_sha256"], "report_sha256")
         if record["authority_mode"] is not None:
             raise B649MultiTicketRecordProjectionError(
@@ -446,9 +432,7 @@ def _expand_record(
             for criterion in B649_SUCCESS_CRITERIA:
                 combination = (
                     _parse_combination(
-                        combinations[
-                            f"{prefix_count}|{window.value}|{criterion.value}"
-                        ],
+                        combinations[f"{prefix_count}|{window.value}|{criterion.value}"],
                         catalog_record.strategy_id,
                         projection_schema_version=projection_schema_version,
                     )
@@ -511,9 +495,7 @@ def _parse_combination(
     rank = combination["rank"]
     official_rank = official_fields["official_rank"]
     reason = combination["unranked_reason"]
-    legacy_projection = (
-        projection_schema_version == _LEGACY_PROJECTION_SCHEMA_VERSION
-    )
+    legacy_projection = projection_schema_version == _LEGACY_PROJECTION_SCHEMA_VERSION
     if rank is not None:
         _positive_integer(rank, "rank")
         if reason is not None:
@@ -521,9 +503,7 @@ def _parse_combination(
                 "ranked combinations cannot carry an unranked reason"
             )
     elif not isinstance(reason, str) or not reason:
-        raise B649MultiTicketRecordProjectionError(
-            "unranked combinations require a formal reason"
-        )
+        raise B649MultiTicketRecordProjectionError("unranked combinations require a formal reason")
     if not legacy_projection:
         if official_rank is not None:
             _positive_integer(official_rank, "official_rank")
@@ -571,9 +551,7 @@ def _parse_combination(
                 f"{field_name} must be an exact decimal_18 string"
             )
     if type(combination["window_complete"]) is not bool:
-        raise B649MultiTicketRecordProjectionError(
-            "window_complete must be a boolean"
-        )
+        raise B649MultiTicketRecordProjectionError("window_complete must be a boolean")
     prizes = _mapping(combination["official_prize_counts"], "official_prize_counts")
     _exact_keys(prizes, _PRIZE_FIELDS, "official_prize_counts")
     for field_name in _PRIZE_FIELDS:
@@ -632,7 +610,7 @@ def _build_record(
             metrics_unavailable_reason=metrics_unavailable_reason,
         )
     prizes = cast(dict[str, object], combination["official_prize_counts"])
-    return B649MultiTicketRecord(
+    result = B649MultiTicketRecord(
         strategy_id=catalog_record.strategy_id,
         strategy_version=catalog_record.strategy_version,
         legacy_method_id=catalog_record.legacy_method_id,
@@ -651,7 +629,9 @@ def _build_record(
         ),
         official_any_prize_rate=cast(
             str | None,
-            combination["official_any_prize_rate"],
+            combination["official_any_prize_rate"]
+            if combination["successful_execution_count"]
+            else None,
         ),
         official_random_baseline_probability=cast(
             str | None,
@@ -659,22 +639,28 @@ def _build_record(
         ),
         official_random_baseline_delta=cast(
             str | None,
-            combination["official_random_baseline_delta"],
+            combination["official_random_baseline_delta"]
+            if combination["successful_execution_count"]
+            else None,
         ),
         unranked_reason=cast(str | None, combination["unranked_reason"]),
         success_count=cast(int, combination["success_count"]),
-        effective_backtest_draw_count=cast(
-            int, combination["effective_backtest_draw_count"]
+        # Older immutable projections stored Fraction.denominator here.  The
+        # raw successful execution count is the denominator paired with the
+        # unreduced success count, regardless of projection generation date.
+        effective_backtest_draw_count=cast(int, combination["successful_execution_count"]),
+        successful_execution_count=cast(int, combination["successful_execution_count"]),
+        historical_success_rate=(
+            cast(str, combination["historical_success_rate"])
+            if combination["successful_execution_count"]
+            else None
         ),
-        successful_execution_count=cast(
-            int, combination["successful_execution_count"]
-        ),
-        historical_success_rate=cast(str, combination["historical_success_rate"]),
-        random_baseline_success_rate=cast(
-            str, combination["random_baseline_success_rate"]
-        ),
+        random_baseline_success_rate=cast(str, combination["random_baseline_success_rate"]),
         random_baseline_rate_difference=cast(
-            str, combination["random_baseline_rate_difference"]
+            str | None,
+            combination["random_baseline_rate_difference"]
+            if combination["successful_execution_count"]
+            else None,
         ),
         coverage=cast(str, combination["coverage"]),
         window_available_draws=cast(int, combination["window_available_draws"]),
@@ -697,6 +683,22 @@ def _build_record(
         authority_mode=authority_mode,
         metrics_unavailable_reason=metrics_unavailable_reason,
     )
+    if catalog_record.strategy_id == "legacy_biglotto__predict_biglotto_radical__1f1c6e060b19":
+        # The frozen aggregate windows include targets preceding the rule's
+        # recorded design. Keep raw evidence counts, but do not publish those
+        # aggregates as comparable success rates or ranks.
+        result = replace(
+            result,
+            rank=None,
+            official_rank=None,
+            historical_success_rate=None,
+            random_baseline_rate_difference=None,
+            official_any_prize_rate=None,
+            official_random_baseline_delta=None,
+            unranked_reason="OUTCOME_INFORMED_DESIGN_CHRONOLOGY_UNSAFE",
+            metrics_unavailable_reason="OUTCOME_INFORMED_DESIGN_CHRONOLOGY_UNSAFE",
+        )
+    return result
 
 
 def _mapping(value: object, label: str) -> dict[str, object]:
@@ -709,9 +711,7 @@ def _mapping(value: object, label: str) -> dict[str, object]:
 
 def _exact_keys(value: dict[str, object], expected: set[str], label: str) -> None:
     if set(value) != expected:
-        raise B649MultiTicketRecordProjectionError(
-            f"{label} fields do not match the closed schema"
-        )
+        raise B649MultiTicketRecordProjectionError(f"{label} fields do not match the closed schema")
 
 
 def _string(value: object, label: str) -> str:
@@ -722,9 +722,7 @@ def _string(value: object, label: str) -> str:
 
 def _sha256(value: object, label: str) -> str:
     if not isinstance(value, str) or _SHA256.fullmatch(value) is None:
-        raise B649MultiTicketRecordProjectionError(
-            f"{label} must be a lowercase SHA-256"
-        )
+        raise B649MultiTicketRecordProjectionError(f"{label} must be a lowercase SHA-256")
     return value
 
 
@@ -737,9 +735,7 @@ def _positive_integer(value: object, label: str) -> int:
 
 def _nonnegative_integer(value: object, label: str) -> int:
     if type(value) is not int or value < 0:
-        raise B649MultiTicketRecordProjectionError(
-            f"{label} must be a non-negative integer"
-        )
+        raise B649MultiTicketRecordProjectionError(f"{label} must be a non-negative integer")
     return value
 
 
@@ -771,17 +767,13 @@ def _exact_native_string(value: object, label: str) -> str:
 
 def _exact_native_nonnegative_integer(value: object, label: str) -> int:
     if type(value) is not int or value < 0:
-        raise B649ExactNativeRecordProjectionError(
-            f"{label} must be a non-negative integer"
-        )
+        raise B649ExactNativeRecordProjectionError(f"{label} must be a non-negative integer")
     return value
 
 
 def _exact_native_decimal_18(value: object, label: str) -> str:
     if not isinstance(value, str) or _DECIMAL_18.fullmatch(value) is None:
-        raise B649ExactNativeRecordProjectionError(
-            f"{label} must be an exact decimal_18 string"
-        )
+        raise B649ExactNativeRecordProjectionError(f"{label} must be an exact decimal_18 string")
     return value
 
 
@@ -792,9 +784,7 @@ def _exact_native_opt_int(value: object, label: str) -> int | None:
         return value
     if isinstance(value, str) and value.isdigit():
         return int(value)
-    raise B649ExactNativeRecordProjectionError(
-        f"{label} must be an integer or null"
-    )
+    raise B649ExactNativeRecordProjectionError(f"{label} must be an integer or null")
 
 
 def _exact_native_opt_str(value: object, label: str) -> str | None:
@@ -802,9 +792,7 @@ def _exact_native_opt_str(value: object, label: str) -> str | None:
         return None
     if isinstance(value, str):
         return value
-    raise B649ExactNativeRecordProjectionError(
-        f"{label} must be a string or null"
-    )
+    raise B649ExactNativeRecordProjectionError(f"{label} must be a string or null")
 
 
 def _exact_native_opt_bool(value: object, label: str) -> bool | None:
@@ -812,9 +800,7 @@ def _exact_native_opt_bool(value: object, label: str) -> bool | None:
         return None
     if isinstance(value, bool):
         return value
-    raise B649ExactNativeRecordProjectionError(
-        f"{label} must be a boolean or null"
-    )
+    raise B649ExactNativeRecordProjectionError(f"{label} must be a boolean or null")
 
 
 def _parse_exact_native_projection(raw: bytes) -> B649ExactNativeRecordDataset:
@@ -832,9 +818,7 @@ def _parse_exact_native_projection(raw: bytes) -> B649ExactNativeRecordDataset:
 
     projection_sha256 = document.get("projection_sha256")
     if not isinstance(projection_sha256, str) or _SHA256.fullmatch(projection_sha256) is None:
-        raise B649ExactNativeRecordProjectionError(
-            "projection_sha256 must be a lowercase SHA-256"
-        )
+        raise B649ExactNativeRecordProjectionError("projection_sha256 must be a lowercase SHA-256")
 
     canonical = json.dumps(
         {key: value for key, value in document.items() if key != "projection_sha256"},
@@ -855,14 +839,10 @@ def _parse_exact_native_projection(raw: bytes) -> B649ExactNativeRecordDataset:
 
     records_value = document.get("exact_native_records")
     if not isinstance(records_value, list):
-        raise B649ExactNativeRecordProjectionError(
-            "exact_native_records must be a list"
-        )
+        raise B649ExactNativeRecordProjectionError("exact_native_records must be a list")
     records_raw = cast(list[object], records_value)
     expected_count = (
-        len(catalog.records)
-        * len(B649_EXACT_NATIVE_TICKET_COUNTS)
-        * len(B649_HISTORY_WINDOWS)
+        len(catalog.records) * len(B649_EXACT_NATIVE_TICKET_COUNTS) * len(B649_HISTORY_WINDOWS)
     )
     if len(records_raw) != expected_count:
         raise B649ExactNativeRecordProjectionError(
@@ -893,9 +873,7 @@ def _parse_exact_native_projection(raw: bytes) -> B649ExactNativeRecordDataset:
             raise B649ExactNativeRecordProjectionError(
                 f"reproduction_status mismatch for {strategy_id}"
             )
-        ticket_count = _exact_native_nonnegative_integer(
-            record.get("ticket_count"), "ticket_count"
-        )
+        ticket_count = _exact_native_nonnegative_integer(record.get("ticket_count"), "ticket_count")
         if ticket_count not in B649_EXACT_NATIVE_TICKET_COUNTS:
             raise B649ExactNativeRecordProjectionError(
                 f"invalid ticket_count {ticket_count} in exact_native_records[{index}]"
@@ -1100,14 +1078,14 @@ K10_AUTHORITY: dict[str, object] = {
     "authority_head": "2c861c91490df9fae0a1484b0cca1e0dd93d4a22",
     "authority_tree": "693205beb9fb19f2a56847893d00e7dc9607b4f7",
     "manifest_locator": (
-        '/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.task-data/BIGLOTTO_1'
-        '15000084_K10_EXACT_NATIVE_CANONICAL_REFRESH_R1/sealed_manifest.json'
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.task-data/BIGLOTTO_1"
+        "15000084_K10_EXACT_NATIVE_CANONICAL_REFRESH_R1/sealed_manifest.json"
     ),
     "sealed_manifest_sha256": "32dc65b424cf805b481160a8b0d88d5a838daa30ffdb31d877d2a990f4d7c47d",
     "target_evidence_sha256": "e3e56e1e0bacc6bbb03edd3610ae2339f864f82285da00bb6723fc344f4f16c6",
     "source_ranking_locator": (
-        '/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.task-data/BIGLOTTO_1'
-        '15000084_K10_EXACT_NATIVE_CANONICAL_REFRESH_R1/ranking.json'
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.task-data/BIGLOTTO_1"
+        "15000084_K10_EXACT_NATIVE_CANONICAL_REFRESH_R1/ranking.json"
     ),
     "source_ranking_sha256": "075aa7d9667e62f87612d0e5fe15958e3ab93dc6d4e023ff5a503b5a2453ea25",
     "run_id": "BIGLOTTO_115000084_K10_EXACT_NATIVE_CANONICAL_REFRESH_R1",
@@ -1122,10 +1100,10 @@ K10_AUTHORITY: dict[str, object] = {
         "legacy_biglotto__backtest_biglotto_coldpool_15__2a80423e3cf5",
     ],
     "producer_universe_fingerprint": (
-        '3d3afa99db61965f4db80a24beb41ad56afa790c59409661e22454acf075ae93'
+        "3d3afa99db61965f4db80a24beb41ad56afa790c59409661e22454acf075ae93"
     ),
     "producer_catalog_fingerprint": (
-        'c618e9d14692cfd23f6b08b3b103a6de64e4b3d5e47025263d3babb9fce47dba'
+        "c618e9d14692cfd23f6b08b3b103a6de64e4b3d5e47025263d3babb9fce47dba"
     ),
     "consumer_catalog_sha256": "9e2d9f6c3cffbfe9867d4aaafbf8c9315922503fc0b806dfc84627699e0d82e3",
 }

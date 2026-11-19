@@ -1510,6 +1510,22 @@ _IMPORTED_REPLAY_IDENTITIES: tuple[_ImportedReplayIdentitySpec, ...] = (
         reconstruction_reason=_IMPORTED_HISTORY_ONLY_REASON,
         source_status="CONTROL_BASELINE",
     ),
+    *(
+        _ImportedReplayIdentitySpec(
+            lottery_type=LotteryType.BIG_LOTTO,
+            strategy_id=f"research_biglotto__historical_random_k{ticket_count}_20261119_r1",
+            display_name=f"K{ticket_count} 固定隨機歷史對照",
+            strategy_version="v1.0.0",
+            source_locator="replay-backfill:NUMBER2_B_BIGLOTTO_15K_RANDOM_CONTROL_50_20261119_R1",
+            reconstruction_reason=(
+                "Fixed-seed historical random control baseline, not a future recommendation; "
+                "history is available only through its matching Replay Backfill run and no "
+                "current native executable binding is registered."
+            ),
+            source_status="CONTROL_BASELINE",
+        )
+        for ticket_count in (1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12, 13, 25, 40, 54)
+    ),
     _ImportedReplayIdentitySpec(
         lottery_type=LotteryType.BIG_LOTTO,
         strategy_id="research_biglotto__k3_hedge_official_reference_20261117",

@@ -31,6 +31,43 @@ export interface paths {
                 }
         }
     }
+  "/api/b649/native-forecast/current": {
+      get: {
+          parameters: {
+            "query": {
+              "target_draw_number": string
+              "target_draw_date": string
+            }
+          }
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": components['schemas']["B649NativeForecastCurrentResponse"]
+                                  }
+                        }
+                  404: {
+                          content: {
+                                    "application/json": components['schemas']["B649NativeForecastApiErrorResponse"]
+                                  }
+                        }
+                  409: {
+                          content: {
+                                    "application/json": components['schemas']["B649NativeForecastApiErrorResponse"]
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["B649NativeForecastApiErrorResponse"] | components['schemas']["ApiValidationErrorResponse"]
+                                  }
+                        }
+                  503: {
+                          content: {
+                                    "application/json": components['schemas']["B649NativeForecastApiErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
   "/api/v1/b649/sealed-084-replays/status": {
       get: {
           parameters: Record<string, never>
@@ -2217,6 +2254,33 @@ export interface paths {
                 }
         }
     }
+  "/api/v1/replay-backfill/coverage/scan": {
+      get: {
+          parameters: {
+            "query": {
+              "lottery_type": components['schemas']["LotteryType"]
+              "start_date": string
+              "end_date": string
+              "strategy_id": Array<string>
+              "strategy_version": Array<string>
+              "limit"?: number
+              "offset"?: number
+            }
+          }
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": unknown
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["ApiValidationErrorResponse"] | components['schemas']["ReplayBackfillErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
   "/api/v1/replay-backfill/results": {
       get: {
           parameters: {
@@ -2993,6 +3057,32 @@ export interface components {
           "metrics_unavailable_strategy_count": number | null
           "primary_ranking_criterion": string
           "research_disclaimer": string
+        }
+    "B649NativeForecastApiErrorResponse": {
+          "error_code": string
+          "message": string
+        }
+    "B649NativeForecastCurrentResponse": {
+          "scope": components['schemas']["B649NativeForecastScope"]
+          "request_identity": components['schemas']["B649NativeForecastRequestIdentity"]
+          "payload": Record<string, unknown>
+        }
+    "B649NativeForecastRequestIdentity": {
+          "request_id": string
+          "request_sha256": string
+          "version": number
+          "run_id": string
+          "payload_sha256": string
+          "generation_started_at": string
+          "generation_finished_at": string
+          "committed_at": string
+        }
+    "B649NativeForecastScope": {
+          "lottery_type": string
+          "target_draw_number": string
+          "target_draw_date": string
+          "forecast_stream_id": string
+          "forecast_stream_version": string
         }
     "B649OfficialPrizeCountsView": {
           "first": number

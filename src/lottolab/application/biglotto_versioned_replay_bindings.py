@@ -162,6 +162,36 @@ _WAVE27_MODULES = (
 
 VERSIONED_REPLAY_SOURCES = (
     VersionedReplaySource(
+        strategy_id="legacy_biglotto__biglotto_diversified_ensemble__36dbfc14b360",
+        strategy_version="legacy-source-49a25effa62f-36dbfc14b360",
+        source_path="tools/biglotto_diversified_ensemble.py",
+        source_commit="49a25effa62fc24f40789c16be6f11bdfb41a4a9",
+        source_blob_id="37321ba00d4ab72fcda48682e46ab442876cdf84",
+        source_sha256="36dbfc14b360d0961b429e7e7a424340c9e81d20886e4d9814b5306c82e9ee7f",
+        current_version=None,
+        adapter_path=(
+            "lottolab.application.biglotto_frozen_diversified_ensemble:FrozenDiversifiedEnsemble"
+        ),
+        implementation_sha256="610728d946440b14a7c84f0d5706e8156e4e5e5427f2db3dacadf6e8b8ff08ed",
+        parity_test="tests/unit/test_biglotto_frozen_grid.py::test_wave62_diversified_portfolios",
+        parity_evidence="EXACT_ORDERED_PORTFOLIO_EXECUTION_PARITY",
+        shared_modules=(
+            (
+                "lottolab.strategies.adapters.biglotto_constraint_filter",
+                _GRID_MODULE_SHA256["biglotto_constraint_filter"],
+            ),
+            (
+                "lottolab.strategies.adapters.biglotto_evolution_any_prize",
+                "b805827e359830a545784caf50b6a105b203bae673672801642cf34d758ede29",
+            ),
+            ("lottolab.strategies.adapters.biglotto_wave3", _GRID_MODULE_SHA256["biglotto_wave3"]),
+            (
+                "lottolab.strategies.adapters.biglotto_wave10",
+                "f2b629387ce2546219dd69d12471b8b09a04bf6c40b94a32711703999a1015a8",
+            ),
+        ),
+    ),
+    VersionedReplaySource(
         strategy_id="legacy_biglotto__biglotto_diversified_ensemble_v6__8caaac8fcb5d",
         strategy_version="legacy-source-49a25effa62f-8caaac8fcb5d",
         source_path="tools/biglotto_diversified_ensemble_v6.py",

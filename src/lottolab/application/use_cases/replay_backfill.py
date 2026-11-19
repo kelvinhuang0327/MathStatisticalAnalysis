@@ -120,6 +120,10 @@ class _OutcomeBlindAdapter:
     def __init__(self, adapter: HistoricalReplayAdapter) -> None:
         self._adapter = adapter
         self.lottery_type = adapter.lottery_type
+        # The source's minimum-history reason depends only on its strategy identity.
+        self.minimum_history_closure_reason = getattr(
+            adapter, "minimum_history_closure_reason", None
+        )
 
     def generate(
         self, strategy: ReplayStrategy, history: tuple[ReplayDraw, ...], target: ReplayDraw

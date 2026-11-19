@@ -394,12 +394,17 @@ class HistoricalReplayController:
                 history_fingerprint,
             )
         if len(history) < strategy.min_history:
+            resolver = getattr(self._adapter, "minimum_history_closure_reason", None)
+            source_reason = resolver(strategy) if callable(resolver) else None
+            default_reason = (
+                f"INSUFFICIENT_CAUSAL_HISTORY_REQUIRED_{strategy.min_history}_GOT_{len(history)}"
+            )
             return _empty_record(
                 target,
                 strategy,
                 ReplayCellStatus.NOT_ELIGIBLE,
                 history,
-                f"INSUFFICIENT_CAUSAL_HISTORY_REQUIRED_{strategy.min_history}_GOT_{len(history)}",
+                source_reason if isinstance(source_reason, str) else default_reason,
                 history_fingerprint,
             )
 

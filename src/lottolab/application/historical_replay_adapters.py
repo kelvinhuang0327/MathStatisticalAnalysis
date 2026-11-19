@@ -295,6 +295,14 @@ class BigLottoReplayAdapter(_PrizeEvaluatingAdapter):
     def strategies(self) -> tuple[ReplayStrategy, ...]:
         return tuple(binding.strategy for binding in self._bindings)
 
+    def minimum_history_closure_reason(self, strategy: ReplayStrategy) -> str | None:
+        """Expose a pinned source's reason when it defines a minimum-history closure."""
+        binding = self._by_id.get(strategy.strategy_id)
+        if binding is None or binding.strategy.identity != strategy.identity:
+            return None
+        reason = getattr(binding.implementation, "minimum_history_closure_reason", None)
+        return reason if isinstance(reason, str) else None
+
     def expected_native_ticket_count(
         self,
         strategy: ReplayStrategy,

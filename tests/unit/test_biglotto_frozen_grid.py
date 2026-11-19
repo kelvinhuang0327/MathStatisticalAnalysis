@@ -15,6 +15,7 @@ from unittest.mock import Mock
 
 import pytest
 
+from lottolab.application import biglotto_frozen_hpsb as hpsb
 from lottolab.application import legacy_source_native_portfolios_wave27 as wave27
 from lottolab.application.biglotto_versioned_replay_bindings import VERSIONED_REPLAY_SOURCES
 from lottolab.application.legacy_history_native_portfolios import LegacyHistoryDraw
@@ -128,6 +129,118 @@ def _wave27_cases():
         digest = hashlib.sha256(json.dumps(history, separators=(",", ":")).encode()).hexdigest()
         assert digest == ledger["context_numbers_sha256_by_target"][cutoff - 1]
     return cases
+
+
+def test_wave57_hpsb_ordered_portfolios() -> None:
+    source = _source("hpsb_optimizer")
+    resources = ROOT / "src/lottolab/strategies/data"
+    raw = (resources / "biglotto_legacy_hpsb_native_wave57_evidence_v1.json").read_bytes()
+    assert hashlib.sha256(raw).hexdigest() == (
+        "235947a7035aa43396125ba3340d48872dd81a60a3f367a1908da98dbf4b0512"
+    )
+    evidence = json.loads(raw)
+    raw = (resources / "biglotto_hpsb_wave57_ticket_ledger_v1.json").read_bytes()
+    assert hashlib.sha256(raw).hexdigest() == evidence["ledger_file_sha256"] == (
+        "5120f4cf4928eb843c4b1a29ccfe913692bcf34398308d0c89bcde66527f1e45"
+    )
+    ledger = json.loads(raw)
+    assert ledger["frozen_source_commit"] == source.source_commit
+    assert ledger["source_sha256_by_method"][source.source_path] == source.source_sha256
+    assert ledger["source_reference_runtime"] == (
+        "CPYTHON_3_9_6_NUMPY_1_26_2_SCIPY_1_12_0_HPSB_V2_DMS_STATISTICAL_RANDOM_SEED_HISTORY_LENGTH"
+    )
+    [record] = evidence["strategies"]
+    assert record["closed_reason_code_distribution"] == {"NO_PRIOR_DRAW_FOR_CAUSAL_CUTOFF": 1}
+    assert record["ok_execution_count"] == 2148
+
+    bindings, accounts = cli._exact_strategy_inventory(
+        BIG, source.strategy_id, source.strategy_version
+    )
+    assert accounts[source.strategy_id]["source"] == source.locator
+    strategy, adapter = bindings[0].strategy, cli.build_adapter(BIG, bindings)
+    assert (strategy.min_history, strategy.native_ticket_count) == (1, 1)
+    draws = _draws()[:2149]
+    expected = ledger["tickets_by_method"][source.source_path]
+    assert [d.draw_number for d in draws] == ledger["target_draw_numbers"]
+    assert len(expected) == len(draws) == 2149
+    assert draws[0].draw_number == "96000001"
+    with pytest.raises(InsufficientHistory):
+        adapter.generate(strategy, (), draws[0])
+
+    prefix = hashlib.sha256(b"[")
+    outputs = hashlib.sha256(b"[")
+    for cutoff, target in enumerate(draws[1:], 1):
+        if cutoff > 1:
+            prefix.update(b",")
+            outputs.update(b",")
+        prefix.update(json.dumps(draws[cutoff - 1].main_numbers, separators=(",", ":")).encode())
+        context = prefix.copy()
+        context.update(b"]")
+        assert context.hexdigest() == ledger["context_numbers_sha256_by_target"][cutoff]
+        [ticket] = adapter.generate(strategy, draws[:cutoff], target)
+        assert ticket.ticket_position == 1 and ticket.special_number is None
+        portfolio = [list(ticket.main_numbers)]
+        assert portfolio == expected[cutoff], (cutoff, target.draw_number)
+        outputs.update(json.dumps(portfolio, separators=(",", ":")).encode())
+    outputs.update(b"]")
+    assert outputs.hexdigest() == record["ticket_sequence_sha256"] == (
+        "1b3acdf5a173d266dbf245da228c3b447e797cc0a6bc2a90dabdbab6abf307fe"
+    )
+
+
+def test_wave57_hpsb_backfill_closure_and_version() -> None:
+    source = _source("hpsb_optimizer")
+    bindings, accounts = cli._exact_strategy_inventory(
+        BIG, source.strategy_id, source.strategy_version
+    )
+    live, _ = cli._exact_strategy_inventory(BIG, source.strategy_id, "v0.1")
+    strategy = bindings[0].strategy
+    assert live[0].strategy.strategy_version == "v0.1"
+    assert live[0].strategy.fingerprint != strategy.fingerprint
+    store = Mock(spec=BackfillStore)
+    store.lookup_complete_by_logical_keys.return_value = {}
+    store.lookup_many_by_unique_keys.return_value = {}
+    store.summary.return_value = {}
+    worker = ReplayBackfill(
+        adapter=cli.build_adapter(BIG, bindings),
+        strategies=(strategy,),
+        draws=_draws()[:2],
+        source_identity="wave57-historical-fixture",
+        store=store,
+        execution_version="wave57-test",
+        strategy_sources=accounts,
+    )
+    result = worker.execute(BackfillSelection(all_draws=True))
+    assert result["newly_calculated_count"] == 2
+    closed, eligible = store.save_many.call_args.args[1]
+    assert closed["target_draw_id"] == "96000001" and closed["history_count"] == 0
+    assert closed["execution_status"] == "NOT_ELIGIBLE"
+    assert closed["predicted_tickets"] == []
+    assert eligible["strategy_version"] == source.strategy_version
+    assert eligible["history_count"] == 1 and eligible["execution_status"] == "COMPLETE"
+    [ticket] = eligible["predicted_tickets"]
+    assert ticket["ticket_position"] == 1 and ticket["main_numbers"] == [3, 13, 21, 23, 27, 49]
+
+
+def test_wave57_hpsb_prefix_length_seed() -> None:
+    # At these adjacent Wave 57 targets the statistical method won the audit.
+    draws = _draws()
+    original_state = random.getstate()
+    try:
+        for global_seed in (7, 54321):
+            random.seed(global_seed)
+            state = random.getstate()
+            for cutoff, expected in (
+                (135, (1, 8, 15, 20, 31, 44)),
+                (136, (13, 18, 28, 31, 34, 43)),
+            ):
+                prefix = tuple(
+                    LegacyHistoryDraw(d.draw_number, d.main_numbers) for d in draws[:cutoff]
+                )
+                assert hpsb._statistical(prefix) == expected
+            assert random.getstate() == state
+    finally:
+        random.setstate(original_state)
 
 
 def test_wave60_hybrid_ordered_portfolios() -> None:

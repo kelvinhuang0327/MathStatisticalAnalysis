@@ -140,11 +140,7 @@ def _historical_grid(
     )
 
 
-_WAVE27_MODULES = (
-    (
-        "lottolab.application.legacy_source_native_portfolios_wave27",
-        "bdc3acf0c791c9e0a530e0f0032df983348720e4e026ded379119993a89664c6",
-    ),
+_FROZEN_UNIFIED_MODULES = (
     (
         "lottolab.application.legacy_frozen_unified_core",
         "f401daede4d0a14bf148ceb00157c18279fde201bbc3251ef633540c61f61e8f",
@@ -155,8 +151,41 @@ _WAVE27_MODULES = (
     ),
 )
 
+_WAVE27_MODULES = (
+    (
+        "lottolab.application.legacy_source_native_portfolios_wave27",
+        "bdc3acf0c791c9e0a530e0f0032df983348720e4e026ded379119993a89664c6",
+    ),
+    *_FROZEN_UNIFIED_MODULES,
+)
+
 
 VERSIONED_REPLAY_SOURCES = (
+    VersionedReplaySource(
+        strategy_id="legacy_biglotto__hpsb_optimizer__cf5cd7d971e8",
+        strategy_version="legacy-source-49a25effa62f-cf5cd7d971e8",
+        source_path="lottery_api/models/hpsb_optimizer.py",
+        source_commit="49a25effa62fc24f40789c16be6f11bdfb41a4a9",
+        source_blob_id="a433ef189ee3a0d71a3ad67b5ba15d2ba94e5b33",
+        source_sha256="cf5cd7d971e8bf2f1854d2196824278de957b3eae3697dff197ab9a3c8b78bcc",
+        current_version=None,
+        adapter_path="lottolab.application.biglotto_frozen_hpsb:FrozenHpsbOptimizer",
+        implementation_sha256="17f350c99d661d00e588692501077abf98921dd60767412d741a0174905ac367",
+        parity_test="tests/unit/test_biglotto_frozen_grid.py::test_wave57_hpsb_ordered_portfolios",
+        parity_evidence="EXACT_ORDERED_PORTFOLIO_EXECUTION_PARITY",
+        shared_modules=(
+            *_FROZEN_UNIFIED_MODULES,
+            (
+                "lottolab.strategies.adapters.biglotto_wave14",
+                "a590ab3cd5b616dc57307938f58737096a52c5a82018ca0882bb16edc4725d93",
+            ),
+            ("lottolab.strategies.adapters.biglotto_wave3", _GRID_MODULE_SHA256["biglotto_wave3"]),
+            (
+                "lottolab.strategies.adapters.biglotto_wave4",
+                "8665920f3f81fd38ef7c08ce437ffbdcc5718f6041a82b3ce737838d8d74ac4a",
+            ),
+        ),
+    ),
     VersionedReplaySource(
         strategy_id="legacy_biglotto__hybrid_integration_benchmark__5789ca885422",
         strategy_version="legacy-source-49a25effa62f-5789ca885422",

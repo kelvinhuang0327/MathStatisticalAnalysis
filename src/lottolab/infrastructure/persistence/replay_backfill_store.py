@@ -20,6 +20,7 @@ from lottolab.domain.historical_replay import (
     SourceHistoryProvenanceStatus,
     parse_source_history_provenance_status,
 )
+from lottolab.domain.lottery_rules import LOTTERY_RULE_CONTRACTS, LotteryRuleContract
 from lottolab.domain.prize_evaluation import evaluate_lottery_prize
 from lottolab.infrastructure.persistence.draw_schema import (
     LocalDataPaths,
@@ -32,6 +33,7 @@ from lottolab.infrastructure.persistence.project_database_paths import (
     project_database_directory,
     require_project_database_write_ready,
 )
+from lottolab.strategies.catalog import production_catalog
 
 JsonObject = dict[str, Any]
 
@@ -160,6 +162,113 @@ _TABLES = {
     "replay_backfill_training",
     "replay_backfill_sources",
 }
+_FIXED_K7_TICKET_COUNT = 7
+
+
+def _saved_ticket_group_details(
+    payload: JsonObject,
+    saved_rows: list[tuple[object, ...]],
+    *,
+    lottery_type: str,
+) -> dict[str, object]:
+    """Validate saved native positions and ticket groups without deduplicating tickets."""
+    rule = LOTTERY_RULE_CONTRACTS[LotteryType(lottery_type)]
+    raw_tickets: object = payload.get("predicted_tickets")
+    payload_by_position: dict[int, tuple[tuple[int, ...], tuple[int, ...]]] = {}
+    valid = type(raw_tickets) is list
+
+    if type(raw_tickets) is list:
+        for raw_ticket in cast(list[object], raw_tickets):
+            if type(raw_ticket) is not dict:
+                valid = False
+                continue
+            ticket = cast(JsonObject, raw_ticket)
+            position = ticket.get("ticket_position")
+            raw_main: object = ticket.get("main_numbers")
+            special_number: object = ticket.get("special_number")
+            if (
+                type(position) is not int
+                or position < 1
+                or position in payload_by_position
+                or type(raw_main) is not list
+                or any(type(number) is not int for number in cast(list[object], raw_main))
+                or (special_number is not None and type(special_number) is not int)
+            ):
+                valid = False
+                continue
+            main_numbers = tuple(cast(list[int], raw_main))
+            special_numbers = () if special_number is None else (special_number,)
+            payload_by_position[position] = (main_numbers, special_numbers)
+            if not _ticket_numbers_match_rule(main_numbers, special_numbers, rule):
+                valid = False
+
+    saved_by_position: dict[int, tuple[tuple[int, ...], tuple[int, ...]]] = {}
+    for raw_position, raw_main_json, raw_special_json in saved_rows:
+        if type(raw_position) is not int or raw_position < 1 or raw_position in saved_by_position:
+            valid = False
+            continue
+        try:
+            main_values: object = json.loads(cast(str, raw_main_json))
+            special_values: object = json.loads(cast(str, raw_special_json))
+        except (TypeError, ValueError):
+            valid = False
+            continue
+        if (
+            type(main_values) is not list
+            or any(type(number) is not int for number in cast(list[object], main_values))
+            or type(special_values) is not list
+            or any(type(number) is not int for number in cast(list[object], special_values))
+        ):
+            valid = False
+            continue
+        main_numbers = tuple(cast(list[int], main_values))
+        special_numbers = tuple(cast(list[int], special_values))
+        saved_by_position[raw_position] = (main_numbers, special_numbers)
+        if not _ticket_numbers_match_rule(main_numbers, special_numbers, rule):
+            valid = False
+
+    ticket_positions = sorted(saved_by_position)
+    payload_ticket_count = len(cast(list[object], raw_tickets)) if type(raw_tickets) is list else 0
+    if (
+        ticket_positions != list(range(1, len(ticket_positions) + 1))
+        or payload_by_position != saved_by_position
+        or len(payload_by_position) != payload_ticket_count
+    ):
+        valid = False
+    return {
+        "ticket_count": len(saved_rows),
+        "ticket_positions": ticket_positions,
+        "valid": valid,
+    }
+
+
+def _ticket_numbers_match_rule(
+    main_numbers: tuple[int, ...],
+    special_numbers: tuple[int, ...],
+    rule: LotteryRuleContract,
+) -> bool:
+    # BIG_LOTTO's special number belongs to the draw, not to each predicted ticket.
+    ticket_special_count = (
+        0 if rule.lottery_type is LotteryType.BIG_LOTTO else rule.special_number_count
+    )
+    return not (
+        len(main_numbers) != rule.main_number_count
+        or any(
+            not rule.main_number_min <= number <= rule.main_number_max for number in main_numbers
+        )
+        or (rule.main_numbers_unique and len(set(main_numbers)) != len(main_numbers))
+        or main_numbers != tuple(sorted(main_numbers))
+        or len(special_numbers) != ticket_special_count
+        or any(
+            not rule.special_number_min <= number <= rule.special_number_max
+            for number in special_numbers
+        )
+        or (rule.special_numbers_unique and len(set(special_numbers)) != len(special_numbers))
+        or (
+            not rule.main_special_overlap_allowed
+            and set(main_numbers).intersection(special_numbers)
+        )
+    )
 
 
 def _schema_table_sql(table: str) -> str:
@@ -1239,6 +1348,230 @@ class SQLiteBackfillStore:
                 if strategy_counts.get(selected_strategy_id, 0) < target_count
             ),
             "run_id": selected_run_id,
+        }
+
+    def scan_window_coverage(
+        self,
+        *,
+        lottery_type: str,
+        strategies: tuple[tuple[str, str], ...],
+        targets: tuple[tuple[str, str], ...],
+        limit: int = 100,
+        offset: int = 0,
+    ) -> JsonObject:
+        """Read exact strategy/version coverage for a source-defined draw window."""
+        if len(strategies) != 5 or len({strategy_id for strategy_id, _ in strategies}) != 5:
+            raise ValueError("coverage scan requires five distinct strategies")
+        if not targets or len(targets) > 2500:
+            raise ValueError("coverage scan requires between 1 and 2500 source targets")
+        if not 1 <= limit <= 250 or offset < 0:
+            raise ValueError("invalid coverage scan pagination")
+        target_by_id = {draw_id: draw_date for draw_id, draw_date in targets}
+        if len(target_by_id) != len(targets):
+            raise ValueError("source target identities must be unique")
+
+        strategy_filter = ",".join("?" for _ in strategies)
+        earliest = min(draw_date for _, draw_date in targets)
+        latest = max(draw_date for _, draw_date in targets)
+        catalog = production_catalog()
+        native_ticket_bounds: dict[tuple[str, str], tuple[int, int]] = {}
+        for strategy_id, strategy_version in strategies:
+            try:
+                descriptor = catalog.get(strategy_id)
+            except KeyError:
+                continue
+            if (
+                descriptor.version == strategy_version
+                and LotteryType(lottery_type) in descriptor.lottery_types
+            ):
+                native_ticket_bounds[(strategy_id, strategy_version)] = (
+                    descriptor.native_ticket_count_bounds
+                )
+        with self._connect() as connection:
+            connection.execute("BEGIN")
+            rows = connection.execute(
+                "SELECT strategy_id,strategy_version,target_draw_id,target_draw_date,"
+                "execution_status,execution_version,dataset_identity,payload_json,cell_identity "
+                "FROM replay_backfill_cells WHERE lottery_type=? AND target_draw_date>=? "
+                f"AND target_draw_date<=? AND strategy_id IN ({strategy_filter}) "
+                "ORDER BY target_draw_date,CAST(target_draw_id AS INTEGER),strategy_id,"
+                "strategy_version,execution_version,dataset_identity",
+                (lottery_type, earliest, latest, *(strategy_id for strategy_id, _ in strategies)),
+            ).fetchall()
+            cell_ids = [str(row[8]) for row in rows]
+            saved_ticket_rows: dict[str, list[tuple[object, ...]]] = {}
+            for start in range(0, len(cell_ids), 500):
+                batch = cell_ids[start : start + 500]
+                placeholders = ",".join("?" for _ in batch)
+                ticket_rows = connection.execute(
+                    "SELECT cell_identity,ticket_position,main_numbers_json,special_numbers_json "
+                    "FROM replay_backfill_tickets "
+                    f"WHERE cell_identity IN ({placeholders}) "
+                    "ORDER BY cell_identity,ticket_position",
+                    batch,
+                ).fetchall()
+                for ticket_row in ticket_rows:
+                    saved_ticket_rows.setdefault(str(ticket_row[0]), []).append(ticket_row[1:])
+
+        cells: dict[tuple[str, str, str], list[JsonObject]] = {}
+        other_versions: dict[tuple[str, str], list[JsonObject]] = {}
+        expected_versions = dict(strategies)
+        orphan_count = 0
+        for row in rows:
+            strategy_id, strategy_version, draw_id, draw_date = row[:4]
+            pair = (str(strategy_id), str(strategy_version))
+            if (
+                str(draw_id) not in target_by_id
+                or target_by_id[str(draw_id)] != str(draw_date)
+            ):
+                orphan_count += 1
+                continue
+            payload = json.loads(row[7])
+            status = str(row[4])
+            cell_identity = str(row[8])
+            ticket_details = _saved_ticket_group_details(
+                payload,
+                saved_ticket_rows.get(cell_identity, []),
+                lottery_type=lottery_type,
+            )
+            bounds = native_ticket_bounds.get(pair)
+            native_ticket_set_complete = (
+                ticket_details["valid"]
+                and bounds is not None
+                and bounds[0] <= ticket_details["ticket_count"] <= bounds[1]
+            )
+            item: JsonObject = {
+                "strategy_version": pair[1],
+                "execution_status": status,
+                "execution_version": str(row[5]),
+                "dataset_identity": str(row[6]),
+                "ticket_count": ticket_details["ticket_count"],
+                "ticket_positions": ticket_details["ticket_positions"],
+                "ticket_set_valid": ticket_details["valid"],
+                "native_ticket_count_bounds": list(bounds) if bounds is not None else None,
+                "fixed_k7_comparison_eligible": (
+                    ticket_details["valid"]
+                    and ticket_details["ticket_count"] == _FIXED_K7_TICKET_COUNT
+                    and status == "COMPLETE"
+                ),
+                "reason": (
+                    payload.get("error_reason")
+                    if status != "COMPLETE" and isinstance(payload.get("error_reason"), str)
+                    else None
+                ),
+            }
+            if status == "COMPLETE" and bounds is not None and not native_ticket_set_complete:
+                item["coverage_status"] = "PARTIAL"
+                item["coverage_reason"] = "INCOMPLETE_TICKET_SET"
+            if expected_versions.get(pair[0]) == pair[1]:
+                cells.setdefault((pair[0], pair[1], str(draw_id)), []).append(item)
+            else:
+                other_versions.setdefault((pair[0], str(draw_id)), []).append(item)
+
+        scan_rows: list[JsonObject] = []
+        status_counts: dict[str, int] = {}
+        identity_variants = {
+            f"{strategy_id}@{strategy_version}": {
+                "execution_versions": set(),
+                "dataset_identities": set(),
+            }
+            for strategy_id, strategy_version in strategies
+        }
+        strategy_counts = {
+            f"{strategy_id}@{strategy_version}": {
+                "complete": 0,
+                "incomplete": 0,
+                "fixed_k7_comparison_eligible": 0,
+            }
+            for strategy_id, strategy_version in strategies
+        }
+        for draw_id, draw_date in targets:
+            for strategy_id, strategy_version in strategies:
+                records = cells.get((strategy_id, strategy_version, draw_id), [])
+                if not records:
+                    records = other_versions.get((strategy_id, draw_id), [])
+                    if records:
+                        status = "VERSION_MISMATCH"
+                        reason = "ONLY_OTHER_STRATEGY_VERSION_SAVED"
+                    else:
+                        status = "MISSING"
+                        reason = "NO_SAVED_CELL"
+                elif len(records) > 1:
+                    status = "AMBIGUOUS"
+                    reason = "MULTIPLE_EXECUTION_OR_DATASET_IDENTITIES"
+                else:
+                    status = str(records[0]["execution_status"])
+                    reason = records[0]["reason"]
+                    if status == "COMPLETE" and records[0].get("coverage_status") == "PARTIAL":
+                        status = "PARTIAL"
+                        reason = "INCOMPLETE_TICKET_SET"
+                    if status == "COMPLETE":
+                        reason = None
+                    elif reason is None:
+                        reason = {
+                            "FAILED": "EXECUTION_FAILED",
+                            "PARTIAL": "INCOMPLETE_TICKET_SET",
+                            "NOT_ELIGIBLE": "INSUFFICIENT_HISTORY_OR_NOT_ELIGIBLE",
+                            "TYPED_CLOSURE": "TARGET_CLOSED_WITHOUT_REPLAY",
+                            "MISSING": "SAVED_CELL_MARKED_MISSING",
+                            "ARTIFACT_ONLY": "ARTIFACT_HAS_NO_REPLAY_CELL",
+                        }.get(status, "NON_COMPLETE_REPLAY_CELL")
+                key = f"{strategy_id}@{strategy_version}"
+                if (
+                    len(records) == 1
+                    and status == "COMPLETE"
+                    and records[0].get("fixed_k7_comparison_eligible") is True
+                ):
+                    strategy_counts[key]["fixed_k7_comparison_eligible"] += 1
+                for record in records:
+                    if record["strategy_version"] == strategy_version:
+                        identity_variants[key]["execution_versions"].add(
+                            record["execution_version"]
+                        )
+                        identity_variants[key]["dataset_identities"].add(
+                            record["dataset_identity"]
+                        )
+                complete = status == "COMPLETE"
+                strategy_counts[key]["complete" if complete else "incomplete"] += 1
+                status_counts[status] = status_counts.get(status, 0) + 1
+                if not complete:
+                    scan_rows.append(
+                        {
+                            "target_draw_id": draw_id,
+                            "target_draw_date": draw_date,
+                            "strategy_id": strategy_id,
+                            "strategy_version": strategy_version,
+                            "status": status,
+                            "reason": reason,
+                            "existing_records": records,
+                        }
+                    )
+
+        total = len(targets) * len(strategies)
+        return {
+            "lottery_type": lottery_type,
+            "window_start_date": earliest,
+            "window_end_date": latest,
+            "source_target_count": len(targets),
+            "expected_cell_count": total,
+            "complete_cell_count": total - len(scan_rows),
+            "incomplete_cell_count": len(scan_rows),
+            "complete_coverage_percent": 100.0 * (total - len(scan_rows)) / total,
+            "status_counts": status_counts,
+            "strategy_counts": {
+                key: {
+                    **counts,
+                    "execution_versions": sorted(identity_variants[key]["execution_versions"]),
+                    "dataset_identities": sorted(identity_variants[key]["dataset_identities"]),
+                }
+                for key, counts in strategy_counts.items()
+            },
+            "orphan_replay_row_count": orphan_count,
+            "items": scan_rows[offset : offset + limit],
+            "total_count": len(scan_rows),
+            "limit": limit,
+            "offset": offset,
+            "next_offset": offset + limit if offset + limit < len(scan_rows) else None,
         }
 
     def strategy_target_counts(self, lottery_type: str) -> dict[str, int]:

@@ -25,8 +25,8 @@ def test_inventory_conserves_sources_and_executable_identities() -> None:
     inventory = load_replay_strategy_inventory()
     source_counts = {source.source_kind: source for source in inventory.source_counts}
 
-    assert inventory.total_discovered_strategies == 674
-    assert inventory.total_unique_strategies == 466
+    assert inventory.total_discovered_strategies == 684
+    assert inventory.total_unique_strategies == 476
     assert len(inventory.executable_items) == 213
     assert inventory.unresolved_source_count == 9
     assert source_counts["PRODUCTION_CATALOG"].source_identity_count == 137
@@ -36,15 +36,15 @@ def test_inventory_conserves_sources_and_executable_identities() -> None:
     assert source_counts["P638_REPLAY_ADAPTER"].source_identity_count == 14
     assert source_counts["STRATEGY_ADAPTER_CODE"].source_identity_count == 102
     assert source_counts["STRATEGY_ADAPTER_CODE"].source_row_count == 103
-    assert source_counts["REPLAY_BACKFILL_IMPORTED_RESULT"].source_identity_count == 21
-    assert source_counts["REPLAY_BACKFILL_IMPORTED_RESULT"].source_row_count == 21
+    assert source_counts["REPLAY_BACKFILL_IMPORTED_RESULT"].source_identity_count == 31
+    assert source_counts["REPLAY_BACKFILL_IMPORTED_RESULT"].source_row_count == 31
 
     lottery_counts = Counter(item.lottery_type for item in inventory.items)
     executable_by_lottery = Counter(item.lottery_type for item in inventory.executable_items)
     assert lottery_counts == {
         LotteryType.BIG_LOTTO: 380,
         LotteryType.DAILY_539: 62,
-        LotteryType.POWER_LOTTO: 24,
+        LotteryType.POWER_LOTTO: 34,
     }
     assert executable_by_lottery == {
         LotteryType.BIG_LOTTO: 127,
@@ -80,7 +80,7 @@ def test_inventory_keeps_status_dimensions_and_unavailable_cases_separate() -> N
         ReplayDataStatus.REBUILDABLE: 213,
         ReplayDataStatus.ARTIFACT_ONLY: 98,
         ReplayDataStatus.REJECTED: 74,
-        ReplayDataStatus.NO_HISTORY: 79,
+        ReplayDataStatus.NO_HISTORY: 89,
         ReplayDataStatus.CODE_ONLY: 2,
     }
 

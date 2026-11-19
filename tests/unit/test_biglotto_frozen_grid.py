@@ -131,7 +131,15 @@ def _wave27_cases():
 
 
 def test_frozen_two_bet_optimizer() -> None:
-    source = _source("biglotto_2bet_optimizer")
+    _assert_wave27_optimizer_parity("biglotto_2bet_optimizer")
+
+
+def test_frozen_two_bet_optimizer_v2() -> None:
+    _assert_wave27_optimizer_parity("biglotto_2bet_optimizer_v2")
+
+
+def _assert_wave27_optimizer_parity(name: str) -> None:
+    source = _source(name)
     bindings, accounts = cli._exact_strategy_inventory(
         BIG, source.strategy_id, source.strategy_version
     )
@@ -160,7 +168,6 @@ def test_frozen_two_bet_optimizer() -> None:
 @pytest.mark.parametrize(
     "method",
     (
-        wave27.MODEL_V2_METHOD_ID,
         wave27.GEMINI_2BET_METHOD_ID,
         wave27.GEMINI_3BET_METHOD_ID,
     ),
@@ -183,17 +190,34 @@ def test_wave27_control_cases(method: str) -> None:
             assert [list(ticket) for ticket in result.tickets] == case["tickets"], cutoff
 
 
-def test_two_bet_optimizer_versions_remain_separately_addressable() -> None:
-    source = _source("biglotto_2bet_optimizer")
+@pytest.mark.parametrize(
+    ("name", "version", "production_adapter"),
+    (
+        (
+            "biglotto_2bet_optimizer",
+            "legacy-source-49a25effa62f-898ac9e38876",
+            "BigLottoTwoBetOptimizerAdapter",
+        ),
+        (
+            "biglotto_2bet_optimizer_v2",
+            "legacy-source-49a25effa62f-783226366ac3",
+            "BigLottoTwoBetOptimizerV2Adapter",
+        ),
+    ),
+)
+def test_two_bet_optimizer_versions_remain_separately_addressable(
+    name: str, version: str, production_adapter: str
+) -> None:
+    source = _source(name)
     frozen, _ = cli._exact_strategy_inventory(BIG, source.strategy_id, source.strategy_version)
     current, accounts = cli._exact_strategy_inventory(BIG, source.strategy_id, "v0.1")
     live = current[0].strategy
     assert live.strategy_id == frozen[0].strategy.strategy_id
     assert live.strategy_version == "v0.1"
-    assert frozen[0].strategy.strategy_version == "legacy-source-49a25effa62f-898ac9e38876"
+    assert frozen[0].strategy.strategy_version == version
     assert live.fingerprint != frozen[0].strategy.fingerprint
     assert accounts[source.strategy_id]["source"] == (
-        "lottolab.strategies.adapters.biglotto_wave3:BigLottoTwoBetOptimizerAdapter"
+        f"lottolab.strategies.adapters.biglotto_wave3:{production_adapter}"
     )
     with pytest.raises(ValueError, match="identity is not pinned"):
         cli.build_adapter(BIG, frozen).generate(live, (), _draws()[0])

@@ -140,6 +140,22 @@ def _historical_grid(
     )
 
 
+_WAVE27_MODULES = (
+    (
+        "lottolab.application.legacy_source_native_portfolios_wave27",
+        "bdc3acf0c791c9e0a530e0f0032df983348720e4e026ded379119993a89664c6",
+    ),
+    (
+        "lottolab.application.legacy_frozen_unified_core",
+        "f401daede4d0a14bf148ceb00157c18279fde201bbc3251ef633540c61f61e8f",
+    ),
+    (
+        "lottolab.application.legacy_history_native_portfolios",
+        "e1512870990e207384a7b6faa9c683c730d7866d3c5b94307a5f30aaba0bd710",
+    ),
+)
+
+
 VERSIONED_REPLAY_SOURCES = (
     VersionedReplaySource(
         strategy_id="legacy_biglotto__biglotto_2bet_optimizer__898ac9e38876",
@@ -153,20 +169,23 @@ VERSIONED_REPLAY_SOURCES = (
         implementation_sha256="df4045c459e61d6036b51809a0f1b576e39a9d68eca844ee56a1071568ec46d4",
         parity_test="tests/unit/test_biglotto_frozen_grid.py::test_frozen_two_bet_optimizer",
         parity_evidence="EXACT_ORDERED_PORTFOLIO_EXECUTION_PARITY",
-        shared_modules=(
-            (
-                "lottolab.application.legacy_source_native_portfolios_wave27",
-                "bdc3acf0c791c9e0a530e0f0032df983348720e4e026ded379119993a89664c6",
-            ),
-            (
-                "lottolab.application.legacy_frozen_unified_core",
-                "f401daede4d0a14bf148ceb00157c18279fde201bbc3251ef633540c61f61e8f",
-            ),
-            (
-                "lottolab.application.legacy_history_native_portfolios",
-                "e1512870990e207384a7b6faa9c683c730d7866d3c5b94307a5f30aaba0bd710",
-            ),
+        shared_modules=_WAVE27_MODULES,
+    ),
+    VersionedReplaySource(
+        strategy_id="legacy_biglotto__biglotto_2bet_optimizer_v2__783226366ac3",
+        strategy_version="legacy-source-49a25effa62f-783226366ac3",
+        source_path="lottery_api/models/biglotto_2bet_optimizer_v2.py",
+        source_commit="49a25effa62fc24f40789c16be6f11bdfb41a4a9",
+        source_blob_id="bcb285bc2db1a3fbebeab2b9f755b6e005716dc3",
+        source_sha256="783226366ac392dd441bbdfb89b873d3c7dd9eb4a231c0f2ccb0144de56798dd",
+        current_version=None,
+        adapter_path=(
+            "lottolab.application.biglotto_frozen_two_bet_optimizer_v2:FrozenTwoBetOptimizerV2"
         ),
+        implementation_sha256="5fbf5731fdb34815c6f769b627466e471501c9e3a5c250715180ea2bcd51e411",
+        parity_test="tests/unit/test_biglotto_frozen_grid.py::test_frozen_two_bet_optimizer_v2",
+        parity_evidence="EXACT_ORDERED_PORTFOLIO_EXECUTION_PARITY",
+        shared_modules=_WAVE27_MODULES,
     ),
     VersionedReplaySource(
         strategy_id="legacy_biglotto__predict_biglotto_apriori__cda690ae84c2",

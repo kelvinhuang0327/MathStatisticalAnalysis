@@ -37,6 +37,7 @@ _FORBIDDEN_ROUTE_WORDS = (
 _ALLOWED_OPENAPI_OPERATIONS = {
     "/api/health": frozenset({"get"}),
     "/api/b649/canonical-forecast/current": frozenset({"get"}),
+    "/api/b649/native-forecast/current": frozenset({"get"}),
     "/api/v1/b649/sealed-084-replays/status": frozenset({"get"}),
     "/api/v1/b649/sealed-084-replays": frozenset({"get"}),
     "/api/v1/strategies": frozenset({"get"}),
@@ -172,6 +173,7 @@ _ALLOWED_OPENAPI_OPERATIONS = {
     "/api/v1/replay-backfill/k3-comparison": frozenset({"get"}),
     "/api/v1/replay-backfill/predictions": frozenset({"get"}),
     "/api/v1/replay-backfill/coverage": frozenset({"get"}),
+    "/api/v1/replay-backfill/coverage/scan": frozenset({"get"}),
     "/api/v1/replay-backfill/results": frozenset({"get"}),
     "/api/v1/replay-backfill/uniform-eight-reference": frozenset({"get"}),
     "/api/v1/replay-backfill/runs": frozenset({"get"}),
@@ -203,6 +205,7 @@ _FORBIDDEN_ROUTE_WORD_EXCEPTION_PATHS = frozenset(
         "/api/v1/replay-backfill/k3-comparison",
         "/api/v1/replay-backfill/predictions",
         "/api/v1/replay-backfill/coverage",
+        "/api/v1/replay-backfill/coverage/scan",
         "/api/v1/replay-backfill/results",
         "/api/v1/replay-backfill/uniform-eight-reference",
         "/api/v1/replay-backfill/runs",
@@ -253,6 +256,8 @@ are GET-only reads over pinned source evidence; they execute no strategy and
 rerun no replay. The research backtest routes query persisted or packaged
 evidence and perform no mutation. Each full path remains individually
 allowlisted and exempted; other Replay or backfill paths remain rejected.
+The coverage scan and the current native-forecast projection are separately
+bounded GET-only readers; neither writes to a database or executes a strategy.
 """
 _ALLOWED_OPENAPI_OPERATION_SET = frozenset(
     (method, path) for path, methods in _ALLOWED_OPENAPI_OPERATIONS.items() for method in methods

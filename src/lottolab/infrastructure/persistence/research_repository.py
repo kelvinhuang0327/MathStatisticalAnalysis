@@ -51,6 +51,8 @@ from lottolab.domain.research_live_forecast import (
     CONSENSUS_AUTHORITY_B_SCOPE,
     CONSENSUS_STREAM,
     CONSENSUS_STREAM_VERSION,
+    NATIVE_STREAM,
+    NATIVE_STREAM_VERSION,
     ORIGINAL_FIELDS,
     LiveForecastInput,
     LiveForecastResult,
@@ -108,6 +110,7 @@ class LiveForecastCurrentResult:
     version: int
     run_id: str
     pointer_advanced: bool = True
+    committed_at: str | None = None
 
     @property
     def scope(self) -> tuple[str, str, str, str, str]:
@@ -356,6 +359,236 @@ class SQLiteResearchRepository:
         except (TypeError, ValueError) as exc:
             raise ResearchConflictError("canonical current row failed domain validation") from exc
         return LiveForecastCurrentResult(forecast, version, run_id)
+
+    def read_current_native(
+        self, scope: tuple[str, str, str, str, str]
+    ) -> LiveForecastCurrentResult | None:
+        """Read only the Native v6 version selected by its complete current pointer."""
+
+        if len(scope) != 5 or any(not value.strip() for value in scope):
+            raise ResearchRepositoryError("live forecast scope must contain five non-empty fields")
+        if (
+            scope[0] != "BIG_LOTTO"
+            or scope[3] != NATIVE_STREAM
+            or scope[4] != NATIVE_STREAM_VERSION
+        ):
+            raise ResearchRepositoryError(
+                "native current scope must use the canonical Native stream"
+            )
+
+        with open_database(self._paths, read_only=True) as connection:
+            connection.row_factory = sqlite3.Row
+            connection.execute("BEGIN")
+            try:
+                pointer_row = connection.execute(
+                    "SELECT lottery_type, target_draw_number, target_draw_date, "
+                    "forecast_stream_id, forecast_stream_version, version, run_id "
+                    "FROM research_live_forecast_current_pointer WHERE "
+                    "lottery_type=? AND target_draw_number=? AND target_draw_date=? "
+                    "AND forecast_stream_id=? AND forecast_stream_version=?",
+                    scope,
+                ).fetchone()
+                if pointer_row is None:
+                    connection.execute("COMMIT")
+                    return None
+                row = connection.execute(
+                    """
+                    SELECT
+                        p.lottery_type AS pointer_lottery_type,
+                        p.target_draw_number AS pointer_target_draw_number,
+                        p.target_draw_date AS pointer_target_draw_date,
+                        p.forecast_stream_id AS pointer_forecast_stream_id,
+                        p.forecast_stream_version AS pointer_forecast_stream_version,
+                        p.version AS pointer_version,
+                        p.run_id AS pointer_run_id,
+                        v.version,
+                        v.run_id,
+                        v.request_id,
+                        v.request_sha256,
+                        v.lottery_type,
+                        v.target_draw_number,
+                        v.target_draw_date,
+                        v.forecast_stream_id,
+                        v.forecast_stream_version,
+                        v.target_json,
+                        v.provenance_class,
+                        v.payload_bytes,
+                        v.payload_sha256,
+                        v.source_payload_sha256,
+                        v.source_locator,
+                        v.missing_provenance_json,
+                        v.import_execution_json,
+                        v.consensus_provenance_json,
+                        v.candidate_ref,
+                        v.pointer_advanced,
+                        v.provenance_envelope_json,
+                        v.provenance_envelope_sha256,
+                        v.committed_at,
+                        v.expected_current_version,
+                        v.producer_json,
+                        v.source_execution_json,
+                        v.runtime_manifest_json,
+                        v.history_snapshot_json,
+                        v.catalog_json,
+                        v.generation_configs_json,
+                        v.effective_parameters_json,
+                        v.rng_semantics_json,
+                        v.ranking_evidence_json,
+                        v.ticket_lineage_json,
+                        v.generation_started_at,
+                        v.generation_finished_at
+                    FROM research_live_forecast_current_pointer AS p
+                    JOIN research_live_forecast_versions AS v
+                      ON v.version = p.version
+                     AND v.run_id = p.run_id
+                     AND v.lottery_type = p.lottery_type
+                     AND v.target_draw_number = p.target_draw_number
+                     AND v.target_draw_date = p.target_draw_date
+                     AND v.forecast_stream_id = p.forecast_stream_id
+                     AND v.forecast_stream_version = p.forecast_stream_version
+                    WHERE p.lottery_type = ?
+                      AND p.target_draw_number = ?
+                      AND p.target_draw_date = ?
+                      AND p.forecast_stream_id = ?
+                      AND p.forecast_stream_version = ?
+                    """,
+                    scope,
+                ).fetchone()
+                connection.execute("COMMIT")
+            except BaseException:
+                if connection.in_transaction:
+                    connection.execute("ROLLBACK")
+                raise
+
+        if row is None:
+            raise ResearchConflictError("native current pointer has no matching version")
+        pointer_scope = tuple(
+            str(row[f"pointer_{name}"])
+            for name in (
+                "lottery_type",
+                "target_draw_number",
+                "target_draw_date",
+                "forecast_stream_id",
+                "forecast_stream_version",
+            )
+        )
+        version_scope = tuple(
+            row[name]
+            for name in (
+                "lottery_type",
+                "target_draw_number",
+                "target_draw_date",
+                "forecast_stream_id",
+                "forecast_stream_version",
+            )
+        )
+        if (
+            pointer_scope != scope
+            or pointer_row["version"] != row["version"]
+            or pointer_row["run_id"] != row["run_id"]
+            or pointer_scope != version_scope
+            or row["pointer_version"] != row["version"]
+            or row["pointer_run_id"] != row["run_id"]
+            or row["pointer_advanced"] != 1
+            or row["provenance_class"] != "NATIVE_GENERATED"
+            or row["forecast_stream_id"] != NATIVE_STREAM
+            or row["forecast_stream_version"] != NATIVE_STREAM_VERSION
+        ):
+            raise ResearchConflictError("native current pointer identity is invalid")
+
+        text_fields = (
+            "request_id",
+            "request_sha256",
+            "target_json",
+            "source_locator",
+            "missing_provenance_json",
+            "provenance_envelope_json",
+            "provenance_envelope_sha256",
+            "committed_at",
+        )
+        if any(not isinstance(row[name], str) or not row[name] for name in text_fields):
+            raise ResearchConflictError("native current identity fields are incomplete")
+        payload = row["payload_bytes"]
+        if isinstance(payload, memoryview):
+            payload = payload.tobytes()
+        if not isinstance(payload, bytes):
+            raise ResearchConflictError("native current payload is not stored as bytes")
+        payload_sha256 = hashlib.sha256(payload).hexdigest()
+        if (
+            row["payload_sha256"] != payload_sha256
+            or row["source_payload_sha256"] != payload_sha256
+            or row["import_execution_json"] is not None
+            or row["consensus_provenance_json"] is not None
+            or row["candidate_ref"] is not None
+        ):
+            raise ResearchConflictError("native current payload or provenance identity mismatch")
+
+        original = {field: row[field] for field in ORIGINAL_FIELDS}
+        if any(not isinstance(value, str) for value in original.values()):
+            raise ResearchConflictError("native original execution provenance is incomplete")
+        forecast = LiveForecastInput(
+            request_id=row["request_id"],
+            request_sha256=row["request_sha256"],
+            provenance_class=str(row["provenance_class"]),
+            forecast_stream_id=str(row["forecast_stream_id"]),
+            forecast_stream_version=str(row["forecast_stream_version"]),
+            target_json=row["target_json"],
+            payload_bytes=payload,
+            source_locator=row["source_locator"],
+            original_execution_json=canonical_json(original),
+            missing_provenance_json=row["missing_provenance_json"],
+        )
+        try:
+            forecast.validate()
+            envelope = object_json(row["provenance_envelope_json"])
+            target = forecast.target
+            committed_at = row["committed_at"]
+            committed_time = datetime.fromisoformat(committed_at.replace("Z", "+00:00"))
+            finished_at = str(forecast.original["generation_finished_at"])
+            finished_time = datetime.fromisoformat(finished_at.replace("Z", "+00:00"))
+            expected_current_version = row["expected_current_version"]
+            if type(expected_current_version) is not int or expected_current_version < 0:
+                raise ValueError("invalid expected current version")
+            if (
+                forecast.scope != scope
+                or committed_time.utcoffset() != UTC.utcoffset(committed_time)
+                or committed_time < finished_time
+            ):
+                raise ValueError("native current scope or commit time is invalid")
+            expected_envelope = {
+                "run_id": row["run_id"],
+                "request_id": row["request_id"],
+                "request_sha256": row["request_sha256"],
+                "run_kind": "LIVE_PREDICTION",
+                "version": row["version"],
+                "scope_version": 1,
+                "scope": list(scope),
+                "target": target,
+                "schedule_authority_sha256": target["schedule_authority_sha256"],
+                "payload_sha256": payload_sha256,
+                "source_locator": row["source_locator"],
+                "provenance_class": "NATIVE_GENERATED",
+                "original_execution": forecast.original,
+                "missing_provenance": object_json(row["missing_provenance_json"]),
+                "import_execution": None,
+                "consensus_provenance": None,
+                "committed_at": committed_at,
+                "expected_current_version": expected_current_version,
+                "pointer_advanced": True,
+            }
+            if (
+                envelope != expected_envelope
+                or digest(envelope) != row["provenance_envelope_sha256"]
+            ):
+                raise ValueError("native current provenance envelope mismatch")
+        except (KeyError, TypeError, ValueError, OverflowError) as exc:
+            raise ResearchConflictError("native current row failed integrity validation") from exc
+        return LiveForecastCurrentResult(
+            forecast,
+            int(row["version"]),
+            str(row["run_id"]),
+            committed_at=committed_at,
+        )
 
     @staticmethod
     def _existing_live_request(

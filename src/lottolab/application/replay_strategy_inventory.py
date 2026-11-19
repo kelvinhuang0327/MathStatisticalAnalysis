@@ -1551,6 +1551,71 @@ _IMPORTED_REPLAY_IDENTITIES: tuple[_ImportedReplayIdentitySpec, ...] = (
         )
         for pair_id in ("414665013", "414671103")
     ),
+    _ImportedReplayIdentitySpec(
+        lottery_type=LotteryType.BIG_LOTTO,
+        strategy_id="research_biglotto__k30_fixed_random_control_20261119_r1",
+        display_name="K30 固定種子隨機控制組 (歷史對照)",
+        strategy_version="v1.0.0",
+        source_locator=(
+            "replay-backfill:befd9d8ec70c7cfe7d606511c42c9a7312deee1063800743488ad92cdcbb5543"
+        ),
+        reconstruction_reason=(
+            "One fixed-seed portfolio used as a historical control; historical coverage comes "
+            "from Replay Backfill DB overlay. No current native executable binding is registered."
+        ),
+        source_status="CONTROL_BASELINE",
+    ),
+    _ImportedReplayIdentitySpec(
+        lottery_type=LotteryType.BIG_LOTTO,
+        strategy_id="research_biglotto__k3_cross_expert_fair_cover_20261119",
+        display_name="K3 跨專家公平覆蓋",
+        strategy_version="v1.0.0",
+        source_locator=(
+            "replay-backfill:bbcec3d72f8f1d7d9d124139f845a97e6ad6ea760d1b13fc9a9c6c0a71f8c82e"
+        ),
+        reconstruction_reason=_IMPORTED_HISTORY_ONLY_REASON,
+        source_status="RESEARCH_STRATEGY",
+    ),
+    *(
+        _ImportedReplayIdentitySpec(
+            lottery_type=LotteryType.BIG_LOTTO,
+            strategy_id=f"research_biglotto__prize_event_coverage_greedy_native_k{ticket_count}",
+            display_name=f"K{ticket_count} 獎項事件貪婪覆蓋",
+            strategy_version="prize-event-coverage-greedy-v1",
+            source_locator=(
+                "replay-backfill:91c7bad397d5dfbc20fccca42ae54bd6b8e398d6503273a855858b376ca78f16"
+            ),
+            reconstruction_reason=_IMPORTED_HISTORY_ONLY_REASON,
+            source_status="RESEARCH_STRATEGY",
+        )
+        for ticket_count in (6, 7)
+    ),
+    *(
+        _ImportedReplayIdentitySpec(
+            lottery_type=LotteryType.POWER_LOTTO,
+            strategy_id=f"research_powerlotto__historical_random_k{ticket_count}_20261119_r1",
+            display_name=f"威力彩 K{ticket_count} 固定隨機控制",
+            strategy_version="v1.0.0",
+            source_locator=f"replay-backfill:{run_id}",
+            reconstruction_reason=(
+                "Fixed random control with a staged replay identity. "
+                "The Replay Backfill store supplies historical coverage when available."
+            ),
+            source_status="CONTROL_BASELINE",
+        )
+        for ticket_count, run_id in (
+            (1, "57aa0fe71cca7c6aa840d0423327aa799ebfc4dd266389274a26fd066d80a0c5"),
+            (2, "51b2969442346a1821805dba35f02b4f959d4f8fc97d167e69445ca73d48b2b4"),
+            (3, "b04551416d0c70c453f43b9c4c5caf84e15e3c28c48ca03f345213c696781dd2"),
+            (4, "cb16f205477d79a13b9a0bbafe50dec30c4a8e2aea3c3d19d7285a7d12eca901"),
+            (5, "368a10b154bdb557972c59fca65ea4cc6b8830951806c4b1fa2378c7e5de56b9"),
+            (7, "69f95a62c28d8c9938197214526e7d91c5ccacf8924c76cef2fa005e33dabd4e"),
+            (10, "0c59571af78ff53c50a061bf06faeb1435da36c9c7c486092e24120e169af1a4"),
+            (11, "230077be87170ff97ce10dd233d12e96f1e2870780f949eea386ed41f3c9170d"),
+            (12, "2614341c2b66bc1e4cb690752e38d4e82b770b920eb0d28101293c94ec401b44"),
+            (25, "7928789e94bbac4aecc258b3bb2f6abbe6480c260d3cdc16d12caff16f54d814"),
+        )
+    ),
 )
 
 _IMPORTED_REPLAY_SOURCE_KIND = "REPLAY_BACKFILL_IMPORTED_RESULT"

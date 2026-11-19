@@ -48,6 +48,9 @@ from lottolab.strategies.catalog import production_catalog
 
 _MAX_ID_LENGTH = 200
 _PERIODS = {"50": 50, "300": 300, "750": 750, "ALL": None}
+ReplayWindowDrawReader = Callable[
+    [LotteryType, date, date], tuple[tuple[str, str], ...]
+]
 
 
 class ReplayBackfillErrorResponse(BaseModel):
@@ -572,7 +575,11 @@ def _strategy_history_view(
     }
 
 
-def create_replay_backfill_router(store: SQLiteBackfillStore | None) -> APIRouter:
+def create_replay_backfill_router(
+    store: SQLiteBackfillStore | None,
+    *,
+    window_draw_reader: ReplayWindowDrawReader | None = None,
+) -> APIRouter:
     router = APIRouter(prefix="/api/v1/replay-backfill", tags=["replay-backfill"])
 
     @router.get(
@@ -740,12 +747,22 @@ def create_replay_backfill_router(store: SQLiteBackfillStore | None) -> APIRoute
                 )
                 if lifecycle_status is not None and lifecycle != lifecycle_status:
                     continue
-                if data_status is not None and item_data_status != data_status.value:
-                    continue
                 if (
                     q
                     and q.casefold() not in (item.strategy_id + " " + item.display_name).casefold()
                 ):
+                    continue
+                history_view = _strategy_history_view(item, selected_snapshot, source_row)
+                if (
+                    item_data_status == "REBUILDABLE"
+                    and item.execution_capability is ReplayExecutionCapability.UNAVAILABLE
+                    and "CONTROL_BASELINE" in item.source_statuses
+                    and history_view["history_status"] == "HAS_HISTORY"
+                ):
+                    # A stored replay can report its original producer as rebuildable even
+                    # when this inventory has no runnable binding for the control strategy.
+                    item_data_status = "HAS_HISTORY"
+                if data_status is not None and item_data_status != data_status.value:
                     continue
                 row: JsonObject = {
                     "strategy_id": item.strategy_id,
@@ -792,7 +809,7 @@ def create_replay_backfill_router(store: SQLiteBackfillStore | None) -> APIRoute
                         source_row["training_status"] if source_row else _training_status(item)
                     ),
                 }
-                row.update(_strategy_history_view(item, selected_snapshot, source_row))
+                row.update(history_view)
                 rows.append(row)
             if lottery_type in (None, LotteryType.BIG_LOTTO):
                 for descriptor in seeded_descriptors.values():
@@ -1324,6 +1341,77 @@ def create_replay_backfill_router(store: SQLiteBackfillStore | None) -> APIRoute
             return _error(404, "REPLAY_BACKFILL_RUN_NOT_FOUND")
         except ValueError:
             return _error(422, "INVALID_QUERY")
+        except Exception:
+            return _error(503, "REPLAY_BACKFILL_UNAVAILABLE")
+
+    @router.get(
+        "/coverage/scan",
+        response_model=None,
+        responses={422: {"model": ApiValidationErrorResponse | ReplayBackfillErrorResponse}},
+    )
+    def scan_window_coverage(
+        lottery_type: LotteryType,
+        start_date: date,
+        end_date: date,
+        strategy_id: Annotated[list[str], Query()],
+        strategy_version: Annotated[list[str], Query()],
+        limit: Annotated[int, Query(ge=1, le=250)] = 100,
+        offset: Annotated[int, Query(ge=0)] = 0,
+    ) -> JsonObject | JSONResponse:
+        if store is None:
+            return _error(503, "REPLAY_BACKFILL_NOT_CONFIGURED")
+        if window_draw_reader is None:
+            return _error(503, "REPLAY_WINDOW_DRAW_SOURCE_NOT_CONFIGURED")
+        if start_date > end_date:
+            return _error(422, "INVALID_DATE_RANGE")
+        if (
+            len(strategy_id) != 5
+            or len(strategy_version) != 5
+            or len(set(strategy_id)) != 5
+            or any(not value.strip() or len(value) > _MAX_ID_LENGTH for value in strategy_id)
+            or any(not value.strip() or len(value) > _MAX_ID_LENGTH for value in strategy_version)
+        ):
+            return _error(422, "EXACTLY_FIVE_DISTINCT_STRATEGY_IDENTITIES_REQUIRED")
+        try:
+            targets = window_draw_reader(lottery_type, start_date, end_date)
+            if len(targets) > 2500:
+                return _error(422, "WINDOW_EXCEEDS_2500_TARGETS")
+            if not targets:
+                return {
+                    "lottery_type": lottery_type.value,
+                    "window_start_date": start_date.isoformat(),
+                    "window_end_date": end_date.isoformat(),
+                    "source_target_count": 0,
+                    "expected_cell_count": 0,
+                    "complete_cell_count": 0,
+                    "incomplete_cell_count": 0,
+                    "complete_coverage_percent": 0.0,
+                    "status_counts": {},
+                    "strategy_counts": {
+                        f"{strategy}@{version}": {
+                            "complete": 0,
+                            "incomplete": 0,
+                            "execution_versions": [],
+                            "dataset_identities": [],
+                        }
+                        for strategy, version in zip(strategy_id, strategy_version, strict=True)
+                    },
+                    "orphan_replay_row_count": 0,
+                    "items": [],
+                    "total_count": 0,
+                    "limit": limit,
+                    "offset": offset,
+                    "next_offset": None,
+                }
+            return store.scan_window_coverage(
+                lottery_type=lottery_type.value,
+                strategies=tuple(zip(strategy_id, strategy_version, strict=True)),
+                targets=targets,
+                limit=limit,
+                offset=offset,
+            )
+        except ValueError:
+            return _error(422, "INVALID_COVERAGE_SCAN_REQUEST")
         except Exception:
             return _error(503, "REPLAY_BACKFILL_UNAVAILABLE")
 

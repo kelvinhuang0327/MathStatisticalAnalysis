@@ -25,8 +25,8 @@ def test_inventory_conserves_sources_and_executable_identities() -> None:
     inventory = load_replay_strategy_inventory()
     source_counts = {source.source_kind: source for source in inventory.source_counts}
 
-    assert inventory.total_discovered_strategies == 674
-    assert inventory.total_unique_strategies == 466
+    assert inventory.total_discovered_strategies == 677
+    assert inventory.total_unique_strategies == 469
     assert len(inventory.executable_items) == 213
     assert inventory.unresolved_source_count == 9
     assert source_counts["PRODUCTION_CATALOG"].source_identity_count == 137
@@ -34,15 +34,15 @@ def test_inventory_conserves_sources_and_executable_identities() -> None:
     assert source_counts["B649_REPLAY_BATCH_REGISTRY"].source_identity_count == 11
     assert source_counts["T539_REPLAY_ADAPTER"].source_identity_count == 62
     assert source_counts["P638_REPLAY_ADAPTER"].source_identity_count == 14
-    assert source_counts["STRATEGY_ADAPTER_CODE"].source_identity_count == 102
-    assert source_counts["STRATEGY_ADAPTER_CODE"].source_row_count == 103
+    assert source_counts["STRATEGY_ADAPTER_CODE"].source_identity_count == 105
+    assert source_counts["STRATEGY_ADAPTER_CODE"].source_row_count == 106
     assert source_counts["REPLAY_BACKFILL_IMPORTED_RESULT"].source_identity_count == 21
     assert source_counts["REPLAY_BACKFILL_IMPORTED_RESULT"].source_row_count == 21
 
     lottery_counts = Counter(item.lottery_type for item in inventory.items)
     executable_by_lottery = Counter(item.lottery_type for item in inventory.executable_items)
     assert lottery_counts == {
-        LotteryType.BIG_LOTTO: 380,
+        LotteryType.BIG_LOTTO: 383,
         LotteryType.DAILY_539: 62,
         LotteryType.POWER_LOTTO: 24,
     }
@@ -81,7 +81,7 @@ def test_inventory_keeps_status_dimensions_and_unavailable_cases_separate() -> N
         ReplayDataStatus.ARTIFACT_ONLY: 98,
         ReplayDataStatus.REJECTED: 74,
         ReplayDataStatus.NO_HISTORY: 79,
-        ReplayDataStatus.CODE_ONLY: 2,
+        ReplayDataStatus.CODE_ONLY: 5,
     }
 
     rejected = [
@@ -116,13 +116,16 @@ def test_inventory_keeps_status_dimensions_and_unavailable_cases_separate() -> N
         ("research_biglotto__k30_geometry_exact_swap_history_v1", "v1"),
         ("research_biglotto__k3_nonoverlap_optimizer_candidate_20261116", "v1.0.0"),
         ("research_biglotto__k3_nonoverlap_ecp_candidate_20261116", "v1.0.0"),
+        ("legacy_biglotto__evolution_engine__3df019c31ce4", "v0.5-prefix-isolated-r1"),
+        ("tasklocal_evolution_h1_duplicate_completion_20261105", "h1-prefix-isolated-r1"),
+        ("tasklocal_evolution_h2_uniform_cover_20261105", "h2-prefix-isolated-r1"),
     }
     code_only_replay_data = [
         item
         for item in code_only_lifecycle
         if item.replay_data_status is ReplayDataStatus.CODE_ONLY
     ]
-    assert len(code_only_replay_data) == 2
+    assert len(code_only_replay_data) == 5
     assert all(
         i.execution_capability is ReplayExecutionCapability.UNAVAILABLE
         for i in code_only_replay_data

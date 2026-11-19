@@ -24,20 +24,20 @@ def test_replay_strategy_inventory_api_lists_separate_states_and_full_backfill_i
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["total_discovered_strategies"] == 684
-    assert payload["total_unique_strategies"] == 476
-    assert payload["total_executable"] == 213
-    assert payload["total_reconstructable"] == 213
+    assert payload["total_discovered_strategies"] == 685
+    assert payload["total_unique_strategies"] == 477
+    assert payload["total_executable"] == 214
+    assert payload["total_reconstructable"] == 214
     assert payload["total_has_history"] == 0
     assert payload["total_artifact_only"] == 98
     assert payload["total_rejected"] == 74
-    assert payload["lifecycle_status_counts"]["ONLINE"] == 137
+    assert payload["lifecycle_status_counts"]["ONLINE"] == 138
     assert payload["lifecycle_status_counts"]["OBSERVATION"] == 0
     assert payload["lifecycle_status_counts"]["OFFLINE"] == 0
     assert payload["lifecycle_status_counts"]["CODE_ONLY"] == 5
     assert payload["source_status_counts"]["OBSERVATION"] == 2
     assert payload["replay_data_status_counts"]["CODE_ONLY"] == 2
-    assert payload["execution_capability_counts"]["EXECUTABLE"] == 213
+    assert payload["execution_capability_counts"]["EXECUTABLE"] == 214
     assert payload["execution_capability_counts"]["UNAVAILABLE"] == 263
     assert payload["strategy_count"] == payload["total_unique_strategies"]
     assert len(payload["executable_strategy_ids"]) == payload["total_executable"]
@@ -66,7 +66,7 @@ def test_replay_strategy_inventory_api_lists_separate_states_and_full_backfill_i
     assert rejected["reconstruction_reason"].startswith("CLOSED_UNEXECUTABLE:")
 
     online_rows = [row for row in payload["strategies"] if row["lifecycle_status"] == "ONLINE"]
-    assert len(online_rows) == 137
+    assert len(online_rows) == 138
     assert all(row["historical_data_count"] == 0 for row in online_rows)
 
 
@@ -127,6 +127,17 @@ def test_replay_strategy_inventory_api_filters_by_lottery_strategy_and_data_stat
     assert successor["lifecycle_status"] == "CODE_ONLY"
     assert successor["replay_data_status"] == "REBUILDABLE"
     assert successor["execution_capability"] == "EXECUTABLE"
+
+    radical = client.get(
+        "/api/v1/replay-strategy-inventory",
+        params={"strategy_id": "research_biglotto__radical_recorded_causal_successor_v1"},
+    )
+    assert radical.status_code == 200
+    assert radical.json()["strategy_count"] == 1
+    row = radical.json()["strategies"][0]
+    assert row["strategy_version"] == "v1"
+    assert row["execution_capability"] == "EXECUTABLE"
+    assert row["backfill_native_binding"] is True
 
     by_data_status = client.get(
         "/api/v1/replay-strategy-inventory",

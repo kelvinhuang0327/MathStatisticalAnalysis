@@ -283,6 +283,8 @@ def test_invalid_native_cardinality_has_no_silent_fallback(
 
 def test_production_catalog_preserves_smart_multi_bet_append_position() -> None:
     strategy_ids = tuple(descriptor.strategy_id for descriptor in production_catalog())
+    assert strategy_ids[-1] == "research_biglotto__radical_recorded_causal_successor_v1"
+    strategy_ids = strategy_ids[:-1]
 
     assert strategy_ids[-31] == STRATEGY_ID
     assert strategy_ids[:-31].count(STRATEGY_ID) == 0

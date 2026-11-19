@@ -9828,7 +9828,7 @@
               }
             ],
             "title": "Official Any Prize Rate",
-            "description": "For N=successful_execution_count > 0, official_any_prize_count / successful_execution_count, rendered to 18 decimal places with half-even rounding. For N=0 the empirical rate is undefined: the existing producer may retain 0.000000000000000000 as a placeholder, with official_rank=null and unranked_reason=NO_SUCCESSFUL_EXECUTIONS_IN_WINDOW. This placeholder is not an observed 0% success rate. Null means metrics are unavailable."
+            "description": "For N=successful_execution_count > 0, official_any_prize_count / successful_execution_count, rendered to 18 decimal places with half-even rounding. For N=0 the empirical rate is undefined and returned as null, with reason NO_SUCCESSFUL_EXECUTIONS_IN_WINDOW; null can also mean metrics are unavailable."
           },
           "official_random_baseline_probability": {
             "anyOf": [
@@ -9884,7 +9884,7 @@
               }
             ],
             "title": "Effective Backtest Draw Count",
-            "description": "Legacy reduced denominator of the selected criterion's historical success fraction; not the denominator of official_any_prize_rate or a raw sample count. It can be 1 after reducing 0/N. Use successful_execution_count for N."
+            "description": "Raw count of successfully evaluated target draws, matching successful_execution_count. Older frozen projections stored a reduced fraction denominator; the reader normalizes those values. Zero means the empirical historical rate is undefined."
           },
           "successful_execution_count": {
             "anyOf": [

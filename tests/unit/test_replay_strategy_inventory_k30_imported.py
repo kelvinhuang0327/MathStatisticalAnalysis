@@ -19,6 +19,8 @@ K30_GEOMETRY_ID = "evolution_h12_k30_geometry_completion"
 K30_RANDOM_ID = "evolution_h12_k30_matched_random_completion"
 K30_EXACT_SWAP_ID = "research_biglotto__k30_geometry_exact_swap_history_v1"
 K30_VERSION = "v0.1"
+K30_FIXED_CONTROL_ID = "research_biglotto__k30_fixed_random_control_20261119_r1"
+K30_FIXED_CONTROL_VERSION = "v1.0.0"
 K9_ID = "research_biglotto__k9_optimal_coverage_candidate"
 K9_VERSION = "v0.1-research"
 
@@ -162,6 +164,104 @@ def test_k9_inventory_identity_and_history_overlay() -> None:
     assert result["available_target_count"] == 2183
     assert result["executable"] is False
     assert result["backfill_runnable"] is False
+
+
+def test_fixed_random_control_is_history_only_and_overlay_requires_exact_version() -> None:
+    matches = [
+        item
+        for item in load_replay_strategy_inventory().items
+        if item.lottery_type is LotteryType.BIG_LOTTO
+        and item.strategy_id == K30_FIXED_CONTROL_ID
+        and item.strategy_version == K30_FIXED_CONTROL_VERSION
+    ]
+    assert len(matches) == 1
+    item = matches[0]
+    assert item.source_statuses == ("CONTROL_BASELINE",)
+    assert item.replay_data_status is ReplayDataStatus.NO_HISTORY
+    assert item.execution_capability is ReplayExecutionCapability.UNAVAILABLE
+    assert item.adapter_mapping is None
+    assert item.backfill_runnable is False
+
+    snapshot = _snapshot(
+        rows=(
+            _inventory_row(
+                lottery_type="BIG_LOTTO",
+                strategy_id=K30_FIXED_CONTROL_ID,
+                version=K30_FIXED_CONTROL_VERSION,
+                target_count=2188,
+            ),
+        ),
+        cells=(
+            _complete_cells(
+                lottery_type="BIG_LOTTO",
+                strategy_id=K30_FIXED_CONTROL_ID,
+                version=K30_FIXED_CONTROL_VERSION,
+                cell_count=2188,
+                ticket_count=65640,
+            ),
+        ),
+    )
+    # The real Store recorded the original replay producer as REBUILDABLE,
+    # despite there being no executable binding in the current inventory.
+    snapshot["strategy_inventory"][0]["data_status"] = "REBUILDABLE"
+    client = _client({"BIG_LOTTO": snapshot, "DAILY_539": _snapshot(), "POWER_LOTTO": _snapshot()})
+    response = client.get(
+        "/api/v1/replay-backfill/strategies",
+        params={"lottery_type": "BIG_LOTTO", "q": K30_FIXED_CONTROL_ID},
+    )
+    assert response.status_code == 200
+    assert response.json()["total_count"] == 1
+    result = response.json()["items"][0]
+    assert result["strategy_version"] == K30_FIXED_CONTROL_VERSION
+    assert result["data_status"] == "HAS_HISTORY"
+    assert result["available_target_count"] == 2188
+    assert result["executable"] is False
+    assert result["backfill_runnable"] is False
+    assert result["history_status"] == "HAS_HISTORY"
+    filtered = client.get(
+        "/api/v1/replay-backfill/strategies",
+        params={
+            "lottery_type": "BIG_LOTTO",
+            "q": K30_FIXED_CONTROL_ID,
+            "data_status": "HAS_HISTORY",
+        },
+    )
+    assert filtered.json()["total_count"] == 1
+
+    snapshot["cell_status_counts"] = []
+    without_saved_cells = client.get(
+        "/api/v1/replay-backfill/strategies",
+        params={"lottery_type": "BIG_LOTTO", "q": K30_FIXED_CONTROL_ID},
+    )
+    assert without_saved_cells.json()["items"][0]["data_status"] == "REBUILDABLE"
+    assert without_saved_cells.json()["items"][0]["history_status"] != "HAS_HISTORY"
+
+    other_version = _snapshot(
+        rows=(
+            _inventory_row(
+                lottery_type="BIG_LOTTO", strategy_id=K30_FIXED_CONTROL_ID, version="v2"
+            ),
+        ),
+        cells=(
+            _complete_cells(
+                lottery_type="BIG_LOTTO", strategy_id=K30_FIXED_CONTROL_ID, version="v2"
+            ),
+        ),
+    )
+    client = _client(
+        {"BIG_LOTTO": other_version, "DAILY_539": _snapshot(), "POWER_LOTTO": _snapshot()}
+    )
+    response = client.get(
+        "/api/v1/replay-backfill/strategies",
+        params={"lottery_type": "BIG_LOTTO", "q": K30_FIXED_CONTROL_ID},
+    )
+    exact = next(
+        result
+        for result in response.json()["items"]
+        if result["strategy_version"] == K30_FIXED_CONTROL_VERSION
+    )
+    assert exact["data_status"] == "NO_HISTORY"
+    assert exact["available_target_count"] == 0
 
 
 def test_static_inventory_registers_both_k30_identities() -> None:

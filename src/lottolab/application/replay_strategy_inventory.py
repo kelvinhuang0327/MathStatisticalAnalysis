@@ -1535,6 +1535,31 @@ _IMPORTED_REPLAY_IDENTITIES: tuple[_ImportedReplayIdentitySpec, ...] = (
         )
         for pair_id in ("414665013", "414671103")
     ),
+    _ImportedReplayIdentitySpec(
+        lottery_type=LotteryType.BIG_LOTTO,
+        strategy_id="research_biglotto__k3_cross_expert_fair_cover_20261119",
+        display_name="K3 跨專家公平覆蓋",
+        strategy_version="v1.0.0",
+        source_locator=(
+            "replay-backfill:bbcec3d72f8f1d7d9d124139f845a97e6ad6ea760d1b13fc9a9c6c0a71f8c82e"
+        ),
+        reconstruction_reason=_IMPORTED_HISTORY_ONLY_REASON,
+        source_status="RESEARCH_STRATEGY",
+    ),
+    *(
+        _ImportedReplayIdentitySpec(
+            lottery_type=LotteryType.BIG_LOTTO,
+            strategy_id=f"research_biglotto__prize_event_coverage_greedy_native_k{ticket_count}",
+            display_name=f"K{ticket_count} 獎項事件貪婪覆蓋",
+            strategy_version="prize-event-coverage-greedy-v1",
+            source_locator=(
+                "replay-backfill:91c7bad397d5dfbc20fccca42ae54bd6b8e398d6503273a855858b376ca78f16"
+            ),
+            reconstruction_reason=_IMPORTED_HISTORY_ONLY_REASON,
+            source_status="RESEARCH_STRATEGY",
+        )
+        for ticket_count in (6, 7)
+    ),
 )
 
 _IMPORTED_REPLAY_SOURCE_KIND = "REPLAY_BACKFILL_IMPORTED_RESULT"

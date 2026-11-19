@@ -45,6 +45,19 @@ def test_replay_strategy_inventory_api_lists_separate_states_and_full_backfill_i
         for identity in payload["executable_strategy_ids"]
     )
 
+    k9 = [
+        row
+        for row in payload["strategies"]
+        if row["lottery_type"] == "BIG_LOTTO"
+        and row["strategy_id"] == "research_biglotto__k9_optimal_coverage_candidate"
+        and row["strategy_version"] == "v0.1-research"
+    ]
+    assert len(k9) == 1
+    assert k9[0]["source_kind"] == "REPLAY_BACKFILL_IMPORTED_RESULT"
+    assert k9[0]["replay_data_status"] == "NO_HISTORY"
+    assert k9[0]["execution_capability"] == "UNAVAILABLE"
+    assert k9[0]["source_statuses"] == ["RESEARCH_STRATEGY"]
+
     rejected = next(row for row in payload["strategies"] if row["replay_data_status"] == "REJECTED")
     assert rejected["lifecycle_status"] == "REJECTED"
     assert rejected["execution_capability"] == "UNAVAILABLE"

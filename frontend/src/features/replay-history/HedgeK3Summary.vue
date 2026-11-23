@@ -1,9 +1,13 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { getHedgeK3StoredResults } from '../../api/replayBackfill'
+import {
+  getHedgeK3StoredResults,
+  computeHedgeK3ProvenanceMetricSummary,
+  type HedgeK3StoredResult,
+} from '../../api/replayBackfill'
 
 const props = defineProps<{ runId: string; strategyVersion: string }>()
-const rows = ref<Awaited<ReturnType<typeof getHedgeK3StoredResults>>>([])
+const rows = ref<HedgeK3StoredResult[]>([])
 const loading = ref(false)
 const error = ref('')
 const retry = ref(0)
@@ -22,14 +26,11 @@ const warmupLabel = computed(() => missingPhase.value
   ? '暖機範圍未確認（API 缺少有效的 hedge_phase）'
   : `包含前 ${formatCount.format(rows.value.length - evaluation.value.length)} 期暖機`)
 
-function successCount(
-  scope: typeof rows.value,
+function metricSummary(
+  scope: readonly HedgeK3StoredResult[],
   field: typeof metrics[number]['field'],
-): string {
-  const missing = scope.filter((row) => typeof row[field] !== 'boolean').length
-  if (missing) return `API 缺少有效的 ${field}（${formatCount.format(missing)} 期）`
-  if (!scope.length) return '無可評估期數'
-  return `${formatCount.format(scope.filter((row) => row[field] === true).length)}/${formatCount.format(scope.length)}`
+) {
+  return computeHedgeK3ProvenanceMetricSummary(scope, field)
 }
 
 watch([() => props.runId, () => props.strategyVersion, retry],
@@ -59,6 +60,9 @@ watch([() => props.runId, () => props.strategyVersion, retry],
     </p>
     <template v-else-if="rows.length">
       <p>下表涵蓋所選 Run 與版本的全部期別，兩種成功定義分開顯示。</p>
+      <p class="provenance-note">
+        來源驗證說明：已驗證來源單獨計算成功期數及分母；UNKNOWN 及 UNVERIFIED 來源另列數量，不得混入已驗證分母。研究參考指標不代表正式中獎認證，歷史描述不宣稱未來預測增益。
+      </p>
       <div class="table-wrap">
         <table>
           <thead>
@@ -71,8 +75,52 @@ watch([() => props.runId, () => props.strategyVersion, retry],
           <tbody>
             <tr v-for="metric in metrics" :key="metric.field">
               <th scope="row">{{ metric.label }}</th>
-              <td>{{ successCount(rows, metric.field) }}</td>
-              <td>{{ missingPhase ? 'API 缺少有效的 hedge_phase' : successCount(evaluation, metric.field) }}</td>
+              <td :data-testid="`k3-all-${metric.field}`">
+                <div class="k3-provenance-cell">
+                  <div class="k3-provenance-verified">
+                    <span class="label">已驗證成功率：</span>
+                    <strong class="value" :data-testid="`k3-all-${metric.field}-verified`">{{ metricSummary(rows, metric.field).verified_rate_display }}</strong>
+                  </div>
+                  <div class="k3-provenance-raw">
+                    <span class="label">原始儲存旗標：</span>
+                    <span class="value" :data-testid="`k3-all-${metric.field}-raw`">{{ metricSummary(rows, metric.field).raw_flag_display }}</span>
+                  </div>
+                  <div class="k3-provenance-counts" :data-testid="`k3-all-${metric.field}-counts`">
+                    <small>
+                      來源狀態：已驗證 {{ formatCount.format(metricSummary(rows, metric.field).verified_count) }} 期 · UNKNOWN {{ formatCount.format(metricSummary(rows, metric.field).unknown_count) }} 期 · UNVERIFIED {{ formatCount.format(metricSummary(rows, metric.field).unverified_count) }} 期
+                    </small>
+                  </div>
+                  <div v-if="metricSummary(rows, metric.field).missing_flag_count > 0" class="k3-provenance-warning">
+                    <small>API 缺少有效的 {{ metric.field }}（{{ formatCount.format(metricSummary(rows, metric.field).missing_flag_count) }} 期）</small>
+                  </div>
+                </div>
+              </td>
+              <td :data-testid="`k3-eval-${metric.field}`">
+                <div v-if="missingPhase" class="k3-provenance-missing-phase">
+                  API 缺少有效的 hedge_phase
+                </div>
+                <div v-else-if="!evaluation.length" class="k3-provenance-empty">
+                  無可評估期數
+                </div>
+                <div v-else class="k3-provenance-cell">
+                  <div class="k3-provenance-verified">
+                    <span class="label">已驗證成功率：</span>
+                    <strong class="value" :data-testid="`k3-eval-${metric.field}-verified`">{{ metricSummary(evaluation, metric.field).verified_rate_display }}</strong>
+                  </div>
+                  <div class="k3-provenance-raw">
+                    <span class="label">原始儲存旗標：</span>
+                    <span class="value" :data-testid="`k3-eval-${metric.field}-raw`">{{ metricSummary(evaluation, metric.field).raw_flag_display }}</span>
+                  </div>
+                  <div class="k3-provenance-counts" :data-testid="`k3-eval-${metric.field}-counts`">
+                    <small>
+                      來源狀態：已驗證 {{ formatCount.format(metricSummary(evaluation, metric.field).verified_count) }} 期 · UNKNOWN {{ formatCount.format(metricSummary(evaluation, metric.field).unknown_count) }} 期 · UNVERIFIED {{ formatCount.format(metricSummary(evaluation, metric.field).unverified_count) }} 期
+                    </small>
+                  </div>
+                  <div v-if="metricSummary(evaluation, metric.field).missing_flag_count > 0" class="k3-provenance-warning">
+                    <small>API 缺少有效的 {{ metric.field }}（{{ formatCount.format(metricSummary(evaluation, metric.field).missing_flag_count) }} 期）</small>
+                  </div>
+                </div>
+              </td>
             </tr>
           </tbody>
         </table>
@@ -80,3 +128,48 @@ watch([() => props.runId, () => props.strategyVersion, retry],
     </template>
   </section>
 </template>
+
+<style scoped>
+.provenance-note {
+  color: var(--text-tertiary, #666);
+  font-size: 13px;
+  margin: 4px 0 12px;
+  line-height: 1.4;
+}
+
+.k3-provenance-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.k3-provenance-verified {
+  font-size: 14px;
+}
+
+.k3-provenance-verified .value {
+  font-size: 15px;
+  color: var(--text-primary, inherit);
+}
+
+.k3-provenance-raw {
+  font-size: 13px;
+  color: var(--text-secondary, #555);
+}
+
+.k3-provenance-counts {
+  font-size: 12px;
+  color: var(--text-tertiary, #777);
+}
+
+.k3-provenance-warning {
+  font-size: 12px;
+  color: var(--color-warning, #d97706);
+}
+
+.k3-provenance-missing-phase,
+.k3-provenance-empty {
+  font-size: 13px;
+  color: var(--text-tertiary, #777);
+}
+</style>

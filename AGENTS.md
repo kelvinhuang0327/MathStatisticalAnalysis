@@ -10,6 +10,7 @@ Owner 2026-11-17：所有研究策略都要用歷史資料回測出的成功率�
 - 沒有增益也可以完成研究；標準回測的結果不論好壞都寫回正式回測庫（寫回方式見「回測結果寫入」）。
 - Packet 用其他指標當研究驗收時，仍要附上歷史回測成功率；做不到就在回報第一段寫明原因。
 - 工具、UI、資料整理等非研究任務不受本節驗收限制，但任何任務都不得用回測以外的指標宣稱策略有效。
+- 研究的完成定義（Owner 2026-11-23）：一個策略要做到三件事才算完成：策略開發完成；標準歷史回測完成並已併回正式回測庫；登記進 `replay_strategy_inventory`，UI 可以顯示並和其他策略比對排行。單張卡可以只做其中一部分，但回報要列出還沒做的項目與負責的支線；研究線的 Planner 要追到三件都完成。
 
 ## Planner 角色
 
@@ -48,7 +49,7 @@ Owner 2026-11-17：所有研究策略都要用歷史資料回測出的成功率�
 - 任務產生的資料一律放在主 checkout `/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/` 底下，不在專案外新建資料。
 - 任務資料夾（PERSISTENT_EVIDENCE_ROOT）：`/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.task-data/<YYYYMMDD>/<TASK_ID>/`。
   - 任務在 git worktree 執行時，也寫到主 checkout 的這個絕對路徑，不寫進 worktree 自己的 `.task-data`：worktree 刪除時會一起消失。
-  - Packet 寫明的任務資料夾在專案外時，照 Packet 執行，並在回報中註明一行「任務資料夾在專案外」。
+  - Packet 寫明的任務資料夾在專案外時，改用上面這個專案內的任務資料夾，不要因此停下；在回報第一段寫明 Packet 原文與實際路徑（Owner 2026-11-23）。
 - 任務建立的資料庫與其他資料檔（收據以外）：`/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.task-data/_scratch/<名稱>/`。
   - 名稱不含 `B649`（不分大小寫），路徑中也不要有名為 `LotteryNew` 的目錄；產品程式只放行這個子樹。
   - 正式資料庫在 `data/`，不要寫進 `_scratch`。
@@ -70,7 +71,7 @@ Owner 2026-11-17：所有研究策略都要用歷史資料回測出的成功率�
 - 每週一次，或磁碟可用空間低於 15 GiB 時，支線 6 做一次只讀盤點：列出可清理的項目（路徑、大小、類別、證據），附一句 Owner 授權句。盤點本身不刪不改。
 - 盤點的類別：已併回正式回測庫的暫存庫、已完成任務資料夾裡的大型明細檔（壓縮）、已結束任務留下且沒有未提交改動的 worktree、超過保留數量的舊備份。
 - Owner 貼授權句後，支線 6 派 Worker 執行；完成後讀回確認，收據記下每個項目的路徑、大小、SHA-256 與處理時間。
-- 專案外舊任務資料夾（`/Users/kelvin/VibeCoding-WorkSpace/.task-data/`）分批處理，每批先逐一確認各任務的回測結果是否已併回正式回測庫（以 cell 的 6 欄唯一鍵比對）：
+- 專案外舊任務資料夾（`/Users/kelvin/VibeCoding-WorkSpace/.task-data/`，多個專案共用）只處理 MSA 的任務（Packet 或收據指向本專案；判斷不出來就不動），其他專案的資料夾不動。分批處理，每批先逐一確認各任務的回測結果是否已併回正式回測庫（以 cell 的 6 欄唯一鍵比對）：
   - 回測結果已全部併回的任務：資料夾可以刪除，只保留收據小檔（`packet.md`、`result.json`、`final_reply.md`）。
   - 其他任務（沒有回測結果，或還有沒併回的）：10 MB 以上的 `.json`、`.jsonl`、`.csv`、`.log` 可以用 gzip 壓縮，不刪；`MERGE_PENDING.json` 與收據不壓縮。還有沒併回的回測結果，列給支線 7 依「回測結果寫入」處理。
 - 進行中任務的 Packet 或收據還引用的檔案與資料夾，一律保留。

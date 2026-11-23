@@ -103,6 +103,7 @@ Owner 2026-11-17：所有研究策略都要用歷史資料回測出的成功率�
   - 建立失敗表示別的任務正在寫：不要開始，回報 `WAITING_ON_LEASE` 並附上對方的租約內容。這不算 INCIDENT。
   - 寫完並讀回後，刪掉自己的租約檔。
 - 只讀核對不需要租約，可以並行。Packet 把某個共用資源當輸入、核對對象或寫入目標時，才需要在開始時記下它的 sha256、結束前再核一次；看到別人的 WRITE 租約時，等它結束再核。Packet 沒有提到的共用資源不需要核對，也不因它的雜湊改變而停止。
+- 共用主 checkout（`/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis` 本身）與它的 Git refs、index、工作樹，常被其他任務同時改動（Owner 2026-11-23）：Packet 不要要求證明它們從頭到尾未變；Packet 若這樣寫，Worker 改成只記錄（開始與結束各記一次，別人的改動寫進收據），不因此 BLOCKED，也不必保留這個 checkout。Worker 只需證明自己的寫入都在 ALLOWED_WRITES 內（用自己的指令紀錄或自己工作複本的 diff）。不放寬的部分：自己要修改的目標在修改前被別人改過，仍要停下；上面共用資源（登記表、正式 DB、`legacy/INDEX.json`）的雜湊核對照舊。
 - 登記表 `database-locations.json` 一律用 `lottolab db-registry` 修改，不要用腳本或手動編輯；工具會自己取租約、重核雜湊、原子寫入並追加 `REGISTRY_CHANGELOG.jsonl`，不要手動建立或刪除租約檔：
   - 唯讀檢查：`lottolab db-registry verify`。結束碼 0＝OK；2＝UNRECORDED_CHANGE（登記表與最後一筆紀錄的雜湊對不上）；3＝NO_CHANGELOG；4＝BROKEN_CHAIN。開始任何會讀或寫登記表的任務前先跑一次，把輸出的 status 寫進收據。
   - 修改：`lottolab db-registry add-writable <DB 檔名>` 或 `remove-writable <DB 檔名>`，都要 `--task-id <TASK_ID>` 與 `--authorization-file <絕對路徑>`；該檔必須含「我授權 <TASK_ID>」，否則工具拒絕。

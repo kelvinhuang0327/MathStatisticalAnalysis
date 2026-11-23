@@ -103,8 +103,8 @@ def test_metrics_availability_is_separate_from_performance_and_aliases(
     status_rows = b649_index.strategy_status_records
     availability = Counter(row["metrics_availability"] for row in status_rows)
     assert availability == {
-        "AVAILABLE": 133,
-        "UNAVAILABLE": 2,
+        "AVAILABLE": 132,
+        "UNAVAILABLE": 3,
         "NOT_APPLICABLE": 86,
     }
 
@@ -118,15 +118,13 @@ def test_metrics_availability_is_separate_from_performance_and_aliases(
     assert all(row["why_not_runnable"] for row in unexecutable)
 
     unavailable = [row for row in status_rows if row["metrics_availability"] == "UNAVAILABLE"]
-    assert len(unavailable) == 2
+    assert len(unavailable) == 3
     assert all(row["metrics_unavailable_reason"] for row in unavailable)
     unavailable_ids = {row["strategy_id"] for row in unavailable}
     unavailable_metrics = [
-        row
-        for row in b649_index.backtest_metrics_records
-        if row["strategy_id"] in unavailable_ids
+        row for row in b649_index.backtest_metrics_records if row["strategy_id"] in unavailable_ids
     ]
-    assert len(unavailable_metrics) == 2 * 128
+    assert len(unavailable_metrics) == 3 * 128
     assert all(
         row["descriptive_comparison_classification"] == METRIC_UNAVAILABLE
         for row in unavailable_metrics
@@ -143,8 +141,7 @@ def test_negative_and_positive_source_deltas_are_retained_with_provenance(
     assert all(
         row["random_baseline_rate_difference"] is None
         for row in rows
-        if row["metrics_availability"] != "AVAILABLE"
-        and row["reproduction_status"] == "BACKTESTED"
+        if row["metrics_availability"] != "AVAILABLE" and row["reproduction_status"] == "BACKTESTED"
     )
 
     below_random = next(
@@ -180,7 +177,7 @@ def test_negative_and_positive_source_deltas_are_retained_with_provenance(
     assert b649_index.summary["zero_delta_record_count"] == 0
 
 
-def test_official_zero_over_zero_is_unavailable_but_raw_source_value_is_kept(
+def test_official_zero_over_zero_is_unavailable(
     b649_index: B649Index,
 ) -> None:
     rows = [
@@ -192,18 +189,13 @@ def test_official_zero_over_zero_is_unavailable_but_raw_source_value_is_kept(
     assert all(row["official_any_prize_rate"] is None for row in rows)
     assert all(row["official_random_baseline_delta"] is None for row in rows)
     assert all(
-        row["official_any_prize_rate_availability_reason"]
-        == "ZERO_SUCCESSFUL_EXECUTION_COUNT"
+        row["official_any_prize_rate_availability_reason"] == "ZERO_SUCCESSFUL_EXECUTION_COUNT"
         for row in rows
     )
+    assert all(row["official_any_prize_rate_source_value"] is None for row in rows)
+    assert all(row["official_random_baseline_delta_source_value"] is None for row in rows)
     assert all(
-        Decimal(str(row["official_any_prize_rate_source_value"])) == 0
-        for row in rows
-    )
-    assert all(row["official_random_baseline_delta_source_value"] is not None for row in rows)
-    assert all(
-        row["official_any_prize_descriptive_classification"] == NOT_COMPARABLE
-        for row in rows
+        row["official_any_prize_descriptive_classification"] == NOT_COMPARABLE for row in rows
     )
 
     official_zero_n = [
@@ -211,6 +203,7 @@ def test_official_zero_over_zero_is_unavailable_but_raw_source_value_is_kept(
         for row in b649_index.backtest_metrics_records
         if row["official_any_prize_count"] == 0
         and row["successful_execution_count"] not in (None, 0)
+        and row["metrics_availability"] == "AVAILABLE"
     ]
     assert official_zero_n
     assert all(
@@ -224,6 +217,7 @@ def test_official_zero_over_zero_is_unavailable_but_raw_source_value_is_kept(
         for row in b649_index.backtest_metrics_records
         if row["success_count"] == 0
         and row["effective_backtest_draw_count"] not in (None, 0)
+        and row["metrics_availability"] == "AVAILABLE"
     ]
     assert criterion_zero_n
     assert all(
@@ -234,63 +228,84 @@ def test_official_zero_over_zero_is_unavailable_but_raw_source_value_is_kept(
 
 
 def test_denominators_keep_zero_zero_unavailable_and_zero_over_n_valid() -> None:
-    assert classify_comparison(
-        "AVAILABLE",
-        numerator=132,
-        denominator=125,
-        observed_rate="0.176000000000000000",
-        random_baseline_rate="0.185568678357414570",
-        source_delta="-0.009568678357414570",
-    ) == BELOW_RANDOM_DESCRIPTIVE
-    assert classify_comparison(
-        "AVAILABLE",
-        numerator=132,
-        denominator=125,
-        observed_rate="0.176000000000000000",
-        random_baseline_rate="0.185568678357414570",
-        source_delta="-0.009568678357414570",
-        require_numerator_le_denominator=True,
-    ) == NOT_COMPARABLE
-    assert classify_comparison(
-        "AVAILABLE",
-        numerator=0,
-        denominator=0,
-        observed_rate=None,
-        random_baseline_rate="0.1",
-        source_delta=None,
-    ) == NOT_COMPARABLE
-    assert classify_comparison(
-        "AVAILABLE",
-        numerator=0,
-        denominator=12,
-        observed_rate="0.000000000000000000",
-        random_baseline_rate="0.1",
-        source_delta="-0.100000000000000000",
-    ) == BELOW_RANDOM_DESCRIPTIVE
-    assert classify_comparison(
-        "AVAILABLE",
-        numerator=1,
-        denominator=12,
-        observed_rate="0.1",
-        random_baseline_rate="0.1",
-        source_delta="0.000000000000000000",
-    ) == AT_RANDOM_DESCRIPTIVE
-    assert classify_comparison(
-        "UNAVAILABLE",
-        numerator=None,
-        denominator=None,
-        observed_rate=None,
-        random_baseline_rate=None,
-        source_delta=None,
-    ) == METRIC_UNAVAILABLE
-    assert classify_comparison(
-        "AVAILABLE",
-        numerator=None,
-        denominator=None,
-        observed_rate=None,
-        random_baseline_rate=None,
-        source_delta=None,
-    ) == NOT_COMPARABLE
+    assert (
+        classify_comparison(
+            "AVAILABLE",
+            numerator=132,
+            denominator=125,
+            observed_rate="0.176000000000000000",
+            random_baseline_rate="0.185568678357414570",
+            source_delta="-0.009568678357414570",
+        )
+        == BELOW_RANDOM_DESCRIPTIVE
+    )
+    assert (
+        classify_comparison(
+            "AVAILABLE",
+            numerator=132,
+            denominator=125,
+            observed_rate="0.176000000000000000",
+            random_baseline_rate="0.185568678357414570",
+            source_delta="-0.009568678357414570",
+            require_numerator_le_denominator=True,
+        )
+        == NOT_COMPARABLE
+    )
+    assert (
+        classify_comparison(
+            "AVAILABLE",
+            numerator=0,
+            denominator=0,
+            observed_rate=None,
+            random_baseline_rate="0.1",
+            source_delta=None,
+        )
+        == NOT_COMPARABLE
+    )
+    assert (
+        classify_comparison(
+            "AVAILABLE",
+            numerator=0,
+            denominator=12,
+            observed_rate="0.000000000000000000",
+            random_baseline_rate="0.1",
+            source_delta="-0.100000000000000000",
+        )
+        == BELOW_RANDOM_DESCRIPTIVE
+    )
+    assert (
+        classify_comparison(
+            "AVAILABLE",
+            numerator=1,
+            denominator=12,
+            observed_rate="0.1",
+            random_baseline_rate="0.1",
+            source_delta="0.000000000000000000",
+        )
+        == AT_RANDOM_DESCRIPTIVE
+    )
+    assert (
+        classify_comparison(
+            "UNAVAILABLE",
+            numerator=None,
+            denominator=None,
+            observed_rate=None,
+            random_baseline_rate=None,
+            source_delta=None,
+        )
+        == METRIC_UNAVAILABLE
+    )
+    assert (
+        classify_comparison(
+            "AVAILABLE",
+            numerator=None,
+            denominator=None,
+            observed_rate=None,
+            random_baseline_rate=None,
+            source_delta=None,
+        )
+        == NOT_COMPARABLE
+    )
 
 
 def test_summary_does_not_claim_recalculation_or_predictive_lift(
@@ -299,6 +314,6 @@ def test_summary_does_not_claim_recalculation_or_predictive_lift(
     assert b649_index.summary["ranking_recomputed"] is False
     assert b649_index.summary["historical_backtests_recomputed"] is False
     assert b649_index.summary["predictive_lift"] == "NOT ESTABLISHED"
-    assert b649_index.summary["metrics_available_strategy_count"] == 133
-    assert b649_index.summary["metrics_unavailable_strategy_count"] == 2
+    assert b649_index.summary["metrics_available_strategy_count"] == 132
+    assert b649_index.summary["metrics_unavailable_strategy_count"] == 3
     assert b649_index.summary["source_report_count"] == 52

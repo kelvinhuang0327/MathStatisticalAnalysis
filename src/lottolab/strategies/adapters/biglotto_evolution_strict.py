@@ -1,7 +1,6 @@
 """Evolution v0.3: reject a development candidate on any failed prediction."""
 
-# This adapter extends the frozen v0.2 engine without changing its historical
-# implementation surface.
+# This adapter intentionally uses private functions from the frozen source.
 # pyright: reportPrivateUsage=false
 
 from __future__ import annotations

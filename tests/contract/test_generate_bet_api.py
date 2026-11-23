@@ -6,14 +6,19 @@
 import json
 from pathlib import Path
 from typing import Never, cast
+from unittest.mock import MagicMock
 
 from fastapi.testclient import TestClient
-from pytest import MonkeyPatch
+from pytest import MonkeyPatch, mark
 
 from lottolab.application.use_cases.generate_bet import (
     GenerateOneBet,
+    GenerateOneBetInput,
+    GenerateOneBetResult,
+    GenerateOneBetStatus,
     build_production_generate_one_bet,
 )
+from lottolab.domain.draws import LotteryType
 from lottolab.interfaces.api.app import create_app
 from lottolab.strategies.adapters import (
     BigLottoDeviation2BetAdapter,
@@ -25,6 +30,8 @@ from lottolab.strategies.adapters import (
     BigLottoZoneSplit3BetBet2Adapter,
     BigLottoZoneSplit3BetBet3Adapter,
 )
+from lottolab.strategies.adapters.base import CausalDrawRow
+from lottolab.strategies.adapters.biglotto_evolution_any_prize import PrizeHistoryRow
 
 ROOT = Path(__file__).resolve().parents[2]
 PATH = "/api/v1/generate-bet"
@@ -64,6 +71,70 @@ def test_health_unaffected() -> None:
     client = TestClient(create_app())
     response = client.get("/api/health")
     assert response.status_code == 200
+
+
+def test_generate_bet_preserves_optional_historical_special_number() -> None:
+    service = MagicMock(spec=GenerateOneBet)
+    service.execute.return_value = GenerateOneBetResult(
+        status=GenerateOneBetStatus.OK,
+        numbers=(1, 2, 3, 4, 5, 6),
+        special_number=None,
+        reason_code=None,
+    )
+    client = TestClient(create_app(generate_one_bet=cast(GenerateOneBet, service)))
+    history = _rows(3)
+    history[0]["special_number"] = 7
+    history[2]["special_number"] = None
+
+    response = client.post(PATH, json=_request(strategy_id="test", seed=37, history=history))
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "strategy_id": "test",
+        "lottery_type": "BIG_LOTTO",
+        "seed": 37,
+        "status": "OK",
+        "numbers": [1, 2, 3, 4, 5, 6],
+        "reason_code": None,
+    }
+    service.execute.assert_called_once_with(
+        GenerateOneBetInput(
+            strategy_id="test",
+            lottery_type=LotteryType.BIG_LOTTO,
+            history=(
+                PrizeHistoryRow("0", "0", (1, 2, 3, 4, 5, 6), 7),
+                CausalDrawRow("1", "1", (1, 2, 3, 4, 5, 6)),
+                CausalDrawRow("2", "2", (1, 2, 3, 4, 5, 6)),
+            ),
+        )
+    )
+
+
+@mark.parametrize(
+    ("field", "value", "error_type"),
+    [
+        ("special_number", True, "int_type"),
+        ("special_number", "7", "int_type"),
+        ("extra", True, "extra_forbidden"),
+    ],
+)
+def test_invalid_history_row_fields_do_not_reach_service(
+    field: str, value: object, error_type: str
+) -> None:
+    service = MagicMock(spec=GenerateOneBet)
+    client = TestClient(create_app(generate_one_bet=cast(GenerateOneBet, service)))
+    history = _rows(1)
+    history[0][field] = value
+
+    response = client.post(PATH, json=_request(strategy_id="test", history=history))
+
+    assert response.status_code == 422
+    payload = cast(dict[str, object], response.json())
+    assert payload["error_code"] == "REQUEST_VALIDATION_FAILED"
+    assert {"location": f"body.history.0.{field}", "type": error_type} in cast(
+        list[dict[str, str]], payload["fields"]
+    )
+    service.execute.assert_not_called()
 
 
 def test_happy_path_for_each_online_strategy() -> None:

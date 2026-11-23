@@ -6,8 +6,7 @@ prediction uses a strictly earlier prefix; only after validation are candidates
 ranked for the next outer target. The legacy v0.1 adapter is unchanged.
 """
 
-# This adapter extends the frozen v0.2 engine without changing its historical
-# implementation surface.
+# This adapter intentionally uses private functions from the frozen source.
 # pyright: reportPrivateUsage=false
 
 from __future__ import annotations
@@ -47,7 +46,7 @@ def _candidate_identity(strategy: _EvoStrategy) -> str:
 
 
 def _valid_ticket(ticket: object) -> bool:
-    if not isinstance(ticket, (list, tuple)):
+    if type(ticket) not in (list, tuple):
         return False
     values = cast(Sequence[object], ticket)
     return (

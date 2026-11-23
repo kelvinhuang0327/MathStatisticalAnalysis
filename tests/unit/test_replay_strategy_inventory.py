@@ -25,31 +25,31 @@ def test_inventory_conserves_sources_and_executable_identities() -> None:
     inventory = load_replay_strategy_inventory()
     source_counts = {source.source_kind: source for source in inventory.source_counts}
 
-    assert inventory.total_discovered_strategies == 699
-    assert inventory.total_unique_strategies == 491
-    assert len(inventory.executable_items) == 213
+    assert inventory.total_discovered_strategies == 764
+    assert inventory.total_unique_strategies == 509
+    assert len(inventory.executable_items) == 223
     assert inventory.unresolved_source_count == 9
-    assert source_counts["PRODUCTION_CATALOG"].source_identity_count == 137
+    assert source_counts["PRODUCTION_CATALOG"].source_identity_count == 138
     assert source_counts["B649_RESEARCH_CATALOG"].source_identity_count == 221
     assert source_counts["B649_REPLAY_BATCH_REGISTRY"].source_identity_count == 11
     assert source_counts["T539_REPLAY_ADAPTER"].source_identity_count == 62
-    assert source_counts["P638_REPLAY_ADAPTER"].source_identity_count == 14
-    assert source_counts["STRATEGY_ADAPTER_CODE"].source_identity_count == 102
-    assert source_counts["STRATEGY_ADAPTER_CODE"].source_row_count == 103
-    assert source_counts["REPLAY_BACKFILL_IMPORTED_RESULT"].source_identity_count == 46
-    assert source_counts["REPLAY_BACKFILL_IMPORTED_RESULT"].source_row_count == 46
+    assert source_counts["P638_REPLAY_ADAPTER"].source_identity_count == 23
+    assert source_counts["STRATEGY_ADAPTER_CODE"].source_identity_count == 105
+    assert source_counts["STRATEGY_ADAPTER_CODE"].source_row_count == 106
+    assert source_counts["REPLAY_BACKFILL_IMPORTED_RESULT"].source_identity_count == 50
+    assert source_counts["REPLAY_BACKFILL_IMPORTED_RESULT"].source_row_count == 50
 
     lottery_counts = Counter(item.lottery_type for item in inventory.items)
     executable_by_lottery = Counter(item.lottery_type for item in inventory.executable_items)
     assert lottery_counts == {
-        LotteryType.BIG_LOTTO: 395,
+        LotteryType.BIG_LOTTO: 413,
         LotteryType.DAILY_539: 62,
         LotteryType.POWER_LOTTO: 34,
     }
     assert executable_by_lottery == {
-        LotteryType.BIG_LOTTO: 127,
+        LotteryType.BIG_LOTTO: 138,
         LotteryType.DAILY_539: 62,
-        LotteryType.POWER_LOTTO: 24,
+        LotteryType.POWER_LOTTO: 23,
     }
 
     research_sources = [
@@ -77,11 +77,11 @@ def test_inventory_keeps_status_dimensions_and_unavailable_cases_separate() -> N
     inventory = load_replay_strategy_inventory()
     by_data_status = Counter(item.replay_data_status for item in inventory.items)
     assert by_data_status == {
-        ReplayDataStatus.REBUILDABLE: 213,
-        ReplayDataStatus.ARTIFACT_ONLY: 98,
+        ReplayDataStatus.REBUILDABLE: 223,
+        ReplayDataStatus.ARTIFACT_ONLY: 135,
         ReplayDataStatus.REJECTED: 74,
-        ReplayDataStatus.NO_HISTORY: 104,
-        ReplayDataStatus.CODE_ONLY: 2,
+        ReplayDataStatus.NO_HISTORY: 72,
+        ReplayDataStatus.CODE_ONLY: 5,
     }
 
     rejected = [
@@ -99,7 +99,7 @@ def test_inventory_keeps_status_dimensions_and_unavailable_cases_separate() -> N
         for item in inventory.items
         if item.replay_data_status is ReplayDataStatus.ARTIFACT_ONLY
     ]
-    assert len(artifact_only) == 98
+    assert len(artifact_only) == 135
     assert all(item.historical_data_count == 0 for item in artifact_only)
     assert all(
         item.execution_capability is not ReplayExecutionCapability.EXECUTABLE
@@ -116,13 +116,16 @@ def test_inventory_keeps_status_dimensions_and_unavailable_cases_separate() -> N
         ("research_biglotto__k30_geometry_exact_swap_history_v1", "v1"),
         ("research_biglotto__k3_nonoverlap_optimizer_candidate_20261116", "v1.0.0"),
         ("research_biglotto__k3_nonoverlap_ecp_candidate_20261116", "v1.0.0"),
+        ("legacy_biglotto__evolution_engine__3df019c31ce4", "v0.5-prefix-isolated-r1"),
+        ("tasklocal_evolution_h1_duplicate_completion_20261105", "h1-prefix-isolated-r1"),
+        ("tasklocal_evolution_h2_uniform_cover_20261105", "h2-prefix-isolated-r1"),
     }
     code_only_replay_data = [
         item
         for item in code_only_lifecycle
         if item.replay_data_status is ReplayDataStatus.CODE_ONLY
     ]
-    assert len(code_only_replay_data) == 2
+    assert len(code_only_replay_data) == 5
     assert all(
         i.execution_capability is ReplayExecutionCapability.UNAVAILABLE
         for i in code_only_replay_data
@@ -145,7 +148,7 @@ def test_inventory_keeps_status_dimensions_and_unavailable_cases_separate() -> N
     online = [
         item for item in inventory.items if item.lifecycle_status is ReplayLifecycleStatus.ONLINE
     ]
-    assert len(online) == 137
+    assert len(online) == 138
     assert all(item.historical_data_count == 0 for item in online)
     assert all(item.replay_data_status is not ReplayDataStatus.HAS_HISTORY for item in online)
 
@@ -187,7 +190,31 @@ def test_inventory_keeps_status_dimensions_and_unavailable_cases_separate() -> N
         or item.adapter_mapping is None
         for item in inventory.items
     )
-    assert len(inventory.source_integrity_issues) == 12
+    assert inventory.source_integrity_issues == ()
+
+
+@pytest.mark.parametrize(
+    ("strategy_id", "version"),
+    [
+        ("legacy_biglotto__test_ecp__c9d5ac6decdd", "v0.2"),
+        ("legacy_biglotto__biglotto_3bet_optimizer__2835d6cb20c5", "v0.2"),
+        ("research_biglotto__radical_gap_complete_v2", "v2"),
+    ],
+)
+def test_staged_research_identity_is_not_executable_or_claimed_imported(
+    strategy_id: str, version: str
+) -> None:
+    matches = [
+        item
+        for item in load_replay_strategy_inventory().items
+        if item.lottery_type is LotteryType.BIG_LOTTO
+        and item.strategy_id == strategy_id
+        and item.strategy_version == version
+    ]
+    assert len(matches) == 1
+    assert matches[0].replay_data_status is ReplayDataStatus.NO_HISTORY
+    assert matches[0].execution_capability is ReplayExecutionCapability.UNAVAILABLE
+    assert matches[0].adapter_mapping is None
 
 
 def test_online_lifecycle_can_coexist_with_no_history() -> None:

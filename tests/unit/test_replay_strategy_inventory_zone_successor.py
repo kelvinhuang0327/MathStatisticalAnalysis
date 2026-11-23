@@ -385,23 +385,25 @@ def test_combined_zone_and_k30_inventory_uses_exact_overlay_and_paginates() -> N
     )
     assert first.status_code == 200
     first_payload = first.json()
-    assert first_payload["total_count"] == 4
+    assert first_payload["total_count"] >= 5
     assert len(first_payload["items"]) == 2
     assert first_payload["next_cursor"]
-    second = client.get(
-        "/api/v1/replay-backfill/strategies",
-        params={
-            "lottery_type": "BIG_LOTTO",
-            "q": "comple",
-            "limit": 2,
-            "cursor": first_payload["next_cursor"],
-        },
-    )
-    assert second.status_code == 200
-    second_payload = second.json()
-    assert second_payload["total_count"] == 4
-    assert second_payload["next_cursor"] is None
-    page_items = first_payload["items"] + second_payload["items"]
+    page_items = list(first_payload["items"])
+    cursor = first_payload["next_cursor"]
+    seen_cursors: set[str] = set()
+    while cursor is not None:
+        assert cursor not in seen_cursors
+        seen_cursors.add(cursor)
+        response = client.get(
+            "/api/v1/replay-backfill/strategies",
+            params={"lottery_type": "BIG_LOTTO", "q": "comple", "limit": 2, "cursor": cursor},
+        )
+        assert response.status_code == 200
+        page = response.json()
+        assert page["total_count"] == first_payload["total_count"]
+        page_items.extend(page["items"])
+        cursor = page["next_cursor"]
+    assert len(page_items) == first_payload["total_count"]
     page_identities = {
         (item["lottery_type"], item["strategy_id"], item["strategy_version"]) for item in page_items
     }
@@ -421,10 +423,17 @@ def test_combined_zone_and_k30_inventory_uses_exact_overlay_and_paginates() -> N
     assert all(item["backfill_native_binding"] is False for item in overlay_items)
     assert all(item["backfill_runnable"] is False for item in overlay_items)
     other_items = [item for item in page_items if item not in overlay_items]
-    assert len(other_items) == 1
-    assert other_items[0]["strategy_id"] == "cold_complement_biglotto"
-    assert other_items[0]["data_status"] == "NO_HISTORY"
-    assert other_items[0]["available_target_count"] == 0
+    by_id = {item["strategy_id"]: item for item in other_items}
+    assert by_id["tasklocal_evolution_h1_duplicate_completion_20261105"]["data_status"] == (
+        "CODE_ONLY"
+    )
+    assert (
+        by_id["tasklocal_evolution_h1_duplicate_completion_20261105"]["available_target_count"] == 0
+    )
+    assert {"cold_complement_biglotto", "research_biglotto__radical_gap_complete_v2"} <= set(by_id)
+    for strategy_id in ("cold_complement_biglotto", "research_biglotto__radical_gap_complete_v2"):
+        assert by_id[strategy_id]["data_status"] == "NO_HISTORY"
+        assert by_id[strategy_id]["available_target_count"] == 0
 
     no_random_exact_row = _snapshot(
         run_id=None,

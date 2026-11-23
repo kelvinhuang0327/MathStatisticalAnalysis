@@ -773,18 +773,88 @@ export async function getMainThreeSummary(
     })
 }
 
-interface HedgeK3StoredResult {
+export type HedgeK3ProvenanceStatus = 'VERIFIED' | 'UNKNOWN' | 'UNVERIFIED'
+
+export interface HedgeK3StoredResult {
+  run_id?: string
   target_draw_id: string
   strategy_id: string
   strategy_version: string
   execution_status: string
+  source_history_provenance_status: HedgeK3ProvenanceStatus
   hedge_phase?: unknown
   reference_any_prize?: unknown
   combination_success?: unknown
 }
 
+export function normalizeHedgeK3ProvenanceStatus(value: unknown): HedgeK3ProvenanceStatus {
+  if (value === 'VERIFIED') return 'VERIFIED'
+  if (value === 'UNVERIFIED') return 'UNVERIFIED'
+  return 'UNKNOWN'
+}
+
+export interface HedgeK3ProvenanceMetricSummary {
+  verified_numerator: number
+  verified_denominator: number
+  verified_rate_display: string
+  raw_true_count: number
+  raw_total_count: number
+  raw_flag_display: string
+  verified_count: number
+  unknown_count: number
+  unverified_count: number
+  missing_flag_count: number
+  is_evaluatable: boolean
+}
+
+export function computeHedgeK3ProvenanceMetricSummary(
+  scope: readonly HedgeK3StoredResult[],
+  field: 'reference_any_prize' | 'combination_success',
+): HedgeK3ProvenanceMetricSummary {
+  const verifiedRows = scope.filter((row) => row.source_history_provenance_status === 'VERIFIED')
+  const unknownCount = scope.filter((row) => row.source_history_provenance_status === 'UNKNOWN').length
+  const unverifiedCount = scope.filter((row) => row.source_history_provenance_status === 'UNVERIFIED').length
+
+  const validVerified = verifiedRows.filter((row) => typeof row[field] === 'boolean')
+  const verifiedNumerator = validVerified.filter((row) => row[field] === true).length
+  const verifiedDenominator = validVerified.length
+
+  const rawValid = scope.filter((row) => typeof row[field] === 'boolean')
+  const rawTrueCount = rawValid.filter((row) => row[field] === true).length
+  const rawTotalCount = scope.length
+  const missingFlagCount = scope.filter((row) => typeof row[field] !== 'boolean').length
+
+  const isEvaluatable = verifiedDenominator > 0
+  const verifiedRateDisplay = isEvaluatable ? `${verifiedNumerator}/${verifiedDenominator}` : '無法評估'
+  const rawFlagDisplay = rawTotalCount > 0 ? `${rawTrueCount}/${rawTotalCount}` : '無可評估期數'
+
+  return {
+    verified_numerator: verifiedNumerator,
+    verified_denominator: verifiedDenominator,
+    verified_rate_display: verifiedRateDisplay,
+    raw_true_count: rawTrueCount,
+    raw_total_count: rawTotalCount,
+    raw_flag_display: rawFlagDisplay,
+    verified_count: verifiedRows.length,
+    unknown_count: unknownCount,
+    unverified_count: unverifiedCount,
+    missing_flag_count: missingFlagCount,
+    is_evaluatable: isEvaluatable,
+  }
+}
+
 interface HedgeK3ResultsPage {
-  items: HedgeK3StoredResult[]
+  items: Array<Record<string, unknown> & {
+    target_draw_id: string
+    strategy_id: string
+    strategy_version: string
+    execution_status: string
+    run_id?: string
+    source_history_provenance_status?: unknown
+    hedge_phase?: unknown
+    reference_any_prize?: unknown
+    combination_success?: unknown
+  }>
   total_count: number
   limit: number
   offset: number
@@ -823,12 +893,24 @@ export async function getHedgeK3StoredResults(
     ) {
       throw new Error('Replay API 的 Run 分頁不完整，請重新查詢。')
     }
-    for (const row of page.items) {
+    for (const rawRow of page.items) {
+      const row = rawRow as Record<string, unknown>
       if (row.strategy_id !== HEDGE_K3_STRATEGY_ID || row.strategy_version !== strategyVersion) continue
-      if (rows.has(row.target_draw_id) || row.execution_status !== 'COMPLETE') {
+      if (typeof row.run_id === 'string' && row.run_id !== runId) continue
+      if (rows.has(row.target_draw_id as string) || row.execution_status !== 'COMPLETE') {
         throw new Error('K3 Hedge 有重複期號或未完成紀錄，無法確認成功期數。')
       }
-      rows.set(row.target_draw_id, row)
+      rows.set(row.target_draw_id as string, {
+        target_draw_id: row.target_draw_id as string,
+        strategy_id: row.strategy_id as string,
+        strategy_version: row.strategy_version as string,
+        execution_status: row.execution_status as string,
+        run_id: typeof row.run_id === 'string' ? row.run_id : runId,
+        source_history_provenance_status: normalizeHedgeK3ProvenanceStatus(row.source_history_provenance_status),
+        hedge_phase: row.hedge_phase,
+        reference_any_prize: row.reference_any_prize,
+        combination_success: row.combination_success,
+      })
     }
   }
   if (!rows.size) throw new Error('Replay API 未提供這個 Run 與版本的 K3 Hedge 紀錄。')

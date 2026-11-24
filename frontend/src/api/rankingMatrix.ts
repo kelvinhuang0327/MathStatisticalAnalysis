@@ -32,6 +32,15 @@ import {
 export type LotteryType = 'BIG_LOTTO' | 'POWER_LOTTO' | 'DAILY_539'
 export type TicketCount = 2 | 3 | 5 | 10 | 20
 export type RankingWindow = 'FULL' | 'RECENT_750' | 'RECENT_300' | 'RECENT_50'
+export type OfficialRankingRow = components['schemas']['OfficialRankingRow']
+export type OfficialRankingResponse = components['schemas']['OfficialRankingResponse']
+
+export async function fetchOfficialRanking(lottery: LotteryType, window: RankingWindow): Promise<OfficialRankingResponse> {
+  const query = new URLSearchParams({ lottery_type: lottery, window })
+  const response = await fetch(`/api/v1/replay-backfill/official-ranking?${query}`)
+  if (!response.ok) throw new Error(`正式庫排行載入失敗（${response.status}）`)
+  return await response.json() as OfficialRankingResponse
+}
 export type B649Sealed084Window = 'FULL' | 'RECENT_750' | 'RECENT_300' | 'RECENT_50'
 
 export interface B649Sealed084Source {

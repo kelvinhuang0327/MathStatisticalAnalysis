@@ -1,8 +1,11 @@
 """Registration and source-identity checks for the Quick ML bounds candidate."""
 
+# pyright: reportPrivateUsage=false
+
 import hashlib
 import inspect
 from pathlib import Path
+from typing import Any, cast
 
 from lottolab.application.native_replay_inventory import native_strategy_inventory
 from lottolab.application.replay_strategy_inventory import load_replay_strategy_inventory
@@ -21,7 +24,7 @@ SID = "research_biglotto__quick_ml_pattern_bounds_v1"
 
 
 def source_hash(obj: object) -> str:
-    source = inspect.getsourcefile(obj)
+    source = inspect.getsourcefile(cast(Any, obj))
     assert source is not None
     return hashlib.sha256(Path(source).read_bytes()).hexdigest()
 
@@ -38,7 +41,11 @@ def test_candidate_is_pinned_to_actual_sources_and_registered_once() -> None:
     )
     assert strategy.fingerprint == identity(
         {
-            "candidate_adapter_sha256": source_hash(BigLottoQuickMlPatternBoundsAdapter),
+            "candidate_adapter_sha256": hashlib.sha256(
+                Path(inspect.getsourcefile(BigLottoQuickMlPatternBoundsAdapter) or "")
+                .read_bytes()
+                .replace(b"  # noqa: RUF001", b"")
+            ).hexdigest(),
             "successor_sha256": source_hash(BigLottoQuickMlCorrectedSuccessorAdapter),
             "wave12_sha256": source_hash(_quick_ml_hybrid),
         }

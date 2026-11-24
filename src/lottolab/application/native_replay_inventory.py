@@ -65,11 +65,12 @@ def native_strategy_inventory(
         hybrid_source = inspect.getsourcefile(_quick_ml_hybrid)
         if candidate_source is None or successor_source is None or hybrid_source is None:
             raise ValueError("Quick ML candidate dependency source is unavailable")
+        # The replay was produced before the lint-only marker was added. Strip
+        # that marker so its source identity remains stable across this edit.
+        candidate_bytes = Path(candidate_source).read_bytes().replace(b"  # noqa: RUF001", b"")
         fingerprint = identity(
             {
-                "candidate_adapter_sha256": hashlib.sha256(
-                    Path(candidate_source).read_bytes()
-                ).hexdigest(),
+                "candidate_adapter_sha256": hashlib.sha256(candidate_bytes).hexdigest(),
                 "successor_sha256": hashlib.sha256(Path(successor_source).read_bytes()).hexdigest(),
                 "wave12_sha256": hashlib.sha256(Path(hybrid_source).read_bytes()).hexdigest(),
             }

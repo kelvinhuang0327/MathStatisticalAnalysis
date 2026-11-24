@@ -16,7 +16,8 @@ from typing import Any, cast
 from lottolab.domain.lottery_rules import (
     BIG_LOTTO_RULE_CONTRACT,
     DAILY_539_RULE_CONTRACT,
-    NoPrizeResult,
+    BigLottoPrizeTier,
+    BigLottoPrizeTierId,
     resolve_big_lotto_prize_tier,
     score_big_lotto_ticket,
 )
@@ -38,7 +39,8 @@ def single_ticket_probability(lottery_type: str) -> Fraction | None:
             comb(size, tier.main_hits)
             * comb(total - size - 1, size - tier.main_hits - int(tier.special_hit))
             for tier in prize_rule.tiers
-            if 0 <= size - tier.main_hits - int(tier.special_hit) <= total - size - 1
+            if tier.tier_id != BigLottoPrizeTierId.GENERAL
+            and 0 <= size - tier.main_hits - int(tier.special_hit) <= total - size - 1
         )
         return Fraction(wins, comb(total, size))
     if lottery_type == "DAILY_539":
@@ -59,7 +61,7 @@ def single_ticket_probability(lottery_type: str) -> Fraction | None:
 
 @lru_cache(maxsize=128, typed=True)
 def iid_period_probability(lottery_type: str, ticket_count: int) -> Fraction | None:
-    """Probability of any prize with independent uniform tickets with replacement."""
+    """Probability of the ranking event with independent tickets with replacement."""
     if type(ticket_count) is not int or ticket_count < 1:
         raise ValueError("ticket_count must be a positive integer")
     probability = single_ticket_probability(lottery_type)
@@ -93,10 +95,12 @@ def score_period(
             ]
         except (TypeError, ValueError):
             return None
+        tiers = (
+            resolve_big_lotto_prize_tier(score.main_hits, score.special_hit) for score in scores
+        )
         return any(
-            resolve_big_lotto_prize_tier(score.main_hits, score.special_hit)
-            != NoPrizeResult.NO_PRIZE
-            for score in scores
+            isinstance(tier, BigLottoPrizeTier) and tier.tier_id != BigLottoPrizeTierId.GENERAL
+            for tier in tiers
         )
     rule = DAILY_539_RULE_CONTRACT
 

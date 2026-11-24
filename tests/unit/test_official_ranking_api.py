@@ -43,6 +43,8 @@ def test_official_ranking_api_uses_saved_tickets_and_unknown_power(
             is_daily = lottery == "DAILY_539"
             winning = [1, 2, 3, 4, 5] if is_daily else [1, 2, 3, 4, 5, 6]
             ticket = [1, 2, 8, 9, 10] if is_daily else [1, 2, 3, 8, 9, 10]
+            if lottery == "BIG_LOTTO":
+                ticket = [1, 2, 7, 8, 9, 10]
             special = None if is_daily else 7
             connection.execute(
                 "INSERT INTO replay_backfill_runs(run_id,manifest_json,expected_cells) "
@@ -147,6 +149,34 @@ def test_official_ranking_api_uses_saved_tickets_and_unknown_power(
                 None,
                 None,
             )
+    # General Prize (three main hits without special) is outside the event.
+    with sqlite3.connect(database) as connection:
+        connection.execute(
+            "UPDATE replay_backfill_tickets SET main_numbers_json=? WHERE cell_identity='b'",
+            (json.dumps([1, 2, 3, 8, 9, 10]),),
+        )
+        connection.execute(
+            "UPDATE replay_backfill_cells SET payload_json=json_set(payload_json, "
+            "'$.predicted_tickets[0].main_numbers', json(?)) WHERE cell_identity='b'",
+            (json.dumps([1, 2, 3, 8, 9, 10]),),
+        )
+    general_response = client.get(
+        "/api/v1/replay-backfill/official-ranking",
+        params={"lottery_type": "BIG_LOTTO", "window": "RECENT_50"},
+    )
+    assert general_response.status_code == 200
+    general = general_response.json()["items"][0]
+    assert (general["successes"], general["evaluated"]) == (0, 1)
+    with sqlite3.connect(database) as connection:
+        connection.execute(
+            "UPDATE replay_backfill_tickets SET main_numbers_json=? WHERE cell_identity='b'",
+            (json.dumps([1, 2, 7, 8, 9, 10]),),
+        )
+        connection.execute(
+            "UPDATE replay_backfill_cells SET payload_json=json_set(payload_json, "
+            "'$.predicted_tickets[0].main_numbers', json(?)) WHERE cell_identity='b'",
+            (json.dumps([1, 2, 7, 8, 9, 10]),),
+        )
     # Compare the run-streamed reducer with the prior materialized reducer
     # after the JSON round trip for each lottery and every requested window.
     for lottery in ("BIG_LOTTO", "POWER_LOTTO", "DAILY_539"):

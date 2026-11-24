@@ -36,7 +36,7 @@ function delta(n: number | null): string { return n === null ? 'UNKNOWN' : `${(n
   <section data-testid="official-ranking-panel">
     <h2>正式庫排行</h2>
     <p>同彩種、相同注數、執行版本、Run、資料身份及目標期別才可比較。基準：合法票券均勻獨立有放回，按期平均；差值僅描述歷史。</p>
-    <p v-if="lottery === 'BIG_LOTTO'">依現行獎規計算；歷史獎規變更未追溯。</p>
+    <p v-if="lottery === 'BIG_LOTTO'">依現行獎規計算；成功從柒獎起（至少中 2 個主號及特別號），不含普獎（中 3 個主號但未中特別號）；歷史獎規變更未追溯。</p>
     <p v-if="lottery === 'POWER_LOTTO'">威力彩現行獎規來源未核實，成功率、基準及差值為 UNKNOWN，不列入排名。</p>
     <label>彩種 <select v-model="lottery" data-testid="official-lottery"><option value="BIG_LOTTO">大樂透</option><option value="POWER_LOTTO">威力彩</option><option value="DAILY_539">今彩539</option></select></label>
     <label>窗口 <select v-model="windowSize" data-testid="official-window"><option value="FULL">全期</option><option value="RECENT_750">近750期</option><option value="RECENT_300">近300期</option><option value="RECENT_50">近50期</option></select></label>

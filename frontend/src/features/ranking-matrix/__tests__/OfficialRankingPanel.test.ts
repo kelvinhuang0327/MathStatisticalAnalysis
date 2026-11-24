@@ -14,6 +14,8 @@ it('switches lottery and window and displays unknown results without a rank', as
   const wrapper = mount(OfficialRankingPanel)
   await flushPromises()
   expect(wrapper.text()).toContain('依現行獎規計算')
+  expect(wrapper.text()).toContain('成功從柒獎起（至少中 2 個主號及特別號）')
+  expect(wrapper.text()).toContain('不含普獎（中 3 個主號但未中特別號）')
   expect(wrapper.text()).toContain('歷史獎規變更未追溯')
   expect(wrapper.text()).toContain('未登記')
   expect(wrapper.text()).toContain('100.00%')

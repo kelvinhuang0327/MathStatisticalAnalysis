@@ -56,6 +56,7 @@ import {
 import { lotteryTypeDisplayLabel } from '../../utils/lotteryDisplayLabel'
 import LotteryNumberBall from '../../components/LotteryNumberBall.vue'
 import K3ComparisonPanel from './K3ComparisonPanel.vue'
+import ReplayPairComparison from './ReplayPairComparison.vue'
 import HedgeK3Summary from './HedgeK3Summary.vue'
 import {
   assessReplayScoreTrust,
@@ -2188,6 +2189,7 @@ function predictedNumbers(value: number[] | null | undefined): string {
           </div>
         </template>
       </section>
+      <ReplayPairComparison v-if="backfillLotteryType === 'BIG_LOTTO'" />
       <K3ComparisonPanel v-if="backfillLotteryType === 'BIG_LOTTO'" />
 
       <section class="panel replay-backfill-section" aria-labelledby="backfill-query-title">

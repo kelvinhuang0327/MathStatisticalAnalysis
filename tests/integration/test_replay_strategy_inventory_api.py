@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from typing import Protocol, cast
+import json
+from pathlib import Path
+from typing import Any, Protocol, cast
 
 import httpx
 from fastapi.testclient import TestClient
@@ -17,6 +19,12 @@ def _client() -> JsonTestClient:
     return cast(JsonTestClient, TestClient(create_app()))
 
 
+def _multiseed_fixture() -> dict[str, Any]:
+    fixture_path = Path(__file__).parent.parent / "fixtures" / "k30_multiseed_stage_sources.json"
+    loaded = json.loads(fixture_path.read_text(encoding="utf-8"))
+    return json.loads(json.dumps(loaded))
+
+
 def test_replay_strategy_inventory_api_lists_separate_states_and_full_backfill_ids() -> None:
     client = _client()
 
@@ -24,8 +32,9 @@ def test_replay_strategy_inventory_api_lists_separate_states_and_full_backfill_i
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["total_discovered_strategies"] == 765
-    assert payload["total_unique_strategies"] == 510
+    multiseed_count = len(_multiseed_fixture()["seed_identities"])
+    assert payload["total_discovered_strategies"] == 765 + multiseed_count
+    assert payload["total_unique_strategies"] == 510 + multiseed_count
     assert payload["total_executable"] == 224
     assert payload["total_reconstructable"] == 224
     assert payload["total_has_history"] == 0
@@ -38,9 +47,17 @@ def test_replay_strategy_inventory_api_lists_separate_states_and_full_backfill_i
     assert payload["source_status_counts"]["OBSERVATION"] == 2
     assert payload["replay_data_status_counts"]["CODE_ONLY"] == 5
     assert payload["execution_capability_counts"]["EXECUTABLE"] == 224
-    assert payload["execution_capability_counts"]["UNAVAILABLE"] == 286
+    assert payload["execution_capability_counts"]["UNAVAILABLE"] == 286 + multiseed_count
     assert payload["strategy_count"] == payload["total_unique_strategies"]
     assert len(payload["executable_strategy_ids"]) == payload["total_executable"]
+    quick_ml_rows = [
+        row
+        for row in payload["strategies"]
+        if row["strategy_id"] == "research_biglotto__quick_ml_pattern_bounds_v1"
+    ]
+    assert len(quick_ml_rows) == 1
+    assert quick_ml_rows[0]["strategy_version"] == "v0.1-research"
+    assert quick_ml_rows[0]["execution_capability"] == "EXECUTABLE"
     assert all(
         set(identity) == {"lottery_type", "strategy_id", "strategy_version"}
         for identity in payload["executable_strategy_ids"]
@@ -169,3 +186,52 @@ def test_replay_strategy_inventory_api_rejects_invalid_filters() -> None:
     assert invalid_lottery.status_code == 422
     assert invalid_data_status.status_code == 422
     assert blank_strategy_id.status_code == 422
+
+
+
+def test_k30_multiseed_inventory_api_lists_seed_set_without_formal_history() -> None:
+    fixture = _multiseed_fixture()
+    expected = {
+        (row["strategy_id"], row["strategy_version"])
+        for row in fixture["seed_identities"]
+    }
+    response = _client().get("/api/v1/replay-strategy-inventory")
+    assert response.status_code == 200
+    payload = response.json()
+    rows = [
+        row for row in payload["strategies"]
+        if row["strategy_id"].startswith("research_biglotto__k30_histseed_")
+    ]
+    assert {(row["strategy_id"], row["strategy_version"]) for row in rows} == expected
+    assert len(rows) == len(expected) == len(fixture["seed_identities"]) == 1000
+    assert not expected.intersection(
+        (row["strategy_id"], row["strategy_version"])
+        for row in payload["executable_strategy_ids"]
+    )
+    assert not expected.intersection(
+        (row["strategy_id"], row["strategy_version"])
+        for row in payload["backfill_runnable_strategy_ids"]
+    )
+    for row in rows:
+        assert row["lottery_type"] == "BIG_LOTTO"
+        assert row["source_kind"] == "REPLAY_BACKFILL_STAGE_CANDIDATE"
+        assert row["replay_data_status"] == "NO_HISTORY"
+        assert row["historical_data_count"] == 0
+        assert row["execution_capability"] == "UNAVAILABLE"
+        assert row["adapter_mapping"] is None
+        assert row["backfill_native_binding"] is not True
+        assert row["backfill_native_binding_sources"] == []
+        assert row["backfill_runnable"] is False
+        assert "RESEARCH_STRATEGY" in row["source_statuses"]
+        assert all(
+            source["source_status"] in {"VERIFIED", "UNVERIFIED", "UNKNOWN"}
+            for source in row["alias_or_identity_mapping"]
+            if source["source_kind"] == "REPLAY_BACKFILL_STAGE_CANDIDATE"
+        )
+    source_counts = [
+        row for row in payload["source_counts"]
+        if row["source_kind"] == "REPLAY_BACKFILL_STAGE_CANDIDATE"
+    ]
+    assert len(source_counts) == 1
+    assert source_counts[0]["source_identity_count"] == 1000
+    assert source_counts[0]["source_row_count"] == len(fixture["source_records"]) == 1200

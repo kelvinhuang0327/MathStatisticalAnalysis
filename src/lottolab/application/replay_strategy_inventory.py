@@ -1427,8 +1427,7 @@ _IMPORTED_REPLAY_IDENTITIES: tuple[_ImportedReplayIdentitySpec, ...] = (
         display_name="Cluster Cover v0.2 (歷史研究結果)",
         strategy_version="v0.2-research-frequency100",
         source_locator=(
-            "research-store-saved-k3-projection-v1:"
-            "cluster-cover-v0.2-research-frequency100"
+            "research-store-saved-k3-projection-v1:cluster-cover-v0.2-research-frequency100"
         ),
         reconstruction_reason=(
             "Saved research-only variant; replay history is available only when an exact "
@@ -1681,9 +1680,7 @@ _K30_MULTISEED_IDENTITY_REASON = (
     "not been imported into the formal Replay Backfill database, so this row does not claim "
     "formal history or a native executable/backfill binding."
 )
-_K30_MULTISEED_RUN_PARTITION_BY_STAGE: dict[
-    str, tuple[str, str, int, int, int, int, bool, str]
-] = {
+_K30_MULTISEED_RUN_PARTITION_BY_STAGE: dict[str, tuple[str, str, int, int, int, int, bool, str]] = {
     "number2_k30_era_fullseed_0100_0124_20261123_r1": (
         "b6d3fce679f8aefc6df4cab6db80941278ce5dc7c7d5cfd365149bc7cf3d03e7",
         "efd9a41c989537a4b1fa53db0f26e1c9707862dfe53b9f4ddaacceeb89e79bd4",
@@ -12577,6 +12574,49 @@ _K30_MULTISEED_STAGE_SOURCE_ROWS: tuple[
 )
 
 
+def _add_k30_era_candidate_identities(
+    items: dict[tuple[LotteryType, str, str | None], _MutableItem],
+) -> int:
+    """Register exact candidate identities without asserting their source history."""
+    candidates = (
+        ("research_biglotto__k30_fixed_414665013", "RESEARCH_STRATEGY"),
+        ("research_biglotto__k30_fixed_414671103", "RESEARCH_STRATEGY"),
+        ("research_biglotto__k30_fixed_random_control_20261119_r1", "CONTROL_BASELINE"),
+    )
+    locator = "inventory:k30-era2014-candidate?source_history_provenance_status=UNKNOWN"
+    for strategy_id, role in candidates:
+        version = "v1-era2014"
+        if (LotteryType.BIG_LOTTO, strategy_id, version) in items:
+            raise ValueError("K30 era candidate conflicts with an existing inventory item")
+        _add_item(
+            items,
+            lottery_type=LotteryType.BIG_LOTTO,
+            strategy_id=strategy_id,
+            display_name="K30 era2014 候選策略",
+            strategy_version=version,
+            source_kind=_K30_MULTISEED_SOURCE_KIND,
+            source_locator=locator,
+            lifecycle_status=ReplayLifecycleStatus.UNREGISTERED_IDENTIFIED,
+            replay_data_status=ReplayDataStatus.NO_HISTORY,
+            execution_capability=ReplayExecutionCapability.UNAVAILABLE,
+            reconstruction_reason=(
+                "Stage candidate identity only; source history provenance is unknown. "
+                "History requires an exact Replay Backfill database overlay. "
+                "No current native executable binding is registered."
+            ),
+            source=_source_mapping(
+                kind=_K30_MULTISEED_SOURCE_KIND,
+                locator=locator,
+                strategy_id=strategy_id,
+                version=version,
+                mapping="exact_stage_candidate_identity",
+                status="UNKNOWN",
+            ),
+            source_statuses=(role, "UNKNOWN"),
+        )
+    return len(candidates)
+
+
 def _add_k30_multiseed_stage_identities(
     items: dict[tuple[LotteryType, str, str | None], _MutableItem],
 ) -> tuple[int, int]:
@@ -12620,9 +12660,7 @@ def _add_k30_multiseed_stage_identities(
                     or initial_complete_targets != initial_expected_targets
                     or not link_verified
                 ):
-                    run_binding = (
-                        f"run_ids={','.join(run_ids)}&seed_to_run_binding=UNRESOLVED"
-                    )
+                    run_binding = f"run_ids={','.join(run_ids)}&seed_to_run_binding=UNRESOLVED"
                 else:
                     run_binding = (
                         f"initial_run_id={initial_run_id}"
@@ -12662,7 +12700,6 @@ def _add_k30_multiseed_stage_identities(
             source_statuses=("RESEARCH_STRATEGY", provenance_status),
         )
     return len(identities), len(_K30_MULTISEED_STAGE_SOURCE_ROWS)
-
 
 
 def _add_imported_replay_identities(
@@ -12855,6 +12892,7 @@ def load_replay_strategy_inventory(
     _add_legacy_snapshot_only_rows(items, legacy_statuses)
     imported_identity_count, imported_row_count = _add_imported_replay_identities(items)
     multiseed_identity_count, multiseed_row_count = _add_k30_multiseed_stage_identities(items)
+    era_candidate_count = _add_k30_era_candidate_identities(items)
 
     engine_evidence = _native_engine_evidence(items)
     resolved_native_binding_evidence = (
@@ -12928,8 +12966,8 @@ def load_replay_strategy_inventory(
         ),
         ReplayStrategySourceCount(
             _K30_MULTISEED_SOURCE_KIND,
-            multiseed_identity_count,
-            multiseed_row_count,
+            multiseed_identity_count + era_candidate_count,
+            multiseed_row_count + era_candidate_count,
         ),
     )
     engine_identity_count = sum(

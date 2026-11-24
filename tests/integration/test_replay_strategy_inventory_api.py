@@ -5,10 +5,14 @@ from pathlib import Path
 from typing import Any, Protocol, cast
 
 import httpx
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from lottolab.infrastructure.persistence.replay_backfill_store import SQLiteBackfillStore
-from lottolab.interfaces.api.app import create_app
+from lottolab.interfaces.api.replay_backfill import create_replay_backfill_router
+from lottolab.interfaces.api.replay_strategy_inventory import (
+    create_replay_strategy_inventory_router,
+)
 
 
 class JsonTestClient(Protocol):
@@ -16,7 +20,9 @@ class JsonTestClient(Protocol):
 
 
 def _client() -> JsonTestClient:
-    return cast(JsonTestClient, TestClient(create_app()))
+    app = FastAPI()
+    app.include_router(create_replay_strategy_inventory_router())
+    return cast(JsonTestClient, TestClient(app))
 
 
 def _multiseed_fixture() -> dict[str, Any]:
@@ -33,8 +39,8 @@ def test_replay_strategy_inventory_api_lists_separate_states_and_full_backfill_i
     assert response.status_code == 200
     payload = response.json()
     multiseed_count = len(_multiseed_fixture()["seed_identities"])
-    assert payload["total_discovered_strategies"] == 765 + multiseed_count
-    assert payload["total_unique_strategies"] == 510 + multiseed_count
+    assert payload["total_discovered_strategies"] == 768 + multiseed_count
+    assert payload["total_unique_strategies"] == 513 + multiseed_count
     assert payload["total_executable"] == 224
     assert payload["total_reconstructable"] == 224
     assert payload["total_has_history"] == 0
@@ -47,7 +53,7 @@ def test_replay_strategy_inventory_api_lists_separate_states_and_full_backfill_i
     assert payload["source_status_counts"]["OBSERVATION"] == 2
     assert payload["replay_data_status_counts"]["CODE_ONLY"] == 5
     assert payload["execution_capability_counts"]["EXECUTABLE"] == 224
-    assert payload["execution_capability_counts"]["UNAVAILABLE"] == 286 + multiseed_count
+    assert payload["execution_capability_counts"]["UNAVAILABLE"] == 289 + multiseed_count
     assert payload["strategy_count"] == payload["total_unique_strategies"]
     assert len(payload["executable_strategy_ids"]) == payload["total_executable"]
     quick_ml_rows = [
@@ -93,7 +99,9 @@ def test_power_lotto_fixed_random_controls_are_listed_without_claiming_history()
             return {"run_id": None}
 
     store = cast(SQLiteBackfillStore, EmptyHistory())
-    client = cast(JsonTestClient, TestClient(create_app(replay_backfill_store=store)))
+    app = FastAPI()
+    app.include_router(create_replay_backfill_router(store))
+    client = cast(JsonTestClient, TestClient(app))
     response = client.get(
         "/api/v1/replay-backfill/strategies",
         params={
@@ -188,25 +196,21 @@ def test_replay_strategy_inventory_api_rejects_invalid_filters() -> None:
     assert blank_strategy_id.status_code == 422
 
 
-
 def test_k30_multiseed_inventory_api_lists_seed_set_without_formal_history() -> None:
     fixture = _multiseed_fixture()
-    expected = {
-        (row["strategy_id"], row["strategy_version"])
-        for row in fixture["seed_identities"]
-    }
+    expected = {(row["strategy_id"], row["strategy_version"]) for row in fixture["seed_identities"]}
     response = _client().get("/api/v1/replay-strategy-inventory")
     assert response.status_code == 200
     payload = response.json()
     rows = [
-        row for row in payload["strategies"]
+        row
+        for row in payload["strategies"]
         if row["strategy_id"].startswith("research_biglotto__k30_histseed_")
     ]
     assert {(row["strategy_id"], row["strategy_version"]) for row in rows} == expected
     assert len(rows) == len(expected) == len(fixture["seed_identities"]) == 1000
     assert not expected.intersection(
-        (row["strategy_id"], row["strategy_version"])
-        for row in payload["executable_strategy_ids"]
+        (row["strategy_id"], row["strategy_version"]) for row in payload["executable_strategy_ids"]
     )
     assert not expected.intersection(
         (row["strategy_id"], row["strategy_version"])
@@ -229,9 +233,40 @@ def test_k30_multiseed_inventory_api_lists_seed_set_without_formal_history() -> 
             if source["source_kind"] == "REPLAY_BACKFILL_STAGE_CANDIDATE"
         )
     source_counts = [
-        row for row in payload["source_counts"]
+        row
+        for row in payload["source_counts"]
         if row["source_kind"] == "REPLAY_BACKFILL_STAGE_CANDIDATE"
     ]
     assert len(source_counts) == 1
-    assert source_counts[0]["source_identity_count"] == 1000
-    assert source_counts[0]["source_row_count"] == len(fixture["source_records"]) == 1200
+    assert source_counts[0]["source_identity_count"] == 1003
+    assert source_counts[0]["source_row_count"] == len(fixture["source_records"]) + 3 == 1203
+
+
+def test_k30_era_candidates_api_preserves_versions_and_unknown_provenance() -> None:
+    expected = {
+        "research_biglotto__k30_fixed_414665013": ("v1", "RESEARCH_STRATEGY"),
+        "research_biglotto__k30_fixed_414671103": ("v1", "RESEARCH_STRATEGY"),
+        "research_biglotto__k30_fixed_random_control_20261119_r1": ("v1.0.0", "CONTROL_BASELINE"),
+    }
+    client = _client()
+    for strategy_id, (old_version, role) in expected.items():
+        response = client.get(
+            "/api/v1/replay-strategy-inventory", params={"strategy_id": strategy_id}
+        )
+        assert response.status_code == 200
+        rows = response.json()["strategies"]
+        assert {row["strategy_version"] for row in rows} == {old_version, "v1-era2014"}
+        row = next(row for row in rows if row["strategy_version"] == "v1-era2014")
+        assert row["lottery_type"] == "BIG_LOTTO"
+        assert row["source_kind"] == "REPLAY_BACKFILL_STAGE_CANDIDATE"
+        assert row["source_locator"] == (
+            "inventory:k30-era2014-candidate?source_history_provenance_status=UNKNOWN"
+        )
+        assert row["source_statuses"] == [role, "UNKNOWN"]
+        assert row["alias_or_identity_mapping"][0]["source_status"] == "UNKNOWN"
+        assert row["replay_data_status"] == "NO_HISTORY"
+        assert row["execution_capability"] == "UNAVAILABLE"
+        assert row["historical_data_count"] == 0
+        assert row["adapter_mapping"] is None
+        assert not row["backfill_native_binding"]
+        assert not row["backfill_runnable"]

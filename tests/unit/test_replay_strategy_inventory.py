@@ -35,19 +35,27 @@ def test_inventory_conserves_sources_and_executable_identities() -> None:
     actual_identity_set = {
         (item.lottery_type, item.strategy_id, item.strategy_version) for item in inventory.items
     }
-    preserved_main_identities = actual_identity_set - seed_identity_set
+    era_identities = {
+        (LotteryType.BIG_LOTTO, strategy_id, "v1-era2014")
+        for strategy_id in (
+            "research_biglotto__k30_fixed_414665013",
+            "research_biglotto__k30_fixed_414671103",
+            "research_biglotto__k30_fixed_random_control_20261119_r1",
+        )
+    }
+    preserved_main_identities = actual_identity_set - seed_identity_set - era_identities
 
     assert seed_identity_count == 1000
-    assert inventory.total_discovered_strategies == 765 + seed_identity_count
-    assert inventory.total_unique_strategies == _BASE_MAIN_IDENTITY_COUNT + seed_identity_count
+    assert inventory.total_discovered_strategies == 768 + seed_identity_count
+    assert inventory.total_unique_strategies == _BASE_MAIN_IDENTITY_COUNT + seed_identity_count + 3
     assert (
         len(actual_identity_set)
         == len(inventory.items)
-        == _BASE_MAIN_IDENTITY_COUNT + seed_identity_count
+        == _BASE_MAIN_IDENTITY_COUNT + seed_identity_count + 3
     )
-    assert len(actual_identity_set) == len(preserved_main_identities) + len(seed_identity_set)
+    assert len(actual_identity_set) == len(preserved_main_identities) + len(seed_identity_set) + 3
     assert seed_identity_set.isdisjoint(preserved_main_identities)
-    assert actual_identity_set == preserved_main_identities | seed_identity_set
+    assert actual_identity_set == preserved_main_identities | seed_identity_set | era_identities
     assert len(preserved_main_identities) == _BASE_MAIN_IDENTITY_COUNT
     assert _identity_set_sha256(preserved_main_identities) == (
         "d57aff547491e137fa31bdd509177ad64abdaa18311a07914cf9c46780653809"
@@ -65,14 +73,14 @@ def test_inventory_conserves_sources_and_executable_identities() -> None:
     assert source_counts["REPLAY_BACKFILL_IMPORTED_RESULT"].source_row_count == 50
     assert (
         source_counts["REPLAY_BACKFILL_STAGE_CANDIDATE"].source_identity_count
-        == seed_identity_count
+        == seed_identity_count + 3
     )
-    assert source_counts["REPLAY_BACKFILL_STAGE_CANDIDATE"].source_row_count == 1200
+    assert source_counts["REPLAY_BACKFILL_STAGE_CANDIDATE"].source_row_count == 1203
 
     lottery_counts = Counter(item.lottery_type for item in inventory.items)
     executable_by_lottery = Counter(item.lottery_type for item in inventory.executable_items)
     assert lottery_counts == {
-        LotteryType.BIG_LOTTO: 414 + seed_identity_count,
+        LotteryType.BIG_LOTTO: 417 + seed_identity_count,
         LotteryType.DAILY_539: 62,
         LotteryType.POWER_LOTTO: 34,
     }
@@ -110,7 +118,7 @@ def test_inventory_keeps_status_dimensions_and_unavailable_cases_separate() -> N
         ReplayDataStatus.REBUILDABLE: 224,
         ReplayDataStatus.ARTIFACT_ONLY: 135,
         ReplayDataStatus.REJECTED: 74,
-        ReplayDataStatus.NO_HISTORY: 72 + len(_seed_identity_tuples()),
+        ReplayDataStatus.NO_HISTORY: 75 + len(_seed_identity_tuples()),
         ReplayDataStatus.CODE_ONLY: 5,
     }
 
@@ -371,6 +379,7 @@ def test_powerlotto_wrapper_preserves_second_zone_for_generic_adapter() -> None:
 
 _BASE_MAIN_IDENTITY_COUNT = 510
 
+
 def _multiseed_fixture() -> dict[str, Any]:
     fixture_path = Path(__file__).parent.parent / "fixtures" / "k30_multiseed_stage_sources.json"
     return json.loads(json.dumps(json.loads(fixture_path.read_text(encoding="utf-8"))))
@@ -401,14 +410,14 @@ def _candidate_multiseed_rows() -> list[dict[str, Any]]:
     inventory = load_replay_strategy_inventory()
     rows: list[dict[str, Any]] = []
     for item in inventory.items:
-        if item.source_kind != "REPLAY_BACKFILL_STAGE_CANDIDATE":
+        if not item.strategy_id.startswith("research_biglotto__k30_histseed_"):
             continue
         for source in item.alias_or_identity_mapping:
             if source.source_kind != "REPLAY_BACKFILL_STAGE_CANDIDATE":
                 continue
-            stage_group, query = source.source_locator.removeprefix(
-                "replay-backfill-stage:"
-            ).split("/MERGE_PENDING.json#", 1)
+            stage_group, query = source.source_locator.removeprefix("replay-backfill-stage:").split(
+                "/MERGE_PENDING.json#", 1
+            )
             values = dict(parse_qsl(query, keep_blank_values=True))
             if "run_id" in values:
                 run_ids = [values["run_id"]]
@@ -447,9 +456,7 @@ def _candidate_multiseed_rows() -> list[dict[str, Any]]:
                     "stage_group": stage_group,
                     "run_ids": run_ids,
                     "target_draw_range": [draw_start, draw_end],
-                    "source_history_provenance_status": values[
-                        "source_history_provenance_status"
-                    ],
+                    "source_history_provenance_status": values["source_history_provenance_status"],
                     "run_binding": run_binding,
                 }
             )
@@ -488,8 +495,7 @@ def _validate_multiseed_projection(
         or run_partition_resolution["overlap_cells_across_25_strategies"]
         != run_partition_resolution["strategy_count"]
         * run_partition_resolution["continuation_shared_targets_per_strategy"]
-        or run_partition_resolution["target_draw_range"]
-        != ["96000001", "115000056"]
+        or run_partition_resolution["target_draw_range"] != ["96000001", "115000056"]
         or run_partition_resolution["manifest_sha256"]
         != manifest_sha256_by_stage.get(run_partition_resolution["stage_group"])
         or run_partition_resolution["source_result_sha256"]
@@ -507,9 +513,7 @@ def _validate_multiseed_projection(
     expected_binding = {
         "binding_status": "VERIFIED_PER_STRATEGY_PARTITION",
         "initial_run_id": run_partition_resolution["initial_run_id"],
-        "continuation_shared_run_id": run_partition_resolution[
-            "continuation_shared_run_id"
-        ],
+        "continuation_shared_run_id": run_partition_resolution["continuation_shared_run_id"],
         "initial_targets_per_strategy": run_partition_resolution[
             "initial_run_complete_targets_per_strategy"
         ],
@@ -533,9 +537,7 @@ def _validate_multiseed_projection(
         for row in partition_rows
     ):
         raise ValueError("run partition binding mismatch")
-    identity_keys = [
-        (row["strategy_id"], row["strategy_version"]) for row in seed_identities
-    ]
+    identity_keys = [(row["strategy_id"], row["strategy_version"]) for row in seed_identities]
     if len(identity_keys) != len(set(identity_keys)):
         raise ValueError("duplicate seed identity")
     if len(seed_identities) != fixture["seed_identity_count"]:
@@ -585,13 +587,12 @@ def _validate_multiseed_projection(
     if Counter(candidate_sources) != Counter(expected_sources):
         raise ValueError("candidate source mapping mismatch")
 
+
 def _source_locator(row: dict[str, Any]) -> str:
     run_ids = row["run_ids"]
     if len(run_ids) == 1:
         run_binding = f"run_id={run_ids[0]}"
-    elif row.get("run_binding", {}).get("binding_status") == (
-        "VERIFIED_PER_STRATEGY_PARTITION"
-    ):
+    elif row.get("run_binding", {}).get("binding_status") == ("VERIFIED_PER_STRATEGY_PARTITION"):
         binding = row["run_binding"]
         run_binding = (
             f"initial_run_id={binding['initial_run_id']}"
@@ -613,6 +614,7 @@ def _source_locator(row: dict[str, Any]) -> str:
         f"&target_draw_range={start}..{end}"
         f"&source_history_provenance_status={row['source_history_provenance_status']}"
     )
+
 
 def test_k30_multiseed_candidates_keep_exact_stage_identity_and_status_separate() -> None:
     fixture = _multiseed_fixture()
@@ -673,6 +675,7 @@ def test_k30_multiseed_candidates_keep_exact_stage_identity_and_status_separate(
             if source_status is not None
         )
 
+
 def test_k30_multiseed_source_validation_rejects_corrupt_evidence() -> None:
     fixture = _multiseed_fixture()
     seed_identities = fixture["seed_identities"]
@@ -725,20 +728,14 @@ def test_k30_multiseed_source_validation_rejects_corrupt_evidence() -> None:
         _validate_multiseed_projection(**wrong_manifest_sha)
 
     wrong_source_sha = dict(valid)
-    wrong_source_sha["run_partition_resolution"] = dict(
-        valid["run_partition_resolution"]
-    )
+    wrong_source_sha["run_partition_resolution"] = dict(valid["run_partition_resolution"])
     wrong_source_sha["run_partition_resolution"]["source_result_sha256"] = "0" * 64
     with pytest.raises(ValueError, match="run partition evidence mismatch"):
         _validate_multiseed_projection(**wrong_source_sha)
 
     wrong_partition = dict(valid)
-    wrong_partition["run_partition_resolution"] = dict(
-        valid["run_partition_resolution"]
-    )
-    wrong_partition["run_partition_resolution"][
-        "continuation_shared_targets_per_strategy"
-    ] = 567
+    wrong_partition["run_partition_resolution"] = dict(valid["run_partition_resolution"])
+    wrong_partition["run_partition_resolution"]["continuation_shared_targets_per_strategy"] = 567
     with pytest.raises(ValueError, match="run partition evidence mismatch"):
         _validate_multiseed_projection(**wrong_partition)
 
@@ -747,8 +744,7 @@ def test_k30_multiseed_source_validation_rejects_corrupt_evidence() -> None:
     partition_row = next(
         row
         for row in wrong_run_rows
-        if row["stage_group"]
-        == valid["run_partition_resolution"]["stage_group"]
+        if row["stage_group"] == valid["run_partition_resolution"]["stage_group"]
     )
     partition_row["run_binding"] = dict(partition_row["run_binding"])
     partition_row["run_binding"]["initial_run_id"] = "wrong-run"
@@ -781,11 +777,10 @@ def test_k30_multiseed_source_validation_rejects_corrupt_evidence() -> None:
             adapter_mapping=foreign_adapter,
         )
 
+
 def test_existing_k30_controls_and_fifteen_historical_controls_remain_unavailable() -> None:
     inventory = load_replay_strategy_inventory()
-    identities = {
-        (item.strategy_id, item.strategy_version): item for item in inventory.items
-    }
+    identities = {(item.strategy_id, item.strategy_version): item for item in inventory.items}
     historical_controls = {
         (f"research_biglotto__historical_random_k{k}_20261119_r1", "v1.0.0")
         for k in (1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12, 13, 25, 40, 54)

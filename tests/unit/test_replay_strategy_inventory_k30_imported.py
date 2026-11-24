@@ -25,6 +25,12 @@ K30_FIXED_CONTROL_VERSION = "v1.0.0"
 K9_ID = "research_biglotto__k9_optimal_coverage_candidate"
 K9_VERSION = "v0.1-research"
 
+ERA_CANDIDATES = {
+    "research_biglotto__k30_fixed_414665013": ("v1", "RESEARCH_STRATEGY"),
+    "research_biglotto__k30_fixed_414671103": ("v1", "RESEARCH_STRATEGY"),
+    "research_biglotto__k30_fixed_random_control_20261119_r1": ("v1.0.0", "CONTROL_BASELINE"),
+}
+
 
 class _JsonResponse(Protocol):
     status_code: int
@@ -122,6 +128,52 @@ def _complete_cells(
     }
 
 
+def test_k30_era_candidates_are_unique_unavailable_and_keep_old_versions() -> None:
+    items = load_replay_strategy_inventory().items
+    for strategy_id, (old_version, role) in ERA_CANDIDATES.items():
+        rows = [
+            item
+            for item in items
+            if item.lottery_type is LotteryType.BIG_LOTTO and item.strategy_id == strategy_id
+        ]
+        assert {item.strategy_version for item in rows} == {old_version, "v1-era2014"}
+        assert len(rows) == 2
+        item = next(item for item in rows if item.strategy_version == "v1-era2014")
+        assert item.source_kind == "REPLAY_BACKFILL_STAGE_CANDIDATE"
+        assert item.source_statuses == (role, "UNKNOWN")
+        assert item.alias_or_identity_mapping[0].source_status == "UNKNOWN"
+        assert "source_history_provenance_status=UNKNOWN" in item.source_locator
+        assert item.replay_data_status is ReplayDataStatus.NO_HISTORY
+        assert item.execution_capability is ReplayExecutionCapability.UNAVAILABLE
+        assert item.adapter_mapping is None
+        assert not item.backfill_native_binding
+        assert not item.backfill_runnable
+
+
+def test_k30_era_candidates_backfill_projection_has_no_invented_history() -> None:
+    client = _client(
+        {lottery: _snapshot(run_id=None) for lottery in ("BIG_LOTTO", "DAILY_539", "POWER_LOTTO")}
+    )
+    for strategy_id in ERA_CANDIDATES:
+        response = client.get(
+            "/api/v1/replay-backfill/strategies",
+            params={"lottery_type": "BIG_LOTTO", "q": strategy_id},
+        )
+        assert response.status_code == 200
+        rows = [
+            row
+            for row in response.json()["items"]
+            if row["strategy_id"] == strategy_id and row["strategy_version"] == "v1-era2014"
+        ]
+        assert len(rows) == 1
+        row = rows[0]
+        assert row["data_status"] == row["inventory_data_status"] == "NO_HISTORY"
+        assert row["available_target_count"] == 0
+        assert not row["executable"]
+        assert not row["backfill_native_binding"]
+        assert not row["backfill_runnable"]
+
+
 def test_k9_inventory_identity_and_history_overlay() -> None:
     matches = [
         item
@@ -211,8 +263,9 @@ def test_fixed_random_control_is_history_only_and_overlay_requires_exact_version
         params={"lottery_type": "BIG_LOTTO", "q": K30_FIXED_CONTROL_ID},
     )
     assert response.status_code == 200
-    assert response.json()["total_count"] == 1
-    result = response.json()["items"][0]
+    assert response.json()["total_count"] == 2
+    result = next(row for row in response.json()["items"]
+                  if row["strategy_version"] == K30_FIXED_CONTROL_VERSION)
     assert result["strategy_version"] == K30_FIXED_CONTROL_VERSION
     assert result["data_status"] == "HAS_HISTORY"
     assert result["available_target_count"] == 2188
@@ -234,8 +287,10 @@ def test_fixed_random_control_is_history_only_and_overlay_requires_exact_version
         "/api/v1/replay-backfill/strategies",
         params={"lottery_type": "BIG_LOTTO", "q": K30_FIXED_CONTROL_ID},
     )
-    assert without_saved_cells.json()["items"][0]["data_status"] == "REBUILDABLE"
-    assert without_saved_cells.json()["items"][0]["history_status"] != "HAS_HISTORY"
+    original = next(row for row in without_saved_cells.json()["items"]
+                    if row["strategy_version"] == K30_FIXED_CONTROL_VERSION)
+    assert original["data_status"] == "REBUILDABLE"
+    assert original["history_status"] != "HAS_HISTORY"
 
     other_version = _snapshot(
         rows=(

@@ -1,9 +1,13 @@
+# pyright: reportUnknownVariableType=false, reportUnknownMemberType=false, reportUnknownArgumentType=false, reportUnknownLambdaType=false, reportPrivateUsage=false
 import hashlib
 import json
 import sqlite3
 from datetime import date, timedelta
+from pathlib import Path
 from types import SimpleNamespace
+from typing import Any
 
+import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -22,11 +26,13 @@ from lottolab.infrastructure.persistence.replay_backfill_store import (
 )
 
 
-def _normalized_rows(rows):
+def _normalized_rows(rows: list[dict[str, Any]]) -> list[str]:
     return sorted(json.dumps(v, sort_keys=True) for v in json.loads(json.dumps(rows)))
 
 
-def test_official_ranking_api_uses_saved_tickets_and_unknown_power(tmp_path, monkeypatch):
+def test_official_ranking_api_uses_saved_tickets_and_unknown_power(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     database = tmp_path / "fixture.sqlite3"
     with sqlite3.connect(database) as connection:
         connection.executescript(SCHEMA_SQL)
@@ -222,7 +228,9 @@ def test_official_ranking_api_uses_saved_tickets_and_unknown_power(tmp_path, mon
     assert hashlib.sha256(database.read_bytes()).hexdigest() == before
 
 
-def test_recent_window_reads_only_selected_tickets_and_keeps_older_cohort(tmp_path, monkeypatch):
+def test_recent_window_reads_only_selected_tickets_and_keeps_older_cohort(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     database = tmp_path / "fixture.sqlite3"
     with sqlite3.connect(database) as connection:
         connection.executescript(SCHEMA_SQL)
@@ -369,7 +377,9 @@ def test_recent_window_reads_only_selected_tickets_and_keeps_older_cohort(tmp_pa
     )
 
 
-def test_manifest_scope_excludes_history_and_keeps_missing_targets_unknown(tmp_path, monkeypatch):
+def test_manifest_scope_excludes_history_and_keeps_missing_targets_unknown(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     database = tmp_path / "scope.sqlite3"
     with sqlite3.connect(database) as connection:
         connection.executescript(SCHEMA_SQL)
@@ -377,7 +387,7 @@ def test_manifest_scope_excludes_history_and_keeps_missing_targets_unknown(tmp_p
             "INSERT INTO replay_backfill_schema VALUES (?,?)", (SCHEMA_VERSION, SCHEMA_CHECKSUM)
         )
         for run, ids in (("history", ["201", "202"]), ("no-target", ["301"])):
-            manifest = {"lottery_type": "DAILY_539", "target_draw_ids": ids}
+            manifest: dict[str, Any] = {"lottery_type": "DAILY_539", "target_draw_ids": ids}
             if run == "history":
                 manifest["targets"] = [
                     {

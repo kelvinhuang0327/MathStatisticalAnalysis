@@ -524,30 +524,40 @@ class SQLiteBackfillStore:
                     "SELECT run_id,manifest_json FROM replay_backfill_runs"
                 ):
                     try:
-                        manifest = json.loads(raw_manifest)
+                        manifest: JsonObject = json.loads(raw_manifest)
                         if manifest.get("lottery_type") != lottery_type:
                             continue
-                        raw_ids = manifest.get("target_draw_ids")
-                        raw_targets = manifest.get("targets")
+                        raw_ids: Any = manifest.get("target_draw_ids")
+                        raw_targets: Any = manifest.get("targets")
+                        target_values: list[Any] = (
+                            cast(list[Any], raw_targets) if isinstance(raw_targets, list) else []
+                        )
                         if "target_draw_ids" not in manifest and isinstance(raw_targets, list):
                             raw_ids = [
-                                t.get("draw_number") for t in raw_targets if isinstance(t, dict)
+                                cast(JsonObject, t).get("draw_number")
+                                for t in target_values
+                                if isinstance(t, dict)
                             ]
                         if not isinstance(raw_ids, list) or not raw_ids:
                             invalid_runs.add(run_id)
                             manifest_ids[run_id] = set()
                             continue
-                        valid_ids = [v for v in raw_ids if isinstance(v, str) and v]
-                        if len(valid_ids) != len(raw_ids) or len(set(valid_ids)) != len(raw_ids):
+                        id_values = cast(list[Any], raw_ids)
+                        valid_ids = [v for v in id_values if isinstance(v, str) and v]
+                        if len(valid_ids) != len(id_values) or len(set(valid_ids)) != len(
+                            id_values
+                        ):
                             invalid_runs.add(run_id)
                         manifest_ids[run_id] = set(valid_ids)
                         if "targets" in manifest:
                             if not isinstance(raw_targets, list):
                                 invalid_runs.add(run_id)
                             else:
-                                listed = [
-                                    t.get("draw_number") if isinstance(t, dict) else None
-                                    for t in raw_targets
+                                listed: list[Any] = [
+                                    cast(JsonObject, t).get("draw_number")
+                                    if isinstance(t, dict)
+                                    else None
+                                    for t in target_values
                                 ]
                                 if (
                                     len(listed) != len(set(v for v in listed if isinstance(v, str)))
@@ -555,18 +565,18 @@ class SQLiteBackfillStore:
                                     != set(valid_ids)
                                     or any(
                                         not isinstance(t, dict)
-                                        or not isinstance(t.get("draw_date"), str)
-                                        for t in raw_targets
+                                        or not isinstance(cast(JsonObject, t).get("draw_date"), str)
+                                        for t in target_values
                                     )
                                 ):
                                     invalid_runs.add(run_id)
-                        for target in raw_targets if isinstance(raw_targets, list) else []:
-                            if isinstance(target, dict) and isinstance(
-                                target.get("draw_date"), str
-                            ):
-                                key = (run_id, str(target.get("draw_number")))
-                                manifest_dates[key] = target["draw_date"]
-                                manifest_targets[key] = target
+                        for target_value in target_values:
+                            if isinstance(target_value, dict):
+                                target = cast(JsonObject, target_value)
+                                if isinstance(target.get("draw_date"), str):
+                                    key = (run_id, str(target.get("draw_number")))
+                                    manifest_dates[key] = target["draw_date"]
+                                    manifest_targets[key] = target
                     except (ValueError, TypeError, AttributeError):
                         continue
                 source: dict[tuple[str, str], JsonObject] = {}
@@ -604,8 +614,14 @@ class SQLiteBackfillStore:
                     if old is not None:
                         try:
                             date.fromisoformat(manifest_target["draw_date"])
-                            main = json.loads(old["main"])
-                            special = json.loads(old["special"])
+                            main: Any = json.loads(old["main"])
+                            special: Any = json.loads(old["special"])
+                            main_items: list[Any] = (
+                                cast(list[Any], main) if isinstance(main, list) else []
+                            )
+                            special_items: list[Any] = (
+                                cast(list[Any], special) if isinstance(special, list) else []
+                            )
                             limit, count = (
                                 (39, 5)
                                 if lottery_type == "DAILY_539"
@@ -613,34 +629,36 @@ class SQLiteBackfillStore:
                             )
                             valid = (
                                 isinstance(main, list)
-                                and len(main) == count
-                                and all(type(n) is int and 1 <= n <= limit for n in main)
-                                and len(set(main)) == count
+                                and len(main_items) == count
+                                and all(type(n) is int and 1 <= n <= limit for n in main_items)
+                                and len(set(main_items)) == count
                                 and isinstance(special, list)
-                                and all(type(n) is int for n in special)
+                                and all(type(n) is int for n in special_items)
                                 and old["target_draw_date"] == manifest_target["draw_date"]
                                 and isinstance(old["source_identity"], str)
                                 and bool(old["source_identity"])
                             )
                             if lottery_type == "DAILY_539":
-                                valid = valid and special == []
+                                valid = valid and special_items == []
                             elif lottery_type == "BIG_LOTTO":
                                 valid = (
                                     valid
-                                    and len(special) == 1
-                                    and 1 <= special[0] <= 49
-                                    and special[0] not in main
+                                    and len(special_items) == 1
+                                    and 1 <= special_items[0] <= 49
+                                    and special_items[0] not in main_items
                                 )
                             else:
-                                valid = valid and len(special) == 1 and 1 <= special[0] <= 8
+                                valid = (
+                                    valid and len(special_items) == 1 and 1 <= special_items[0] <= 8
+                                )
                             if "main_numbers" in manifest_target:
                                 valid = valid and sorted(manifest_target["main_numbers"]) == sorted(
-                                    main
+                                    main_items
                                 )
                             if "special_numbers" in manifest_target:
                                 valid = valid and sorted(
                                     manifest_target["special_numbers"]
-                                ) == sorted(special)
+                                ) == sorted(special_items)
                             if "source_identity" in manifest_target:
                                 valid = (
                                     valid
@@ -686,7 +704,7 @@ class SQLiteBackfillStore:
                             "special": None,
                             "target_unverified": True,
                         }
-                targets = []
+                targets: list[JsonObject] = []
                 unresolved_runs: set[str] = set(invalid_runs)
                 for run_id in manifest_ids:
                     rows = [v for (r, _), v in source.items() if r == run_id]
@@ -797,7 +815,7 @@ class SQLiteBackfillStore:
                             "SELECT COUNT(*) FROM replay_backfill_tickets WHERE cell_identity=?",
                             (row[0],),
                         ).fetchone()[0]
-                        item = dict(zip(columns, row, strict=True))
+                        item: JsonObject = dict(zip(columns, row, strict=True))
                         item.update(
                             {
                                 "run_id": "UNLINKED",
@@ -813,7 +831,7 @@ class SQLiteBackfillStore:
                     # Run groups are contiguous, allowing aggregation to release
                     # period objects as soon as each run finishes.
                     for run_id in sorted(run_ids):
-                        identities: set[tuple] = set()
+                        identities: set[tuple[Any, ...]] = set()
                         rows = connection.execute(
                             "SELECT c.cell_identity,rc.run_id,c.strategy_id,c.strategy_version,"
                             "c.execution_version,c.dataset_identity,c.target_draw_id,"

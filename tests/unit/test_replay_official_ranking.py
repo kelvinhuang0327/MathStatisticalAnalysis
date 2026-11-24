@@ -29,6 +29,7 @@ def test_daily_539_lowest_prize_and_invalid_evidence():
 
 def test_exact_probability_and_replacement():
     p = single_ticket_probability("DAILY_539")
+    assert p is not None
     assert p == Fraction(sum(comb(5, h) * comb(34, 5 - h) for h in range(2, 6)), comb(39, 5))
     assert iid_period_probability("DAILY_539", 3) == 1 - (1 - p) ** 3
     assert single_ticket_probability("BIG_LOTTO") == Fraction(
@@ -153,7 +154,7 @@ def test_aggregate_separates_other_ticket_counts_and_execution_cohorts():
         for i in (1, 2, 3)
     ]
 
-    def cell(strategy, execution, draw, count):
+    def cell(strategy: str, execution: str, draw: int, count: int) -> dict[str, object]:
         tickets = [
             {"ticket_position": i, "main_numbers": [1, 2, 3, 8, 9, 10], "special_number": None}
             for i in range(1, count + 1)

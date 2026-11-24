@@ -11,6 +11,7 @@ from fractions import Fraction
 from functools import lru_cache
 from itertools import groupby
 from math import comb
+from typing import Any, cast
 
 from lottolab.domain.lottery_rules import (
     BIG_LOTTO_RULE_CONTRACT,
@@ -20,6 +21,8 @@ from lottolab.domain.lottery_rules import (
     score_big_lotto_ticket,
 )
 from lottolab.domain.prize_evaluation import DAILY_FIVE39_PRIZE_RULE_CONTRACT
+
+JsonObject = dict[str, Any]
 
 
 @lru_cache(maxsize=3)
@@ -128,9 +131,7 @@ class RankingPeriod:
     ticket_count: int | None = None
 
 
-def summarize_periods(
-    lottery_type: str, periods: list[RankingPeriod], window: str
-) -> dict[str, object]:
+def summarize_periods(lottery_type: str, periods: list[RankingPeriod], window: str) -> JsonObject:
     """Summarize one cohort; the caller must supply its complete target universe.
 
     Missing targets cannot be inferred from a list of existing cells. Explicit
@@ -159,12 +160,15 @@ def summarize_periods(
     if len(counts) > 1:
         raise ValueError("ticket counts must not be mixed in a cohort")
     successes = sum(p.success is True for p in evaluated)
-    baseline = (
-        sum((iid_period_probability(lottery_type, p.ticket_count) for p in evaluated), Fraction())
-        / len(evaluated)
-        if evaluated
-        else None
-    )
+    baseline: Fraction | None = None
+    if evaluated:
+        probabilities: list[Fraction] = []
+        for period in evaluated:
+            assert period.ticket_count is not None
+            probability = iid_period_probability(lottery_type, period.ticket_count)
+            assert probability is not None
+            probabilities.append(probability)
+        baseline = sum(probabilities, Fraction()) / len(evaluated)
     rate = Fraction(successes, len(evaluated)) if evaluated else None
     return {
         "target_ids": [p.target_draw_id for p in selected],
@@ -183,16 +187,16 @@ def summarize_periods(
 def _aggregate_ranking_materialized(
     lottery_type: str,
     window: str,
-    targets: list[dict],
-    cells: Iterable[dict],
+    targets: list[JsonObject],
+    cells: Iterable[JsonObject],
     names: dict[tuple[str, str], str],
-) -> list[dict]:
+) -> list[JsonObject]:
     """Build run-isolated cohorts from persisted evidence, without modifying it."""
-    target_by_run: dict[str, dict[str, dict]] = {}
+    target_by_run: dict[str, dict[str, JsonObject]] = {}
     for target in targets:
         target_by_run.setdefault(target["run_id"], {})[target["target_draw_id"]] = target
-    groups: dict[tuple, dict[str, RankingPeriod]] = {}
-    discovered: set[tuple] = set()
+    groups: dict[tuple[Any, ...], dict[str, RankingPeriod]] = {}
+    discovered: set[tuple[Any, ...]] = set()
     conflicting_draws: set[tuple[str, str]] = set()
     for cell in cells:
         run = cell["run_id"]
@@ -225,13 +229,17 @@ def _aggregate_ranking_materialized(
                 if winning is not None:
                     if not isinstance(winning, dict):
                         raise ValueError("invalid winning evidence")
+                    winning = cast(JsonObject, winning)
                     if "main_numbers" in winning:
                         payload_main = winning["main_numbers"]
                         target_main = json.loads(target["main"])
+                        payload_main_list: list[Any] = (
+                            cast(list[Any], payload_main) if isinstance(payload_main, list) else []
+                        )
                         if (
                             not isinstance(payload_main, list)
-                            or any(type(n) is not int for n in payload_main)
-                            or sorted(payload_main) != sorted(target_main)
+                            or any(type(n) is not int for n in payload_main_list)
+                            or sorted(payload_main_list) != sorted(target_main)
                         ):
                             conflicting_draws.add((run, draw_id))
                     if "special_number" in winning:
@@ -302,7 +310,7 @@ def _aggregate_ranking_materialized(
     grouped_base_keys = {key[:-1] for key in groups}
     for base_key in discovered - grouped_base_keys:
         groups[(*base_key, None)] = {}
-    rows = []
+    rows: list[JsonObject] = []
     for (strategy, version, execution, dataset, run, scope, count), periods in groups.items():
         scoped_targets = (
             target_by_run.get(run, {}) if scope in ("MANIFEST", "WINDOW_UNDETERMINED") else {}
@@ -375,7 +383,7 @@ def _aggregate_ranking_materialized(
                 "rank": None,
             }
         )
-    cohorts: dict[tuple, list[dict]] = {}
+    cohorts: dict[tuple[Any, ...], list[JsonObject]] = {}
     for row in rows:
         if (
             row["rate"] is not None
@@ -403,15 +411,15 @@ def _aggregate_ranking_materialized(
 def aggregate_ranking(
     lottery_type: str,
     window: str,
-    targets: list[dict],
-    cells: Iterable[dict],
+    targets: list[JsonObject],
+    cells: Iterable[JsonObject],
     names: dict[tuple[str, str], str],
-) -> list[dict]:
+) -> list[JsonObject]:
     """Aggregate contiguous run groups, releasing per-period state per run."""
-    target_groups: dict[str, list[dict]] = {}
+    target_groups: dict[str, list[JsonObject]] = {}
     for target in targets:
         target_groups.setdefault(target["run_id"], []).append(target)
-    rows: list[dict] = []
+    rows: list[JsonObject] = []
     completed: set[str] = set()
     for run_id, group in groupby(cells, key=lambda cell: cell["run_id"]):
         if run_id in completed:

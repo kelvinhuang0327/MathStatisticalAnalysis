@@ -661,7 +661,14 @@ def create_replay_backfill_router(
 ) -> APIRouter:
     router = APIRouter(prefix="/api/v1/replay-backfill", tags=["replay-backfill"])
 
-    @router.get("/official-ranking", response_model=OfficialRankingResponse)
+    @router.get(
+        "/official-ranking",
+        response_model=OfficialRankingResponse,
+        responses={
+            422: {"model": ApiValidationErrorResponse | ReplayBackfillErrorResponse},
+            503: {"model": ReplayBackfillErrorResponse},
+        },
+    )
     def official_ranking(
         lottery_type: LotteryType,
         window: Literal["FULL", "RECENT_750", "RECENT_300", "RECENT_50"] = "FULL",

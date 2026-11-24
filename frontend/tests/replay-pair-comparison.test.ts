@@ -42,13 +42,31 @@ describe('Replay two-strategy comparison', () => {
   })
 
   it('counts two main hits plus the special number as a prize', () => {
-    const targets = new Map([['1', '2020-01-01']])
-    const winningDraws = new Map([['1', winning]])
-    const a = cell('1', true)
+    const id = '109000001'
+    const targets = new Map([[id, '2020-01-01']])
+    const winningDraws = new Map([[id, winning]])
+    const a = { ...cell('1', true), target_draw_id: id }
     a.predicted_tickets = [{ main_numbers: [1, 2, 7, 20, 21, 22] }, ...loser.slice(1)]
-    const result = compareLoaded({ targets, cells: new Map([['1', a]]), winningDraws },
-      { targets, cells: new Map([['1', cell('1', false)]]), winningDraws }, [left, right], 'ALL')
+    const b = { ...cell('1', false), target_draw_id: id }
+    const result = compareLoaded({ targets, cells: new Map([[id, a]]), winningDraws },
+      { targets, cells: new Map([[id, b]]), winningDraws }, [left, right], 'ALL')
     expect(result.rows.map(row => [row.successes, row.rank])).toEqual([[1, 1], [0, 2]])
+  })
+
+  it('applies the historical seventh-prize boundary without changing stored-result validation', () => {
+    const targets = new Map([['103000080', '2014-09-23'], ['103000081', '2014-09-26']])
+    const winningDraws = new Map([...targets.keys()].map(id => [id, winning]))
+    const a = new Map([...targets].map(([id, date]) => [id, { ...cell('1', true),
+      target_draw_id: id, target_draw_date: date, cutoff_draw_date: '2014-01-01',
+      predicted_tickets: [{ main_numbers: [1, 2, 7, 20, 21, 22] }, ...loser.slice(1)] }]))
+    const b = new Map([...targets].map(([id, date]) => [id, { ...cell('1', false),
+      target_draw_id: id, target_draw_date: date, cutoff_draw_date: '2014-01-01' }]))
+    const result = compareLoaded({ targets, cells: a, winningDraws }, { targets, cells: b, winningDraws }, [left, right], 'ALL')
+    expect(result.evaluated).toBe(2)
+    expect(result.rows.map(row => [row.successes, row.rank])).toEqual([[1, 1], [0, 2]])
+    a.get('103000080')!.combination_success = false
+    const checked = compareLoaded({ targets, cells: a, winningDraws }, { targets, cells: b, winningDraws }, [left, right], 'ALL')
+    expect(checked.reasons).toEqual({ '票面或中獎結果不一致': 1 })
   })
 
   it('reads exact run identities and rejects a changing or incomplete page', async () => {

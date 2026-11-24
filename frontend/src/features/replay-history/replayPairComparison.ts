@@ -126,16 +126,23 @@ function checkedSuccess(row: JsonRecord): boolean | null {
         !Array.isArray(row.predicted_tickets) || row.predicted_tickets.length !== 2 ||
         typeof row.combination_success !== 'boolean') return null
     const winning = new Set(draw.main_numbers)
-    let wins = false
+    let storedRuleWins = false
+    let historicalWins = false
+    if (typeof row.target_draw_id !== 'string' || !/^\d{1,15}$/.test(row.target_draw_id)) return null
+    const seventhPrizeExists = Number(row.target_draw_id) >= 103000081
     for (const raw of row.predicted_tickets) {
       const ticket = object(raw)
       if (!Array.isArray(ticket.main_numbers) || ticket.main_numbers.length !== 6 ||
           !ticket.main_numbers.every((x) => typeof x === 'number' && Number.isInteger(x) && x >= 1 && x <= 49) ||
           new Set(ticket.main_numbers).size !== 6) return null
       const hits = ticket.main_numbers.filter((x) => winning.has(x)).length
-      wins ||= hits >= 3 || (hits === 2 && ticket.main_numbers.includes(draw.special_number))
+      const seventh = hits === 2 && ticket.main_numbers.includes(draw.special_number)
+      storedRuleWins ||= hits >= 3 || seventh
+      historicalWins ||= hits >= 3 || (seventh && seventhPrizeExists)
     }
-    return wins === row.combination_success ? wins : null
+    // Stored backfill cells use the current rule; the existing prediction API
+    // projects the seventh prize only from draw 103000081 onward.
+    return storedRuleWins === row.combination_success ? historicalWins : null
   } catch { return null }
 }
 

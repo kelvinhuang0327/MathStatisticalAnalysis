@@ -52,7 +52,7 @@ onBeforeUnmount(() => controller?.abort())
     <div v-if="result" data-testid="replay-pair-results">
       <p>{{ result.firstDate }} 至 {{ result.lastDate }}：共同 {{ result.sharedTargets }} 期，可評估 {{ result.evaluated }} 期，排除 {{ result.excluded }} 期；候選單獨 {{ result.leftOnlyTargets }} 期、基準單獨 {{ result.rightOnlyTargets }} 期。</p>
       <p v-if="result.excluded">排除原因：{{ Object.entries(result.reasons).map(([reason, count]) => `${reason} ${count} 期`).join('、') }}</p>
-      <table><caption>每期兩注、任一注中任一獎項；排名僅限這兩個指定 Run</caption>
+      <table><caption>每期兩注、任一注中當期一般獎項；兩碼加特別號自第 103000081 期起計獎；排名僅限這兩個指定 Run</caption>
         <thead><tr><th scope="col">名次</th><th scope="col">策略與版本</th><th scope="col">成功期數／評估期數</th><th scope="col">成功率</th></tr></thead>
         <tbody><tr v-for="row in result.rows" :key="`${row.strategyId}@${row.strategyVersion}`"><td>{{ row.rank }}</td><td>{{ row.strategyId }} @ {{ row.strategyVersion }}</td><td>{{ row.successes }} / {{ row.evaluated }}</td><td>{{ (row.rate * 100).toFixed(2) }}%</td></tr></tbody>
       </table>

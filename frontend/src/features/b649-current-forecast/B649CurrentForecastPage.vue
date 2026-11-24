@@ -5,6 +5,7 @@ import {
   fetchB649CanonicalForecast,
   type B649CanonicalForecast,
 } from '../../api/b649CanonicalForecast'
+import B649NativeForecastPanel from './B649NativeForecastPanel.vue'
 
 const forecast = ref<B649CanonicalForecast | null>(null)
 const loading = ref(false)
@@ -190,6 +191,7 @@ onBeforeUnmount(() => {
         這些票券組合來自目前排程器權威。精確或模型幾何與已驗證的預測樣本外（OOS）提升是不同的證據。
       </p>
     </template>
+    <B649NativeForecastPanel />
   </section>
 </template>
 

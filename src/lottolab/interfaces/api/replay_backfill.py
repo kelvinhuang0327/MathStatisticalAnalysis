@@ -27,6 +27,7 @@ from lottolab.application.replay_main_three_reference import (
     main_three_baseline,
     main_three_reference,
 )
+from lottolab.application.replay_official_ranking import aggregate_ranking
 from lottolab.application.replay_portfolio_qualification import assess_research_portfolio
 from lottolab.application.replay_strategy_inventory import load_replay_strategy_inventory
 from lottolab.application.replay_uniform_reference import uniform_eight_reference
@@ -43,6 +44,10 @@ from lottolab.domain.replay_strategy_inventory import (
     ReplayLifecycleStatus,
     ReplayStrategyInventoryItem,
 )
+from lottolab.infrastructure.persistence.project_database_paths import (
+    project_database_environment,
+    require_project_database_write_ready,
+)
 from lottolab.infrastructure.persistence.replay_backfill_store import (
     JsonObject,
     SQLiteBackfillStore,
@@ -53,9 +58,7 @@ from lottolab.strategies.catalog import production_catalog
 
 _MAX_ID_LENGTH = 200
 _PERIODS = {"50": 50, "300": 300, "750": 750, "ALL": None}
-ReplayWindowDrawReader = Callable[
-    [LotteryType, date, date], tuple[tuple[str, str], ...]
-]
+ReplayWindowDrawReader = Callable[[LotteryType, date, date], tuple[tuple[str, str], ...]]
 
 
 class ReplayBackfillErrorResponse(BaseModel):
@@ -64,6 +67,39 @@ class ReplayBackfillErrorResponse(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     error_code: str
+
+
+class OfficialRankingRow(BaseModel):
+    strategy_id: str
+    strategy_name: str
+    registered: bool
+    strategy_version: str
+    execution_version: str
+    dataset_identity: str
+    run_id: str
+    scope_status: Literal["MANIFEST", "OUTSIDE_MANIFEST", "UNLINKED", "WINDOW_UNDETERMINED"]
+    missing_target_evidence: int
+    conflicting_target_evidence: int
+    ticket_count: int | None
+    target_ids: list[str]
+    start_date: str | None
+    end_date: str | None
+    successes: int
+    evaluated: int
+    missing: int
+    unknown: int
+    rate: float | None
+    baseline: float | None
+    delta: float | None
+    unknown_reason: str | None
+    rank: int | None
+
+
+class OfficialRankingResponse(BaseModel):
+    lottery_type: LotteryType
+    window: Literal["FULL", "RECENT_750", "RECENT_300", "RECENT_50"]
+    baseline_policy: Literal["UNIFORM_IID_LEGAL_TICKETS_WITH_REPLACEMENT"]
+    items: list[OfficialRankingRow]
 
 
 class ReplayBackfillBindingSourceView(BaseModel):
@@ -669,6 +705,41 @@ def create_replay_backfill_router(
     router = APIRouter(prefix="/api/v1/replay-backfill", tags=["replay-backfill"])
 
     @router.get(
+        "/official-ranking",
+        response_model=OfficialRankingResponse,
+        responses={
+            422: {"model": ApiValidationErrorResponse | ReplayBackfillErrorResponse},
+            503: {"model": ReplayBackfillErrorResponse},
+        },
+    )
+    def official_ranking(
+        lottery_type: LotteryType,
+        window: Literal["FULL", "RECENT_750", "RECENT_300", "RECENT_50"] = "FULL",
+    ) -> JsonObject | JSONResponse:
+        if store is None:
+            return _error(503, "REPLAY_BACKFILL_NOT_CONFIGURED")
+        try:
+            registered = project_database_environment({}).get("LOTTOLAB_REPLAY_BACKFILL_DB")
+            if not registered or store.database.resolve() != Path(registered).resolve():
+                return _error(503, "OFFICIAL_REPLAY_DATABASE_MISMATCH")
+            require_project_database_write_ready(store.database.resolve())
+            names = {
+                (item.strategy_id, item.strategy_version or ""): item.display_name
+                for item in load_replay_strategy_inventory().items
+                if item.lottery_type == lottery_type
+            }
+            with store.official_ranking_data(lottery_type.value, window) as (targets, cells):
+                items = aggregate_ranking(lottery_type.value, window, targets, cells, names)
+            return {
+                "lottery_type": lottery_type.value,
+                "window": window,
+                "baseline_policy": "UNIFORM_IID_LEGAL_TICKETS_WITH_REPLACEMENT",
+                "items": items,
+            }
+        except Exception:
+            return _error(503, "REPLAY_BACKFILL_UNAVAILABLE")
+
+    @router.get(
         "/strategy-runs",
         response_model=ReplayBackfillStrategyRunsPageResponse,
         operation_id="discoverReplayBackfillStrategyRuns",
@@ -1198,12 +1269,20 @@ def create_replay_backfill_router(
                         row_identity["execution_version"],
                         reference["scorer_version"],
                     )
-                    group = groups.setdefault(key, {
-                        "strategy_version": key[0], "dataset_identity": key[1],
-                        "execution_version": key[2], "scorer_version": key[3],
-                        "eligible_draws": 0, "unknown_draws": 0, "successes": 0,
-                        "unknown_provenance_draws": 0, "_baseline_sum": Fraction(),
-                    })
+                    group = groups.setdefault(
+                        key,
+                        {
+                            "strategy_version": key[0],
+                            "dataset_identity": key[1],
+                            "execution_version": key[2],
+                            "scorer_version": key[3],
+                            "eligible_draws": 0,
+                            "unknown_draws": 0,
+                            "successes": 0,
+                            "unknown_provenance_draws": 0,
+                            "_baseline_sum": Fraction(),
+                        },
+                    )
                     if payload.get("source_history_provenance_status") != "VERIFIED":
                         group["unknown_provenance_draws"] += 1
                     if reference["status"] == "SCORABLE":
@@ -1229,13 +1308,22 @@ def create_replay_backfill_router(
                 group["difference_from_baseline_pp"] = (
                     rate - baseline if rate is not None and baseline is not None else None
                 )
-            ordered = sorted(groups.values(), key=lambda g: (
-                g["strategy_version"], g["dataset_identity"],
-                g["execution_version"], g["scorer_version"] or "",
-            ))
-            return {"run_id": run_id, "strategy_id": strategy_id,
-                    "metric_id": MAIN_THREE_EVENT, "unrelated_cells": unrelated,
-                    "groups": ordered}
+            ordered = sorted(
+                groups.values(),
+                key=lambda g: (
+                    g["strategy_version"],
+                    g["dataset_identity"],
+                    g["execution_version"],
+                    g["scorer_version"] or "",
+                ),
+            )
+            return {
+                "run_id": run_id,
+                "strategy_id": strategy_id,
+                "metric_id": MAIN_THREE_EVENT,
+                "unrelated_cells": unrelated,
+                "groups": ordered,
+            }
         except KeyError:
             return _error(404, "REPLAY_BACKFILL_RUN_NOT_FOUND")
         except ValueError:
@@ -1320,12 +1408,19 @@ def create_replay_backfill_router(
                     ):
                         return _error(409, "REFERENCE_EVIDENCE_MISMATCH")
                     key = (identity["strategy_version"], reference["ticket_count"])
-                    group = groups.setdefault(key, {
-                        "strategy_version": key[0], "ticket_count": key[1],
-                        "scorable_draws": 0, "unknown_draws": 0, "successes": 0,
-                        "success_rate_percent": None, "unknown_provenance_draws": 0,
-                        "_disjoint_k3": True,
-                    })
+                    group = groups.setdefault(
+                        key,
+                        {
+                            "strategy_version": key[0],
+                            "ticket_count": key[1],
+                            "scorable_draws": 0,
+                            "unknown_draws": 0,
+                            "successes": 0,
+                            "success_rate_percent": None,
+                            "unknown_provenance_draws": 0,
+                            "_disjoint_k3": True,
+                        },
+                    )
                     if payload.get("source_history_provenance_status") != "VERIFIED":
                         group["unknown_provenance_draws"] += 1
                     if reference["status"] == "SCORABLE":
@@ -1365,7 +1460,8 @@ def create_replay_backfill_router(
                     group["success_rate_percent"] - baseline if baseline is not None else None
                 )
             return {
-                "run_id": selected_run, "strategy_id": strategy_id,
+                "run_id": selected_run,
+                "strategy_id": strategy_id,
                 "metric_id": "REFERENCE_FIXED_EIGHT_TIER_ANY_PRIZE",
                 "groups": list(groups.values()),
             }
@@ -1826,7 +1922,8 @@ def _build_k3_comparison(store: SQLiteBackfillStore, strategy: str) -> JsonObjec
                 run_ids = cast(list[str], chosen.get("run_ids", []))
                 recorded_run = old_payload.get("run_id")
                 selected_run = (
-                    recorded_run if isinstance(recorded_run, str) and recorded_run in run_ids
+                    recorded_run
+                    if isinstance(recorded_run, str) and recorded_run in run_ids
                     else (run_ids[0] if run_ids else None)
                 )
                 old_view = _prediction_item(
@@ -1849,16 +1946,18 @@ def _build_k3_comparison(store: SQLiteBackfillStore, strategy: str) -> JsonObjec
                         complete_fair = False
                 else:
                     status = "UNSCORED"
-        rows.append({
-            "target_draw_number": target,
-            "target_draw_date": identity["target_draw_date"],
-            "match_status": status,
-            "source_segment": source.get("source_segment"),
-            "original_source_run_id": source.get("original_source_run_id"),
- "old_cell_identity": old_cell_id,
-            "old": old_view,
-            "new": new_view,
-        })
+        rows.append(
+            {
+                "target_draw_number": target,
+                "target_draw_date": identity["target_draw_date"],
+                "match_status": status,
+                "source_segment": source.get("source_segment"),
+                "original_source_run_id": source.get("original_source_run_id"),
+                "old_cell_identity": old_cell_id,
+                "old": old_view,
+                "new": new_view,
+            }
+        )
     fair_value = float(fair) if complete_fair and paired else None
     return {
         "run_id": _K3_COMPARISON_RUN,
@@ -1965,9 +2064,7 @@ def _prediction_item(
         if not _ticket_claims_identity_match(ticket, identity, ticket.get("ticket_position")):
             identity_matches = False
     legacy_positional_hits = bool(
-        tickets
-        and len(hits) == len(tickets)
-        and all("ticket_position" not in hit for hit in hits)
+        tickets and len(hits) == len(tickets) and all("ticket_position" not in hit for hit in hits)
     )
     for index, hit in enumerate(hits, start=1):
         position = hit.get("ticket_position")
@@ -2005,11 +2102,9 @@ def _prediction_item(
         predicted.append(
             {
                 "ticket_position": valid_position,
-            "ticket_identity": (
-                ticket_identity
-                if valid_position is not None and identity_has_run_id
-                else None
-            ),
+                "ticket_identity": (
+                    ticket_identity if valid_position is not None and identity_has_run_id else None
+                ),
                 "main_numbers": main_numbers,
                 "special_numbers": (
                     [] if ticket.get("special_number") is None else [ticket["special_number"]]

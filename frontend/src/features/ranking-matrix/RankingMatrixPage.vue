@@ -28,6 +28,7 @@ import StructuralExpectedMax from './components/StructuralExpectedMax.vue'
 import CrossWindowChart from './components/CrossWindowChart.vue'
 import MultiTicketMatrix from './components/MultiTicketMatrix.vue'
 import Sealed084ResearchPanel from './Sealed084ResearchPanel.vue'
+import OfficialRankingPanel from './OfficialRankingPanel.vue'
 import RankingTable from './components/RankingTable.vue'
 import type {
   PageLoadState,
@@ -42,6 +43,7 @@ const selectedLottery = ref<LotteryType>('BIG_LOTTO')
 const selectedTicketCount = ref<TicketCount>(5)
 const selectedWindow = ref<RankingWindow>('RECENT_300')
 const activeViewMode = ref<ViewMode>('table')
+const officialView = ref(false)
 
 // Sorting States
 const sortField = ref<SortField>('officialRank')
@@ -418,24 +420,28 @@ onBeforeUnmount(() => {
           <button
             type="button"
             class="toggle-btn"
-            :class="{ 'toggle-btn--active': activeViewMode === 'table' }"
+            :class="{ 'toggle-btn--active': !officialView && activeViewMode === 'table' }"
             data-testid="view-table-btn"
-            @click="activeViewMode = 'table'"
+            @click="officialView = false; activeViewMode = 'table'"
           >
             📋 排名表 (Ranking Table)
           </button>
           <button
             type="button"
             class="toggle-btn"
-            :class="{ 'toggle-btn--active': activeViewMode === 'matrix' }"
+            :class="{ 'toggle-btn--active': !officialView && activeViewMode === 'matrix' }"
             data-testid="view-matrix-btn"
-            @click="activeViewMode = 'matrix'"
+            @click="officialView = false; activeViewMode = 'matrix'"
           >
             ⊞ 多注數矩陣 (Multi-Ticket Matrix)
           </button>
+          <button type="button" class="toggle-btn" :class="{ 'toggle-btn--active': officialView }" data-testid="view-official-btn" @click="officialView = true">正式庫排行</button>
         </div>
       </template>
     </SectionHeader>
+
+    <OfficialRankingPanel v-if="officialView" />
+    <template v-else>
 
     <!-- Global Selectors Bar (Lottery, Ticket Count 2/3/5/10/20, Window FULL/750/300/50) -->
     <section class="selectors-bar" aria-label="資料維度選擇器" data-testid="selectors-bar">
@@ -823,6 +829,7 @@ onBeforeUnmount(() => {
         </div>
       </div>
     </footer>
+    </template>
   </main>
 </template>
 

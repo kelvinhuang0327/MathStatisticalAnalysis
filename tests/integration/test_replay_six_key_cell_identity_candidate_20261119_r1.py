@@ -11,15 +11,20 @@ import pytest
 import lottolab
 from lottolab.application.use_cases.replay_backfill import (
     BackfillSelection,
+    JsonObject,
     ReplayBackfill,
     identity,
 )
 from lottolab.domain.draws import LotteryType
 from lottolab.domain.historical_replay import (
+    HistoricalReplayMode,
+    HistoricalReplayRequest,
     ReplayBehavior,
     ReplayDraw,
     ReplayEvaluation,
+    ReplaySourceSnapshot,
     ReplayStrategy,
+    ReplayTargetRecord,
     ReplayTicket,
 )
 from lottolab.infrastructure.persistence.replay_backfill_store import SQLiteBackfillStore
@@ -70,6 +75,11 @@ class SyntheticAdapter:
         return ReplayEvaluation(zone1_hits, False, is_winner, prize_tier)
 
 
+class _PayloadAccessReplayBackfill(ReplayBackfill):
+    def payload_for_test(self, record: ReplayTargetRecord, cell_identity: str) -> JsonObject:
+        return super()._payload(record, cell_identity)
+
+
 def _make_draws(count: int = 4) -> tuple[ReplayDraw, ...]:
     return tuple(
         ReplayDraw(
@@ -94,7 +104,7 @@ def _make_worker(
     fingerprint: str = "fingerprint-v1",
     ticket_count: int = 2,
     draws: tuple[ReplayDraw, ...] | None = None,
-) -> ReplayBackfill:
+) -> _PayloadAccessReplayBackfill:
     strategy = ReplayStrategy(
         producer.strategy_id,
         strategy_name,
@@ -105,7 +115,7 @@ def _make_worker(
         fingerprint=fingerprint,
     )
     adapter = SyntheticAdapter(producer)
-    return ReplayBackfill(
+    return _PayloadAccessReplayBackfill(
         adapter=adapter,
         strategies=(strategy,),
         draws=draws or _make_draws(),
@@ -121,12 +131,16 @@ def _db_path(tmp_path: Path, name: str) -> Path:
     return scratch / f"{name}.sqlite3"
 
 
-# --- AC01: Verification that lottolab is loaded from candidate_src ---
+# --- AC01: Verification that lottolab is loaded from this test checkout ---
 
 
-def test_ac01_lottolab_loaded_from_candidate_src() -> None:
-    lottolab_path = Path(lottolab.__file__).resolve()
-    assert "candidate_src" in str(lottolab_path), f"lottolab loaded from {lottolab_path}"
+def test_ac01_lottolab_loaded_from_test_checkout_src() -> None:
+    test_checkout_root = Path(__file__).resolve().parents[2]
+    expected_package = (test_checkout_root / "src" / "lottolab").resolve()
+    imported_package = Path(lottolab.__file__).resolve().parent
+    assert imported_package == expected_package, (
+        f"Expected lottolab from {expected_package}, got {imported_package}"
+    )
 
 
 # --- AC02: Six-column natural key order and content; K and run_id not in key ---
@@ -388,16 +402,16 @@ def test_ac07_old_cell_identity_compatibility_and_preservation(tmp_path: Path) -
     # Execute single prediction using controller to get valid record and payload
     history = worker.draws[:-1]
     result = worker.controller.execute(
-        lottolab.domain.historical_replay.HistoricalReplayRequest(
+        HistoricalReplayRequest(
             lottery_type=worker.lottery_type,
-            mode=lottolab.domain.historical_replay.HistoricalReplayMode.INCREMENTAL_REFRESH,
-            source=lottolab.domain.historical_replay.ReplaySourceSnapshot(
+            mode=HistoricalReplayMode.INCREMENTAL_REFRESH,
+            source=ReplaySourceSnapshot(
                 worker.lottery_type, history, (target,)
             ),
             strategies=(strategy,),
         )
     )
-    old_payload = worker._payload(result.records[0], old_cell_identity)
+    old_payload = worker.payload_for_test(result.records[0], old_cell_identity)
     store.save_many(seed_run_id, (old_payload,))
 
     with sqlite3.connect(database.as_uri() + "?mode=ro", uri=True) as conn:
@@ -558,16 +572,16 @@ def test_ac11_negative_cases_matrix(tmp_path: Path) -> None:
     manifest["run_id"] = "seed-old"
     store_old.prepare(manifest)
     res = worker_old.controller.execute(
-        lottolab.domain.historical_replay.HistoricalReplayRequest(
+        HistoricalReplayRequest(
             lottery_type=worker_old.lottery_type,
-            mode=lottolab.domain.historical_replay.HistoricalReplayMode.INCREMENTAL_REFRESH,
-            source=lottolab.domain.historical_replay.ReplaySourceSnapshot(
+            mode=HistoricalReplayMode.INCREMENTAL_REFRESH,
+            source=ReplaySourceSnapshot(
                 worker_old.lottery_type, worker_old.draws[:-1], (target,)
             ),
             strategies=(strategy,),
         )
     )
-    store_old.save_many("seed-old", (worker_old._payload(res.records[0], old_id),))
+    store_old.save_many("seed-old", (worker_old.payload_for_test(res.records[0], old_id),))
 
     # Now attempt to run worker on store_old with DIFFERENT K (conflict against old hash)
     conflicting_worker = _make_worker(

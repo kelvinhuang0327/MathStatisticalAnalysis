@@ -884,10 +884,13 @@ def _candidate_client(store: SQLiteBackfillStore) -> JsonTestClient:
     return cast(JsonTestClient, TestClient(app))
 
 
-def test_ac01_source_loaded_from_candidate_src() -> None:
-    """AC01: Verify that all code under test is loaded from Task-local candidate_src."""
-    assert "candidate_src" in lottolab.__file__, (
-        f"Expected lottolab from candidate_src, got: {lottolab.__file__}"
+def test_ac01_source_loaded_from_test_checkout_src() -> None:
+    """AC01: Verify code under test is loaded from this test checkout."""
+    test_checkout_root = Path(__file__).resolve().parents[2]
+    expected_package = (test_checkout_root / "src" / "lottolab").resolve()
+    imported_package = Path(lottolab.__file__).resolve().parent
+    assert imported_package == expected_package, (
+        f"Expected lottolab from {expected_package}, got: {imported_package}"
     )
 
 

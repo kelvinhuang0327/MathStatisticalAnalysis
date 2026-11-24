@@ -1980,6 +1980,8 @@ def _build_k3_comparison(store: SQLiteBackfillStore, strategy: str) -> JsonObjec
 def _historical_prize_tier(identity: JsonObject, hit: JsonObject) -> object:
     """Correct the old Big Lotto 2+special projection without rewriting stored results."""
     tier = hit.get("prize_tier")
+    if identity.get("lottery_type") == LotteryType.BIG_LOTTO.value and tier == "NO_PRIZE":
+        return None
     draw = identity.get("target_draw_id")
     if (
         identity.get("lottery_type") == LotteryType.BIG_LOTTO.value

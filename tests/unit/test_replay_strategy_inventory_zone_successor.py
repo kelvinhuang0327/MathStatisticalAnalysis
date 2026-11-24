@@ -61,19 +61,31 @@ def _snapshot(
 
 
 class SyntheticReplayStore:
-    def __init__(self, snapshots: dict[str, dict[str, Any]]) -> None:
+    def __init__(
+        self,
+        snapshots: dict[str, dict[str, Any]],
+        stored_rows: tuple[dict[str, Any], ...] = (),
+    ) -> None:
         self.snapshots = snapshots
+        self.stored_rows = stored_rows
 
     def strategy_history_snapshot(
         self, lottery_type: str, *, run_id: str | None = None
     ) -> dict[str, Any]:
+        del run_id
         return self.snapshots[lottery_type]
 
+    def stored_strategy_inventory(self, lottery_type: str) -> list[dict[str, Any]]:
+        return [row for row in self.stored_rows if row["lottery_type"] == lottery_type]
 
-def _client(snapshots: dict[str, dict[str, Any]]) -> _JsonTestClient:
+
+def _client(
+    snapshots: dict[str, dict[str, Any]],
+    stored_rows: tuple[dict[str, Any], ...] = (),
+) -> _JsonTestClient:
     app = FastAPI()
     # The inventory endpoint exercised here only uses strategy_history_snapshot.
-    store = cast(SQLiteBackfillStore, SyntheticReplayStore(snapshots))
+    store = cast(SQLiteBackfillStore, SyntheticReplayStore(snapshots, stored_rows))
     app.include_router(create_replay_backfill_router(store))
     return _json_client(app)
 
@@ -94,15 +106,17 @@ def _inventory_row(
     }
 
 
-def _complete_cells(*, lottery_type: str, strategy_id: str, version: str) -> dict[str, Any]:
+def _complete_cells(
+    *, lottery_type: str, strategy_id: str, version: str, cell_count: int = 3
+) -> dict[str, Any]:
     return {
         "lottery_type": lottery_type,
         "strategy_id": strategy_id,
         "strategy_version": version,
         "execution_status": "COMPLETE",
-        "cell_count": 3,
-        "ticket_count": 6,
-        "saved_prediction_cell_count": 3,
+        "cell_count": cell_count,
+        "ticket_count": cell_count * 2,
+        "saved_prediction_cell_count": cell_count,
     }
 
 
@@ -222,6 +236,270 @@ def test_replay_backfill_api_overlays_only_the_exact_zone_lottery_id_and_version
     assert item["executable"] is False
     assert item["backfill_native_binding"] is False
     assert item["backfill_runnable"] is False
+
+
+def test_replay_backfill_history_counts_use_the_selected_run_inventory() -> None:
+    selected_run = _snapshot(
+        run_id="selected-run",
+        rows=(
+            _inventory_row(
+                lottery_type="BIG_LOTTO",
+                strategy_id=ZONE_STRATEGY_ID,
+                version="v1",
+                target_count=3,
+            ),
+        ),
+        cells=(
+            _complete_cells(
+                lottery_type="BIG_LOTTO",
+                strategy_id=ZONE_STRATEGY_ID,
+                version="v1",
+            ),
+        ),
+    )
+    other_run_row = _inventory_row(
+        lottery_type="BIG_LOTTO",
+        strategy_id=ZONE_STRATEGY_ID,
+        version="v1",
+        target_count=99,
+    )
+    other_run_row["inventory_run_id"] = "other-run"
+    response = _client(
+        {
+            "BIG_LOTTO": selected_run,
+            "DAILY_539": _snapshot(run_id=None),
+            "POWER_LOTTO": _snapshot(run_id=None),
+        },
+        stored_rows=(other_run_row,),
+    ).get(
+        "/api/v1/replay-backfill/strategies",
+        params={"lottery_type": "BIG_LOTTO", "q": ZONE_STRATEGY_ID},
+    )
+
+    assert response.status_code == 200
+    item = response.json()["items"][0]
+    assert item["available_target_count"] == 3
+    assert item["history_counts"] == {
+        "expected_cell_count": 3,
+        "persisted_cell_count": 3,
+        "saved_prediction_cell_count": 3,
+        "saved_ticket_count": 6,
+        "pending_cell_count": 0,
+        "execution_status_counts": {
+            "COMPLETE": 3,
+            "FAILED": 0,
+            "NOT_ELIGIBLE": 0,
+            "TYPED_CLOSURE": 0,
+            "MISSING": 0,
+            "PARTIAL": 0,
+            "ARTIFACT_ONLY": 0,
+        },
+    }
+
+
+def test_replay_backfill_history_keeps_missing_cells_pending() -> None:
+    selected_run = _snapshot(
+        run_id="selected-run",
+        rows=(
+            _inventory_row(
+                lottery_type="BIG_LOTTO",
+                strategy_id=ZONE_STRATEGY_ID,
+                version="v1",
+                target_count=3,
+            ),
+        ),
+        cells=(
+            _complete_cells(
+                lottery_type="BIG_LOTTO",
+                strategy_id=ZONE_STRATEGY_ID,
+                version="v1",
+                cell_count=2,
+            ),
+        ),
+    )
+    response = _client(
+        {
+            "BIG_LOTTO": selected_run,
+            "DAILY_539": _snapshot(run_id=None),
+            "POWER_LOTTO": _snapshot(run_id=None),
+        }
+    ).get(
+        "/api/v1/replay-backfill/strategies",
+        params={"lottery_type": "BIG_LOTTO", "q": ZONE_STRATEGY_ID},
+    )
+
+    assert response.status_code == 200
+    item = response.json()["items"][0]
+    assert item["history_counts"]["expected_cell_count"] == 3
+    assert item["history_counts"]["persisted_cell_count"] == 2
+    assert item["history_counts"]["saved_prediction_cell_count"] == 2
+    assert item["history_counts"]["saved_ticket_count"] == 4
+    assert item["history_counts"]["pending_cell_count"] == 1
+
+
+def test_replay_backfill_history_preserves_non_success_status_counts() -> None:
+    cells = tuple(
+        {
+            "lottery_type": "BIG_LOTTO",
+            "strategy_id": ZONE_STRATEGY_ID,
+            "strategy_version": "v1",
+            "execution_status": status,
+            "cell_count": 1,
+            "ticket_count": 2 if status == "FAILED" else 0,
+            "saved_prediction_cell_count": 0,
+        }
+        for status in ("FAILED", "NOT_ELIGIBLE", "MISSING")
+    )
+    selected_run = _snapshot(
+        run_id="selected-run",
+        rows=(
+            _inventory_row(
+                lottery_type="BIG_LOTTO",
+                strategy_id=ZONE_STRATEGY_ID,
+                version="v1",
+                target_count=3,
+            ),
+        ),
+        cells=cells,
+    )
+    response = _client(
+        {
+            "BIG_LOTTO": selected_run,
+            "DAILY_539": _snapshot(run_id=None),
+            "POWER_LOTTO": _snapshot(run_id=None),
+        }
+    ).get(
+        "/api/v1/replay-backfill/strategies",
+        params={"lottery_type": "BIG_LOTTO", "q": ZONE_STRATEGY_ID},
+    )
+
+    assert response.status_code == 200
+    item = response.json()["items"][0]
+    counts = item["history_counts"]
+    assert counts["expected_cell_count"] == 3
+    assert counts["persisted_cell_count"] == 3
+    assert counts["saved_prediction_cell_count"] == 0
+    assert counts["saved_ticket_count"] == 0
+    assert counts["pending_cell_count"] == 0
+    assert counts["execution_status_counts"]["FAILED"] == 1
+    assert counts["execution_status_counts"]["NOT_ELIGIBLE"] == 1
+    assert counts["execution_status_counts"]["MISSING"] == 1
+    assert item["history_source_identity_status"] == "UNKNOWN"
+    assert "FAILED" in item["history_statuses"]
+    assert "INSUFFICIENT_HISTORY" in item["history_statuses"]
+    assert "MISSING" in item["history_statuses"]
+    assert "HAS_HISTORY" not in item["history_statuses"]
+
+
+def test_replay_backfill_history_does_not_invent_nonmatching_or_empty_run_counts() -> None:
+    wrong_lottery_rows = (
+        _inventory_row(
+            lottery_type="POWER_LOTTO",
+            strategy_id=ZONE_STRATEGY_ID,
+            version="v1",
+            target_count=99,
+        ),
+    )
+    wrong_version_rows = (
+        _inventory_row(
+            lottery_type="BIG_LOTTO",
+            strategy_id=ZONE_STRATEGY_ID,
+            version="v2",
+            target_count=99,
+        ),
+    )
+    wrong_strategy_rows = (
+        _inventory_row(
+            lottery_type="BIG_LOTTO",
+            strategy_id="different-zone-strategy",
+            version="v1",
+            target_count=99,
+        ),
+    )
+    exact_rows = (
+        _inventory_row(
+            lottery_type="BIG_LOTTO",
+            strategy_id=ZONE_STRATEGY_ID,
+            version="v1",
+            target_count=3,
+        ),
+    )
+    cases: tuple[
+        tuple[str | None, tuple[dict[str, Any], ...], tuple[dict[str, Any], ...]], ...
+    ] = (
+        (
+            "selected-run",
+            wrong_lottery_rows,
+            (
+                _complete_cells(
+                    lottery_type="POWER_LOTTO",
+                    strategy_id=ZONE_STRATEGY_ID,
+                    version="v1",
+                ),
+            ),
+        ),
+        (
+            "selected-run",
+            wrong_version_rows,
+            (
+                _complete_cells(
+                    lottery_type="BIG_LOTTO",
+                    strategy_id=ZONE_STRATEGY_ID,
+                    version="v2",
+                ),
+            ),
+        ),
+        (
+            "selected-run",
+            wrong_strategy_rows,
+            (
+                _complete_cells(
+                    lottery_type="BIG_LOTTO",
+                    strategy_id="different-zone-strategy",
+                    version="v1",
+                ),
+            ),
+        ),
+        ("selected-run", (), ()),
+        (
+            None,
+            exact_rows,
+            (
+                _complete_cells(
+                    lottery_type="BIG_LOTTO",
+                    strategy_id=ZONE_STRATEGY_ID,
+                    version="v1",
+                ),
+            ),
+        ),
+    )
+
+    for run_id, rows, cells in cases:
+        snapshot = _snapshot(
+            run_id=run_id,
+            rows=rows,
+            cells=cells,
+        )
+        response = _client(
+            {
+                "BIG_LOTTO": snapshot,
+                "DAILY_539": _snapshot(run_id=None),
+                "POWER_LOTTO": _snapshot(run_id=None),
+            }
+        ).get(
+            "/api/v1/replay-backfill/strategies",
+            params={"lottery_type": "BIG_LOTTO", "q": ZONE_STRATEGY_ID},
+        )
+
+        assert response.status_code == 200
+        item = response.json()["items"][0]
+        assert item["available_target_count"] == 0
+        assert item["history_counts"]["expected_cell_count"] == 0
+        assert item["history_counts"]["persisted_cell_count"] == 0
+        assert item["history_counts"]["saved_prediction_cell_count"] == 0
+        assert item["history_counts"]["saved_ticket_count"] == 0
+        assert item["history_counts"]["pending_cell_count"] == 0
+        assert item["history_status"] != "HAS_HISTORY"
 
 
 def test_api_does_not_invent_history_when_the_exact_zone_row_is_missing() -> None:

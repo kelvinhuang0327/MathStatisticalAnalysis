@@ -231,12 +231,14 @@ from lottolab.interfaces.cli.t539_p638_schedule_certificate import (
 from lottolab.interfaces.cli.taiwan_lottery_metadata_backfill import (
     taiwan_lottery_metadata_backfill_command,
 )
+from lottolab.interfaces.cli.task_catalog import app as task_catalog_app
 from lottolab.strategies.catalog import production_catalog
 
 app = typer.Typer(no_args_is_help=True, help="LottoLab — 樂透統計分析系統 CLI")
 local_app = typer.Typer(no_args_is_help=True, help="Safely manage localhost-only services.")
 app.add_typer(local_app, name="local")
 app.add_typer(database_registry_app, name="db-registry")
+app.add_typer(task_catalog_app, name="task-catalog")
 app.command("optional-backup")(optional_backup_command)
 app.command("import-historical-results")(historical_import_command)
 app.command("forward-p638-historical")(forward_p638_historical_command)

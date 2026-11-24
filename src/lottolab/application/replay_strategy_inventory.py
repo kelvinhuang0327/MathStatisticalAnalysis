@@ -164,6 +164,7 @@ _DIRECT_CODE_BINDING_IDENTITIES = frozenset(
     {
         (LotteryType.BIG_LOTTO, "research_biglotto__radical_recorded_causal_successor_v1", "v1"),
         (LotteryType.BIG_LOTTO, "research_biglotto__quick_ml_corrected_successor_v1", "v1"),
+        (LotteryType.BIG_LOTTO, "research_biglotto__quick_ml_pattern_bounds_v1", "v0.1-research"),
         (
             LotteryType.BIG_LOTTO,
             "research_biglotto__k3_nonoverlap_optimizer_candidate_20261116",

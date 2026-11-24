@@ -38,24 +38,29 @@ def test_inventory_conserves_sources_and_executable_identities() -> None:
     preserved_main_identities = actual_identity_set - seed_identity_set
 
     assert seed_identity_count == 1000
-    assert inventory.total_discovered_strategies == 764 + seed_identity_count
-    assert inventory.total_unique_strategies == 509 + seed_identity_count
-    assert len(actual_identity_set) == len(inventory.items) == 509 + seed_identity_count
+    assert inventory.total_discovered_strategies == 765 + seed_identity_count
+    assert inventory.total_unique_strategies == _BASE_MAIN_IDENTITY_COUNT + seed_identity_count
+    assert (
+        len(actual_identity_set)
+        == len(inventory.items)
+        == _BASE_MAIN_IDENTITY_COUNT + seed_identity_count
+    )
+    assert len(actual_identity_set) == len(preserved_main_identities) + len(seed_identity_set)
     assert seed_identity_set.isdisjoint(preserved_main_identities)
     assert actual_identity_set == preserved_main_identities | seed_identity_set
-    assert len(preserved_main_identities) == 509
+    assert len(preserved_main_identities) == _BASE_MAIN_IDENTITY_COUNT
     assert _identity_set_sha256(preserved_main_identities) == (
-        "9325da60ad8f91be61b5f6377c6d9af395c15910a5467773bc30cfc9cc607ea5"
+        "d57aff547491e137fa31bdd509177ad64abdaa18311a07914cf9c46780653809"
     )
-    assert len(inventory.executable_items) == 223
+    assert len(inventory.executable_items) == 224
     assert inventory.unresolved_source_count == 9
     assert source_counts["PRODUCTION_CATALOG"].source_identity_count == 138
     assert source_counts["B649_RESEARCH_CATALOG"].source_identity_count == 221
     assert source_counts["B649_REPLAY_BATCH_REGISTRY"].source_identity_count == 11
     assert source_counts["T539_REPLAY_ADAPTER"].source_identity_count == 62
     assert source_counts["P638_REPLAY_ADAPTER"].source_identity_count == 23
-    assert source_counts["STRATEGY_ADAPTER_CODE"].source_identity_count == 105
-    assert source_counts["STRATEGY_ADAPTER_CODE"].source_row_count == 106
+    assert source_counts["STRATEGY_ADAPTER_CODE"].source_identity_count == 106
+    assert source_counts["STRATEGY_ADAPTER_CODE"].source_row_count == 107
     assert source_counts["REPLAY_BACKFILL_IMPORTED_RESULT"].source_identity_count == 50
     assert source_counts["REPLAY_BACKFILL_IMPORTED_RESULT"].source_row_count == 50
     assert (
@@ -67,12 +72,12 @@ def test_inventory_conserves_sources_and_executable_identities() -> None:
     lottery_counts = Counter(item.lottery_type for item in inventory.items)
     executable_by_lottery = Counter(item.lottery_type for item in inventory.executable_items)
     assert lottery_counts == {
-        LotteryType.BIG_LOTTO: 413 + seed_identity_count,
+        LotteryType.BIG_LOTTO: 414 + seed_identity_count,
         LotteryType.DAILY_539: 62,
         LotteryType.POWER_LOTTO: 34,
     }
     assert executable_by_lottery == {
-        LotteryType.BIG_LOTTO: 138,
+        LotteryType.BIG_LOTTO: 139,
         LotteryType.DAILY_539: 62,
         LotteryType.POWER_LOTTO: 23,
     }
@@ -102,7 +107,7 @@ def test_inventory_keeps_status_dimensions_and_unavailable_cases_separate() -> N
     inventory = load_replay_strategy_inventory()
     by_data_status = Counter(item.replay_data_status for item in inventory.items)
     assert by_data_status == {
-        ReplayDataStatus.REBUILDABLE: 223,
+        ReplayDataStatus.REBUILDABLE: 224,
         ReplayDataStatus.ARTIFACT_ONLY: 135,
         ReplayDataStatus.REJECTED: 74,
         ReplayDataStatus.NO_HISTORY: 72 + len(_seed_identity_tuples()),
@@ -137,6 +142,7 @@ def test_inventory_keeps_status_dimensions_and_unavailable_cases_separate() -> N
     ]
     assert {(i.strategy_id, i.strategy_version) for i in code_only_lifecycle} == {
         ("research_biglotto__quick_ml_corrected_successor_v1", "v1"),
+        ("research_biglotto__quick_ml_pattern_bounds_v1", "v0.1-research"),
         ("legacy_biglotto__evolution_engine__3df019c31ce4", "v0.2"),
         ("research_biglotto__k30_geometry_exact_swap_history_v1", "v1"),
         ("research_biglotto__k3_nonoverlap_optimizer_candidate_20261116", "v1.0.0"),
@@ -162,6 +168,7 @@ def test_inventory_keeps_status_dimensions_and_unavailable_cases_separate() -> N
     ]
     assert {item.strategy_id for item in executable_code_only} == {
         "research_biglotto__quick_ml_corrected_successor_v1",
+        "research_biglotto__quick_ml_pattern_bounds_v1",
         "research_biglotto__k3_nonoverlap_optimizer_candidate_20261116",
         "research_biglotto__k3_nonoverlap_ecp_candidate_20261116",
     }
@@ -362,7 +369,7 @@ def test_powerlotto_wrapper_preserves_second_zone_for_generic_adapter() -> None:
     assert tickets[0].special_number == 7
 
 
-_BASE_MAIN_IDENTITY_COUNT = 509
+_BASE_MAIN_IDENTITY_COUNT = 510
 
 def _multiseed_fixture() -> dict[str, Any]:
     fixture_path = Path(__file__).parent.parent / "fixtures" / "k30_multiseed_stage_sources.json"

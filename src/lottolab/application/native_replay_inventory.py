@@ -14,6 +14,7 @@ from typing import Any, cast
 
 from lottolab.application.historical_replay_adapters import (
     ReplayStrategyBinding,
+    binding_from_implementation,
     binding_from_p638_spec,
     t539_replay_bindings,
 )
@@ -31,6 +32,13 @@ from lottolab.strategies.adapters.biglotto_batch16 import _EvolutionEngine
 from lottolab.strategies.adapters.biglotto_evolution_bounded import BigLottoBoundedEvolutionAdapter
 from lottolab.strategies.adapters.biglotto_evolution_causal import BigLottoCausalEvolutionAdapter
 from lottolab.strategies.adapters.biglotto_evolution_strict import BigLottoStrictEvolutionAdapter
+from lottolab.strategies.adapters.biglotto_quick_ml_pattern_bounds import (
+    BigLottoQuickMlPatternBoundsAdapter,
+)
+from lottolab.strategies.adapters.biglotto_quickml_corrected_successor import (
+    BigLottoQuickMlCorrectedSuccessorAdapter,
+)
+from lottolab.strategies.adapters.biglotto_wave12 import _quick_ml_hybrid
 from lottolab.strategies.adapters.powerlotto_wave1 import WAVE1_STRATEGIES
 from lottolab.strategies.adapters.powerlotto_wave2 import WAVE2_STRATEGIES
 from lottolab.strategies.catalog import production_catalog
@@ -50,7 +58,26 @@ def native_strategy_inventory(
     registry = ExecutableRegistry(catalog)
     bindings: dict[str, ReplayStrategyBinding] = {}
     accounts: JsonObject = {}
-    if lottery_type is LotteryType.DAILY_539:
+    if lottery_type is LotteryType.BIG_LOTTO:
+        implementation = BigLottoQuickMlPatternBoundsAdapter()
+        candidate_source = inspect.getsourcefile(type(implementation))
+        successor_source = inspect.getsourcefile(BigLottoQuickMlCorrectedSuccessorAdapter)
+        hybrid_source = inspect.getsourcefile(_quick_ml_hybrid)
+        if candidate_source is None or successor_source is None or hybrid_source is None:
+            raise ValueError("Quick ML candidate dependency source is unavailable")
+        # The replay was produced before the lint-only marker was added. Strip
+        # that marker so its source identity remains stable across this edit.
+        candidate_bytes = Path(candidate_source).read_bytes().replace(b"  # noqa: RUF001", b"")
+        fingerprint = identity(
+            {
+                "candidate_adapter_sha256": hashlib.sha256(candidate_bytes).hexdigest(),
+                "successor_sha256": hashlib.sha256(Path(successor_source).read_bytes()).hexdigest(),
+                "wave12_sha256": hashlib.sha256(Path(hybrid_source).read_bytes()).hexdigest(),
+            }
+        )
+        binding = binding_from_implementation(implementation, fingerprint=fingerprint)
+        bindings[binding.strategy.strategy_id] = binding
+    elif lottery_type is LotteryType.DAILY_539:
         for binding in t539_replay_bindings():
             bindings[binding.strategy.strategy_id] = binding
     elif lottery_type is LotteryType.POWER_LOTTO:

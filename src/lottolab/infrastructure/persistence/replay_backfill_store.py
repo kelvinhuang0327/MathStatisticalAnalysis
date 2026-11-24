@@ -503,6 +503,401 @@ class SQLiteBackfillStore:
         self.read_only = read_only
 
     @contextmanager
+    def official_ranking_data(
+        self, lottery_type: str, window: str = "FULL"
+    ) -> Generator[tuple[list[JsonObject], Generator[JsonObject]]]:
+        """Read target and cell evidence in one consistent, query-only snapshot."""
+        window_sizes = {"FULL": None, "RECENT_750": 750, "RECENT_300": 300, "RECENT_50": 50}
+        if window not in window_sizes:
+            raise ValueError("unsupported ranking window")
+        with self._connect() as connection:
+            connection.execute("PRAGMA temp_store=MEMORY")
+            connection.execute("BEGIN")
+            try:
+                # A run can store source history in targets; its manifest defines
+                # the actual evaluation IDs. Never treat source history as missing.
+                manifest_ids: dict[str, set[str]] = {}
+                invalid_runs: set[str] = set()
+                manifest_dates: dict[tuple[str, str], str] = {}
+                manifest_targets: dict[tuple[str, str], JsonObject] = {}
+                for run_id, raw_manifest in connection.execute(
+                    "SELECT run_id,manifest_json FROM replay_backfill_runs"
+                ):
+                    try:
+                        manifest = json.loads(raw_manifest)
+                        if manifest.get("lottery_type") != lottery_type:
+                            continue
+                        raw_ids = manifest.get("target_draw_ids")
+                        raw_targets = manifest.get("targets")
+                        if "target_draw_ids" not in manifest and isinstance(raw_targets, list):
+                            raw_ids = [
+                                t.get("draw_number") for t in raw_targets if isinstance(t, dict)
+                            ]
+                        if not isinstance(raw_ids, list) or not raw_ids:
+                            invalid_runs.add(run_id)
+                            manifest_ids[run_id] = set()
+                            continue
+                        valid_ids = [v for v in raw_ids if isinstance(v, str) and v]
+                        if len(valid_ids) != len(raw_ids) or len(set(valid_ids)) != len(raw_ids):
+                            invalid_runs.add(run_id)
+                        manifest_ids[run_id] = set(valid_ids)
+                        if "targets" in manifest:
+                            if not isinstance(raw_targets, list):
+                                invalid_runs.add(run_id)
+                            else:
+                                listed = [
+                                    t.get("draw_number") if isinstance(t, dict) else None
+                                    for t in raw_targets
+                                ]
+                                if (
+                                    len(listed) != len(set(v for v in listed if isinstance(v, str)))
+                                    or set(v for v in listed if isinstance(v, str))
+                                    != set(valid_ids)
+                                    or any(
+                                        not isinstance(t, dict)
+                                        or not isinstance(t.get("draw_date"), str)
+                                        for t in raw_targets
+                                    )
+                                ):
+                                    invalid_runs.add(run_id)
+                        for target in raw_targets if isinstance(raw_targets, list) else []:
+                            if isinstance(target, dict) and isinstance(
+                                target.get("draw_date"), str
+                            ):
+                                key = (run_id, str(target.get("draw_number")))
+                                manifest_dates[key] = target["draw_date"]
+                                manifest_targets[key] = target
+                    except (ValueError, TypeError, AttributeError):
+                        continue
+                source: dict[tuple[str, str], JsonObject] = {}
+                for row in connection.execute(
+                    "SELECT run_id,target_draw_id,target_draw_date,actual_main_numbers_json,"
+                    "actual_special_numbers_json,source_identity FROM replay_backfill_targets "
+                    "WHERE lottery_type=?",
+                    (lottery_type,),
+                ):
+                    run_id, draw_id, draw_date, main, special, source_identity = row
+                    if draw_id in manifest_ids.get(run_id, set()):
+                        source[(run_id, draw_id)] = {
+                            "run_id": run_id,
+                            "target_draw_id": draw_id,
+                            "target_draw_date": draw_date,
+                            "main": main,
+                            "special": special,
+                            "source_identity": source_identity,
+                        }
+                # Verify target rows against every manifest field that exists.
+                # A dated manifest need not duplicate the draw numbers if the
+                # formal target row has complete, source-bound evidence.
+                for (run_id, draw_id), manifest_target in manifest_targets.items():
+                    if draw_id not in manifest_ids.get(run_id, set()):
+                        continue
+                    old = source.get((run_id, draw_id))
+                    candidate = {
+                        "run_id": run_id,
+                        "target_draw_id": draw_id,
+                        "target_draw_date": manifest_target["draw_date"],
+                        "main": None,
+                        "special": None,
+                        "target_unverified": True,
+                    }
+                    if old is not None:
+                        try:
+                            date.fromisoformat(manifest_target["draw_date"])
+                            main = json.loads(old["main"])
+                            special = json.loads(old["special"])
+                            limit, count = (
+                                (39, 5)
+                                if lottery_type == "DAILY_539"
+                                else ((49, 6) if lottery_type == "BIG_LOTTO" else (38, 6))
+                            )
+                            valid = (
+                                isinstance(main, list)
+                                and len(main) == count
+                                and all(type(n) is int and 1 <= n <= limit for n in main)
+                                and len(set(main)) == count
+                                and isinstance(special, list)
+                                and all(type(n) is int for n in special)
+                                and old["target_draw_date"] == manifest_target["draw_date"]
+                                and isinstance(old["source_identity"], str)
+                                and bool(old["source_identity"])
+                            )
+                            if lottery_type == "DAILY_539":
+                                valid = valid and special == []
+                            elif lottery_type == "BIG_LOTTO":
+                                valid = (
+                                    valid
+                                    and len(special) == 1
+                                    and 1 <= special[0] <= 49
+                                    and special[0] not in main
+                                )
+                            else:
+                                valid = valid and len(special) == 1 and 1 <= special[0] <= 8
+                            if "main_numbers" in manifest_target:
+                                valid = valid and sorted(manifest_target["main_numbers"]) == sorted(
+                                    main
+                                )
+                            if "special_numbers" in manifest_target:
+                                valid = valid and sorted(
+                                    manifest_target["special_numbers"]
+                                ) == sorted(special)
+                            if "source_identity" in manifest_target:
+                                valid = (
+                                    valid
+                                    and manifest_target["source_identity"] == old["source_identity"]
+                                )
+                            if valid:
+                                candidate.update(
+                                    {
+                                        "main": json.dumps(main),
+                                        "special": json.dumps(special),
+                                        "target_unverified": False,
+                                    }
+                                )
+                        except (ValueError, TypeError, KeyError, IndexError):
+                            pass
+                    source[(run_id, draw_id)] = candidate
+                # A target row without a matching manifest draw record is not
+                # independently source-bound. Do not infer validity from IDs alone.
+                for key, value in source.items():
+                    if key not in manifest_targets:
+                        value.update({"main": None, "special": None, "target_unverified": True})
+                # Missing target evidence stays UNKNOWN. Dates from persisted cells
+                # let old manifests with IDs only participate in window selection.
+                for run_id, ids in manifest_ids.items():
+                    missing_ids = ids - {draw for r, draw in source if r == run_id}
+                    undated = {draw for draw in missing_ids if (run_id, draw) not in manifest_dates}
+                    if undated:
+                        for draw_id, draw_date in connection.execute(
+                            "SELECT c.target_draw_id,c.target_draw_date "
+                            "FROM replay_backfill_run_cells r "
+                            "JOIN replay_backfill_cells c USING(cell_identity) "
+                            "WHERE r.run_id=? AND c.lottery_type=?",
+                            (run_id, lottery_type),
+                        ):
+                            if draw_id in undated:
+                                manifest_dates[(run_id, draw_id)] = draw_date
+                    for draw_id in missing_ids:
+                        source[(run_id, draw_id)] = {
+                            "run_id": run_id,
+                            "target_draw_id": draw_id,
+                            "target_draw_date": manifest_dates.get((run_id, draw_id), ""),
+                            "main": None,
+                            "special": None,
+                            "target_unverified": True,
+                        }
+                targets = []
+                unresolved_runs: set[str] = set(invalid_runs)
+                for run_id in manifest_ids:
+                    rows = [v for (r, _), v in source.items() if r == run_id]
+                    for target in rows:
+                        try:
+                            date.fromisoformat(target["target_draw_date"])
+                        except (TypeError, ValueError):
+                            unresolved_runs.add(run_id)
+                    rows.sort(key=lambda t: (t["target_draw_date"], t["target_draw_id"]))
+                    size = window_sizes[window]
+                    if run_id in unresolved_runs:
+                        for target in rows:
+                            target["window_unresolved"] = True
+                        targets.extend(rows)
+                    else:
+                        targets.extend(rows if size is None else rows[-size:])
+                target_ids_by_run_lists: dict[str, list[str]] = {}
+                for target in targets:
+                    target_ids_by_run_lists.setdefault(target["run_id"], []).append(
+                        target["target_draw_id"]
+                    )
+                target_ids_by_run = {
+                    run_id: tuple(target_ids)
+                    for run_id, target_ids in target_ids_by_run_lists.items()
+                }
+
+                del source, manifest_targets, manifest_dates
+
+                def cells() -> Generator[JsonObject]:
+                    columns = (
+                        "cell_identity",
+                        "run_id",
+                        "strategy_id",
+                        "strategy_version",
+                        "execution_version",
+                        "dataset_identity",
+                        "target_draw_id",
+                        "target_draw_date",
+                        "execution_status",
+                    )
+
+                    def emit_joined_cells(
+                        cursor: sqlite3.Cursor, run_id: str
+                    ) -> Generator[JsonObject]:
+                        current_id: str | None = None
+                        current: JsonObject | None = None
+                        tickets: list[tuple[object, ...]] = []
+
+                        def finish(cell: JsonObject, saved: list[tuple[object, ...]]) -> JsonObject:
+                            try:
+                                payload = json.loads(cell.pop("payload_json"))
+                                expected = payload.get("expected_native_ticket_count")
+                                cell["payload_winning_present"] = "winning_numbers" in payload
+                                cell["payload_winning_numbers"] = payload.get("winning_numbers")
+                                details = _saved_ticket_group_details(
+                                    payload, saved, lottery_type=lottery_type
+                                )
+                                cell["ticket_evidence_valid"] = (
+                                    details["valid"]
+                                    and type(expected) is int
+                                    and expected > 0
+                                    and expected == len(saved)
+                                )
+                            except (ValueError, TypeError, AttributeError, KeyError):
+                                cell["ticket_evidence_valid"] = False
+                            cell["tickets"] = saved
+                            cell["ranking_window_included"] = True
+                            return cell
+
+                        while batch := cursor.fetchmany(1000):
+                            for row in batch:
+                                cell_id = row[0]
+                                if current_id is not None and cell_id != current_id:
+                                    assert current is not None
+                                    yield finish(current, tickets)
+                                    tickets = []
+                                if cell_id != current_id:
+                                    current_id = cell_id
+                                    current = dict(zip(columns, row[:9], strict=True))
+                                    current["run_id"] = run_id
+                                    if run_id in unresolved_runs:
+                                        current["scope_status"] = "WINDOW_UNDETERMINED"
+                                    current["payload_json"] = row[12]
+                                if row[9] is not None:
+                                    tickets.append(row[9:12])
+                        if current is not None:
+                            yield finish(current, tickets)
+
+                    # First stream unlinked cells, using only exact IDs during
+                    # this pass; discard the membership set before per-run work.
+                    linked_ids: set[str] = set()
+                    run_ids: set[str] = set()
+                    for run_id, cell_id in connection.execute(
+                        "SELECT run_id,cell_identity FROM replay_backfill_run_cells"
+                    ):
+                        linked_ids.add(cell_id)
+                        run_ids.add(run_id)
+                    for row in connection.execute(
+                        "SELECT c.cell_identity,NULL,c.strategy_id,c.strategy_version,"
+                        "c.execution_version,c.dataset_identity,c.target_draw_id,"
+                        "c.target_draw_date,c.execution_status FROM replay_backfill_cells c "
+                        "NOT INDEXED WHERE c.lottery_type=?",
+                        (lottery_type,),
+                    ):
+                        if row[0] in linked_ids:
+                            continue
+                        count = connection.execute(
+                            "SELECT COUNT(*) FROM replay_backfill_tickets WHERE cell_identity=?",
+                            (row[0],),
+                        ).fetchone()[0]
+                        item = dict(zip(columns, row, strict=True))
+                        item.update(
+                            {
+                                "run_id": "UNLINKED",
+                                "scope_status": "UNLINKED",
+                                "tickets": [],
+                                "ticket_count": count,
+                                "ranking_window_included": True,
+                            }
+                        )
+                        yield item
+                    del linked_ids
+
+                    # Run groups are contiguous, allowing aggregation to release
+                    # period objects as soon as each run finishes.
+                    for run_id in sorted(run_ids):
+                        identities: set[tuple] = set()
+                        rows = connection.execute(
+                            "SELECT c.cell_identity,rc.run_id,c.strategy_id,c.strategy_version,"
+                            "c.execution_version,c.dataset_identity,c.target_draw_id,"
+                            "c.target_draw_date,c.execution_status "
+                            "FROM replay_backfill_run_cells rc "
+                            "JOIN replay_backfill_cells c ON c.cell_identity=rc.cell_identity "
+                            "WHERE rc.run_id=? AND c.lottery_type=? ORDER BY rc.cell_identity",
+                            (run_id, lottery_type),
+                        )
+                        for row in rows:
+                            cell_id = row[0]
+                            if run_id not in manifest_ids or (
+                                run_id in invalid_runs and not manifest_ids[run_id]
+                            ):
+                                scope_status = "WINDOW_UNDETERMINED"
+                            elif row[6] not in manifest_ids.get(run_id, set()):
+                                scope_status = "OUTSIDE_MANIFEST"
+                            else:
+                                identities.add(tuple(row[2:6]))
+                                continue
+                            count = connection.execute(
+                                "SELECT COUNT(*) FROM replay_backfill_tickets "
+                                "WHERE cell_identity=?",
+                                (cell_id,),
+                            ).fetchone()[0]
+                            item = dict(zip(columns, row, strict=True))
+                            item.update(
+                                {
+                                    "scope_status": scope_status,
+                                    "tickets": [],
+                                    "ticket_count": count,
+                                    "ranking_window_included": True,
+                                }
+                            )
+                            yield item
+                        for strategy, version, execution, dataset in sorted(identities):
+                            yield {
+                                "cell_identity": (
+                                    f"WINDOW_PLACEHOLDER:{run_id}:{strategy}:{version}:"
+                                    f"{execution}:{dataset}"
+                                ),
+                                "run_id": run_id,
+                                "scope_status": (
+                                    "WINDOW_UNDETERMINED"
+                                    if run_id in unresolved_runs
+                                    else "MANIFEST"
+                                ),
+                                "strategy_id": strategy,
+                                "strategy_version": version,
+                                "execution_version": execution,
+                                "dataset_identity": dataset,
+                                "target_draw_id": "",
+                                "target_draw_date": "",
+                                "execution_status": "MISSING",
+                                "tickets": [],
+                                "ranking_window_included": False,
+                            }
+                        target_ids = target_ids_by_run.get(run_id, ())
+                        for start in range(0, len(target_ids), 700):
+                            target_chunk = target_ids[start : start + 700]
+                            if not target_chunk:
+                                continue
+                            target_placeholders = ",".join("?" for _ in target_chunk)
+                            cursor = connection.execute(
+                                "SELECT c.cell_identity,rc.run_id,c.strategy_id,c.strategy_version,"
+                                "c.execution_version,c.dataset_identity,c.target_draw_id,"
+                                "c.target_draw_date,c.execution_status,t.ticket_position,"
+                                "t.main_numbers_json,t.special_numbers_json,c.payload_json "
+                                "FROM replay_backfill_run_cells rc "
+                                "JOIN replay_backfill_cells c ON c.cell_identity=rc.cell_identity "
+                                "LEFT JOIN replay_backfill_tickets t "
+                                "ON t.cell_identity=c.cell_identity "
+                                "WHERE rc.run_id=? AND c.lottery_type=? "
+                                f"AND c.target_draw_id IN ({target_placeholders}) "
+                                "ORDER BY rc.cell_identity,t.ticket_position",
+                                (run_id, lottery_type, *target_chunk),
+                            )
+                            yield from emit_joined_cells(cursor, run_id)
+
+                yield targets, cells()
+            finally:
+                connection.rollback()
+
+    @contextmanager
     def _connect(self, *, write: bool = False) -> Generator[sqlite3.Connection]:
         database = validate_database_path(self.database)
         if write and self.read_only:

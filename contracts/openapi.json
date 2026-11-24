@@ -5842,6 +5842,63 @@
         }
       }
     },
+    "/api/v1/replay-backfill/official-ranking": {
+      "get": {
+        "tags": [
+          "replay-backfill"
+        ],
+        "summary": "Official Ranking",
+        "operationId": "official_ranking_api_v1_replay_backfill_official_ranking_get",
+        "parameters": [
+          {
+            "name": "lottery_type",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/LotteryType"
+            }
+          },
+          {
+            "name": "window",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "FULL",
+                "RECENT_750",
+                "RECENT_300",
+                "RECENT_50"
+              ],
+              "type": "string",
+              "default": "FULL",
+              "title": "Window"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OfficialRankingResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/replay-backfill/strategy-runs": {
       "get": {
         "tags": [
@@ -12940,6 +12997,19 @@
         ],
         "title": "GenerateOneBetStatus"
       },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
       "HistoricalDrawIdentityView": {
         "properties": {
           "draw_number": {
@@ -17854,6 +17924,231 @@
           "hit_state_weights"
         ],
         "title": "NullContractView"
+      },
+      "OfficialRankingResponse": {
+        "properties": {
+          "lottery_type": {
+            "$ref": "#/components/schemas/LotteryType"
+          },
+          "window": {
+            "type": "string",
+            "enum": [
+              "FULL",
+              "RECENT_750",
+              "RECENT_300",
+              "RECENT_50"
+            ],
+            "title": "Window"
+          },
+          "baseline_policy": {
+            "type": "string",
+            "const": "UNIFORM_IID_LEGAL_TICKETS_WITH_REPLACEMENT",
+            "title": "Baseline Policy"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/OfficialRankingRow"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "lottery_type",
+          "window",
+          "baseline_policy",
+          "items"
+        ],
+        "title": "OfficialRankingResponse"
+      },
+      "OfficialRankingRow": {
+        "properties": {
+          "strategy_id": {
+            "type": "string",
+            "title": "Strategy Id"
+          },
+          "strategy_name": {
+            "type": "string",
+            "title": "Strategy Name"
+          },
+          "registered": {
+            "type": "boolean",
+            "title": "Registered"
+          },
+          "strategy_version": {
+            "type": "string",
+            "title": "Strategy Version"
+          },
+          "execution_version": {
+            "type": "string",
+            "title": "Execution Version"
+          },
+          "dataset_identity": {
+            "type": "string",
+            "title": "Dataset Identity"
+          },
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "scope_status": {
+            "type": "string",
+            "enum": [
+              "MANIFEST",
+              "OUTSIDE_MANIFEST",
+              "UNLINKED",
+              "WINDOW_UNDETERMINED"
+            ],
+            "title": "Scope Status"
+          },
+          "missing_target_evidence": {
+            "type": "integer",
+            "title": "Missing Target Evidence"
+          },
+          "conflicting_target_evidence": {
+            "type": "integer",
+            "title": "Conflicting Target Evidence"
+          },
+          "ticket_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ticket Count"
+          },
+          "target_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Target Ids"
+          },
+          "start_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Date"
+          },
+          "end_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End Date"
+          },
+          "successes": {
+            "type": "integer",
+            "title": "Successes"
+          },
+          "evaluated": {
+            "type": "integer",
+            "title": "Evaluated"
+          },
+          "missing": {
+            "type": "integer",
+            "title": "Missing"
+          },
+          "unknown": {
+            "type": "integer",
+            "title": "Unknown"
+          },
+          "rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rate"
+          },
+          "baseline": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Baseline"
+          },
+          "delta": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delta"
+          },
+          "unknown_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unknown Reason"
+          },
+          "rank": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rank"
+          }
+        },
+        "type": "object",
+        "required": [
+          "strategy_id",
+          "strategy_name",
+          "registered",
+          "strategy_version",
+          "execution_version",
+          "dataset_identity",
+          "run_id",
+          "scope_status",
+          "missing_target_evidence",
+          "conflicting_target_evidence",
+          "ticket_count",
+          "target_ids",
+          "start_date",
+          "end_date",
+          "successes",
+          "evaluated",
+          "missing",
+          "unknown",
+          "rate",
+          "baseline",
+          "delta",
+          "unknown_reason",
+          "rank"
+        ],
+        "title": "OfficialRankingRow"
       },
       "OverviewPrefixCount": {
         "type": "integer",
@@ -24315,6 +24610,46 @@
           "count"
         ],
         "title": "TierCountView"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
       },
       "WindowDefinitionView": {
         "properties": {

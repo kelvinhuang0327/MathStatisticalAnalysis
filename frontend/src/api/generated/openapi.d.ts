@@ -2086,6 +2086,28 @@ export interface paths {
                 }
         }
     }
+  "/api/v1/replay-backfill/official-ranking": {
+      get: {
+          parameters: {
+            "query": {
+              "lottery_type": components['schemas']["LotteryType"]
+              "window"?: "FULL" | "RECENT_750" | "RECENT_300" | "RECENT_50"
+            }
+          }
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": components['schemas']["OfficialRankingResponse"]
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["HTTPValidationError"]
+                                  }
+                        }
+                }
+        }
+    }
   "/api/v1/replay-backfill/strategy-runs": {
       get: {
           parameters: {
@@ -3509,6 +3531,9 @@ export interface components {
     "GenerateLiveZoneSplitBetsStatus": "OK" | "INVALID_REQUEST" | "INVALID_OUTPUT" | "EXECUTION_ERROR"
     "GenerateOneBetReason": "REJECTED_BY_STRATEGY" | "INSUFFICIENT_HISTORY" | "UNKNOWN_STRATEGY" | "ADAPTER_NOT_INJECTED" | "UNSUPPORTED_LOTTERY_TYPE" | "INVALID_OUTPUT" | "REPLAY_ERROR" | "STRATEGY_IS_PORTFOLIO"
     "GenerateOneBetStatus": "OK" | "REJECTED" | "INSUFFICIENT_HISTORY" | "STRATEGY_UNAVAILABLE" | "INVALID_OUTPUT" | "REPLAY_ERROR" | "WRONG_RESPONSE_PATH"
+    "HTTPValidationError": {
+          "detail"?: Array<components['schemas']["ValidationError"]>
+        }
     "HistoricalDrawIdentityView": {
           "draw_number": string
           "draw_date": string
@@ -4352,6 +4377,37 @@ export interface components {
           "single_ticket_any_prize_probability": components['schemas']["ExactRationalView"]
           "portfolio_formula": string
           "hit_state_weights": Array<Record<string, unknown>>
+        }
+    "OfficialRankingResponse": {
+          "lottery_type": components['schemas']["LotteryType"]
+          "window": "FULL" | "RECENT_750" | "RECENT_300" | "RECENT_50"
+          "baseline_policy": string
+          "items": Array<components['schemas']["OfficialRankingRow"]>
+        }
+    "OfficialRankingRow": {
+          "strategy_id": string
+          "strategy_name": string
+          "registered": boolean
+          "strategy_version": string
+          "execution_version": string
+          "dataset_identity": string
+          "run_id": string
+          "scope_status": "MANIFEST" | "OUTSIDE_MANIFEST" | "UNLINKED" | "WINDOW_UNDETERMINED"
+          "missing_target_evidence": number
+          "conflicting_target_evidence": number
+          "ticket_count": number | null
+          "target_ids": Array<string>
+          "start_date": string | null
+          "end_date": string | null
+          "successes": number
+          "evaluated": number
+          "missing": number
+          "unknown": number
+          "rate": number | null
+          "baseline": number | null
+          "delta": number | null
+          "unknown_reason": string | null
+          "rank": number | null
         }
     "OverviewPrefixCount": 10 | 15 | 20
     "P638CurrentRankingPageResponse": {
@@ -5343,6 +5399,13 @@ export interface components {
           "tier_id": string
           "tier_order": number
           "count": number
+        }
+    "ValidationError": {
+          "loc": Array<string | number>
+          "msg": string
+          "type": string
+          "input"?: unknown
+          "ctx"?: Record<string, unknown>
         }
     "WindowDefinitionView": {
           "window_kind": string

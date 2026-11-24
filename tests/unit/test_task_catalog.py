@@ -132,6 +132,10 @@ def test_tombstone_formats_and_exclusions(tmp_path: Path) -> None:
     assert "/nonexistent/deleted4.sqlite3" in tombstone_paths
     q_target = str((q_dir / "deleted5.sqlite3").resolve())
     assert q_target in tombstone_paths
+    q_tomb = next(t for t in tombstones if t["path"] == q_target)
+    assert q_tomb["deleted_at"] == "2026-11-20T14:00:00Z"
+    assert q_tomb["deleted_at_source"] == "ANCESTOR"
+    assert q_tomb["sha256"] is None
 
     # Verify exclusions: retained is not in tombstones
     assert "/nonexistent/retained.sqlite3" not in tombstone_paths

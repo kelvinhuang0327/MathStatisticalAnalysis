@@ -356,6 +356,9 @@ def extract_tombstones_from_json(
             if node_dict.get("deleted_at") is not None:
                 node_deleted_at = str(node_dict["deleted_at"])
                 node_deleted_at_source = "RECORD"
+            elif node_dict.get("at") is not None:
+                node_deleted_at = str(node_dict["at"])
+                node_deleted_at_source = "RECORD"
             else:
                 for anc in reversed(ancestor_dicts):
                     if anc.get("deleted_at") is not None:
@@ -377,6 +380,18 @@ def extract_tombstones_from_json(
                 and all(isinstance(f, str) for f in cast(list[object], files_list))
             ):
                 typed_files = cast(list[str], files_list)
+                file_deleted_at: str | None = None
+                file_deleted_at_source = "NONE"
+                if node_dict.get("at") is not None:
+                    file_deleted_at = str(node_dict["at"])
+                    file_deleted_at_source = "ANCESTOR"
+                elif node_dict.get("deleted_at") is not None:
+                    file_deleted_at = str(node_dict["deleted_at"])
+                    file_deleted_at_source = "ANCESTOR"
+                else:
+                    file_deleted_at = node_deleted_at
+                    file_deleted_at_source = node_deleted_at_source
+
                 for f_idx, filename in enumerate(typed_files):
                     target_path = str((file_path.parent / filename).resolve())
                     sub_pointer = (
@@ -398,8 +413,8 @@ def extract_tombstones_from_json(
                                 path=target_path,
                                 sha256=None,
                                 bytes=None,
-                                deleted_at=node_deleted_at,
-                                deleted_at_source=node_deleted_at_source,
+                                deleted_at=file_deleted_at,
+                                deleted_at_source=file_deleted_at_source,
                                 status_recorded=status_val if isinstance(status_val, str) else None,
                                 source_file=file_abs,
                                 json_pointer=sub_pointer,
@@ -646,8 +661,10 @@ def build_catalog(
             if rec.bytes is None and rt.bytes is not None:
                 rec.bytes = rt.bytes
             # prioritize RECORD deleted_at over ANCESTOR over NONE
-            if (rt.deleted_at_source == "RECORD" and rec.deleted_at_source != "RECORD") or (
-                rec.deleted_at is None and rt.deleted_at is not None
+            if (
+                (rt.deleted_at_source == "RECORD" and rec.deleted_at_source != "RECORD")
+                or (rt.deleted_at_source == "ANCESTOR" and rec.deleted_at_source == "NONE")
+                or (rec.deleted_at is None and rt.deleted_at is not None)
             ):
                 rec.deleted_at = rt.deleted_at
                 rec.deleted_at_source = rt.deleted_at_source

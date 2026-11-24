@@ -1427,7 +1427,8 @@ _IMPORTED_REPLAY_IDENTITIES: tuple[_ImportedReplayIdentitySpec, ...] = (
         display_name="Cluster Cover v0.2 (歷史研究結果)",
         strategy_version="v0.2-research-frequency100",
         source_locator=(
-            "research-store-saved-k3-projection-v1:cluster-cover-v0.2-research-frequency100"
+            "research-store-saved-k3-projection-v1:"
+            "cluster-cover-v0.2-research-frequency100"
         ),
         reconstruction_reason=(
             "Saved research-only variant; replay history is available only when an exact "
@@ -1680,7 +1681,9 @@ _K30_MULTISEED_IDENTITY_REASON = (
     "not been imported into the formal Replay Backfill database, so this row does not claim "
     "formal history or a native executable/backfill binding."
 )
-_K30_MULTISEED_RUN_PARTITION_BY_STAGE: dict[str, tuple[str, str, int, int, int, int, bool, str]] = {
+_K30_MULTISEED_RUN_PARTITION_BY_STAGE: dict[
+    str, tuple[str, str, int, int, int, int, bool, str]
+] = {
     "number2_k30_era_fullseed_0100_0124_20261123_r1": (
         "b6d3fce679f8aefc6df4cab6db80941278ce5dc7c7d5cfd365149bc7cf3d03e7",
         "efd9a41c989537a4b1fa53db0f26e1c9707862dfe53b9f4ddaacceeb89e79bd4",
@@ -12660,7 +12663,9 @@ def _add_k30_multiseed_stage_identities(
                     or initial_complete_targets != initial_expected_targets
                     or not link_verified
                 ):
-                    run_binding = f"run_ids={','.join(run_ids)}&seed_to_run_binding=UNRESOLVED"
+                    run_binding = (
+                        f"run_ids={','.join(run_ids)}&seed_to_run_binding=UNRESOLVED"
+                    )
                 else:
                     run_binding = (
                         f"initial_run_id={initial_run_id}"
@@ -12700,6 +12705,7 @@ def _add_k30_multiseed_stage_identities(
             source_statuses=("RESEARCH_STRATEGY", provenance_status),
         )
     return len(identities), len(_K30_MULTISEED_STAGE_SOURCE_ROWS)
+
 
 
 def _add_imported_replay_identities(

@@ -461,14 +461,40 @@ def _as_json_object(value: object) -> JsonObject | None:
     return normalized
 
 
+def _snapshot_strategy_inventory_row(
+    lottery_type: str,
+    strategy_id: str,
+    strategy_version: str | None,
+    snapshot: JsonObject,
+) -> JsonObject | None:
+    if strategy_version is None:
+        return None
+    rows_value = snapshot.get("strategy_inventory", [])
+    if not isinstance(rows_value, list):
+        return None
+    for row_value in cast(list[object], rows_value):
+        if not isinstance(row_value, dict):
+            continue
+        row = cast(JsonObject, row_value)
+        if (
+            row.get("lottery_type", lottery_type) == lottery_type
+            and row.get("strategy_id") == strategy_id
+            and row.get("strategy_version") == strategy_version
+        ):
+            return row
+    return None
+
+
 def _strategy_history_view(
     lottery_type: str,
     strategy_id: str,
     strategy_version: str | None,
     snapshot: JsonObject,
-    stored_row: JsonObject | None,
 ) -> JsonObject:
     run_id = snapshot.get("run_id")
+    snapshot_inventory_row = _snapshot_strategy_inventory_row(
+        lottery_type, strategy_id, strategy_version, snapshot
+    )
     status_counts = {
         status: 0
         for status in (
@@ -493,6 +519,8 @@ def _strategy_history_view(
     cell_rows: list[object] = (
         cast(list[object], cell_rows_value) if isinstance(cell_rows_value, list) else []
     )
+    if run_id is None:
+        cell_rows = []
     for cell_row_value in cell_rows:
         if not isinstance(cell_row_value, dict):
             continue
@@ -528,8 +556,10 @@ def _strategy_history_view(
             row = cast(JsonObject, row_value)
             selected_strategy_id = row.get("strategy_id")
             selected_strategy_version = row.get("strategy_version")
-            if isinstance(selected_strategy_id, str) and isinstance(
-                selected_strategy_version, str
+            if (
+                row.get("lottery_type", lottery_type) == lottery_type
+                and isinstance(selected_strategy_id, str)
+                and isinstance(selected_strategy_version, str)
             ):
                 selected_keys.add((selected_strategy_id, selected_strategy_version))
     for cell_row_value in cell_rows:
@@ -538,20 +568,24 @@ def _strategy_history_view(
         cell_row = cast(JsonObject, cell_row_value)
         selected_strategy_id = cell_row.get("strategy_id")
         selected_strategy_version = cell_row.get("strategy_version")
-        if isinstance(selected_strategy_id, str) and isinstance(selected_strategy_version, str):
+        if (
+            cell_row.get("lottery_type", lottery_type) == lottery_type
+            and isinstance(selected_strategy_id, str)
+            and isinstance(selected_strategy_version, str)
+        ):
             selected_keys.add((selected_strategy_id, selected_strategy_version))
     is_selected = (
-        (strategy_id, strategy_version) in selected_keys
-        if strategy_version is not None
-        else False
+        run_id is not None
+        and strategy_version is not None
+        and (strategy_id, strategy_version) in selected_keys
     )
     run_source_value = snapshot.get("run_source", {})
     run_source = cast(JsonObject, run_source_value) if isinstance(run_source_value, dict) else {}
     source_identity_status = run_source.get("identity_status", "UNKNOWN")
 
     inventory_target_count = (
-        stored_row.get("available_target_count")
-        if stored_row is not None and stored_row.get("inventory_run_id") == run_id
+        snapshot_inventory_row.get("available_target_count")
+        if snapshot_inventory_row is not None
         else None
     )
     target_count = (
@@ -809,7 +843,17 @@ def create_replay_backfill_router(
                     item.strategy_id,
                     item.strategy_version,
                     selected_snapshot,
-                    source_row,
+                )
+                snapshot_inventory_row = _snapshot_strategy_inventory_row(
+                    item.lottery_type.value,
+                    item.strategy_id,
+                    item.strategy_version,
+                    selected_snapshot,
+                )
+                snapshot_target_count = (
+                    snapshot_inventory_row.get("available_target_count")
+                    if snapshot_inventory_row is not None
+                    else None
                 )
                 if (
                     item_data_status == "REBUILDABLE"
@@ -864,7 +908,10 @@ def create_replay_backfill_router(
                     "backfill_runnable": item.backfill_runnable,
                     "execution_block_reason": item.execution_block_reason,
                     "available_target_count": (
-                        source_row["available_target_count"] if source_row else 0
+                        snapshot_target_count
+                        if selected_snapshot.get("run_id") is not None
+                        and type(snapshot_target_count) is int
+                        else 0
                     ),
                     "training_status": (
                         source_row["training_status"] if source_row else _training_status(item)
@@ -986,6 +1033,18 @@ def create_replay_backfill_router(
                 stored_lottery, stored_strategy_id, stored_version = cast(
                     tuple[str, str, str], key
                 )
+                selected_snapshot = snapshots.get(stored_lottery, {})
+                snapshot_inventory_row = _snapshot_strategy_inventory_row(
+                    stored_lottery,
+                    stored_strategy_id,
+                    stored_version,
+                    selected_snapshot,
+                )
+                snapshot_target_count = (
+                    snapshot_inventory_row.get("available_target_count")
+                    if snapshot_inventory_row is not None
+                    else None
+                )
                 stored_item_row: JsonObject = {
                     **{
                         field: value
@@ -996,6 +1055,12 @@ def create_replay_backfill_router(
                     "inventory_data_status": source_row.get("data_status"),
                     "inventory_source_kind": source_row.get("source_kind"),
                     "inventory_source_locator": None,
+                    "available_target_count": (
+                        snapshot_target_count
+                        if selected_snapshot.get("run_id") is not None
+                        and type(snapshot_target_count) is int
+                        else 0
+                    ),
                     "strategy_source_identity": source_row.get("source_identity"),
                     "executable": False,
                     "reconstructable": None,
@@ -1010,8 +1075,7 @@ def create_replay_backfill_router(
                         stored_lottery,
                         stored_strategy_id,
                         stored_version,
-                        snapshots.get(stored_lottery, {}),
-                        source_row,
+                        selected_snapshot,
                     )
                 )
                 rows.append(stored_item_row)

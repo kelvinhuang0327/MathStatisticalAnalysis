@@ -462,7 +462,9 @@ def _as_json_object(value: object) -> JsonObject | None:
 
 
 def _strategy_history_view(
-    item: ReplayStrategyInventoryItem,
+    lottery_type: str,
+    strategy_id: str,
+    strategy_version: str | None,
     snapshot: JsonObject,
     stored_row: JsonObject | None,
 ) -> JsonObject:
@@ -483,9 +485,9 @@ def _strategy_history_view(
     saved_ticket_count = 0
     persisted_cell_count = 0
     exact_identity = (
-        item.lottery_type.value,
-        item.strategy_id,
-        item.strategy_version,
+        lottery_type,
+        strategy_id,
+        strategy_version,
     )
     cell_rows_value = snapshot.get("cell_status_counts", [])
     cell_rows: list[object] = (
@@ -496,7 +498,7 @@ def _strategy_history_view(
             continue
         cell_row = cast(JsonObject, cell_row_value)
         identity = (
-            cell_row.get("lottery_type", item.lottery_type.value),
+            cell_row.get("lottery_type", lottery_type),
             cell_row.get("strategy_id"),
             cell_row.get("strategy_version"),
         )
@@ -524,36 +526,43 @@ def _strategy_history_view(
             if not isinstance(row_value, dict):
                 continue
             row = cast(JsonObject, row_value)
-            strategy_id = row.get("strategy_id")
-            strategy_version = row.get("strategy_version")
-            if isinstance(strategy_id, str) and isinstance(strategy_version, str):
-                selected_keys.add((strategy_id, strategy_version))
+            selected_strategy_id = row.get("strategy_id")
+            selected_strategy_version = row.get("strategy_version")
+            if isinstance(selected_strategy_id, str) and isinstance(
+                selected_strategy_version, str
+            ):
+                selected_keys.add((selected_strategy_id, selected_strategy_version))
     for cell_row_value in cell_rows:
         if not isinstance(cell_row_value, dict):
             continue
         cell_row = cast(JsonObject, cell_row_value)
-        strategy_id = cell_row.get("strategy_id")
-        strategy_version = cell_row.get("strategy_version")
-        if isinstance(strategy_id, str) and isinstance(strategy_version, str):
-            selected_keys.add((strategy_id, strategy_version))
+        selected_strategy_id = cell_row.get("strategy_id")
+        selected_strategy_version = cell_row.get("strategy_version")
+        if isinstance(selected_strategy_id, str) and isinstance(selected_strategy_version, str):
+            selected_keys.add((selected_strategy_id, selected_strategy_version))
     is_selected = (
-        (item.strategy_id, item.strategy_version) in selected_keys
-        if item.strategy_version is not None
+        (strategy_id, strategy_version) in selected_keys
+        if strategy_version is not None
         else False
     )
     run_source_value = snapshot.get("run_source", {})
     run_source = cast(JsonObject, run_source_value) if isinstance(run_source_value, dict) else {}
     source_identity_status = run_source.get("identity_status", "UNKNOWN")
 
+    inventory_target_count = (
+        stored_row.get("available_target_count")
+        if stored_row is not None and stored_row.get("inventory_run_id") == run_id
+        else None
+    )
     target_count = (
-        stored_row.get("available_target_count", snapshot.get("target_count", 0))
-        if is_selected and stored_row is not None
+        inventory_target_count
+        if is_selected and type(inventory_target_count) is int
         else (snapshot.get("target_count", 0) if is_selected else 0)
     )
     expected_cell_count = target_count if type(target_count) is int else 0
     pending_cell_count = max(0, expected_cell_count - persisted_cell_count) if is_selected else 0
     saved_history = saved_prediction_cell_count > 0
-    identity_unknown = item.strategy_version is None and run_id is not None
+    identity_unknown = strategy_version is None and run_id is not None
     statuses: list[str] = []
     if identity_unknown or (run_id is not None and source_identity_status != "VERIFIED"):
         statuses.append("SOURCE_IDENTITY_UNKNOWN")
@@ -795,7 +804,13 @@ def create_replay_backfill_router(
                     and q.casefold() not in (item.strategy_id + " " + item.display_name).casefold()
                 ):
                     continue
-                history_view = _strategy_history_view(item, selected_snapshot, source_row)
+                history_view = _strategy_history_view(
+                    item.lottery_type.value,
+                    item.strategy_id,
+                    item.strategy_version,
+                    selected_snapshot,
+                    source_row,
+                )
                 if (
                     item_data_status == "REBUILDABLE"
                     and item.execution_capability is ReplayExecutionCapability.UNAVAILABLE
@@ -968,43 +983,39 @@ def create_replay_backfill_router(
                     ).casefold()
                 ):
                     continue
-                rows.append(
-                    {
-                        **{
-                            key: value
-                            for key, value in source_row.items()
-                            if key != "source_identity"
-                        },
-                        "inventory_lifecycle_status": source_row.get("lifecycle_status"),
-                        "inventory_data_status": source_row.get("data_status"),
-                        "inventory_source_kind": source_row.get("source_kind"),
-                        "inventory_source_locator": None,
-                        "strategy_source_identity": source_row.get("source_identity"),
-                        "reconstructable": None,
-                        "wrapper_callable": None,
-                        "backfill_native_binding": None,
-                        "backfill_native_binding_sources": [],
-                        "backfill_runnable": source_row.get("executable"),
-                        "execution_block_reason": None,
-                        "history_status": "HAS_HISTORY",
-                        "history_statuses": ["HAS_HISTORY"],
-                        "history_run_id": run_id,
-                        "history_scope": (
-                            "EXPLICIT_RUN_ID"
-                            if run_id is not None
-                            else "LATEST_RUN_BY_CREATED_AT_PER_LOTTERY_TYPE"
-                        ),
-                        "history_source_identity_status": "UNKNOWN",
-                        "history_counts": {
-                            "expected_cell_count": 0,
-                            "persisted_cell_count": 0,
-                            "saved_prediction_cell_count": 0,
-                            "saved_ticket_count": 0,
-                            "pending_cell_count": 0,
-                            "execution_status_counts": {},
-                        },
-                    }
+                stored_lottery, stored_strategy_id, stored_version = cast(
+                    tuple[str, str, str], key
                 )
+                stored_item_row: JsonObject = {
+                    **{
+                        field: value
+                        for field, value in source_row.items()
+                        if field not in {"source_identity", "inventory_run_id"}
+                    },
+                    "inventory_lifecycle_status": source_row.get("lifecycle_status"),
+                    "inventory_data_status": source_row.get("data_status"),
+                    "inventory_source_kind": source_row.get("source_kind"),
+                    "inventory_source_locator": None,
+                    "strategy_source_identity": source_row.get("source_identity"),
+                    "executable": False,
+                    "reconstructable": None,
+                    "wrapper_callable": None,
+                    "backfill_native_binding": None,
+                    "backfill_native_binding_sources": [],
+                    "backfill_runnable": False,
+                    "execution_block_reason": None,
+                }
+                stored_item_row.update(
+                    _strategy_history_view(
+                        stored_lottery,
+                        stored_strategy_id,
+                        stored_version,
+                        snapshots.get(stored_lottery, {}),
+                        source_row,
+                    )
+                )
+                rows.append(stored_item_row)
+                existing_keys.add(key)
             rows.sort(
                 key=lambda row: (
                     row["lottery_type"],

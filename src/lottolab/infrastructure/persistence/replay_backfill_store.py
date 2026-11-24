@@ -1574,17 +1574,30 @@ class SQLiteBackfillStore:
             )
 
     def stored_strategy_inventory(self, lottery_type: str) -> list[JsonObject]:
-        run_id = self.latest_run_id(lottery_type)
-        if run_id is None:
-            return []
         with self._connect() as connection:
             rows = connection.execute(
-                "SELECT lottery_type,strategy_id,strategy_version,display_name,lifecycle_status,"
-                "data_status,"
-                "source_kind,executable,available_target_count,training_status,source_identity "
-                "FROM replay_backfill_strategy_inventory WHERE lottery_type=? AND run_id=? "
-                "ORDER BY strategy_id,strategy_version",
-                (lottery_type, run_id),
+                """
+                WITH ranked AS (
+                    SELECT s.lottery_type, s.strategy_id, s.strategy_version, s.display_name,
+                           s.lifecycle_status, s.data_status, s.source_kind, s.executable,
+                           s.available_target_count, s.training_status, s.source_identity,
+                           s.run_id AS inventory_run_id,
+                           ROW_NUMBER() OVER (
+                               PARTITION BY s.lottery_type, s.strategy_id, s.strategy_version
+                               ORDER BY COALESCE(r.created_at, '') DESC, s.run_id DESC
+                           ) AS row_number
+                    FROM replay_backfill_strategy_inventory AS s
+                    LEFT JOIN replay_backfill_runs AS r ON r.run_id = s.run_id
+                    WHERE s.lottery_type = ?
+                )
+                SELECT lottery_type, strategy_id, strategy_version, display_name,
+                       lifecycle_status, data_status, source_kind, executable,
+                       available_target_count, training_status, source_identity, inventory_run_id
+                FROM ranked
+                WHERE row_number = 1
+                ORDER BY strategy_id, strategy_version
+                """,
+                (lottery_type,),
             ).fetchall()
         return [
             {
@@ -1599,6 +1612,7 @@ class SQLiteBackfillStore:
                 "available_target_count": row[8],
                 "training_status": row[9],
                 "source_identity": row[10],
+                "inventory_run_id": row[11],
             }
             for row in rows
         ]

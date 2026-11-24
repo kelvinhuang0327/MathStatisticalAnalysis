@@ -187,7 +187,8 @@ class ReplayBackfill:
             else parse_source_history_provenance_status(source_history_provenance_status)
         )
         self.store = store
-        self.controller = HistoricalReplayController(_OutcomeBlindAdapter(adapter))
+        self._blind_adapter = _OutcomeBlindAdapter(adapter)
+        self.controller = HistoricalReplayController(self._blind_adapter)
 
     def manifest(self, selection: BackfillSelection) -> JsonObject:
         targets = selection.select(self.draws)
@@ -260,6 +261,9 @@ class ReplayBackfill:
             for strategy in self.strategies
         )
         complete_by_logical_key = self.store.lookup_complete_by_logical_keys(logical_keys)
+        strategies_by_id = {s.strategy_id: s for s in self.strategies}
+        targets_by_id = {d.draw_number: d for d in selected}
+        draw_positions = {draw.draw_number: index for index, draw in enumerate(self.draws)}
         for logical_key, previous_results in complete_by_logical_key.items():
             for previous in previous_results:
                 previous_execution = previous["execution_version"]
@@ -280,13 +284,39 @@ class ReplayBackfill:
                         f"dataset_identity={self.dataset_identity!r}; "
                         "refusing unapproved recomputation"
                     )
+                lottery_type, strategy_id, strategy_version, target_draw_id = logical_key
+                strategy = strategies_by_id[strategy_id]
+                target_draw = targets_by_id.get(target_draw_id)
+                if target_draw is not None:
+                    history = self.draws[: draw_positions[target_draw.draw_number]]
+                    expected_k = self._blind_adapter.expected_native_ticket_count(
+                        strategy, history, target_draw
+                    )
+                else:
+                    expected_k = strategy.native_ticket_count
+                previous_fingerprint = previous.get("strategy_fingerprint")
+                previous_k = previous.get("expected_native_ticket_count")
+                if previous_fingerprint != strategy.fingerprint or (
+                    previous_k is not None
+                    and (previous_k != expected_k or previous_k != strategy.native_ticket_count)
+                ):
+                    raise ValueError(
+                        f"CONFLICT: replay identity semantic mismatch for "
+                        f"lottery_type={lottery_type!r}, strategy_id={strategy_id!r}, "
+                        f"strategy_version={strategy_version!r}, "
+                        f"target_draw_id={target_draw_id!r}: "
+                        f"existing fingerprint={previous_fingerprint!r}, "
+                        f"expected_native_ticket_count={previous_k!r}; "
+                        f"requested fingerprint={strategy.fingerprint!r}, "
+                        f"expected_native_ticket_count={expected_k!r}; "
+                        "refusing unsafe reuse of existing cell"
+                    )
 
         # The cross-version guard runs before prepare, because prepare writes a
         # run manifest and target inventory even when no prediction is saved.
         self.store.prepare(manifest)
         executed = 0
         existing_skipped = 0
-        draw_positions = {draw.draw_number: index for index, draw in enumerate(self.draws)}
         for batch_start in range(0, len(selected), batch_size):
             batch = selected[batch_start : batch_start + batch_size]
             committed: list[JsonObject] = []
@@ -318,23 +348,49 @@ class ReplayBackfill:
                     )
                     cell_identity = identity(
                         {
-                            "execution_version": self.execution_version,
                             "dataset_identity": self.dataset_identity,
+                            "execution_version": self.execution_version,
                             "lottery_type": self.lottery_type.value,
-                            "strategy": asdict(strategy),
+                            "strategy_id": strategy.strategy_id,
+                            "strategy_version": strategy.strategy_version,
                             "target_draw_id": target.draw_number,
                         }
                     )
                     previous = prior_results.get(unique_key)
-                    if previous is not None and not (
-                        retry_failed and previous["execution_status"] == "FAILED"
-                    ):
-                        committed.append(previous)
-                        existing_skipped += 1
-                        continue
+                    if previous is not None:
+                        previous_fingerprint = previous.get("strategy_fingerprint")
+                        previous_k = previous.get("expected_native_ticket_count")
+                        expected_k = self._blind_adapter.expected_native_ticket_count(
+                            strategy, history, target
+                        )
+                        if previous_fingerprint != strategy.fingerprint or (
+                            previous_k is not None
+                            and (
+                                previous_k != expected_k
+                                or previous_k != strategy.native_ticket_count
+                            )
+                        ):
+                            raise ValueError(
+                                f"CONFLICT: replay identity semantic mismatch for "
+                                f"lottery_type={self.lottery_type.value!r}, "
+                                f"strategy_id={strategy.strategy_id!r}, "
+                                f"strategy_version={strategy.strategy_version!r}, "
+                                f"target_draw_id={target.draw_number!r}: "
+                                f"existing fingerprint={previous_fingerprint!r}, "
+                                f"expected_native_ticket_count={previous_k!r}; "
+                                f"requested fingerprint={strategy.fingerprint!r}, "
+                                f"expected_native_ticket_count={expected_k!r}; "
+                                "refusing unsafe reuse of existing cell"
+                            )
+                        if not (retry_failed and previous["execution_status"] == "FAILED"):
+                            committed.append(previous)
+                            existing_skipped += 1
+                            continue
                     if max_cells is not None and executed + len(pending) >= max_cells:
                         break
-                    identities[strategy.strategy_id] = cell_identity
+                    identities[strategy.strategy_id] = (
+                        previous["cell_identity"] if previous is not None else cell_identity
+                    )
                     pending.append(strategy)
                 if pending:
                     result = self.controller.execute(

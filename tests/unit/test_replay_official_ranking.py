@@ -37,10 +37,16 @@ def test_exact_probability_and_replacement():
             comb(6, h) * comb(42, 6 - h - s)
             for h in range(7)
             for s in range(2)
-            if 0 <= 6 - h - s <= 42 and (h >= 3 or (h == 2 and s == 1))
+            if 0 <= 6 - h - s <= 42 and (h >= 4 or (h == 3 and s == 1) or (h == 2 and s == 1))
         ),
         comb(49, 6),
     )
+    assert (
+        single_ticket_probability("BIG_LOTTO")
+        == Fraction(203224, 13983816)
+        == Fraction(3629, 249711)
+    )
+    assert iid_period_probability("BIG_LOTTO", 2) == Fraction(1799232797, 62355583521)
     assert single_ticket_probability("POWER_LOTTO") is None
     assert iid_period_probability("POWER_LOTTO", 1) is None
     assert score_period("POWER_LOTTO", (), (), None) is None
@@ -87,8 +93,8 @@ def test_summary_rejects_mixed_tickets_duplicates_and_unknown_scoring():
     )
 
 
-def test_big_lotto_general_prize_is_included():
-    assert score_period("BIG_LOTTO", ((1, 2, 3, 8, 9, 10),), (1, 2, 3, 4, 5, 6), 7) is True
+def test_big_lotto_general_prize_is_excluded():
+    assert score_period("BIG_LOTTO", ((1, 2, 3, 8, 9, 10),), (1, 2, 3, 4, 5, 6), 7) is False
 
 
 def test_aggregate_requires_complete_saved_evidence_and_keeps_power_unknown():
@@ -125,7 +131,7 @@ def test_aggregate_requires_complete_saved_evidence_and_keeps_power_unknown():
         "tickets": [(1, "[1,2,3,8,9,10]", "[]")],
     }
     row = aggregate_ranking("BIG_LOTTO", "FULL", [target], [cell], {})[0]
-    assert (row["successes"], row["evaluated"], row["rank"], row["registered"]) == (1, 1, 1, False)
+    assert (row["successes"], row["evaluated"], row["rank"], row["registered"]) == (0, 1, 1, False)
     row = aggregate_ranking("BIG_LOTTO", "FULL", [target], [{**cell, "tickets": []}], {})[0]
     assert (row["unknown"], row["rate"], row["rank"]) == (1, None, None)
     row = aggregate_ranking("POWER_LOTTO", "FULL", [target], [cell], {})[0]

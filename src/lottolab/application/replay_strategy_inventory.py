@@ -12577,6 +12577,49 @@ _K30_MULTISEED_STAGE_SOURCE_ROWS: tuple[
 )
 
 
+def _add_k30_era_candidate_identities(
+    items: dict[tuple[LotteryType, str, str | None], _MutableItem],
+) -> int:
+    """Register exact candidate identities without asserting their source history."""
+    candidates = (
+        ("research_biglotto__k30_fixed_414665013", "RESEARCH_STRATEGY"),
+        ("research_biglotto__k30_fixed_414671103", "RESEARCH_STRATEGY"),
+        ("research_biglotto__k30_fixed_random_control_20261119_r1", "CONTROL_BASELINE"),
+    )
+    locator = "inventory:k30-era2014-candidate?source_history_provenance_status=UNKNOWN"
+    for strategy_id, role in candidates:
+        version = "v1-era2014"
+        if (LotteryType.BIG_LOTTO, strategy_id, version) in items:
+            raise ValueError("K30 era candidate conflicts with an existing inventory item")
+        _add_item(
+            items,
+            lottery_type=LotteryType.BIG_LOTTO,
+            strategy_id=strategy_id,
+            display_name="K30 era2014 候選策略",
+            strategy_version=version,
+            source_kind=_K30_MULTISEED_SOURCE_KIND,
+            source_locator=locator,
+            lifecycle_status=ReplayLifecycleStatus.UNREGISTERED_IDENTIFIED,
+            replay_data_status=ReplayDataStatus.NO_HISTORY,
+            execution_capability=ReplayExecutionCapability.UNAVAILABLE,
+            reconstruction_reason=(
+                "Stage candidate identity only; source history provenance is unknown. "
+                "History requires an exact Replay Backfill database overlay. "
+                "No current native executable binding is registered."
+            ),
+            source=_source_mapping(
+                kind=_K30_MULTISEED_SOURCE_KIND,
+                locator=locator,
+                strategy_id=strategy_id,
+                version=version,
+                mapping="exact_stage_candidate_identity",
+                status="UNKNOWN",
+            ),
+            source_statuses=(role, "UNKNOWN"),
+        )
+    return len(candidates)
+
+
 def _add_k30_multiseed_stage_identities(
     items: dict[tuple[LotteryType, str, str | None], _MutableItem],
 ) -> tuple[int, int]:
@@ -12855,6 +12898,7 @@ def load_replay_strategy_inventory(
     _add_legacy_snapshot_only_rows(items, legacy_statuses)
     imported_identity_count, imported_row_count = _add_imported_replay_identities(items)
     multiseed_identity_count, multiseed_row_count = _add_k30_multiseed_stage_identities(items)
+    era_candidate_count = _add_k30_era_candidate_identities(items)
 
     engine_evidence = _native_engine_evidence(items)
     resolved_native_binding_evidence = (
@@ -12928,8 +12972,8 @@ def load_replay_strategy_inventory(
         ),
         ReplayStrategySourceCount(
             _K30_MULTISEED_SOURCE_KIND,
-            multiseed_identity_count,
-            multiseed_row_count,
+            multiseed_identity_count + era_candidate_count,
+            multiseed_row_count + era_candidate_count,
         ),
     )
     engine_identity_count = sum(

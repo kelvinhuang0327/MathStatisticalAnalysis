@@ -2191,7 +2191,6 @@ function predictedNumbers(value: number[] | null | undefined): string {
         </template>
       </section>
       <K3ComparisonPanel v-if="backfillLotteryType === 'BIG_LOTTO'" />
-      <ReplayCoverageScan :lottery-type="backfillLotteryType" />
 
       <section class="panel replay-backfill-section" aria-labelledby="backfill-query-title">
         <h3 id="backfill-query-title">1. Query conditions</h3>
@@ -2622,6 +2621,7 @@ function predictedNumbers(value: number[] | null | undefined): string {
         </div>
       </section>
       <ReplayPairComparison v-if="backfillLotteryType === 'BIG_LOTTO'" />
+      <ReplayCoverageScan :lottery-type="backfillLotteryType" />
     </section>
   </section>
 </template>

@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { mount, flushPromises } from '@vue/test-utils'
 import { afterEach, expect, it, vi } from 'vitest'
 import ReplayCoverageScan from '../src/features/replay-history/ReplayCoverageScan.vue'

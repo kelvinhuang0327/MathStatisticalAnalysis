@@ -5,6 +5,7 @@ from math import comb
 import pytest
 
 from lottolab.application.replay_official_ranking import (
+    JsonObject,
     RankingPeriod,
     iid_period_probability,
     score_period,
@@ -248,7 +249,9 @@ def _ranking_cell(
     }
 
 
-def test_aggregate_ranking_orders_float_collision_by_exact_rate(monkeypatch):
+def test_aggregate_ranking_orders_float_collision_by_exact_rate(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     from lottolab.application import replay_official_ranking as ranking
 
     evaluated = 18_014_398_509_481_984
@@ -259,7 +262,11 @@ def test_aggregate_ranking_orders_float_collision_by_exact_rate(monkeypatch):
         )
     )
 
-    def synthetic_summary(_lottery_type, _periods, _window):
+    def synthetic_summary(
+        _lottery_type: str,
+        _periods: list[RankingPeriod],
+        _window: str,
+    ) -> JsonObject:
         _strategy_id, successes = next(synthetic_summaries)
         rate = Fraction(successes, evaluated)
         return {

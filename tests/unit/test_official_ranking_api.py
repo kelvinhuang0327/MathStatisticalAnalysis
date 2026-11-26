@@ -687,6 +687,8 @@ def test_numeric_boundary_store_aggregate_api_and_twelve_windows(
             )
             for item in targets:
                 draw_id, draw_date = item["draw_number"], item["draw_date"]
+                assert isinstance(draw_id, str)
+                assert isinstance(draw_date, str)
                 ticket = (
                     ([1, 2, 8, 9, 10] if draw_id == "31" else [1, 8, 9, 10, 11])
                     if daily

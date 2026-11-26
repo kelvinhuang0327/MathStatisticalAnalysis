@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+from collections.abc import Callable
 from datetime import date, timedelta
 from importlib.metadata import version as distribution_version
 from pathlib import Path
@@ -18,6 +19,16 @@ from lottolab.domain.replay_strategy_inventory import (
     ReplayLifecycleStatus,
 )
 from lottolab.strategies.adapters.base import CausalDrawRow, InsufficientHistory
+from lottolab.strategies.adapters.biglotto_causal_renewal_hazard import (
+    BigLottoCausalRenewalHazardK2Adapter,
+    BigLottoCausalRenewalHazardK3Adapter,
+    BigLottoCausalRenewalHazardK5Adapter,
+)
+from lottolab.strategies.adapters.biglotto_conditional_te import (
+    BigLottoConditionalTEK2Adapter,
+    BigLottoConditionalTEK3Adapter,
+    BigLottoConditionalTEK5Adapter,
+)
 
 RENEWAL_VERSION = "FIXED_DISCRETE_RENEWAL_HAZARD_V1"
 TE_VERSION = "EH02_V1"
@@ -51,6 +62,26 @@ COMMON_FINGERPRINT_SOURCES = {
     "src/lottolab/domain/prize_evaluation.py",
     "src/lottolab/strategies/adapters/base.py",
 }
+type NativeReplayImplementation = (
+    BigLottoCausalRenewalHazardK2Adapter
+    | BigLottoCausalRenewalHazardK3Adapter
+    | BigLottoCausalRenewalHazardK5Adapter
+    | BigLottoConditionalTEK2Adapter
+    | BigLottoConditionalTEK3Adapter
+    | BigLottoConditionalTEK5Adapter
+)
+NATIVE_ADAPTER_TYPES = (
+    BigLottoCausalRenewalHazardK2Adapter,
+    BigLottoCausalRenewalHazardK3Adapter,
+    BigLottoCausalRenewalHazardK5Adapter,
+    BigLottoConditionalTEK2Adapter,
+    BigLottoConditionalTEK3Adapter,
+    BigLottoConditionalTEK5Adapter,
+)
+type Prediction = tuple[tuple[int, ...], ...]
+type ProducerCallable = Callable[
+    [tuple[CausalDrawRow, ...], LotteryType], Prediction
+]
 
 
 def _draw(index: int, numbers: tuple[int, ...]) -> ReplayDraw:
@@ -88,6 +119,12 @@ def _native_bindings():
     return selected, accounts
 
 
+def _native_implementation(value: object) -> NativeReplayImplementation:
+    if not isinstance(value, NATIVE_ADAPTER_TYPES):
+        raise AssertionError("unexpected native replay implementation type")
+    return value
+
+
 def test_native_inventory_returns_six_exact_fingerprinted_bindings() -> None:
     selected, accounts = _native_bindings()
     fingerprints: set[str] = set()
@@ -95,7 +132,7 @@ def test_native_inventory_returns_six_exact_fingerprinted_bindings() -> None:
 
     for strategy_id, (version, ticket_count, class_name) in STRATEGIES_BY_ID.items():
         binding = selected[strategy_id]
-        implementation = binding.implementation
+        implementation = _native_implementation(binding.implementation)
         strategy = binding.strategy
         assert type(implementation).__name__ == class_name
         assert implementation.strategy_id == strategy_id
@@ -181,18 +218,19 @@ def test_standard_native_replay_generates_deterministically_and_scores_target_on
     observed_producer_inputs: list[tuple[str, tuple[CausalDrawRow, ...]]] = []
 
     for binding in selected.values():
-        adapter_type = type(binding.implementation)
-        original_predict = adapter_type._predict_all
+        implementation = _native_implementation(binding.implementation)
+        adapter_type = type(implementation)
+        original_predict: ProducerCallable = implementation._predict_all  # pyright: ignore[reportPrivateUsage]
 
         def capture_input(
-            implementation,
-            producer_history,
-            lottery_type,
+            implementation: NativeReplayImplementation,
+            producer_history: tuple[CausalDrawRow, ...],
+            lottery_type: LotteryType,
             *,
-            original=original_predict,
-        ):
+            original: ProducerCallable = original_predict,
+        ) -> Prediction:
             observed_producer_inputs.append((implementation.strategy_id, producer_history))
-            return original(implementation, producer_history, lottery_type)
+            return original(producer_history, lottery_type)
 
         monkeypatch.setattr(adapter_type, "_predict_all", capture_input)
 

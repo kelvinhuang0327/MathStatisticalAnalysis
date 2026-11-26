@@ -7,6 +7,7 @@ import subprocess
 import urllib.request
 from fractions import Fraction
 from pathlib import Path
+from typing import Never, cast
 
 import numpy as np
 import pytest
@@ -78,7 +79,7 @@ def test_runtime_loads_candidate_and_contract_from_project_relative_paths() -> N
 def test_candidate_model_uses_no_database_process_or_network_side_effects(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    def deny(*_args, **_kwargs):
+    def deny(*_args: object, **_kwargs: object) -> Never:
         raise AssertionError("unexpected external side effect")
 
     monkeypatch.setattr(sqlite3, "connect", deny)
@@ -108,7 +109,7 @@ def test_exact_model_values_rank_and_all_ticket_orders_match_fixed_donor_fixture
             )
         }
         expected_tickets = {k: fixture[f"renewal_rolling_750_tickets_k{k}"] for k in (2, 3, 5)}
-    model = candidate._analyze(_causal_rows(mains))
+    model = candidate._analyze(_causal_rows(mains))  # pyright: ignore[reportPrivateUsage]
     assert model.risk == tuple(tuple(int(value) for value in row) for row in expected["risk"])
     assert model.events == tuple(tuple(int(value) for value in row) for row in expected["events"])
     assert model.age_current == tuple(
@@ -174,13 +175,13 @@ def test_never_hit_numbers_use_exact_p0_and_stable_small_number_ties() -> None:
         expected_ages = fixture["renewal_constant_750_age_current"]
         expected_scores = fixture["renewal_constant_750_score"]
         expected_ranking = fixture["renewal_constant_750_ranking"]
-    model = candidate._analyze(_causal_rows(mains))
+    model = candidate._analyze(_causal_rows(mains))  # pyright: ignore[reportPrivateUsage]
     for index in range(6, 49):
         assert model.frequency[index] == int(expected_frequency[index]) == 0
         assert model.age_current[index] is None
         assert int(expected_ages[index]) == -1
         assert model.age_bucket[index] is None
-        assert model.age_hazards[index] == candidate._P0
+        assert model.age_hazards[index] == candidate._P0  # pyright: ignore[reportPrivateUsage]
         assert model.scores[index] == Fraction(str(expected_scores[index]))
     assert [number for number in model.ranking if number >= 7] == list(range(7, 50))
     assert model.ranking == tuple(int(value) for value in expected_ranking)
@@ -198,7 +199,9 @@ def test_left_truncation_and_age_bucket_boundaries_match_fixed_donor_fixture() -
         )
         boundaries = tuple(int(value) for value in fixture["renewal_age_boundaries"])
         expected_buckets = tuple(int(value) for value in fixture["renewal_age_boundary_buckets"])
-    risk, events, age, frequency, hazards = candidate._risk_sequence(sequence)
+    risk, events, age, frequency, hazards = candidate._risk_sequence(  # pyright: ignore[reportPrivateUsage]
+        sequence
+    )  # pyright: ignore[reportPrivateUsage]
     assert risk == expected_risk
     assert events == expected_events
     assert age == (None if expected_age_value == -1 else expected_age_value)
@@ -206,7 +209,10 @@ def test_left_truncation_and_age_bucket_boundaries_match_fixed_donor_fixture() -
     assert hazards == expected_hazards
     assert sum(risk) == len(sequence) - 3
     assert sum(events) == 2
-    assert tuple(candidate._age_bucket(value) for value in boundaries) == expected_buckets
+    assert tuple(
+        candidate._age_bucket(value)  # pyright: ignore[reportPrivateUsage]
+        for value in boundaries
+    ) == expected_buckets  # pyright: ignore[reportPrivateUsage]
 
 
 def test_fixed_target_cutoff_excludes_target_and_later_rows() -> None:
@@ -215,7 +221,11 @@ def test_fixed_target_cutoff_excludes_target_and_later_rows() -> None:
     captured: list[tuple[CausalDrawRow, ...]] = []
 
     class RecordingAdapter(candidate.BigLottoCausalRenewalHazardK2Adapter):
-        def _predict_all(self, history, lottery_type):
+        def _predict_all(
+            self,
+            history: tuple[CausalDrawRow, ...],
+            lottery_type: LotteryType,
+        ) -> tuple[tuple[int, ...], ...]:
             captured.append(history)
             return super()._predict_all(history, lottery_type)
 
@@ -266,4 +276,6 @@ def test_each_k_emits_exactly_legal_tickets_and_repeats_deterministically() -> N
 def test_risk_sequence_rejects_nonbinary_or_noninteger_observations() -> None:
     for sequence in ((0, 2, 1), (0, True, 1), (0, "1", 1)):
         with pytest.raises(ValueError, match="exact binary integers"):
-            candidate._risk_sequence(sequence)
+            candidate._risk_sequence(  # pyright: ignore[reportPrivateUsage]
+                cast(tuple[int, ...], sequence)
+            )

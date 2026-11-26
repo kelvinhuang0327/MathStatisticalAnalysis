@@ -142,8 +142,20 @@ def test_clipping_and_significant_negative_guard_use_fixed_donor_counts(
     frequency = y.sum(axis=0)
     real = candidate.smoothed_information
     for negative in (-1e-16, -1e-6):
-        fake = (*expected_info[:3], np.full_like(expected_info[3], negative))
-        monkeypatch.setattr(candidate, "smoothed_information", lambda _counts, value=fake: value)
+        fake: candidate.SmoothedInformation = (
+            expected_info[0],
+            expected_info[1],
+            expected_info[2],
+            np.full_like(expected_info[3], negative),
+        )
+
+        def replacement_smoothed_information(
+            _counts: candidate.IntArray,
+            value: candidate.SmoothedInformation = fake,
+        ) -> candidate.SmoothedInformation:
+            return value
+
+        monkeypatch.setattr(candidate, "smoothed_information", replacement_smoothed_information)
         if negative == -1e-16:
             output = candidate.conditional_model(counts, self_counts, current, frequency)
             assert (output[1] == 0).all() and (output[2] == 0).all()

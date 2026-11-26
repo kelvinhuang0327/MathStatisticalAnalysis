@@ -19,6 +19,11 @@ from lottolab.domain.replay_strategy_inventory import (
     ReplayLifecycleStatus,
 )
 from lottolab.strategies.adapters.base import InsufficientHistory
+from lottolab.strategies.adapters.biglotto_causal_renewal_hazard import (
+    BigLottoCausalRenewalHazardK2Adapter,
+    BigLottoCausalRenewalHazardK3Adapter,
+    BigLottoCausalRenewalHazardK5Adapter,
+)
 
 STRATEGY_VERSION = "FIXED_DISCRETE_RENEWAL_HAZARD_V1"
 STRATEGIES_BY_K = {
@@ -26,6 +31,11 @@ STRATEGIES_BY_K = {
     3: "research_causal_renewal_hazard_k3",
     5: "research_causal_renewal_hazard_k5",
 }
+RenewalAdapterImplementation = (
+    BigLottoCausalRenewalHazardK2Adapter
+    | BigLottoCausalRenewalHazardK3Adapter
+    | BigLottoCausalRenewalHazardK5Adapter
+)
 
 
 def _draw(index: int, numbers: tuple[int, ...]) -> ReplayDraw:
@@ -59,13 +69,26 @@ def _renewal_bindings():
     return selected, accounts
 
 
+def _renewal_implementation(value: object) -> RenewalAdapterImplementation:
+    if not isinstance(
+        value,
+        (
+            BigLottoCausalRenewalHazardK2Adapter,
+            BigLottoCausalRenewalHazardK3Adapter,
+            BigLottoCausalRenewalHazardK5Adapter,
+        ),
+    ):
+        raise AssertionError("unexpected Renewal Hazard implementation type")
+    return value
+
+
 def test_native_inventory_binds_exact_k_version_behavior_and_fingerprint() -> None:
     bindings, accounts = _renewal_bindings()
     fingerprints: set[str] = set()
 
     for ticket_count, strategy_id in STRATEGIES_BY_K.items():
         binding = bindings[strategy_id]
-        implementation = binding.implementation
+        implementation = _renewal_implementation(binding.implementation)
         strategy = binding.strategy
 
         assert implementation.strategy_id == strategy_id

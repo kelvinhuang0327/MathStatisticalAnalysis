@@ -11,11 +11,11 @@ from collections.abc import Callable
 from dataclasses import asdict
 from importlib.metadata import version as distribution_version
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, Literal, cast
 
 from lottolab.application.historical_replay_adapters import (
+    NativeReplayStrategyImplementation,
     ReplayStrategyBinding,
-    ReplayStrategyImplementation,
     binding_from_implementation,
     binding_from_p638_spec,
     t539_replay_bindings,
@@ -76,9 +76,9 @@ _NATIVE_FINGERPRINT_ALGORITHM_SOURCES = {
 
 
 def _native_implementation_fingerprint(
-    implementation: ReplayStrategyImplementation,
+    implementation: NativeReplayStrategyImplementation,
     *,
-    algorithm: str,
+    algorithm: Literal["renewal_hazard", "conditional_te"],
 ) -> tuple[str, dict[str, str], dict[str, str]]:
     """Fingerprint one exact adapter against its native Replay contracts."""
 

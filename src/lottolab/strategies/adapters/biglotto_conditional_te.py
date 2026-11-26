@@ -2,32 +2,49 @@
 
 from __future__ import annotations
 
+from typing import Any, ClassVar
+
 import numpy as np
+from numpy.typing import NDArray
 
 from lottolab.domain.draws import LotteryType
 from lottolab.strategies.adapters.base import CausalDrawRow, PortfolioBetAdapter
 
 IMPLEMENTATION_IDENTITY = "conditional_te_native_adapter_v1"
 
+type IntArray = NDArray[np.int64]
+type FloatArray = NDArray[np.floating[Any]]
+type ModelScores = dict[str, FloatArray]
+type SmoothedInformation = tuple[FloatArray, FloatArray, FloatArray, FloatArray]
+type ConditionalModel = tuple[
+    ModelScores,
+    FloatArray,
+    FloatArray,
+    FloatArray,
+    FloatArray,
+    FloatArray,
+]
+type ScoreHistory = tuple[IntArray, IntArray, ConditionalModel]
 
-def joint_counts(window):
+
+def joint_counts(window: IntArray) -> IntArray:
     """Dense code histogram, independent from the auditor's integer bitsets."""
     prev, nxt = np.asarray(window[:-1], dtype=np.int64), np.asarray(window[1:], dtype=np.int64)
     assert len(prev) == 749
-    m = prev.shape[1]
+    m: int = prev.shape[1]
     code = 4 * prev[:, :, None] + 2 * prev[:, None, :] + nxt[:, None, :]
     offsets = 8 * np.arange(m * m).reshape(m, m)
     return np.bincount((code + offsets).ravel(), minlength=m * m * 8).reshape(m, m, 2, 2, 2)
 
 
-def own_counts(window):
+def own_counts(window: IntArray) -> IntArray:
     prev, nxt = window[:-1], window[1:]
-    m = prev.shape[1]
+    m: int = prev.shape[1]
     code = np.arange(m)[None, :] * 4 + prev * 2 + nxt
     return np.bincount(code.ravel(), minlength=m * 4).reshape(m, 2, 2)
 
 
-def smoothed_information(counts):
+def smoothed_information(counts: IntArray) -> SmoothedInformation:
     """The fixed eight-cell distribution and its two consistent marginals."""
     assert np.issubdtype(counts.dtype, np.integer) and np.all(counts >= 0)
     assert np.all(counts.sum(axis=(2, 3, 4)) == 749)
@@ -41,7 +58,12 @@ def smoothed_information(counts):
     return joint, px, marginal, raw_te
 
 
-def conditional_model(counts, self_counts, current, frequency):
+def conditional_model(
+    counts: IntArray,
+    self_counts: IntArray,
+    current: IntArray,
+    frequency: IntArray,
+) -> ConditionalModel:
     """Single fixed smoothed joint distribution; natural log, no TE search."""
     n = len(current)
     off = ~np.eye(n, dtype=bool)
@@ -76,24 +98,26 @@ def conditional_model(counts, self_counts, current, frequency):
     )
 
 
-def score_history(y, t):
+def score_history(y: IntArray, t: int) -> ScoreHistory:
     w = y[t - 750 : t]
     c = joint_counts(w)
     s = own_counts(w)
     return c, s, conditional_model(c, s, w[-1], w.sum(axis=0))
 
 
-def tickets_from_score(score, k):
+def tickets_from_score(score: FloatArray, k: int) -> list[list[int]]:
     rank = sorted(range(1, 50), key=lambda n: (-float(score[n - 1]), n))
     return [sorted(rank[i : i + 6]) for i in range(0, 6 * k, 6)]
 
 
 class _ConditionalTEAdapter(PortfolioBetAdapter):
     strategy_name = "Conditional transfer entropy"
-    strategy_version = "EH02_V1"
+    strategy_id: ClassVar[str]
+    strategy_version: ClassVar[str] = "EH02_V1"
     implementation_identity = IMPLEMENTATION_IDENTITY
-    min_history = 750
-    supported_lottery_types = (LotteryType.BIG_LOTTO,)
+    native_ticket_count: ClassVar[int]
+    min_history: ClassVar[int] = 750
+    supported_lottery_types: ClassVar[tuple[LotteryType, ...]] = (LotteryType.BIG_LOTTO,)
 
     def _history_window(self, history: tuple[object, ...]) -> tuple[object, ...]:
         return history[-750:]
@@ -112,15 +136,15 @@ class _ConditionalTEAdapter(PortfolioBetAdapter):
 
 
 class BigLottoConditionalTEK2Adapter(_ConditionalTEAdapter):
-    strategy_id = "research_conditional_transfer_entropy_k2"
-    native_ticket_count = 2
+    strategy_id: ClassVar[str] = "research_conditional_transfer_entropy_k2"
+    native_ticket_count: ClassVar[int] = 2
 
 
 class BigLottoConditionalTEK3Adapter(_ConditionalTEAdapter):
-    strategy_id = "research_conditional_transfer_entropy_k3"
-    native_ticket_count = 3
+    strategy_id: ClassVar[str] = "research_conditional_transfer_entropy_k3"
+    native_ticket_count: ClassVar[int] = 3
 
 
 class BigLottoConditionalTEK5Adapter(_ConditionalTEAdapter):
-    strategy_id = "research_conditional_transfer_entropy_k5"
-    native_ticket_count = 5
+    strategy_id: ClassVar[str] = "research_conditional_transfer_entropy_k5"
+    native_ticket_count: ClassVar[int] = 5

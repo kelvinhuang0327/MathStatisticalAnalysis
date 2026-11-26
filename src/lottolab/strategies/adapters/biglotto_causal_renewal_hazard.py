@@ -146,6 +146,7 @@ def _tickets_for_rank(ranking: tuple[int, ...], ticket_count: int) -> tuple[tupl
 class _BigLottoCausalRenewalHazardAdapter(PortfolioBetAdapter):
     """Shared adapter mechanics; subclasses own distinct strategy identities."""
 
+    implementation_identity: ClassVar[str]
     strategy_name: ClassVar[str] = "大樂透固定 Renewal Hazard 原生候選"
     strategy_version: ClassVar[str] = _STRATEGY_VERSION
     min_history: ClassVar[int] = _HISTORY_WINDOW

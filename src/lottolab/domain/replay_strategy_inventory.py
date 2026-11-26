@@ -140,6 +140,7 @@ class ReplayStrategyInventoryItem:
     alias_or_identity_mapping: tuple[ReplayStrategyIdentityMapping, ...]
     adapter_mapping: ReplayStrategyAdapterMapping | None = None
     source_statuses: tuple[str, ...] = ()
+    native_ticket_count: int | None = None
     historical_execution_count: int = 0
     reconstructable: bool | None = None
     wrapper_callable: bool | None = None
@@ -164,6 +165,10 @@ class ReplayStrategyInventoryItem:
             type(self.strategy_version) is not str or not self.strategy_version.strip()
         ):
             raise ValueError("strategy_version must be non-blank when supplied")
+        if self.native_ticket_count is not None and (
+            type(self.native_ticket_count) is not int or self.native_ticket_count < 1
+        ):
+            raise ValueError("native_ticket_count must be a positive integer when supplied")
         for field_name, enum_type in (
             ("lifecycle_status", ReplayLifecycleStatus),
             ("replay_data_status", ReplayDataStatus),

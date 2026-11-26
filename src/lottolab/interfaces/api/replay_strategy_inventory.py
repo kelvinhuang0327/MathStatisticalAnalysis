@@ -86,6 +86,7 @@ class ReplayStrategyInventoryItemView(BaseModel):
     execution_block_reason: str | None
     reconstruction_reason: str
     historical_data_count: int = Field(ge=0)
+    native_ticket_count: int | None = None
     historical_execution_count: int = Field(ge=0)
     alias_or_identity_mapping: tuple[ReplayStrategyIdentityMappingView, ...]
     adapter_mapping: ReplayStrategyAdapterMappingView | None
@@ -201,6 +202,7 @@ def _item_view(item: ReplayStrategyInventoryItem) -> ReplayStrategyInventoryItem
         execution_block_reason=item.execution_block_reason,
         reconstruction_reason=item.reconstruction_reason,
         historical_data_count=item.historical_data_count,
+        native_ticket_count=item.native_ticket_count,
         historical_execution_count=item.historical_execution_count,
         alias_or_identity_mapping=tuple(
             _identity_mapping_view(mapping) for mapping in item.alias_or_identity_mapping

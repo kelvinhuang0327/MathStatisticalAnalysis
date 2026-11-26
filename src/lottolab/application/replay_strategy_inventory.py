@@ -78,6 +78,7 @@ class _MutableItem:
     reconstruction_reason: str
     historical_data_count: int = 0
     historical_execution_count: int = 0
+    native_ticket_count: int | None = None
     source_statuses: set[str] = field(default_factory=lambda: set())
     sources: dict[
         tuple[str, str, str, str | None, str, str | None], ReplayStrategyIdentityMapping
@@ -131,6 +132,7 @@ class _MutableItem:
             alias_or_identity_mapping=sources,
             adapter_mapping=self.adapter_mapping,
             source_statuses=tuple(sorted(self.source_statuses)),
+            native_ticket_count=self.native_ticket_count,
             historical_execution_count=self.historical_execution_count,
             reconstructable=self.reconstructable,
             wrapper_callable=self.wrapper_callable,
@@ -226,6 +228,7 @@ def _add_item(
     source: ReplayStrategyIdentityMapping,
     adapter_mapping: ReplayStrategyAdapterMapping | None = None,
     source_statuses: tuple[str, ...] = (),
+    native_ticket_count: int | None = None,
 ) -> _MutableItem:
     key = _identity_key(lottery_type, strategy_id, strategy_version)
     item = items.get(key)
@@ -254,6 +257,12 @@ def _add_item(
             item.adapter_mapping.strategy_version != strategy_version
         ):
             raise ValueError("adapter identity conflicts with the canonical strategy version")
+    if native_ticket_count is not None:
+        if type(native_ticket_count) is not int or native_ticket_count < 1:
+            raise ValueError("native_ticket_count must be a positive integer")
+        if item.native_ticket_count not in (None, native_ticket_count):
+            raise ValueError("native ticket count conflicts with the canonical strategy identity")
+        item.native_ticket_count = native_ticket_count
     item.add_source(source)
     item.source_statuses.update(source_statuses)
     return item
@@ -1403,6 +1412,10 @@ def _apply_execution_capabilities(
             item.execution_block_reason = None
 
 
+_IMPORTED_REPLAY_SOURCE_KIND = "REPLAY_BACKFILL_IMPORTED_RESULT"
+_HISTORICAL_RESEARCH_SOURCE_KIND = "HISTORICAL_RESEARCH_ARTIFACT"
+
+
 @dataclass(frozen=True, slots=True)
 class _ImportedReplayIdentitySpec:
     lottery_type: LotteryType
@@ -1412,6 +1425,9 @@ class _ImportedReplayIdentitySpec:
     source_locator: str
     reconstruction_reason: str
     source_status: str | None = None
+    source_kind: str = _IMPORTED_REPLAY_SOURCE_KIND
+    additional_source_statuses: tuple[str, ...] = ()
+    native_ticket_count: int | None = None
 
 
 _IMPORTED_HISTORY_ONLY_REASON = (
@@ -1427,8 +1443,7 @@ _IMPORTED_REPLAY_IDENTITIES: tuple[_ImportedReplayIdentitySpec, ...] = (
         display_name="Cluster Cover v0.2 (歷史研究結果)",
         strategy_version="v0.2-research-frequency100",
         source_locator=(
-            "research-store-saved-k3-projection-v1:"
-            "cluster-cover-v0.2-research-frequency100"
+            "research-store-saved-k3-projection-v1:cluster-cover-v0.2-research-frequency100"
         ),
         reconstruction_reason=(
             "Saved research-only variant; replay history is available only when an exact "
@@ -1671,9 +1686,93 @@ _IMPORTED_REPLAY_IDENTITIES: tuple[_ImportedReplayIdentitySpec, ...] = (
             (25, "7928789e94bbac4aecc258b3bb2f6abbe6480c260d3cdc16d12caff16f54d814"),
         )
     ),
+    _ImportedReplayIdentitySpec(
+        lottery_type=LotteryType.BIG_LOTTO,
+        strategy_id="research_biglotto_eh03_k5_saved_portfolio_gate_v1",
+        display_name="EH03 Recurrence State Gate K5（歷史研究）",  # noqa: RUF001
+        strategy_version="v1.0.0",
+        source_kind=_HISTORICAL_RESEARCH_SOURCE_KIND,
+        source_locator=(
+            "historical-research-artifact:NUMBER2_D_EH03_K5_RECURRENCE_REPLAY_20261125_R1"
+        ),
+        reconstruction_reason=(
+            "Historical research identity from an unverified saved-portfolio artifact. "
+            "Formal history is shown only from an exact Replay Backfill database overlay; "
+            "no current native Replay Engine binding is registered."
+        ),
+        source_status="RESEARCH_STRATEGY",
+        additional_source_statuses=("UNVERIFIED",),
+        native_ticket_count=5,
+    ),
+    _ImportedReplayIdentitySpec(
+        lottery_type=LotteryType.BIG_LOTTO,
+        strategy_id="research_biglotto_eh12_k5_saved_portfolio_gate_v1",
+        display_name="EH12 Wasserstein Window Shift K5（歷史研究）",  # noqa: RUF001
+        strategy_version="v1.0.0",
+        source_kind=_HISTORICAL_RESEARCH_SOURCE_KIND,
+        source_locator=(
+            "historical-research-artifact:NUMBER2_D_EH12_K5_WASSERSTEIN_REPLAY_20261125_R1"
+        ),
+        reconstruction_reason=(
+            "Historical research identity from an unverified saved-portfolio artifact. "
+            "Formal history is shown only from an exact Replay Backfill database overlay; "
+            "no current native Replay Engine binding is registered."
+        ),
+        source_status="RESEARCH_STRATEGY",
+        additional_source_statuses=("UNVERIFIED",),
+        native_ticket_count=5,
+    ),
+    _ImportedReplayIdentitySpec(
+        lottery_type=LotteryType.BIG_LOTTO,
+        strategy_id="research_biglotto_eh06_k5_event_kernel_gate_v1",
+        display_name="EH06 Event Kernel Gate K5（歷史研究）",  # noqa: RUF001
+        strategy_version="v1.0.0",
+        source_kind=_HISTORICAL_RESEARCH_SOURCE_KIND,
+        source_locator=(
+            "historical-research-artifact:NUMBER2_D_EH06_K5_EVENT_KERNEL_REPLAY_20261126_R1"
+        ),
+        reconstruction_reason=(
+            "Unverified five-ticket historical research identity. Formal history is shown only "
+            "from an exact Replay Backfill database overlay; no native Replay Engine binding "
+            "is registered."
+        ),
+        source_status="RESEARCH_STRATEGY",
+        additional_source_statuses=("UNVERIFIED",),
+        native_ticket_count=5,
+    ),
+    _ImportedReplayIdentitySpec(
+        lottery_type=LotteryType.BIG_LOTTO,
+        strategy_id="research_biglotto_eh07_k5_nvar_gate_v1",
+        display_name="EH07 NVAR Gate K5（歷史研究）",  # noqa: RUF001
+        strategy_version="v1.0.0",
+        source_kind=_HISTORICAL_RESEARCH_SOURCE_KIND,
+        source_locator="historical-research-artifact:NUMBER2_D_EH07_K5_NVAR_REPLAY_20261126_R1",
+        reconstruction_reason=(
+            "Unverified five-ticket historical research identity. Formal history is shown only "
+            "from an exact Replay Backfill database overlay; no native Replay Engine binding "
+            "is registered."
+        ),
+        source_status="RESEARCH_STRATEGY",
+        additional_source_statuses=("UNVERIFIED",),
+        native_ticket_count=5,
+    ),
+    _ImportedReplayIdentitySpec(
+        lottery_type=LotteryType.BIG_LOTTO,
+        strategy_id="research_biglotto_eh11_k5_saved_portfolio_gate_v1",
+        display_name="EH11 MMD Gate K5（歷史研究）",  # noqa: RUF001
+        strategy_version="v1.0.0",
+        source_kind=_HISTORICAL_RESEARCH_SOURCE_KIND,
+        source_locator="historical-research-artifact:NUMBER2_D_EH11_K5_MMD_REPLAY_20261126_R1",
+        reconstruction_reason=(
+            "Unverified five-ticket historical research identity. Formal history is shown only "
+            "from an exact Replay Backfill database overlay; no native Replay Engine binding "
+            "is registered."
+        ),
+        source_status="RESEARCH_STRATEGY",
+        additional_source_statuses=("UNVERIFIED",),
+        native_ticket_count=5,
+    ),
 )
-
-_IMPORTED_REPLAY_SOURCE_KIND = "REPLAY_BACKFILL_IMPORTED_RESULT"
 
 _K30_MULTISEED_SOURCE_KIND = "REPLAY_BACKFILL_STAGE_CANDIDATE"
 _K30_MULTISEED_IDENTITY_REASON = (
@@ -1681,9 +1780,7 @@ _K30_MULTISEED_IDENTITY_REASON = (
     "not been imported into the formal Replay Backfill database, so this row does not claim "
     "formal history or a native executable/backfill binding."
 )
-_K30_MULTISEED_RUN_PARTITION_BY_STAGE: dict[
-    str, tuple[str, str, int, int, int, int, bool, str]
-] = {
+_K30_MULTISEED_RUN_PARTITION_BY_STAGE: dict[str, tuple[str, str, int, int, int, int, bool, str]] = {
     "number2_k30_era_fullseed_0100_0124_20261123_r1": (
         "b6d3fce679f8aefc6df4cab6db80941278ce5dc7c7d5cfd365149bc7cf3d03e7",
         "efd9a41c989537a4b1fa53db0f26e1c9707862dfe53b9f4ddaacceeb89e79bd4",
@@ -12663,9 +12760,7 @@ def _add_k30_multiseed_stage_identities(
                     or initial_complete_targets != initial_expected_targets
                     or not link_verified
                 ):
-                    run_binding = (
-                        f"run_ids={','.join(run_ids)}&seed_to_run_binding=UNRESOLVED"
-                    )
+                    run_binding = f"run_ids={','.join(run_ids)}&seed_to_run_binding=UNRESOLVED"
                 else:
                     run_binding = (
                         f"initial_run_id={initial_run_id}"
@@ -12707,28 +12802,33 @@ def _add_k30_multiseed_stage_identities(
     return len(identities), len(_K30_MULTISEED_STAGE_SOURCE_ROWS)
 
 
-
 def _add_imported_replay_identities(
     items: dict[tuple[LotteryType, str, str | None], _MutableItem],
 ) -> tuple[int, int]:
     """Register static imported replay-only strategy identities without fabrication."""
 
     for spec in _IMPORTED_REPLAY_IDENTITIES:
-        source_statuses = (spec.source_status,) if spec.source_status is not None else ()
+        source_statuses = tuple(
+            dict.fromkeys(
+                status
+                for status in (spec.source_status, *spec.additional_source_statuses)
+                if status is not None
+            )
+        )
         _add_item(
             items,
             lottery_type=spec.lottery_type,
             strategy_id=spec.strategy_id,
             display_name=spec.display_name,
             strategy_version=spec.strategy_version,
-            source_kind=_IMPORTED_REPLAY_SOURCE_KIND,
+            source_kind=spec.source_kind,
             source_locator=spec.source_locator,
             lifecycle_status=ReplayLifecycleStatus.UNREGISTERED_IDENTIFIED,
             replay_data_status=ReplayDataStatus.NO_HISTORY,
             execution_capability=ReplayExecutionCapability.UNAVAILABLE,
             reconstruction_reason=spec.reconstruction_reason,
             source=_source_mapping(
-                kind=_IMPORTED_REPLAY_SOURCE_KIND,
+                kind=spec.source_kind,
                 locator=spec.source_locator,
                 strategy_id=spec.strategy_id,
                 version=spec.strategy_version,
@@ -12737,6 +12837,7 @@ def _add_imported_replay_identities(
             ),
             adapter_mapping=None,
             source_statuses=source_statuses,
+            native_ticket_count=spec.native_ticket_count,
         )
     count = len(_IMPORTED_REPLAY_IDENTITIES)
     return count, count
@@ -12967,8 +13068,27 @@ def load_replay_strategy_inventory(
         ),
         ReplayStrategySourceCount(
             _IMPORTED_REPLAY_SOURCE_KIND,
-            imported_identity_count,
-            imported_row_count,
+            imported_identity_count
+            - sum(
+                spec.source_kind == _HISTORICAL_RESEARCH_SOURCE_KIND
+                for spec in _IMPORTED_REPLAY_IDENTITIES
+            ),
+            imported_row_count
+            - sum(
+                spec.source_kind == _HISTORICAL_RESEARCH_SOURCE_KIND
+                for spec in _IMPORTED_REPLAY_IDENTITIES
+            ),
+        ),
+        ReplayStrategySourceCount(
+            _HISTORICAL_RESEARCH_SOURCE_KIND,
+            sum(
+                spec.source_kind == _HISTORICAL_RESEARCH_SOURCE_KIND
+                for spec in _IMPORTED_REPLAY_IDENTITIES
+            ),
+            sum(
+                spec.source_kind == _HISTORICAL_RESEARCH_SOURCE_KIND
+                for spec in _IMPORTED_REPLAY_IDENTITIES
+            ),
         ),
         ReplayStrategySourceCount(
             _K30_MULTISEED_SOURCE_KIND,

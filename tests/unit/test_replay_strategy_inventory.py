@@ -43,19 +43,36 @@ def test_inventory_conserves_sources_and_executable_identities() -> None:
             "research_biglotto__k30_fixed_random_control_20261119_r1",
         )
     }
-    preserved_main_identities = actual_identity_set - seed_identity_set - era_identities
+    eh5_identities = {
+        (LotteryType.BIG_LOTTO, strategy_id, "v1.0.0")
+        for strategy_id in (
+            "research_biglotto_eh03_k5_saved_portfolio_gate_v1",
+            "research_biglotto_eh06_k5_event_kernel_gate_v1",
+            "research_biglotto_eh07_k5_nvar_gate_v1",
+            "research_biglotto_eh11_k5_saved_portfolio_gate_v1",
+            "research_biglotto_eh12_k5_saved_portfolio_gate_v1",
+        )
+    }
+    preserved_main_identities = (
+        actual_identity_set - seed_identity_set - era_identities - eh5_identities
+    )
 
     assert seed_identity_count == 1000
-    assert inventory.total_discovered_strategies == 768 + seed_identity_count
-    assert inventory.total_unique_strategies == _BASE_MAIN_IDENTITY_COUNT + seed_identity_count + 3
+    assert inventory.total_discovered_strategies == 773 + seed_identity_count
+    assert inventory.total_unique_strategies == _BASE_MAIN_IDENTITY_COUNT + seed_identity_count + 8
     assert (
         len(actual_identity_set)
         == len(inventory.items)
-        == _BASE_MAIN_IDENTITY_COUNT + seed_identity_count + 3
+        == _BASE_MAIN_IDENTITY_COUNT + seed_identity_count + 8
     )
-    assert len(actual_identity_set) == len(preserved_main_identities) + len(seed_identity_set) + 3
+    assert len(actual_identity_set) == (
+        len(preserved_main_identities) + len(seed_identity_set) + 3 + len(eh5_identities)
+    )
     assert seed_identity_set.isdisjoint(preserved_main_identities)
-    assert actual_identity_set == preserved_main_identities | seed_identity_set | era_identities
+    assert eh5_identities.isdisjoint(preserved_main_identities)
+    assert actual_identity_set == (
+        preserved_main_identities | seed_identity_set | era_identities | eh5_identities
+    )
     assert len(preserved_main_identities) == _BASE_MAIN_IDENTITY_COUNT
     assert _identity_set_sha256(preserved_main_identities) == (
         "d57aff547491e137fa31bdd509177ad64abdaa18311a07914cf9c46780653809"
@@ -71,6 +88,8 @@ def test_inventory_conserves_sources_and_executable_identities() -> None:
     assert source_counts["STRATEGY_ADAPTER_CODE"].source_row_count == 107
     assert source_counts["REPLAY_BACKFILL_IMPORTED_RESULT"].source_identity_count == 50
     assert source_counts["REPLAY_BACKFILL_IMPORTED_RESULT"].source_row_count == 50
+    assert source_counts["HISTORICAL_RESEARCH_ARTIFACT"].source_identity_count == 5
+    assert source_counts["HISTORICAL_RESEARCH_ARTIFACT"].source_row_count == 5
     assert (
         source_counts["REPLAY_BACKFILL_STAGE_CANDIDATE"].source_identity_count
         == seed_identity_count + 3
@@ -80,7 +99,7 @@ def test_inventory_conserves_sources_and_executable_identities() -> None:
     lottery_counts = Counter(item.lottery_type for item in inventory.items)
     executable_by_lottery = Counter(item.lottery_type for item in inventory.executable_items)
     assert lottery_counts == {
-        LotteryType.BIG_LOTTO: 417 + seed_identity_count,
+        LotteryType.BIG_LOTTO: 422 + seed_identity_count,
         LotteryType.DAILY_539: 62,
         LotteryType.POWER_LOTTO: 34,
     }
@@ -118,7 +137,7 @@ def test_inventory_keeps_status_dimensions_and_unavailable_cases_separate() -> N
         ReplayDataStatus.REBUILDABLE: 224,
         ReplayDataStatus.ARTIFACT_ONLY: 135,
         ReplayDataStatus.REJECTED: 74,
-        ReplayDataStatus.NO_HISTORY: 75 + len(_seed_identity_tuples()),
+        ReplayDataStatus.NO_HISTORY: 80 + len(_seed_identity_tuples()),
         ReplayDataStatus.CODE_ONLY: 5,
     }
 

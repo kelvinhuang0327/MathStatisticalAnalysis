@@ -142,6 +142,7 @@ class ReplayBackfillStrategyItemView(BaseModel):
     source_kind: str
     executable: bool
     available_target_count: int = Field(ge=0)
+    native_ticket_count: int | None = None
     training_status: str
     inventory_lifecycle_status: str | None = None
     inventory_data_status: str | None = None
@@ -984,6 +985,7 @@ def create_replay_backfill_router(
                         and type(snapshot_target_count) is int
                         else 0
                     ),
+                    "native_ticket_count": item.native_ticket_count,
                     "training_status": (
                         source_row["training_status"] if source_row else _training_status(item)
                     ),
@@ -1101,9 +1103,7 @@ def create_replay_backfill_router(
                     ).casefold()
                 ):
                     continue
-                stored_lottery, stored_strategy_id, stored_version = cast(
-                    tuple[str, str, str], key
-                )
+                stored_lottery, stored_strategy_id, stored_version = cast(tuple[str, str, str], key)
                 selected_snapshot = snapshots.get(stored_lottery, {})
                 snapshot_inventory_row = _snapshot_strategy_inventory_row(
                     stored_lottery,

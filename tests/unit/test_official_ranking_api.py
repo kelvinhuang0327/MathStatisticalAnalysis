@@ -639,3 +639,174 @@ def test_manifest_scope_excludes_history_and_keeps_missing_targets_unknown(
         r["evaluated"] == 0 and r["rate"] is None and r["rank"] is None for r in undetermined
     )
     assert all("窗口無法判定" in r["unknown_reason"] for r in undetermined)
+
+
+def test_numeric_boundary_store_aggregate_api_and_twelve_windows(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import lottolab.application.replay_official_ranking as ranking
+
+    database = tmp_path / "numeric-boundary.sqlite3"
+    # This is the independent expected target table, deliberately in reverse order.
+    target_table = [(str(i), "2024-01-01") for i in (9, 10, 31)] + [
+        (f"later-{i:02}", (date(2024, 1, 1) + timedelta(days=i)).isoformat()) for i in range(1, 50)
+    ]
+    with sqlite3.connect(database) as conn:
+        conn.executescript(SCHEMA_SQL)
+        conn.execute(
+            "INSERT INTO replay_backfill_schema VALUES (?,?)", (SCHEMA_VERSION, SCHEMA_CHECKSUM)
+        )
+        for lottery in ("BIG_LOTTO", "POWER_LOTTO", "DAILY_539"):
+            daily = lottery == "DAILY_539"
+            winning = [1, 2, 3, 4, 5] if daily else [1, 2, 3, 4, 5, 6]
+            special = None if daily else 7
+            targets = [
+                {
+                    "draw_number": i,
+                    "draw_date": d,
+                    "main_numbers": winning,
+                    "special_numbers": [] if daily else [7],
+                    "source_identity": "source",
+                }
+                for i, d in reversed(target_table)
+            ]
+            conn.execute(
+                "INSERT INTO replay_backfill_runs(run_id,manifest_json,expected_cells) "
+                "VALUES (?,?,?)",
+                (
+                    lottery,
+                    json.dumps(
+                        {
+                            "lottery_type": lottery,
+                            "target_draw_ids": [t["draw_number"] for t in targets],
+                            "targets": targets,
+                        }
+                    ),
+                    len(targets),
+                ),
+            )
+            for item in targets:
+                draw_id, draw_date = item["draw_number"], item["draw_date"]
+                assert isinstance(draw_id, str)
+                assert isinstance(draw_date, str)
+                ticket = (
+                    ([1, 2, 8, 9, 10] if draw_id == "31" else [1, 8, 9, 10, 11])
+                    if daily
+                    else ([1, 2, 7, 8, 9, 10] if draw_id == "31" else [1, 8, 9, 10, 11, 12])
+                )
+                ident = lottery + draw_id
+                payload = {
+                    "expected_native_ticket_count": 1,
+                    "predicted_tickets": [
+                        {"ticket_position": 1, "main_numbers": ticket, "special_number": None}
+                    ],
+                    "winning_numbers": {"main_numbers": winning, "special_number": special},
+                }
+                conn.execute(
+                    "INSERT INTO replay_backfill_targets VALUES (?,?,?,?,?,?,?)",
+                    (
+                        lottery,
+                        lottery,
+                        draw_id,
+                        draw_date,
+                        json.dumps(winning),
+                        json.dumps([] if daily else [7]),
+                        "source",
+                    ),
+                )
+                conn.execute(
+                    "INSERT INTO replay_backfill_cells(cell_identity,lottery_type,strategy_id,"
+                    "strategy_version,execution_version,dataset_identity,target_draw_id,"
+                    "target_draw_date,execution_status,result_identity,payload_json) "
+                    "VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+                    (
+                        ident,
+                        lottery,
+                        "s",
+                        "v",
+                        "e",
+                        "d",
+                        draw_id,
+                        draw_date,
+                        "COMPLETE",
+                        "result",
+                        json.dumps(payload),
+                    ),
+                )
+                conn.execute("INSERT INTO replay_backfill_run_cells VALUES (?,?)", (lottery, ident))
+                conn.execute(
+                    "INSERT INTO replay_backfill_tickets(cell_identity,ticket_position,"
+                    "main_numbers_json,special_numbers_json) VALUES (?,?,?,?)",
+                    (ident, 1, json.dumps(ticket), "[]"),
+                )
+    monkeypatch.setattr(store_module, "validate_database_path", lambda p: p)
+    monkeypatch.setattr(
+        api_module,
+        "project_database_environment",
+        lambda _: {"LOTTOLAB_REPLAY_BACKFILL_DB": str(database)},
+    )
+    monkeypatch.setattr(
+        api_module, "load_replay_strategy_inventory", lambda: SimpleNamespace(items=[])
+    )
+    store = SQLiteBackfillStore(database, read_only=True)
+    app = FastAPI()
+    app.include_router(api_module.create_replay_backfill_router(store))
+    client = TestClient(app)
+    numeric_key = ranking.ranking_target_sort_key
+    results = {}
+    for lottery in ("BIG_LOTTO", "POWER_LOTTO", "DAILY_539"):
+        for window in ("FULL", "RECENT_750", "RECENT_300", "RECENT_50"):
+            variants = []
+            for key in (lambda d, i: (d, i), numeric_key):
+                monkeypatch.setattr(ranking, "ranking_target_sort_key", key)
+                monkeypatch.setattr(store_module, "ranking_target_sort_key", key)
+                with store.official_ranking_data(lottery, window) as (targets, cells):
+                    selected_cells = list(cells)
+                    rows = aggregate_ranking(lottery, window, targets, selected_cells, {})
+                response = client.get(
+                    "/api/v1/replay-backfill/official-ranking",
+                    params={"lottery_type": lottery, "window": window},
+                )
+                assert response.status_code == 200
+                row = json.loads(json.dumps(rows))[0]
+                assert response.json()["items"][0] == row
+                assert {c["target_draw_id"] for c in selected_cells if c["target_draw_id"]} == set(
+                    row["target_ids"]
+                )
+                variants.append(row)
+            old, new = variants
+            assert old and new
+            if window == "RECENT_50":
+                expected_ids = ["31"] + [i for i, _ in target_table[3:]]
+                assert new["target_ids"] == expected_ids
+                assert old["target_ids"] == ["9", *expected_ids[1:]]
+                if lottery != "POWER_LOTTO":
+                    assert (
+                        old["successes"],
+                        old["evaluated"],
+                        new["successes"],
+                        new["evaluated"],
+                    ) == (0, 50, 1, 50)
+                allowed = {"target_ids", "successes", "rate", "delta"}
+                assert {k: v for k, v in old.items() if k not in allowed} == {
+                    k: v for k, v in new.items() if k not in allowed
+                }
+            else:
+                assert set(old["target_ids"]) == set(new["target_ids"])
+                assert {k: v for k, v in old.items() if k != "target_ids"} == {
+                    k: v for k, v in new.items() if k != "target_ids"
+                }
+            assert (new["missing"], new["unknown"], new["ticket_count"]) == (
+                0,
+                50
+                if lottery == "POWER_LOTTO" and window == "RECENT_50"
+                else (52 if lottery == "POWER_LOTTO" else 0),
+                1,
+            )
+            if lottery == "POWER_LOTTO":
+                assert (new["baseline"], new["delta"], new["rank"]) == (None, None, None)
+            elif lottery == "BIG_LOTTO":
+                assert new["baseline"] == float(3629 / 249711)
+                assert new["rank"] == 1
+            results[(lottery, window)] = new
+    assert len(results) == 12

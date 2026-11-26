@@ -11,11 +11,18 @@ from datetime import date, timedelta
 
 import pytest
 
-from lottolab.application.replay_official_ranking import aggregate_ranking
+from lottolab.application.replay_official_ranking import JsonObject, aggregate_ranking
 from lottolab.application.use_cases.historical_replay_controller import (
     HistoricalReplayController,
 )
-from lottolab.application.use_cases.replay_backfill import ReplayBackfill
+from lottolab.application.use_cases.replay_backfill import (
+    BackfillSelection,
+    BackfillStore,
+    ReplayBackfill,
+)
+from lottolab.application.use_cases.replay_backfill import (
+    JsonObject as BackfillJsonObject,
+)
 from lottolab.application.use_cases.replay_exact_native_targets import (
     causal_row,
     replay_cell,
@@ -37,6 +44,7 @@ from lottolab.domain.strategies import LifecycleStatus, ResponseShape, StrategyD
 from lottolab.evidence.exact_native_replay_manifest import history_fingerprint
 from lottolab.strategies.adapters.base import (
     BetAdapterExecution,
+    CausalDrawRow,
     InsufficientHistory,
     InvalidOutput,
     SourceNativePortfolioClosure,
@@ -136,11 +144,21 @@ class _SyntheticReplayAdapter:
         self.candidate_count = candidate_count
         self.failure = failure
 
-    def expected_native_ticket_count(self, strategy, history, target) -> int:
+    def expected_native_ticket_count(
+        self,
+        strategy: ReplayStrategy,
+        history: tuple[ReplayDraw, ...],
+        target: ReplayDraw,
+    ) -> int:
         del strategy, history, target
         return 3
 
-    def generate(self, strategy, history, target) -> tuple[ReplayTicket, ...]:
+    def generate(
+        self,
+        strategy: ReplayStrategy,
+        history: tuple[ReplayDraw, ...],
+        target: ReplayDraw,
+    ) -> tuple[ReplayTicket, ...]:
         del history, target
         if self.failure == "value_error":
             raise ValueError("synthetic unclassified failure")
@@ -152,17 +170,32 @@ class _SyntheticReplayAdapter:
             raise _source_native_exception(strategy.strategy_id)
         return _replay_tickets(self.candidate_count)
 
-    def evaluate(self, strategy, ticket, target) -> ReplayEvaluation:
+    def evaluate(
+        self,
+        strategy: ReplayStrategy,
+        ticket: ReplayTicket,
+        target: ReplayDraw,
+    ) -> ReplayEvaluation:
         del strategy, ticket, target
         return ReplayEvaluation(zone1_hits=0, zone2_hit=False, is_winner=False, prize_tier=None)
 
 
 class _SyntheticNativeAdapter:
-    def __init__(self, candidate_count: int, failure: str | None = None) -> None:
+    def __init__(
+        self,
+        candidate_count: int,
+        failure: str | None = None,
+        exception_strategy_id: str = "synthetic__k235_closure__v2",
+    ) -> None:
         self.candidate_count = candidate_count
         self.failure = failure
+        self.exception_strategy_id = exception_strategy_id
 
-    def get_bets_with_emission(self, history, lottery_type):
+    def get_bets_with_emission(
+        self,
+        history: tuple[CausalDrawRow, ...],
+        lottery_type: LotteryType,
+    ) -> tuple[BetAdapterExecution, ...]:
         del history, lottery_type
         if self.failure == "value_error":
             raise ValueError("synthetic unclassified failure")
@@ -170,9 +203,57 @@ class _SyntheticNativeAdapter:
             raise InsufficientHistory("synthetic history gap")
         if self.failure == "invalid_output":
             raise InvalidOutput("synthetic invalid ticket")
-        if self.candidate_count in (13, 17):
-            raise _source_native_exception()
+        if self.failure is None and self.candidate_count in (13, 17):
+            raise _source_native_exception(self.exception_strategy_id)
         return _native_executions(self.candidate_count)
+
+
+class _CapturingBackfillStore:
+    """In-memory implementation of the formal store contract for one focused test."""
+
+    def __init__(self) -> None:
+        self.saved_cells: tuple[BackfillJsonObject, ...] = ()
+
+    def prepare(self, manifest: BackfillJsonObject) -> None:
+        del manifest
+
+    def lookup(self, cell_identity: str) -> BackfillJsonObject | None:
+        del cell_identity
+        return None
+
+    def lookup_many(
+        self, cell_identities: tuple[str, ...]
+    ) -> dict[str, BackfillJsonObject]:
+        del cell_identities
+        return {}
+
+    def lookup_many_by_unique_keys(
+        self,
+        keys: tuple[tuple[str, str, str, str, str, str], ...],
+    ) -> dict[tuple[str, str, str, str, str, str], BackfillJsonObject]:
+        del keys
+        return {}
+
+    def lookup_complete_by_logical_keys(
+        self,
+        keys: tuple[tuple[str, str, str, str], ...],
+    ) -> dict[tuple[str, str, str, str], tuple[BackfillJsonObject, ...]]:
+        del keys
+        return {}
+
+    def save(
+        self, run_id: str, result: BackfillJsonObject, *, attempted: bool = True
+    ) -> None:
+        del run_id, result, attempted
+
+    def save_many(
+        self, run_id: str, results: tuple[BackfillJsonObject, ...]
+    ) -> None:
+        del run_id
+        self.saved_cells = results
+
+    def summary(self, run_id: str) -> BackfillJsonObject:
+        return {"run_id": run_id}
 
 
 def _controller_result(adapter: _SyntheticReplayAdapter, *, min_history: int = 1):
@@ -204,11 +285,11 @@ def _native_row(
     history = (_native_draw(1),)
     target = _native_draw(2)
     descriptor = _descriptor(min_history=min_history)
-    implementation = _SyntheticNativeAdapter(candidate_count, failure)
-    if failure is None and candidate_count in (13, 17):
-        implementation.get_bets_with_emission = lambda *_args: (_ for _ in ()).throw(
-            _source_native_exception(exception_strategy_id)
-        )
+    implementation = _SyntheticNativeAdapter(
+        candidate_count,
+        failure,
+        exception_strategy_id,
+    )
     binding = RuntimeBinding(descriptor, implementation, "SyntheticNativeAdapter", None)
     return replay_cell(
         binding,
@@ -239,15 +320,20 @@ def test_controller_synthetic_13_14_and_17_18_boundaries(
         assert record.pre_eligible is True
         assert record.reason is not None and "2 of 3" in record.reason
         assert record.tickets == record.evaluations == ()
+        capturing_store = _CapturingBackfillStore()
+        store: BackfillStore = capturing_store
         backfill = ReplayBackfill(
             adapter=adapter,
             strategies=(strategy,),
             draws=historical,
             source_identity="synthetic-k235-closure",
-            store=object(),
+            store=store,
             execution_version="typed-closure-v2",
         )
-        payload = backfill._payload(record, "synthetic-cell")
+        summary = backfill.execute(BackfillSelection(latest=1))
+        assert summary["newly_calculated_count"] == 1
+        assert len(capturing_store.saved_cells) == 1
+        payload = capturing_store.saved_cells[0]
         assert payload["execution_status"] == "TYPED_CLOSURE"
         assert payload["expected_native_ticket_count"] == 3
         assert payload["combination_success"] is None
@@ -340,7 +426,7 @@ def test_typed_closure_and_absent_cells_are_unknown_not_misses() -> None:
         "main": "[1,2,3,4,5,6]",
         "special": "[7]",
     }
-    closure_cell = {
+    closure_cell: JsonObject = {
         "run_id": "synthetic-run",
         "target_draw_id": "2",
         "target_draw_date": "2026-01-02",
@@ -355,7 +441,7 @@ def test_typed_closure_and_absent_cells_are_unknown_not_misses() -> None:
         "payload_json": "{}",
         "tickets": [],
     }
-    missing_cell = {**closure_cell, "execution_status": "MISSING"}
+    missing_cell: JsonObject = {**closure_cell, "execution_status": "MISSING"}
     for cells in ([closure_cell], [missing_cell]):
         row = aggregate_ranking("BIG_LOTTO", "FULL", [target], cells, {})[0]
         assert row["evaluated"] == 0

@@ -38,6 +38,7 @@ import subprocess
 import sys
 import time
 from pathlib import Path
+from typing import cast
 
 import pytest
 
@@ -315,9 +316,10 @@ def test_cluster_cover_synthetic_feeder_boundary_and_replay(
     from lottolab.strategies.adapters import biglotto_wave9 as module
     from lottolab.strategies.adapters.base import SourceNativePortfolioClosure
 
-    monkeypatch.setattr(
-        module, "_diversified_top18", lambda _history: list(range(1, candidate_count + 1))
-    )
+    def candidate_feed(_history: tuple[CausalDrawRow, ...]) -> list[int]:
+        return list(range(1, candidate_count + 1))
+
+    monkeypatch.setattr(module, "_diversified_top18", candidate_feed)
     adapter = BigLottoClusterCoverAdapter()
     history = (Draw("1", date(2026, 1, 1), (30, 31, 32, 33, 34, 35), 7),)
     target = Draw("2", date(2026, 1, 2), (30, 31, 32, 33, 34, 35), 7)
@@ -458,9 +460,10 @@ def test_cluster_cover_short_valid_pools_count_only_complete_tickets(
     from lottolab.strategies.adapters import biglotto_wave9 as module
     from lottolab.strategies.adapters.base import SourceNativePortfolioClosure
 
-    monkeypatch.setattr(
-        module, "_diversified_top18", lambda _history: list(range(1, candidate_count + 1))
-    )
+    def candidate_feed(_history: tuple[CausalDrawRow, ...]) -> list[int]:
+        return list(range(1, candidate_count + 1))
+
+    monkeypatch.setattr(module, "_diversified_top18", candidate_feed)
     with pytest.raises(SourceNativePortfolioClosure) as caught:
         BigLottoClusterCoverAdapter().get_bets(_wave9_history(1), LotteryType.BIG_LOTTO)
     assert caught.value.expected_ticket_count == 3
@@ -497,7 +500,10 @@ def test_cluster_cover_illegal_feeder_is_not_a_typed_closure(
     from lottolab.strategies.adapters import biglotto_wave9 as module
     from lottolab.strategies.adapters.base import SourceNativePortfolioClosure
 
-    monkeypatch.setattr(module, "_diversified_top18", lambda _history: candidates)
+    def illegal_feeder(_history: tuple[CausalDrawRow, ...]) -> list[int]:
+        return candidates
+
+    monkeypatch.setattr(module, "_diversified_top18", illegal_feeder)
     adapter = BigLottoClusterCoverAdapter()
     with pytest.raises(ValueError, match="FROZEN_UNIFIED_INVALID_TICKET") as caught:
         adapter.get_bets(_wave9_history(1), LotteryType.BIG_LOTTO)
@@ -647,15 +653,21 @@ def test_cluster_seed_behavior_contract_matches_both_replay_entries(
     )
     assert controller_record.status is ReplayCellStatus.COMPLETE
 
-    exact_history = tuple(
-        Draw(
-            draw_number=draw.draw_number,
-            draw_date=draw.draw_date,
-            main_numbers=draw.main_numbers,
-            special_number=draw.special_number,
+    exact_history_draws: list[Draw] = []
+    for draw in historical_draws:
+        if draw.special_number is None:
+            raise AssertionError("BIG_LOTTO history must include its special number")
+        exact_history_draws.append(
+            Draw(
+                draw_number=draw.draw_number,
+                draw_date=draw.draw_date,
+                main_numbers=draw.main_numbers,
+                special_number=draw.special_number,
+            )
         )
-        for draw in historical_draws
-    )
+    exact_history = tuple(exact_history_draws)
+    if target.special_number is None:
+        raise AssertionError("BIG_LOTTO target must include its special number")
     exact_target = Draw(
         draw_number=target.draw_number,
         draw_date=target.draw_date,
@@ -685,7 +697,22 @@ def test_cluster_seed_behavior_contract_matches_both_replay_entries(
     )
     assert exact_row["replay_status"] == "COMPLETE"
     controller_tickets = tuple(ticket.main_numbers for ticket in controller_record.tickets)
-    exact_tickets = tuple(tuple(ticket) for ticket in exact_row["native_emitted_portfolio"])
+    emitted_portfolio = exact_row["native_emitted_portfolio"]
+    if not isinstance(emitted_portfolio, list):
+        raise AssertionError("native emitted portfolio must be a list")
+    portfolio_rows = cast(list[object], emitted_portfolio)
+    exact_ticket_rows: list[tuple[int, ...]] = []
+    for candidate_ticket in portfolio_rows:
+        if not isinstance(candidate_ticket, list):
+            raise AssertionError("native emitted ticket must be a list")
+        candidate_numbers = cast(list[object], candidate_ticket)
+        numbers: list[int] = []
+        for number in candidate_numbers:
+            if type(number) is not int:
+                raise AssertionError("native emitted ticket numbers must be integers")
+            numbers.append(number)
+        exact_ticket_rows.append(tuple(numbers))
+    exact_tickets = tuple(exact_ticket_rows)
     assert controller_tickets == exact_tickets == CLUSTER_COVER_GOLDENS[history_length]
 
 

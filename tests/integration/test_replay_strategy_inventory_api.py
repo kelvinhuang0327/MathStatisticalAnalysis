@@ -39,10 +39,19 @@ def test_replay_strategy_inventory_api_lists_separate_states_and_full_backfill_i
     assert response.status_code == 200
     payload = response.json()
     multiseed_count = len(_multiseed_fixture()["seed_identities"])
-    assert payload["total_discovered_strategies"] == 768 + multiseed_count
-    assert payload["total_unique_strategies"] == 513 + multiseed_count
-    assert payload["total_executable"] == 224
-    assert payload["total_reconstructable"] == 224
+    native_identities = {
+        (f"{prefix}_k{ticket_count}", version)
+        for prefix, version in (
+            ("research_causal_renewal_hazard", "FIXED_DISCRETE_RENEWAL_HAZARD_V1"),
+            ("research_conditional_transfer_entropy", "EH02_V1"),
+        )
+        for ticket_count in (2, 3, 5)
+    }
+    native_identity_count = len(native_identities)
+    assert payload["total_discovered_strategies"] == 768 + multiseed_count + native_identity_count
+    assert payload["total_unique_strategies"] == 513 + multiseed_count + native_identity_count
+    assert payload["total_executable"] == 224 + native_identity_count
+    assert payload["total_reconstructable"] == 224 + native_identity_count
     assert payload["total_has_history"] == 0
     assert payload["total_artifact_only"] == 135
     assert payload["total_rejected"] == 74
@@ -52,10 +61,15 @@ def test_replay_strategy_inventory_api_lists_separate_states_and_full_backfill_i
     assert payload["lifecycle_status_counts"]["CODE_ONLY"] == 9
     assert payload["source_status_counts"]["OBSERVATION"] == 2
     assert payload["replay_data_status_counts"]["CODE_ONLY"] == 5
-    assert payload["execution_capability_counts"]["EXECUTABLE"] == 224
+    assert payload["execution_capability_counts"]["EXECUTABLE"] == 224 + native_identity_count
     assert payload["execution_capability_counts"]["UNAVAILABLE"] == 289 + multiseed_count
     assert payload["strategy_count"] == payload["total_unique_strategies"]
     assert len(payload["executable_strategy_ids"]) == payload["total_executable"]
+    assert native_identities <= {
+        (identity["strategy_id"], identity["strategy_version"])
+        for identity in payload["executable_strategy_ids"]
+        if identity["lottery_type"] == "BIG_LOTTO"
+    }
     quick_ml_rows = [
         row
         for row in payload["strategies"]

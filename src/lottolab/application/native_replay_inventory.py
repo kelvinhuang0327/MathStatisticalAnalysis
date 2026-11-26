@@ -9,11 +9,13 @@ import inspect
 import random
 from collections.abc import Callable
 from dataclasses import asdict
+from importlib.metadata import version as distribution_version
 from pathlib import Path
 from typing import Any, cast
 
 from lottolab.application.historical_replay_adapters import (
     ReplayStrategyBinding,
+    ReplayStrategyImplementation,
     binding_from_implementation,
     binding_from_p638_spec,
     t539_replay_bindings,
@@ -29,6 +31,14 @@ from lottolab.domain.historical_replay import ReplayBehavior, ReplayStrategy
 from lottolab.domain.strategies import ResponseShape
 from lottolab.strategies.adapters.base import CausalDrawRow
 from lottolab.strategies.adapters.biglotto_batch16 import _EvolutionEngine
+from lottolab.strategies.adapters.biglotto_causal_renewal_hazard import (
+    ADAPTER_TYPES_BY_K as RENEWAL_HAZARD_ADAPTERS_BY_K,
+)
+from lottolab.strategies.adapters.biglotto_conditional_te import (
+    BigLottoConditionalTEK2Adapter,
+    BigLottoConditionalTEK3Adapter,
+    BigLottoConditionalTEK5Adapter,
+)
 from lottolab.strategies.adapters.biglotto_evolution_bounded import BigLottoBoundedEvolutionAdapter
 from lottolab.strategies.adapters.biglotto_evolution_causal import BigLottoCausalEvolutionAdapter
 from lottolab.strategies.adapters.biglotto_evolution_strict import BigLottoStrictEvolutionAdapter
@@ -44,6 +54,65 @@ from lottolab.strategies.adapters.powerlotto_wave2 import WAVE2_STRATEGIES
 from lottolab.strategies.catalog import production_catalog
 from lottolab.strategies.executable_registry import ExecutableRegistry
 
+CONDITIONAL_TE_ADAPTERS_BY_K = {
+    2: BigLottoConditionalTEK2Adapter,
+    3: BigLottoConditionalTEK3Adapter,
+    5: BigLottoConditionalTEK5Adapter,
+}
+_NATIVE_FINGERPRINT_COMMON_SOURCES = (
+    "src/lottolab/application/native_replay_inventory.py",
+    "src/lottolab/application/historical_replay_adapters.py",
+    "src/lottolab/application/replay_strategy_inventory.py",
+    "src/lottolab/domain/draws.py",
+    "src/lottolab/domain/historical_replay.py",
+    "src/lottolab/domain/lottery_rules.py",
+    "src/lottolab/domain/prize_evaluation.py",
+    "src/lottolab/strategies/adapters/base.py",
+)
+_NATIVE_FINGERPRINT_ALGORITHM_SOURCES = {
+    "renewal_hazard": ("src/lottolab/strategies/adapters/biglotto_causal_renewal_hazard.py",),
+    "conditional_te": ("src/lottolab/strategies/adapters/biglotto_conditional_te.py",),
+}
+
+
+def _native_implementation_fingerprint(
+    implementation: ReplayStrategyImplementation,
+    *,
+    algorithm: str,
+) -> tuple[str, dict[str, str], dict[str, str]]:
+    """Fingerprint one exact adapter against its native Replay contracts."""
+
+    try:
+        algorithm_sources = _NATIVE_FINGERPRINT_ALGORITHM_SOURCES[algorithm]
+    except KeyError as exc:
+        raise ValueError(f"unsupported native fingerprint algorithm: {algorithm}") from exc
+
+    project_root = Path(__file__).resolve().parents[3]
+    source_hashes: dict[str, str] = {}
+    for relative_path in (*_NATIVE_FINGERPRINT_COMMON_SOURCES, *algorithm_sources):
+        source_path = project_root / relative_path
+        if not source_path.is_file():
+            raise ValueError(
+                f"native implementation fingerprint source is unavailable: {relative_path}"
+            )
+        source_hashes[relative_path] = hashlib.sha256(source_path.read_bytes()).hexdigest()
+
+    runtime_dependencies = (
+        {"numpy": distribution_version("numpy")} if algorithm == "conditional_te" else {}
+    )
+    strategy = {
+        "contract": "NATIVE_REPLAY_IMPLEMENTATION_FINGERPRINT_V1",
+        "algorithm": algorithm,
+        "strategy_id": implementation.strategy_id,
+        "strategy_version": implementation.strategy_version,
+        "native_ticket_count": implementation.native_ticket_count,
+        "min_history": implementation.min_history,
+        "behavior": ReplayBehavior.DETERMINISTIC.value,
+        "source_sha256": source_hashes,
+        "runtime_dependencies": runtime_dependencies,
+    }
+    return identity(strategy), source_hashes, runtime_dependencies
+
 
 def native_strategy_inventory(
     lottery_type: LotteryType,
@@ -58,6 +127,8 @@ def native_strategy_inventory(
     registry = ExecutableRegistry(catalog)
     bindings: dict[str, ReplayStrategyBinding] = {}
     accounts: JsonObject = {}
+    fingerprint_sources_by_strategy: dict[str, dict[str, str]] = {}
+    fingerprint_dependencies_by_strategy: dict[str, dict[str, str]] = {}
     if lottery_type is LotteryType.BIG_LOTTO:
         implementation = BigLottoQuickMlPatternBoundsAdapter()
         candidate_source = inspect.getsourcefile(type(implementation))
@@ -77,6 +148,51 @@ def native_strategy_inventory(
         )
         binding = binding_from_implementation(implementation, fingerprint=fingerprint)
         bindings[binding.strategy.strategy_id] = binding
+        for ticket_count, adapter_type in sorted(RENEWAL_HAZARD_ADAPTERS_BY_K.items()):
+            renewal_implementation = adapter_type()
+            if renewal_implementation.native_ticket_count != ticket_count:
+                raise ValueError("Renewal Hazard adapter K does not match its inventory key")
+            fingerprint, source_hashes, runtime_dependencies = _native_implementation_fingerprint(
+                renewal_implementation,
+                algorithm="renewal_hazard",
+            )
+            renewal_binding = binding_from_implementation(
+                renewal_implementation,
+                behavior=ReplayBehavior.DETERMINISTIC,
+                fingerprint=fingerprint,
+            )
+            if renewal_binding.strategy.strategy_id in bindings:
+                raise ValueError(
+                    f"duplicate native BIG_LOTTO strategy id: "
+                    f"{renewal_binding.strategy.strategy_id}"
+                )
+            bindings[renewal_binding.strategy.strategy_id] = renewal_binding
+            fingerprint_sources_by_strategy[renewal_binding.strategy.strategy_id] = source_hashes
+            fingerprint_dependencies_by_strategy[renewal_binding.strategy.strategy_id] = (
+                runtime_dependencies
+            )
+        for ticket_count, adapter_type in sorted(CONDITIONAL_TE_ADAPTERS_BY_K.items()):
+            te_implementation = adapter_type()
+            if te_implementation.native_ticket_count != ticket_count:
+                raise ValueError("Conditional TE adapter K does not match its inventory key")
+            fingerprint, source_hashes, runtime_dependencies = _native_implementation_fingerprint(
+                te_implementation,
+                algorithm="conditional_te",
+            )
+            te_binding = binding_from_implementation(
+                te_implementation,
+                behavior=ReplayBehavior.DETERMINISTIC,
+                fingerprint=fingerprint,
+            )
+            if te_binding.strategy.strategy_id in bindings:
+                raise ValueError(
+                    f"duplicate native BIG_LOTTO strategy id: {te_binding.strategy.strategy_id}"
+                )
+            bindings[te_binding.strategy.strategy_id] = te_binding
+            fingerprint_sources_by_strategy[te_binding.strategy.strategy_id] = source_hashes
+            fingerprint_dependencies_by_strategy[te_binding.strategy.strategy_id] = (
+                runtime_dependencies
+            )
     elif lottery_type is LotteryType.DAILY_539:
         for binding in t539_replay_bindings():
             bindings[binding.strategy.strategy_id] = binding
@@ -98,6 +214,12 @@ def native_strategy_inventory(
             "provenance": getattr(implementation, "provenance", None),
             "model_version_or_null": getattr(implementation, "model_version", None),
             "fingerprint": binding.strategy.fingerprint,
+            "implementation_fingerprint_source_sha256": fingerprint_sources_by_strategy.get(
+                key, {}
+            ),
+            "implementation_fingerprint_runtime_dependencies": (
+                fingerprint_dependencies_by_strategy.get(key, {})
+            ),
             "behavior": binding.strategy.behavior.value,
         }
     for descriptor in catalog.list(lottery_type=lottery_type):

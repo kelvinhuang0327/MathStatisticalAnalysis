@@ -55,8 +55,8 @@ branch is provably unreachable here.
   literal structure keeps this port directly traceable to the donor source.
   When ``top_18`` has fewer than 18 candidates, one or more bets end up
   short of 6 numbers -- a genuine donor-faithful closure (128 of 2149
-  recorded causal executions), surfaced here by ``_ticket``'s own exact-6
-  validation rather than an invented pad/dedup.
+  recorded causal executions), surfaced as a typed closure compatible with
+  the original ``ValueError`` and message, without invented pad/dedup.
 * ``ZDPOptimizer.predict_3bets_zdp`` -- an independent top-30 pool (deviation
   1.5, markov 1.5, statistical 2.0, same ``count=10`` kill exclusion) split
   into three 16/16/17-wide numeric zones (1-16/17-32/33-49), then one bet
@@ -92,7 +92,12 @@ from itertools import combinations
 from typing import cast
 
 from lottolab.domain.draws import LotteryType
-from lottolab.strategies.adapters.base import CausalDrawRow, PortfolioBetAdapter
+from lottolab.domain.historical_replay import ReplayBehavior
+from lottolab.strategies.adapters.base import (
+    CausalDrawRow,
+    PortfolioBetAdapter,
+    SourceNativePortfolioClosure,
+)
 from lottolab.strategies.adapters.biglotto_wave3 import (
     _ticket,
     _unified_deviation_ticket,
@@ -186,6 +191,18 @@ class BigLottoCagAdapter(PortfolioBetAdapter):
 # co-occurrence fill from the remaining 15 candidates.
 
 
+class _ClusterCoverClosure(SourceNativePortfolioClosure, ValueError):
+    """Typed replay signal preserving the donor-facing ValueError message."""
+
+    def __init__(self, strategy_id: str, actual_ticket_count: int) -> None:
+        super().__init__(
+            strategy_id=strategy_id,
+            expected_ticket_count=3,
+            actual_ticket_count=actual_ticket_count,
+        )
+        self.args = ("FROZEN_UNIFIED_INVALID_TICKET",)
+
+
 class BigLottoClusterCoverAdapter(PortfolioBetAdapter):
     """Three co-occurrence-cluster tickets: three anchors round-robin
     filled by highest co-occurrence sum with each bet's own members."""
@@ -196,6 +213,8 @@ class BigLottoClusterCoverAdapter(PortfolioBetAdapter):
     min_history = 1
     supported_lottery_types = (LotteryType.BIG_LOTTO,)
     native_ticket_count = 3
+    replay_behavior = ReplayBehavior.SEEDED_STOCHASTIC
+    replay_seed_contract = "UNIFIED_STATISTICAL_HISTORY_LENGTH_SEED"
 
     def _predict_all(
         self,
@@ -222,6 +241,13 @@ class BigLottoClusterCoverAdapter(PortfolioBetAdapter):
                 if best_candidate is not None:
                     bets[bet_index].append(best_candidate)
                     available.remove(best_candidate)
+        if (
+            len(top_18) < 18
+            and all(type(number) is int and _MIN_NUM <= number <= _MAX_NUM for number in top_18)
+            and len(set(top_18)) == len(top_18)
+        ):
+            complete = tuple(_ticket(sorted(bet)) for bet in bets if len(bet) == 6)
+            raise _ClusterCoverClosure(self.strategy_id, len(complete))
         return tuple(_ticket(sorted(bet)) for bet in bets)
 
 

@@ -56,7 +56,7 @@ from lottolab.infrastructure.persistence.project_database_paths import (
 
 DATA_DIRECTORY_ENV = "LOTTOLAB_DATA_DIR"
 RESEARCH_DATABASE_FILENAME = "lottolab_research.db"
-CURRENT_SCHEMA_VERSION = 5
+CURRENT_SCHEMA_VERSION = 6
 MIGRATION_NAME = "create_canonical_research_store_with_legacy_provenance"
 BUSY_TIMEOUT_MS = 5_000
 
@@ -1438,10 +1438,7 @@ _V5_LIVE_VERSION_SQL = (
     )
     .replace(
         "        AND consensus_provenance_json IS NULL\n",
-        (
-            "        AND candidate_ref IS NULL\n"
-            "        AND consensus_provenance_json IS NULL\n"
-        ),
+        ("        AND candidate_ref IS NULL\n        AND consensus_provenance_json IS NULL\n"),
     )
     .replace(
         "        AND original_execution_provenance_status = 'CONSENSUS_SOURCE_BOUND'\n",
@@ -1672,7 +1669,36 @@ _V5_EXPECTED_SCHEMA_SQL_BY_NAME = {
     "research_runs": _V4_RUNS_SQL,
     **{_object_name(s): s for s in _V5_ADDED_STATEMENTS},
 }
-_EXPECTED_SCHEMA_SQL_BY_NAME = _V5_EXPECTED_SCHEMA_SQL_BY_NAME
+
+V6_MIGRATION_NAME = "append_native_ticket_execution_evidence"
+_NATIVE_TICKET_EVIDENCE_SQL = """
+CREATE TABLE research_native_ticket_evidence (
+    ticket_id TEXT PRIMARY KEY,
+    emitted_main_numbers_json TEXT NOT NULL,
+    rng_evidence_json TEXT NOT NULL,
+    FOREIGN KEY (ticket_id) REFERENCES research_prediction_tickets(id) ON DELETE RESTRICT
+)
+"""
+V6_MIGRATION_STATEMENTS = (
+    _NATIVE_TICKET_EVIDENCE_SQL,
+    *_append_only_trigger_statements("research_native_ticket_evidence"),
+)
+V6_MIGRATION_CHECKSUM = hashlib.sha256(
+    (";\n".join(s.strip() for s in V6_MIGRATION_STATEMENTS) + ";\n").encode()
+).hexdigest()
+V6_TABLE_NAMES = (*V5_TABLE_NAMES, "research_native_ticket_evidence")
+TABLE_NAMES = V6_TABLE_NAMES  # pyright: ignore[reportConstantRedefinition]
+IMMUTABLE_TABLE_NAMES = (*V5_IMMUTABLE_TABLE_NAMES, "research_native_ticket_evidence")  # pyright: ignore[reportConstantRedefinition]
+APPEND_ONLY_TRIGGER_NAMES = (  # pyright: ignore[reportConstantRedefinition]
+    *V5_APPEND_ONLY_TRIGGER_NAMES,
+    "trg_research_native_ticket_evidence_no_update",
+    "trg_research_native_ticket_evidence_no_delete",
+)
+_V6_EXPECTED_SCHEMA_SQL_BY_NAME = {
+    **_V5_EXPECTED_SCHEMA_SQL_BY_NAME,
+    **{_object_name(s): s for s in V6_MIGRATION_STATEMENTS},
+}
+_EXPECTED_SCHEMA_SQL_BY_NAME = _V6_EXPECTED_SCHEMA_SQL_BY_NAME
 
 
 def resolve_research_data_paths(
@@ -1765,8 +1791,18 @@ def initialize_schema(paths: ResearchDataPaths) -> None:
                         "INSERT INTO research_schema_migrations VALUES (?, ?, ?, ?)",
                         (5, V5_MIGRATION_NAME, V5_MIGRATION_CHECKSUM, _utc_now()),
                     )
+                    version = 5
+                if version == 5:
+                    if connection.execute("PRAGMA foreign_key_check").fetchone() is not None:
+                        raise ResearchSchemaError("pre-v6-migration foreign-key violation")
+                    for statement in V6_MIGRATION_STATEMENTS:
+                        connection.execute(statement)
+                    connection.execute(
+                        "INSERT INTO research_schema_migrations VALUES (?, ?, ?, ?)",
+                        (6, V6_MIGRATION_NAME, V6_MIGRATION_CHECKSUM, _utc_now()),
+                    )
                 if not _verify_migration_state(connection):
-                    raise ResearchSchemaError("research schema migration did not reach version 5")
+                    raise ResearchSchemaError("research schema migration did not reach version 6")
                 if connection.execute("PRAGMA foreign_key_check").fetchone() is not None:
                     raise ResearchSchemaError("post-migration foreign-key violation")
             except BaseException:
@@ -1912,7 +1948,7 @@ def _verify_migration_state(connection: sqlite3.Connection, *, allow_v2: bool = 
         raise ResearchSchemaError("database migration versions are invalid") from exc
     if any(version > CURRENT_SCHEMA_VERSION for version in versions):
         raise NewerSchemaVersionError("database schema is newer than this LottoLab build")
-    if versions not in ([2], [2, 3], [2, 3, 4], [2, 3, 4, 5]):
+    if versions not in ([2], [2, 3], [2, 3, 4], [2, 3, 4, 5], [2, 3, 4, 5, 6]):
         raise ResearchSchemaError("database migration history is incomplete")
     _, name, checksum = rows[0]
     if name != MIGRATION_NAME or checksum != MIGRATION_CHECKSUM:
@@ -1938,7 +1974,12 @@ def _verify_migration_state(connection: sqlite3.Connection, *, allow_v2: bool = 
             raise MigrationChecksumError("database v4 migration checksum does not match")
         if rows[3][1:] != (V5_MIGRATION_NAME, V5_MIGRATION_CHECKSUM):
             raise MigrationChecksumError("database v5 migration checksum does not match")
-        _verify_schema_semantics(connection, table_names, version=5)
+        if len(versions) == 5:
+            if rows[4][1:] != (V6_MIGRATION_NAME, V6_MIGRATION_CHECKSUM):
+                raise MigrationChecksumError("database v6 migration checksum does not match")
+            _verify_schema_semantics(connection, table_names, version=6)
+        else:
+            _verify_schema_semantics(connection, table_names, version=5)
     return True
 
 
@@ -1960,6 +2001,9 @@ def _verify_schema_semantics(
     elif version == 5:
         expected_tables = V5_TABLE_NAMES
         expected_schema = _V5_EXPECTED_SCHEMA_SQL_BY_NAME
+    elif version == 6:
+        expected_tables = V6_TABLE_NAMES
+        expected_schema = _V6_EXPECTED_SCHEMA_SQL_BY_NAME
     else:
         raise ResearchSchemaError(f"unsupported schema verification version: {version}")
     if table_names != set(expected_tables):

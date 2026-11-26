@@ -1,7 +1,53 @@
 import type { components, paths } from './generated/openapi'
 
-export type B649NativeForecastResponse =
+type GeneratedNativeForecastResponse =
   paths['/api/b649/native-forecast/current']['get']['responses'][200]['content']['application/json']
+
+export type NativeMetric = { numerator: number; denominator: number } | null
+
+export type NativeCandidate = {
+  strategy_id: string
+  strategy_version: string
+  native_k: number
+  status?: string
+  metric?: NativeMetric
+  coverage?: { requested: number; counts: Record<string, number> }
+}
+
+type NativeTicketPosition = { position: number; numbers: number[] }
+
+type NativeStrategy = {
+  strategy_id: string
+  strategy_version: string
+  native_k: number
+  source_rank: number
+  adapter_source_sha256: string
+  native_positions: NativeTicketPosition[]
+}
+
+type NativeForecastPayload = {
+  fixture_only: false
+  identity: { history_cutoff: string }
+  buckets: {
+    native_k: number
+    status: string
+    selected: { strategy_id: string; strategy_version: string } | null
+    tickets: number[][]
+    candidates: NativeCandidate[]
+  }[]
+} & (
+  | { history: { last_draw_date: string }; native_strategies?: never }
+  | {
+      history: { reference: string; sha256: string; last_draw_date?: never }
+      forecast_output_semantics: 'STRATEGY_NATIVE_POSITIONS'
+      source_proof_status: 'LOCAL_ONLY'
+      native_strategies: NativeStrategy[]
+    }
+)
+
+export type B649NativeForecastResponse = Omit<GeneratedNativeForecastResponse, 'payload'> & {
+  payload: NativeForecastPayload
+}
 
 export type B649NativeForecastTarget = {
   target_draw_number: string
@@ -201,26 +247,191 @@ function isNativePayload(
     identity.ranking_policy_version !== 'B649_FULL_OFFICIAL_ANY_PRIZE_R1' ||
     !isDrawNumber(identity.history_cutoff) ||
     Number(identity.history_cutoff) >= Number(target.target_draw_number) ||
-    identity.history_payload_sha256 !== history.history_sha256 ||
     !isSha256(identity.history_payload_sha256) ||
     !isSha256(identity.schedule_authority_sha256) ||
     !isSha256(identity.producer_fingerprint) ||
     !isSha256(identity.catalog_universe_sha256) ||
     !isSha256(identity.generation_config_sha256) ||
+    !Array.isArray(buckets) ||
+    buckets.length !== REQUIRED_NATIVE_BUCKETS.length
+  ) {
+    return false
+  }
+
+  // The identity schema_version is shared by the two producer formats.
+  if (
+    payload.forecast_output_semantics === 'STRATEGY_NATIVE_POSITIONS' ||
+    'native_strategies' in payload ||
+    'reference' in history ||
+    'sha256' in history
+  ) {
+    return isNativePositionsPayload(payload, history, identity.history_payload_sha256, buckets)
+  }
+
+  if (
+    identity.history_payload_sha256 !== history.history_sha256 ||
     history.last_draw_number !== identity.history_cutoff ||
     !isDrawNumber(history.last_draw_number) ||
     Number(history.last_draw_number) >= Number(target.target_draw_number) ||
     !isIsoDate(history.last_draw_date) ||
     history.last_draw_date >= target.target_draw_date ||
     !isPositiveSafeInteger(history.draw_count) ||
-    !isSha256(history.history_sha256) ||
-    !Array.isArray(buckets) ||
-    buckets.length !== REQUIRED_NATIVE_BUCKETS.length
+    !isSha256(history.history_sha256)
   ) {
     return false
   }
   return buckets.every((bucket, index) =>
     isNativeBucket(bucket, REQUIRED_NATIVE_BUCKETS[index]),
+  )
+}
+
+function isNativePositionsPayload(
+  payload: Record<string, unknown>,
+  history: Record<string, unknown>,
+  historySha256: string,
+  buckets: unknown[],
+): boolean {
+  if (
+    payload.forecast_output_semantics !== 'STRATEGY_NATIVE_POSITIONS' ||
+    payload.source_proof_status !== 'LOCAL_ONLY' ||
+    history.sha256 !== historySha256 ||
+    history.reference !== 'research-live-history:sha256:' + historySha256 ||
+    'last_draw_date' in history ||
+    'last_draw_number' in history ||
+    'history_sha256' in history ||
+    'draw_count' in history ||
+    !isSha256(payload.bundle_id) ||
+    !Array.isArray(payload.native_strategies) ||
+    payload.native_strategies.length === 0
+  ) return false
+
+  const strategies = new Map<string, NativeStrategy>()
+  const sourceRanks = new Set<number>()
+  for (const row of payload.native_strategies) {
+    if (!isNativeStrategy(row) || strategies.has(row.strategy_id) || sourceRanks.has(row.source_rank)) {
+      return false
+    }
+    strategies.set(row.strategy_id, row)
+    sourceRanks.add(row.source_rank)
+  }
+  const bundleId = payload.bundle_id
+  return buckets.every((bucket, index) =>
+    isNativePositionsBucket(bucket, REQUIRED_NATIVE_BUCKETS[index], bundleId, strategies),
+  )
+}
+
+function isNativeStrategy(value: unknown): value is NativeStrategy {
+  return (
+    isStrategyIdentity(value) &&
+    isPositiveSafeInteger(value.native_k) &&
+    isPositiveSafeInteger(value.source_rank) &&
+    isSha256(value.adapter_source_sha256) &&
+    isNativeTicketPositions(value.native_positions, value.native_k)
+  )
+}
+
+function isStrategyIdentity(value: unknown): value is Record<string, unknown> & {
+  strategy_id: string
+  strategy_version: string
+} {
+  return (
+    isRecord(value) &&
+    typeof value.strategy_id === 'string' &&
+    value.strategy_id.trim().length > 0 &&
+    typeof value.strategy_version === 'string' &&
+    value.strategy_version.trim().length > 0
+  )
+}
+
+function isNativePositionsBucket(
+  value: unknown,
+  expectedK: number,
+  bundleId: string,
+  strategies: ReadonlyMap<string, NativeStrategy>,
+): boolean {
+  if (
+    !isRecord(value) ||
+    value.native_k !== expectedK ||
+    typeof value.status !== 'string' ||
+    !Array.isArray(value.tickets) ||
+    !Array.isArray(value.candidates)
+  ) return false
+
+  const bucket = 'K' + expectedK
+  if (value.status !== 'AVAILABLE') {
+    return (
+      value.bucket === bucket &&
+      value.selected === null &&
+      value.tickets.length === 0 &&
+      value.candidates.length === 0 &&
+      (value.native_positions === undefined || isNativeTicketPositions(value.native_positions, 0))
+    )
+  }
+
+  const selected = value.selected
+  const entry = value.entry_identity
+  if (
+    !isStrategyIdentity(selected) ||
+    !hasOptionalEvidence(selected) ||
+    value.bucket !== bucket + ':' + selected.strategy_id ||
+    value.generation_status !== 'COMPLETE' ||
+    !Array.isArray(entry) ||
+    entry.length !== 4 ||
+    entry[0] !== bundleId ||
+    entry[1] !== expectedK ||
+    entry[2] !== selected.strategy_id ||
+    entry[3] !== selected.strategy_version ||
+    !isNativeTicketPositions(value.native_positions, expectedK) ||
+    value.tickets.length !== expectedK
+  ) return false
+
+  const ids = new Set<string>()
+  for (const candidate of value.candidates) {
+    if (!isStrategyIdentity(candidate) || !hasOptionalEvidence(candidate) || ids.has(candidate.strategy_id)) {
+      return false
+    }
+    const source = strategies.get(candidate.strategy_id)
+    if (
+      !source ||
+      candidate.strategy_version !== source.strategy_version ||
+      candidate.native_k !== expectedK ||
+      source.native_k !== expectedK ||
+      candidate.adapter_source_sha256 !== source.adapter_source_sha256
+    ) return false
+    ids.add(candidate.strategy_id)
+  }
+  const source = strategies.get(selected.strategy_id)
+  if (!ids.has(selected.strategy_id) || !source || source.strategy_version !== selected.strategy_version) {
+    return false
+  }
+
+  const positions = value.native_positions
+  return value.tickets.every((ticket, index) =>
+    isSixNumberTicket(ticket) &&
+    ticket.every((number, slot) =>
+      number === positions[index].numbers[slot] &&
+      number === source.native_positions[index].numbers[slot],
+    ),
+  )
+}
+
+function hasOptionalEvidence(value: Record<string, unknown>): boolean {
+  return (
+    (!('metric' in value) || isMetric(value.metric)) &&
+    (!('coverage' in value) || isCoverage(value.coverage)) &&
+    (!('status' in value) || typeof value.status === 'string') &&
+    (!('rankable' in value) || typeof value.rankable === 'boolean') &&
+    (!('evidence_complete' in value) || typeof value.evidence_complete === 'boolean')
+  )
+}
+
+function isNativeTicketPositions(value: unknown, nativeK: number): value is NativeTicketPosition[] {
+  return (
+    Array.isArray(value) &&
+    value.length === nativeK &&
+    value.every((row, index) =>
+      isRecord(row) && row.position === index + 1 && isSixNumberTicket(row.numbers),
+    )
   )
 }
 
@@ -330,7 +541,7 @@ function isCoverage(value: unknown): boolean {
   return Object.values(value.counts).every(isNonNegativeSafeInteger)
 }
 
-function isSixNumberTicket(value: unknown): boolean {
+function isSixNumberTicket(value: unknown): value is number[] {
   if (!Array.isArray(value) || value.length !== 6) return false
   const numbers = value
   return (

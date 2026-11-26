@@ -322,18 +322,18 @@ def test_native_current_roundtrip_timestamps_repeatability_and_read_only(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     repository, paths = _repository(tmp_path)
-    assert schema.CURRENT_SCHEMA_VERSION == 5
+    assert schema.CURRENT_SCHEMA_VERSION == 6
     with schema.open_database(paths, read_only=True) as connection:
         assert connection.execute(
             "SELECT version, checksum FROM research_schema_migrations ORDER BY version DESC LIMIT 1"
-        ).fetchone() == (5, schema.V5_MIGRATION_CHECKSUM)
+        ).fetchone() == (6, schema.V6_MIGRATION_CHECKSUM)
         table_names = {
             str(row[0])
             for row in connection.execute(
                 "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
             )
         }
-        assert table_names == set(schema.V5_TABLE_NAMES)
+        assert table_names == set(schema.V6_TABLE_NAMES)
         assert "research_live_forecast_versions" in table_names
         assert "research_live_forecast_current_pointer" in table_names
     forecast, committed = _seed_native(repository, "native-roundtrip")

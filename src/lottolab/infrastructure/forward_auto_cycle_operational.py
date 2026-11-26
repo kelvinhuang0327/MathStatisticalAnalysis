@@ -147,40 +147,24 @@ def load_causal_history[HistoryRowT](
         target_date,
     )
     paths = LocalDataPaths(data_directory=database.parent, database=database)
-    history_ref = SQLitePreOutcomeCausalHistoryAuthority(paths).resolve(observation_target)
-    with open_database(paths, read_only=True) as connection:
-        raw_rows = connection.execute(
-            """
-            SELECT draw_number, draw_date, main_numbers_json,
-                   special_numbers_json
-            FROM draws
-            WHERE lottery_type = ? AND draw_date <= ?
-            """,
-            (lottery_type.value, target.draw_date),
-        ).fetchall()
-        ordered_rows = sorted(
-            (
-                (
-                    str(raw[0]),
-                    str(raw[1]),
-                    _decode_int_list(raw[2], "main_numbers_json"),
-                    _decode_int_list(raw[3], "special_numbers_json"),
-                )
-                for raw in raw_rows
-                if (str(raw[1]), int(str(raw[0])))
-                < (target.draw_date, int(target.draw_number))
-            ),
-            key=lambda row: (row[1], int(row[0]), row[0]),
-        )
-        if len(ordered_rows) != history_ref.draw_count or not ordered_rows:
-            raise RuntimeError("history rows do not match the causal-history identity")
-        rows = tuple(row_factory(*row) for row in ordered_rows)
+    authority = SQLitePreOutcomeCausalHistoryAuthority(paths)
+    with authority.open_verified_snapshot(observation_target) as (connection, snapshot):
         latest_known_draw = _latest_known_draw_at_prediction_time(
             connection,
             lottery_type=lottery_type,
             as_of=as_of,
         )
 
+    rows = tuple(
+        row_factory(
+            draw.draw_number,
+            draw.draw_date.isoformat(),
+            draw.main_numbers,
+            draw.special_numbers,
+        )
+        for draw in snapshot.draws
+    )
+    history_ref = snapshot.ref
     recorded_outcome = _latest_recorded_outcome_at_prediction_time(
         operation_root,
         lottery_type=lottery_type.value,

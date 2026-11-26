@@ -18,11 +18,13 @@ import argparse
 import hashlib
 import importlib
 import json
+import platform
 import sqlite3
+import subprocess
 import sys
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from datetime import date
+from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any, cast
 
@@ -41,9 +43,29 @@ from lottolab.application.legacy_source_native_portfolios_wave26 import (  # noq
 from lottolab.application.use_cases.generate_bet import (  # noqa: E402
     instantiate_portfolio_adapter,
 )
+from lottolab.domain.b649_next_undrawn_forecast import (  # noqa: E402
+    OBJECTIVE,
+    RANKING_POLICY_VERSION,
+    digest,
+)
 from lottolab.domain.draws import LotteryType  # noqa: E402
+from lottolab.domain.prospective_observer import (  # noqa: E402
+    ObservationTarget,
+    ProducerDependency,
+    ProducerFingerprint,
+)
+from lottolab.domain.research_live_forecast import (  # noqa: E402
+    canonical_json,
+)
 from lottolab.infrastructure.persistence.project_database_paths import (  # noqa: E402
     project_database_directory,
+)
+from lottolab.infrastructure.persistence.draw_schema import (  # noqa: E402
+    LocalDataPaths,
+)
+from lottolab.infrastructure.pre_outcome_target_operational import (  # noqa: E402
+    OPERATIONAL_CAUSAL_HISTORY_SCHEMA_VERSION,
+    SQLitePreOutcomeCausalHistoryAuthority,
 )
 from lottolab.research.b649_k235_output_quality import (  # noqa: E402
     FAIR_DRAW_EXACT_COVERAGE_FRACTIONS,
@@ -59,12 +81,11 @@ DEFAULT_RANK_HISTORY = Path(
     "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.task-data/"
     "BIGLOTTO_115000096_K2_K3_K5_TOP3_115000097_PREDICTION_R1/rank_history.json"
 )
-DEFAULT_OUTPUT_DIR = (
-    REPO_ROOT / ".task-data" / "B649_K235_CANONICAL_ADOPTION_CANDIDATE_R1"
-)
+DEFAULT_OUTPUT_DIR = REPO_ROOT / ".task-data" / "B649_K235_CANONICAL_ADOPTION_CANDIDATE_R1"
 
 PREDICTION_SCHEMA_VERSION = "B649_K235_DISJOINT_PREDICTION_V1"
 PREDICTION_RUN_ID = "B649_K235_CANONICAL_ADOPTION_CANDIDATE_R1"
+NATIVE_INPUT_SCHEMA = "NUMBER2_9_B649_NATIVE_PREDICTION_V1"
 
 
 @dataclass(frozen=True, slots=True)
@@ -141,6 +162,7 @@ def _resolve_seed_metadata(
     metadata: dict[str, object] = {
         "behavior": "DETERMINISTIC",
         "seed": None,
+        "rng_source": "native_adapter_deterministic",
         "rng_state_rule": "NONE_DETERMINISTIC",
         "configuration": "native_adapter_configuration",
         "prestate_dependency": "causal_history_only",
@@ -161,9 +183,10 @@ def _resolve_seed_metadata(
         metadata.update(
             {
                 "behavior": "SEEDED_STOCHASTIC",
-                "seed": str(int(digest, 16)),
+                "seed": int(digest, 16),
                 "seed_digest": digest,
                 "seed_material": material,
+                "rng_source": "random.Random(version=2)",
                 "rng_state_rule": "random.Random(seed_integer, version=2)",
                 "configuration": protocol,
                 "prestate_dependency": "last_causal_draw_identity_only",
@@ -189,12 +212,12 @@ def _resolve_seed_metadata(
         metadata.update(
             {
                 "behavior": "SEEDED_STOCHASTIC",
-                "seed": str(seed_integer),
+                "seed": int(seed_integer),
                 "seed_digest": digest,
                 "seed_material": material,
+                "rng_source": "numpy.random.RandomState + random.Random",
                 "rng_state_rule": (
-                    "legacy NumPy RandomState(seed % 2**32) + "
-                    "random.Random(seed, version=2)"
+                    "legacy NumPy RandomState(seed % 2**32) + random.Random(seed, version=2)"
                 ),
                 "configuration": protocol,
                 "prestate_dependency": "last_causal_draw_identity_only",
@@ -222,12 +245,12 @@ def _resolve_seed_metadata(
         metadata.update(
             {
                 "behavior": "SEEDED_STOCHASTIC",
-                "seed": str(int(digest, 16)),
+                "seed": int(digest, 16),
                 "seed_digest": digest,
                 "seed_material": material,
+                "rng_source": "wave26.statistical_predictor",
                 "rng_state_rule": (
-                    "wave26 frozen statistical calls reseed from "
-                    "causal history length"
+                    "wave26 frozen statistical calls reseed from causal history length"
                 ),
                 "configuration": SOURCE_NATIVE_WAVE26_PROTOCOL,
                 "prestate_dependency": "last_causal_draw_identity_and_causal_history",
@@ -240,9 +263,9 @@ def _resolve_seed_metadata(
             {
                 "behavior": "SEEDED_STOCHASTIC",
                 "seed": len(history),
+                "rng_source": "random.Random",
                 "rng_state_rule": (
-                    "random.Random(len(causal_history)) inside frozen "
-                    "statistical predictor"
+                    "random.Random(len(causal_history)) inside frozen statistical predictor"
                 ),
                 "configuration": "UNIFIED_STATISTICAL_HISTORY_LENGTH_SEED",
                 "prestate_dependency": "causal_history_length_only",
@@ -261,9 +284,9 @@ def _resolve_seed_metadata(
             {
                 "behavior": "SEEDED_STOCHASTIC",
                 "seed": 42,
+                "rng_source": "random.Random",
                 "rng_state_rule": (
-                    "local random.Random(42) per adapter call; "
-                    "NumPy seed is output-inert"
+                    "local random.Random(42) per adapter call; NumPy seed is output-inert"
                 ),
                 "configuration": "DIVERSIFIED_ENSEMBLE_V6_FIXED_SEED",
                 "prestate_dependency": "causal_history_only",
@@ -292,6 +315,499 @@ def _history_fingerprint(history: Sequence[Draw]) -> str:
         ).encode("utf-8")
         + b"\n"
     ).hexdigest()
+
+
+def _resolve_adapter_source(
+    descriptor: Any,
+    override_mapping: Mapping[str, Any] | None = None,
+) -> tuple[str, str]:
+    strategy_id = getattr(descriptor, "strategy_id", "")
+    if override_mapping and strategy_id in override_mapping:
+        entry = override_mapping[strategy_id]
+        return (
+            str(entry.get("adapter_source_path", "")),
+            str(entry.get("adapter_source_sha256", "")),
+        )
+    adapter_path_str = getattr(descriptor, "adapter_path", "") or ""
+    if ":" in adapter_path_str:
+        module_name = adapter_path_str.split(":", 1)[0]
+        try:
+            mod = importlib.import_module(module_name)
+            if hasattr(mod, "__file__") and mod.__file__:
+                p = Path(mod.__file__).resolve()
+                if p.exists():
+                    sha = hashlib.sha256(p.read_bytes()).hexdigest()
+                    return str(p), sha
+        except Exception:
+            pass
+    return "", ""
+
+
+def _resolve_adapter_class_identity(descriptor: Any) -> str:
+    """Return the loaded class identity named by an executable catalog descriptor."""
+    adapter_path = getattr(descriptor, "adapter_path", None)
+    if not isinstance(adapter_path, str) or ":" not in adapter_path:
+        raise ValueError("effective adapter class requires a module:class catalog binding")
+    module_name, _, class_name = adapter_path.partition(":")
+    if not module_name or not class_name:
+        raise ValueError("effective adapter class requires a module:class catalog binding")
+    module = importlib.import_module(module_name)
+    adapter_class = getattr(module, class_name, None)
+    if not isinstance(adapter_class, type):
+        raise ValueError(f"catalog adapter binding is not a class: {adapter_path}")
+    identity = f"{adapter_class.__module__}:{adapter_class.__qualname__}"
+    if identity != adapter_path:
+        raise ValueError(f"catalog adapter class identity mismatch: {identity} != {adapter_path}")
+    return identity
+
+
+def _resolve_source_execution(
+    override: Mapping[str, Any] | None = None,
+) -> dict[str, str]:
+    if override is not None:
+        res = dict(override)
+        for key in ("repository", "commit", "tree", "loaded_code_sha256"):
+            val = res.get(key)
+            if not isinstance(val, str) or not val.strip():
+                raise ValueError(f"source execution missing required field: {key}")
+        if "pre_draw_proof_status" not in res:
+            res["pre_draw_proof_status"] = "LOCAL_ONLY"
+        return res
+
+    producer_file = Path(__file__).resolve()
+    loaded_code_sha256 = hashlib.sha256(producer_file.read_bytes()).hexdigest()
+    repo_path = str(REPO_ROOT)
+    commit = ""
+    tree = ""
+    try:
+        commit = subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], cwd=str(REPO_ROOT), text=True
+        ).strip()
+        tree = subprocess.check_output(
+            ["git", "rev-parse", "HEAD^{tree}"], cwd=str(REPO_ROOT), text=True
+        ).strip()
+    except Exception as exc:
+        raise ValueError(f"unable to determine source git commit and tree: {exc}") from exc
+
+    if not commit or not tree:
+        raise ValueError("source git commit and tree must be non-empty")
+
+    return {
+        "repository": repo_path,
+        "commit": commit,
+        "tree": tree,
+        "loaded_code_sha256": loaded_code_sha256,
+        "pre_draw_proof_status": "LOCAL_ONLY",
+    }
+
+
+def _resolve_runtime_manifest(
+    override: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    if override is not None:
+        res = dict(override)
+        if "sha256" not in res:
+            res["sha256"] = digest(res)
+        return res
+
+    py_exe = Path(sys.executable).resolve()
+    exe_sha = hashlib.sha256(py_exe.read_bytes()).hexdigest() if py_exe.exists() else ("0" * 64)
+    producer_file = Path(__file__).resolve()
+    producer_sha = hashlib.sha256(producer_file.read_bytes()).hexdigest()
+    authority_file = (
+        REPO_ROOT / "src/lottolab/infrastructure/pre_outcome_target_operational.py"
+    ).resolve()
+    authority_sha = hashlib.sha256(authority_file.read_bytes()).hexdigest()
+    manifest_material: dict[str, Any] = {
+        "python": {
+            "implementation": platform.python_implementation(),
+            "version": platform.python_version(),
+            "executable": str(py_exe),
+            "executable_sha256": exe_sha,
+        },
+        "os": platform.system().lower(),
+        "architecture": platform.machine(),
+        "dependencies": [
+            {
+                "name": "tools/b649_k235_predict.py",
+                "locator": str(producer_file),
+                "versions": {"producer": "v1"},
+                "content_sha256": producer_sha,
+            },
+            {
+                "name": "src/lottolab/infrastructure/pre_outcome_target_operational.py",
+                "locator": str(authority_file),
+                "versions": {"authority": OPERATIONAL_CAUSAL_HISTORY_SCHEMA_VERSION},
+                "content_sha256": authority_sha,
+            },
+        ],
+    }
+    manifest_material["sha256"] = digest(manifest_material)
+    return manifest_material
+
+
+def _resolve_producer_fingerprint(
+    override: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    if override is not None:
+        return dict(override)
+
+    producer_file = Path(__file__).resolve()
+    producer_sha = hashlib.sha256(producer_file.read_bytes()).hexdigest()
+    authority_file = (
+        REPO_ROOT / "src/lottolab/infrastructure/pre_outcome_target_operational.py"
+    ).resolve()
+    authority_sha = hashlib.sha256(authority_file.read_bytes()).hexdigest()
+    deps = (
+        ProducerDependency(
+            locator="tools/b649_k235_predict.py",
+            source_sha256=producer_sha,
+            load_bearing_role="native prediction producer entrypoint",
+        ),
+        ProducerDependency(
+            locator="src/lottolab/infrastructure/pre_outcome_target_operational.py",
+            source_sha256=authority_sha,
+            load_bearing_role="canonical causal-history snapshot authority",
+        ),
+    )
+    fp = ProducerFingerprint.create(
+        producer_id="tools/b649_k235_predict.py",
+        producer_version="v1",
+        dependencies=deps,
+    )
+    return fp.canonical_dict()
+
+
+def build_v6_provenance_output(
+    *,
+    target_draw: str,
+    cutoff_draw: str,
+    draws: Sequence[Draw],
+    k5_entries: list[dict[str, Any]],
+    descriptors_map: Mapping[str, Any],
+    schedule_binding: Mapping[str, Any] | None,
+    ranking_evidence: Mapping[str, Any] | None,
+    generation_started_at: str | None,
+    generation_finished_at: str | None,
+    task_id: str = "NUMBER2_9_NATIVE_PREDICTION",
+    pre_draw_proof_status: str = "LOCAL_ONLY",
+    source_locator: str = "canonical-next-undrawn",
+    source_execution_override: Mapping[str, Any] | None = None,
+    runtime_manifest_override: Mapping[str, Any] | None = None,
+    producer_override: Mapping[str, Any] | None = None,
+    catalog_override: Mapping[str, Any] | None = None,
+    canonical_history_snapshot: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Assemble complete v6 native_result and provenance context from actual execution evidence."""
+    if not generation_started_at or not str(generation_started_at).strip():
+        raise ValueError("generation_started_at timestamp is required")
+    if not generation_finished_at or not str(generation_finished_at).strip():
+        raise ValueError("generation_finished_at timestamp is required")
+
+    if not pre_draw_proof_status or pre_draw_proof_status == "UNKNOWN":
+        raise ValueError("pre_draw_proof_status cannot be empty or UNKNOWN")
+
+    if schedule_binding is None:
+        raise ValueError("schedule binding is required from named input")
+    for key in ("schedule_authority_sha256", "scheduled_at", "target_draw_date"):
+        val = schedule_binding.get(key)
+        if not val or not str(val).strip():
+            raise ValueError(f"schedule binding missing required field: {key}")
+
+    sched_sha = str(schedule_binding["schedule_authority_sha256"])
+    if len(sched_sha) != 64 or any(c not in "0123456789abcdefABCDEF" for c in sched_sha):
+        raise ValueError("schedule_authority_sha256 must be a 64-character SHA-256")
+
+    if ranking_evidence is None:
+        raise ValueError("ranking evidence is required from named input")
+    if ranking_evidence.get("objective") != OBJECTIVE:
+        raise ValueError(f"ranking evidence objective must be {OBJECTIVE}")
+    if ranking_evidence.get("ranking_policy_version") != RANKING_POLICY_VERSION:
+        raise ValueError(f"ranking evidence policy version must be {RANKING_POLICY_VERSION}")
+    if ranking_evidence.get("evaluation_window") != "FULL":
+        raise ValueError("ranking evidence evaluation_window must be FULL")
+
+    observations = ranking_evidence.get("observations")
+    if not isinstance(observations, list):
+        raise ValueError("ranking evidence observations must be a list")
+    obs_order = [
+        (str(item.get("strategy_id", "")), str(item.get("draw_number", "")))
+        for item in observations
+        if isinstance(item, dict)
+    ]
+    if obs_order != sorted(obs_order):
+        raise ValueError("ranking observations must use the v6 canonical order")
+    obs_digest = digest(observations)
+    if ranking_evidence.get("evidence_payload_sha256") != obs_digest:
+        raise ValueError("ranking evidence payload SHA mismatch")
+
+    if not draws:
+        raise ValueError("complete causal history draws are required")
+    if draws[-1].draw_number != cutoff_draw:
+        raise ValueError(
+            f"causal history last draw {draws[-1].draw_number} does not match cutoff {cutoff_draw}"
+        )
+    if int(cutoff_draw) >= int(target_draw):
+        raise ValueError(f"cutoff {cutoff_draw} must be strictly less than target {target_draw}")
+
+    draws_list = [
+        {
+            "lottery_type": LotteryType.BIG_LOTTO.value,
+            "draw_number": d.draw_number,
+            "draw_date": d.draw_date.isoformat(),
+            "main_numbers": list(d.main_numbers),
+            "special_number": d.special_number,
+        }
+        for d in draws
+    ]
+    history_sha = digest(draws_list)
+    if not history_sha:
+        raise ValueError("causal history SHA is required")
+
+    history_snapshot = {
+        "reference": f"research-live-history:sha256:{history_sha}",
+        "draws": draws_list,
+        "sha256": history_sha,
+        "history_fingerprint_sha256": _history_fingerprint(draws),
+    }
+    if canonical_history_snapshot is not None:
+        history_snapshot["verified_canonical"] = dict(canonical_history_snapshot)
+
+    target = {
+        "lottery_type": LotteryType.BIG_LOTTO.value,
+        "target_draw_number": target_draw,
+        "target_draw_date": str(schedule_binding["target_draw_date"]),
+        "scheduled_at": str(schedule_binding["scheduled_at"]),
+        "timezone": str(schedule_binding.get("timezone", "Asia/Taipei")),
+        "data_cutoff": cutoff_draw,
+        "forecast_horizon": 1,
+        "history_draw_count": len(draws_list),
+        "causal_history_sha256": history_sha,
+        "schedule_authority_sha256": sched_sha.lower(),
+    }
+
+    source_execution = _resolve_source_execution(source_execution_override)
+    runtime_manifest = _resolve_runtime_manifest(runtime_manifest_override)
+    producer_dict = _resolve_producer_fingerprint(producer_override)
+
+    if len(k5_entries) != 3:
+        raise ValueError(f"expected exactly 3 K5 strategies, got {len(k5_entries)}")
+
+    native_strategies: list[dict[str, Any]] = []
+    catalog_list: list[dict[str, Any]] = []
+    generation_configs: list[dict[str, Any]] = []
+    seeds: dict[str, int] = {}
+    seen_ids: set[str] = set()
+    seen_ranks: set[int] = set()
+
+    causal_history_rows = tuple(d.causal_row() for d in draws)
+
+    for entry in k5_entries:
+        strategy_id = entry.get("strategy_id")
+        if not isinstance(strategy_id, str) or not strategy_id.strip():
+            raise ValueError("strategy_id is required")
+        if strategy_id in seen_ids:
+            raise ValueError(f"duplicate strategy_id: {strategy_id}")
+        seen_ids.add(strategy_id)
+
+        rank = entry.get("rank")
+        if type(rank) is not int or rank < 1 or rank in seen_ranks:
+            raise ValueError(f"invalid or duplicate rank for {strategy_id}: {rank}")
+        seen_ranks.add(rank)
+
+        version = entry.get("strategy_version")
+        if not isinstance(version, str) or not version.strip():
+            raise ValueError(f"strategy version is required for {strategy_id}")
+
+        native_k = entry.get("native_ticket_count", 5)
+        if native_k != 5:
+            raise ValueError(f"expected native_k=5 for B649 v6 stream, got {native_k}")
+
+        desc = descriptors_map.get(strategy_id)
+        if desc is not None:
+            gen_id = getattr(desc, "adapter_path", "") or f"fixture.{strategy_id}:Adapter"
+            src_path, src_sha = _resolve_adapter_source(desc, catalog_override)
+        else:
+            gen_id = entry.get("generator_identity") or f"fixture.{strategy_id}:Adapter"
+            if catalog_override and strategy_id in catalog_override:
+                src_path = str(catalog_override[strategy_id].get("adapter_source_path", ""))
+                src_sha = str(catalog_override[strategy_id].get("adapter_source_sha256", ""))
+            else:
+                src_path = entry.get("adapter_source_path") or f"fixture://adapters/{strategy_id}"
+                src_sha = entry.get("adapter_source_sha256") or digest(src_path)
+
+        if not src_path or not src_sha:
+            raise ValueError(f"adapter source path and SHA are required for {strategy_id}")
+
+        rng_semantics = entry.get("determinism_seed")
+        if rng_semantics is None and desc is not None:
+            rng_semantics = _resolve_seed_metadata(desc, causal_history_rows)
+        if (
+            rng_semantics is None
+            or not isinstance(rng_semantics, dict)
+            or "behavior" not in rng_semantics
+        ):
+            raise ValueError(f"RNG identity is required for {strategy_id}")
+
+        raw_tickets = entry.get("tickets", [])
+        if len(raw_tickets) != native_k:
+            raise ValueError(
+                f"expected {native_k} native tickets for {strategy_id}, got {len(raw_tickets)}"
+            )
+
+        formatted_tickets: list[dict[str, Any]] = []
+        for pos, t in enumerate(raw_tickets, start=1):
+            emitted = t.get("emitted_main_numbers")
+            if (
+                not isinstance(emitted, list)
+                or len(emitted) != 6
+                or any(type(n) is not int or not 1 <= n <= 49 for n in emitted)
+                or len(set(emitted)) != 6
+            ):
+                raise ValueError(
+                    f"invalid six-number native ticket for {strategy_id} at position {pos}"
+                )
+            legal = t.get("legal_main_numbers", emitted)
+            if legal != emitted:
+                raise ValueError(
+                    f"emitted/legal ticket mismatch for {strategy_id} at position {pos}"
+                )
+            formatted_tickets.append(
+                {
+                    "position": pos,
+                    "emitted_main_numbers": emitted,
+                    "legal_main_numbers": legal,
+                    "predicted_special_number": None,
+                }
+            )
+
+        native_strategies.append(
+            {
+                "rank": rank,
+                "strategy_id": strategy_id,
+                "strategy_version": version,
+                "native_k": native_k,
+                "generator_identity": gen_id,
+                "adapter_source_path": src_path,
+                "adapter_source_sha256": src_sha,
+                "rng_semantics": rng_semantics,
+                "tickets": formatted_tickets,
+            }
+        )
+
+        catalog_list.append(
+            {
+                "strategy_id": strategy_id,
+                "version": version,
+                "native_k": native_k,
+                "adapter_path": gen_id,
+                "adapter_source_path": src_path,
+                "adapter_source_sha256": src_sha,
+            }
+        )
+
+        generation_configs.append(
+            {
+                "strategy_id": strategy_id,
+                "strategy_version": version,
+                "native_k": native_k,
+                "parameters": entry.get("parameters", {}),
+                "rng_semantics": rng_semantics,
+            }
+        )
+
+        if rng_semantics.get("behavior") == "SEEDED_STOCHASTIC":
+            seed_val = rng_semantics.get("seed")
+            if seed_val is None:
+                raise ValueError(f"seed required for seeded stochastic strategy {strategy_id}")
+            seeds[strategy_id] = int(seed_val)
+
+    catalog_list.sort(key=lambda item: str(item["strategy_id"]))
+    generation_configs.sort(key=lambda item: str(item["strategy_id"]))
+
+    effective_rows = []
+    for config in generation_configs:
+        strategy_id = str(config["strategy_id"])
+        descriptor = descriptors_map.get(strategy_id)
+        if descriptor is None:
+            raise ValueError(f"effective adapter class requires catalog strategy: {strategy_id}")
+        effective_rows.append(
+            {
+                "strategy_id": strategy_id,
+                "strategy_version": str(config["strategy_version"]),
+                "native_k": int(config["native_k"]),
+                "parameters_json": canonical_json(config.get("parameters", {})),
+                "generation_config_sha256": digest(config),
+                "status": "EXECUTED",
+                "constructor_defaults": {},
+                "instance_state": {},
+                "adapter_class": _resolve_adapter_class_identity(descriptor),
+            }
+        )
+    effective_parameters = {
+        "strategies": effective_rows,
+        "sha256": digest({"strategies": effective_rows}),
+    }
+
+    rng_stages = [
+        {
+            "strategy_id": str(config["strategy_id"]),
+            "stage": "NATIVE_GENERATION",
+            "status": "EXECUTED",
+            "rng_semantics": config["rng_semantics"],
+            "seed_status": (
+                "EFFECTIVE_SEED_CAPTURED"
+                if config["rng_semantics"].get("behavior") == "SEEDED_STOCHASTIC"
+                else "NOT_APPLICABLE"
+            ),
+            "invocation_identity": f"native-{config['strategy_id']}",
+            "replicate": 1,
+        }
+        for config in generation_configs
+    ]
+    rng_semantics_dict = {
+        "stages": rng_stages,
+        "reproducibility_boundary": "FIXED_SYNTHETIC_INPUTS_CODE_RUNTIME_CONFIG",
+    }
+
+    total_tickets = len(native_strategies) * 5
+
+    native_result = {
+        "schema_version": NATIVE_INPUT_SCHEMA,
+        "task_id": task_id,
+        "prediction_target": target_draw,
+        "generated_at_local": generation_finished_at,
+        "pre_draw_proof_status": pre_draw_proof_status,
+        "target_rows_selected": False,
+        "target_outcome": "UNOBSERVED_NOT_READ",
+        "strategy_count_expected": len(native_strategies),
+        "strategy_count_generated": len(native_strategies),
+        "ticket_count_expected": total_tickets,
+        "ticket_count_generated": total_tickets,
+        "strategies": native_strategies,
+    }
+
+    provenance = {
+        "target": target,
+        "source_locator": source_locator,
+        "source_execution": source_execution,
+        "runtime_manifest": runtime_manifest,
+        "history_snapshot": history_snapshot,
+        "producer": producer_dict,
+        "catalog": catalog_list,
+        "generation_configs": generation_configs,
+        "effective_parameters": effective_parameters,
+        "rng_semantics": rng_semantics_dict,
+        "ranking_evidence": ranking_evidence,
+        "seeds": seeds,
+        "generation_started_at": generation_started_at,
+        "generation_finished_at": generation_finished_at,
+    }
+
+    return {
+        "native_result": native_result,
+        "provenance": provenance,
+    }
 
 
 def _verify_runtime_integrity() -> None:
@@ -384,6 +900,85 @@ def _load_causal_draws(
 load_causal_draws = _load_causal_draws
 
 
+def _load_verified_causal_draws(
+    db_path: Path,
+    cutoff_draw: str,
+    target_draw: str,
+    target_draw_date: str,
+    harness: Any = None,
+) -> tuple[tuple[Draw, ...], tuple[CausalDrawRow, ...], dict[str, Any]]:
+    """Load Native v6 numbers and canonical identity from one verified snapshot."""
+    resolved_db = db_path.resolve(strict=True)
+    paths = LocalDataPaths(resolved_db.parent, resolved_db)
+    target_date = date.fromisoformat(target_draw_date)
+    target = ObservationTarget(LotteryType.BIG_LOTTO, target_draw, target_date)
+    authority = SQLitePreOutcomeCausalHistoryAuthority(paths)
+    with authority.open_verified_snapshot(
+        target,
+        history_cutoff_draw=cutoff_draw,
+    ) as (_, snapshot):
+        draw_factory = getattr(harness, "Draw", Draw) if harness is not None else Draw
+        draws_list: list[Draw] = []
+        for row in snapshot.draws:
+            if len(row.special_numbers) != 1:
+                raise ValueError(
+                    f"canonical draw {row.draw_number} must have one special number"
+                )
+            draws_list.append(
+                draw_factory(
+                    draw_number=row.draw_number,
+                    draw_date=row.draw_date,
+                    main_numbers=row.main_numbers,
+                    special_number=row.special_numbers[0],
+                )
+            )
+        draws = tuple(draws_list)
+        causal_history = tuple(draw.causal_row() for draw in draws)
+        canonical_history_snapshot: dict[str, Any] = {
+            "authority": "SQLitePreOutcomeCausalHistoryAuthority.open_verified_snapshot",
+            "schema_version": OPERATIONAL_CAUSAL_HISTORY_SCHEMA_VERSION,
+            "target": target.canonical_dict(),
+            "history_ref": snapshot.ref.canonical_dict(),
+            "normalized_records": [
+                {
+                    "draw_number": row.draw_number,
+                    "draw_date": row.draw_date.isoformat(),
+                    "normalized_record_hash": row.normalized_record_hash,
+                }
+                for row in snapshot.draws
+            ],
+        }
+    return draws, causal_history, canonical_history_snapshot
+
+
+def _require_v6_history_binding(
+    *,
+    target_draw: str,
+    cutoff_draw: str,
+    schedule_binding: Mapping[str, Any] | None,
+    ranking_evidence: Mapping[str, Any] | None,
+) -> str:
+    if schedule_binding is None:
+        raise ValueError("schedule binding is required from named input")
+    if ranking_evidence is None:
+        raise ValueError("ranking evidence is required from named input")
+    bound_target = schedule_binding.get("target_draw_number")
+    if bound_target != target_draw:
+        raise ValueError("schedule target issue does not match Producer target")
+    target_date = schedule_binding.get("target_draw_date")
+    if not isinstance(target_date, str) or not target_date.strip():
+        raise ValueError("schedule binding missing required field: target_draw_date")
+    try:
+        parsed_target_date = date.fromisoformat(target_date)
+    except ValueError as exc:
+        raise ValueError("schedule binding target_draw_date must be an ISO date") from exc
+    if parsed_target_date.isoformat() != target_date:
+        raise ValueError("schedule binding target_draw_date must be canonical ISO date")
+    if ranking_evidence.get("history_cutoff_draw") != cutoff_draw:
+        raise ValueError("ranking evidence cutoff does not match Producer cutoff")
+    return target_date
+
+
 def _format_tickets_text(
     target_draw: str,
     cutoff_draw: str,
@@ -399,14 +994,16 @@ def _format_tickets_text(
     ]
     if overall_pipeline_status != "COMPLETE":
         lines.append(f"Pipeline Status: {overall_pipeline_status}")
-    lines.extend([
-        f"Ranking Selection: {ranking_selection} (Cutoff 115000096)",
-        f"Causal History Draws: {history_count}",
-        "Horizon Execution Version: v0.2 (zero cross-ticket overlap)",
-        f"Quality Component: {QUALITY_COMPONENT_VERSION}",
-        "=" * 80,
-        "",
-    ])
+    lines.extend(
+        [
+            f"Ranking Selection: {ranking_selection} (Cutoff 115000096)",
+            f"Causal History Draws: {history_count}",
+            "Horizon Execution Version: v0.2 (zero cross-ticket overlap)",
+            f"Quality Component: {QUALITY_COMPONENT_VERSION}",
+            "=" * 80,
+            "",
+        ]
+    )
 
     for cat_name in ("k2", "k3", "k5"):
         cdata = categories_data[cat_name]
@@ -468,6 +1065,16 @@ def run_prediction(
     output_dir: Path = DEFAULT_OUTPUT_DIR,
     overwrite: bool = False,
     raw_predictions_override: dict[str, Any] | None = None,
+    emit_v6_provenance: bool = False,
+    schedule_binding: Mapping[str, Any] | None = None,
+    ranking_evidence: Mapping[str, Any] | None = None,
+    source_execution_override: Mapping[str, Any] | None = None,
+    runtime_manifest_override: Mapping[str, Any] | None = None,
+    producer_override: Mapping[str, Any] | None = None,
+    catalog_override: Mapping[str, Any] | None = None,
+    task_id: str = "NUMBER2_9_NATIVE_PREDICTION",
+    pre_draw_proof_status: str = "LOCAL_ONLY",
+    source_locator: str = "canonical-next-undrawn",
     **_kwargs: Any,
 ) -> dict[str, Any]:
     """Execute prediction generation and quality validation pipeline."""
@@ -492,8 +1099,23 @@ def run_prediction(
     json_path = output_dir / f"predictions_{target_draw}.json"
     txt_path = output_dir / f"tickets_{target_draw}.txt"
 
-    # 1. Load draws in single snapshot
-    draws, causal_history = _load_causal_draws(db_path, cutoff_draw, target_draw)
+    # 1. Load the v6 history and its canonical identity from the same snapshot.
+    canonical_history_snapshot: dict[str, Any] | None = None
+    if emit_v6_provenance:
+        target_draw_date = _require_v6_history_binding(
+            target_draw=target_draw,
+            cutoff_draw=cutoff_draw,
+            schedule_binding=schedule_binding,
+            ranking_evidence=ranking_evidence,
+        )
+        draws, causal_history, canonical_history_snapshot = _load_verified_causal_draws(
+            db_path,
+            cutoff_draw,
+            target_draw,
+            target_draw_date,
+        )
+    else:
+        draws, causal_history = _load_causal_draws(db_path, cutoff_draw, target_draw)
 
     # 2. Load ranking selection (FROZEN_TOP3_AS_OF_096)
     if not rank_history_path.exists():
@@ -522,6 +1144,7 @@ def run_prediction(
         ]
 
     # 3. Generate raw predictions (or override for testing)
+    generation_started_at = datetime.now(UTC).isoformat()
     if raw_predictions_override is not None:
         raw_predictions = raw_predictions_override
     else:
@@ -552,20 +1175,14 @@ def run_prediction(
                 try:
                     adapter_cls = registry.load_adapter(strategy_id)
                     impl = instantiate_portfolio_adapter(strategy_id, adapter_cls)
-                    first = impl.get_bets_with_emission(
-                        causal_history, LotteryType.BIG_LOTTO
-                    )
-                    second = impl.get_bets_with_emission(
-                        causal_history, LotteryType.BIG_LOTTO
-                    )
+                    first = impl.get_bets_with_emission(causal_history, LotteryType.BIG_LOTTO)
+                    second = impl.get_bets_with_emission(causal_history, LotteryType.BIG_LOTTO)
                     if first != second:
                         raise RuntimeError(
                             "same causal history did not reproduce identical native output"
                         )
                     if type(first) is not tuple or len(first) != k_count:
-                        raise RuntimeError(
-                            f"expected {k_count} native tickets, got {len(first)}"
-                        )
+                        raise RuntimeError(f"expected {k_count} native tickets, got {len(first)}")
                     tickets = [
                         {
                             "emitted_main_numbers": list(b.emitted_main_numbers),
@@ -574,26 +1191,26 @@ def run_prediction(
                         }
                         for b in first
                     ]
-                    legal_tickets: list[tuple[int, ...]] = [
-                        b.legal_main_numbers for b in first
-                    ]
+                    legal_tickets: list[tuple[int, ...]] = [b.legal_main_numbers for b in first]
                     duplicates = [
-                        idx + 1
-                        for idx, t in enumerate(legal_tickets)
-                        if t in legal_tickets[:idx]
+                        idx + 1 for idx, t in enumerate(legal_tickets) if t in legal_tickets[:idx]
                     ]
-                    entry.update({
-                        "status": "OK",
-                        "tickets": tickets,
-                        "failure_type": None,
-                        "detail": None,
-                        "duplicate_ticket_positions": duplicates,
-                    })
+                    entry.update(
+                        {
+                            "status": "OK",
+                            "tickets": tickets,
+                            "failure_type": None,
+                            "detail": None,
+                            "duplicate_ticket_positions": duplicates,
+                        }
+                    )
                 except Exception as exc:
                     entry["failure_type"] = type(exc).__name__
                     entry["detail"] = str(exc)
                 entries.append(entry)
             raw_predictions[cat_name] = {"entries": entries}
+
+    generation_finished_at = datetime.now(UTC).isoformat()
 
     # 4. Execute quality evaluation per K
     categories_output: dict[str, dict[str, Any]] = {}
@@ -614,9 +1231,7 @@ def run_prediction(
             "category": cat_name.upper(),
             "expected_strategy_count": 3,
             "expected_ticket_count_per_strategy": k_val,
-            "generated_strategy_count": sum(
-                e["status"] == "OK" for e in raw_entries
-            ),
+            "generated_strategy_count": sum(e["status"] == "OK" for e in raw_entries),
             "accepted_strategy_count": len(accepted),
             "rejected_strategy_count": len(rejected),
             "has_qualified_candidates": is_avail,
@@ -629,9 +1244,7 @@ def run_prediction(
             "all_raw_entries": raw_entries,
         }
 
-    qualified_k_count = sum(
-        1 for c in categories_output.values() if c["is_available"]
-    )
+    qualified_k_count = sum(1 for c in categories_output.values() if c["is_available"])
     all_k_available = qualified_k_count == len(categories_output)
     has_any_qualified = qualified_k_count > 0
 
@@ -641,6 +1254,28 @@ def run_prediction(
         overall_status = "PARTIAL_QUALIFIED"
     else:
         overall_status = "NO_QUALIFIED_PREDICTIONS"
+
+    v6_bundle: dict[str, Any] | None = None
+    if emit_v6_provenance:
+        v6_bundle = build_v6_provenance_output(
+            target_draw=target_draw,
+            cutoff_draw=cutoff_draw,
+            draws=draws,
+            k5_entries=raw_predictions["k5"]["entries"],
+            descriptors_map=dmap,
+            schedule_binding=schedule_binding,
+            ranking_evidence=ranking_evidence,
+            generation_started_at=generation_started_at,
+            generation_finished_at=generation_finished_at,
+            task_id=task_id,
+            pre_draw_proof_status=pre_draw_proof_status,
+            source_locator=source_locator,
+            source_execution_override=source_execution_override,
+            runtime_manifest_override=runtime_manifest_override,
+            producer_override=producer_override,
+            catalog_override=catalog_override,
+            canonical_history_snapshot=canonical_history_snapshot,
+        )
 
     # 5. Build final prediction document
     result_document: dict[str, Any] = {
@@ -678,6 +1313,11 @@ def run_prediction(
         "k5": categories_output["k5"],
     }
 
+    if emit_v6_provenance and v6_bundle is not None:
+        result_document["v6_provenance"] = v6_bundle
+        result_document["native_result"] = v6_bundle["native_result"]
+        result_document["provenance"] = v6_bundle["provenance"]
+
     # 6. Write JSON and TXT artifacts safely (AC1 / AC7 contract)
     ticket_text = _format_tickets_text(
         target_draw=target_draw,
@@ -688,9 +1328,9 @@ def run_prediction(
         overall_pipeline_status=overall_status,
     )
 
-    new_json_bytes = (
-        json.dumps(result_document, ensure_ascii=False, indent=2) + "\n"
-    ).encode("utf-8")
+    new_json_bytes = (json.dumps(result_document, ensure_ascii=False, indent=2) + "\n").encode(
+        "utf-8"
+    )
     new_txt_bytes = ticket_text.encode("utf-8")
 
     json_exists = json_path.exists()
@@ -737,7 +1377,201 @@ def run_prediction(
     json_path.write_bytes(new_json_bytes)
     txt_path.write_bytes(new_txt_bytes)
 
+    if emit_v6_provenance and v6_bundle is not None:
+        v6_path = output_dir / f"v6_native_prediction_{target_draw}.json"
+        v6_bytes = (json.dumps(v6_bundle, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
+        if v6_path.exists() and not overwrite:
+            try:
+                existing_v6 = json.loads(v6_path.read_text(encoding="utf-8"))
+                if existing_v6 != v6_bundle:
+                    raise FileExistsError(
+                        f"Output file {v6_path} already exists with conflicting content."
+                    )
+            except Exception as exc:
+                if isinstance(exc, FileExistsError):
+                    raise
+                raise FileExistsError(
+                    f"Output file {v6_path} already exists. Specify overwrite=True to replace."
+                ) from exc
+        v6_path.write_bytes(v6_bytes)
+
     return result_document
+
+
+def produce_v6_native_prediction(
+    *,
+    db_path: Path = DEFAULT_DB_PATH,
+    rank_history_path: Path = DEFAULT_RANK_HISTORY,
+    cutoff_draw: str = "115000097",
+    target_draw: str = "115000098",
+    schedule_binding: Mapping[str, Any],
+    ranking_evidence: Mapping[str, Any],
+    output_dir: Path | None = None,
+    overwrite: bool = False,
+    raw_predictions_override: dict[str, Any] | None = None,
+    source_execution_override: Mapping[str, Any] | None = None,
+    runtime_manifest_override: Mapping[str, Any] | None = None,
+    producer_override: Mapping[str, Any] | None = None,
+    catalog_override: Mapping[str, Any] | None = None,
+    task_id: str = "NUMBER2_9_NATIVE_PREDICTION",
+    pre_draw_proof_status: str = "LOCAL_ONLY",
+    source_locator: str = "canonical-next-undrawn",
+    harness: Any = None,
+) -> dict[str, Any]:
+    """Execute native prediction and return complete v6 native_result and provenance pair.
+
+    The returned dict contains:
+    - 'native_result': schema NUMBER2_9_B649_NATIVE_PREDICTION_V1 mapping
+    - 'provenance': complete v6 provenance context mapping
+    which can be passed directly as adapt_native_input(**bundle) or
+    adapt_native_input(bundle['native_result'], bundle['provenance']).
+    """
+    _verify_runtime_integrity()
+
+    cutoff_int = int(cutoff_draw)
+    target_int = int(target_draw)
+    ranking_cutoff = "115000096"
+    if cutoff_int >= target_int:
+        raise ValueError(
+            f"Causal violation: cutoff draw {cutoff_draw} "
+            f"must be strictly less than target draw {target_draw}"
+        )
+    if int(ranking_cutoff) > cutoff_int:
+        raise ValueError(
+            f"Causal violation: frozen ranking cutoff {ranking_cutoff} "
+            f"must not exceed prediction cutoff {cutoff_draw}"
+        )
+
+    target_draw_date = _require_v6_history_binding(
+        target_draw=target_draw,
+        cutoff_draw=cutoff_draw,
+        schedule_binding=schedule_binding,
+        ranking_evidence=ranking_evidence,
+    )
+    draws, causal_history, canonical_history_snapshot = _load_verified_causal_draws(
+        db_path,
+        cutoff_draw,
+        target_draw,
+        target_draw_date,
+        harness=harness,
+    )
+
+    if not rank_history_path.exists():
+        raise FileNotFoundError(f"rank_history.json not found at {rank_history_path}")
+    rank_history = json.loads(rank_history_path.read_text(encoding="utf-8"))
+
+    catalog = production_catalog()
+    registry = ExecutableRegistry(catalog)
+    descriptors = tuple(catalog.list(lottery_type=LotteryType.BIG_LOTTO))
+    dmap = {d.strategy_id: d for d in descriptors}
+
+    hist_k5 = rank_history["hist"][ranking_cutoff]["5"][:3]
+    k5_slots = [
+        {
+            "rank": item[0],
+            "strategy_id": item[1],
+            "display_name": rank_history["ids"][item[1]][1],
+            "strategy_version": dmap[item[1]].version if item[1] in dmap else "v0.1",
+        }
+        for item in hist_k5
+    ]
+
+    generation_started_at = datetime.now(UTC).isoformat()
+    if raw_predictions_override is not None and "k5" in raw_predictions_override:
+        k5_entries = raw_predictions_override["k5"]["entries"]
+    else:
+        k5_entries = []
+        for slot in k5_slots:
+            strategy_id = cast(str, slot["strategy_id"])
+            desc = dmap[strategy_id]
+            entry: dict[str, Any] = {
+                "rank": slot["rank"],
+                "strategy_id": strategy_id,
+                "display_name": slot["display_name"],
+                "strategy_version": slot["strategy_version"],
+                "native_ticket_count": 5,
+                "ranking_basis": "FULL",
+                "determinism_seed": _resolve_seed_metadata(desc, causal_history),
+                "status": "TYPED_FAILURE",
+                "tickets": [],
+                "failure_type": None,
+                "detail": None,
+                "duplicate_ticket_positions": [],
+            }
+            try:
+                adapter_cls = registry.load_adapter(strategy_id)
+                impl = instantiate_portfolio_adapter(strategy_id, adapter_cls)
+                first = impl.get_bets_with_emission(causal_history, LotteryType.BIG_LOTTO)
+                second = impl.get_bets_with_emission(causal_history, LotteryType.BIG_LOTTO)
+                if first != second:
+                    raise RuntimeError(
+                        "same causal history did not reproduce identical native output"
+                    )
+                if type(first) is not tuple or len(first) != 5:
+                    raise RuntimeError(f"expected 5 native tickets, got {len(first)}")
+                tickets = [
+                    {
+                        "emitted_main_numbers": list(b.emitted_main_numbers),
+                        "legal_main_numbers": list(b.legal_main_numbers),
+                        "predicted_special_number": b.special_number,
+                    }
+                    for b in first
+                ]
+                entry.update(
+                    {
+                        "status": "OK",
+                        "tickets": tickets,
+                        "failure_type": None,
+                        "detail": None,
+                    }
+                )
+            except Exception as exc:
+                entry["failure_type"] = type(exc).__name__
+                entry["detail"] = str(exc)
+            k5_entries.append(entry)
+
+    generation_finished_at = datetime.now(UTC).isoformat()
+
+    bundle = build_v6_provenance_output(
+        target_draw=target_draw,
+        cutoff_draw=cutoff_draw,
+        draws=draws,
+        k5_entries=k5_entries,
+        descriptors_map=dmap,
+        schedule_binding=schedule_binding,
+        ranking_evidence=ranking_evidence,
+        generation_started_at=generation_started_at,
+        generation_finished_at=generation_finished_at,
+        task_id=task_id,
+        pre_draw_proof_status=pre_draw_proof_status,
+        source_locator=source_locator,
+        source_execution_override=source_execution_override,
+        runtime_manifest_override=runtime_manifest_override,
+        producer_override=producer_override,
+        catalog_override=catalog_override,
+        canonical_history_snapshot=canonical_history_snapshot,
+    )
+
+    if output_dir is not None:
+        output_dir.mkdir(parents=True, exist_ok=True)
+        v6_path = output_dir / f"v6_native_prediction_{target_draw}.json"
+        v6_bytes = (json.dumps(bundle, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
+        if v6_path.exists() and not overwrite:
+            try:
+                existing = json.loads(v6_path.read_text(encoding="utf-8"))
+                if existing != bundle:
+                    raise FileExistsError(
+                        f"Output file {v6_path} already exists with conflicting content."
+                    )
+            except Exception as exc:
+                if isinstance(exc, FileExistsError):
+                    raise
+                raise FileExistsError(
+                    f"Output file {v6_path} already exists. Specify overwrite=True to replace."
+                ) from exc
+        v6_path.write_bytes(v6_bytes)
+
+    return bundle
 
 
 def main() -> None:
@@ -779,8 +1613,45 @@ def main() -> None:
         action="store_true",
         help="Overwrite existing output files if present",
     )
+    parser.add_argument(
+        "--emit-v6-provenance",
+        action="store_true",
+        help="Emit complete v6 provenance and native result output",
+    )
+    parser.add_argument(
+        "--schedule-binding-json",
+        type=Path,
+        default=None,
+        help="Path to JSON file containing schedule binding",
+    )
+    parser.add_argument(
+        "--ranking-evidence-json",
+        type=Path,
+        default=None,
+        help="Path to JSON file containing ranking evidence",
+    )
+    parser.add_argument(
+        "--task-id",
+        type=str,
+        default="NUMBER2_9_NATIVE_PREDICTION",
+        help="Task ID for provenance output",
+    )
+    parser.add_argument(
+        "--pre-draw-proof-status",
+        type=str,
+        default="LOCAL_ONLY",
+        help="Pre-draw proof status for provenance output",
+    )
 
     args, _unknown = parser.parse_known_args()
+
+    sched_binding = None
+    if args.schedule_binding_json:
+        sched_binding = json.loads(args.schedule_binding_json.read_text(encoding="utf-8"))
+
+    rank_ev = None
+    if args.ranking_evidence_json:
+        rank_ev = json.loads(args.ranking_evidence_json.read_text(encoding="utf-8"))
 
     try:
         doc = run_prediction(
@@ -790,6 +1661,11 @@ def main() -> None:
             target_draw=args.target_draw,
             output_dir=args.output_dir,
             overwrite=args.overwrite,
+            emit_v6_provenance=args.emit_v6_provenance,
+            schedule_binding=sched_binding,
+            ranking_evidence=rank_ev,
+            task_id=args.task_id,
+            pre_draw_proof_status=args.pre_draw_proof_status,
         )
     except Exception as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
@@ -799,10 +1675,7 @@ def main() -> None:
     print(f"ALL_K_AVAILABLE: {doc['all_k_available']}")
     print(f"AVAILABLE_K: {doc['available_k_categories']}")
     print(f"UNAVAILABLE_K: {doc['unavailable_k_categories']}")
-    print(
-        f"TARGET: {doc['target_draw_number']}, "
-        f"CUTOFF: {doc['prediction_cutoff_draw_number']}"
-    )
+    print(f"TARGET: {doc['target_draw_number']}, CUTOFF: {doc['prediction_cutoff_draw_number']}")
     print(f"CAUSAL_HISTORY_LENGTH: {doc['causal_history_length']}")
     print(f"ACCEPTED_COUNTS: {doc['accepted_counts_by_k']}")
     print(f"REJECTED_COUNTS: {doc['rejected_counts_by_k']}")
@@ -810,6 +1683,9 @@ def main() -> None:
     out_txt = args.output_dir / f"tickets_{args.target_draw}.txt"
     print(f"PREDICTION_JSON: {out_json}")
     print(f"TICKETS_TXT: {out_txt}")
+    if args.emit_v6_provenance:
+        out_v6 = args.output_dir / f"v6_native_prediction_{args.target_draw}.json"
+        print(f"V6_NATIVE_PREDICTION_JSON: {out_v6}")
 
     if doc["overall_pipeline_status"] == "NO_QUALIFIED_PREDICTIONS":
         print(

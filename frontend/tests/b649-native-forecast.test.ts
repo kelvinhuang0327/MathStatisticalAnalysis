@@ -172,6 +172,54 @@ function setK5CandidateMetric(
   if (options.coverage !== undefined) targetCandidate.coverage = options.coverage
 }
 
+const nativePositionsTarget = { target_draw_number: '115000098', target_draw_date: '2099-01-01' }
+
+function nativePositionsResponse() {
+  const response = nativeResponse(nativePositionsTarget)
+  const { payload } = response
+  const tickets = (start: number) =>
+    Array.from({ length: 5 }, (_, index) => [1, 2, 3, 4, 5, start + index])
+  const native_strategies = [0, 1, 2].map((index) => ({
+    strategy_id: 'synthetic.native.k5.' + index,
+    strategy_version: 'v0.1',
+    native_k: 5,
+    source_rank: index + 1,
+    adapter_source_sha256: String(index + 1).repeat(64),
+    native_positions: tickets(6 + index * 5).map((numbers, position) => ({
+      position: position + 1,
+      numbers,
+    })),
+  }))
+  const {
+    strategy_id, strategy_version, native_k, adapter_source_sha256, native_positions,
+  } = native_strategies[0]
+  const available = {
+    bucket: 'K5:' + strategy_id,
+    native_k,
+    status: 'AVAILABLE',
+    generation_status: 'COMPLETE',
+    selected: { strategy_id, strategy_version },
+    entry_identity: [payload.bundle_id, native_k, strategy_id, strategy_version],
+    candidates: [{ strategy_id, strategy_version, native_k, adapter_source_sha256 }],
+    tickets: native_positions.map(({ numbers }) => [...numbers]),
+    native_positions: structuredClone(native_positions),
+  }
+  const sha256 = payload.identity.history_payload_sha256
+  return {
+    ...response,
+    payload: {
+      ...payload,
+      identity: { ...payload.identity, history_cutoff: '115000097' },
+      forecast_output_semantics: 'STRATEGY_NATIVE_POSITIONS',
+      source_proof_status: 'LOCAL_ONLY',
+      history: { reference: 'research-live-history:sha256:' + sha256, sha256 },
+      native_strategies,
+      buckets: payload.buckets.map((bucket) => bucket.native_k === 5 ? available : bucket),
+    },
+    available,
+  }
+}
+
 function errorResponse(error_code: string, message: string) {
   return { error_code, message }
 }
@@ -223,6 +271,72 @@ async function submitTarget(wrapper: ReturnType<typeof mount>, target: Target) {
 }
 
 describe('B649 Native Forecast consumer', () => {
+  it('renders the schema 6 main bucket in source order and reports all native positions separately', async () => {
+    const { available, ...response } = nativePositionsResponse()
+    fetchMock
+      .mockResolvedValueOnce(apiResponse(response))
+      .mockResolvedValueOnce(apiResponse(errorResponse('NOT_FOUND', 'target missing'), 404))
+    const wrapper = mount(B649NativeForecastPanel)
+
+    await submitTarget(wrapper, nativePositionsTarget)
+    await flushPromises()
+
+    const displayed = wrapper.findAll('[data-testid="native-selected-ticket"]')
+    expect(displayed.map((row) => row.get('strong').text())).toEqual(
+      available.tickets.map((numbers) => numbers.join(' · ')),
+    )
+    expect(displayed).toHaveLength(5)
+    expect(wrapper.get('[data-testid="native-position-totals"]').text()).toContain('3 組策略、15 注')
+    expect(wrapper.get('[data-testid="native-strategy-count"]').text()).toContain('1 筆')
+    expect(wrapper.get('[data-testid="native-history-cutoff-date"]').text()).toBe('未提供')
+    expect(wrapper.get('[data-testid="native-evidence-boundary"]').text()).toContain('LOCAL_ONLY')
+    const labels = wrapper.get('[data-testid="native-strategy-candidate"]').findAll('dd')
+    expect(labels[2].text()).toBe('未提供')
+    expect(labels[4].text()).toBe('未提供')
+
+    await submitTarget(wrapper, { ...nativePositionsTarget, target_draw_date: '2099-01-02' })
+    await flushPromises()
+    expect(wrapper.get('[role="alert"]').text()).toContain('所選期別沒有 Native 資料')
+    expect(wrapper.findAll('[data-testid="native-selected-ticket"]')).toHaveLength(0)
+    expect(wrapper.find('[data-testid="native-position-totals"]').exists()).toBe(false)
+    wrapper.unmount()
+  })
+
+  const schema6Mutations: [string, (fixture: ReturnType<typeof nativePositionsResponse>) => void][] = [
+    ['mismatched target', ({ scope }) => { scope.target_draw_number = '115000099' }],
+    ['noncausal cutoff', ({ payload }) => { payload.identity.history_cutoff = '115000098' }],
+    ['mismatched history hash', ({ payload }) => { payload.history.sha256 = '0'.repeat(64) }],
+    ['unbound history reference', ({ payload }) => { payload.history.reference = 'unbound' }],
+    ['missing semantics', ({ payload }) => { payload.forecast_output_semantics = '' }],
+    ['unsupported proof claim', ({ payload }) => { payload.source_proof_status = 'EXTERNAL' }],
+    ['unbound bucket ID', ({ available }) => { available.bucket = 'K5' }],
+    ['wrong strategy version', ({ available }) => { available.selected.strategy_version = 'wrong' }],
+    ['wrong adapter hash', ({ available }) => { available.candidates[0].adapter_source_sha256 = '0'.repeat(64) }],
+    ['wrong native strategy ticket count', ({ payload }) => { payload.native_strategies[2].native_positions.pop() }],
+    ['wrong main bucket ticket count', ({ available }) => { available.tickets.pop() }],
+    ['out of order positions', ({ available }) => { available.native_positions.reverse() }],
+    ['out of order main tickets', ({ available }) => { available.tickets.reverse() }],
+    ['nonlegal ticket', ({ payload }) => { payload.native_strategies[2].native_positions[0].numbers[0] = 50 }],
+    ['wrong bucket bundle', ({ available }) => { available.entry_identity[0] = '0'.repeat(64) }],
+    ['invalid metric supplied', ({ available }) => {
+      Object.assign(available.candidates[0], {
+        metric: { numerator: 5, denominator: 100, rate: { numerator: '5', denominator: '100' } },
+      })
+    }],
+  ]
+
+  it.each(schema6Mutations)('rejects invalid schema 6 data: %s', async (_label, mutate) => {
+    const response = nativePositionsResponse()
+    mutate(response)
+    const { available: _bucket, ...body } = response
+    fetchMock.mockResolvedValueOnce(apiResponse(body))
+
+    await expect(fetchB649NativeForecast(nativePositionsTarget)).rejects.toMatchObject({
+      kind: 'MALFORMED_RESPONSE',
+      status: 200,
+    })
+  })
+
   it.each([
     [
       '0/100',

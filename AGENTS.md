@@ -85,7 +85,8 @@ Owner 2026-11-17：所有研究策略都要用歷史資料回測出的成功率�
   - 標準歷史回測（逐期回放，產生以下面 6 欄唯一鍵識別的 cell）的結果一律寫回正式庫，不論表現好壞，沒有例外（Owner 2026-11-17）：表現差、沒有增益或決定淘汰的策略也要寫回；不能看完結果再改用途。寫回方式照下一條：研究線交暫存庫與 `MERGE_PENDING.json`，由支線 7 檢查、依授權合併並讀回。
   - Packet 沒有宣告時：標準歷史回測視同 `UI_REPLAY`，其他結果視同 `EVIDENCE_ONLY`；收據寫 `UNDECLARED` 與採用的處理方式。
   - Packet 對結果用途或寫回方式的要求與本節衝突時（例如標準歷史回測卻寫 `EVIDENCE_ONLY`，或沒有列出暫存庫位置），照本節做，不要因此停下：本節要求的唯讀查詢（查正式庫與待合併暫存庫，避免重算）與暫存庫寫入（`.task-data/_scratch/<名稱>/` 與其 `MERGE_PENDING.json`）視同 Packet 已允許。在回報第一段寫明 Packet 原文、衝突點與實際做法。其他寫入範圍仍照 Packet。
-- 歷史資料從 Packet 指定的正式歷史 DB 唯讀查詢；策略的逐期回測結果最後保存到上面登記的正式回測 DB。報告中的成功率必須能從正式回測 DB 的逐期紀錄重算。
+- 歷史資料從 Packet 指定的現有正式開獎資料 DB 唯讀查詢；策略的逐期回測結果最後保存到上面登記的正式回測 DB。報告中的成功率必須能從正式回測 DB 的逐期紀錄重算。
+- 開獎資料缺少最近紀錄時提醒 Owner。除非 Owner 明確指示執行該次查詢，Agent 不得主動上網搜尋、核對或下載官方開獎資料。現有資料如有錯誤、缺漏或尚未驗證，須如實標示，不得假稱正確或已驗證。
 - `UI_REPLAY` 的結果，預設流程是「暫存＋合併卡」：
   - Packet 不直接寫正式庫。正式庫的寫入需要 Owner 的授權句、租約與 writer.lock，多個任務各自寫會互相擋住。
   - 暫存 DB 放 `/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.task-data/_scratch/<名稱>/`（名稱不含 `B649`），同資料夾放 `MERGE_PENDING.json`，欄位：`task_id`、`db_path`、`db_sha256`、`schema_version`、`lottery_types`、`strategies`（每項含 `strategy_id`、`strategy_version`、cells 筆數、目標期範圍、`source_history_provenance_status`、`in_code_inventory`＝是或否）、`run_ids`、各表筆數、`created_at`。收據寫 `MERGE_PENDING` 與這個 JSON 的絕對路徑。

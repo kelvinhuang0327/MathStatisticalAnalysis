@@ -14,6 +14,7 @@ from datetime import date
 from pathlib import Path
 from typing import Any, TypedDict, TypeGuard, cast
 
+from lottolab.application.replay_official_ranking import ranking_target_sort_key
 from lottolab.domain.draws import LotteryType
 from lottolab.domain.historical_replay import (
     ReplayDraw,
@@ -713,7 +714,11 @@ class SQLiteBackfillStore:
                             date.fromisoformat(target["target_draw_date"])
                         except (TypeError, ValueError):
                             unresolved_runs.add(run_id)
-                    rows.sort(key=lambda t: (t["target_draw_date"], t["target_draw_id"]))
+                    rows.sort(
+                        key=lambda t: ranking_target_sort_key(
+                            t["target_draw_date"], t["target_draw_id"]
+                        )
+                    )
                     size = window_sizes[window]
                     if run_id in unresolved_runs:
                         for target in rows:

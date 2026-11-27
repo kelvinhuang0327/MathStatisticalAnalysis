@@ -38,6 +38,7 @@ import subprocess
 import sys
 import time
 from pathlib import Path
+from typing import cast
 
 import pytest
 
@@ -300,6 +301,419 @@ def test_cluster_cover_short_candidate_pool_closes_gracefully() -> None:
     assert result.status is GeneratePortfolioStatus.REPLAY_ERROR
     assert result.reason_code is GeneratePortfolioReason.REPLAY_ERROR
     assert result.numbers is None
+
+
+@pytest.mark.parametrize("candidate_count", [17, 18])
+def test_cluster_cover_synthetic_feeder_boundary_and_replay(
+    monkeypatch: pytest.MonkeyPatch, candidate_count: int
+) -> None:
+    """Exercise the real adapter and exact-native consumer without historical data."""
+    from datetime import date
+
+    from lottolab.application.use_cases.replay_exact_native_targets import causal_row, replay_cell
+    from lottolab.domain.exact_native_replay import Draw, RuntimeBinding
+    from lottolab.evidence.exact_native_replay_manifest import history_fingerprint
+    from lottolab.strategies.adapters import biglotto_wave9 as module
+    from lottolab.strategies.adapters.base import SourceNativePortfolioClosure
+
+    def candidate_feed(_history: tuple[CausalDrawRow, ...]) -> list[int]:
+        return list(range(1, candidate_count + 1))
+
+    monkeypatch.setattr(module, "_diversified_top18", candidate_feed)
+    adapter = BigLottoClusterCoverAdapter()
+    history = (Draw("1", date(2026, 1, 1), (30, 31, 32, 33, 34, 35), 7),)
+    target = Draw("2", date(2026, 1, 2), (30, 31, 32, 33, 34, 35), 7)
+    rows = tuple(causal_row(draw) for draw in history)
+    descriptor = production_catalog().get(adapter.strategy_id)
+    binding = RuntimeBinding(descriptor, adapter, type(adapter).__name__, None)
+
+    if candidate_count == 17:
+        original_ticket = module._ticket
+        complete: list[tuple[int, ...]] = []
+
+        def observe_ticket(numbers: list[int]) -> tuple[int, ...]:
+            ticket = original_ticket(numbers)
+            complete.append(ticket)
+            return ticket
+
+        monkeypatch.setattr(module, "_ticket", observe_ticket)
+        with pytest.raises(ValueError, match=r"^FROZEN_UNIFIED_INVALID_TICKET$") as caught:
+            adapter.get_bets(rows, LotteryType.BIG_LOTTO)
+        assert isinstance(caught.value, SourceNativePortfolioClosure)
+        assert caught.value.strategy_id == adapter.strategy_id
+        assert caught.value.expected_ticket_count == 3
+        assert caught.value.actual_ticket_count == 2
+        assert len(complete) == 2
+        with pytest.raises(ValueError, match=r"^FROZEN_UNIFIED_INVALID_TICKET$") as emitted:
+            adapter.get_bets_with_emission(rows, LotteryType.BIG_LOTTO)
+        assert isinstance(emitted.value, SourceNativePortfolioClosure)
+        result = build_production_generate_portfolio().execute(
+            GenerateOneBetInput(adapter.strategy_id, LotteryType.BIG_LOTTO, rows)
+        )
+        assert result.status is GeneratePortfolioStatus.REPLAY_ERROR
+        assert result.reason_code is GeneratePortfolioReason.REPLAY_ERROR
+        assert result.numbers is None
+    else:
+        tickets = adapter.get_bets(rows, LotteryType.BIG_LOTTO)
+        assert tickets == ((1, 4, 7, 10, 13, 16), (2, 5, 8, 11, 14, 17),
+                           (3, 6, 9, 12, 15, 18))
+        assert all(len(ticket) == len(set(ticket)) == 6 for ticket in tickets)
+        result = build_production_generate_portfolio().execute(
+            GenerateOneBetInput(adapter.strategy_id, LotteryType.BIG_LOTTO, rows)
+        )
+        assert result.status is GeneratePortfolioStatus.OK
+        assert result.numbers == tickets
+
+    row = replay_cell(
+        binding, target, history, {"FULL": {"draw_numbers": ["2"]}}, "synthetic-run",
+        causal_rows=rows, history_fingerprint=history_fingerprint(history),
+    )
+    assert row["replay_status"] == ("TYPED_CLOSURE" if candidate_count == 17 else "COMPLETE")
+    if candidate_count == 17:
+        assert row["actual_native_ticket_count"] == 2
+        assert "FROZEN_UNIFIED_INVALID_TICKET" in str(row["reason"])
+        assert row["native_portfolio"] is None
+        assert row["official_any_prize"] is None
+
+    from lottolab.application.historical_replay_adapters import (
+        BigLottoReplayAdapter,
+        ReplayStrategyBinding,
+    )
+    from lottolab.application.use_cases.historical_replay_controller import (
+        HistoricalReplayController,
+    )
+    from lottolab.domain.historical_replay import (
+        HistoricalReplayMode,
+        HistoricalReplayRequest,
+        ReplayBehavior,
+        ReplayCellStatus,
+        ReplayDraw,
+        ReplaySourceSnapshot,
+        ReplayStrategy,
+    )
+
+    replay_strategy = ReplayStrategy(
+        strategy_id=adapter.strategy_id,
+        strategy_name="BigLotto Cluster Cover",
+        strategy_version="wave9",
+        behavior=ReplayBehavior.DETERMINISTIC,
+        native_ticket_count=3,
+        min_history=1,
+    )
+    replay_adapter = BigLottoReplayAdapter(
+        (ReplayStrategyBinding(replay_strategy, adapter),)
+    )
+    controller = HistoricalReplayController(replay_adapter)
+    historical_draws = (
+        ReplayDraw(
+            lottery_type=LotteryType.BIG_LOTTO,
+            draw_number="1",
+            draw_date=date(2026, 1, 1),
+            main_numbers=(30, 31, 32, 33, 34, 35),
+            special_number=7,
+        ),
+        ReplayDraw(
+            lottery_type=LotteryType.BIG_LOTTO,
+            draw_number="2",
+            draw_date=date(2026, 1, 2),
+            main_numbers=(30, 31, 32, 33, 34, 35),
+            special_number=7,
+        ),
+    )
+    request = HistoricalReplayRequest(
+        lottery_type=LotteryType.BIG_LOTTO,
+        mode=HistoricalReplayMode.FULL_REPLAY,
+        source=ReplaySourceSnapshot(
+            lottery_type=LotteryType.BIG_LOTTO,
+            historical_draws=historical_draws,
+            official_draws=(),
+            stored_targets=(),
+            stored_tickets=(),
+        ),
+        strategies=(replay_strategy,),
+        cutoff_draw_number="2",
+    )
+    controller_result = controller.execute(request)
+    controller_record = next(
+        r for r in controller_result.records if r.target.draw_number == "2"
+    )
+    assert controller_record.status is (
+        ReplayCellStatus.TYPED_CLOSURE if candidate_count == 17 else ReplayCellStatus.COMPLETE
+    )
+    if candidate_count == 17:
+        assert controller_record.native_ticket_count == 3
+        assert controller_record.tickets == ()
+        assert controller_record.evaluations == ()
+        assert controller_record.pre_eligible is True
+        assert controller_record.reason == "_ClusterCoverClosure: FROZEN_UNIFIED_INVALID_TICKET"
+    else:
+        assert controller_record.native_ticket_count == 3
+        assert len(controller_record.tickets) == 3
+        assert len(controller_record.evaluations) == 3
+        assert controller_record.pre_eligible is True
+
+
+@pytest.mark.parametrize("candidate_count", [0, 1, 2, 3, 7, 12, 15, 16])
+def test_cluster_cover_short_valid_pools_count_only_complete_tickets(
+    monkeypatch: pytest.MonkeyPatch, candidate_count: int,
+) -> None:
+    from lottolab.strategies.adapters import biglotto_wave9 as module
+    from lottolab.strategies.adapters.base import SourceNativePortfolioClosure
+
+    def candidate_feed(_history: tuple[CausalDrawRow, ...]) -> list[int]:
+        return list(range(1, candidate_count + 1))
+
+    monkeypatch.setattr(module, "_diversified_top18", candidate_feed)
+    with pytest.raises(SourceNativePortfolioClosure) as caught:
+        BigLottoClusterCoverAdapter().get_bets(_wave9_history(1), LotteryType.BIG_LOTTO)
+    assert caught.value.expected_ticket_count == 3
+    assert caught.value.actual_ticket_count == max(0, candidate_count - 15)
+    assert isinstance(caught.value, ValueError)
+    assert str(caught.value) == "FROZEN_UNIFIED_INVALID_TICKET"
+
+
+@pytest.mark.parametrize("candidates", [[*range(1, 17), 50], [*range(1, 18), 50]])
+def test_cluster_cover_illegal_feeder_is_not_a_typed_closure(
+    monkeypatch: pytest.MonkeyPatch, candidates: list[int],
+) -> None:
+    from datetime import date
+
+    from lottolab.application.historical_replay_adapters import (
+        BigLottoReplayAdapter,
+        ReplayStrategyBinding,
+    )
+    from lottolab.application.use_cases.historical_replay_controller import (
+        HistoricalReplayController,
+    )
+    from lottolab.application.use_cases.replay_exact_native_targets import causal_row, replay_cell
+    from lottolab.domain.exact_native_replay import Draw, RuntimeBinding
+    from lottolab.domain.historical_replay import (
+        HistoricalReplayMode,
+        HistoricalReplayRequest,
+        ReplayBehavior,
+        ReplayCellStatus,
+        ReplayDraw,
+        ReplaySourceSnapshot,
+        ReplayStrategy,
+    )
+    from lottolab.evidence.exact_native_replay_manifest import history_fingerprint
+    from lottolab.strategies.adapters import biglotto_wave9 as module
+    from lottolab.strategies.adapters.base import SourceNativePortfolioClosure
+
+    def illegal_feeder(_history: tuple[CausalDrawRow, ...]) -> list[int]:
+        return candidates
+
+    monkeypatch.setattr(module, "_diversified_top18", illegal_feeder)
+    adapter = BigLottoClusterCoverAdapter()
+    with pytest.raises(ValueError, match="FROZEN_UNIFIED_INVALID_TICKET") as caught:
+        adapter.get_bets(_wave9_history(1), LotteryType.BIG_LOTTO)
+    assert not isinstance(caught.value, SourceNativePortfolioClosure)
+
+    history = (Draw("1", date(2026, 1, 1), (30, 31, 32, 33, 34, 35), 7),)
+    target = Draw("2", date(2026, 1, 2), (30, 31, 32, 33, 34, 35), 7)
+    rows = tuple(causal_row(draw) for draw in history)
+    descriptor = production_catalog().get(adapter.strategy_id)
+    binding = RuntimeBinding(descriptor, adapter, type(adapter).__name__, None)
+    row = replay_cell(
+        binding,
+        target,
+        history,
+        {"FULL": {"draw_numbers": ["2"]}},
+        "synthetic-run",
+        causal_rows=rows,
+        history_fingerprint=history_fingerprint(history),
+    )
+    assert row["replay_status"] == "EXECUTION_FAILURE"
+    assert "ValueError: FROZEN_UNIFIED_INVALID_TICKET" in str(row["reason"])
+
+    replay_strategy = ReplayStrategy(
+        strategy_id=adapter.strategy_id,
+        strategy_name="BigLotto Cluster Cover",
+        strategy_version="wave9",
+        behavior=ReplayBehavior.DETERMINISTIC,
+        native_ticket_count=3,
+        min_history=1,
+    )
+    replay_adapter = BigLottoReplayAdapter(
+        (ReplayStrategyBinding(replay_strategy, adapter),)
+    )
+    controller = HistoricalReplayController(replay_adapter)
+    replay_history = (
+        ReplayDraw(
+            lottery_type=LotteryType.BIG_LOTTO,
+            draw_number="1",
+            draw_date=date(2026, 1, 1),
+            main_numbers=(30, 31, 32, 33, 34, 35),
+            special_number=7,
+        ),
+        ReplayDraw(
+            lottery_type=LotteryType.BIG_LOTTO,
+            draw_number="2",
+            draw_date=date(2026, 1, 2),
+            main_numbers=(30, 31, 32, 33, 34, 35),
+            special_number=7,
+        ),
+    )
+    request = HistoricalReplayRequest(
+        lottery_type=LotteryType.BIG_LOTTO,
+        mode=HistoricalReplayMode.FULL_REPLAY,
+        source=ReplaySourceSnapshot(
+            lottery_type=LotteryType.BIG_LOTTO,
+            historical_draws=replay_history,
+            official_draws=(),
+            stored_targets=(),
+            stored_tickets=(),
+        ),
+        strategies=(replay_strategy,),
+        cutoff_draw_number="2",
+    )
+    controller_result = controller.execute(request)
+    controller_record = next(
+        r for r in controller_result.records if r.target.draw_number == "2"
+    )
+    assert controller_record.status is ReplayCellStatus.FAILED
+    assert "ValueError: FROZEN_UNIFIED_INVALID_TICKET" in str(controller_record.reason)
+
+
+@pytest.mark.parametrize("history_length", [10, 11])
+def test_cluster_seed_behavior_contract_matches_both_replay_entries(
+    history_length: int,
+) -> None:
+    """The controller declaration, exact-native metadata, and seeded output agree."""
+    from datetime import date
+
+    from lottolab.application.historical_replay_adapters import BigLottoReplayAdapter
+    from lottolab.application.native_replay_inventory import native_strategy_inventory
+    from lottolab.application.use_cases.historical_replay_controller import (
+        HistoricalReplayController,
+    )
+    from lottolab.application.use_cases.replay_exact_native_targets import (
+        causal_row,
+        replay_cell,
+        seed_metadata,
+    )
+    from lottolab.domain.exact_native_replay import Draw, RuntimeBinding
+    from lottolab.domain.historical_replay import (
+        HistoricalReplayMode,
+        HistoricalReplayRequest,
+        ReplayBehavior,
+        ReplayCellStatus,
+        ReplayDraw,
+        ReplaySourceSnapshot,
+    )
+    from lottolab.evidence.exact_native_replay_manifest import history_fingerprint
+
+    strategy_id = "legacy_biglotto__test_cluster_cover__5b43959e7c55"
+    seed_contract = "UNIFIED_STATISTICAL_HISTORY_LENGTH_SEED"
+    inventory, _accounts = native_strategy_inventory(LotteryType.BIG_LOTTO)
+    binding = next(item for item in inventory if item.strategy.strategy_id == strategy_id)
+    assert binding.strategy.strategy_version == "v0.1"
+    assert binding.strategy.behavior is ReplayBehavior.SEEDED_STOCHASTIC
+    assert binding.strategy.seed_contract == seed_contract
+    assert binding.strategy.fingerprint != (
+        "6a3fd3c6223182ca8fe5bc09ba29c2d823c02945046fd0a1102f0f156986cc5a"
+    )
+    repeated_inventory, _repeated_accounts = native_strategy_inventory(LotteryType.BIG_LOTTO)
+    repeated_binding = next(
+        item for item in repeated_inventory if item.strategy.strategy_id == strategy_id
+    )
+    assert repeated_binding.strategy.fingerprint == binding.strategy.fingerprint
+
+    rows = tuple(_wave9_row(index) for index in range(history_length + 1))
+    replay_draws = tuple(
+        ReplayDraw(
+            lottery_type=LotteryType.BIG_LOTTO,
+            draw_number=str(index + 1),
+            draw_date=date.fromisoformat(row.date),
+            main_numbers=row.numbers,
+            special_number=7,
+        )
+        for index, row in enumerate(rows)
+    )
+    historical_draws = replay_draws[:history_length]
+    target = replay_draws[history_length]
+    controller = HistoricalReplayController(BigLottoReplayAdapter((binding,)))
+    controller_result = controller.execute(
+        HistoricalReplayRequest(
+            lottery_type=LotteryType.BIG_LOTTO,
+            mode=HistoricalReplayMode.FULL_REPLAY,
+            source=ReplaySourceSnapshot(
+                lottery_type=LotteryType.BIG_LOTTO,
+                historical_draws=replay_draws,
+                official_draws=(),
+                stored_targets=(),
+                stored_tickets=(),
+            ),
+            strategies=(binding.strategy,),
+            cutoff_draw_number=target.draw_number,
+        )
+    )
+    controller_record = next(
+        record for record in controller_result.records if record.target == target
+    )
+    assert controller_record.status is ReplayCellStatus.COMPLETE
+
+    exact_history_draws: list[Draw] = []
+    for draw in historical_draws:
+        if draw.special_number is None:
+            raise AssertionError("BIG_LOTTO history must include its special number")
+        exact_history_draws.append(
+            Draw(
+                draw_number=draw.draw_number,
+                draw_date=draw.draw_date,
+                main_numbers=draw.main_numbers,
+                special_number=draw.special_number,
+            )
+        )
+    exact_history = tuple(exact_history_draws)
+    if target.special_number is None:
+        raise AssertionError("BIG_LOTTO target must include its special number")
+    exact_target = Draw(
+        draw_number=target.draw_number,
+        draw_date=target.draw_date,
+        main_numbers=target.main_numbers,
+        special_number=target.special_number,
+    )
+    causal_rows = tuple(causal_row(draw) for draw in exact_history)
+    descriptor = production_catalog().get(strategy_id)
+    metadata = seed_metadata(descriptor, causal_rows)
+    assert metadata["behavior"] == binding.strategy.behavior.value
+    assert metadata["seed"] == history_length
+    assert metadata["configuration"] == binding.strategy.seed_contract
+
+    exact_row = replay_cell(
+        RuntimeBinding(
+            descriptor,
+            binding.implementation,
+            type(binding.implementation).__name__,
+            None,
+        ),
+        exact_target,
+        exact_history,
+        {"FULL": {"draw_numbers": [target.draw_number]}},
+        "synthetic-seed-contract",
+        causal_rows=causal_rows,
+        history_fingerprint=history_fingerprint(exact_history),
+    )
+    assert exact_row["replay_status"] == "COMPLETE"
+    controller_tickets = tuple(ticket.main_numbers for ticket in controller_record.tickets)
+    emitted_portfolio = exact_row["native_emitted_portfolio"]
+    if not isinstance(emitted_portfolio, list):
+        raise AssertionError("native emitted portfolio must be a list")
+    portfolio_rows = cast(list[object], emitted_portfolio)
+    exact_ticket_rows: list[tuple[int, ...]] = []
+    for candidate_ticket in portfolio_rows:
+        if not isinstance(candidate_ticket, list):
+            raise AssertionError("native emitted ticket must be a list")
+        candidate_numbers = cast(list[object], candidate_ticket)
+        numbers: list[int] = []
+        for number in candidate_numbers:
+            if type(number) is not int:
+                raise AssertionError("native emitted ticket numbers must be integers")
+            numbers.append(number)
+        exact_ticket_rows.append(tuple(numbers))
+    exact_tickets = tuple(exact_ticket_rows)
+    assert controller_tickets == exact_tickets == CLUSTER_COVER_GOLDENS[history_length]
 
 
 def test_cluster_cover_round_robin_is_mutation_sensitive(

@@ -424,7 +424,33 @@ class HistoricalReplayController:
 
         try:
             tickets = self._adapter.generate(strategy, history, target)
-        except (ReplayTypedClosure, SourceNativePortfolioClosure) as exc:
+        except SourceNativePortfolioClosure as exc:
+            if not _is_bound_source_native_closure(
+                exc,
+                strategy_id=strategy.strategy_id,
+                expected_ticket_count=expected_native_ticket_count,
+            ):
+                return _empty_record(
+                    target,
+                    strategy,
+                    ReplayCellStatus.FAILED,
+                    history,
+                    "FAILED_EXECUTION: SourceNativePortfolioClosure identity/count mismatch",
+                    history_fingerprint,
+                    pre_eligible=True,
+                    native_ticket_count=expected_native_ticket_count,
+                )
+            return _empty_record(
+                target,
+                strategy,
+                ReplayCellStatus.TYPED_CLOSURE,
+                history,
+                f"{type(exc).__name__}: {_short_message(exc)}",
+                history_fingerprint,
+                pre_eligible=True,
+                native_ticket_count=expected_native_ticket_count,
+            )
+        except ReplayTypedClosure as exc:
             return _empty_record(
                 target,
                 strategy,
@@ -946,6 +972,23 @@ def _repair_plan(accumulator: _ComparisonAccumulator) -> tuple[ReplayRepairCell,
 def _short_message(exc: Exception) -> str:
     message = str(exc).replace("\n", " ").strip()
     return message[:240] if message else "no detail"
+
+
+def _is_bound_source_native_closure(
+    exc: SourceNativePortfolioClosure,
+    *,
+    strategy_id: str,
+    expected_ticket_count: int,
+) -> bool:
+    """Accept only a closure explicitly bound to this strategy and ticket contract."""
+
+    return (
+        exc.strategy_id == strategy_id
+        and type(exc.expected_ticket_count) is int
+        and exc.expected_ticket_count == expected_ticket_count
+        and type(exc.actual_ticket_count) is int
+        and 0 <= exc.actual_ticket_count < expected_ticket_count
+    )
 
 
 __all__ = [

@@ -228,6 +228,8 @@ def evaluate_window_reaggregation_eligibility(
       on this window.
     - ``WINDOW_INELIGIBLE_INCOMPLETE_OBSERVATIONS`` is excluded from the evaluated
       denominator without marking the window ``UNAVAILABLE``.
+    - ``TYPED_CLOSURE`` is excluded from the evaluated denominator without
+      counting as an execution failure or an unsuccessful outcome.
     - Membership is derived strictly from ``window_draw_numbers``; persisted
       ``window_names`` on evidence rows are ignored as stale.
     - Availability is never cached globally across windows.
@@ -250,7 +252,10 @@ def evaluate_window_reaggregation_eligibility(
         status = row.get("replay_status")
         if status == "COMPLETE":
             available_count += 1
-        elif status == "WINDOW_INELIGIBLE_INCOMPLETE_OBSERVATIONS":
+        elif status in (
+            "WINDOW_INELIGIBLE_INCOMPLETE_OBSERVATIONS",
+            "TYPED_CLOSURE",
+        ):
             excluded_count += 1
         elif status in ("EXECUTION_FAILURE", "NATIVE_TICKET_COUNT_VIOLATION"):
             failure_count += 1

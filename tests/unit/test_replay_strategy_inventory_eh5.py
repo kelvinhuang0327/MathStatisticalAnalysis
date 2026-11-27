@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 from dataclasses import replace
-from typing import Any
+from typing import Any, Protocol, cast
 
+import httpx
+import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from lottolab.application import replay_strategy_inventory as inventory_app
 from lottolab.application.replay_strategy_inventory import load_replay_strategy_inventory
 from lottolab.domain.draws import LotteryType
 from lottolab.domain.replay_strategy_inventory import (
@@ -26,6 +27,10 @@ EH11_ID = "research_biglotto_eh11_k5_saved_portfolio_gate_v1"
 EH12_ID = "research_biglotto_eh12_k5_saved_portfolio_gate_v1"
 VERSION = "v1.0.0"
 TARGET_IDS = {EH03_ID, EH06_ID, EH07_ID, EH11_ID, EH12_ID}
+
+
+class _JsonTestClient(Protocol):
+    def get(self, url: str, *, params: dict[str, str] | None = None) -> httpx.Response: ...
 
 
 def _target_inventory():
@@ -134,12 +139,16 @@ class _SyntheticReplayStore:
 def _backfill_client(
     snapshots: dict[str, dict[str, Any]],
     stored_rows: tuple[dict[str, Any], ...] = (),
-) -> TestClient:
+) -> _JsonTestClient:
     app = FastAPI()
     app.include_router(
         create_replay_backfill_router(_SyntheticReplayStore(snapshots, stored_rows))  # type: ignore[arg-type]
     )
-    return TestClient(app)
+    return cast(_JsonTestClient, TestClient(app))
+
+
+def _response_json(response: httpx.Response) -> dict[str, Any]:
+    return cast(dict[str, Any], response.json())
 
 
 def test_exact_research_identities_are_registered_without_history_or_native_binding() -> None:
@@ -171,7 +180,7 @@ def test_exact_research_identities_are_registered_without_history_or_native_bind
 def test_inventory_api_returns_the_exact_identity_and_unavailable_state() -> None:
     app = FastAPI()
     app.include_router(create_replay_strategy_inventory_router(_target_inventory()))
-    client = TestClient(app)
+    client: _JsonTestClient = cast(_JsonTestClient, TestClient(app))
 
     for strategy_id in sorted(TARGET_IDS):
         response = client.get(
@@ -179,7 +188,7 @@ def test_inventory_api_returns_the_exact_identity_and_unavailable_state() -> Non
             params={"lottery_type": "BIG_LOTTO", "strategy_id": strategy_id},
         )
         assert response.status_code == 200
-        rows = response.json()["strategies"]
+        rows: list[dict[str, Any]] = _response_json(response)["strategies"]
         assert len(rows) == 1
         row = rows[0]
         assert (row["lottery_type"], row["strategy_id"], row["strategy_version"]) == (
@@ -210,7 +219,9 @@ def test_backfill_api_without_matching_overlay_keeps_no_history() -> None:
     )
 
     assert response.status_code == 200
-    rows = [row for row in response.json()["items"] if row["strategy_id"] in TARGET_IDS]
+    rows: list[dict[str, Any]] = [
+        row for row in _response_json(response)["items"] if row["strategy_id"] in TARGET_IDS
+    ]
     assert {(row["strategy_id"], row["strategy_version"]) for row in rows} == {
         (EH03_ID, VERSION),
         (EH06_ID, VERSION),
@@ -267,9 +278,9 @@ def test_backfill_api_overlays_only_exact_lottery_id_and_version() -> None:
     )
 
     assert response.status_code == 200
-    items = {
+    items: dict[str, dict[str, Any]] = {
         row["strategy_id"]: row
-        for row in response.json()["items"]
+        for row in _response_json(response)["items"]
         if row["strategy_id"] in TARGET_IDS
     }
     assert set(items) == TARGET_IDS
@@ -311,7 +322,7 @@ def test_backfill_api_does_not_cross_lottery_for_the_same_identity() -> None:
     assert response.status_code == 200
     rows = [
         row
-        for row in response.json()["items"]
+        for row in _response_json(response)["items"]
         if row["lottery_type"] == "BIG_LOTTO" and row["strategy_id"] == EH03_ID
     ]
     assert len(rows) == 1
@@ -321,28 +332,42 @@ def test_backfill_api_does_not_cross_lottery_for_the_same_identity() -> None:
     assert rows[0]["history_counts"]["persisted_cell_count"] == 0
 
 
-def test_identity_sources_deduplicate_exact_key_and_keep_other_keys_separate(
-    monkeypatch: Any,
-) -> None:
-    eh03 = next(
-        spec for spec in inventory_app._IMPORTED_REPLAY_IDENTITIES if spec.strategy_id == EH03_ID
-    )
+def test_inventory_api_keeps_lottery_id_and_version_as_distinct_identity_keys() -> None:
+    inventory = _target_inventory()
+    eh03 = next(item for item in inventory.items if item.strategy_id == EH03_ID)
     variants = (
-        eh03,
         eh03,
         replace(eh03, strategy_version="v2.0.0"),
         replace(eh03, strategy_id=EH03_ID + "_near"),
         replace(eh03, lottery_type=LotteryType.POWER_LOTTO),
     )
-    monkeypatch.setattr(inventory_app, "_IMPORTED_REPLAY_IDENTITIES", variants)
-    items: dict[tuple[LotteryType, str, str | None], Any] = {}
-    inventory_app._add_imported_replay_identities(items)
+    app = FastAPI()
+    app.include_router(create_replay_strategy_inventory_router(replace(inventory, items=variants)))
+    client: _JsonTestClient = cast(_JsonTestClient, TestClient(app))
 
-    exact = [
-        item for key, item in items.items() if key == (LotteryType.BIG_LOTTO, EH03_ID, VERSION)
-    ]
-    assert len(exact) == 1
-    assert len(exact[0].sources) == 1
-    assert (LotteryType.BIG_LOTTO, EH03_ID, "v2.0.0") in items
-    assert (LotteryType.BIG_LOTTO, EH03_ID + "_near", VERSION) in items
-    assert (LotteryType.POWER_LOTTO, EH03_ID, VERSION) in items
+    response = client.get(
+        "/api/v1/replay-strategy-inventory",
+        params={"strategy_id": EH03_ID},
+    )
+
+    assert response.status_code == 200
+    rows: list[dict[str, Any]] = _response_json(response)["strategies"]
+    assert {(row["lottery_type"], row["strategy_id"], row["strategy_version"]) for row in rows} == {
+        ("BIG_LOTTO", EH03_ID, VERSION),
+        ("BIG_LOTTO", EH03_ID, "v2.0.0"),
+        ("POWER_LOTTO", EH03_ID, VERSION),
+    }
+
+    near_response = client.get(
+        "/api/v1/replay-strategy-inventory",
+        params={"strategy_id": EH03_ID + "_near"},
+    )
+
+    assert near_response.status_code == 200
+    near_rows: list[dict[str, Any]] = _response_json(near_response)["strategies"]
+    assert [
+        (row["lottery_type"], row["strategy_id"], row["strategy_version"]) for row in near_rows
+    ] == [("BIG_LOTTO", EH03_ID + "_near", VERSION)]
+
+    with pytest.raises(ValueError, match="duplicate lottery/id/version identity"):
+        replace(inventory, items=(*variants, eh03))

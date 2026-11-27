@@ -1,5 +1,7 @@
 """Unit tests for task-catalog derivation, stages, tombstones, and CLI."""
 
+# pyright: reportPrivateUsage=false
+
 from __future__ import annotations
 
 import json
@@ -11,7 +13,11 @@ from typer.testing import CliRunner
 
 from lottolab.infrastructure import task_catalog
 from lottolab.infrastructure.task_catalog import (
+    REPORT_STRATA,
+    TEN_INDICATORS,
     build_catalog,
+    classify_task_stratum,
+    compute_workflow_metrics,
     determine_project,
     find_in_catalog,
     find_task_folders,
@@ -470,3 +476,1057 @@ def test_cli_help() -> None:
     result = runner.invoke(main_app, ["task-catalog", "--help"])
     assert result.exit_code == 0
     assert "task-catalog" in result.output
+
+
+def test_stratum_classification_mapping(tmp_path: Path) -> None:
+    """AC4: Verify stratum classification maps tasks to S1..S6 and handles UNKNOWN."""
+    # S1: FAST
+    assert classify_task_stratum({"stratum": "S1"}) == "S1"
+    assert classify_task_stratum({"route": {"worker_route": "FAST"}}) == "S1"
+    assert classify_task_stratum({"task_id": "TASK_FAST_TEST"}) is None
+
+    # S2: STANDARD/NORMAL
+    assert classify_task_stratum({"stratum": "S2"}) == "S2"
+    assert (
+        classify_task_stratum(
+            {"route": {"worker_route": "STANDARD", "implementation_depth": "NORMAL"}}
+        )
+        == "S2"
+    )
+    assert classify_task_stratum({"task_id": "TASK_STANDARD_NORMAL"}) is None
+
+    # S3: STANDARD/ENHANCED
+    assert classify_task_stratum({"stratum": "S3"}) == "S3"
+    assert (
+        classify_task_stratum(
+            {"route": {"worker_route": "STANDARD", "implementation_depth": "ENHANCED"}}
+        )
+        == "S3"
+    )
+    assert classify_task_stratum({"task_id": "TASK_ENHANCED_EXPLORATION"}) is None
+
+    # S4: JUDGED
+    assert classify_task_stratum({"stratum": "S4"}) == "S4"
+    assert classify_task_stratum({"route": {"judge_mode": "FRESH_CONTEXT"}}) == "S4"
+    assert classify_task_stratum({"route": {"worker_route": "STANDARD_JUDGED"}}) == "S4"
+    assert classify_task_stratum({"task_id": "TASK_JUDGED_RUN"}) is None
+
+    # S5: RESEARCH
+    assert classify_task_stratum({"stratum": "S5"}) == "S5"
+    assert classify_task_stratum({"route": {"task_class": "RESEARCH"}}) == "S5"
+    assert classify_task_stratum({"stage_manifests": ["/path/to/stage.json"]}) == "S5"
+    assert (
+        classify_task_stratum(
+            {
+                "route": {
+                    "task_class": "RESEARCH",
+                    "worker_route": "STANDARD",
+                    "implementation_depth": "ENHANCED",
+                }
+            }
+        )
+        == "S5"
+    )
+    assert (
+        classify_task_stratum(
+            {
+                "stratum": "S2",
+                "route": {
+                    "task_class": "RESEARCH",
+                    "worker_route": "STANDARD",
+                    "implementation_depth": "ENHANCED",
+                },
+            }
+        )
+        is None
+    )
+    assert classify_task_stratum({"task_id": "TASK_RESEARCH_REPLAY"}) is None
+
+    # S6: RELEASE_CLOSEOUT
+    assert classify_task_stratum({"stratum": "S6"}) == "S6"
+    assert classify_task_stratum({"route": {"task_class": "RELEASE_CLOSEOUT"}}) == "S6"
+    assert (
+        classify_task_stratum(
+            {
+                "route": {
+                    "task_class": "RELEASE_CLOSEOUT",
+                    "worker_route": "STANDARD",
+                    "implementation_depth": "NORMAL",
+                }
+            }
+        )
+        == "S6"
+    )
+    assert classify_task_stratum({"task_id": "TASK_RELEASE_CLOSEOUT_PR88"}) is None
+
+    # Indeterminate / unknown stratum
+    assert classify_task_stratum({"task_id": "UNCATEGORIZED_RANDOM_NAME"}) is None
+
+    # On-disk packet / result resolution
+    task_dir = tmp_path / "on_disk_task"
+    task_dir.mkdir()
+    (task_dir / "packet.md").write_text("WORKER_ROUTE: FAST\nIMPLEMENTATION_DEPTH: NORMAL\n")
+    assert classify_task_stratum({"task_id": "SOME_ID", "path": str(task_dir)}) is None
+
+
+def test_boundary_dates_inclusion_and_exclusion() -> None:
+    """AC4: Verify boundary dates for fixed window 2026-11-18 to 2026-11-24."""
+    tasks: list[dict[str, object]] = [
+        {"task_id": "T_BEFORE", "date_folder": "20261117", "stratum": "S1"},
+        {"task_id": "T_START", "date_folder": "20261118", "stratum": "S1"},
+        {"task_id": "T_MID", "date_folder": "20261121", "stratum": "S2"},
+        {"task_id": "T_END", "date_folder": "20261124", "stratum": "S3"},
+        {"task_id": "T_AFTER", "date_folder": "20261125", "stratum": "S1"},
+    ]
+
+    report = compute_workflow_metrics(
+        catalog_dir=Path("/dummy"),
+        start_date="2026-11-18",
+        end_date="2026-11-24",
+        read_folder_receipts=False,
+        tasks_data=tasks,
+    )
+
+    assert report.total_tasks_evaluated == 3
+    assert report.tasks_by_stratum["S1"] == 1  # only T_START, T_BEFORE & T_AFTER excluded
+    assert report.tasks_by_stratum["S2"] == 1
+    assert report.tasks_by_stratum["S3"] == 1
+    assert report.tasks_by_stratum["S4"] == 0
+    assert report.window_start == "2026-11-18"
+    assert report.window_end == "2026-11-24"
+
+
+def test_family_rates_measurable_and_missing_cases() -> None:
+    """AC4: Calculation family 1 (Rates): measurable vs missing evidence cases."""
+    # Case A: Fully measurable S2 stratum tasks (1 pass, 1 fail, 1 blocked avoidable)
+    measurable_tasks: list[dict[str, object]] = [
+        {
+            "task_id": "T1_PASS",
+            "date_folder": "20261120",
+            "stratum": "S2",
+            "task_lifecycle_state": "COMPLETED",
+            "is_continuation": False,
+            "continues_from": "NONE",
+            "result_json_status": "OK",
+            "regression_escape": False,
+            "acceptance_confirmed": True,
+            "first_pass_accepted": True,
+            "goal_72h_completed": True,
+        },
+        {
+            "task_id": "T2_FAIL",
+            "date_folder": "20261120",
+            "stratum": "S2",
+            "task_lifecycle_state": "COMPLETED",
+            "is_continuation": False,
+            "continues_from": "NONE",
+            "result_json_status": "OK",
+            "regression_escape": True,
+            "acceptance_confirmed": True,
+            "first_pass_accepted": False,
+            "goal_72h_completed": True,
+        },
+        {
+            "task_id": "T3_BLOCKED",
+            "date_folder": "20261120",
+            "stratum": "S2",
+            "task_lifecycle_state": "BLOCKED",
+            "issue_type": "AUTH",
+            "avoidable_block": True,
+            "first_pass_accepted": False,
+            "goal_72h_completed": False,
+            "is_continuation": False,
+            "continues_from": "NONE",
+            "result_json_status": "OK",
+        },
+    ]
+
+    rep_a = compute_workflow_metrics(
+        catalog_dir=Path("/dummy"),
+        read_folder_receipts=False,
+        tasks_data=measurable_tasks,
+    )
+
+    by_ind_a = {m.indicator: m for m in rep_a.metrics if m.stratum == "S2"}
+
+    # FIRST_PASS_ACCEPTANCE_RATE: 1 pass out of 3 evaluated (one pass, one fail, one blocked)
+    fp_a = by_ind_a["FIRST_PASS_ACCEPTANCE_RATE"]
+    assert fp_a.status == "MEASURED"
+    assert fp_a.numerator == 1
+    assert fp_a.denominator == 3
+    assert fp_a.unknown_count == 0
+    assert fp_a.value == 0.3333
+
+    # FINAL_GOAL_COMPLETION_RATE: 2 completed (T1, T2) out of 3
+    fg_a = by_ind_a["FINAL_GOAL_COMPLETION_RATE"]
+    assert fg_a.status == "MEASURED"
+    assert fg_a.numerator == 2
+    assert fg_a.denominator == 3
+    assert fg_a.unknown_count == 0
+
+    # AVOIDABLE_BLOCK_RATE: 1 blocked, issue_type=AUTH -> 1/1 avoidable
+    ab_a = by_ind_a["AVOIDABLE_BLOCK_RATE"]
+    assert ab_a.status == "MEASURED"
+    assert ab_a.numerator == 1
+    assert ab_a.denominator == 1
+    assert ab_a.unknown_count == 0
+
+    # REGRESSION_ESCAPE_RATE: 1 escape out of 2 completed
+    re_a = by_ind_a["REGRESSION_ESCAPE_RATE"]
+    assert re_a.status == "PARTIAL"
+    assert re_a.numerator == 1
+    assert re_a.denominator == 2
+    assert re_a.unknown_count == 1
+
+    # Case B: Missing / ambiguous evidence: unknowns remain visible, denominator does not shrink
+    ambiguous_tasks: list[dict[str, object]] = [
+        {
+            "task_id": "T_UNKNOWN_RECEIPT",
+            "date_folder": "20261120",
+            "stratum": "S2",
+            "result_json_status": "MISSING",
+            "task_lifecycle_state": None,
+        },
+        {
+            "task_id": "T_BLOCKED_INDETERMINATE",
+            "date_folder": "20261120",
+            "stratum": "S2",
+            "result_json_status": "OK",
+            "task_lifecycle_state": "BLOCKED",
+            # issue_type missing!
+        },
+    ]
+
+    rep_b = compute_workflow_metrics(
+        catalog_dir=Path("/dummy"),
+        read_folder_receipts=False,
+        tasks_data=ambiguous_tasks,
+    )
+
+    by_ind_b = {m.indicator: m for m in rep_b.metrics if m.stratum == "S2"}
+
+    # Missing initial-lineage evidence keeps both rows UNKNOWN.
+    fp_b = by_ind_b["FIRST_PASS_ACCEPTANCE_RATE"]
+    assert fp_b.status == "UNKNOWN"
+    assert fp_b.denominator == 0
+    assert fp_b.unknown_count == 2
+    assert fp_b.eligible_count == 2  # Denominator did not shrink eligible count!
+
+    # AVOIDABLE_BLOCK_RATE: 1 blocked, but issue_type is missing -> UNKNOWN
+    ab_b = by_ind_b["AVOIDABLE_BLOCK_RATE"]
+    assert ab_b.status == "UNKNOWN"
+    assert ab_b.unknown_count == 2
+    assert ab_b.eligible_count == 2
+    assert ab_b.value is None
+
+
+def test_family_counts_durations_costs_measurable_and_missing_cases() -> None:
+    """AC4: Calculation families 2 (Counts), 3 (Durations), 4 (Costs)."""
+    measurable_tasks: list[dict[str, object]] = [
+        {
+            "task_id": "T_MEAS_1",
+            "date_folder": "20261122",
+            "stratum": "S3",
+            "task_lifecycle_state": "COMPLETED",
+            "unproductive_continuation_count": 2,
+            "owner_intervention_count": 1,
+            "dispatch_to_acceptance_seconds": 1200.0,
+            "acceptance_to_adoption_seconds": 3600.0,
+            "tokens": 50000,
+            "model_tier": "strong",
+            "model_identity": "model-alpha",
+            "route": {"worker_route": "STANDARD", "implementation_depth": "ENHANCED"},
+            "adopted_outcome": True,
+            "resource_cost_measured": 1048576,
+            "task_folder_bytes_reported": 1048576,
+        },
+        {
+            "task_id": "T_MEAS_2",
+            "date_folder": "20261122",
+            "stratum": "S3",
+            "task_lifecycle_state": "COMPLETED",
+            "unproductive_continuation_count": 0,
+            "owner_intervention_count": 0,
+            "dispatch_to_acceptance_seconds": 1800.0,
+            "acceptance_to_adoption_seconds": 7200.0,
+            "tokens": 70000,
+            "model_tier": "strong",
+            "model_identity": "model-alpha",
+            "route": {"worker_route": "STANDARD", "implementation_depth": "ENHANCED"},
+            "adopted_outcome": True,
+            "resource_cost_measured": 2097152,
+            "task_folder_bytes_reported": 2097152,
+        },
+    ]
+
+    rep_a = compute_workflow_metrics(
+        catalog_dir=Path("/dummy"),
+        read_folder_receipts=False,
+        tasks_data=measurable_tasks,
+    )
+    by_ind_a = {m.indicator: m for m in rep_a.metrics if m.stratum == "S3"}
+
+    # Counts
+    up_a = by_ind_a["UNPRODUCTIVE_CONTINUATION_COUNT"]
+    assert up_a.status == "MEASURED"
+    assert up_a.value == 2
+    assert up_a.unknown_count == 0
+
+    oi_a = by_ind_a["OWNER_INTERVENTION_COUNT"]
+    assert oi_a.status == "MEASURED"
+    assert oi_a.value == 1
+    assert oi_a.unknown_count == 0
+
+    # Durations: mean of 1200 and 1800 is 1500; mean of 3600 and 7200 is 5400
+    da_a = by_ind_a["DISPATCH_TO_ACCEPTANCE_TIME"]
+    assert da_a.status == "MEASURED"
+    assert da_a.value == 1500.0
+    assert da_a.unknown_count == 0
+
+    aa_a = by_ind_a["ACCEPTANCE_TO_ADOPTION_TIME"]
+    assert aa_a.status == "MEASURED"
+    assert aa_a.value == 5400.0
+    assert aa_a.unknown_count == 0
+
+    # Costs: tokens per accepted outcome = 120000 / 2 = 60000
+    mc_a = by_ind_a["MODEL_COST_PER_ACCEPTED_OUTCOME"]
+    assert mc_a.status == "MEASURED"
+    assert mc_a.value == 60000.0
+    assert mc_a.unknown_count == 0
+
+    # Legacy scalar bytes and folder size do not form the required resource vector.
+    rc_a = by_ind_a["RESOURCE_COST"]
+    assert rc_a.status == "UNKNOWN"
+    assert rc_a.value is None
+    assert rc_a.unknown_count == 2
+
+    # Missing cases
+    missing_tasks: list[dict[str, object]] = [
+        {
+            "task_id": "T_MISSING_DATA",
+            "date_folder": "20261122",
+            "stratum": "S3",
+            "task_lifecycle_state": "COMPLETED",
+        }
+    ]
+    rep_b = compute_workflow_metrics(
+        catalog_dir=Path("/dummy"),
+        read_folder_receipts=False,
+        tasks_data=missing_tasks,
+    )
+    by_ind_b = {m.indicator: m for m in rep_b.metrics if m.stratum == "S3"}
+
+    assert by_ind_b["UNPRODUCTIVE_CONTINUATION_COUNT"].status == "UNKNOWN"
+    assert by_ind_b["UNPRODUCTIVE_CONTINUATION_COUNT"].unknown_count == 1
+    assert by_ind_b["OWNER_INTERVENTION_COUNT"].status == "UNKNOWN"
+    assert by_ind_b["DISPATCH_TO_ACCEPTANCE_TIME"].status == "UNKNOWN"
+    assert by_ind_b["ACCEPTANCE_TO_ADOPTION_TIME"].status == "UNKNOWN"
+    assert by_ind_b["MODEL_COST_PER_ACCEPTED_OUTCOME"].status == "UNKNOWN"
+    assert by_ind_b["RESOURCE_COST"].status == "UNKNOWN"
+
+
+def test_cli_task_catalog_metrics_command(tmp_path: Path) -> None:
+    """AC1 and AC4: CLI task-catalog metrics invocation, formats, and file output."""
+    cat_dir = tmp_path / "_catalog"
+    cat_dir.mkdir()
+
+    sample_tasks = [
+        {
+            "task_id": "SAMPLE_TASK_S1",
+            "date_folder": "20261119",
+            "stratum": "S1",
+            "task_lifecycle_state": "COMPLETED",
+            "is_continuation": False,
+            "result_json_status": "OK",
+            "task_folder_bytes_reported": 5000,
+        },
+        {
+            "task_id": "SAMPLE_TASK_S5",
+            "date_folder": "20261120",
+            "stratum": "S5",
+            "task_lifecycle_state": "COMPLETED",
+            "is_continuation": False,
+            "result_json_status": "OK",
+            "stage_manifests": ["/stage.json"],
+        },
+    ]
+
+    with open(cat_dir / "tasks.jsonl", "w", encoding="utf-8") as f:
+        for t in sample_tasks:
+            f.write(json.dumps(t) + "\n")
+
+    report_file = tmp_path / "baseline_report.md"
+    runner = CliRunner()
+
+    # 1. Markdown output with --output-file
+    res_md = runner.invoke(
+        main_app,
+        [
+            "task-catalog",
+            "metrics",
+            "--catalog-dir",
+            str(cat_dir),
+            "--output-format",
+            "markdown",
+            "--output-file",
+            str(report_file),
+            "--no-receipt-lookup",
+        ],
+    )
+    assert res_md.exit_code == 0
+    assert report_file.is_file()
+    md_content = report_file.read_text(encoding="utf-8")
+    assert "# Task Workflow Effect Metrics Baseline Report" in md_content
+    for ind in TEN_INDICATORS:
+        assert ind in md_content
+    for st in REPORT_STRATA:
+        assert f"| {st} |" in md_content
+
+    # 2. JSON output
+    res_json = runner.invoke(
+        main_app,
+        [
+            "task-catalog",
+            "metrics",
+            "--catalog-dir",
+            str(cat_dir),
+            "--output-format",
+            "json",
+            "--no-receipt-lookup",
+        ],
+    )
+    assert res_json.exit_code == 0
+    parsed = json.loads(res_json.output)
+    assert parsed["window_start"] == "2026-11-18"
+    assert parsed["window_end"] == "2026-11-24"
+    assert len(parsed["metrics"]) == 60  # 10 indicators * 6 strata
+
+    # 3. Text output
+    res_txt = runner.invoke(
+        main_app,
+        [
+            "task-catalog",
+            "metrics",
+            "--catalog-dir",
+            str(cat_dir),
+            "--output-format",
+            "text",
+            "--no-receipt-lookup",
+        ],
+    )
+    assert res_txt.exit_code == 0
+    assert "WORKFLOW EFFECT METRICS BASELINE" in res_txt.output
+
+
+def test_explicit_evidence_not_lifecycle_or_incident_proxies() -> None:
+    tasks: list[dict[str, object]] = [
+        {
+            "task_id": "T_R2",
+            "date_folder": "20261120",
+            "stratum": "S1",
+            "task_lifecycle_state": "COMPLETED",
+            "is_continuation": False,
+            "acceptance_confirmed": False,
+            "issue_type": "AUTH",
+        },
+        {
+            "task_id": "T_CONT",
+            "date_folder": "20261120",
+            "stratum": "S1",
+            "continues_from": "T_R2",
+            "same_original_task": True,
+            "goal_72h_completed": True,
+            "is_continuation": True,
+            "task_lifecycle_state": "COMPLETED",
+        },
+        {
+            "task_id": "T_LOCAL",
+            "date_folder": "20261120",
+            "stratum": "S1",
+            "project_goal_completed": True,
+            "task_lifecycle_state": "COMPLETED",
+            "acceptance_confirmed": False,
+        },
+        {
+            "task_id": "T_REG",
+            "date_folder": "20261120",
+            "stratum": "S1",
+            "acceptance_confirmed": True,
+            "regression_escape": True,
+        },
+    ]
+    report = compute_workflow_metrics(Path("/dummy"), read_folder_receipts=False, tasks_data=tasks)
+    metrics = {m.indicator: m for m in report.metrics if m.stratum == "S1"}
+    assert metrics["FIRST_PASS_ACCEPTANCE_RATE"].unknown_count == 3
+    assert metrics["FINAL_GOAL_COMPLETION_RATE"].unknown_count == 2
+    assert metrics["FINAL_GOAL_COMPLETION_RATE"].numerator == 1
+    assert metrics["REGRESSION_ESCAPE_RATE"].numerator == 1
+    assert metrics["REGRESSION_ESCAPE_RATE"].denominator == 1
+    assert metrics["REGRESSION_ESCAPE_RATE"].unknown_count == 0
+    assert classify_task_stratum({"route": {"worker_route": "STANDARD"}}) is None
+
+
+def test_receipt_scope_identity_and_size(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    project = tmp_path / "project"
+    task_dir = project / ".task-data" / "20261120" / "TASK"
+    task_dir.mkdir(parents=True)
+    monkeypatch.setattr(task_catalog, "canonical_project_root", lambda: project)
+    record: dict[str, object] = {"task_id": "TASK", "path": str(task_dir)}
+    (task_dir / "result.json").write_text(
+        json.dumps(
+            {"task_id": "OTHER", "route": {"worker_route": "FAST"}, "first_pass_accepted": True}
+        )
+    )
+    assert classify_task_stratum(record) is None
+    assert "first_pass_accepted" not in task_catalog._enrich_task_data(record, True)
+    (task_dir / "result.json").write_bytes(b" " * (task_catalog.MAX_JSON_SIZE_BYTES + 1))
+    assert "first_pass_accepted" not in task_catalog._enrich_task_data(record, True)
+    (task_dir / "packet.md").write_text("TASK_ID: OTHER\nWORKER_ROUTE: FAST\n")
+    assert classify_task_stratum(record) is None
+    outside = tmp_path / "TASK"
+    outside.mkdir()
+    (outside / "packet.md").write_text("TASK_ID: TASK\nWORKER_ROUTE: FAST\n")
+    assert classify_task_stratum({"task_id": "TASK", "path": str(outside)}) is None
+    alias = project / ".task-data" / "20261120" / "ALIAS"
+    alias.symlink_to(task_dir, target_is_directory=True)
+    assert not task_catalog._is_safe_receipt_dir(str(alias), "ALIAS")
+
+
+def test_continuation_does_not_reuse_single_run_cost_as_total() -> None:
+    tasks: list[dict[str, object]] = [
+        {
+            "task_id": "A",
+            "date_folder": "20261120",
+            "stratum": "S1",
+            "tokens": 100,
+            "model_tier": "high",
+            "model_identity": "model-alpha",
+            "route": {"worker_route": "FAST"},
+            "adopted_outcome": True,
+            "owner_intervention_count": 1,
+            "is_continuation": False,
+            "continues_from": "NONE",
+            "first_pass_accepted": False,
+        },
+        {
+            "task_id": "B",
+            "date_folder": "20261120",
+            "stratum": "S1",
+            "continues_from": "A",
+            "same_original_task": True,
+            "goal_72h_completed": True,
+            "tokens": 100,
+            "model_tier": "high",
+            "model_identity": "model-alpha",
+            "adopted_outcome": True,
+        },
+    ]
+    report = compute_workflow_metrics(Path("/dummy"), read_folder_receipts=False, tasks_data=tasks)
+    metrics = {m.indicator: m for m in report.metrics if m.stratum == "S1"}
+    assert metrics["FIRST_PASS_ACCEPTANCE_RATE"].denominator == 1
+    assert metrics["FIRST_PASS_ACCEPTANCE_RATE"].numerator == 0
+    assert metrics["FINAL_GOAL_COMPLETION_RATE"].numerator == 1
+    assert metrics["MODEL_COST_PER_ACCEPTED_OUTCOME"].unknown_count == 1
+    assert metrics["OWNER_INTERVENTION_COUNT"].unknown_count == 1
+
+
+def test_first_pass_is_not_promoted_by_a_successful_continuation() -> None:
+    tasks: list[dict[str, object]] = [
+        {
+            "task_id": "ORIGINAL",
+            "date_folder": "20261120",
+            "stratum": "S1",
+            "is_continuation": False,
+            "continues_from": "NONE",
+            "first_pass_accepted": False,
+            "task_lifecycle_state": "BLOCKED",
+        },
+        {
+            "task_id": "FOLLOWUP",
+            "date_folder": "20261120",
+            "stratum": "S1",
+            "continues_from": "ORIGINAL",
+            "same_original_task": True,
+            "is_continuation": True,
+            # A terminal follow-up's own status cannot replace the original first pass.
+            "first_pass_accepted": True,
+            "goal_72h_completed": True,
+            "task_lifecycle_state": "COMPLETED",
+        },
+    ]
+
+    report = compute_workflow_metrics(Path("/dummy"), read_folder_receipts=False, tasks_data=tasks)
+    metrics = {m.indicator: m for m in report.metrics if m.stratum == "S1"}
+
+    assert report.total_tasks_evaluated == 1
+    assert metrics["FIRST_PASS_ACCEPTANCE_RATE"].status == "MEASURED"
+    assert metrics["FIRST_PASS_ACCEPTANCE_RATE"].numerator == 0
+    assert metrics["FIRST_PASS_ACCEPTANCE_RATE"].denominator == 1
+    assert metrics["FINAL_GOAL_COMPLETION_RATE"].numerator == 1
+    assert metrics["FINAL_GOAL_COMPLETION_RATE"].denominator == 1
+
+
+def test_first_pass_requires_explicit_none_lineage() -> None:
+    report = compute_workflow_metrics(
+        Path("/dummy"),
+        read_folder_receipts=False,
+        tasks_data=[
+            {
+                "task_id": "NO_LINEAGE_RECEIPT",
+                "date_folder": "20261120",
+                "stratum": "S1",
+                "first_pass_accepted": True,
+            }
+        ],
+    )
+    first_pass = next(
+        m
+        for m in report.metrics
+        if m.stratum == "S1" and m.indicator == "FIRST_PASS_ACCEPTANCE_RATE"
+    )
+
+    assert first_pass.status == "UNKNOWN"
+    assert first_pass.numerator == 0
+    assert first_pass.denominator == 0
+    assert first_pass.eligible_count == 1
+    assert first_pass.unknown_count == 1
+
+
+def test_missing_parent_and_unconfirmed_continuation_stay_unknown() -> None:
+    tasks: list[dict[str, object]] = [
+        {
+            "task_id": "ORPHAN_CONTINUATION",
+            "date_folder": "20261120",
+            "stratum": "S1",
+            "continues_from": "MISSING_PARENT",
+            "same_original_task": True,
+            "is_continuation": True,
+            "first_pass_accepted": True,
+            "goal_72h_completed": True,
+        },
+        {
+            "task_id": "UNLINKED_CONTINUATION",
+            "date_folder": "20261120",
+            "stratum": "S1",
+            "is_continuation": True,
+            "first_pass_accepted": True,
+            "goal_72h_completed": True,
+        },
+    ]
+
+    report = compute_workflow_metrics(Path("/dummy"), read_folder_receipts=False, tasks_data=tasks)
+    metrics = {m.indicator: m for m in report.metrics if m.stratum == "S1"}
+
+    assert report.tasks_by_stratum["S1"] == 2
+    assert metrics["FIRST_PASS_ACCEPTANCE_RATE"].status == "UNKNOWN"
+    assert metrics["FIRST_PASS_ACCEPTANCE_RATE"].denominator == 0
+    assert metrics["FIRST_PASS_ACCEPTANCE_RATE"].eligible_count == 2
+    assert metrics["FIRST_PASS_ACCEPTANCE_RATE"].unknown_count == 2
+    assert metrics["FINAL_GOAL_COMPLETION_RATE"].status == "UNKNOWN"
+    assert metrics["FINAL_GOAL_COMPLETION_RATE"].unknown_count == 2
+
+
+def test_duplicate_receipts_are_counted_once_and_conflicts_are_unknown() -> None:
+    duplicate = {
+        "task_id": "DUPLICATE",
+        "date_folder": "20261120",
+        "stratum": "S1",
+        "continues_from": "NONE",
+        "first_pass_accepted": True,
+    }
+    duplicated_report = compute_workflow_metrics(
+        Path("/dummy"),
+        read_folder_receipts=False,
+        tasks_data=[dict(duplicate), dict(duplicate)],
+    )
+    first_pass = next(
+        m
+        for m in duplicated_report.metrics
+        if m.stratum == "S1" and m.indicator == "FIRST_PASS_ACCEPTANCE_RATE"
+    )
+
+    assert duplicated_report.total_tasks_evaluated == 1
+    assert duplicated_report.duplicate_receipts_ignored == 1
+    assert first_pass.numerator == 1
+    assert first_pass.denominator == 1
+
+    conflicting_report = compute_workflow_metrics(
+        Path("/dummy"),
+        read_folder_receipts=False,
+        tasks_data=[dict(duplicate), {**duplicate, "first_pass_accepted": False}],
+    )
+    assert conflicting_report.total_tasks_evaluated == 1
+    assert conflicting_report.conflicting_task_ids == 1
+    assert conflicting_report.unknown_stratum_tasks == 1
+    assert conflicting_report.tasks_by_stratum["S1"] == 0
+
+
+def test_unknown_dates_and_conflicting_strata_remain_visible() -> None:
+    tasks: list[dict[str, object]] = [
+        {"task_id": "START", "date_folder": "20261118", "stratum": "S1"},
+        {"task_id": "END", "date_folder": "20261124", "stratum": "S2"},
+        {"task_id": "OUTSIDE", "date_folder": "20261125", "stratum": "S1"},
+        {"task_id": "NO_DATE", "stratum": "S3"},
+        {"task_id": "BAD_DATE", "date_folder": "20261199", "stratum": "S3"},
+        {
+            "task_id": "CONFLICTING_STRATUM",
+            "date_folder": "20261120",
+            "stratum": "S2",
+            "route": {"worker_route": "STANDARD", "implementation_depth": "ENHANCED"},
+        },
+    ]
+
+    report = compute_workflow_metrics(Path("/dummy"), read_folder_receipts=False, tasks_data=tasks)
+
+    assert report.total_tasks_evaluated == 3
+    assert report.unknown_window_date_tasks == 2
+    assert report.unknown_stratum_tasks == 1
+    assert report.tasks_by_stratum["S1"] == 1
+    assert report.tasks_by_stratum["S2"] == 1
+    assert report.tasks_by_stratum["S3"] == 0
+
+
+def test_resource_cost_requires_explicit_three_component_evidence() -> None:
+    tasks: list[dict[str, object]] = [
+        {
+            "task_id": "RESOURCE_VECTOR",
+            "date_folder": "20261120",
+            "stratum": "S3",
+            "resource_cost_measured": {
+                "available_disk_bytes": 20_000,
+                "orphan_worktree_count": 2,
+                "temporary_residue_bytes": 4_000,
+            },
+            # Folder size alone is not a substitute for the resource vector.
+            "task_folder_bytes_reported": 4_000,
+        },
+        {
+            "task_id": "RESOURCE_PARTIAL",
+            "date_folder": "20261120",
+            "stratum": "S3",
+            "resource_cost_measured": {"available_disk_bytes": 18_000},
+        },
+    ]
+
+    report = compute_workflow_metrics(Path("/dummy"), read_folder_receipts=False, tasks_data=tasks)
+    resource = next(
+        m for m in report.metrics if m.stratum == "S3" and m.indicator == "RESOURCE_COST"
+    )
+
+    assert resource.status == "PARTIAL"
+    assert resource.eligible_count == 2
+    assert resource.unknown_count == 1
+    assert resource.value is None
+    assert resource.components is not None
+    assert resource.components["available_disk_bytes"]["observations"] == 2
+    assert resource.components["orphan_worktree_count"]["observations"] == 1
+    assert resource.components["temporary_residue_bytes"]["observations"] == 1
+
+    complete_report = compute_workflow_metrics(
+        Path("/dummy"), read_folder_receipts=False, tasks_data=[tasks[0]]
+    )
+    complete_resource = next(
+        m for m in complete_report.metrics if m.stratum == "S3" and m.indicator == "RESOURCE_COST"
+    )
+    assert complete_resource.status == "MEASURED"
+    assert complete_resource.unknown_count == 0
+    assert complete_resource.components is not None
+    assert complete_resource.components["orphan_worktree_count"]["minimum"] == 2
+
+
+def test_auth_incident_and_model_tier_are_not_metric_evidence() -> None:
+    tasks: list[dict[str, object]] = [
+        {
+            "task_id": "BLOCKED_AUTH_ONLY",
+            "date_folder": "20261120",
+            "stratum": "S2",
+            "task_lifecycle_state": "BLOCKED",
+            "issue_type": "AUTH",
+        },
+        {
+            "task_id": "COST_TIER_ONLY",
+            "date_folder": "20261120",
+            "stratum": "S2",
+            "task_lifecycle_state": "COMPLETED",
+            "tokens": 100,
+            "model_tier": "high",
+            "route": {"worker_route": "STANDARD", "implementation_depth": "NORMAL"},
+            "adopted_outcome": True,
+        },
+        {
+            "task_id": "COST_ROUTE_INCOMPLETE",
+            "date_folder": "20261120",
+            "stratum": "S2",
+            "task_lifecycle_state": "COMPLETED",
+            "tokens": 200,
+            "model_identity": "model-alpha",
+            "route": {"worker_route": "STANDARD"},
+            "adopted_outcome": True,
+        },
+    ]
+    report = compute_workflow_metrics(Path("/dummy"), read_folder_receipts=False, tasks_data=tasks)
+    metrics = {m.indicator: m for m in report.metrics if m.stratum == "S2"}
+
+    assert metrics["AVOIDABLE_BLOCK_RATE"].status == "UNKNOWN"
+    assert metrics["AVOIDABLE_BLOCK_RATE"].denominator == 0
+    assert metrics["AVOIDABLE_BLOCK_RATE"].unknown_count == 1
+    assert metrics["MODEL_COST_PER_ACCEPTED_OUTCOME"].status == "UNKNOWN"
+    assert metrics["MODEL_COST_PER_ACCEPTED_OUTCOME"].unknown_count == 3
+
+
+def test_r5_fixed_classification_does_not_become_historical_baseline() -> None:
+    # This synthetic projection encodes only the named R5 receipt's aggregate facts.
+    # It does not reproduce per-task identities or fill fields the receipt marks UNKNOWN.
+    r5_tasks: list[dict[str, object]] = [
+        {
+            "task_id": "R5_A",
+            "date_folder": "20261125",
+            "stratum": "S2",
+            "continues_from": "NONE",
+            "first_pass_accepted": True,
+            "task_lifecycle_state": "COMPLETED",
+            "adopted_outcome": False,
+        },
+        {
+            "task_id": "R5_B",
+            "date_folder": "20261125",
+            "stratum": "S2",
+            "continues_from": "NONE",
+            "first_pass_accepted": True,
+            "task_lifecycle_state": "COMPLETED",
+            "adopted_outcome": False,
+        },
+        {
+            "task_id": "R5_C",
+            "date_folder": "20261125",
+            "stratum": "S2",
+            "continues_from": "NONE",
+            "first_pass_accepted": False,
+            "task_lifecycle_state": "COMPLETED",
+            "first_pass_blocked": True,
+            "continuation_count": 1,
+            "adopted_outcome": False,
+        },
+    ]
+    r5_report = compute_workflow_metrics(
+        Path("/dummy"),
+        start_date="2026-11-25",
+        end_date="2026-11-25",
+        read_folder_receipts=False,
+        tasks_data=r5_tasks,
+    )
+    r5_metrics = {m.indicator: m for m in r5_report.metrics if m.stratum == "S2"}
+    baseline_report = compute_workflow_metrics(
+        Path("/dummy"), read_folder_receipts=False, tasks_data=r5_tasks
+    )
+
+    assert r5_metrics["FIRST_PASS_ACCEPTANCE_RATE"].numerator == 2
+    assert r5_metrics["FIRST_PASS_ACCEPTANCE_RATE"].denominator == 3
+    assert r5_metrics["FINAL_GOAL_COMPLETION_RATE"].status == "UNKNOWN"
+    assert r5_metrics["FINAL_GOAL_COMPLETION_RATE"].unknown_count == 3
+    assert r5_metrics["UNPRODUCTIVE_CONTINUATION_COUNT"].status == "UNKNOWN"
+    assert r5_metrics["UNPRODUCTIVE_CONTINUATION_COUNT"].unknown_count == 3
+    assert r5_metrics["MODEL_COST_PER_ACCEPTED_OUTCOME"].status == "UNKNOWN"
+    assert r5_metrics["MODEL_COST_PER_ACCEPTED_OUTCOME"].unknown_count == 3
+    assert baseline_report.total_tasks_evaluated == 0
+
+
+def test_receipt_retry_and_incident_signals_do_not_prove_first_pass_or_regression(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    project = tmp_path / "project"
+    task_dir = project / ".task-data" / "20261120" / "TASK"
+    task_dir.mkdir(parents=True)
+    monkeypatch.setattr(task_catalog, "canonical_project_root", lambda: project)
+    (task_dir / "packet.md").write_text(
+        "TASK_ID: TASK\nCONTINUES_FROM: NONE\nWORKER_ROUTE: FAST\n",
+        encoding="utf-8",
+    )
+    (task_dir / "result.json").write_text(
+        json.dumps(
+            {
+                "task_id": "TASK",
+                "task_lifecycle_state": "COMPLETED",
+                "first_pass_accepted": True,
+                "acceptance_confirmed": True,
+                "process_signal": {
+                    "regression_escape": True,
+                    "issue": {"type": "AUTH"},
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    record: dict[str, object] = {
+        "task_id": "TASK",
+        "date_folder": "20261120",
+        "path": str(task_dir),
+    }
+    (task_dir / "result.before_1.json").write_text("{}", encoding="utf-8")
+
+    enriched = task_catalog._enrich_task_data(record, True)
+    report = compute_workflow_metrics(
+        Path("/dummy"),
+        read_folder_receipts=True,
+        tasks_data=[enriched],
+    )
+    metrics = {m.indicator: m for m in report.metrics if m.stratum == "S1"}
+
+    assert enriched.get("first_pass_accepted") is None
+    assert metrics["FIRST_PASS_ACCEPTANCE_RATE"].status == "UNKNOWN"
+    assert metrics["REGRESSION_ESCAPE_RATE"].numerator == 0
+    assert metrics["REGRESSION_ESCAPE_RATE"].unknown_count == 1
+
+
+def test_unit_test_reruns_do_not_create_task_continuations(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    project = tmp_path / "project"
+    task_dir = project / ".task-data" / "20261120" / "TASK"
+    task_dir.mkdir(parents=True)
+    monkeypatch.setattr(task_catalog, "canonical_project_root", lambda: project)
+    (task_dir / "packet.md").write_text(
+        "TASK_ID: TASK\nCONTINUES_FROM: NONE\nWORKER_ROUTE: FAST\n",
+        encoding="utf-8",
+    )
+    (task_dir / "result.json").write_text(
+        json.dumps(
+            {
+                "task_id": "TASK",
+                "task_lifecycle_state": "COMPLETED",
+                "first_pass_accepted": True,
+                "pytest_rerun_count": 4,
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    record: dict[str, object] = {
+        "task_id": "TASK",
+        "date_folder": "20261120",
+        "path": str(task_dir),
+    }
+    enriched = task_catalog._enrich_task_data(record, True)
+    report = compute_workflow_metrics(
+        Path("/dummy"), read_folder_receipts=True, tasks_data=[enriched]
+    )
+    first_pass = next(
+        m
+        for m in report.metrics
+        if m.stratum == "S1" and m.indicator == "FIRST_PASS_ACCEPTANCE_RATE"
+    )
+
+    assert enriched["is_continuation"] is False
+    assert enriched["first_pass_accepted"] is True
+    assert first_pass.numerator == 1
+    assert first_pass.denominator == 1
+    assert first_pass.unknown_count == 0
+
+
+def test_contradictory_original_and_continuation_markers_stay_unknown(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    project = tmp_path / "project"
+    task_dir = project / ".task-data" / "20261120" / "TASK"
+    task_dir.mkdir(parents=True)
+    monkeypatch.setattr(task_catalog, "canonical_project_root", lambda: project)
+    (task_dir / "packet.md").write_text(
+        "TASK_ID: TASK\nCONTINUES_FROM: NONE\nWORKER_ROUTE: FAST\n",
+        encoding="utf-8",
+    )
+    (task_dir / "result.json").write_text(
+        json.dumps(
+            {
+                "task_id": "TASK",
+                "task_lifecycle_state": "COMPLETED",
+                "first_pass_accepted": True,
+                "is_continuation": True,
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    enriched = task_catalog._enrich_task_data(
+        {"task_id": "TASK", "date_folder": "20261120", "path": str(task_dir)}, True
+    )
+    report = compute_workflow_metrics(
+        Path("/dummy"), read_folder_receipts=True, tasks_data=[enriched]
+    )
+    first_pass = next(
+        m
+        for m in report.metrics
+        if m.stratum == "S1" and m.indicator == "FIRST_PASS_ACCEPTANCE_RATE"
+    )
+
+    assert enriched.get("lineage_evidence_conflict") is True
+    assert first_pass.status == "UNKNOWN"
+    assert first_pass.numerator == 0
+    assert first_pass.denominator == 0
+    assert first_pass.unknown_count == 1
+
+
+def test_ambiguous_cycles_and_branches_are_not_collapsed() -> None:
+    tasks: list[dict[str, object]] = [
+        {
+            "task_id": "A",
+            "date_folder": "20261120",
+            "stratum": "S1",
+            "continues_from": "B",
+            "same_original_task": True,
+            "first_pass_accepted": True,
+        },
+        {
+            "task_id": "B",
+            "date_folder": "20261120",
+            "stratum": "S1",
+            "continues_from": "A",
+            "same_original_task": True,
+        },
+    ]
+    report = compute_workflow_metrics(Path("/dummy"), read_folder_receipts=False, tasks_data=tasks)
+    assert report.tasks_by_stratum["S1"] == 2
+    metric = next(
+        m
+        for m in report.metrics
+        if m.stratum == "S1" and m.indicator == "FIRST_PASS_ACCEPTANCE_RATE"
+    )
+    assert metric.unknown_count == 2
+
+    branched_tasks: list[dict[str, object]] = [
+        {
+            "task_id": "ROOT",
+            "date_folder": "20261120",
+            "stratum": "S1",
+            "is_continuation": False,
+            "first_pass_accepted": False,
+        },
+        {
+            "task_id": "CHILD_A",
+            "date_folder": "20261120",
+            "stratum": "S1",
+            "continues_from": "ROOT",
+            "same_original_task": True,
+            "is_continuation": True,
+            "first_pass_accepted": True,
+        },
+        {
+            "task_id": "CHILD_B",
+            "date_folder": "20261120",
+            "stratum": "S1",
+            "continues_from": "ROOT",
+            "same_original_task": True,
+            "is_continuation": True,
+            "first_pass_accepted": True,
+        },
+    ]
+    branch_report = compute_workflow_metrics(
+        Path("/dummy"), read_folder_receipts=False, tasks_data=branched_tasks
+    )
+    branch_metric = next(
+        m
+        for m in branch_report.metrics
+        if m.stratum == "S1" and m.indicator == "FIRST_PASS_ACCEPTANCE_RATE"
+    )
+    assert branch_report.tasks_by_stratum["S1"] == 3
+    assert branch_metric.denominator == 0
+    assert branch_metric.unknown_count == 3

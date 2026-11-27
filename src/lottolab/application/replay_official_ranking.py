@@ -124,6 +124,12 @@ def score_period(
     )
 
 
+def ranking_target_sort_key(draw_date: str, draw_id: str) -> tuple[str, int, int, str]:
+    """Order dates first, then ASCII decimal IDs numerically and other IDs lexically."""
+    numeric = bool(draw_id) and draw_id.isascii() and draw_id.isdecimal()
+    return (draw_date, 0 if numeric else 1, int(draw_id) if numeric else 0, draw_id)
+
+
 @dataclass(frozen=True)
 class RankingPeriod:
     """One target within an already isolated strategy and ticket-count cohort."""
@@ -156,7 +162,9 @@ def summarize_periods(lottery_type: str, periods: list[RankingPeriod], window: s
                 raise ValueError("unscorable evaluated period")
         elif period.success is not None:
             raise ValueError("unknown or missing period cannot have a success value")
-    ordered = sorted(periods, key=lambda p: (p.target_draw_date, p.target_draw_id))
+    ordered = sorted(
+        periods, key=lambda p: ranking_target_sort_key(p.target_draw_date, p.target_draw_id)
+    )
     size = sizes[window]
     selected = ordered if size is None else ordered[-size:]
     evaluated = [p for p in selected if p.status == "EVALUATED"]
@@ -406,7 +414,12 @@ def _aggregate_ranking_materialized(
                 [],
             ).append(row)
     for cohort in cohorts.values():
-        cohort.sort(key=lambda row: (-row["rate"], row["strategy_id"]))
+        cohort.sort(
+            key=lambda row: (
+                -Fraction(row["successes"], row["evaluated"]),
+                row["strategy_id"],
+            )
+        )
         for rank, row in enumerate(cohort, 1):
             row["rank"] = rank
     return rows

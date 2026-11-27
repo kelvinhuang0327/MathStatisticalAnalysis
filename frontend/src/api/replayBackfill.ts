@@ -931,3 +931,64 @@ export async function getReplayBackfillCoverage(
     (response, status) => assertRequestedRunIdMatches(response, runId, status),
   )
 }
+
+export interface CoverageScanQuery {
+  lotteryType: ReplayBackfillLotteryType
+  startDate: string
+  endDate: string
+  strategies: { id: string; version: string }[]
+  limit: number
+  offset: number
+}
+export interface CoverageScan {
+  lottery_type: ReplayBackfillLotteryType
+  window_start_date: string
+  window_end_date: string
+  source_target_count: number
+  expected_cell_count: number
+  complete_cell_count: number
+  incomplete_cell_count: number
+  complete_coverage_percent: number
+  status_counts: Record<string, number>
+  strategy_counts: Record<string, { complete: number; incomplete: number; execution_versions: string[]; dataset_identities: string[] }>
+  orphan_replay_row_count: number
+  items: { target_draw_id: string; target_draw_date: string; strategy_id: string; strategy_version: string; status: string; reason: string | null; existing_records: unknown[] }[]
+  total_count: number
+  limit: number
+  offset: number
+  next_offset: number | null
+}
+export async function scanReplayCoverage(query: CoverageScanQuery, signal?: AbortSignal): Promise<CoverageScan> {
+  const identities = query.strategies.map(({ id, version }) => ({ id: id.trim(), version: version.trim() }))
+  if (!isLotteryType(query.lotteryType) || !query.startDate || !query.endDate ||
+      !isValidReplayDateRange(query.startDate, query.endDate) || identities.length !== 5 ||
+      identities.some(({ id, version }) => !id || !version || id.length > 200 || version.length > 200) ||
+      new Set(identities.map(({ id }) => id)).size !== 5 ||
+      !Number.isSafeInteger(query.limit) || query.limit < 1 || query.limit > 250 || !isNonNegativeSafeInteger(query.offset)) {
+    throw new RangeError('請輸入有效日期及五組不同策略 ID／版本。')
+  }
+  const params = new URLSearchParams({ lottery_type: query.lotteryType, start_date: query.startDate, end_date: query.endDate, limit: String(query.limit), offset: String(query.offset) })
+  identities.forEach(({ id }) => params.append('strategy_id', id))
+  identities.forEach(({ version }) => params.append('strategy_version', version))
+  return getJson(`/api/v1/replay-backfill/coverage/scan?${params}`, signal, (v): v is CoverageScan => {
+    if (!isRecord(v) || v.lottery_type !== query.lotteryType || !isString(v.window_start_date) || !isString(v.window_end_date) ||
+        !isNonNegativeSafeInteger(v.source_target_count) || !isNonNegativeSafeInteger(v.expected_cell_count) ||
+        !isNonNegativeSafeInteger(v.complete_cell_count) || !isNonNegativeSafeInteger(v.incomplete_cell_count) ||
+        v.expected_cell_count !== v.source_target_count * 5 || v.complete_cell_count + v.incomplete_cell_count !== v.expected_cell_count ||
+        typeof v.complete_coverage_percent !== 'number' || !Number.isFinite(v.complete_coverage_percent) ||
+        v.complete_coverage_percent < 0 || v.complete_coverage_percent > 100 || !isRecord(v.status_counts) ||
+        !Object.values(v.status_counts).every(isNonNegativeSafeInteger) || !isRecord(v.strategy_counts) ||
+        !isNonNegativeSafeInteger(v.orphan_replay_row_count) || !isNonNegativeSafeInteger(v.total_count) ||
+        v.total_count !== v.incomplete_cell_count || v.limit !== query.limit || v.offset !== query.offset ||
+        !(v.next_offset === null || (isNonNegativeSafeInteger(v.next_offset) && v.next_offset === query.offset + query.limit && v.next_offset < v.total_count)) ||
+        !Array.isArray(v.items) || v.items.length !== Math.min(query.limit, Math.max(0, v.total_count - query.offset))) return false
+    return identities.every(({ id, version }) => {
+      const s = (v.strategy_counts as Record<string, unknown>)[`${id}@${version}`]
+      return isRecord(s) && isNonNegativeSafeInteger(s.complete) && isNonNegativeSafeInteger(s.incomplete) &&
+        s.complete + s.incomplete === v.source_target_count && Array.isArray(s.execution_versions) && s.execution_versions.every(isString) &&
+        Array.isArray(s.dataset_identities) && s.dataset_identities.every(isString)
+    }) && v.items.every((item: unknown) => isRecord(item) && isString(item.target_draw_id) && isString(item.target_draw_date) &&
+      isString(item.strategy_id) && isString(item.strategy_version) && isString(item.status) && isNullableString(item.reason) && Array.isArray(item.existing_records) &&
+      identities.some(({ id, version }) => id === item.strategy_id && version === item.strategy_version))
+  })
+}

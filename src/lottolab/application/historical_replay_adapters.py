@@ -12,7 +12,7 @@ from __future__ import annotations
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from hashlib import sha256
-from typing import Protocol, cast
+from typing import ClassVar, Protocol, cast
 
 from lottolab.domain.draws import LotteryType
 from lottolab.domain.historical_replay import (
@@ -37,6 +37,13 @@ class ReplayStrategyImplementation(Protocol):
     strategy_id: str
     strategy_version: str
     min_history: int
+
+
+class NativeReplayStrategyImplementation(Protocol):
+    strategy_id: ClassVar[str]
+    strategy_version: ClassVar[str]
+    min_history: ClassVar[int]
+    native_ticket_count: ClassVar[int]
 
 
 @dataclass(frozen=True, slots=True)
@@ -399,7 +406,7 @@ class BigLottoReplayAdapter(_PrizeEvaluatingAdapter):
 
 
 def binding_from_implementation(
-    implementation: ReplayStrategyImplementation,
+    implementation: ReplayStrategyImplementation | NativeReplayStrategyImplementation,
     *,
     behavior: ReplayBehavior = ReplayBehavior.DETERMINISTIC,
     fingerprint: str | None = None,

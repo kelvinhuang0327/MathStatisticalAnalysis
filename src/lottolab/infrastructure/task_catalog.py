@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 import os
 import re
 import sqlite3
@@ -13,6 +14,33 @@ from typing import cast
 
 import lottolab
 from lottolab.infrastructure.persistence.project_database_paths import canonical_project_root
+
+BASELINE_WINDOW_START = "2026-11-18"
+BASELINE_WINDOW_END = "2026-11-24"
+
+REPORT_STRATA: tuple[str, ...] = ("S1", "S2", "S3", "S4", "S5", "S6")
+
+STRATUM_LABELS: dict[str, str] = {
+    "S1": "FAST",
+    "S2": "STANDARD/NORMAL",
+    "S3": "STANDARD/ENHANCED",
+    "S4": "JUDGED",
+    "S5": "RESEARCH",
+    "S6": "RELEASE_CLOSEOUT",
+}
+
+TEN_INDICATORS: tuple[str, ...] = (
+    "FIRST_PASS_ACCEPTANCE_RATE",
+    "FINAL_GOAL_COMPLETION_RATE",
+    "AVOIDABLE_BLOCK_RATE",
+    "UNPRODUCTIVE_CONTINUATION_COUNT",
+    "OWNER_INTERVENTION_COUNT",
+    "DISPATCH_TO_ACCEPTANCE_TIME",
+    "ACCEPTANCE_TO_ADOPTION_TIME",
+    "MODEL_COST_PER_ACCEPTED_OUTCOME",
+    "REGRESSION_ESCAPE_RATE",
+    "RESOURCE_COST",
+)
 
 HEX_64_RE = re.compile(r"^[0-9a-f]{64}$")
 EXCLUDED_STATUSES = frozenset({"RETAINED", "KEPT", "HELD", "PRESERVED"})
@@ -25,6 +53,115 @@ def _is_hex64(val: object) -> bool:
 
 def _is_int(val: object) -> bool:
     return type(val) is int
+
+
+def _nonnegative_int(val: object) -> bool:
+    return _is_int(val) and cast(int, val) >= 0
+
+
+def _nonnegative_number(val: object) -> bool:
+    return type(val) in (int, float) and math.isfinite(cast(float, val)) and cast(float, val) >= 0
+
+
+def _has_explicit_route(task: dict[str, object]) -> bool:
+    route_raw = task.get("route")
+    route = cast(dict[str, object], route_raw) if isinstance(route_raw, dict) else {}
+    worker_route = _clean_header_val(route.get("worker_route", task.get("worker_route")))
+    depth = _clean_header_val(route.get("implementation_depth", task.get("implementation_depth")))
+    judge_mode = _clean_header_val(route.get("judge_mode", task.get("judge_mode")))
+    task_class = _clean_header_val(route.get("task_class", task.get("task_class")))
+    lane = _clean_header_val(route.get("task_lane", task.get("task_lane")))
+    has_stages = isinstance(task.get("stage_manifests"), list) and bool(
+        cast(list[object], task["stage_manifests"])
+    )
+
+    if worker_route == "FAST":
+        return True
+    if "JUDGED" in worker_route or "JUDGE" in worker_route or judge_mode == "FRESH_CONTEXT":
+        return True
+    if "STANDARD" in worker_route:
+        return depth in ("NORMAL", "ENHANCED")
+    if (
+        "RESEARCH" in task_class
+        or has_stages
+        or any(item in lane for item in ("L1", "L2", "L3", "支線1", "支線2", "支線3"))
+    ):
+        return True
+    return "RELEASE" in task_class or "CLOSEOUT" in task_class
+
+
+def _parse_date(value: object) -> str | None:
+    """Return a validated calendar date in YYYYMMDD form; never parse timestamps."""
+    if not isinstance(value, str):
+        return None
+    raw = value.strip()
+    fmt = "%Y%m%d" if re.fullmatch(r"\d{8}", raw) else "%Y-%m-%d"
+    try:
+        return datetime.strptime(raw, fmt).strftime("%Y%m%d")
+    except ValueError:
+        return None
+
+
+def _json_signature(value: object) -> str:
+    """Canonicalize JSON-compatible task evidence for exact duplicate detection."""
+    normalized = json.loads(json.dumps(value, ensure_ascii=False))
+    return json.dumps(normalized, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+
+
+def _deduplicate_task_records(
+    tasks: list[dict[str, object]],
+) -> tuple[list[dict[str, object]], int, int]:
+    """Collapse byte-equivalent task receipts by ID and mark conflicting IDs unknown."""
+    output: list[dict[str, object]] = []
+    by_id: dict[str, dict[str, object]] = {}
+    signatures: dict[str, str] = {}
+    conflicted: set[str] = set()
+    duplicates = 0
+
+    for raw_task in tasks:
+        task = dict(raw_task)
+        task_id = task.get("task_id")
+        if not isinstance(task_id, str) or not task_id.strip():
+            task["metric_evidence_conflict"] = True
+            output.append(task)
+            continue
+        try:
+            signature = _json_signature(task)
+        except (TypeError, ValueError):
+            task["metric_evidence_conflict"] = True
+            output.append(task)
+            continue
+
+        existing = by_id.get(task_id)
+        if existing is None:
+            by_id[task_id] = task
+            signatures[task_id] = signature
+            output.append(task)
+        elif signatures[task_id] == signature:
+            duplicates += 1
+        elif task_id not in conflicted:
+            existing["metric_evidence_conflict"] = True
+            existing["task_lifecycle_state"] = None
+            for field in (
+                "first_pass_accepted",
+                "goal_72h_completed",
+                "acceptance_confirmed",
+                "regression_escape",
+                "avoidable_block",
+                "tokens",
+                "model_identity",
+                "model_tier",
+                "adopted_outcome",
+                "unproductive_continuation_count",
+                "owner_intervention_count",
+                "dispatch_to_acceptance_seconds",
+                "acceptance_to_adoption_seconds",
+                "resource_cost_measured",
+            ):
+                existing.pop(field, None)
+            conflicted.add(task_id)
+
+    return output, duplicates, len(conflicted)
 
 
 def _read_head_str(path: Path, max_bytes: int = 65536) -> str | None:
@@ -886,3 +1023,1262 @@ def find_in_catalog(
                     matches.append((k, stripped))
 
     return len(matches), matches
+
+
+@dataclass(frozen=True)
+class MetricValue:
+    indicator: str
+    stratum: str
+    status: str  # "MEASURED", "PARTIAL", "UNKNOWN"
+    numerator: float | int | None
+    denominator: float | int | None
+    count: float | int | None
+    eligible_count: int
+    unknown_count: int
+    value: float | str | None
+    evidence_fields: list[str]
+    notes: str | None = None
+    components: dict[str, dict[str, int | float]] | None = None
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "indicator": self.indicator,
+            "stratum": self.stratum,
+            "status": self.status,
+            "numerator": self.numerator,
+            "denominator": self.denominator,
+            "count": self.count,
+            "eligible_count": self.eligible_count,
+            "unknown_count": self.unknown_count,
+            "value": self.value,
+            "evidence_fields": self.evidence_fields,
+            "notes": self.notes,
+            "components": self.components,
+        }
+
+
+@dataclass(frozen=True)
+class WorkflowMetricsReport:
+    window_start: str
+    window_end: str
+    strata: list[str]
+    total_tasks_evaluated: int
+    tasks_by_stratum: dict[str, int]
+    unknown_stratum_tasks: int
+    unknown_window_date_tasks: int
+    duplicate_receipts_ignored: int
+    conflicting_task_ids: int
+    metrics: list[MetricValue]
+    unavailable_indicator_inputs: list[str]
+    generated_at: str
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "window_start": self.window_start,
+            "window_end": self.window_end,
+            "strata": self.strata,
+            "total_tasks_evaluated": self.total_tasks_evaluated,
+            "tasks_by_stratum": self.tasks_by_stratum,
+            "unknown_stratum_tasks": self.unknown_stratum_tasks,
+            "unknown_window_date_tasks": self.unknown_window_date_tasks,
+            "duplicate_receipts_ignored": self.duplicate_receipts_ignored,
+            "conflicting_task_ids": self.conflicting_task_ids,
+            "metrics": [m.to_dict() for m in self.metrics],
+            "unavailable_indicator_inputs": self.unavailable_indicator_inputs,
+            "generated_at": self.generated_at,
+        }
+
+
+def _clean_header_val(val: object) -> str:
+    if not isinstance(val, str):
+        return ""
+    return val.replace("\\", "").replace("`", "").strip().upper()
+
+
+def _is_safe_receipt_dir(folder_path: str, expected_task_id: str | None = None) -> bool:
+    """Validate that folder_path is a safe, non-symlink task directory matching expected_task_id."""
+    try:
+        fp = Path(folder_path)
+        root = canonical_project_root()
+        roots = (root / ".task-data", root.parent / ".task-data")
+        if not fp.is_absolute() or not expected_task_id or fp.name != expected_task_id:
+            return False
+        for allowed in roots:
+            try:
+                relative = fp.relative_to(allowed)
+            except ValueError:
+                continue
+            if len(relative.parts) not in (1, 2) or (
+                len(relative.parts) == 2
+                and not (len(relative.parts[0]) == 8 and relative.parts[0].isdigit())
+            ):
+                continue
+            if any(part.is_symlink() for part in (allowed, *allowed.parents)):
+                return False
+            current = allowed
+            for part in relative.parts:
+                current = current / part
+                if current.is_symlink():
+                    return False
+            return fp.is_dir() and allowed.resolve() in fp.resolve().parents
+        return False
+    except OSError:
+        return False
+
+
+def classify_task_stratum(
+    task_record: dict[str, object],
+    read_folder_receipts: bool = True,
+) -> str | None:
+    """Classify a task into S1..S6, or None if unknown."""
+    if (
+        task_record.get("metric_evidence_conflict") is True
+        or task_record.get("route_evidence_conflict") is True
+    ):
+        return None
+
+    raw_stratum = task_record.get("stratum")
+    explicit_stratum: str | None = None
+    if isinstance(raw_stratum, str) and raw_stratum.strip():
+        s_upper = raw_stratum.upper().strip()
+        if s_upper in REPORT_STRATA:
+            explicit_stratum = s_upper
+        else:
+            explicit_stratum = next(
+                (k for k, label in STRATUM_LABELS.items() if s_upper == label), None
+            )
+        if explicit_stratum is None:
+            return None
+
+    task_id = str(task_record.get("task_id") or "")
+    stage_manifests = task_record.get("stage_manifests")
+    has_stages = isinstance(stage_manifests, list) and len(cast(list[object], stage_manifests)) > 0
+
+    route_info: dict[str, object] = {}
+    raw_route = task_record.get("route")
+    if isinstance(raw_route, dict):
+        route_info.update(cast(dict[str, object], raw_route))
+
+    for field in (
+        "worker_route",
+        "implementation_depth",
+        "judge_mode",
+        "task_class",
+        "task_lane",
+    ):
+        if field in task_record and field not in route_info:
+            route_info[field] = task_record[field]
+
+    folder_path = task_record.get("path")
+    if read_folder_receipts and isinstance(folder_path, str):  # noqa: SIM102
+        if _is_safe_receipt_dir(folder_path, task_id if task_id else None):
+            fp = Path(folder_path)
+            res_file = fp / "result.json"
+            if res_file.is_file() and not res_file.is_symlink():
+                try:
+                    if res_file.stat().st_size <= MAX_JSON_SIZE_BYTES:
+                        with open(res_file, encoding="utf-8") as f:
+                            r_data: object = json.load(f)
+                        if isinstance(r_data, dict):
+                            r_dict = cast(dict[str, object], r_data)
+                            r_tid = r_dict.get("task_id")
+                            if task_id and r_tid == task_id:
+                                sub_route = r_dict.get("route")
+                                if isinstance(sub_route, dict):
+                                    route_info.update(cast(dict[str, object], sub_route))
+                                if "task_class" in r_dict and "task_class" not in route_info:
+                                    route_info["task_class"] = r_dict["task_class"]
+                                if (
+                                    "implementation_depth" in r_dict
+                                    and "implementation_depth" not in route_info
+                                ):
+                                    route_info["implementation_depth"] = r_dict[
+                                        "implementation_depth"
+                                    ]
+                                if "worker_route" in r_dict and "worker_route" not in route_info:
+                                    route_info["worker_route"] = r_dict["worker_route"]
+                                if "judge_mode" in r_dict and "judge_mode" not in route_info:
+                                    route_info["judge_mode"] = r_dict["judge_mode"]
+                except Exception:
+                    pass
+
+            pkt_file = fp / "packet.md"
+            if (
+                pkt_file.is_file()
+                and not pkt_file.is_symlink()
+                and pkt_file.stat().st_size <= MAX_JSON_SIZE_BYTES
+            ):
+                head_txt = _read_head_str(pkt_file, 16384)
+                if head_txt and any(
+                    line.strip() == f"TASK_ID: {task_id}" for line in head_txt.splitlines()
+                ):
+                    for line in head_txt.splitlines():
+                        if ":" in line:
+                            k, v = line.split(":", 1)
+                            k_clean = k.strip().upper()
+                            v_clean = _clean_header_val(v)
+                            if k_clean == "WORKER_ROUTE" and "worker_route" not in route_info:
+                                route_info["worker_route"] = v_clean
+                            elif (
+                                k_clean == "IMPLEMENTATION_DEPTH"
+                                and "implementation_depth" not in route_info
+                            ):
+                                route_info["implementation_depth"] = v_clean
+                            elif k_clean == "JUDGE_MODE" and "judge_mode" not in route_info:
+                                route_info["judge_mode"] = v_clean
+                            elif k_clean == "TASK_CLASS" and "task_class" not in route_info:
+                                route_info["task_class"] = v_clean
+                            elif k_clean == "TASK_LANE" and "task_lane" not in route_info:
+                                route_info["task_lane"] = v_clean
+
+    wr = _clean_header_val(route_info.get("worker_route"))
+    depth = _clean_header_val(route_info.get("implementation_depth"))
+    jm = _clean_header_val(route_info.get("judge_mode"))
+    tc = _clean_header_val(route_info.get("task_class"))
+    lane = _clean_header_val(route_info.get("task_lane"))
+
+    inferred: str | None = None
+    if "FRESH_CONTEXT" in jm or "JUDGED" in wr or "JUDGE" in wr:
+        inferred = "S4"
+    elif (
+        "RESEARCH" in tc
+        or has_stages
+        or any(x in lane for x in ("支線1", "支線2", "支線3", "L1", "L2", "L3"))
+    ):
+        inferred = "S5"
+    elif "RELEASE" in tc or "CLOSEOUT" in tc:
+        inferred = "S6"
+    else:
+        if wr == "FAST":
+            inferred = "S1"
+        elif "STANDARD" in wr and depth == "NORMAL":
+            inferred = "S2"
+        elif "STANDARD" in wr and "ENHANCED" in depth:
+            inferred = "S3"
+
+    if explicit_stratum is not None and inferred is not None and explicit_stratum != inferred:
+        return None
+    return inferred or explicit_stratum
+
+
+def _enrich_task_data(t: dict[str, object], read_folder_receipts: bool) -> dict[str, object]:
+    item = dict(t)
+    folder_path = t.get("path")
+    task_id = str(t.get("task_id") or "")
+    if not read_folder_receipts or not isinstance(folder_path, str):
+        return item
+    if not _is_safe_receipt_dir(folder_path, task_id if task_id else None):
+        return item
+
+    folder = Path(folder_path)
+    result_data: dict[str, object] | None = None
+    result_file = folder / "result.json"
+    if result_file.is_file() and not result_file.is_symlink():
+        try:
+            if result_file.stat().st_size <= MAX_JSON_SIZE_BYTES:
+                with open(result_file, encoding="utf-8") as f:
+                    loaded: object = json.load(f)
+                if isinstance(loaded, dict):
+                    candidate = cast(dict[str, object], loaded)
+                    if task_id and candidate.get("task_id") == task_id:
+                        result_data = candidate
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+            result_data = None
+
+    packet_fields: dict[str, str] = {}
+    packet_file = folder / "packet.md"
+    if packet_file.is_file() and not packet_file.is_symlink():
+        try:
+            if packet_file.stat().st_size <= MAX_JSON_SIZE_BYTES:
+                packet_text = _read_head_str(packet_file, 16384)
+                if packet_text and any(
+                    line.strip() == f"TASK_ID: {task_id}" for line in packet_text.splitlines()
+                ):
+                    for line in packet_text.splitlines():
+                        if ":" in line:
+                            key, value = line.split(":", 1)
+                            packet_fields[key.strip().upper()] = value.strip()
+        except OSError:
+            packet_fields = {}
+
+    if result_data is not None:
+        if item.get("task_lifecycle_state") is None:
+            item["task_lifecycle_state"] = result_data.get("task_lifecycle_state")
+
+        route_info: dict[str, object] = {}
+        for source in (item.get("route"), result_data.get("route")):
+            if isinstance(source, dict):
+                for key, value in cast(dict[str, object], source).items():
+                    if key in route_info and route_info[key] != value:
+                        item["route_evidence_conflict"] = True
+                    else:
+                        route_info[key] = value
+        for key in (
+            "worker_route",
+            "implementation_depth",
+            "judge_mode",
+            "task_class",
+            "task_lane",
+        ):
+            value = result_data.get(key)
+            if value is not None:
+                if key in route_info and route_info[key] != value:
+                    item["route_evidence_conflict"] = True
+                else:
+                    route_info[key] = value
+        if route_info:
+            item["route"] = route_info
+
+        for field in (
+            "goal_72h_completed",
+            "avoidable_block",
+            "acceptance_confirmed",
+            "adopted_outcome",
+            "same_original_task",
+            "unproductive_continuation_count",
+            "owner_intervention_count",
+            "dispatch_to_acceptance_seconds",
+            "acceptance_to_adoption_seconds",
+            "resource_cost_measured",
+        ):
+            if field not in item and field in result_data:
+                item[field] = result_data[field]
+
+        cost = result_data.get("cost")
+        cost_data = cast(dict[str, object], cost) if isinstance(cost, dict) else {}
+        if "tokens" not in item:
+            if "tokens" in result_data:
+                item["tokens"] = result_data["tokens"]
+            elif "tokens" in cost_data:
+                item["tokens"] = cost_data["tokens"]
+        for key in ("model_identity", "actual_model", "model_id"):
+            if key in result_data and "model_identity" not in item:
+                item["model_identity"] = result_data[key]
+                break
+        if "model_identity" not in item:
+            for key in ("model_identity", "actual_model", "model_id"):
+                if key in cost_data:
+                    item["model_identity"] = cost_data[key]
+                    break
+        if "model_tier" not in item and isinstance(result_data.get("model_tier"), str):
+            item["model_tier"] = result_data["model_tier"]
+
+        signal = result_data.get("process_signal")
+        if isinstance(signal, dict):
+            issue = cast(dict[str, object], signal).get("issue")
+            if isinstance(issue, dict) and "issue_type" not in item:
+                item["issue_type"] = cast(dict[str, object], issue).get("type")
+
+        regression_evidence = result_data.get("regression_escape_evidence")
+        if isinstance(regression_evidence, dict):
+            evidence = cast(dict[str, object], regression_evidence)
+            confirmed = (
+                str(evidence.get("status", "")).upper() == "CONFIRMED"
+                and evidence.get("acceptance_before") is True
+                and evidence.get("observed_after_acceptance") is True
+                and str(evidence.get("issue_type", "")).upper() == "REGRESSION"
+                and isinstance(evidence.get("evidence_locator"), str)
+                and bool(cast(str, evidence.get("evidence_locator")).strip())
+            )
+            checked_clear = (
+                str(evidence.get("status", "")).upper() == "CHECKED_NO_ESCAPE"
+                and evidence.get("observation_window_closed") is True
+            )
+            if confirmed:
+                item["regression_escape"] = True
+            elif checked_clear:
+                item["regression_escape"] = False
+            else:
+                item.pop("regression_escape", None)
+        elif isinstance(result_data.get("confirmed_regression_escape"), bool):
+            item["regression_escape"] = result_data["confirmed_regression_escape"]
+        else:
+            # A generic INCIDENT/process signal is not a confirmed escaped regression.
+            item.pop("regression_escape", None)
+
+    # Resolve the task's original/continuation marker from exact matching receipts.
+    link_values: list[str] = []
+    if result_data is not None:
+        raw_link = result_data.get("continues_from", result_data.get("CONTINUES_FROM"))
+        if isinstance(raw_link, str) and raw_link.strip():
+            link_values.append(raw_link.strip())
+    packet_link = packet_fields.get("CONTINUES_FROM")
+    if packet_link:
+        link_values.append(packet_link)
+    existing_link = item.get("continues_from")
+    if isinstance(existing_link, str) and existing_link.strip():
+        link_values.append(existing_link.strip())
+
+    normalized_links = {v.upper() if v.upper() == "NONE" else v for v in link_values}
+    if len(normalized_links) > 1:
+        item["lineage_evidence_conflict"] = True
+        item.pop("first_pass_accepted", None)
+    elif normalized_links:
+        link = next(iter(normalized_links))
+        continuation_markers = [
+            item.get("is_continuation"),
+            result_data.get("is_continuation") if result_data is not None else None,
+            result_data.get("continuation_id") if result_data is not None else None,
+        ]
+        has_continuation_marker = any(
+            value is True or (isinstance(value, str) and value.strip())
+            for value in continuation_markers
+        )
+        marker_conflict = (link == "NONE" and has_continuation_marker) or (
+            link != "NONE" and any(value is False for value in continuation_markers)
+        )
+        if marker_conflict:
+            item["lineage_evidence_conflict"] = True
+            item.pop("first_pass_accepted", None)
+        elif link == "NONE":
+            item["continues_from"] = "NONE"
+            item["is_continuation"] = False
+            item["original_task_confirmed"] = True
+        else:
+            item["continues_from"] = link
+            item["is_continuation"] = True
+            item["original_task_confirmed"] = False
+    elif result_data is not None and result_data.get("continuation_id"):
+        item["is_continuation"] = True
+        item["original_task_confirmed"] = False
+
+    for key, field in (
+        ("WORKER_ROUTE", "worker_route"),
+        ("IMPLEMENTATION_DEPTH", "implementation_depth"),
+        ("JUDGE_MODE", "judge_mode"),
+        ("TASK_CLASS", "task_class"),
+        ("TASK_LANE", "task_lane"),
+    ):
+        value = packet_fields.get(key)
+        if value:
+            current_route = item.get("route")
+            route = (
+                dict(cast(dict[str, object], current_route))
+                if isinstance(current_route, dict)
+                else {}
+            )
+            if field in route and _clean_header_val(route[field]) != _clean_header_val(value):
+                item["route_evidence_conflict"] = True
+            else:
+                route[field] = value
+            item["route"] = route
+
+    before_attempt = folder / "result.before_1.json"
+    has_before_attempt = before_attempt.exists() or before_attempt.is_symlink()
+    first_pass_value: object = None
+    if result_data is not None:
+        for key in ("first_pass_accepted", "first_pass_acceptance"):
+            if isinstance(result_data.get(key), bool):
+                first_pass_value = result_data[key]
+                break
+        if first_pass_value is None and result_data.get("first_round_ac_status") in (
+            "PASS",
+            "FAIL",
+        ):
+            first_pass_value = result_data["first_round_ac_status"] == "PASS"
+    if item.get("lineage_evidence_conflict") or has_before_attempt:
+        item.pop("first_pass_accepted", None)
+    elif item.get("original_task_confirmed") is True and isinstance(first_pass_value, bool):
+        item["first_pass_accepted"] = first_pass_value
+    elif item.get("original_task_confirmed") is not True:
+        item.pop("first_pass_accepted", None)
+
+    return item
+
+
+def compute_workflow_metrics(
+    catalog_dir: Path,
+    start_date: str = BASELINE_WINDOW_START,
+    end_date: str = BASELINE_WINDOW_END,
+    read_folder_receipts: bool = True,
+    tasks_data: list[dict[str, object]] | None = None,
+) -> WorkflowMetricsReport:
+    """Compute workflow effect metrics for fixed window and six strata S1..S6."""
+    start_norm = _parse_date(start_date)
+    end_norm = _parse_date(end_date)
+    if start_norm is None or end_norm is None or start_norm > end_norm:
+        raise ValueError("start_date and end_date must be valid ordered calendar dates")
+
+    if tasks_data is not None:
+        raw_tasks = tasks_data
+    else:
+        cat_file = catalog_dir / "tasks.jsonl"
+        if not cat_file.is_file():
+            raise FileNotFoundError(f"Catalog file not found: {cat_file}")
+        raw_tasks: list[dict[str, object]] = []
+        with open(cat_file, encoding="utf-8") as f:
+            for line in f:
+                stripped = line.strip()
+                if stripped:
+                    raw_tasks.append(cast(dict[str, object], json.loads(stripped)))
+
+    window_tasks: list[dict[str, object]] = []
+    unknown_window_date_tasks = 0
+    for t in raw_tasks:
+        task_date = _parse_date(t.get("date_folder"))
+        if task_date is None:
+            task_date = _parse_date(t.get("date"))
+        if task_date is None:
+            unknown_window_date_tasks += 1
+        elif start_norm <= task_date <= end_norm:
+            window_tasks.append(t)
+
+    window_tasks, duplicate_receipts_ignored, conflicting_task_ids = _deduplicate_task_records(
+        window_tasks
+    )
+
+    # An explicit link alone may name a related but distinct task. Only merge
+    # when evidence also states that the original task identity is the same.
+    window_tasks = [_enrich_task_data(t, read_folder_receipts) for t in window_tasks]
+    by_id: dict[str, list[dict[str, object]]] = {}
+    for task in window_tasks:
+        tid = task.get("task_id")
+        if isinstance(tid, str) and tid:
+            by_id.setdefault(tid, []).append(task)
+    linked: set[int] = set()
+    # Only collapse an unambiguous one-edge chain. Longer, branching or cyclic
+    # chains need a complete identity and temporal contract before aggregation.
+    children: dict[str, int] = {}
+
+    def _has_parent(task: dict[str, object]) -> bool:
+        parent_value = task.get("continues_from")
+        return (
+            isinstance(parent_value, str)
+            and bool(parent_value.strip())
+            and parent_value.strip().upper() != "NONE"
+        )
+
+    for task in window_tasks:
+        parent = task.get("continues_from")
+        if task.get("same_original_task") is True and _has_parent(task):
+            parent_id = cast(str, parent).strip()
+            children[parent_id] = children.get(parent_id, 0) + 1
+    fields = ("goal_72h_completed", "acceptance_confirmed", "regression_escape")
+    for task in window_tasks:
+        parent = task.get("continues_from")
+        if task.get("same_original_task") is not True:
+            continue
+        if _has_parent(task) and len(by_id.get(cast(str, parent).strip(), [])) == 1:
+            parent = cast(str, parent).strip()
+            original = by_id[parent][0]
+            if (
+                original is not task
+                and children.get(parent) == 1
+                and not _has_parent(original)
+                and not children.get(str(task.get("task_id") or ""))
+                and (
+                    original.get("original_task_confirmed") is True
+                    or original.get("is_continuation") is False
+                )
+                and classify_task_stratum(original, False) is not None
+                and classify_task_stratum(original, False) == classify_task_stratum(task, False)
+            ):
+                for field in fields:
+                    later = task.get(field)
+                    earlier = original.get(field)
+                    if isinstance(later, bool):
+                        if earlier is None:
+                            original[field] = later
+                        elif earlier != later:
+                            original[field] = None
+                # These observations are per execution, not necessarily totals
+                # or elapsed times for the whole original task.
+                for field in (
+                    "tokens",
+                    "model_identity",
+                    "model_tier",
+                    "adopted_outcome",
+                    "unproductive_continuation_count",
+                    "owner_intervention_count",
+                    "dispatch_to_acceptance_seconds",
+                    "acceptance_to_adoption_seconds",
+                    "resource_cost_measured",
+                ):
+                    original.pop(field, None)
+                linked.add(id(task))
+
+    # Missing parent evidence, conflicting links, cycles, and branched chains
+    # stay visible as unknown instead of being counted as separate successes.
+    ambiguous: set[int] = set()
+    for task in window_tasks:
+        parent = task.get("continues_from")
+        has_parent = _has_parent(task)
+        same_task_link_unresolved = (
+            task.get("same_original_task") is True and id(task) not in linked
+        )
+        unverified_link = has_parent and task.get("same_original_task") is None
+        continuation_without_parent = task.get("is_continuation") is True and not has_parent
+        lineage_conflict = task.get("lineage_evidence_conflict") is True
+        if id(task) not in linked and (
+            same_task_link_unresolved
+            or unverified_link
+            or continuation_without_parent
+            or lineage_conflict
+        ):
+            ambiguous.add(id(task))
+            if has_parent:
+                ambiguous.update(id(t) for t in by_id.get(cast(str, parent).strip(), []))
+    for task in window_tasks:
+        if id(task) in ambiguous:
+            for field in (
+                "first_pass_accepted",
+                "goal_72h_completed",
+                "acceptance_confirmed",
+                "regression_escape",
+                "avoidable_block",
+                "task_lifecycle_state",
+                "tokens",
+                "model_identity",
+                "model_tier",
+                "adopted_outcome",
+                "unproductive_continuation_count",
+                "owner_intervention_count",
+                "dispatch_to_acceptance_seconds",
+                "acceptance_to_adoption_seconds",
+                "resource_cost_measured",
+            ):
+                task.pop(field, None)
+    window_tasks = [task for task in window_tasks if id(task) not in linked]
+
+    tasks_by_stratum: dict[str, list[dict[str, object]]] = {s: [] for s in REPORT_STRATA}
+    unknown_stratum_tasks: list[dict[str, object]] = []
+
+    for t in window_tasks:
+        st = classify_task_stratum(t, read_folder_receipts=read_folder_receipts)
+        if st in tasks_by_stratum:
+            tasks_by_stratum[st].append(t)
+        else:
+            unknown_stratum_tasks.append(t)
+
+    metrics: list[MetricValue] = []
+
+    for s in REPORT_STRATA:
+        raw_s_tasks = tasks_by_stratum[s]
+        s_tasks = raw_s_tasks
+        eligible = len(s_tasks)
+
+        # 1. FIRST_PASS_ACCEPTANCE_RATE
+        fp_num = 0
+        fp_den = 0
+        fp_unknown = 0
+        for t in s_tasks:
+            # Explicit first-round AC evidence is required; lifecycle and suffixes are proxies.
+            first_pass = t.get("first_pass_accepted")
+            has_continuation_link = _has_parent(t)
+            original_task_confirmed = t.get("original_task_confirmed") is True or (
+                isinstance(t.get("continues_from"), str)
+                and cast(str, t["continues_from"]).strip().upper() == "NONE"
+            )
+            continuation_unknown = (
+                t.get("is_continuation") is True
+                or t.get("original_task_confirmed") is False
+                or t.get("lineage_evidence_conflict") is True
+                or has_continuation_link
+                or not original_task_confirmed
+            )
+            if continuation_unknown:
+                fp_unknown += 1
+            elif first_pass is True:
+                fp_num += 1
+                fp_den += 1
+            elif first_pass is False:
+                fp_den += 1
+            else:
+                fp_unknown += 1
+
+        if fp_den > 0 and fp_unknown == 0:
+            fp_status = "MEASURED"
+            fp_val = round(fp_num / fp_den, 4)
+        elif fp_den > 0:
+            fp_status = "PARTIAL"
+            fp_val = round(fp_num / fp_den, 4)
+        else:
+            fp_status = "UNKNOWN"
+            fp_val = None
+
+        metrics.append(
+            MetricValue(
+                indicator="FIRST_PASS_ACCEPTANCE_RATE",
+                stratum=s,
+                status=fp_status,
+                numerator=fp_num,
+                denominator=fp_den,
+                count=None,
+                eligible_count=eligible,
+                unknown_count=fp_unknown,
+                value=fp_val,
+                evidence_fields=[
+                    "first_pass_accepted",
+                ],
+                notes="Proportion of initial dispatches passing acceptance without continuation",
+            )
+        )
+
+        # 2. FINAL_GOAL_COMPLETION_RATE
+        fg_num = 0
+        fg_den = 0
+        fg_unknown = 0
+        for t in s_tasks:
+            goal = t.get("goal_72h_completed")
+            if goal is True:
+                fg_num += 1
+                fg_den += 1
+            elif goal is False:
+                fg_den += 1
+            else:
+                fg_unknown += 1
+
+        if fg_den > 0 and fg_unknown == 0:
+            fg_status = "MEASURED"
+            fg_val = round(fg_num / fg_den, 4)
+        elif fg_den > 0:
+            fg_status = "PARTIAL"
+            fg_val = round(fg_num / fg_den, 4)
+        else:
+            fg_status = "UNKNOWN"
+            fg_val = None
+
+        metrics.append(
+            MetricValue(
+                indicator="FINAL_GOAL_COMPLETION_RATE",
+                stratum=s,
+                status=fg_status,
+                numerator=fg_num,
+                denominator=fg_den,
+                count=None,
+                eligible_count=eligible,
+                unknown_count=fg_unknown,
+                value=fg_val,
+                evidence_fields=["goal_72h_completed"],
+                notes="Explicit original project goal outcome within 72 hours",
+            )
+        )
+
+        # 3. AVOIDABLE_BLOCK_RATE
+        ab_num = 0
+        ab_den = 0
+        ab_unknown = 0
+        for t in s_tasks:
+            tls_value = t.get("task_lifecycle_state")
+            tls = tls_value.upper().strip() if isinstance(tls_value, str) else None
+            if tls in ("BLOCKED", "BLOCKED_OWNER_DISPOSITION"):
+                is_avoidable = t.get("avoidable_block")
+                if is_avoidable is True:
+                    ab_num += 1
+                    ab_den += 1
+                elif is_avoidable is False:
+                    ab_den += 1
+                else:
+                    ab_unknown += 1
+            elif tls not in (
+                "COMPLETED",
+                "ABORTED",
+                "IN_PROGRESS",
+                "FAILED",
+                "FAIL",
+                "CANCELED",
+                "CANCELLED",
+            ):
+                # Block eligibility itself is unknown.
+                ab_unknown += 1
+
+        if ab_den > 0 and ab_unknown == 0:
+            ab_status = "MEASURED"
+            ab_val = round(ab_num / ab_den, 4)
+        elif ab_den > 0:
+            ab_status = "PARTIAL"
+            ab_val = round(ab_num / ab_den, 4)
+        else:
+            ab_status = "UNKNOWN"
+            ab_val = None
+
+        metrics.append(
+            MetricValue(
+                indicator="AVOIDABLE_BLOCK_RATE",
+                stratum=s,
+                status=ab_status,
+                numerator=ab_num,
+                denominator=ab_den,
+                count=None,
+                eligible_count=ab_den + ab_unknown,
+                unknown_count=ab_unknown,
+                value=ab_val,
+                evidence_fields=[
+                    "task_lifecycle_state",
+                    "process_signal.issue.type",
+                    "block_reason",
+                ],
+                notes="Proportion of BLOCKED tasks caused by preflight avoidable missing items",
+            )
+        )
+
+        # 4. UNPRODUCTIVE_CONTINUATION_COUNT
+        up_count = 0
+        up_has_data = False
+        up_unknown = 0
+        for t in s_tasks:
+            c = t.get("unproductive_continuation_count")
+            if _nonnegative_int(c):
+                up_count += cast(int, c)
+                up_has_data = True
+            else:
+                up_unknown += 1
+
+        if up_has_data and up_unknown == 0:
+            up_status = "MEASURED"
+            up_val: float | str | None = up_count
+        elif up_has_data:
+            up_status = "PARTIAL"
+            up_val = up_count
+        else:
+            up_status = "UNKNOWN"
+            up_val = None
+
+        metrics.append(
+            MetricValue(
+                indicator="UNPRODUCTIVE_CONTINUATION_COUNT",
+                stratum=s,
+                status=up_status,
+                numerator=None,
+                denominator=None,
+                count=up_val if isinstance(up_val, (int, float)) else None,
+                eligible_count=eligible,
+                unknown_count=up_unknown,
+                value=up_val,
+                evidence_fields=["continuation_evidence", "process_signal.issue"],
+                notes="Cumulative continuation iterations with no progress or unblock evidence",
+            )
+        )
+
+        # 5. OWNER_INTERVENTION_COUNT
+        oi_count = 0
+        oi_has_data = False
+        oi_unknown = 0
+        for t in s_tasks:
+            c = t.get("owner_intervention_count")
+            if _nonnegative_int(c):
+                oi_count += cast(int, c)
+                oi_has_data = True
+            else:
+                oi_unknown += 1
+
+        if oi_has_data and oi_unknown == 0:
+            oi_status = "MEASURED"
+            oi_val: float | str | None = oi_count
+        elif oi_has_data:
+            oi_status = "PARTIAL"
+            oi_val = oi_count
+        else:
+            oi_status = "UNKNOWN"
+            oi_val = None
+
+        metrics.append(
+            MetricValue(
+                indicator="OWNER_INTERVENTION_COUNT",
+                stratum=s,
+                status=oi_status,
+                numerator=None,
+                denominator=None,
+                count=oi_val if isinstance(oi_val, (int, float)) else None,
+                eligible_count=eligible,
+                unknown_count=oi_unknown,
+                value=oi_val,
+                evidence_fields=["owner_interventions", "auth_grants"],
+                notes="Cumulative manual owner intervention occurrences",
+            )
+        )
+
+        # 6. DISPATCH_TO_ACCEPTANCE_TIME
+        da_times: list[float] = []
+        da_unknown = 0
+        for t in s_tasks:
+            secs = t.get("dispatch_to_acceptance_seconds")
+            if _nonnegative_number(secs):
+                da_times.append(float(cast(float, secs)))
+            else:
+                da_unknown += 1
+
+        if da_times and da_unknown == 0:
+            da_status = "MEASURED"
+            da_val: float | str | None = round(sum(da_times) / len(da_times), 2)
+        elif da_times:
+            da_status = "PARTIAL"
+            da_val = round(sum(da_times) / len(da_times), 2)
+        else:
+            da_status = "UNKNOWN"
+            da_val = None
+
+        metrics.append(
+            MetricValue(
+                indicator="DISPATCH_TO_ACCEPTANCE_TIME",
+                stratum=s,
+                status=da_status,
+                numerator=round(sum(da_times), 2) if da_times else None,
+                denominator=len(da_times) if da_times else None,
+                count=len(da_times) if da_times else None,
+                eligible_count=eligible,
+                unknown_count=da_unknown,
+                value=da_val,
+                evidence_fields=["dispatch_timestamp", "acceptance_timestamp", "elapsed_seconds"],
+                notes="Mean dispatch-to-acceptance time in seconds across measured tasks",
+            )
+        )
+
+        # 7. ACCEPTANCE_TO_ADOPTION_TIME
+        aa_times: list[float] = []
+        aa_unknown = 0
+        for t in s_tasks:
+            secs = t.get("acceptance_to_adoption_seconds")
+            if _nonnegative_number(secs):
+                aa_times.append(float(cast(float, secs)))
+            else:
+                aa_unknown += 1
+
+        if aa_times and aa_unknown == 0:
+            aa_status = "MEASURED"
+            aa_val: float | str | None = round(sum(aa_times) / len(aa_times), 2)
+        elif aa_times:
+            aa_status = "PARTIAL"
+            aa_val = round(sum(aa_times) / len(aa_times), 2)
+        else:
+            aa_status = "UNKNOWN"
+            aa_val = None
+
+        metrics.append(
+            MetricValue(
+                indicator="ACCEPTANCE_TO_ADOPTION_TIME",
+                stratum=s,
+                status=aa_status,
+                numerator=round(sum(aa_times), 2) if aa_times else None,
+                denominator=len(aa_times) if aa_times else None,
+                count=len(aa_times) if aa_times else None,
+                eligible_count=eligible,
+                unknown_count=aa_unknown,
+                value=aa_val,
+                evidence_fields=["acceptance_timestamp", "adoption_timestamp"],
+                notes="Mean acceptance-to-adoption/merge time in seconds across measured tasks",
+            )
+        )
+
+        # 8. MODEL_COST_PER_ACCEPTED_OUTCOME
+        tot_tokens = 0
+        tokens_measured_tasks = 0
+        tok_unknown = 0
+        accepted_outcomes = 0
+        for t in s_tasks:
+            adopted = t.get("adopted_outcome")
+            if adopted is True:
+                accepted_outcomes += 1
+            tok = t.get("tokens")
+            model_identity = t.get("model_identity")
+            if (
+                _nonnegative_int(tok)
+                and isinstance(model_identity, str)
+                and bool(model_identity.strip())
+                and _has_explicit_route(t)
+                and isinstance(adopted, bool)
+            ):
+                tot_tokens += cast(int, tok)
+                tokens_measured_tasks += 1
+            else:
+                tok_unknown += 1
+
+        if tokens_measured_tasks > 0 and tok_unknown == 0 and accepted_outcomes > 0:
+            mc_status = "MEASURED"
+            mc_val: float | str | None = round(tot_tokens / accepted_outcomes, 2)
+        elif tokens_measured_tasks > 0 and accepted_outcomes > 0:
+            mc_status = "PARTIAL"
+            mc_val = round(tot_tokens / accepted_outcomes, 2)
+        else:
+            mc_status = "UNKNOWN"
+            mc_val = None
+
+        metrics.append(
+            MetricValue(
+                indicator="MODEL_COST_PER_ACCEPTED_OUTCOME",
+                stratum=s,
+                status=mc_status,
+                numerator=tot_tokens if tokens_measured_tasks > 0 else None,
+                denominator=accepted_outcomes if accepted_outcomes > 0 else None,
+                count=tokens_measured_tasks if tokens_measured_tasks > 0 else None,
+                eligible_count=eligible,
+                unknown_count=tok_unknown,
+                value=mc_val,
+                evidence_fields=[
+                    "cost.tokens",
+                    "model_identity",
+                    "route.worker_route",
+                    "adopted_outcome",
+                ],
+                notes=(
+                    "Total measured tokens divided by formally adopted outcomes; "
+                    "continuation-chain costs remain UNKNOWN unless task-level totals are explicit"
+                ),
+            )
+        )
+
+        # 9. REGRESSION_ESCAPE_RATE
+        esc_num = 0
+        esc_den = 0
+        esc_unknown = 0
+        esc_eligible = 0
+        for t in s_tasks:
+            has_esc = t.get("regression_escape")
+            accepted = t.get("acceptance_confirmed")
+            if accepted is False:
+                continue
+            esc_eligible += 1
+            if accepted is True:
+                if has_esc is True:
+                    esc_num += 1
+                    esc_den += 1
+                elif has_esc is False:
+                    esc_den += 1
+                else:
+                    esc_unknown += 1
+            else:
+                esc_unknown += 1
+
+        if esc_den > 0 and esc_unknown == 0:
+            esc_status = "MEASURED"
+            esc_val = round(esc_num / esc_den, 4)
+        elif esc_den > 0:
+            esc_status = "PARTIAL"
+            esc_val = round(esc_num / esc_den, 4)
+        else:
+            esc_status = "UNKNOWN"
+            esc_val = None
+
+        metrics.append(
+            MetricValue(
+                indicator="REGRESSION_ESCAPE_RATE",
+                stratum=s,
+                status=esc_status,
+                numerator=esc_num,
+                denominator=esc_den,
+                count=None,
+                eligible_count=esc_eligible,
+                unknown_count=esc_unknown,
+                value=esc_val,
+                evidence_fields=[
+                    "acceptance_confirmed",
+                    "regression_escape",
+                ],
+                notes=(
+                    "Proportion of confirmed accepted tasks with confirmed later regression; "
+                    "known unaccepted tasks are ineligible"
+                ),
+            )
+        )
+
+        # 10. RESOURCE_COST
+        resource_fields = (
+            "available_disk_bytes",
+            "orphan_worktree_count",
+            "temporary_residue_bytes",
+        )
+        resource_values: dict[str, list[int]] = {field: [] for field in resource_fields}
+        resource_unknown = 0
+        for t in s_tasks:
+            raw_resource = t.get("resource_cost_measured")
+            resource = (
+                cast(dict[str, object], raw_resource) if isinstance(raw_resource, dict) else {}
+            )
+            task_complete = True
+            for field in resource_fields:
+                value = resource.get(field)
+                if _nonnegative_int(value):
+                    resource_values[field].append(cast(int, value))
+                else:
+                    task_complete = False
+            if not task_complete:
+                resource_unknown += 1
+
+        resource_components: dict[str, dict[str, int | float]] = {}
+        for field, values in resource_values.items():
+            summary: dict[str, int | float] = {
+                "observations": len(values),
+                "unknown_count": eligible - len(values),
+            }
+            if values:
+                summary["minimum"] = min(values)
+                summary["maximum"] = max(values)
+            resource_components[field] = summary
+
+        resource_has_observations = any(resource_values.values())
+        if eligible > 0 and resource_has_observations and resource_unknown == 0:
+            rc_status = "MEASURED"
+        elif resource_has_observations:
+            rc_status = "PARTIAL"
+        else:
+            rc_status = "UNKNOWN"
+
+        metrics.append(
+            MetricValue(
+                indicator="RESOURCE_COST",
+                stratum=s,
+                status=rc_status,
+                numerator=None,
+                denominator=None,
+                count=None,
+                eligible_count=eligible,
+                unknown_count=resource_unknown,
+                value=None,
+                evidence_fields=[
+                    "resource_cost_measured.available_disk_bytes",
+                    "resource_cost_measured.orphan_worktree_count",
+                    "resource_cost_measured.temporary_residue_bytes",
+                ],
+                notes=(
+                    "Observed resource vector; per-component min/max are reported without "
+                    "inventing a composite score"
+                ),
+                components=resource_components,
+            )
+        )
+
+    # Determine unavailable indicator inputs across all strata
+    unavailable_inputs: list[str] = []
+    for ind in TEN_INDICATORS:
+        strata_metrics = [m for m in metrics if m.indicator == ind]
+        if all(m.status == "UNKNOWN" for m in strata_metrics):
+            unavailable_inputs.append(ind)
+
+    counts_by_stratum = {s: len(tasks_by_stratum[s]) for s in REPORT_STRATA}
+
+    return WorkflowMetricsReport(
+        window_start=f"{start_norm[:4]}-{start_norm[4:6]}-{start_norm[6:8]}",
+        window_end=f"{end_norm[:4]}-{end_norm[4:6]}-{end_norm[6:8]}",
+        strata=list(REPORT_STRATA),
+        total_tasks_evaluated=len(window_tasks),
+        tasks_by_stratum=counts_by_stratum,
+        unknown_stratum_tasks=len(unknown_stratum_tasks),
+        unknown_window_date_tasks=unknown_window_date_tasks,
+        duplicate_receipts_ignored=duplicate_receipts_ignored,
+        conflicting_task_ids=conflicting_task_ids,
+        metrics=metrics,
+        unavailable_indicator_inputs=unavailable_inputs,
+        generated_at=datetime.now(UTC).isoformat(),
+    )
+
+
+def format_metrics_report_markdown(report: WorkflowMetricsReport) -> str:
+    """Format workflow metrics report as GitHub-flavored Markdown."""
+    lines = [
+        "# Task Workflow Effect Metrics Baseline Report",
+        "",
+        f"- **Window**: `{report.window_start}` to `{report.window_end}`",
+        f"- **Generated At**: `{report.generated_at}`",
+        f"- **Total Tasks Evaluated in Window**: `{report.total_tasks_evaluated}`",
+        f"- **Unknown Stratum Tasks**: `{report.unknown_stratum_tasks}`",
+        f"- **Unknown Window Dates**: `{report.unknown_window_date_tasks}`",
+        f"- **Duplicate Receipts Ignored**: `{report.duplicate_receipts_ignored}`",
+        f"- **Conflicting Task IDs**: `{report.conflicting_task_ids}`",
+        "",
+        "## Strata Task Breakdown",
+        "",
+        "| Stratum | Label | Task Count |",
+        "|---|---|---|",
+    ]
+    for s in report.strata:
+        count = report.tasks_by_stratum.get(s, 0)
+        label = STRATUM_LABELS.get(s, s)
+        lines.append(f"| {s} | {label} | {count} |")
+
+    lines.extend(
+        [
+            "",
+            "## Workflow Effect Indicators",
+            "",
+            (
+                "| Stratum | Indicator | Status | Value | Num / Den or Count | "
+                "Eligible | Unknown | Evidence Fields | Notes |"
+            ),
+            "|---|---|---|---|---|---|---|---|---|",
+        ]
+    )
+    for m in report.metrics:
+        if m.components is not None:
+            val_str = json.dumps(m.components, ensure_ascii=False, sort_keys=True)
+        else:
+            val_str = str(m.value) if m.value is not None else "UNKNOWN"
+        if m.numerator is not None and m.denominator is not None:
+            nd_str = f"{m.numerator}/{m.denominator}"
+        elif m.count is not None:
+            nd_str = f"count={m.count}"
+        else:
+            nd_str = "—"
+        ev_str = ", ".join(m.evidence_fields)
+        notes_str = m.notes or ""
+        lines.append(
+            f"| {m.stratum} | `{m.indicator}` | `{m.status}` | {val_str} | {nd_str} | "
+            f"{m.eligible_count} | {m.unknown_count} | {ev_str} | {notes_str} |"
+        )
+
+    lines.extend(
+        [
+            "",
+            "## Unavailable Indicator Inputs",
+            "",
+        ]
+    )
+    if report.unavailable_indicator_inputs:
+        for u in report.unavailable_indicator_inputs:
+            lines.append(
+                f"- `{u}`: Input evidence absent in task catalog records; preserved as `UNKNOWN`."
+            )
+    else:
+        lines.append("None; all indicators have measurable inputs.")
+    lines.append("")
+    return "\n".join(lines)
+
+
+def format_metrics_report_text(report: WorkflowMetricsReport) -> str:
+    """Format workflow metrics report as plain text."""
+    lines = [
+        "================================================================================",
+        f"WORKFLOW EFFECT METRICS BASELINE: {report.window_start} -> {report.window_end}",
+        (
+            f"Total Tasks: {report.total_tasks_evaluated} | "
+            f"Unknown Stratum Tasks: {report.unknown_stratum_tasks} | "
+            f"Unknown Window Dates: {report.unknown_window_date_tasks} | "
+            f"Duplicate Receipts Ignored: {report.duplicate_receipts_ignored} | "
+            f"Conflicting Task IDs: {report.conflicting_task_ids}"
+        ),
+        "--------------------------------------------------------------------------------",
+        "STRATA BREAKDOWN:",
+    ]
+    for s in report.strata:
+        lines.append(
+            f"  {s} ({STRATUM_LABELS.get(s, s)}): {report.tasks_by_stratum.get(s, 0)} tasks"
+        )
+    lines.extend(
+        [
+            "--------------------------------------------------------------------------------",
+            "INDICATORS BY STRATUM:",
+        ]
+    )
+    for m in report.metrics:
+        if m.components is not None:
+            val_str = json.dumps(m.components, ensure_ascii=False, sort_keys=True)
+        else:
+            val_str = str(m.value) if m.value is not None else "UNKNOWN"
+        details = (
+            f"num/den={m.numerator}/{m.denominator}"
+            if m.numerator is not None
+            else f"count={m.count}"
+        )
+        lines.append(
+            f"  [{m.stratum}] {m.indicator}: status={m.status} val={val_str} "
+            f"eligible={m.eligible_count} unknown={m.unknown_count} ({details})"
+        )
+    if report.unavailable_indicator_inputs:
+        lines.extend(
+            [
+                "--------------------------------------------------------------------------------",
+                f"UNAVAILABLE INPUTS ({len(report.unavailable_indicator_inputs)}):",
+                "  " + ", ".join(report.unavailable_indicator_inputs),
+            ]
+        )
+    lines.append("================================================================================")
+    return "\n".join(lines)

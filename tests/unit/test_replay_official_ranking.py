@@ -1,9 +1,11 @@
+import json
 from fractions import Fraction
 from math import comb
 
 import pytest
 
 from lottolab.application.replay_official_ranking import (
+    JsonObject,
     RankingPeriod,
     iid_period_probability,
     score_period,
@@ -67,6 +69,7 @@ def test_window_summary_preserves_missing_unknown_and_dates():
     assert result["target_ids"][0] == "002"
     assert (result["evaluated"], result["unknown"], result["missing"]) == (48, 1, 1)
     assert result["successes"] == 24
+    assert 0 <= result["successes"] <= result["evaluated"]
     assert result["rate"] == Fraction(1, 2)
     assert result["baseline"] == iid_period_probability("DAILY_539", 2)
     assert result["delta"] == result["rate"] - result["baseline"]
@@ -131,7 +134,13 @@ def test_aggregate_requires_complete_saved_evidence_and_keeps_power_unknown():
         "tickets": [(1, "[1,2,3,8,9,10]", "[]")],
     }
     row = aggregate_ranking("BIG_LOTTO", "FULL", [target], [cell], {})[0]
-    assert (row["successes"], row["evaluated"], row["rank"], row["registered"]) == (0, 1, 1, False)
+    assert (row["successes"], row["evaluated"], row["rank"], row["registered"], row["rate"]) == (
+        0,
+        1,
+        1,
+        False,
+        0.0,
+    )
     row = aggregate_ranking("BIG_LOTTO", "FULL", [target], [{**cell, "tickets": []}], {})[0]
     assert (row["unknown"], row["rate"], row["rank"]) == (1, None, None)
     row = aggregate_ranking("POWER_LOTTO", "FULL", [target], [cell], {})[0]
@@ -200,3 +209,130 @@ def test_aggregate_separates_other_ticket_counts_and_execution_cohorts():
         {},
     )
     assert {row["strategy_id"]: row["rank"] for row in ranked} == {"s1": 1, "s2": 2, "s3": 1}
+
+
+def test_numeric_draw_tiebreak_at_recent_window_boundary():
+    tied = [RankingPeriod(i, "2024-01-01", "EVALUATED", i == "31", 1) for i in ("9", "10", "31")]
+    later = [
+        RankingPeriod(f"later-{i}", f"2024-02-{i:02}", "EVALUATED", False, 1) for i in range(1, 50)
+    ]
+    result = summarize_periods("BIG_LOTTO", list(reversed(tied + later)), "RECENT_50")
+    assert [i for i in result["target_ids"] if i in ("9", "10", "31")] == ["31"]
+    assert (result["successes"], result["evaluated"]) == (1, 50)
+
+
+def test_draw_order_dates_leading_zero_and_non_ascii_or_nonnumeric():
+    ids = ["x", "10", "09", "9", "31", "\uff19", "A"]
+    periods = [RankingPeriod(i, "2024-01-01", "EVALUATED", False, 1) for i in ids]
+    periods += [RankingPeriod("0", "2024-01-02", "EVALUATED", False, 1)]
+    result = summarize_periods("BIG_LOTTO", periods, "FULL")
+    assert result["target_ids"] == ["09", "9", "10", "31", "A", "x", "\uff19", "0"]
+
+
+def _ranking_cell(
+    strategy_id: str,
+    ticket_main: tuple[int, ...] | None,
+) -> dict[str, object]:
+    tickets = [] if ticket_main is None else [(1, json.dumps(ticket_main), "[]")]
+    return {
+        "run_id": "r",
+        "target_draw_id": "1",
+        "target_draw_date": "2026-01-01",
+        "strategy_id": strategy_id,
+        "strategy_version": "v1",
+        "execution_version": "e1",
+        "dataset_identity": "d1",
+        "execution_status": "COMPLETE",
+        "ticket_count": 1,
+        "ticket_evidence_valid": ticket_main is not None,
+        "tickets": tickets,
+    }
+
+
+def test_aggregate_ranking_orders_float_collision_by_exact_rate(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from lottolab.application import replay_official_ranking as ranking
+
+    evaluated = 18_014_398_509_481_984
+    synthetic_summaries = iter(
+        (
+            ("a-low", 9_007_199_254_740_992),
+            ("z-high", 9_007_199_254_740_993),
+        )
+    )
+
+    def synthetic_summary(
+        _lottery_type: str,
+        _periods: list[RankingPeriod],
+        _window: str,
+    ) -> JsonObject:
+        _strategy_id, successes = next(synthetic_summaries)
+        rate = Fraction(successes, evaluated)
+        return {
+            "target_ids": ["1"],
+            "start_date": "2026-01-01",
+            "end_date": "2026-01-01",
+            "successes": successes,
+            "evaluated": evaluated,
+            "missing": 0,
+            "unknown": 0,
+            "rate": rate,
+            "baseline": Fraction(1, 4),
+            "delta": rate - Fraction(1, 4),
+        }
+
+    monkeypatch.setattr(ranking, "summarize_periods", synthetic_summary)
+    rows = ranking.aggregate_ranking(
+        "BIG_LOTTO",
+        "FULL",
+        [],
+        [_ranking_cell("a-low", None), _ranking_cell("z-high", None)],
+        {},
+    )
+
+    low = next(row for row in rows if row["strategy_id"] == "a-low")
+    high = next(row for row in rows if row["strategy_id"] == "z-high")
+    assert Fraction(low["successes"], low["evaluated"]) == Fraction(1, 2)
+    assert Fraction(high["successes"], high["evaluated"]) > Fraction(1, 2)
+    assert low["rate"] == high["rate"] == 0.5
+    assert (high["rank"], low["rank"]) == (1, 2)
+    assert json.loads(json.dumps(rows))[0]["rate"] == 0.5
+
+
+def test_aggregate_ranking_uses_exact_rate_then_strategy_id_for_real_cohort():
+    from lottolab.application.replay_official_ranking import aggregate_ranking
+
+    targets = [
+        {
+            "run_id": "r",
+            "target_draw_id": "1",
+            "target_draw_date": "2026-01-01",
+            "main": "[1,2,3,4,5,6]",
+            "special": "[7]",
+        }
+    ]
+    rows = aggregate_ranking(
+        "BIG_LOTTO",
+        "FULL",
+        targets,
+        [
+            _ranking_cell("a-low", (1, 2, 8, 9, 10, 11)),
+            _ranking_cell("z-high", (1, 2, 7, 8, 9, 10)),
+            _ranking_cell("m-high", (1, 2, 7, 8, 9, 10)),
+        ],
+        {},
+    )
+
+    ranked = sorted(rows, key=lambda row: row["rank"])
+    assert [(row["strategy_id"], row["rank"]) for row in ranked] == [
+        ("m-high", 1),
+        ("z-high", 2),
+        ("a-low", 3),
+    ]
+    assert [(row["successes"], row["evaluated"], row["rate"]) for row in ranked] == [
+        (1, 1, 1.0),
+        (1, 1, 1.0),
+        (0, 1, 0.0),
+    ]
+    assert json.loads(json.dumps(rows))

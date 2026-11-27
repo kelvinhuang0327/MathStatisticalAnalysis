@@ -69,6 +69,7 @@ from lottolab.strategies.adapters.base import (
     CausalDrawRow,
     InsufficientHistory,
     InvalidOutput,
+    SourceNativePortfolioClosure,
 )
 from lottolab.strategies.catalog import production_catalog
 from lottolab.strategies.executable_registry import ExecutableRegistry
@@ -571,6 +572,38 @@ def _failure_row(base: dict[str, object], *, status: str, reason: str) -> dict[s
     }
 
 
+def _source_native_closure_row(
+    base: dict[str, object],
+    descriptor: StrategyDescriptor,
+    exc: SourceNativePortfolioClosure,
+) -> dict[str, object]:
+    expected = descriptor.native_ticket_count
+    if (
+        exc.strategy_id != descriptor.strategy_id
+        or type(exc.expected_ticket_count) is not int
+        or exc.expected_ticket_count != expected
+        or type(exc.actual_ticket_count) is not int
+        or not 0 <= exc.actual_ticket_count < expected
+    ):
+        return _failure_row(
+            base,
+            status="EXECUTION_FAILURE",
+            reason="SourceNativePortfolioClosure identity/count mismatch",
+        )
+    return {
+        **base,
+        "replay_status": "TYPED_CLOSURE",
+        "reason": f"{type(exc).__name__}: {_short_exception(exc)}",
+        "pre_eligible": True,
+        "actual_native_ticket_count": exc.actual_ticket_count,
+        "native_emitted_portfolio": None,
+        "native_portfolio": None,
+        "ticket_evaluations": None,
+        "official_any_prize": None,
+        "best_official_prize": None,
+    }
+
+
 def _complete_row(
     base: dict[str, object],
     executions: tuple[BetAdapterExecution, ...],
@@ -670,6 +703,8 @@ def replay_cell(
                 ),
             )
         return _complete_row(base, executions, target)
+    except SourceNativePortfolioClosure as exc:
+        return _source_native_closure_row(base, binding.descriptor, exc)
     except InsufficientHistory as exc:
         return _failure_row(
             base,

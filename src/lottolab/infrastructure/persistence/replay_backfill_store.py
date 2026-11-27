@@ -521,13 +521,32 @@ class SQLiteBackfillStore:
                 invalid_runs: set[str] = set()
                 manifest_dates: dict[tuple[str, str], str] = {}
                 manifest_targets: dict[tuple[str, str], JsonObject] = {}
-                for run_id, raw_manifest in connection.execute(
-                    "SELECT run_id,manifest_json FROM replay_backfill_runs"
+                manifest_expected_identities: dict[str, set[tuple[str, str, str, str]]] = {}
+                manifest_matrix_errors: dict[str, list[str]] = {}
+                run_expected_cells: dict[str, int] = {}
+                inventory_identities: dict[str, set[tuple[str, str]]] = {}
+                for run_id, strategy_id, strategy_version in connection.execute(
+                    "SELECT run_id,strategy_id,strategy_version "
+                    "FROM replay_backfill_strategy_inventory WHERE lottery_type=?",
+                    (lottery_type,),
+                ):
+                    inventory_identities.setdefault(run_id, set()).add(
+                        (strategy_id, strategy_version)
+                    )
+
+                def matrix_error(run_id: str, reason: str) -> None:
+                    errors = manifest_matrix_errors.setdefault(run_id, [])
+                    if reason not in errors:
+                        errors.append(reason)
+
+                for run_id, raw_manifest, stored_expected_cells in connection.execute(
+                    "SELECT run_id,manifest_json,expected_cells FROM replay_backfill_runs"
                 ):
                     try:
                         manifest: JsonObject = json.loads(raw_manifest)
                         if manifest.get("lottery_type") != lottery_type:
                             continue
+                        run_expected_cells[run_id] = stored_expected_cells
                         raw_ids: Any = manifest.get("target_draw_ids")
                         raw_targets: Any = manifest.get("targets")
                         target_values: list[Any] = (
@@ -542,17 +561,22 @@ class SQLiteBackfillStore:
                         if not isinstance(raw_ids, list) or not raw_ids:
                             invalid_runs.add(run_id)
                             manifest_ids[run_id] = set()
-                            continue
-                        id_values = cast(list[Any], raw_ids)
+                            matrix_error(run_id, "invalid_target_ids")
+                            id_values: list[Any] = []
+                        else:
+                            id_values = cast(list[Any], raw_ids)
                         valid_ids = [v for v in id_values if isinstance(v, str) and v]
-                        if len(valid_ids) != len(id_values) or len(set(valid_ids)) != len(
-                            id_values
-                        ):
+                        if len(valid_ids) != len(id_values):
                             invalid_runs.add(run_id)
+                            matrix_error(run_id, "invalid_target_identity")
+                        if len(set(valid_ids)) != len(valid_ids):
+                            invalid_runs.add(run_id)
+                            matrix_error(run_id, "duplicate_target_identity")
                         manifest_ids[run_id] = set(valid_ids)
                         if "targets" in manifest:
                             if not isinstance(raw_targets, list):
                                 invalid_runs.add(run_id)
+                                matrix_error(run_id, "invalid_manifest_targets")
                             else:
                                 listed: list[Any] = [
                                     cast(JsonObject, t).get("draw_number")
@@ -571,6 +595,7 @@ class SQLiteBackfillStore:
                                     )
                                 ):
                                     invalid_runs.add(run_id)
+                                    matrix_error(run_id, "manifest_target_records_mismatch")
                         for target_value in target_values:
                             if isinstance(target_value, dict):
                                 target = cast(JsonObject, target_value)
@@ -578,7 +603,63 @@ class SQLiteBackfillStore:
                                     key = (run_id, str(target.get("draw_number")))
                                     manifest_dates[key] = target["draw_date"]
                                     manifest_targets[key] = target
+
+                        raw_strategies: Any = manifest.get("strategies")
+                        strategy_pairs: set[tuple[str, str]] = set()
+                        if not isinstance(raw_strategies, list) or not raw_strategies:
+                            matrix_error(run_id, "invalid_manifest_strategies")
+                            strategies: list[Any] = []
+                        else:
+                            strategies = cast(list[Any], raw_strategies)
+                        execution_version = manifest.get("execution_version")
+                        dataset_identity = manifest.get("dataset_identity")
+                        if not isinstance(execution_version, str) or not execution_version:
+                            matrix_error(run_id, "invalid_execution_version")
+                            execution_version = "UNKNOWN"
+                        if not isinstance(dataset_identity, str) or not dataset_identity:
+                            matrix_error(run_id, "invalid_dataset_identity")
+                            dataset_identity = "UNKNOWN"
+                        expected_identities: set[tuple[str, str, str, str]] = set()
+                        for strategy_value in strategies:
+                            if not isinstance(strategy_value, dict):
+                                matrix_error(run_id, "invalid_manifest_strategy_identity")
+                                continue
+                            strategy = cast(JsonObject, strategy_value)
+                            strategy_id = strategy.get("strategy_id")
+                            strategy_version = strategy.get("strategy_version")
+                            if (
+                                not isinstance(strategy_id, str)
+                                or not strategy_id
+                                or not isinstance(strategy_version, str)
+                                or not strategy_version
+                            ):
+                                matrix_error(run_id, "invalid_manifest_strategy_identity")
+                                continue
+                            pair = (strategy_id, strategy_version)
+                            if pair in strategy_pairs:
+                                matrix_error(run_id, "duplicate_strategy_identity")
+                            strategy_pairs.add(pair)
+                            expected_identities.add(
+                                (strategy_id, strategy_version, execution_version, dataset_identity)
+                            )
+                        manifest_expected_identities[run_id] = expected_identities
+                        if inventory_identities.get(run_id, set()) != strategy_pairs:
+                            matrix_error(run_id, "strategy_inventory_mismatch")
+
+                        expected_count = len(set(valid_ids)) * len(strategy_pairs)
+                        manifest_expected_count = manifest.get("expected_cells")
+                        if (
+                            type(stored_expected_cells) is not int
+                            or stored_expected_cells != expected_count
+                            or type(manifest_expected_count) is not int
+                            or manifest_expected_count != expected_count
+                        ):
+                            matrix_error(run_id, "expected_cells_mismatch")
                     except (ValueError, TypeError, AttributeError):
+                        invalid_runs.add(run_id)
+                        manifest_ids.setdefault(run_id, set())
+                        manifest_expected_identities.setdefault(run_id, set())
+                        matrix_error(run_id, "invalid_manifest_json")
                         continue
                 source: dict[tuple[str, str], JsonObject] = {}
                 for row in connection.execute(
@@ -807,6 +888,7 @@ class SQLiteBackfillStore:
                     ):
                         linked_ids.add(cell_id)
                         run_ids.add(run_id)
+                    run_ids.update(manifest_ids)
                     for row in connection.execute(
                         "SELECT c.cell_identity,NULL,c.strategy_id,c.strategy_version,"
                         "c.execution_version,c.dataset_identity,c.target_draw_id,"
@@ -836,7 +918,10 @@ class SQLiteBackfillStore:
                     # Run groups are contiguous, allowing aggregation to release
                     # period objects as soon as each run finishes.
                     for run_id in sorted(run_ids):
-                        identities: set[tuple[Any, ...]] = set()
+                        expected_identities = manifest_expected_identities.get(run_id, set())
+                        matrix_errors = manifest_matrix_errors.get(run_id, [])
+                        matrix_valid = not matrix_errors
+                        matrix_reason = "; ".join(matrix_errors) or None
                         rows = connection.execute(
                             "SELECT c.cell_identity,rc.run_id,c.strategy_id,c.strategy_version,"
                             "c.execution_version,c.dataset_identity,c.target_draw_id,"
@@ -848,14 +933,17 @@ class SQLiteBackfillStore:
                         )
                         for row in rows:
                             cell_id = row[0]
+                            cell_identity = tuple(row[2:6])
                             if run_id not in manifest_ids or (
                                 run_id in invalid_runs and not manifest_ids[run_id]
                             ):
                                 scope_status = "WINDOW_UNDETERMINED"
-                            elif row[6] not in manifest_ids.get(run_id, set()):
+                            elif (
+                                row[6] not in manifest_ids.get(run_id, set())
+                                or cell_identity not in expected_identities
+                            ):
                                 scope_status = "OUTSIDE_MANIFEST"
                             else:
-                                identities.add(tuple(row[2:6]))
                                 continue
                             count = connection.execute(
                                 "SELECT COUNT(*) FROM replay_backfill_tickets "
@@ -872,10 +960,10 @@ class SQLiteBackfillStore:
                                 }
                             )
                             yield item
-                        for strategy, version, execution, dataset in sorted(identities):
+                        for strategy, version, execution, dataset in sorted(expected_identities):
                             yield {
                                 "cell_identity": (
-                                    f"WINDOW_PLACEHOLDER:{run_id}:{strategy}:{version}:"
+                                    f"MANIFEST_EXPECTED:{run_id}:{strategy}:{version}:"
                                     f"{execution}:{dataset}"
                                 ),
                                 "run_id": run_id,
@@ -893,6 +981,16 @@ class SQLiteBackfillStore:
                                 "execution_status": "MISSING",
                                 "tickets": [],
                                 "ranking_window_included": False,
+                                "manifest_expected": True,
+                                "manifest_matrix_valid": matrix_valid,
+                                "manifest_matrix_reason": matrix_reason,
+                                "manifest_expected_cells": run_expected_cells.get(run_id),
+                            }
+                        if not expected_identities and matrix_errors:
+                            yield {
+                                "run_id": run_id,
+                                "run_diagnostic": "INVALID_MANIFEST_NO_STRATEGY_IDENTITY",
+                                "manifest_matrix_reason": matrix_reason or "unknown reason",
                             }
                         target_ids = target_ids_by_run.get(run_id, ())
                         for start in range(0, len(target_ids), 700):

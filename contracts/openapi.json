@@ -17956,6 +17956,13 @@
             },
             "type": "array",
             "title": "Items"
+          },
+          "run_diagnostics": {
+            "items": {
+              "$ref": "#/components/schemas/OfficialRankingRunDiagnostic"
+            },
+            "type": "array",
+            "title": "Run Diagnostics"
           }
         },
         "type": "object",
@@ -18071,6 +18078,18 @@
             "type": "integer",
             "title": "Unknown"
           },
+          "failed_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Failed Count",
+            "default": 0
+          },
+          "not_eligible_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Not Eligible Count",
+            "default": 0
+          },
           "rate": {
             "anyOf": [
               {
@@ -18154,6 +18173,65 @@
           "rank"
         ],
         "title": "OfficialRankingRow"
+      },
+      "OfficialRankingRunDiagnostic": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "INVALID_MANIFEST_NO_STRATEGY_IDENTITY",
+            "title": "Kind"
+          },
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "matrix_reason": {
+            "type": "string",
+            "title": "Matrix Reason"
+          },
+          "successes": {
+            "type": "integer",
+            "const": 0,
+            "title": "Successes",
+            "default": 0
+          },
+          "evaluated": {
+            "type": "integer",
+            "const": 0,
+            "title": "Evaluated",
+            "default": 0
+          },
+          "denominator": {
+            "type": "integer",
+            "const": 0,
+            "title": "Denominator",
+            "default": 0
+          },
+          "rate": {
+            "type": "null",
+            "title": "Rate"
+          },
+          "baseline": {
+            "type": "null",
+            "title": "Baseline"
+          },
+          "delta": {
+            "type": "null",
+            "title": "Delta"
+          },
+          "rank": {
+            "type": "null",
+            "title": "Rank"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "run_id",
+          "matrix_reason"
+        ],
+        "title": "OfficialRankingRunDiagnostic"
       },
       "OverviewPrefixCount": {
         "type": "integer",

@@ -1,0 +1,57 @@
+{
+  "array_count": 85,
+  "fixture_file": "renewal_te_k235_golden.npz",
+  "fixture_sha256": "e2cfd985fceae1baf7c1c7f2708736547ec091dc8e6759a6f60eb9f2a98c650b",
+  "fixture_size_bytes": 42034,
+  "input_shapes": {
+    "renewal_constant_750_main": [
+      750,
+      6
+    ],
+    "renewal_rolling_750_main": [
+      750,
+      6
+    ],
+    "renewal_rolling_800_main": [
+      800,
+      6
+    ],
+    "renewal_sequence_input": [
+      10
+    ],
+    "te_constant_input": [
+      750,
+      49
+    ],
+    "te_cyclic_input": [
+      750,
+      49
+    ],
+    "te_sparse_input": [
+      750,
+      49
+    ]
+  },
+  "provenance": {
+    "conditional_te_donor_source_sha256": "9a8337e10986594f28e58034549c2c119a298b6bedd8ca7843836dc40cf197e1",
+    "conditional_te_pure_functions": [
+      "joint_counts",
+      "own_counts",
+      "smoothed_information",
+      "conditional_model",
+      "score_history",
+      "tickets_from_score"
+    ],
+    "execution_mode": "AST-extracted named pure functions only; no donor main or historical pipeline",
+    "golden_outputs_generated_from": "fixed synthetic inputs and original donor functions, never from candidate output",
+    "renewal_donor_source_sha256": "435d81b816ad90a49ae3a7369db667af098b29a6ac24875efa76cd433c238c67",
+    "renewal_pure_functions": [
+      "bucket",
+      "risk_sequence",
+      "validate_draw",
+      "model",
+      "tickets"
+    ]
+  },
+  "schema_version": 1
+}

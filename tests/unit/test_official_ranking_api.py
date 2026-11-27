@@ -30,6 +30,175 @@ def _normalized_rows(rows: list[dict[str, Any]]) -> list[str]:
     return sorted(json.dumps(v, sort_keys=True) for v in json.loads(json.dumps(rows)))
 
 
+def _insert_run_inventory(
+    connection: sqlite3.Connection,
+    run_id: str,
+    lottery_type: str,
+    strategy_id: str,
+    strategy_version: str,
+    *,
+    target_count: int,
+) -> None:
+    connection.execute(
+        "INSERT INTO replay_backfill_strategy_inventory "
+        "(run_id,lottery_type,strategy_id,strategy_version,display_name,lifecycle_status,"
+        "data_status,source_kind,executable,available_target_count,training_status,"
+        "source_identity) "
+        "VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+        (
+            run_id,
+            lottery_type,
+            strategy_id,
+            strategy_version,
+            strategy_id,
+            "ONLINE",
+            "REBUILDABLE",
+            "NATIVE_REPLAY",
+            1,
+            target_count,
+            "UNKNOWN",
+            "fixture",
+        ),
+    )
+
+
+def _insert_ranking_run(
+    connection: sqlite3.Connection,
+    run_id: str,
+    strategy_pairs: list[tuple[str, str]],
+    target_ids: list[str],
+    *,
+    declared_target_ids: list[str] | None = None,
+    stored_expected_cells: int | None = None,
+    manifest_expected_cells: int | None = None,
+) -> None:
+    declared_ids = target_ids if declared_target_ids is None else declared_target_ids
+    unique_strategy_pairs = list(dict.fromkeys(strategy_pairs))
+    expected = len(set(declared_ids)) * len(unique_strategy_pairs)
+    targets = [
+        {
+            "draw_number": draw_id,
+            "draw_date": (date(2026, 1, 1) + timedelta(days=int(draw_id) - 1)).isoformat(),
+            "main_numbers": [1, 2, 3, 4, 5, 6],
+            "special_numbers": [7],
+            "source_identity": "dataset",
+        }
+        for draw_id in declared_ids
+    ]
+    manifest = {
+        "lottery_type": "BIG_LOTTO",
+        "execution_version": "execution-v1",
+        "dataset_identity": "dataset-v1",
+        "strategies": [
+            {
+                "strategy_id": strategy_id,
+                "strategy_version": strategy_version,
+                "strategy_name": strategy_id,
+            }
+            for strategy_id, strategy_version in strategy_pairs
+        ],
+        "target_draw_ids": declared_ids,
+        "targets": targets,
+        "expected_cells": expected if manifest_expected_cells is None else manifest_expected_cells,
+    }
+    connection.execute(
+        "INSERT INTO replay_backfill_runs(run_id,manifest_json,expected_cells) VALUES (?,?,?)",
+        (
+            run_id,
+            json.dumps(manifest),
+            expected if stored_expected_cells is None else stored_expected_cells,
+        ),
+    )
+    for strategy_id, strategy_version in unique_strategy_pairs:
+        _insert_run_inventory(
+            connection,
+            run_id,
+            "BIG_LOTTO",
+            strategy_id,
+            strategy_version,
+            target_count=len(set(declared_ids)),
+        )
+    for draw_id in set(declared_ids):
+        target = next(item for item in targets if item["draw_number"] == draw_id)
+        connection.execute(
+            "INSERT INTO replay_backfill_targets VALUES (?,?,?,?,?,?,?)",
+            (
+                run_id,
+                "BIG_LOTTO",
+                draw_id,
+                target["draw_date"],
+                json.dumps(target["main_numbers"]),
+                json.dumps(target["special_numbers"]),
+                "dataset",
+            ),
+        )
+
+
+def _insert_ranking_cell(
+    connection: sqlite3.Connection,
+    run_id: str,
+    strategy_id: str,
+    strategy_version: str,
+    draw_id: str,
+    *,
+    status: str = "COMPLETE",
+) -> None:
+    cell_id = f"{run_id}:{strategy_id}:{strategy_version}:{draw_id}"
+    draw_date = (date(2026, 1, 1) + timedelta(days=int(draw_id) - 1)).isoformat()
+    ticket = [1, 2, 7, 8, 9, 10]
+    payload: dict[str, Any] = {}
+    if status == "COMPLETE":
+        payload = {
+            "expected_native_ticket_count": 1,
+            "predicted_tickets": [
+                {"ticket_position": 1, "main_numbers": ticket, "special_number": None}
+            ],
+            "winning_numbers": {"main_numbers": [1, 2, 3, 4, 5, 6], "special_number": 7},
+        }
+    connection.execute(
+        "INSERT INTO replay_backfill_cells(cell_identity,lottery_type,strategy_id,"
+        "strategy_version,execution_version,dataset_identity,target_draw_id,target_draw_date,"
+        "execution_status,result_identity,payload_json) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+        (
+            cell_id,
+            "BIG_LOTTO",
+            strategy_id,
+            strategy_version,
+            "execution-v1",
+            "dataset-v1",
+            draw_id,
+            draw_date,
+            status,
+            f"result:{cell_id}",
+            json.dumps(payload),
+        ),
+    )
+    connection.execute("INSERT INTO replay_backfill_run_cells VALUES (?,?)", (run_id, cell_id))
+    if status == "COMPLETE":
+        connection.execute(
+            "INSERT INTO replay_backfill_tickets(cell_identity,ticket_position,"
+            "main_numbers_json,special_numbers_json) VALUES (?,?,?,?)",
+            (cell_id, 1, json.dumps(ticket), "[]"),
+        )
+
+
+def _ranking_client(database: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
+    monkeypatch.setattr(store_module, "validate_database_path", lambda path: path)
+    monkeypatch.setattr(
+        api_module,
+        "project_database_environment",
+        lambda _: {"LOTTOLAB_REPLAY_BACKFILL_DB": str(database)},
+    )
+    monkeypatch.setattr(
+        api_module, "load_replay_strategy_inventory", lambda: SimpleNamespace(items=[])
+    )
+    app = FastAPI()
+    app.include_router(
+        api_module.create_replay_backfill_router(SQLiteBackfillStore(database, read_only=True))
+    )
+    return TestClient(app)
+
+
 def test_official_ranking_api_uses_saved_tickets_and_unknown_power(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -54,7 +223,17 @@ def test_official_ranking_api_uses_saved_tickets_and_unknown_power(
                     json.dumps(
                         {
                             "lottery_type": lottery,
+                            "execution_version": "e",
+                            "dataset_identity": "d",
+                            "strategies": [
+                                {
+                                    "strategy_id": "unregistered",
+                                    "strategy_version": "v",
+                                    "strategy_name": "Unregistered",
+                                }
+                            ],
                             "target_draw_ids": ["1"],
+                            "expected_cells": 1,
                             "targets": [
                                 {
                                     "draw_number": "1",
@@ -69,6 +248,7 @@ def test_official_ranking_api_uses_saved_tickets_and_unknown_power(
                     1,
                 ),
             )
+            _insert_run_inventory(connection, run, lottery, "unregistered", "v", target_count=1)
             connection.execute(
                 "INSERT INTO replay_backfill_targets VALUES (?,?,?,?,?,?,?)",
                 (
@@ -269,12 +449,23 @@ def test_recent_window_reads_only_selected_tickets_and_keeps_older_cohort(
         )
         connection.execute(
             "INSERT INTO replay_backfill_runs(run_id,manifest_json,expected_cells) "
-            "VALUES ('daily',?,2)",
+            "VALUES ('daily',?,102)",
             (
                 json.dumps(
                     {
                         "lottery_type": "DAILY_539",
+                        "execution_version": "e1",
+                        "dataset_identity": "data1",
+                        "strategies": [
+                            {
+                                "strategy_id": strategy_id,
+                                "strategy_version": "v1",
+                                "strategy_name": strategy_id,
+                            }
+                            for strategy_id in ("old-only", "recent")
+                        ],
                         "target_draw_ids": [str(i) for i in range(1, 52)],
+                        "expected_cells": 102,
                         "targets": [
                             {
                                 "draw_number": str(i),
@@ -289,6 +480,10 @@ def test_recent_window_reads_only_selected_tickets_and_keeps_older_cohort(
                 ),
             ),
         )
+        for strategy_id in ("old-only", "recent"):
+            _insert_run_inventory(
+                connection, "daily", "DAILY_539", strategy_id, "v1", target_count=51
+            )
         for index in range(51):
             draw_id = str(index + 1)
             draw_date = (date(2026, 1, 1) + timedelta(days=index)).isoformat()
@@ -417,7 +612,14 @@ def test_manifest_scope_excludes_history_and_keeps_missing_targets_unknown(
             "INSERT INTO replay_backfill_schema VALUES (?,?)", (SCHEMA_VERSION, SCHEMA_CHECKSUM)
         )
         for run, ids in (("history", ["201", "202"]), ("no-target", ["301"])):
-            manifest: dict[str, Any] = {"lottery_type": "DAILY_539", "target_draw_ids": ids}
+            manifest: dict[str, Any] = {
+                "lottery_type": "DAILY_539",
+                "execution_version": "e",
+                "dataset_identity": "d",
+                "strategies": [{"strategy_id": "s", "strategy_version": "v", "strategy_name": "S"}],
+                "target_draw_ids": ids,
+                "expected_cells": len(ids),
+            }
             if run == "history":
                 manifest["targets"] = [
                     {
@@ -434,6 +636,7 @@ def test_manifest_scope_excludes_history_and_keeps_missing_targets_unknown(
                 "VALUES (?,?,?)",
                 (run, json.dumps(manifest), len(ids)),
             )
+            _insert_run_inventory(connection, run, "DAILY_539", "s", "v", target_count=len(ids))
         for index in range(1, 203):
             connection.execute(
                 "INSERT INTO replay_backfill_targets VALUES (?,?,?,?,?,?,?)",
@@ -678,13 +881,20 @@ def test_numeric_boundary_store_aggregate_api_and_twelve_windows(
                     json.dumps(
                         {
                             "lottery_type": lottery,
+                            "execution_version": "e",
+                            "dataset_identity": "d",
+                            "strategies": [
+                                {"strategy_id": "s", "strategy_version": "v", "strategy_name": "S"}
+                            ],
                             "target_draw_ids": [t["draw_number"] for t in targets],
+                            "expected_cells": len(targets),
                             "targets": targets,
                         }
                     ),
                     len(targets),
                 ),
             )
+            _insert_run_inventory(conn, lottery, lottery, "s", "v", target_count=len(targets))
             for item in targets:
                 draw_id, draw_date = item["draw_number"], item["draw_date"]
                 assert isinstance(draw_id, str)
@@ -810,3 +1020,237 @@ def test_numeric_boundary_store_aggregate_api_and_twelve_windows(
                 assert new["rank"] == 1
             results[(lottery, window)] = new
     assert len(results) == 12
+
+
+def test_manifest_expected_rows_keep_missing_failed_and_out_of_scope_distinct(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    database = tmp_path / "completeness.sqlite3"
+    with sqlite3.connect(database) as connection:
+        connection.executescript(SCHEMA_SQL)
+        connection.execute(
+            "INSERT INTO replay_backfill_schema VALUES (?,?)", (SCHEMA_VERSION, SCHEMA_CHECKSUM)
+        )
+        strategies = [
+            ("complete", "v1"),
+            ("empty", "v1"),
+            ("partial", "v1"),
+            ("status", "v1"),
+        ]
+        _insert_ranking_run(connection, "run", strategies, ["1", "2"])
+        for draw_id in ("1", "2"):
+            _insert_ranking_cell(connection, "run", "complete", "v1", draw_id)
+        _insert_ranking_cell(connection, "run", "partial", "v1", "1")
+        # Two persisted rows equal this identity's two expected targets, but
+        # target 3 is outside the immutable manifest and cannot fill target 2.
+        _insert_ranking_cell(connection, "run", "partial", "v1", "3")
+        _insert_ranking_cell(connection, "run", "status", "v1", "1", status="FAILED")
+        _insert_ranking_cell(connection, "run", "status", "v1", "2", status="NOT_ELIGIBLE")
+        raw_partial_count = connection.execute(
+            "SELECT COUNT(*) FROM replay_backfill_run_cells rc "
+            "JOIN replay_backfill_cells c USING(cell_identity) "
+            "WHERE rc.run_id='run' AND c.strategy_id='partial'"
+        ).fetchone()[0]
+        assert raw_partial_count == 2
+
+    client = _ranking_client(database, monkeypatch)
+    response = client.get(
+        "/api/v1/replay-backfill/official-ranking",
+        params={"lottery_type": "BIG_LOTTO", "window": "FULL"},
+    )
+    assert response.status_code == 200, response.text
+    items = response.json()["items"]
+    by_id = {row["strategy_id"]: row for row in items if row["run_id"] == "run"}
+
+    empty = by_id["empty"]
+    assert empty["target_ids"] == ["1", "2"]
+    assert (empty["successes"], empty["evaluated"], empty["missing"], empty["unknown"]) == (
+        0,
+        0,
+        2,
+        0,
+    )
+    assert (empty["rate"], empty["baseline"], empty["delta"], empty["rank"]) == (
+        None,
+        None,
+        None,
+        None,
+    )
+
+    partial = by_id["partial"]
+    assert (partial["evaluated"], partial["missing"], partial["unknown"]) == (1, 1, 0)
+    assert (partial["rate"], partial["baseline"], partial["delta"], partial["rank"]) == (
+        None,
+        None,
+        None,
+        None,
+    )
+    assert any(
+        row["strategy_id"] == "partial" and row["scope_status"] == "OUTSIDE_MANIFEST"
+        for row in items
+    )
+
+    status = by_id["status"]
+    assert (status["successes"], status["evaluated"], status["missing"], status["unknown"]) == (
+        0,
+        0,
+        0,
+        2,
+    )
+    assert (status["failed_count"], status["not_eligible_count"]) == (1, 1)
+    assert (status["rate"], status["baseline"], status["delta"], status["rank"]) == (
+        None,
+        None,
+        None,
+        None,
+    )
+    assert "FAILED" in status["unknown_reason"]
+    assert "NOT_ELIGIBLE" in status["unknown_reason"]
+    complete = by_id["complete"]
+    assert (complete["evaluated"], complete["missing"], complete["rate"], complete["rank"]) == (
+        2,
+        0,
+        1.0,
+        1,
+    )
+    with sqlite3.connect(database) as connection:
+        persisted = connection.execute(
+            "SELECT c.execution_status FROM replay_backfill_run_cells rc "
+            "JOIN replay_backfill_cells c USING(cell_identity) "
+            "WHERE rc.run_id='run' AND c.strategy_id='status' ORDER BY c.target_draw_id"
+        ).fetchall()
+    assert [row[0] for row in persisted] == ["FAILED", "NOT_ELIGIBLE"]
+
+
+def test_run_without_usable_manifest_identity_is_reported_as_diagnostic(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    database = tmp_path / "empty-manifest-identities.sqlite3"
+    with sqlite3.connect(database) as connection:
+        connection.executescript(SCHEMA_SQL)
+        connection.execute(
+            "INSERT INTO replay_backfill_schema VALUES (?,?)", (SCHEMA_VERSION, SCHEMA_CHECKSUM)
+        )
+        _insert_ranking_run(
+            connection,
+            "run-without-strategies",
+            [],
+            ["1"],
+            stored_expected_cells=1,
+            manifest_expected_cells=1,
+        )
+
+    client = _ranking_client(database, monkeypatch)
+    response = client.get(
+        "/api/v1/replay-backfill/official-ranking",
+        params={"lottery_type": "BIG_LOTTO", "window": "FULL"},
+    )
+    assert response.status_code == 200, response.text
+    payload = response.json()
+    assert not any(row["run_id"] == "run-without-strategies" for row in payload["items"])
+    diagnostics = payload["run_diagnostics"]
+    assert diagnostics == [
+        {
+            "kind": "INVALID_MANIFEST_NO_STRATEGY_IDENTITY",
+            "run_id": "run-without-strategies",
+            "matrix_reason": "invalid_manifest_strategies; expected_cells_mismatch",
+            "successes": 0,
+            "evaluated": 0,
+            "denominator": 0,
+            "rate": None,
+            "baseline": None,
+            "delta": None,
+            "rank": None,
+        }
+    ]
+    assert "strategy_id" not in diagnostics[0]
+    assert "strategy_version" not in diagnostics[0]
+
+
+def test_invalid_run_matrices_fail_closed_and_historical_versions_stay_separate(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    database = tmp_path / "invalid-matrices.sqlite3"
+    with sqlite3.connect(database) as connection:
+        connection.executescript(SCHEMA_SQL)
+        connection.execute(
+            "INSERT INTO replay_backfill_schema VALUES (?,?)", (SCHEMA_VERSION, SCHEMA_CHECKSUM)
+        )
+
+        _insert_ranking_run(
+            connection,
+            "duplicate-strategy",
+            [("duplicate", "v1"), ("duplicate", "v1")],
+            ["1"],
+        )
+        _insert_ranking_cell(connection, "duplicate-strategy", "duplicate", "v1", "1")
+
+        _insert_ranking_run(
+            connection,
+            "mismatched-count",
+            [("mismatch", "v1")],
+            ["1", "2"],
+            stored_expected_cells=1,
+            manifest_expected_cells=1,
+        )
+        for draw_id in ("1", "2"):
+            _insert_ranking_cell(connection, "mismatched-count", "mismatch", "v1", draw_id)
+
+        _insert_ranking_run(
+            connection,
+            "duplicate-target",
+            [("duplicate-target", "v1")],
+            ["1"],
+            declared_target_ids=["1", "1"],
+        )
+        _insert_ranking_cell(connection, "duplicate-target", "duplicate-target", "v1", "1")
+
+        _insert_ranking_run(
+            connection,
+            "inventory-mismatch",
+            [("inventory", "v1")],
+            ["1"],
+        )
+        _insert_ranking_cell(connection, "inventory-mismatch", "inventory", "v1", "1")
+        connection.execute(
+            "DELETE FROM replay_backfill_strategy_inventory WHERE run_id='inventory-mismatch'"
+        )
+
+        _insert_ranking_run(
+            connection,
+            "versions",
+            [("versioned", "v1"), ("versioned", "v2")],
+            ["1"],
+        )
+        _insert_ranking_cell(connection, "versions", "versioned", "v1", "1")
+        # Keep both run-scoped historical identities regardless of their scores.
+        _insert_ranking_cell(connection, "versions", "versioned", "v2", "1", status="FAILED")
+
+    client = _ranking_client(database, monkeypatch)
+    response = client.get(
+        "/api/v1/replay-backfill/official-ranking",
+        params={"lottery_type": "BIG_LOTTO", "window": "FULL"},
+    )
+    assert response.status_code == 200, response.text
+    items = response.json()["items"]
+
+    duplicate_strategy = next(row for row in items if row["run_id"] == "duplicate-strategy")
+    assert duplicate_strategy["rank"] is None and duplicate_strategy["rate"] is None
+    assert "duplicate_strategy_identity" in duplicate_strategy["unknown_reason"]
+
+    mismatched_count = next(row for row in items if row["run_id"] == "mismatched-count")
+    assert mismatched_count["rank"] is None and mismatched_count["rate"] is None
+    assert "expected_cells_mismatch" in mismatched_count["unknown_reason"]
+
+    duplicate_target = next(row for row in items if row["run_id"] == "duplicate-target")
+    assert duplicate_target["rank"] is None and duplicate_target["rate"] is None
+    assert "duplicate_target_identity" in duplicate_target["unknown_reason"]
+
+    inventory_mismatch = next(row for row in items if row["run_id"] == "inventory-mismatch")
+    assert inventory_mismatch["rank"] is None and inventory_mismatch["rate"] is None
+    assert "strategy_inventory_mismatch" in inventory_mismatch["unknown_reason"]
+
+    version_rows = [row for row in items if row["run_id"] == "versions"]
+    assert {row["strategy_version"] for row in version_rows} == {"v1", "v2"}
+    assert all(row["rate"] is not None for row in version_rows if row["strategy_version"] == "v1")
+    assert next(row for row in version_rows if row["strategy_version"] == "v2")["failed_count"] == 1

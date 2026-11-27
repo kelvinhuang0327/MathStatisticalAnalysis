@@ -26,6 +26,15 @@ from lottolab.domain.replay_strategy_inventory import (
     ReplayStrategyInventoryItem,
 )
 
+_NATIVE_K235_IDENTITIES = {
+    (LotteryType.BIG_LOTTO, f"{prefix}_k{ticket_count}", version)
+    for prefix, version in (
+        ("research_causal_renewal_hazard", "FIXED_DISCRETE_RENEWAL_HAZARD_V1"),
+        ("research_conditional_transfer_entropy", "EH02_V1"),
+    )
+    for ticket_count in (2, 3, 5)
+}
+
 
 def test_inventory_conserves_sources_and_executable_identities() -> None:
     inventory = load_replay_strategy_inventory()
@@ -43,30 +52,31 @@ def test_inventory_conserves_sources_and_executable_identities() -> None:
             "research_biglotto__k30_fixed_random_control_20261119_r1",
         )
     }
-    preserved_main_identities = actual_identity_set - seed_identity_set - era_identities
+    native_identity_count = len(_NATIVE_K235_IDENTITIES)
+    added_identities = seed_identity_set | era_identities | _NATIVE_K235_IDENTITIES
+    preserved_main_identities = actual_identity_set - added_identities
+    expected_unique_count = _BASE_MAIN_IDENTITY_COUNT + len(added_identities)
 
     assert seed_identity_count == 1000
-    assert inventory.total_discovered_strategies == 768 + seed_identity_count
-    assert inventory.total_unique_strategies == _BASE_MAIN_IDENTITY_COUNT + seed_identity_count + 3
-    assert (
-        len(actual_identity_set)
-        == len(inventory.items)
-        == _BASE_MAIN_IDENTITY_COUNT + seed_identity_count + 3
-    )
-    assert len(actual_identity_set) == len(preserved_main_identities) + len(seed_identity_set) + 3
-    assert seed_identity_set.isdisjoint(preserved_main_identities)
-    assert actual_identity_set == preserved_main_identities | seed_identity_set | era_identities
+    assert len(era_identities) == 3
+    assert native_identity_count == 6
+    assert len(added_identities) == seed_identity_count + 3 + native_identity_count
+    assert inventory.total_discovered_strategies == 765 + len(added_identities)
+    assert inventory.total_unique_strategies == expected_unique_count
+    assert len(actual_identity_set) == len(inventory.items) == expected_unique_count
+    assert actual_identity_set == preserved_main_identities | added_identities
     assert len(preserved_main_identities) == _BASE_MAIN_IDENTITY_COUNT
     assert _identity_set_sha256(preserved_main_identities) == (
         "d57aff547491e137fa31bdd509177ad64abdaa18311a07914cf9c46780653809"
     )
-    assert len(inventory.executable_items) == 224
+    assert len(inventory.executable_items) == 224 + native_identity_count
     assert inventory.unresolved_source_count == 9
     assert source_counts["PRODUCTION_CATALOG"].source_identity_count == 138
     assert source_counts["B649_RESEARCH_CATALOG"].source_identity_count == 221
     assert source_counts["B649_REPLAY_BATCH_REGISTRY"].source_identity_count == 11
     assert source_counts["T539_REPLAY_ADAPTER"].source_identity_count == 62
     assert source_counts["P638_REPLAY_ADAPTER"].source_identity_count == 23
+    assert source_counts["NATIVE_BACKFILL_ENGINE"].source_identity_count == 16
     assert source_counts["STRATEGY_ADAPTER_CODE"].source_identity_count == 106
     assert source_counts["STRATEGY_ADAPTER_CODE"].source_row_count == 107
     assert source_counts["REPLAY_BACKFILL_IMPORTED_RESULT"].source_identity_count == 50
@@ -80,12 +90,12 @@ def test_inventory_conserves_sources_and_executable_identities() -> None:
     lottery_counts = Counter(item.lottery_type for item in inventory.items)
     executable_by_lottery = Counter(item.lottery_type for item in inventory.executable_items)
     assert lottery_counts == {
-        LotteryType.BIG_LOTTO: 417 + seed_identity_count,
+        LotteryType.BIG_LOTTO: 417 + seed_identity_count + native_identity_count,
         LotteryType.DAILY_539: 62,
         LotteryType.POWER_LOTTO: 34,
     }
     assert executable_by_lottery == {
-        LotteryType.BIG_LOTTO: 139,
+        LotteryType.BIG_LOTTO: 139 + native_identity_count,
         LotteryType.DAILY_539: 62,
         LotteryType.POWER_LOTTO: 23,
     }
@@ -115,7 +125,7 @@ def test_inventory_keeps_status_dimensions_and_unavailable_cases_separate() -> N
     inventory = load_replay_strategy_inventory()
     by_data_status = Counter(item.replay_data_status for item in inventory.items)
     assert by_data_status == {
-        ReplayDataStatus.REBUILDABLE: 224,
+        ReplayDataStatus.REBUILDABLE: 224 + len(_NATIVE_K235_IDENTITIES),
         ReplayDataStatus.ARTIFACT_ONLY: 135,
         ReplayDataStatus.REJECTED: 74,
         ReplayDataStatus.NO_HISTORY: 75 + len(_seed_identity_tuples()),

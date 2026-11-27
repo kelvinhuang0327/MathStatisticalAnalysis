@@ -21,9 +21,35 @@ def test_inventory_capabilities_match_real_worker_bindings() -> None:
         engine.update(
             {(lottery, b.strategy.strategy_id, b.strategy.strategy_version): b for b in bindings}
         )
+    expected_new_identities = {
+        (
+            LotteryType.BIG_LOTTO,
+            "research_causal_renewal_hazard_k2",
+            "FIXED_DISCRETE_RENEWAL_HAZARD_V1",
+        ),
+        (
+            LotteryType.BIG_LOTTO,
+            "research_causal_renewal_hazard_k3",
+            "FIXED_DISCRETE_RENEWAL_HAZARD_V1",
+        ),
+        (
+            LotteryType.BIG_LOTTO,
+            "research_causal_renewal_hazard_k5",
+            "FIXED_DISCRETE_RENEWAL_HAZARD_V1",
+        ),
+        (LotteryType.BIG_LOTTO, "research_conditional_transfer_entropy_k2", "EH02_V1"),
+        (LotteryType.BIG_LOTTO, "research_conditional_transfer_entropy_k3", "EH02_V1"),
+        (LotteryType.BIG_LOTTO, "research_conditional_transfer_entropy_k5", "EH02_V1"),
+    }
     exposed = {key for key, row in rows.items() if row.backfill_runnable}
     assert exposed == set(engine)
-    assert len(exposed) == 211
+    assert len(expected_new_identities) == 6
+    assert expected_new_identities <= exposed
+    assert expected_new_identities <= set(engine)
+    assert len(expected_new_identities & exposed) == 6
+    assert len(expected_new_identities & set(engine)) == 6
+    assert len(exposed) == 217
+    assert len(exposed - expected_new_identities) == 211
     for identity, binding in engine.items():
         row = rows[identity]
         assert row.backfill_native_binding is True

@@ -39,8 +39,8 @@ def test_replay_strategy_inventory_api_lists_separate_states_and_full_backfill_i
     assert response.status_code == 200
     payload = response.json()
     multiseed_count = len(_multiseed_fixture()["seed_identities"])
-    assert payload["total_discovered_strategies"] == 768 + multiseed_count
-    assert payload["total_unique_strategies"] == 513 + multiseed_count
+    assert payload["total_discovered_strategies"] == 773 + multiseed_count
+    assert payload["total_unique_strategies"] == 518 + multiseed_count
     assert payload["total_executable"] == 224
     assert payload["total_reconstructable"] == 224
     assert payload["total_has_history"] == 0
@@ -53,7 +53,7 @@ def test_replay_strategy_inventory_api_lists_separate_states_and_full_backfill_i
     assert payload["source_status_counts"]["OBSERVATION"] == 2
     assert payload["replay_data_status_counts"]["CODE_ONLY"] == 5
     assert payload["execution_capability_counts"]["EXECUTABLE"] == 224
-    assert payload["execution_capability_counts"]["UNAVAILABLE"] == 289 + multiseed_count
+    assert payload["execution_capability_counts"]["UNAVAILABLE"] == 294 + multiseed_count
     assert payload["strategy_count"] == payload["total_unique_strategies"]
     assert len(payload["executable_strategy_ids"]) == payload["total_executable"]
     quick_ml_rows = [
@@ -81,6 +81,38 @@ def test_replay_strategy_inventory_api_lists_separate_states_and_full_backfill_i
     assert k9[0]["replay_data_status"] == "NO_HISTORY"
     assert k9[0]["execution_capability"] == "UNAVAILABLE"
     assert k9[0]["source_statuses"] == ["RESEARCH_STRATEGY"]
+
+    eh5_ids = {
+        "research_biglotto_eh03_k5_saved_portfolio_gate_v1",
+        "research_biglotto_eh06_k5_event_kernel_gate_v1",
+        "research_biglotto_eh07_k5_nvar_gate_v1",
+        "research_biglotto_eh11_k5_saved_portfolio_gate_v1",
+        "research_biglotto_eh12_k5_saved_portfolio_gate_v1",
+    }
+    eh5_rows = [row for row in payload["strategies"] if row["strategy_id"] in eh5_ids]
+    assert len(eh5_rows) == len(eh5_ids) == 5
+    assert {row["strategy_id"] for row in eh5_rows} == eh5_ids
+    for row in eh5_rows:
+        assert row["lottery_type"] == "BIG_LOTTO"
+        assert row["strategy_version"] == "v1.0.0"
+        assert row["native_ticket_count"] == 5
+        assert row["source_kind"] == "HISTORICAL_RESEARCH_ARTIFACT"
+        assert row["source_statuses"] == ["RESEARCH_STRATEGY", "UNVERIFIED"]
+        assert row["replay_data_status"] == "NO_HISTORY"
+        assert row["historical_data_count"] == 0
+        assert row["historical_execution_count"] == 0
+        assert row["execution_capability"] == "UNAVAILABLE"
+        assert row["adapter_mapping"] is None
+        assert row["backfill_runnable"] is False
+
+    research_source_counts = [
+        row
+        for row in payload["source_counts"]
+        if row["source_kind"] == "HISTORICAL_RESEARCH_ARTIFACT"
+    ]
+    assert len(research_source_counts) == 1
+    assert research_source_counts[0]["source_identity_count"] == 5
+    assert research_source_counts[0]["source_row_count"] == 5
 
     rejected = next(row for row in payload["strategies"] if row["replay_data_status"] == "REJECTED")
     assert rejected["lifecycle_status"] == "REJECTED"

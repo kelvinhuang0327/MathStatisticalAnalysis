@@ -4727,6 +4727,7 @@ export interface components {
           "source_kind": string
           "executable": boolean
           "available_target_count": number
+          "native_ticket_count"?: number | null
           "training_status": string
           "inventory_lifecycle_status"?: string | null
           "inventory_data_status"?: string | null
@@ -5030,6 +5031,7 @@ export interface components {
           "execution_block_reason": string | null
           "reconstruction_reason": string
           "historical_data_count": number
+          "native_ticket_count"?: number | null
           "historical_execution_count": number
           "alias_or_identity_mapping": Array<components['schemas']["ReplayStrategyIdentityMappingView"]>
           "adapter_mapping": components['schemas']["ReplayStrategyAdapterMappingView"] | null

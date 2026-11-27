@@ -20316,6 +20316,17 @@
             "minimum": 0.0,
             "title": "Available Target Count"
           },
+          "native_ticket_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Native Ticket Count"
+          },
           "training_status": {
             "type": "string",
             "title": "Training Status"
@@ -22325,6 +22336,17 @@
             "type": "integer",
             "minimum": 0.0,
             "title": "Historical Data Count"
+          },
+          "native_ticket_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Native Ticket Count"
           },
           "historical_execution_count": {
             "type": "integer",

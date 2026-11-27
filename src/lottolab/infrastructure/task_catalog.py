@@ -1465,6 +1465,53 @@ def _enrich_task_data(t: dict[str, object], read_folder_receipts: bool) -> dict[
 
     before_attempt = folder / "result.before_1.json"
     has_before_attempt = before_attempt.exists() or before_attempt.is_symlink()
+    before_first_pass_failed = False
+    before_first_pass_conflict = False
+    if has_before_attempt and before_attempt.is_file() and not before_attempt.is_symlink():
+        try:
+            if before_attempt.stat().st_size <= MAX_JSON_SIZE_BYTES:
+                with open(before_attempt, encoding="utf-8") as f:
+                    before_loaded: object = json.load(f)
+                if isinstance(before_loaded, dict):
+                    before_data = cast(dict[str, object], before_loaded)
+                    before_task_id = before_data.get("task_id")
+                    if isinstance(task_id, str) and task_id and before_task_id == task_id:
+                        explicit_first_pass = next(
+                            (
+                                before_data[key]
+                                for key in ("first_pass_accepted", "first_pass_acceptance")
+                                if isinstance(before_data.get(key), bool)
+                            ),
+                            None,
+                        )
+                        round_status = str(
+                            before_data.get("first_round_ac_status", "")
+                        ).upper()
+                        lifecycle = str(
+                            before_data.get("task_lifecycle_state", "")
+                        ).upper()
+                        failed_states = {
+                            "BLOCKED",
+                            "BLOCKED_OWNER_DISPOSITION",
+                            "ABORTED",
+                            "FAILED",
+                            "FAIL",
+                            "CANCELED",
+                            "CANCELLED",
+                        }
+                        has_failure_status = (
+                            round_status in failed_states or lifecycle in failed_states
+                        )
+                        before_first_pass_conflict = (
+                            (explicit_first_pass is True and has_failure_status)
+                            or (explicit_first_pass is False and round_status == "PASS")
+                            or (round_status == "PASS" and lifecycle in failed_states)
+                        )
+                        before_first_pass_failed = not before_first_pass_conflict and (
+                            explicit_first_pass is False or has_failure_status
+                        )
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+            before_first_pass_failed = False
     first_pass_value: object = None
     if result_data is not None:
         for key in ("first_pass_accepted", "first_pass_acceptance"):
@@ -1476,8 +1523,18 @@ def _enrich_task_data(t: dict[str, object], read_folder_receipts: bool) -> dict[
             "FAIL",
         ):
             first_pass_value = result_data["first_round_ac_status"] == "PASS"
-    if item.get("lineage_evidence_conflict") or has_before_attempt:
+    if item.get("lineage_evidence_conflict"):
         item.pop("first_pass_accepted", None)
+    elif has_before_attempt:
+        # A before_1 snapshot proves that the task continued. Only matching,
+        # non-conflicting first-round failure evidence distinguishes failure
+        # from missing evidence; a later result cannot promote that first pass.
+        if before_first_pass_conflict:
+            item.pop("first_pass_accepted", None)
+        elif before_first_pass_failed:
+            item["first_pass_accepted"] = False
+        else:
+            item.pop("first_pass_accepted", None)
     elif item.get("original_task_confirmed") is True and isinstance(first_pass_value, bool):
         item["first_pass_accepted"] = first_pass_value
     elif item.get("original_task_confirmed") is not True:
@@ -1536,9 +1593,7 @@ def compute_workflow_metrics(
         if isinstance(tid, str) and tid:
             by_id.setdefault(tid, []).append(task)
     linked: set[int] = set()
-    # Only collapse an unambiguous one-edge chain. Longer, branching or cyclic
-    # chains need a complete identity and temporal contract before aggregation.
-    children: dict[str, int] = {}
+    children_by_parent: dict[str, list[dict[str, object]]] = {}
 
     def _has_parent(task: dict[str, object]) -> bool:
         parent_value = task.get("continues_from")
@@ -1552,50 +1607,124 @@ def compute_workflow_metrics(
         parent = task.get("continues_from")
         if task.get("same_original_task") is True and _has_parent(task):
             parent_id = cast(str, parent).strip()
-            children[parent_id] = children.get(parent_id, 0) + 1
-    fields = ("goal_72h_completed", "acceptance_confirmed", "regression_escape")
+            children_by_parent.setdefault(parent_id, []).append(task)
+
     for task in window_tasks:
-        parent = task.get("continues_from")
-        if task.get("same_original_task") is not True:
+        if _has_parent(task):
             continue
-        if _has_parent(task) and len(by_id.get(cast(str, parent).strip(), [])) == 1:
-            parent = cast(str, parent).strip()
-            original = by_id[parent][0]
+        original_id = task.get("task_id")
+        original_stratum = classify_task_stratum(task, False)
+        original_is_confirmed = (
+            task.get("original_task_confirmed") is True
+            or task.get("is_continuation") is False
+            or (
+                isinstance(task.get("continues_from"), str)
+                and cast(str, task["continues_from"]).strip().upper() == "NONE"
+            )
+        )
+        if (
+            not isinstance(original_id, str)
+            or not original_id
+            or len(by_id.get(original_id, [])) != 1
+            or task.get("lineage_evidence_conflict") is True
+            or task.get("route_evidence_conflict") is True
+            or task.get("same_original_task") is False
+            or not original_is_confirmed
+            or original_stratum is None
+            or not children_by_parent.get(original_id)
+        ):
+            continue
+
+        chain = [task]
+        seen_ids = {original_id}
+        current = task
+        chain_is_unambiguous = True
+        while True:
+            current_id = current.get("task_id")
+            if not isinstance(current_id, str):
+                chain_is_unambiguous = False
+                break
+            next_tasks = children_by_parent.get(current_id, [])
+            if not next_tasks:
+                break
+            if len(next_tasks) != 1:
+                chain_is_unambiguous = False
+                break
+
+            child = next_tasks[0]
+            child_id = child.get("task_id")
+            child_parent = child.get("continues_from")
             if (
-                original is not task
-                and children.get(parent) == 1
-                and not _has_parent(original)
-                and not children.get(str(task.get("task_id") or ""))
-                and (
-                    original.get("original_task_confirmed") is True
-                    or original.get("is_continuation") is False
-                )
-                and classify_task_stratum(original, False) is not None
-                and classify_task_stratum(original, False) == classify_task_stratum(task, False)
+                not isinstance(child_id, str)
+                or not child_id
+                or len(by_id.get(child_id, [])) != 1
+                or child_id in seen_ids
+                or not isinstance(child_parent, str)
+                or child_parent.strip() != current_id
+                or child.get("same_original_task") is not True
+                or child.get("lineage_evidence_conflict") is True
+                or child.get("route_evidence_conflict") is True
+                or child.get("is_continuation") is False
+                or child.get("original_task_confirmed") is True
+                or classify_task_stratum(child, False) != original_stratum
             ):
-                for field in fields:
-                    later = task.get(field)
-                    earlier = original.get(field)
-                    if isinstance(later, bool):
-                        if earlier is None:
-                            original[field] = later
-                        elif earlier != later:
-                            original[field] = None
-                # These observations are per execution, not necessarily totals
-                # or elapsed times for the whole original task.
-                for field in (
-                    "tokens",
-                    "model_identity",
-                    "model_tier",
-                    "adopted_outcome",
-                    "unproductive_continuation_count",
-                    "owner_intervention_count",
-                    "dispatch_to_acceptance_seconds",
-                    "acceptance_to_adoption_seconds",
-                    "resource_cost_measured",
-                ):
-                    original.pop(field, None)
-                linked.add(id(task))
+                chain_is_unambiguous = False
+                break
+
+            chain.append(child)
+            seen_ids.add(child_id)
+            current = child
+
+        if not chain_is_unambiguous or len(chain) < 2:
+            continue
+
+        # A verified linear chain is one original task. Later explicit terminal
+        # observations supersede earlier snapshots; confirmed regression and
+        # adoption evidence remains true once observed.
+        for field in ("goal_72h_completed", "acceptance_confirmed"):
+            latest = next(
+                (
+                    node[field]
+                    for node in reversed(chain)
+                    if isinstance(node.get(field), bool)
+                ),
+                None,
+            )
+            if isinstance(latest, bool):
+                task[field] = latest
+            else:
+                task.pop(field, None)
+
+        regression_values = [node.get("regression_escape") for node in chain]
+        if any(value is True for value in regression_values):
+            task["regression_escape"] = True
+        elif any(value is False for value in regression_values):
+            task["regression_escape"] = False
+        else:
+            task.pop("regression_escape", None)
+
+        adoption_values = [node.get("adopted_outcome") for node in chain]
+        if any(value is True for value in adoption_values):
+            task["adopted_outcome"] = True
+        elif any(value is False for value in adoption_values):
+            task["adopted_outcome"] = False
+        else:
+            task.pop("adopted_outcome", None)
+
+        # These observations are per execution, not necessarily totals or
+        # elapsed times for the whole original task. Do not double count them.
+        for field in (
+            "tokens",
+            "model_identity",
+            "model_tier",
+            "unproductive_continuation_count",
+            "owner_intervention_count",
+            "dispatch_to_acceptance_seconds",
+            "acceptance_to_adoption_seconds",
+            "resource_cost_measured",
+        ):
+            task.pop(field, None)
+        linked.update(id(node) for node in chain[1:])
 
     # Missing parent evidence, conflicting links, cycles, and branched chains
     # stay visible as unknown instead of being counted as separate successes.

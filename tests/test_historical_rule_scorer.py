@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 import hashlib
-import importlib
-import importlib.util
+import subprocess
 import sys
-from collections.abc import MutableSequence
+import textwrap
 from datetime import date
 from pathlib import Path
 from types import ModuleType
@@ -12,92 +11,22 @@ from typing import Any, ClassVar, cast
 
 import pytest
 
+import lottolab as _LOTTOLAB_PACKAGE
+import lottolab.application.historical_replay_adapters as _ADAPTERS_MODULE
+import lottolab.application.use_cases.replay_backfill as _BACKFILL_MODULE
+import lottolab.domain.era_scorer as _ERA_MODULE
+import lottolab.domain.historical_replay as _REPLAY_MODULE
+import lottolab.domain.prize_evaluation as _PRIZE_MODULE
+from lottolab.domain.draws import LotteryType
+
 TASK_ROOT = Path(__file__).resolve().parents[1]
 CANDIDATE_SRC = TASK_ROOT / "src"
 
-
-class _AdapterPackageModule(ModuleType):
-    __path__: MutableSequence[str]
-
-
-def _extend_candidate_package_paths() -> None:
-    """Use candidate modules first and the host package only for unchanged deps."""
-    package_roots: list[Path] = []
-    for entry in sys.path:
-        root = Path(entry).resolve() / "lottolab"
-        if root.is_dir() and root != (CANDIDATE_SRC / "lottolab").resolve():
-            package_roots.append(root)
-
-    for package_name in (
-        "lottolab",
-        "lottolab.domain",
-        "lottolab.application",
-        "lottolab.application.use_cases",
-        "lottolab.strategies",
-    ):
-        package = importlib.import_module(package_name)
-        package_path = cast(list[str] | None, getattr(package, "__path__", None))
-        if package_path is None:
-            continue
-        relative = package_name.split(".")[1:]
-        for root in package_roots:
-            dependency_path = root.joinpath(*relative)
-            if dependency_path.is_dir() and str(dependency_path) not in package_path:
-                package_path.append(str(dependency_path))
-
-
-import lottolab as _LOTTOLAB_PACKAGE  # noqa: E402
-
-_extend_candidate_package_paths()
-
-
-def _load_candidate_module(module_name: str, relative_path: str) -> ModuleType:
-    parent_name, separator, attribute = module_name.rpartition(".")
-    if not separator:
-        raise AssertionError(f"module has no package parent: {module_name}")
-    parent = importlib.import_module(parent_name)
-    source = CANDIDATE_SRC / relative_path
-    spec = importlib.util.spec_from_file_location(module_name, source)
-    if spec is None or spec.loader is None:
-        raise AssertionError(f"cannot load candidate module: {source}")
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[module_name] = module
-    setattr(parent, attribute, module)
-    spec.loader.exec_module(module)
-    return module
-
-
-# The overlay exists only in this test harness. Product modules use normal package imports.
-_ERA = _load_candidate_module("lottolab.domain.era_scorer", "lottolab/domain/era_scorer.py")
-_PRIZE = _load_candidate_module(
-    "lottolab.domain.prize_evaluation", "lottolab/domain/prize_evaluation.py"
-)
-_REPLAY = _load_candidate_module(
-    "lottolab.domain.historical_replay", "lottolab/domain/historical_replay.py"
-)
-
-if not (CANDIDATE_SRC / "lottolab/strategies/adapters/biglotto_frontend_auto_optimize.py").exists():
-    # The package's production __init__ eagerly imports every adapter. A
-    # partial candidate view needs only the three direct adapter modules below.
-    _adapter_package = _AdapterPackageModule("lottolab.strategies.adapters")
-    _adapter_package.__path__ = [str(CANDIDATE_SRC / "lottolab/strategies/adapters")]
-    _strategy_package = importlib.import_module("lottolab.strategies")
-    for _root in cast(list[str], getattr(_strategy_package, "__path__", ())):
-        _fallback = Path(_root) / "adapters"
-        if _fallback.is_dir() and str(_fallback) not in _adapter_package.__path__:
-            _adapter_package.__path__.append(str(_fallback))
-    sys.modules["lottolab.strategies.adapters"] = _adapter_package
-
-_ADAPTERS = _load_candidate_module(
-    "lottolab.application.historical_replay_adapters",
-    "lottolab/application/historical_replay_adapters.py",
-)
-_BACKFILL = _load_candidate_module(
-    "lottolab.application.use_cases.replay_backfill",
-    "lottolab/application/use_cases/replay_backfill.py",
-)
-
-from lottolab.domain.draws import LotteryType  # noqa: E402
+_ADAPTERS = cast(ModuleType, _ADAPTERS_MODULE)
+_BACKFILL = cast(ModuleType, _BACKFILL_MODULE)
+_ERA = cast(ModuleType, _ERA_MODULE)
+_REPLAY = cast(ModuleType, _REPLAY_MODULE)
+_PRIZE = cast(ModuleType, _PRIZE_MODULE)
 
 WINNING = (1, 2, 3, 4, 5, 6)
 SPECIAL = 7
@@ -445,3 +374,111 @@ def test_saved_rule_o_scorer_stays_within_big_lotto_contract() -> None:
     score = _ERA.score_ticket("103000080", (1, 2, 7, 8, 9, 10), WINNING, SPECIAL)
     assert score["prize_tier"] is None
     assert score["is_winner"] is False
+
+
+def test_test_module_preserves_product_identity_in_both_import_orders() -> None:
+    probe = textwrap.dedent(
+        """
+        import importlib
+        import runpy
+        import sys
+        from pathlib import Path
+
+        test_path = Path(sys.argv[1]).resolve()
+        order = sys.argv[2]
+        candidate_src = test_path.parents[1] / "src"
+        module_names = (
+            "lottolab.domain.historical_replay",
+            "lottolab.application.use_cases.replay_backfill",
+            "lottolab.domain.prize_evaluation",
+            "lottolab.application.historical_replay_adapters",
+            "lottolab.strategies.adapters",
+        )
+        package_names = (
+            "lottolab",
+            "lottolab.domain",
+            "lottolab.application",
+            "lottolab.application.use_cases",
+            "lottolab.strategies",
+            "lottolab.strategies.adapters",
+        )
+
+        def import_products():
+            modules = {name: importlib.import_module(name) for name in module_names}
+            packages = {name: importlib.import_module(name) for name in package_names}
+            return modules, packages
+
+        def load_test_module():
+            return runpy.run_path(str(test_path), run_name="_rule_o_identity_probe")
+
+        if order == "products-first":
+            modules_before, packages_before = import_products()
+            test_module = load_test_module()
+        else:
+            test_module = load_test_module()
+            modules_before, packages_before = import_products()
+
+        classes_before = {
+            ("lottolab.domain.historical_replay", "ReplayDraw"): modules_before[
+                "lottolab.domain.historical_replay"
+            ].ReplayDraw,
+            ("lottolab.domain.historical_replay", "ReplayEvaluation"): modules_before[
+                "lottolab.domain.historical_replay"
+            ].ReplayEvaluation,
+            ("lottolab.domain.historical_replay", "ReplayCellStatus"): modules_before[
+                "lottolab.domain.historical_replay"
+            ].ReplayCellStatus,
+            ("lottolab.application.use_cases.replay_backfill", "ReplayBackfill"):
+                modules_before[
+                    "lottolab.application.use_cases.replay_backfill"
+                ].ReplayBackfill,
+        }
+        package_paths_before = {
+            name: tuple(getattr(package, "__path__", ()))
+            for name, package in packages_before.items()
+        }
+        parent_attributes_before = {
+            ("lottolab.domain", "historical_replay"): packages_before[
+                "lottolab.domain"
+            ].historical_replay,
+            ("lottolab.application.use_cases", "replay_backfill"): packages_before[
+                "lottolab.application.use_cases"
+            ].replay_backfill,
+        }
+
+        modules_after, packages_after = import_products()
+        assert Path(importlib.import_module("lottolab").__file__).resolve().is_relative_to(
+            candidate_src
+        )
+        for name, module in modules_before.items():
+            assert modules_after[name] is module, f"module object changed: {name}"
+        for (module_name, class_name), class_object in classes_before.items():
+            assert getattr(modules_after[module_name], class_name) is class_object, (
+                f"class object changed: {module_name}.{class_name}"
+            )
+        for name, package in packages_before.items():
+            assert packages_after[name] is package, f"package object changed: {name}"
+            package_paths_after = tuple(getattr(packages_after[name], "__path__", ()))
+            assert package_paths_after == package_paths_before[name], (
+                f"package path changed: {name}"
+            )
+            assert all(
+                Path(path).resolve().is_relative_to(candidate_src)
+                for path in package_paths_after
+            ), f"package path escaped candidate source: {name}"
+        for (parent_name, attribute), module in parent_attributes_before.items():
+            assert getattr(packages_after[parent_name], attribute) is module, (
+                f"package attribute changed: {parent_name}.{attribute}"
+            )
+        assert test_module["_REPLAY"] is modules_after["lottolab.domain.historical_replay"]
+        assert test_module["_BACKFILL"] is modules_after[
+            "lottolab.application.use_cases.replay_backfill"
+        ]
+        """
+    )
+    for import_order in ("products-first", "test-first"):
+        subprocess.run(
+            [sys.executable, "-B", "-c", probe, str(Path(__file__).resolve()), import_order],
+            check=True,
+            cwd=TASK_ROOT,
+        )

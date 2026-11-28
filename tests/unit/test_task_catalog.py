@@ -1274,61 +1274,267 @@ def test_auth_incident_and_model_tier_are_not_metric_evidence() -> None:
     assert metrics["MODEL_COST_PER_ACCEPTED_OUTCOME"].unknown_count == 3
 
 
-def test_r5_fixed_classification_does_not_become_historical_baseline() -> None:
-    # This synthetic projection encodes only the named R5 receipt's aggregate facts.
-    # It does not reproduce per-task identities or fill fields the receipt marks UNKNOWN.
-    r5_tasks: list[dict[str, object]] = [
+def test_r5_aggregate_is_not_treated_as_three_task_rows_or_baseline() -> None:
+    # R5 is one aggregate receipt, not three row-level task records. Its summary
+    # values must not be expanded into fabricated task identities or outcomes.
+    r5_aggregate: list[dict[str, object]] = [
         {
-            "task_id": "R5_A",
+            "task_id": "NUMBER2_L4_R5_METRICS_MINIMUM_COHORT_20261125_R1",
             "date_folder": "20261125",
-            "stratum": "S2",
-            "continues_from": "NONE",
-            "first_pass_accepted": True,
-            "task_lifecycle_state": "COMPLETED",
-            "adopted_outcome": False,
-        },
-        {
-            "task_id": "R5_B",
-            "date_folder": "20261125",
-            "stratum": "S2",
-            "continues_from": "NONE",
-            "first_pass_accepted": True,
-            "task_lifecycle_state": "COMPLETED",
-            "adopted_outcome": False,
-        },
-        {
-            "task_id": "R5_C",
-            "date_folder": "20261125",
-            "stratum": "S2",
-            "continues_from": "NONE",
-            "first_pass_accepted": False,
-            "task_lifecycle_state": "COMPLETED",
-            "first_pass_blocked": True,
-            "continuation_count": 1,
-            "adopted_outcome": False,
-        },
+            "cohort_size": 3,
+            "route": {
+                "task_class": "READ_ONLY_COMPLETION_REVIEW",
+                "worker_route": "NOT_APPLICABLE",
+                "judge_mode": "NOT_APPLICABLE",
+            },
+            "metric_summary": {
+                "first_pass_acceptance_rate": {"numerator": 2, "denominator": 3},
+                "local_terminal_completion_rate": {"numerator": 3, "denominator": 3},
+                "formal_adoption_rate": {"numerator": 0, "denominator": 3},
+                "continuation_sample": {"numerator": 1, "denominator": 3},
+            },
+        }
     ]
-    r5_report = compute_workflow_metrics(
+    post_window_report = compute_workflow_metrics(
         Path("/dummy"),
         start_date="2026-11-25",
         end_date="2026-11-25",
         read_folder_receipts=False,
-        tasks_data=r5_tasks,
+        tasks_data=r5_aggregate,
     )
-    r5_metrics = {m.indicator: m for m in r5_report.metrics if m.stratum == "S2"}
     baseline_report = compute_workflow_metrics(
-        Path("/dummy"), read_folder_receipts=False, tasks_data=r5_tasks
+        Path("/dummy"), read_folder_receipts=False, tasks_data=r5_aggregate
     )
 
-    assert r5_metrics["FIRST_PASS_ACCEPTANCE_RATE"].numerator == 2
-    assert r5_metrics["FIRST_PASS_ACCEPTANCE_RATE"].denominator == 3
-    assert r5_metrics["FINAL_GOAL_COMPLETION_RATE"].status == "UNKNOWN"
-    assert r5_metrics["FINAL_GOAL_COMPLETION_RATE"].unknown_count == 3
-    assert r5_metrics["UNPRODUCTIVE_CONTINUATION_COUNT"].status == "UNKNOWN"
-    assert r5_metrics["UNPRODUCTIVE_CONTINUATION_COUNT"].unknown_count == 3
-    assert r5_metrics["MODEL_COST_PER_ACCEPTED_OUTCOME"].status == "UNKNOWN"
-    assert r5_metrics["MODEL_COST_PER_ACCEPTED_OUTCOME"].unknown_count == 3
+    assert post_window_report.total_tasks_evaluated == 1
+    assert post_window_report.unknown_stratum_tasks == 1
+    assert sum(post_window_report.tasks_by_stratum.values()) == 0
     assert baseline_report.total_tasks_evaluated == 0
+
+
+def test_before_attempt_blocked_distinguishes_first_pass_failure_from_unknown(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    project = tmp_path / "project"
+    task_dir = project / ".task-data" / "20261120" / "TASK"
+    task_dir.mkdir(parents=True)
+    monkeypatch.setattr(task_catalog, "canonical_project_root", lambda: project)
+    (task_dir / "packet.md").write_text(
+        "TASK_ID: TASK\nCONTINUES_FROM: NONE\nWORKER_ROUTE: FAST\n",
+        encoding="utf-8",
+    )
+    (task_dir / "result.before_1.json").write_text(
+        json.dumps({"task_id": "TASK", "task_lifecycle_state": "BLOCKED"}),
+        encoding="utf-8",
+    )
+    (task_dir / "result.json").write_text(
+        json.dumps(
+            {
+                "task_id": "TASK",
+                "task_lifecycle_state": "COMPLETED",
+                "goal_72h_completed": True,
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    enriched = task_catalog._enrich_task_data(
+        {"task_id": "TASK", "date_folder": "20261120", "path": str(task_dir)}, True
+    )
+    report = compute_workflow_metrics(
+        Path("/dummy"), read_folder_receipts=True, tasks_data=[enriched]
+    )
+    metrics = {m.indicator: m for m in report.metrics if m.stratum == "S1"}
+
+    assert enriched["first_pass_accepted"] is False
+    assert metrics["FIRST_PASS_ACCEPTANCE_RATE"].numerator == 0
+    assert metrics["FIRST_PASS_ACCEPTANCE_RATE"].denominator == 1
+    assert metrics["FIRST_PASS_ACCEPTANCE_RATE"].unknown_count == 0
+    assert metrics["FINAL_GOAL_COMPLETION_RATE"].numerator == 1
+    assert metrics["FINAL_GOAL_COMPLETION_RATE"].denominator == 1
+
+    conflict_dir = project / ".task-data" / "20261120" / "CONFLICT_TASK"
+    conflict_dir.mkdir(parents=True)
+    (conflict_dir / "packet.md").write_text(
+        "TASK_ID: CONFLICT_TASK\nCONTINUES_FROM: NONE\nWORKER_ROUTE: FAST\n",
+        encoding="utf-8",
+    )
+    (conflict_dir / "result.before_1.json").write_text(
+        json.dumps(
+            {
+                "task_id": "CONFLICT_TASK",
+                "first_pass_accepted": True,
+                "task_lifecycle_state": "BLOCKED",
+            }
+        ),
+        encoding="utf-8",
+    )
+    (conflict_dir / "result.json").write_text(
+        json.dumps({"task_id": "CONFLICT_TASK", "task_lifecycle_state": "COMPLETED"}),
+        encoding="utf-8",
+    )
+    conflict_record = task_catalog._enrich_task_data(
+        {
+            "task_id": "CONFLICT_TASK",
+            "date_folder": "20261120",
+            "path": str(conflict_dir),
+        },
+        True,
+    )
+    conflict_report = compute_workflow_metrics(
+        Path("/dummy"), read_folder_receipts=True, tasks_data=[conflict_record]
+    )
+    conflict_first_pass = next(
+        m
+        for m in conflict_report.metrics
+        if m.stratum == "S1" and m.indicator == "FIRST_PASS_ACCEPTANCE_RATE"
+    )
+    assert "first_pass_accepted" not in conflict_record
+    assert conflict_first_pass.status == "UNKNOWN"
+    assert conflict_first_pass.unknown_count == 1
+
+    missing_identity_dir = project / ".task-data" / "20261120" / "MISSING_IDENTITY"
+    missing_identity_dir.mkdir(parents=True)
+    (missing_identity_dir / "packet.md").write_text(
+        "TASK_ID: MISSING_IDENTITY\nCONTINUES_FROM: NONE\nWORKER_ROUTE: FAST\n",
+        encoding="utf-8",
+    )
+    (missing_identity_dir / "result.before_1.json").write_text(
+        json.dumps({"task_lifecycle_state": "BLOCKED"}), encoding="utf-8"
+    )
+    (missing_identity_dir / "result.json").write_text(
+        json.dumps(
+            {
+                "task_id": "MISSING_IDENTITY",
+                "task_lifecycle_state": "COMPLETED",
+                "first_pass_accepted": True,
+            }
+        ),
+        encoding="utf-8",
+    )
+    missing_identity = task_catalog._enrich_task_data(
+        {
+            "task_id": "MISSING_IDENTITY",
+            "date_folder": "20261120",
+            "path": str(missing_identity_dir),
+        },
+        True,
+    )
+    assert "first_pass_accepted" not in missing_identity
+
+    unreadable_dir = project / ".task-data" / "20261120" / "UNREADABLE"
+    unreadable_dir.mkdir(parents=True)
+    (unreadable_dir / "packet.md").write_text(
+        "TASK_ID: UNREADABLE\nCONTINUES_FROM: NONE\nWORKER_ROUTE: FAST\n",
+        encoding="utf-8",
+    )
+    (unreadable_dir / "result.before_1.json").write_text("{", encoding="utf-8")
+    (unreadable_dir / "result.json").write_text(
+        json.dumps(
+            {
+                "task_id": "UNREADABLE",
+                "task_lifecycle_state": "COMPLETED",
+                "first_pass_accepted": True,
+            }
+        ),
+        encoding="utf-8",
+    )
+    unreadable = task_catalog._enrich_task_data(
+        {"task_id": "UNREADABLE", "date_folder": "20261120", "path": str(unreadable_dir)},
+        True,
+    )
+    assert "first_pass_accepted" not in unreadable
+
+
+def test_legal_multilevel_continuation_chain_counts_one_original_outcome() -> None:
+    tasks: list[dict[str, object]] = [
+        {
+            "task_id": "ORIGINAL",
+            "date_folder": "20261120",
+            "stratum": "S2",
+            "continues_from": "NONE",
+            "is_continuation": False,
+            "first_pass_accepted": False,
+            "task_lifecycle_state": "BLOCKED",
+        },
+        {
+            "task_id": "FOLLOWUP_1",
+            "date_folder": "20261120",
+            "stratum": "S2",
+            "continues_from": "ORIGINAL",
+            "same_original_task": True,
+            "is_continuation": True,
+            "first_pass_accepted": True,
+            "goal_72h_completed": False,
+            "adopted_outcome": False,
+            "tokens": 120,
+            "model_identity": "model-alpha",
+            "route": {"worker_route": "STANDARD", "implementation_depth": "NORMAL"},
+        },
+        {
+            "task_id": "FOLLOWUP_2",
+            "date_folder": "20261120",
+            "stratum": "S2",
+            "continues_from": "FOLLOWUP_1",
+            "same_original_task": True,
+            "is_continuation": True,
+            "first_pass_accepted": True,
+            "goal_72h_completed": True,
+            "acceptance_confirmed": True,
+            "adopted_outcome": True,
+            "tokens": 180,
+            "model_identity": "model-alpha",
+            "route": {"worker_route": "STANDARD", "implementation_depth": "NORMAL"},
+        },
+    ]
+
+    report = compute_workflow_metrics(
+        Path("/dummy"), read_folder_receipts=False, tasks_data=tasks
+    )
+    metrics = {m.indicator: m for m in report.metrics if m.stratum == "S2"}
+
+    assert report.total_tasks_evaluated == 1
+    assert report.tasks_by_stratum["S2"] == 1
+    assert metrics["FIRST_PASS_ACCEPTANCE_RATE"].numerator == 0
+    assert metrics["FIRST_PASS_ACCEPTANCE_RATE"].denominator == 1
+    assert metrics["FINAL_GOAL_COMPLETION_RATE"].numerator == 1
+    assert metrics["FINAL_GOAL_COMPLETION_RATE"].denominator == 1
+    assert metrics["MODEL_COST_PER_ACCEPTED_OUTCOME"].status == "UNKNOWN"
+    assert metrics["MODEL_COST_PER_ACCEPTED_OUTCOME"].numerator is None
+    assert metrics["MODEL_COST_PER_ACCEPTED_OUTCOME"].denominator == 1
+    assert metrics["MODEL_COST_PER_ACCEPTED_OUTCOME"].unknown_count == 1
+
+    conflicted_chain: list[dict[str, object]] = [
+        {
+            "task_id": "CONFLICTED_ROOT",
+            "date_folder": "20261120",
+            "stratum": "S2",
+            "continues_from": "NONE",
+            "is_continuation": False,
+            "lineage_evidence_conflict": True,
+            "goal_72h_completed": False,
+        },
+        {
+            "task_id": "CONFLICTED_FOLLOWUP",
+            "date_folder": "20261120",
+            "stratum": "S2",
+            "continues_from": "CONFLICTED_ROOT",
+            "same_original_task": True,
+            "is_continuation": True,
+            "goal_72h_completed": True,
+        },
+    ]
+    conflicted_report = compute_workflow_metrics(
+        Path("/dummy"), read_folder_receipts=False, tasks_data=conflicted_chain
+    )
+    conflicted_final_goal = next(
+        m
+        for m in conflicted_report.metrics
+        if m.stratum == "S2" and m.indicator == "FINAL_GOAL_COMPLETION_RATE"
+    )
+    assert conflicted_report.tasks_by_stratum["S2"] == 2
+    assert conflicted_final_goal.denominator == 0
+    assert conflicted_final_goal.unknown_count == 2
 
 
 def test_receipt_retry_and_incident_signals_do_not_prove_first_pass_or_regression(

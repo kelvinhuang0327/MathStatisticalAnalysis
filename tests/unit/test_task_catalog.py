@@ -1277,7 +1277,7 @@ def test_auth_incident_and_model_tier_are_not_metric_evidence() -> None:
 def test_r5_aggregate_is_not_treated_as_three_task_rows_or_baseline() -> None:
     # R5 is one aggregate receipt, not three row-level task records. Its summary
     # values must not be expanded into fabricated task identities or outcomes.
-    r5_aggregate = [
+    r5_aggregate: list[dict[str, object]] = [
         {
             "task_id": "NUMBER2_L4_R5_METRICS_MINIMUM_COHORT_20261125_R1",
             "date_folder": "20261125",
@@ -1447,7 +1447,7 @@ def test_before_attempt_blocked_distinguishes_first_pass_failure_from_unknown(
 
 
 def test_legal_multilevel_continuation_chain_counts_one_original_outcome() -> None:
-    tasks = [
+    tasks: list[dict[str, object]] = [
         {
             "task_id": "ORIGINAL",
             "date_folder": "20261120",
@@ -1504,7 +1504,7 @@ def test_legal_multilevel_continuation_chain_counts_one_original_outcome() -> No
     assert metrics["MODEL_COST_PER_ACCEPTED_OUTCOME"].denominator == 1
     assert metrics["MODEL_COST_PER_ACCEPTED_OUTCOME"].unknown_count == 1
 
-    conflicted_chain = [
+    conflicted_chain: list[dict[str, object]] = [
         {
             "task_id": "CONFLICTED_ROOT",
             "date_folder": "20261120",

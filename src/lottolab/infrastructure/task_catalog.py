@@ -1475,7 +1475,7 @@ def _enrich_task_data(t: dict[str, object], read_folder_receipts: bool) -> dict[
                 if isinstance(before_loaded, dict):
                     before_data = cast(dict[str, object], before_loaded)
                     before_task_id = before_data.get("task_id")
-                    if isinstance(task_id, str) and task_id and before_task_id == task_id:
+                    if task_id and before_task_id == task_id:
                         explicit_first_pass = next(
                             (
                                 before_data[key]

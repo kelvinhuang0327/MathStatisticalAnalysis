@@ -22,7 +22,7 @@ from lottolab.domain.historical_replay import (
     ReplayStrategy,
     ReplayTicket,
 )
-from lottolab.domain.prize_evaluation import evaluate_lottery_prize
+from lottolab.domain.prize_evaluation import evaluate_historical_lottery_prize
 from lottolab.strategies.adapters.base import BetAdapterExecution, CausalDrawRow
 from lottolab.strategies.adapters.daily539_portfolio_f4cold import Daily539F4ColdAdapter
 from lottolab.strategies.adapters.powerlotto_wave1 import (
@@ -68,8 +68,9 @@ class _PrizeEvaluatingAdapter:
         ticket: ReplayTicket,
         target: ReplayDraw,
     ) -> ReplayEvaluation:
-        outcome = evaluate_lottery_prize(
+        outcome = evaluate_historical_lottery_prize(
             lottery_type=target.lottery_type,
+            target_draw_id=target.draw_number,
             predicted_main_numbers=ticket.main_numbers,
             predicted_special_number=ticket.special_number,
             winning_main_numbers=target.main_numbers,
@@ -80,6 +81,8 @@ class _PrizeEvaluatingAdapter:
             zone2_hit=outcome.zone2_hit,
             is_winner=outcome.is_winner,
             prize_tier=outcome.prize_tier,
+            historical_rule_id=outcome.historical_rule_id,
+            scorer_version=outcome.scorer_version,
         )
 
 

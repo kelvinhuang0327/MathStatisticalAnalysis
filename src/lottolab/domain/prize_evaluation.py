@@ -14,6 +14,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from enum import StrEnum
 
+from lottolab.domain import era_scorer
 from lottolab.domain.draws import LotteryType
 from lottolab.domain.lottery_rules import (
     BIG_LOTTO_RULE_CONTRACT,
@@ -23,6 +24,15 @@ from lottolab.domain.lottery_rules import (
 )
 
 _SHA256 = re.compile(r"[0-9a-f]{64}", flags=re.ASCII)
+_HISTORICAL_DRAW_ID = re.compile(r"[0-9]+", flags=re.ASCII)
+
+RULE_O_SCORER_SOURCE_SHA256 = "b4fbd21457ad06f6d092fa88e6dd18c353cbbce74afdd6c6a6011b459e9acd64"
+RULE_O_SCORER_CANDIDATE_SHA256 = (
+    "6f130104f52abab982841bbafe77fde08d8e63c79d35b83676a17c4766e202b0"
+)
+HISTORICAL_BIG_LOTTO_SCORER_VERSION = "rule-o-era-scorer-v1"
+HISTORICAL_BIG_LOTTO_RULE_O_ID = "BIG_LOTTO_RULE_O_BEFORE_103000081"
+HISTORICAL_BIG_LOTTO_CURRENT_RULE_ID = "BIG_LOTTO_RULE_CURRENT_FROM_103000081"
 
 
 class PowerLottoPrizeTierId(StrEnum):
@@ -325,9 +335,11 @@ class PrizeEvaluationResult:
     zone2_hit: bool
     prize_rule_version: str
     prize_rule_provenance: str
+    historical_rule_id: str | None = None
+    scorer_version: str | None = None
 
     def canonical_dict(self) -> dict[str, object]:
-        return {
+        payload: dict[str, object] = {
             "is_winner": self.is_winner,
             "lottery_type": self.lottery_type.value,
             "prize_rule_provenance": self.prize_rule_provenance,
@@ -337,6 +349,11 @@ class PrizeEvaluationResult:
             "zone1_hits": self.zone1_hits,
             "zone2_hit": self.zone2_hit,
         }
+        if self.historical_rule_id is not None:
+            payload["historical_rule_id"] = self.historical_rule_id
+        if self.scorer_version is not None:
+            payload["scorer_version"] = self.scorer_version
+        return payload
 
 
 def _validate_zone1_numbers(label: str, numbers: tuple[int, ...]) -> None:
@@ -490,7 +507,7 @@ def evaluate_lottery_prize(
     winning_main_numbers: tuple[int, ...],
     winning_special_number: int | None,
 ) -> PrizeEvaluationResult:
-    """Dispatch to the lottery-specific evaluator; there is no universal hit threshold."""
+    """Evaluate with current committed contracts; historical replay must pass a target ID."""
 
     if lottery_type is LotteryType.BIG_LOTTO:
         return evaluate_big_lotto_ticket(
@@ -514,6 +531,77 @@ def evaluate_lottery_prize(
             winning_main_numbers=winning_main_numbers,
         )
     raise NotImplementedError(f"no prize evaluator is implemented for {lottery_type.value}")
+
+
+def evaluate_historical_lottery_prize(
+    *,
+    lottery_type: LotteryType,
+    target_draw_id: str | int | None,
+    predicted_main_numbers: tuple[int, ...],
+    predicted_special_number: int | None,
+    winning_main_numbers: tuple[int, ...],
+    winning_special_number: int | None,
+) -> PrizeEvaluationResult:
+    """Evaluate a replay ticket using the rule selected by its actual target draw."""
+
+    if type(target_draw_id) is int:
+        issue = str(target_draw_id)
+    elif type(target_draw_id) is str and _HISTORICAL_DRAW_ID.fullmatch(target_draw_id):
+        issue = target_draw_id
+    else:
+        raise ValueError("historical evaluation requires a legal target_draw_id")
+    issue_number = int(issue)
+    if issue_number <= 0:
+        raise ValueError("historical evaluation requires a positive target_draw_id")
+
+    if lottery_type is not LotteryType.BIG_LOTTO:
+        return evaluate_lottery_prize(
+            lottery_type=lottery_type,
+            predicted_main_numbers=predicted_main_numbers,
+            predicted_special_number=predicted_special_number,
+            winning_main_numbers=winning_main_numbers,
+            winning_special_number=winning_special_number,
+        )
+
+    if predicted_special_number is not None:
+        raise ValueError("BIG_LOTTO tickets must not carry a predicted special number")
+    if winning_special_number is None:
+        raise ValueError("BIG_LOTTO evaluation requires a winning special number")
+
+    scored = era_scorer.score_ticket(
+        issue,
+        predicted_main_numbers,
+        winning_main_numbers,
+        winning_special_number,
+    )
+    prize_rule = BIG_LOTTO_RULE_CONTRACT.prize_rule
+    assert prize_rule is not None
+    legal_tiers = {tier.tier_id.value for tier in prize_rule.tiers}
+    tier = scored["prize_tier"]
+    if tier is not None and tier not in legal_tiers:
+        raise ValueError("Rule-O scorer returned a tier outside the committed Big Lotto contract")
+
+    rule_id = (
+        HISTORICAL_BIG_LOTTO_RULE_O_ID
+        if issue_number < era_scorer.BOUNDARY
+        else HISTORICAL_BIG_LOTTO_CURRENT_RULE_ID
+    )
+    return PrizeEvaluationResult(
+        lottery_type=LotteryType.BIG_LOTTO,
+        is_winner=scored["is_winner"],
+        prize_tier=tier,
+        prize_tier_order=None,
+        zone1_hits=scored["zone1_hits"],
+        zone2_hit=scored["zone2_hit"],
+        prize_rule_version=prize_rule.schema_version,
+        prize_rule_provenance=(
+            f"{prize_rule.source_locator} (sha256={prize_rule.source_sha256}); "
+            f"reused Rule-O input sha256={RULE_O_SCORER_SOURCE_SHA256}; "
+            f"integrated module sha256={RULE_O_SCORER_CANDIDATE_SHA256}"
+        ),
+        historical_rule_id=rule_id,
+        scorer_version=HISTORICAL_BIG_LOTTO_SCORER_VERSION,
+    )
 
 
 @dataclass(frozen=True, slots=True)

@@ -13,12 +13,14 @@ from collections.abc import Callable, Iterator
 from dataclasses import asdict, dataclass, replace
 from datetime import date
 from itertools import pairwise
-from typing import Any, Protocol
+from typing import Any, Protocol, cast
 
 from lottolab.application.use_cases.historical_replay_controller import (
     HistoricalReplayAdapter,
     HistoricalReplayController,
 )
+from lottolab.domain import era_scorer
+from lottolab.domain.draws import LotteryType
 from lottolab.domain.historical_replay import (
     HistoricalReplayMode,
     HistoricalReplayRequest,
@@ -31,6 +33,11 @@ from lottolab.domain.historical_replay import (
     ReplayTicket,
     SourceHistoryProvenanceStatus,
     parse_source_history_provenance_status,
+)
+from lottolab.domain.prize_evaluation import (
+    HISTORICAL_BIG_LOTTO_CURRENT_RULE_ID,
+    HISTORICAL_BIG_LOTTO_RULE_O_ID,
+    HISTORICAL_BIG_LOTTO_SCORER_VERSION,
 )
 
 ENGINE_VERSION = "replay-backfill-v1"
@@ -47,6 +54,76 @@ def _json_default(value: object) -> str:
     if isinstance(value, date):
         return value.isoformat()
     raise TypeError(f"not JSON serializable: {type(value).__name__}")
+
+
+def _evaluation_payload(evaluation: ReplayEvaluation) -> JsonObject:
+    """Keep legacy payload shape unless an evaluation has explicit rule identity."""
+    payload = asdict(evaluation)
+    if evaluation.historical_rule_id is None:
+        payload.pop("historical_rule_id", None)
+    if evaluation.scorer_version is None:
+        payload.pop("scorer_version", None)
+    return payload
+
+
+def _require_compatible_historical_scoring_identity(
+    lottery_type: LotteryType,
+    target_draw_id: str,
+    previous: JsonObject,
+) -> None:
+    """Reject a COMPLETE Big Lotto result that lacks this scorer's identity."""
+    if lottery_type is not LotteryType.BIG_LOTTO:
+        return
+    expected_rule_id = (
+        HISTORICAL_BIG_LOTTO_RULE_O_ID
+        if int(target_draw_id) < era_scorer.BOUNDARY
+        else HISTORICAL_BIG_LOTTO_CURRENT_RULE_ID
+    )
+    details: object = previous.get("hit_details")
+    detail_list = cast(list[object], details) if isinstance(details, list) else None
+    compatible = (
+        detail_list is not None
+        and bool(detail_list)
+        and all(
+            _has_compatible_historical_scoring_identity(detail, expected_rule_id)
+            for detail in detail_list
+        )
+    )
+    if not compatible:
+        observed: list[tuple[object, object] | None] | None = None
+        if detail_list is not None:
+            observed = []
+            for detail in detail_list:
+                if isinstance(detail, dict):
+                    detail_values = cast(dict[str, object], detail)
+                    observed.append(
+                        (
+                            detail_values.get("historical_rule_id"),
+                            detail_values.get("scorer_version"),
+                        )
+                    )
+                else:
+                    observed.append(None)
+        raise ValueError(
+            "CONFLICT: COMPLETE BIG_LOTTO result has missing or incompatible historical "
+            f"scoring identity for target_draw_id={target_draw_id!r}; "
+            f"expected rule_id={expected_rule_id!r}, "
+            f"scorer_version={HISTORICAL_BIG_LOTTO_SCORER_VERSION!r}; "
+            f"observed={observed!r}; refusing unsafe reuse"
+        )
+
+
+def _has_compatible_historical_scoring_identity(
+    detail: object,
+    expected_rule_id: str,
+) -> bool:
+    if not isinstance(detail, dict):
+        return False
+    detail_values = cast(dict[str, object], detail)
+    return (
+        detail_values.get("historical_rule_id") == expected_rule_id
+        and detail_values.get("scorer_version") == HISTORICAL_BIG_LOTTO_SCORER_VERSION
+    )
 
 
 def identity(value: object) -> str:
@@ -311,6 +388,9 @@ class ReplayBackfill:
                         f"expected_native_ticket_count={expected_k!r}; "
                         "refusing unsafe reuse of existing cell"
                     )
+                _require_compatible_historical_scoring_identity(
+                    self.lottery_type, target_draw_id, previous
+                )
 
         # The cross-version guard runs before prepare, because prepare writes a
         # run manifest and target inventory even when no prediction is saved.
@@ -440,11 +520,11 @@ class ReplayBackfill:
         source = self.sources.get(record.strategy.strategy_id, {})
         if record.status.value == "COMPLETE":
             hit_details = [
-                {"ticket_position": ticket.ticket_position, **asdict(evaluation)}
+                {"ticket_position": ticket.ticket_position, **_evaluation_payload(evaluation)}
                 for ticket, evaluation in zip(record.tickets, record.evaluations, strict=True)
             ]
         else:
-            hit_details = [asdict(evaluation) for evaluation in record.evaluations]
+            hit_details = [_evaluation_payload(evaluation) for evaluation in record.evaluations]
         payload: JsonObject = {
             "cell_identity": cell_identity,
             "engine_version": ENGINE_VERSION,

@@ -166,6 +166,8 @@ class ReplayEvaluation:
     zone2_hit: bool
     is_winner: bool
     prize_tier: str | None
+    historical_rule_id: str | None = None
+    scorer_version: str | None = None
 
     def __post_init__(self) -> None:
         if type(self.zone1_hits) is not int or self.zone1_hits < 0:
@@ -174,6 +176,14 @@ class ReplayEvaluation:
             raise ValueError("zone2_hit and is_winner must be booleans")
         if self.prize_tier is not None and type(self.prize_tier) is not str:
             raise ValueError("prize_tier must be a string or None")
+        if self.historical_rule_id is not None and (
+            type(self.historical_rule_id) is not str or not self.historical_rule_id.strip()
+        ):
+            raise ValueError("historical_rule_id must be a non-empty string or None")
+        if self.scorer_version is not None and (
+            type(self.scorer_version) is not str or not self.scorer_version.strip()
+        ):
+            raise ValueError("scorer_version must be a non-empty string or None")
 
 
 @dataclass(frozen=True, slots=True)

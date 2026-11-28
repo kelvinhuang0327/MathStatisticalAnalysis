@@ -54,6 +54,7 @@ def _inventory_item(
         lifecycle_status=ReplayLifecycleStatus.ONLINE,
         replay_data_status=ReplayDataStatus.HAS_HISTORY,
         execution_capability=ReplayExecutionCapability.EXECUTABLE,
+        native_ticket_count=None,
         reconstructable=True,
         wrapper_callable=True,
         backfill_native_binding=True,

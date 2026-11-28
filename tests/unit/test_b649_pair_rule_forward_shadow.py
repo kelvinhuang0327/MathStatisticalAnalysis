@@ -8,7 +8,7 @@ import sqlite3
 from collections.abc import Generator
 from contextlib import contextmanager
 from dataclasses import replace
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 import tools.b649_operational_prediction_loop as history_module
@@ -20,8 +20,10 @@ from tools.b649_operational_prediction_loop import (
     PredictionTarget,
 )
 
+from lottolab.domain.draws import LotteryType
 from lottolab.infrastructure import pre_outcome_target_operational as history_authority_module
-from lottolab.infrastructure.persistence.draw_schema import LocalDataPaths
+from lottolab.infrastructure.imports.csv_draws import normalized_draw_record_hash
+from lottolab.infrastructure.persistence.draw_schema import CURRENT_SCHEMA_VERSION, LocalDataPaths
 
 NOW = datetime(2099, 1, 2, 10, 0, tzinfo=UTC)
 SCHEDULED = datetime(2099, 1, 2, 12, 30, tzinfo=UTC)
@@ -103,24 +105,28 @@ def _target_086() -> PredictionTarget:
 
 
 def _canonical_history(
-    cutoff: str, monkeypatch: MonkeyPatch, *, first_digest: str = "a" * 64
+    cutoff: str, monkeypatch: MonkeyPatch, *, revised_first_result: bool = False
 ) -> HistorySnapshot:
     # Exercise the real authority hash and loader SQL against an in-memory database.
     # Only filesystem/schema access is replaced; no operational database is opened.
-    connection = sqlite3.connect(":memory:")
+    connection = sqlite3.connect(":memory:", isolation_level=None)
+    connection.execute("CREATE TABLE schema_migrations(version INTEGER)")
+    connection.execute("INSERT INTO schema_migrations VALUES (?)", (CURRENT_SCHEMA_VERSION,))
     connection.execute(
         "CREATE TABLE draws (id INTEGER PRIMARY KEY, lottery_type TEXT, draw_number TEXT, "
-        "draw_date TEXT, main_numbers_json TEXT, normalized_record_hash TEXT)"
+        "draw_date TEXT, main_numbers_json TEXT, special_numbers_json TEXT, "
+        "normalized_record_hash TEXT)"
     )
-    for number, day, digest in (
-        ("115000083", "2026-08-28", first_digest),
-        ("115000084", "2026-09-01", "b" * 64),
-        ("115000085", "2026-09-04", "c" * 64),
+    for number, day, special in (
+        ("115000083", "2026-08-28", 8 if revised_first_result else 7),
+        ("115000084", "2026-09-01", 7),
+        ("115000085", "2026-09-04", 7),
     ):
         if number <= cutoff:
+            digest = _history_digest(number, day, special)
             connection.execute(
-                "INSERT INTO draws VALUES (NULL, ?, ?, ?, ?, ?)",
-                (LOTTERY_TYPE, number, day, "[1,2,3,4,5,6]", digest),
+                "INSERT INTO draws VALUES (NULL, ?, ?, ?, ?, ?, ?)",
+                (LOTTERY_TYPE, number, day, "[1,2,3,4,5,6]", json.dumps([special]), digest),
             )
 
     @contextmanager
@@ -131,16 +137,9 @@ def _canonical_history(
         assert read_only is True
         yield connection
 
-    def require_memory_database(paths: LocalDataPaths) -> None:
-        del paths
-
     try:
         with monkeypatch.context() as patch:
-            patch.setattr(history_module, "open_database", open_history)
             patch.setattr(history_authority_module, "open_database", open_history)
-            patch.setattr(
-                history_authority_module, "_require_current_database", require_memory_database
-            )
             target = _target_086()
             return history_module.load_canonical_history(
                 Path("unused-in-memory.db"),
@@ -149,6 +148,16 @@ def _canonical_history(
             )
     finally:
         connection.close()
+
+
+def _history_digest(number: str, day: str, special: int = 7) -> str:
+    return normalized_draw_record_hash(
+        lottery_type=LotteryType.BIG_LOTTO,
+        draw_number=number,
+        draw_date_value=date.fromisoformat(day),
+        main_numbers=(1, 2, 3, 4, 5, 6),
+        special_numbers=(special,),
+    )
 
 
 def test_existing_086_records_survive_canonical_history_advancement(
@@ -160,8 +169,14 @@ def test_existing_086_records_survive_canonical_history_advancement(
     observed = datetime(2026, 9, 3, tzinfo=UTC)
     original = _canonical_history("115000084", monkeypatch)
     advanced = _canonical_history("115000085", monkeypatch)
-    assert original.normalized_record_hashes == ("a" * 64, "b" * 64)
-    assert advanced.normalized_record_hashes == (*original.normalized_record_hashes, "c" * 64)
+    assert original.normalized_record_hashes == (
+        _history_digest("115000083", "2026-08-28"),
+        _history_digest("115000084", "2026-09-01"),
+    )
+    assert advanced.normalized_record_hashes == (
+        *original.normalized_record_hashes,
+        _history_digest("115000085", "2026-09-04"),
+    )
     assert original.history_sha256 != advanced.history_sha256
     first = shadow.run_pre_draw(target, original, observed_at=observed)
     assert first["status"] == "PREDRAW_COMPLETE"
@@ -337,9 +352,11 @@ def test_reentry_requires_external_issuance_history_proof(
     if change == "missing":
         advanced = replace(advanced, normalized_record_hashes=())
     elif change == "changed_prefix":
-        advanced = replace(advanced, normalized_record_hashes=("0" * 64, "b" * 64, "c" * 64))
+        advanced = replace(
+            advanced, normalized_record_hashes=("0" * 64, *advanced.normalized_record_hashes[1:])
+        )
     elif change == "revised_prefix":
-        advanced = _canonical_history("115000085", monkeypatch, first_digest="0" * 64)
+        advanced = _canonical_history("115000085", monkeypatch, revised_first_result=True)
     elif change == "truncated":
         advanced = replace(
             advanced,

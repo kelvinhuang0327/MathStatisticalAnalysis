@@ -5,52 +5,9 @@ import {
   B649NativeForecastRequestError,
   fetchB649NativeForecast,
   type B649NativeForecastResponse,
+  type NativeCandidate,
+  type NativeMetric,
 } from '../../api/b649NativeForecast'
-
-type NativeMetric = {
-  numerator?: number | null
-  denominator?: number | null
-} | null
-
-type NativeCoverage = {
-  requested?: number
-  counts?: Record<string, unknown>
-}
-
-type NativeCandidate = {
-  strategy_id: string
-  strategy_version: string
-  native_k: number
-  status?: string
-  metric?: NativeMetric
-  coverage?: NativeCoverage
-}
-
-type NativeSelection = {
-  strategy_id: string
-  strategy_version: string
-  response_shape?: string
-  metric?: NativeMetric
-}
-
-type NativeBucket = {
-  native_k: number
-  status: string
-  selected: NativeSelection | null
-  tickets: number[][]
-  candidates: NativeCandidate[]
-}
-
-type NativePayloadView = {
-  fixture_only: boolean
-  identity: {
-    history_cutoff: string
-  }
-  history: {
-    last_draw_date: string
-  }
-  buckets: NativeBucket[]
-}
 
 const targetDrawNumber = ref('')
 const targetDrawDate = ref('')
@@ -61,14 +18,20 @@ const errorMessage = ref<string | null>(null)
 let requestController: AbortController | null = null
 let requestSequence = 0
 
-const nativePayload = computed<NativePayloadView | null>(() => {
-  if (!forecast.value) return null
-  return forecast.value.payload as unknown as NativePayloadView
-})
+const nativePayload = computed(() => forecast.value?.payload ?? null)
 
 const k5Bucket = computed(
   () => nativePayload.value?.buckets.find((bucket) => bucket.native_k === 5) ?? null,
 )
+
+const nativeStrategyTotals = computed(() => {
+  const strategies = nativePayload.value?.native_strategies
+  if (!strategies) return null
+  return {
+    strategies: strategies.length,
+    tickets: strategies.reduce((total, strategy) => total + strategy.native_positions.length, 0),
+  }
+})
 
 function isCalendarDate(value: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
@@ -114,6 +77,7 @@ async function loadNativeForecast(): Promise<void> {
 }
 
 function metricText(metric: NativeMetric | undefined): string {
+  if (metric === undefined) return '未提供'
   const numerator = metric?.numerator
   const denominator = metric?.denominator
   if (
@@ -238,7 +202,7 @@ onBeforeUnmount(() => {
           </div>
           <div>
             <dt>歷史資料 cutoff 日期</dt>
-            <dd>{{ nativePayload.history.last_draw_date }}</dd>
+            <dd data-testid="native-history-cutoff-date">{{ nativePayload.history.last_draw_date ?? '未提供' }}</dd>
           </div>
           <div>
             <dt>原始生成開始時間</dt>
@@ -296,8 +260,10 @@ onBeforeUnmount(() => {
 
       <section class="b649-native-forecast__panel" aria-labelledby="native-strategy-title">
         <h3 id="native-strategy-title">K5 原生策略明細</h3>
-        <p>此清單只呈現 K5 bucket 實際回傳的策略身份、歷史成功率與狀態；不從候選策略推造獨立票券。</p>
-        <p data-testid="native-strategy-count">API 實際回傳 {{ k5Bucket.candidates.length }} 筆原生策略明細。</p>
+        <p v-if="nativeStrategyTotals" data-testid="native-position-totals">
+          原生產票共 {{ nativeStrategyTotals.strategies }} 組策略、{{ nativeStrategyTotals.tickets }} 注。
+        </p>
+        <p data-testid="native-strategy-count">K5 主 Bucket 回傳 {{ k5Bucket.candidates.length }} 筆候選策略明細。</p>
         <ul v-if="k5Bucket.candidates.length" class="b649-native-forecast__candidate-list">
           <li v-for="candidate in k5Bucket.candidates" :key="candidate.strategy_id + ':' + candidate.strategy_version" data-testid="native-strategy-candidate">
             <h4><code>{{ candidate.strategy_id }}</code></h4>

@@ -56,6 +56,9 @@ from lottolab.domain.research_live_forecast import (
     utc_text,
 )
 from lottolab.infrastructure.b649_next_undrawn_forecast import source_producer_fingerprint
+from lottolab.infrastructure.b649_v6_native_input_adapter_candidate import (
+    adapt_native_input,
+)
 from lottolab.infrastructure.persistence.draw_schema import LocalDataPaths
 from lottolab.infrastructure.persistence.draw_schema import open_database as open_draw_database
 from lottolab.infrastructure.persistence.future_draw_identity_repository import (
@@ -607,6 +610,134 @@ class B649LiveForecastService:
             clock=self.clock,
         )
 
+    def commit_native_input(
+        self,
+        native_result: Mapping[str, object],
+        provenance: Mapping[str, object] | None,
+    ) -> LiveForecastResult:
+        """Map complete native input through adapt_native_input, gate, and commit to research."""
+        forecast = _bind_native_input_to_store(adapt_native_input(native_result, provenance))
+        previous = self.repository.find_live_request(forecast.request_id, forecast.request_sha256)
+        if previous is not None:
+            return previous
+        record = self._schedule()
+        self._gate(record)
+        target = forecast.target
+        target_draw_number = str(target["target_draw_number"])
+        target_draw_date = str(target["target_draw_date"])
+        if (
+            str(record.announcement.target.draw_number) != target_draw_number
+            or record.announcement.target.draw_date.isoformat() != target_draw_date
+            or _schedule_binding(record) != target.get("schedule_authority_sha256")
+        ):
+            raise ForecastTimingError("CANONICAL_TARGET_OR_SCHEDULE_CHANGED")
+        gen_start = datetime.fromisoformat(str(forecast.original["generation_started_at"]))
+        gen_finish = datetime.fromisoformat(str(forecast.original["generation_finished_at"]))
+        if gen_start.tzinfo is None:
+            gen_start = gen_start.replace(tzinfo=UTC)
+        if gen_finish.tzinfo is None:
+            gen_finish = gen_finish.replace(tzinfo=UTC)
+        scheduled_at = record.announcement.scheduled_at
+        if scheduled_at.tzinfo is None:
+            scheduled_at = scheduled_at.replace(tzinfo=UTC)
+        if gen_start >= scheduled_at or gen_finish >= scheduled_at:
+            raise ForecastTimingError("OUTCOME_PRESENT_OR_DEADLINE_REACHED")
+        scope = (
+            "BIG_LOTTO",
+            target_draw_number,
+            target_draw_date,
+            NATIVE_STREAM,
+            NATIVE_STREAM_VERSION,
+        )
+        expected_version = self.repository.live_current_version(scope)
+        return self.repository.commit_live_forecast(
+            forecast,
+            expected_current_version=expected_version,
+            current_eligible=lambda: self._gate(record),
+            clock=self.clock,
+        )
+
+    adapt_and_commit_native_input = commit_native_input
+    repredict_native_input = commit_native_input
+
+
+def _bind_native_input_to_store(forecast: LiveForecastInput) -> LiveForecastInput:
+    """Shape adapter output to the v6 store contract without altering ticket content.
+
+    The store requires exactly one lineage/payload bucket per K in (1,2,3,5,10,20),
+    RNG invocation identity equal to request_id, and an executed selector on every
+    bucket. Missing K buckets are explicit UNAVAILABLE rows with no tickets. When
+    several strategies share a K, the source-rank-first strategy is the bucket row;
+    all strategies and all native positions remain in payload native_strategies.
+    """
+
+    required_ks = (1, 2, 3, 5, 10, 20)
+    payload = cast(dict[str, object], json.loads(forecast.payload_bytes))
+    original = dict(forecast.original)
+    lineage = cast(dict[str, object], json.loads(str(original["ticket_lineage_json"])))
+    evidence_sha = cast(dict[str, object], json.loads(str(original["ranking_evidence_json"])))[
+        "evidence_payload_sha256"
+    ]
+    lineage_rows = cast(list[dict[str, object]], lineage["buckets"])
+    payload_rows = cast(list[dict[str, object]], payload["buckets"])
+    by_k: dict[int, tuple[dict[str, object], dict[str, object]]] = {}
+    for lrow, prow in zip(lineage_rows, payload_rows, strict=True):
+        by_k.setdefault(cast(int, lrow["native_k"]), (lrow, prow))
+    new_lineage: list[dict[str, object]] = []
+    new_payload: list[dict[str, object]] = []
+    for k in required_ks:
+        if k in by_k:
+            lrow, prow = dict(by_k[k][0]), by_k[k][1]
+            lrow["selector_status"] = "EXECUTED"
+        else:
+            status = "UNAVAILABLE_NO_CANONICAL_NATIVE_STRATEGY"
+            lrow = {
+                "native_k": k,
+                "status": status,
+                "tickets": [],
+                "selected_strategy": None,
+                "selector_status": "EXECUTED",
+                "selection_rule": NATIVE_STREAM_VERSION,
+                "tie_break": "strategy_id ASCENDING",
+                "candidate_binding_sha256": digest([]),
+                "evidence_payload_sha256": evidence_sha,
+                "constructor_status": "NOT_EXECUTED",
+            }
+            prow = {
+                "bucket": f"K{k}",
+                "native_k": k,
+                "status": status,
+                "selected": None,
+                "tickets": [],
+                "display_tie_break": "strategy_id ASCENDING",
+                "candidates": [],
+            }
+        new_lineage.append(lrow)
+        new_payload.append(prow)
+    payload["buckets"] = new_payload
+    payload_bytes = canonical_json(payload).encode("utf-8")
+    rng = cast(dict[str, object], json.loads(str(original["rng_semantics_json"])))
+    for stage in cast(list[dict[str, object]], rng["stages"]):
+        stage["invocation_identity"] = forecast.request_id
+    original["rng_semantics_json"] = canonical_json(rng)
+    original["ticket_lineage_json"] = canonical_json(
+        {"buckets": new_lineage, "upstream_payload_sha256": sha256(payload_bytes)}
+    )
+    bound = LiveForecastInput(
+        request_id=forecast.request_id,
+        request_sha256=forecast.request_sha256,
+        provenance_class=forecast.provenance_class,
+        forecast_stream_id=forecast.forecast_stream_id,
+        forecast_stream_version=forecast.forecast_stream_version,
+        target_json=forecast.target_json,
+        payload_bytes=payload_bytes,
+        source_locator=forecast.source_locator,
+        original_execution_json=canonical_json(original),
+        missing_provenance_json=forecast.missing_provenance_json,
+    )
+    bound.validate()
+    return bound
+
 
 def run_native_current_forecast(
     service: B649LiveForecastService,
@@ -637,3 +768,13 @@ def run_native_current_forecast(
         observations=observations,
         seeds=seeds,
     )
+
+
+def run_native_input_forecast(
+    service: B649LiveForecastService,
+    native_result: Mapping[str, object],
+    provenance: Mapping[str, object] | None,
+) -> LiveForecastResult:
+    """Compose native prediction input through the service into research persistence."""
+
+    return service.commit_native_input(native_result, provenance)

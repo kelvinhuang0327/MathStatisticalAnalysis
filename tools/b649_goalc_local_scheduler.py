@@ -15,6 +15,7 @@ import json
 import os
 import plistlib
 import re
+import sqlite3
 import ssl
 import stat
 import subprocess
@@ -25,7 +26,7 @@ from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from inspect import signature
 from pathlib import Path
-from typing import Protocol, cast
+from typing import ClassVar, Protocol, cast
 from urllib.error import URLError  # noqa: F401  # pyright: ignore[reportUnusedImport]
 from urllib.request import Request
 from uuid import uuid4
@@ -97,6 +98,11 @@ from lottolab.infrastructure.pre_outcome_target_operational import (
     SCHEDULE_TIMEZONE,
     FileSystemOperationalTargetAnnouncementSource,
     TargetAnnouncementSourceStatus,
+)
+from lottolab.infrastructure.schedule_authority_mapper_candidate import (
+    ScheduleAuthorityMappingError,
+    map_official_schedule,
+    validate_official_schedule_binding,
 )
 from lottolab.infrastructure.taiwan_lottery_draw_provider import (
     MAX_RESPONSE_BYTES as OFFICIAL_DRAW_MAX_RESPONSE_BYTES,
@@ -471,6 +477,338 @@ class ForecastBackend(Protocol):
         target: PredictionTarget,
         inventory: PredictionInventory,
     ) -> CanonicalForecastMaterializationResult: ...
+
+
+class NativeV6CommitService(Protocol):
+    """The validated service surface used by the opt-in Native v6 caller."""
+
+    repository: object
+
+    def commit_native_input(
+        self,
+        native_result: Mapping[str, object],
+        provenance: Mapping[str, object] | None,
+    ) -> object: ...
+
+
+class NativeV6CandidateRejected(ValueError):
+    """Evidence, timing, or isolation rejection for the synthetic v6 candidate."""
+
+
+@dataclass(frozen=True, slots=True)
+class NativeV6CandidateInputs:
+    """Named synthetic inputs and task-local output destination for Native v6."""
+
+    canonical_repository: Path
+    evidence_root: Path
+    schedule_binding_path: Path
+    ranking_evidence_path: Path
+    rank_history_path: Path
+    history_database_path: Path
+    output_directory: Path
+    task_id: str
+
+
+class NativeV6CandidateCaller:
+    """Run the pinned Producer, Adapter, and v6 Service for one future target.
+
+    Supplying this callable to ``run_scheduler_cycle`` is the explicit opt-in.
+    All evidence, generated files, and the Store database must remain below the
+    supplied task-local ``evidence_root``.
+    """
+
+    PINNED_DEPENDENCIES: ClassVar[dict[str, str]] = {
+        "tools/b649_k235_predict.py": (
+            "ec1ae4c35d87725fbbb9098728ccfe9175577abaaa6bf6322b4d6d22c0a6494f"
+        ),
+        "src/lottolab/infrastructure/pre_outcome_target_operational.py": (
+            "35dbe547862c6b5779afa6e3e9208d4a414857745c0ab689134a618577e54e82"
+        ),
+        "src/lottolab/infrastructure/b649_v6_native_input_adapter_candidate.py": (
+            "14750c16c1f46c69e719a975909af4bcc8a7caee23634a3a0377d40610e86893"
+        ),
+        "src/lottolab/infrastructure/b649_live_forecast.py": (
+            "b2176d99918d065729a5141cb554353f925b378cda077a1d7fd8f8f537edd1c4"
+        ),
+    }
+
+    def __init__(
+        self,
+        inputs: NativeV6CandidateInputs,
+        service: NativeV6CommitService,
+    ) -> None:
+        self._inputs = inputs
+        self._service = service
+        self._root = inputs.evidence_root.resolve(strict=True)
+        if not callable(getattr(service, "commit_native_input", None)):
+            raise NativeV6CandidateRejected("validated Native v6 service is required")
+        repository = getattr(service, "repository", None)
+        paths = getattr(repository, "paths", None)
+        database_path = getattr(paths, "database", None)
+        if not isinstance(database_path, Path):
+            raise NativeV6CandidateRejected("service repository database path is unavailable")
+        self._database_path = self._require_task_local(database_path, "service database")
+        self._validate_inputs_exist()
+
+    def __call__(self, target: PredictionTarget, observed_at: datetime) -> dict[str, object]:
+        observed_utc = _as_utc(observed_at)
+        scheduled_at = _target_scheduled_at(target)
+        if observed_utc >= scheduled_at:
+            raise NativeV6CandidateRejected("target deadline has passed")
+        if target.lottery_type != LOTTERY_TYPE:
+            raise NativeV6CandidateRejected("only the B649 target is supported")
+
+        self._verify_pinned_dependencies()
+        schedule = self._read_object(self._inputs.schedule_binding_path, "schedule evidence")
+        self._validate_schedule_binding(schedule, target, scheduled_at)
+        ranking = self._read_object(self._inputs.ranking_evidence_path, "ranking evidence")
+        cutoff_draw = self._validate_ranking_cutoff(ranking, target)
+        current_version = self._current_version(target)
+        if current_version > 0:
+            return {
+                "status": "ALREADY_COMMITTED",
+                "version": current_version,
+                "producer_invoked": False,
+            }
+
+        producer_path = self._inputs.canonical_repository / "tools/b649_k235_predict.py"
+        self._inputs.output_directory.mkdir(parents=True, exist_ok=True)
+        output_path = (
+            self._inputs.output_directory / f"v6_native_prediction_{target.draw_number}.json"
+        )
+        argv = [
+            sys.executable,
+            "-B",
+            str(producer_path),
+            "--db-path",
+            str(self._inputs.history_database_path),
+            "--rank-history-path",
+            str(self._inputs.rank_history_path),
+            "--cutoff-draw",
+            cutoff_draw,
+            "--target-draw",
+            target.draw_number,
+            "--output-dir",
+            str(self._inputs.output_directory),
+            "--overwrite",
+            "--emit-v6-provenance",
+            "--schedule-binding-json",
+            str(self._inputs.schedule_binding_path),
+            "--ranking-evidence-json",
+            str(self._inputs.ranking_evidence_path),
+            "--task-id",
+            self._inputs.task_id,
+            "--pre-draw-proof-status",
+            "LOCAL_ONLY",
+        ]
+        completed = subprocess.run(
+            argv,
+            cwd=self._inputs.canonical_repository,
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        if completed.returncode != 0:
+            raise NativeV6CandidateRejected(
+                f"Native Producer exited with status {completed.returncode}"
+            )
+        output = self._read_object(output_path, "Producer output")
+        native_result = output.get("native_result")
+        provenance = output.get("provenance")
+        if not isinstance(native_result, dict) or not isinstance(provenance, dict):
+            raise NativeV6CandidateRejected("Producer output is missing native v6 provenance")
+        target_binding = provenance.get("target")
+        strategies = native_result.get("strategies")
+        if not isinstance(target_binding, dict) or not isinstance(strategies, list):
+            raise NativeV6CandidateRejected("Producer output has an invalid target or portfolio")
+        producer_scheduled_at = _parse_aware_datetime(
+            str(target_binding.get("scheduled_at")), "Producer scheduled_at"
+        )
+        if (
+            target_binding.get("target_draw_number") != target.draw_number
+            or target_binding.get("target_draw_date") != target.draw_date
+            or target_binding.get("data_cutoff") != cutoff_draw
+            or producer_scheduled_at != scheduled_at
+        ):
+            raise NativeV6CandidateRejected(
+                "Producer output does not match Scheduler target evidence"
+            )
+        if (
+            native_result.get("target_rows_selected") is not False
+            or native_result.get("strategy_count_generated") != 3
+            or native_result.get("ticket_count_generated") != 15
+            or len(strategies) != 3
+            or sum(len(row.get("tickets", [])) for row in strategies if isinstance(row, dict)) != 15
+        ):
+            raise NativeV6CandidateRejected(
+                "Producer output is not the required 3-strategy, 15-ticket K5 portfolio"
+            )
+
+        self._service.commit_native_input(native_result, provenance)
+        committed_version = self._current_version(target)
+        if committed_version < 1:
+            raise NativeV6CandidateRejected(
+                "Service returned without a readable v6 current pointer"
+            )
+        return {
+            "status": "COMMITTED",
+            "version": committed_version,
+            "producer_invoked": True,
+            "strategy_count": len(strategies),
+            "ticket_count": 15,
+            "output_path": str(output_path),
+        }
+
+    def _require_task_local(self, path: Path, label: str) -> Path:
+        resolved = path.resolve(strict=False)
+        if not resolved.is_relative_to(self._root):
+            raise NativeV6CandidateRejected(f"{label} must be inside the task fixture root")
+        return resolved
+
+    def _validate_inputs_exist(self) -> None:
+        for path, label in (
+            (self._inputs.schedule_binding_path, "schedule evidence"),
+            (self._inputs.ranking_evidence_path, "ranking evidence"),
+            (self._inputs.rank_history_path, "rank history"),
+            (self._inputs.history_database_path, "history database"),
+        ):
+            resolved = self._require_task_local(path, label)
+            if not resolved.is_file():
+                raise NativeV6CandidateRejected(f"{label} is unavailable")
+        self._require_task_local(self._inputs.output_directory, "Producer output directory")
+
+    def _verify_pinned_dependencies(self) -> None:
+        for relative, expected_sha256 in self.PINNED_DEPENDENCIES.items():
+            path = self._inputs.canonical_repository / relative
+            actual_sha256 = (
+                hashlib.sha256(path.read_bytes()).hexdigest() if path.is_file() else None
+            )
+            if actual_sha256 != expected_sha256:
+                raise NativeV6CandidateRejected(f"pinned Native v6 dependency changed: {relative}")
+
+    @staticmethod
+    def _read_object(path: Path, label: str) -> dict[str, object]:
+        try:
+            value = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise NativeV6CandidateRejected(f"{label} is missing or invalid") from exc
+        if not isinstance(value, dict):
+            raise NativeV6CandidateRejected(f"{label} must be a JSON object")
+        return cast(dict[str, object], value)
+
+    @staticmethod
+    def _validate_schedule_binding(
+        schedule: Mapping[str, object],
+        target: PredictionTarget,
+        scheduled_at: datetime,
+    ) -> None:
+        if schedule.get("evidence_label") != "SYNTHETIC":
+            raise NativeV6CandidateRejected("candidate schedule evidence must be marked SYNTHETIC")
+        schedule_time = _parse_aware_datetime(
+            _required_text(schedule, "scheduled_at", Path("schedule evidence")),
+            "schedule scheduled_at",
+        )
+        if (
+            schedule.get("target_draw_number") != target.draw_number
+            or schedule.get("target_draw_date") != target.draw_date
+            or schedule_time != scheduled_at
+            or schedule.get("timezone") != "Asia/Taipei"
+        ):
+            raise NativeV6CandidateRejected("schedule binding conflicts with resolved target")
+
+    @staticmethod
+    def _admit_official_schedule(
+        provider: TaiwanLotteryScheduleProvider,
+        target: PredictionTarget,
+        as_of: datetime,
+    ) -> dict[str, object]:
+        """Validate one exact target through the separate official Provider path.
+
+        The existing JSON-backed ``_validate_schedule_binding`` stays
+        SYNTHETIC-only. This method accepts a Provider instance, not a
+        caller-supplied authority label or schedule mapping.
+        """
+
+        try:
+            bindings = map_official_schedule(provider, as_of=as_of)
+        except ScheduleAuthorityMappingError as exc:
+            raise NativeV6CandidateRejected("official schedule admission failed") from exc
+
+        matches = [
+            binding
+            for binding in bindings
+            if binding.get("target_draw_number") == target.draw_number
+        ]
+        if len(matches) != 1:
+            raise NativeV6CandidateRejected("official schedule does not contain one target")
+        binding = matches[0]
+        try:
+            validate_official_schedule_binding(binding)
+            schedule_time = _parse_aware_datetime(
+                str(binding["scheduled_at"]), "official schedule scheduled_at"
+            )
+        except (KeyError, ScheduleAuthorityMappingError, SchedulerInvariantError) as exc:
+            raise NativeV6CandidateRejected("official schedule binding is invalid") from exc
+        if (
+            binding.get("target_draw_date") != target.draw_date
+            or schedule_time != _target_scheduled_at(target)
+            or binding.get("timezone") != "Asia/Taipei"
+        ):
+            raise NativeV6CandidateRejected("official schedule conflicts with resolved target")
+        return binding
+
+    def _validate_ranking_cutoff(
+        self,
+        ranking: Mapping[str, object],
+        target: PredictionTarget,
+    ) -> str:
+        if ranking.get("evidence_label") != "SYNTHETIC":
+            raise NativeV6CandidateRejected("candidate ranking evidence must be marked SYNTHETIC")
+        cutoff = ranking.get("history_cutoff_draw")
+        observations = ranking.get("observations")
+        if (
+            not isinstance(cutoff, str)
+            or not cutoff.isdigit()
+            or not isinstance(observations, list)
+        ):
+            raise NativeV6CandidateRejected("ranking evidence has no explicit history cutoff")
+        observed_cutoffs = {
+            str(row.get("draw_number")) for row in observations if isinstance(row, dict)
+        }
+        if cutoff not in observed_cutoffs or int(cutoff) >= int(target.draw_number):
+            raise NativeV6CandidateRejected("ranking evidence cutoff does not bind to the target")
+        database = self._require_task_local(self._inputs.history_database_path, "history database")
+        with sqlite3.connect(f"file:{database}?mode=ro", uri=True) as connection:
+            connection.execute("PRAGMA query_only=ON")
+            latest = connection.execute(
+                "SELECT draw_number FROM draws WHERE lottery_type=? AND draw_date<? "
+                "AND CAST(draw_number AS INTEGER)<? "
+                "ORDER BY draw_date DESC, CAST(draw_number AS INTEGER) DESC LIMIT 1",
+                (LOTTERY_TYPE, target.draw_date, int(target.draw_number)),
+            ).fetchone()
+        if latest is None or str(latest[0]) != cutoff:
+            raise NativeV6CandidateRejected(
+                "ranking cutoff does not match available causal history"
+            )
+        return cutoff
+
+    def _current_version(self, target: PredictionTarget) -> int:
+        with sqlite3.connect(f"file:{self._database_path}?mode=ro", uri=True) as connection:
+            connection.execute("PRAGMA query_only=ON")
+            row = connection.execute(
+                "SELECT version FROM research_live_forecast_current_pointer "
+                "WHERE lottery_type=? AND target_draw_number=? AND target_draw_date=? "
+                "AND forecast_stream_id=? AND forecast_stream_version=? "
+                "ORDER BY version DESC LIMIT 1",
+                (
+                    LOTTERY_TYPE,
+                    target.draw_number,
+                    target.draw_date,
+                    "B649_NEXT_UNDRAWN_FORECAST",
+                    "B649_FULL_OFFICIAL_ANY_PRIZE_R1",
+                ),
+            ).fetchone()
+        return 0 if row is None else int(row[0])
 
 
 class AdvisoryProcessLock:
@@ -1439,6 +1777,7 @@ def run_scheduler_cycle(
     *,
     clock: Clock = lambda: datetime.now(UTC),
     source_head_resolver: SourceHeadResolver = lambda path: _resolve_source_head(path),
+    native_v6_caller: Callable[[PredictionTarget, datetime], dict[str, object]] | None = None,
 ) -> dict[str, object]:
     """Run one locked schedule→primary PRE/POST→isolated shadow→health cycle."""
 
@@ -1467,6 +1806,7 @@ def run_scheduler_cycle(
         shadow_hook_name: str | None = None
         shadow_primary_status = "NOT_RUN"
         cycle_warnings: list[str] = []
+        native_v6_result: dict[str, object] | None = None
         try:
             try:
                 announcement = backend.refresh_schedule(started_at)
@@ -1506,6 +1846,15 @@ def run_scheduler_cycle(
             official_sync: dict[str, object] = {"status": "NOT_DUE"}
             portfolio_materialization: dict[str, object] = {"status": "NOT_DUE"}
             if decision_at < scheduled_at:
+                if native_v6_caller is not None:
+                    try:
+                        native_v6_result = native_v6_caller(target, decision_at)
+                    except Exception as exc:
+                        native_v6_result = {
+                            "status": "REJECTED",
+                            "error_class": type(exc).__name__,
+                            "reason": str(exc),
+                        }
                 if inventory.missing_stream_ids:
                     generation = backend.generate_predraw(
                         target,
@@ -1614,6 +1963,11 @@ def run_scheduler_cycle(
                         canonical_source_head=source_head,
                     )
             else:
+                if native_v6_caller is not None:
+                    native_v6_result = {
+                        "status": "SKIPPED_DUE_FIRST",
+                        "producer_invoked": False,
+                    }
                 forecast_materialization = _forecast_skipped_postdraw_health(config, target)
                 portfolio_materialization = _portfolio_skipped_postdraw_health(config, target)
                 official_sync = backend.sync_official_outcome(target)
@@ -1676,6 +2030,8 @@ def run_scheduler_cycle(
                 "pre_draw_incomplete_targets": incomplete,
                 "warnings": list(cycle_warnings),
             }
+            if native_v6_result is not None:
+                terminal["native_v6"] = native_v6_result
             _atomic_health_write(config.health_path, _primary_health_payload(terminal))
             lock.__exit__(None, None, None)
             lock_released = True
@@ -2462,9 +2818,7 @@ def _parser() -> argparse.ArgumentParser:
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = _parser().parse_args(argv)
-    config = production_config(
-        source_worktree_override=getattr(args, "source_worktree", None)
-    )
+    config = production_config(source_worktree_override=getattr(args, "source_worktree", None))
     if args.command == "write-plist":
         path = write_launchd_plist(config)
         print(_canonical_json({"status": "WRITTEN", "plist_path": str(path)}))

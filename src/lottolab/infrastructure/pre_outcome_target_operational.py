@@ -26,7 +26,8 @@ import os
 import re
 import sqlite3
 import stat
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Iterator, Mapping
+from contextlib import ExitStack, contextmanager
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from pathlib import Path
@@ -59,6 +60,7 @@ from lottolab.domain.prospective_observer import (
     ObservationTarget,
     OutcomePresenceAtPrediction,
 )
+from lottolab.infrastructure.imports.csv_draws import normalized_draw_record_hash
 from lottolab.infrastructure.persistence.draw_schema import (
     CURRENT_SCHEMA_VERSION,
     LocalDataError,
@@ -361,6 +363,21 @@ class SQLiteOfficialOutcomePresenceProbe:
         )
 
 
+@dataclass(frozen=True, slots=True)
+class VerifiedCausalDraw:
+    draw_number: str
+    draw_date: date
+    normalized_record_hash: str
+    main_numbers: tuple[int, ...]
+    special_numbers: tuple[int, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class VerifiedCausalHistory:
+    ref: CausalHistoryRef
+    draws: tuple[VerifiedCausalDraw, ...]
+
+
 class SQLitePreOutcomeCausalHistoryAuthority:
     """Bind all canonical draw digests strictly before an announced target."""
 
@@ -396,35 +413,7 @@ class SQLitePreOutcomeCausalHistoryAuthority:
                     key=lambda item: (item[1], int(item[0]), item[0]),
                 )
             )
-            if not history:
-                raise CausalHistoryAuthorityError(
-                    "canonical causal history contains no strictly prior draw"
-                )
-            keys = tuple((item[1], int(item[0]), item[0]) for item in history)
-            if keys != tuple(sorted(keys)) or len(keys) != len(set(keys)):
-                raise CausalHistoryAuthorityError(
-                    "canonical causal history order or identity is invalid"
-                )
-            material = {
-                "draws": [
-                    {
-                        "draw_date": draw_date_value.isoformat(),
-                        "draw_number": draw_number,
-                        "normalized_record_hash": normalized_record_hash,
-                    }
-                    for draw_number, draw_date_value, normalized_record_hash in history
-                ],
-                "lottery_type": target.lottery_type.value,
-                "schema_version": OPERATIONAL_CAUSAL_HISTORY_SCHEMA_VERSION,
-                "target": target.canonical_dict(),
-            }
-            last_number, last_date, _ = history[-1]
-            return CausalHistoryRef(
-                draw_count=len(history),
-                last_draw_number=last_number,
-                last_draw_date=last_date,
-                history_sha256=_canonical_sha256(material),
-            )
+            return _causal_history_ref(target, history)
         except CausalHistoryAuthorityError:
             raise
         except (
@@ -437,6 +426,190 @@ class SQLitePreOutcomeCausalHistoryAuthority:
             raise CausalHistoryAuthorityError(
                 "canonical causal-history authority is unavailable"
             ) from exc
+
+    @contextmanager
+    def open_verified_snapshot(
+        self,
+        target: ObservationTarget,
+        *,
+        connection: sqlite3.Connection | None = None,
+        history_cutoff_draw: str | None = None,
+    ) -> Iterator[tuple[sqlite3.Connection, VerifiedCausalHistory]]:
+        """Bind the returned numbers and history identity in one read transaction.
+
+        A caller-supplied connection must be to the canonical, verified database.
+        Its existing transaction, if any, remains under the caller's ownership.
+        """
+
+        _require_target(target)
+        with ExitStack() as stack:
+            try:
+                if connection is None:
+                    connection = stack.enter_context(open_database(self._paths, read_only=True))
+                stack.enter_context(_causal_history_read_transaction(connection))
+                snapshot = _read_verified_causal_history(
+                    connection,
+                    target,
+                    history_cutoff_draw=history_cutoff_draw,
+                )
+            except CausalHistoryAuthorityError:
+                raise
+            except (LocalDataError, SchemaMigrationError, sqlite3.DatabaseError, ValueError) as exc:
+                raise CausalHistoryAuthorityError(
+                    "canonical causal-history authority is unavailable"
+                ) from exc
+            yield connection, snapshot
+
+
+@contextmanager
+def _causal_history_read_transaction(
+    connection: sqlite3.Connection,
+) -> Iterator[None]:
+    owns_transaction = not connection.in_transaction
+    if owns_transaction:
+        connection.execute("BEGIN")
+    try:
+        yield
+    finally:
+        if owns_transaction:
+            # No writes belong to this read transaction. End it on either exit.
+            connection.rollback()
+
+
+def _read_verified_causal_history(
+    connection: sqlite3.Connection,
+    target: ObservationTarget,
+    *,
+    history_cutoff_draw: str | None = None,
+) -> VerifiedCausalHistory:
+    _require_current_schema(connection)
+    target_date = target.draw_date.isoformat()
+    numeric_target = target.draw_number.lstrip("0")
+    cutoff_clause = ""
+    cutoff_parameters: tuple[object, ...] = ()
+    if history_cutoff_draw is not None:
+        if (
+            not isinstance(history_cutoff_draw, str)
+            or _DRAW_NUMBER.fullmatch(history_cutoff_draw) is None
+            or int(history_cutoff_draw) >= int(target.draw_number)
+        ):
+            raise CausalHistoryAuthorityError(
+                "requested history cutoff must be a valid issue before the target"
+            )
+        numeric_cutoff = history_cutoff_draw.lstrip("0") or "0"
+        cutoff_clause = """
+          AND (
+              length(ltrim(draw_number, '0')) < ?
+              OR (length(ltrim(draw_number, '0')) = ?
+                  AND ltrim(draw_number, '0') <= ?)
+          )
+        """
+        cutoff_parameters = (
+            len(numeric_cutoff),
+            len(numeric_cutoff),
+            numeric_cutoff,
+        )
+    # Compare digit strings by length and value to avoid SQLite INTEGER overflow
+    # for valid draw numbers longer than 19 digits. Keep the original draw text.
+    raw_rows = connection.execute(
+        f"""
+        SELECT draw_number, draw_date, normalized_record_hash,
+               main_numbers_json, special_numbers_json
+        FROM draws
+        WHERE lottery_type = ?
+          AND (draw_date < ? OR (
+              draw_date = ? AND (
+                  length(ltrim(draw_number, '0')) < ?
+                  OR (length(ltrim(draw_number, '0')) = ? AND ltrim(draw_number, '0') < ?)
+              )
+          ))
+          {cutoff_clause}
+        """,
+        (
+            target.lottery_type.value,
+            target_date,
+            target_date,
+            len(numeric_target),
+            len(numeric_target),
+            numeric_target,
+            *cutoff_parameters,
+        ),
+    ).fetchall()
+    draws: list[VerifiedCausalDraw] = []
+    for raw in raw_rows:
+        draw_number, draw_date, stored_hash = _history_row(raw[:3])
+        main_numbers = _decode_causal_numbers(raw[3])
+        special_numbers = _decode_causal_numbers(raw[4])
+        expected_hash = normalized_draw_record_hash(
+            lottery_type=target.lottery_type,
+            draw_number=draw_number,
+            draw_date_value=draw_date,
+            main_numbers=main_numbers,
+            special_numbers=special_numbers,
+        )
+        if expected_hash != stored_hash:
+            raise CausalHistoryAuthorityError(
+                f"stored causal draw {draw_number} does not match normalized_record_hash"
+            )
+        draws.append(
+            VerifiedCausalDraw(draw_number, draw_date, stored_hash, main_numbers, special_numbers)
+        )
+    ordered = tuple(
+        sorted(draws, key=lambda draw: (draw.draw_date, int(draw.draw_number), draw.draw_number))
+    )
+    if history_cutoff_draw is not None and (
+        not ordered or ordered[-1].draw_number != history_cutoff_draw
+    ):
+        raise CausalHistoryAuthorityError(
+            "verified causal history does not end at the requested cutoff"
+        )
+    ref = _causal_history_ref(
+        target,
+        tuple((draw.draw_number, draw.draw_date, draw.normalized_record_hash) for draw in ordered),
+    )
+    return VerifiedCausalHistory(ref, ordered)
+
+
+def _decode_causal_numbers(value: object) -> tuple[int, ...]:
+    if not isinstance(value, str):
+        raise ValueError("stored causal numbers are not JSON text")
+    numbers: object = json.loads(value)
+    if not isinstance(numbers, list) or any(type(item) is not int for item in numbers):
+        raise ValueError("stored causal numbers must be JSON integer arrays")
+    return tuple(cast(list[int], numbers))
+
+
+def _causal_history_ref(
+    target: ObservationTarget,
+    history: tuple[tuple[str, date, str], ...],
+) -> CausalHistoryRef:
+    if not history:
+        raise CausalHistoryAuthorityError(
+            "canonical causal history contains no strictly prior draw"
+        )
+    keys = tuple((day, int(number), number) for number, day, _ in history)
+    if keys != tuple(sorted(keys)) or len(keys) != len(set(keys)):
+        raise CausalHistoryAuthorityError("canonical causal history order or identity is invalid")
+    material = {
+        "draws": [
+            {
+                "draw_date": draw_date.isoformat(),
+                "draw_number": draw_number,
+                "normalized_record_hash": normalized_hash,
+            }
+            for draw_number, draw_date, normalized_hash in history
+        ],
+        "lottery_type": target.lottery_type.value,
+        "schema_version": OPERATIONAL_CAUSAL_HISTORY_SCHEMA_VERSION,
+        "target": target.canonical_dict(),
+    }
+    last_number, last_date, _ = history[-1]
+    return CausalHistoryRef(
+        draw_count=len(history),
+        last_draw_number=last_number,
+        last_draw_date=last_date,
+        history_sha256=_canonical_sha256(material),
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -688,7 +861,11 @@ def _require_current_database(paths: LocalDataPaths) -> None:
     if not verify_schema_read_only(paths):
         raise SchemaMigrationError("canonical draw database does not exist")
     with open_database(paths, read_only=True) as connection:
-        row = connection.execute("SELECT MAX(version) FROM schema_migrations").fetchone()
+        _require_current_schema(connection)
+
+
+def _require_current_schema(connection: sqlite3.Connection) -> None:
+    row = connection.execute("SELECT MAX(version) FROM schema_migrations").fetchone()
     if row != (CURRENT_SCHEMA_VERSION,):
         raise SchemaMigrationError("canonical draw database requires the current schema")
 

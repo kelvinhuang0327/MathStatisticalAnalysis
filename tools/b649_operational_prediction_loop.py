@@ -316,48 +316,29 @@ def load_canonical_history(
         target_draw_number,
         target_date,
     )
-    history_ref = SQLitePreOutcomeCausalHistoryAuthority(paths).resolve(target)
-    with open_database(paths, read_only=True) as connection:
-        raw_rows = connection.execute(
-            """
-            SELECT draw_number, draw_date, main_numbers_json, normalized_record_hash
-            FROM draws
-            WHERE lottery_type = ?
-              AND (
-                    draw_date < ?
-                    OR (draw_date = ? AND CAST(draw_number AS INTEGER) < ?)
-                  )
-            ORDER BY draw_date ASC, CAST(draw_number AS INTEGER) ASC, draw_number ASC, id ASC
-            """,
-            (LOTTERY_TYPE, target_draw_date, target_draw_date, int(target_draw_number)),
-        ).fetchall()
+    authority = SQLitePreOutcomeCausalHistoryAuthority(paths)
+    with authority.open_verified_snapshot(target) as (_, snapshot):
+        history_ref = snapshot.ref
 
     rows = tuple(
         CausalDrawRow(
-            draw=str(raw[0]),
-            date=str(raw[1]),
-            numbers=_decode_numbers(str(raw[2]), label=f"history draw {raw[0]}"),
+            draw=draw.draw_number,
+            date=draw.draw_date.isoformat(),
+            numbers=draw.main_numbers,
         )
-        for raw in raw_rows
+        for draw in snapshot.draws
     )
-    if len(rows) != history_ref.draw_count or not rows:
-        raise RuntimeError("history rows do not match the canonical causal-history identity")
     cutoff_draw = history_ref.last_draw_number
     cutoff_date = history_ref.last_draw_date
     if cutoff_draw is None or cutoff_date is None:
         raise RuntimeError("canonical causal-history identity has no cutoff")
-    if (
-        rows[-1].draw != cutoff_draw
-        or rows[-1].date != cutoff_date.isoformat()
-    ):
-        raise RuntimeError("history cutoff does not match the canonical causal-history identity")
     return HistorySnapshot(
         rows=rows,
         cutoff_draw=cutoff_draw,
         cutoff_date=cutoff_date.isoformat(),
         draw_count=history_ref.draw_count,
         history_sha256=history_ref.history_sha256,
-        normalized_record_hashes=tuple(str(raw[3]) for raw in raw_rows),
+        normalized_record_hashes=tuple(draw.normalized_record_hash for draw in snapshot.draws),
     )
 
 
@@ -1574,16 +1555,6 @@ def _validate_winning_numbers(
         raise ValueError("special_number must be an integer from 1 through 49")
     if special_number in main_numbers:
         raise ValueError("special_number must not overlap main_numbers")
-
-
-def _decode_numbers(raw: str, *, label: str) -> tuple[int, ...]:
-    parsed: object = json.loads(raw)
-    if not isinstance(parsed, list):
-        raise ValueError(f"{label} must contain a JSON integer list")
-    parsed_list = cast(list[object], parsed)
-    if any(type(item) is not int for item in parsed_list):
-        raise ValueError(f"{label} must contain a JSON integer list")
-    return tuple(cast(list[int], parsed_list))
 
 
 def _numbers_from_object(value: dict[str, object], key: str) -> tuple[int, ...]:

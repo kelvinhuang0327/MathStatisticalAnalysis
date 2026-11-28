@@ -38,6 +38,7 @@ from lottolab.domain.draws import LotteryType
 from lottolab.domain.historical_replay import ReplayCellStatus, ReplayDraw
 from lottolab.domain.ingestion import IngestionOperationType, IngestionRunStatus
 from lottolab.domain.prize_evaluation import evaluate_lottery_prize
+from lottolab.infrastructure.imports.csv_draws import normalized_draw_record_hash
 from lottolab.infrastructure.persistence.draw_schema import (
     DATA_DIRECTORY_ENV,
     initialize_schema,
@@ -117,7 +118,7 @@ def _seed_causal_history_database(data_root: Path, draws: Sequence[ReplayDraw]) 
                 timestamp,
             ),
         )
-        for index, draw in enumerate(draws):
+        for draw in draws:
             connection.execute(
                 """
                 INSERT INTO draws (
@@ -132,7 +133,13 @@ def _seed_causal_history_database(data_root: Path, draws: Sequence[ReplayDraw]) 
                     draw.draw_date.isoformat(),
                     json.dumps(list(draw.main_numbers), separators=(",", ":")),
                     json.dumps([draw.special_number], separators=(",", ":")),
-                    format(index, "064x"),
+                    normalized_draw_record_hash(
+                        lottery_type=draw.lottery_type,
+                        draw_number=draw.draw_number,
+                        draw_date_value=draw.draw_date,
+                        main_numbers=draw.main_numbers,
+                        special_numbers=(draw.special_number,),
+                    ),
                     "test-history",
                     None,
                     run_id,

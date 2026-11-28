@@ -441,23 +441,25 @@ def extract_tombstones_from_json(
     file_path: Path,
     task_id: str | None,
     max_size_bytes: int = MAX_JSON_SIZE_BYTES,
-) -> tuple[list[RawTombstone], list[dict[str, object]], str | None]:
+) -> tuple[list[RawTombstone], list[dict[str, object]], str | None, int | None]:
     """Parse a single JSON file for tombstones and path-exists claims."""
     tombstones: list[RawTombstone] = []
     path_exists_claims: list[dict[str, object]] = []
 
+    file_size_bytes: int | None = None
     try:
         st = file_path.stat()
+        file_size_bytes = st.st_size
         if st.st_size > max_size_bytes:
-            return [], [], "TOO_LARGE"
+            return [], [], "TOO_LARGE", file_size_bytes
     except OSError as exc:
-        return [], [], f"STAT_ERROR: {exc}"
+        return [], [], f"STAT_ERROR: {exc}", None
 
     try:
         with open(file_path, encoding="utf-8") as f:
             root_data: object = json.load(f)
     except Exception as exc:
-        return [], [], f"PARSE_ERROR: {exc}"
+        return [], [], f"PARSE_ERROR: {exc}", file_size_bytes
 
     file_abs = str(file_path.resolve())
     doc_task_id = task_id
@@ -631,7 +633,7 @@ def extract_tombstones_from_json(
                 _traverse(item, ancestor_dicts, ancestor_keys, sub_ptr)
 
     _traverse(cast(object, root_data), [], [], "")
-    return tombstones, path_exists_claims, None
+    return tombstones, path_exists_claims, None, file_size_bytes
 
 
 @dataclass
@@ -662,7 +664,7 @@ class BuildResult:
     stages_count: int
     tombstones_count: int
     output_dir: Path
-    skipped: list[dict[str, str]]
+    skipped: list[dict[str, object]]
     deletion_claims_path_exists: dict[str, object]
     formal_db_info: dict[str, str]
 
@@ -712,7 +714,7 @@ def build_catalog(
     """Build tasks.jsonl, stages.jsonl, tombstones.jsonl, and catalog_meta.json."""
     output_dir.mkdir(parents=True, exist_ok=True)
     msa_root = canonical_project_root()
-    skipped: list[dict[str, str]] = []
+    skipped: list[dict[str, object]] = []
     total_path_exists_claims = 0
     path_exists_samples: list[dict[str, object]] = []
 
@@ -724,8 +726,18 @@ def build_catalog(
     )
 
     # 2. Find stages
-    scratch_dir = msa_root / ".task-data" / "_scratch"
-    stage_manifest_paths = find_stage_manifests(scratch_dir)
+    scratch_dirs = sorted(
+        {root.resolve() / "_scratch" for root in roots if root.is_dir() and not root.is_symlink()},
+        key=lambda path: str(path),
+    )
+    stage_manifest_paths = sorted(
+        {
+            manifest
+            for scratch_dir in scratch_dirs
+            for manifest in find_stage_manifests(scratch_dir)
+        },
+        key=lambda path: str(path),
+    )
     stage_entries = [parse_stage_manifest(sm, formal_run_ids) for sm in stage_manifest_paths]
     # Map task_id -> list of manifest_path
     task_to_stages: dict[str, list[str]] = {}
@@ -748,11 +760,17 @@ def build_catalog(
             for jf in sorted(folder_p.glob("*.json"), key=lambda p: p.name):
                 if jf.is_symlink() or not jf.is_file():
                     continue
-                extracted, claims, skip_reason = extract_tombstones_from_json(
+                extracted, claims, skip_reason, source_size_bytes = extract_tombstones_from_json(
                     jf, tf.task_id, max_size_bytes=max_json_size_bytes
                 )
                 if skip_reason:
-                    skipped.append({"path": str(jf.resolve()), "reason": skip_reason})
+                    skip_record: dict[str, object] = {
+                        "path": str(jf.resolve()),
+                        "reason": skip_reason,
+                    }
+                    if skip_reason == "TOO_LARGE" and source_size_bytes is not None:
+                        skip_record["size_bytes"] = source_size_bytes
+                    skipped.append(skip_record)
                 else:
                     raw_tombstones.extend(extracted)
                     total_path_exists_claims += len(claims)
@@ -768,11 +786,14 @@ def build_catalog(
 
     for qm in quarantine_manifest_paths:
         if qm.is_file() and not qm.is_symlink():
-            extracted, claims, skip_reason = extract_tombstones_from_json(
+            extracted, claims, skip_reason, source_size_bytes = extract_tombstones_from_json(
                 qm, None, max_size_bytes=max_json_size_bytes
             )
             if skip_reason:
-                skipped.append({"path": str(qm.resolve()), "reason": skip_reason})
+                skip_record = {"path": str(qm.resolve()), "reason": skip_reason}
+                if skip_reason == "TOO_LARGE" and source_size_bytes is not None:
+                    skip_record["size_bytes"] = source_size_bytes
+                skipped.append(skip_record)
             else:
                 raw_tombstones.extend(extracted)
                 total_path_exists_claims += len(claims)
@@ -1484,12 +1505,8 @@ def _enrich_task_data(t: dict[str, object], read_folder_receipts: bool) -> dict[
                             ),
                             None,
                         )
-                        round_status = str(
-                            before_data.get("first_round_ac_status", "")
-                        ).upper()
-                        lifecycle = str(
-                            before_data.get("task_lifecycle_state", "")
-                        ).upper()
+                        round_status = str(before_data.get("first_round_ac_status", "")).upper()
+                        lifecycle = str(before_data.get("task_lifecycle_state", "")).upper()
                         failed_states = {
                             "BLOCKED",
                             "BLOCKED_OWNER_DISPOSITION",
@@ -1683,11 +1700,7 @@ def compute_workflow_metrics(
         # adoption evidence remains true once observed.
         for field in ("goal_72h_completed", "acceptance_confirmed"):
             latest = next(
-                (
-                    node[field]
-                    for node in reversed(chain)
-                    if isinstance(node.get(field), bool)
-                ),
+                (node[field] for node in reversed(chain) if isinstance(node.get(field), bool)),
                 None,
             )
             if isinstance(latest, bool):

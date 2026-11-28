@@ -22,6 +22,7 @@ from lottolab.infrastructure.task_catalog import (
     find_in_catalog,
     find_task_folders,
 )
+from lottolab.interfaces.cli import task_catalog as task_catalog_cli
 from lottolab.interfaces.cli.main import app as main_app
 
 
@@ -331,7 +332,7 @@ def test_fact_state_and_write_lease(tmp_path: Path, monkeypatch: pytest.MonkeyPa
 
     out_dir = tmp_path / "_catalog"
     build_catalog(
-        roots=[],
+        roots=[msa_root / ".task-data"],
         output_dir=out_dir,
         formal_db_path=formal_db,
         quarantine_manifest_paths=[],
@@ -352,7 +353,7 @@ def test_fact_state_and_write_lease(tmp_path: Path, monkeypatch: pytest.MonkeyPa
     lease_file.write_text("{}")
 
     build_catalog(
-        roots=[],
+        roots=[msa_root / ".task-data"],
         output_dir=out_dir,
         formal_db_path=formal_db,
         write_lease_path=lease_file,
@@ -375,6 +376,8 @@ def test_json_size_limit_skipped(tmp_path: Path) -> None:
     (task_root / "packet.md").write_text("LARGE_TASK packet")
     large_file = task_root / "large_manifest.json"
     large_file.write_text(json.dumps({"key": "value"}))
+    large_result = task_root / "result.json"
+    large_result.write_text(json.dumps({"too_large": True}))
 
     out_dir = tmp_path / "_catalog"
     formal_db = tmp_path / "formal.sqlite3"
@@ -390,9 +393,56 @@ def test_json_size_limit_skipped(tmp_path: Path) -> None:
     )
 
     meta = json.loads((out_dir / "catalog_meta.json").read_text())
-    skipped_paths = {s["path"]: s["reason"] for s in meta["skipped"]}
-    assert str(large_file.resolve()) in skipped_paths
-    assert skipped_paths[str(large_file.resolve())] == "TOO_LARGE"
+    skipped_by_path = {s["path"]: s for s in meta["skipped"]}
+    assert str(large_file.resolve()) in skipped_by_path
+    assert skipped_by_path[str(large_file.resolve())]["reason"] == "TOO_LARGE"
+    assert skipped_by_path[str(large_file.resolve())]["size_bytes"] == large_file.stat().st_size
+    assert skipped_by_path[str(large_result.resolve())]["reason"] == "TOO_LARGE"
+    assert skipped_by_path[str(large_result.resolve())]["size_bytes"] == large_result.stat().st_size
+
+    task_rows = [json.loads(line) for line in (out_dir / "tasks.jsonl").read_text().splitlines()]
+    large_task = next(row for row in task_rows if row["task_id"] == "LARGE_TASK")
+    assert large_task["result_json_status"] == "TOO_LARGE"
+
+
+def test_explicit_root_controls_scratch_stage_scan(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    canonical_root = tmp_path / "canonical-project"
+    selected_root = tmp_path / "selected-data"
+    monkeypatch.setattr(task_catalog, "canonical_project_root", lambda: canonical_root)
+    monkeypatch.setattr(task_catalog_cli, "canonical_project_root", lambda: canonical_root)
+
+    canonical_manifest = (
+        canonical_root / ".task-data" / "_scratch" / "canonical" / "MERGE_PENDING.json"
+    )
+    canonical_manifest.parent.mkdir(parents=True)
+    canonical_manifest.write_text(json.dumps({"task_id": "CANONICAL_ROOT", "run_ids": []}))
+
+    selected_manifest = selected_root / "_scratch" / "selected" / "MERGE_PENDING.json"
+    selected_manifest.parent.mkdir(parents=True)
+    selected_manifest.write_text(json.dumps({"task_id": "SELECTED_ROOT", "run_ids": []}))
+
+    out_dir = tmp_path / "_catalog"
+    result = CliRunner().invoke(
+        main_app,
+        [
+            "task-catalog",
+            "build",
+            "--root",
+            str(selected_root),
+            "--output-dir",
+            str(out_dir),
+            "--formal-db",
+            str(tmp_path / "unused-formal.sqlite3"),
+            "--no-formal-lookup",
+        ],
+    )
+    assert result.exit_code == 0, result.output
+
+    stages = [json.loads(line) for line in (out_dir / "stages.jsonl").read_text().splitlines()]
+    assert [stage["task_id"] for stage in stages] == ["SELECTED_ROOT"]
+    assert stages[0]["manifest_path"] == str(selected_manifest.resolve())
 
 
 def test_deterministic_build_and_input_preservation(tmp_path: Path) -> None:
@@ -1488,9 +1538,7 @@ def test_legal_multilevel_continuation_chain_counts_one_original_outcome() -> No
         },
     ]
 
-    report = compute_workflow_metrics(
-        Path("/dummy"), read_folder_receipts=False, tasks_data=tasks
-    )
+    report = compute_workflow_metrics(Path("/dummy"), read_folder_receipts=False, tasks_data=tasks)
     metrics = {m.indicator: m for m in report.metrics if m.stratum == "S2"}
 
     assert report.total_tasks_evaluated == 1

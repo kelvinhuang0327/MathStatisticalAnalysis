@@ -58,7 +58,7 @@ def test_exact_probability_and_replacement():
         iid_period_probability("DAILY_539", True)
 
 
-def test_window_summary_preserves_missing_unknown_and_dates():
+def test_window_summary_preserves_incomplete_counts_and_suppresses_partial_rates():
     periods = [
         RankingPeriod(f"{i:03}", f"2026-01-{i:03}", "EVALUATED", i % 2 == 0, 2)
         for i in range(1, 52)
@@ -70,9 +70,7 @@ def test_window_summary_preserves_missing_unknown_and_dates():
     assert (result["evaluated"], result["unknown"], result["missing"]) == (48, 1, 1)
     assert result["successes"] == 24
     assert 0 <= result["successes"] <= result["evaluated"]
-    assert result["rate"] == Fraction(1, 2)
-    assert result["baseline"] == iid_period_probability("DAILY_539", 2)
-    assert result["delta"] == result["rate"] - result["baseline"]
+    assert (result["rate"], result["baseline"], result["delta"]) == (None, None, None)
 
 
 def test_summary_rejects_mixed_tickets_duplicates_and_unknown_scoring():

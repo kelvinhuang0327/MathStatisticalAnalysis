@@ -4385,6 +4385,7 @@ export interface components {
           "window": "FULL" | "RECENT_750" | "RECENT_300" | "RECENT_50"
           "baseline_policy": string
           "items": Array<components['schemas']["OfficialRankingRow"]>
+          "run_diagnostics"?: Array<components['schemas']["OfficialRankingRunDiagnostic"]>
         }
     "OfficialRankingRow": {
           "strategy_id": string
@@ -4405,11 +4406,25 @@ export interface components {
           "evaluated": number
           "missing": number
           "unknown": number
+          "failed_count"?: number
+          "not_eligible_count"?: number
           "rate": number | null
           "baseline": number | null
           "delta": number | null
           "unknown_reason": string | null
           "rank": number | null
+        }
+    "OfficialRankingRunDiagnostic": {
+          "kind": string
+          "run_id": string
+          "matrix_reason": string
+          "successes"?: number
+          "evaluated"?: number
+          "denominator"?: number
+          "rate"?: null
+          "baseline"?: null
+          "delta"?: null
+          "rank"?: null
         }
     "OverviewPrefixCount": 10 | 15 | 20
     "P638CurrentRankingPageResponse": {

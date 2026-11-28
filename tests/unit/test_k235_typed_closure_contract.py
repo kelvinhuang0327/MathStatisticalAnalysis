@@ -418,7 +418,7 @@ def test_misbound_source_closure_falls_back_to_execution_failure() -> None:
     assert row["official_any_prize"] is None
 
 
-def test_typed_closure_and_absent_cells_are_unknown_not_misses() -> None:
+def test_typed_closure_is_unknown_but_explicit_missing_stays_missing() -> None:
     target = {
         "run_id": "synthetic-run",
         "target_draw_id": "2",
@@ -442,10 +442,14 @@ def test_typed_closure_and_absent_cells_are_unknown_not_misses() -> None:
         "tickets": [],
     }
     missing_cell: JsonObject = {**closure_cell, "execution_status": "MISSING"}
-    for cells in ([closure_cell], [missing_cell]):
+    for cells, expected_unknown, expected_missing in (
+        ([closure_cell], 1, 0),
+        ([missing_cell], 0, 1),
+    ):
         row = aggregate_ranking("BIG_LOTTO", "FULL", [target], cells, {})[0]
         assert row["evaluated"] == 0
-        assert row["unknown"] == 1
+        assert row["unknown"] == expected_unknown
+        assert row["missing"] == expected_missing
         assert row["successes"] == 0
         assert row["rate"] is None
 

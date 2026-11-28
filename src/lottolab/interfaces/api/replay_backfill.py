@@ -88,6 +88,8 @@ class OfficialRankingRow(BaseModel):
     evaluated: int
     missing: int
     unknown: int
+    failed_count: int = Field(default=0, ge=0)
+    not_eligible_count: int = Field(default=0, ge=0)
     rate: float | None
     baseline: float | None
     delta: float | None
@@ -95,11 +97,29 @@ class OfficialRankingRow(BaseModel):
     rank: int | None
 
 
+class OfficialRankingRunDiagnostic(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    kind: Literal["INVALID_MANIFEST_NO_STRATEGY_IDENTITY"]
+    run_id: str
+    matrix_reason: str
+    successes: Literal[0] = 0
+    evaluated: Literal[0] = 0
+    denominator: Literal[0] = 0
+    rate: None = None
+    baseline: None = None
+    delta: None = None
+    rank: None = None
+
+
 class OfficialRankingResponse(BaseModel):
     lottery_type: LotteryType
     window: Literal["FULL", "RECENT_750", "RECENT_300", "RECENT_50"]
     baseline_policy: Literal["UNIFORM_IID_LEGAL_TICKETS_WITH_REPLACEMENT"]
     items: list[OfficialRankingRow]
+    run_diagnostics: list[OfficialRankingRunDiagnostic] = Field(
+        default_factory=lambda: cast(list[OfficialRankingRunDiagnostic], [])
+    )
 
 
 class ReplayBackfillBindingSourceView(BaseModel):
@@ -729,12 +749,21 @@ def create_replay_backfill_router(
                 if item.lottery_type == lottery_type
             }
             with store.official_ranking_data(lottery_type.value, window) as (targets, cells):
-                items = aggregate_ranking(lottery_type.value, window, targets, cells, names)
+                run_diagnostics: list[JsonObject] = []
+                items = aggregate_ranking(
+                    lottery_type.value,
+                    window,
+                    targets,
+                    cells,
+                    names,
+                    run_diagnostics=run_diagnostics,
+                )
             return {
                 "lottery_type": lottery_type.value,
                 "window": window,
                 "baseline_policy": "UNIFORM_IID_LEGAL_TICKETS_WITH_REPLACEMENT",
                 "items": items,
+                "run_diagnostics": run_diagnostics,
             }
         except Exception:
             return _error(503, "REPLAY_BACKFILL_UNAVAILABLE")

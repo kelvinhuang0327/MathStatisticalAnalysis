@@ -5,6 +5,7 @@ import sqlite3
 from dataclasses import asdict
 from datetime import date, timedelta
 from pathlib import Path
+from typing import cast
 
 import pytest
 
@@ -27,6 +28,7 @@ from lottolab.domain.historical_replay import (
     ReplayTargetRecord,
     ReplayTicket,
 )
+from lottolab.domain.prize_evaluation import evaluate_historical_lottery_prize
 from lottolab.infrastructure.persistence.replay_backfill_store import SQLiteBackfillStore
 
 
@@ -68,11 +70,22 @@ class SyntheticAdapter:
     def evaluate(
         self, strategy: ReplayStrategy, ticket: ReplayTicket, target: ReplayDraw
     ) -> ReplayEvaluation:
-        # Check hits against winning numbers
-        zone1_hits = len(set(ticket.main_numbers) & set(target.main_numbers))
-        is_winner = zone1_hits >= 3
-        prize_tier = "PRIZE_TEST" if is_winner else None
-        return ReplayEvaluation(zone1_hits, False, is_winner, prize_tier)
+        outcome = evaluate_historical_lottery_prize(
+            lottery_type=target.lottery_type,
+            target_draw_id=target.draw_number,
+            predicted_main_numbers=ticket.main_numbers,
+            predicted_special_number=ticket.special_number,
+            winning_main_numbers=target.main_numbers,
+            winning_special_number=target.special_number,
+        )
+        return ReplayEvaluation(
+            zone1_hits=outcome.zone1_hits,
+            zone2_hit=outcome.zone2_hit,
+            is_winner=outcome.is_winner,
+            prize_tier=outcome.prize_tier,
+            historical_rule_id=outcome.historical_rule_id,
+            scorer_version=outcome.scorer_version,
+        )
 
 
 class _PayloadAccessReplayBackfill(ReplayBackfill):
@@ -129,6 +142,72 @@ def _db_path(tmp_path: Path, name: str) -> Path:
     scratch = tmp_path / "sqlite_test"
     scratch.mkdir(parents=True, exist_ok=True)
     return scratch / f"{name}.sqlite3"
+
+
+_REPLAY_DATA_TABLES = (
+    "replay_backfill_runs",
+    "replay_backfill_targets",
+    "replay_backfill_strategy_inventory",
+    "replay_backfill_cells",
+    "replay_backfill_run_cells",
+    "replay_backfill_tickets",
+    "replay_backfill_training",
+    "replay_backfill_sources",
+)
+
+
+def _strip_historical_scoring_identity(store: SQLiteBackfillStore) -> None:
+    with sqlite3.connect(store.database) as conn:
+        rows = conn.execute(
+            "SELECT cell_identity, payload_json FROM replay_backfill_cells"
+        ).fetchall()
+        assert len(rows) == 1
+        cell_identity, payload_json = rows[0]
+        payload: dict[str, object] = json.loads(payload_json)
+        hit_details: object = payload["hit_details"]
+        assert isinstance(hit_details, list) and hit_details
+        for detail in cast(list[object], hit_details):
+            assert isinstance(detail, dict)
+            detail_values = cast(dict[str, object], detail)
+            assert detail_values.pop("historical_rule_id", None) is not None
+            assert detail_values.pop("scorer_version", None) is not None
+        result_identity = identity(
+            {key: value for key, value in payload.items() if key != "result_identity"}
+        )
+        payload["result_identity"] = result_identity
+        conn.execute(
+            "UPDATE replay_backfill_cells SET result_identity=?, payload_json=? "
+            "WHERE cell_identity=?",
+            (
+                result_identity,
+                json.dumps(payload, sort_keys=True, separators=(",", ":")),
+                cell_identity,
+            ),
+        )
+
+
+def _replay_store_snapshot(store: SQLiteBackfillStore) -> tuple[object, ...]:
+    with sqlite3.connect(store.database.as_uri() + "?mode=ro", uri=True) as conn:
+        schema = tuple(
+            conn.execute(
+                "SELECT type, name, tbl_name, sql FROM sqlite_master "
+                "WHERE name NOT LIKE 'sqlite_%' ORDER BY type, name"
+            ).fetchall()
+        )
+        version = tuple(
+            conn.execute(
+                "SELECT version, checksum FROM replay_backfill_schema"
+            ).fetchall()
+        )
+        data = tuple(
+            (
+                table,
+                tuple(conn.execute(f'SELECT * FROM "{table}" ORDER BY rowid').fetchall()),
+            )
+            for table in _REPLAY_DATA_TABLES
+        )
+        foreign_key_violations = tuple(conn.execute("PRAGMA foreign_key_check").fetchall())
+    return schema, version, data, foreign_key_violations
 
 
 # --- AC01: Verification that lottolab is loaded from this test checkout ---
@@ -297,6 +376,70 @@ def test_ac05_same_key_different_fingerprint_raises_conflict_before_prepare(tmp_
     with sqlite3.connect(store.database.as_uri() + "?mode=ro", uri=True) as conn:
         runs_after = conn.execute("SELECT count(*) FROM replay_backfill_runs").fetchone()[0]
     assert runs_after == runs_before
+
+
+def test_ac05_fingerprint_and_k_conflicts_precede_missing_scorer_identity(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    store = SQLiteBackfillStore(_db_path(tmp_path, "ac05_combined_conflict"))
+    worker1 = _make_worker(
+        store, CountingProducer(ticket_count=2), fingerprint="fp-version-1", ticket_count=2
+    )
+    worker1.execute(BackfillSelection(latest=1))
+    _strip_historical_scoring_identity(store)
+    snapshot_before = _replay_store_snapshot(store)
+
+    prepare_calls: list[JsonObject] = []
+    original_prepare = store.prepare
+
+    def record_prepare(manifest: JsonObject) -> None:
+        prepare_calls.append(manifest)
+        original_prepare(manifest)
+
+    monkeypatch.setattr(store, "prepare", record_prepare)
+    producer = CountingProducer(ticket_count=5)
+    worker2 = _make_worker(
+        store, producer, fingerprint="fp-version-2", ticket_count=5
+    )
+
+    with pytest.raises(ValueError, match="CONFLICT") as exc:
+        worker2.execute(BackfillSelection(latest=1))
+
+    message = str(exc.value)
+    assert "fingerprint=" in message
+    assert "expected_native_ticket_count" in message
+    assert "historical scoring identity" not in message
+    assert prepare_calls == []
+    assert producer.calls == 0
+    assert _replay_store_snapshot(store) == snapshot_before
+
+
+def test_ac05_missing_scorer_identity_remains_an_independent_guard(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    store = SQLiteBackfillStore(_db_path(tmp_path, "ac05_missing_scorer"))
+    worker1 = _make_worker(store, CountingProducer(), fingerprint="fp-compatible")
+    worker1.execute(BackfillSelection(latest=1))
+    _strip_historical_scoring_identity(store)
+    snapshot_before = _replay_store_snapshot(store)
+
+    prepare_calls: list[JsonObject] = []
+    original_prepare = store.prepare
+
+    def record_prepare(manifest: JsonObject) -> None:
+        prepare_calls.append(manifest)
+        original_prepare(manifest)
+
+    monkeypatch.setattr(store, "prepare", record_prepare)
+    producer = CountingProducer()
+    worker2 = _make_worker(store, producer, fingerprint="fp-compatible")
+
+    with pytest.raises(ValueError, match="historical scoring identity"):
+        worker2.execute(BackfillSelection(latest=1))
+
+    assert prepare_calls == []
+    assert producer.calls == 0
+    assert _replay_store_snapshot(store) == snapshot_before
 
 
 # --- AC06: Strategy version, execution version, dataset identity isolation ---

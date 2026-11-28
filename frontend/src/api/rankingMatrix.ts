@@ -32,14 +32,47 @@ import {
 export type LotteryType = 'BIG_LOTTO' | 'POWER_LOTTO' | 'DAILY_539'
 export type TicketCount = 2 | 3 | 5 | 10 | 20
 export type RankingWindow = 'FULL' | 'RECENT_750' | 'RECENT_300' | 'RECENT_50'
-export type OfficialRankingRow = components['schemas']['OfficialRankingRow']
-export type OfficialRankingResponse = components['schemas']['OfficialRankingResponse']
+export type OfficialRankingRow = components['schemas']['OfficialRankingRow'] & {
+  /** Optional on the wire so older server responses remain consumable. */
+  failed_count?: number
+  /** Optional on the wire so older server responses remain consumable. */
+  not_eligible_count?: number
+}
+export type OfficialRankingRunDiagnostic = {
+  kind: 'INVALID_MANIFEST_NO_STRATEGY_IDENTITY'
+  run_id: string
+  matrix_reason: string
+  successes: 0
+  evaluated: 0
+  denominator: 0
+  rate: null
+  baseline: null
+  delta: null
+  rank: null
+}
+export type OfficialRankingResponse = Omit<
+  components['schemas']['OfficialRankingResponse'],
+  'items' | 'run_diagnostics'
+> & { items: OfficialRankingRow[]; run_diagnostics?: OfficialRankingRunDiagnostic[] }
+
+function nonNegativeCount(value: unknown): number {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : 0
+}
 
 export async function fetchOfficialRanking(lottery: LotteryType, window: RankingWindow): Promise<OfficialRankingResponse> {
   const query = new URLSearchParams({ lottery_type: lottery, window })
   const response = await fetch(`/api/v1/replay-backfill/official-ranking?${query}`)
   if (!response.ok) throw new Error(`正式庫排行載入失敗（${response.status}）`)
-  return await response.json() as OfficialRankingResponse
+  const payload = await response.json() as OfficialRankingResponse
+  return {
+    ...payload,
+    run_diagnostics: payload.run_diagnostics ?? [],
+    items: payload.items.map((row) => ({
+      ...row,
+      failed_count: nonNegativeCount(row.failed_count),
+      not_eligible_count: nonNegativeCount(row.not_eligible_count),
+    })),
+  }
 }
 export type B649Sealed084Window = 'FULL' | 'RECENT_750' | 'RECENT_300' | 'RECENT_50'
 
